@@ -99,6 +99,8 @@ const EXCEPTIONS_BOOTSTRAP: &[(&str, &str)] = &[
 /// these and all their dependencies *must not* be in the exception list.
 const RUNTIME_CRATES: &[&str] = &["std", "core", "alloc", "test", "panic_abort", "panic_unwind"];
 
+const PERMITTED_DEPS_LOCATION: &str = concat!(file!(), ":", line!());
+
 /// Crates rustc is allowed to depend on. Avoid adding to the list if possible.
 ///
 /// This list is here to provide a speed-bump to adding a new dependency to
@@ -500,6 +502,7 @@ fn check_permitted_dependencies(
     restricted_dependency_crates: &[&'static str],
     bad: &mut bool,
 ) {
+    let mut has_permitted_dep_error = false;
     let mut deps = HashSet::new();
     for to_check in restricted_dependency_crates {
         let to_check = pkg_from_name(metadata, to_check);
@@ -534,6 +537,7 @@ fn check_permitted_dependencies(
                 "could not find allowed package `{permitted}`\n\
                 Remove from PERMITTED_DEPENDENCIES list if it is no longer used.",
             );
+            has_permitted_dep_error = true;
         }
     }
 
@@ -546,8 +550,13 @@ fn check_permitted_dependencies(
         if dep.source.is_some() {
             if !permitted_dependencies.contains(dep.name.as_str()) {
                 tidy_error!(bad, "Dependency for {descr} not explicitly permitted: {}", dep.id);
+                has_permitted_dep_error = true;
             }
         }
+    }
+
+    if has_permitted_dep_error {
+        eprintln!("Go to `{PERMITTED_DEPS_LOCATION}` for the list.");
     }
 }
 
