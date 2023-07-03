@@ -4,23 +4,14 @@ version = 3
 
 [[package]]
 name = "addr2line"
-version = "0.19.0"
+version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a76fd60b23679b7d19bd066031410fb7e458ccc5e958eb5c325888ce4baedc97"
+checksum = "f4fa78e18c64fce05e902adecd7a5eed15a5e0a3439f7b0e169f0252214865e3"
 dependencies = [
  "compiler_builtins",
  "gimli 0.27.3",
  "rustc-std-workspace-alloc",
  "rustc-std-workspace-core",
-]
-
-[[package]]
-name = "addr2line"
-version = "0.20.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f4fa78e18c64fce05e902adecd7a5eed15a5e0a3439f7b0e169f0252214865e3"
-dependencies = [
- "gimli 0.27.3",
 ]
 
 [[package]]
@@ -188,7 +179,7 @@ version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "74cfb39880a59e122232cb5fb06b20b4382d58c12fa9747d16f846d38a7b094c"
 dependencies = [
- "object 0.31.1",
+ "object",
 ]
 
 [[package]]
@@ -258,12 +249,12 @@ version = "0.3.68"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4319208da049c43661739c5fade2ba182f09d1dc2299b32298d3a31692b17e12"
 dependencies = [
- "addr2line 0.20.0",
+ "addr2line",
  "cc",
  "cfg-if",
  "libc",
- "miniz_oxide 0.7.1",
- "object 0.31.1",
+ "miniz_oxide",
+ "object",
  "rustc-demangle",
 ]
 
@@ -1190,7 +1181,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3b9429470923de8e8cbd4d2dc513535400b4b3fef0319fb5c4e1f520a7bef743"
 dependencies = [
  "crc32fast",
- "miniz_oxide 0.7.1",
+ "miniz_oxide",
 ]
 
 [[package]]
@@ -2153,23 +2144,14 @@ checksum = "68354c5c6bd36d73ff3feceb05efa59b6acb7626617f4962be322a825e61f79a"
 
 [[package]]
 name = "miniz_oxide"
-version = "0.6.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b275950c28b37e794e8c55d88aeb5e139d0ce23fdbbeda68f8d7174abdf9e8fa"
-dependencies = [
- "adler",
- "compiler_builtins",
- "rustc-std-workspace-alloc",
- "rustc-std-workspace-core",
-]
-
-[[package]]
-name = "miniz_oxide"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e7810e0be55b428ada41041c41f32c9f1a42817901b4ccf45fa3d4b6561e74c7"
 dependencies = [
  "adler",
+ "compiler_builtins",
+ "rustc-std-workspace-alloc",
+ "rustc-std-workspace-core",
 ]
 
 [[package]]
@@ -2268,27 +2250,18 @@ dependencies = [
 
 [[package]]
 name = "object"
-version = "0.30.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "03b4680b86d9cfafba8fc491dc9b6df26b68cf40e9e6cd73909194759a63c385"
-dependencies = [
- "compiler_builtins",
- "memchr",
- "rustc-std-workspace-alloc",
- "rustc-std-workspace-core",
-]
-
-[[package]]
-name = "object"
 version = "0.31.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8bda667d9f2b5051b8833f59f3bf748b28ef54f850f4fcb389a252aa383866d1"
 dependencies = [
+ "compiler_builtins",
  "crc32fast",
  "flate2",
  "hashbrown 0.13.2",
  "indexmap 1.9.3",
  "memchr",
+ "rustc-std-workspace-alloc",
+ "rustc-std-workspace-core",
  "ruzstd",
 ]
 
@@ -3115,7 +3088,7 @@ dependencies = [
  "bitflags 1.3.2",
  "libc",
  "measureme",
- "object 0.31.1",
+ "object",
  "rustc-demangle",
  "rustc_ast",
  "rustc_attr",
@@ -3151,7 +3124,7 @@ dependencies = [
  "itertools",
  "jobserver",
  "libc",
- "object 0.31.1",
+ "object",
  "pathdiff",
  "regex",
  "rustc_arena",
@@ -4082,7 +4055,7 @@ name = "rustc_target"
 version = "0.0.0"
 dependencies = [
  "bitflags 1.3.2",
- "object 0.31.1",
+ "object",
  "rustc_abi",
  "rustc_data_structures",
  "rustc_feature",
@@ -4578,7 +4551,7 @@ checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 name = "std"
 version = "0.0.0"
 dependencies = [
- "addr2line 0.19.0",
+ "addr2line",
  "alloc",
  "cfg-if",
  "compiler_builtins",
@@ -4588,8 +4561,8 @@ dependencies = [
  "hashbrown 0.14.0",
  "hermit-abi 0.3.1",
  "libc",
- "miniz_oxide 0.6.2",
- "object 0.30.4",
+ "miniz_oxide",
+ "object",
  "panic_abort",
  "panic_unwind",
  "profiler_builtins",
@@ -4861,7 +4834,7 @@ checksum = "98c040e1340b889d4180c64e1d787efa9c32cb1617757e101480b61238b0d927"
 dependencies = [
  "gimli 0.26.2",
  "hashbrown 0.12.3",
- "object 0.31.1",
+ "object",
  "tracing",
 ]
 
