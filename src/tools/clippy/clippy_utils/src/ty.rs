@@ -949,16 +949,15 @@ pub fn ty_is_fn_once_param<'tcx>(tcx: TyCtxt<'_>, ty: Ty<'tcx>, predicates: &'tc
         .iter()
         .try_fold(false, |found, p| {
             if let ty::ClauseKind::Trait(p) = p.kind().skip_binder()
-            && let ty::Param(self_ty) = p.trait_ref.self_ty().kind()
-            && ty.index == self_ty.index
-        {
-            // This should use `super_traits_of`, but that's a private function.
-            if p.trait_ref.def_id == fn_once_id {
-                return Some(true);
-            } else if p.trait_ref.def_id == fn_mut_id || p.trait_ref.def_id == fn_id {
-                return None;
+                && let ty::Param(self_ty) = p.trait_ref.self_ty().kind()
+                && ty.index == self_ty.index
+            {
+                if p.trait_ref.def_id == fn_once_id {
+                    return Some(true);
+                } else if p.trait_ref.def_id == fn_mut_id || p.trait_ref.def_id == fn_id {
+                    return None;
+                }
             }
-        }
             Some(found)
         })
         .unwrap_or(false)

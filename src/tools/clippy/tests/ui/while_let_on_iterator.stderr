@@ -151,10 +151,16 @@ LL |         while let Some(x) = it.next() {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for x in it`
 
 error: this loop could be written as a `for` loop
-  --> $DIR/while_let_on_iterator.rs:450:5
+  --> $DIR/while_let_on_iterator.rs:453:9
+   |
+LL |         while let Some(x) = it.next() {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for x in it`
+
+error: this loop could be written as a `for` loop
+  --> $DIR/while_let_on_iterator.rs:463:5
    |
 LL |     while let Some(..) = it.next() {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for _ in it`
 
-error: aborting due to 26 previous errors
+error: aborting due to 27 previous errors
 
