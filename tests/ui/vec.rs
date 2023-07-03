@@ -124,6 +124,35 @@ fn issue11075() {
     for _string in vec![repro!(true), repro!(null)] {
         unimplemented!();
     }
+
+    macro_rules! in_macro {
+        ($e:expr, $vec:expr, $vec2:expr) => {{
+            vec![1; 2].fill(3);
+            vec![1, 2].fill(3);
+            for _ in vec![1, 2] {}
+            for _ in vec![1; 2] {}
+            for _ in vec![$e, $e] {}
+            for _ in vec![$e; 2] {}
+            for _ in $vec {}
+            for _ in $vec2 {}
+        }};
+    }
+
+    in_macro!(1, vec![1, 2], vec![1; 2]);
+
+    macro_rules! from_macro {
+        () => {
+            vec![1, 2, 3]
+        };
+    }
+    macro_rules! from_macro_repeat {
+        () => {
+            vec![1; 3]
+        };
+    }
+
+    for _ in from_macro!() {}
+    for _ in from_macro_repeat!() {}
 }
 
 #[clippy::msrv = "1.53"]
