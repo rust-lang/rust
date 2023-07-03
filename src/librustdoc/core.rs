@@ -194,6 +194,7 @@ pub(crate) fn create_config(
         describe_lints,
         lint_cap,
         scrape_examples_options,
+        expanded_args,
         ..
     }: RustdocOptions,
     RenderOptions { document_private, .. }: &RenderOptions,
@@ -291,6 +292,7 @@ pub(crate) fn create_config(
         make_codegen_backend: None,
         registry: rustc_driver::diagnostics_registry(),
         ice_file: None,
+        expanded_args,
     }
 }
 

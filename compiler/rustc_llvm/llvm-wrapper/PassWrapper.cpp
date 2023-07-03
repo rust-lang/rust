@@ -406,7 +406,8 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
     bool RelaxELFRelocations,
     bool UseInitArray,
     const char *SplitDwarfFile,
-    bool ForceEmulatedTls) {
+    bool ForceEmulatedTls,
+    const char *ArgsCstrBuff, size_t ArgsCstrBuffLen) {
 
   auto OptLevel = fromRust(RustOptLevel);
   auto RM = fromRust(RustReloc);
@@ -462,12 +463,48 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
 
   Options.EmitStackSizeSection = EmitStackSizeSection;
 
+
+  if (ArgsCstrBuff != nullptr)
+  {
+    int buffer_offset = 0;
+    assert(ArgsCstrBuff[ArgsCstrBuffLen - 1] == '\0');
+
+    const size_t arg0_len = std::strlen(ArgsCstrBuff);
+    char* arg0 = new char[arg0_len + 1];
+    memcpy(arg0, ArgsCstrBuff, arg0_len);
+    arg0[arg0_len] = '\0';
+    buffer_offset += arg0_len + 1;
+
+    const int num_cmd_arg_strings =
+      std::count(&ArgsCstrBuff[buffer_offset], &ArgsCstrBuff[ArgsCstrBuffLen], '\0');
+
+    std::string* cmd_arg_strings = new std::string[num_cmd_arg_strings];
+    for (int i = 0; i < num_cmd_arg_strings; ++i)
+    {
+      assert(buffer_offset < ArgsCstrBuffLen);
+      const int len = std::strlen(ArgsCstrBuff + buffer_offset);
+      cmd_arg_strings[i] = std::string(&ArgsCstrBuff[buffer_offset], len);
+      buffer_offset += len + 1;
+    }
+
+    assert(buffer_offset == ArgsCstrBuffLen);
+
+    Options.MCOptions.Argv0 = arg0;
+    Options.MCOptions.CommandLineArgs =
+      llvm::ArrayRef<std::string>(cmd_arg_strings, num_cmd_arg_strings);
+  }
+
   TargetMachine *TM = TheTarget->createTargetMachine(
       Trip.getTriple(), CPU, Feature, Options, RM, CM, OptLevel);
   return wrap(TM);
 }
 
 extern "C" void LLVMRustDisposeTargetMachine(LLVMTargetMachineRef TM) {
+
+  MCTargetOptions& MCOptions = unwrap(TM)->Options.MCOptions;
+  delete[] MCOptions.Argv0;
+  delete[] MCOptions.CommandLineArgs.data();
+
   delete unwrap(TM);
 }
 
