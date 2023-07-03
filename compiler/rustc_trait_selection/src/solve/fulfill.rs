@@ -41,7 +41,7 @@ impl<'tcx> FulfillmentCtxt<'tcx> {
 }
 
 impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
-    #[instrument(level = "debug", skip(self, _infcx))]
+    #[instrument(level = "debug", skip(self, infcx))]
     fn register_predicate_obligation(
         &mut self,
         infcx: &InferCtxt<'tcx>,

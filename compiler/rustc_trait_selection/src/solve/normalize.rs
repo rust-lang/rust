@@ -20,7 +20,7 @@ pub(crate) fn deeply_normalize<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
     at: At<'_, 'tcx>,
     value: T,
 ) -> Result<T, Vec<FulfillmentError<'tcx>>> {
-    let fulfill_cx = FulfillmentCtxt::new();
+    let fulfill_cx = FulfillmentCtxt::new(at.infcx);
     let mut folder = NormalizationFolder { at, fulfill_cx, depth: 0, universes: Vec::new() };
 
     value.try_fold_with(&mut folder)
