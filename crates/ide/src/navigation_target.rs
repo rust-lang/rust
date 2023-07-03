@@ -357,13 +357,11 @@ impl ToNav for hir::Module {
 impl TryToNav for hir::Impl {
     fn try_to_nav(&self, db: &RootDatabase) -> Option<NavigationTarget> {
         let InFile { file_id, value } = self.source(db)?;
-        let derive_attr = self.is_builtin_derive(db);
+        let derive_attr = self.as_builtin_derive(db);
 
-        let focus = if derive_attr.is_some() { None } else { value.self_ty() };
-
-        let syntax = match &derive_attr {
-            Some(attr) => attr.value.syntax(),
-            None => value.syntax(),
+        let (focus, syntax) = match &derive_attr {
+            Some(attr) => (None, attr.value.syntax()),
+            None => (value.self_ty(), value.syntax()),
         };
 
         let (file_id, full_range, focus_range) = orig_range_with_focus(db, file_id, syntax, focus);
