@@ -365,15 +365,9 @@ fn link_rlib<'a>(
     // loaded from the libraries found here and then encode that into the
     // metadata of the rlib we're generating somehow.
     for lib in codegen_results.crate_info.used_libraries.iter() {
-        let NativeLibKind::Static { bundle: None | Some(true), whole_archive } = lib.kind else {
+        let NativeLibKind::Static { bundle: None | Some(true), .. } = lib.kind else {
             continue;
         };
-        if whole_archive == Some(true)
-            && flavor == RlibFlavor::Normal
-            && !codegen_results.crate_info.feature_packed_bundled_libs
-        {
-            sess.emit_err(errors::IncompatibleLinkingModifiers);
-        }
         if flavor == RlibFlavor::Normal && let Some(filename) = lib.filename {
             let path = find_native_static_library(filename.as_str(), true, &lib_search_paths, sess);
             let src = read(path).map_err(|e| sess.emit_fatal(errors::ReadFileError {message: e }))?;

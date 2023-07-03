@@ -1,4 +1,0 @@
-error: link modifiers combination `+bundle,+whole-archive` is unstable when generating rlibs
-
-error: aborting due to previous error
-
