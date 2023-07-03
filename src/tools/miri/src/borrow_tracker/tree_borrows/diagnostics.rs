@@ -570,9 +570,13 @@ impl DisplayRepr {
         extraction_aux(tree, tree.root, show_unnamed, &mut v);
         let Some(root) = v.pop() else {
             if show_unnamed {
-                unreachable!("This allocation contains no tags, not even a root. This should not happen.");
+                unreachable!(
+                    "This allocation contains no tags, not even a root. This should not happen."
+                );
             }
-            eprintln!("This allocation does not contain named tags. Use `miri_print_borrow_state(_, true)` to also print unnamed tags.");
+            eprintln!(
+                "This allocation does not contain named tags. Use `miri_print_borrow_state(_, true)` to also print unnamed tags."
+            );
             return None;
         };
         assert!(v.is_empty());
