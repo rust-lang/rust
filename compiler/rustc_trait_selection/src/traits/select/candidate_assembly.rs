@@ -10,7 +10,7 @@ use hir::def_id::DefId;
 use hir::LangItem;
 use rustc_hir as hir;
 use rustc_infer::traits::ObligationCause;
-use rustc_infer::traits::{Obligation, SelectionError, PolyTraitObligation};
+use rustc_infer::traits::{Obligation, PolyTraitObligation, SelectionError};
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 
@@ -20,7 +20,7 @@ use crate::traits::util;
 
 use super::BuiltinImplConditions;
 use super::SelectionCandidate::*;
-use super::{SelectionCandidateSet, SelectionContext, PolyTraitObligationStack};
+use super::{SelectionCandidateSet, SelectionContext, TraitObligationStack};
 
 impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     #[instrument(skip(self, stack), level = "debug")]

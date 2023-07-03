@@ -659,7 +659,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     continue;
                 }
             };
-            match selcx.select(&obligation.with(selcx.tcx(), trait_pred)) {
+            match selcx.poly_select(&obligation.with(selcx.tcx(), trait_pred)) {
                 // Uncertain or unimplemented.
                 Ok(None) => {
                     if trait_pred.def_id() == unsize_did {

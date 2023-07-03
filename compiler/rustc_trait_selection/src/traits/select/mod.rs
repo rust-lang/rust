@@ -15,8 +15,8 @@ use super::util::closure_trait_ref_and_return_type;
 use super::wf;
 use super::{
     ErrorReporting, ImplDerivedObligation, ImplDerivedObligationCause, Normalized, Obligation,
-    ObligationCause, ObligationCauseCode, Overflow, PredicateObligation, Selection, SelectionError,
-    SelectionResult, PolyTraitObligation, TraitQueryMode,
+    ObligationCause, ObligationCauseCode, Overflow, PolyTraitObligation, PredicateObligation,
+    Selection, SelectionError, SelectionResult, TraitQueryMode,
 };
 
 use crate::infer::{InferCtxt, InferOk, TypeFreshener};
@@ -34,6 +34,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_infer::infer::LateBoundRegionConversionTime;
+use rustc_infer::traits::TraitObligation;
 use rustc_middle::dep_graph::{DepKind, DepNodeIndex};
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
@@ -259,7 +260,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// Attempts to satisfy the obligation. If successful, this will affect the surrounding
     /// type environment by performing unification.
     #[instrument(level = "debug", skip(self), ret)]
-    pub fn select(
+    pub fn poly_select(
         &mut self,
         obligation: &PolyTraitObligation<'tcx>,
     ) -> SelectionResult<'tcx, Selection<'tcx>> {
@@ -291,6 +292,18 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             Err(e) => Err(e),
             Ok(candidate) => Ok(Some(candidate)),
         }
+    }
+
+    pub fn select(
+        &mut self,
+        obligation: &TraitObligation<'tcx>,
+    ) -> SelectionResult<'tcx, Selection<'tcx>> {
+        self.poly_select(&Obligation {
+            cause: obligation.cause.clone(),
+            param_env: obligation.param_env,
+            predicate: ty::Binder::dummy(obligation.predicate),
+            recursion_depth: obligation.recursion_depth,
+        })
     }
 
     fn select_from_obligation(
@@ -1471,7 +1484,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         Ok(Some(candidate))
     }
 
-    fn is_knowable<'o>(&mut self, stack: &PolyTraitObligationStack<'o, 'tcx>) -> Result<(), Conflict> {
+    fn is_knowable<'o>(&mut self, stack: &TraitObligationStack<'o, 'tcx>) -> Result<(), Conflict> {
         debug!("is_knowable(intercrate={:?})", self.is_intercrate());
 
         if !self.is_intercrate() || stack.obligation.polarity() == ty::ImplPolarity::Negative {
@@ -2929,9 +2942,9 @@ struct TraitObligationStackList<'o, 'tcx> {
     head: Option<&'o TraitObligationStack<'o, 'tcx>>,
 }
 
-impl<'o, 'tcx> PolyTraitObligationStackList<'o, 'tcx> {
-    fn empty(cache: &'o ProvisionalEvaluationCache<'tcx>) -> PolyTraitObligationStackList<'o, 'tcx> {
-        PolyTraitObligationStackList { cache, head: None }
+impl<'o, 'tcx> TraitObligationStackList<'o, 'tcx> {
+    fn empty(cache: &'o ProvisionalEvaluationCache<'tcx>) -> TraitObligationStackList<'o, 'tcx> {
+        TraitObligationStackList { cache, head: None }
     }
 
     fn with(r: &'o TraitObligationStack<'o, 'tcx>) -> TraitObligationStackList<'o, 'tcx> {

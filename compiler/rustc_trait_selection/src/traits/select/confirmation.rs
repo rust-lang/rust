@@ -27,8 +27,8 @@ use crate::traits::vtable::{
 use crate::traits::{
     BuiltinDerivedObligation, ImplDerivedObligation, ImplDerivedObligationCause, ImplSource,
     ImplSourceObjectData, ImplSourceTraitUpcastingData, ImplSourceUserDefinedData, Normalized,
-    Obligation, ObligationCause, OutputTypeParameterMismatch, PredicateObligation, Selection,
-    SelectionError, TraitNotObjectSafe, PolyTraitObligation, Unimplemented,
+    Obligation, ObligationCause, OutputTypeParameterMismatch, PolyTraitObligation,
+    PredicateObligation, Selection, SelectionError, TraitNotObjectSafe, Unimplemented,
 };
 
 use super::BuiltinImplConditions;

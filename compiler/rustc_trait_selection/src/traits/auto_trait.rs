@@ -91,7 +91,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         let infcx = tcx.infer_ctxt().build();
         let mut selcx = SelectionContext::new(&infcx);
         for polarity in [true, false] {
-            let result = selcx.select(&Obligation::new(
+            let result = selcx.poly_select(&Obligation::new(
                 tcx,
                 ObligationCause::dummy(),
                 orig_env,
@@ -292,7 +292,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 new_env,
                 pred,
             ));
-            let result = select.select(&obligation);
+            let result = select.poly_select(&obligation);
 
             match result {
                 Ok(Some(ref impl_source)) => {
