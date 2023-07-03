@@ -68,7 +68,7 @@ fn check_redundant_explicit_link<'md>(
                 let link_data = collect_link_data(&mut offset_iter);
 
                 if let Some(resolvable_link) = link_data.resolvable_link.as_ref() {
-                    if &link_data.display_link != resolvable_link {
+                    if &link_data.display_link.replace("`", "") != resolvable_link {
                         // Skips if display link does not match to actual
                         // resolvable link, usually happens if display link
                         // has several segments, e.g.
@@ -81,11 +81,6 @@ fn check_redundant_explicit_link<'md>(
                 let display_link = link_data.resolvable_link.clone()?;
                 let explicit_len = explicit_link.len();
                 let display_len = display_link.len();
-
-                if explicit_len == display_len && explicit_link != display_link {
-                    // Skips if they possibly have no relativity.
-                    continue;
-                }
 
                 if (explicit_len >= display_len
                     && &explicit_link[(explicit_len - display_len)..] == display_link)
