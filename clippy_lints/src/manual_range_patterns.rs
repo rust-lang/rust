@@ -6,6 +6,7 @@ use rustc_hir::Expr;
 use rustc_hir::ExprKind;
 use rustc_hir::PatKind;
 use rustc_hir::RangeEnd;
+use rustc_hir::UnOp;
 use rustc_lint::LintContext;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
@@ -36,11 +37,13 @@ declare_clippy_lint! {
 }
 declare_lint_pass!(ManualRangePatterns => [MANUAL_RANGE_PATTERNS]);
 
-fn expr_as_u128(expr: &Expr<'_>) -> Option<u128> {
-    if let ExprKind::Lit(lit) = expr.kind
+fn expr_as_i128(expr: &Expr<'_>) -> Option<i128> {
+    if let ExprKind::Unary(UnOp::Neg, expr) = expr.kind {
+        expr_as_i128(expr).map(|num| -num)
+    } else if let ExprKind::Lit(lit) = expr.kind
         && let LitKind::Int(num, _) = lit.node
     {
-        Some(num)
+        Some(num as i128)
     } else {
         None
     }
@@ -56,22 +59,22 @@ impl LateLintPass<'_> for ManualRangePatterns {
         if let PatKind::Or(pats) = pat.kind
             && pats.len() >= 3
         {
-            let mut min = u128::MAX;
-            let mut max = 0;
+            let mut min = i128::MAX;
+            let mut max = i128::MIN;
             let mut numbers_found = FxHashSet::default();
             let mut ranges_found = Vec::new();
 
             for pat in pats {
                 if let PatKind::Lit(lit) = pat.kind
-                    && let Some(num) = expr_as_u128(lit)
+                    && let Some(num) = expr_as_i128(lit)
                 {
                     numbers_found.insert(num);
 
                     min = min.min(num);
                     max = max.max(num);
                 } else if let PatKind::Range(Some(left), Some(right), end) = pat.kind
-                    && let Some(left) = expr_as_u128(left)
-                    && let Some(right) = expr_as_u128(right)
+                    && let Some(left) = expr_as_i128(left)
+                    && let Some(right) = expr_as_i128(right)
                     && right >= left
                 {
                     min = min.min(left);
