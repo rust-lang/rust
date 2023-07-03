@@ -175,11 +175,11 @@ call-function: (
     "check-colors",
     {
         "theme": "ayu",
-        "link_color": "rgb(57, 175, 215)",
-        "content_color": "rgb(230, 225, 207)",
-        "header_color": "rgb(255, 255, 255)",
-        "type_color": "rgb(255, 160, 165)",
-        "trait_color": "rgb(57, 175, 215)",
+        "link_color": "#39afd7",
+        "content_color": "#e6e1cf",
+        "header_color": "#fff",
+        "type_color": "#ffa0a5",
+        "trait_color": "#39afd7",
     },
 )
 
@@ -187,11 +187,11 @@ call-function: (
     "check-colors",
     {
         "theme": "dark",
-        "link_color": "rgb(210, 153, 29)",
-        "content_color": "rgb(221, 221, 221)",
-        "header_color": "rgb(221, 221, 221)",
-        "type_color": "rgb(45, 191, 184)",
-        "trait_color": "rgb(183, 140, 242)",
+        "link_color": "#d2991d",
+        "content_color": "#ddd",
+        "header_color": "#ddd",
+        "type_color": "#2dbfb8",
+        "trait_color": "#b78cf2",
     },
 )
 
@@ -199,11 +199,11 @@ call-function: (
     "check-colors",
     {
         "theme": "light",
-        "link_color": "rgb(56, 115, 173)",
-        "content_color": "rgb(0, 0, 0)",
-        "header_color": "rgb(0, 0, 0)",
-        "type_color": "rgb(173, 55, 138)",
-        "trait_color": "rgb(110, 79, 201)",
+        "link_color": "#3873ad",
+        "content_color": "black",
+        "header_color": "black",
+        "type_color": "#ad378a",
+        "trait_color": "#6e4fc9",
     },
 )
 
