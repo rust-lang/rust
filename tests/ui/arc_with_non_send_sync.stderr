@@ -1,5 +1,5 @@
 error: usage of `Arc<T>` where `T` is not `Send` or `Sync`
-  --> $DIR/arc_with_non_send_sync.rs:16:13
+  --> $DIR/arc_with_non_send_sync.rs:19:13
    |
 LL |     let b = Arc::new(RefCell::new(42));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
