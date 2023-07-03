@@ -85,6 +85,7 @@ fn unwrap_unchecked() {
     let _ = unsafe { Ok::<_, ()>(1).unwrap_unchecked() };
     let _ = unsafe { Ok::<_, ()>(1).unwrap_unchecked() + *(&1 as *const i32) };
     let _ = unsafe { Ok::<_, ()>(1).unwrap_unchecked() } + 1;
+    let _ = unsafe { Err::<(), i32>(123).unwrap_err_unchecked() };
 }
 
 fn main() {

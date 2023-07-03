@@ -67,7 +67,7 @@ pub(super) fn check(
                 (expr.span.with_hi(args[0].span.lo()), "panic!(".to_string()),
                 (expr.span.with_lo(args[0].span.hi()), ")".to_string()),
             ]),
-            ("Some" | "Ok", "unwrap_unchecked", _) => {
+            ("Some" | "Ok", "unwrap_unchecked", _) | ("Err", "unwrap_err_unchecked", _) => {
                 let mut suggs = vec![
                     (recv.span.with_hi(call_args[0].span.lo()), String::new()),
                     (expr.span.with_lo(call_args[0].span.hi()), String::new()),

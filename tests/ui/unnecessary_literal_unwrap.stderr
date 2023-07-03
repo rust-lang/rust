@@ -481,5 +481,17 @@ LL -     let _ = unsafe { Ok::<_, ()>(1).unwrap_unchecked() } + 1;
 LL +     let _ = 1 + 1;
    |
 
-error: aborting due to 42 previous errors
+error: used `unwrap_err_unchecked()` on `Err` value
+  --> $DIR/unnecessary_literal_unwrap.rs:88:22
+   |
+LL |     let _ = unsafe { Err::<(), i32>(123).unwrap_err_unchecked() };
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Err` and `unwrap_err_unchecked()`
+   |
+LL -     let _ = unsafe { Err::<(), i32>(123).unwrap_err_unchecked() };
+LL +     let _ = 123;
+   |
+
+error: aborting due to 43 previous errors
 

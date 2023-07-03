@@ -85,6 +85,7 @@ fn unwrap_unchecked() {
     let _ = 1;
     let _ = unsafe { 1 + *(&1 as *const i32) };
     let _ = 1 + 1;
+    let _ = 123;
 }
 
 fn main() {
