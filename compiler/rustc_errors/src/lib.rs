@@ -1384,7 +1384,7 @@ impl HandlerInner {
                     !self.emitted_diagnostics.insert(diagnostic_hash)
                 };
 
-                diagnostic.children.extract_from(already_emitted_sub).for_each(|_| {});
+                diagnostic.children.extract_if(already_emitted_sub).for_each(|_| {});
 
                 self.emitter.emit_diagnostic(diagnostic);
                 if diagnostic.is_error() {
