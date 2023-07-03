@@ -115,6 +115,17 @@ fn main() {
     let _x = vec![1; 201];
 }
 
+fn issue11075() {
+    macro_rules! repro {
+        ($e:expr) => {
+            stringify!($e)
+        };
+    }
+    for _string in vec![repro!(true), repro!(null)] {
+        unimplemented!();
+    }
+}
+
 #[clippy::msrv = "1.53"]
 fn above() {
     for a in vec![1, 2, 3] {

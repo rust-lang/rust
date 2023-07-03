@@ -85,16 +85,22 @@ LL |     for _ in vec![1, 2, 3] {}
    |              ^^^^^^^^^^^^^ help: you can use an array directly: `[1, 2, 3]`
 
 error: useless use of `vec!`
-  --> $DIR/vec.rs:120:14
+  --> $DIR/vec.rs:124:20
+   |
+LL |     for _string in vec![repro!(true), repro!(null)] {
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can use an array directly: `[repro!(true), repro!(null)]`
+
+error: useless use of `vec!`
+  --> $DIR/vec.rs:131:14
    |
 LL |     for a in vec![1, 2, 3] {
    |              ^^^^^^^^^^^^^ help: you can use an array directly: `[1, 2, 3]`
 
 error: useless use of `vec!`
-  --> $DIR/vec.rs:124:14
+  --> $DIR/vec.rs:135:14
    |
 LL |     for a in vec![String::new(), String::new()] {
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can use an array directly: `[String::new(), String::new()]`
 
-error: aborting due to 16 previous errors
+error: aborting due to 17 previous errors
 
