@@ -418,6 +418,7 @@ mod desc {
         "a `,` separated combination of `bti`, `b-key`, `pac-ret`, or `leaf`";
     pub const parse_proc_macro_execution_strategy: &str =
         "one of supported execution strategies (`same-thread`, or `cross-thread`)";
+    pub const parse_solver_proof_tree_condition: &str = "one of: `always`, `never`, `on_error`";
 }
 
 mod parse {
@@ -1238,6 +1239,19 @@ mod parse {
         };
         true
     }
+
+    pub(crate) fn parse_solver_proof_tree_condition(
+        slot: &mut SolverProofTreeCondition,
+        v: Option<&str>,
+    ) -> bool {
+        match v {
+            None | Some("always") => *slot = SolverProofTreeCondition::Always,
+            Some("never") => *slot = SolverProofTreeCondition::Never,
+            Some("on-error") => *slot = SolverProofTreeCondition::OnError,
+            _ => return false,
+        };
+        true
+    }
 }
 
 options! {
@@ -1463,8 +1477,10 @@ options! {
         "output statistics about monomorphization collection"),
     dump_mono_stats_format: DumpMonoStatsFormat = (DumpMonoStatsFormat::Markdown, parse_dump_mono_stats, [UNTRACKED],
         "the format to use for -Z dump-mono-stats (`markdown` (default) or `json`)"),
-    dump_solver_proof_tree: bool = (false, parse_bool, [UNTRACKED],
-        "dump a proof tree for every goal evaluated by the new trait solver"),
+    dump_solver_proof_tree: SolverProofTreeCondition = (SolverProofTreeCondition::Never, parse_solver_proof_tree_condition, [UNTRACKED],
+        "dump a proof tree for every goal evaluated by the new trait solver. The default is `always`"),
+    dump_solver_proof_tree_uses_cache: Option<bool> = (None, parse_opt_bool, [UNTRACKED],
+        "determines whether proof tree generation uses the global cache"),
     dwarf_version: Option<u32> = (None, parse_opt_number, [TRACKED],
         "version of DWARF debug information to emit (default: 2 or 4, depending on platform)"),
     dylib_lto: bool = (false, parse_bool, [UNTRACKED],

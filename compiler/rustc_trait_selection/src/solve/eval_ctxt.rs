@@ -19,7 +19,9 @@ use rustc_middle::ty::{
     self, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable, TypeVisitable,
     TypeVisitableExt, TypeVisitor,
 };
+use rustc_session::config::SolverProofTreeCondition;
 use rustc_span::DUMMY_SP;
+use std::io::Write;
 use std::ops::ControlFlow;
 
 use crate::traits::specialization_graph;
@@ -113,8 +115,22 @@ impl NestedGoals<'_> {
 
 #[derive(PartialEq, Eq, Debug, Hash, HashStable, Clone, Copy)]
 pub enum GenerateProofTree {
+    Yes(DisableGlobalCache),
+    No,
+}
+
+#[derive(PartialEq, Eq, Debug, Hash, HashStable, Clone, Copy)]
+pub enum DisableGlobalCache {
     Yes,
     No,
+}
+impl DisableGlobalCache {
+    pub fn from_bool(disable_cache: bool) -> Self {
+        match disable_cache {
+            true => DisableGlobalCache::Yes,
+            false => DisableGlobalCache::No,
+        }
+    }
 }
 
 pub trait InferCtxtEvalExt<'tcx> {
@@ -164,6 +180,36 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         let mode = if infcx.intercrate { SolverMode::Coherence } else { SolverMode::Normal };
         let mut search_graph = search_graph::SearchGraph::new(infcx.tcx, mode);
 
+        let inspect = {
+            let generate_proof_tree = match (
+                infcx.tcx.sess.opts.unstable_opts.dump_solver_proof_tree,
+                infcx.tcx.sess.opts.unstable_opts.dump_solver_proof_tree_uses_cache,
+                generate_proof_tree,
+            ) {
+                (_, Some(use_cache), GenerateProofTree::Yes(_)) => {
+                    GenerateProofTree::Yes(DisableGlobalCache::from_bool(!use_cache))
+                }
+
+                (SolverProofTreeCondition::Always, use_cache, GenerateProofTree::No) => {
+                    let use_cache = use_cache.unwrap_or(true);
+                    GenerateProofTree::Yes(DisableGlobalCache::from_bool(!use_cache))
+                }
+
+                (_, None, GenerateProofTree::Yes(_)) => generate_proof_tree,
+                // `Never` is kind of weird- it doesn't actually force us to not generate proof trees
+                // its just the default setting for rustflags forced proof tree generation.
+                (SolverProofTreeCondition::Never, _, _) => generate_proof_tree,
+                (SolverProofTreeCondition::OnError, _, _) => generate_proof_tree,
+            };
+
+            match generate_proof_tree {
+                GenerateProofTree::No => ProofTreeBuilder::new_noop(),
+                GenerateProofTree::Yes(global_cache_disabled) => {
+                    ProofTreeBuilder::new_root(global_cache_disabled)
+                }
+            }
+        };
+
         let mut ecx = EvalCtxt {
             search_graph: &mut search_graph,
             infcx: infcx,
@@ -177,17 +223,17 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
             var_values: CanonicalVarValues::dummy(),
             nested_goals: NestedGoals::new(),
             tainted: Ok(()),
-            inspect: (infcx.tcx.sess.opts.unstable_opts.dump_solver_proof_tree
-                || matches!(generate_proof_tree, GenerateProofTree::Yes))
-            .then(ProofTreeBuilder::new_root)
-            .unwrap_or_else(ProofTreeBuilder::new_noop),
+            inspect,
         };
         let result = f(&mut ecx);
 
         let tree = ecx.inspect.finalize();
-        if let Some(tree) = &tree {
-            // module to allow more granular RUSTC_LOG filtering to just proof tree output
-            super::inspect::dump::print_tree(tree);
+        if let (Some(tree), SolverProofTreeCondition::Always) =
+            (&tree, infcx.tcx.sess.opts.unstable_opts.dump_solver_proof_tree)
+        {
+            let mut lock = std::io::stdout().lock();
+            let _ = lock.write_fmt(format_args!("{tree:?}"));
+            let _ = lock.flush();
         }
 
         assert!(
