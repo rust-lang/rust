@@ -154,6 +154,10 @@ impl UselessVec {
         span: Span,
         suggest_slice: SuggestedType,
     ) {
+        if span.from_expansion() {
+            return;
+        }
+
         let mut applicability = Applicability::MachineApplicable;
 
         let snippet = match *vec_args {
