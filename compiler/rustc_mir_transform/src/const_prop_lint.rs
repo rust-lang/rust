@@ -9,7 +9,7 @@ use rustc_const_eval::interpret::Immediate;
 use rustc_const_eval::interpret::{
     self, InterpCx, InterpResult, LocalValue, MemoryKind, OpTy, Scalar, StackPopCleanup,
 };
-use rustc_const_eval::ReportErrorExt;
+use rustc_const_eval::InterpErrorExt;
 use rustc_hir::def::DefKind;
 use rustc_hir::HirId;
 use rustc_index::bit_set::BitSet;
@@ -233,7 +233,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 op
             }
             Err(e) => {
-                trace!("get_const failed: {:?}", e.into_kind().debug());
+                trace!("get_const failed: {}", InterpErrorExt(e.into_kind()).to_string());
                 return None;
             }
         };

@@ -3,7 +3,7 @@ use std::num::NonZeroU64;
 
 use log::trace;
 
-use rustc_const_eval::ReportErrorExt;
+use rustc_const_eval::InterpErrorExt;
 use rustc_errors::DiagnosticMessage;
 use rustc_span::{source_map::DUMMY_SP, SpanData, Symbol};
 use rustc_target::abi::{Align, Size};
@@ -336,15 +336,7 @@ pub fn report_error<'tcx, 'mir>(
 
     // FIXME(fee1-dead), HACK: we want to use the error as title therefore we can just extract the
     // label and arguments from the InterpError.
-    let e = {
-        let handler = &ecx.tcx.sess.parse_sess.span_diagnostic;
-        let mut diag = ecx.tcx.sess.struct_allow("");
-        let msg = e.diagnostic_message();
-        e.add_args(handler, &mut diag);
-        let s = handler.eagerly_translate_to_string(msg, diag.args());
-        diag.cancel();
-        s
-    };
+    let e = InterpErrorExt(e).to_string();
 
     msg.insert(0, e);
 
