@@ -551,7 +551,6 @@ fn trait_predicate_kind<'tcx>(
         | ty::PredicateKind::ClosureKind(..)
         | ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(..))
         | ty::PredicateKind::ConstEquate(..)
-        | ty::PredicateKind::Ambiguous
-        | ty::PredicateKind::Clause(ty::ClauseKind::TypeWellFormedFromEnv(..)) => None,
+        | ty::PredicateKind::Ambiguous => None,
     }
 }

@@ -836,9 +836,6 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 // FIXME(generic_const_exprs): you can absolutely add this as a where clauses
                 | ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(..))
                 | ty::PredicateKind::Coerce(..) => {}
-                ty::PredicateKind::Clause(ty::ClauseKind::TypeWellFormedFromEnv(..)) => {
-                    bug!("predicate should only exist in the environment: {bound_predicate:?}")
-                }
                 ty::PredicateKind::Ambiguous => return false,
             };
         }

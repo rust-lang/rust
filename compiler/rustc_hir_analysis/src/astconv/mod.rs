@@ -983,8 +983,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 ty::ClauseKind::RegionOutlives(_)
                 | ty::ClauseKind::ConstArgHasType(..)
                 | ty::ClauseKind::WellFormed(_)
-                | ty::ClauseKind::ConstEvaluatable(_)
-                | ty::ClauseKind::TypeWellFormedFromEnv(_) => {
+                | ty::ClauseKind::ConstEvaluatable(_) => {
                     bug!()
                 }
             }

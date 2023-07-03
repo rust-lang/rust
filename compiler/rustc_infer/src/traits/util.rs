@@ -370,9 +370,6 @@ impl<'tcx, O: Elaboratable<'tcx>> Elaborator<'tcx, O> {
                         }),
                 );
             }
-            ty::PredicateKind::Clause(ty::ClauseKind::TypeWellFormedFromEnv(..)) => {
-                // Nothing to elaborate
-            }
             ty::PredicateKind::Ambiguous => {}
             ty::PredicateKind::AliasRelate(..) => {
                 // No

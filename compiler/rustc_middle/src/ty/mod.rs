@@ -554,8 +554,7 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::Coerce(_)
             | PredicateKind::Clause(ClauseKind::ConstEvaluatable(_))
             | PredicateKind::ConstEquate(_, _)
-            | PredicateKind::Ambiguous
-            | PredicateKind::Clause(ClauseKind::TypeWellFormedFromEnv(_)) => true,
+            | PredicateKind::Ambiguous => true,
         }
     }
 }
@@ -661,11 +660,6 @@ pub enum ClauseKind<'tcx> {
 
     /// Constant initializer must evaluate successfully.
     ConstEvaluatable(ty::Const<'tcx>),
-
-    /// Represents a type found in the environment that we can use for implied bounds.
-    ///
-    /// Only used for Chalk.
-    TypeWellFormedFromEnv(Ty<'tcx>),
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
@@ -1424,8 +1418,7 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::Clause(ClauseKind::TypeOutlives(..))
             | PredicateKind::Clause(ClauseKind::ConstEvaluatable(..))
             | PredicateKind::ConstEquate(..)
-            | PredicateKind::Ambiguous
-            | PredicateKind::Clause(ClauseKind::TypeWellFormedFromEnv(..)) => None,
+            | PredicateKind::Ambiguous => None,
         }
     }
 
@@ -1445,8 +1438,7 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::Clause(ClauseKind::TypeOutlives(..))
             | PredicateKind::Clause(ClauseKind::ConstEvaluatable(..))
             | PredicateKind::ConstEquate(..)
-            | PredicateKind::Ambiguous
-            | PredicateKind::Clause(ClauseKind::TypeWellFormedFromEnv(..)) => None,
+            | PredicateKind::Ambiguous => None,
         }
     }
 
@@ -1466,8 +1458,7 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::ClosureKind(..)
             | PredicateKind::Clause(ClauseKind::ConstEvaluatable(..))
             | PredicateKind::ConstEquate(..)
-            | PredicateKind::Ambiguous
-            | PredicateKind::Clause(ClauseKind::TypeWellFormedFromEnv(..)) => None,
+            | PredicateKind::Ambiguous => None,
         }
     }
 

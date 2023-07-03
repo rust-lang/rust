@@ -1094,13 +1094,6 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
                     ty::PredicateKind::Ambiguous => span_bug!(span, "ambiguous"),
 
-                    ty::PredicateKind::Clause(ty::ClauseKind::TypeWellFormedFromEnv(..)) => {
-                        span_bug!(
-                            span,
-                            "TypeWellFormedFromEnv predicate should only exist in the environment"
-                        )
-                    }
-
                     ty::PredicateKind::AliasRelate(..) => span_bug!(
                         span,
                         "AliasRelate predicate should never be the predicate cause of a SelectionError"

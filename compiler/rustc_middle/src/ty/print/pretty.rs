@@ -2888,9 +2888,6 @@ define_print_and_forward_display! {
             ty::ClauseKind::ConstEvaluatable(ct) => {
                 p!("the constant `", print(ct), "` can be evaluated")
             }
-            ty::ClauseKind::TypeWellFormedFromEnv(ty) => {
-                p!("the type `", print(ty), "` is found in the environment")
-            }
         }
     }
 
