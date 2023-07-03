@@ -1473,11 +1473,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         }
 
         let mut visitor = FnPtrFinder { visitor: &*self, spans: Vec::new(), tys: Vec::new() };
-        self.cx
-            .tcx
-            .try_normalize_erasing_regions(self.cx.param_env, ty)
-            .unwrap_or(ty)
-            .visit_with(&mut visitor);
+        ty.visit_with(&mut visitor);
         hir::intravisit::Visitor::visit_ty(&mut visitor, hir_ty);
 
         iter::zip(visitor.tys.drain(..), visitor.spans.drain(..)).collect()
