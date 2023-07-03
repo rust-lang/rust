@@ -67,6 +67,22 @@ pub(super) fn check(
                 (expr.span.with_hi(args[0].span.lo()), "panic!(".to_string()),
                 (expr.span.with_lo(args[0].span.hi()), ")".to_string()),
             ]),
+            ("Some" | "Ok", "unwrap_unchecked", _) => {
+                let mut suggs = vec![
+                    (recv.span.with_hi(call_args[0].span.lo()), String::new()),
+                    (expr.span.with_lo(call_args[0].span.hi()), String::new()),
+                ];
+                // try to also remove the unsafe block if present
+                if let hir::Node::Block(block) = cx.tcx.hir().get_parent(expr.hir_id)
+                    && let hir::BlockCheckMode::UnsafeBlock(hir::UnsafeSource::UserProvided) = block.rules
+                {
+                    suggs.extend([
+                        (block.span.shrink_to_lo().to(expr.span.shrink_to_lo()), String::new()),
+                        (expr.span.shrink_to_hi().to(block.span.shrink_to_hi()), String::new())
+                    ]);
+                }
+                Some(suggs)
+            },
             (_, _, Some(_)) => None,
             ("Ok", "unwrap_err", None) | ("Err", "unwrap", None) => Some(vec![
                 (

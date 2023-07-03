@@ -4000,6 +4000,9 @@ impl Methods {
                     unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
                     unwrap_used::check(cx, expr, recv, false, self.allow_unwrap_in_tests);
                 },
+                ("unwrap_unchecked", []) => {
+                    unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
+                }
                 ("unwrap_err", []) => {
                     unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
                     unwrap_used::check(cx, expr, recv, true, self.allow_unwrap_in_tests);
