@@ -614,15 +614,21 @@ impl Module {
         let inherent_impls = db.inherent_impls_in_crate(self.id.krate());
 
         for impl_def in self.impl_defs(db) {
+            let loc = impl_def.id.lookup(db.upcast());
+            let tree = loc.id.item_tree(db.upcast());
+            let node = &tree[loc.id.value];
+            let file_id = loc.id.file_id();
+            if file_id.is_builtin_derive(db.upcast()) {
+                // these expansion come from us, diagnosing them is a waste of resources
+                // FIXME: Once we diagnose the inputs to builtin derives, we should at least extract those diagnostics somehow
+                continue;
+            }
+
             for diag in db.impl_data_with_diagnostics(impl_def.id).1.iter() {
                 emit_def_diagnostic(db, acc, diag);
             }
 
             if inherent_impls.invalid_impls().contains(&impl_def.id) {
-                let loc = impl_def.id.lookup(db.upcast());
-                let tree = loc.id.item_tree(db.upcast());
-                let node = &tree[loc.id.value];
-                let file_id = loc.id.file_id();
                 let ast_id_map = db.ast_id_map(file_id);
 
                 acc.push(IncoherentImpl { impl_: ast_id_map.get(node.ast_id()), file_id }.into())
@@ -3278,9 +3284,9 @@ impl Impl {
         self.id.lookup(db.upcast()).container.into()
     }
 
-    pub fn is_builtin_derive(self, db: &dyn HirDatabase) -> Option<InFile<ast::Attr>> {
+    pub fn as_builtin_derive(self, db: &dyn HirDatabase) -> Option<InFile<ast::Attr>> {
         let src = self.source(db)?;
-        src.file_id.is_builtin_derive(db.upcast())
+        src.file_id.as_builtin_derive_attr_node(db.upcast())
     }
 }
 

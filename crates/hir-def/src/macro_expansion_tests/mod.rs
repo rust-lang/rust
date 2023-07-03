@@ -239,7 +239,7 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
 
     for impl_id in def_map[local_id].scope.impls() {
         let src = impl_id.lookup(&db).source(&db);
-        if src.file_id.is_builtin_derive(&db).is_some() {
+        if src.file_id.is_builtin_derive(&db) {
             let pp = pretty_print_macro_expansion(src.value.syntax().clone(), None);
             format_to!(expanded_text, "\n{}", pp)
         }

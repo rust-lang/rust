@@ -319,8 +319,10 @@ impl HirFileId {
         })
     }
 
-    /// Indicate it is macro file generated for builtin derive
-    pub fn is_builtin_derive(&self, db: &dyn db::ExpandDatabase) -> Option<InFile<ast::Attr>> {
+    pub fn as_builtin_derive_attr_node(
+        &self,
+        db: &dyn db::ExpandDatabase,
+    ) -> Option<InFile<ast::Attr>> {
         let macro_file = self.macro_file()?;
         let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_file.macro_call_id);
         let attr = match loc.def.kind {
@@ -333,8 +335,22 @@ impl HirFileId {
     pub fn is_custom_derive(&self, db: &dyn db::ExpandDatabase) -> bool {
         match self.macro_file() {
             Some(macro_file) => {
-                let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_file.macro_call_id);
-                matches!(loc.def.kind, MacroDefKind::ProcMacro(_, ProcMacroKind::CustomDerive, _))
+                matches!(
+                    db.lookup_intern_macro_call(macro_file.macro_call_id).def.kind,
+                    MacroDefKind::ProcMacro(_, ProcMacroKind::CustomDerive, _)
+                )
+            }
+            None => false,
+        }
+    }
+
+    pub fn is_builtin_derive(&self, db: &dyn db::ExpandDatabase) -> bool {
+        match self.macro_file() {
+            Some(macro_file) => {
+                matches!(
+                    db.lookup_intern_macro_call(macro_file.macro_call_id).def.kind,
+                    MacroDefKind::BuiltInDerive(..)
+                )
             }
             None => false,
         }
@@ -344,8 +360,7 @@ impl HirFileId {
     pub fn is_include_macro(&self, db: &dyn db::ExpandDatabase) -> bool {
         match self.macro_file() {
             Some(macro_file) => {
-                let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_file.macro_call_id);
-                loc.def.is_include()
+                db.lookup_intern_macro_call(macro_file.macro_call_id).def.is_include()
             }
             _ => false,
         }
