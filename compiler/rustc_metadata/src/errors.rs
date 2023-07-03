@@ -647,15 +647,11 @@ impl IntoDiagnostic<'_> for CannotFindCrate {
                 diag.note(fluent::metadata_target_no_std_support);
             }
 
+            // NOTE: this suggests using rustup, even though the user may not have it installed.
+            // That's because they could choose to install it; or this may give them a hint which
+            // target they need to install from their distro.
             if self.missing_core {
-                if env!("CFG_RELEASE_CHANNEL") == "dev" {
-                    diag.help(fluent::metadata_consider_adding_std);
-                } else {
-                    // NOTE: this suggests using rustup, even though the user may not have it installed.
-                    // That's because they could choose to install it; or this may give them a hint which
-                    // target they need to install from their distro.
-                    diag.help(fluent::metadata_consider_downloading_target);
-                }
+                diag.help(fluent::metadata_consider_downloading_target);
             }
 
             // Suggest using #![no_std]. #[no_core] is unstable and not really supported anyway.
