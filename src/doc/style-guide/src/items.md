@@ -366,7 +366,7 @@ where
         + Index<RangeTo<Idx>, Output = Self::Output>
         + Index<RangeFrom<Idx>, Output = Self::Output>
         + Index<RangeInclusive<Idx>, Output = Self::Output>
-        + Index<RangeToInclusive<Idx>, Output = Self::Output> + Index<RangeFull>
+        + Index<RangeToInclusive<Idx>, Output = Self::Output> + Index<RangeFull>,
 ```
 
 ### Type aliases
