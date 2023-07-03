@@ -386,7 +386,7 @@ mod desc {
     pub const parse_unpretty: &str = "`string` or `string=string`";
     pub const parse_treat_err_as_bug: &str = "either no value or a number bigger than 0";
     pub const parse_trait_solver: &str =
-        "one of the supported solver modes (`classic`, `chalk`, or `next`)";
+        "one of the supported solver modes (`classic`, `next`, or `next-coherence`)";
     pub const parse_lto: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), `thin`, `fat`, or omitted";
     pub const parse_linker_plugin_lto: &str =
@@ -983,7 +983,6 @@ mod parse {
     pub(crate) fn parse_trait_solver(slot: &mut TraitSolver, v: Option<&str>) -> bool {
         match v {
             Some("classic") => *slot = TraitSolver::Classic,
-            Some("chalk") => *slot = TraitSolver::Chalk,
             Some("next") => *slot = TraitSolver::Next,
             Some("next-coherence") => *slot = TraitSolver::NextCoherence,
             // default trait solver is subject to change..

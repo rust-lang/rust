@@ -39,8 +39,8 @@ use crate::traits::query::{
 };
 use crate::traits::specialization_graph;
 use crate::traits::{
-    CanonicalChalkEnvironmentAndGoal, CodegenObligationError, EvaluationResult, ImplSource,
-    ObjectSafetyViolation, ObligationCause, OverflowError, WellFormedLoc,
+    CodegenObligationError, EvaluationResult, ImplSource, ObjectSafetyViolation, ObligationCause,
+    OverflowError, WellFormedLoc,
 };
 use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::layout::ValidityRequirement;
@@ -1969,15 +1969,6 @@ rustc_queries! {
         goal: CanonicalPredicateGoal<'tcx>
     ) -> Result<EvaluationResult, OverflowError> {
         desc { "evaluating trait selection obligation `{}`", goal.value.value }
-    }
-
-    query evaluate_goal(
-        goal: CanonicalChalkEnvironmentAndGoal<'tcx>
-    ) -> Result<
-        &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, ()>>,
-        NoSolution
-    > {
-        desc { "evaluating trait selection obligation `{}`", goal.value }
     }
 
     /// Do not call this query directly: part of the `Eq` type-op

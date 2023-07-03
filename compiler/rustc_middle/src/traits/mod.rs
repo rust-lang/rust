@@ -2,7 +2,6 @@
 //!
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/resolution.html
 
-mod chalk;
 pub mod query;
 pub mod select;
 pub mod solve;
@@ -30,11 +29,7 @@ use std::hash::{Hash, Hasher};
 
 pub use self::select::{EvaluationCache, EvaluationResult, OverflowError, SelectionCache};
 
-pub type CanonicalChalkEnvironmentAndGoal<'tcx> = Canonical<'tcx, ChalkEnvironmentAndGoal<'tcx>>;
-
 pub use self::ObligationCauseCode::*;
-
-pub use self::chalk::{ChalkEnvironmentAndGoal, RustInterner as ChalkRustInterner};
 
 /// Depending on the stage of compilation, we want projection to be
 /// more or less conservative.

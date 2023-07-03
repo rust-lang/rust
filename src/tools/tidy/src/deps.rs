@@ -149,7 +149,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "fallible-iterator", // dependency of `thorin`
     "fastrand",
     "field-offset",
-    "fixedbitset",
     "flate2",
     "fluent-bundle",
     "fluent-langneg",
@@ -199,7 +198,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "parking_lot_core",
     "pathdiff",
     "perf-event-open-sys",
-    "petgraph",
     "pin-project-lite",
     "polonius-engine",
     "ppv-lite86",
