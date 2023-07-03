@@ -624,7 +624,7 @@ mod prim_pointer {}
 /// array implementations) succeed if the input slice length is the same as the result
 /// array length. They optimize especially well when the optimizer can easily determine
 /// the slice length, e.g. `<[u8; 4]>::try_from(&slice[4..8]).unwrap()`. Array implements
-/// [TryFrom](crate::convert::TryFrom) returning:
+/// [TryFrom] returning:
 ///
 /// - `[T; N]` copies from the slice's elements
 /// - `&[T; N]` references the original slice's elements
