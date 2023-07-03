@@ -78,6 +78,13 @@ struct TopInfo<'tcx> {
     span: Option<Span>,
 }
 
+#[derive(Copy, Clone)]
+struct PatInfo<'tcx> {
+    binding_mode: BindingMode,
+    top_info: TopInfo<'tcx>,
+    decl_ctxt: Option<DeclContext>,
+}
+
 impl<'tcx> FnCtxt<'_, 'tcx> {
     fn pattern_cause(&self, ti: TopInfo<'tcx>, cause_span: Span) -> ObligationCause<'tcx> {
         let code =
@@ -145,7 +152,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         decl_ctxt: Option<DeclContext>,
     ) {
         let info = TopInfo { expected, origin_expr, span };
-        self.check_pat(pat, expected, INITIAL_BM, info, decl_ctxt);
+        let pat_info = PatInfo { binding_mode: INITIAL_BM, top_info: info, decl_ctxt };
+        self.check_pat(pat, expected, pat_info);
     }
 
     /// Type check the given `pat` against the `expected` type
@@ -153,15 +161,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///
     /// Outside of this module, `check_pat_top` should always be used.
     /// Conversely, inside this module, `check_pat_top` should never be used.
-    #[instrument(level = "debug", skip(self, ti))]
-    fn check_pat(
-        &self,
-        pat: &'tcx Pat<'tcx>,
-        expected: Ty<'tcx>,
-        def_bm: BindingMode,
-        ti: TopInfo<'tcx>,
-        decl_ctxt: Option<DeclContext>,
-    ) {
+    #[instrument(level = "debug", skip(self, pat_info))]
+    fn check_pat(&self, pat: &'tcx Pat<'tcx>, expected: Ty<'tcx>, pat_info: PatInfo<'tcx>) {
+        let PatInfo { binding_mode: def_bm, top_info: ti, decl_ctxt } = pat_info;
         let path_res = match &pat.kind {
             PatKind::Path(qpath) => {
                 Some(self.resolve_ty_and_res_fully_qualified_call(qpath, pat.hir_id, pat.span))
@@ -175,11 +177,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             PatKind::Wild => expected,
             PatKind::Lit(lt) => self.check_pat_lit(pat.span, lt, expected, ti),
             PatKind::Range(lhs, rhs, _) => self.check_pat_range(pat.span, lhs, rhs, expected, ti),
-            PatKind::Binding(ba, var_id, _, sub) => {
-                self.check_pat_ident(pat, ba, var_id, sub, expected, def_bm, ti, decl_ctxt)
-            }
+            PatKind::Binding(ba, var_id, _, sub) => self.check_pat_ident(
+                pat,
+                ba,
+                var_id,
+                sub,
+                expected,
+                PatInfo { binding_mode: def_bm, top_info: ti, decl_ctxt },
+            ),
             PatKind::TupleStruct(ref qpath, subpats, ddpos) => self.check_pat_tuple_struct(
-                pat, qpath, subpats, ddpos, expected, def_bm, ti, decl_ctxt,
+                pat,
+                qpath,
+                subpats,
+                ddpos,
+                expected,
+                PatInfo { binding_mode: def_bm, top_info: ti, decl_ctxt },
             ),
             PatKind::Path(ref qpath) => {
                 self.check_pat_path(pat, qpath, path_res.unwrap(), expected, ti)
@@ -190,27 +202,46 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 fields,
                 has_rest_pat,
                 expected,
-                def_bm,
-                ti,
-                decl_ctxt,
+                PatInfo { binding_mode: def_bm, top_info: ti, decl_ctxt },
             ),
             PatKind::Or(pats) => {
                 for pat in pats {
-                    self.check_pat(pat, expected, def_bm, ti, decl_ctxt);
+                    self.check_pat(
+                        pat,
+                        expected,
+                        PatInfo { binding_mode: def_bm, top_info: ti, decl_ctxt },
+                    );
                 }
                 expected
             }
-            PatKind::Tuple(elements, ddpos) => {
-                self.check_pat_tuple(pat.span, elements, ddpos, expected, def_bm, ti, decl_ctxt)
-            }
-            PatKind::Box(inner) => {
-                self.check_pat_box(pat.span, inner, expected, def_bm, ti, decl_ctxt)
-            }
-            PatKind::Ref(inner, mutbl) => {
-                self.check_pat_ref(pat, inner, mutbl, expected, def_bm, ti, decl_ctxt)
-            }
-            PatKind::Slice(before, slice, after) => self
-                .check_pat_slice(pat.span, before, slice, after, expected, def_bm, ti, decl_ctxt),
+            PatKind::Tuple(elements, ddpos) => self.check_pat_tuple(
+                pat.span,
+                elements,
+                ddpos,
+                expected,
+                PatInfo { binding_mode: def_bm, top_info: ti, decl_ctxt },
+            ),
+            PatKind::Box(inner) => self.check_pat_box(
+                pat.span,
+                inner,
+                expected,
+                PatInfo { binding_mode: def_bm, top_info: ti, decl_ctxt },
+            ),
+            PatKind::Ref(inner, mutbl) => self.check_pat_ref(
+                pat,
+                inner,
+                mutbl,
+                expected,
+                PatInfo { binding_mode: def_bm, top_info: ti, decl_ctxt },
+            ),
+            PatKind::Slice(before, slice, after) => self.check_pat_slice(
+                pat.span,
+                before,
+                slice,
+                after,
+                expected,
+                PatInfo { binding_mode: def_bm, top_info: ti, decl_ctxt },
+            ),
         };
 
         self.write_ty(pat.hir_id, ty);
@@ -591,10 +622,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         var_id: HirId,
         sub: Option<&'tcx Pat<'tcx>>,
         expected: Ty<'tcx>,
-        def_bm: BindingMode,
-        ti: TopInfo<'tcx>,
-        decl_ctxt: Option<DeclContext>,
+        pat_info: PatInfo<'tcx>,
     ) -> Ty<'tcx> {
+        let PatInfo { binding_mode: def_bm, top_info: ti, decl_ctxt } = pat_info;
+
         // Determine the binding mode...
         let bm = match ba {
             hir::BindingAnnotation::NONE => def_bm,
@@ -632,7 +663,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         if let Some(p) = sub {
-            self.check_pat(p, expected, def_bm, ti, decl_ctxt);
+            self.check_pat(p, expected, PatInfo { binding_mode: def_bm, top_info: ti, decl_ctxt });
         }
 
         local_ty
@@ -855,10 +886,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         fields: &'tcx [hir::PatField<'tcx>],
         has_rest_pat: bool,
         expected: Ty<'tcx>,
-        def_bm: BindingMode,
-        ti: TopInfo<'tcx>,
-        decl_ctxt: Option<DeclContext>,
+        pat_info: PatInfo<'tcx>,
     ) -> Ty<'tcx> {
+        let PatInfo { binding_mode: def_bm, top_info: ti, decl_ctxt } = pat_info;
+
         // Resolve the path and check the definition for errors.
         let (variant, pat_ty) = match self.check_struct_path(qpath, pat.hir_id) {
             Ok(data) => data,
@@ -866,7 +897,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let err = Ty::new_error(self.tcx, guar);
                 for field in fields {
                     let ti = ti;
-                    self.check_pat(field.pat, err, def_bm, ti, decl_ctxt);
+                    self.check_pat(
+                        field.pat,
+                        err,
+                        PatInfo { binding_mode: def_bm, top_info: ti, decl_ctxt },
+                    );
                 }
                 return err;
             }
@@ -882,9 +917,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             variant,
             fields,
             has_rest_pat,
-            def_bm,
-            ti,
-            decl_ctxt,
+            PatInfo { binding_mode: def_bm, top_info: ti, decl_ctxt },
         ) {
             pat_ty
         } else {
@@ -1050,14 +1083,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         subpats: &'tcx [Pat<'tcx>],
         ddpos: hir::DotDotPos,
         expected: Ty<'tcx>,
-        def_bm: BindingMode,
-        ti: TopInfo<'tcx>,
-        decl_ctxt: Option<DeclContext>,
+        pat_info: PatInfo<'tcx>,
     ) -> Ty<'tcx> {
+        let PatInfo { binding_mode: def_bm, top_info: ti, decl_ctxt } = pat_info;
         let tcx = self.tcx;
         let on_error = |e| {
             for pat in subpats {
-                self.check_pat(pat, Ty::new_error(tcx, e), def_bm, ti, decl_ctxt);
+                self.check_pat(
+                    pat,
+                    Ty::new_error(tcx, e),
+                    PatInfo { binding_mode: def_bm, top_info: ti, decl_ctxt },
+                );
             }
         };
         let report_unexpected_res = |res: Res| {
@@ -1123,7 +1159,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             for (i, subpat) in subpats.iter().enumerate_and_adjust(variant.fields.len(), ddpos) {
                 let field = &variant.fields[FieldIdx::from_usize(i)];
                 let field_ty = self.field_ty(subpat.span, field, args);
-                self.check_pat(subpat, field_ty, def_bm, ti, decl_ctxt);
+                self.check_pat(
+                    subpat,
+                    field_ty,
+                    PatInfo { binding_mode: def_bm, top_info: ti, decl_ctxt },
+                );
 
                 self.tcx.check_stability(
                     variant.fields[FieldIdx::from_usize(i)].did,
@@ -1307,9 +1347,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         elements: &'tcx [Pat<'tcx>],
         ddpos: hir::DotDotPos,
         expected: Ty<'tcx>,
-        def_bm: BindingMode,
-        ti: TopInfo<'tcx>,
-        decl_ctxt: Option<DeclContext>,
+        pat_info: PatInfo<'tcx>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
         let mut expected_len = elements.len();
@@ -1330,18 +1368,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         });
         let element_tys = tcx.mk_type_list_from_iter(element_tys_iter);
         let pat_ty = Ty::new_tup(tcx, element_tys);
-        if let Some(mut err) = self.demand_eqtype_pat_diag(span, expected, pat_ty, ti) {
+        if let Some(mut err) =
+            self.demand_eqtype_pat_diag(span, expected, pat_ty, pat_info.top_info)
+        {
             let reported = err.emit();
             // Walk subpatterns with an expected type of `err` in this case to silence
             // further errors being emitted when using the bindings. #50333
             let element_tys_iter = (0..max_len).map(|_| Ty::new_error(tcx, reported));
             for (_, elem) in elements.iter().enumerate_and_adjust(max_len, ddpos) {
-                self.check_pat(elem, Ty::new_error(tcx, reported), def_bm, ti, decl_ctxt);
+                self.check_pat(elem, Ty::new_error(tcx, reported), pat_info);
             }
             Ty::new_tup_from_iter(tcx, element_tys_iter)
         } else {
             for (i, elem) in elements.iter().enumerate_and_adjust(max_len, ddpos) {
-                self.check_pat(elem, element_tys[i], def_bm, ti, decl_ctxt);
+                self.check_pat(elem, element_tys[i], pat_info);
             }
             pat_ty
         }
@@ -1354,9 +1394,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         variant: &'tcx ty::VariantDef,
         fields: &'tcx [hir::PatField<'tcx>],
         has_rest_pat: bool,
-        def_bm: BindingMode,
-        ti: TopInfo<'tcx>,
-        decl_ctxt: Option<DeclContext>,
+        pat_info: PatInfo<'tcx>,
     ) -> bool {
         let tcx = self.tcx;
 
@@ -1403,7 +1441,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             };
 
-            self.check_pat(field.pat, field_ty, def_bm, ti, decl_ctxt);
+            self.check_pat(field.pat, field_ty, pat_info);
         }
 
         let mut unmentioned_fields = variant
@@ -1966,9 +2004,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Span,
         inner: &'tcx Pat<'tcx>,
         expected: Ty<'tcx>,
-        def_bm: BindingMode,
-        ti: TopInfo<'tcx>,
-        decl_ctxt: Option<DeclContext>,
+        pat_info: PatInfo<'tcx>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
         let (box_ty, inner_ty) = match self.check_dereferenceable(span, expected, inner) {
@@ -1980,7 +2016,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     span: inner.span,
                 });
                 let box_ty = Ty::new_box(tcx, inner_ty);
-                self.demand_eqtype_pat(span, expected, box_ty, ti);
+                self.demand_eqtype_pat(span, expected, box_ty, pat_info.top_info);
                 (box_ty, inner_ty)
             }
             Err(guar) => {
@@ -1988,7 +2024,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 (err, err)
             }
         };
-        self.check_pat(inner, inner_ty, def_bm, ti, decl_ctxt);
+        self.check_pat(inner, inner_ty, pat_info);
         box_ty
     }
 
@@ -1999,9 +2035,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         inner: &'tcx Pat<'tcx>,
         mutbl: hir::Mutability,
         expected: Ty<'tcx>,
-        def_bm: BindingMode,
-        ti: TopInfo<'tcx>,
-        decl_ctxt: Option<DeclContext>,
+        pat_info: PatInfo<'tcx>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
         let expected = self.shallow_resolve(expected);
@@ -2023,7 +2057,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         });
                         let ref_ty = self.new_ref_ty(pat.span, mutbl, inner_ty);
                         debug!("check_pat_ref: demanding {:?} = {:?}", expected, ref_ty);
-                        let err = self.demand_eqtype_pat_diag(pat.span, expected, ref_ty, ti);
+                        let err = self.demand_eqtype_pat_diag(
+                            pat.span,
+                            expected,
+                            ref_ty,
+                            pat_info.top_info,
+                        );
 
                         // Look for a case like `fn foo(&foo: u32)` and suggest
                         // `fn foo(foo: &u32)`
@@ -2040,7 +2079,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 (err, err)
             }
         };
-        self.check_pat(inner, inner_ty, def_bm, ti, decl_ctxt);
+        self.check_pat(inner, inner_ty, pat_info);
         ref_ty
     }
 
@@ -2067,10 +2106,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             TypeVariableOrigin { kind: TypeVariableOriginKind::TypeInference, span };
         let inner_ty = self.next_ty_var(ty_var_origin);
 
-        Some(tcx.mk_array(inner_ty, len.try_into().unwrap()))
+        Some(Ty::new_array(tcx, inner_ty, len.try_into().unwrap()))
     }
 
-    /// Determines whether we can infer the expected type in the slice pattern to be of type array.
+    /// Used to determines whether we can infer the expected type in the slice pattern to be of type array.
     /// This is only possible if we're in an irrefutable pattern. If we were to allow this in refutable
     /// patterns we wouldn't e.g. report ambiguity in the following situation:
     ///
@@ -2100,7 +2139,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///
     /// If we're in an irrefutable pattern we prefer the array impl candidate given that
     /// the slice impl candidate would be be rejected anyway (if no ambiguity existed).
-    fn decl_allows_array_type_infer(&self, decl_ctxt: Option<DeclContext>) -> bool {
+    fn pat_is_irrefutable(&self, decl_ctxt: Option<DeclContext>) -> bool {
         if let Some(decl_ctxt) = decl_ctxt {
             !decl_ctxt.has_else && matches!(decl_ctxt.origin, DeclOrigin::LocalDecl)
         } else {
@@ -2125,13 +2164,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         slice: Option<&'tcx Pat<'tcx>>,
         after: &'tcx [Pat<'tcx>],
         expected: Ty<'tcx>,
-        def_bm: BindingMode,
-        ti: TopInfo<'tcx>,
-        decl_ctxt: Option<DeclContext>,
+        pat_info: PatInfo<'tcx>,
     ) -> Ty<'tcx> {
         // If the pattern is irrefutable and `expected` is an infer ty, we try to equate it
         // to an array if the given pattern allows it. See issue #76342
-        if self.decl_allows_array_type_infer(decl_ctxt) && expected.is_ty_var() {
+        if self.pat_is_irrefutable(pat_info.decl_ctxt) && expected.is_ty_var() {
             if let Some(resolved_arr_ty) =
                 self.try_resolve_slice_ty_to_array_ty(before, slice, span)
             {
@@ -2155,10 +2192,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::Slice(element_ty) => (element_ty, Some(expected), expected),
             // The expected type must be an array or slice, but was neither, so error.
             _ => {
-                let guar = expected
-                    .error_reported()
-                    .err()
-                    .unwrap_or_else(|| self.error_expected_array_or_slice(span, expected, ti));
+                let guar = expected.error_reported().err().unwrap_or_else(|| {
+                    self.error_expected_array_or_slice(span, expected, pat_info.top_info)
+                });
                 let err = Ty::new_error(self.tcx, guar);
                 (err, Some(err), err)
             }
@@ -2166,15 +2202,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Type check all the patterns before `slice`.
         for elt in before {
-            self.check_pat(elt, element_ty, def_bm, ti, decl_ctxt);
+            self.check_pat(elt, element_ty, pat_info);
         }
         // Type check the `slice`, if present, against its expected type.
         if let Some(slice) = slice {
-            self.check_pat(slice, opt_slice_ty.unwrap(), def_bm, ti, decl_ctxt);
+            self.check_pat(slice, opt_slice_ty.unwrap(), pat_info);
         }
         // Type check the elements after `slice`, if present.
         for elt in after {
-            self.check_pat(elt, element_ty, def_bm, ti, decl_ctxt);
+            self.check_pat(elt, element_ty, pat_info);
         }
         inferred
     }
