@@ -114,6 +114,7 @@ ENV TARGETS=x86_64-unknown-fuchsia
 ENV TARGETS=$TARGETS,aarch64-unknown-fuchsia
 ENV TARGETS=$TARGETS,wasm32-unknown-unknown
 ENV TARGETS=$TARGETS,wasm32-wasi
+ENV TARGETS=$TARGETS,wasm32-wasi-preview1
 ENV TARGETS=$TARGETS,sparcv9-sun-solaris
 ENV TARGETS=$TARGETS,x86_64-pc-solaris
 ENV TARGETS=$TARGETS,x86_64-sun-solaris
