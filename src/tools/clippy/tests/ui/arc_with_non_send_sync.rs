@@ -7,6 +7,9 @@ fn foo<T>(x: T) {
     // Should not lint - purposefully ignoring generic args.
     let a = Arc::new(x);
 }
+fn issue11076<T>() {
+    let a: Arc<Vec<T>> = Arc::new(Vec::new());
+}
 
 fn main() {
     // This is safe, as `i32` implements `Send` and `Sync`.
