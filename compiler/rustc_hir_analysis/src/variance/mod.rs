@@ -122,13 +122,6 @@ fn variance_of_opaque(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Varianc
                 {
                     self.visit_opaque(*def_id, substs)
                 }
-                // FIXME(-Zlower-impl-trait-in-trait-to-assoc-ty) check whether this is necessary
-                // at all for RPITITs.
-                ty::Alias(_, ty::AliasTy { def_id, substs, .. })
-                    if self.tcx.is_impl_trait_in_trait(*def_id) =>
-                {
-                    self.visit_opaque(*def_id, substs)
-                }
                 _ => t.super_visit_with(self),
             }
         }
