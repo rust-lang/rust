@@ -1,8 +1,8 @@
 use crate::FnCtxt;
 use rustc_data_structures::{
-    fx::{FxHashMap, FxHashSet},
     graph::WithSuccessors,
     graph::{iterate::DepthFirstSearch, vec_graph::VecGraph},
+    unord::{UnordBag, UnordMap, UnordSet},
 };
 use rustc_middle::ty::{self, Ty};
 
@@ -83,7 +83,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
     fn fallback_if_possible(
         &self,
         ty: Ty<'tcx>,
-        diverging_fallback: &FxHashMap<Ty<'tcx>, Ty<'tcx>>,
+        diverging_fallback: &UnordMap<Ty<'tcx>, Ty<'tcx>>,
     ) {
         // Careful: we do NOT shallow-resolve `ty`. We know that `ty`
         // is an unsolved variable, and we determine its fallback
@@ -193,7 +193,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
     fn calculate_diverging_fallback(
         &self,
         unsolved_variables: &[Ty<'tcx>],
-    ) -> FxHashMap<Ty<'tcx>, Ty<'tcx>> {
+    ) -> UnordMap<Ty<'tcx>, Ty<'tcx>> {
         debug!("calculate_diverging_fallback({:?})", unsolved_variables);
 
         // Construct a coercion graph where an edge `A -> B` indicates
@@ -210,10 +210,10 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         //
         // These variables are the ones that are targets for fallback to
         // either `!` or `()`.
-        let diverging_roots: FxHashSet<ty::TyVid> = self
+        let diverging_roots: UnordSet<ty::TyVid> = self
             .diverging_type_vars
             .borrow()
-            .iter()
+            .items()
             .map(|&ty| self.shallow_resolve(ty))
             .filter_map(|ty| ty.ty_vid())
             .map(|vid| self.root_var(vid))
@@ -284,8 +284,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         // For each diverging variable, figure out whether it can
         // reach a member of N. If so, it falls back to `()`. Else
         // `!`.
-        let mut diverging_fallback = FxHashMap::default();
-        diverging_fallback.reserve(diverging_vids.len());
+        let mut diverging_fallback = UnordMap::with_capacity(diverging_vids.len());
         for &diverging_vid in &diverging_vids {
             let diverging_ty = Ty::new_var(self.tcx, diverging_vid);
             let root_vid = self.root_var(diverging_vid);
@@ -293,14 +292,19 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                 .depth_first_search(root_vid)
                 .any(|n| roots_reachable_from_non_diverging.visited(n));
 
-            let mut found_infer_var_info = ty::InferVarInfo { self_in_trait: false, output: false };
+            let infer_var_infos: UnordBag<_> = self
+                .inh
+                .infer_var_info
+                .borrow()
+                .items()
+                .filter(|&(vid, _)| self.infcx.root_var(*vid) == root_vid)
+                .map(|(_, info)| *info)
+                .collect();
 
-            for (vid, info) in self.inh.infer_var_info.borrow().iter() {
-                if self.infcx.root_var(*vid) == root_vid {
-                    found_infer_var_info.self_in_trait |= info.self_in_trait;
-                    found_infer_var_info.output |= info.output;
-                }
-            }
+            let found_infer_var_info = ty::InferVarInfo {
+                self_in_trait: infer_var_infos.items().any(|info| info.self_in_trait),
+                output: infer_var_infos.items().any(|info| info.output),
+            };
 
             if found_infer_var_info.self_in_trait && found_infer_var_info.output {
                 // This case falls back to () to ensure that the code pattern in

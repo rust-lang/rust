@@ -33,6 +33,7 @@
 use super::FnCtxt;
 
 use crate::expr_use_visitor as euv;
+use rustc_data_structures::unord::UnordSet;
 use rustc_errors::{Applicability, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
@@ -48,7 +49,7 @@ use rustc_span::sym;
 use rustc_span::{BytePos, Pos, Span, Symbol};
 use rustc_trait_selection::infer::InferCtxtExt;
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_target::abi::FIRST_VARIANT;
 
 use std::iter;
@@ -910,19 +911,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Combines all the reasons for 2229 migrations
     fn compute_2229_migrations_reasons(
         &self,
-        auto_trait_reasons: FxHashSet<&'static str>,
+        auto_trait_reasons: UnordSet<&'static str>,
         drop_order: bool,
     ) -> MigrationWarningReason {
-        let mut reasons = MigrationWarningReason::default();
-
-        reasons.auto_traits.extend(auto_trait_reasons);
-        reasons.drop_order = drop_order;
-
-        // `auto_trait_reasons` are in hashset order, so sort them to put the
-        // diagnostics we emit later in a cross-platform-consistent order.
-        reasons.auto_traits.sort_unstable();
-
-        reasons
+        MigrationWarningReason {
+            auto_traits: auto_trait_reasons.to_sorted_stable_ord(),
+            drop_order,
+        }
     }
 
     /// Figures out the list of root variables (and their types) that aren't completely
@@ -936,7 +931,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         min_captures: Option<&ty::RootVariableMinCaptureList<'tcx>>,
         var_hir_id: hir::HirId,
         closure_clause: hir::CaptureBy,
-    ) -> Option<FxHashMap<UpvarMigrationInfo, FxHashSet<&'static str>>> {
+    ) -> Option<FxIndexMap<UpvarMigrationInfo, UnordSet<&'static str>>> {
         let auto_traits_def_id = vec![
             self.tcx.lang_items().clone_trait(),
             self.tcx.lang_items().sync_trait(),
@@ -981,7 +976,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }));
         }
 
-        let mut problematic_captures = FxHashMap::default();
+        let mut problematic_captures = FxIndexMap::default();
         // Check whether captured fields also implement the trait
         for capture in root_var_min_capture_list.iter() {
             let ty = apply_capture_kind_on_capture_ty(
@@ -1001,7 +996,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }));
             }
 
-            let mut capture_problems = FxHashSet::default();
+            let mut capture_problems = UnordSet::default();
 
             // Checks if for any of the auto traits, one or more trait is implemented
             // by the root variable but not by the capture
@@ -1047,7 +1042,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         min_captures: Option<&ty::RootVariableMinCaptureList<'tcx>>,
         closure_clause: hir::CaptureBy,
         var_hir_id: hir::HirId,
-    ) -> Option<FxHashSet<UpvarMigrationInfo>> {
+    ) -> Option<FxIndexSet<UpvarMigrationInfo>> {
         let ty = self.resolve_vars_if_possible(self.node_ty(var_hir_id));
 
         if !ty.has_significant_drop(self.tcx, self.tcx.param_env(closure_def_id)) {
@@ -1069,7 +1064,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             match closure_clause {
                 // Only migrate if closure is a move closure
                 hir::CaptureBy::Value => {
-                    let mut diagnostics_info = FxHashSet::default();
+                    let mut diagnostics_info = FxIndexSet::default();
                     let upvars =
                         self.tcx.upvars_mentioned(closure_def_id).expect("must be an upvar");
                     let upvar = upvars[&var_hir_id];
@@ -1085,7 +1080,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!(?root_var_min_capture_list);
 
         let mut projections_list = Vec::new();
-        let mut diagnostics_info = FxHashSet::default();
+        let mut diagnostics_info = FxIndexSet::default();
 
         for captured_place in root_var_min_capture_list.iter() {
             match captured_place.info.capture_kind {
@@ -1155,7 +1150,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         let mut need_migrations = Vec::new();
-        let mut auto_trait_migration_reasons = FxHashSet::default();
+        let mut auto_trait_migration_reasons = UnordSet::default();
         let mut drop_migration_needed = false;
 
         // Perform auto-trait analysis
@@ -1167,7 +1162,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             {
                 diagnostics_info
             } else {
-                FxHashMap::default()
+                FxIndexMap::default()
             };
 
             let drop_reorder_diagnostic = if let Some(diagnostics_info) = self
@@ -1181,7 +1176,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 drop_migration_needed = true;
                 diagnostics_info
             } else {
-                FxHashSet::default()
+                FxIndexSet::default()
             };
 
             // Combine all the captures responsible for needing migrations into one HashSet
@@ -1198,7 +1193,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if let Some(reasons) = auto_trait_diagnostic.get(&captures_info) {
                         reasons.clone()
                     } else {
-                        FxHashSet::default()
+                        UnordSet::default()
                     };
 
                 // Check if migration is needed because of drop reorder as a result of that capture
@@ -1206,7 +1201,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 // Combine all the reasons of why the root variable should be captured as a result of
                 // auto trait implementation issues
-                auto_trait_migration_reasons.extend(capture_trait_reasons.iter().copied());
+                auto_trait_migration_reasons.extend_unord(capture_trait_reasons.items().copied());
 
                 diagnostics_info.push(MigrationLintNote {
                     captures_info,

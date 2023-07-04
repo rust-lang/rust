@@ -31,6 +31,7 @@ use crate::{
 ///
 /// It's still possible to do the same thing with an `Fn` by using interior mutability,
 /// but the chance of doing it accidentally is reduced.
+#[derive(Clone)]
 pub struct UnordItems<T, I: Iterator<Item = T>>(I);
 
 impl<T, I: Iterator<Item = T>> UnordItems<T, I> {
@@ -195,6 +196,11 @@ impl<V: Eq + Hash> UnordSet<V> {
     }
 
     #[inline]
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self { inner: FxHashSet::with_capacity_and_hasher(capacity, Default::default()) }
+    }
+
+    #[inline]
     pub fn len(&self) -> usize {
         self.inner.len()
     }
@@ -258,9 +264,9 @@ impl<V: Eq + Hash> UnordSet<V> {
     #[inline]
     pub fn to_sorted_stable_ord(&self) -> Vec<V>
     where
-        V: Ord + StableOrd + Copy,
+        V: Ord + StableOrd + Clone,
     {
-        let mut items: Vec<V> = self.inner.iter().copied().collect();
+        let mut items: Vec<V> = self.inner.iter().cloned().collect();
         items.sort_unstable();
         items
     }
@@ -309,6 +315,12 @@ impl<V: Hash + Eq> FromIterator<V> for UnordSet<V> {
 impl<V: Hash + Eq> From<FxHashSet<V>> for UnordSet<V> {
     fn from(value: FxHashSet<V>) -> Self {
         UnordSet { inner: value }
+    }
+}
+
+impl<V: Hash + Eq, I: Iterator<Item = V>> From<UnordItems<V, I>> for UnordSet<V> {
+    fn from(value: UnordItems<V, I>) -> Self {
+        UnordSet { inner: FxHashSet::from_iter(value.0) }
     }
 }
 
@@ -362,6 +374,11 @@ impl<K: Hash + Eq, V, I: Iterator<Item = (K, V)>> From<UnordItems<(K, V), I>> fo
 }
 
 impl<K: Eq + Hash, V> UnordMap<K, V> {
+    #[inline]
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self { inner: FxHashMap::with_capacity_and_hasher(capacity, Default::default()) }
+    }
+
     #[inline]
     pub fn len(&self) -> usize {
         self.inner.len()

@@ -7,7 +7,9 @@ use crate::errors::NoAssociatedItem;
 use crate::Expectation;
 use crate::FnCtxt;
 use rustc_ast::ast::Mutability;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::unord::UnordSet;
 use rustc_errors::StashKey;
 use rustc_errors::{
     pluralize, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
@@ -31,6 +33,7 @@ use rustc_middle::ty::fast_reject::{simplify_type, TreatParams};
 use rustc_middle::ty::print::{with_crate_prefix, with_forced_trimmed_paths};
 use rustc_middle::ty::IsSuggestable;
 use rustc_middle::ty::{self, GenericArgKind, Ty, TyCtxt, TypeVisitableExt};
+use rustc_span::def_id::DefIdSet;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Symbol;
 use rustc_span::{edit_distance, source_map, ExpnKind, FileName, MacroKind, Span};
@@ -536,11 +539,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ));
             }
         } else if !unsatisfied_predicates.is_empty() {
-            let mut type_params = FxHashMap::default();
+            let mut type_params = FxIndexMap::default();
 
             // Pick out the list of unimplemented traits on the receiver.
             // This is used for custom error messages with the `#[rustc_on_unimplemented]` attribute.
-            let mut unimplemented_traits = FxHashMap::default();
+            let mut unimplemented_traits = FxIndexMap::default();
             let mut unimplemented_traits_only = true;
             for (predicate, _parent_pred, cause) in unsatisfied_predicates {
                 if let (ty::PredicateKind::Clause(ty::ClauseKind::Trait(p)), Some(cause)) =
@@ -606,7 +609,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             );
                             type_params
                                 .entry(key)
-                                .or_insert_with(FxHashSet::default)
+                                .or_insert_with(UnordSet::default)
                                 .insert(obligation.to_owned());
                             return true;
                         }
@@ -680,8 +683,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
 
             // Find all the requirements that come from a local `impl` block.
-            let mut skip_list: FxHashSet<_> = Default::default();
-            let mut spanned_predicates = FxHashMap::default();
+            let mut skip_list: UnordSet<_> = Default::default();
+            let mut spanned_predicates = FxIndexMap::default();
             for (p, parent_p, cause) in unsatisfied_predicates {
                 // Extract the predicate span and parent def id of the cause,
                 // if we have one.
@@ -723,7 +726,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let span = self_ty.span.ctxt().outer_expn_data().call_site;
                         let entry = spanned_predicates.entry(span);
                         let entry = entry.or_insert_with(|| {
-                            (FxHashSet::default(), FxHashSet::default(), Vec::new())
+                            (FxIndexSet::default(), FxIndexSet::default(), Vec::new())
                         });
                         entry.0.insert(span);
                         entry.1.insert((
@@ -771,7 +774,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         skip_list.insert(p);
                         let entry = spanned_predicates.entry(self_ty.span);
                         let entry = entry.or_insert_with(|| {
-                            (FxHashSet::default(), FxHashSet::default(), Vec::new())
+                            (FxIndexSet::default(), FxIndexSet::default(), Vec::new())
                         });
                         entry.2.push(p);
                         if cause_span != *item_span {
@@ -806,7 +809,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         skip_list.insert(p);
                         let entry = spanned_predicates.entry(ident.span);
                         let entry = entry.or_insert_with(|| {
-                            (FxHashSet::default(), FxHashSet::default(), Vec::new())
+                            (FxIndexSet::default(), FxIndexSet::default(), Vec::new())
                         });
                         entry.0.insert(cause_span);
                         entry.1.insert((ident.span, ""));
@@ -840,7 +843,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 unsatisfied_bounds = true;
             }
 
-            let mut suggested_bounds = FxHashSet::default();
+            let mut suggested_bounds = UnordSet::default();
             // The requirements that didn't have an `impl` span to show.
             let mut bound_list = unsatisfied_predicates
                 .iter()
@@ -889,8 +892,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             for ((span, add_where_or_comma), obligations) in type_params.into_iter() {
                 restrict_type_params = true;
                 // #74886: Sort here so that the output is always the same.
-                let mut obligations = obligations.into_iter().collect::<Vec<_>>();
-                obligations.sort();
+                let obligations = obligations.to_sorted_stable_ord();
                 err.span_suggestion_verbose(
                     span,
                     format!(
@@ -2053,7 +2055,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ty::Adt(def, _) => Some(def.did()),
                 _ => None,
             })
-            .collect::<FxHashSet<_>>();
+            .collect::<FxIndexSet<_>>();
         let mut spans: MultiSpan = def_ids
             .iter()
             .filter_map(|def_id| {
@@ -2669,7 +2671,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 Nothing,
                             }
                             let ast_generics = hir.get_generics(id.owner.def_id).unwrap();
-                            let trait_def_ids: FxHashSet<DefId> = ast_generics
+                            let trait_def_ids: DefIdSet = ast_generics
                                 .bounds_for_param(def_id)
                                 .flat_map(|bp| bp.bounds.iter())
                                 .filter_map(|bound| bound.trait_ref()?.trait_def_id())

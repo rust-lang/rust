@@ -4,17 +4,14 @@
 
 use crate::FnCtxt;
 use hir::def_id::LocalDefId;
-use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{ErrorGuaranteed, StashKey};
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_infer::infer::error_reporting::TypeAnnotationNeeded::E0282;
-use rustc_middle::hir::place::Place as HirPlace;
-use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCoercion};
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt};
-use rustc_middle::ty::{self, ClosureSizeProfileData, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 
@@ -376,66 +373,75 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
 
 impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     fn eval_closure_size(&mut self) {
-        let mut res: FxHashMap<LocalDefId, ClosureSizeProfileData<'tcx>> = Default::default();
-        for (&closure_def_id, data) in self.fcx.typeck_results.borrow().closure_size_eval.iter() {
-            let closure_hir_id = self.tcx().hir().local_def_id_to_hir_id(closure_def_id);
+        self.tcx().with_stable_hashing_context(|ref hcx| {
+            let fcx_typeck_results = self.fcx.typeck_results.borrow();
 
-            let data = self.resolve(*data, &closure_hir_id);
-
-            res.insert(closure_def_id, data);
-        }
-
-        self.typeck_results.closure_size_eval = res;
+            self.typeck_results.closure_size_eval = fcx_typeck_results
+                .closure_size_eval
+                .to_sorted(hcx, false)
+                .into_iter()
+                .map(|(&closure_def_id, data)| {
+                    let closure_hir_id = self.tcx().hir().local_def_id_to_hir_id(closure_def_id);
+                    let data = self.resolve(*data, &closure_hir_id);
+                    (closure_def_id, data)
+                })
+                .collect();
+        })
     }
+
     fn visit_min_capture_map(&mut self) {
-        let mut min_captures_wb = ty::MinCaptureInformationMap::with_capacity_and_hasher(
-            self.fcx.typeck_results.borrow().closure_min_captures.len(),
-            Default::default(),
-        );
-        for (&closure_def_id, root_min_captures) in
-            self.fcx.typeck_results.borrow().closure_min_captures.iter()
-        {
-            let mut root_var_map_wb = ty::RootVariableMinCaptureList::with_capacity_and_hasher(
-                root_min_captures.len(),
-                Default::default(),
-            );
-            for (var_hir_id, min_list) in root_min_captures.iter() {
-                let min_list_wb = min_list
-                    .iter()
-                    .map(|captured_place| {
-                        let locatable = captured_place.info.path_expr_id.unwrap_or_else(|| {
-                            self.tcx().hir().local_def_id_to_hir_id(closure_def_id)
-                        });
+        self.tcx().with_stable_hashing_context(|ref hcx| {
+            let fcx_typeck_results = self.fcx.typeck_results.borrow();
 
-                        self.resolve(captured_place.clone(), &locatable)
-                    })
-                    .collect();
-                root_var_map_wb.insert(*var_hir_id, min_list_wb);
-            }
-            min_captures_wb.insert(closure_def_id, root_var_map_wb);
-        }
-
-        self.typeck_results.closure_min_captures = min_captures_wb;
+            self.typeck_results.closure_min_captures = fcx_typeck_results
+                .closure_min_captures
+                .to_sorted(hcx, false)
+                .into_iter()
+                .map(|(&closure_def_id, root_min_captures)| {
+                    let root_var_map_wb = root_min_captures
+                        .iter()
+                        .map(|(var_hir_id, min_list)| {
+                            let min_list_wb = min_list
+                                .iter()
+                                .map(|captured_place| {
+                                    let locatable =
+                                        captured_place.info.path_expr_id.unwrap_or_else(|| {
+                                            self.tcx().hir().local_def_id_to_hir_id(closure_def_id)
+                                        });
+                                    self.resolve(captured_place.clone(), &locatable)
+                                })
+                                .collect();
+                            (*var_hir_id, min_list_wb)
+                        })
+                        .collect();
+                    (closure_def_id, root_var_map_wb)
+                })
+                .collect();
+        })
     }
 
     fn visit_fake_reads_map(&mut self) {
-        let mut resolved_closure_fake_reads: FxHashMap<
-            LocalDefId,
-            Vec<(HirPlace<'tcx>, FakeReadCause, hir::HirId)>,
-        > = Default::default();
-        for (&closure_def_id, fake_reads) in
-            self.fcx.typeck_results.borrow().closure_fake_reads.iter()
-        {
-            let mut resolved_fake_reads = Vec::<(HirPlace<'tcx>, FakeReadCause, hir::HirId)>::new();
-            for (place, cause, hir_id) in fake_reads.iter() {
-                let locatable = self.tcx().hir().local_def_id_to_hir_id(closure_def_id);
+        self.tcx().with_stable_hashing_context(move |ref hcx| {
+            let fcx_typeck_results = self.fcx.typeck_results.borrow();
 
-                let resolved_fake_read = self.resolve(place.clone(), &locatable);
-                resolved_fake_reads.push((resolved_fake_read, *cause, *hir_id));
-            }
-            resolved_closure_fake_reads.insert(closure_def_id, resolved_fake_reads);
-        }
-        self.typeck_results.closure_fake_reads = resolved_closure_fake_reads;
+            self.typeck_results.closure_fake_reads = fcx_typeck_results
+                .closure_fake_reads
+                .to_sorted(hcx, true)
+                .into_iter()
+                .map(|(&closure_def_id, fake_reads)| {
+                    let resolved_fake_reads = fake_reads
+                        .iter()
+                        .map(|(place, cause, hir_id)| {
+                            let locatable = self.tcx().hir().local_def_id_to_hir_id(closure_def_id);
+                            let resolved_fake_read = self.resolve(place.clone(), &locatable);
+                            (resolved_fake_read, *cause, *hir_id)
+                        })
+                        .collect();
+
+                    (closure_def_id, resolved_fake_reads)
+                })
+                .collect();
+        });
     }
 
     fn visit_closures(&mut self) {
@@ -540,10 +546,15 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         assert_eq!(fcx_typeck_results.hir_owner, self.typeck_results.hir_owner);
         self.typeck_results.generator_interior_types =
             fcx_typeck_results.generator_interior_types.clone();
-        for (&expr_def_id, predicates) in fcx_typeck_results.generator_interior_predicates.iter() {
-            let predicates = self.resolve(predicates.clone(), &self.fcx.tcx.def_span(expr_def_id));
-            self.typeck_results.generator_interior_predicates.insert(expr_def_id, predicates);
-        }
+        self.tcx().with_stable_hashing_context(move |ref hcx| {
+            for (&expr_def_id, predicates) in
+                fcx_typeck_results.generator_interior_predicates.to_sorted(hcx, false).into_iter()
+            {
+                let predicates =
+                    self.resolve(predicates.clone(), &self.fcx.tcx.def_span(expr_def_id));
+                self.typeck_results.generator_interior_predicates.insert(expr_def_id, predicates);
+            }
+        })
     }
 
     #[instrument(skip(self), level = "debug")]

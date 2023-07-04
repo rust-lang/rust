@@ -1,12 +1,12 @@
 use crate::middle::region::{Scope, ScopeData, ScopeTree};
-use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
+use rustc_hir::ItemLocalMap;
 
 /// `RvalueScopes` is a mapping from sub-expressions to _extended_ lifetime as determined by
 /// rules laid out in `rustc_hir_analysis::check::rvalue_scopes`.
 #[derive(TyEncodable, TyDecodable, Clone, Debug, Default, Eq, PartialEq, HashStable)]
 pub struct RvalueScopes {
-    map: FxHashMap<hir::ItemLocalId, Option<Scope>>,
+    map: ItemLocalMap<Option<Scope>>,
 }
 
 impl RvalueScopes {
