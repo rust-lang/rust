@@ -1421,7 +1421,7 @@ pub fn compute_inherent_assoc_ty_args<'a, 'b, 'tcx>(
         }
     }
 
-    alias_ty.rebase_args_onto_impl(impl_args, tcx)
+    alias_ty.rebase_inherent_args_onto_impl(impl_args, tcx)
 }
 
 enum Projected<'tcx> {

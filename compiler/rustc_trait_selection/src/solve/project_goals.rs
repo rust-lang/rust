@@ -48,7 +48,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                             self.merge_candidates(candidates)
                         }
                         ty::AssocItemContainer::ImplContainer => {
-                            bug!("IATs not supported here yet")
+                            self.normalize_inherent_associated_type(goal)
                         }
                     }
                 } else {
