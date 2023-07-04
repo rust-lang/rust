@@ -131,6 +131,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "crossbeam-epoch",
     "crossbeam-utils",
     "crypto-common",
+    "cstr",
     "datafrog",
     "derive_more",
     "digest",
