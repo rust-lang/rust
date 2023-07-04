@@ -33,7 +33,9 @@ mod search_graph;
 mod trait_goals;
 mod weak_types;
 
-pub use eval_ctxt::{EvalCtxt, InferCtxtEvalExt, InferCtxtSelectExt};
+pub use eval_ctxt::{
+    EvalCtxt, GenerateProofTree, InferCtxtEvalExt, InferCtxtSelectExt, UseGlobalCache,
+};
 pub use fulfill::FulfillmentCtxt;
 pub(crate) use normalize::deeply_normalize;
 

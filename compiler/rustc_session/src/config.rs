@@ -743,6 +743,14 @@ pub enum TraitSolver {
     NextCoherence,
 }
 
+#[derive(Default, Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum DumpSolverProofTree {
+    Always,
+    OnError,
+    #[default]
+    Never,
+}
+
 pub enum Input {
     /// Load source code from a file.
     File(PathBuf),

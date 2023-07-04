@@ -19,7 +19,9 @@ use rustc_middle::ty::{
     self, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable, TypeVisitable,
     TypeVisitableExt, TypeVisitor,
 };
+use rustc_session::config::DumpSolverProofTree;
 use rustc_span::DUMMY_SP;
+use std::io::Write;
 use std::ops::ControlFlow;
 
 use crate::traits::specialization_graph;
@@ -113,8 +115,22 @@ impl NestedGoals<'_> {
 
 #[derive(PartialEq, Eq, Debug, Hash, HashStable, Clone, Copy)]
 pub enum GenerateProofTree {
+    Yes(UseGlobalCache),
+    No,
+}
+
+#[derive(PartialEq, Eq, Debug, Hash, HashStable, Clone, Copy)]
+pub enum UseGlobalCache {
     Yes,
     No,
+}
+impl UseGlobalCache {
+    pub fn from_bool(use_cache: bool) -> Self {
+        match use_cache {
+            true => UseGlobalCache::Yes,
+            false => UseGlobalCache::No,
+        }
+    }
 }
 
 pub trait InferCtxtEvalExt<'tcx> {
@@ -177,17 +193,17 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
             var_values: CanonicalVarValues::dummy(),
             nested_goals: NestedGoals::new(),
             tainted: Ok(()),
-            inspect: (infcx.tcx.sess.opts.unstable_opts.dump_solver_proof_tree
-                || matches!(generate_proof_tree, GenerateProofTree::Yes))
-            .then(ProofTreeBuilder::new_root)
-            .unwrap_or_else(ProofTreeBuilder::new_noop),
+            inspect: ProofTreeBuilder::new_maybe_root(infcx.tcx, generate_proof_tree),
         };
         let result = f(&mut ecx);
 
         let tree = ecx.inspect.finalize();
-        if let Some(tree) = &tree {
-            // module to allow more granular RUSTC_LOG filtering to just proof tree output
-            super::inspect::dump::print_tree(tree);
+        if let (Some(tree), DumpSolverProofTree::Always) =
+            (&tree, infcx.tcx.sess.opts.unstable_opts.dump_solver_proof_tree)
+        {
+            let mut lock = std::io::stdout().lock();
+            let _ = lock.write_fmt(format_args!("{tree:?}"));
+            let _ = lock.flush();
         }
 
         assert!(
