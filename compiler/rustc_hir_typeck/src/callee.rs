@@ -789,6 +789,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.register_predicates(obligations);
                 }
                 Err(e) => {
+                    // FIXME(effects): better diagnostic
                     self.err_ctxt().report_mismatched_consts(&cause, effect, param, e).emit();
                 }
             }
