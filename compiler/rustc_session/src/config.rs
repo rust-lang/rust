@@ -746,11 +746,11 @@ pub enum TraitSolver {
 }
 
 #[derive(Default, Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub enum SolverProofTreeCondition {
-    #[default]
-    OnRequest,
+pub enum DumpSolverProofTree {
     Always,
     OnError,
+    #[default]
+    Never,
 }
 
 pub enum Input {

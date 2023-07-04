@@ -10,7 +10,7 @@ use super::{
 use crate::infer::error_reporting::{TyCategory, TypeAnnotationNeeded as ErrorCode};
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::{self, InferCtxt};
-use crate::solve::{DisableGlobalCache, GenerateProofTree, InferCtxtEvalExt};
+use crate::solve::{GenerateProofTree, InferCtxtEvalExt, UseGlobalCache};
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use crate::traits::query::normalize::QueryNormalizeExt as _;
 use crate::traits::specialize::to_pretty_impl_header;
@@ -39,7 +39,7 @@ use rustc_middle::ty::{
     self, SubtypePredicate, ToPolyTraitRef, ToPredicate, TraitRef, Ty, TyCtxt, TypeFoldable,
     TypeVisitable, TypeVisitableExt,
 };
-use rustc_session::config::{SolverProofTreeCondition, TraitSolver};
+use rustc_session::config::{DumpSolverProofTree, TraitSolver};
 use rustc_session::Limit;
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::symbol::sym;
@@ -634,7 +634,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     ) {
         let tcx = self.tcx;
 
-        if tcx.sess.opts.unstable_opts.dump_solver_proof_tree == SolverProofTreeCondition::OnError {
+        if tcx.sess.opts.unstable_opts.dump_solver_proof_tree == DumpSolverProofTree::OnError {
             dump_proof_tree(root_obligation, self.infcx);
         }
 
@@ -1537,9 +1537,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
     #[instrument(skip(self), level = "debug")]
     fn report_fulfillment_error(&self, error: &FulfillmentError<'tcx>) {
-        if self.tcx.sess.opts.unstable_opts.dump_solver_proof_tree
-            == SolverProofTreeCondition::OnError
-        {
+        if self.tcx.sess.opts.unstable_opts.dump_solver_proof_tree == DumpSolverProofTree::OnError {
             dump_proof_tree(&error.root_obligation, self.infcx);
         }
 
@@ -3518,7 +3516,7 @@ pub fn dump_proof_tree<'tcx>(o: &Obligation<'tcx, ty::Predicate<'tcx>>, infcx: &
     infcx.probe(|_| {
         let goal = Goal { predicate: o.predicate, param_env: o.param_env };
         let tree = infcx
-            .evaluate_root_goal(goal, GenerateProofTree::Yes(DisableGlobalCache::Yes))
+            .evaluate_root_goal(goal, GenerateProofTree::Yes(UseGlobalCache::No))
             .1
             .expect("proof tree should have been generated");
         let mut lock = std::io::stdout().lock();

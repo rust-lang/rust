@@ -4,9 +4,9 @@ use rustc_middle::traits::solve::{
     CanonicalInput, Certainty, Goal, IsNormalizesToHack, QueryInput, QueryResult,
 };
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_session::config::SolverProofTreeCondition;
+use rustc_session::config::DumpSolverProofTree;
 
-use super::eval_ctxt::DisableGlobalCache;
+use super::eval_ctxt::UseGlobalCache;
 use super::GenerateProofTree;
 
 #[derive(Eq, PartialEq, Debug, Hash, HashStable)]
@@ -146,24 +146,42 @@ impl<'tcx> From<WipGoalCandidate<'tcx>> for DebugSolver<'tcx> {
 }
 
 pub struct ProofTreeBuilder<'tcx> {
-    state: Option<Box<DebugSolver<'tcx>>>,
-    disable_global_cache: DisableGlobalCache,
+    state: Option<Box<BuilderData<'tcx>>>,
+}
+
+struct BuilderData<'tcx> {
+    tree: DebugSolver<'tcx>,
+    use_global_cache: UseGlobalCache,
 }
 
 impl<'tcx> ProofTreeBuilder<'tcx> {
     fn new(
         state: impl Into<DebugSolver<'tcx>>,
-        disable_global_cache: DisableGlobalCache,
+        use_global_cache: UseGlobalCache,
     ) -> ProofTreeBuilder<'tcx> {
-        ProofTreeBuilder { state: Some(Box::new(state.into())), disable_global_cache }
+        ProofTreeBuilder {
+            state: Some(Box::new(BuilderData { tree: state.into(), use_global_cache })),
+        }
+    }
+
+    fn nested(&self, state: impl Into<DebugSolver<'tcx>>) -> Self {
+        match &self.state {
+            Some(prev_state) => Self {
+                state: Some(Box::new(BuilderData {
+                    tree: state.into(),
+                    use_global_cache: prev_state.use_global_cache,
+                })),
+            },
+            None => Self { state: None },
+        }
     }
 
     fn as_mut(&mut self) -> Option<&mut DebugSolver<'tcx>> {
-        self.state.as_mut().map(|boxed| &mut **boxed)
+        self.state.as_mut().map(|boxed| &mut boxed.tree)
     }
 
     pub fn finalize(self) -> Option<inspect::GoalEvaluation<'tcx>> {
-        match *(self.state?) {
+        match self.state?.tree {
             DebugSolver::GoalEvaluation(wip_goal_evaluation) => {
                 Some(wip_goal_evaluation.finalize())
             }
@@ -171,8 +189,11 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
         }
     }
 
-    pub fn disable_global_cache(&self) -> DisableGlobalCache {
-        self.disable_global_cache
+    pub fn use_global_cache(&self) -> bool {
+        self.state
+            .as_ref()
+            .map(|state| matches!(state.use_global_cache, UseGlobalCache::Yes))
+            .unwrap_or(true)
     }
 
     pub fn new_maybe_root(
@@ -185,17 +206,17 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
             generate_proof_tree,
         ) {
             (_, Some(use_cache), GenerateProofTree::Yes(_)) => {
-                GenerateProofTree::Yes(DisableGlobalCache::from_bool(!use_cache))
+                GenerateProofTree::Yes(UseGlobalCache::from_bool(use_cache))
             }
 
-            (SolverProofTreeCondition::Always, use_cache, GenerateProofTree::No) => {
+            (DumpSolverProofTree::Always, use_cache, GenerateProofTree::No) => {
                 let use_cache = use_cache.unwrap_or(true);
-                GenerateProofTree::Yes(DisableGlobalCache::from_bool(!use_cache))
+                GenerateProofTree::Yes(UseGlobalCache::from_bool(use_cache))
             }
 
             (_, None, GenerateProofTree::Yes(_)) => generate_proof_tree,
-            (SolverProofTreeCondition::OnRequest, _, _) => generate_proof_tree,
-            (SolverProofTreeCondition::OnError, _, _) => generate_proof_tree,
+            (DumpSolverProofTree::Never, _, _) => generate_proof_tree,
+            (DumpSolverProofTree::OnError, _, _) => generate_proof_tree,
         };
 
         match generate_proof_tree {
@@ -206,12 +227,12 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
         }
     }
 
-    pub fn new_root(disable_global_cache: DisableGlobalCache) -> ProofTreeBuilder<'tcx> {
-        ProofTreeBuilder::new(DebugSolver::Root, disable_global_cache)
+    pub fn new_root(use_global_cache: UseGlobalCache) -> ProofTreeBuilder<'tcx> {
+        ProofTreeBuilder::new(DebugSolver::Root, use_global_cache)
     }
 
     pub fn new_noop() -> ProofTreeBuilder<'tcx> {
-        ProofTreeBuilder { state: None, disable_global_cache: DisableGlobalCache::No }
+        ProofTreeBuilder { state: None }
     }
 
     pub fn is_noop(&self) -> bool {
@@ -224,24 +245,18 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
         is_normalizes_to_hack: IsNormalizesToHack,
     ) -> ProofTreeBuilder<'tcx> {
         if self.state.is_none() {
-            return ProofTreeBuilder {
-                state: None,
-                disable_global_cache: self.disable_global_cache,
-            };
+            return ProofTreeBuilder { state: None };
         }
 
-        ProofTreeBuilder::new(
-            WipGoalEvaluation {
-                uncanonicalized_goal: goal,
-                canonicalized_goal: None,
-                evaluation_steps: vec![],
-                is_normalizes_to_hack,
-                cache_hit: None,
-                returned_goals: vec![],
-                result: None,
-            },
-            self.disable_global_cache,
-        )
+        self.nested(WipGoalEvaluation {
+            uncanonicalized_goal: goal,
+            canonicalized_goal: None,
+            evaluation_steps: vec![],
+            is_normalizes_to_hack,
+            cache_hit: None,
+            returned_goals: vec![],
+            result: None,
+        })
     }
 
     pub fn canonicalized_goal(&mut self, canonical_goal: CanonicalInput<'tcx>) {
@@ -279,7 +294,7 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
     }
     pub fn goal_evaluation(&mut self, goal_evaluation: ProofTreeBuilder<'tcx>) {
         if let Some(this) = self.as_mut() {
-            match (this, *goal_evaluation.state.unwrap()) {
+            match (this, goal_evaluation.state.unwrap().tree) {
                 (
                     DebugSolver::AddedGoalsEvaluation(WipAddedGoalsEvaluation {
                         evaluations, ..
@@ -297,25 +312,19 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
         instantiated_goal: QueryInput<'tcx, ty::Predicate<'tcx>>,
     ) -> ProofTreeBuilder<'tcx> {
         if self.state.is_none() {
-            return ProofTreeBuilder {
-                state: None,
-                disable_global_cache: self.disable_global_cache,
-            };
+            return ProofTreeBuilder { state: None };
         }
 
-        ProofTreeBuilder::new(
-            WipGoalEvaluationStep {
-                instantiated_goal,
-                nested_goal_evaluations: vec![],
-                candidates: vec![],
-                result: None,
-            },
-            self.disable_global_cache,
-        )
+        self.nested(WipGoalEvaluationStep {
+            instantiated_goal,
+            nested_goal_evaluations: vec![],
+            candidates: vec![],
+            result: None,
+        })
     }
     pub fn goal_evaluation_step(&mut self, goal_eval_step: ProofTreeBuilder<'tcx>) {
         if let Some(this) = self.as_mut() {
-            match (this, *goal_eval_step.state.unwrap()) {
+            match (this, goal_eval_step.state.unwrap().tree) {
                 (DebugSolver::GoalEvaluation(goal_eval), DebugSolver::GoalEvaluationStep(step)) => {
                     goal_eval.evaluation_steps.push(step);
                 }
@@ -326,17 +335,14 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
 
     pub fn new_goal_candidate(&mut self) -> ProofTreeBuilder<'tcx> {
         if self.state.is_none() {
-            return ProofTreeBuilder {
-                state: None,
-
-                disable_global_cache: self.disable_global_cache,
-            };
+            return ProofTreeBuilder { state: None };
         }
 
-        ProofTreeBuilder::new(
-            WipGoalCandidate { nested_goal_evaluations: vec![], candidates: vec![], kind: None },
-            self.disable_global_cache,
-        )
+        self.nested(WipGoalCandidate {
+            nested_goal_evaluations: vec![],
+            candidates: vec![],
+            kind: None,
+        })
     }
 
     pub fn candidate_kind(&mut self, candidate_kind: CandidateKind<'tcx>) {
@@ -352,7 +358,7 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
 
     pub fn goal_candidate(&mut self, candidate: ProofTreeBuilder<'tcx>) {
         if let Some(this) = self.as_mut() {
-            match (this, *candidate.state.unwrap()) {
+            match (this, candidate.state.unwrap().tree) {
                 (
                     DebugSolver::GoalCandidate(WipGoalCandidate { candidates, .. })
                     | DebugSolver::GoalEvaluationStep(WipGoalEvaluationStep { candidates, .. }),
@@ -365,17 +371,10 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
 
     pub fn new_evaluate_added_goals(&mut self) -> ProofTreeBuilder<'tcx> {
         if self.state.is_none() {
-            return ProofTreeBuilder {
-                state: None,
-
-                disable_global_cache: self.disable_global_cache,
-            };
+            return ProofTreeBuilder { state: None };
         }
 
-        ProofTreeBuilder::new(
-            WipAddedGoalsEvaluation { evaluations: vec![], result: None },
-            self.disable_global_cache,
-        )
+        self.nested(WipAddedGoalsEvaluation { evaluations: vec![], result: None })
     }
 
     pub fn evaluate_added_goals_loop_start(&mut self) {
@@ -402,7 +401,7 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
 
     pub fn added_goals_evaluation(&mut self, goals_evaluation: ProofTreeBuilder<'tcx>) {
         if let Some(this) = self.as_mut() {
-            match (this, *goals_evaluation.state.unwrap()) {
+            match (this, goals_evaluation.state.unwrap().tree) {
                 (
                     DebugSolver::GoalEvaluationStep(WipGoalEvaluationStep {
                         nested_goal_evaluations,

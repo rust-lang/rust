@@ -19,7 +19,7 @@ use rustc_middle::ty::{
     self, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable, TypeVisitable,
     TypeVisitableExt, TypeVisitor,
 };
-use rustc_session::config::SolverProofTreeCondition;
+use rustc_session::config::DumpSolverProofTree;
 use rustc_span::DUMMY_SP;
 use std::io::Write;
 use std::ops::ControlFlow;
@@ -115,20 +115,20 @@ impl NestedGoals<'_> {
 
 #[derive(PartialEq, Eq, Debug, Hash, HashStable, Clone, Copy)]
 pub enum GenerateProofTree {
-    Yes(DisableGlobalCache),
+    Yes(UseGlobalCache),
     No,
 }
 
 #[derive(PartialEq, Eq, Debug, Hash, HashStable, Clone, Copy)]
-pub enum DisableGlobalCache {
+pub enum UseGlobalCache {
     Yes,
     No,
 }
-impl DisableGlobalCache {
-    pub fn from_bool(disable_cache: bool) -> Self {
-        match disable_cache {
-            true => DisableGlobalCache::Yes,
-            false => DisableGlobalCache::No,
+impl UseGlobalCache {
+    pub fn from_bool(use_cache: bool) -> Self {
+        match use_cache {
+            true => UseGlobalCache::Yes,
+            false => UseGlobalCache::No,
         }
     }
 }
@@ -198,7 +198,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         let result = f(&mut ecx);
 
         let tree = ecx.inspect.finalize();
-        if let (Some(tree), SolverProofTreeCondition::Always) =
+        if let (Some(tree), DumpSolverProofTree::Always) =
             (&tree, infcx.tcx.sess.opts.unstable_opts.dump_solver_proof_tree)
         {
             let mut lock = std::io::stdout().lock();
