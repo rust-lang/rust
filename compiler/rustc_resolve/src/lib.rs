@@ -352,7 +352,7 @@ impl<'a> From<&'a ast::PathSegment> for Segment {
 /// forward.
 #[derive(Debug)]
 enum LexicalScopeBinding<'a> {
-    Item(&'a NameBinding<'a>),
+    Item(NameBinding<'a>),
     Res(Res),
 }
 
@@ -522,7 +522,7 @@ struct ModuleData<'a> {
     globs: RefCell<Vec<&'a Import<'a>>>,
 
     /// Used to memoize the traits in this module for faster searches through all traits in scope.
-    traits: RefCell<Option<Box<[(Ident, &'a NameBinding<'a>)]>>>,
+    traits: RefCell<Option<Box<[(Ident, NameBinding<'a>)]>>>,
 
     /// Span of the module itself. Used for error reporting.
     span: Span,
@@ -562,7 +562,7 @@ impl<'a> ModuleData<'a> {
     fn for_each_child<'tcx, R, F>(&'a self, resolver: &mut R, mut f: F)
     where
         R: AsMut<Resolver<'a, 'tcx>>,
-        F: FnMut(&mut R, Ident, Namespace, &'a NameBinding<'a>),
+        F: FnMut(&mut R, Ident, Namespace, NameBinding<'a>),
     {
         for (key, name_resolution) in resolver.as_mut().resolutions(self).borrow().iter() {
             if let Some(binding) = name_resolution.borrow().binding {
@@ -657,20 +657,22 @@ impl<'a> fmt::Debug for ModuleData<'a> {
 
 /// Records a possibly-private value, type, or module definition.
 #[derive(Clone, Debug)]
-struct NameBinding<'a> {
+struct NameBindingData<'a> {
     kind: NameBindingKind<'a>,
-    ambiguity: Option<(&'a NameBinding<'a>, AmbiguityKind)>,
+    ambiguity: Option<(NameBinding<'a>, AmbiguityKind)>,
     expansion: LocalExpnId,
     span: Span,
     vis: ty::Visibility<DefId>,
 }
 
+type NameBinding<'a> = Interned<'a, NameBindingData<'a>>;
+
 trait ToNameBinding<'a> {
-    fn to_name_binding(self, arenas: &'a ResolverArenas<'a>) -> &'a NameBinding<'a>;
+    fn to_name_binding(self, arenas: &'a ResolverArenas<'a>) -> NameBinding<'a>;
 }
 
-impl<'a> ToNameBinding<'a> for &'a NameBinding<'a> {
-    fn to_name_binding(self, _: &'a ResolverArenas<'a>) -> &'a NameBinding<'a> {
+impl<'a> ToNameBinding<'a> for NameBinding<'a> {
+    fn to_name_binding(self, _: &'a ResolverArenas<'a>) -> NameBinding<'a> {
         self
     }
 }
@@ -679,7 +681,7 @@ impl<'a> ToNameBinding<'a> for &'a NameBinding<'a> {
 enum NameBindingKind<'a> {
     Res(Res),
     Module(Module<'a>),
-    Import { binding: &'a NameBinding<'a>, import: &'a Import<'a>, used: Cell<bool> },
+    Import { binding: NameBinding<'a>, import: &'a Import<'a>, used: Cell<bool> },
 }
 
 impl<'a> NameBindingKind<'a> {
@@ -692,7 +694,7 @@ impl<'a> NameBindingKind<'a> {
 #[derive(Debug)]
 struct PrivacyError<'a> {
     ident: Ident,
-    binding: &'a NameBinding<'a>,
+    binding: NameBinding<'a>,
     dedup_span: Span,
     outermost_res: Option<(Res, Ident)>,
     parent_scope: ParentScope<'a>,
@@ -761,13 +763,13 @@ enum AmbiguityErrorMisc {
 struct AmbiguityError<'a> {
     kind: AmbiguityKind,
     ident: Ident,
-    b1: &'a NameBinding<'a>,
-    b2: &'a NameBinding<'a>,
+    b1: NameBinding<'a>,
+    b2: NameBinding<'a>,
     misc1: AmbiguityErrorMisc,
     misc2: AmbiguityErrorMisc,
 }
 
-impl<'a> NameBinding<'a> {
+impl<'a> NameBindingData<'a> {
     fn module(&self) -> Option<Module<'a>> {
         match self.kind {
             NameBindingKind::Module(module) => Some(module),
@@ -855,7 +857,7 @@ impl<'a> NameBinding<'a> {
     fn may_appear_after(
         &self,
         invoc_parent_expansion: LocalExpnId,
-        binding: &NameBinding<'_>,
+        binding: NameBinding<'_>,
     ) -> bool {
         // self > max(invoc, binding) => !(self <= invoc || self <= binding)
         // Expansions are partially ordered, so "may appear after" is an inversion of
@@ -872,7 +874,7 @@ impl<'a> NameBinding<'a> {
 
 #[derive(Default, Clone)]
 struct ExternPreludeEntry<'a> {
-    extern_crate_item: Option<&'a NameBinding<'a>>,
+    extern_crate_item: Option<NameBinding<'a>>,
     introduced_by_item: bool,
 }
 
@@ -962,7 +964,7 @@ pub struct Resolver<'a, 'tcx> {
     /// language items.
     empty_module: Module<'a>,
     module_map: FxHashMap<DefId, Module<'a>>,
-    binding_parent_modules: FxHashMap<Interned<'a, NameBinding<'a>>, Module<'a>>,
+    binding_parent_modules: FxHashMap<NameBinding<'a>, Module<'a>>,
 
     underscore_disambiguator: u32,
 
@@ -984,7 +986,7 @@ pub struct Resolver<'a, 'tcx> {
     macro_expanded_macro_export_errors: BTreeSet<(Span, Span)>,
 
     arenas: &'a ResolverArenas<'a>,
-    dummy_binding: &'a NameBinding<'a>,
+    dummy_binding: NameBinding<'a>,
 
     used_extern_options: FxHashSet<Symbol>,
     macro_names: FxHashSet<Ident>,
@@ -993,7 +995,7 @@ pub struct Resolver<'a, 'tcx> {
     /// the surface (`macro` items in libcore), but are actually attributes or derives.
     builtin_macro_kinds: FxHashMap<LocalDefId, MacroKind>,
     registered_tools: &'tcx RegisteredTools,
-    macro_use_prelude: FxHashMap<Symbol, &'a NameBinding<'a>>,
+    macro_use_prelude: FxHashMap<Symbol, NameBinding<'a>>,
     macro_map: FxHashMap<DefId, MacroData>,
     dummy_ext_bang: Lrc<SyntaxExtension>,
     dummy_ext_derive: Lrc<SyntaxExtension>,
@@ -1005,7 +1007,7 @@ pub struct Resolver<'a, 'tcx> {
     proc_macro_stubs: FxHashSet<LocalDefId>,
     /// Traces collected during macro resolution and validated when it's complete.
     single_segment_macro_resolutions:
-        Vec<(Ident, MacroKind, ParentScope<'a>, Option<&'a NameBinding<'a>>)>,
+        Vec<(Ident, MacroKind, ParentScope<'a>, Option<NameBinding<'a>>)>,
     multi_segment_macro_resolutions:
         Vec<(Vec<Segment>, Span, MacroKind, ParentScope<'a>, Option<Res>)>,
     builtin_attrs: Vec<(Ident, ParentScope<'a>)>,
@@ -1115,8 +1117,8 @@ impl<'a> ResolverArenas<'a> {
     fn local_modules(&'a self) -> std::cell::Ref<'a, Vec<Module<'a>>> {
         self.local_modules.borrow()
     }
-    fn alloc_name_binding(&'a self, name_binding: NameBinding<'a>) -> &'a NameBinding<'a> {
-        self.dropless.alloc(name_binding)
+    fn alloc_name_binding(&'a self, name_binding: NameBindingData<'a>) -> NameBinding<'a> {
+        Interned::new_unchecked(self.dropless.alloc(name_binding))
     }
     fn alloc_import(&'a self, import: Import<'a>) -> &'a Import<'_> {
         self.imports.alloc(import)
@@ -1314,7 +1316,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             macro_expanded_macro_export_errors: BTreeSet::new(),
 
             arenas,
-            dummy_binding: arenas.alloc_name_binding(NameBinding {
+            dummy_binding: arenas.alloc_name_binding(NameBindingData {
                 kind: NameBindingKind::Res(Res::Err),
                 ambiguity: None,
                 expansion: LocalExpnId::ROOT,
@@ -1679,12 +1681,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         false
     }
 
-    fn record_use(
-        &mut self,
-        ident: Ident,
-        used_binding: &'a NameBinding<'a>,
-        is_lexical_scope: bool,
-    ) {
+    fn record_use(&mut self, ident: Ident, used_binding: NameBinding<'a>, is_lexical_scope: bool) {
         if let Some((b2, kind)) = used_binding.ambiguity {
             let ambiguity_error = AmbiguityError {
                 kind,
@@ -1704,10 +1701,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             // but not introduce it, as used if they are accessed from lexical scope.
             if is_lexical_scope {
                 if let Some(entry) = self.extern_prelude.get(&ident.normalize_to_macros_2_0()) {
-                    if let Some(crate_item) = entry.extern_crate_item {
-                        if ptr::eq(used_binding, crate_item) && !entry.introduced_by_item {
-                            return;
-                        }
+                    if !entry.introduced_by_item && entry.extern_crate_item == Some(used_binding) {
+                        return;
                     }
                 }
             }
@@ -1831,10 +1826,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         vis.is_accessible_from(module.nearest_parent_mod(), self.tcx)
     }
 
-    fn set_binding_parent_module(&mut self, binding: &'a NameBinding<'a>, module: Module<'a>) {
-        if let Some(old_module) =
-            self.binding_parent_modules.insert(Interned::new_unchecked(binding), module)
-        {
+    fn set_binding_parent_module(&mut self, binding: NameBinding<'a>, module: Module<'a>) {
+        if let Some(old_module) = self.binding_parent_modules.insert(binding, module) {
             if !ptr::eq(module, old_module) {
                 span_bug!(binding.span, "parent module is reset for binding");
             }
@@ -1843,15 +1836,15 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     fn disambiguate_macro_rules_vs_modularized(
         &self,
-        macro_rules: &'a NameBinding<'a>,
-        modularized: &'a NameBinding<'a>,
+        macro_rules: NameBinding<'a>,
+        modularized: NameBinding<'a>,
     ) -> bool {
         // Some non-controversial subset of ambiguities "modularized macro name" vs "macro_rules"
         // is disambiguated to mitigate regressions from macro modularization.
         // Scoping for `macro_rules` behaves like scoping for `let` at module level, in general.
         match (
-            self.binding_parent_modules.get(&Interned::new_unchecked(macro_rules)),
-            self.binding_parent_modules.get(&Interned::new_unchecked(modularized)),
+            self.binding_parent_modules.get(&macro_rules),
+            self.binding_parent_modules.get(&modularized),
         ) {
             (Some(macro_rules), Some(modularized)) => {
                 macro_rules.nearest_parent_mod() == modularized.nearest_parent_mod()
@@ -1861,7 +1854,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
     }
 
-    fn extern_prelude_get(&mut self, ident: Ident, finalize: bool) -> Option<&'a NameBinding<'a>> {
+    fn extern_prelude_get(&mut self, ident: Ident, finalize: bool) -> Option<NameBinding<'a>> {
         if ident.is_path_segment_keyword() {
             // Make sure `self`, `super` etc produce an error when passed to here.
             return None;

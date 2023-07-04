@@ -12,7 +12,7 @@ use crate::{fluent_generated as fluent, Namespace::*};
 use crate::{module_to_string, names_to_string, ImportSuggestion};
 use crate::{AmbiguityKind, BindingKey, ModuleKind, ResolutionError, Resolver, Segment};
 use crate::{Finalize, Module, ModuleOrUniformRoot, ParentScope, PerNS, ScopeSet};
-use crate::{NameBinding, NameBindingKind, PathResult};
+use crate::{NameBinding, NameBindingData, NameBindingKind, PathResult};
 
 use rustc_ast::NodeId;
 use rustc_data_structures::fx::FxHashSet;
@@ -48,9 +48,9 @@ pub(crate) enum ImportKind<'a> {
         /// `target` in `use prefix::source as target`.
         target: Ident,
         /// Bindings to which `source` refers to.
-        source_bindings: PerNS<Cell<Result<&'a NameBinding<'a>, Determinacy>>>,
+        source_bindings: PerNS<Cell<Result<NameBinding<'a>, Determinacy>>>,
         /// Bindings introduced by `target`.
-        target_bindings: PerNS<Cell<Option<&'a NameBinding<'a>>>>,
+        target_bindings: PerNS<Cell<Option<NameBinding<'a>>>>,
         /// `true` for `...::{self [as target]}` imports, `false` otherwise.
         type_ns_only: bool,
         /// Did this import result from a nested import? ie. `use foo::{bar, baz};`
@@ -216,13 +216,13 @@ pub(crate) struct NameResolution<'a> {
     /// Imports are arena-allocated, so it's ok to use pointers as keys.
     pub single_imports: FxHashSet<Interned<'a, Import<'a>>>,
     /// The least shadowable known binding for this name, or None if there are no known bindings.
-    pub binding: Option<&'a NameBinding<'a>>,
-    pub shadowed_glob: Option<&'a NameBinding<'a>>,
+    pub binding: Option<NameBinding<'a>>,
+    pub shadowed_glob: Option<NameBinding<'a>>,
 }
 
 impl<'a> NameResolution<'a> {
     /// Returns the binding for the name if it is known or None if it not known.
-    pub(crate) fn binding(&self) -> Option<&'a NameBinding<'a>> {
+    pub(crate) fn binding(&self) -> Option<NameBinding<'a>> {
         self.binding.and_then(|binding| {
             if !binding.is_glob_import() || self.single_imports.is_empty() {
                 Some(binding)
@@ -250,7 +250,7 @@ struct UnresolvedImportError {
 
 // Reexports of the form `pub use foo as bar;` where `foo` is `extern crate foo;`
 // are permitted for backward-compatibility under a deprecation lint.
-fn pub_use_of_private_extern_crate_hack(import: &Import<'_>, binding: &NameBinding<'_>) -> bool {
+fn pub_use_of_private_extern_crate_hack(import: &Import<'_>, binding: NameBinding<'_>) -> bool {
     match (&import.kind, &binding.kind) {
         (
             ImportKind::Single { .. },
@@ -268,9 +268,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     /// return the corresponding binding defined by the import.
     pub(crate) fn import(
         &self,
-        binding: &'a NameBinding<'a>,
+        binding: NameBinding<'a>,
         import: &'a Import<'a>,
-    ) -> &'a NameBinding<'a> {
+    ) -> NameBinding<'a> {
         let import_vis = import.expect_vis().to_def_id();
         let vis = if binding.vis.is_at_least(import_vis, self.tcx)
             || pub_use_of_private_extern_crate_hack(import, binding)
@@ -288,7 +288,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
         }
 
-        self.arenas.alloc_name_binding(NameBinding {
+        self.arenas.alloc_name_binding(NameBindingData {
             kind: NameBindingKind::Import { binding, import, used: Cell::new(false) },
             ambiguity: None,
             span: import.span,
@@ -302,8 +302,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         &mut self,
         module: Module<'a>,
         key: BindingKey,
-        binding: &'a NameBinding<'a>,
-    ) -> Result<(), &'a NameBinding<'a>> {
+        binding: NameBinding<'a>,
+    ) -> Result<(), NameBinding<'a>> {
         let res = binding.res();
         self.check_reserved_macro_name(key.ident, res);
         self.set_binding_parent_module(binding, module);
@@ -372,12 +372,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     fn ambiguity(
         &self,
         kind: AmbiguityKind,
-        primary_binding: &'a NameBinding<'a>,
-        secondary_binding: &'a NameBinding<'a>,
-    ) -> &'a NameBinding<'a> {
-        self.arenas.alloc_name_binding(NameBinding {
+        primary_binding: NameBinding<'a>,
+        secondary_binding: NameBinding<'a>,
+    ) -> NameBinding<'a> {
+        self.arenas.alloc_name_binding(NameBindingData {
             ambiguity: Some((secondary_binding, kind)),
-            ..primary_binding.clone()
+            ..(*primary_binding).clone()
         })
     }
 
@@ -395,13 +395,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
             let t = f(self, resolution);
 
-            match resolution.binding() {
-                _ if old_binding.is_some() => return t,
-                None => return t,
-                Some(binding) => match old_binding {
-                    Some(old_binding) if ptr::eq(old_binding, binding) => return t,
-                    _ => (binding, t),
-                },
+            if old_binding.is_none() && let Some(binding) = resolution.binding() {
+                (binding, t)
+            } else {
+                return t;
             }
         };
 
@@ -546,7 +543,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     pub(crate) fn check_hidden_glob_reexports(
         &mut self,
-        exported_ambiguities: FxHashSet<Interned<'a, NameBinding<'a>>>,
+        exported_ambiguities: FxHashSet<NameBinding<'a>>,
     ) {
         for module in self.arenas.local_modules().iter() {
             for (key, resolution) in self.resolutions(module).borrow().iter() {
@@ -556,7 +553,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     if let NameBindingKind::Import { import, .. } = binding.kind
                         && let Some((amb_binding, _)) = binding.ambiguity
                         && binding.res() != Res::Err
-                        && exported_ambiguities.contains(&Interned::new_unchecked(binding))
+                        && exported_ambiguities.contains(&binding)
                     {
                         self.lint_buffer.buffer_lint_with_diagnostic(
                             AMBIGUOUS_GLOB_REEXPORTS,
@@ -1243,8 +1240,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         &mut self,
         ident: Ident,
         import: &'a Import<'a>,
-        source_bindings: &PerNS<Cell<Result<&'a NameBinding<'a>, Determinacy>>>,
-        target_bindings: &PerNS<Cell<Option<&'a NameBinding<'a>>>>,
+        source_bindings: &PerNS<Cell<Result<NameBinding<'a>, Determinacy>>>,
+        target_bindings: &PerNS<Cell<Option<NameBinding<'a>>>>,
         target: Ident,
     ) {
         // This function is only called for single imports.

@@ -182,13 +182,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
     }
 
-    pub(crate) fn report_conflict<'b>(
+    pub(crate) fn report_conflict(
         &mut self,
         parent: Module<'_>,
         ident: Ident,
         ns: Namespace,
-        new_binding: &NameBinding<'b>,
-        old_binding: &NameBinding<'b>,
+        new_binding: NameBinding<'a>,
+        old_binding: NameBinding<'a>,
     ) {
         // Error on the second of two conflicting names
         if old_binding.span.lo() > new_binding.span.lo() {
@@ -262,7 +262,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         // See https://github.com/rust-lang/rust/issues/32354
         use NameBindingKind::Import;
-        let can_suggest = |binding: &NameBinding<'_>, import: &self::Import<'_>| {
+        let can_suggest = |binding: NameBinding<'_>, import: &self::Import<'_>| {
             !binding.span.is_dummy()
                 && !matches!(import.kind, ImportKind::MacroUse | ImportKind::MacroExport)
         };
@@ -455,7 +455,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         &mut self,
         finalize: Option<Finalize>,
         path: &[Segment],
-        second_binding: Option<&NameBinding<'_>>,
+        second_binding: Option<NameBinding<'_>>,
     ) {
         let Some(Finalize { node_id, root_span, .. }) = finalize else {
             return;
@@ -1515,7 +1515,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         true
     }
 
-    fn binding_description(&self, b: &NameBinding<'_>, ident: Ident, from_prelude: bool) -> String {
+    fn binding_description(&self, b: NameBinding<'_>, ident: Ident, from_prelude: bool) -> String {
         let res = b.res();
         if b.span.is_dummy() || !self.tcx.sess.source_map().is_span_accessible(b.span) {
             // These already contain the "built-in" prefix or look bad with it.
@@ -1555,7 +1555,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         err.span_label(ident.span, "ambiguous name");
         err.note(format!("ambiguous because of {}", kind.descr()));
 
-        let mut could_refer_to = |b: &NameBinding<'_>, misc: AmbiguityErrorMisc, also: &str| {
+        let mut could_refer_to = |b: NameBinding<'_>, misc: AmbiguityErrorMisc, also: &str| {
             let what = self.binding_description(b, ident, misc == AmbiguityErrorMisc::FromPrelude);
             let note_msg = format!("`{ident}` could{also} refer to {what}");
 
@@ -1595,7 +1595,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     /// If the binding refers to a tuple struct constructor with fields,
     /// returns the span of its fields.
-    fn ctor_fields_span(&self, binding: &NameBinding<'_>) -> Option<Span> {
+    fn ctor_fields_span(&self, binding: NameBinding<'_>) -> Option<Span> {
         if let NameBindingKind::Res(Res::Def(
             DefKind::Ctor(CtorOf::Struct, CtorKind::Fn),
             ctor_def_id,
@@ -1622,7 +1622,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             if ctor_fields_span.is_some() { plain_descr + " constructor" } else { plain_descr };
         let import_descr = nonimport_descr.clone() + " import";
         let get_descr =
-            |b: &NameBinding<'_>| if b.is_import() { &import_descr } else { &nonimport_descr };
+            |b: NameBinding<'_>| if b.is_import() { &import_descr } else { &nonimport_descr };
 
         // Print the primary message.
         let descr = get_descr(binding);
@@ -1702,7 +1702,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 _ => None,
             };
 
-            let first = ptr::eq(binding, first_binding);
+            let first = binding == first_binding;
             let msg = format!(
                 "{and_refers_to}the {item} `{name}`{which} is defined here{dots}",
                 and_refers_to = if first { "" } else { "...and refers to " },
@@ -1762,7 +1762,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         opt_ns: Option<Namespace>, // `None` indicates a module path in import
         parent_scope: &ParentScope<'a>,
         ribs: Option<&PerNS<Vec<Rib<'a>>>>,
-        ignore_binding: Option<&'a NameBinding<'a>>,
+        ignore_binding: Option<NameBinding<'a>>,
         module: Option<ModuleOrUniformRoot<'a>>,
         failed_segment_idx: usize,
         ident: Ident,

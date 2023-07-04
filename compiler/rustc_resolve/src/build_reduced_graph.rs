@@ -9,7 +9,7 @@ use crate::def_collector::collect_definitions;
 use crate::imports::{Import, ImportKind};
 use crate::macros::{MacroRulesBinding, MacroRulesScope, MacroRulesScopeRef};
 use crate::Namespace::{self, MacroNS, TypeNS, ValueNS};
-use crate::{errors, BindingKey, MacroData};
+use crate::{errors, BindingKey, MacroData, NameBindingData};
 use crate::{Determinacy, ExternPreludeEntry, Finalize, Module, ModuleKind, ModuleOrUniformRoot};
 use crate::{NameBinding, NameBindingKind, ParentScope, PathResult, PerNS, ResolutionError};
 use crate::{Resolver, ResolverArenas, Segment, ToNameBinding, VisResolutionError};
@@ -38,8 +38,8 @@ type Res = def::Res<NodeId>;
 impl<'a, Id: Into<DefId>> ToNameBinding<'a>
     for (Module<'a>, ty::Visibility<Id>, Span, LocalExpnId)
 {
-    fn to_name_binding(self, arenas: &'a ResolverArenas<'a>) -> &'a NameBinding<'a> {
-        arenas.alloc_name_binding(NameBinding {
+    fn to_name_binding(self, arenas: &'a ResolverArenas<'a>) -> NameBinding<'a> {
+        arenas.alloc_name_binding(NameBindingData {
             kind: NameBindingKind::Module(self.0),
             ambiguity: None,
             vis: self.1.to_def_id(),
@@ -50,8 +50,8 @@ impl<'a, Id: Into<DefId>> ToNameBinding<'a>
 }
 
 impl<'a, Id: Into<DefId>> ToNameBinding<'a> for (Res, ty::Visibility<Id>, Span, LocalExpnId) {
-    fn to_name_binding(self, arenas: &'a ResolverArenas<'a>) -> &'a NameBinding<'a> {
-        arenas.alloc_name_binding(NameBinding {
+    fn to_name_binding(self, arenas: &'a ResolverArenas<'a>) -> NameBinding<'a> {
+        arenas.alloc_name_binding(NameBindingData {
             kind: NameBindingKind::Res(self.0),
             ambiguity: None,
             vis: self.1.to_def_id(),
@@ -71,7 +71,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let binding = def.to_name_binding(self.arenas);
         let key = self.new_disambiguated_key(ident, ns);
         if let Err(old_binding) = self.try_define(parent, key, binding) {
-            self.report_conflict(parent, ident, ns, old_binding, &binding);
+            self.report_conflict(parent, ident, ns, old_binding, binding);
         }
     }
 
@@ -996,7 +996,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
     fn add_macro_use_binding(
         &mut self,
         name: Symbol,
-        binding: &'a NameBinding<'a>,
+        binding: NameBinding<'a>,
         span: Span,
         allow_shadowing: bool,
     ) {
