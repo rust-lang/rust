@@ -32,7 +32,7 @@ actor! {
 impl Scripter {
     /// Generates the actual installer script
     pub fn run(self) -> Result<()> {
-        // Replace dashes in the success message with spaces (our arg handling botches spaces)
+        // Replace dashes in the product name with spaces (our arg handling botches spaces)
         // FIXME: still needed? Kept for compatibility for now.
         let product_name = self.product_name.replace('-', " ");
 
