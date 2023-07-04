@@ -417,14 +417,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             ItemKind::Trait(box Trait { is_auto, unsafety, generics, bounds, items }) => {
                 // FIXME(const_trait_impl, effects, fee1-dead) this should be simplified if possible
-                let constness = if let Some(attrs) = attrs {
-                    attrs
-                        .iter()
-                        .find(|x| x.has_name(sym::const_trait))
-                        .map_or(Const::No, |x| Const::Yes(x.span))
-                } else {
-                    Const::No
-                };
+                let constness = attrs
+                    .unwrap_or(&[])
+                    .iter()
+                    .find(|x| x.has_name(sym::const_trait))
+                    .map_or(Const::No, |x| Const::Yes(x.span));
                 let (generics, (unsafety, items, bounds)) = self.lower_generics(
                     generics,
                     constness,

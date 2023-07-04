@@ -133,6 +133,9 @@ pub struct Generics {
 
     pub has_self: bool,
     pub has_late_bound_regions: Option<Span>,
+
+    // The index of the host effect when substituted. (i.e. might be index to parent substs)
+    pub host_effect_index: Option<usize>,
 }
 
 impl<'tcx> Generics {

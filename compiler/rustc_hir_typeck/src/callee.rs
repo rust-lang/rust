@@ -777,16 +777,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             None => tcx.consts.true_,
         };
 
-        let identity_substs = ty::InternalSubsts::identity_for_item(tcx, callee_did);
+        let generics = tcx.generics_of(callee_did);
 
-        trace!(?effect, ?identity_substs, ?callee_substs);
+        trace!(?effect, ?generics, ?callee_substs);
 
-        // FIXME this should be made more efficient
-        let host_effect_param_index = identity_substs.iter().position(|x| {
-            matches!(x.unpack(), ty::GenericArgKind::Const(const_) if matches!(const_.kind(), ty::ConstKind::Param(param) if param.name == sym::host))
-        });
-
-        if let Some(idx) = host_effect_param_index {
+        if let Some(idx) = generics.host_effect_index {
             let param = callee_substs.const_at(idx);
             let cause = self.misc(span);
             match self.at(&cause, self.param_env).eq(infer::DefineOpaqueTypes::No, effect, param) {
