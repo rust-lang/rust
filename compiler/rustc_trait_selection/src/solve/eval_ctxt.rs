@@ -425,12 +425,8 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                 ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(arg)) => {
                     self.compute_well_formed_goal(Goal { param_env, predicate: arg })
                 }
-                ty::PredicateKind::Ambiguous => {
-                    self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
-                }
-                // FIXME: implement this predicate :)
-                ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(_)) => {
-                    self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(ct)) => {
+                    self.compute_const_evaluatable_goal(Goal { param_env, predicate: ct })
                 }
                 ty::PredicateKind::ConstEquate(_, _) => {
                     bug!("ConstEquate should not be emitted when `-Ztrait-solver=next` is active")
@@ -440,6 +436,9 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                         param_env,
                         predicate: (lhs, rhs, direction),
                     }),
+                ty::PredicateKind::Ambiguous => {
+                    self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
+                }
             }
         } else {
             let kind = self.infcx.instantiate_binder_with_placeholders(kind);
