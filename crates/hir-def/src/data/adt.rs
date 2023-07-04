@@ -330,7 +330,7 @@ impl EnumData {
             } else {
                 diagnostics.push(DefDiagnostic::unconfigured_code(
                     loc.container.local_id,
-                    InFile::new(loc.id.file_id(), var.ast_id.upcast()),
+                    InFile::new(loc.id.file_id(), var.ast_id.erase()),
                     attrs.cfg().unwrap(),
                     cfg_options.clone(),
                 ))
@@ -540,8 +540,8 @@ fn lower_fields(
                         InFile::new(
                             current_file_id,
                             match field.ast_id {
-                                FieldAstId::Record(it) => it.upcast(),
-                                FieldAstId::Tuple(it) => it.upcast(),
+                                FieldAstId::Record(it) => it.erase(),
+                                FieldAstId::Tuple(it) => it.erase(),
                             },
                         ),
                         attrs.cfg().unwrap(),
@@ -564,8 +564,8 @@ fn lower_fields(
                         InFile::new(
                             current_file_id,
                             match field.ast_id {
-                                FieldAstId::Record(it) => it.upcast(),
-                                FieldAstId::Tuple(it) => it.upcast(),
+                                FieldAstId::Record(it) => it.erase(),
+                                FieldAstId::Tuple(it) => it.erase(),
                             },
                         ),
                         attrs.cfg().unwrap(),

@@ -599,7 +599,7 @@ impl<'a> AssocItemCollector<'a> {
             if !attrs.is_cfg_enabled(self.expander.cfg_options()) {
                 self.diagnostics.push(DefDiagnostic::unconfigured_code(
                     self.module_id.local_id,
-                    InFile::new(self.expander.current_file_id(), item.ast_id(item_tree).upcast()),
+                    InFile::new(self.expander.current_file_id(), item.ast_id(item_tree).erase()),
                     attrs.cfg().unwrap(),
                     self.expander.cfg_options().clone(),
                 ));

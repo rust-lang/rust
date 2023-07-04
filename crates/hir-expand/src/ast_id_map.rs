@@ -18,47 +18,89 @@ use rustc_hash::FxHasher;
 use syntax::{ast, AstNode, AstPtr, SyntaxNode, SyntaxNodePtr};
 
 /// `AstId` points to an AST node in a specific file.
-pub struct FileAstId<N: AstNode> {
+pub struct FileAstId<N: AstIdNode> {
     raw: ErasedFileAstId,
     covariant: PhantomData<fn() -> N>,
 }
 
-impl<N: AstNode> Clone for FileAstId<N> {
+impl<N: AstIdNode> Clone for FileAstId<N> {
     fn clone(&self) -> FileAstId<N> {
         *self
     }
 }
-impl<N: AstNode> Copy for FileAstId<N> {}
+impl<N: AstIdNode> Copy for FileAstId<N> {}
 
-impl<N: AstNode> PartialEq for FileAstId<N> {
+impl<N: AstIdNode> PartialEq for FileAstId<N> {
     fn eq(&self, other: &Self) -> bool {
         self.raw == other.raw
     }
 }
-impl<N: AstNode> Eq for FileAstId<N> {}
-impl<N: AstNode> Hash for FileAstId<N> {
+impl<N: AstIdNode> Eq for FileAstId<N> {}
+impl<N: AstIdNode> Hash for FileAstId<N> {
     fn hash<H: Hasher>(&self, hasher: &mut H) {
         self.raw.hash(hasher);
     }
 }
 
-impl<N: AstNode> fmt::Debug for FileAstId<N> {
+impl<N: AstIdNode> fmt::Debug for FileAstId<N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "FileAstId::<{}>({})", type_name::<N>(), self.raw.into_raw())
     }
 }
 
-impl<N: AstNode> FileAstId<N> {
+impl<N: AstIdNode> FileAstId<N> {
     // Can't make this a From implementation because of coherence
-    pub fn upcast<M: AstNode>(self) -> FileAstId<M>
+    pub fn upcast<M: AstIdNode>(self) -> FileAstId<M>
     where
         N: Into<M>,
     {
         FileAstId { raw: self.raw, covariant: PhantomData }
     }
+
+    pub fn erase(self) -> ErasedFileAstId {
+        self.raw
+    }
 }
 
-type ErasedFileAstId = Idx<SyntaxNodePtr>;
+pub type ErasedFileAstId = Idx<SyntaxNodePtr>;
+
+pub trait AstIdNode: AstNode {}
+macro_rules! register_ast_id_node {
+    (impl AstIdNode for $($ident:ident),+ ) => {
+        $(
+            impl AstIdNode for ast::$ident {}
+        )+
+        fn should_alloc_id(kind: syntax::SyntaxKind) -> bool {
+            $(
+                ast::$ident::can_cast(kind)
+            )||+
+        }
+    };
+}
+register_ast_id_node! {
+    impl AstIdNode for
+    Item,
+        Adt,
+            Enum,
+            Struct,
+            Union,
+        Const,
+        ExternBlock,
+        ExternCrate,
+        Fn,
+        Impl,
+        Macro,
+            MacroDef,
+            MacroRules,
+        MacroCall,
+        Module,
+        Static,
+        Trait,
+        TraitAlias,
+        TypeAlias,
+        Use,
+    AssocItem, BlockExpr, Variant, RecordField, TupleField, ConstArg
+}
 
 /// Maps items' `SyntaxNode`s to `ErasedFileAstId`s and back.
 #[derive(Default)]
@@ -92,14 +134,7 @@ impl AstIdMap {
         // change parent's id. This means that, say, adding a new function to a
         // trait does not change ids of top-level items, which helps caching.
         bdfs(node, |it| {
-            let kind = it.kind();
-            if ast::Item::can_cast(kind)
-                || ast::BlockExpr::can_cast(kind)
-                || ast::Variant::can_cast(kind)
-                || ast::RecordField::can_cast(kind)
-                || ast::TupleField::can_cast(kind)
-                || ast::ConstArg::can_cast(kind)
-            {
+            if should_alloc_id(it.kind()) {
                 res.alloc(&it);
                 true
             } else {
@@ -120,13 +155,17 @@ impl AstIdMap {
         res
     }
 
-    pub fn ast_id<N: AstNode>(&self, item: &N) -> FileAstId<N> {
+    pub fn ast_id<N: AstIdNode>(&self, item: &N) -> FileAstId<N> {
         let raw = self.erased_ast_id(item.syntax());
         FileAstId { raw, covariant: PhantomData }
     }
 
-    pub fn get<N: AstNode>(&self, id: FileAstId<N>) -> AstPtr<N> {
+    pub fn get<N: AstIdNode>(&self, id: FileAstId<N>) -> AstPtr<N> {
         AstPtr::try_from_raw(self.arena[id.raw].clone()).unwrap()
+    }
+
+    pub(crate) fn get_raw(&self, id: ErasedFileAstId) -> SyntaxNodePtr {
+        self.arena[id].clone()
     }
 
     fn erased_ast_id(&self, item: &SyntaxNode) -> ErasedFileAstId {

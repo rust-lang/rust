@@ -64,7 +64,7 @@ use std::{
 
 use base_db::{impl_intern_key, salsa, CrateId, ProcMacroKind};
 use hir_expand::{
-    ast_id_map::FileAstId,
+    ast_id_map::{AstIdNode, FileAstId},
     attrs::{Attr, AttrId, AttrInput},
     builtin_attr_macro::BuiltinAttrExpander,
     builtin_derive_macro::BuiltinDeriveExpander,
@@ -1124,12 +1124,12 @@ impl AsMacroCall for InFile<&ast::MacroCall> {
 
 /// Helper wrapper for `AstId` with `ModPath`
 #[derive(Clone, Debug, Eq, PartialEq)]
-struct AstIdWithPath<T: ast::AstNode> {
+struct AstIdWithPath<T: AstIdNode> {
     ast_id: AstId<T>,
     path: path::ModPath,
 }
 
-impl<T: ast::AstNode> AstIdWithPath<T> {
+impl<T: AstIdNode> AstIdWithPath<T> {
     fn new(file_id: HirFileId, ast_id: FileAstId<T>, path: path::ModPath) -> AstIdWithPath<T> {
         AstIdWithPath { ast_id: AstId::new(file_id, ast_id), path }
     }

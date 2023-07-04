@@ -754,7 +754,7 @@ fn emit_def_diagnostic_(
             let item = ast.to_node(db.upcast());
             acc.push(
                 InactiveCode {
-                    node: ast.with_value(AstPtr::new(&item).into()),
+                    node: ast.with_value(SyntaxNodePtr::new(&item).into()),
                     cfg: cfg.clone(),
                     opts: opts.clone(),
                 }
