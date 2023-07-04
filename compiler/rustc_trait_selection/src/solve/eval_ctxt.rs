@@ -183,7 +183,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         let inspect = {
             let generate_proof_tree = match (
                 infcx.tcx.sess.opts.unstable_opts.dump_solver_proof_tree,
-                infcx.tcx.sess.opts.unstable_opts.dump_solver_proof_tree_uses_cache,
+                infcx.tcx.sess.opts.unstable_opts.dump_solver_proof_tree_use_cache,
                 generate_proof_tree,
             ) {
                 (_, Some(use_cache), GenerateProofTree::Yes(_)) => {
