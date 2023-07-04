@@ -119,7 +119,7 @@ fn recurse_build<'tcx>(
             let sp = node.span;
             match tcx.at(sp).lit_to_const(LitToConstInput { lit: &lit.node, ty: node.ty, neg }) {
                 Ok(c) => c,
-                Err(LitToConstError::Reported(guar)) => tcx.const_error(node.ty, guar),
+                Err(LitToConstError::Reported(guar)) => ty::Const::new_error(tcx, guar, node.ty),
                 Err(LitToConstError::TypeError) => {
                     bug!("encountered type error in lit_to_const")
                 }

@@ -733,34 +733,6 @@ impl<'tcx> TyCtxt<'tcx> {
         self.mk_ty_from_kind(Error(reported))
     }
 
-    /// Like [TyCtxt::ty_error] but for constants, with current `ErrorGuaranteed`
-    #[track_caller]
-    pub fn const_error(self, ty: Ty<'tcx>, reported: ErrorGuaranteed) -> Const<'tcx> {
-        self.mk_ct_from_kind(ty::ConstKind::Error(reported), ty)
-    }
-
-    /// Like [TyCtxt::ty_error] but for constants.
-    #[track_caller]
-    pub fn const_error_misc(self, ty: Ty<'tcx>) -> Const<'tcx> {
-        self.const_error_with_message(
-            ty,
-            DUMMY_SP,
-            "ty::ConstKind::Error constructed but no error reported",
-        )
-    }
-
-    /// Like [TyCtxt::ty_error_with_message] but for constants.
-    #[track_caller]
-    pub fn const_error_with_message<S: Into<MultiSpan>>(
-        self,
-        ty: Ty<'tcx>,
-        span: S,
-        msg: &'static str,
-    ) -> Const<'tcx> {
-        let reported = self.sess.delay_span_bug(span, msg);
-        self.const_error(ty, reported)
-    }
-
     pub fn consider_optimizing<T: Fn() -> String>(self, msg: T) -> bool {
         self.sess.consider_optimizing(|| self.crate_name(LOCAL_CRATE), msg)
     }

@@ -390,7 +390,7 @@ impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
             // left alone.
             r => bug!("unexpected region: {r:?}"),
         });
-        self.tcx().const_error_with_message(ty, span, "bad placeholder constant")
+        ty::Const::new_error_with_message(self.tcx(), ty, span, "bad placeholder constant")
     }
 
     fn projected_ty_from_poly_trait_ref(

@@ -2332,7 +2332,7 @@ impl<'tcx> ConstantKind<'tcx> {
                 if let Some(val) = c.kind().try_eval_for_mir(tcx, param_env) {
                     match val {
                         Ok(val) => Self::Val(val, c.ty()),
-                        Err(guar) => Self::Ty(tcx.const_error(self.ty(), guar)),
+                        Err(guar) => Self::Ty(ty::Const::new_error(tcx, guar, self.ty())),
                     }
                 } else {
                     self
@@ -2344,7 +2344,9 @@ impl<'tcx> ConstantKind<'tcx> {
                 match tcx.const_eval_resolve(param_env, uneval, None) {
                     Ok(val) => Self::Val(val, ty),
                     Err(ErrorHandled::TooGeneric) => self,
-                    Err(ErrorHandled::Reported(guar)) => Self::Ty(tcx.const_error(ty, guar.into())),
+                    Err(ErrorHandled::Reported(guar)) => {
+                        Self::Ty(ty::Const::new_error(tcx, guar.into(), ty))
+                    }
                 }
             }
         }

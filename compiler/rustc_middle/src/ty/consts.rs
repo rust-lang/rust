@@ -2,6 +2,7 @@ use crate::middle::resolve_bound_vars as rbv;
 use crate::mir::interpret::LitToConstInput;
 use crate::ty::{self, InternalSubsts, ParamEnv, ParamEnvAnd, Ty, TyCtxt};
 use rustc_data_structures::intern::Interned;
+use rustc_error_messages::MultiSpan;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::LocalDefId;
@@ -13,6 +14,7 @@ mod valtree;
 
 pub use int::*;
 pub use kind::*;
+use rustc_span::DUMMY_SP;
 pub use valtree::*;
 
 /// Use this rather than `ConstData`, whenever possible.
@@ -102,6 +104,34 @@ impl<'tcx> Const<'tcx> {
     #[inline]
     pub fn new_expr(tcx: TyCtxt<'tcx>, expr: ty::Expr<'tcx>, ty: Ty<'tcx>) -> Const<'tcx> {
         Const::new(tcx, ty::ConstKind::Expr(expr), ty)
+    }
+
+    #[inline]
+    pub fn new_error(tcx: TyCtxt<'tcx>, e: ty::ErrorGuaranteed, ty: Ty<'tcx>) -> Const<'tcx> {
+        Const::new(tcx, ty::ConstKind::Error(e), ty)
+    }
+
+    /// Like [TyCtxt::ty_error] but for constants.
+    #[track_caller]
+    pub fn new_misc_error(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Const<'tcx> {
+        Const::new_error_with_message(
+            tcx,
+            ty,
+            DUMMY_SP,
+            "ty::ConstKind::Error constructed but no error reported",
+        )
+    }
+
+    /// Like [TyCtxt::ty_error_with_message] but for constants.
+    #[track_caller]
+    pub fn new_error_with_message<S: Into<MultiSpan>>(
+        tcx: TyCtxt<'tcx>,
+        ty: Ty<'tcx>,
+        span: S,
+        msg: &'static str,
+    ) -> Const<'tcx> {
+        let reported = tcx.sess.delay_span_bug(span, msg);
+        Const::new_error(tcx, reported, ty)
     }
 
     /// Literals and const generic parameters are eagerly converted to a constant, everything else
@@ -200,7 +230,9 @@ impl<'tcx> Const<'tcx> {
                             param_ty,
                         ))
                     }
-                    Some(rbv::ResolvedArg::Error(guar)) => Some(tcx.const_error(param_ty, guar)),
+                    Some(rbv::ResolvedArg::Error(guar)) => {
+                        Some(ty::Const::new_error(tcx, guar, param_ty))
+                    }
                     arg => bug!("unexpected bound var resolution for {:?}: {arg:?}", expr.hir_id),
                 }
             }
@@ -285,7 +317,7 @@ impl<'tcx> Const<'tcx> {
         if let Some(val) = self.kind().try_eval_for_typeck(tcx, param_env) {
             match val {
                 Ok(val) => ty::Const::new_value(tcx, val, self.ty()),
-                Err(guar) => tcx.const_error(self.ty(), guar),
+                Err(guar) => ty::Const::new_error(tcx, guar, self.ty()),
             }
         } else {
             // Either the constant isn't evaluatable or ValTree creation failed.

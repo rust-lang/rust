@@ -528,13 +528,13 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                         let reported = err.emit();
                         term = match def_kind {
                             hir::def::DefKind::AssocTy => tcx.ty_error(reported).into(),
-                            hir::def::DefKind::AssocConst => tcx
-                                .const_error(
-                                    tcx.type_of(assoc_item_def_id)
-                                        .subst(tcx, projection_ty.skip_binder().substs),
-                                    reported,
-                                )
-                                .into(),
+                            hir::def::DefKind::AssocConst => ty::Const::new_error(
+                                tcx,
+                                reported,
+                                tcx.type_of(assoc_item_def_id)
+                                    .subst(tcx, projection_ty.skip_binder().substs),
+                            )
+                            .into(),
                             _ => unreachable!(),
                         };
                     }
