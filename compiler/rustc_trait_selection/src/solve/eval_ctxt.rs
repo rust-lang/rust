@@ -9,7 +9,7 @@ use rustc_infer::infer::{
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
-use rustc_middle::traits::solve::inspect::{self, CandidateKind};
+use rustc_middle::traits::solve::inspect;
 use rustc_middle::traits::solve::{
     CanonicalInput, CanonicalResponse, Certainty, IsNormalizesToHack, MaybeCause,
     PredefinedOpaques, PredefinedOpaquesData, QueryResult,
@@ -880,25 +880,19 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             if candidate_key.def_id != key.def_id {
                 continue;
             }
-            values.extend(
-                self.probe(|r| CandidateKind::Candidate {
-                    name: "opaque type storage".into(),
-                    result: *r,
-                })
-                .enter(|ecx| {
-                    for (a, b) in std::iter::zip(candidate_key.substs, key.substs) {
-                        ecx.eq(param_env, a, b)?;
-                    }
-                    ecx.eq(param_env, candidate_ty, ty)?;
-                    ecx.add_item_bounds_for_hidden_type(
-                        candidate_key.def_id.to_def_id(),
-                        candidate_key.substs,
-                        param_env,
-                        candidate_ty,
-                    );
-                    ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-                }),
-            );
+            values.extend(self.probe_candidate("opaque type storage").enter(|ecx| {
+                for (a, b) in std::iter::zip(candidate_key.substs, key.substs) {
+                    ecx.eq(param_env, a, b)?;
+                }
+                ecx.eq(param_env, candidate_ty, ty)?;
+                ecx.add_item_bounds_for_hidden_type(
+                    candidate_key.def_id.to_def_id(),
+                    candidate_key.substs,
+                    param_env,
+                    candidate_ty,
+                );
+                ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+            }));
         }
         values
     }

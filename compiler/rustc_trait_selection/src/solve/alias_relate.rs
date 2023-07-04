@@ -1,6 +1,5 @@
 use super::{EvalCtxt, SolverMode};
 use rustc_infer::traits::query::NoSolution;
-use rustc_middle::traits::solve::inspect::CandidateKind;
 use rustc_middle::traits::solve::{Certainty, Goal, QueryResult};
 use rustc_middle::ty;
 
@@ -110,12 +109,10 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         direction: ty::AliasRelationDirection,
         invert: Invert,
     ) -> QueryResult<'tcx> {
-        self.probe(|r| CandidateKind::Candidate { name: "normalizes-to".into(), result: *r }).enter(
-            |ecx| {
-                ecx.normalizes_to_inner(param_env, alias, other, direction, invert)?;
-                ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-            },
-        )
+        self.probe_candidate("normalizes-to").enter(|ecx| {
+            ecx.normalizes_to_inner(param_env, alias, other, direction, invert)?;
+            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+        })
     }
 
     fn normalizes_to_inner(
@@ -156,20 +153,18 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         alias_rhs: ty::AliasTy<'tcx>,
         direction: ty::AliasRelationDirection,
     ) -> QueryResult<'tcx> {
-        self.probe(|r| CandidateKind::Candidate { name: "substs relate".into(), result: *r }).enter(
-            |ecx| {
-                match direction {
-                    ty::AliasRelationDirection::Equate => {
-                        ecx.eq(param_env, alias_lhs, alias_rhs)?;
-                    }
-                    ty::AliasRelationDirection::Subtype => {
-                        ecx.sub(param_env, alias_lhs, alias_rhs)?;
-                    }
+        self.probe_candidate("substs relate").enter(|ecx| {
+            match direction {
+                ty::AliasRelationDirection::Equate => {
+                    ecx.eq(param_env, alias_lhs, alias_rhs)?;
                 }
+                ty::AliasRelationDirection::Subtype => {
+                    ecx.sub(param_env, alias_lhs, alias_rhs)?;
+                }
+            }
 
-                ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-            },
-        )
+            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+        })
     }
 
     fn assemble_bidirectional_normalizes_to_candidate(
@@ -179,23 +174,22 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         rhs: ty::Term<'tcx>,
         direction: ty::AliasRelationDirection,
     ) -> QueryResult<'tcx> {
-        self.probe(|r| CandidateKind::Candidate { name: "bidir normalizes-to".into(), result: *r })
-            .enter(|ecx| {
-                ecx.normalizes_to_inner(
-                    param_env,
-                    lhs.to_alias_ty(ecx.tcx()).unwrap(),
-                    rhs,
-                    direction,
-                    Invert::No,
-                )?;
-                ecx.normalizes_to_inner(
-                    param_env,
-                    rhs.to_alias_ty(ecx.tcx()).unwrap(),
-                    lhs,
-                    direction,
-                    Invert::Yes,
-                )?;
-                ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-            })
+        self.probe_candidate("bidir normalizes-to").enter(|ecx| {
+            ecx.normalizes_to_inner(
+                param_env,
+                lhs.to_alias_ty(ecx.tcx()).unwrap(),
+                rhs,
+                direction,
+                Invert::No,
+            )?;
+            ecx.normalizes_to_inner(
+                param_env,
+                rhs.to_alias_ty(ecx.tcx()).unwrap(),
+                lhs,
+                direction,
+                Invert::Yes,
+            )?;
+            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+        })
     }
 }
