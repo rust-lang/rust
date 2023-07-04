@@ -1,0 +1,55 @@
+error[E0391]: cycle detected when computing type of `make_dyn_star::{opaque#0}`
+  --> $DIR/param-env-region-infer.rs:14:60
+   |
+LL | fn make_dyn_star<'a, T: PointerLike + Debug + 'a>(t: T) -> impl PointerLike + Debug + 'a {
+   |                                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: ...which requires type-checking `make_dyn_star`...
+  --> $DIR/param-env-region-infer.rs:14:1
+   |
+LL | fn make_dyn_star<'a, T: PointerLike + Debug + 'a>(t: T) -> impl PointerLike + Debug + 'a {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: ...which requires computing layout of `make_dyn_star::{opaque#0}`...
+   = note: ...which requires normalizing `make_dyn_star::{opaque#0}`...
+   = note: ...which again requires computing type of `make_dyn_star::{opaque#0}`, completing the cycle
+note: cycle used when checking item types in top-level module
+  --> $DIR/param-env-region-infer.rs:8:1
+   |
+LL | / #![feature(dyn_star, pointer_like_trait)]
+LL | | #![allow(incomplete_features)]
+LL | |
+LL | | use std::fmt::Debug;
+...  |
+LL | |
+LL | | fn main() {}
+   | |____________^
+
+error[E0391]: cycle detected when computing type of `make_dyn_star::{opaque#0}`
+  --> $DIR/param-env-region-infer.rs:14:60
+   |
+LL | fn make_dyn_star<'a, T: PointerLike + Debug + 'a>(t: T) -> impl PointerLike + Debug + 'a {
+   |                                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: ...which requires type-checking `make_dyn_star`...
+  --> $DIR/param-env-region-infer.rs:14:1
+   |
+LL | fn make_dyn_star<'a, T: PointerLike + Debug + 'a>(t: T) -> impl PointerLike + Debug + 'a {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: ...which requires computing layout of `make_dyn_star::{opaque#0}`...
+   = note: ...which requires normalizing `make_dyn_star::{opaque#0}`...
+   = note: ...which again requires computing type of `make_dyn_star::{opaque#0}`, completing the cycle
+note: cycle used when checking item types in top-level module
+  --> $DIR/param-env-region-infer.rs:8:1
+   |
+LL | / #![feature(dyn_star, pointer_like_trait)]
+LL | | #![allow(incomplete_features)]
+LL | |
+LL | | use std::fmt::Debug;
+...  |
+LL | |
+LL | | fn main() {}
+   | |____________^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0391`.

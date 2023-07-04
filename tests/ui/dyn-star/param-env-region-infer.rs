@@ -1,6 +1,5 @@
 // revisions: current next
 //[next] compile-flags: -Ztrait-solver=next
-//[next] check-pass
 // incremental
 
 // checks that we don't ICE if there are region inference variables in the environment
@@ -13,6 +12,8 @@ use std::fmt::Debug;
 use std::marker::PointerLike;
 
 fn make_dyn_star<'a, T: PointerLike + Debug + 'a>(t: T) -> impl PointerLike + Debug + 'a {
+    //[next]~^ ERROR cycle detected when computing
+    //[next]~| ERROR cycle detected when computing
     t as _
     //[current]~^ ERROR type annotations needed
 }
