@@ -1,0 +1,5 @@
+/*/
+struct Error{
+    message: String,
+}
+*/
