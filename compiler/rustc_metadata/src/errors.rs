@@ -623,6 +623,7 @@ pub struct CannotFindCrate {
     pub is_nightly_build: bool,
     pub profiler_runtime: Symbol,
     pub locator_triple: TargetTriple,
+    pub is_ui_testing: bool,
 }
 
 impl IntoDiagnostic<'_> for CannotFindCrate {
@@ -646,12 +647,19 @@ impl IntoDiagnostic<'_> for CannotFindCrate {
             } else {
                 diag.note(fluent::metadata_target_no_std_support);
             }
-            // NOTE: this suggests using rustup, even though the user may not have it installed.
-            // That's because they could choose to install it; or this may give them a hint which
-            // target they need to install from their distro.
+
             if self.missing_core {
-                diag.help(fluent::metadata_consider_downloading_target);
+                if env!("CFG_RELEASE_CHANNEL") == "dev" && !self.is_ui_testing {
+                    // Note: Emits the nicer suggestion only for the dev channel.
+                    diag.help(fluent::metadata_consider_adding_std);
+                } else {
+                    // NOTE: this suggests using rustup, even though the user may not have it installed.
+                    // That's because they could choose to install it; or this may give them a hint which
+                    // target they need to install from their distro.
+                    diag.help(fluent::metadata_consider_downloading_target);
+                }
             }
+
             // Suggest using #![no_std]. #[no_core] is unstable and not really supported anyway.
             // NOTE: this is a dummy span if `extern crate std` was injected by the compiler.
             // If it's not a dummy, that means someone added `extern crate std` explicitly and
