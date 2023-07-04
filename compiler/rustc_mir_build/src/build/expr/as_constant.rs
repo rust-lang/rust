@@ -84,7 +84,7 @@ pub fn as_constant_inner<'tcx>(
             Constant { user_ty, span, literal }
         }
         ExprKind::ConstParam { param, def_id: _ } => {
-            let const_param = tcx.mk_const(ty::ConstKind::Param(param), expr.ty);
+            let const_param = ty::Const::new_param(tcx, param, expr.ty);
             let literal = ConstantKind::Ty(const_param);
 
             Constant { user_ty: None, span, literal }

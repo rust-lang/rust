@@ -41,6 +41,69 @@ impl<'tcx> Const<'tcx> {
         self.0.kind
     }
 
+    #[inline]
+    pub fn new(tcx: TyCtxt<'tcx>, kind: ty::ConstKind<'tcx>, ty: Ty<'tcx>) -> Const<'tcx> {
+        tcx.mk_ct_from_kind(kind, ty)
+    }
+
+    #[inline]
+    pub fn new_param(tcx: TyCtxt<'tcx>, param: ty::ParamConst, ty: Ty<'tcx>) -> Const<'tcx> {
+        Const::new(tcx, ty::ConstKind::Param(param), ty)
+    }
+
+    #[inline]
+    pub fn new_var(tcx: TyCtxt<'tcx>, infer: ty::ConstVid<'tcx>, ty: Ty<'tcx>) -> Const<'tcx> {
+        Const::new(tcx, ty::ConstKind::Infer(ty::InferConst::Var(infer)), ty)
+    }
+
+    #[inline]
+    pub fn new_fresh(tcx: TyCtxt<'tcx>, fresh: u32, ty: Ty<'tcx>) -> Const<'tcx> {
+        Const::new(tcx, ty::ConstKind::Infer(ty::InferConst::Fresh(fresh)), ty)
+    }
+
+    #[inline]
+    pub fn new_infer(tcx: TyCtxt<'tcx>, infer: ty::InferConst<'tcx>, ty: Ty<'tcx>) -> Const<'tcx> {
+        Const::new(tcx, ty::ConstKind::Infer(infer), ty)
+    }
+
+    #[inline]
+    pub fn new_bound(
+        tcx: TyCtxt<'tcx>,
+        debruijn: ty::DebruijnIndex,
+        var: ty::BoundVar,
+        ty: Ty<'tcx>,
+    ) -> Const<'tcx> {
+        Const::new(tcx, ty::ConstKind::Bound(debruijn, var), ty)
+    }
+
+    #[inline]
+    pub fn new_placeholder(
+        tcx: TyCtxt<'tcx>,
+        placeholder: ty::PlaceholderConst<'tcx>,
+        ty: Ty<'tcx>,
+    ) -> Const<'tcx> {
+        Const::new(tcx, ty::ConstKind::Placeholder(placeholder), ty)
+    }
+
+    #[inline]
+    pub fn new_unevaluated(
+        tcx: TyCtxt<'tcx>,
+        uv: ty::UnevaluatedConst<'tcx>,
+        ty: Ty<'tcx>,
+    ) -> Const<'tcx> {
+        Const::new(tcx, ty::ConstKind::Unevaluated(uv), ty)
+    }
+
+    #[inline]
+    pub fn new_value(tcx: TyCtxt<'tcx>, val: ty::ValTree<'tcx>, ty: Ty<'tcx>) -> Const<'tcx> {
+        Const::new(tcx, ty::ConstKind::Value(val), ty)
+    }
+
+    #[inline]
+    pub fn new_expr(tcx: TyCtxt<'tcx>, expr: ty::Expr<'tcx>, ty: Ty<'tcx>) -> Const<'tcx> {
+        Const::new(tcx, ty::ConstKind::Expr(expr), ty)
+    }
+
     /// Literals and const generic parameters are eagerly converted to a constant, everything else
     /// becomes `Unevaluated`.
     #[instrument(skip(tcx), level = "debug")]
@@ -60,7 +123,8 @@ impl<'tcx> Const<'tcx> {
 
         match Self::try_eval_lit_or_param(tcx, ty, expr) {
             Some(v) => v,
-            None => tcx.mk_const(
+            None => ty::Const::new_unevaluated(
+                tcx,
                 ty::UnevaluatedConst {
                     def: def.to_def_id(),
                     substs: InternalSubsts::identity_for_item(tcx, def.to_def_id()),
@@ -126,12 +190,16 @@ impl<'tcx> Const<'tcx> {
                         let generics = tcx.generics_of(item_def_id);
                         let index = generics.param_def_id_to_index[&def_id];
                         let name = tcx.item_name(def_id);
-                        Some(tcx.mk_const(ty::ParamConst::new(index, name), param_ty))
+                        Some(ty::Const::new_param(tcx, ty::ParamConst::new(index, name), param_ty))
                     }
-                    Some(rbv::ResolvedArg::LateBound(debruijn, index, _)) => Some(tcx.mk_const(
-                        ty::ConstKind::Bound(debruijn, ty::BoundVar::from_u32(index)),
-                        param_ty,
-                    )),
+                    Some(rbv::ResolvedArg::LateBound(debruijn, index, _)) => {
+                        Some(ty::Const::new_bound(
+                            tcx,
+                            debruijn,
+                            ty::BoundVar::from_u32(index),
+                            param_ty,
+                        ))
+                    }
                     Some(rbv::ResolvedArg::Error(guar)) => Some(tcx.const_error(param_ty, guar)),
                     arg => bug!("unexpected bound var resolution for {:?}: {arg:?}", expr.hir_id),
                 }
@@ -155,7 +223,8 @@ impl<'tcx> Const<'tcx> {
             .layout_of(ty)
             .unwrap_or_else(|e| panic!("could not compute layout for {:?}: {:?}", ty, e))
             .size;
-        tcx.mk_const(
+        ty::Const::new_value(
+            tcx,
             ty::ValTree::from_scalar_int(ScalarInt::try_from_uint(bits, size).unwrap()),
             ty.value,
         )
@@ -164,7 +233,7 @@ impl<'tcx> Const<'tcx> {
     #[inline]
     /// Creates an interned zst constant.
     pub fn zero_sized(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Self {
-        tcx.mk_const(ty::ValTree::zst(), ty)
+        ty::Const::new_value(tcx, ty::ValTree::zst(), ty)
     }
 
     #[inline]
@@ -215,7 +284,7 @@ impl<'tcx> Const<'tcx> {
     pub fn eval(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Const<'tcx> {
         if let Some(val) = self.kind().try_eval_for_typeck(tcx, param_env) {
             match val {
-                Ok(val) => tcx.mk_const(val, self.ty()),
+                Ok(val) => ty::Const::new_value(tcx, val, self.ty()),
                 Err(guar) => tcx.const_error(self.ty(), guar),
             }
         } else {

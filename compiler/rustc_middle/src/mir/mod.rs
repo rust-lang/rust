@@ -2510,7 +2510,7 @@ impl<'tcx> ConstantKind<'tcx> {
                 let generics = tcx.generics_of(item_def_id);
                 let index = generics.param_def_id_to_index[&def_id];
                 let name = tcx.item_name(def_id);
-                let ty_const = tcx.mk_const(ty::ParamConst::new(index, name), ty);
+                let ty_const = ty::Const::new_param(tcx, ty::ParamConst::new(index, name), ty);
                 debug!(?ty_const);
 
                 return Self::Ty(ty_const);

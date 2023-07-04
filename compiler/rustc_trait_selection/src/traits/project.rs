@@ -924,7 +924,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for BoundVarReplacer<'_, 'tcx> {
                 let universe = self.universe_for(debruijn);
                 let p = ty::PlaceholderConst { universe, bound: bound_const };
                 self.mapped_consts.insert(p, bound_const);
-                self.infcx.tcx.mk_const(p, ct.ty())
+                ty::Const::new_placeholder(self.infcx.tcx, p, ct.ty())
             }
             _ => ct.super_fold_with(self),
         }
@@ -1059,7 +1059,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for PlaceholderReplacer<'_, 'tcx> {
                     let db = ty::DebruijnIndex::from_usize(
                         self.universe_indices.len() - index + self.current_index.as_usize() - 1,
                     );
-                    self.interner().mk_const(ty::ConstKind::Bound(db, *replace_var), ct.ty())
+                    ty::Const::new_bound(self.infcx.tcx, db, *replace_var, ct.ty())
                 }
                 None => ct,
             }
@@ -1500,16 +1500,16 @@ fn project<'cx, 'tcx>(
                 DefKind::AssocTy | DefKind::ImplTraitPlaceholder => tcx
                     .mk_projection(obligation.predicate.def_id, obligation.predicate.substs)
                     .into(),
-                DefKind::AssocConst => tcx
-                    .mk_const(
-                        ty::ConstKind::Unevaluated(ty::UnevaluatedConst::new(
-                            obligation.predicate.def_id,
-                            obligation.predicate.substs,
-                        )),
-                        tcx.type_of(obligation.predicate.def_id)
-                            .subst(tcx, obligation.predicate.substs),
-                    )
-                    .into(),
+                DefKind::AssocConst => ty::Const::new_unevaluated(
+                    tcx,
+                    ty::UnevaluatedConst::new(
+                        obligation.predicate.def_id,
+                        obligation.predicate.substs,
+                    ),
+                    tcx.type_of(obligation.predicate.def_id)
+                        .subst(tcx, obligation.predicate.substs),
+                )
+                .into(),
                 kind => {
                     bug!("unknown projection def-id: {}", kind.descr(obligation.predicate.def_id))
                 }
@@ -2397,8 +2397,8 @@ fn confirm_impl_candidate<'cx, 'tcx>(
     let term: ty::EarlyBinder<ty::Term<'tcx>> = if is_const {
         let did = assoc_ty.item.def_id;
         let identity_substs = crate::traits::InternalSubsts::identity_for_item(tcx, did);
-        let kind = ty::ConstKind::Unevaluated(ty::UnevaluatedConst::new(did, identity_substs));
-        ty.map_bound(|ty| tcx.mk_const(kind, ty).into())
+        let uv = ty::UnevaluatedConst::new(did, identity_substs);
+        ty.map_bound(|ty| ty::Const::new_unevaluated(tcx, uv, ty).into())
     } else {
         ty.map_bound(|ty| ty.into())
     };

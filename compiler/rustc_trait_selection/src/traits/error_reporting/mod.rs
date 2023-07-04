@@ -1612,16 +1612,15 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         .tcx
                         .mk_projection(data.projection_ty.def_id, data.projection_ty.substs)
                         .into(),
-                    ty::TermKind::Const(ct) => self
-                        .tcx
-                        .mk_const(
-                            ty::UnevaluatedConst {
-                                def: data.projection_ty.def_id,
-                                substs: data.projection_ty.substs,
-                            },
-                            ct.ty(),
-                        )
-                        .into(),
+                    ty::TermKind::Const(ct) => ty::Const::new_unevaluated(
+                        self.tcx,
+                        ty::UnevaluatedConst {
+                            def: data.projection_ty.def_id,
+                            substs: data.projection_ty.substs,
+                        },
+                        ct.ty(),
+                    )
+                    .into(),
                 };
                 let normalized_term =
                     ocx.normalize(&obligation.cause, obligation.param_env, unnormalized_term);

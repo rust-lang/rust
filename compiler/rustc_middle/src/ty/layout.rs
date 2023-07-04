@@ -2,7 +2,7 @@ use crate::error::UnsupportedFnAbi;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::query::TyCtxtAt;
 use crate::ty::normalize_erasing_regions::NormalizationError;
-use crate::ty::{self, ReprOptions, Ty, TyCtxt, TypeVisitableExt};
+use crate::ty::{self, ConstKind, ReprOptions, Ty, TyCtxt, TypeVisitableExt};
 use rustc_error_messages::DiagnosticMessage;
 use rustc_errors::{DiagnosticBuilder, Handler, IntoDiagnostic};
 use rustc_hir as hir;
@@ -480,13 +480,11 @@ fn mul_sorted_consts<'tcx>(
     b: ty::Const<'tcx>,
 ) -> Option<ty::Const<'tcx>> {
     use crate::mir::BinOp::Mul;
-    use ty::ConstKind::Expr;
-    use ty::Expr::Binop;
 
     let mut work = vec![a, b];
     let mut done = vec![];
     while let Some(n) = work.pop() {
-        if let Expr(Binop(Mul, l, r)) = n.kind() {
+        if let ConstKind::Expr(ty::Expr::Binop(Mul, l, r)) = n.kind() {
             work.push(l);
             work.push(r)
         } else {
@@ -517,7 +515,7 @@ fn mul_sorted_consts<'tcx>(
     done.sort_unstable();
 
     // create a single tree from the buffer
-    done.into_iter().reduce(|acc, n| tcx.mk_const(Expr(Binop(Mul, n, acc)), n.ty()))
+    done.into_iter().reduce(|acc, n| ty::Const::new_expr(tcx, ty::Expr::Binop(Mul, n, acc), n.ty()))
 }
 
 pub trait HasTyCtxt<'tcx>: HasDataLayout {

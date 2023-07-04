@@ -1970,7 +1970,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     assert!(!ct.ty().has_escaping_bound_vars());
 
                     match ct.kind() {
-                        ty::ConstKind::Bound(_, bv) => self.tcx.mk_const(
+                        ty::ConstKind::Bound(_, bv) => ty::Const::new_placeholder(
+                            self.tcx,
                             ty::PlaceholderConst { universe: self.universe, bound: bv },
                             ct.ty(),
                         ),

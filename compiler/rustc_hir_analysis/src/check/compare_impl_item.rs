@@ -2047,11 +2047,10 @@ pub(super) fn check_type_bounds<'tcx>(
             GenericParamDefKind::Const { .. } => {
                 let bound_var = ty::BoundVariableKind::Const;
                 bound_vars.push(bound_var);
-                tcx.mk_const(
-                    ty::ConstKind::Bound(
-                        ty::INNERMOST,
-                        ty::BoundVar::from_usize(bound_vars.len() - 1),
-                    ),
+                ty::Const::new_bound(
+                    tcx,
+                    ty::INNERMOST,
+                    ty::BoundVar::from_usize(bound_vars.len() - 1),
                     tcx.type_of(param.def_id)
                         .no_bound_vars()
                         .expect("const parameter types cannot be generic"),

@@ -380,7 +380,9 @@ impl<'tcx> ConstToPat<'tcx> {
             ty::Ref(_, pointee_ty, ..) => match *pointee_ty.kind() {
                 // `&str` is represented as a valtree, let's keep using this
                 // optimization for now.
-                ty::Str => PatKind::Constant { value: mir::ConstantKind::Ty(tcx.mk_const(cv, ty)) },
+                ty::Str => PatKind::Constant {
+                    value: mir::ConstantKind::Ty(ty::Const::new_value(tcx, cv, ty)),
+                },
                 // Backwards compatibility hack: support references to non-structural types,
                 // but hard error if we aren't behind a double reference. We could just use
                 // the fallback code path below, but that would allow *more* of this fishy
@@ -438,9 +440,9 @@ impl<'tcx> ConstToPat<'tcx> {
                     }
                 }
             },
-            ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::FnDef(..) => {
-                PatKind::Constant { value: mir::ConstantKind::Ty(tcx.mk_const(cv, ty)) }
-            }
+            ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::FnDef(..) => PatKind::Constant {
+                value: mir::ConstantKind::Ty(ty::Const::new_value(tcx, cv, ty)),
+            },
             ty::FnPtr(..) | ty::RawPtr(..) => unreachable!(),
             _ => {
                 self.saw_const_match_error.set(true);

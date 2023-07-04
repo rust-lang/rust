@@ -736,7 +736,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Like [TyCtxt::ty_error] but for constants, with current `ErrorGuaranteed`
     #[track_caller]
     pub fn const_error(self, ty: Ty<'tcx>, reported: ErrorGuaranteed) -> Const<'tcx> {
-        self.mk_const(ty::ConstKind::Error(reported), ty)
+        self.mk_ct_from_kind(ty::ConstKind::Error(reported), ty)
     }
 
     /// Like [TyCtxt::ty_error] but for constants.
@@ -758,7 +758,7 @@ impl<'tcx> TyCtxt<'tcx> {
         msg: &'static str,
     ) -> Const<'tcx> {
         let reported = self.sess.delay_span_bug(span, msg);
-        self.mk_const(ty::ConstKind::Error(reported), ty)
+        self.const_error(ty, reported)
     }
 
     pub fn consider_optimizing<T: Fn() -> String>(self, msg: T) -> bool {
@@ -1924,8 +1924,8 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
-    pub fn mk_const(self, kind: impl Into<ty::ConstKind<'tcx>>, ty: Ty<'tcx>) -> Const<'tcx> {
-        self.intern_const(ty::ConstData { kind: kind.into(), ty })
+    pub fn mk_ct_from_kind(self, kind: ty::ConstKind<'tcx>, ty: Ty<'tcx>) -> Const<'tcx> {
+        self.intern_const(ty::ConstData { kind, ty })
     }
 
     #[inline]
@@ -1989,14 +1989,14 @@ impl<'tcx> TyCtxt<'tcx> {
                 ty::Region::new_early_bound(self, param.to_early_bound_region_data()).into()
             }
             GenericParamDefKind::Type { .. } => self.mk_ty_param(param.index, param.name).into(),
-            GenericParamDefKind::Const { .. } => self
-                .mk_const(
-                    ParamConst { index: param.index, name: param.name },
-                    self.type_of(param.def_id)
-                        .no_bound_vars()
-                        .expect("const parameter types cannot be generic"),
-                )
-                .into(),
+            GenericParamDefKind::Const { .. } => ty::Const::new_param(
+                self,
+                ParamConst { index: param.index, name: param.name },
+                self.type_of(param.def_id)
+                    .no_bound_vars()
+                    .expect("const parameter types cannot be generic"),
+            )
+            .into(),
         }
     }
 

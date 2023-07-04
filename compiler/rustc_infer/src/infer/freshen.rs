@@ -95,7 +95,7 @@ impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
             Entry::Vacant(entry) => {
                 let index = self.const_freshen_count;
                 self.const_freshen_count += 1;
-                let ct = self.infcx.tcx.mk_const(freshener(index), ty);
+                let ct = ty::Const::new_infer(self.infcx.tcx, freshener(index), ty);
                 entry.insert(ct);
                 ct
             }

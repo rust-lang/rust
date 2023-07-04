@@ -386,11 +386,10 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                                 .type_of(param.def_id)
                                 .no_bound_vars()
                                 .expect("ct params cannot have early bound vars");
-                            tcx.mk_const(
-                                ty::ConstKind::Bound(
-                                    ty::INNERMOST,
-                                    ty::BoundVar::from_usize(num_bound_vars),
-                                ),
+                            ty::Const::new_bound(
+                                tcx,
+                                ty::INNERMOST,
+                                ty::BoundVar::from_usize(num_bound_vars),
                                 ty,
                             )
                             .into()

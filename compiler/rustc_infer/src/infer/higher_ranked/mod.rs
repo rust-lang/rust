@@ -94,7 +94,8 @@ impl<'tcx> InferCtxt<'tcx> {
                 })
             },
             consts: &mut |bound_var: ty::BoundVar, ty| {
-                self.tcx.mk_const(
+                ty::Const::new_placeholder(
+                    self.tcx,
                     ty::PlaceholderConst { universe: next_universe, bound: bound_var },
                     ty,
                 )
