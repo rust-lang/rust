@@ -2642,11 +2642,11 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
 
             fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-                if let ty::Param(ty::ParamTy { name, .. }) = *ty.kind() {
+                if let ty::Param(_) = *ty.kind() {
                     let infcx = self.infcx;
                     *self.var_map.entry(ty).or_insert_with(|| {
                         infcx.next_ty_var(TypeVariableOrigin {
-                            kind: TypeVariableOriginKind::TypeParameterDefinition(name, None),
+                            kind: TypeVariableOriginKind::MiscVariable,
                             span: DUMMY_SP,
                         })
                     })
