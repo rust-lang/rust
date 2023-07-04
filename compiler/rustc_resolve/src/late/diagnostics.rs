@@ -1593,7 +1593,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             return None;
         }
 
-        let resolutions = self.r.resolutions(module);
+        let resolutions = self.r.resolutions(*module);
         let targets = resolutions
             .borrow()
             .iter()

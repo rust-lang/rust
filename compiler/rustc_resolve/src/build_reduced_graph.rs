@@ -31,7 +31,6 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
 
 use std::cell::Cell;
-use std::ptr;
 
 type Res = def::Res<NodeId>;
 
@@ -142,8 +141,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             Some(def_id) => self.macro_def_scope(def_id),
             None => expn_id
                 .as_local()
-                .and_then(|expn_id| self.ast_transform_scopes.get(&expn_id))
-                .unwrap_or(&self.graph_root),
+                .and_then(|expn_id| self.ast_transform_scopes.get(&expn_id).copied())
+                .unwrap_or(self.graph_root),
         }
     }
 
@@ -864,7 +863,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
         });
         self.r.potentially_unused_imports.push(import);
         let imported_binding = self.r.import(binding, import);
-        if ptr::eq(parent, self.r.graph_root) {
+        if parent == self.r.graph_root {
             if let Some(entry) = self.r.extern_prelude.get(&ident.normalize_to_macros_2_0()) {
                 if expansion != LocalExpnId::ROOT
                     && orig_name.is_some()

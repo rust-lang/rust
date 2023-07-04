@@ -14,6 +14,7 @@
 #![feature(iter_intersperse)]
 #![feature(let_chains)]
 #![feature(never_type)]
+#![feature(rustc_attrs)]
 #![recursion_limit = "256"]
 #![allow(rustdoc::private_intra_doc_links)]
 #![allow(rustc::potential_query_instability)]
@@ -61,7 +62,7 @@ use rustc_span::{Span, DUMMY_SP};
 use smallvec::{smallvec, SmallVec};
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeSet;
-use std::{fmt, ptr};
+use std::fmt;
 
 use diagnostics::{ImportSuggestion, LabelSuggestion, Suggestion};
 use imports::{Import, ImportData, ImportKind, NameResolution};
@@ -365,7 +366,7 @@ impl<'a> LexicalScopeBinding<'a> {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 enum ModuleOrUniformRoot<'a> {
     /// Regular module.
     Module(Module<'a>),
@@ -381,23 +382,6 @@ enum ModuleOrUniformRoot<'a> {
     /// Used only for resolving single-segment imports. The reason it exists is that import paths
     /// are always split into two parts, the first of which should be some kind of module.
     CurrentScope,
-}
-
-impl ModuleOrUniformRoot<'_> {
-    fn same_def(lhs: Self, rhs: Self) -> bool {
-        match (lhs, rhs) {
-            (ModuleOrUniformRoot::Module(lhs), ModuleOrUniformRoot::Module(rhs)) => {
-                ptr::eq(lhs, rhs)
-            }
-            (
-                ModuleOrUniformRoot::CrateRootAndExternPrelude,
-                ModuleOrUniformRoot::CrateRootAndExternPrelude,
-            )
-            | (ModuleOrUniformRoot::ExternPrelude, ModuleOrUniformRoot::ExternPrelude)
-            | (ModuleOrUniformRoot::CurrentScope, ModuleOrUniformRoot::CurrentScope) => true,
-            _ => false,
-        }
-    }
 }
 
 #[derive(Debug)]
@@ -530,7 +514,9 @@ struct ModuleData<'a> {
     expansion: ExpnId,
 }
 
-type Module<'a> = &'a ModuleData<'a>;
+#[derive(Clone, Copy, PartialEq)]
+#[rustc_pass_by_value]
+struct Module<'a>(Interned<'a, ModuleData<'a>>);
 
 impl<'a> ModuleData<'a> {
     fn new(
@@ -558,8 +544,10 @@ impl<'a> ModuleData<'a> {
             expansion,
         }
     }
+}
 
-    fn for_each_child<'tcx, R, F>(&'a self, resolver: &mut R, mut f: F)
+impl<'a> Module<'a> {
+    fn for_each_child<'tcx, R, F>(self, resolver: &mut R, mut f: F)
     where
         R: AsMut<Resolver<'a, 'tcx>>,
         F: FnMut(&mut R, Ident, Namespace, NameBinding<'a>),
@@ -572,7 +560,7 @@ impl<'a> ModuleData<'a> {
     }
 
     /// This modifies `self` in place. The traits will be stored in `self.traits`.
-    fn ensure_traits<'tcx, R>(&'a self, resolver: &mut R)
+    fn ensure_traits<'tcx, R>(self, resolver: &mut R)
     where
         R: AsMut<Resolver<'a, 'tcx>>,
     {
@@ -591,7 +579,7 @@ impl<'a> ModuleData<'a> {
         }
     }
 
-    fn res(&self) -> Option<Res> {
+    fn res(self) -> Option<Res> {
         match self.kind {
             ModuleKind::Def(kind, def_id, _) => Some(Res::Def(kind, def_id)),
             _ => None,
@@ -599,11 +587,11 @@ impl<'a> ModuleData<'a> {
     }
 
     // Public for rustdoc.
-    fn def_id(&self) -> DefId {
+    fn def_id(self) -> DefId {
         self.opt_def_id().expect("`ModuleData::def_id` is called on a block module")
     }
 
-    fn opt_def_id(&self) -> Option<DefId> {
+    fn opt_def_id(self) -> Option<DefId> {
         match self.kind {
             ModuleKind::Def(_, def_id, _) => Some(def_id),
             _ => None,
@@ -611,15 +599,15 @@ impl<'a> ModuleData<'a> {
     }
 
     // `self` resolves to the first module ancestor that `is_normal`.
-    fn is_normal(&self) -> bool {
+    fn is_normal(self) -> bool {
         matches!(self.kind, ModuleKind::Def(DefKind::Mod, _, _))
     }
 
-    fn is_trait(&self) -> bool {
+    fn is_trait(self) -> bool {
         matches!(self.kind, ModuleKind::Def(DefKind::Trait, _, _))
     }
 
-    fn nearest_item_scope(&'a self) -> Module<'a> {
+    fn nearest_item_scope(self) -> Module<'a> {
         match self.kind {
             ModuleKind::Def(DefKind::Enum | DefKind::Trait, ..) => {
                 self.parent.expect("enum or trait module without a parent")
@@ -630,15 +618,15 @@ impl<'a> ModuleData<'a> {
 
     /// The [`DefId`] of the nearest `mod` item ancestor (which may be this module).
     /// This may be the crate root.
-    fn nearest_parent_mod(&self) -> DefId {
+    fn nearest_parent_mod(self) -> DefId {
         match self.kind {
             ModuleKind::Def(DefKind::Mod, def_id, _) => def_id,
             _ => self.parent.expect("non-root module without parent").nearest_parent_mod(),
         }
     }
 
-    fn is_ancestor_of(&self, mut other: &Self) -> bool {
-        while !ptr::eq(self, other) {
+    fn is_ancestor_of(self, mut other: Self) -> bool {
+        while self != other {
             if let Some(parent) = other.parent {
                 other = parent;
             } else {
@@ -649,7 +637,15 @@ impl<'a> ModuleData<'a> {
     }
 }
 
-impl<'a> fmt::Debug for ModuleData<'a> {
+impl<'a> std::ops::Deref for Module<'a> {
+    type Target = ModuleData<'a>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<'a> fmt::Debug for Module<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.res())
     }
@@ -810,10 +806,9 @@ impl<'a> NameBindingData<'a> {
             NameBindingKind::Import { import, .. } => {
                 matches!(import.kind, ImportKind::ExternCrate { .. })
             }
-            NameBindingKind::Module(&ModuleData {
-                kind: ModuleKind::Def(DefKind::Mod, def_id, _),
-                ..
-            }) => def_id.is_crate_root(),
+            NameBindingKind::Module(module)
+                if let ModuleKind::Def(DefKind::Mod, def_id, _) = module.kind
+                    => def_id.is_crate_root(),
             _ => false,
         }
     }
@@ -1102,8 +1097,13 @@ impl<'a> ResolverArenas<'a> {
         no_implicit_prelude: bool,
         module_map: &mut FxHashMap<DefId, Module<'a>>,
     ) -> Module<'a> {
-        let module =
-            self.modules.alloc(ModuleData::new(parent, kind, expn_id, span, no_implicit_prelude));
+        let module = Module(Interned::new_unchecked(self.modules.alloc(ModuleData::new(
+            parent,
+            kind,
+            expn_id,
+            span,
+            no_implicit_prelude,
+        ))));
         let def_id = module.opt_def_id();
         if def_id.map_or(true, |def_id| def_id.is_local()) {
             self.local_modules.borrow_mut().push(module);
@@ -1647,7 +1647,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             module.populate_on_access.set(false);
             self.build_reduced_graph_external(module);
         }
-        &module.lazy_resolutions
+        &module.0.0.lazy_resolutions
     }
 
     fn resolution(
@@ -1827,7 +1827,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     fn set_binding_parent_module(&mut self, binding: NameBinding<'a>, module: Module<'a>) {
         if let Some(old_module) = self.binding_parent_modules.insert(binding, module) {
-            if !ptr::eq(module, old_module) {
+            if module != old_module {
                 span_bug!(binding.span, "parent module is reset for binding");
             }
         }
@@ -1847,7 +1847,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         ) {
             (Some(macro_rules), Some(modularized)) => {
                 macro_rules.nearest_parent_mod() == modularized.nearest_parent_mod()
-                    && modularized.is_ancestor_of(macro_rules)
+                    && modularized.is_ancestor_of(*macro_rules)
             }
             _ => false,
         }

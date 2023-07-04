@@ -1,5 +1,3 @@
-use std::ptr;
-
 use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{self, Visitor};
@@ -1198,7 +1196,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 // avoid suggesting anything with a hygienic name
                 if ident.name == lookup_ident.name
                     && ns == namespace
-                    && !ptr::eq(in_module, parent_scope.module)
+                    && in_module != parent_scope.module
                     && !ident.span.normalize_to_macros_2_0().from_expansion()
                 {
                     let res = name_binding.res();
@@ -1732,7 +1730,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     pub(crate) fn find_similarly_named_module_or_crate(
         &mut self,
         ident: Symbol,
-        current_module: &Module<'a>,
+        current_module: Module<'a>,
     ) -> Option<Symbol> {
         let mut candidates = self
             .extern_prelude
@@ -1742,7 +1740,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 self.module_map
                     .iter()
                     .filter(|(_, module)| {
-                        current_module.is_ancestor_of(module) && !ptr::eq(current_module, *module)
+                        current_module.is_ancestor_of(**module) && current_module != **module
                     })
                     .flat_map(|(_, module)| module.kind.name()),
             )
@@ -1945,7 +1943,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
 
             suggestion = suggestion.or_else(|| {
-                self.find_similarly_named_module_or_crate(ident.name, &parent_scope.module).map(
+                self.find_similarly_named_module_or_crate(ident.name, parent_scope.module).map(
                     |sugg| {
                         (
                             vec![(ident.span, sugg.to_string())],
@@ -2126,9 +2124,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             crate_module = parent;
         }
 
-        if ModuleOrUniformRoot::same_def(ModuleOrUniformRoot::Module(crate_module), module) {
-            // Don't make a suggestion if the import was already from the root of the
-            // crate.
+        if module == ModuleOrUniformRoot::Module(crate_module) {
+            // Don't make a suggestion if the import was already from the root of the crate.
             return None;
         }
 

@@ -35,7 +35,7 @@ use rustc_span::Span;
 use smallvec::SmallVec;
 
 use std::cell::Cell;
-use std::{mem, ptr};
+use std::mem;
 
 type Res = def::Res<NodeId>;
 
@@ -463,7 +463,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     pub(crate) fn finalize_imports(&mut self) {
         for module in self.arenas.local_modules().iter() {
-            self.finalize_resolutions_in(module);
+            self.finalize_resolutions_in(*module);
         }
 
         let mut seen_spans = FxHashSet::default();
@@ -537,7 +537,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         exported_ambiguities: FxHashSet<NameBinding<'a>>,
     ) {
         for module in self.arenas.local_modules().iter() {
-            for (key, resolution) in self.resolutions(module).borrow().iter() {
+            for (key, resolution) in self.resolutions(*module).borrow().iter() {
                 let resolution = resolution.borrow();
 
                 if let Some(binding) = resolution.binding {
@@ -812,7 +812,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             PathResult::Module(module) => {
                 // Consistency checks, analogous to `finalize_macro_resolutions`.
                 if let Some(initial_module) = import.imported_module.get() {
-                    if !ModuleOrUniformRoot::same_def(module, initial_module) && no_ambiguity {
+                    if module != initial_module && no_ambiguity {
                         span_bug!(import.span, "inconsistent resolution for an import");
                     }
                 } else if self.privacy_errors.is_empty() {
@@ -914,7 +914,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     }
 
                     if let ModuleOrUniformRoot::Module(module) = module {
-                        if ptr::eq(module, import.parent_scope.module) {
+                        if module == import.parent_scope.module {
                             // Importing a module into itself is not allowed.
                             return Some(UnresolvedImportError {
                                 span: import.span,
@@ -1307,7 +1307,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         if module.is_trait() {
             self.tcx.sess.create_err(ItemsInTraitsAreNotImportable { span: import.span }).emit();
             return;
-        } else if ptr::eq(module, import.parent_scope.module) {
+        } else if module == import.parent_scope.module {
             return;
         } else if is_prelude {
             self.prelude = Some(module);

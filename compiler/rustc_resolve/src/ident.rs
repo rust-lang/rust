@@ -11,8 +11,6 @@ use rustc_span::hygiene::{ExpnId, ExpnKind, LocalExpnId, MacroKind, SyntaxContex
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::{Span, DUMMY_SP};
 
-use std::ptr;
-
 use crate::errors::{ParamKindInEnumDiscriminant, ParamKindInNonTrivialAnonConst};
 use crate::late::{
     ConstantHasGenerics, HasGenericParams, NoConstantGenericsReason, PathSource, Rib, RibKind,
@@ -538,7 +536,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                         ),
                                     );
                                 }
-                                let misc_flags = if ptr::eq(module, this.graph_root) {
+                                let misc_flags = if module == this.graph_root {
                                     Flags::MISC_SUGGEST_CRATE
                                 } else if module.is_normal() {
                                     Flags::MISC_SUGGEST_SELF
