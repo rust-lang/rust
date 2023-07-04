@@ -5,7 +5,7 @@ use std::{iter, sync::Arc};
 
 use tracing::debug;
 
-use chalk_ir::{cast::Cast, fold::shift::Shift, CanonicalVarKinds};
+use chalk_ir::{cast::Caster, fold::shift::Shift, CanonicalVarKinds};
 use chalk_solve::rust_ir::{self, OpaqueTyDatumBound, WellKnownTrait};
 
 use base_db::CrateId;
@@ -846,28 +846,34 @@ pub(super) fn generic_predicate_to_inline_bound(
             }
             let args_no_self = trait_ref.substitution.as_slice(Interner)[1..]
                 .iter()
-                .map(|ty| ty.clone().cast(Interner))
+                .cloned()
+                .casted(Interner)
                 .collect();
             let trait_bound = rust_ir::TraitBound { trait_id: trait_ref.trait_id, args_no_self };
             Some(chalk_ir::Binders::new(binders, rust_ir::InlineBound::TraitBound(trait_bound)))
         }
         WhereClause::AliasEq(AliasEq { alias: AliasTy::Projection(projection_ty), ty }) => {
-            let trait_ = projection_ty.trait_(db);
-            if projection_ty.self_type_parameter(db) != self_ty_shifted_in {
+            let generics =
+                generics(db.upcast(), from_assoc_type_id(projection_ty.associated_ty_id).into());
+            let (assoc_args, trait_args) =
+                projection_ty.substitution.as_slice(Interner).split_at(generics.len_self());
+            let (self_ty, args_no_self) =
+                trait_args.split_first().expect("projection without trait self type");
+            if self_ty.assert_ty_ref(Interner) != &self_ty_shifted_in {
                 return None;
             }
-            let args_no_self = projection_ty.substitution.as_slice(Interner)[1..]
-                .iter()
-                .map(|ty| ty.clone().cast(Interner))
-                .collect();
+
+            let args_no_self = args_no_self.iter().cloned().casted(Interner).collect();
+            let parameters = assoc_args.to_vec();
+
             let alias_eq_bound = rust_ir::AliasEqBound {
                 value: ty.clone(),
                 trait_bound: rust_ir::TraitBound {
-                    trait_id: to_chalk_trait_id(trait_),
+                    trait_id: to_chalk_trait_id(projection_ty.trait_(db)),
                     args_no_self,
                 },
                 associated_ty_id: projection_ty.associated_ty_id,
-                parameters: Vec::new(), // FIXME we don't support generic associated types yet
+                parameters,
             };
             Some(chalk_ir::Binders::new(
                 binders,
