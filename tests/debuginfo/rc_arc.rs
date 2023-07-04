@@ -9,7 +9,7 @@
 // gdb-command:run
 
 // gdb-command:print rc
-// gdb-check:[...]$1 = Rc(strong=11, weak=1) = {value = 111, strong = 11, weak = 1}
+// gdb-check:[...]$1 = Rc(strong=11, weak=1) = {value = 111, FAIL strong = 11, weak = 1}
 // gdb-command:print arc
 // gdb-check:[...]$2 = Arc(strong=21, weak=1) = {value = 222, strong = 21, weak = 1}
 
@@ -28,8 +28,8 @@
 
 // cdb-command:dx rc,d
 // cdb-check:rc,d             : 111 [Type: alloc::rc::Rc<i32>]
-// cdb-check:    [Reference count] : 11 [Type: core::cell::Cell<usize>]
-// cdb-check:    [Weak reference count] : 2 [Type: core::cell::Cell<usize>]
+// cdb-check:    [Reference count] : 11 [Type: core::cell FAIL ::Cell<usize>]
+// cdb-check:    [Weak reference count] : 2 [Type: core::cell FAIL::Cell<usize>]
 
 // cdb-command:dx weak_rc,d
 // cdb-check:weak_rc,d        : 111 [Type: alloc::rc::Weak<i32>]
@@ -38,7 +38,7 @@
 
 // cdb-command:dx arc,d
 // cdb-check:arc,d            : 222 [Type: alloc::sync::Arc<i32>]
-// cdb-check:    [Reference count] : 21 [Type: core::sync::atomic::AtomicUsize]
+// cdb-check:    [Reference count] : 21 [Type: core::sync::atomic FAIL::AtomicUsize]
 // cdb-check:    [Weak reference count] : 2 [Type: core::sync::atomic::AtomicUsize]
 
 // cdb-command:dx weak_arc,d
@@ -47,7 +47,7 @@
 // cdb-check:    [Weak reference count] : 2 [Type: core::sync::atomic::AtomicUsize]
 
 // cdb-command:dx dyn_rc,d
-// cdb-check:dyn_rc,d         [Type: alloc::rc::Rc<dyn$<core::fmt::Debug> >]
+// cdb-check:dyn_rc,d         [Type: alloc::rc::Rc<dyn$<core::fmt FAIL::Debug> >]
 // cdb-check:    [Reference count] : 31 [Type: core::cell::Cell<usize>]
 // cdb-check:    [Weak reference count] : 2 [Type: core::cell::Cell<usize>]
 
