@@ -54,7 +54,7 @@ impl<'tcx> Const<'tcx> {
 
     #[inline]
     pub fn kind(self) -> ConstKind<'tcx> {
-        self.0.kind
+        self.0.kind.clone()
     }
 
     #[inline]

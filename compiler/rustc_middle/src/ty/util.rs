@@ -1306,7 +1306,7 @@ pub fn needs_drop_components<'tcx>(
         ty::Array(elem_ty, size) => {
             match needs_drop_components(*elem_ty, target_layout) {
                 Ok(v) if v.is_empty() => Ok(v),
-                res => match size.kind().try_to_bits(target_layout.pointer_size) {
+                res => match size.try_to_bits(target_layout.pointer_size) {
                     // Arrays of size zero don't need drop, even if their element
                     // type does.
                     Some(0) => Ok(SmallVec::new()),

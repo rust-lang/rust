@@ -1,7 +1,6 @@
 use super::Const;
 use crate::mir;
 use crate::ty::abstract_const::CastKind;
-use crate::ty::sty::ConstKind;
 use crate::ty::subst::SubstsRef;
 use crate::ty::{self, List, Ty};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -36,12 +35,6 @@ impl<'tcx> UnevaluatedConst<'tcx> {
     }
 }
 
-impl<'tcx> From<ty::ConstVid<'tcx>> for ConstKind<'tcx> {
-    fn from(const_vid: ty::ConstVid<'tcx>) -> Self {
-        InferConst::Var(const_vid).into()
-    }
-}
-
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 #[derive(HashStable, TyEncodable, TyDecodable, TypeVisitable, TypeFoldable)]
 pub enum Expr<'tcx> {
@@ -55,7 +48,7 @@ pub enum Expr<'tcx> {
 static_assert_size!(Expr<'_>, 24);
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(ConstKind<'_>, 32);
+static_assert_size!(super::ConstKind<'_>, 32);
 
 /// An inference variable for a const, for use in const generics.
 #[derive(Copy, Clone, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable, Hash)]

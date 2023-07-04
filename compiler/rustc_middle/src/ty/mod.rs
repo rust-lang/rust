@@ -66,6 +66,10 @@ use std::{fmt, str};
 
 pub use crate::ty::diagnostics::*;
 pub use rustc_type_ir::AliasKind::*;
+pub use rustc_type_ir::ConstKind::{
+    Bound as BoundCt, Error as ErrorCt, Expr as ExprCt, Infer as InferCt, Param as ParamCt,
+    Placeholder as PlaceholderCt, Unevaluated, Value,
+};
 pub use rustc_type_ir::DynKind::*;
 pub use rustc_type_ir::InferTy::*;
 pub use rustc_type_ir::RegionKind::*;
