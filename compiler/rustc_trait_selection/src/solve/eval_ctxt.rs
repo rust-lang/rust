@@ -196,9 +196,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                 }
 
                 (_, None, GenerateProofTree::Yes(_)) => generate_proof_tree,
-                // `Never` is kind of weird- it doesn't actually force us to not generate proof trees
-                // its just the default setting for rustflags forced proof tree generation.
-                (SolverProofTreeCondition::Never, _, _) => generate_proof_tree,
+                (SolverProofTreeCondition::OnRequest, _, _) => generate_proof_tree,
                 (SolverProofTreeCondition::OnError, _, _) => generate_proof_tree,
             };
 
