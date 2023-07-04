@@ -99,9 +99,13 @@ impl From<InjectedExpressionId> for ExpressionOperandId {
 pub enum CoverageKind {
     Counter {
         function_source_hash: u64,
+        /// ID of this counter within its enclosing function.
+        /// Expressions in the same function can refer to it as an operand.
         id: CounterValueReference,
     },
     Expression {
+        /// ID of this coverage-counter expression within its enclosing function.
+        /// Other expressions in the same function can refer to it as an operand.
         id: InjectedExpressionId,
         lhs: ExpressionOperandId,
         op: Op,
