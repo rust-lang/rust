@@ -651,7 +651,8 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
                             .builtin_deref(true)
                             .expect("tried to dereference on non-ptr type")
                             .ty;
-                        let dereferenced_const = self.tcx.mk_const(ct.kind(), pointee_ty);
+                        // FIXME: add an assert that we only do this for valtrees.
+                        let dereferenced_const = self.tcx.mk_ct_from_kind(ct.kind(), pointee_ty);
                         self = dereferenced_const.print(self)?;
                     }
                 }

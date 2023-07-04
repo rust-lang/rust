@@ -2332,7 +2332,7 @@ impl<'tcx> ConstantKind<'tcx> {
                 if let Some(val) = c.kind().try_eval_for_mir(tcx, param_env) {
                     match val {
                         Ok(val) => Self::Val(val, c.ty()),
-                        Err(guar) => Self::Ty(tcx.const_error(self.ty(), guar)),
+                        Err(guar) => Self::Ty(ty::Const::new_error(tcx, guar, self.ty())),
                     }
                 } else {
                     self
@@ -2344,7 +2344,9 @@ impl<'tcx> ConstantKind<'tcx> {
                 match tcx.const_eval_resolve(param_env, uneval, None) {
                     Ok(val) => Self::Val(val, ty),
                     Err(ErrorHandled::TooGeneric) => self,
-                    Err(ErrorHandled::Reported(guar)) => Self::Ty(tcx.const_error(ty, guar.into())),
+                    Err(ErrorHandled::Reported(guar)) => {
+                        Self::Ty(ty::Const::new_error(tcx, guar.into(), ty))
+                    }
                 }
             }
         }
@@ -2510,7 +2512,7 @@ impl<'tcx> ConstantKind<'tcx> {
                 let generics = tcx.generics_of(item_def_id);
                 let index = generics.param_def_id_to_index[&def_id];
                 let name = tcx.item_name(def_id);
-                let ty_const = tcx.mk_const(ty::ParamConst::new(index, name), ty);
+                let ty_const = ty::Const::new_param(tcx, ty::ParamConst::new(index, name), ty);
                 debug!(?ty_const);
 
                 return Self::Ty(ty_const);

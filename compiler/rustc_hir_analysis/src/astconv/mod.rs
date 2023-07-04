@@ -482,7 +482,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             self.astconv.ct_infer(ty, Some(param), inf.span).into()
                         } else {
                             self.inferred_params.push(inf.span);
-                            tcx.const_error_misc(ty).into()
+                            ty::Const::new_misc_error(tcx, ty).into()
                         }
                     }
                     _ => unreachable!(),
@@ -537,7 +537,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             .no_bound_vars()
                             .expect("const parameter types cannot be generic");
                         if let Err(guar) = ty.error_reported() {
-                            return tcx.const_error(ty, guar).into();
+                            return ty::Const::new_error(tcx, guar, ty).into();
                         }
                         if !infer_args && has_default {
                             tcx.const_param_default(param.def_id).subst(tcx, substs.unwrap()).into()
@@ -546,7 +546,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 self.astconv.ct_infer(ty, Some(param), self.span).into()
                             } else {
                                 // We've already errored above about the mismatch.
-                                tcx.const_error_misc(ty).into()
+                                ty::Const::new_misc_error(tcx, ty).into()
                             }
                         }
                     }
@@ -1970,7 +1970,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     assert!(!ct.ty().has_escaping_bound_vars());
 
                     match ct.kind() {
-                        ty::ConstKind::Bound(_, bv) => self.tcx.mk_const(
+                        ty::ConstKind::Bound(_, bv) => ty::Const::new_placeholder(
+                            self.tcx,
                             ty::PlaceholderConst { universe: self.universe, bound: bv },
                             ct.ty(),
                         ),

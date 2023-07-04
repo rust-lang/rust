@@ -915,7 +915,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         use rustc_middle::mir::interpret::ErrorHandled;
         match self.infcx.try_const_eval_resolve(param_env, unevaluated, ty, None) {
             Ok(ct) => Some(ct),
-            Err(ErrorHandled::Reported(e)) => Some(self.tcx().const_error(ty, e.into())),
+            Err(ErrorHandled::Reported(e)) => Some(ty::Const::new_error(self.tcx(), e.into(), ty)),
             Err(ErrorHandled::TooGeneric) => None,
         }
     }

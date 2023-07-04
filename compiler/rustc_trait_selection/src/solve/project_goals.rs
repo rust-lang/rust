@@ -186,11 +186,10 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                         "missing value for assoc item in impl",
                     );
                     let error_term = match assoc_def.item.kind {
-                        ty::AssocKind::Const => tcx
-                            .const_error(
-                                tcx.type_of(goal.predicate.def_id())
-                                    .subst(tcx, goal.predicate.projection_ty.substs),
-                                guar,
+                        ty::AssocKind::Const => ty::Const::new_error(tcx,
+                            guar,
+                            tcx.type_of(goal.predicate.def_id())
+                                .subst(tcx, goal.predicate.projection_ty.substs),
                             )
                             .into(),
                         ty::AssocKind::Type => tcx.ty_error(guar).into(),

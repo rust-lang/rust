@@ -386,11 +386,10 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                                 .type_of(param.def_id)
                                 .no_bound_vars()
                                 .expect("ct params cannot have early bound vars");
-                            tcx.mk_const(
-                                ty::ConstKind::Bound(
-                                    ty::INNERMOST,
-                                    ty::BoundVar::from_usize(num_bound_vars),
-                                ),
+                            ty::Const::new_bound(
+                                tcx,
+                                ty::INNERMOST,
+                                ty::BoundVar::from_usize(num_bound_vars),
                                 ty,
                             )
                             .into()
@@ -529,13 +528,13 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                         let reported = err.emit();
                         term = match def_kind {
                             hir::def::DefKind::AssocTy => tcx.ty_error(reported).into(),
-                            hir::def::DefKind::AssocConst => tcx
-                                .const_error(
-                                    tcx.type_of(assoc_item_def_id)
-                                        .subst(tcx, projection_ty.skip_binder().substs),
-                                    reported,
-                                )
-                                .into(),
+                            hir::def::DefKind::AssocConst => ty::Const::new_error(
+                                tcx,
+                                reported,
+                                tcx.type_of(assoc_item_def_id)
+                                    .subst(tcx, projection_ty.skip_binder().substs),
+                            )
+                            .into(),
                             _ => unreachable!(),
                         };
                     }

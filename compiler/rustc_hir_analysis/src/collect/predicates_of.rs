@@ -243,9 +243,12 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                 let name = param.name.ident().name;
                 let param_const = ty::ParamConst::new(index, name);
 
-                let ct_ty = tcx.type_of(param.def_id.to_def_id()).subst_identity();
+                let ct_ty = tcx
+                    .type_of(param.def_id.to_def_id())
+                    .no_bound_vars()
+                    .expect("const parameters cannot be generic");
 
-                let ct = tcx.mk_const(param_const, ct_ty);
+                let ct = ty::Const::new_param(tcx, param_const, ct_ty);
 
                 predicates.insert((
                     ty::ClauseKind::ConstArgHasType(ct, ct_ty).to_predicate(tcx),

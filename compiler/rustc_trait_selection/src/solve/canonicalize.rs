@@ -377,7 +377,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'_, 'tcx> {
                 // any equated inference vars correctly!
                 let root_vid = self.infcx.root_const_var(vid);
                 if root_vid != vid {
-                    c = self.infcx.tcx.mk_const(ty::InferConst::Var(root_vid), c.ty());
+                    c = ty::Const::new_var(self.infcx.tcx, root_vid, c.ty());
                     vid = root_vid;
                 }
 
@@ -426,6 +426,6 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'_, 'tcx> {
                 var
             }),
         );
-        self.interner().mk_const(ty::ConstKind::Bound(self.binder_index, var), c.ty())
+        ty::Const::new_bound(self.infcx.tcx, self.binder_index, var, c.ty())
     }
 }

@@ -102,9 +102,11 @@ impl GenericParamDef {
         match &self.kind {
             ty::GenericParamDefKind::Lifetime => ty::Region::new_error_misc(tcx).into(),
             ty::GenericParamDefKind::Type { .. } => tcx.ty_error_misc().into(),
-            ty::GenericParamDefKind::Const { .. } => {
-                tcx.const_error_misc(tcx.type_of(self.def_id).subst(tcx, preceding_substs)).into()
-            }
+            ty::GenericParamDefKind::Const { .. } => ty::Const::new_misc_error(
+                tcx,
+                tcx.type_of(self.def_id).subst(tcx, preceding_substs),
+            )
+            .into(),
         }
     }
 }

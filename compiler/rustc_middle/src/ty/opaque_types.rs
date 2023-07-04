@@ -216,7 +216,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReverseMapper<'tcx> {
                             })
                             .emit_unless(self.ignore_errors);
 
-                        self.interner().const_error(ct.ty(), guar)
+                        ty::Const::new_error(self.tcx, guar, ct.ty())
                     }
                 }
             }

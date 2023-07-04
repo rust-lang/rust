@@ -627,7 +627,11 @@ pub fn structurally_relate_consts<'tcx, R: TypeRelation<'tcx>>(
                 au.substs,
                 bu.substs,
             )?;
-            return Ok(tcx.mk_const(ty::UnevaluatedConst { def: au.def, substs }, a.ty()));
+            return Ok(ty::Const::new_unevaluated(
+                tcx,
+                ty::UnevaluatedConst { def: au.def, substs },
+                a.ty(),
+            ));
         }
         // Before calling relate on exprs, it is necessary to ensure that the nested consts
         // have identical types.
@@ -668,8 +672,7 @@ pub fn structurally_relate_consts<'tcx, R: TypeRelation<'tcx>>(
                 }
                 _ => return Err(TypeError::ConstMismatch(expected_found(r, a, b))),
             };
-            let kind = ty::ConstKind::Expr(expr);
-            return Ok(tcx.mk_const(kind, a.ty()));
+            return Ok(ty::Const::new_expr(tcx, expr, a.ty()));
         }
         _ => false,
     };

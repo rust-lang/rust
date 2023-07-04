@@ -999,7 +999,7 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 
     pub fn next_const_var(&self, ty: Ty<'tcx>, origin: ConstVariableOrigin) -> ty::Const<'tcx> {
-        self.tcx.mk_const(self.next_const_var_id(origin), ty)
+        ty::Const::new_var(self.tcx, self.next_const_var_id(origin), ty)
     }
 
     pub fn next_const_var_in_universe(
@@ -1013,7 +1013,7 @@ impl<'tcx> InferCtxt<'tcx> {
             .borrow_mut()
             .const_unification_table()
             .new_key(ConstVarValue { origin, val: ConstVariableValue::Unknown { universe } });
-        self.tcx.mk_const(vid, ty)
+        ty::Const::new_var(self.tcx, vid, ty)
     }
 
     pub fn next_const_var_id(&self, origin: ConstVariableOrigin) -> ConstVid<'tcx> {
@@ -1131,15 +1131,15 @@ impl<'tcx> InferCtxt<'tcx> {
                         origin,
                         val: ConstVariableValue::Unknown { universe: self.universe() },
                     });
-                self.tcx
-                    .mk_const(
-                        const_var_id,
-                        self.tcx
-                            .type_of(param.def_id)
-                            .no_bound_vars()
-                            .expect("const parameter types cannot be generic"),
-                    )
-                    .into()
+                ty::Const::new_var(
+                    self.tcx,
+                    const_var_id,
+                    self.tcx
+                        .type_of(param.def_id)
+                        .no_bound_vars()
+                        .expect("const parameter types cannot be generic"),
+                )
+                .into()
             }
         }
     }
@@ -1472,7 +1472,7 @@ impl<'tcx> InferCtxt<'tcx> {
         span: Option<Span>,
     ) -> Result<ty::Const<'tcx>, ErrorHandled> {
         match self.const_eval_resolve(param_env, unevaluated, span) {
-            Ok(Some(val)) => Ok(self.tcx.mk_const(val, ty)),
+            Ok(Some(val)) => Ok(ty::Const::new_value(self.tcx, val, ty)),
             Ok(None) => {
                 let tcx = self.tcx;
                 let def_id = unevaluated.def;
@@ -1964,7 +1964,8 @@ fn replace_param_and_infer_substs_with_placeholder<'tcx>(
                 if ty.has_non_region_param() || ty.has_non_region_infer() {
                     bug!("const `{c}`'s type should not reference params or types");
                 }
-                self.tcx.mk_const(
+                ty::Const::new_placeholder(
+                    self.tcx,
                     ty::PlaceholderConst {
                         universe: ty::UniverseIndex::ROOT,
                         bound: ty::BoundVar::from_u32({
