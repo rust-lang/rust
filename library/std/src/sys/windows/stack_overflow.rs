@@ -28,6 +28,12 @@ unsafe extern "system" fn vectored_handler(ExceptionInfo: *mut c::EXCEPTION_POIN
                 "\nthread '{}' has overflowed its stack\n",
                 thread::current().name().unwrap_or("<unknown>")
             );
+            crate::backtrace_rs::trace_unsynchronized(|frame| {
+                crate::backtrace_rs::resolve_frame_unsynchronized(frame, |symbol| {
+                    rtprintpanic!("{symbol:?}\n");
+                });
+                true // keep going to the next frame
+            });
         }
         c::EXCEPTION_CONTINUE_SEARCH
     }

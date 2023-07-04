@@ -60,6 +60,11 @@ jobs:
           - name: x86_64-gnu-tools
             os: ubuntu-20.04-16core-64gb
             env: {}
+          - name: x86_64-msvc
+            env:
+              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --enable-profiler"
+              SCRIPT: make ci-msvc
+            os: windows-2019-8core-32gb
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:
