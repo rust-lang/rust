@@ -145,7 +145,8 @@ fn run_tests(mode: Mode, path: &str, target: &str, with_dependencies: bool) -> R
         // The files we're actually interested in (all `.rs` files).
         |path| {
             path.extension().is_some_and(|ext| ext == "rs")
-                && (filters.is_empty() || filters.iter().any(|f| path.starts_with(f)))
+                && (filters.is_empty()
+                    || filters.iter().any(|f| path.display().to_string().contains(f)))
         },
         // This could be used to overwrite the `Config` on a per-test basis.
         |_, _| None,
