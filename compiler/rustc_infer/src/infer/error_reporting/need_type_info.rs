@@ -162,10 +162,18 @@ fn fmt_printer<'a, 'tcx>(infcx: &'a InferCtxt<'tcx>, ns: Namespace) -> FmtPrinte
         let mut infcx_inner = infcx.inner.borrow_mut();
         let ty_vars = infcx_inner.type_variables();
         let var_origin = ty_vars.var_origin(ty_vid);
-        if let TypeVariableOriginKind::TypeParameterDefinition(name, _) = var_origin.kind
+        if let TypeVariableOriginKind::TypeParameterDefinition(name, def_id) = var_origin.kind
             && !var_origin.span.from_expansion()
         {
-            Some(name)
+            let generics = infcx.tcx.generics_of(infcx.tcx.parent(def_id));
+            let idx = generics.param_def_id_to_index(infcx.tcx, def_id).unwrap();
+            let generic_param_def = generics.param_at(idx as usize, infcx.tcx);
+            if let ty::GenericParamDefKind::Type { synthetic: true, .. } = generic_param_def.kind
+            {
+                None
+            } else {
+                Some(name)
+            }
         } else {
             None
         }
