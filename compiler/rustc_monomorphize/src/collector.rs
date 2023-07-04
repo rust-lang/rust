@@ -231,8 +231,8 @@ impl<'tcx> UsageMap<'tcx> {
         assert!(self.used_map.insert(user_item, used_items).is_none());
     }
 
-    pub fn get_user_items(&self, item: MonoItem<'tcx>) -> Option<&[MonoItem<'tcx>]> {
-        self.user_map.get(&item).map(|items| items.as_slice())
+    pub fn get_user_items(&self, item: MonoItem<'tcx>) -> &[MonoItem<'tcx>] {
+        self.user_map.get(&item).map(|items| items.as_slice()).unwrap_or(&[])
     }
 
     /// Internally iterate over all inlined items used by `item`.

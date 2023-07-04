@@ -495,20 +495,20 @@ fn internalize_symbols<'tcx>(
             if !single_codegen_unit {
                 debug_assert_eq!(mono_item_placements[item], home_cgu);
 
-                if let Some(user_items) = cx.usage_map.get_user_items(*item) {
-                    if user_items
-                        .iter()
-                        .filter_map(|user_item| {
-                            // Some user mono items might not have been
-                            // instantiated. We can safely ignore those.
-                            mono_item_placements.get(user_item)
-                        })
-                        .any(|placement| *placement != home_cgu)
-                    {
-                        // Found a user from another CGU, so skip to the next item
-                        // without marking this one as internal.
-                        continue;
-                    }
+                if cx
+                    .usage_map
+                    .get_user_items(*item)
+                    .iter()
+                    .filter_map(|user_item| {
+                        // Some user mono items might not have been
+                        // instantiated. We can safely ignore those.
+                        mono_item_placements.get(user_item)
+                    })
+                    .any(|placement| *placement != home_cgu)
+                {
+                    // Found a user from another CGU, so skip to the next item
+                    // without marking this one as internal.
+                    continue;
                 }
             }
 
