@@ -601,7 +601,7 @@ pub(crate) fn run_pass_manager(
             llvm::LLVMRustAddModuleFlag(
                 module.module_llvm.llmod(),
                 llvm::LLVMModFlagBehavior::Error,
-                c"LTOPostLink".as_ptr().cast(),
+                "LTOPostLink\0".as_ptr().cast(),
                 1,
             );
         }
