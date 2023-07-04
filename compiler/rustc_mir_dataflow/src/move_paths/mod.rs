@@ -1,4 +1,5 @@
 use crate::move_paths::builder::MoveDat;
+use crate::un_derefer::UnDerefer;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::*;
@@ -300,8 +301,7 @@ pub struct MovePathLookup<'tcx> {
     /// elem to the associated MovePathIndex.
     projections: FxHashMap<(MovePathIndex, AbstractElem), MovePathIndex>,
 
-    /// Maps `DerefTemp` locals to the `Place`s assigned to them.
-    derefer_sidetable: FxHashMap<Local, Place<'tcx>>,
+    un_derefer: UnDerefer<'tcx>,
 }
 
 mod builder;
@@ -317,47 +317,24 @@ impl<'tcx> MovePathLookup<'tcx> {
     // alternative will *not* create a MovePath on the fly for an
     // unknown place, but will rather return the nearest available
     // parent.
-    pub fn find(&self, place: PlaceRef<'_>) -> LookupResult {
-        let deref_chain = self.deref_chain(place);
+    pub fn find(&self, place: PlaceRef<'tcx>) -> LookupResult {
+        let mut result = self.find_local(place.local);
 
-        let local = match deref_chain.first() {
-            Some(place) => place.local,
-            None => place.local,
-        };
-
-        let mut result = *self.locals.get(&local).unwrap_or_else(|| {
-            bug!("base local ({local:?}) of deref_chain should not be a deref temp")
-        });
-
-        // this needs to be a closure because `place` has a different lifetime than `prefix`'s places
-        let mut subpaths_for_place = |place: PlaceRef<'_>| {
-            for elem in place.projection.iter() {
-                if let Some(&subpath) = self.projections.get(&(result, elem.lift())) {
-                    result = subpath;
-                } else {
-                    return Some(result);
-                }
-            }
-            None
-        };
-
-        for place in deref_chain {
-            if let Some(result) = subpaths_for_place(place.as_ref()) {
+        for (_, elem) in self.un_derefer.iter_projections(place) {
+            if let Some(&subpath) = self.projections.get(&(result, elem.lift())) {
+                result = subpath;
+            } else {
                 return LookupResult::Parent(Some(result));
             }
-        }
-
-        if let Some(result) = subpaths_for_place(place) {
-            return LookupResult::Parent(Some(result));
         }
 
         LookupResult::Exact(result)
     }
 
     pub fn find_local(&self, local: Local) -> MovePathIndex {
-        let deref_chain = self.deref_chain(Place::from(local).as_ref());
+        let deref_chain = self.un_derefer.deref_chain(local);
 
-        let local = match deref_chain.last() {
+        let local = match deref_chain.first() {
             Some(place) => place.local,
             None => local,
         };
@@ -373,21 +350,6 @@ impl<'tcx> MovePathLookup<'tcx> {
         &self,
     ) -> impl DoubleEndedIterator<Item = (Local, MovePathIndex)> + ExactSizeIterator + '_ {
         self.locals.iter().map(|(&l, &idx)| (l, idx))
-    }
-
-    /// Returns the chain of places behind `DerefTemp` locals in `place`
-    pub fn deref_chain(&self, place: PlaceRef<'_>) -> Vec<Place<'tcx>> {
-        let mut prefix = Vec::new();
-        let mut local = place.local;
-
-        while let Some(&reffed) = self.derefer_sidetable.get(&local) {
-            prefix.insert(0, reffed);
-            local = reffed.local;
-        }
-
-        debug!("deref_chain({place:?}) = {prefix:?}");
-
-        prefix
     }
 }
 
