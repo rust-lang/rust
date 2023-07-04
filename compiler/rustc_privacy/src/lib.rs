@@ -210,9 +210,6 @@ where
                     }
                 }
             }
-            ty::Alias(ty::Weak, alias) => {
-                self.def_id_visitor.visit_def_id(alias.def_id, "type alias", &ty);
-            }
             ty::Alias(ty::Projection, proj) => {
                 if V::SKIP_ASSOC_TYS {
                     // Visitors searching for minimal visibility/reachability want to
@@ -225,7 +222,7 @@ where
                 // This will also visit args if necessary, so we don't need to recurse.
                 return self.visit_projection_ty(proj);
             }
-            ty::Alias(ty::Inherent, data) => {
+            ty::Alias(kind @ (ty::Inherent | ty::Weak), data) => {
                 if V::SKIP_ASSOC_TYS {
                     // Visitors searching for minimal visibility/reachability want to
                     // conservatively approximate associated types like `Type::Alias`
@@ -237,7 +234,11 @@ where
 
                 self.def_id_visitor.visit_def_id(
                     data.def_id,
-                    "associated type",
+                    match kind {
+                        ty::Inherent => "associated type",
+                        ty::Weak => "type alias",
+                        _ => unreachable!(),
+                    },
                     &LazyDefPathStr { def_id: data.def_id, tcx },
                 )?;
 
