@@ -91,11 +91,11 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         let infcx = tcx.infer_ctxt().build();
         let mut selcx = SelectionContext::new(&infcx);
         for polarity in [true, false] {
-            let result = selcx.poly_select(&Obligation::new(
+            let result = selcx.select(&Obligation::new(
                 tcx,
                 ObligationCause::dummy(),
                 orig_env,
-                ty::Binder::dummy(ty::TraitPredicate {
+                ty::TraitPredicate {
                     trait_ref,
                     constness: ty::BoundConstness::NotConst,
                     polarity: if polarity {
@@ -103,7 +103,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                     } else {
                         ImplPolarity::Negative
                     },
-                }),
+                },
             ));
             if let Ok(Some(ImplSource::UserDefined(_))) = result {
                 debug!(
