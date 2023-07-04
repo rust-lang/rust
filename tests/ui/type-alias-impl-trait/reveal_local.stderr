@@ -5,7 +5,7 @@ LL | type Foo = impl Debug;
    |            ^^^^^^^^^^
    |
 note: ...which requires type-checking `not_good`...
-  --> $DIR/reveal_local.rs:13:5
+  --> $DIR/reveal_local.rs:15:5
    |
 LL |     is_send::<Foo>();
    |     ^^^^^^^^^^^^^^
@@ -23,6 +23,98 @@ LL | |
 LL | | fn main() {}
    | |____________^
 
-error: aborting due to previous error
+error[E0391]: cycle detected when computing type of `Foo::{opaque#0}`
+  --> $DIR/reveal_local.rs:5:12
+   |
+LL | type Foo = impl Debug;
+   |            ^^^^^^^^^^
+   |
+note: ...which requires type-checking `not_good`...
+  --> $DIR/reveal_local.rs:12:1
+   |
+LL | fn not_good() {
+   | ^^^^^^^^^^^^^
+   = note: ...which again requires computing type of `Foo::{opaque#0}`, completing the cycle
+note: cycle used when checking item types in top-level module
+  --> $DIR/reveal_local.rs:1:1
+   |
+LL | / #![feature(type_alias_impl_trait)]
+LL | |
+LL | | use std::fmt::Debug;
+LL | |
+...  |
+LL | |
+LL | | fn main() {}
+   | |____________^
+
+error: cannot check whether the hidden type of `reveal_local[9507]::Foo::{opaque#0}` satisfies auto traits
+  --> $DIR/reveal_local.rs:15:15
+   |
+LL |     is_send::<Foo>();
+   |               ^^^
+   |
+note: opaque type is declared here
+  --> $DIR/reveal_local.rs:5:12
+   |
+LL | type Foo = impl Debug;
+   |            ^^^^^^^^^^
+note: this item depends on auto traits of the hidden type, but may also be registering the hidden type. This is not supported right now. You can try moving the opaque type and the item that actually registers a hidden type into a new submodule
+  --> $DIR/reveal_local.rs:12:4
+   |
+LL | fn not_good() {
+   |    ^^^^^^^^
+note: required by a bound in `is_send`
+  --> $DIR/reveal_local.rs:10:15
+   |
+LL | fn is_send<T: Send>() {}
+   |               ^^^^ required by this bound in `is_send`
+
+error[E0391]: cycle detected when computing type of `Foo::{opaque#0}`
+  --> $DIR/reveal_local.rs:5:12
+   |
+LL | type Foo = impl Debug;
+   |            ^^^^^^^^^^
+   |
+note: ...which requires type-checking `not_gooder`...
+  --> $DIR/reveal_local.rs:19:1
+   |
+LL | fn not_gooder() {
+   | ^^^^^^^^^^^^^^^
+   = note: ...which again requires computing type of `Foo::{opaque#0}`, completing the cycle
+note: cycle used when checking item types in top-level module
+  --> $DIR/reveal_local.rs:1:1
+   |
+LL | / #![feature(type_alias_impl_trait)]
+LL | |
+LL | | use std::fmt::Debug;
+LL | |
+...  |
+LL | |
+LL | | fn main() {}
+   | |____________^
+
+error: cannot check whether the hidden type of `reveal_local[9507]::Foo::{opaque#0}` satisfies auto traits
+  --> $DIR/reveal_local.rs:25:15
+   |
+LL |     is_send::<Foo>();
+   |               ^^^
+   |
+note: opaque type is declared here
+  --> $DIR/reveal_local.rs:5:12
+   |
+LL | type Foo = impl Debug;
+   |            ^^^^^^^^^^
+note: this item depends on auto traits of the hidden type, but may also be registering the hidden type. This is not supported right now. You can try moving the opaque type and the item that actually registers a hidden type into a new submodule
+  --> $DIR/reveal_local.rs:19:4
+   |
+LL | fn not_gooder() {
+   |    ^^^^^^^^^^
+note: required by a bound in `is_send`
+  --> $DIR/reveal_local.rs:10:15
+   |
+LL | fn is_send<T: Send>() {}
+   |               ^^^^ required by this bound in `is_send`
+
+error: aborting due to 5 previous errors
 
 For more information about this error, try `rustc --explain E0391`.

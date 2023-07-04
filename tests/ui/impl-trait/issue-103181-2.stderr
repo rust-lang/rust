@@ -4,6 +4,61 @@ error[E0425]: cannot find value `ident_error` in this scope
 LL |     ident_error;
    |     ^^^^^^^^^^^ not found in this scope
 
-error: aborting due to previous error
+error: cannot check whether the hidden type of opaque type satisfies auto traits
+  --> $DIR/issue-103181-2.rs:26:15
+   |
+LL |     normalize(broken_fut(), ());
+   |     --------- ^^^^^^^^^^^^
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: opaque type is declared here
+  --> $DIR/issue-103181-2.rs:11:23
+   |
+LL | async fn broken_fut() {
+   |                       ^
+note: this item depends on auto traits of the hidden type, but may also be registering the hidden type. This is not supported right now. You can try moving the opaque type and the item that actually registers a hidden type into a new submodule
+  --> $DIR/issue-103181-2.rs:20:10
+   |
+LL | async fn iceice<A, B>()
+   |          ^^^^^^
+note: required for `impl Future<Output = ()>` to implement `SendFuture`
+  --> $DIR/issue-103181-2.rs:7:17
+   |
+LL | impl<Fut: Send> SendFuture for Fut {
+   |           ----  ^^^^^^^^^^     ^^^
+   |           |
+   |           unsatisfied trait bound introduced here
+note: required by a bound in `normalize`
+  --> $DIR/issue-103181-2.rs:18:19
+   |
+LL | fn normalize<Fut: SendFuture>(_: Fut, _: Fut::Output) {}
+   |                   ^^^^^^^^^^ required by this bound in `normalize`
+
+error: cannot check whether the hidden type of opaque type satisfies auto traits
+  --> $DIR/issue-103181-2.rs:26:5
+   |
+LL |     normalize(broken_fut(), ());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: opaque type is declared here
+  --> $DIR/issue-103181-2.rs:11:23
+   |
+LL | async fn broken_fut() {
+   |                       ^
+note: this item depends on auto traits of the hidden type, but may also be registering the hidden type. This is not supported right now. You can try moving the opaque type and the item that actually registers a hidden type into a new submodule
+  --> $DIR/issue-103181-2.rs:20:10
+   |
+LL | async fn iceice<A, B>()
+   |          ^^^^^^
+note: required for `impl Future<Output = ()>` to implement `SendFuture`
+  --> $DIR/issue-103181-2.rs:7:17
+   |
+LL | impl<Fut: Send> SendFuture for Fut {
+   |           ----  ^^^^^^^^^^     ^^^
+   |           |
+   |           unsatisfied trait bound introduced here
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0425`.

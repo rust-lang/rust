@@ -24,5 +24,6 @@ fn main() {
     type F = impl Future;
     // Check that statics are inhabited computes they layout.
     static POOL: Task<F> = Task::new();
+    //~^ ERROR: cannot check whether the hidden type of `layout_error[b009]::main::F::{opaque#0}` satisfies auto traits
     Task::spawn(&POOL, || cb());
 }
