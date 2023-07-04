@@ -231,6 +231,10 @@ impl<'tcx> UsageMap<'tcx> {
         assert!(self.used_map.insert(user_item, used_items).is_none());
     }
 
+    pub fn get_used_items(&self, item: MonoItem<'tcx>) -> &[MonoItem<'tcx>] {
+        self.used_map.get(&item).map(|items| items.as_slice()).unwrap()
+    }
+
     pub fn get_user_items(&self, item: MonoItem<'tcx>) -> &[MonoItem<'tcx>] {
         self.user_map.get(&item).map(|items| items.as_slice()).unwrap_or(&[])
     }
