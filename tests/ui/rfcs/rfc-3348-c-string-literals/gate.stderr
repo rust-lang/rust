@@ -1,21 +1,32 @@
-error[E0658]: `c".."` literals are experimental
-  --> $DIR/gate.rs:8:5
+error: prefix `c` is unknown
+  --> $DIR/gate.rs:10:5
    |
 LL |     c"foo";
-   |     ^^^^^^
+   |     ^ unknown prefix
    |
-   = note: see issue #105723 <https://github.com/rust-lang/rust/issues/105723> for more information
-   = help: add `#![feature(c_str_literals)]` to the crate attributes to enable
+   = note: prefixed identifiers and literals are reserved since Rust 2021
+help: consider inserting whitespace here
+   |
+LL |     c "foo";
+   |      +
 
-error[E0658]: `c".."` literals are experimental
-  --> $DIR/gate.rs:11:8
+error: prefix `c` is unknown
+  --> $DIR/gate.rs:13:8
    |
 LL |     m!(c"test");
-   |        ^^^^^^^
+   |        ^ unknown prefix
    |
-   = note: see issue #105723 <https://github.com/rust-lang/rust/issues/105723> for more information
-   = help: add `#![feature(c_str_literals)]` to the crate attributes to enable
+   = note: prefixed identifiers and literals are reserved since Rust 2021
+help: consider inserting whitespace here
+   |
+LL |     m!(c "test");
+   |         +
 
-error: aborting due to 2 previous errors
+error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `"foo"`
+  --> $DIR/gate.rs:10:6
+   |
+LL |     c"foo";
+   |      ^^^^^ expected one of 8 possible tokens
 
-For more information about this error, try `rustc --explain E0658`.
+error: aborting due to 3 previous errors
+
