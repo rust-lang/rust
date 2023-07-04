@@ -180,34 +180,6 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         let mode = if infcx.intercrate { SolverMode::Coherence } else { SolverMode::Normal };
         let mut search_graph = search_graph::SearchGraph::new(infcx.tcx, mode);
 
-        let inspect = {
-            let generate_proof_tree = match (
-                infcx.tcx.sess.opts.unstable_opts.dump_solver_proof_tree,
-                infcx.tcx.sess.opts.unstable_opts.dump_solver_proof_tree_use_cache,
-                generate_proof_tree,
-            ) {
-                (_, Some(use_cache), GenerateProofTree::Yes(_)) => {
-                    GenerateProofTree::Yes(DisableGlobalCache::from_bool(!use_cache))
-                }
-
-                (SolverProofTreeCondition::Always, use_cache, GenerateProofTree::No) => {
-                    let use_cache = use_cache.unwrap_or(true);
-                    GenerateProofTree::Yes(DisableGlobalCache::from_bool(!use_cache))
-                }
-
-                (_, None, GenerateProofTree::Yes(_)) => generate_proof_tree,
-                (SolverProofTreeCondition::OnRequest, _, _) => generate_proof_tree,
-                (SolverProofTreeCondition::OnError, _, _) => generate_proof_tree,
-            };
-
-            match generate_proof_tree {
-                GenerateProofTree::No => ProofTreeBuilder::new_noop(),
-                GenerateProofTree::Yes(global_cache_disabled) => {
-                    ProofTreeBuilder::new_root(global_cache_disabled)
-                }
-            }
-        };
-
         let mut ecx = EvalCtxt {
             search_graph: &mut search_graph,
             infcx: infcx,
@@ -221,7 +193,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
             var_values: CanonicalVarValues::dummy(),
             nested_goals: NestedGoals::new(),
             tainted: Ok(()),
-            inspect,
+            inspect: ProofTreeBuilder::new_maybe_root(infcx.tcx, generate_proof_tree),
         };
         let result = f(&mut ecx);
 

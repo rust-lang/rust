@@ -3,9 +3,11 @@ use rustc_middle::traits::solve::inspect::{self, CacheHit, CandidateKind};
 use rustc_middle::traits::solve::{
     CanonicalInput, Certainty, Goal, IsNormalizesToHack, QueryInput, QueryResult,
 };
-use rustc_middle::ty;
+use rustc_middle::ty::{self, TyCtxt};
+use rustc_session::config::SolverProofTreeCondition;
 
 use super::eval_ctxt::DisableGlobalCache;
+use super::GenerateProofTree;
 
 #[derive(Eq, PartialEq, Debug, Hash, HashStable)]
 pub struct WipGoalEvaluation<'tcx> {
@@ -171,6 +173,37 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
 
     pub fn disable_global_cache(&self) -> DisableGlobalCache {
         self.disable_global_cache
+    }
+
+    pub fn new_maybe_root(
+        tcx: TyCtxt<'tcx>,
+        generate_proof_tree: GenerateProofTree,
+    ) -> ProofTreeBuilder<'tcx> {
+        let generate_proof_tree = match (
+            tcx.sess.opts.unstable_opts.dump_solver_proof_tree,
+            tcx.sess.opts.unstable_opts.dump_solver_proof_tree_use_cache,
+            generate_proof_tree,
+        ) {
+            (_, Some(use_cache), GenerateProofTree::Yes(_)) => {
+                GenerateProofTree::Yes(DisableGlobalCache::from_bool(!use_cache))
+            }
+
+            (SolverProofTreeCondition::Always, use_cache, GenerateProofTree::No) => {
+                let use_cache = use_cache.unwrap_or(true);
+                GenerateProofTree::Yes(DisableGlobalCache::from_bool(!use_cache))
+            }
+
+            (_, None, GenerateProofTree::Yes(_)) => generate_proof_tree,
+            (SolverProofTreeCondition::OnRequest, _, _) => generate_proof_tree,
+            (SolverProofTreeCondition::OnError, _, _) => generate_proof_tree,
+        };
+
+        match generate_proof_tree {
+            GenerateProofTree::No => ProofTreeBuilder::new_noop(),
+            GenerateProofTree::Yes(global_cache_disabled) => {
+                ProofTreeBuilder::new_root(global_cache_disabled)
+            }
+        }
     }
 
     pub fn new_root(disable_global_cache: DisableGlobalCache) -> ProofTreeBuilder<'tcx> {
