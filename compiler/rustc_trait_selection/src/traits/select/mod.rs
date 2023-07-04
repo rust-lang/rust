@@ -34,8 +34,6 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_infer::infer::LateBoundRegionConversionTime;
-use rustc_infer::traits::TraitEngine;
-use rustc_infer::traits::TraitEngineExt;
 use rustc_middle::dep_graph::{DepKind, DepNodeIndex};
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
@@ -312,6 +310,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         stack: &TraitObligationStack<'o, 'tcx>,
     ) -> SelectionResult<'tcx, SelectionCandidate<'tcx>> {
+        debug_assert!(!self.infcx.next_trait_solver());
         // Watch out for overflow. This intentionally bypasses (and does
         // not update) the cache.
         self.check_recursion_limit(&stack.obligation, &stack.obligation)?;
@@ -526,21 +525,20 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// Evaluates whether the obligation `obligation` can be satisfied
     /// and returns an `EvaluationResult`. This is meant for the
     /// *initial* call.
+    ///
+    /// Do not use this directly, use `infcx.evaluate_obligation` instead.
     pub fn evaluate_root_obligation(
         &mut self,
         obligation: &PredicateObligation<'tcx>,
     ) -> Result<EvaluationResult, OverflowError> {
+        debug_assert!(!self.infcx.next_trait_solver());
         self.evaluation_probe(|this| {
             let goal =
                 this.infcx.resolve_vars_if_possible((obligation.predicate, obligation.param_env));
-            let mut result = if this.infcx.next_trait_solver() {
-                this.evaluate_predicates_recursively_in_new_solver([obligation.clone()])?
-            } else {
-                this.evaluate_predicate_recursively(
-                    TraitObligationStackList::empty(&ProvisionalEvaluationCache::default()),
-                    obligation.clone(),
-                )?
-            };
+            let mut result = this.evaluate_predicate_recursively(
+                TraitObligationStackList::empty(&ProvisionalEvaluationCache::default()),
+                obligation.clone(),
+            )?;
             // If the predicate has done any inference, then downgrade the
             // result to ambiguous.
             if this.infcx.shallow_resolve(goal) != goal {
@@ -587,42 +585,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     where
         I: IntoIterator<Item = PredicateObligation<'tcx>> + std::fmt::Debug,
     {
-        if self.infcx.next_trait_solver() {
-            self.evaluate_predicates_recursively_in_new_solver(predicates)
-        } else {
-            let mut result = EvaluatedToOk;
-            for mut obligation in predicates {
-                obligation.set_depth_from_parent(stack.depth());
-                let eval = self.evaluate_predicate_recursively(stack, obligation.clone())?;
-                if let EvaluatedToErr = eval {
-                    // fast-path - EvaluatedToErr is the top of the lattice,
-                    // so we don't need to look on the other predicates.
-                    return Ok(EvaluatedToErr);
-                } else {
-                    result = cmp::max(result, eval);
-                }
+        let mut result = EvaluatedToOk;
+        for mut obligation in predicates {
+            obligation.set_depth_from_parent(stack.depth());
+            let eval = self.evaluate_predicate_recursively(stack, obligation.clone())?;
+            if let EvaluatedToErr = eval {
+                // fast-path - EvaluatedToErr is the top of the lattice,
+                // so we don't need to look on the other predicates.
+                return Ok(EvaluatedToErr);
+            } else {
+                result = cmp::max(result, eval);
             }
-            Ok(result)
         }
-    }
-
-    /// Evaluates the predicates using the new solver when `-Ztrait-solver=next` is enabled
-    fn evaluate_predicates_recursively_in_new_solver(
-        &mut self,
-        predicates: impl IntoIterator<Item = PredicateObligation<'tcx>>,
-    ) -> Result<EvaluationResult, OverflowError> {
-        let mut fulfill_cx = crate::solve::FulfillmentCtxt::new(self.infcx);
-        fulfill_cx.register_predicate_obligations(self.infcx, predicates);
-        // True errors
-        // FIXME(-Ztrait-solver=next): Overflows are reported as ambig here, is that OK?
-        if !fulfill_cx.select_where_possible(self.infcx).is_empty() {
-            return Ok(EvaluatedToErr);
-        }
-        if !fulfill_cx.select_all_or_error(self.infcx).is_empty() {
-            return Ok(EvaluatedToAmbig);
-        }
-        // Regions and opaques are handled in the `evaluation_probe` by looking at the snapshot
-        Ok(EvaluatedToOk)
+        Ok(result)
     }
 
     #[instrument(
@@ -636,6 +611,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         previous_stack: TraitObligationStackList<'o, 'tcx>,
         obligation: PredicateObligation<'tcx>,
     ) -> Result<EvaluationResult, OverflowError> {
+        debug_assert!(!self.infcx.next_trait_solver());
         // `previous_stack` stores a `TraitObligation`, while `obligation` is
         // a `PredicateObligation`. These are distinct types, so we can't
         // use any `Option` combinator method that would force them to be
@@ -1182,6 +1158,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         stack: &TraitObligationStack<'o, 'tcx>,
     ) -> Result<EvaluationResult, OverflowError> {
+        debug_assert!(!self.infcx.next_trait_solver());
         // In intercrate mode, whenever any of the generics are unbound,
         // there can always be an impl. Even if there are no impls in
         // this crate, perhaps the type would be unified with

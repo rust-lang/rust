@@ -303,6 +303,11 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
     }
 
     fn normalize(self, infcx: &InferCtxt<'tcx>) -> Vec<traits::PredicateObligation<'tcx>> {
+        // Do not normalize `wf` obligations with the new solver.
+        if infcx.next_trait_solver() {
+            return self.out;
+        }
+
         let cause = self.cause(traits::WellFormed(None));
         let param_env = self.param_env;
         let mut obligations = Vec::with_capacity(self.out.len());
