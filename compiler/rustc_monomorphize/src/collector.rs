@@ -164,7 +164,7 @@
 //! this is not implemented however: a mono item will be produced
 //! regardless of whether it is actually needed or not.
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::sync::{par_for_each_in, MTLock, MTLockRef};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
@@ -250,11 +250,13 @@ impl<'tcx> UsageMap<'tcx> {
     }
 }
 
+// The produced mono items are in an `FxIndexSet` to provide a deterministic
+// order.
 #[instrument(skip(tcx, mode), level = "debug")]
 pub fn collect_crate_mono_items(
     tcx: TyCtxt<'_>,
     mode: MonoItemCollectionMode,
-) -> (FxHashSet<MonoItem<'_>>, UsageMap<'_>) {
+) -> (FxIndexSet<MonoItem<'_>>, UsageMap<'_>) {
     let _prof_timer = tcx.prof.generic_activity("monomorphization_collector");
 
     let roots =
@@ -262,7 +264,7 @@ pub fn collect_crate_mono_items(
 
     debug!("building mono item graph, beginning at roots");
 
-    let mut visited = MTLock::new(FxHashSet::default());
+    let mut visited = MTLock::new(FxIndexSet::default());
     let mut usage_map = MTLock::new(UsageMap::new());
     let recursion_limit = tcx.recursion_limit();
 
@@ -332,7 +334,7 @@ fn collect_roots(tcx: TyCtxt<'_>, mode: MonoItemCollectionMode) -> Vec<MonoItem<
 fn collect_items_rec<'tcx>(
     tcx: TyCtxt<'tcx>,
     starting_item: Spanned<MonoItem<'tcx>>,
-    visited: MTLockRef<'_, FxHashSet<MonoItem<'tcx>>>,
+    visited: MTLockRef<'_, FxIndexSet<MonoItem<'tcx>>>,
     recursion_depths: &mut DefIdMap<usize>,
     recursion_limit: Limit,
     usage_map: MTLockRef<'_, UsageMap<'tcx>>,

@@ -133,7 +133,8 @@ struct PlacedMonoItems<'tcx> {
     internalization_candidates: FxHashSet<MonoItem<'tcx>>,
 }
 
-// The output CGUs are sorted by name.
+// `mono_items` must be in a deterministic order. The output CGUs are sorted by
+// name.
 fn partition<'tcx, I>(
     tcx: TyCtxt<'tcx>,
     mono_items: I,
@@ -194,6 +195,8 @@ where
     codegen_units
 }
 
+// `mono_items` must be in a deterministic order. The produced codegen units
+// are sorted by name to make things deterministic.
 fn place_mono_items<'tcx, I>(cx: &PartitioningCx<'_, 'tcx>, mono_items: I) -> PlacedMonoItems<'tcx>
 where
     I: Iterator<Item = MonoItem<'tcx>>,
