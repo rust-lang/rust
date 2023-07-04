@@ -865,7 +865,7 @@ pub fn param_list(
 
 pub fn trait_(
     is_unsafe: bool,
-    ident: String,
+    ident: &str,
     gen_params: Option<ast::GenericParamList>,
     where_clause: Option<ast::WhereClause>,
     assoc_items: ast::AssocItemList,
