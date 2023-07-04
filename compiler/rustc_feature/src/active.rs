@@ -393,8 +393,6 @@ declare_features! (
     (incomplete, dyn_star, "1.65.0", Some(102425), None),
     /// Allows `X..Y` patterns.
     (active, exclusive_range_pattern, "1.11.0", Some(37854), None),
-    /// Allows exhaustive pattern matching on types that contain uninhabited types.
-    (active, exhaustive_patterns, "1.13.0", Some(51085), None),
     /// Allows explicit tail calls via `become` expression.
     (incomplete, explicit_tail_calls, "CURRENT_RUSTC_VERSION", Some(112788), None),
     /// Allows using `efiapi`, `sysv64` and `win64` as calling convention

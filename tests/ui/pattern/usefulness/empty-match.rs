@@ -1,10 +1,8 @@
 // aux-build:empty.rs
-// revisions: normal exhaustive_patterns
 //
 // This tests a match with no arms on various types.
 #![feature(never_type)]
 #![feature(never_type_fallback)]
-#![cfg_attr(exhaustive_patterns, feature(exhaustive_patterns))]
 #![deny(unreachable_patterns)]
 //~^ NOTE the lint level is defined here
 
@@ -79,7 +77,7 @@ fn empty_foreign_enum_private(x: Option<empty::SecretlyUninhabitedForeignStruct>
     //~| NOTE for more information, visit
     //~| NOTE the matched value is of type
     //~| NOTE pattern `Some(_)` not covered
-    //[exhaustive_patterns]~| NOTE currently uninhabited, but this variant contains private fields
+    //~| NOTE currently uninhabited, but this variant contains private fields
 }
 
 fn never(x: !) {

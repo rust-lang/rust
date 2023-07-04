@@ -1028,6 +1028,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                                 ProjectionElem::ConstantIndex { offset, from_end } => ProjectionElem::ConstantIndex { offset, from_end },
                                 ProjectionElem::Subslice { from, to } => ProjectionElem::Subslice { from, to },
                                 ProjectionElem::OpaqueCast(x) => ProjectionElem::OpaqueCast(x),
+                                #[allow(unreachable_patterns)]
                                 ProjectionElem::Index(x) => match x { },
                             }
                         }).collect(),

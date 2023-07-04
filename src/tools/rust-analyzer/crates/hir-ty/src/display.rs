@@ -1620,6 +1620,7 @@ impl HirDisplay for LifetimeData {
             }
             LifetimeData::Static => write!(f, "'static"),
             LifetimeData::Erased => Ok(()),
+            #[allow(unreachable_patterns)]
             LifetimeData::Phantom(_, _) => Ok(()),
         }
     }

@@ -29,7 +29,7 @@
 #![feature(box_patterns)]
 #![feature(core_intrinsics)]
 #![feature(discriminant_kind)]
-#![feature(exhaustive_patterns)]
+#![cfg_attr(bootstrap, feature(exhaustive_patterns))]
 #![feature(generators)]
 #![feature(get_mut_unchecked)]
 #![feature(if_let_guard)]

@@ -2,7 +2,6 @@
 // visibly uninhabited).
 // edition:2021
 // run-pass
-#![feature(exhaustive_patterns)]
 #![feature(never_type)]
 
 pub fn main() {

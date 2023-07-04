@@ -1,7 +1,4 @@
-// check-fail
-// known-bug: #104034
-
-#![feature(exhaustive_patterns, never_type)]
+#![feature(never_type)]
 
 mod inner {
     pub struct Wrapper<T>(T);
@@ -18,4 +15,5 @@ fn foo() -> Either<(), !> {
 
 fn main() {
     let Either::A(()) = foo();
+    //~^ ERROR refutable pattern in local binding
 }

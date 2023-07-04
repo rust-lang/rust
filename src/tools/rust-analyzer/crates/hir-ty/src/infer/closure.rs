@@ -214,6 +214,7 @@ impl CapturedItem {
                     result = format!("{result}.{field}");
                     field_need_paren = false;
                 }
+                #[allow(unreachable_patterns)]
                 ProjectionElem::Index(_)
                 | ProjectionElem::ConstantIndex { .. }
                 | ProjectionElem::Subslice { .. }

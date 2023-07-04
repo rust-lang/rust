@@ -499,8 +499,7 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
         // Emit an extra note if the first uncovered witness would be uninhabited
         // if we disregard visibility.
         let witness_1_is_privately_uninhabited =
-            if cx.tcx.features().exhaustive_patterns
-                && let Some(witness_1) = witnesses.get(0)
+            if let Some(witness_1) = witnesses.get(0)
                 && let ty::Adt(adt, substs) = witness_1.ty().kind()
                 && adt.is_enum()
                 && let Constructor::Variant(variant_index) = witness_1.ctor()

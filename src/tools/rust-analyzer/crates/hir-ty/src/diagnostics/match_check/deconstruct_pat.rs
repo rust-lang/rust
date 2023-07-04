@@ -41,6 +41,9 @@
 //! or-patterns; instead we just try the alternatives one-by-one. For details on splitting
 //! wildcards, see [`SplitWildcard`]; for integer ranges, see [`SplitIntRange`].
 
+// This uses uninhabited types to encode statically unused variants.
+#![allow(unreachable_patterns)]
+
 use std::{
     cell::Cell,
     cmp::{max, min},

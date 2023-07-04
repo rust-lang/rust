@@ -1,5 +1,5 @@
 // check-pass
-#![feature(never_type, exhaustive_patterns)]
+#![feature(never_type)]
 #![warn(unreachable_code)]
 #![warn(unreachable_patterns)]
 
