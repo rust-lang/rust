@@ -1,5 +1,5 @@
 use super::needless_pass_by_value::requires_exact_signature;
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet;
 use clippy_utils::{is_from_proc_macro, is_self};
 use if_chain::if_chain;
@@ -12,7 +12,7 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::{self, Ty};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::kw;
 use rustc_span::Span;
@@ -46,7 +46,21 @@ declare_clippy_lint! {
     suspicious,
     "using a `&mut` argument when it's not mutated"
 }
-declare_lint_pass!(NeedlessPassByRefMut => [NEEDLESS_PASS_BY_REF_MUT]);
+
+#[derive(Copy, Clone)]
+pub struct NeedlessPassByRefMut {
+    avoid_breaking_exported_api: bool,
+}
+
+impl NeedlessPassByRefMut {
+    pub fn new(avoid_breaking_exported_api: bool) -> Self {
+        Self {
+            avoid_breaking_exported_api,
+        }
+    }
+}
+
+impl_lint_pass!(NeedlessPassByRefMut => [NEEDLESS_PASS_BY_REF_MUT]);
 
 fn should_skip<'tcx>(
     cx: &LateContext<'tcx>,
@@ -134,26 +148,45 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut {
             ctx
         };
 
-        for ((&input, &ty), arg) in decl.inputs.iter().zip(fn_sig.inputs()).zip(body.params) {
-            if should_skip(cx, input, ty, arg) {
-                continue;
-            }
-
+        let mut it = decl
+            .inputs
+            .iter()
+            .zip(fn_sig.inputs())
+            .zip(body.params)
+            .filter(|((&input, &ty), arg)| !should_skip(cx, input, ty, arg))
+            .peekable();
+        if it.peek().is_none() {
+            return;
+        }
+        let show_semver_warning = self.avoid_breaking_exported_api && cx.effective_visibilities.is_exported(fn_def_id);
+        for ((&input, &_), arg) in it {
             // Only take `&mut` arguments.
             if_chain! {
                 if let PatKind::Binding(_, canonical_id, ..) = arg.pat.kind;
                 if !mutably_used_vars.contains(&canonical_id);
                 if let rustc_hir::TyKind::Ref(_, inner_ty) = input.kind;
                 then {
-                    // If the argument is never used mutably, we emit the error.
-                    span_lint_and_sugg(
+                    // If the argument is never used mutably, we emit the warning.
+                    let sp = input.span;
+                    span_lint_and_then(
                         cx,
                         NEEDLESS_PASS_BY_REF_MUT,
-                        input.span,
+                        sp,
                         "this argument is a mutable reference, but not used mutably",
-                        "consider changing to",
-                        format!("&{}", snippet(cx, cx.tcx.hir().span(inner_ty.ty.hir_id), "_")),
-                        Applicability::Unspecified,
+                        |diag| {
+                            diag.span_suggestion(
+                                sp,
+                                "consider changing to".to_string(),
+                                format!(
+                                    "&{}",
+                                    snippet(cx, cx.tcx.hir().span(inner_ty.ty.hir_id), "_"),
+                                ),
+                                Applicability::Unspecified,
+                            );
+                            if show_semver_warning {
+                                diag.warn("changing this function will impact semver compatibility");
+                            }
+                        },
                     );
                 }
             }
