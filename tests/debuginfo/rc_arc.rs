@@ -9,7 +9,7 @@
 // gdb-command:run
 
 // gdb-command:print rc
-// gdb-check:[...]$1 = Rc(strong=11, weak=1) = {value = 111, FAIL strong = 11, weak = 1}
+// gdb-check:[...]$1 = Rc(strong=11, weak=1) = {value = 111, strong = 11, weak = 1}
 // gdb-command:print arc
 // gdb-check:[...]$2 = Arc(strong=21, weak=1) = {value = 222, strong = 21, weak = 1}
 
