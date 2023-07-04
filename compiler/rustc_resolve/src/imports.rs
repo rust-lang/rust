@@ -135,7 +135,7 @@ impl<'a> std::fmt::Debug for ImportKind<'a> {
 
 /// One import.
 #[derive(Debug, Clone)]
-pub(crate) struct Import<'a> {
+pub(crate) struct ImportData<'a> {
     pub kind: ImportKind<'a>,
 
     /// Node ID of the "root" use item -- this is always the same as `ImportKind`'s `id`
@@ -172,7 +172,9 @@ pub(crate) struct Import<'a> {
     pub used: Cell<bool>,
 }
 
-impl<'a> Import<'a> {
+pub(crate) type Import<'a> = Interned<'a, ImportData<'a>>;
+
+impl<'a> ImportData<'a> {
     pub(crate) fn is_glob(&self) -> bool {
         matches!(self.kind, ImportKind::Glob { .. })
     }
@@ -214,7 +216,7 @@ impl<'a> Import<'a> {
 pub(crate) struct NameResolution<'a> {
     /// Single imports that may define the name in the namespace.
     /// Imports are arena-allocated, so it's ok to use pointers as keys.
-    pub single_imports: FxHashSet<Interned<'a, Import<'a>>>,
+    pub single_imports: FxHashSet<Import<'a>>,
     /// The least shadowable known binding for this name, or None if there are no known bindings.
     pub binding: Option<NameBinding<'a>>,
     pub shadowed_glob: Option<NameBinding<'a>>,
@@ -231,10 +233,6 @@ impl<'a> NameResolution<'a> {
             }
         })
     }
-
-    pub(crate) fn add_single_import(&mut self, import: &'a Import<'a>) {
-        self.single_imports.insert(Interned::new_unchecked(import));
-    }
 }
 
 /// An error that may be transformed into a diagnostic later. Used to combine multiple unresolved
@@ -250,15 +248,12 @@ struct UnresolvedImportError {
 
 // Reexports of the form `pub use foo as bar;` where `foo` is `extern crate foo;`
 // are permitted for backward-compatibility under a deprecation lint.
-fn pub_use_of_private_extern_crate_hack(import: &Import<'_>, binding: NameBinding<'_>) -> bool {
+fn pub_use_of_private_extern_crate_hack(import: Import<'_>, binding: NameBinding<'_>) -> bool {
     match (&import.kind, &binding.kind) {
-        (
-            ImportKind::Single { .. },
-            NameBindingKind::Import {
-                import: Import { kind: ImportKind::ExternCrate { .. }, .. },
-                ..
-            },
-        ) => import.expect_vis().is_public(),
+        (ImportKind::Single { .. }, NameBindingKind::Import { import: binding_import, .. }) => {
+            matches!(binding_import.kind, ImportKind::ExternCrate { .. })
+                && import.expect_vis().is_public()
+        }
         _ => false,
     }
 }
@@ -266,11 +261,7 @@ fn pub_use_of_private_extern_crate_hack(import: &Import<'_>, binding: NameBindin
 impl<'a, 'tcx> Resolver<'a, 'tcx> {
     /// Given a binding and an import that resolves to it,
     /// return the corresponding binding defined by the import.
-    pub(crate) fn import(
-        &self,
-        binding: NameBinding<'a>,
-        import: &'a Import<'a>,
-    ) -> NameBinding<'a> {
+    pub(crate) fn import(&self, binding: NameBinding<'a>, import: Import<'a>) -> NameBinding<'a> {
         let import_vis = import.expect_vis().to_def_id();
         let vis = if binding.vis.is_at_least(import_vis, self.tcx)
             || pub_use_of_private_extern_crate_hack(import, binding)
@@ -411,7 +402,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 None => continue,
             };
             if self.is_accessible_from(binding.vis, scope) {
-                let imported_binding = self.import(binding, import);
+                let imported_binding = self.import(binding, *import);
                 let key = BindingKey { ident, ..key };
                 let _ = self.try_define(import.parent_scope.module, key, imported_binding);
             }
@@ -422,7 +413,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     // Define a dummy resolution containing a `Res::Err` as a placeholder for a failed
     // or indeterminate resolution, also mark such failed imports as used to avoid duplicate diagnostics.
-    fn import_dummy_binding(&mut self, import: &'a Import<'a>, is_indeterminate: bool) {
+    fn import_dummy_binding(&mut self, import: Import<'a>, is_indeterminate: bool) {
         if let ImportKind::Single { target, ref target_bindings, .. } = import.kind {
             if !(is_indeterminate || target_bindings.iter().all(|binding| binding.get().is_none()))
             {
@@ -460,7 +451,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             prev_indeterminate_count = indeterminate_count;
             indeterminate_count = 0;
             for import in mem::take(&mut self.indeterminate_imports) {
-                let import_indeterminate_count = self.resolve_import(&import);
+                let import_indeterminate_count = self.resolve_import(import);
                 indeterminate_count += import_indeterminate_count;
                 match import_indeterminate_count {
                     0 => self.determined_imports.push(import),
@@ -609,7 +600,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
     }
 
-    fn throw_unresolved_import_error(&mut self, errors: Vec<(&Import<'_>, UnresolvedImportError)>) {
+    fn throw_unresolved_import_error(&mut self, errors: Vec<(Import<'_>, UnresolvedImportError)>) {
         if errors.is_empty() {
             return;
         }
@@ -701,7 +692,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     ///
     /// Meanwhile, if resolve successful, the resolved bindings are written
     /// into the module.
-    fn resolve_import(&mut self, import: &'a Import<'a>) -> usize {
+    fn resolve_import(&mut self, import: Import<'a>) -> usize {
         debug!(
             "(resolving import for module) resolving import `{}::...` in `{}`",
             Segment::names_to_string(&import.module_path),
@@ -781,7 +772,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         }
                         let key = BindingKey::new(target, ns);
                         this.update_resolution(parent, key, |_, resolution| {
-                            resolution.single_imports.remove(&Interned::new_unchecked(import));
+                            resolution.single_imports.remove(&import);
                         });
                     }
                 }
@@ -795,7 +786,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     ///
     /// Optionally returns an unresolved import error. This error is buffered and used to
     /// consolidate multiple unresolved import errors into a single diagnostic.
-    fn finalize_import(&mut self, import: &'a Import<'a>) -> Option<UnresolvedImportError> {
+    fn finalize_import(&mut self, import: Import<'a>) -> Option<UnresolvedImportError> {
         let orig_vis = import.vis.take();
         let ignore_binding = match &import.kind {
             ImportKind::Single { target_bindings, .. } => target_bindings[TypeNS].get(),
@@ -1239,7 +1230,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     fn check_for_redundant_imports(
         &mut self,
         ident: Ident,
-        import: &'a Import<'a>,
+        import: Import<'a>,
         source_bindings: &PerNS<Cell<Result<NameBinding<'a>, Determinacy>>>,
         target_bindings: &PerNS<Cell<Option<NameBinding<'a>>>>,
         target: Ident,
@@ -1302,7 +1293,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
     }
 
-    fn resolve_glob_import(&mut self, import: &'a Import<'a>) {
+    fn resolve_glob_import(&mut self, import: Import<'a>) {
         // This function is only called for glob imports.
         let ImportKind::Glob { id, is_prelude, .. } = import.kind else { unreachable!() };
 

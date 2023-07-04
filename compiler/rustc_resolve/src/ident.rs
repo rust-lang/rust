@@ -20,7 +20,7 @@ use crate::late::{
 use crate::macros::{sub_namespace_match, MacroRulesScope};
 use crate::BindingKey;
 use crate::{errors, AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, Determinacy, Finalize};
-use crate::{Import, ImportKind, LexicalScopeBinding, Module, ModuleKind, ModuleOrUniformRoot};
+use crate::{ImportKind, LexicalScopeBinding, Module, ModuleKind, ModuleOrUniformRoot};
 use crate::{NameBinding, NameBindingKind, ParentScope, PathResult, PrivacyError, Res};
 use crate::{ResolutionError, Resolver, Scope, ScopeSet, Segment, ToNameBinding, Weak};
 
@@ -913,11 +913,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
 
             if !restricted_shadowing && binding.expansion != LocalExpnId::ROOT {
-                if let NameBindingKind::Import {
-                    import: Import { kind: ImportKind::MacroExport, .. },
-                    ..
-                } = binding.kind
-                {
+                if let NameBindingKind::Import { import, .. } = binding.kind
+                    && matches!(import.kind, ImportKind::MacroExport) {
                     self.macro_expanded_macro_export_errors.insert((path_span, binding.span));
                 }
             }
@@ -951,7 +948,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
             if let Some(ignored) = ignore_binding &&
                 let NameBindingKind::Import { import, .. } = ignored.kind &&
-                ptr::eq(import, &**single_import) {
+                import == *single_import {
                 // Ignore not just the binding itself, but if it has a shadowed_glob,
                 // ignore that, too, because this loop is supposed to only process
                 // named imports.

@@ -262,7 +262,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         // See https://github.com/rust-lang/rust/issues/32354
         use NameBindingKind::Import;
-        let can_suggest = |binding: NameBinding<'_>, import: &self::Import<'_>| {
+        let can_suggest = |binding: NameBinding<'_>, import: self::Import<'_>| {
             !binding.span.is_dummy()
                 && !matches!(import.kind, ImportKind::MacroUse | ImportKind::MacroExport)
         };
@@ -272,22 +272,22 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             (Import { import: new, .. }, Import { import: old, .. })
                 if {
                     (new.has_attributes || old.has_attributes)
-                        && can_suggest(old_binding, old)
-                        && can_suggest(new_binding, new)
+                        && can_suggest(old_binding, *old)
+                        && can_suggest(new_binding, *new)
                 } =>
             {
                 if old.has_attributes {
-                    Some((new, new_binding.span, true))
+                    Some((*new, new_binding.span, true))
                 } else {
-                    Some((old, old_binding.span, true))
+                    Some((*old, old_binding.span, true))
                 }
             }
             // Otherwise prioritize the new binding.
-            (Import { import, .. }, other) if can_suggest(new_binding, import) => {
-                Some((import, new_binding.span, other.is_import()))
+            (Import { import, .. }, other) if can_suggest(new_binding, *import) => {
+                Some((*import, new_binding.span, other.is_import()))
             }
-            (other, Import { import, .. }) if can_suggest(old_binding, import) => {
-                Some((import, old_binding.span, other.is_import()))
+            (other, Import { import, .. }) if can_suggest(old_binding, *import) => {
+                Some((*import, old_binding.span, other.is_import()))
             }
             _ => None,
         };
@@ -341,7 +341,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         &self,
         err: &mut Diagnostic,
         name: Symbol,
-        import: &Import<'_>,
+        import: Import<'_>,
         binding_span: Span,
     ) {
         let suggested_name = if name.as_str().chars().next().unwrap().is_uppercase() {
@@ -413,7 +413,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     fn add_suggestion_for_duplicate_nested_use(
         &self,
         err: &mut Diagnostic,
-        import: &Import<'_>,
+        import: Import<'_>,
         binding_span: Span,
     ) {
         assert!(import.is_nested());
@@ -2114,7 +2114,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     /// ```
     pub(crate) fn check_for_module_export_macro(
         &mut self,
-        import: &'a Import<'a>,
+        import: Import<'a>,
         module: ModuleOrUniformRoot<'a>,
         ident: Ident,
     ) -> Option<(Option<Suggestion>, Option<String>)> {

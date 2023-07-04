@@ -6,7 +6,7 @@
 //! Imports are also considered items and placed into modules here, but not resolved yet.
 
 use crate::def_collector::collect_definitions;
-use crate::imports::{Import, ImportKind};
+use crate::imports::{ImportData, ImportKind};
 use crate::macros::{MacroRulesBinding, MacroRulesScope, MacroRulesScopeRef};
 use crate::Namespace::{self, MacroNS, TypeNS, ValueNS};
 use crate::{errors, BindingKey, MacroData, NameBindingData};
@@ -354,7 +354,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
         vis: ty::Visibility,
     ) {
         let current_module = self.parent_scope.module;
-        let import = self.r.arenas.alloc_import(Import {
+        let import = self.r.arenas.alloc_import(ImportData {
             kind,
             parent_scope: self.parent_scope,
             module_path,
@@ -378,7 +378,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                     if !type_ns_only || ns == TypeNS {
                         let key = BindingKey::new(target, ns);
                         let mut resolution = this.resolution(current_module, key).borrow_mut();
-                        resolution.add_single_import(import);
+                        resolution.single_imports.insert(import);
                     }
                 });
             }
@@ -848,7 +848,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
             (used, Some(ModuleOrUniformRoot::Module(module)), binding)
         })
         .unwrap_or((true, None, self.r.dummy_binding));
-        let import = self.r.arenas.alloc_import(Import {
+        let import = self.r.arenas.alloc_import(ImportData {
             kind: ImportKind::ExternCrate { source: orig_name, target: ident, id: item.id },
             root_id: item.id,
             parent_scope: self.parent_scope,
@@ -1058,7 +1058,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
         }
 
         let macro_use_import = |this: &Self, span| {
-            this.r.arenas.alloc_import(Import {
+            this.r.arenas.alloc_import(ImportData {
                 kind: ImportKind::MacroUse,
                 root_id: item.id,
                 parent_scope: this.parent_scope,
@@ -1228,7 +1228,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
             self.r.set_binding_parent_module(binding, parent_scope.module);
             self.r.all_macro_rules.insert(ident.name, res);
             if is_macro_export {
-                let import = self.r.arenas.alloc_import(Import {
+                let import = self.r.arenas.alloc_import(ImportData {
                     kind: ImportKind::MacroExport,
                     root_id: item.id,
                     parent_scope: self.parent_scope,

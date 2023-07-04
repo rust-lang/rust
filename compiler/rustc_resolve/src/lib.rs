@@ -64,7 +64,7 @@ use std::collections::BTreeSet;
 use std::{fmt, ptr};
 
 use diagnostics::{ImportSuggestion, LabelSuggestion, Suggestion};
-use imports::{Import, ImportKind, NameResolution};
+use imports::{Import, ImportData, ImportKind, NameResolution};
 use late::{HasGenericParams, PathSource, PatternSource};
 use macros::{MacroRulesBinding, MacroRulesScope, MacroRulesScopeRef};
 
@@ -518,8 +518,8 @@ struct ModuleData<'a> {
     /// Whether `#[no_implicit_prelude]` is active.
     no_implicit_prelude: bool,
 
-    glob_importers: RefCell<Vec<&'a Import<'a>>>,
-    globs: RefCell<Vec<&'a Import<'a>>>,
+    glob_importers: RefCell<Vec<Import<'a>>>,
+    globs: RefCell<Vec<Import<'a>>>,
 
     /// Used to memoize the traits in this module for faster searches through all traits in scope.
     traits: RefCell<Option<Box<[(Ident, NameBinding<'a>)]>>>,
@@ -681,7 +681,7 @@ impl<'a> ToNameBinding<'a> for NameBinding<'a> {
 enum NameBindingKind<'a> {
     Res(Res),
     Module(Module<'a>),
-    Import { binding: NameBinding<'a>, import: &'a Import<'a>, used: Cell<bool> },
+    Import { binding: NameBinding<'a>, import: Import<'a>, used: Cell<bool> },
 }
 
 impl<'a> NameBindingKind<'a> {
@@ -807,10 +807,9 @@ impl<'a> NameBindingData<'a> {
 
     fn is_extern_crate(&self) -> bool {
         match self.kind {
-            NameBindingKind::Import {
-                import: &Import { kind: ImportKind::ExternCrate { .. }, .. },
-                ..
-            } => true,
+            NameBindingKind::Import { import, .. } => {
+                matches!(import.kind, ImportKind::ExternCrate { .. })
+            }
             NameBindingKind::Module(&ModuleData {
                 kind: ModuleKind::Def(DefKind::Mod, def_id, _),
                 ..
@@ -919,10 +918,10 @@ pub struct Resolver<'a, 'tcx> {
     field_visibility_spans: FxHashMap<DefId, Vec<Span>>,
 
     /// All imports known to succeed or fail.
-    determined_imports: Vec<&'a Import<'a>>,
+    determined_imports: Vec<Import<'a>>,
 
     /// All non-determined imports.
-    indeterminate_imports: Vec<&'a Import<'a>>,
+    indeterminate_imports: Vec<Import<'a>>,
 
     // Spans for local variables found during pattern resolution.
     // Used for suggestions during error reporting.
@@ -1032,7 +1031,7 @@ pub struct Resolver<'a, 'tcx> {
     /// Avoid duplicated errors for "name already defined".
     name_already_seen: FxHashMap<Symbol, Span>,
 
-    potentially_unused_imports: Vec<&'a Import<'a>>,
+    potentially_unused_imports: Vec<Import<'a>>,
 
     /// Table for mapping struct IDs into struct constructor IDs,
     /// it's not used during normal resolution, only for better error reporting.
@@ -1087,7 +1086,7 @@ pub struct Resolver<'a, 'tcx> {
 pub struct ResolverArenas<'a> {
     modules: TypedArena<ModuleData<'a>>,
     local_modules: RefCell<Vec<Module<'a>>>,
-    imports: TypedArena<Import<'a>>,
+    imports: TypedArena<ImportData<'a>>,
     name_resolutions: TypedArena<RefCell<NameResolution<'a>>>,
     ast_paths: TypedArena<ast::Path>,
     dropless: DroplessArena,
@@ -1120,8 +1119,8 @@ impl<'a> ResolverArenas<'a> {
     fn alloc_name_binding(&'a self, name_binding: NameBindingData<'a>) -> NameBinding<'a> {
         Interned::new_unchecked(self.dropless.alloc(name_binding))
     }
-    fn alloc_import(&'a self, import: Import<'a>) -> &'a Import<'_> {
-        self.imports.alloc(import)
+    fn alloc_import(&'a self, import: ImportData<'a>) -> Import<'a> {
+        Interned::new_unchecked(self.imports.alloc(import))
     }
     fn alloc_name_resolution(&'a self) -> &'a RefCell<NameResolution<'a>> {
         self.name_resolutions.alloc(Default::default())
@@ -1626,7 +1625,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 self.maybe_unused_trait_imports.insert(def_id);
                 import_ids.push(def_id);
             }
-            self.add_to_glob_map(&import, trait_name);
+            self.add_to_glob_map(*import, trait_name);
             kind = &binding.kind;
         }
         import_ids
@@ -1711,13 +1710,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             if let Some(id) = import.id() {
                 self.used_imports.insert(id);
             }
-            self.add_to_glob_map(&import, ident);
+            self.add_to_glob_map(import, ident);
             self.record_use(ident, binding, false);
         }
     }
 
     #[inline]
-    fn add_to_glob_map(&mut self, import: &Import<'_>, ident: Ident) {
+    fn add_to_glob_map(&mut self, import: Import<'_>, ident: Ident) {
         if let ImportKind::Glob { id, .. } = import.kind {
             let def_id = self.local_def_id(id);
             self.glob_map.entry(def_id).or_default().insert(ident.name);
