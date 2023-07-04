@@ -1170,16 +1170,10 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
 
             // Already reported in the query.
-            SelectionError::NotConstEvaluatable(NotConstEvaluatable::Error(_)) => {
-                // FIXME(eddyb) remove this once `ErrorGuaranteed` becomes a proof token.
-                self.tcx.sess.delay_span_bug(span, "`ErrorGuaranteed` without an error");
-                return;
-            }
+            SelectionError::NotConstEvaluatable(NotConstEvaluatable::Error(_)) |
             // Already reported.
-            Overflow(OverflowError::Error(_)) => {
-                self.tcx.sess.delay_span_bug(span, "`OverflowError` has been reported");
-                return;
-            }
+            Overflow(OverflowError::Error(_)) => return,
+
             Overflow(_) => {
                 bug!("overflow should be handled before the `report_selection_error` path");
             }
