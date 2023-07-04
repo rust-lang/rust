@@ -75,7 +75,7 @@ pub fn reveal_actual_level(
     src: &mut LintLevelSource,
     sess: &Session,
     lint: LintId,
-    probe_for_lint_level: impl FnOnce(LintId) -> (Option<Level>, LintLevelSource),
+    probe_for_lint_level: impl Fn(LintId) -> (Option<Level>, LintLevelSource),
 ) -> Level {
     // If `level` is none then we actually assume the default level for this lint.
     let mut level = level.unwrap_or_else(|| lint.lint.default_level(sess.edition()));
@@ -90,8 +90,20 @@ pub fn reveal_actual_level(
     // future compatibility warning.
     if level == Level::Warn && lint != LintId::of(FORBIDDEN_LINT_GROUPS) {
         let (warnings_level, warnings_src) = probe_for_lint_level(LintId::of(builtin::WARNINGS));
-        if let Some(configured_warning_level) = warnings_level {
-            if configured_warning_level != Level::Warn {
+        if let Some(configured_warning_level) = warnings_level
+            && configured_warning_level != Level::Warn
+        {
+            if matches!(warnings_src, LintLevelSource::CommandLine(..))
+                && lint != LintId::of(builtin::WARNINGS)
+                && let (Some(lint_level), lint_src) = probe_for_lint_level(lint)
+                && matches!(lint_src, LintLevelSource::CommandLine(..))
+            {
+                // We have a command-line `-Awarnings` *and* a command-line e.g. `-Wspecific-lint`.
+                // Let's have the `specific-lint`'s command-line level override the command-line
+                // `warnings` level.
+                level = lint_level;
+                *src = lint_src;
+            } else {
                 level = configured_warning_level;
                 *src = warnings_src;
             }

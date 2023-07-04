@@ -490,7 +490,7 @@ pub static TRACK_DIAGNOSTICS: AtomicRef<fn(&mut Diagnostic, &mut dyn FnMut(&mut 
 #[derive(Copy, Clone, Default)]
 pub struct HandlerFlags {
     /// If false, warning-level lints are suppressed.
-    /// (rustc: see `--allow warnings` and `--cap-lints`)
+    /// (rustc: see `--cap-lints`)
     pub can_emit_warnings: bool,
     /// If true, error-level diagnostics are upgraded to bug-level.
     /// (rustc: see `-Z treat-err-as-bug`)

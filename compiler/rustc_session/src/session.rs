@@ -1393,16 +1393,8 @@ pub fn build_session(
     target_override: Option<Target>,
     cfg_version: &'static str,
 ) -> Session {
-    // FIXME: This is not general enough to make the warning lint completely override
-    // normal diagnostic warnings, since the warning lint can also be denied and changed
-    // later via the source code.
-    let warnings_allow = sopts
-        .lint_opts
-        .iter()
-        .rfind(|&(key, _)| *key == "warnings")
-        .is_some_and(|&(_, level)| level == lint::Allow);
     let cap_lints_allow = sopts.lint_cap.is_some_and(|cap| cap == lint::Allow);
-    let can_emit_warnings = !(warnings_allow || cap_lints_allow);
+    let can_emit_warnings = !cap_lints_allow;
 
     let sysroot = match &sopts.maybe_sysroot {
         Some(sysroot) => sysroot.clone(),

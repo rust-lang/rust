@@ -1,0 +1,35 @@
+error: variable `_UwU` should have a snake case name
+  --> $DIR/command-line-allow-warnings.rs:10:9
+   |
+LL |     let _UwU = 0u8;
+   |         ^^^^ help: convert the identifier to snake case: `_uw_u`
+   |
+note: the lint level is defined here
+  --> $DIR/command-line-allow-warnings.rs:9:12
+   |
+LL |     #[deny(non_snake_case)]
+   |            ^^^^^^^^^^^^^^
+
+warning: variable `_OwO` should have a snake case name
+  --> $DIR/command-line-allow-warnings.rs:19:9
+   |
+LL |     let _OwO = 0u8;
+   |         ^^^^ help: convert the identifier to snake case: `_ow_o`
+   |
+   = note: `#[warn(non_snake_case)]` on by default
+
+error: variable `_OwO` should have a snake case name
+  --> $DIR/command-line-allow-warnings.rs:25:9
+   |
+LL |     let _OwO = 0u8;
+   |         ^^^^ help: convert the identifier to snake case: `_ow_o`
+   |
+note: the lint level is defined here
+  --> $DIR/command-line-allow-warnings.rs:23:8
+   |
+LL | #[deny(warnings)]
+   |        ^^^^^^^^
+   = note: `#[deny(non_snake_case)]` implied by `#[deny(warnings)]`
+
+error: aborting due to 2 previous errors; 1 warning emitted
+

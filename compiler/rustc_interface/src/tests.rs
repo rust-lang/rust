@@ -157,7 +157,7 @@ fn test_switch_implies_cfg_test_unless_cfg_test() {
 #[test]
 fn test_can_print_warnings() {
     rustc_span::create_default_session_globals_then(|| {
-        let matches = optgroups().parse(&["-Awarnings".to_string()]).unwrap();
+        let matches = optgroups().parse(&["--cap-lints=allow".to_string()]).unwrap();
         let mut handler = EarlyErrorHandler::new(ErrorOutputType::default());
         let (sess, _) = mk_session(&mut handler, matches);
         assert!(!sess.diagnostic().can_emit_warnings());
