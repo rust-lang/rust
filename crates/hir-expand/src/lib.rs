@@ -37,11 +37,11 @@ use either::Either;
 use syntax::{
     algo::{self, skip_trivia_token},
     ast::{self, AstNode, HasDocComments},
-    Direction, SyntaxNode, SyntaxToken,
+    AstPtr, Direction, SyntaxNode, SyntaxNodePtr, SyntaxToken,
 };
 
 use crate::{
-    ast_id_map::FileAstId,
+    ast_id_map::{AstIdNode, ErasedFileAstId, FileAstId},
     attrs::AttrId,
     builtin_attr_macro::BuiltinAttrExpander,
     builtin_derive_macro::BuiltinDeriveExpander,
@@ -551,9 +551,9 @@ impl MacroCallKind {
         };
 
         let range = match kind {
-            MacroCallKind::FnLike { ast_id, .. } => ast_id.to_node(db).syntax().text_range(),
-            MacroCallKind::Derive { ast_id, .. } => ast_id.to_node(db).syntax().text_range(),
-            MacroCallKind::Attr { ast_id, .. } => ast_id.to_node(db).syntax().text_range(),
+            MacroCallKind::FnLike { ast_id, .. } => ast_id.to_ptr(db).text_range(),
+            MacroCallKind::Derive { ast_id, .. } => ast_id.to_ptr(db).text_range(),
+            MacroCallKind::Attr { ast_id, .. } => ast_id.to_ptr(db).text_range(),
         };
 
         FileRange { range, file_id }
@@ -801,13 +801,25 @@ impl ExpansionInfo {
 /// It is stable across reparses, and can be used as salsa key/value.
 pub type AstId<N> = InFile<FileAstId<N>>;
 
-impl<N: AstNode> AstId<N> {
+impl<N: AstIdNode> AstId<N> {
     pub fn to_node(&self, db: &dyn db::ExpandDatabase) -> N {
-        let root = db.parse_or_expand(self.file_id);
-        db.ast_id_map(self.file_id).get(self.value).to_node(&root)
+        self.to_ptr(db).to_node(&db.parse_or_expand(self.file_id))
+    }
+    pub fn to_ptr(&self, db: &dyn db::ExpandDatabase) -> AstPtr<N> {
+        db.ast_id_map(self.file_id).get(self.value)
     }
 }
 
+pub type ErasedAstId = InFile<ErasedFileAstId>;
+
+impl ErasedAstId {
+    pub fn to_node(&self, db: &dyn db::ExpandDatabase) -> SyntaxNode {
+        self.to_ptr(db).to_node(&db.parse_or_expand(self.file_id))
+    }
+    pub fn to_ptr(&self, db: &dyn db::ExpandDatabase) -> SyntaxNodePtr {
+        db.ast_id_map(self.file_id).get_raw(self.value)
+    }
+}
 /// `InFile<T>` stores a value of `T` inside a particular file/syntax tree.
 ///
 /// Typical usages are:

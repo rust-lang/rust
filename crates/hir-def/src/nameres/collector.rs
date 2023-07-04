@@ -2280,7 +2280,7 @@ impl ModCollector<'_, '_> {
     fn emit_unconfigured_diagnostic(&mut self, item: ModItem, cfg: &CfgExpr) {
         let ast_id = item.ast_id(self.item_tree);
 
-        let ast_id = InFile::new(self.file_id(), ast_id.upcast());
+        let ast_id = InFile::new(self.file_id(), ast_id.erase());
         self.def_collector.def_map.diagnostics.push(DefDiagnostic::unconfigured_code(
             self.module_id,
             ast_id,
