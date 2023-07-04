@@ -574,7 +574,9 @@ fn foo(&self) -> Self::T { String::new() }
         let Some(hir_id) = body_owner_def_id.as_local() else {
             return false;
         };
-        let hir_id = tcx.hir().local_def_id_to_hir_id(hir_id);
+        let Some(hir_id) = tcx.opt_local_def_id_to_hir_id(hir_id) else {
+            return false;
+        };
         // When `body_owner` is an `impl` or `trait` item, look in its associated types for
         // `expected` and point at it.
         let parent_id = tcx.hir().get_parent_item(hir_id);
