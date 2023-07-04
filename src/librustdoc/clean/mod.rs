@@ -342,8 +342,7 @@ pub(crate) fn clean_predicate<'tcx>(
         // FIXME(generic_const_exprs): should this do something?
         ty::ClauseKind::ConstEvaluatable(..)
         | ty::ClauseKind::WellFormed(..)
-        | ty::ClauseKind::ConstArgHasType(..)
-        | ty::ClauseKind::TypeWellFormedFromEnv(..) => None,
+        | ty::ClauseKind::ConstArgHasType(..) => None,
     }
 }
 

@@ -1,4 +1,4 @@
-use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_index::bit_set::BitSet;
@@ -6,7 +6,6 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::{
     self, EarlyBinder, ToPredicate, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor,
 };
-use rustc_session::config::TraitSolver;
 use rustc_span::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
 use rustc_span::DUMMY_SP;
 use rustc_trait_selection::traits;
@@ -130,11 +129,6 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
     // every fn once during type checking, and we'll abort if there
     // are any errors at that point, so outside of type inference you can be
     // sure that this will succeed without errors anyway.
-
-    if tcx.sess.opts.unstable_opts.trait_solver == TraitSolver::Chalk {
-        let environment = well_formed_types_in_env(tcx, def_id);
-        predicates.extend(environment);
-    }
 
     if tcx.def_kind(def_id) == DefKind::AssocFn
         && tcx.associated_item(def_id).container == ty::AssocItemContainer::TraitContainer
@@ -317,116 +311,6 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
 
         ty.super_visit_with(self)
     }
-}
-
-/// Elaborate the environment.
-///
-/// Collect a list of `Predicate`'s used for building the `ParamEnv`. Adds `TypeWellFormedFromEnv`'s
-/// that are assumed to be well-formed (because they come from the environment).
-///
-/// Used only in chalk mode.
-fn well_formed_types_in_env(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::List<ty::Clause<'_>> {
-    use rustc_hir::{ForeignItemKind, ImplItemKind, ItemKind, Node, TraitItemKind};
-
-    debug!("environment(def_id = {:?})", def_id);
-
-    // The environment of an impl Trait type is its defining function's environment.
-    if let Some(parent) = ty::is_impl_trait_defn(tcx, def_id) {
-        return well_formed_types_in_env(tcx, parent.to_def_id());
-    }
-
-    // Compute the bounds on `Self` and the type parameters.
-    let ty::InstantiatedPredicates { predicates, .. } =
-        tcx.predicates_of(def_id).instantiate_identity(tcx);
-
-    let clauses = predicates.into_iter();
-
-    if !def_id.is_local() {
-        return ty::List::empty();
-    }
-    let node = tcx.hir().get_by_def_id(def_id.expect_local());
-
-    enum NodeKind {
-        TraitImpl,
-        InherentImpl,
-        Fn,
-        Other,
-    }
-
-    let node_kind = match node {
-        Node::TraitItem(item) => match item.kind {
-            TraitItemKind::Fn(..) => NodeKind::Fn,
-            _ => NodeKind::Other,
-        },
-
-        Node::ImplItem(item) => match item.kind {
-            ImplItemKind::Fn(..) => NodeKind::Fn,
-            _ => NodeKind::Other,
-        },
-
-        Node::Item(item) => match item.kind {
-            ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }) => NodeKind::TraitImpl,
-            ItemKind::Impl(hir::Impl { of_trait: None, .. }) => NodeKind::InherentImpl,
-            ItemKind::Fn(..) => NodeKind::Fn,
-            _ => NodeKind::Other,
-        },
-
-        Node::ForeignItem(item) => match item.kind {
-            ForeignItemKind::Fn(..) => NodeKind::Fn,
-            _ => NodeKind::Other,
-        },
-
-        // FIXME: closures?
-        _ => NodeKind::Other,
-    };
-
-    // FIXME(eddyb) isn't the unordered nature of this a hazard?
-    let mut inputs = FxIndexSet::default();
-
-    match node_kind {
-        // In a trait impl, we assume that the header trait ref and all its
-        // constituents are well-formed.
-        NodeKind::TraitImpl => {
-            let trait_ref = tcx.impl_trait_ref(def_id).expect("not an impl").subst_identity();
-
-            // FIXME(chalk): this has problems because of late-bound regions
-            //inputs.extend(trait_ref.substs.iter().flat_map(|arg| arg.walk()));
-            inputs.extend(trait_ref.substs.iter());
-        }
-
-        // In an inherent impl, we assume that the receiver type and all its
-        // constituents are well-formed.
-        NodeKind::InherentImpl => {
-            let self_ty = tcx.type_of(def_id).subst_identity();
-            inputs.extend(self_ty.walk());
-        }
-
-        // In an fn, we assume that the arguments and all their constituents are
-        // well-formed.
-        NodeKind::Fn => {
-            let fn_sig = tcx.fn_sig(def_id).subst_identity();
-            let fn_sig = tcx.liberate_late_bound_regions(def_id, fn_sig);
-
-            inputs.extend(fn_sig.inputs().iter().flat_map(|ty| ty.walk()));
-        }
-
-        NodeKind::Other => (),
-    }
-    let input_clauses = inputs.into_iter().filter_map(|arg| {
-        match arg.unpack() {
-            ty::GenericArgKind::Type(ty) => {
-                Some(ty::ClauseKind::TypeWellFormedFromEnv(ty).to_predicate(tcx))
-            }
-
-            // FIXME(eddyb) no WF conditions from lifetimes?
-            ty::GenericArgKind::Lifetime(_) => None,
-
-            // FIXME(eddyb) support const generics in Chalk
-            ty::GenericArgKind::Const(_) => None,
-        }
-    });
-
-    tcx.mk_clauses_from_iter(clauses.chain(input_clauses))
 }
 
 fn param_env_reveal_all_normalized(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {

@@ -189,9 +189,6 @@ impl<'tcx> fmt::Debug for ty::ClauseKind<'tcx> {
             ty::ClauseKind::ConstEvaluatable(ct) => {
                 write!(f, "ConstEvaluatable({ct:?})")
             }
-            ty::ClauseKind::TypeWellFormedFromEnv(ty) => {
-                write!(f, "TypeWellFormedFromEnv({:?})", ty)
-            }
         }
     }
 }

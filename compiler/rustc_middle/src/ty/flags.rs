@@ -287,9 +287,6 @@ impl FlagComputation {
                 self.add_const(expected);
                 self.add_const(found);
             }
-            ty::PredicateKind::Clause(ty::ClauseKind::TypeWellFormedFromEnv(ty)) => {
-                self.add_ty(ty);
-            }
             ty::PredicateKind::Ambiguous => {}
             ty::PredicateKind::AliasRelate(t1, t2, _) => {
                 self.add_term(t1);

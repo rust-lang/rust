@@ -1,5 +1,4 @@
 // edition:2018
-// ignore-compare-mode-chalk
 
 #![feature(impl_trait_in_assoc_type)]
 

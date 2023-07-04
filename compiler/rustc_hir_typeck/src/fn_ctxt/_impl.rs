@@ -685,7 +685,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // inference variable.
                 | ty::PredicateKind::ClosureKind(..)
                 | ty::PredicateKind::Ambiguous
-                | ty::PredicateKind::Clause(ty::ClauseKind::TypeWellFormedFromEnv(..)) => None,
+                 => None,
             },
         )
     }

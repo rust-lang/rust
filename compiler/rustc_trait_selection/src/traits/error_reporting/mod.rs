@@ -1059,7 +1059,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 // (which may fail).
                                 span_bug!(span, "WF predicate not satisfied for {:?}", ty);
                             }
-                            TraitSolver::Chalk | TraitSolver::Next | TraitSolver::NextCoherence => {
+                            TraitSolver::Next | TraitSolver::NextCoherence => {
                                 // FIXME: we'll need a better message which takes into account
                                 // which bounds actually failed to hold.
                                 self.tcx.sess.struct_span_err(
@@ -1093,13 +1093,6 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     }
 
                     ty::PredicateKind::Ambiguous => span_bug!(span, "ambiguous"),
-
-                    ty::PredicateKind::Clause(ty::ClauseKind::TypeWellFormedFromEnv(..)) => {
-                        span_bug!(
-                            span,
-                            "TypeWellFormedFromEnv predicate should only exist in the environment"
-                        )
-                    }
 
                     ty::PredicateKind::AliasRelate(..) => span_bug!(
                         span,
