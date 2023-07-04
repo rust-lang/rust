@@ -1,5 +1,8 @@
 use clippy_utils::{
-    consts::constant, diagnostics::span_lint_and_then, is_from_proc_macro, path_to_local, source::snippet_opt,
+    consts::{constant, Constant},
+    diagnostics::span_lint_and_then,
+    is_from_proc_macro, path_to_local,
+    source::snippet_opt,
 };
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
@@ -9,10 +12,11 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for `x == <float>::INFINITY || x == <float>::NEG_INFINITY`.
+    /// Checks for manual `is_infinite` reimplementations
+    /// (i.e., `x == <float>::INFINITY || x == <float>::NEG_INFINITY`).
     ///
     /// ### Why is this bad?
-    /// This should use the dedicated method instead, `is_infinite`.
+    /// The method `is_infinite` is shorter and more readable.
     ///
     /// ### Example
     /// ```rust
@@ -31,19 +35,22 @@ declare_clippy_lint! {
 }
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for `x != <float>::INFINITY && x != <float>::NEG_INFINITY`.
+    /// Checks for manual `is_finite` reimplementations
+    /// (i.e., `x != <float>::INFINITY && x != <float>::NEG_INFINITY`).
     ///
     /// ### Why is this bad?
-    /// This should use the dedicated method instead, `is_finite`.
+    /// The method `is_finite` is shorter and more readable.
     ///
     /// ### Example
     /// ```rust
     /// # let x = 1.0f32;
     /// if x != f32::INFINITY && x != f32::NEG_INFINITY {}
+    /// if x.abs() < f32::INFINITY {}
     /// ```
     /// Use instead:
     /// ```rust
     /// # let x = 1.0f32;
+    /// if x.is_finite() {}
     /// if x.is_finite() {}
     /// ```
     #[clippy::version = "1.72.0"]
@@ -84,20 +91,22 @@ impl<'tcx> LateLintPass<'tcx> for ManualFloatMethods {
             && let ExprKind::Binary(rhs_kind, rhs_lhs, rhs_rhs) = rhs.kind
             // Checking all possible scenarios using a function would be a hopeless task, as we have
             // 16 possible alignments of constants/operands. For now, let's use `partition`.
-            && let (operands, consts) = [lhs_lhs, lhs_rhs, rhs_lhs, rhs_rhs]
+            && let (operands, constants) = [lhs_lhs, lhs_rhs, rhs_lhs, rhs_rhs]
                 .into_iter()
                 .partition::<Vec<&Expr<'_>>, _>(|i| path_to_local(i).is_some())
             && let [first, second] = &*operands
-            && let Some([const_1, const_2]) = consts
+            && let Some([const_1, const_2]) = constants
                 .into_iter()
-                .map(|i| constant(cx, cx.typeck_results(), i).and_then(|c| c.to_bits()))
+                .map(|i| constant(cx, cx.typeck_results(), i))
                 .collect::<Option<Vec<_>>>()
                 .as_deref()
             && path_to_local(first).is_some_and(|f| path_to_local(second).is_some_and(|s| f == s))
-            && (is_infinity(*const_1) && is_neg_infinity(*const_2)
-                || is_neg_infinity(*const_1) && is_infinity(*const_2))
-            && let Some(local_snippet) = snippet_opt(cx, first.span)
+            // The actual infinity check, we also allow `NEG_INFINITY` before` INFINITY` just in
+            // case somebody does that for some reason
+            && (is_infinity(const_1) && is_neg_infinity(const_2)
+                || is_neg_infinity(const_1) && is_infinity(const_2))
             && !is_from_proc_macro(cx, expr)
+            && let Some(local_snippet) = snippet_opt(cx, first.span)
         {
             let variant = match (kind.node, lhs_kind.node, rhs_kind.node) {
                 (BinOpKind::Or, BinOpKind::Eq, BinOpKind::Eq) => Variant::ManualIsInfinite,
@@ -128,31 +137,39 @@ impl<'tcx> LateLintPass<'tcx> for ManualFloatMethods {
                                 "use the dedicated method instead",
                                 format!("{local_snippet}.is_finite()"),
                                 Applicability::MaybeIncorrect,
-                            );
-                            diag.span_suggestion_verbose(
+                            )
+                            .span_suggestion_verbose(
                                 expr.span,
                                 "this will alter how it handles NaN; if that is a problem, use instead",
                                 format!("{local_snippet}.is_finite() || {local_snippet}.is_nan()"),
                                 Applicability::MaybeIncorrect,
-                            );
-                            diag.span_suggestion_verbose(
+                            )
+                            .span_suggestion_verbose(
                                 expr.span,
                                 "or, for conciseness",
                                 format!("!{local_snippet}.is_infinite()"),
                                 Applicability::MaybeIncorrect,
                             );
-                        }
+                        },
                     }
-                }
+                },
             );
         }
     }
 }
 
-fn is_infinity(bits: u128) -> bool {
-    bits == 0x7f80_0000 || bits == 0x7ff0_0000_0000_0000
+fn is_infinity(constant: &Constant<'_>) -> bool {
+    match constant {
+        Constant::F32(float) => *float == f32::INFINITY,
+        Constant::F64(float) => *float == f64::INFINITY,
+        _ => false,
+    }
 }
 
-fn is_neg_infinity(bits: u128) -> bool {
-    bits == 0xff80_0000 || bits == 0xfff0_0000_0000_0000
+fn is_neg_infinity(constant: &Constant<'_>) -> bool {
+    match constant {
+        Constant::F32(float) => *float == f32::NEG_INFINITY,
+        Constant::F64(float) => *float == f64::NEG_INFINITY,
+        _ => false,
+    }
 }
