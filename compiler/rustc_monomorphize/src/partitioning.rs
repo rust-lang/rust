@@ -1064,49 +1064,51 @@ fn debug_dot<'a, 'tcx: 'a>(
         use std::fmt::Write;
 
         let s = &mut String::new();
-        let _ = writeln!(s, "// {label}");
-        let _ = writeln!(s, "digraph G {{");
-        let _ = writeln!(s, "  rankdir=LR");
-        let _ = writeln!(s, "  node [shape=box]");
+        let _ = writeln!(s, "# {label}");
+        // let _ = writeln!(s, "digraph G {{");
+        // let _ = writeln!(s, "  rankdir=LR");
+        // let _ = writeln!(s, "  node [shape=box]");
 
         // njn: maps items to node labels
         let mut t: FxHashMap<MonoItem<'tcx>, String> = FxHashMap::default();
 
         for (i, cgu) in cgus.iter().enumerate() {
             // njn: `cluster` prefix is meaningful.
-            let _ = writeln!(s, "  subgraph cluster{i} {{");
-            let _ = writeln!(s, "    label = \"cgu{i}\"");
+            //let _ = writeln!(s, "  subgraph cluster{i} {{");
+            //let _ = writeln!(s, "    label = \"cgu{i}\"");
+            let cgu_label = format!("cgu{i}");
+            let _ = writeln!(s, "{cgu_label} {{");
 
             for (j, (item, _)) in cgu.items().iter().enumerate() {
-                let extra = match item.instantiation_mode(cx.tcx) {
-                    InstantiationMode::GloballyShared { .. } => "",
-                    InstantiationMode::LocalCopy => " [style=filled]",
-                };
                 let user_items = cx.usage_map.get_user_items(*item);
                 let node_label = format!("a{i}_{j}_{}", user_items.len());
                 //let node_label = with_no_trimmed_paths!(format!("\"{item}\""));
-                let _ = with_no_trimmed_paths!(writeln!(s, "    {node_label}{extra} // {item}"));
-                t.insert(*item, node_label);
+                let _ = with_no_trimmed_paths!(writeln!(s, "  {node_label} # {item}"));
+                match item.instantiation_mode(cx.tcx) {
+                    InstantiationMode::GloballyShared { .. } => {}
+                    InstantiationMode::LocalCopy => {
+                        let _ = writeln!(s, "  {node_label}.shape: page");
+                    }
+                };
+                let cgu_node_label = format!("{cgu_label}.{node_label}");
+                t.insert(*item, cgu_node_label);
             }
 
-            let _ = writeln!(s, "  }}");
+            let _ = writeln!(s, "}}");
         }
 
         // njn: remove enumerates
         for (_i, cgu) in cgus.iter().enumerate() {
             for (_j, (item, _)) in cgu.items().iter().enumerate() {
-                // njn: rename these
-                let item_node_label = t.get(item).unwrap();
+                let cgu_node_label = t.get(item).unwrap();
                 let used_items = cx.usage_map.get_used_items(*item);
                 for used_item in used_items.iter() {
-                    let used_item_node_label = t.get(used_item).unwrap();
-                    let _ = writeln!(s, "  {item_node_label} -> {used_item_node_label}");
+                    let used_cgu_node_label = t.get(used_item).unwrap();
+                    let _ = writeln!(s, "{cgu_node_label} -> {used_cgu_node_label}");
                 }
 
             }
         }
-
-        let _ = writeln!(s, "}}");
 
         std::mem::take(s)
     };
