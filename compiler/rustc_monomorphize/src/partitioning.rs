@@ -460,7 +460,7 @@ fn internalize_symbols<'tcx>(
     let single_codegen_unit = codegen_units.len() == 1;
 
     if !single_codegen_unit {
-        for cgu in codegen_units.iter_mut() {
+        for cgu in codegen_units.iter() {
             for item in cgu.items().keys() {
                 // If there is more than one codegen unit, we need to keep track
                 // in which codegen units each monomorphization is placed.
