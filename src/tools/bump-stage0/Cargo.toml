@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.34"
 curl = "0.4.38"
-indexmap = { version = "1.9.1", features = ["serde"] }
+indexmap = { version = "2.0.0", features = ["serde"] }
 serde = { version = "1.0.125", features = ["derive"] }
 serde_json = { version = "1.0.59", features = ["preserve_order"] }
 toml = "0.5.7"
