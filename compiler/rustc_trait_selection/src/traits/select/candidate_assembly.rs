@@ -552,6 +552,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     // Note that this is only sound as projection candidates of opaque types
                     // are always applicable for auto traits.
                 }
+                ty::Alias(_, _) => candidates.vec.push(AutoImplCandidate),
 
                 ty::Bool
                 | ty::Char
@@ -570,7 +571,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | ty::Generator(..)
                 | ty::Never
                 | ty::Tuple(_)
-                | ty::Alias(_, _)
                 | ty::GeneratorWitness(_)
                 | ty::GeneratorWitnessMIR(..) => {
                     // Only consider auto impls if there are no manual impls for the root of `self_ty`.
