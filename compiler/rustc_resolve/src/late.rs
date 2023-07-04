@@ -3503,7 +3503,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         let report_errors = |this: &mut Self, res: Option<Res>| {
             if this.should_report_errs() {
                 let (err, candidates) =
-                    this.smart_resolve_report_errors(path, path_span, source, res);
+                    this.smart_resolve_report_errors(path, path, path_span, source, res);
 
                 let def_id = this.parent_scope.module.nearest_parent_mod();
                 let instead = res.is_some();
@@ -3560,8 +3560,13 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                 _ => return Some(parent_err),
             };
 
-            let (mut err, candidates) =
-                this.smart_resolve_report_errors(prefix_path, path_span, PathSource::Type, None);
+            let (mut err, candidates) = this.smart_resolve_report_errors(
+                prefix_path,
+                path,
+                path_span,
+                PathSource::Type,
+                None,
+            );
 
             // There are two different error messages user might receive at
             // this point:
