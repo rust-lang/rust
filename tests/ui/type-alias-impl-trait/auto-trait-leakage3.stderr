@@ -1,8 +1,8 @@
 error[E0391]: cycle detected when computing type of `m::Foo::{opaque#0}`
-  --> $DIR/auto-trait-leakage3.rs:7:16
+  --> $DIR/auto-trait-leakage3.rs:7:20
    |
-LL |     type Foo = impl std::fmt::Debug;
-   |                ^^^^^^^^^^^^^^^^^^^^
+LL |     pub type Foo = impl std::fmt::Debug;
+   |                    ^^^^^^^^^^^^^^^^^^^^
    |
 note: ...which requires type-checking `m::bar`...
   --> $DIR/auto-trait-leakage3.rs:15:9

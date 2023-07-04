@@ -2,7 +2,7 @@
 #![allow(dead_code)]
 
 mod m {
-    type Foo = impl std::fmt::Debug;
+    pub type Foo = impl std::fmt::Debug;
     //~^ ERROR cycle detected
 
     // Cycle: error today, but it'd be nice if it eventually worked
@@ -16,7 +16,7 @@ mod m {
     }
 
     fn baz() {
-        let f: Foo = 22_u32;
+        let f: Foo = ();
     }
 
     fn is_send<T: Send>(_: T) {}

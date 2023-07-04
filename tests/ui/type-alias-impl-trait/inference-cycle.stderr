@@ -1,8 +1,8 @@
 error[E0391]: cycle detected when computing type of `m::Foo::{opaque#0}`
-  --> $DIR/inference-cycle.rs:5:16
+  --> $DIR/inference-cycle.rs:5:20
    |
-LL |     type Foo = impl std::fmt::Debug;
-   |                ^^^^^^^^^^^^^^^^^^^^
+LL |     pub type Foo = impl std::fmt::Debug;
+   |                    ^^^^^^^^^^^^^^^^^^^^
    |
 note: ...which requires type-checking `m::bar`...
   --> $DIR/inference-cycle.rs:15:9

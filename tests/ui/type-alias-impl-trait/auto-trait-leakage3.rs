@@ -4,7 +4,7 @@
 // FIXME This should compile, but it currently doesn't
 
 mod m {
-    type Foo = impl std::fmt::Debug;
+    pub type Foo = impl std::fmt::Debug;
     //~^ ERROR: cycle detected when computing type of `m::Foo::{opaque#0}` [E0391]
 
     pub fn foo() -> Foo {
