@@ -32,7 +32,6 @@ pub fn expand_test_case(
         return vec![];
     }
 
-    let sp = ecx.with_def_site_ctxt(attr_sp);
     let (mut item, is_stmt) = match anno_item {
         Annotatable::Item(item) => (item, false),
         Annotatable::Stmt(stmt) if let ast::StmtKind::Item(_) = stmt.kind => if let ast::StmtKind::Item(i) = stmt.into_inner().kind {
@@ -45,29 +44,41 @@ pub fn expand_test_case(
             return vec![];
         }
     };
+    let attr_sp = ecx.with_def_site_ctxt(attr_sp);
+    let sp = ecx.with_def_site_ctxt(item.span);
+
+    let test_path_symbol = Symbol::intern(&item_path(
+        // skip the name of the root module
+        &ecx.current_expansion.module.mod_path[1..],
+        &item.ident,
+    ));
+    let test_item = ecx.item(
+        sp,
+        item.ident,
+        thin_vec![ecx.attr_name_value_str(sym::rustc_test_marker, test_path_symbol, attr_sp)],
+        item.kind.clone(),
+    );
+
     item = item.map(|mut item| {
-        let test_path_symbol = Symbol::intern(&item_path(
-            // skip the name of the root module
-            &ecx.current_expansion.module.mod_path[1..],
-            &item.ident,
-        ));
         item.vis = ast::Visibility {
             span: item.vis.span,
             kind: ast::VisibilityKind::Public,
             tokens: None,
         };
-        item.ident.span = item.ident.span.with_ctxt(sp.ctxt());
-        item.attrs.push(ecx.attr_name_value_str(sym::rustc_test_marker, test_path_symbol, sp));
+        item.ident.span = item.ident.span.with_ctxt(attr_sp.ctxt());
         item
     });
 
     let ret = if is_stmt {
-        Annotatable::Stmt(P(ecx.stmt_item(item.span, item)))
+        vec![
+            Annotatable::Stmt(P(ecx.stmt_item(test_item.span, test_item))),
+            Annotatable::Stmt(P(ecx.stmt_item(item.span, item))),
+        ]
     } else {
-        Annotatable::Item(item)
+        vec![Annotatable::Item(test_item), Annotatable::Item(item)]
     };
 
-    vec![ret]
+    ret
 }
 
 pub fn expand_test(
