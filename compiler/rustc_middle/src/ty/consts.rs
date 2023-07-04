@@ -1,6 +1,6 @@
 use crate::middle::resolve_bound_vars as rbv;
-use crate::mir::interpret::LitToConstInput;
-use crate::ty::{self, InternalSubsts, ParamEnv, ParamEnvAnd, Ty, TyCtxt};
+use crate::mir::interpret::{AllocId, ConstValue, LitToConstInput, Scalar};
+use crate::ty::{self, InternalSubsts, ParamEnv, ParamEnvAnd, Ty, TyCtxt, TypeVisitableExt};
 use rustc_data_structures::intern::Interned;
 use rustc_error_messages::MultiSpan;
 use rustc_hir as hir;
@@ -14,8 +14,12 @@ mod valtree;
 
 pub use int::*;
 pub use kind::*;
+use rustc_span::ErrorGuaranteed;
 use rustc_span::DUMMY_SP;
+use rustc_target::abi::Size;
 pub use valtree::*;
+
+use super::sty::ConstKind;
 
 /// Use this rather than `ConstData`, whenever possible.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable)]
@@ -31,6 +35,16 @@ pub struct ConstData<'tcx> {
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 static_assert_size!(ConstData<'_>, 40);
+
+enum EvalMode {
+    Typeck,
+    Mir,
+}
+
+enum EvalResult<'tcx> {
+    ValTree(ty::ValTree<'tcx>),
+    ConstVal(ConstValue<'tcx>),
+}
 
 impl<'tcx> Const<'tcx> {
     #[inline]
@@ -293,12 +307,12 @@ impl<'tcx> Const<'tcx> {
         assert_eq!(self.ty(), ty);
         let size = tcx.layout_of(param_env.with_reveal_all_normalized(tcx).and(ty)).ok()?.size;
         // if `ty` does not depend on generic parameters, use an empty param_env
-        self.kind().eval(tcx, param_env).try_to_bits(size)
+        self.eval(tcx, param_env).try_to_bits(size)
     }
 
     #[inline]
     pub fn try_eval_bool(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Option<bool> {
-        self.kind().eval(tcx, param_env).try_to_bool()
+        self.eval(tcx, param_env).try_to_bool()
     }
 
     #[inline]
@@ -307,14 +321,14 @@ impl<'tcx> Const<'tcx> {
         tcx: TyCtxt<'tcx>,
         param_env: ParamEnv<'tcx>,
     ) -> Option<u64> {
-        self.kind().eval(tcx, param_env).try_to_target_usize(tcx)
+        self.eval(tcx, param_env).try_to_target_usize(tcx)
     }
 
     #[inline]
     /// Tries to evaluate the constant if it is `Unevaluated`. If that doesn't succeed, return the
     /// unevaluated constant.
     pub fn eval(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Const<'tcx> {
-        if let Some(val) = self.kind().try_eval_for_typeck(tcx, param_env) {
+        if let Some(val) = self.try_eval_for_typeck(tcx, param_env) {
             match val {
                 Ok(val) => ty::Const::new_value(tcx, val, self.ty()),
                 Err(guar) => ty::Const::new_error(tcx, guar, self.ty()),
@@ -337,6 +351,138 @@ impl<'tcx> Const<'tcx> {
     pub fn eval_target_usize(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> u64 {
         self.try_eval_target_usize(tcx, param_env)
             .unwrap_or_else(|| bug!("expected usize, got {:#?}", self))
+    }
+
+    #[inline]
+    /// Tries to evaluate the constant if it is `Unevaluated`. If that isn't possible or necessary
+    /// return `None`.
+    // FIXME(@lcnr): Completely rework the evaluation/normalization system for `ty::Const` once valtrees are merged.
+    pub fn try_eval_for_mir(
+        self,
+        tcx: TyCtxt<'tcx>,
+        param_env: ParamEnv<'tcx>,
+    ) -> Option<Result<ConstValue<'tcx>, ErrorGuaranteed>> {
+        match self.try_eval_inner(tcx, param_env, EvalMode::Mir) {
+            Some(Ok(EvalResult::ValTree(_))) => unreachable!(),
+            Some(Ok(EvalResult::ConstVal(v))) => Some(Ok(v)),
+            Some(Err(e)) => Some(Err(e)),
+            None => None,
+        }
+    }
+
+    #[inline]
+    /// Tries to evaluate the constant if it is `Unevaluated`. If that isn't possible or necessary
+    /// return `None`.
+    // FIXME(@lcnr): Completely rework the evaluation/normalization system for `ty::Const` once valtrees are merged.
+    pub fn try_eval_for_typeck(
+        self,
+        tcx: TyCtxt<'tcx>,
+        param_env: ParamEnv<'tcx>,
+    ) -> Option<Result<ty::ValTree<'tcx>, ErrorGuaranteed>> {
+        match self.try_eval_inner(tcx, param_env, EvalMode::Typeck) {
+            Some(Ok(EvalResult::ValTree(v))) => Some(Ok(v)),
+            Some(Ok(EvalResult::ConstVal(_))) => unreachable!(),
+            Some(Err(e)) => Some(Err(e)),
+            None => None,
+        }
+    }
+
+    #[inline]
+    fn try_eval_inner(
+        self,
+        tcx: TyCtxt<'tcx>,
+        param_env: ParamEnv<'tcx>,
+        eval_mode: EvalMode,
+    ) -> Option<Result<EvalResult<'tcx>, ErrorGuaranteed>> {
+        assert!(!self.has_escaping_bound_vars(), "escaping vars in {self:?}");
+        if let ConstKind::Unevaluated(unevaluated) = self.kind() {
+            use crate::mir::interpret::ErrorHandled;
+
+            // HACK(eddyb) this erases lifetimes even though `const_eval_resolve`
+            // also does later, but we want to do it before checking for
+            // inference variables.
+            // Note that we erase regions *before* calling `with_reveal_all_normalized`,
+            // so that we don't try to invoke this query with
+            // any region variables.
+
+            // HACK(eddyb) when the query key would contain inference variables,
+            // attempt using identity substs and `ParamEnv` instead, that will succeed
+            // when the expression doesn't depend on any parameters.
+            // FIXME(eddyb, skinny121) pass `InferCtxt` into here when it's available, so that
+            // we can call `infcx.const_eval_resolve` which handles inference variables.
+            let param_env_and = if (param_env, unevaluated).has_non_region_infer() {
+                tcx.param_env(unevaluated.def).and(ty::UnevaluatedConst {
+                    def: unevaluated.def,
+                    substs: InternalSubsts::identity_for_item(tcx, unevaluated.def),
+                })
+            } else {
+                tcx.erase_regions(param_env)
+                    .with_reveal_all_normalized(tcx)
+                    .and(tcx.erase_regions(unevaluated))
+            };
+
+            // FIXME(eddyb) maybe the `const_eval_*` methods should take
+            // `ty::ParamEnvAnd` instead of having them separate.
+            let (param_env, unevaluated) = param_env_and.into_parts();
+            // try to resolve e.g. associated constants to their definition on an impl, and then
+            // evaluate the const.
+            match eval_mode {
+                EvalMode::Typeck => {
+                    match tcx.const_eval_resolve_for_typeck(param_env, unevaluated, None) {
+                        // NOTE(eddyb) `val` contains no lifetimes/types/consts,
+                        // and we use the original type, so nothing from `substs`
+                        // (which may be identity substs, see above),
+                        // can leak through `val` into the const we return.
+                        Ok(val) => Some(Ok(EvalResult::ValTree(val?))),
+                        Err(ErrorHandled::TooGeneric) => None,
+                        Err(ErrorHandled::Reported(e)) => Some(Err(e.into())),
+                    }
+                }
+                EvalMode::Mir => {
+                    match tcx.const_eval_resolve(param_env, unevaluated.expand(), None) {
+                        // NOTE(eddyb) `val` contains no lifetimes/types/consts,
+                        // and we use the original type, so nothing from `substs`
+                        // (which may be identity substs, see above),
+                        // can leak through `val` into the const we return.
+                        Ok(val) => Some(Ok(EvalResult::ConstVal(val))),
+                        Err(ErrorHandled::TooGeneric) => None,
+                        Err(ErrorHandled::Reported(e)) => Some(Err(e.into())),
+                    }
+                }
+            }
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    pub fn try_to_value(self) -> Option<ty::ValTree<'tcx>> {
+        if let ConstKind::Value(val) = self.kind() { Some(val) } else { None }
+    }
+
+    #[inline]
+    pub fn try_to_scalar(self) -> Option<Scalar<AllocId>> {
+        self.try_to_value()?.try_to_scalar()
+    }
+
+    #[inline]
+    pub fn try_to_scalar_int(self) -> Option<ScalarInt> {
+        self.try_to_value()?.try_to_scalar_int()
+    }
+
+    #[inline]
+    pub fn try_to_bits(self, size: Size) -> Option<u128> {
+        self.try_to_scalar_int()?.to_bits(size).ok()
+    }
+
+    #[inline]
+    pub fn try_to_bool(self) -> Option<bool> {
+        self.try_to_scalar_int()?.try_into().ok()
+    }
+
+    #[inline]
+    pub fn try_to_target_usize(self, tcx: TyCtxt<'tcx>) -> Option<u64> {
+        self.try_to_value()?.try_to_target_usize(tcx)
     }
 
     pub fn is_ct_infer(self) -> bool {

@@ -241,24 +241,6 @@ impl<'tcx> fmt::Debug for ty::Const<'tcx> {
     }
 }
 
-impl<'tcx> fmt::Debug for ty::ConstKind<'tcx> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        use ty::ConstKind::*;
-        match self {
-            Param(param) => write!(f, "{param:?}"),
-            Infer(var) => write!(f, "{var:?}"),
-            Bound(debruijn, var) => rustc_type_ir::debug_bound_var(f, *debruijn, *var),
-            Placeholder(placeholder) => write!(f, "{placeholder:?}"),
-            Unevaluated(uv) => {
-                f.debug_tuple("Unevaluated").field(&uv.substs).field(&uv.def).finish()
-            }
-            Value(valtree) => write!(f, "{valtree:?}"),
-            Error(_) => write!(f, "{{const error}}"),
-            Expr(expr) => write!(f, "{expr:?}"),
-        }
-    }
-}
-
 impl fmt::Debug for ty::BoundTy {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.kind {

@@ -108,6 +108,14 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type PredicateKind = ty::PredicateKind<'tcx>;
     type AllocId = crate::mir::interpret::AllocId;
 
+    type InferConst = ty::InferConst<'tcx>;
+    type AliasConst = ty::UnevaluatedConst<'tcx>;
+    type ParamConst = ty::ParamConst;
+    type BoundConst = ty::BoundVar;
+    type PlaceholderConst = ty::PlaceholderConst<'tcx>;
+    type ValueConst = ty::ValTree<'tcx>;
+    type ExprConst = ty::Expr<'tcx>;
+
     type EarlyBoundRegion = ty::EarlyBoundRegion;
     type BoundRegion = ty::BoundRegion;
     type FreeRegion = ty::FreeRegion;
