@@ -7,6 +7,7 @@
 // edition: 2021
 
 #![feature(rustc_private)]
+#![feature(assert_matches)]
 
 extern crate rustc_driver;
 extern crate rustc_hir;
@@ -19,6 +20,7 @@ use rustc_hir::def::DefKind;
 use rustc_interface::{interface, Queries};
 use rustc_middle::ty::TyCtxt;
 use rustc_smir::{rustc_internal, stable_mir};
+use std::assert_matches::assert_matches;
 use std::io::Write;
 
 const CRATE_NAME: &str = "input";
@@ -62,6 +64,18 @@ fn test_stable_mir(tcx: TyCtxt<'_>) {
         stable_mir::mir::Terminator::Call { .. } => {}
         other => panic!("{other:?}"),
     }
+
+    let types = get_item(tcx, &items, (DefKind::Fn, "types")).unwrap();
+    let body = types.body();
+    assert_eq!(body.locals.len(), 2);
+    assert_matches!(
+        body.locals[0].kind(),
+        stable_mir::ty::TyKind::RigidTy(stable_mir::ty::RigidTy::Bool)
+    );
+    assert_matches!(
+        body.locals[1].kind(),
+        stable_mir::ty::TyKind::RigidTy(stable_mir::ty::RigidTy::Bool)
+    );
 
     let drop = get_item(tcx, &items, (DefKind::Fn, "drop")).unwrap();
     let body = drop.body();
@@ -151,6 +165,10 @@ fn generate_input(path: &str) -> std::io::Result<()> {
         let x_64 = foo::bar(x);
         let y_64 = foo::bar(y);
         x_64.wrapping_add(y_64)
+    }}
+
+    pub fn types(b: bool) -> bool {{
+        b
     }}
 
     pub fn drop(_: String) {{}}

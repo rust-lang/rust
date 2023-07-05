@@ -9,10 +9,12 @@ impl Ty {
     }
 }
 
+#[derive(Clone, Debug)]
 pub enum TyKind {
     RigidTy(RigidTy),
 }
 
+#[derive(Clone, Debug)]
 pub enum RigidTy {
     Bool,
     Tuple(Vec<Ty>),
