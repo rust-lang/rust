@@ -842,7 +842,7 @@ def run_tests(pipeline: Pipeline):
 
     # Specify path to a LLVM config so that LLVM is not rebuilt.
     # It doesn't really matter which LLVM config we choose, because no sysroot will be compiled.
-    llvm_config = pipeline.build_artifacts() / "llvm" / "bin" / "llvm-config"
+    llvm_config = pipeline.build_artifacts() / "llvm" / "bin" / f"llvm-config{pipeline.executable_extension()}"
     assert llvm_config.is_file()
 
     config_content = f"""profile = "user"
