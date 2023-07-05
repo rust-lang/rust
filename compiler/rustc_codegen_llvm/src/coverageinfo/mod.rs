@@ -8,8 +8,8 @@ use libc::c_uint;
 use llvm::coverageinfo::CounterMappingRegion;
 use rustc_codegen_ssa::coverageinfo::map::{CounterExpression, FunctionCoverage};
 use rustc_codegen_ssa::traits::{
-    BaseTypeMethods, BuilderMethods, ConstMethods, CoverageInfoBuilderMethods, CoverageInfoMethods,
-    MiscMethods, StaticMethods,
+    BaseTypeMethods, BuilderMethods, ConstMethods, CoverageInfoBuilderMethods, MiscMethods,
+    StaticMethods,
 };
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
@@ -54,11 +54,17 @@ impl<'ll, 'tcx> CrateCoverageContext<'ll, 'tcx> {
     }
 }
 
-impl<'ll, 'tcx> CoverageInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
-    fn coverageinfo_finalize(&self) {
+// These methods used to be part of trait `CoverageInfoMethods`, which no longer
+// exists after most coverage code was moved out of SSA.
+impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
+    pub(crate) fn coverageinfo_finalize(&self) {
         mapgen::finalize(self)
     }
 
+    /// For LLVM codegen, returns a function-specific `Value` for a global
+    /// string, to hold the function name passed to LLVM intrinsic
+    /// `instrprof.increment()`. The `Value` is only created once per instance.
+    /// Multiple invocations with the same instance return the same `Value`.
     fn get_pgo_func_name_var(&self, instance: Instance<'tcx>) -> &'ll llvm::Value {
         if let Some(coverage_context) = self.coverage_context() {
             debug!("getting pgo_func_name_var for instance={:?}", instance);
