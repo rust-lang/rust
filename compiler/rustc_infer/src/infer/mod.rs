@@ -1110,7 +1110,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     TypeVariableOrigin {
                         kind: TypeVariableOriginKind::TypeParameterDefinition(
                             param.name,
-                            Some(param.def_id),
+                            param.def_id,
                         ),
                         span,
                     },

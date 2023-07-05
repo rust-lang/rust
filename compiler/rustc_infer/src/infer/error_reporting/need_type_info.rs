@@ -265,9 +265,9 @@ impl<'tcx> InferCtxt<'tcx> {
                                 kind: UnderspecifiedArgKind::Type {
                                     prefix: "type parameter".into(),
                                 },
-                                parent: def_id.and_then(|def_id| {
-                                    InferenceDiagnosticsParentData::for_def_id(self.tcx, def_id)
-                                }),
+                                parent: InferenceDiagnosticsParentData::for_def_id(
+                                    self.tcx, def_id,
+                                ),
                             };
                         }
                     }
