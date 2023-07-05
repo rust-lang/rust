@@ -406,7 +406,7 @@ impl Config {
             return vec![];
         }
 
-        let ci_rustc_dir = self.out.join(&*self.build.triple).join("ci-rustc");
+        let ci_rustc_dir = self.ci_rustc_dir();
         let stamp_file = ci_rustc_dir.join(stamp_file);
         let contents_file = t!(File::open(&stamp_file), stamp_file.display().to_string());
         t!(BufReader::new(contents_file).lines().collect())

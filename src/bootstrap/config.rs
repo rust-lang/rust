@@ -1800,6 +1800,13 @@ impl Config {
         self.out.join(&*self.build.triple).join("ci-llvm")
     }
 
+    /// Directory where the extracted `rustc-dev` component is stored.
+    pub(crate) fn ci_rustc_dir(&self) -> PathBuf {
+        // assert!(self.download_rustc_commit.is_some());
+        assert!(self.download_rustc());
+        self.out.join(self.build.triple).join("ci-rustc")
+    }
+
     /// Determine whether llvm should be linked dynamically.
     ///
     /// If `false`, llvm should be linked statically.
