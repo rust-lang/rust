@@ -1,6 +1,6 @@
 use ide_db::{base_db::FileId, source_change::SourceChange};
 use itertools::Itertools;
-use syntax::{ast, AstNode, SyntaxKind, SyntaxNode};
+use syntax::{ast, AstNode, SyntaxNode};
 use text_edit::TextEdit;
 
 use crate::{fix, Diagnostic, DiagnosticCode};
@@ -16,7 +16,7 @@ pub(crate) fn useless_braces(
     let use_tree_list = ast::UseTreeList::cast(node.clone())?;
     if let Some((single_use_tree,)) = use_tree_list.use_trees().collect_tuple() {
         // If there is a `self` inside the bracketed `use`, don't show diagnostic.
-        if single_use_tree.syntax().first_token().unwrap().kind() == SyntaxKind::SELF_KW {
+        if single_use_tree.path()?.segment()?.self_token().is_some() {
             return Some(());
         }
 
@@ -53,7 +53,10 @@ pub(crate) fn useless_braces(
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::{check_diagnostics, check_fix};
+    use crate::{
+        tests::{check_diagnostics, check_diagnostics_with_config, check_fix},
+        DiagnosticsConfig,
+    };
 
     #[test]
     fn test_check_unnecessary_braces_in_use_statement() {
@@ -100,6 +103,16 @@ use a::{self as cool_name};
 
 mod a {
 }
+"#,
+        );
+
+        let mut config = DiagnosticsConfig::test_sample();
+        config.disabled.insert("syntax-error".to_string());
+        check_diagnostics_with_config(
+            config,
+            r#"
+mod a { pub mod b {} }
+use a::{b::self};
 "#,
         );
         check_fix(
