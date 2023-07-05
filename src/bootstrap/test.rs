@@ -706,7 +706,6 @@ impl Step for Miri {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct CompiletestTest {
-    stage: u32,
     host: TargetSelection,
 }
 
@@ -718,14 +717,13 @@ impl Step for CompiletestTest {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(CompiletestTest { stage: run.builder.top_stage, host: run.target });
+        run.builder.ensure(CompiletestTest { host: run.target });
     }
 
     /// Runs `cargo test` for compiletest.
     fn run(self, builder: &Builder<'_>) {
         let host = self.host;
-        let stage = self.stage;
-        let compiler = builder.compiler(stage, host);
+        let compiler = builder.compiler(builder.top_stage, host);
 
         // We need `ToolStd` for the locally-built sysroot because
         // compiletest uses unstable features of the `test` crate.
@@ -741,7 +739,7 @@ impl Step for CompiletestTest {
             &[],
         );
         cargo.allow_features("test");
-        cargo.env("RUSTC_STAGE", stage.to_string());
+        cargo.env("RUSTC_STAGE", builder.top_stage.to_string());
         run_cargo_test(cargo, &[], &[], "compiletest", compiler, host, builder);
     }
 }

@@ -456,6 +456,7 @@ fn wasm_special() {
     // The MinGW tests run a beta compiler on stage 0 which means we're having a target mismatch
     // for a brief period. When a new beta release is cut, the `if` part of this conditional should be
     // removed, and the `else` part should be re-inlined in the original `ignores` list.
+    // cfg(bootstrap)
     if env!("RUSTC_STAGE") == "0" {
         ignores.append(&mut vec![
             ("wasm32-wasi", "emscripten", false),
