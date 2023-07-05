@@ -452,7 +452,7 @@ fn internalize_symbols<'tcx>(
     /// used to keep track of that.
     #[derive(Clone, PartialEq, Eq, Debug)]
     enum MonoItemPlacement {
-        SingleCgu { cgu_name: Symbol },
+        SingleCgu(Symbol),
         MultipleCgus,
     }
 
@@ -468,13 +468,13 @@ fn internalize_symbols<'tcx>(
                     Entry::Occupied(e) => {
                         let placement = e.into_mut();
                         debug_assert!(match *placement {
-                            MonoItemPlacement::SingleCgu { cgu_name } => cgu_name != cgu.name(),
+                            MonoItemPlacement::SingleCgu(cgu_name) => cgu_name != cgu.name(),
                             MonoItemPlacement::MultipleCgus => true,
                         });
                         *placement = MonoItemPlacement::MultipleCgus;
                     }
                     Entry::Vacant(e) => {
-                        e.insert(MonoItemPlacement::SingleCgu { cgu_name: cgu.name() });
+                        e.insert(MonoItemPlacement::SingleCgu(cgu.name()));
                     }
                 }
             }
@@ -484,7 +484,7 @@ fn internalize_symbols<'tcx>(
     // For each internalization candidates in each codegen unit, check if it is
     // used from outside its defining codegen unit.
     for cgu in codegen_units {
-        let home_cgu = MonoItemPlacement::SingleCgu { cgu_name: cgu.name() };
+        let home_cgu = MonoItemPlacement::SingleCgu(cgu.name());
 
         for (item, linkage_and_visibility) in cgu.items_mut() {
             if !internalization_candidates.contains(item) {
