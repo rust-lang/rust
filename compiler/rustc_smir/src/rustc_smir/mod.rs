@@ -7,7 +7,7 @@
 //!
 //! For now, we are developing everything inside `rustc`, thus, we keep this module private.
 
-use crate::stable_mir::ty::{RigidTy, TyKind};
+use crate::stable_mir::ty::{IntTy, RigidTy, TyKind};
 use crate::stable_mir::{self, Context};
 use rustc_middle::mir;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -72,7 +72,14 @@ impl<'tcx> Tables<'tcx> {
         match ty.kind() {
             ty::Bool => TyKind::RigidTy(RigidTy::Bool),
             ty::Char => TyKind::RigidTy(RigidTy::Char),
-            ty::Int(_) => todo!(),
+            ty::Int(int_ty) => match int_ty {
+                ty::IntTy::Isize => TyKind::RigidTy(RigidTy::Int(IntTy::Isize)),
+                ty::IntTy::I8 => TyKind::RigidTy(RigidTy::Int(IntTy::I8)),
+                ty::IntTy::I16 => TyKind::RigidTy(RigidTy::Int(IntTy::I16)),
+                ty::IntTy::I32 => TyKind::RigidTy(RigidTy::Int(IntTy::I32)),
+                ty::IntTy::I64 => TyKind::RigidTy(RigidTy::Int(IntTy::I64)),
+                ty::IntTy::I128 => TyKind::RigidTy(RigidTy::Int(IntTy::I128)),
+            },
             ty::Uint(_) => todo!(),
             ty::Float(_) => todo!(),
             ty::Adt(_, _) => todo!(),
