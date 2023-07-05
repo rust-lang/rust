@@ -19,6 +19,7 @@ pub enum RigidTy {
     Bool,
     Char,
     Int(IntTy),
+    Uint(UintTy),
     Tuple(Vec<Ty>),
 }
 
@@ -30,4 +31,14 @@ pub enum IntTy {
     I32,
     I64,
     I128,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum UintTy {
+    Usize,
+    U8,
+    U16,
+    U32,
+    U64,
+    U128,
 }
