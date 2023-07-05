@@ -27,13 +27,11 @@ pub(crate) fn useless_braces(
         }
 
         let use_range = use_tree_list.syntax().text_range();
-        let edit = remove_braces(&single_use_tree).unwrap_or_else(|| {
-            let to_replace = single_use_tree.syntax().text().to_string();
-            let mut edit_builder = TextEdit::builder();
-            edit_builder.delete(use_range);
-            edit_builder.insert(use_range.start(), to_replace);
-            edit_builder.finish()
-        });
+        let to_replace = single_use_tree.syntax().text().to_string();
+        let mut edit_builder = TextEdit::builder();
+        edit_builder.delete(use_range);
+        edit_builder.insert(use_range.start(), to_replace);
+        let edit = edit_builder.finish();
 
         acc.push(
             Diagnostic::new(
@@ -51,16 +49,6 @@ pub(crate) fn useless_braces(
     }
 
     Some(())
-}
-
-fn remove_braces(single_use_tree: &ast::UseTree) -> Option<TextEdit> {
-    let use_tree_list_node = single_use_tree.syntax().parent()?;
-    if single_use_tree.path()?.segment()?.self_token().is_some() {
-        let start = use_tree_list_node.prev_sibling_or_token()?.text_range().start();
-        let end = use_tree_list_node.text_range().end();
-        return Some(TextEdit::delete(TextRange::new(start, end)));
-    }
-    None
 }
 
 #[cfg(test)]
