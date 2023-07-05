@@ -20,6 +20,7 @@ pub enum RigidTy {
     Char,
     Int(IntTy),
     Uint(UintTy),
+    Float(FloatTy),
     Tuple(Vec<Ty>),
 }
 
@@ -41,4 +42,10 @@ pub enum UintTy {
     U32,
     U64,
     U128,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FloatTy {
+    F32,
+    F64,
 }
