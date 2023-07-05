@@ -1,6 +1,6 @@
 use ide_db::{base_db::FileId, source_change::SourceChange};
 use itertools::Itertools;
-use syntax::{ast, AstNode, SyntaxNode, TextRange};
+use syntax::{ast, AstNode, SyntaxKind, SyntaxNode, TextRange};
 use text_edit::TextEdit;
 
 use crate::{fix, Diagnostic, DiagnosticCode};
@@ -15,6 +15,11 @@ pub(crate) fn useless_braces(
 ) -> Option<()> {
     let use_tree_list = ast::UseTreeList::cast(node.clone())?;
     if let Some((single_use_tree,)) = use_tree_list.use_trees().collect_tuple() {
+        // If there is a `self` inside the bracketed `use`, don't show diagnostic.
+        if single_use_tree.syntax().first_token().unwrap().kind() == SyntaxKind::SELF_KW {
+            return Some(());
+        }
+
         // If there is a comment inside the bracketed `use`,
         // assume it is a commented out module path and don't show diagnostic.
         if use_tree_list.has_inner_comment() {
@@ -93,6 +98,22 @@ mod a {
 }
 "#,
         );
+        check_diagnostics(
+            r#"
+use a::{self};
+
+mod a {
+}
+"#,
+        );
+        check_diagnostics(
+            r#"
+use a::{self as cool_name};
+
+mod a {
+}
+"#,
+        );
         check_fix(
             r#"
 mod b {}
@@ -121,16 +142,6 @@ use a::{c$0};
             r#"
 mod a { pub mod c {} }
 use a::c;
-"#,
-        );
-        check_fix(
-            r#"
-mod a {}
-use a::{self$0};
-"#,
-            r#"
-mod a {}
-use a;
 "#,
         );
         check_fix(
