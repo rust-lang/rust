@@ -435,7 +435,7 @@ fn pointer_width() {
 
 #[test]
 fn wasm_special() {
-    let ignores = [
+    let mut ignores = vec![
         ("wasm32-unknown-unknown", "emscripten", true),
         ("wasm32-unknown-unknown", "wasm32", true),
         ("wasm32-unknown-unknown", "wasm32-bare", true),
@@ -446,15 +446,32 @@ fn wasm_special() {
         ("wasm32-unknown-emscripten", "emscripten", true),
         ("wasm32-unknown-emscripten", "wasm32", true),
         ("wasm32-unknown-emscripten", "wasm32-bare", false),
-        ("wasm32-wasi-preview1", "emscripten", false),
-        ("wasm32-wasi-preview1", "wasm32", true),
-        ("wasm32-wasi-preview1", "wasm32-bare", false),
-        ("wasm32-wasi-preview1", "wasi", true),
         ("wasm64-unknown-unknown", "emscripten", false),
         ("wasm64-unknown-unknown", "wasm32", false),
         ("wasm64-unknown-unknown", "wasm32-bare", false),
         ("wasm64-unknown-unknown", "wasm64", true),
     ];
+
+    // FIXME(yosh): We're updating the "wasm32-wasi" target name to "wasm32-wasi-preview1".
+    // The MinGW tests run a beta compiler on stage 0 which means we're having a target mismatch
+    // for a brief period. When a new beta release is cut, the `if` part of this conditional should be
+    // removed, and the `else` part should be re-inlined in the original `ignores` list.
+    if env!("RUSTC_STAGE") == "0" {
+        ignores.append(&mut vec![
+            ("wasm32-wasi", "emscripten", false),
+            ("wasm32-wasi", "wasm32", true),
+            ("wasm32-wasi", "wasm32-bare", false),
+            ("wasm32-wasi", "wasi", true),
+        ]);
+    } else {
+        ignores.append(&mut vec![
+            ("wasm32-wasi-preview1", "emscripten", false),
+            ("wasm32-wasi-preview1", "wasm32", true),
+            ("wasm32-wasi-preview1", "wasm32-bare", false),
+            ("wasm32-wasi-preview1", "wasi", true),
+        ]);
+    }
+
     for (target, pattern, ignore) in ignores {
         let mut config = config();
         config.target = target.to_string();
