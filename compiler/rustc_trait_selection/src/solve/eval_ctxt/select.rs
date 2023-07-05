@@ -52,7 +52,11 @@ impl<'tcx> InferCtxtSelectExt<'tcx> for InferCtxt<'tcx> {
                 let mut i = 0;
                 while i < candidates.len() {
                     let should_drop_i = (0..candidates.len()).filter(|&j| i != j).any(|j| {
-                        candidate_should_be_dropped_in_favor_of(&candidates[i], &candidates[j])
+                        candidate_should_be_dropped_in_favor_of(
+                            ecx.tcx(),
+                            &candidates[i],
+                            &candidates[j],
+                        )
                     });
                     if should_drop_i {
                         candidates.swap_remove(i);
@@ -160,12 +164,19 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
 }
 
 fn candidate_should_be_dropped_in_favor_of<'tcx>(
+    tcx: TyCtxt<'tcx>,
     victim: &Candidate<'tcx>,
     other: &Candidate<'tcx>,
 ) -> bool {
     match (victim.source, other.source) {
-        (CandidateSource::ParamEnv(i), CandidateSource::ParamEnv(j)) => i >= j,
+        (CandidateSource::ParamEnv(victim_idx), CandidateSource::ParamEnv(other_idx)) => {
+            victim_idx >= other_idx
+        }
         (_, CandidateSource::ParamEnv(_)) => true,
+        (CandidateSource::Impl(victim_def_id), CandidateSource::Impl(other_def_id)) => {
+            tcx.specializes((other_def_id, victim_def_id))
+                && other.result.value.certainty == Certainty::Yes
+        }
         _ => false,
     }
 }

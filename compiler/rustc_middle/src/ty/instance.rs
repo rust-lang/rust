@@ -410,8 +410,8 @@ impl<'tcx> Instance<'tcx> {
     ) -> Instance<'tcx> {
         match ty::Instance::resolve(tcx, param_env, def_id, substs) {
             Ok(Some(instance)) => instance,
-            _ => bug!(
-                "failed to resolve instance for {}",
+            instance => bug!(
+                "failed to resolve instance for {}: {instance:#?}",
                 tcx.def_path_str_with_substs(def_id, substs)
             ),
         }
