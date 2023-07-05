@@ -2574,13 +2574,8 @@ pub(crate) fn is_nonoverlapping<T>(src: *const T, dst: *const T, count: usize) -
 ///
 /// For regions of memory which might overlap, use [`copy`] instead.
 ///
-/// `copy_nonoverlapping` is semantically equivalent to C's [`memcpy`], but
-/// with the argument order swapped.
-///
 /// The copy is "untyped" in the sense that data may be uninitialized or otherwise violate the
 /// requirements of `T`. The initialization state is preserved exactly.
-///
-/// [`memcpy`]: https://en.cppreference.com/w/c/string/byte/memcpy
 ///
 /// # Safety
 ///
@@ -2603,6 +2598,10 @@ pub(crate) fn is_nonoverlapping<T>(src: *const T, dst: *const T, count: usize) -
 ///
 /// Note that even if the effectively copied size (`count * size_of::<T>()`) is
 /// `0`, the pointers must be non-null and properly aligned.
+///
+/// In the case of a 0-byte read, the pointers may be the same pointer,
+/// as a region of 0 bytes overlaps with a region of 0 bytes for 0 bytes.
+/// A copy of 1 or more bytes to the same address incurs undefined behavior.
 ///
 /// [`read`]: crate::ptr::read
 /// [read-ownership]: crate::ptr::read#ownership-of-the-returned-value
