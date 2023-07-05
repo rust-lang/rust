@@ -29,6 +29,11 @@ pub(super) fn check(
     args: &[hir::Expr<'_>],
 ) {
     let init = clippy_utils::expr_or_init(cx, recv);
+    if init.span.from_expansion() {
+        // don't lint if the receiver or binding initializer comes from a macro
+        // (e.g. `let x = option_env!(..); x.unwrap()`)
+        return;
+    }
 
     let (constructor, call_args, ty) = if let hir::ExprKind::Call(call, call_args) = init.kind {
         let Some(qpath) = call.qpath_opt() else { return };
