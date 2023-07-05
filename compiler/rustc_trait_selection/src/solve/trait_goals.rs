@@ -69,7 +69,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             let where_clause_bounds = tcx
                 .predicates_of(impl_def_id)
                 .instantiate2(tcx, impl_substs)
-                .predicates
+                .0
                 .into_iter()
                 .map(|pred| goal.with(tcx, pred));
             ecx.add_goals(where_clause_bounds);
@@ -138,7 +138,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             let nested_obligations = tcx
                 .predicates_of(goal.predicate.def_id())
                 .instantiate2(tcx, goal.predicate.trait_ref.substs);
-            ecx.add_goals(nested_obligations.predicates.into_iter().map(|p| goal.with(tcx, p)));
+            ecx.add_goals(nested_obligations.0.into_iter().map(|p| goal.with(tcx, p)));
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
     }

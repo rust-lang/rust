@@ -101,7 +101,7 @@ fn relate_mir_and_user_substs<'tcx>(
     let instantiated_predicates = tcx.predicates_of(def_id).instantiate1(tcx, substs);
 
     debug!(?instantiated_predicates);
-    for (instantiated_predicate, predicate_span) in instantiated_predicates {
+    for (instantiated_predicate, predicate_span) in instantiated_predicates.0 {
         let span = if span == DUMMY_SP { predicate_span } else { span };
         let cause = ObligationCause::new(
             span,

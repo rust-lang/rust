@@ -532,7 +532,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         for super_trait in tcx
             .super_predicates_of(trait_predicate.def_id())
             .instantiate2(tcx, trait_predicate.trait_ref.substs)
-            .predicates
+            .0
             .into_iter()
         {
             let normalized_super_trait = normalize_with_depth_to(

@@ -113,7 +113,7 @@ pub fn predicates_for_generics<'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     generic_bounds: ty::InstantiatedPredicates1<'tcx>,
 ) -> impl Iterator<Item = PredicateObligation<'tcx>> {
-    generic_bounds.into_iter().enumerate().map(move |(idx, (clause, span))| Obligation {
+    generic_bounds.0.into_iter().enumerate().map(move |(idx, (clause, span))| Obligation {
         cause: cause(idx, span),
         recursion_depth: 0,
         param_env,
@@ -464,7 +464,7 @@ fn subst_and_check_impossible_predicates<'tcx>(
 ) -> bool {
     debug!("subst_and_check_impossible_predicates(key={:?})", key);
 
-    let mut predicates = tcx.predicates_of(key.0).instantiate2(tcx, key.1).predicates;
+    let mut predicates = tcx.predicates_of(key.0).instantiate2(tcx, key.1).0;
 
     // Specifically check trait fulfillment to avoid an error when trying to resolve
     // associated items.

@@ -152,7 +152,7 @@ fn with_fresh_ty_vars<'cx, 'tcx>(
         predicates: tcx
             .predicates_of(impl_def_id)
             .instantiate2(tcx, impl_substs)
-            .predicates
+            .0
             .into_iter()
             .map(|c| c.as_predicate())
             .collect(),

@@ -2000,7 +2000,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         // that the predicate that we failed to satisfy is a `Fn`-like trait.
         if let ObligationCauseCode::ExprBindingObligation(def_id, _, _, idx) = cause
             && let predicates = self.tcx.predicates_of(def_id).instantiate_identity1(self.tcx)
-            && let Some((pred, _)) = predicates.predicates.get(*idx)
+            && let Some((pred, _)) = predicates.0.get(*idx)
             && let ty::ClauseKind::Trait(trait_pred) = pred.kind().skip_binder()
             && self.tcx.is_fn_trait(trait_pred.def_id())
         {
@@ -2012,7 +2012,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
             // Find another predicate whose self-type is equal to the expected self type,
             // but whose substs don't match.
-            let other_pred = predicates.into_iter()
+            let other_pred = predicates.0.into_iter()
                 .enumerate()
                 .find(|(other_idx, (pred, _))| match pred.kind().skip_binder() {
                     ty::ClauseKind::Trait(trait_pred)
@@ -3524,7 +3524,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             if let ObligationCauseCode::ExprBindingObligation(def_id, _, _, idx) = parent_code.deref()
                 && let Some(node_substs) = typeck_results.node_substs_opt(call_hir_id)
                 && let where_clauses = self.tcx.predicates_of(def_id).instantiate2(self.tcx, node_substs)
-                && let Some(where_pred) = where_clauses.predicates.get(*idx)
+                && let Some(where_pred) = where_clauses.0.get(*idx)
             {
                 if let Some(where_pred) = where_pred.as_trait_clause()
                     && let Some(failed_pred) = failed_pred.to_opt_poly_trait_pred()

@@ -132,7 +132,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
         .subst(tcx, adt_to_impl_substs)
         .with_constness(tcx.constness(drop_impl_def_id));
 
-    for (pred, span) in tcx.predicates_of(drop_impl_def_id).instantiate_identity1(tcx) {
+    for (pred, span) in tcx.predicates_of(drop_impl_def_id).instantiate_identity1(tcx).0 {
         let normalize_cause = traits::ObligationCause::misc(span, adt_def_id);
         let pred = ocx.normalize(&normalize_cause, param_env, pred);
         let cause = traits::ObligationCause::new(span, adt_def_id, traits::DropImpl);

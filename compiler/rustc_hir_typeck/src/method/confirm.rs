@@ -603,12 +603,14 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
     ) -> Option<Span> {
         let sized_def_id = self.tcx.lang_items().sized_trait()?;
 
-        traits::elaborate(self.tcx, predicates.predicates.iter().copied())
+        traits::elaborate(self.tcx, predicates.0.iter().copied())
             // We don't care about regions here.
             .filter_map(|(pred, _)| match pred.kind().skip_binder() {
                 ty::ClauseKind::Trait(trait_pred) if trait_pred.def_id() == sized_def_id => {
                     let span = predicates
+                        .0
                         .iter()
+                        .copied()
                         .find_map(|(p, span)| if p == pred { Some(span) } else { None })
                         .unwrap_or(rustc_span::DUMMY_SP);
                     Some((trait_pred, span))

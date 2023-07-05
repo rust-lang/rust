@@ -209,16 +209,14 @@ fn compare_method_predicate_entailment<'tcx>(
     //
     // We then register the obligations from the impl_m and check to see
     // if all constraints hold.
-    hybrid_preds
-        .predicates
-        .extend(trait_m_predicates.instantiate_own2(tcx, trait_to_placeholder_substs));
+    hybrid_preds.0.extend(trait_m_predicates.instantiate_own2(tcx, trait_to_placeholder_substs));
 
     // Construct trait parameter environment and then shift it into the placeholder viewpoint.
     // The key step here is to update the caller_bounds's predicates to be
     // the new hybrid bounds we computed.
     let normalize_cause = traits::ObligationCause::misc(impl_m_span, impl_m_def_id);
     let param_env = ty::ParamEnv::new(
-        tcx.mk_clauses(&hybrid_preds.predicates),
+        tcx.mk_clauses(&hybrid_preds.0),
         Reveal::UserFacing,
         hir::Constness::NotConst,
     );
@@ -1906,14 +1904,14 @@ fn compare_type_predicate_entailment<'tcx>(
     // associated type in the trait are assumed.
     let impl_predicates = tcx.predicates_of(impl_ty_predicates.parent.unwrap());
     let mut hybrid_preds = impl_predicates.instantiate_identity2(tcx);
-    hybrid_preds.predicates.extend(trait_ty_predicates.instantiate_own2(tcx, trait_to_impl_substs));
+    hybrid_preds.0.extend(trait_ty_predicates.instantiate_own2(tcx, trait_to_impl_substs));
 
     debug!("compare_type_predicate_entailment: bounds={:?}", hybrid_preds);
 
     let impl_ty_span = tcx.def_span(impl_ty_def_id);
     let normalize_cause = traits::ObligationCause::misc(impl_ty_span, impl_ty_def_id);
     let param_env = ty::ParamEnv::new(
-        tcx.mk_clauses(&hybrid_preds.predicates),
+        tcx.mk_clauses(&hybrid_preds.0),
         Reveal::UserFacing,
         hir::Constness::NotConst,
     );

@@ -340,7 +340,7 @@ impl<'tcx> GenericPredicates<'tcx> {
         tcx: TyCtxt<'tcx>,
         substs: SubstsRef<'tcx>,
     ) -> InstantiatedPredicates1<'tcx> {
-        let mut instantiated = InstantiatedPredicates1::empty();
+        let mut instantiated = InstantiatedPredicates1(vec![]);
         self.instantiate_into1(tcx, &mut instantiated, substs);
         instantiated
     }
@@ -350,7 +350,7 @@ impl<'tcx> GenericPredicates<'tcx> {
         tcx: TyCtxt<'tcx>,
         substs: SubstsRef<'tcx>,
     ) -> InstantiatedPredicates2<'tcx> {
-        let mut instantiated = InstantiatedPredicates2::empty();
+        let mut instantiated = InstantiatedPredicates2(vec![]);
         self.instantiate_into2(tcx, &mut instantiated, substs);
         instantiated
     }
@@ -381,7 +381,7 @@ impl<'tcx> GenericPredicates<'tcx> {
         if let Some(def_id) = self.parent {
             tcx.predicates_of(def_id).instantiate_into1(tcx, instantiated, substs);
         }
-        instantiated.predicates.extend(
+        instantiated.0.extend(
             self.predicates.iter().map(|(p, sp)| (EarlyBinder::bind(*p).subst(tcx, substs), *sp)),
         );
     }
@@ -397,18 +397,18 @@ impl<'tcx> GenericPredicates<'tcx> {
             tcx.predicates_of(def_id).instantiate_into2(tcx, instantiated, substs);
         }
         instantiated
-            .predicates
+            .0
             .extend(self.predicates.iter().map(|(p, _)| EarlyBinder::bind(*p).subst(tcx, substs)));
     }
 
     pub fn instantiate_identity1(&self, tcx: TyCtxt<'tcx>) -> InstantiatedPredicates1<'tcx> {
-        let mut instantiated = InstantiatedPredicates1::empty();
+        let mut instantiated = InstantiatedPredicates1(vec![]);
         self.instantiate_identity_into1(tcx, &mut instantiated);
         instantiated
     }
 
     pub fn instantiate_identity2(&self, tcx: TyCtxt<'tcx>) -> InstantiatedPredicates2<'tcx> {
-        let mut instantiated = InstantiatedPredicates2::empty();
+        let mut instantiated = InstantiatedPredicates2(vec![]);
         self.instantiate_identity_into2(tcx, &mut instantiated);
         instantiated
     }
@@ -421,7 +421,7 @@ impl<'tcx> GenericPredicates<'tcx> {
         if let Some(def_id) = self.parent {
             tcx.predicates_of(def_id).instantiate_identity_into1(tcx, instantiated);
         }
-        instantiated.predicates.extend(self.predicates.iter());
+        instantiated.0.extend(self.predicates.iter());
     }
 
     fn instantiate_identity_into2(
@@ -432,6 +432,6 @@ impl<'tcx> GenericPredicates<'tcx> {
         if let Some(def_id) = self.parent {
             tcx.predicates_of(def_id).instantiate_identity_into2(tcx, instantiated);
         }
-        instantiated.predicates.extend(self.predicates.iter().map(|(p, _)| p));
+        instantiated.0.extend(self.predicates.iter().map(|(p, _)| p));
     }
 }

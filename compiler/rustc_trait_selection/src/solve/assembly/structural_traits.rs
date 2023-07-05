@@ -346,9 +346,8 @@ pub(in crate::solve) fn predicates_for_object_candidate<'tcx>(
 ) -> Vec<ty::Clause<'tcx>> {
     let tcx = ecx.tcx();
     let mut requirements = vec![];
-    requirements.extend(
-        tcx.super_predicates_of(trait_ref.def_id).instantiate2(tcx, trait_ref.substs).predicates,
-    );
+    requirements
+        .extend(tcx.super_predicates_of(trait_ref.def_id).instantiate2(tcx, trait_ref.substs).0);
     for item in tcx.associated_items(trait_ref.def_id).in_definition_order() {
         // FIXME(associated_const_equality): Also add associated consts to
         // the requirements here.

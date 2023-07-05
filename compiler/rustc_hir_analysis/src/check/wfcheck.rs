@@ -1402,8 +1402,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
 
     let predicates = wfcx.normalize(span, None, predicates);
 
-    debug!(?predicates.predicates);
-    let wf_obligations = predicates.into_iter().flat_map(|(p, sp)| {
+    let wf_obligations = predicates.0.into_iter().flat_map(|(p, sp)| {
         traits::wf::predicate_obligations(
             infcx,
             wfcx.param_env.without_const(),

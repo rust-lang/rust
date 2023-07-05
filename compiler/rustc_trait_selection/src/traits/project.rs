@@ -1350,7 +1350,7 @@ pub fn normalize_inherent_projection<'a, 'b, 'tcx>(
 
     // Register the obligations arising from the impl and from the associated type itself.
     let predicates = tcx.predicates_of(alias_ty.def_id).instantiate1(tcx, substs);
-    for (predicate, span) in predicates {
+    for (predicate, span) in predicates.0 {
         let predicate = normalize_with_depth_to(
             selcx,
             param_env,
@@ -2478,7 +2478,7 @@ fn confirm_impl_trait_in_trait_candidate<'tcx>(
         tcx.predicates_of(impl_fn_def_id).instantiate1(tcx, impl_fn_substs),
         &mut obligations,
     );
-    obligations.extend(predicates.into_iter().map(|(pred, span)| {
+    obligations.extend(predicates.0.into_iter().map(|(pred, span)| {
         Obligation::with_depth(
             tcx,
             ObligationCause::new(

@@ -1503,52 +1503,11 @@ impl<'tcx> Predicate<'tcx> {
 /// like `Foo<isize,usize>`, then the `InstantiatedPredicates1` would be `[[],
 /// [usize:Bar<isize>]]`.
 #[derive(Clone, Debug, TypeFoldable, TypeVisitable)]
-pub struct InstantiatedPredicates1<'tcx> {
-    // njn: rename predicates_spans? likewise in GenericPredicates?
-    pub predicates: Vec<(Clause<'tcx>, Span)>,
-}
-
-impl<'tcx> InstantiatedPredicates1<'tcx> {
-    pub fn empty() -> InstantiatedPredicates1<'tcx> {
-        InstantiatedPredicates1 { predicates: vec![] }
-    }
-
-    pub fn iter(&self) -> <&Self as IntoIterator>::IntoIter {
-        (&self).into_iter()
-    }
-}
-
-impl<'tcx> IntoIterator for InstantiatedPredicates1<'tcx> {
-    type Item = (Clause<'tcx>, Span);
-
-    type IntoIter = std::vec::IntoIter<(Clause<'tcx>, Span)>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.predicates.into_iter()
-    }
-}
-
-impl<'a, 'tcx> IntoIterator for &'a InstantiatedPredicates1<'tcx> {
-    type Item = (Clause<'tcx>, Span);
-
-    type IntoIter = std::iter::Copied<std::slice::Iter<'a, (Clause<'tcx>, Span)>>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.predicates.iter().copied()
-    }
-}
+pub struct InstantiatedPredicates1<'tcx>(pub Vec<(Clause<'tcx>, Span)>);
 
 // njn: hmm
 #[derive(Clone, Debug, TypeFoldable, TypeVisitable)]
-pub struct InstantiatedPredicates2<'tcx> {
-    pub predicates: Vec<Clause<'tcx>>,
-}
-
-impl<'tcx> InstantiatedPredicates2<'tcx> {
-    pub fn empty() -> InstantiatedPredicates2<'tcx> {
-        InstantiatedPredicates2 { predicates: vec![] }
-    }
-}
+pub struct InstantiatedPredicates2<'tcx>(pub Vec<Clause<'tcx>>);
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable, TyEncodable, TyDecodable, Lift)]
 #[derive(TypeFoldable, TypeVisitable)]

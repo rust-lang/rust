@@ -2631,7 +2631,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
 
             AggregateKind::Array(_) | AggregateKind::Tuple => {
-                (CRATE_DEF_ID.to_def_id(), ty::InstantiatedPredicates1::empty())
+                (CRATE_DEF_ID.to_def_id(), ty::InstantiatedPredicates1(vec![]))
             }
         };
 
