@@ -32,6 +32,19 @@ This should not be interpreted as forbidding developers from following a
 non-default style, or forbidding tools from adding any particular configuration
 options.
 
+## Bugs
+
+If the style guide differs from rustfmt, that may represent a bug in rustfmt,
+or a bug in the style guide; either way, please report it to the style team or
+the rustfmt team or both, for investigation and fix.
+
+If implementing a new formatting tool based on the style guide and default Rust
+style, please test it on the corpus of existing Rust code, and avoid causing
+widespread breakage. The implementation and testing of such a tool may surface
+bugs in either the style guide or rustfmt, as well as bugs in the tool itself.
+
+We typically resolve bugs in a fashion that avoids widespread breakage.
+
 ## Formatting conventions
 
 ### Indentation and line width
