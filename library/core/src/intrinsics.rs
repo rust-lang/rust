@@ -2599,7 +2599,7 @@ pub(crate) fn is_nonoverlapping<T>(src: *const T, dst: *const T, count: usize) -
 /// Note that even if the effectively copied size (`count * size_of::<T>()`) is
 /// `0`, the pointers must be non-null and properly aligned.
 /// In this case, the pointers may share the same address, as
-/// a region of 0 bytes overlaps with a region of 0 bytes for 0 bytes.
+/// a region of 0 bytes does not overlap with a region of 0 bytes.
 ///
 /// [`read`]: crate::ptr::read
 /// [read-ownership]: crate::ptr::read#ownership-of-the-returned-value
