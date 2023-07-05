@@ -1,40 +1,15 @@
 use gccjit::RValue;
 use rustc_codegen_ssa::traits::{CoverageInfoBuilderMethods, CoverageInfoMethods};
 use rustc_hir::def_id::DefId;
-use rustc_middle::mir::coverage::{
-    CodeRegion,
-    CounterValueReference,
-    ExpressionOperandId,
-    InjectedExpressionId,
-    Op,
-};
+use rustc_middle::mir::Coverage;
 use rustc_middle::ty::Instance;
 
 use crate::builder::Builder;
 use crate::context::CodegenCx;
 
 impl<'a, 'gcc, 'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
-    fn set_function_source_hash(
-        &mut self,
-        _instance: Instance<'tcx>,
-        _function_source_hash: u64,
-    ) -> bool {
-        unimplemented!();
-    }
-
-    fn add_coverage_counter(&mut self, _instance: Instance<'tcx>, _id: CounterValueReference, _region: CodeRegion) -> bool {
+    fn add_coverage(&mut self, _instance: Instance<'tcx>, _coverage: &Coverage) {
         // TODO(antoyo)
-        false
-    }
-
-    fn add_coverage_counter_expression(&mut self, _instance: Instance<'tcx>, _id: InjectedExpressionId, _lhs: ExpressionOperandId, _op: Op, _rhs: ExpressionOperandId, _region: Option<CodeRegion>) -> bool {
-        // TODO(antoyo)
-        false
-    }
-
-    fn add_coverage_unreachable(&mut self, _instance: Instance<'tcx>, _region: CodeRegion) -> bool {
-        // TODO(antoyo)
-        false
     }
 }
 
