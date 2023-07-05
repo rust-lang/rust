@@ -223,7 +223,20 @@ impl<'tcx> UsageMap<'tcx> {
     ) where
         'tcx: 'a,
     {
-        let used_items: Vec<_> = used_items.iter().map(|item| item.node).collect();
+        // njn: comment: ignore recursive calls
+        let mut used_items: Vec<_> = used_items
+            .iter()
+            .filter_map(
+                |used_item| {
+                    if user_item != used_item.node { Some(used_item.node) } else { None }
+                },
+            )
+            .collect();
+
+        // njn: don't record more than one ref from a single func
+        // njn: imperfect, but better than nothing
+        used_items.dedup();
+
         for &used_item in used_items.iter() {
             self.user_map.entry(used_item).or_default().push(user_item);
         }
