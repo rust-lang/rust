@@ -2,7 +2,7 @@
 
 | User Type Annotations
 | 0: user_ty: Canonical { value: TypeOf(DefId(0:3 ~ issue_99325[22bb]::function_with_bytes), UserSubsts { substs: [Const { ty: &'static [u8; 4], kind: Branch([Leaf(0x41), Leaf(0x41), Leaf(0x41), Leaf(0x41)]) }], user_self_ty: None }), max_universe: U0, variables: [] }, span: $DIR/issue_99325.rs:10:16: 10:46, inferred_ty: fn() -> &'static [u8] {function_with_bytes::<&*b"AAAA">}
-| 1: user_ty: Canonical { value: TypeOf(DefId(0:3 ~ issue_99325[22bb]::function_with_bytes), UserSubsts { substs: [Const { ty: &'static [u8; 4], kind: Unevaluated([], DefId(0:8 ~ issue_99325[22bb]::main::{constant#1})) }], user_self_ty: None }), max_universe: U0, variables: [] }, span: $DIR/issue_99325.rs:11:16: 11:68, inferred_ty: fn() -> &'static [u8] {function_with_bytes::<&*b"AAAA">}
+| 1: user_ty: Canonical { value: TypeOf(DefId(0:3 ~ issue_99325[22bb]::function_with_bytes), UserSubsts { substs: [Const { ty: &'static [u8; 4], kind: UnevaluatedConst { def: DefId(0:8 ~ issue_99325[22bb]::main::{constant#1}), substs: [] } }], user_self_ty: None }), max_universe: U0, variables: [] }, span: $DIR/issue_99325.rs:11:16: 11:68, inferred_ty: fn() -> &'static [u8] {function_with_bytes::<&*b"AAAA">}
 |
 fn main() -> () {
     let mut _0: ();
