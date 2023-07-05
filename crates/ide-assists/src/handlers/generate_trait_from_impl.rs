@@ -105,8 +105,6 @@ pub(crate) fn generate_trait_from_impl(acc: &mut Assists, ctx: &AssistContext<'_
                 remove_items_visibility(&item);
             });
 
-            ted::replace(assoc_items.clone_for_update().syntax(), impl_items.syntax());
-
             impl_items.assoc_items().for_each(|item| {
                 remove_items_visibility(&item);
             });
@@ -201,7 +199,7 @@ fn strip_body(item: &ast::AssocItem) {
                     }
                 }
 
-                ted::replace(body.syntax(), ast::make::tokens::semicolon());
+                ted::replace(body.syntax(), make::tokens::semicolon());
             }
         }
         _ => (),
