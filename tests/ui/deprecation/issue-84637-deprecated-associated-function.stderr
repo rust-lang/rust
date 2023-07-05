@@ -25,5 +25,16 @@ help: replace the use of the deprecated method
 LL |     let _bar = "   aoeu".trim_start();
    |                          ~~~~~~~~~~
 
-error: aborting due to 2 previous errors
+error: use of deprecated method `std::slice::<impl [T]>::connect`: renamed to join
+  --> $DIR/issue-84637-deprecated-associated-function.rs:10:27
+   |
+LL |     let _baz = ["a", "b"].connect(" ");
+   |                           ^^^^^^^
+   |
+help: replace the use of the deprecated method
+   |
+LL |     let _baz = ["a", "b"].join(" ");
+   |                           ~~~~
+
+error: aborting due to 3 previous errors
 

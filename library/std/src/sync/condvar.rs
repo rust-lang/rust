@@ -305,7 +305,11 @@ impl Condvar {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[deprecated(since = "1.6.0", note = "replaced by `std::sync::Condvar::wait_timeout`")]
+    #[deprecated(
+        since = "1.6.0",
+        note = "replaced by `std::sync::Condvar::wait_timeout`",
+        suggestion = "wait_timeout"
+    )]
     pub fn wait_timeout_ms<'a, T>(
         &self,
         guard: MutexGuard<'a, T>,
