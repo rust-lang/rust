@@ -14,9 +14,7 @@ A secondary goal is to check if using the gcc backend will provide any run-time 
 ## Building
 
 **This requires a patched libgccjit in order to work.
-The patches in [this repository](https://github.com/antoyo/libgccjit-patches) need to be applied.
-(Those patches should work when applied on master, but in case it doesn't work, they are known to work when applied on 079c23cfe079f203d5df83fea8e92a60c7d7e878.)
-You can also use my [fork of gcc](https://github.com/antoyo/gcc) which already includes these patches.**
+You need to use my [fork of gcc](https://github.com/antoyo/gcc) which already includes these patches.**
 
 To build it (most of these instructions come from [here](https://gcc.gnu.org/onlinedocs/jit/internals/index.html), so don't hesitate to take a look there if you encounter an issue):
 
