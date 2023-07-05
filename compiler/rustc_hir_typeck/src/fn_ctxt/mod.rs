@@ -191,7 +191,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     pub fn next_root_ty_var(&self, origin: TypeVariableOrigin) -> Ty<'tcx> {
-        self.tcx.mk_ty_var(self.next_ty_var_id_in_universe(origin, ty::UniverseIndex::ROOT))
+        Ty::new_var(self.tcx, self.next_ty_var_id_in_universe(origin, ty::UniverseIndex::ROOT))
     }
 }
 
@@ -295,7 +295,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
             trait_ref.substs,
         );
 
-        self.tcx().mk_projection(item_def_id, item_substs)
+        Ty::new_projection(self.tcx(), item_def_id, item_substs)
     }
 
     fn probe_adt(&self, span: Span, ty: Ty<'tcx>) -> Option<ty::AdtDef<'tcx>> {

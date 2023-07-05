@@ -322,8 +322,8 @@ impl<'tcx> InferCtxt<'tcx> {
             .unify_var_value(vid, Some(val))
             .map_err(|e| int_unification_error(vid_is_expected, e))?;
         match val {
-            IntType(v) => Ok(self.tcx.mk_mach_int(v)),
-            UintType(v) => Ok(self.tcx.mk_mach_uint(v)),
+            IntType(v) => Ok(Ty::new_int(self.tcx, v)),
+            UintType(v) => Ok(Ty::new_uint(self.tcx, v)),
         }
     }
 
@@ -338,7 +338,7 @@ impl<'tcx> InferCtxt<'tcx> {
             .float_unification_table()
             .unify_var_value(vid, Some(ty::FloatVarValue(val)))
             .map_err(|e| float_unification_error(vid_is_expected, e))?;
-        Ok(self.tcx.mk_mach_float(val))
+        Ok(Ty::new_float(self.tcx, val))
     }
 }
 

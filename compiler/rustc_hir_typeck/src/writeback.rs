@@ -232,7 +232,8 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                         // to access an nonexistent index. We assume that more relevant errors will
                         // already have been emitted, so we only gate on this with an ICE if no
                         // error has been emitted. (#64638)
-                        self.fcx.tcx.ty_error_with_message(
+                        Ty::new_error_with_message(
+                            self.fcx.tcx,
                             e.span,
                             format!("bad index {:?} for base: `{:?}`", index, base),
                         )
@@ -823,7 +824,7 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Resolver<'cx, 'tcx> {
                 debug!("Resolver::fold_ty: input type `{:?}` not fully resolvable", t);
                 let e = self.report_error(t);
                 self.replaced_with_error = Some(e);
-                self.fcx.tcx.ty_error(e)
+                Ty::new_error(self.fcx.tcx, e)
             }
         }
     }

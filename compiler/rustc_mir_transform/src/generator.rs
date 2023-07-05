@@ -413,8 +413,11 @@ impl<'tcx> MutVisitor<'tcx> for TransformVisitor<'tcx> {
 fn make_generator_state_argument_indirect<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let gen_ty = body.local_decls.raw[1].ty;
 
-    let ref_gen_ty =
-        tcx.mk_ref(tcx.lifetimes.re_erased, ty::TypeAndMut { ty: gen_ty, mutbl: Mutability::Mut });
+    let ref_gen_ty = Ty::new_ref(
+        tcx,
+        tcx.lifetimes.re_erased,
+        ty::TypeAndMut { ty: gen_ty, mutbl: Mutability::Mut },
+    );
 
     // Replace the by value generator argument
     body.local_decls.raw[1].ty = ref_gen_ty;
@@ -429,7 +432,7 @@ fn make_generator_state_argument_pinned<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body
     let pin_did = tcx.require_lang_item(LangItem::Pin, Some(body.span));
     let pin_adt_ref = tcx.adt_def(pin_did);
     let substs = tcx.mk_substs(&[ref_gen_ty.into()]);
-    let pin_ref_gen_ty = tcx.mk_adt(pin_adt_ref, substs);
+    let pin_ref_gen_ty = Ty::new_adt(tcx, pin_adt_ref, substs);
 
     // Replace the by ref generator argument
     body.local_decls.raw[1].ty = pin_ref_gen_ty;
@@ -481,7 +484,7 @@ fn replace_local<'tcx>(
 /// still using the `ResumeTy` indirection for the time being, and that indirection
 /// is removed here. After this transform, the generator body only knows about `&mut Context<'_>`.
 fn transform_async_context<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    let context_mut_ref = tcx.mk_task_context();
+    let context_mut_ref = Ty::new_task_context(tcx);
 
     // replace the type of the `resume` argument
     replace_resume_ty_local(tcx, body, Local::new(2), context_mut_ref);
@@ -1130,13 +1133,13 @@ fn create_generator_drop_shim<'tcx>(
     }
 
     // Replace the return variable
-    body.local_decls[RETURN_PLACE] = LocalDecl::with_source_info(tcx.mk_unit(), source_info);
+    body.local_decls[RETURN_PLACE] = LocalDecl::with_source_info(Ty::new_unit(tcx), source_info);
 
     make_generator_state_argument_indirect(tcx, &mut body);
 
     // Change the generator argument from &mut to *mut
     body.local_decls[SELF_ARG] = LocalDecl::with_source_info(
-        tcx.mk_ptr(ty::TypeAndMut { ty: gen_ty, mutbl: hir::Mutability::Mut }),
+        Ty::new_ptr(tcx, ty::TypeAndMut { ty: gen_ty, mutbl: hir::Mutability::Mut }),
         source_info,
     );
 
@@ -1493,7 +1496,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
             let state_substs = tcx.mk_substs(&[yield_ty.into(), body.return_ty().into()]);
             (state_adt_ref, state_substs)
         };
-        let ret_ty = tcx.mk_adt(state_adt_ref, state_substs);
+        let ret_ty = Ty::new_adt(tcx, state_adt_ref, state_substs);
 
         // We rename RETURN_PLACE which has type mir.return_ty to new_ret_local
         // RETURN_PLACE then is a fresh unused local with type ret_ty.
@@ -1509,8 +1512,11 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
         // case there is no `Assign` to it that the transform can turn into a store to the generator
         // state. After the yield the slot in the generator state would then be uninitialized.
         let resume_local = Local::new(2);
-        let resume_ty =
-            if is_async_kind { tcx.mk_task_context() } else { body.local_decls[resume_local].ty };
+        let resume_ty = if is_async_kind {
+            Ty::new_task_context(tcx)
+        } else {
+            body.local_decls[resume_local].ty
+        };
         let new_resume_local = replace_local(resume_local, resume_ty, body, tcx);
 
         // When first entering the generator, move the resume argument into its new local.

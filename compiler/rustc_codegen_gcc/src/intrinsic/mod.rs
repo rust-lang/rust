@@ -1147,19 +1147,19 @@ fn get_rust_try_fn<'a, 'gcc, 'tcx>(cx: &'a CodegenCx<'gcc, 'tcx>, codegen: &mut 
 
     // Define the type up front for the signature of the rust_try function.
     let tcx = cx.tcx;
-    let i8p = tcx.mk_mut_ptr(tcx.types.i8);
+    let i8p = Ty::new_mut_ptr(tcx,tcx.types.i8);
     // `unsafe fn(*mut i8) -> ()`
-    let try_fn_ty = tcx.mk_fn_ptr(ty::Binder::dummy(tcx.mk_fn_sig(
+    let try_fn_ty = Ty::new_fn_ptr(tcx,ty::Binder::dummy(tcx.mk_fn_sig(
         iter::once(i8p),
-        tcx.mk_unit(),
+        Ty::new_unit(tcx,),
         false,
         rustc_hir::Unsafety::Unsafe,
         Abi::Rust,
     )));
     // `unsafe fn(*mut i8, *mut i8) -> ()`
-    let catch_fn_ty = tcx.mk_fn_ptr(ty::Binder::dummy(tcx.mk_fn_sig(
+    let catch_fn_ty = Ty::new_fn_ptr(tcx,ty::Binder::dummy(tcx.mk_fn_sig(
         [i8p, i8p].iter().cloned(),
-        tcx.mk_unit(),
+        Ty::new_unit(tcx,),
         false,
         rustc_hir::Unsafety::Unsafe,
         Abi::Rust,

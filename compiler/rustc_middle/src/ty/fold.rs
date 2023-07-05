@@ -348,7 +348,11 @@ impl<'tcx> TyCtxt<'tcx> {
                     )
                 },
                 types: &mut |t: ty::BoundTy| {
-                    self.mk_bound(ty::INNERMOST, ty::BoundTy { var: shift_bv(t.var), kind: t.kind })
+                    Ty::new_bound(
+                        self,
+                        ty::INNERMOST,
+                        ty::BoundTy { var: shift_bv(t.var), kind: t.kind },
+                    )
                 },
                 consts: &mut |c, ty: Ty<'tcx>| {
                     ty::Const::new_bound(self, ty::INNERMOST, shift_bv(c), ty)
@@ -393,7 +397,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 let kind = entry
                     .or_insert_with(|| ty::BoundVariableKind::Ty(ty::BoundTyKind::Anon))
                     .expect_ty();
-                self.tcx.mk_bound(ty::INNERMOST, BoundTy { var, kind })
+                Ty::new_bound(self.tcx, ty::INNERMOST, BoundTy { var, kind })
             }
             fn replace_const(&mut self, bv: ty::BoundVar, ty: Ty<'tcx>) -> ty::Const<'tcx> {
                 let entry = self.map.entry(bv);
@@ -462,7 +466,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Shifter<'tcx> {
         match *ty.kind() {
             ty::Bound(debruijn, bound_ty) if debruijn >= self.current_index => {
                 let debruijn = debruijn.shifted_in(self.amount);
-                self.tcx.mk_bound(debruijn, bound_ty)
+                Ty::new_bound(self.tcx, debruijn, bound_ty)
             }
 
             _ if ty.has_vars_bound_at_or_above(self.current_index) => ty.super_fold_with(self),

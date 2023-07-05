@@ -408,7 +408,7 @@ pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             bug!("bound types encountered in structurally_relate_tys")
         }
 
-        (&ty::Error(guar), _) | (_, &ty::Error(guar)) => Ok(tcx.ty_error(guar)),
+        (&ty::Error(guar), _) | (_, &ty::Error(guar)) => Ok(Ty::new_error(tcx, guar)),
 
         (&ty::Never, _)
         | (&ty::Char, _)
@@ -428,10 +428,10 @@ pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
 
         (&ty::Adt(a_def, a_substs), &ty::Adt(b_def, b_substs)) if a_def == b_def => {
             let substs = relation.relate_item_substs(a_def.did(), a_substs, b_substs)?;
-            Ok(tcx.mk_adt(a_def, substs))
+            Ok(Ty::new_adt(tcx, a_def, substs))
         }
 
-        (&ty::Foreign(a_id), &ty::Foreign(b_id)) if a_id == b_id => Ok(tcx.mk_foreign(a_id)),
+        (&ty::Foreign(a_id), &ty::Foreign(b_id)) if a_id == b_id => Ok(Ty::new_foreign(tcx, a_id)),
 
         (&ty::Dynamic(a_obj, a_region, a_repr), &ty::Dynamic(b_obj, b_region, b_repr))
             if a_repr == b_repr =>
@@ -439,7 +439,7 @@ pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             let region_bound = relation.with_cause(Cause::ExistentialRegionBound, |relation| {
                 relation.relate(a_region, b_region)
             })?;
-            Ok(tcx.mk_dynamic(relation.relate(a_obj, b_obj)?, region_bound, a_repr))
+            Ok(Ty::new_dynamic(tcx, relation.relate(a_obj, b_obj)?, region_bound, a_repr))
         }
 
         (&ty::Generator(a_id, a_substs, movability), &ty::Generator(b_id, b_substs, _))
@@ -449,7 +449,7 @@ pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             // the (anonymous) type of the same generator expression. So
             // all of their regions should be equated.
             let substs = relation.relate(a_substs, b_substs)?;
-            Ok(tcx.mk_generator(a_id, substs, movability))
+            Ok(Ty::new_generator(tcx, a_id, substs, movability))
         }
 
         (&ty::GeneratorWitness(a_types), &ty::GeneratorWitness(b_types)) => {
@@ -459,7 +459,7 @@ pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             let b_types = b_types.map_bound(GeneratorWitness);
             // Then remove the GeneratorWitness for the result
             let types = relation.relate(a_types, b_types)?.map_bound(|witness| witness.0);
-            Ok(tcx.mk_generator_witness(types))
+            Ok(Ty::new_generator_witness(tcx, types))
         }
 
         (&ty::GeneratorWitnessMIR(a_id, a_substs), &ty::GeneratorWitnessMIR(b_id, b_substs))
@@ -469,7 +469,7 @@ pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             // the (anonymous) type of the same generator expression. So
             // all of their regions should be equated.
             let substs = relation.relate(a_substs, b_substs)?;
-            Ok(tcx.mk_generator_witness_mir(a_id, substs))
+            Ok(Ty::new_generator_witness_mir(tcx, a_id, substs))
         }
 
         (&ty::Closure(a_id, a_substs), &ty::Closure(b_id, b_substs)) if a_id == b_id => {
@@ -477,12 +477,12 @@ pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             // the (anonymous) type of the same closure expression. So
             // all of their regions should be equated.
             let substs = relation.relate(a_substs, b_substs)?;
-            Ok(tcx.mk_closure(a_id, &substs))
+            Ok(Ty::new_closure(tcx, a_id, &substs))
         }
 
         (&ty::RawPtr(a_mt), &ty::RawPtr(b_mt)) => {
             let mt = relate_type_and_mut(relation, a_mt, b_mt, a)?;
-            Ok(tcx.mk_ptr(mt))
+            Ok(Ty::new_ptr(tcx, mt))
         }
 
         (&ty::Ref(a_r, a_ty, a_mutbl), &ty::Ref(b_r, b_ty, b_mutbl)) => {
@@ -490,13 +490,13 @@ pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             let a_mt = ty::TypeAndMut { ty: a_ty, mutbl: a_mutbl };
             let b_mt = ty::TypeAndMut { ty: b_ty, mutbl: b_mutbl };
             let mt = relate_type_and_mut(relation, a_mt, b_mt, a)?;
-            Ok(tcx.mk_ref(r, mt))
+            Ok(Ty::new_ref(tcx, r, mt))
         }
 
         (&ty::Array(a_t, sz_a), &ty::Array(b_t, sz_b)) => {
             let t = relation.relate(a_t, b_t)?;
             match relation.relate(sz_a, sz_b) {
-                Ok(sz) => Ok(tcx.mk_array_with_const_len(t, sz)),
+                Ok(sz) => Ok(Ty::new_array_with_const_len(tcx, t, sz)),
                 Err(err) => {
                     // Check whether the lengths are both concrete/known values,
                     // but are unequal, for better diagnostics.
@@ -519,12 +519,15 @@ pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
 
         (&ty::Slice(a_t), &ty::Slice(b_t)) => {
             let t = relation.relate(a_t, b_t)?;
-            Ok(tcx.mk_slice(t))
+            Ok(Ty::new_slice(tcx, t))
         }
 
         (&ty::Tuple(as_), &ty::Tuple(bs)) => {
             if as_.len() == bs.len() {
-                Ok(tcx.mk_tup_from_iter(iter::zip(as_, bs).map(|(a, b)| relation.relate(a, b)))?)
+                Ok(Ty::new_tup_from_iter(
+                    tcx,
+                    iter::zip(as_, bs).map(|(a, b)| relation.relate(a, b)),
+                )?)
             } else if !(as_.is_empty() || bs.is_empty()) {
                 Err(TypeError::TupleSize(expected_found(relation, as_.len(), bs.len())))
             } else {
@@ -536,12 +539,12 @@ pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             if a_def_id == b_def_id =>
         {
             let substs = relation.relate_item_substs(a_def_id, a_substs, b_substs)?;
-            Ok(tcx.mk_fn_def(a_def_id, substs))
+            Ok(Ty::new_fn_def(tcx, a_def_id, substs))
         }
 
         (&ty::FnPtr(a_fty), &ty::FnPtr(b_fty)) => {
             let fty = relation.relate(a_fty, b_fty)?;
-            Ok(tcx.mk_fn_ptr(fty))
+            Ok(Ty::new_fn_ptr(tcx, fty))
         }
 
         // The substs of opaque types may not all be invariant, so we have
@@ -559,7 +562,7 @@ pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
                 b_substs,
                 false, // do not fetch `type_of(a_def_id)`, as it will cause a cycle
             )?;
-            Ok(tcx.mk_opaque(a_def_id, substs))
+            Ok(Ty::new_opaque(tcx, a_def_id, substs))
         }
 
         // Alias tend to mostly already be handled downstream due to normalization.
@@ -569,7 +572,7 @@ pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             if a_kind == b_kind {
                 let alias_ty = relation.relate(a_data, b_data)?;
                 // assert_eq!(a_kind, b_kind);
-                Ok(tcx.mk_alias(a_kind, alias_ty))
+                Ok(Ty::new_alias(tcx, a_kind, alias_ty))
             } else {
                 Err(TypeError::Sorts(expected_found(relation, a, b)))
             }

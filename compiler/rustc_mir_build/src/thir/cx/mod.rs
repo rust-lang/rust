@@ -15,7 +15,7 @@ use rustc_hir::HirId;
 use rustc_hir::Node;
 use rustc_middle::middle::region;
 use rustc_middle::thir::*;
-use rustc_middle::ty::{self, RvalueScopes, TyCtxt};
+use rustc_middle::ty::{self, RvalueScopes, Ty, TyCtxt};
 use rustc_span::Span;
 
 pub(crate) fn thir_body(
@@ -40,7 +40,7 @@ pub(crate) fn thir_body(
         // It will always be `()` in this case.
         if tcx.def_kind(owner_def) == DefKind::Generator && body.params.is_empty() {
             cx.thir.params.push(Param {
-                ty: tcx.mk_unit(),
+                ty: Ty::new_unit(tcx),
                 pat: None,
                 ty_span: None,
                 self_kind: None,

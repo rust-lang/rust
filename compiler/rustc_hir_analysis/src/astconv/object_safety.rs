@@ -131,7 +131,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 .map(|trait_ref| tcx.def_span(trait_ref));
             let reported =
                 tcx.sess.emit_err(TraitObjectDeclaredWithNoTraits { span, trait_alias_span });
-            return tcx.ty_error(reported);
+            return Ty::new_error(tcx, reported);
         }
 
         // Check that there are no gross object safety violations;
@@ -148,7 +148,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     &object_safety_violations,
                 )
                 .emit();
-                return tcx.ty_error(reported);
+                return Ty::new_error(tcx, reported);
             }
         }
 
@@ -271,10 +271,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         if arg == dummy_self.into() {
                             let param = &generics.params[index];
                             missing_type_params.push(param.name);
-                            return tcx.ty_error_misc().into();
+                            return Ty::new_misc_error(tcx).into();
                         } else if arg.walk().any(|arg| arg == dummy_self.into()) {
                             references_self = true;
-                            return tcx.ty_error_misc().into();
+                            return Ty::new_misc_error(tcx).into();
                         }
                         arg
                     })
@@ -342,7 +342,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             .iter()
                             .map(|arg| {
                                 if arg.walk().any(|arg| arg == dummy_self.into()) {
-                                    return tcx.ty_error(guar).into();
+                                    return Ty::new_error(tcx, guar).into();
                                 }
                                 arg
                             })
@@ -401,7 +401,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         };
         debug!("region_bound: {:?}", region_bound);
 
-        let ty = tcx.mk_dynamic(existential_predicates, region_bound, representation);
+        let ty = Ty::new_dynamic(tcx, existential_predicates, region_bound, representation);
         debug!("trait_object_type: {:?}", ty);
         ty
     }

@@ -906,7 +906,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for BoundVarReplacer<'_, 'tcx> {
                 let universe = self.universe_for(debruijn);
                 let p = ty::PlaceholderType { universe, bound: bound_ty };
                 self.mapped_types.insert(p, bound_ty);
-                self.infcx.tcx.mk_placeholder(p)
+                Ty::new_placeholder(self.infcx.tcx, p)
             }
             _ if t.has_vars_bound_at_or_above(self.current_index) => t.super_fold_with(self),
             _ => t,
@@ -1036,7 +1036,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for PlaceholderReplacer<'_, 'tcx> {
                         let db = ty::DebruijnIndex::from_usize(
                             self.universe_indices.len() - index + self.current_index.as_usize() - 1,
                         );
-                        self.interner().mk_bound(db, *replace_var)
+                        Ty::new_bound(self.infcx.tcx, db, *replace_var)
                     }
                     None => ty,
                 }
@@ -1440,7 +1440,7 @@ struct Progress<'tcx> {
 
 impl<'tcx> Progress<'tcx> {
     fn error(tcx: TyCtxt<'tcx>, guar: ErrorGuaranteed) -> Self {
-        Progress { term: tcx.ty_error(guar).into(), obligations: vec![] }
+        Progress { term: Ty::new_error(tcx, guar).into(), obligations: vec![] }
     }
 
     fn with_addl_obligations(mut self, mut obligations: Vec<PredicateObligation<'tcx>>) -> Self {
@@ -1499,9 +1499,12 @@ fn project<'cx, 'tcx>(
         ProjectionCandidateSet::None => {
             let tcx = selcx.tcx();
             let term = match tcx.def_kind(obligation.predicate.def_id) {
-                DefKind::AssocTy | DefKind::ImplTraitPlaceholder => tcx
-                    .mk_projection(obligation.predicate.def_id, obligation.predicate.substs)
-                    .into(),
+                DefKind::AssocTy | DefKind::ImplTraitPlaceholder => Ty::new_projection(
+                    tcx,
+                    obligation.predicate.def_id,
+                    obligation.predicate.substs,
+                )
+                .into(),
                 DefKind::AssocConst => ty::Const::new_unevaluated(
                     tcx,
                     ty::UnevaluatedConst::new(
@@ -2351,7 +2354,7 @@ fn confirm_param_env_candidate<'cx, 'tcx>(
                 obligation, poly_cache_entry, e,
             );
             debug!("confirm_param_env_candidate: {}", msg);
-            let err = infcx.tcx.ty_error_with_message(obligation.cause.span, msg);
+            let err = Ty::new_error_with_message(infcx.tcx, obligation.cause.span, msg);
             Progress { term: err.into(), obligations: vec![] }
         }
     }
@@ -2383,7 +2386,7 @@ fn confirm_impl_candidate<'cx, 'tcx>(
             "confirm_impl_candidate: no associated type {:?} for {:?}",
             assoc_ty.item.name, obligation.predicate
         );
-        return Progress { term: tcx.ty_error_misc().into(), obligations: nested };
+        return Progress { term: Ty::new_misc_error(tcx).into(), obligations: nested };
     }
     // If we're trying to normalize `<Vec<u32> as X>::A<S>` using
     //`impl<T> X for Vec<T> { type A<Y> = Box<Y>; }`, then:
@@ -2405,7 +2408,8 @@ fn confirm_impl_candidate<'cx, 'tcx>(
         ty.map_bound(|ty| ty.into())
     };
     if !check_substs_compatible(tcx, assoc_ty.item, substs) {
-        let err = tcx.ty_error_with_message(
+        let err = Ty::new_error_with_message(
+            tcx,
             obligation.cause.span,
             "impl item and trait item have different parameters",
         );
@@ -2432,13 +2436,14 @@ fn confirm_impl_trait_in_trait_candidate<'tcx>(
     // We don't support specialization for RPITITs anyways... yet.
     // Also don't try to project to an RPITIT that has no value
     if !leaf_def.is_final() || !leaf_def.item.defaultness(tcx).has_value() {
-        return Progress { term: tcx.ty_error_misc().into(), obligations };
+        return Progress { term: Ty::new_misc_error(tcx).into(), obligations };
     }
 
     // Use the default `impl Trait` for the trait, e.g., for a default trait body
     if leaf_def.item.container == ty::AssocItemContainer::TraitContainer {
         return Progress {
-            term: tcx.mk_opaque(obligation.predicate.def_id, obligation.predicate.substs).into(),
+            term: Ty::new_opaque(tcx, obligation.predicate.def_id, obligation.predicate.substs)
+                .into(),
             obligations,
         };
     }
@@ -2456,7 +2461,8 @@ fn confirm_impl_trait_in_trait_candidate<'tcx>(
     );
 
     if !check_substs_compatible(tcx, leaf_def.item, impl_fn_substs) {
-        let err = tcx.ty_error_with_message(
+        let err = Ty::new_error_with_message(
+            tcx,
             obligation.cause.span,
             "impl method and trait method have different parameters",
         );
@@ -2502,7 +2508,7 @@ fn confirm_impl_trait_in_trait_candidate<'tcx>(
         cause.clone(),
         obligation.recursion_depth + 1,
         tcx.collect_return_position_impl_trait_in_trait_tys(impl_fn_def_id).map_or_else(
-            |guar| tcx.ty_error(guar),
+            |guar| Ty::new_error(tcx, guar),
             |tys| tys[&obligation.predicate.def_id].subst(tcx, impl_fn_substs),
         ),
         &mut obligations,

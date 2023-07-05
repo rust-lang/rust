@@ -974,7 +974,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             && self.fallback_has_occurred
                         {
                             let predicate = trait_predicate.map_bound(|trait_pred| {
-                                trait_pred.with_self_ty(self.tcx, self.tcx.mk_unit())
+                                trait_pred.with_self_ty(self.tcx, Ty::new_unit(self.tcx))
                             });
                             let unit_obligation = obligation.with(tcx, predicate);
                             if self.predicate_may_hold(&unit_obligation) {
@@ -1625,10 +1625,12 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     bound_predicate.rebind(data),
                 );
                 let unnormalized_term = match data.term.unpack() {
-                    ty::TermKind::Ty(_) => self
-                        .tcx
-                        .mk_projection(data.projection_ty.def_id, data.projection_ty.substs)
-                        .into(),
+                    ty::TermKind::Ty(_) => Ty::new_projection(
+                        self.tcx,
+                        data.projection_ty.def_id,
+                        data.projection_ty.substs,
+                    )
+                    .into(),
                     ty::TermKind::Const(ct) => ty::Const::new_unevaluated(
                         self.tcx,
                         ty::UnevaluatedConst {

@@ -337,12 +337,13 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
             // only wide pointer boxes are handled as pointers
             // thin pointer boxes with scalar allocators are handled by the general logic below
             ty::Adt(def, substs) if def.is_box() && cx.layout_of(substs.type_at(1)).is_zst() => {
-                let ptr_ty = cx.tcx.mk_mut_ptr(self.ty.boxed_ty());
+                let ptr_ty = Ty::new_mut_ptr(cx.tcx, self.ty.boxed_ty());
                 return cx.layout_of(ptr_ty).scalar_pair_element_llvm_type(cx, index, immediate);
             }
             // `dyn* Trait` has the same ABI as `*mut dyn Trait`
             ty::Dynamic(bounds, region, ty::DynStar) => {
-                let ptr_ty = cx.tcx.mk_mut_ptr(cx.tcx.mk_dynamic(bounds, region, ty::Dyn));
+                let ptr_ty =
+                    Ty::new_mut_ptr(cx.tcx, Ty::new_dynamic(cx.tcx, bounds, region, ty::Dyn));
                 return cx.layout_of(ptr_ty).scalar_pair_element_llvm_type(cx, index, immediate);
             }
             _ => {}

@@ -21,7 +21,7 @@ pub fn build_ptr_tys<'tcx>(
     let substs = tcx.mk_substs(&[pointee.into()]);
     let unique_ty = tcx.type_of(unique_did).subst(tcx, substs);
     let nonnull_ty = tcx.type_of(nonnull_did).subst(tcx, substs);
-    let ptr_ty = tcx.mk_imm_ptr(pointee);
+    let ptr_ty = Ty::new_imm_ptr(tcx, pointee);
 
     (unique_ty, nonnull_ty, ptr_ty)
 }

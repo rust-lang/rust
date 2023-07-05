@@ -380,7 +380,7 @@ impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
     }
 
     fn ty_infer(&self, _: Option<&ty::GenericParamDef>, span: Span) -> Ty<'tcx> {
-        self.tcx().ty_error_with_message(span, "bad placeholder type")
+        Ty::new_error_with_message(self.tcx(), span, "bad placeholder type")
     }
 
     fn ct_infer(&self, ty: Ty<'tcx>, _: Option<&ty::GenericParamDef>, span: Span) -> Const<'tcx> {
@@ -407,7 +407,7 @@ impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
                 item_segment,
                 trait_ref.substs,
             );
-            self.tcx().mk_projection(item_def_id, item_substs)
+            Ty::new_projection(self.tcx(), item_def_id, item_substs)
         } else {
             // There are no late-bound regions; we can just ignore the binder.
             let (mut mpart_sugg, mut inferred_sugg) = (None, None);
@@ -471,14 +471,15 @@ impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
                 }
                 _ => {}
             }
-            self.tcx().ty_error(self.tcx().sess.emit_err(
-                errors::AssociatedTypeTraitUninferredGenericParams {
+            Ty::new_error(
+                self.tcx(),
+                self.tcx().sess.emit_err(errors::AssociatedTypeTraitUninferredGenericParams {
                     span,
                     inferred_sugg,
                     bound,
                     mpart_sugg,
-                },
-            ))
+                }),
+            )
         }
     }
 
@@ -1239,7 +1240,7 @@ fn infer_return_ty_for_fn_sig<'tcx>(
             } else {
                 ty::Binder::dummy(tcx.mk_fn_sig(
                     fn_sig.inputs().iter().copied(),
-                    tcx.ty_error(guar),
+                    Ty::new_error(tcx, guar),
                     fn_sig.c_variadic,
                     fn_sig.unsafety,
                     fn_sig.abi,
@@ -1332,7 +1333,7 @@ fn suggest_impl_trait<'tcx>(
         let item_ty = ocx.normalize(
             &ObligationCause::misc(span, def_id),
             param_env,
-            tcx.mk_projection(assoc_item_def_id, substs),
+            Ty::new_projection(tcx, assoc_item_def_id, substs),
         );
         // FIXME(compiler-errors): We may benefit from resolving regions here.
         if ocx.select_where_possible().is_empty()

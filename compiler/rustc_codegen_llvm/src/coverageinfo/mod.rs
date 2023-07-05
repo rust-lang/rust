@@ -24,6 +24,7 @@ use rustc_middle::ty;
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt};
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::Instance;
+use rustc_middle::ty::Ty;
 
 use std::cell::RefCell;
 use std::ffi::CString;
@@ -262,8 +263,8 @@ fn declare_unused_fn<'tcx>(cx: &CodegenCx<'_, 'tcx>, def_id: DefId) -> Instance<
         tcx.symbol_name(instance).name,
         cx.fn_abi_of_fn_ptr(
             ty::Binder::dummy(tcx.mk_fn_sig(
-                [tcx.mk_unit()],
-                tcx.mk_unit(),
+                [Ty::new_unit(tcx)],
+                Ty::new_unit(tcx),
                 false,
                 hir::Unsafety::Unsafe,
                 Abi::Rust,

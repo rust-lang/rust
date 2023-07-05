@@ -1139,7 +1139,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                             _ => arg.fold_with(self),
                         }
                     });
-                tcx.mk_opaque(def_id, tcx.mk_substs_from_iter(substs))
+                Ty::new_opaque(tcx, def_id, tcx.mk_substs_from_iter(substs))
             }
         }
 

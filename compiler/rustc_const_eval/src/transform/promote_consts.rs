@@ -17,7 +17,7 @@ use rustc_middle::mir;
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::subst::InternalSubsts;
-use rustc_middle::ty::{self, List, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, List, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::Span;
 
 use rustc_index::{Idx, IndexSlice, IndexVec};
@@ -867,7 +867,8 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             let ty = local_decls[place.local].ty;
             let span = statement.source_info.span;
 
-            let ref_ty = tcx.mk_ref(
+            let ref_ty = Ty::new_ref(
+                tcx,
                 tcx.lifetimes.re_erased,
                 ty::TypeAndMut { ty, mutbl: borrow_kind.to_mutbl_lossy() },
             );

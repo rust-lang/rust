@@ -150,17 +150,17 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReverseMapper<'tcx> {
         match *ty.kind() {
             ty::Closure(def_id, substs) => {
                 let substs = self.fold_closure_substs(def_id, substs);
-                self.tcx.mk_closure(def_id, substs)
+                Ty::new_closure(self.tcx, def_id, substs)
             }
 
             ty::Generator(def_id, substs, movability) => {
                 let substs = self.fold_closure_substs(def_id, substs);
-                self.tcx.mk_generator(def_id, substs, movability)
+                Ty::new_generator(self.tcx, def_id, substs, movability)
             }
 
             ty::GeneratorWitnessMIR(def_id, substs) => {
                 let substs = self.fold_closure_substs(def_id, substs);
-                self.tcx.mk_generator_witness_mir(def_id, substs)
+                Ty::new_generator_witness_mir(self.tcx, def_id, substs)
             }
 
             ty::Param(param) => {
@@ -186,7 +186,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReverseMapper<'tcx> {
                                 .emit();
                         }
 
-                        self.interner().ty_error_misc()
+                        Ty::new_misc_error(self.tcx)
                     }
                 }
             }

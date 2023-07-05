@@ -862,12 +862,12 @@ fn get_nullable_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'t
             };
             return get_nullable_type(cx, inner_field_ty);
         }
-        ty::Int(ty) => tcx.mk_mach_int(ty),
-        ty::Uint(ty) => tcx.mk_mach_uint(ty),
-        ty::RawPtr(ty_mut) => tcx.mk_ptr(ty_mut),
+        ty::Int(ty) => Ty::new_int(tcx, ty),
+        ty::Uint(ty) => Ty::new_uint(tcx, ty),
+        ty::RawPtr(ty_mut) => Ty::new_ptr(tcx, ty_mut),
         // As these types are always non-null, the nullable equivalent of
         // Option<T> of these types are their raw pointer counterparts.
-        ty::Ref(_region, ty, mutbl) => tcx.mk_ptr(ty::TypeAndMut { ty, mutbl }),
+        ty::Ref(_region, ty, mutbl) => Ty::new_ptr(tcx, ty::TypeAndMut { ty, mutbl }),
         ty::FnPtr(..) => {
             // There is no nullable equivalent for Rust's function pointers -- you
             // must use an Option<fn(..) -> _> to represent it.

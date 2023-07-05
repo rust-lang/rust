@@ -2285,7 +2285,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             | ty::Char => ty::Binder::dummy(Vec::new()),
 
             // Treat this like `struct str([u8]);`
-            ty::Str => ty::Binder::dummy(vec![self.tcx().mk_slice(self.tcx().types.u8)]),
+            ty::Str => ty::Binder::dummy(vec![Ty::new_slice(self.tcx(), self.tcx().types.u8)]),
 
             ty::Placeholder(..)
             | ty::Dynamic(..)
@@ -2435,7 +2435,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                     ),
                 );
                 let value = self.infcx.fresh_substs_for_item(obligation.cause.span, impl_def_id);
-                let err = self.tcx().ty_error(guar);
+                let err = Ty::new_error(self.tcx(), guar);
                 let value = value.fold_with(&mut BottomUpFolder {
                     tcx: self.tcx(),
                     ty_op: |_| err,

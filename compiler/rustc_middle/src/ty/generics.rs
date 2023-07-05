@@ -6,7 +6,7 @@ use rustc_hir::def_id::DefId;
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::Span;
 
-use super::{Clause, EarlyBoundRegion, InstantiatedPredicates, ParamConst, ParamTy, TyCtxt};
+use super::{Clause, EarlyBoundRegion, InstantiatedPredicates, ParamConst, ParamTy, Ty, TyCtxt};
 
 #[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable)]
 pub enum GenericParamDefKind {
@@ -101,7 +101,7 @@ impl GenericParamDef {
     ) -> ty::GenericArg<'tcx> {
         match &self.kind {
             ty::GenericParamDefKind::Lifetime => ty::Region::new_error_misc(tcx).into(),
-            ty::GenericParamDefKind::Type { .. } => tcx.ty_error_misc().into(),
+            ty::GenericParamDefKind::Type { .. } => Ty::new_misc_error(tcx).into(),
             ty::GenericParamDefKind::Const { .. } => ty::Const::new_misc_error(
                 tcx,
                 tcx.type_of(self.def_id).subst(tcx, preceding_substs),

@@ -587,7 +587,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 let kind = ty::BoundTyKind::Param(param.def_id, param.name);
                                 let bound_var = ty::BoundVariableKind::Ty(kind);
                                 bound_vars.push(bound_var);
-                                tcx.mk_bound(
+                                Ty::new_bound(
+                                    tcx,
                                     ty::INNERMOST,
                                     ty::BoundTy {
                                         var: ty::BoundVar::from_usize(bound_vars.len() - 1),
@@ -946,7 +947,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             .map(ty::Binder::dummy),
                     );
                 let existential_predicates = tcx.mk_poly_existential_predicates_from_iter(iter);
-                let source_trait = tcx.mk_dynamic(existential_predicates, r_b, repr_a);
+                let source_trait = Ty::new_dynamic(tcx, existential_predicates, r_b, repr_a);
 
                 // Require that the traits involved in this upcast are **equal**;
                 // only the **lifetime bound** is changed.
@@ -1039,7 +1040,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             .map(ty::Binder::dummy),
                     );
                 let existential_predicates = tcx.mk_poly_existential_predicates_from_iter(iter);
-                let source_trait = tcx.mk_dynamic(existential_predicates, r_b, dyn_a);
+                let source_trait = Ty::new_dynamic(tcx, existential_predicates, r_b, dyn_a);
 
                 // Require that the traits involved in this upcast are **equal**;
                 // only the **lifetime bound** is changed.
@@ -1157,7 +1158,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let substs = tcx.mk_substs_from_iter(substs_a.iter().enumerate().map(|(i, k)| {
                     if unsizing_params.contains(i as u32) { substs_b[i] } else { k }
                 }));
-                let new_struct = tcx.mk_adt(def, substs);
+                let new_struct = Ty::new_adt(tcx, def, substs);
                 let InferOk { obligations, .. } = self
                     .infcx
                     .at(&obligation.cause, obligation.param_env)
@@ -1188,7 +1189,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // Check that the source tuple with the target's
                 // last element is equal to the target.
                 let new_tuple =
-                    tcx.mk_tup_from_iter(a_mid.iter().copied().chain(iter::once(b_last)));
+                    Ty::new_tup_from_iter(tcx, a_mid.iter().copied().chain(iter::once(b_last)));
                 let InferOk { obligations, .. } = self
                     .infcx
                     .at(&obligation.cause, obligation.param_env)

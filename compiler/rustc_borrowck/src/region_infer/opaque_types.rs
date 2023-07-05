@@ -158,7 +158,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                         )
                         .emit()
                     });
-                    prev.ty = infcx.tcx.ty_error(guar);
+                    prev.ty = Ty::new_error(infcx.tcx, guar);
                 }
                 // Pick a better span if there is one.
                 // FIXME(oli-obk): collect multiple spans for better diagnostics down the road.
@@ -248,13 +248,13 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         instantiated_ty: OpaqueHiddenType<'tcx>,
     ) -> Ty<'tcx> {
         if let Some(e) = self.tainted_by_errors() {
-            return self.tcx.ty_error(e);
+            return Ty::new_error(self.tcx, e);
         }
 
         if let Err(guar) =
             check_opaque_type_parameter_valid(self.tcx, opaque_type_key, instantiated_ty.span)
         {
-            return self.tcx.ty_error(guar);
+            return Ty::new_error(self.tcx, guar);
         }
 
         let definition_ty = instantiated_ty
@@ -271,7 +271,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
             definition_ty,
         ) {
             Ok(hidden_ty) => hidden_ty,
-            Err(guar) => self.tcx.ty_error(guar),
+            Err(guar) => Ty::new_error(self.tcx, guar),
         }
     }
 }
@@ -313,7 +313,7 @@ fn check_opaque_type_well_formed<'tcx>(
 
     // Require that the hidden type actually fulfills all the bounds of the opaque type, even without
     // the bounds that the function supplies.
-    let opaque_ty = tcx.mk_opaque(def_id.to_def_id(), identity_substs);
+    let opaque_ty = Ty::new_opaque(tcx, def_id.to_def_id(), identity_substs);
     ocx.eq(&ObligationCause::misc(definition_span, def_id), param_env, opaque_ty, definition_ty)
         .map_err(|err| {
             infcx

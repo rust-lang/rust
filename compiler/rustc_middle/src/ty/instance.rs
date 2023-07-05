@@ -552,7 +552,7 @@ impl<'tcx> Instance<'tcx> {
             tcx.codegen_fn_attrs(closure_did).flags.contains(CodegenFnAttrFlags::TRACK_CALLER);
         let def = ty::InstanceDef::ClosureOnceShim { call_once, track_caller };
 
-        let self_ty = tcx.mk_closure(closure_did, substs);
+        let self_ty = Ty::new_closure(tcx, closure_did, substs);
 
         let sig = substs.as_closure().sig();
         let sig =
@@ -680,7 +680,7 @@ fn polymorphize<'tcx>(
                     if substs == polymorphized_substs {
                         ty
                     } else {
-                        self.tcx.mk_closure(def_id, polymorphized_substs)
+                        Ty::new_closure(self.tcx, def_id, polymorphized_substs)
                     }
                 }
                 ty::Generator(def_id, substs, movability) => {
@@ -689,7 +689,7 @@ fn polymorphize<'tcx>(
                     if substs == polymorphized_substs {
                         ty
                     } else {
-                        self.tcx.mk_generator(def_id, polymorphized_substs, movability)
+                        Ty::new_generator(self.tcx, def_id, polymorphized_substs, movability)
                     }
                 }
                 _ => ty.super_fold_with(self),
