@@ -160,6 +160,7 @@ mod handlers {
     mod generate_new;
     mod generate_setter;
     mod generate_delegate_methods;
+    mod generate_trait_from_impl;
     mod add_return_type;
     mod inline_call;
     mod inline_const_as_literal;
@@ -266,6 +267,7 @@ mod handlers {
             generate_impl::generate_trait_impl,
             generate_is_empty_from_len::generate_is_empty_from_len,
             generate_new::generate_new,
+            generate_trait_from_impl::generate_trait_from_impl,
             inline_call::inline_call,
             inline_call::inline_into_callers,
             inline_const_as_literal::inline_const_as_literal,

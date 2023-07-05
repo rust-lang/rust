@@ -863,6 +863,36 @@ pub fn param_list(
     ast_from_text(&list)
 }
 
+pub fn trait_(
+    is_unsafe: bool,
+    ident: &str,
+    gen_params: Option<ast::GenericParamList>,
+    where_clause: Option<ast::WhereClause>,
+    assoc_items: ast::AssocItemList,
+) -> ast::Trait {
+    let mut text = String::new();
+
+    if is_unsafe {
+        format_to!(text, "unsafe ");
+    }
+
+    format_to!(text, "trait {ident}");
+
+    if let Some(gen_params) = gen_params {
+        format_to!(text, "{} ", gen_params.to_string());
+    } else {
+        text.push(' ');
+    }
+
+    if let Some(where_clause) = where_clause {
+        format_to!(text, "{} ", where_clause.to_string());
+    }
+
+    format_to!(text, "{}", assoc_items.to_string());
+
+    ast_from_text(&text)
+}
+
 pub fn type_bound(bound: &str) -> ast::TypeBound {
     ast_from_text(&format!("fn f<T: {bound}>() {{ }}"))
 }
@@ -1036,6 +1066,17 @@ pub mod tokens {
             "const C: <()>::Item = (1 != 1, 2 == 2, 3 < 3, 4 <= 4, 5 > 5, 6 >= 6, !true, *p, &p , &mut p)\n;\n\n",
         )
     });
+
+    pub fn semicolon() -> SyntaxToken {
+        SOURCE_FILE
+            .tree()
+            .syntax()
+            .clone_for_update()
+            .descendants_with_tokens()
+            .filter_map(|it| it.into_token())
+            .find(|it| it.kind() == SEMICOLON)
+            .unwrap()
+    }
 
     pub fn single_space() -> SyntaxToken {
         SOURCE_FILE
