@@ -41,7 +41,7 @@ fn compute_slice_length<'tcx>(
     for (local, rvalue, _) in ssa.assignments(body) {
         match rvalue {
             Rvalue::Cast(
-                CastKind::Pointer(ty::adjustment::PointerCast::Unsize),
+                CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize),
                 operand,
                 cast_ty,
             ) => {

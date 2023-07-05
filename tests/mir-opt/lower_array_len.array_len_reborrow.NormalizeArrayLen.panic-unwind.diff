@@ -22,7 +22,7 @@
           StorageLive(_4);
           _4 = &mut _1;
           _3 = &mut (*_4);
-          _2 = move _3 as &mut [u8] (Pointer(Unsize));
+          _2 = move _3 as &mut [u8] (PointerCoercion(Unsize));
           StorageDead(_3);
           StorageDead(_4);
           StorageLive(_5);

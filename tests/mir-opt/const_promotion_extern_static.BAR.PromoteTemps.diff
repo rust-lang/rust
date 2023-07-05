@@ -22,7 +22,7 @@
 -         _2 = &_3;
 +         _6 = const _;
 +         _2 = &(*_6);
-          _1 = move _2 as &[&i32] (Pointer(Unsize));
+          _1 = move _2 as &[&i32] (PointerCoercion(Unsize));
 -         StorageDead(_4);
           StorageDead(_2);
           _0 = core::slice::<impl [&i32]>::as_ptr(move _1) -> [return: bb1, unwind: bb2];

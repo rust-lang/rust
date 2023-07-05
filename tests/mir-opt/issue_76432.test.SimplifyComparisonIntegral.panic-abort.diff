@@ -32,7 +32,7 @@
           StorageLive(_5);
           _5 = [_1, _1, _1];
           _4 = &_5;
-          _2 = _4 as &[T] (Pointer(Unsize));
+          _2 = _4 as &[T] (PointerCoercion(Unsize));
           _9 = Len((*_2));
           _10 = const 3_usize;
 -         _11 = Eq(move _9, const 3_usize);

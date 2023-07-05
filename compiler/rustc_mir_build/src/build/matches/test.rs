@@ -16,7 +16,7 @@ use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::GenericArg;
-use rustc_middle::ty::{self, adjustment::PointerCast, Ty, TyCtxt};
+use rustc_middle::ty::{self, adjustment::PointerCoercion, Ty, TyCtxt};
 use rustc_span::def_id::DefId;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
@@ -423,7 +423,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         source_info,
                         temp,
                         Rvalue::Cast(
-                            CastKind::Pointer(PointerCast::Unsize),
+                            CastKind::PointerCoercion(PointerCoercion::Unsize),
                             Operand::Copy(val),
                             ty,
                         ),
@@ -436,7 +436,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         block,
                         source_info,
                         slice,
-                        Rvalue::Cast(CastKind::Pointer(PointerCast::Unsize), expect, ty),
+                        Rvalue::Cast(
+                            CastKind::PointerCoercion(PointerCoercion::Unsize),
+                            expect,
+                            ty,
+                        ),
                     );
                     expect = Operand::Move(slice);
                 }

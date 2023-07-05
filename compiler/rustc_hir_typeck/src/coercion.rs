@@ -47,7 +47,7 @@ use rustc_infer::infer::{Coercion, DefineOpaqueTypes, InferOk, InferResult};
 use rustc_infer::traits::{Obligation, PredicateObligation};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::adjustment::{
-    Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCast,
+    Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCoercion,
 };
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::relate::RelateResult;
@@ -592,7 +592,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         };
         let coerce_target = self.next_ty_var(origin);
         let mut coercion = self.unify_and(coerce_target, target, |target| {
-            let unsize = Adjustment { kind: Adjust::Pointer(PointerCast::Unsize), target };
+            let unsize = Adjustment { kind: Adjust::Pointer(PointerCoercion::Unsize), target };
             match reborrow {
                 None => vec![unsize],
                 Some((ref deref, ref autoref)) => vec![deref.clone(), autoref.clone(), unsize],
@@ -849,7 +849,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             a,
             fn_ty_a,
             b,
-            simple(Adjust::Pointer(PointerCast::UnsafeFnPointer)),
+            simple(Adjust::Pointer(PointerCoercion::UnsafeFnPointer)),
             identity,
         )
     }
@@ -893,16 +893,16 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     |unsafe_ty| {
                         vec![
                             Adjustment {
-                                kind: Adjust::Pointer(PointerCast::ReifyFnPointer),
+                                kind: Adjust::Pointer(PointerCoercion::ReifyFnPointer),
                                 target: a_fn_pointer,
                             },
                             Adjustment {
-                                kind: Adjust::Pointer(PointerCast::UnsafeFnPointer),
+                                kind: Adjust::Pointer(PointerCoercion::UnsafeFnPointer),
                                 target: unsafe_ty,
                             },
                         ]
                     },
-                    simple(Adjust::Pointer(PointerCast::ReifyFnPointer)),
+                    simple(Adjust::Pointer(PointerCoercion::ReifyFnPointer)),
                 )?;
 
                 obligations.extend(o2);
@@ -952,7 +952,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 self.unify_and(
                     pointer_ty,
                     b,
-                    simple(Adjust::Pointer(PointerCast::ClosureFnPointer(unsafety))),
+                    simple(Adjust::Pointer(PointerCoercion::ClosureFnPointer(unsafety))),
                 )
             }
             _ => self.unify_and(a, b, identity),
@@ -987,7 +987,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 ]
             })
         } else if mt_a.mutbl != mutbl_b {
-            self.unify_and(a_unsafe, b, simple(Adjust::Pointer(PointerCast::MutToConstPointer)))
+            self.unify_and(a_unsafe, b, simple(Adjust::Pointer(PointerCoercion::MutToConstPointer)))
         } else {
             self.unify_and(a_unsafe, b, identity)
         }
@@ -1187,13 +1187,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Reify both sides and return the reified fn pointer type.
             let fn_ptr = Ty::new_fn_ptr(self.tcx, sig);
             let prev_adjustment = match prev_ty.kind() {
-                ty::Closure(..) => Adjust::Pointer(PointerCast::ClosureFnPointer(a_sig.unsafety())),
-                ty::FnDef(..) => Adjust::Pointer(PointerCast::ReifyFnPointer),
+                ty::Closure(..) => {
+                    Adjust::Pointer(PointerCoercion::ClosureFnPointer(a_sig.unsafety()))
+                }
+                ty::FnDef(..) => Adjust::Pointer(PointerCoercion::ReifyFnPointer),
                 _ => unreachable!(),
             };
             let next_adjustment = match new_ty.kind() {
-                ty::Closure(..) => Adjust::Pointer(PointerCast::ClosureFnPointer(b_sig.unsafety())),
-                ty::FnDef(..) => Adjust::Pointer(PointerCast::ReifyFnPointer),
+                ty::Closure(..) => {
+                    Adjust::Pointer(PointerCoercion::ClosureFnPointer(b_sig.unsafety()))
+                }
+                ty::FnDef(..) => Adjust::Pointer(PointerCoercion::ReifyFnPointer),
                 _ => unreachable!(),
             };
             for expr in exprs.iter().map(|e| e.as_coercion_site()) {

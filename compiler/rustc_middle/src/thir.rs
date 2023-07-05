@@ -18,7 +18,7 @@ use rustc_index::IndexVec;
 use rustc_middle::middle::region;
 use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::mir::{self, BinOp, BorrowKind, FakeReadCause, Mutability, UnOp};
-use rustc_middle::ty::adjustment::PointerCast;
+use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, AdtDef, FnSig, List, Ty, UpvarSubsts};
 use rustc_middle::ty::{CanonicalUserType, CanonicalUserTypeAnnotation};
@@ -329,9 +329,10 @@ pub enum ExprKind<'tcx> {
     NeverToAny {
         source: ExprId,
     },
-    /// A pointer cast. More information can be found in [`PointerCast`].
-    Pointer {
-        cast: PointerCast,
+    /// A pointer coercion. More information can be found in [`PointerCoercion`].
+    /// Pointer casts that cannot be done by coercions are represented by [`ExprKind::Cast`].
+    PointerCoercion {
+        cast: PointerCoercion,
         source: ExprId,
     },
     /// A `loop` expression.

@@ -9,7 +9,7 @@ use rustc_infer::traits::{ImplSource, Obligation, ObligationCause};
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts};
-use rustc_middle::ty::{self, adjustment::PointerCast, Instance, InstanceDef, Ty, TyCtxt};
+use rustc_middle::ty::{self, adjustment::PointerCoercion, Instance, InstanceDef, Ty, TyCtxt};
 use rustc_middle::ty::{TraitRef, TypeVisitableExt};
 use rustc_mir_dataflow::{self, Analysis};
 use rustc_span::{sym, Span, Symbol};
@@ -521,12 +521,12 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             }
 
             Rvalue::Cast(
-                CastKind::Pointer(
-                    PointerCast::MutToConstPointer
-                    | PointerCast::ArrayToPointer
-                    | PointerCast::UnsafeFnPointer
-                    | PointerCast::ClosureFnPointer(_)
-                    | PointerCast::ReifyFnPointer,
+                CastKind::PointerCoercion(
+                    PointerCoercion::MutToConstPointer
+                    | PointerCoercion::ArrayToPointer
+                    | PointerCoercion::UnsafeFnPointer
+                    | PointerCoercion::ClosureFnPointer(_)
+                    | PointerCoercion::ReifyFnPointer,
                 ),
                 _,
                 _,
@@ -534,7 +534,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 // These are all okay; they only change the type, not the data.
             }
 
-            Rvalue::Cast(CastKind::Pointer(PointerCast::Unsize), _, _) => {
+            Rvalue::Cast(CastKind::PointerCoercion(PointerCoercion::Unsize), _, _) => {
                 // Unsizing is implemented for CTFE.
             }
 

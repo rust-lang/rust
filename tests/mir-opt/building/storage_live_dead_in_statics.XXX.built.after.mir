@@ -187,7 +187,7 @@ static XXX: &Foo = {
         StorageDead(_7);
         _5 = &_6;
         _4 = &(*_5);
-        _3 = move _4 as &[(u32, u32)] (Pointer(Unsize));
+        _3 = move _4 as &[(u32, u32)] (PointerCoercion(Unsize));
         StorageDead(_4);
         _2 = Foo { tup: const "hi", data: move _3 };
         StorageDead(_3);

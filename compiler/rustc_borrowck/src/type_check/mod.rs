@@ -28,7 +28,7 @@ use rustc_middle::mir::AssertKind;
 use rustc_middle::mir::*;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::ObligationCause;
-use rustc_middle::ty::adjustment::PointerCast;
+use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::subst::{SubstsRef, UserSubsts};
 use rustc_middle::ty::visit::TypeVisitableExt;
@@ -1908,7 +1908,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 self.check_operand(op, location);
 
                 match cast_kind {
-                    CastKind::Pointer(PointerCast::ReifyFnPointer) => {
+                    CastKind::PointerCoercion(PointerCoercion::ReifyFnPointer) => {
                         let fn_sig = op.ty(body, tcx).fn_sig(tcx);
 
                         // The type that we see in the fcx is like
@@ -1937,7 +1937,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         }
                     }
 
-                    CastKind::Pointer(PointerCast::ClosureFnPointer(unsafety)) => {
+                    CastKind::PointerCoercion(PointerCoercion::ClosureFnPointer(unsafety)) => {
                         let sig = match op.ty(body, tcx).kind() {
                             ty::Closure(_, substs) => substs.as_closure().sig(),
                             _ => bug!(),
@@ -1962,7 +1962,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         }
                     }
 
-                    CastKind::Pointer(PointerCast::UnsafeFnPointer) => {
+                    CastKind::PointerCoercion(PointerCoercion::UnsafeFnPointer) => {
                         let fn_sig = op.ty(body, tcx).fn_sig(tcx);
 
                         // The type that we see in the fcx is like
@@ -1991,7 +1991,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         }
                     }
 
-                    CastKind::Pointer(PointerCast::Unsize) => {
+                    CastKind::PointerCoercion(PointerCoercion::Unsize) => {
                         let &ty = ty;
                         let trait_ref = ty::TraitRef::from_lang_item(
                             tcx,
@@ -2038,7 +2038,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         );
                     }
 
-                    CastKind::Pointer(PointerCast::MutToConstPointer) => {
+                    CastKind::PointerCoercion(PointerCoercion::MutToConstPointer) => {
                         let ty::RawPtr(ty::TypeAndMut {
                             ty: ty_from,
                             mutbl: hir::Mutability::Mut,
@@ -2080,7 +2080,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         }
                     }
 
-                    CastKind::Pointer(PointerCast::ArrayToPointer) => {
+                    CastKind::PointerCoercion(PointerCoercion::ArrayToPointer) => {
                         let ty_from = op.ty(body, tcx);
 
                         let opt_ty_elem_mut = match ty_from.kind() {
