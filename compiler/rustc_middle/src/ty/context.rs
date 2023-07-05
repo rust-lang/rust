@@ -1649,7 +1649,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.intern_const(ty::ConstData { kind, ty })
     }
 
-    // Avoid this in favour of more specific `mk_*` methods, where possible.
+    // Avoid this in favour of more specific `Ty::new_*` methods, where possible.
     #[allow(rustc::usage_of_ty_tykind)]
     #[inline]
     pub fn mk_ty_from_kind(self, st: TyKind<'tcx>) -> Ty<'tcx> {
