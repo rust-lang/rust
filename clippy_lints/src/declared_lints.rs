@@ -389,6 +389,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::methods::OR_THEN_UNWRAP_INFO,
     crate::methods::PATH_BUF_PUSH_OVERWRITE_INFO,
     crate::methods::RANGE_ZIP_WITH_LEN_INFO,
+    crate::methods::READ_LINE_WITHOUT_TRIM_INFO,
     crate::methods::REPEAT_ONCE_INFO,
     crate::methods::RESULT_MAP_OR_INTO_OPTION_INFO,
     crate::methods::SEARCH_IS_SOME_INFO,

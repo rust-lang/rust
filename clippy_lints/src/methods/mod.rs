@@ -72,6 +72,7 @@ mod or_fun_call;
 mod or_then_unwrap;
 mod path_buf_push_overwrite;
 mod range_zip_with_len;
+mod read_line_without_trim;
 mod repeat_once;
 mod search_is_some;
 mod seek_from_current;
@@ -3348,6 +3349,35 @@ declare_clippy_lint! {
     "checks for usage of `Iterator::fold` with a type that implements `Try`"
 }
 
+declare_clippy_lint! {
+    /// Looks for calls to [`Stdin::read_line`] to read a line from the standard input
+    /// into a string, then later attempting to parse this string into a type without first trimming it, which will
+    /// always fail because the string has a trailing newline in it.
+    ///
+    /// ### Why is this bad?
+    /// The `.parse()` call will always fail.
+    ///
+    /// ### Example
+    /// ```rust,ignore
+    /// let mut input = String::new();
+    /// std::io::stdin().read_line(&mut input).expect("Failed to read a line");
+    /// let num: i32 = input.parse().expect("Not a number!");
+    /// assert_eq!(num, 42); // we never even get here!
+    /// ```
+    /// Use instead:
+    /// ```rust,ignore
+    /// let mut input = String::new();
+    /// std::io::stdin().read_line(&mut input).expect("Failed to read a line");
+    /// let num: i32 = input.trim_end().parse().expect("Not a number!");
+    /// //                  ^^^^^^^^^^^ remove the trailing newline
+    /// assert_eq!(num, 42);
+    /// ```
+    #[clippy::version = "1.72.0"]
+    pub READ_LINE_WITHOUT_TRIM,
+    correctness,
+    "calling `Stdin::read_line`, then trying to parse it without first trimming"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Msrv,
@@ -3468,6 +3498,7 @@ impl_lint_pass!(Methods => [
     REPEAT_ONCE,
     STABLE_SORT_PRIMITIVE,
     UNIT_HASH,
+    READ_LINE_WITHOUT_TRIM,
     UNNECESSARY_SORT_BY,
     VEC_RESIZE_TO_ZERO,
     VERBOSE_FILE_READS,
@@ -3879,6 +3910,9 @@ impl Methods {
                 ("read_to_string", [_]) => {
                     verbose_file_reads::check(cx, expr, recv, verbose_file_reads::READ_TO_STRING_MSG);
                 },
+                ("read_line", [arg]) => {
+                    read_line_without_trim::check(cx, expr, recv, arg);
+                }
                 ("repeat", [arg]) => {
                     repeat_once::check(cx, expr, recv, arg);
                 },
