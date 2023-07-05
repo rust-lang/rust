@@ -2,7 +2,7 @@
 
 use rustc_ast::InlineAsmOptions;
 use rustc_index::IndexVec;
-use rustc_middle::ty::adjustment::PointerCast;
+use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::layout::FnAbiOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 
@@ -571,7 +571,7 @@ fn codegen_stmt<'tcx>(
                     lval.write_cvalue(fx, res);
                 }
                 Rvalue::Cast(
-                    CastKind::Pointer(PointerCast::ReifyFnPointer),
+                    CastKind::PointerCoercion(PointerCoercion::ReifyFnPointer),
                     ref operand,
                     to_ty,
                 ) => {
@@ -596,17 +596,17 @@ fn codegen_stmt<'tcx>(
                     }
                 }
                 Rvalue::Cast(
-                    CastKind::Pointer(PointerCast::UnsafeFnPointer),
+                    CastKind::PointerCoercion(PointerCoercion::UnsafeFnPointer),
                     ref operand,
                     to_ty,
                 )
                 | Rvalue::Cast(
-                    CastKind::Pointer(PointerCast::MutToConstPointer),
+                    CastKind::PointerCoercion(PointerCoercion::MutToConstPointer),
                     ref operand,
                     to_ty,
                 )
                 | Rvalue::Cast(
-                    CastKind::Pointer(PointerCast::ArrayToPointer),
+                    CastKind::PointerCoercion(PointerCoercion::ArrayToPointer),
                     ref operand,
                     to_ty,
                 ) => {
@@ -662,7 +662,7 @@ fn codegen_stmt<'tcx>(
                     }
                 }
                 Rvalue::Cast(
-                    CastKind::Pointer(PointerCast::ClosureFnPointer(_)),
+                    CastKind::PointerCoercion(PointerCoercion::ClosureFnPointer(_)),
                     ref operand,
                     _to_ty,
                 ) => {
@@ -684,7 +684,11 @@ fn codegen_stmt<'tcx>(
                         _ => bug!("{} cannot be cast to a fn ptr", operand.layout().ty),
                     }
                 }
-                Rvalue::Cast(CastKind::Pointer(PointerCast::Unsize), ref operand, _to_ty) => {
+                Rvalue::Cast(
+                    CastKind::PointerCoercion(PointerCoercion::Unsize),
+                    ref operand,
+                    _to_ty,
+                ) => {
                     let operand = codegen_operand(fx, operand);
                     crate::unsize::coerce_unsized_into(fx, operand, lval);
                 }
