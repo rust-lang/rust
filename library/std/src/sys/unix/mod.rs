@@ -110,6 +110,11 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
             while libc::poll(pfds.as_mut_ptr(), 3, 0) == -1 {
                 match errno() {
                     libc::EINTR => continue,
+                    #[cfg(target_vendor = "unikraft")]
+                    libc::ENOSYS => {
+                        // Not all configurations of Unikraft enable `LIBPOSIX_EVENT`.
+                        break 'poll;
+                    }
                     libc::EINVAL | libc::EAGAIN | libc::ENOMEM => {
                         // RLIMIT_NOFILE or temporary allocation failures
                         // may be preventing use of poll(), fall back to fcntl
