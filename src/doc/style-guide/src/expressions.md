@@ -768,13 +768,13 @@ matches "small" in the following grammar:
 
 ```
 small:
-    - smallntp
-    - unary tuple constructor: `(` smallntp `,` `)`
+    - small_no_tuple
+    - unary tuple constructor: `(` small_no_tuple `,` `)`
     - `&` small
 
-smallntp:
+small_no_tuple:
     - single token
-    - `&` smallntp
+    - `&` small_no_tuple
 ```
 
 E.g., `&&Some(foo)` matches, `Foo(4, Bar)` does not.
