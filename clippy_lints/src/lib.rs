@@ -722,7 +722,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|_| Box::new(drop_forget_ref::DropForgetRef));
     store.register_late_pass(|_| Box::new(empty_enum::EmptyEnum));
     store.register_late_pass(|_| Box::new(invalid_upcast_comparisons::InvalidUpcastComparisons));
-    store.register_late_pass(|_| Box::new(regex::Regex));
+    store.register_late_pass(|_| Box::<regex::Regex>::default());
     let ignore_interior_mutability = conf.ignore_interior_mutability.clone();
     store.register_late_pass(move |_| Box::new(copies::CopyAndPaste::new(ignore_interior_mutability.clone())));
     store.register_late_pass(|_| Box::new(copy_iterator::CopyIterator));
