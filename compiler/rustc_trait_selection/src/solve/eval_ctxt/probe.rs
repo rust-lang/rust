@@ -1,5 +1,5 @@
 use super::EvalCtxt;
-use rustc_middle::traits::solve::inspect;
+use rustc_middle::traits::solve::{inspect, QueryResult};
 use std::marker::PhantomData;
 
 pub(in crate::solve) struct ProbeCtxt<'me, 'a, 'tcx, F, T> {
@@ -43,5 +43,25 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         F: FnOnce(&T) -> inspect::CandidateKind<'tcx>,
     {
         ProbeCtxt { ecx: self, probe_kind, _result: PhantomData }
+    }
+
+    pub(in crate::solve) fn probe_candidate(
+        &mut self,
+        name: &'static str,
+    ) -> ProbeCtxt<
+        '_,
+        'a,
+        'tcx,
+        impl FnOnce(&QueryResult<'tcx>) -> inspect::CandidateKind<'tcx>,
+        QueryResult<'tcx>,
+    > {
+        ProbeCtxt {
+            ecx: self,
+            probe_kind: move |result: &QueryResult<'tcx>| inspect::CandidateKind::Candidate {
+                name: name.to_string(),
+                result: *result,
+            },
+            _result: PhantomData,
+        }
     }
 }
