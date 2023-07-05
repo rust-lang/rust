@@ -480,7 +480,7 @@ fn layout_of_uncached<'tcx>(
                     .any(|(i, v)| v.discr != ty::VariantDiscr::Relative(i.as_u32()));
 
             let maybe_unsized = def.is_struct()
-                && def.non_enum_variant().fields.raw.last().is_some_and(|last_field| {
+                && def.non_enum_variant().tail_opt().is_some_and(|last_field| {
                     let param_env = tcx.param_env(def.did());
                     !tcx.type_of(last_field.did).subst_identity().is_sized(tcx, param_env)
                 });
@@ -502,14 +502,7 @@ fn layout_of_uncached<'tcx>(
             // If the struct tail is sized and can be unsized, check that unsizing doesn't move the fields around.
             if cfg!(debug_assertions)
                 && maybe_unsized
-                && def
-                    .non_enum_variant()
-                    .fields
-                    .raw
-                    .last()
-                    .unwrap()
-                    .ty(tcx, substs)
-                    .is_sized(tcx, cx.param_env)
+                && def.non_enum_variant().tail().ty(tcx, substs).is_sized(tcx, cx.param_env)
             {
                 let mut variants = variants;
                 let tail_replacement = cx.layout_of(Ty::new_slice(tcx, tcx.types.u8)).unwrap();
