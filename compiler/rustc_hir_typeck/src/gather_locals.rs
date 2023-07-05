@@ -9,22 +9,24 @@ use rustc_span::def_id::LocalDefId;
 use rustc_span::Span;
 use rustc_trait_selection::traits;
 
-#[derive(Debug, Copy, Clone)]
-pub(super) enum DeclOrigin {
-    // from an `if let` expression
-    LetExpr,
-    // from `let x = ..`
-    LocalDecl,
-}
-
 /// Provides context for checking patterns in declarations. More specifically this
 /// allows us to infer array types if the pattern is irrefutable and allows us to infer
 /// the size of the array. See issue #76342.
 #[derive(Debug, Copy, Clone)]
-pub(crate) struct DeclContext {
-    // whether we're in a let-else context
-    pub(super) has_else: bool,
-    pub(super) origin: DeclOrigin,
+pub(super) enum DeclOrigin<'a> {
+    // from an `if let` expression
+    LetExpr,
+    // from `let x = ..`
+    LocalDecl { els: Option<&'a hir::Block<'a>> },
+}
+
+impl<'a> DeclOrigin<'a> {
+    pub(super) fn try_get_els(&self) -> Option<&'a hir::Block<'a>> {
+        match self {
+            Self::LocalDecl { els } => *els,
+            Self::LetExpr => None,
+        }
+    }
 }
 
 /// A declaration is an abstraction of [hir::Local] and [hir::Let].
@@ -36,29 +38,20 @@ pub(super) struct Declaration<'a> {
     pub ty: Option<&'a hir::Ty<'a>>,
     pub span: Span,
     pub init: Option<&'a hir::Expr<'a>>,
-    pub els: Option<&'a hir::Block<'a>>,
-    pub origin: DeclOrigin,
+    pub origin: DeclOrigin<'a>,
 }
 
 impl<'a> From<&'a hir::Local<'a>> for Declaration<'a> {
     fn from(local: &'a hir::Local<'a>) -> Self {
         let hir::Local { hir_id, pat, ty, span, init, els, source: _ } = *local;
-        Declaration { hir_id, pat, ty, span, init, els, origin: DeclOrigin::LocalDecl }
+        Declaration { hir_id, pat, ty, span, init, origin: DeclOrigin::LocalDecl { els } }
     }
 }
 
 impl<'a> From<&'a hir::Let<'a>> for Declaration<'a> {
     fn from(let_expr: &'a hir::Let<'a>) -> Self {
         let hir::Let { hir_id, pat, ty, span, init } = *let_expr;
-        Declaration {
-            hir_id,
-            pat,
-            ty,
-            span,
-            init: Some(init),
-            els: None,
-            origin: DeclOrigin::LetExpr,
-        }
+        Declaration { hir_id, pat, ty, span, init: Some(init), origin: DeclOrigin::LetExpr }
     }
 }
 
