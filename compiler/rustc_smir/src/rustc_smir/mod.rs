@@ -71,7 +71,7 @@ impl<'tcx> Tables<'tcx> {
     fn rustc_ty_to_ty(&mut self, ty: Ty<'tcx>) -> TyKind {
         match ty.kind() {
             ty::Bool => TyKind::RigidTy(RigidTy::Bool),
-            ty::Char => todo!(),
+            ty::Char => TyKind::RigidTy(RigidTy::Char),
             ty::Int(_) => todo!(),
             ty::Uint(_) => todo!(),
             ty::Float(_) => todo!(),

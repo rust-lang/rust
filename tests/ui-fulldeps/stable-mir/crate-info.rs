@@ -67,7 +67,7 @@ fn test_stable_mir(tcx: TyCtxt<'_>) {
 
     let types = get_item(tcx, &items, (DefKind::Fn, "types")).unwrap();
     let body = types.body();
-    assert_eq!(body.locals.len(), 2);
+    assert_eq!(body.locals.len(), 3);
     assert_matches!(
         body.locals[0].kind(),
         stable_mir::ty::TyKind::RigidTy(stable_mir::ty::RigidTy::Bool)
@@ -75,6 +75,10 @@ fn test_stable_mir(tcx: TyCtxt<'_>) {
     assert_matches!(
         body.locals[1].kind(),
         stable_mir::ty::TyKind::RigidTy(stable_mir::ty::RigidTy::Bool)
+    );
+    assert_matches!(
+        body.locals[2].kind(),
+        stable_mir::ty::TyKind::RigidTy(stable_mir::ty::RigidTy::Char)
     );
 
     let drop = get_item(tcx, &items, (DefKind::Fn, "drop")).unwrap();
@@ -167,7 +171,7 @@ fn generate_input(path: &str) -> std::io::Result<()> {
         x_64.wrapping_add(y_64)
     }}
 
-    pub fn types(b: bool) -> bool {{
+    pub fn types(b: bool, _: char) -> bool {{
         b
     }}
 

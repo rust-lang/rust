@@ -17,5 +17,6 @@ pub enum TyKind {
 #[derive(Clone, Debug)]
 pub enum RigidTy {
     Bool,
+    Char,
     Tuple(Vec<Ty>),
 }
