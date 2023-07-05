@@ -2652,6 +2652,15 @@ pub struct NormalAttr {
     pub tokens: Option<LazyAttrTokenStream>,
 }
 
+impl NormalAttr {
+    pub fn from_ident(ident: Ident) -> Self {
+        Self {
+            item: AttrItem { path: Path::from_ident(ident), args: AttrArgs::Empty, tokens: None },
+            tokens: None,
+        }
+    }
+}
+
 #[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
 pub struct AttrItem {
     pub path: Path,

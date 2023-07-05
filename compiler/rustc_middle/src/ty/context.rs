@@ -320,6 +320,8 @@ pub struct CommonLifetimes<'tcx> {
 
 pub struct CommonConsts<'tcx> {
     pub unit: Const<'tcx>,
+    pub true_: Const<'tcx>,
+    pub false_: Const<'tcx>,
 }
 
 impl<'tcx> CommonTypes<'tcx> {
@@ -416,6 +418,14 @@ impl<'tcx> CommonConsts<'tcx> {
             unit: mk_const(ty::ConstData {
                 kind: ty::ConstKind::Value(ty::ValTree::zst()),
                 ty: types.unit,
+            }),
+            true_: mk_const(ty::ConstData {
+                kind: ty::ConstKind::Value(ty::ValTree::Leaf(ty::ScalarInt::TRUE)),
+                ty: types.bool,
+            }),
+            false_: mk_const(ty::ConstData {
+                kind: ty::ConstKind::Value(ty::ValTree::Leaf(ty::ScalarInt::FALSE)),
+                ty: types.bool,
             }),
         }
     }

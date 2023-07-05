@@ -673,14 +673,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             self.lower_attrs(
                 inner_hir_id,
                 &[Attribute {
-                    kind: AttrKind::Normal(ptr::P(NormalAttr {
-                        item: AttrItem {
-                            path: Path::from_ident(Ident::new(sym::track_caller, span)),
-                            args: AttrArgs::Empty,
-                            tokens: None,
-                        },
-                        tokens: None,
-                    })),
+                    kind: AttrKind::Normal(ptr::P(NormalAttr::from_ident(Ident::new(sym::track_caller, span)))),
                     id: self.tcx.sess.parse_sess.attr_id_generator.mk_attr_id(),
                     style: AttrStyle::Outer,
                     span: unstable_span,
