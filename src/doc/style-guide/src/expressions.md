@@ -456,10 +456,13 @@ let foo = bar
 
 If the length of the last line of the first element plus its indentation is
 less than or equal to the indentation of the second line, then combine the
-first and second lines if they fit:
+first and second lines if they fit. Apply this rule recursively.
 
 ```rust
 x.baz?
+    .qux()
+
+x.y.z
     .qux()
 
 let foo = x
