@@ -825,7 +825,7 @@ impl<T> MaybeUninit<T> {
     /// // Initialize `buf`:
     /// unsafe { initialize_buffer(buf.as_mut_ptr()); }
     /// // Now we know that `buf` has been initialized, so we could `.assume_init()` it.
-    /// // However, using `.assume_init()` may trigger a `memcpy` of the 1024 bytes.
+    /// // However, using `.assume_init()` may trigger a copy of the 1024 bytes.
     /// // To assert our buffer has been initialized without copying it, we upgrade
     /// // the `&mut MaybeUninit<[u8; 1024]>` to a `&mut [u8; 1024]`:
     /// let buf: &mut [u8; 1024] = unsafe {

@@ -41,7 +41,7 @@ use crate::ptr;
 /// only once.
 ///
 /// Algorithm 2 is used if `left + right` is large but `min(left, right)` is small enough to
-/// fit onto a stack buffer. The `min(left, right)` elements are copied onto the buffer, `memmove`
+/// fit onto a stack buffer. The `min(left, right)` elements are copied onto the buffer, [`ptr::copy`]
 /// is applied to the others, and the ones on the buffer are moved back into the hole on the
 /// opposite side of where they originated.
 ///

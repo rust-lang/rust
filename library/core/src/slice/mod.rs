@@ -3531,7 +3531,7 @@ impl<T> [T] {
         self.spec_clone_from(src);
     }
 
-    /// Copies all elements from `src` into `self`, using a memcpy.
+    /// Copies all elements from `src` into `self`, using [`ptr::copy_nonoverlapping`].
     ///
     /// The length of `src` must be the same as `self`.
     ///
@@ -3617,7 +3617,7 @@ impl<T> [T] {
     }
 
     /// Copies elements from one part of the slice to another part of itself,
-    /// using a memmove.
+    /// using [`ptr::copy`].
     ///
     /// `src` is the range within `self` to copy from. `dest` is the starting
     /// index of the range within `self` to copy to, which will have the same
