@@ -103,6 +103,11 @@ if [ "$DEPLOY$DEPLOY_ALT" = "1" ]; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-llvm-assertions"
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.verify-llvm-ir"
   fi
+
+  if [ "$DOWNLOAD_RUSTC" = 1 ]; then
+    echo "error: DOWNLOAD_RUSTC should not be set in dist builders!" >&2
+    exit 1
+  fi
 else
   # We almost always want debug assertions enabled, but sometimes this takes too
   # long for too little benefit, so we just turn them off.
