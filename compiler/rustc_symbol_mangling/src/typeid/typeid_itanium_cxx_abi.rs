@@ -112,7 +112,7 @@ fn encode_const<'tcx>(
         let _ = write!(s, "{value}");
     }
 
-    if let Some(scalar_int) = c.kind().try_to_scalar_int() {
+    if let Some(scalar_int) = c.try_to_scalar_int() {
         let signed = c.ty().is_signed();
         match scalar_int.size().bits() {
             8 if signed => push_signed_value(&mut s, scalar_int.try_to_i8().unwrap(), 0),
@@ -504,8 +504,7 @@ fn encode_ty<'tcx>(
             let _ = write!(
                 s,
                 "{}",
-                &len.kind()
-                    .try_to_scalar()
+                &len.try_to_scalar()
                     .unwrap()
                     .to_u64()
                     .unwrap_or_else(|_| panic!("failed to convert length to u64"))
@@ -815,7 +814,6 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
 
         ty::Array(ty0, len) => {
             let len = len
-                .kind()
                 .try_to_scalar()
                 .unwrap()
                 .to_u64()

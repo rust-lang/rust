@@ -95,17 +95,41 @@ mod os_impl {
         return true;
     }
 
+    // FIXME: check when rust-installer test sh files will be removed,
+    // and then remove them from exclude list
+    const RI_EXCLUSION_LIST: &[&str] = &[
+        "src/tools/rust-installer/test/image1/bin/program",
+        "src/tools/rust-installer/test/image1/bin/program2",
+        "src/tools/rust-installer/test/image1/bin/bad-bin",
+        "src/tools/rust-installer/test/image2/bin/oldprogram",
+        "src/tools/rust-installer/test/image3/bin/cargo",
+    ];
+
+    fn filter_rust_installer_no_so_bins(path: &Path) -> bool {
+        RI_EXCLUSION_LIST.iter().any(|p| path.ends_with(p))
+    }
+
     #[cfg(unix)]
     pub fn check(path: &Path, bad: &mut bool) {
         use std::ffi::OsStr;
 
         const ALLOWED: &[&str] = &["configure", "x"];
 
+        for p in RI_EXCLUSION_LIST {
+            if !path.join(Path::new(p)).exists() {
+                tidy_error!(bad, "rust-installer test bins missed: {p}");
+            }
+        }
+
         // FIXME: we don't need to look at all binaries, only files that have been modified in this branch
         // (e.g. using `git ls-files`).
         walk_no_read(
             &[path],
-            |path, _is_dir| filter_dirs(path) || path.ends_with("src/etc"),
+            |path, _is_dir| {
+                filter_dirs(path)
+                    || path.ends_with("src/etc")
+                    || filter_rust_installer_no_so_bins(path)
+            },
             &mut |entry| {
                 let file = entry.path();
                 let extension = file.extension();

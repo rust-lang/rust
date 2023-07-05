@@ -2,8 +2,9 @@
 #![allow(dead_code)]
 
 mod m {
-    type Foo = impl std::fmt::Debug;
+    pub type Foo = impl std::fmt::Debug;
     //~^ ERROR cycle detected
+    //~| ERROR cycle detected
 
     // Cycle: error today, but it'd be nice if it eventually worked
 
@@ -13,10 +14,11 @@ mod m {
 
     pub fn bar() {
         is_send(foo()); // Today: error
+        //~^ ERROR: cannot check whether the hidden type of `inference_cycle[4ecc]::m::Foo::{opaque#0}` satisfies auto traits
     }
 
     fn baz() {
-        let f: Foo = 22_u32;
+        let f: Foo = ();
     }
 
     fn is_send<T: Send>(_: T) {}

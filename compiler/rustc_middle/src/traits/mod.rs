@@ -588,6 +588,10 @@ pub enum SelectionError<'tcx> {
     /// Signaling that an error has already been emitted, to avoid
     /// multiple errors being shown.
     ErrorReporting,
+    /// Computing an opaque type's hidden type caused an error (e.g. a cycle error).
+    /// We can thus not know whether the hidden type implements an auto trait, so
+    /// we should not presume anything about it.
+    OpaqueTypeAutoTraitLeakageUnknown(DefId),
 }
 
 #[derive(Clone, Debug, TypeVisitable, Lift)]

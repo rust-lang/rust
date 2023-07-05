@@ -1,11 +1,11 @@
 error[E0391]: cycle detected when computing type of `m::Foo::{opaque#0}`
-  --> $DIR/inference-cycle.rs:5:16
+  --> $DIR/inference-cycle.rs:5:20
    |
-LL |     type Foo = impl std::fmt::Debug;
-   |                ^^^^^^^^^^^^^^^^^^^^
+LL |     pub type Foo = impl std::fmt::Debug;
+   |                    ^^^^^^^^^^^^^^^^^^^^
    |
 note: ...which requires type-checking `m::bar`...
-  --> $DIR/inference-cycle.rs:15:9
+  --> $DIR/inference-cycle.rs:16:9
    |
 LL |         is_send(foo()); // Today: error
    |         ^^^^^^^
@@ -17,6 +17,48 @@ note: cycle used when checking item types in module `m`
 LL | mod m {
    | ^^^^^
 
-error: aborting due to previous error
+error[E0391]: cycle detected when computing type of `m::Foo::{opaque#0}`
+  --> $DIR/inference-cycle.rs:5:20
+   |
+LL |     pub type Foo = impl std::fmt::Debug;
+   |                    ^^^^^^^^^^^^^^^^^^^^
+   |
+note: ...which requires type-checking `m::bar`...
+  --> $DIR/inference-cycle.rs:15:5
+   |
+LL |     pub fn bar() {
+   |     ^^^^^^^^^^^^
+   = note: ...which again requires computing type of `m::Foo::{opaque#0}`, completing the cycle
+note: cycle used when checking item types in module `m`
+  --> $DIR/inference-cycle.rs:4:1
+   |
+LL | mod m {
+   | ^^^^^
+
+error: cannot check whether the hidden type of `inference_cycle[4ecc]::m::Foo::{opaque#0}` satisfies auto traits
+  --> $DIR/inference-cycle.rs:16:17
+   |
+LL |         is_send(foo()); // Today: error
+   |         ------- ^^^^^
+   |         |
+   |         required by a bound introduced by this call
+   |
+note: opaque type is declared here
+  --> $DIR/inference-cycle.rs:5:20
+   |
+LL |     pub type Foo = impl std::fmt::Debug;
+   |                    ^^^^^^^^^^^^^^^^^^^^
+note: this item depends on auto traits of the hidden type, but may also be registering the hidden type. This is not supported right now. You can try moving the opaque type and the item that actually registers a hidden type into a new submodule
+  --> $DIR/inference-cycle.rs:15:12
+   |
+LL |     pub fn bar() {
+   |            ^^^
+note: required by a bound in `is_send`
+  --> $DIR/inference-cycle.rs:24:19
+   |
+LL |     fn is_send<T: Send>(_: T) {}
+   |                   ^^^^ required by this bound in `is_send`
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0391`.

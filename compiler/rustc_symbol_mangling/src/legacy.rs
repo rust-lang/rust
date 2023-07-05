@@ -230,7 +230,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolPrinter<'tcx> {
                 self.write_str("[")?;
                 self = self.print_type(ty)?;
                 self.write_str("; ")?;
-                if let Some(size) = size.kind().try_to_bits(self.tcx().data_layout.pointer_size) {
+                if let Some(size) = size.try_to_bits(self.tcx().data_layout.pointer_size) {
                     write!(self, "{size}")?
                 } else if let ty::ConstKind::Param(param) = size.kind() {
                     self = param.print(self)?
