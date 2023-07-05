@@ -1940,7 +1940,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let instantiated = self
                             .tcx
                             .explicit_predicates_of(self.body_id)
-                            .instantiate_identity(self.tcx);
+                            .instantiate_identity1(self.tcx);
                         // FIXME(compiler-errors): This could be problematic if something has two
                         // fn-like predicates with different args, but callable types really never
                         // do that, so it's OK.

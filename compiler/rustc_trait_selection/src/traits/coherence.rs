@@ -151,9 +151,10 @@ fn with_fresh_ty_vars<'cx, 'tcx>(
         trait_ref: tcx.impl_trait_ref(impl_def_id).map(|i| i.subst(tcx, impl_substs)),
         predicates: tcx
             .predicates_of(impl_def_id)
-            .instantiate(tcx, impl_substs)
-            .iter()
-            .map(|(c, _)| c.as_predicate())
+            .instantiate2(tcx, impl_substs)
+            .predicates
+            .into_iter()
+            .map(|c| c.as_predicate())
             .collect(),
     };
 

@@ -1398,12 +1398,11 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
             traits::Obligation::new(tcx, cause, wfcx.param_env, pred)
         });
 
-    let predicates = predicates.instantiate_identity(tcx);
+    let predicates = predicates.instantiate_identity1(tcx);
 
     let predicates = wfcx.normalize(span, None, predicates);
 
     debug!(?predicates.predicates);
-    assert_eq!(predicates.predicates.len(), predicates.spans.len());
     let wf_obligations = predicates.into_iter().flat_map(|(p, sp)| {
         traits::wf::predicate_obligations(
             infcx,

@@ -107,7 +107,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // Keep this parameter for now, in case we start using
         // it in `ConstraintCategory` at some point.
         _def_id: DefId,
-        instantiated_predicates: ty::InstantiatedPredicates<'tcx>,
+        instantiated_predicates: ty::InstantiatedPredicates1<'tcx>,
         locations: Locations,
     ) {
         for (predicate, span) in instantiated_predicates {

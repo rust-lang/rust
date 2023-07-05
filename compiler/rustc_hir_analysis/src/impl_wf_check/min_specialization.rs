@@ -338,7 +338,7 @@ fn check_predicates<'tcx>(
 ) {
     let impl1_predicates: Vec<_> = traits::elaborate(
         tcx,
-        tcx.predicates_of(impl1_def_id).instantiate(tcx, impl1_substs).into_iter(),
+        tcx.predicates_of(impl1_def_id).instantiate1(tcx, impl1_substs).into_iter(),
     )
     .collect();
 
@@ -350,9 +350,10 @@ fn check_predicates<'tcx>(
         traits::elaborate(
             tcx,
             tcx.predicates_of(impl2_node.def_id())
-                .instantiate(tcx, impl2_substs)
+                .instantiate2(tcx, impl2_substs)
+                .predicates
                 .into_iter()
-                .map(|(c, _s)| c.as_predicate()),
+                .map(|c| c.as_predicate()),
         )
         .collect()
     };

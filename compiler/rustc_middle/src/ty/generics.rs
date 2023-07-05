@@ -6,7 +6,10 @@ use rustc_hir::def_id::DefId;
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::Span;
 
-use super::{Clause, EarlyBoundRegion, InstantiatedPredicates, ParamConst, ParamTy, TyCtxt};
+use super::{
+    Clause, EarlyBoundRegion, InstantiatedPredicates1, InstantiatedPredicates2, ParamConst,
+    ParamTy, TyCtxt,
+};
 
 #[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable)]
 pub enum GenericParamDefKind {
@@ -332,17 +335,27 @@ pub struct GenericPredicates<'tcx> {
 }
 
 impl<'tcx> GenericPredicates<'tcx> {
-    pub fn instantiate(
+    pub fn instantiate1(
         &self,
         tcx: TyCtxt<'tcx>,
         substs: SubstsRef<'tcx>,
-    ) -> InstantiatedPredicates<'tcx> {
-        let mut instantiated = InstantiatedPredicates::empty();
-        self.instantiate_into(tcx, &mut instantiated, substs);
+    ) -> InstantiatedPredicates1<'tcx> {
+        let mut instantiated = InstantiatedPredicates1::empty();
+        self.instantiate_into1(tcx, &mut instantiated, substs);
         instantiated
     }
 
-    pub fn instantiate_own(
+    pub fn instantiate2(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        substs: SubstsRef<'tcx>,
+    ) -> InstantiatedPredicates2<'tcx> {
+        let mut instantiated = InstantiatedPredicates2::empty();
+        self.instantiate_into2(tcx, &mut instantiated, substs);
+        instantiated
+    }
+
+    pub fn instantiate_own1(
         &self,
         tcx: TyCtxt<'tcx>,
         substs: SubstsRef<'tcx>,
@@ -350,37 +363,75 @@ impl<'tcx> GenericPredicates<'tcx> {
         EarlyBinder::bind(self.predicates).subst_iter_copied(tcx, substs)
     }
 
-    #[instrument(level = "debug", skip(self, tcx))]
-    fn instantiate_into(
+    pub fn instantiate_own2(
         &self,
         tcx: TyCtxt<'tcx>,
-        instantiated: &mut InstantiatedPredicates<'tcx>,
+        substs: SubstsRef<'tcx>,
+    ) -> impl Iterator<Item = Clause<'tcx>> + DoubleEndedIterator + ExactSizeIterator {
+        EarlyBinder::bind(self.predicates).subst_iter_copied(tcx, substs).map(|(p, _)| p)
+    }
+
+    #[instrument(level = "debug", skip(self, tcx))]
+    fn instantiate_into1(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instantiated: &mut InstantiatedPredicates1<'tcx>,
         substs: SubstsRef<'tcx>,
     ) {
         if let Some(def_id) = self.parent {
-            tcx.predicates_of(def_id).instantiate_into(tcx, instantiated, substs);
+            tcx.predicates_of(def_id).instantiate_into1(tcx, instantiated, substs);
+        }
+        instantiated.predicates.extend(
+            self.predicates.iter().map(|(p, sp)| (EarlyBinder::bind(*p).subst(tcx, substs), *sp)),
+        );
+    }
+
+    #[instrument(level = "debug", skip(self, tcx))]
+    fn instantiate_into2(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instantiated: &mut InstantiatedPredicates2<'tcx>,
+        substs: SubstsRef<'tcx>,
+    ) {
+        if let Some(def_id) = self.parent {
+            tcx.predicates_of(def_id).instantiate_into2(tcx, instantiated, substs);
         }
         instantiated
             .predicates
             .extend(self.predicates.iter().map(|(p, _)| EarlyBinder::bind(*p).subst(tcx, substs)));
-        instantiated.spans.extend(self.predicates.iter().map(|(_, sp)| *sp));
     }
 
-    pub fn instantiate_identity(&self, tcx: TyCtxt<'tcx>) -> InstantiatedPredicates<'tcx> {
-        let mut instantiated = InstantiatedPredicates::empty();
-        self.instantiate_identity_into(tcx, &mut instantiated);
+    pub fn instantiate_identity1(&self, tcx: TyCtxt<'tcx>) -> InstantiatedPredicates1<'tcx> {
+        let mut instantiated = InstantiatedPredicates1::empty();
+        self.instantiate_identity_into1(tcx, &mut instantiated);
         instantiated
     }
 
-    fn instantiate_identity_into(
+    pub fn instantiate_identity2(&self, tcx: TyCtxt<'tcx>) -> InstantiatedPredicates2<'tcx> {
+        let mut instantiated = InstantiatedPredicates2::empty();
+        self.instantiate_identity_into2(tcx, &mut instantiated);
+        instantiated
+    }
+
+    fn instantiate_identity_into1(
         &self,
         tcx: TyCtxt<'tcx>,
-        instantiated: &mut InstantiatedPredicates<'tcx>,
+        instantiated: &mut InstantiatedPredicates1<'tcx>,
     ) {
         if let Some(def_id) = self.parent {
-            tcx.predicates_of(def_id).instantiate_identity_into(tcx, instantiated);
+            tcx.predicates_of(def_id).instantiate_identity_into1(tcx, instantiated);
+        }
+        instantiated.predicates.extend(self.predicates.iter());
+    }
+
+    fn instantiate_identity_into2(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instantiated: &mut InstantiatedPredicates2<'tcx>,
+    ) {
+        if let Some(def_id) = self.parent {
+            tcx.predicates_of(def_id).instantiate_identity_into2(tcx, instantiated);
         }
         instantiated.predicates.extend(self.predicates.iter().map(|(p, _)| p));
-        instantiated.spans.extend(self.predicates.iter().map(|(_, s)| s));
     }
 }

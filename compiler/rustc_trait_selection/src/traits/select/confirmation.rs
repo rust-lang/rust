@@ -190,8 +190,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         })?);
 
         if let ty::Alias(ty::Projection, ..) = placeholder_self_ty.kind() {
-            let predicates = tcx.predicates_of(def_id).instantiate_own(tcx, substs);
-            for (predicate, _) in predicates {
+            let predicates = tcx.predicates_of(def_id).instantiate_own2(tcx, substs);
+            for predicate in predicates {
                 let normalized = normalize_with_depth_to(
                     self,
                     obligation.param_env,
@@ -531,7 +531,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // will be checked in the code below.
         for super_trait in tcx
             .super_predicates_of(trait_predicate.def_id())
-            .instantiate(tcx, trait_predicate.trait_ref.substs)
+            .instantiate2(tcx, trait_predicate.trait_ref.substs)
             .predicates
             .into_iter()
         {

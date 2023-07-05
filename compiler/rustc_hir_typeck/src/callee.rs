@@ -386,7 +386,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // to let us test the trait evaluation system.
                 if self.tcx.has_attr(def_id, sym::rustc_evaluate_where_clauses) {
                     let predicates = self.tcx.predicates_of(def_id);
-                    let predicates = predicates.instantiate(self.tcx, substs);
+                    let predicates = predicates.instantiate1(self.tcx, substs);
                     for (predicate, predicate_span) in predicates {
                         let obligation = Obligation::new(
                             self.tcx,

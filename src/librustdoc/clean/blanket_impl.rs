@@ -63,7 +63,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                 let predicates = cx
                     .tcx
                     .predicates_of(impl_def_id)
-                    .instantiate(cx.tcx, impl_substs)
+                    .instantiate2(cx.tcx, impl_substs)
                     .predicates
                     .into_iter()
                     .chain(Some(ty::Binder::dummy(impl_trait_ref).to_predicate(infcx.tcx)));

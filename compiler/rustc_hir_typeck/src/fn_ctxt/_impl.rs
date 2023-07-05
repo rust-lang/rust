@@ -307,9 +307,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Span,
         def_id: DefId,
         substs: SubstsRef<'tcx>,
-    ) -> ty::InstantiatedPredicates<'tcx> {
+    ) -> ty::InstantiatedPredicates1<'tcx> {
         let bounds = self.tcx.predicates_of(def_id);
-        let result = bounds.instantiate(self.tcx, substs);
+        let result = bounds.instantiate1(self.tcx, substs);
         let result = self.normalize(span, result);
         debug!("instantiate_bounds(bounds={:?}, substs={:?}) = {:?}", bounds, substs, result);
         result

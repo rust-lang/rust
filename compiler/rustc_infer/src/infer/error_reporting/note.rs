@@ -312,8 +312,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         let Ok(trait_predicates) = self
             .tcx
             .explicit_predicates_of(trait_item_def_id)
-            .instantiate_own(self.tcx, trait_item_substs)
-            .map(|(pred, _)| {
+            .instantiate_own2(self.tcx, trait_item_substs)
+            .map(|pred| {
                 if pred.is_suggestable(self.tcx, false) {
                     Ok(pred.to_string())
                 } else {

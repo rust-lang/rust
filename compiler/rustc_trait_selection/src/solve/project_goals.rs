@@ -156,7 +156,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
 
                 let where_clause_bounds = tcx
                     .predicates_of(impl_def_id)
-                    .instantiate(tcx, impl_substs)
+                    .instantiate2(tcx, impl_substs)
                     .predicates
                     .into_iter()
                     .map(|pred| goal.with(tcx, pred));

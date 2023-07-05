@@ -115,8 +115,8 @@ fn adt_sized_constraint(tcx: TyCtxt<'_>, def_id: DefId) -> &[Ty<'_>] {
 /// See `ParamEnv` struct definition for details.
 fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
     // Compute the bounds on Self and the type parameters.
-    let ty::InstantiatedPredicates { mut predicates, .. } =
-        tcx.predicates_of(def_id).instantiate_identity(tcx);
+    let ty::InstantiatedPredicates2 { mut predicates } =
+        tcx.predicates_of(def_id).instantiate_identity2(tcx);
 
     // Finally, we have to normalize the bounds in the environment, in
     // case they contain any associated type projections. This process

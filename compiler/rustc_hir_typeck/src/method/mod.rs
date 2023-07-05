@@ -445,7 +445,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         //
         // Note that as the method comes from a trait, it should not have
         // any late-bound regions appearing in its bounds.
-        let bounds = self.tcx.predicates_of(def_id).instantiate(self.tcx, substs);
+        let bounds = self.tcx.predicates_of(def_id).instantiate1(self.tcx, substs);
 
         let InferOk { value, obligations: o } =
             self.at(&obligation.cause, self.param_env).normalize(bounds);

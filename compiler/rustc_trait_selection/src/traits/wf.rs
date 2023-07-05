@@ -837,7 +837,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
             origins.extend(iter::repeat(parent).take(head.predicates.len()));
         }
 
-        let predicates = predicates.instantiate(self.tcx(), substs);
+        let predicates = predicates.instantiate1(self.tcx(), substs);
         trace!("{:#?}", predicates);
         debug_assert_eq!(predicates.predicates.len(), origins.len());
 

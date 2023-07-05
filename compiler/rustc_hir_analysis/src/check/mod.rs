@@ -475,13 +475,13 @@ fn suggestion_signature<'tcx>(
                 tcx.fn_sig(assoc.def_id).subst(tcx, substs),
             ),
             assoc.ident(tcx),
-            tcx.predicates_of(assoc.def_id).instantiate_own(tcx, substs),
+            tcx.predicates_of(assoc.def_id).instantiate_own1(tcx, substs),
             assoc,
         ),
         ty::AssocKind::Type => {
             let (generics, where_clauses) = bounds_from_generic_predicates(
                 tcx,
-                tcx.predicates_of(assoc.def_id).instantiate_own(tcx, substs),
+                tcx.predicates_of(assoc.def_id).instantiate_own1(tcx, substs),
             );
             format!("type {}{generics} = /* Type */{where_clauses};", assoc.name)
         }

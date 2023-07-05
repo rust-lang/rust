@@ -211,7 +211,7 @@ pub fn impl_subject_and_oblig<'a, 'tcx>(
         selcx.infcx.at(&ObligationCause::dummy(), param_env).normalize(subject);
 
     let predicates = selcx.tcx().predicates_of(impl_def_id);
-    let predicates = predicates.instantiate(selcx.tcx(), impl_substs);
+    let predicates = predicates.instantiate1(selcx.tcx(), impl_substs);
     let InferOk { value: predicates, obligations: normalization_obligations2 } =
         selcx.infcx.at(&ObligationCause::dummy(), param_env).normalize(predicates);
     let impl_obligations = super::predicates_for_generics(cause, param_env, predicates);

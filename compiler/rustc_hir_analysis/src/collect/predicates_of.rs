@@ -78,7 +78,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
             // inherits these predicates as assumptions.
             let identity_substs = InternalSubsts::identity_for_item(tcx, def_id);
             predicates.extend(
-                tcx.explicit_predicates_of(fn_def_id).instantiate_own(tcx, identity_substs),
+                tcx.explicit_predicates_of(fn_def_id).instantiate_own1(tcx, identity_substs),
             );
 
             // We also install bidirectional outlives predicates for the RPITIT
@@ -112,7 +112,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
             let impl_assoc_substs =
                 impl_assoc_identity_substs.rebase_onto(tcx, impl_def_id, impl_trait_ref_substs);
 
-            let impl_predicates = trait_assoc_predicates.instantiate_own(tcx, impl_assoc_substs);
+            let impl_predicates = trait_assoc_predicates.instantiate_own1(tcx, impl_assoc_substs);
 
             return ty::GenericPredicates {
                 parent: Some(impl_def_id),

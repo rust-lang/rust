@@ -721,7 +721,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 let infcx = tcx.infer_ctxt().build();
                 let ocx = ObligationCtxt::new(&infcx);
 
-                let predicates = tcx.predicates_of(callee).instantiate(tcx, substs);
+                let predicates = tcx.predicates_of(callee).instantiate1(tcx, substs);
                 let cause = ObligationCause::new(
                     terminator.source_info.span,
                     self.body.source.def_id().expect_local(),

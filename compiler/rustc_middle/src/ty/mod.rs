@@ -1485,11 +1485,11 @@ impl<'tcx> Predicate<'tcx> {
 
 /// Represents the bounds declared on a particular set of type
 /// parameters. Should eventually be generalized into a flag list of
-/// where-clauses. You can obtain an `InstantiatedPredicates` list from a
+/// where-clauses. You can obtain an `InstantiatedPredicates1` list from a
 /// `GenericPredicates` by using the `instantiate` method. Note that this method
-/// reflects an important semantic invariant of `InstantiatedPredicates`: while
+/// reflects an important semantic invariant of `InstantiatedPredicates1`: while
 /// the `GenericPredicates` are expressed in terms of the bound type
-/// parameters of the impl/trait/whatever, an `InstantiatedPredicates` instance
+/// parameters of the impl/trait/whatever, an `InstantiatedPredicates1` instance
 /// represented a set of bounds for some particular instantiation,
 /// meaning that the generic parameters have been substituted with
 /// their values.
@@ -1500,21 +1500,17 @@ impl<'tcx> Predicate<'tcx> {
 /// ```
 /// Here, the `GenericPredicates` for `Foo` would contain a list of bounds like
 /// `[[], [U:Bar<T>]]`. Now if there were some particular reference
-/// like `Foo<isize,usize>`, then the `InstantiatedPredicates` would be `[[],
+/// like `Foo<isize,usize>`, then the `InstantiatedPredicates1` would be `[[],
 /// [usize:Bar<isize>]]`.
 #[derive(Clone, Debug, TypeFoldable, TypeVisitable)]
-pub struct InstantiatedPredicates<'tcx> {
-    pub predicates: Vec<Clause<'tcx>>,
-    pub spans: Vec<Span>,
+pub struct InstantiatedPredicates1<'tcx> {
+    // njn: rename predicates_spans? likewise in GenericPredicates?
+    pub predicates: Vec<(Clause<'tcx>, Span)>,
 }
 
-impl<'tcx> InstantiatedPredicates<'tcx> {
-    pub fn empty() -> InstantiatedPredicates<'tcx> {
-        InstantiatedPredicates { predicates: vec![], spans: vec![] }
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.predicates.is_empty()
+impl<'tcx> InstantiatedPredicates1<'tcx> {
+    pub fn empty() -> InstantiatedPredicates1<'tcx> {
+        InstantiatedPredicates1 { predicates: vec![] }
     }
 
     pub fn iter(&self) -> <&Self as IntoIterator>::IntoIter {
@@ -1522,28 +1518,35 @@ impl<'tcx> InstantiatedPredicates<'tcx> {
     }
 }
 
-impl<'tcx> IntoIterator for InstantiatedPredicates<'tcx> {
+impl<'tcx> IntoIterator for InstantiatedPredicates1<'tcx> {
     type Item = (Clause<'tcx>, Span);
 
-    type IntoIter = std::iter::Zip<std::vec::IntoIter<Clause<'tcx>>, std::vec::IntoIter<Span>>;
+    type IntoIter = std::vec::IntoIter<(Clause<'tcx>, Span)>;
 
     fn into_iter(self) -> Self::IntoIter {
-        debug_assert_eq!(self.predicates.len(), self.spans.len());
-        std::iter::zip(self.predicates, self.spans)
+        self.predicates.into_iter()
     }
 }
 
-impl<'a, 'tcx> IntoIterator for &'a InstantiatedPredicates<'tcx> {
+impl<'a, 'tcx> IntoIterator for &'a InstantiatedPredicates1<'tcx> {
     type Item = (Clause<'tcx>, Span);
 
-    type IntoIter = std::iter::Zip<
-        std::iter::Copied<std::slice::Iter<'a, Clause<'tcx>>>,
-        std::iter::Copied<std::slice::Iter<'a, Span>>,
-    >;
+    type IntoIter = std::iter::Copied<std::slice::Iter<'a, (Clause<'tcx>, Span)>>;
 
     fn into_iter(self) -> Self::IntoIter {
-        debug_assert_eq!(self.predicates.len(), self.spans.len());
-        std::iter::zip(self.predicates.iter().copied(), self.spans.iter().copied())
+        self.predicates.iter().copied()
+    }
+}
+
+// njn: hmm
+#[derive(Clone, Debug, TypeFoldable, TypeVisitable)]
+pub struct InstantiatedPredicates2<'tcx> {
+    pub predicates: Vec<Clause<'tcx>>,
+}
+
+impl<'tcx> InstantiatedPredicates2<'tcx> {
+    pub fn empty() -> InstantiatedPredicates2<'tcx> {
+        InstantiatedPredicates2 { predicates: vec![] }
     }
 }
 

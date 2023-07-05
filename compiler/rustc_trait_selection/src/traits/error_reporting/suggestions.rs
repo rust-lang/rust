@@ -1999,8 +1999,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         // the unsubstituted predicate list of the called function. And check
         // that the predicate that we failed to satisfy is a `Fn`-like trait.
         if let ObligationCauseCode::ExprBindingObligation(def_id, _, _, idx) = cause
-            && let predicates = self.tcx.predicates_of(def_id).instantiate_identity(self.tcx)
-            && let Some(pred) = predicates.predicates.get(*idx)
+            && let predicates = self.tcx.predicates_of(def_id).instantiate_identity1(self.tcx)
+            && let Some((pred, _)) = predicates.predicates.get(*idx)
             && let ty::ClauseKind::Trait(trait_pred) = pred.kind().skip_binder()
             && self.tcx.is_fn_trait(trait_pred.def_id())
         {
@@ -3523,7 +3523,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             let mut type_diffs = vec![];
             if let ObligationCauseCode::ExprBindingObligation(def_id, _, _, idx) = parent_code.deref()
                 && let Some(node_substs) = typeck_results.node_substs_opt(call_hir_id)
-                && let where_clauses = self.tcx.predicates_of(def_id).instantiate(self.tcx, node_substs)
+                && let where_clauses = self.tcx.predicates_of(def_id).instantiate2(self.tcx, node_substs)
                 && let Some(where_pred) = where_clauses.predicates.get(*idx)
             {
                 if let Some(where_pred) = where_pred.as_trait_clause()

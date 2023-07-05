@@ -98,7 +98,7 @@ fn relate_mir_and_user_substs<'tcx>(
     // Also, normalize the `instantiated_predicates`
     // because otherwise we wind up with duplicate "type
     // outlives" error messages.
-    let instantiated_predicates = tcx.predicates_of(def_id).instantiate(tcx, substs);
+    let instantiated_predicates = tcx.predicates_of(def_id).instantiate1(tcx, substs);
 
     debug!(?instantiated_predicates);
     for (instantiated_predicate, predicate_span) in instantiated_predicates {

@@ -1622,7 +1622,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         }
 
                         // Check whether the impl imposes obligations we have to worry about.
-                        let impl_bounds = tcx.predicates_of(impl_).instantiate(tcx, impl_substs);
+                        let impl_bounds = tcx.predicates_of(impl_).instantiate1(tcx, impl_substs);
                         let impl_bounds = ocx.normalize(&cause, param_env, impl_bounds);
                         let impl_obligations = traits::predicates_for_generics(
                             |_, _| cause.clone(),

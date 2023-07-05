@@ -665,7 +665,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
                     infcx
                         .tcx
                         .predicates_of(data.def_id)
-                        .instantiate_own(infcx.tcx, data.substs)
+                        .instantiate_own1(infcx.tcx, data.substs)
                         .map(|(mut predicate, span)| {
                             if data.has_escaping_bound_vars() {
                                 (predicate, ..) = BoundVarReplacer::replace_bound_vars(
@@ -1349,7 +1349,7 @@ pub fn normalize_inherent_projection<'a, 'b, 'tcx>(
     );
 
     // Register the obligations arising from the impl and from the associated type itself.
-    let predicates = tcx.predicates_of(alias_ty.def_id).instantiate(tcx, substs);
+    let predicates = tcx.predicates_of(alias_ty.def_id).instantiate1(tcx, substs);
     for (predicate, span) in predicates {
         let predicate = normalize_with_depth_to(
             selcx,
@@ -2475,7 +2475,7 @@ fn confirm_impl_trait_in_trait_candidate<'tcx>(
         obligation.param_env,
         cause.clone(),
         obligation.recursion_depth + 1,
-        tcx.predicates_of(impl_fn_def_id).instantiate(tcx, impl_fn_substs),
+        tcx.predicates_of(impl_fn_def_id).instantiate1(tcx, impl_fn_substs),
         &mut obligations,
     );
     obligations.extend(predicates.into_iter().map(|(pred, span)| {
@@ -2521,7 +2521,7 @@ fn assoc_ty_own_obligations<'cx, 'tcx>(
     let tcx = selcx.tcx();
     let predicates = tcx
         .predicates_of(obligation.predicate.def_id)
-        .instantiate_own(tcx, obligation.predicate.substs);
+        .instantiate_own1(tcx, obligation.predicate.substs);
     for (predicate, span) in predicates {
         let normalized = normalize_with_depth_to(
             selcx,

@@ -115,7 +115,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         let filler_substs = rcvr_substs
             .extend_to(self.tcx, pick.item.def_id, |def, _| self.tcx.mk_param_from_def(def));
         let illegal_sized_bound = self.predicates_require_illegal_sized_bound(
-            self.tcx.predicates_of(pick.item.def_id).instantiate(self.tcx, filler_substs),
+            self.tcx.predicates_of(pick.item.def_id).instantiate1(self.tcx, filler_substs),
         );
 
         // Unify the (adjusted) self type with what the method expects.
@@ -529,14 +529,14 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         &mut self,
         pick: &probe::Pick<'tcx>,
         all_substs: SubstsRef<'tcx>,
-    ) -> (ty::FnSig<'tcx>, ty::InstantiatedPredicates<'tcx>) {
+    ) -> (ty::FnSig<'tcx>, ty::InstantiatedPredicates1<'tcx>) {
         debug!("instantiate_method_sig(pick={:?}, all_substs={:?})", pick, all_substs);
 
         // Instantiate the bounds on the method with the
         // type/early-bound-regions substitutions performed. There can
         // be no late-bound regions appearing here.
         let def_id = pick.item.def_id;
-        let method_predicates = self.tcx.predicates_of(def_id).instantiate(self.tcx, all_substs);
+        let method_predicates = self.tcx.predicates_of(def_id).instantiate1(self.tcx, all_substs);
 
         debug!("method_predicates after subst = {:?}", method_predicates);
 
@@ -553,7 +553,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         &mut self,
         fty: Ty<'tcx>,
         all_substs: SubstsRef<'tcx>,
-        method_predicates: ty::InstantiatedPredicates<'tcx>,
+        method_predicates: ty::InstantiatedPredicates1<'tcx>,
         def_id: DefId,
     ) {
         debug!(
@@ -599,13 +599,13 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
 
     fn predicates_require_illegal_sized_bound(
         &self,
-        predicates: ty::InstantiatedPredicates<'tcx>,
+        predicates: ty::InstantiatedPredicates1<'tcx>,
     ) -> Option<Span> {
         let sized_def_id = self.tcx.lang_items().sized_trait()?;
 
         traits::elaborate(self.tcx, predicates.predicates.iter().copied())
             // We don't care about regions here.
-            .filter_map(|pred| match pred.kind().skip_binder() {
+            .filter_map(|(pred, _)| match pred.kind().skip_binder() {
                 ty::ClauseKind::Trait(trait_pred) if trait_pred.def_id() == sized_def_id => {
                     let span = predicates
                         .iter()

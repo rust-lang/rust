@@ -2998,7 +2998,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     )
                 },
                 self.param_env,
-                self.tcx.predicates_of(impl_def_id).instantiate(self.tcx, impl_substs),
+                self.tcx.predicates_of(impl_def_id).instantiate1(self.tcx, impl_substs),
             ));
 
             // Normalize the output type, which we can use later on as the

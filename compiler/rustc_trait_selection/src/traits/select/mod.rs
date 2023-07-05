@@ -2624,7 +2624,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         // that order.
         let predicates = tcx.predicates_of(def_id);
         assert_eq!(predicates.parent, None);
-        let predicates = predicates.instantiate_own(tcx, substs);
+        let predicates = predicates.instantiate_own1(tcx, substs);
         let mut obligations = Vec::with_capacity(predicates.len());
         for (index, (predicate, span)) in predicates.into_iter().enumerate() {
             let cause =
