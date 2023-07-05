@@ -14,7 +14,7 @@ use rustc_hir as hir;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{BindingAnnotation, Body, FnDecl, Impl, ItemKind, MutTy, Mutability, Node, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::adjustment::{Adjust, PointerCast};
+use rustc_middle::ty::adjustment::{Adjust, PointerCoercion};
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, RegionKind};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -195,7 +195,7 @@ impl<'tcx> PassByRefOrValue {
                                     .adjustments()
                                     .items()
                                     .flat_map(|(_, a)| a)
-                                    .any(|a| matches!(a.kind, Adjust::Pointer(PointerCast::UnsafeFnPointer)))
+                                    .any(|a| matches!(a.kind, Adjust::Pointer(PointerCoercion::UnsafeFnPointer)))
                             {
                                 continue;
                             }
