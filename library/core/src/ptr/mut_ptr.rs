@@ -1449,8 +1449,7 @@ impl<T: ?Sized> *mut T {
         unsafe { write(self, val) }
     }
 
-    /// Invokes memset on the specified pointer, setting `count * size_of::<T>()`
-    /// bytes of memory starting at `self` to `val`.
+    /// Sets `count * size_of::<T>()` bytes starting at `self` to `val`.
     ///
     /// See [`ptr::write_bytes`] for safety concerns and examples.
     ///
