@@ -2600,7 +2600,6 @@ pub(crate) fn is_nonoverlapping<T>(src: *const T, dst: *const T, count: usize) -
 /// `0`, the pointers must be non-null and properly aligned.
 /// In this case, the pointers may share the same address, as
 /// a region of 0 bytes overlaps with a region of 0 bytes for 0 bytes.
-/// A copy of 1 or more bytes to the same address incurs undefined behavior.
 ///
 /// [`read`]: crate::ptr::read
 /// [read-ownership]: crate::ptr::read#ownership-of-the-returned-value
