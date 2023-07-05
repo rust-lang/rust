@@ -706,7 +706,6 @@ fn codegen_stmt<'tcx>(
                     let times = fx
                         .monomorphize(times)
                         .eval(fx.tcx, ParamEnv::reveal_all())
-                        .kind()
                         .try_to_bits(fx.tcx.data_layout.pointer_size)
                         .unwrap();
                     if operand.layout().size.bytes() == 0 {

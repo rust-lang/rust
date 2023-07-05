@@ -4,7 +4,7 @@
 
 use crate::fold::{FallibleTypeFolder, TypeFoldable};
 use crate::visit::{TypeVisitable, TypeVisitor};
-use crate::{FloatTy, IntTy, Interner, UintTy};
+use crate::{ConstKind, FloatTy, IntTy, Interner, UintTy};
 use rustc_data_structures::functor::IdFunctor;
 use rustc_data_structures::sync::Lrc;
 use rustc_index::{Idx, IndexVec};
@@ -180,5 +180,23 @@ impl fmt::Debug for UintTy {
 impl fmt::Debug for FloatTy {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.name_str())
+    }
+}
+
+impl<I: Interner> fmt::Debug for ConstKind<I> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use ConstKind::*;
+        match self {
+            Param(param) => write!(f, "{param:?}"),
+            Infer(var) => write!(f, "{var:?}"),
+            Bound(debruijn, var) => crate::debug_bound_var(f, *debruijn, var.clone()),
+            Placeholder(placeholder) => write!(f, "{placeholder:?}"),
+            Unevaluated(uv) => {
+                write!(f, "{uv:?}")
+            }
+            Value(valtree) => write!(f, "{valtree:?}"),
+            Error(_) => write!(f, "{{const error}}"),
+            Expr(expr) => write!(f, "{expr:?}"),
+        }
     }
 }

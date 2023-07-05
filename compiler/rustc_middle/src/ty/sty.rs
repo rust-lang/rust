@@ -33,6 +33,7 @@ use std::ops::{ControlFlow, Deref, Range};
 use ty::util::IntTypeExt;
 
 use rustc_type_ir::sty::TyKind::*;
+use rustc_type_ir::ConstKind as IrConstKind;
 use rustc_type_ir::RegionKind as IrRegionKind;
 use rustc_type_ir::TyKind as IrTyKind;
 
@@ -40,6 +41,7 @@ use rustc_type_ir::TyKind as IrTyKind;
 #[rustc_diagnostic_item = "TyKind"]
 pub type TyKind<'tcx> = IrTyKind<TyCtxt<'tcx>>;
 pub type RegionKind<'tcx> = IrRegionKind<TyCtxt<'tcx>>;
+pub type ConstKind<'tcx> = IrConstKind<TyCtxt<'tcx>>;
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
