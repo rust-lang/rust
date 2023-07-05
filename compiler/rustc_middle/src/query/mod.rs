@@ -1088,7 +1088,7 @@ rustc_queries! {
 
     /// Tries to destructure an `mir::ConstantKind` ADT or array into its variant index
     /// and its field values. This should only be used for pretty printing.
-    query try_destructure_mir_constant(
+    query try_destructure_mir_constant_for_diagnostics(
         key: (ConstValue<'tcx>, Ty<'tcx>)
     ) -> Option<mir::DestructuredConstant<'tcx>> {
         desc { "destructuring MIR constant"}

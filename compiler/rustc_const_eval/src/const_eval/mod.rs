@@ -85,7 +85,7 @@ pub(crate) fn eval_to_valtree<'tcx>(
 }
 
 #[instrument(skip(tcx), level = "debug")]
-pub(crate) fn try_destructure_mir_constant<'tcx>(
+pub(crate) fn try_destructure_mir_constant_for_diagnostics<'tcx>(
     tcx: TyCtxt<'tcx>,
     val: ConstValue<'tcx>,
     ty: Ty<'tcx>,
