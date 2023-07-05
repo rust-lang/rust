@@ -1,5 +1,5 @@
 error[E0391]: cycle detected when computing type of `cycle1::{opaque#0}`
-  --> $DIR/auto-trait-leak.rs:12:16
+  --> $DIR/auto-trait-leak.rs:11:16
    |
 LL | fn cycle1() -> impl Clone {
    |                ^^^^^^^^^^
@@ -11,12 +11,12 @@ LL |     send(cycle2().clone());
    |     ^^^^
    = note: ...which requires evaluating trait selection obligation `cycle2::{opaque#0}: core::marker::Send`...
 note: ...which requires computing type of `cycle2::{opaque#0}`...
-  --> $DIR/auto-trait-leak.rs:19:16
+  --> $DIR/auto-trait-leak.rs:20:16
    |
 LL | fn cycle2() -> impl Clone {
    |                ^^^^^^^^^^
 note: ...which requires type-checking `cycle2`...
-  --> $DIR/auto-trait-leak.rs:20:5
+  --> $DIR/auto-trait-leak.rs:21:5
    |
 LL |     send(cycle1().clone());
    |     ^^^^
@@ -34,6 +34,89 @@ LL | |     Rc::new(String::from("foo"))
 LL | | }
    | |_^
 
-error: aborting due to previous error
+error[E0391]: cycle detected when computing type of `cycle1::{opaque#0}`
+  --> $DIR/auto-trait-leak.rs:11:16
+   |
+LL | fn cycle1() -> impl Clone {
+   |                ^^^^^^^^^^
+   |
+note: ...which requires type-checking `cycle1`...
+  --> $DIR/auto-trait-leak.rs:14:5
+   |
+LL |     send(cycle2().clone());
+   |     ^^^^
+   = note: ...which requires evaluating trait selection obligation `cycle2::{opaque#0}: core::marker::Send`...
+note: ...which requires computing type of `cycle2::{opaque#0}`...
+  --> $DIR/auto-trait-leak.rs:20:16
+   |
+LL | fn cycle2() -> impl Clone {
+   |                ^^^^^^^^^^
+note: ...which requires type-checking `cycle2`...
+  --> $DIR/auto-trait-leak.rs:20:1
+   |
+LL | fn cycle2() -> impl Clone {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: ...which again requires computing type of `cycle1::{opaque#0}`, completing the cycle
+note: cycle used when checking item types in top-level module
+  --> $DIR/auto-trait-leak.rs:1:1
+   |
+LL | / use std::cell::Cell;
+LL | | use std::rc::Rc;
+LL | |
+LL | | fn send<T: Send>(_: T) {}
+...  |
+LL | |     Rc::new(String::from("foo"))
+LL | | }
+   | |_^
+
+error: cannot check whether the hidden type of opaque type satisfies auto traits
+  --> $DIR/auto-trait-leak.rs:21:10
+   |
+LL |     send(cycle1().clone());
+   |     ---- ^^^^^^^^^^^^^^^^
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: opaque type is declared here
+  --> $DIR/auto-trait-leak.rs:11:16
+   |
+LL | fn cycle1() -> impl Clone {
+   |                ^^^^^^^^^^
+note: this item depends on auto traits of the hidden type, but may also be registering the hidden type. This is not supported right now. You can try moving the opaque type and the item that actually registers a hidden type into a new submodule
+  --> $DIR/auto-trait-leak.rs:20:4
+   |
+LL | fn cycle2() -> impl Clone {
+   |    ^^^^^^
+note: required by a bound in `send`
+  --> $DIR/auto-trait-leak.rs:4:12
+   |
+LL | fn send<T: Send>(_: T) {}
+   |            ^^^^ required by this bound in `send`
+
+error: cannot check whether the hidden type of opaque type satisfies auto traits
+  --> $DIR/auto-trait-leak.rs:14:10
+   |
+LL |     send(cycle2().clone());
+   |     ---- ^^^^^^^^^^^^^^^^
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: opaque type is declared here
+  --> $DIR/auto-trait-leak.rs:20:16
+   |
+LL | fn cycle2() -> impl Clone {
+   |                ^^^^^^^^^^
+note: this item depends on auto traits of the hidden type, but may also be registering the hidden type. This is not supported right now. You can try moving the opaque type and the item that actually registers a hidden type into a new submodule
+  --> $DIR/auto-trait-leak.rs:11:4
+   |
+LL | fn cycle1() -> impl Clone {
+   |    ^^^^^^
+note: required by a bound in `send`
+  --> $DIR/auto-trait-leak.rs:4:12
+   |
+LL | fn send<T: Send>(_: T) {}
+   |            ^^^^ required by this bound in `send`
+
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0391`.

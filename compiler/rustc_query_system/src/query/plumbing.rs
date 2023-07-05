@@ -126,18 +126,13 @@ where
 
 #[cold]
 #[inline(never)]
-fn mk_cycle<Q, Qcx>(
-    query: Q,
-    qcx: Qcx,
-    cycle_error: CycleError<Qcx::DepKind>,
-    handler: HandleCycleError,
-) -> Q::Value
+fn mk_cycle<Q, Qcx>(query: Q, qcx: Qcx, cycle_error: CycleError<Qcx::DepKind>) -> Q::Value
 where
     Q: QueryConfig<Qcx>,
     Qcx: QueryContext,
 {
     let error = report_cycle(qcx.dep_context().sess(), &cycle_error);
-    handle_cycle_error(query, qcx, &cycle_error, error, handler)
+    handle_cycle_error(query, qcx, &cycle_error, error)
 }
 
 fn handle_cycle_error<Q, Qcx>(
@@ -145,14 +140,13 @@ fn handle_cycle_error<Q, Qcx>(
     qcx: Qcx,
     cycle_error: &CycleError<Qcx::DepKind>,
     mut error: DiagnosticBuilder<'_, ErrorGuaranteed>,
-    handler: HandleCycleError,
 ) -> Q::Value
 where
     Q: QueryConfig<Qcx>,
     Qcx: QueryContext,
 {
     use HandleCycleError::*;
-    match handler {
+    match query.handle_cycle_error() {
         Error => {
             error.emit();
             query.value_from_cycle_error(*qcx.dep_context(), &cycle_error.cycle)
@@ -277,7 +271,7 @@ where
         &qcx.current_query_job(),
         span,
     );
-    (mk_cycle(query, qcx, error, query.handle_cycle_error()), None)
+    (mk_cycle(query, qcx, error), None)
 }
 
 #[inline(always)]
@@ -314,7 +308,7 @@ where
 
             (v, Some(index))
         }
-        Err(cycle) => (mk_cycle(query, qcx, cycle, query.handle_cycle_error()), None),
+        Err(cycle) => (mk_cycle(query, qcx, cycle), None),
     }
 }
 
