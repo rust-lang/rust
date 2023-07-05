@@ -172,6 +172,8 @@ pub(crate) struct ImportData<'a> {
     pub used: Cell<bool>,
 }
 
+/// All imports are unique and allocated on a same arena,
+/// so we can use referential equality to compare them.
 pub(crate) type Import<'a> = Interned<'a, ImportData<'a>>;
 
 impl<'a> ImportData<'a> {

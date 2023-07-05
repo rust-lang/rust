@@ -514,6 +514,8 @@ struct ModuleData<'a> {
     expansion: ExpnId,
 }
 
+/// All modules are unique and allocated on a same arena,
+/// so we can use referential equality to compare them.
 #[derive(Clone, Copy, PartialEq)]
 #[rustc_pass_by_value]
 struct Module<'a>(Interned<'a, ModuleData<'a>>);
@@ -661,6 +663,8 @@ struct NameBindingData<'a> {
     vis: ty::Visibility<DefId>,
 }
 
+/// All name bindings are unique and allocated on a same arena,
+/// so we can use referential equality to compare them.
 type NameBinding<'a> = Interned<'a, NameBindingData<'a>>;
 
 trait ToNameBinding<'a> {
