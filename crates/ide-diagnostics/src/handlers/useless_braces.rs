@@ -1,6 +1,6 @@
 use ide_db::{base_db::FileId, source_change::SourceChange};
 use itertools::Itertools;
-use syntax::{ast, AstNode, SyntaxKind, SyntaxNode, TextRange};
+use syntax::{ast, AstNode, SyntaxKind, SyntaxNode};
 use text_edit::TextEdit;
 
 use crate::{fix, Diagnostic, DiagnosticCode};
