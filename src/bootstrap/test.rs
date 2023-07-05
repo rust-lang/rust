@@ -2219,6 +2219,11 @@ fn prepare_cargo_test(
 ) -> Command {
     let mut cargo = cargo.into();
 
+    // If bless is passed, give downstream crates a way to use it
+    if builder.config.cmd.bless() {
+        cargo.env("RUSTC_BLESS", "1");
+    }
+
     // Pass in some standard flags then iterate over the graph we've discovered
     // in `cargo metadata` with the maps above and figure out what `-p`
     // arguments need to get passed.
