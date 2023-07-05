@@ -1124,7 +1124,7 @@ pub fn make_normalized_projection<'tcx>(
             );
             return None;
         }
-        match tcx.try_normalize_erasing_regions(param_env, tcx.mk_projection(ty.def_id, ty.substs)) {
+        match tcx.try_normalize_erasing_regions(param_env, Ty::new_projection(tcx,ty.def_id, ty.substs)) {
             Ok(ty) => Some(ty),
             Err(e) => {
                 debug_assert!(false, "failed to normalize type `{ty}`: {e:#?}");
@@ -1207,7 +1207,7 @@ pub fn make_normalized_projection_with_regions<'tcx>(
             .infer_ctxt()
             .build()
             .at(&cause, param_env)
-            .query_normalize(tcx.mk_projection(ty.def_id, ty.substs))
+            .query_normalize(Ty::new_projection(tcx,ty.def_id, ty.substs))
         {
             Ok(ty) => Some(ty.value),
             Err(e) => {

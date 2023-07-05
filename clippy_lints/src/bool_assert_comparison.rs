@@ -61,7 +61,7 @@ fn is_impl_not_trait_with_bool_out<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -
             )
         })
         .map_or(false, |assoc_item| {
-            let proj = cx.tcx.mk_projection(assoc_item.def_id, cx.tcx.mk_substs_trait(ty, []));
+            let proj = Ty::new_projection(cx.tcx,assoc_item.def_id, cx.tcx.mk_substs_trait(ty, []));
             let nty = cx.tcx.normalize_erasing_regions(cx.param_env, proj);
 
             nty.is_bool()
