@@ -1533,7 +1533,7 @@ macro_rules! const_maker {
     };
 }
 
-trait NewTrait<const N: usize> {
+trait ${0:TraitName}<const N: usize> {
     // Used as an associated constant.
     const CONST_ASSOC: usize = N * 4;
 
@@ -1542,7 +1542,7 @@ trait NewTrait<const N: usize> {
     const_maker! {i32, 7}
 }
 
-impl<const N: usize> NewTrait<N> for Foo<N> {
+impl<const N: usize> ${0:TraitName}<N> for Foo<N> {
     // Used as an associated constant.
     const CONST_ASSOC: usize = N * 4;
 

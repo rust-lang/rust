@@ -44,7 +44,7 @@ use syntax::{
 //     };
 // }
 //
-// trait NewTrait<const N: usize> {
+// trait ${0:TraitName}<const N: usize> {
 //     // Used as an associated constant.
 //     const CONST_ASSOC: usize = N * 4;
 //
@@ -53,7 +53,7 @@ use syntax::{
 //     const_maker! {i32, 7}
 // }
 //
-// impl<const N: usize> NewTrait<N> for Foo<N> {
+// impl<const N: usize> ${0:TraitName}<N> for Foo<N> {
 //     // Used as an associated constant.
 //     const CONST_ASSOC: usize = N * 4;
 //
@@ -126,23 +126,41 @@ pub(crate) fn generate_trait_from_impl(acc: &mut Assists, ctx: &AssistContext<'_
                 "".to_string()
             };
 
-            // // Then replace
-            builder.replace(
-                impl_name.syntax().text_range(),
-                format!("NewTrait{} for {}", arg_list, impl_name.to_string()),
-            );
+            if let Some(snippet_cap) = ctx.config.snippet_cap {
+                builder.replace_snippet(
+                    snippet_cap,
+                    impl_name.syntax().text_range(),
+                    format!("${{0:TraitName}}{} for {}", arg_list, impl_name.to_string()),
+                );
+
+                // Insert trait before TraitImpl
+                builder.insert_snippet(
+                    snippet_cap,
+                    impl_ast.syntax().text_range().start(),
+                    format!(
+                        "{}\n\n{}",
+                        trait_ast.to_string().replace("NewTrait", "${0:TraitName}"),
+                        IndentLevel::from_node(impl_ast.syntax())
+                    ),
+                );
+            } else {
+                builder.replace(
+                    impl_name.syntax().text_range(),
+                    format!("NewTrait{} for {}", arg_list, impl_name.to_string()),
+                );
+
+                // Insert trait before TraitImpl
+                builder.insert(
+                    impl_ast.syntax().text_range().start(),
+                    format!(
+                        "{}\n\n{}",
+                        trait_ast.to_string(),
+                        IndentLevel::from_node(impl_ast.syntax())
+                    ),
+                );
+            }
 
             builder.replace(assoc_items.syntax().text_range(), impl_items.to_string());
-
-            // Insert trait before TraitImpl
-            builder.insert(
-                impl_ast.syntax().text_range().start(),
-                format!(
-                    "{}\n\n{}",
-                    trait_ast.to_string(),
-                    IndentLevel::from_node(impl_ast.syntax())
-                ),
-            );
         },
     );
 
@@ -193,7 +211,7 @@ fn strip_body(item: &ast::AssocItem) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tests::{check_assist, check_assist_not_applicable};
+    use crate::tests::{check_assist, check_assist_no_snippet_cap, check_assist_not_applicable};
 
     #[test]
     fn test_trigger_when_cursor_on_header() {
@@ -212,7 +230,7 @@ impl Foo { $0
 
     #[test]
     fn test_assoc_item_fn() {
-        check_assist(
+        check_assist_no_snippet_cap(
             generate_trait_from_impl,
             r#"
 struct Foo(f64);
@@ -239,7 +257,7 @@ impl NewTrait for Foo {
 
     #[test]
     fn test_assoc_item_macro() {
-        check_assist(
+        check_assist_no_snippet_cap(
             generate_trait_from_impl,
             r#"
 struct Foo;
@@ -274,7 +292,7 @@ impl NewTrait for Foo {
 
     #[test]
     fn test_assoc_item_const() {
-        check_assist(
+        check_assist_no_snippet_cap(
             generate_trait_from_impl,
             r#"
 struct Foo;
@@ -297,7 +315,7 @@ impl NewTrait for Foo {
 
     #[test]
     fn test_impl_with_generics() {
-        check_assist(
+        check_assist_no_snippet_cap(
             generate_trait_from_impl,
             r#"
 struct Foo<const N: usize>([i32; N]);
@@ -325,7 +343,7 @@ impl<const N: usize> NewTrait<N> for Foo<N> {
 
     #[test]
     fn test_trait_items_should_not_have_vis() {
-        check_assist(
+        check_assist_no_snippet_cap(
             generate_trait_from_impl,
             r#"
 struct Foo;
@@ -362,7 +380,7 @@ impl Emp$0tyImpl{}
 
     #[test]
     fn test_not_top_level_impl() {
-        check_assist(
+        check_assist_no_snippet_cap(
             generate_trait_from_impl,
             r#"
 mod a {
@@ -380,6 +398,34 @@ mod a {
         fn foo() {}
     }
 }"#,
+        )
+    }
+
+    #[test]
+    fn test_snippet_cap_is_some() {
+        check_assist(
+            generate_trait_from_impl,
+            r#"
+struct Foo<const N: usize>([i32; N]);
+
+impl<const N: usize> F$0oo<N> {
+    // Used as an associated constant.
+    const CONST: usize = N * 4;
+}
+            "#,
+            r#"
+struct Foo<const N: usize>([i32; N]);
+
+trait ${0:TraitName}<const N: usize> {
+    // Used as an associated constant.
+    const CONST: usize = N * 4;
+}
+
+impl<const N: usize> ${0:TraitName}<N> for Foo<N> {
+    // Used as an associated constant.
+    const CONST: usize = N * 4;
+}
+            "#,
         )
     }
 }
