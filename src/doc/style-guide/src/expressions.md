@@ -688,7 +688,7 @@ match foo {
 ```
 
 If the body is a single expression with no line comments and not a control flow
-expression, start it on the same line as the right-hand side. If not, then it
+expression, start it on the same line as the left-hand side. If not, then it
 must be in a block. Example:
 
 ```rust
