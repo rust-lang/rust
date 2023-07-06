@@ -1,0 +1,38 @@
+error: prefix `c` is unknown
+  --> $DIR/non-ascii.rs:9:9
+   |
+LL |         c"\xEF\x80🦀\u{1F980}".to_bytes_with_nul(),
+   |         ^ unknown prefix
+   |
+   = note: prefixed identifiers and literals are reserved since Rust 2021
+help: consider inserting whitespace here
+   |
+LL |         c "\xEF\x80🦀\u{1F980}".to_bytes_with_nul(),
+   |          +
+
+error: out of range hex escape
+  --> $DIR/non-ascii.rs:9:11
+   |
+LL |         c"\xEF\x80🦀\u{1F980}".to_bytes_with_nul(),
+   |           ^^^^ must be a character in the range [\x00-\x7f]
+
+error: out of range hex escape
+  --> $DIR/non-ascii.rs:9:15
+   |
+LL |         c"\xEF\x80🦀\u{1F980}".to_bytes_with_nul(),
+   |               ^^^^ must be a character in the range [\x00-\x7f]
+
+error: no rules expected the token `"\xEF\x80🦀\u{1F980}"`
+  --> $DIR/non-ascii.rs:9:10
+   |
+LL |         c"\xEF\x80🦀\u{1F980}".to_bytes_with_nul(),
+   |          -^^^^^^^^^^^^^^^^^^^^
+   |          |
+   |          no rules expected this token in macro call
+   |          help: missing comma here
+   |
+note: while trying to match `,`
+  --> $SRC_DIR/core/src/macros/mod.rs:LL:COL
+
+error: aborting due to 4 previous errors
+

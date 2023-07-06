@@ -8,6 +8,7 @@ use crate::llvm::{self, True};
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
+use cstr::cstr;
 use rustc_codegen_ssa::traits::*;
 use rustc_hir::def_id::DefId;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
@@ -481,9 +482,9 @@ impl<'ll> StaticMethods for CodegenCx<'ll, '_> {
                             .all(|&byte| byte == 0);
 
                     let sect_name = if all_bytes_are_zero {
-                        c"__DATA,__thread_bss"
+                        cstr!("__DATA,__thread_bss")
                     } else {
-                        c"__DATA,__thread_data"
+                        cstr!("__DATA,__thread_data")
                     };
                     llvm::LLVMSetSection(g, sect_name.as_ptr());
                 }
@@ -512,7 +513,7 @@ impl<'ll> StaticMethods for CodegenCx<'ll, '_> {
                     let val = llvm::LLVMMetadataAsValue(self.llcx, meta);
                     llvm::LLVMAddNamedMetadataOperand(
                         self.llmod,
-                        c"wasm.custom_sections".as_ptr().cast(),
+                        "wasm.custom_sections\0".as_ptr().cast(),
                         val,
                     );
                 }

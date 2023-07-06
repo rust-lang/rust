@@ -228,9 +228,9 @@ macro_rules! compat_fn_optional {
 /// Load all needed functions from "api-ms-win-core-synch-l1-2-0".
 pub(super) fn load_synch_functions() {
     fn try_load() -> Option<()> {
-        const MODULE_NAME: &CStr = c"api-ms-win-core-synch-l1-2-0";
-        const WAIT_ON_ADDRESS: &CStr = c"WaitOnAddress";
-        const WAKE_BY_ADDRESS_SINGLE: &CStr = c"WakeByAddressSingle";
+        const MODULE_NAME: &CStr = ansi_str!("api-ms-win-core-synch-l1-2-0");
+        const WAIT_ON_ADDRESS: &CStr = ansi_str!("WaitOnAddress");
+        const WAKE_BY_ADDRESS_SINGLE: &CStr = ansi_str!("WakeByAddressSingle");
 
         // Try loading the library and all the required functions.
         // If any step fails, then they all fail.

@@ -163,9 +163,10 @@ impl Thread {
     #[cfg(target_os = "netbsd")]
     pub fn set_name(name: &CStr) {
         unsafe {
+            let cname = CStr::from_bytes_with_nul_unchecked(b"%s\0".as_slice());
             let res = libc::pthread_setname_np(
                 libc::pthread_self(),
-                c"%s".as_ptr(),
+                cname.as_ptr(),
                 name.as_ptr() as *mut libc::c_void,
             );
             debug_assert_eq!(res, 0);
