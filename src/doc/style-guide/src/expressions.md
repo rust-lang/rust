@@ -295,8 +295,9 @@ Use parentheses liberally, do not necessarily elide them due to precedence.
 Tools should not automatically insert or remove parentheses. Do not use spaces
 to indicate precedence.
 
-If line-breaking, put the operator on a new line and block indent. Put each
-sub-expression on its own line. E.g.,
+If line-breaking, block-indent each subsequent line. For assignment operators,
+break after the operator; for all other operators, put the operator on the
+subsequent line. Put each sub-expression on its own line:
 
 ```rust
 foo_bar
