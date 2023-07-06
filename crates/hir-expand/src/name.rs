@@ -96,6 +96,15 @@ impl Name {
         Name::new_inline("[missing name]")
     }
 
+    /// Returns true if this is a fake name for things missing in the source code. See
+    /// [`missing()`][Self::missing] for details.
+    ///
+    /// Use this method instead of comparing with `Self::missing()` as missing names
+    /// (ideally should) have a `gensym` semantics.
+    pub fn is_missing(&self) -> bool {
+        self == &Name::missing()
+    }
+
     /// Generates a new name which is only equal to itself, by incrementing a counter. Due
     /// its implementation, it should not be used in things that salsa considers, like
     /// type names or field names, and it should be only used in names of local variables
