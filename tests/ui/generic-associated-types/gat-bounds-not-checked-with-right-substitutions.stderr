@@ -1,0 +1,11 @@
+error: implementation of `Lengthen` is not general enough
+  --> $DIR/gat-bounds-not-checked-with-right-substitutions.rs:20:20
+   |
+LL |     type Gat<'a> = &'a str;
+   |                    ^^^^^^^ implementation of `Lengthen` is not general enough
+   |
+   = note: `Lengthen<&'0 str>` would have to be implemented for the type `&'a str`, for any lifetime `'0`...
+   = note: ...but `Lengthen<&'1 str>` is actually implemented for the type `&'1 str`, for some specific lifetime `'1`
+
+error: aborting due to previous error
+

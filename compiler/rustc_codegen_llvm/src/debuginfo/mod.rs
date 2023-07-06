@@ -113,7 +113,7 @@ impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
                 llvm::LLVMRustAddModuleFlag(
                     self.llmod,
                     llvm::LLVMModFlagBehavior::Warning,
-                    c"Dwarf Version".as_ptr().cast(),
+                    "Dwarf Version\0".as_ptr().cast(),
                     dwarf_version,
                 );
             } else {
@@ -121,16 +121,17 @@ impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
                 llvm::LLVMRustAddModuleFlag(
                     self.llmod,
                     llvm::LLVMModFlagBehavior::Warning,
-                    c"CodeView".as_ptr().cast(),
+                    "CodeView\0".as_ptr().cast(),
                     1,
                 )
             }
 
             // Prevent bitcode readers from deleting the debug info.
+            let ptr = "Debug Info Version\0".as_ptr();
             llvm::LLVMRustAddModuleFlag(
                 self.llmod,
                 llvm::LLVMModFlagBehavior::Warning,
-                c"Debug Info Version".as_ptr().cast(),
+                ptr.cast(),
                 llvm::LLVMRustDebugMetadataVersion(),
             );
         }

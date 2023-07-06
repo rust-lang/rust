@@ -295,8 +295,9 @@ Use parentheses liberally, do not necessarily elide them due to precedence.
 Tools should not automatically insert or remove parentheses. Do not use spaces
 to indicate precedence.
 
-If line-breaking, put the operator on a new line and block indent. Put each
-sub-expression on its own line. E.g.,
+If line-breaking, block-indent each subsequent line. For assignment operators,
+break after the operator; for all other operators, put the operator on the
+subsequent line. Put each sub-expression on its own line:
 
 ```rust
 foo_bar
@@ -752,9 +753,9 @@ not put the `if` clause on a newline. E.g.,
     }
 ```
 
-If every clause in a pattern is *small*, but does not fit on one line, then the
-pattern may be formatted across multiple lines with as many clauses per line as
-possible. Again break before a `|`:
+If every clause in a pattern is *small*, but the whole pattern does not fit on
+one line, then the pattern may be formatted across multiple lines with as many
+clauses per line as possible. Again break before a `|`:
 
 ```rust
     foo | bar | baz
@@ -763,17 +764,18 @@ possible. Again break before a `|`:
     }
 ```
 
-We define a pattern clause to be *small* if it matches the following grammar:
+We define a pattern clause to be *small* if it fits on a single line and
+matches "small" in the following grammar:
 
 ```
-[small, ntp]:
-    - single token
-    - `&[single-line, ntp]`
+small:
+    - small_no_tuple
+    - unary tuple constructor: `(` small_no_tuple `,` `)`
+    - `&` small
 
-[small]:
-    - `[small, ntp]`
-    - unary tuple constructor `([small, ntp])`
-    - `&[small]`
+small_no_tuple:
+    - single token
+    - `&` small_no_tuple
 ```
 
 E.g., `&&Some(foo)` matches, `Foo(4, Bar)` does not.
