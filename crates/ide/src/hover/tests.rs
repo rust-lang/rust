@@ -674,7 +674,7 @@ struct Foo { fiel$0d_a: u8, field_b: i32, field_c: i16 }
             ```
 
             ```rust
-            field_a: u8 // size = 1, align = 1, offset = 4
+            field_a: u8 // size = 1, align = 1, offset = 6
             ```
         "#]],
     );

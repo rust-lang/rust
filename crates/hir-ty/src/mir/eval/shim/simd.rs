@@ -1,5 +1,7 @@
 //! Shim implementation for simd intrinsics
 
+use std::cmp::Ordering;
+
 use crate::TyKind;
 
 use super::*;
@@ -22,10 +24,15 @@ macro_rules! not_supported {
 impl Evaluator<'_> {
     fn detect_simd_ty(&self, ty: &Ty) -> Result<usize> {
         match ty.kind(Interner) {
-            TyKind::Adt(_, subst) => {
-                let Some(len) = subst.as_slice(Interner).get(1).and_then(|x| x.constant(Interner))
-                else {
-                    return Err(MirEvalError::TypeError("simd type without len param"));
+            TyKind::Adt(id, subst) => {
+                let len = match subst.as_slice(Interner).get(1).and_then(|x| x.constant(Interner)) {
+                    Some(len) => len,
+                    _ => {
+                        if let AdtId::StructId(id) = id.0 {
+                            return Ok(self.db.struct_data(id).variant_data.fields().len());
+                        }
+                        return Err(MirEvalError::TypeError("simd type with no len param"));
+                    }
                 };
                 match try_const_usize(self.db, len) {
                     Some(x) => Ok(x as usize),
@@ -63,13 +70,34 @@ impl Evaluator<'_> {
                     .collect::<Vec<_>>();
                 destination.write_from_bytes(self, &result)
             }
-            "eq" | "ne" => {
+            "eq" | "ne" | "lt" | "le" | "gt" | "ge" => {
                 let [left, right] = args else {
-                    return Err(MirEvalError::TypeError("simd_eq args are not provided"));
+                    return Err(MirEvalError::TypeError("simd args are not provided"));
                 };
-                let result = left.get(self)? == right.get(self)?;
-                let result = result ^ (name == "ne");
-                destination.write_from_bytes(self, &[u8::from(result)])
+                let len = self.detect_simd_ty(&left.ty)?;
+                let size = left.interval.size / len;
+                let dest_size = destination.size / len;
+                let mut destination_bytes = vec![];
+                let vector = left.get(self)?.chunks(size).zip(right.get(self)?.chunks(size));
+                for (l, r) in vector {
+                    let mut result = Ordering::Equal;
+                    for (l, r) in l.iter().zip(r).rev() {
+                        let x = l.cmp(r);
+                        if x != Ordering::Equal {
+                            result = x;
+                            break;
+                        }
+                    }
+                    let result = match result {
+                        Ordering::Less => ["lt", "le", "ne"].contains(&name),
+                        Ordering::Equal => ["ge", "le", "eq"].contains(&name),
+                        Ordering::Greater => ["ge", "gt", "ne"].contains(&name),
+                    };
+                    let result = if result { 255 } else { 0 };
+                    destination_bytes.extend(std::iter::repeat(result).take(dest_size));
+                }
+
+                destination.write_from_bytes(self, &destination_bytes)
             }
             "bitmask" => {
                 let [op] = args else {
@@ -103,9 +131,9 @@ impl Evaluator<'_> {
                     }
                 };
                 let left_len = self.detect_simd_ty(&left.ty)?;
-                let left_count = left.interval.size / left_len;
+                let left_size = left.interval.size / left_len;
                 let vector =
-                    left.get(self)?.chunks(left_count).chain(right.get(self)?.chunks(left_count));
+                    left.get(self)?.chunks(left_size).chain(right.get(self)?.chunks(left_size));
                 let mut result = vec![];
                 for index in index.get(self)?.chunks(index.interval.size / index_len) {
                     let index = from_bytes!(u32, index) as usize;

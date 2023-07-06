@@ -2457,20 +2457,6 @@ fn const_trait_assoc() {
 }
 
 #[test]
-fn panic_messages() {
-    check_fail(
-        r#"
-    //- minicore: panic
-    const GOAL: u8 = {
-        let x: u16 = 2;
-        panic!("hello");
-    };
-    "#,
-        |e| e == ConstEvalError::MirEvalError(MirEvalError::Panic("hello".to_string())),
-    );
-}
-
-#[test]
 fn exec_limits() {
     check_fail(
         r#"

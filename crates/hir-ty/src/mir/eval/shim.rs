@@ -3,6 +3,10 @@
 
 use std::cmp;
 
+use chalk_ir::TyKind;
+use hir_def::resolver::HasResolver;
+use hir_expand::mod_path::ModPath;
+
 use super::*;
 
 mod simd;
@@ -186,44 +190,24 @@ impl Evaluator<'_> {
             BeginPanic => Err(MirEvalError::Panic("<unknown-panic-payload>".to_string())),
             PanicFmt => {
                 let message = (|| {
-                    let arguments_struct =
-                        self.db.lang_item(self.crate_id, LangItem::FormatArguments)?.as_struct()?;
-                    let arguments_layout = self
-                        .layout_adt(arguments_struct.into(), Substitution::empty(Interner))
-                        .ok()?;
-                    let arguments_field_pieces =
-                        self.db.struct_data(arguments_struct).variant_data.field(&name![pieces])?;
-                    let pieces_offset = arguments_layout
-                        .fields
-                        .offset(u32::from(arguments_field_pieces.into_raw()) as usize)
-                        .bytes_usize();
-                    let ptr_size = self.ptr_size();
-                    let arg = args.next()?;
-                    let pieces_array_addr =
-                        Address::from_bytes(&arg[pieces_offset..pieces_offset + ptr_size]).ok()?;
-                    let pieces_array_len = usize::from_le_bytes(
-                        (&arg[pieces_offset + ptr_size..pieces_offset + 2 * ptr_size])
-                            .try_into()
-                            .ok()?,
-                    );
-                    let mut message = "".to_string();
-                    for i in 0..pieces_array_len {
-                        let piece_ptr_addr = pieces_array_addr.offset(2 * i * ptr_size);
-                        let piece_addr =
-                            Address::from_bytes(self.read_memory(piece_ptr_addr, ptr_size).ok()?)
-                                .ok()?;
-                        let piece_len = usize::from_le_bytes(
-                            self.read_memory(piece_ptr_addr.offset(ptr_size), ptr_size)
-                                .ok()?
-                                .try_into()
-                                .ok()?,
-                        );
-                        let piece_data = self.read_memory(piece_addr, piece_len).ok()?;
-                        message += &std::string::String::from_utf8_lossy(piece_data);
-                    }
-                    Some(message)
+                    let x = self.db.crate_def_map(self.crate_id).crate_root();
+                    let resolver = x.resolver(self.db.upcast());
+                    let Some(format_fn) = resolver.resolve_path_in_value_ns_fully(
+                        self.db.upcast(),
+                        &hir_def::path::Path::from_known_path_with_no_generic(ModPath::from_segments(
+                            hir_expand::mod_path::PathKind::Abs,
+                            [name![std], name![fmt], name![format]].into_iter(),
+                        )),
+                    ) else {
+                        not_supported!("std::fmt::format not found");
+                    };
+                    let hir_def::resolver::ValueNs::FunctionId(format_fn) = format_fn else { not_supported!("std::fmt::format is not a function") };
+                    let message_string = self.interpret_mir(&*self.db.mir_body(format_fn.into()).map_err(|e| MirEvalError::MirLowerError(format_fn, e))?, args.cloned())?;
+                    let addr = Address::from_bytes(&message_string[self.ptr_size()..2 * self.ptr_size()])?;
+                    let size = from_bytes!(usize, message_string[2 * self.ptr_size()..]);
+                    Ok(std::string::String::from_utf8_lossy(self.read_memory(addr, size)?).into_owned())
                 })()
-                .unwrap_or_else(|| "<format-args-evaluation-failed>".to_string());
+                .unwrap_or_else(|e| format!("Failed to render panic format args: {e:?}"));
                 Err(MirEvalError::Panic(message))
             }
             SliceLen => {
@@ -544,6 +528,13 @@ impl Evaluator<'_> {
                 let size = self.size_of_sized(ty, locals, "size_of arg")?;
                 destination.write_from_bytes(self, &size.to_le_bytes()[0..destination.size])
             }
+            "min_align_of" | "pref_align_of" => {
+                let Some(ty) = generic_args.as_slice(Interner).get(0).and_then(|x| x.ty(Interner)) else {
+                    return Err(MirEvalError::TypeError("align_of generic arg is not provided"));
+                };
+                let align = self.layout(ty)?.align.abi.bytes();
+                destination.write_from_bytes(self, &align.to_le_bytes()[0..destination.size])
+            }
             "size_of_val" => {
                 let Some(ty) = generic_args.as_slice(Interner).get(0).and_then(|x| x.ty(Interner))
                 else {
@@ -552,33 +543,28 @@ impl Evaluator<'_> {
                 let [arg] = args else {
                     return Err(MirEvalError::TypeError("size_of_val args are not provided"));
                 };
-                let metadata = arg.interval.slice(self.ptr_size()..self.ptr_size() * 2);
-                let size = match ty.kind(Interner) {
-                    TyKind::Str => return destination.write_from_interval(self, metadata),
-                    TyKind::Slice(inner) => {
-                        let len = from_bytes!(usize, metadata.get(self)?);
-                        len * self.size_of_sized(inner, locals, "slice inner type")?
-                    }
-                    TyKind::Dyn(_) => self.size_of_sized(
-                        self.vtable_map.ty_of_bytes(metadata.get(self)?)?,
-                        locals,
-                        "dyn concrete type",
-                    )?,
-                    _ => self.size_of_sized(
-                        ty,
-                        locals,
-                        "unsized type other than str, slice, and dyn",
-                    )?,
-                };
-                destination.write_from_bytes(self, &size.to_le_bytes())
+                if let Some((size, _)) = self.size_align_of(ty, locals)? {
+                    destination.write_from_bytes(self, &size.to_le_bytes())
+                } else {
+                    let metadata = arg.interval.slice(self.ptr_size()..self.ptr_size() * 2);
+                    let (size, _) = self.size_align_of_unsized(ty, metadata, locals)?;
+                    destination.write_from_bytes(self, &size.to_le_bytes())
+                }
             }
-            "min_align_of" | "pref_align_of" => {
-                let Some(ty) = generic_args.as_slice(Interner).get(0).and_then(|x| x.ty(Interner))
-                else {
-                    return Err(MirEvalError::TypeError("align_of generic arg is not provided"));
+            "min_align_of_val" => {
+                let Some(ty) = generic_args.as_slice(Interner).get(0).and_then(|x| x.ty(Interner)) else {
+                    return Err(MirEvalError::TypeError("min_align_of_val generic arg is not provided"));
                 };
-                let align = self.layout(ty)?.align.abi.bytes();
-                destination.write_from_bytes(self, &align.to_le_bytes()[0..destination.size])
+                let [arg] = args else {
+                    return Err(MirEvalError::TypeError("min_align_of_val args are not provided"));
+                };
+                if let Some((_, align)) = self.size_align_of(ty, locals)? {
+                    destination.write_from_bytes(self, &align.to_le_bytes())
+                } else {
+                    let metadata = arg.interval.slice(self.ptr_size()..self.ptr_size() * 2);
+                    let (_, align) = self.size_align_of_unsized(ty, metadata, locals)?;
+                    destination.write_from_bytes(self, &align.to_le_bytes())
+                }
             }
             "needs_drop" => {
                 let Some(ty) = generic_args.as_slice(Interner).get(0).and_then(|x| x.ty(Interner))
@@ -903,6 +889,58 @@ impl Evaluator<'_> {
             }
             _ => not_supported!("unknown intrinsic {name}"),
         }
+    }
+
+    fn size_align_of_unsized(
+        &mut self,
+        ty: &Ty,
+        metadata: Interval,
+        locals: &Locals<'_>,
+    ) -> Result<(usize, usize)> {
+        Ok(match ty.kind(Interner) {
+            TyKind::Str => (from_bytes!(usize, metadata.get(self)?), 1),
+            TyKind::Slice(inner) => {
+                let len = from_bytes!(usize, metadata.get(self)?);
+                let (size, align) = self.size_align_of_sized(inner, locals, "slice inner type")?;
+                (size * len, align)
+            }
+            TyKind::Dyn(_) => self.size_align_of_sized(
+                self.vtable_map.ty_of_bytes(metadata.get(self)?)?,
+                locals,
+                "dyn concrete type",
+            )?,
+            TyKind::Adt(id, subst) => {
+                let id = id.0;
+                let layout = self.layout_adt(id, subst.clone())?;
+                let id = match id {
+                    AdtId::StructId(s) => s,
+                    _ => not_supported!("unsized enum or union"),
+                };
+                let field_types = &self.db.field_types(id.into());
+                let last_field_ty =
+                    field_types.iter().rev().next().unwrap().1.clone().substitute(Interner, subst);
+                let sized_part_size =
+                    layout.fields.offset(field_types.iter().count() - 1).bytes_usize();
+                let sized_part_align = layout.align.abi.bytes() as usize;
+                let (unsized_part_size, unsized_part_align) =
+                    self.size_align_of_unsized(&last_field_ty, metadata, locals)?;
+                let align = sized_part_align.max(unsized_part_align) as isize;
+                let size = (sized_part_size + unsized_part_size) as isize;
+                // Must add any necessary padding to `size`
+                // (to make it a multiple of `align`) before returning it.
+                //
+                // Namely, the returned size should be, in C notation:
+                //
+                //   `size + ((size & (align-1)) ? align : 0)`
+                //
+                // emulated via the semi-standard fast bit trick:
+                //
+                //   `(size + (align-1)) & -align`
+                let size = (size + (align - 1)) & (-align);
+                (size as usize, align as usize)
+            }
+            _ => not_supported!("unsized type other than str, slice, struct and dyn"),
+        })
     }
 
     fn exec_atomic_intrinsic(
