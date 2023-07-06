@@ -125,7 +125,7 @@ impl<'tcx> Const<'tcx> {
         Const::new(tcx, ty::ConstKind::Error(e), ty)
     }
 
-    /// Like [TyCtxt::ty_error] but for constants.
+    /// Like [Ty::new_error] but for constants.
     #[track_caller]
     pub fn new_misc_error(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Const<'tcx> {
         Const::new_error_with_message(
@@ -136,7 +136,7 @@ impl<'tcx> Const<'tcx> {
         )
     }
 
-    /// Like [TyCtxt::ty_error_with_message] but for constants.
+    /// Like [Ty::new_error_with_message] but for constants.
     #[track_caller]
     pub fn new_error_with_message<S: Into<MultiSpan>>(
         tcx: TyCtxt<'tcx>,
