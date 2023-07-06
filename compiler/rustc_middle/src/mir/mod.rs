@@ -2278,8 +2278,9 @@ impl<'tcx> ConstantKind<'tcx> {
     #[inline(always)]
     pub fn ty(&self) -> Ty<'tcx> {
         match self {
-            ConstantKind::Ty(c, ty) => c.assert_ty_is(*ty),
-            ConstantKind::Val(_, ty) | ConstantKind::Unevaluated(_, ty) => *ty,
+            ConstantKind::Ty(_, ty)
+            | ConstantKind::Val(_, ty)
+            | ConstantKind::Unevaluated(_, ty) => *ty,
         }
     }
 
