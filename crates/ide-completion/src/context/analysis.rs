@@ -733,7 +733,7 @@ fn classify_name_ref(
                         return None;
                     }
                     let parent = match ast::Fn::cast(parent.parent()?) {
-                        Some(x) => x.param_list(),
+                        Some(it) => it.param_list(),
                         None => ast::ClosureExpr::cast(parent.parent()?)?.param_list(),
                     };
 

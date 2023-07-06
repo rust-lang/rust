@@ -5,8 +5,8 @@ use hir_def::{lang_item::lang_attr, FunctionId};
 use hir_expand::name;
 
 macro_rules! not_supported {
-    ($x: expr) => {
-        return Err(MirLowerError::NotSupported(format!($x)))
+    ($it: expr) => {
+        return Err(MirLowerError::NotSupported(format!($it)))
     };
 }
 
@@ -34,7 +34,7 @@ impl MirLowerCtx<'_> {
     ) -> Result<Option<(Place, BasicBlockId)>> {
         let ty = adjustments
             .last()
-            .map(|x| x.target.clone())
+            .map(|it| it.target.clone())
             .unwrap_or_else(|| self.expr_ty_without_adjust(expr_id));
         let place = self.temp(ty, prev_block, expr_id.into())?;
         let Some(current) =
@@ -61,7 +61,7 @@ impl MirLowerCtx<'_> {
         if let Some((last, rest)) = adjustments.split_last() {
             match last.kind {
                 Adjust::Deref(None) => {
-                    let Some(mut x) = self.lower_expr_as_place_with_adjust(
+                    let Some(mut it) = self.lower_expr_as_place_with_adjust(
                         current,
                         expr_id,
                         upgrade_rvalue,
@@ -70,8 +70,8 @@ impl MirLowerCtx<'_> {
                     else {
                         return Ok(None);
                     };
-                    x.0 = x.0.project(ProjectionElem::Deref);
-                    Ok(Some(x))
+                    it.0 = it.0.project(ProjectionElem::Deref);
+                    Ok(Some(it))
                 }
                 Adjust::Deref(Some(od)) => {
                     let Some((r, current)) = self.lower_expr_as_place_with_adjust(
@@ -87,7 +87,7 @@ impl MirLowerCtx<'_> {
                         current,
                         r,
                         rest.last()
-                            .map(|x| x.target.clone())
+                            .map(|it| it.target.clone())
                             .unwrap_or_else(|| self.expr_ty_without_adjust(expr_id)),
                         last.target.clone(),
                         expr_id.into(),
@@ -253,8 +253,8 @@ impl MirLowerCtx<'_> {
                     .infer
                     .expr_adjustments
                     .get(base)
-                    .and_then(|x| x.split_last())
-                    .map(|x| x.1)
+                    .and_then(|it| it.split_last())
+                    .map(|it| it.1)
                     .unwrap_or(&[]);
                 let Some((mut p_base, current)) =
                     self.lower_expr_as_place_with_adjust(current, *base, true, adjusts)?

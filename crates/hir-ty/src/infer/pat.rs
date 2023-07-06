@@ -306,7 +306,7 @@ impl InferenceContext<'_> {
         self.result
             .pat_adjustments
             .get(&pat)
-            .and_then(|x| x.first())
+            .and_then(|it| it.first())
             .unwrap_or(&self.result.type_of_pat[pat])
             .clone()
     }

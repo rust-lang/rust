@@ -472,13 +472,13 @@ fn foo () {match __ra_fixup {}}
         check(
             r#"
 fn foo() {
-    match x {
+    match it {
 
     }
 }
 "#,
             expect![[r#"
-fn foo () {match x {}}
+fn foo () {match it {}}
 "#]],
         )
     }
@@ -547,11 +547,11 @@ fn foo () {a . __ra_fixup ; bar () ;}
         check(
             r#"
 fn foo() {
-    let x = a
+    let it = a
 }
 "#,
             expect![[r#"
-fn foo () {let x = a ;}
+fn foo () {let it = a ;}
 "#]],
         )
     }
@@ -561,11 +561,11 @@ fn foo () {let x = a ;}
         check(
             r#"
 fn foo() {
-    let x = a.
+    let it = a.
 }
 "#,
             expect![[r#"
-fn foo () {let x = a . __ra_fixup ;}
+fn foo () {let it = a . __ra_fixup ;}
 "#]],
         )
     }

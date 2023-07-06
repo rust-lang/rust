@@ -9,15 +9,15 @@ use super::*;
 macro_rules! from_bytes {
     ($ty:tt, $value:expr) => {
         ($ty::from_le_bytes(match ($value).try_into() {
-            Ok(x) => x,
+            Ok(it) => it,
             Err(_) => return Err(MirEvalError::TypeError("mismatched size")),
         }))
     };
 }
 
 macro_rules! not_supported {
-    ($x: expr) => {
-        return Err(MirEvalError::NotSupported(format!($x)))
+    ($it: expr) => {
+        return Err(MirEvalError::NotSupported(format!($it)))
     };
 }
 
@@ -25,7 +25,8 @@ impl Evaluator<'_> {
     fn detect_simd_ty(&self, ty: &Ty) -> Result<usize> {
         match ty.kind(Interner) {
             TyKind::Adt(id, subst) => {
-                let len = match subst.as_slice(Interner).get(1).and_then(|x| x.constant(Interner)) {
+                let len = match subst.as_slice(Interner).get(1).and_then(|it| it.constant(Interner))
+                {
                     Some(len) => len,
                     _ => {
                         if let AdtId::StructId(id) = id.0 {
@@ -35,7 +36,7 @@ impl Evaluator<'_> {
                     }
                 };
                 match try_const_usize(self.db, len) {
-                    Some(x) => Ok(x as usize),
+                    Some(it) => Ok(it as usize),
                     None => Err(MirEvalError::TypeError("simd type with unevaluatable len param")),
                 }
             }
@@ -61,10 +62,10 @@ impl Evaluator<'_> {
                     .get(self)?
                     .iter()
                     .zip(right.get(self)?)
-                    .map(|(&x, &y)| match name {
-                        "and" => x & y,
-                        "or" => x | y,
-                        "xor" => x ^ y,
+                    .map(|(&it, &y)| match name {
+                        "and" => it & y,
+                        "or" => it | y,
+                        "xor" => it ^ y,
                         _ => unreachable!(),
                     })
                     .collect::<Vec<_>>();
@@ -82,9 +83,9 @@ impl Evaluator<'_> {
                 for (l, r) in vector {
                     let mut result = Ordering::Equal;
                     for (l, r) in l.iter().zip(r).rev() {
-                        let x = l.cmp(r);
-                        if x != Ordering::Equal {
-                            result = x;
+                        let it = l.cmp(r);
+                        if it != Ordering::Equal {
+                            result = it;
                             break;
                         }
                     }
@@ -107,7 +108,7 @@ impl Evaluator<'_> {
                 let op_count = op.interval.size / op_len;
                 let mut result: u64 = 0;
                 for (i, val) in op.get(self)?.chunks(op_count).enumerate() {
-                    if !val.iter().all(|&x| x == 0) {
+                    if !val.iter().all(|&it| it == 0) {
                         result |= 1 << i;
                     }
                 }
@@ -123,7 +124,7 @@ impl Evaluator<'_> {
                     ));
                 };
                 let index_len = match try_const_usize(self.db, index_len) {
-                    Some(x) => x as usize,
+                    Some(it) => it as usize,
                     None => {
                         return Err(MirEvalError::TypeError(
                             "simd type with unevaluatable len param",
@@ -138,7 +139,7 @@ impl Evaluator<'_> {
                 for index in index.get(self)?.chunks(index.interval.size / index_len) {
                     let index = from_bytes!(u32, index) as usize;
                     let val = match vector.clone().nth(index) {
-                        Some(x) => x,
+                        Some(it) => it,
                         None => {
                             return Err(MirEvalError::TypeError(
                                 "out of bound access in simd shuffle",

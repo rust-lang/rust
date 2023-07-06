@@ -91,7 +91,7 @@ pub(crate) fn unify(
     let mut table = InferenceTable::new(db, env);
     let vars = Substitution::from_iter(
         Interner,
-        tys.binders.iter(Interner).map(|x| match &x.kind {
+        tys.binders.iter(Interner).map(|it| match &it.kind {
             chalk_ir::VariableKind::Ty(_) => {
                 GenericArgData::Ty(table.new_type_var()).intern(Interner)
             }
@@ -686,8 +686,8 @@ impl<'a> InferenceTable<'a> {
 
         let mut arg_tys = vec![];
         let arg_ty = TyBuilder::tuple(num_args)
-            .fill(|x| {
-                let arg = match x {
+            .fill(|it| {
+                let arg = match it {
                     ParamKind::Type => self.new_type_var(),
                     ParamKind::Const(ty) => {
                         never!("Tuple with const parameter");
@@ -753,7 +753,7 @@ impl<'a> InferenceTable<'a> {
     {
         fold_tys_and_consts(
             ty,
-            |x, _| match x {
+            |it, _| match it {
                 Either::Left(ty) => Either::Left(self.insert_type_vars_shallow(ty)),
                 Either::Right(c) => Either::Right(self.insert_const_vars_shallow(c)),
             },
