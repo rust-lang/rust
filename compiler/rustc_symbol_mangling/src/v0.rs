@@ -415,7 +415,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
             ty::Array(ty, len) => {
                 self.push("A");
                 self = ty.print(self)?;
-                self = self.print_const(len)?;
+                self = self.print_const(len, self.tcx().types.usize)?;
             }
             ty::Slice(ty) => {
                 self.push("S");
@@ -560,7 +560,11 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
         Ok(self)
     }
 
-    fn print_const(mut self, ct: ty::Const<'tcx>) -> Result<Self::Const, Self::Error> {
+    fn print_const(
+        mut self,
+        ct: ty::Const<'tcx>,
+        ty: Ty<'tcx>,
+    ) -> Result<Self::Const, Self::Error> {
         // We only mangle a typed value if the const can be evaluated.
         let ct = ct.eval(self.tcx, ty::ParamEnv::reveal_all());
         match ct.kind() {
@@ -588,7 +592,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
         }
 
         let start = self.out.len();
-        let ty = ct.ty();
+        let ty = ct.assert_ty_is(ty);
 
         match ty.kind() {
             ty::Uint(_) | ty::Int(_) | ty::Bool | ty::Char => {

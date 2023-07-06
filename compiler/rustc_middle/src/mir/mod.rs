@@ -12,7 +12,7 @@ use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::visit::TypeVisitableExt;
 use crate::ty::{self, List, Ty, TyCtxt};
 use crate::ty::{AdtDef, InstanceDef, ScalarInt, UserTypeAnnotationIndex};
-use crate::ty::{GenericArg, InternalSubsts, SubstsRef};
+use crate::ty::{GenericArg, InternalSubsts, Lift, SubstsRef};
 
 use rustc_data_structures::captures::Captures;
 use rustc_errors::{DiagnosticArgValue, DiagnosticMessage, ErrorGuaranteed, IntoDiagnosticArg};
@@ -2060,7 +2060,9 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             Use(ref place) => write!(fmt, "{:?}", place),
             Repeat(ref a, b) => {
                 write!(fmt, "[{:?}; ", a)?;
-                pretty_print_const(b, fmt, false)?;
+                ty::tls::with(|tcx| {
+                    pretty_print_const(b.lift_to_tcx(tcx).unwrap(), fmt, tcx.types.usize, false)
+                })?;
                 write!(fmt, "]")
             }
             Len(ref a) => write!(fmt, "Len({:?})", a),
@@ -2779,7 +2781,7 @@ impl<'tcx> Display for Constant<'tcx> {
 impl<'tcx> Display for ConstantKind<'tcx> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         match *self {
-            ConstantKind::Ty(c, _ty) => pretty_print_const(c, fmt, true),
+            ConstantKind::Ty(c, ty) => pretty_print_const(c, fmt, ty, true),
             ConstantKind::Val(val, ty) => pretty_print_const_value(val, ty, fmt),
             // FIXME(valtrees): Correctly print mir constants.
             ConstantKind::Unevaluated(..) => {
@@ -2793,14 +2795,16 @@ impl<'tcx> Display for ConstantKind<'tcx> {
 fn pretty_print_const<'tcx>(
     c: ty::Const<'tcx>,
     fmt: &mut Formatter<'_>,
+    ty: Ty<'tcx>,
     print_types: bool,
 ) -> fmt::Result {
     use crate::ty::print::PrettyPrinter;
     ty::tls::with(|tcx| {
         let literal = tcx.lift(c).unwrap();
+        let ty = tcx.lift(ty).unwrap();
         let mut cx = FmtPrinter::new(tcx, Namespace::ValueNS);
         cx.print_alloc_ids = true;
-        let cx = cx.pretty_print_const(literal, print_types)?;
+        let cx = cx.pretty_print_const(literal, ty, print_types)?;
         fmt.write_str(&cx.into_buffer())?;
         Ok(())
     })

@@ -262,9 +262,9 @@ impl<'tcx> Printer<'tcx> for &mut SymbolPrinter<'tcx> {
         Ok(self)
     }
 
-    fn print_const(self, ct: ty::Const<'tcx>) -> Result<Self::Const, Self::Error> {
+    fn print_const(self, ct: ty::Const<'tcx>, ty: Ty<'tcx>) -> Result<Self::Const, Self::Error> {
         // only print integers
-        match (ct.kind(), ct.ty().kind()) {
+        match (ct.kind(), ct.assert_ty_is(ty).kind()) {
             (ty::ConstKind::Value(ty::ValTree::Leaf(scalar)), ty::Int(_) | ty::Uint(_)) => {
                 // The `pretty_print_const` formatting depends on -Zverbose
                 // flag, so we cannot reuse it here.

@@ -70,8 +70,8 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
         }
     }
 
-    fn print_const(self, ct: ty::Const<'tcx>) -> Result<Self::Const, Self::Error> {
-        self.pretty_print_const(ct, false)
+    fn print_const(self, ct: ty::Const<'tcx>, ty: Ty<'tcx>) -> Result<Self::Const, Self::Error> {
+        self.pretty_print_const(ct, ty, false)
     }
 
     fn print_dyn_existential(

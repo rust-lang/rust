@@ -1314,12 +1314,13 @@ pub trait PrettyPrinter<'tcx>:
     fn pretty_print_const(
         mut self,
         ct: ty::Const<'tcx>,
+        ty: Ty<'tcx>,
         print_ty: bool,
     ) -> Result<Self::Const, Self::Error> {
         define_scoped_cx!(self);
 
         if self.should_print_verbose() {
-            p!(write("{:?}", ct));
+            p!(write("Const {{ ty: {ty}, kind: {:?} }}", ct.kind()));
             return Ok(self);
         }
 
@@ -1331,7 +1332,7 @@ pub trait PrettyPrinter<'tcx>:
                             write!(this, "_")?;
                             Ok(this)
                         },
-                        |this| this.print_type(ct.ty()),
+                        |this| this.print_type(ct.assert_ty_is(ty)),
                         ": ",
                     )?;
                 } else {
@@ -1925,8 +1926,8 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
         self.pretty_print_dyn_existential(predicates)
     }
 
-    fn print_const(self, ct: ty::Const<'tcx>) -> Result<Self::Const, Self::Error> {
-        self.pretty_print_const(ct, false)
+    fn print_const(self, ct: ty::Const<'tcx>, ty: Ty<'tcx>) -> Result<Self::Const, Self::Error> {
+        self.pretty_print_const(ct, ty, false)
     }
 
     fn path_crate(mut self, cnum: CrateNum) -> Result<Self::Path, Self::Error> {

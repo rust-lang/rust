@@ -609,7 +609,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 Err(NonTrivialPath)
             }
 
-            fn print_const(self, _ct: ty::Const<'tcx>) -> Result<Self::Const, Self::Error> {
+            fn print_const(
+                self,
+                _ct: ty::Const<'tcx>,
+                _ty: Ty<'tcx>,
+            ) -> Result<Self::Const, Self::Error> {
                 Err(NonTrivialPath)
             }
 
