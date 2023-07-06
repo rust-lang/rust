@@ -3,6 +3,8 @@ use clippy_utils::{is_res_lang_ctor, last_path_segment, path_res, MaybePath};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
+use rustc_middle::ty;
+use rustc_middle::ty::print::with_forced_trimmed_paths;
 
 use super::UNNECESSARY_LITERAL_UNWRAP;
 
@@ -84,6 +86,16 @@ pub(super) fn check(
                 }
                 Some(suggs)
             },
+            ("None", "unwrap_or_default", _) => {
+                let ty = cx.typeck_results().expr_ty(expr);
+                let default_ty_string = if let ty::Adt(def, ..) = ty.kind() {
+                    with_forced_trimmed_paths!(format!("{}", cx.tcx.def_path_str(def.did())))
+                } else {
+                    "Default".to_string()
+                };
+                Some(vec![(expr.span, format!("{default_ty_string}::default()"))])
+            },
+            _ if call_args.is_empty() => None,
             (_, _, Some(_)) => None,
             ("Ok", "unwrap_err", None) | ("Err", "unwrap", None) => Some(vec![
                 (

@@ -19,9 +19,11 @@ fn unwrap_option_some() {
 fn unwrap_option_none() {
     let _val = None::<()>.unwrap();
     let _val = None::<()>.expect("this always happens");
+    let _val: String = None.unwrap_or_default();
 
     None::<()>.unwrap();
     None::<()>.expect("this always happens");
+    None::<String>.unwrap_or_default();
 }
 
 fn unwrap_result_ok() {

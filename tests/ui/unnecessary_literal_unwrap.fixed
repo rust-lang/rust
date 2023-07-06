@@ -19,9 +19,11 @@ fn unwrap_option_some() {
 fn unwrap_option_none() {
     let _val = panic!();
     let _val = panic!("this always happens");
+    let _val: String = String::default();
 
     panic!();
     panic!("this always happens");
+    String::default();
 }
 
 fn unwrap_result_ok() {
