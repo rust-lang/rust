@@ -13,25 +13,25 @@ LL |             inner: PhantomData::default(),
    |                               ^^^^^^^^^^^ help: remove this call to `default`
 
 error: use of `default` to create a unit struct
-  --> $DIR/default_constructed_unit_structs.rs:106:33
+  --> $DIR/default_constructed_unit_structs.rs:128:33
    |
 LL |     let _ = PhantomData::<usize>::default();
    |                                 ^^^^^^^^^^^ help: remove this call to `default`
 
 error: use of `default` to create a unit struct
-  --> $DIR/default_constructed_unit_structs.rs:107:42
+  --> $DIR/default_constructed_unit_structs.rs:129:42
    |
 LL |     let _: PhantomData<i32> = PhantomData::default();
    |                                          ^^^^^^^^^^^ help: remove this call to `default`
 
 error: use of `default` to create a unit struct
-  --> $DIR/default_constructed_unit_structs.rs:108:55
+  --> $DIR/default_constructed_unit_structs.rs:130:55
    |
 LL |     let _: PhantomData<i32> = std::marker::PhantomData::default();
    |                                                       ^^^^^^^^^^^ help: remove this call to `default`
 
 error: use of `default` to create a unit struct
-  --> $DIR/default_constructed_unit_structs.rs:109:23
+  --> $DIR/default_constructed_unit_structs.rs:131:23
    |
 LL |     let _ = UnitStruct::default();
    |                       ^^^^^^^^^^^ help: remove this call to `default`
