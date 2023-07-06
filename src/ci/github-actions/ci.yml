@@ -311,6 +311,7 @@ jobs:
     name: PR - ${{ matrix.name }}
     env:
       <<: [*shared-ci-variables, *public-variables]
+      PR_CI_JOB: 1
     if: github.event_name == 'pull_request'
     continue-on-error: ${{ matrix.name == 'mingw-check-tidy' }}
     strategy:
@@ -469,11 +470,6 @@ jobs:
             <<: *job-linux-8c
 
           - name: x86_64-gnu-llvm-14
-            env:
-              RUST_BACKTRACE: 1
-            <<: *job-linux-8c
-
-          - name: x86_64-gnu-llvm-14-stage1
             env:
               RUST_BACKTRACE: 1
             <<: *job-linux-8c

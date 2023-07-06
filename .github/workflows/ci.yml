@@ -37,6 +37,7 @@ jobs:
   pr:
     name: "PR - ${{ matrix.name }}"
     env:
+      PR_CI_JOB: 1
       CI_JOB_NAME: "${{ matrix.name }}"
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       HEAD_SHA: "${{ github.event.pull_request.head.sha || github.sha }}"
@@ -293,10 +294,6 @@ jobs:
               RUST_BACKTRACE: 1
             os: ubuntu-20.04-8core-32gb
           - name: x86_64-gnu-llvm-14
-            env:
-              RUST_BACKTRACE: 1
-            os: ubuntu-20.04-8core-32gb
-          - name: x86_64-gnu-llvm-14-stage1
             env:
               RUST_BACKTRACE: 1
             os: ubuntu-20.04-8core-32gb

@@ -263,6 +263,7 @@ docker \
   --env CI_JOB_NAME="${CI_JOB_NAME-$IMAGE}" \
   --env BASE_COMMIT="$BASE_COMMIT" \
   --env DIST_TRY_BUILD \
+  --env PR_CI_JOB \
   --init \
   --rm \
   rust-ci \
