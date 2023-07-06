@@ -1,0 +1,11 @@
+error: expected `fn`, found keyword `pub`
+  --> $DIR/issue-113342.rs:7:12
+   |
+LL | extern "C" pub fn id(x: i32) -> i32 { x }
+   | -----------^^^
+   | |          |
+   | |          expected `fn`
+   | help: visibility `pub` must come before `extern "C"`: `pub extern "C"`
+
+error: aborting due to previous error
+
