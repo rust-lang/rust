@@ -187,7 +187,13 @@ where
     }
 
     // Ensure CGUs are sorted by name, so that we get deterministic results.
-    assert!(codegen_units.is_sorted_by(|a, b| Some(a.name().as_str().cmp(b.name().as_str()))));
+    if !codegen_units.is_sorted_by(|a, b| Some(a.name().as_str().cmp(b.name().as_str()))) {
+        let mut names = String::new();
+        for cgu in codegen_units.iter() {
+            names += &format!("- {}\n", cgu.name());
+        }
+        bug!("unsorted CGUs:\n{names}");
+    }
 
     codegen_units
 }
