@@ -39,13 +39,15 @@ use rustc_errors::{
     Applicability, DiagnosticBuilder, DiagnosticMessage, ErrorGuaranteed, SubdiagnosticMessage,
 };
 use rustc_expand::base::{DeriveResolutions, SyntaxExtension, SyntaxExtensionKind};
+use rustc_feature::BUILTIN_ATTRIBUTES;
 use rustc_fluent_macro::fluent_messages;
 use rustc_hir::def::Namespace::{self, *};
+use rustc_hir::def::NonMacroAttrKind;
 use rustc_hir::def::{self, CtorOf, DefKind, DocLinkResMap, LifetimeRes, PartialRes, PerNS};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LocalDefIdMap, LocalDefIdSet};
 use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::definitions::DefPathData;
-use rustc_hir::TraitCandidate;
+use rustc_hir::{PrimTy, TraitCandidate};
 use rustc_index::IndexVec;
 use rustc_metadata::creader::{CStore, CrateLoader};
 use rustc_middle::metadata::ModChild;
@@ -996,6 +998,8 @@ pub struct Resolver<'a, 'tcx> {
 
     arenas: &'a ResolverArenas<'a>,
     dummy_binding: NameBinding<'a>,
+    builtin_types_bindings: FxHashMap<Symbol, NameBinding<'a>>,
+    builtin_attrs_bindings: FxHashMap<Symbol, NameBinding<'a>>,
 
     used_extern_options: FxHashSet<Symbol>,
     macro_names: FxHashSet<Ident>,
@@ -1283,6 +1287,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let registered_tools = tcx.registered_tools(());
 
         let features = tcx.features();
+        let pub_vis = ty::Visibility::<DefId>::Public;
 
         let mut resolver = Resolver {
             tcx,
@@ -1330,14 +1335,24 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             macro_expanded_macro_export_errors: BTreeSet::new(),
 
             arenas,
-            dummy_binding: arenas.alloc_name_binding(NameBindingData {
-                kind: NameBindingKind::Res(Res::Err),
-                ambiguity: None,
-                warn_ambiguity: false,
-                expansion: LocalExpnId::ROOT,
-                span: DUMMY_SP,
-                vis: ty::Visibility::Public,
-            }),
+            dummy_binding: (Res::Err, pub_vis, DUMMY_SP, LocalExpnId::ROOT).to_name_binding(arenas),
+            builtin_types_bindings: PrimTy::ALL
+                .iter()
+                .map(|prim_ty| {
+                    let binding = (Res::PrimTy(*prim_ty), pub_vis, DUMMY_SP, LocalExpnId::ROOT)
+                        .to_name_binding(arenas);
+                    (prim_ty.name(), binding)
+                })
+                .collect(),
+            builtin_attrs_bindings: BUILTIN_ATTRIBUTES
+                .iter()
+                .map(|builtin_attr| {
+                    let res = Res::NonMacroAttr(NonMacroAttrKind::Builtin(builtin_attr.name));
+                    let binding =
+                        (res, pub_vis, DUMMY_SP, LocalExpnId::ROOT).to_name_binding(arenas);
+                    (builtin_attr.name, binding)
+                })
+                .collect(),
 
             used_extern_options: Default::default(),
             macro_names: FxHashSet::default(),

@@ -1,7 +1,5 @@
 use rustc_ast::{self as ast, NodeId};
-use rustc_feature::is_builtin_attr_name;
 use rustc_hir::def::{DefKind, Namespace, NonMacroAttrKind, PartialRes, PerNS};
-use rustc_hir::PrimTy;
 use rustc_middle::bug;
 use rustc_middle::ty;
 use rustc_session::lint::builtin::PROC_MACRO_DERIVE_RESOLUTION_FALLBACK;
@@ -9,7 +7,7 @@ use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::hygiene::{ExpnId, ExpnKind, LocalExpnId, MacroKind, SyntaxContext};
 use rustc_span::symbol::{kw, Ident};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::Span;
 
 use crate::errors::{ParamKindInEnumDiscriminant, ParamKindInNonTrivialAnonConst};
 use crate::late::{
@@ -562,17 +560,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             )),
                         }
                     }
-                    Scope::BuiltinAttrs => {
-                        if is_builtin_attr_name(ident.name) {
-                            ok(
-                                Res::NonMacroAttr(NonMacroAttrKind::Builtin(ident.name)),
-                                DUMMY_SP,
-                                this.arenas,
-                            )
-                        } else {
-                            Err(Determinacy::Determined)
-                        }
-                    }
+                    Scope::BuiltinAttrs => match this.builtin_attrs_bindings.get(&ident.name) {
+                        Some(binding) => Ok((*binding, Flags::empty())),
+                        None => Err(Determinacy::Determined),
+                    },
                     Scope::ExternPrelude => {
                         match this.extern_prelude_get(ident, finalize.is_some()) {
                             Some(binding) => Ok((binding, Flags::empty())),
@@ -603,8 +594,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         }
                         result
                     }
-                    Scope::BuiltinTypes => match PrimTy::from_name(ident.name) {
-                        Some(prim_ty) => ok(Res::PrimTy(prim_ty), DUMMY_SP, this.arenas),
+                    Scope::BuiltinTypes => match this.builtin_types_bindings.get(&ident.name) {
+                        Some(binding) => Ok((*binding, Flags::empty())),
                         None => Err(Determinacy::Determined),
                     },
                 };
