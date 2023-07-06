@@ -1,4 +1,5 @@
 //@ignore-target-windows: No libc on Windows
+//@ignore-target-apple: No `memrchr` on some apple targets
 
 use std::ptr;
 
