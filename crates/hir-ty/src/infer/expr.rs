@@ -1449,6 +1449,13 @@ impl InferenceContext<'_> {
 
     fn infer_field_access(&mut self, tgt_expr: ExprId, receiver: ExprId, name: &Name) -> Ty {
         let receiver_ty = self.infer_expr_inner(receiver, &Expectation::none());
+
+        if name.is_missing() {
+            // Bail out early, don't even try to look up field. Also, we don't issue an unresolved
+            // field diagnostic because this is a syntax error rather than a semantic error.
+            return self.err_ty();
+        }
+
         match self.lookup_field(&receiver_ty, name) {
             Some((ty, field_id, adjustments, is_public)) => {
                 self.write_expr_adj(receiver, adjustments);

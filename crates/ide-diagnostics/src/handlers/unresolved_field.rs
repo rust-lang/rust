@@ -68,7 +68,10 @@ fn method_fix(
 }
 #[cfg(test)]
 mod tests {
-    use crate::tests::check_diagnostics;
+    use crate::{
+        tests::{check_diagnostics, check_diagnostics_with_config},
+        DiagnosticsConfig,
+    };
 
     #[test]
     fn smoke_test() {
@@ -145,5 +148,12 @@ fn foo() {
 }
 "#,
         );
+    }
+
+    #[test]
+    fn no_diagnostic_for_missing_name() {
+        let mut config = DiagnosticsConfig::test_sample();
+        config.disabled.insert("syntax-error".to_owned());
+        check_diagnostics_with_config(config, "fn foo() { (). }");
     }
 }
