@@ -725,13 +725,14 @@ fn field_of_struct<'tcx>(
     result: mir::ConstantKind<'tcx>,
     field: &Ident,
 ) -> Option<mir::ConstantKind<'tcx>> {
-    if let Some(dc) = lcx.tcx.try_destructure_mir_constant(lcx.param_env.and(result))
+    if let mir::ConstantKind::Val(result, ty) = result
+        && let Some(dc) = lcx.tcx.try_destructure_mir_constant_for_diagnostics((result, ty))
         && let Some(dc_variant) = dc.variant
         && let Some(variant) = adt_def.variants().get(dc_variant)
         && let Some(field_idx) = variant.fields.iter().position(|el| el.name == field.name)
-        && let Some(dc_field) = dc.fields.get(field_idx)
+        && let Some(&(val, ty)) = dc.fields.get(field_idx)
     {
-        Some(*dc_field)
+        Some(mir::ConstantKind::Val(val, ty))
     }
     else {
         None
