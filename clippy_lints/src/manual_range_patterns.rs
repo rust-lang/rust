@@ -20,6 +20,10 @@ declare_clippy_lint! {
     /// ### Why is this bad?
     /// Using an explicit range is more concise and easier to read.
     ///
+    /// ### Known issues
+    /// This lint intentionally does not handle numbers greater than `i128::MAX` for `u128` literals
+    /// in order to support negative numbers.
+    ///
     /// ### Example
     /// ```rust
     /// let x = 6;
@@ -43,7 +47,8 @@ fn expr_as_i128(expr: &Expr<'_>) -> Option<i128> {
     } else if let ExprKind::Lit(lit) = expr.kind
         && let LitKind::Int(num, _) = lit.node
     {
-        Some(num as i128)
+        // Intentionally not handling numbers greater than i128::MAX (for u128 literals) for now.
+        num.try_into().ok()
     } else {
         None
     }
