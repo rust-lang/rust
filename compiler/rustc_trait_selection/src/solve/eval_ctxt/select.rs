@@ -330,9 +330,13 @@ fn rematch_unsize<'tcx>(
     mut nested: Vec<PredicateObligation<'tcx>>,
 ) -> SelectionResult<'tcx, Selection<'tcx>> {
     let tcx = infcx.tcx;
-    let a_ty = goal.predicate.self_ty();
-    let b_ty = goal.predicate.trait_ref.args.type_at(1);
-
+    let a_ty = structurally_normalize(goal.predicate.self_ty(), infcx, goal.param_env, &mut nested);
+    let b_ty = structurally_normalize(
+        goal.predicate.trait_ref.args.type_at(1),
+        infcx,
+        goal.param_env,
+        &mut nested,
+    );
     match (a_ty.kind(), b_ty.kind()) {
         (_, &ty::Dynamic(data, region, ty::Dyn)) => {
             // Check that the type implements all of the predicates of the def-id.

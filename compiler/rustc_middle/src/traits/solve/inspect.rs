@@ -73,8 +73,12 @@ pub struct GoalCandidate<'tcx> {
 pub enum CandidateKind<'tcx> {
     /// Probe entered when normalizing the self ty during candidate assembly
     NormalizedSelfTyAssembly,
+    DynUpcastingAssembly,
     /// A normal candidate for proving a goal
-    Candidate { name: String, result: QueryResult<'tcx> },
+    Candidate {
+        name: String,
+        result: QueryResult<'tcx>,
+    },
 }
 impl Debug for GoalCandidate<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

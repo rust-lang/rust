@@ -100,6 +100,9 @@ impl<'a, 'b> ProofTreeFormatter<'a, 'b> {
             CandidateKind::NormalizedSelfTyAssembly => {
                 writeln!(self.f, "NORMALIZING SELF TY FOR ASSEMBLY:")
             }
+            CandidateKind::DynUpcastingAssembly => {
+                writeln!(self.f, "ASSEMBLING CANDIDATES FOR DYN UPCASTING:")
+            }
             CandidateKind::Candidate { name, result } => {
                 writeln!(self.f, "CANDIDATE {}: {:?}", name, result)
             }
