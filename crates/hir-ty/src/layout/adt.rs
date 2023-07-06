@@ -105,7 +105,7 @@ pub fn layout_of_adt_query(
                 && variants
                     .iter()
                     .next()
-                    .and_then(|x| x.last().map(|x| x.is_unsized()))
+                    .and_then(|x| x.last().map(|x| !x.is_unsized()))
                     .unwrap_or(true),
         )
         .ok_or(LayoutError::SizeOverflow)?

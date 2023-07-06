@@ -45,6 +45,50 @@ fn size_of_val() {
     );
     check_number(
         r#"
+        //- minicore: coerce_unsized, transmute
+        use core::mem::transmute;
+
+        extern "rust-intrinsic" {
+            pub fn size_of_val<T: ?Sized>(_: *const T) -> usize;
+        }
+
+        struct X {
+            x: i64,
+            y: u8,
+            t: [i32],
+        }
+
+        const GOAL: usize = unsafe {
+            let y: &X = transmute([0usize, 3]);
+            size_of_val(y)
+        };
+        "#,
+        24,
+    );
+    check_number(
+        r#"
+        //- minicore: coerce_unsized, transmute
+        use core::mem::transmute;
+
+        extern "rust-intrinsic" {
+            pub fn size_of_val<T: ?Sized>(_: *const T) -> usize;
+        }
+
+        struct X {
+            x: i32,
+            y: i64,
+            t: [u8],
+        }
+
+        const GOAL: usize = unsafe {
+            let y: &X = transmute([0usize, 15]);
+            size_of_val(y)
+        };
+    "#,
+        32,
+    );
+    check_number(
+        r#"
         //- minicore: coerce_unsized, fmt, builtin_impls
         extern "rust-intrinsic" {
             pub fn size_of_val<T: ?Sized>(_: *const T) -> usize;
@@ -71,6 +115,37 @@ fn size_of_val() {
         };
         "#,
         5,
+    );
+}
+
+#[test]
+fn min_align_of_val() {
+    check_number(
+        r#"
+        //- minicore: coerce_unsized
+        extern "rust-intrinsic" {
+            pub fn min_align_of_val<T: ?Sized>(_: *const T) -> usize;
+        }
+
+        struct X(i32, u8);
+
+        const GOAL: usize = min_align_of_val(&X(1, 2));
+        "#,
+        4,
+    );
+    check_number(
+        r#"
+        //- minicore: coerce_unsized
+        extern "rust-intrinsic" {
+            pub fn min_align_of_val<T: ?Sized>(_: *const T) -> usize;
+        }
+
+        const GOAL: usize = {
+            let x: &[i32] = &[1, 2, 3];
+            min_align_of_val(x)
+        };
+        "#,
+        4,
     );
 }
 
