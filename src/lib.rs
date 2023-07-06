@@ -8,7 +8,7 @@
 #[macro_use]
 extern crate lazy_static;
 #[macro_use]
-extern crate log;
+extern crate tracing;
 
 // N.B. these crates are loaded from the sysroot, so they need extern crate.
 extern crate rustc_ast;
