@@ -1492,7 +1492,7 @@ struct Person {
 }
 
 impl Person {
-    fn set_name(&mut self, name: String) {
+    fn $0set_name(&mut self, name: String) {
         self.name = name;
     }
 }

@@ -154,11 +154,10 @@ mod handlers {
     mod generate_enum_variant;
     mod generate_from_impl_for_enum;
     mod generate_function;
-    mod generate_getter;
+    mod generate_getter_or_setter;
     mod generate_impl;
     mod generate_is_empty_from_len;
     mod generate_new;
-    mod generate_setter;
     mod generate_delegate_methods;
     mod generate_trait_from_impl;
     mod add_return_type;
@@ -338,9 +337,9 @@ mod handlers {
             extract_function::extract_function,
             extract_module::extract_module,
             //
-            generate_getter::generate_getter,
-            generate_getter::generate_getter_mut,
-            generate_setter::generate_setter,
+            generate_getter_or_setter::generate_getter,
+            generate_getter_or_setter::generate_getter_mut,
+            generate_getter_or_setter::generate_setter,
             generate_delegate_methods::generate_delegate_methods,
             generate_deref::generate_deref,
             //
