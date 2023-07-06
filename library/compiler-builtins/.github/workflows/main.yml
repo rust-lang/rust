@@ -23,18 +23,20 @@ jobs:
         - target: i686-unknown-linux-gnu
           os: ubuntu-latest
           rust: nightly
-        - target: mips-unknown-linux-gnu
-          os: ubuntu-latest
-          rust: nightly
-        - target: mips64-unknown-linux-gnuabi64
-          os: ubuntu-latest
-          rust: nightly
-        - target: mips64el-unknown-linux-gnuabi64
-          os: ubuntu-latest
-          rust: nightly
-        - target: mipsel-unknown-linux-gnu
-          os: ubuntu-latest
-          rust: nightly
+        # MIPS targets disabled since they are dropped to tier 3.
+        # See https://github.com/rust-lang/compiler-team/issues/648
+        #- target: mips-unknown-linux-gnu
+        #  os: ubuntu-latest
+        #  rust: nightly
+        #- target: mips64-unknown-linux-gnuabi64
+        #  os: ubuntu-latest
+        #  rust: nightly
+        #- target: mips64el-unknown-linux-gnuabi64
+        #  os: ubuntu-latest
+        #  rust: nightly
+        #- target: mipsel-unknown-linux-gnu
+        #  os: ubuntu-latest
+        #  rust: nightly
         - target: powerpc-unknown-linux-gnu
           os: ubuntu-latest
           rust: nightly
