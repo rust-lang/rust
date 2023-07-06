@@ -213,15 +213,16 @@ fn rematch_object<'tcx>(
     mut nested: Vec<PredicateObligation<'tcx>>,
 ) -> SelectionResult<'tcx, Selection<'tcx>> {
     let self_ty = goal.predicate.self_ty();
-    let source_trait_ref = if let ty::Dynamic(data, _, ty::Dyn) = self_ty.kind() {
-        data.principal().unwrap().with_self_ty(infcx.tcx, self_ty)
-    } else {
+    let ty::Dynamic(data, _, source_kind) = *self_ty.kind()
+    else {
         bug!()
     };
+    let source_trait_ref = data.principal().unwrap().with_self_ty(infcx.tcx, self_ty);
 
     let (is_upcasting, target_trait_ref_unnormalized) = if Some(goal.predicate.def_id())
         == infcx.tcx.lang_items().unsize_trait()
     {
+        assert_eq!(source_kind, ty::Dyn, "cannot upcast dyn*");
         if let ty::Dynamic(data, _, ty::Dyn) = goal.predicate.trait_ref.substs.type_at(1).kind() {
             (true, data.principal().unwrap().with_self_ty(infcx.tcx, self_ty))
         } else {
@@ -288,7 +289,8 @@ fn rematch_object<'tcx>(
         bug!();
     };
 
-    // If we're upcasting, get the offset of the vtable pointer, which is
+    // If we're upcasting, get the offset of the vtable pointer, otherwise get
+    // the base of the vtable.
     Ok(Some(if is_upcasting {
         ImplSource::TraitUpcasting(ImplSourceTraitUpcastingData { vtable_vptr_slot, nested })
     } else {

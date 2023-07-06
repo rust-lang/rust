@@ -1,5 +1,7 @@
 // run-pass
-// compile-flags: -C opt-level=0
+// revisions: current next
+//[current] compile-flags: -C opt-level=0
+//[next] compile-flags: -Ztrait-solver=next -C opt-level=0
 
 #![feature(dyn_star)]
 #![allow(incomplete_features)]
