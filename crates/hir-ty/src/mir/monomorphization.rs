@@ -29,8 +29,8 @@ use crate::{
 use super::{MirBody, MirLowerError, Operand, Rvalue, StatementKind, TerminatorKind};
 
 macro_rules! not_supported {
-    ($x: expr) => {
-        return Err(MirLowerError::NotSupported(format!($x)))
+    ($it: expr) => {
+        return Err(MirLowerError::NotSupported(format!($it)))
     };
 }
 
@@ -97,16 +97,16 @@ impl FallibleTypeFolder<Interner> for Filler<'_> {
         idx: chalk_ir::PlaceholderIndex,
         _outer_binder: DebruijnIndex,
     ) -> std::result::Result<chalk_ir::Const<Interner>, Self::Error> {
-        let x = from_placeholder_idx(self.db, idx);
-        let Some(idx) = self.generics.as_ref().and_then(|g| g.param_idx(x)) else {
+        let it = from_placeholder_idx(self.db, idx);
+        let Some(idx) = self.generics.as_ref().and_then(|g| g.param_idx(it)) else {
             not_supported!("missing idx in generics");
         };
         Ok(self
             .subst
             .as_slice(Interner)
             .get(idx)
-            .and_then(|x| x.constant(Interner))
-            .ok_or_else(|| MirLowerError::GenericArgNotProvided(x, self.subst.clone()))?
+            .and_then(|it| it.constant(Interner))
+            .ok_or_else(|| MirLowerError::GenericArgNotProvided(it, self.subst.clone()))?
             .clone())
     }
 
@@ -115,16 +115,16 @@ impl FallibleTypeFolder<Interner> for Filler<'_> {
         idx: chalk_ir::PlaceholderIndex,
         _outer_binder: DebruijnIndex,
     ) -> std::result::Result<Ty, Self::Error> {
-        let x = from_placeholder_idx(self.db, idx);
-        let Some(idx) = self.generics.as_ref().and_then(|g| g.param_idx(x)) else {
+        let it = from_placeholder_idx(self.db, idx);
+        let Some(idx) = self.generics.as_ref().and_then(|g| g.param_idx(it)) else {
             not_supported!("missing idx in generics");
         };
         Ok(self
             .subst
             .as_slice(Interner)
             .get(idx)
-            .and_then(|x| x.ty(Interner))
-            .ok_or_else(|| MirLowerError::GenericArgNotProvided(x, self.subst.clone()))?
+            .and_then(|it| it.ty(Interner))
+            .ok_or_else(|| MirLowerError::GenericArgNotProvided(it, self.subst.clone()))?
             .clone())
     }
 
@@ -180,7 +180,7 @@ impl Filler<'_> {
                                 MirLowerError::GenericArgNotProvided(
                                     self.generics
                                         .as_ref()
-                                        .and_then(|x| x.iter().nth(b.index))
+                                        .and_then(|it| it.iter().nth(b.index))
                                         .unwrap()
                                         .0,
                                     self.subst.clone(),

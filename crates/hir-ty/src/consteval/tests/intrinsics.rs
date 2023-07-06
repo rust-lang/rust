@@ -37,8 +37,8 @@ fn size_of_val() {
         }
 
         const GOAL: usize = {
-            let x: &[i32] = &[1, 2, 3];
-            size_of_val(x)
+            let it: &[i32] = &[1, 2, 3];
+            size_of_val(it)
         };
         "#,
         12,

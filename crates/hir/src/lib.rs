@@ -1235,7 +1235,7 @@ impl Adt {
     pub fn has_non_default_type_params(self, db: &dyn HirDatabase) -> bool {
         let subst = db.generic_defaults(self.into());
         subst.iter().any(|ty| match ty.skip_binders().data(Interner) {
-            GenericArgData::Ty(x) => x.is_unknown(),
+            GenericArgData::Ty(it) => it.is_unknown(),
             _ => false,
         })
     }
@@ -1636,11 +1636,11 @@ impl DefWithBody {
                 for moof in &borrowck_result.moved_out_of_ref {
                     let span: InFile<SyntaxNodePtr> = match moof.span {
                         mir::MirSpan::ExprId(e) => match source_map.expr_syntax(e) {
-                            Ok(s) => s.map(|x| x.into()),
+                            Ok(s) => s.map(|it| it.into()),
                             Err(_) => continue,
                         },
                         mir::MirSpan::PatId(p) => match source_map.pat_syntax(p) {
-                            Ok(s) => s.map(|x| match x {
+                            Ok(s) => s.map(|it| match it {
                                 Either::Left(e) => e.into(),
                                 Either::Right(e) => e.into(),
                             }),
@@ -1679,11 +1679,11 @@ impl DefWithBody {
                             for span in spans {
                                 let span: InFile<SyntaxNodePtr> = match span {
                                     mir::MirSpan::ExprId(e) => match source_map.expr_syntax(*e) {
-                                        Ok(s) => s.map(|x| x.into()),
+                                        Ok(s) => s.map(|it| it.into()),
                                         Err(_) => continue,
                                     },
                                     mir::MirSpan::PatId(p) => match source_map.pat_syntax(*p) {
-                                        Ok(s) => s.map(|x| match x {
+                                        Ok(s) => s.map(|it| match it {
                                             Either::Left(e) => e.into(),
                                             Either::Right(e) => e.into(),
                                         }),
@@ -1696,7 +1696,7 @@ impl DefWithBody {
                         }
                         (mir::MutabilityReason::Not, true) => {
                             if !infer.mutated_bindings_in_closure.contains(&binding_id) {
-                                let should_ignore = matches!(body[binding_id].name.as_str(), Some(x) if x.starts_with("_"));
+                                let should_ignore = matches!(body[binding_id].name.as_str(), Some(it) if it.starts_with("_"));
                                 if !should_ignore {
                                     acc.push(UnusedMut { local }.into())
                                 }
@@ -2294,7 +2294,7 @@ impl TypeAlias {
     pub fn has_non_default_type_params(self, db: &dyn HirDatabase) -> bool {
         let subst = db.generic_defaults(self.id.into());
         subst.iter().any(|ty| match ty.skip_binders().data(Interner) {
-            GenericArgData::Ty(x) => x.is_unknown(),
+            GenericArgData::Ty(it) => it.is_unknown(),
             _ => false,
         })
     }
@@ -2684,8 +2684,8 @@ impl GenericDef {
         let ty_params = generics.type_or_consts.iter().map(|(local_id, _)| {
             let toc = TypeOrConstParam { id: TypeOrConstParamId { parent: self.into(), local_id } };
             match toc.split(db) {
-                Either::Left(x) => GenericParam::ConstParam(x),
-                Either::Right(x) => GenericParam::TypeParam(x),
+                Either::Left(it) => GenericParam::ConstParam(it),
+                Either::Right(it) => GenericParam::TypeParam(it),
             }
         });
         self.lifetime_params(db)
@@ -2733,14 +2733,14 @@ pub struct LocalSource {
 impl LocalSource {
     pub fn as_ident_pat(&self) -> Option<&ast::IdentPat> {
         match &self.source.value {
-            Either::Left(x) => Some(x),
+            Either::Left(it) => Some(it),
             Either::Right(_) => None,
         }
     }
 
     pub fn into_ident_pat(self) -> Option<ast::IdentPat> {
         match self.source.value {
-            Either::Left(x) => Some(x),
+            Either::Left(it) => Some(it),
             Either::Right(_) => None,
         }
     }
@@ -2762,7 +2762,7 @@ impl LocalSource {
     }
 
     pub fn syntax_ptr(self) -> InFile<SyntaxNodePtr> {
-        self.source.map(|x| SyntaxNodePtr::new(x.syntax()))
+        self.source.map(|it| SyntaxNodePtr::new(it.syntax()))
     }
 }
 
@@ -2821,13 +2821,13 @@ impl Local {
         Type::new(db, def, ty)
     }
 
-    /// All definitions for this local. Example: `let (a$0, _) | (_, a$0) = x;`
+    /// All definitions for this local. Example: `let (a$0, _) | (_, a$0) = it;`
     pub fn sources(self, db: &dyn HirDatabase) -> Vec<LocalSource> {
         let (body, source_map) = db.body_with_source_map(self.parent);
         self.sources_(db, &body, &source_map).collect()
     }
 
-    /// The leftmost definition for this local. Example: `let (a$0, _) | (_, a) = x;`
+    /// The leftmost definition for this local. Example: `let (a$0, _) | (_, a) = it;`
     pub fn primary_source(self, db: &dyn HirDatabase) -> LocalSource {
         let (body, source_map) = db.body_with_source_map(self.parent);
         let src = self.sources_(db, &body, &source_map).next().unwrap();
@@ -3081,7 +3081,9 @@ impl TypeParam {
         let subst = TyBuilder::placeholder_subst(db, self.id.parent());
         let ty = ty.substitute(Interner, &subst);
         match ty.data(Interner) {
-            GenericArgData::Ty(x) => Some(Type::new_with_resolver_inner(db, &resolver, x.clone())),
+            GenericArgData::Ty(it) => {
+                Some(Type::new_with_resolver_inner(db, &resolver, it.clone()))
+            }
             _ => None,
         }
     }
@@ -3120,7 +3122,7 @@ impl ConstParam {
     pub fn name(self, db: &dyn HirDatabase) -> Name {
         let params = db.generic_params(self.id.parent());
         match params.type_or_consts[self.id.local_id()].name() {
-            Some(x) => x.clone(),
+            Some(it) => it.clone(),
             None => {
                 never!();
                 Name::missing()
@@ -3177,8 +3179,8 @@ impl TypeOrConstParam {
 
     pub fn ty(self, db: &dyn HirDatabase) -> Type {
         match self.split(db) {
-            Either::Left(x) => x.ty(db),
-            Either::Right(x) => x.ty(db),
+            Either::Left(it) => it.ty(db),
+            Either::Right(it) => it.ty(db),
         }
     }
 }
@@ -3676,9 +3678,9 @@ impl Type {
         };
         let parent_subst = TyBuilder::subst_for_def(db, trait_id, None)
             .push(self.ty.clone())
-            .fill(|x| {
+            .fill(|it| {
                 // FIXME: this code is not covered in tests.
-                match x {
+                match it {
                     ParamKind::Type => {
                         GenericArgData::Ty(args.next().unwrap().ty.clone()).intern(Interner)
                     }
@@ -3845,7 +3847,7 @@ impl Type {
 
     pub fn as_array(&self, db: &dyn HirDatabase) -> Option<(Type, usize)> {
         if let TyKind::Array(ty, len) = &self.ty.kind(Interner) {
-            try_const_usize(db, len).map(|x| (self.derived(ty.clone()), x as usize))
+            try_const_usize(db, len).map(|it| (self.derived(ty.clone()), it as usize))
         } else {
             None
         }

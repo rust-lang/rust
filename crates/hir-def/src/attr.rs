@@ -276,13 +276,13 @@ impl Attrs {
     }
 
     pub fn is_test(&self) -> bool {
-        self.iter().any(|x| {
-            x.path()
+        self.iter().any(|it| {
+            it.path()
                 .segments()
                 .iter()
                 .rev()
                 .zip(["core", "prelude", "v1", "test"].iter().rev())
-                .all(|x| x.0.as_str() == Some(x.1))
+                .all(|it| it.0.as_str() == Some(it.1))
         })
     }
 
@@ -304,7 +304,7 @@ use std::slice::Iter as SliceIter;
 pub enum DocAtom {
     /// eg. `#[doc(hidden)]`
     Flag(SmolStr),
-    /// eg. `#[doc(alias = "x")]`
+    /// eg. `#[doc(alias = "it")]`
     ///
     /// Note that a key can have multiple values that are all considered "active" at the same time.
     /// For example, `#[doc(alias = "x")]` and `#[doc(alias = "y")]`.

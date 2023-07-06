@@ -481,28 +481,28 @@ fn render_const_scalar(
         TyKind::Scalar(s) => match s {
             Scalar::Bool => write!(f, "{}", if b[0] == 0 { false } else { true }),
             Scalar::Char => {
-                let x = u128::from_le_bytes(pad16(b, false)) as u32;
-                let Ok(c) = char::try_from(x) else {
+                let it = u128::from_le_bytes(pad16(b, false)) as u32;
+                let Ok(c) = char::try_from(it) else {
                     return f.write_str("<unicode-error>");
                 };
                 write!(f, "{c:?}")
             }
             Scalar::Int(_) => {
-                let x = i128::from_le_bytes(pad16(b, true));
-                write!(f, "{x}")
+                let it = i128::from_le_bytes(pad16(b, true));
+                write!(f, "{it}")
             }
             Scalar::Uint(_) => {
-                let x = u128::from_le_bytes(pad16(b, false));
-                write!(f, "{x}")
+                let it = u128::from_le_bytes(pad16(b, false));
+                write!(f, "{it}")
             }
             Scalar::Float(fl) => match fl {
                 chalk_ir::FloatTy::F32 => {
-                    let x = f32::from_le_bytes(b.try_into().unwrap());
-                    write!(f, "{x:?}")
+                    let it = f32::from_le_bytes(b.try_into().unwrap());
+                    write!(f, "{it:?}")
                 }
                 chalk_ir::FloatTy::F64 => {
-                    let x = f64::from_le_bytes(b.try_into().unwrap());
-                    write!(f, "{x:?}")
+                    let it = f64::from_le_bytes(b.try_into().unwrap());
+                    write!(f, "{it:?}")
                 }
             },
         },
@@ -659,8 +659,8 @@ fn render_const_scalar(
         }
         TyKind::FnDef(..) => ty.hir_fmt(f),
         TyKind::Function(_) | TyKind::Raw(_, _) => {
-            let x = u128::from_le_bytes(pad16(b, false));
-            write!(f, "{:#X} as ", x)?;
+            let it = u128::from_le_bytes(pad16(b, false));
+            write!(f, "{:#X} as ", it)?;
             ty.hir_fmt(f)
         }
         TyKind::Array(ty, len) => {
@@ -736,7 +736,7 @@ fn render_variant_after_name(
                 }
                 write!(f, " }}")?;
             } else {
-                let mut it = it.map(|x| x.0);
+                let mut it = it.map(|it| it.0);
                 write!(f, "(")?;
                 if let Some(id) = it.next() {
                     render_field(f, id)?;
@@ -1278,19 +1278,20 @@ fn hir_fmt_generics(
                         i: usize,
                         parameters: &Substitution,
                     ) -> bool {
-                        if parameter.ty(Interner).map(|x| x.kind(Interner)) == Some(&TyKind::Error)
+                        if parameter.ty(Interner).map(|it| it.kind(Interner))
+                            == Some(&TyKind::Error)
                         {
                             return true;
                         }
                         if let Some(ConstValue::Concrete(c)) =
-                            parameter.constant(Interner).map(|x| &x.data(Interner).value)
+                            parameter.constant(Interner).map(|it| &it.data(Interner).value)
                         {
                             if c.interned == ConstScalar::Unknown {
                                 return true;
                             }
                         }
                         let default_parameter = match default_parameters.get(i) {
-                            Some(x) => x,
+                            Some(it) => it,
                             None => return true,
                         };
                         let actual_default =

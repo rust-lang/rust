@@ -24,8 +24,8 @@ pub use self::{
 };
 
 macro_rules! user_error {
-    ($x: expr) => {
-        return Err(LayoutError::UserError(format!($x)))
+    ($it: expr) => {
+        return Err(LayoutError::UserError(format!($it)))
     };
 }
 
@@ -90,13 +90,13 @@ fn layout_of_simd_ty(
     // Supported SIMD vectors are homogeneous ADTs with at least one field:
     //
     // * #[repr(simd)] struct S(T, T, T, T);
-    // * #[repr(simd)] struct S { x: T, y: T, z: T, w: T }
+    // * #[repr(simd)] struct S { it: T, y: T, z: T, w: T }
     // * #[repr(simd)] struct S([T; 4])
     //
     // where T is a primitive scalar (integer/float/pointer).
 
     let f0_ty = match fields.iter().next() {
-        Some(x) => x.1.clone().substitute(Interner, subst),
+        Some(it) => it.1.clone().substitute(Interner, subst),
         None => {
             user_error!("simd type with zero fields");
         }
@@ -230,7 +230,7 @@ pub fn layout_of_ty_query(
                 .iter(Interner)
                 .map(|k| db.layout_of_ty(k.assert_ty_ref(Interner).clone(), krate))
                 .collect::<Result<Vec<_>, _>>()?;
-            let fields = fields.iter().map(|x| &**x).collect::<Vec<_>>();
+            let fields = fields.iter().map(|it| &**it).collect::<Vec<_>>();
             let fields = fields.iter().collect::<Vec<_>>();
             cx.univariant(dl, &fields, &ReprOptions::default(), kind).ok_or(LayoutError::Unknown)?
         }
@@ -348,14 +348,14 @@ pub fn layout_of_ty_query(
             let (captures, _) = infer.closure_info(c);
             let fields = captures
                 .iter()
-                .map(|x| {
+                .map(|it| {
                     db.layout_of_ty(
-                        x.ty.clone().substitute(Interner, ClosureSubst(subst).parent_subst()),
+                        it.ty.clone().substitute(Interner, ClosureSubst(subst).parent_subst()),
                         krate,
                     )
                 })
                 .collect::<Result<Vec<_>, _>>()?;
-            let fields = fields.iter().map(|x| &**x).collect::<Vec<_>>();
+            let fields = fields.iter().map(|it| &**it).collect::<Vec<_>>();
             let fields = fields.iter().collect::<Vec<_>>();
             cx.univariant(dl, &fields, &ReprOptions::default(), StructKind::AlwaysSized)
                 .ok_or(LayoutError::Unknown)?

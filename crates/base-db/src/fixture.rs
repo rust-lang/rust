@@ -224,7 +224,7 @@ impl ChangeFixture {
                 false,
                 CrateOrigin::Local { repo: None, name: None },
                 default_target_data_layout
-                    .map(|x| x.into())
+                    .map(|it| it.into())
                     .ok_or_else(|| "target_data_layout unset".into()),
                 Some(toolchain),
             );

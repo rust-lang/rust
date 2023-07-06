@@ -928,7 +928,7 @@ impl InferenceContext<'_> {
                 if let TyKind::Ref(Mutability::Mut, _, inner) = derefed_callee.kind(Interner) {
                     if adjustments
                         .last()
-                        .map(|x| matches!(x.kind, Adjust::Borrow(_)))
+                        .map(|it| matches!(it.kind, Adjust::Borrow(_)))
                         .unwrap_or(true)
                     {
                         // prefer reborrow to move

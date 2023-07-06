@@ -559,10 +559,10 @@ impl ReceiverAdjustments {
             adjust.push(a);
         }
         if self.unsize_array {
-            ty = 'x: {
+            ty = 'it: {
                 if let TyKind::Ref(m, l, inner) = ty.kind(Interner) {
                     if let TyKind::Array(inner, _) = inner.kind(Interner) {
-                        break 'x TyKind::Ref(
+                        break 'it TyKind::Ref(
                             m.clone(),
                             l.clone(),
                             TyKind::Slice(inner.clone()).intern(Interner),
@@ -666,7 +666,7 @@ pub fn is_dyn_method(
     let self_ty = trait_ref.self_type_parameter(Interner);
     if let TyKind::Dyn(d) = self_ty.kind(Interner) {
         let is_my_trait_in_bounds =
-            d.bounds.skip_binders().as_slice(Interner).iter().any(|x| match x.skip_binders() {
+            d.bounds.skip_binders().as_slice(Interner).iter().any(|it| match it.skip_binders() {
                 // rustc doesn't accept `impl Foo<2> for dyn Foo<5>`, so if the trait id is equal, no matter
                 // what the generics are, we are sure that the method is come from the vtable.
                 WhereClause::Implemented(tr) => tr.trait_id == trait_ref.trait_id,
@@ -731,7 +731,7 @@ fn lookup_impl_assoc_item_for_trait_ref(
     let impls = db.trait_impls_in_deps(env.krate);
     let self_impls = match self_ty.kind(Interner) {
         TyKind::Adt(id, _) => {
-            id.0.module(db.upcast()).containing_block().map(|x| db.trait_impls_in_block(x))
+            id.0.module(db.upcast()).containing_block().map(|it| db.trait_impls_in_block(it))
         }
         _ => None,
     };
@@ -895,8 +895,8 @@ pub fn iterate_method_candidates_dyn(
             // (just as rustc does an autoderef and then autoref again).
 
             // We have to be careful about the order we're looking at candidates
-            // in here. Consider the case where we're resolving `x.clone()`
-            // where `x: &Vec<_>`. This resolves to the clone method with self
+            // in here. Consider the case where we're resolving `it.clone()`
+            // where `it: &Vec<_>`. This resolves to the clone method with self
             // type `Vec<_>`, *not* `&_`. I.e. we need to consider methods where
             // the receiver type exactly matches before cases where we have to
             // do autoref. But in the autoderef steps, the `&_` self type comes
@@ -1480,8 +1480,8 @@ fn generic_implements_goal(
         .push(self_ty.value.clone())
         .fill_with_bound_vars(DebruijnIndex::INNERMOST, kinds.len())
         .build();
-    kinds.extend(trait_ref.substitution.iter(Interner).skip(1).map(|x| {
-        let vk = match x.data(Interner) {
+    kinds.extend(trait_ref.substitution.iter(Interner).skip(1).map(|it| {
+        let vk = match it.data(Interner) {
             chalk_ir::GenericArgData::Ty(_) => {
                 chalk_ir::VariableKind::Ty(chalk_ir::TyVariableKind::General)
             }

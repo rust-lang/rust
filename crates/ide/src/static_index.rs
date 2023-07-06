@@ -73,7 +73,7 @@ impl TokenStore {
     }
 
     pub fn iter(self) -> impl Iterator<Item = (TokenId, TokenStaticData)> {
-        self.0.into_iter().enumerate().map(|(i, x)| (TokenId(i), x))
+        self.0.into_iter().enumerate().map(|(id, data)| (TokenId(id), data))
     }
 }
 
@@ -132,9 +132,9 @@ impl StaticIndex<'_> {
         // hovers
         let sema = hir::Semantics::new(self.db);
         let tokens_or_nodes = sema.parse(file_id).syntax().clone();
-        let tokens = tokens_or_nodes.descendants_with_tokens().filter_map(|x| match x {
+        let tokens = tokens_or_nodes.descendants_with_tokens().filter_map(|it| match it {
             syntax::NodeOrToken::Node(_) => None,
-            syntax::NodeOrToken::Token(x) => Some(x),
+            syntax::NodeOrToken::Token(it) => Some(it),
         });
         let hover_config = HoverConfig {
             links_in_hover: true,
@@ -154,28 +154,29 @@ impl StaticIndex<'_> {
             let range = token.text_range();
             let node = token.parent().unwrap();
             let def = match get_definition(&sema, token.clone()) {
-                Some(x) => x,
+                Some(it) => it,
                 None => continue,
             };
-            let id = if let Some(x) = self.def_map.get(&def) {
-                *x
+            let id = if let Some(it) = self.def_map.get(&def) {
+                *it
             } else {
-                let x = self.tokens.insert(TokenStaticData {
+                let it = self.tokens.insert(TokenStaticData {
                     hover: hover_for_definition(&sema, file_id, def, &node, &hover_config),
-                    definition: def
-                        .try_to_nav(self.db)
-                        .map(|x| FileRange { file_id: x.file_id, range: x.focus_or_full_range() }),
+                    definition: def.try_to_nav(self.db).map(|it| FileRange {
+                        file_id: it.file_id,
+                        range: it.focus_or_full_range(),
+                    }),
                     references: vec![],
                     moniker: current_crate.and_then(|cc| def_to_moniker(self.db, def, cc)),
                 });
-                self.def_map.insert(def, x);
-                x
+                self.def_map.insert(def, it);
+                it
             };
             let token = self.tokens.get_mut(id).unwrap();
             token.references.push(ReferenceData {
                 range: FileRange { range, file_id },
                 is_definition: match def.try_to_nav(self.db) {
-                    Some(x) => x.file_id == file_id && x.focus_or_full_range() == range,
+                    Some(it) => it.file_id == file_id && it.focus_or_full_range() == range,
                     None => false,
                 },
             });
@@ -216,8 +217,8 @@ impl StaticIndex<'_> {
 fn get_definition(sema: &Semantics<'_, RootDatabase>, token: SyntaxToken) -> Option<Definition> {
     for token in sema.descend_into_macros(token) {
         let def = IdentClass::classify_token(sema, &token).map(IdentClass::definitions_no_ops);
-        if let Some(&[x]) = def.as_deref() {
-            return Some(x);
+        if let Some(&[it]) = def.as_deref() {
+            return Some(it);
         }
     }
     None
@@ -233,14 +234,14 @@ mod tests {
     fn check_all_ranges(ra_fixture: &str) {
         let (analysis, ranges) = fixture::annotations_without_marker(ra_fixture);
         let s = StaticIndex::compute(&analysis);
-        let mut range_set: HashSet<_> = ranges.iter().map(|x| x.0).collect();
+        let mut range_set: HashSet<_> = ranges.iter().map(|it| it.0).collect();
         for f in s.files {
             for (range, _) in f.tokens {
-                let x = FileRange { file_id: f.file_id, range };
-                if !range_set.contains(&x) {
-                    panic!("additional range {x:?}");
+                let it = FileRange { file_id: f.file_id, range };
+                if !range_set.contains(&it) {
+                    panic!("additional range {it:?}");
                 }
-                range_set.remove(&x);
+                range_set.remove(&it);
             }
         }
         if !range_set.is_empty() {
@@ -251,17 +252,17 @@ mod tests {
     fn check_definitions(ra_fixture: &str) {
         let (analysis, ranges) = fixture::annotations_without_marker(ra_fixture);
         let s = StaticIndex::compute(&analysis);
-        let mut range_set: HashSet<_> = ranges.iter().map(|x| x.0).collect();
+        let mut range_set: HashSet<_> = ranges.iter().map(|it| it.0).collect();
         for (_, t) in s.tokens.iter() {
-            if let Some(x) = t.definition {
-                if x.range.start() == TextSize::from(0) {
+            if let Some(t) = t.definition {
+                if t.range.start() == TextSize::from(0) {
                     // ignore definitions that are whole of file
                     continue;
                 }
-                if !range_set.contains(&x) {
-                    panic!("additional definition {x:?}");
+                if !range_set.contains(&t) {
+                    panic!("additional definition {t:?}");
                 }
-                range_set.remove(&x);
+                range_set.remove(&t);
             }
         }
         if !range_set.is_empty() {

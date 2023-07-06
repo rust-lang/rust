@@ -139,7 +139,7 @@ impl HirPlace {
     ) -> CaptureKind {
         match current_capture {
             CaptureKind::ByRef(BorrowKind::Mut { .. }) => {
-                if self.projections[len..].iter().any(|x| *x == ProjectionElem::Deref) {
+                if self.projections[len..].iter().any(|it| *it == ProjectionElem::Deref) {
                     current_capture = CaptureKind::ByRef(BorrowKind::Unique);
                 }
             }
@@ -199,7 +199,7 @@ impl CapturedItem {
                             .to_string(),
                         VariantData::Tuple(fields) => fields
                             .iter()
-                            .position(|x| x.0 == f.local_id)
+                            .position(|it| it.0 == f.local_id)
                             .unwrap_or_default()
                             .to_string(),
                         VariantData::Unit => "[missing field]".to_string(),
@@ -439,10 +439,10 @@ impl InferenceContext<'_> {
     }
 
     fn walk_expr(&mut self, tgt_expr: ExprId) {
-        if let Some(x) = self.result.expr_adjustments.get_mut(&tgt_expr) {
+        if let Some(it) = self.result.expr_adjustments.get_mut(&tgt_expr) {
             // FIXME: this take is completely unneeded, and just is here to make borrow checker
             // happy. Remove it if you can.
-            let x_taken = mem::take(x);
+            let x_taken = mem::take(it);
             self.walk_expr_with_adjust(tgt_expr, &x_taken);
             *self.result.expr_adjustments.get_mut(&tgt_expr).unwrap() = x_taken;
         } else {
@@ -536,7 +536,7 @@ impl InferenceContext<'_> {
                 if let &Some(expr) = spread {
                     self.consume_expr(expr);
                 }
-                self.consume_exprs(fields.iter().map(|x| x.expr));
+                self.consume_exprs(fields.iter().map(|it| it.expr));
             }
             Expr::Field { expr, name: _ } => self.select_from_expr(*expr),
             Expr::UnaryOp { expr, op: UnaryOp::Deref } => {
@@ -548,7 +548,7 @@ impl InferenceContext<'_> {
                 } else if let Some((f, _)) = self.result.method_resolution(tgt_expr) {
                     let mutability = 'b: {
                         if let Some(deref_trait) =
-                            self.resolve_lang_item(LangItem::DerefMut).and_then(|x| x.as_trait())
+                            self.resolve_lang_item(LangItem::DerefMut).and_then(|it| it.as_trait())
                         {
                             if let Some(deref_fn) =
                                 self.db.trait_data(deref_trait).method_by_name(&name![deref_mut])
@@ -615,8 +615,8 @@ impl InferenceContext<'_> {
                         "We sort closures, so we should always have data for inner closures",
                     );
                 let mut cc = mem::take(&mut self.current_captures);
-                cc.extend(captures.iter().filter(|x| self.is_upvar(&x.place)).map(|x| {
-                    CapturedItemWithoutTy { place: x.place.clone(), kind: x.kind, span: x.span }
+                cc.extend(captures.iter().filter(|it| self.is_upvar(&it.place)).map(|it| {
+                    CapturedItemWithoutTy { place: it.place.clone(), kind: it.kind, span: it.span }
                 }));
                 self.current_captures = cc;
             }
@@ -694,7 +694,7 @@ impl InferenceContext<'_> {
                 },
             },
         }
-        if self.result.pat_adjustments.get(&p).map_or(false, |x| !x.is_empty()) {
+        if self.result.pat_adjustments.get(&p).map_or(false, |it| !it.is_empty()) {
             for_mut = BorrowKind::Unique;
         }
         self.body.walk_pats_shallow(p, |p| self.walk_pat_inner(p, update_result, for_mut));
@@ -706,9 +706,9 @@ impl InferenceContext<'_> {
 
     fn expr_ty_after_adjustments(&self, e: ExprId) -> Ty {
         let mut ty = None;
-        if let Some(x) = self.result.expr_adjustments.get(&e) {
-            if let Some(x) = x.last() {
-                ty = Some(x.target.clone());
+        if let Some(it) = self.result.expr_adjustments.get(&e) {
+            if let Some(it) = it.last() {
+                ty = Some(it.target.clone());
             }
         }
         ty.unwrap_or_else(|| self.expr_ty(e))
@@ -727,7 +727,7 @@ impl InferenceContext<'_> {
             // FIXME: We handle closure as a special case, since chalk consider every closure as copy. We
             // should probably let chalk know which closures are copy, but I don't know how doing it
             // without creating query cycles.
-            return self.result.closure_info.get(id).map(|x| x.1 == FnTrait::Fn).unwrap_or(true);
+            return self.result.closure_info.get(id).map(|it| it.1 == FnTrait::Fn).unwrap_or(true);
         }
         self.table.resolve_completely(ty).is_copy(self.db, self.owner)
     }
@@ -748,7 +748,7 @@ impl InferenceContext<'_> {
     }
 
     fn minimize_captures(&mut self) {
-        self.current_captures.sort_by_key(|x| x.place.projections.len());
+        self.current_captures.sort_by_key(|it| it.place.projections.len());
         let mut hash_map = HashMap::<HirPlace, usize>::new();
         let result = mem::take(&mut self.current_captures);
         for item in result {
@@ -759,7 +759,7 @@ impl InferenceContext<'_> {
                     break Some(*k);
                 }
                 match it.next() {
-                    Some(x) => lookup_place.projections.push(x.clone()),
+                    Some(it) => lookup_place.projections.push(it.clone()),
                     None => break None,
                 }
             };
@@ -780,7 +780,7 @@ impl InferenceContext<'_> {
     }
 
     fn consume_with_pat(&mut self, mut place: HirPlace, pat: PatId) {
-        let cnt = self.result.pat_adjustments.get(&pat).map(|x| x.len()).unwrap_or_default();
+        let cnt = self.result.pat_adjustments.get(&pat).map(|it| it.len()).unwrap_or_default();
         place.projections = place
             .projections
             .iter()
@@ -894,10 +894,10 @@ impl InferenceContext<'_> {
 
     fn closure_kind(&self) -> FnTrait {
         let mut r = FnTrait::Fn;
-        for x in &self.current_captures {
+        for it in &self.current_captures {
             r = cmp::min(
                 r,
-                match &x.kind {
+                match &it.kind {
                     CaptureKind::ByRef(BorrowKind::Unique | BorrowKind::Mut { .. }) => {
                         FnTrait::FnMut
                     }
@@ -933,7 +933,7 @@ impl InferenceContext<'_> {
         }
         self.minimize_captures();
         let result = mem::take(&mut self.current_captures);
-        let captures = result.into_iter().map(|x| x.with_ty(self)).collect::<Vec<_>>();
+        let captures = result.into_iter().map(|it| it.with_ty(self)).collect::<Vec<_>>();
         self.result.closure_info.insert(closure, (captures, closure_kind));
         closure_kind
     }
@@ -973,20 +973,20 @@ impl InferenceContext<'_> {
     fn sort_closures(&mut self) -> Vec<(ClosureId, Vec<(Ty, Ty, Vec<Ty>, ExprId)>)> {
         let mut deferred_closures = mem::take(&mut self.deferred_closures);
         let mut dependents_count: FxHashMap<ClosureId, usize> =
-            deferred_closures.keys().map(|x| (*x, 0)).collect();
+            deferred_closures.keys().map(|it| (*it, 0)).collect();
         for (_, deps) in &self.closure_dependencies {
             for dep in deps {
                 *dependents_count.entry(*dep).or_default() += 1;
             }
         }
         let mut queue: Vec<_> =
-            deferred_closures.keys().copied().filter(|x| dependents_count[x] == 0).collect();
+            deferred_closures.keys().copied().filter(|it| dependents_count[it] == 0).collect();
         let mut result = vec![];
-        while let Some(x) = queue.pop() {
-            if let Some(d) = deferred_closures.remove(&x) {
-                result.push((x, d));
+        while let Some(it) = queue.pop() {
+            if let Some(d) = deferred_closures.remove(&it) {
+                result.push((it, d));
             }
-            for dep in self.closure_dependencies.get(&x).into_iter().flat_map(|x| x.iter()) {
+            for dep in self.closure_dependencies.get(&it).into_iter().flat_map(|it| it.iter()) {
                 let cnt = dependents_count.get_mut(dep).unwrap();
                 *cnt -= 1;
                 if *cnt == 0 {

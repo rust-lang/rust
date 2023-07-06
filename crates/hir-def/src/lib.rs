@@ -406,14 +406,14 @@ impl TypeParamId {
 
 impl TypeParamId {
     /// Caller should check if this toc id really belongs to a type
-    pub fn from_unchecked(x: TypeOrConstParamId) -> Self {
-        Self(x)
+    pub fn from_unchecked(it: TypeOrConstParamId) -> Self {
+        Self(it)
     }
 }
 
 impl From<TypeParamId> for TypeOrConstParamId {
-    fn from(x: TypeParamId) -> Self {
-        x.0
+    fn from(it: TypeParamId) -> Self {
+        it.0
     }
 }
 
@@ -432,14 +432,14 @@ impl ConstParamId {
 
 impl ConstParamId {
     /// Caller should check if this toc id really belongs to a const
-    pub fn from_unchecked(x: TypeOrConstParamId) -> Self {
-        Self(x)
+    pub fn from_unchecked(it: TypeOrConstParamId) -> Self {
+        Self(it)
     }
 }
 
 impl From<ConstParamId> for TypeOrConstParamId {
-    fn from(x: ConstParamId) -> Self {
-        x.0
+    fn from(it: ConstParamId) -> Self {
+        it.0
     }
 }
 
@@ -562,14 +562,14 @@ pub enum TypeOwnerId {
 impl TypeOwnerId {
     fn as_generic_def_id(self) -> Option<GenericDefId> {
         Some(match self {
-            TypeOwnerId::FunctionId(x) => GenericDefId::FunctionId(x),
-            TypeOwnerId::ConstId(x) => GenericDefId::ConstId(x),
-            TypeOwnerId::AdtId(x) => GenericDefId::AdtId(x),
-            TypeOwnerId::TraitId(x) => GenericDefId::TraitId(x),
-            TypeOwnerId::TraitAliasId(x) => GenericDefId::TraitAliasId(x),
-            TypeOwnerId::TypeAliasId(x) => GenericDefId::TypeAliasId(x),
-            TypeOwnerId::ImplId(x) => GenericDefId::ImplId(x),
-            TypeOwnerId::EnumVariantId(x) => GenericDefId::EnumVariantId(x),
+            TypeOwnerId::FunctionId(it) => GenericDefId::FunctionId(it),
+            TypeOwnerId::ConstId(it) => GenericDefId::ConstId(it),
+            TypeOwnerId::AdtId(it) => GenericDefId::AdtId(it),
+            TypeOwnerId::TraitId(it) => GenericDefId::TraitId(it),
+            TypeOwnerId::TraitAliasId(it) => GenericDefId::TraitAliasId(it),
+            TypeOwnerId::TypeAliasId(it) => GenericDefId::TypeAliasId(it),
+            TypeOwnerId::ImplId(it) => GenericDefId::ImplId(it),
+            TypeOwnerId::EnumVariantId(it) => GenericDefId::EnumVariantId(it),
             TypeOwnerId::InTypeConstId(_) | TypeOwnerId::ModuleId(_) | TypeOwnerId::StaticId(_) => {
                 return None
             }
@@ -592,15 +592,15 @@ impl_from!(
     for TypeOwnerId
 );
 
-// Every `DefWithBodyId` is a type owner, since bodies can contain type (e.g. `{ let x: Type = _; }`)
+// Every `DefWithBodyId` is a type owner, since bodies can contain type (e.g. `{ let it: Type = _; }`)
 impl From<DefWithBodyId> for TypeOwnerId {
     fn from(value: DefWithBodyId) -> Self {
         match value {
-            DefWithBodyId::FunctionId(x) => x.into(),
-            DefWithBodyId::StaticId(x) => x.into(),
-            DefWithBodyId::ConstId(x) => x.into(),
-            DefWithBodyId::InTypeConstId(x) => x.into(),
-            DefWithBodyId::VariantId(x) => x.into(),
+            DefWithBodyId::FunctionId(it) => it.into(),
+            DefWithBodyId::StaticId(it) => it.into(),
+            DefWithBodyId::ConstId(it) => it.into(),
+            DefWithBodyId::InTypeConstId(it) => it.into(),
+            DefWithBodyId::VariantId(it) => it.into(),
         }
     }
 }
@@ -608,14 +608,14 @@ impl From<DefWithBodyId> for TypeOwnerId {
 impl From<GenericDefId> for TypeOwnerId {
     fn from(value: GenericDefId) -> Self {
         match value {
-            GenericDefId::FunctionId(x) => x.into(),
-            GenericDefId::AdtId(x) => x.into(),
-            GenericDefId::TraitId(x) => x.into(),
-            GenericDefId::TraitAliasId(x) => x.into(),
-            GenericDefId::TypeAliasId(x) => x.into(),
-            GenericDefId::ImplId(x) => x.into(),
-            GenericDefId::EnumVariantId(x) => x.into(),
-            GenericDefId::ConstId(x) => x.into(),
+            GenericDefId::FunctionId(it) => it.into(),
+            GenericDefId::AdtId(it) => it.into(),
+            GenericDefId::TraitId(it) => it.into(),
+            GenericDefId::TraitAliasId(it) => it.into(),
+            GenericDefId::TypeAliasId(it) => it.into(),
+            GenericDefId::ImplId(it) => it.into(),
+            GenericDefId::EnumVariantId(it) => it.into(),
+            GenericDefId::ConstId(it) => it.into(),
         }
     }
 }
@@ -730,7 +730,7 @@ impl GeneralConstId {
                 .const_data(const_id)
                 .name
                 .as_ref()
-                .and_then(|x| x.as_str())
+                .and_then(|it| it.as_str())
                 .unwrap_or("_")
                 .to_owned(),
             GeneralConstId::ConstBlockId(id) => format!("{{anonymous const {id:?}}}"),
@@ -972,17 +972,17 @@ impl HasModule for MacroId {
 impl HasModule for TypeOwnerId {
     fn module(&self, db: &dyn db::DefDatabase) -> ModuleId {
         match self {
-            TypeOwnerId::FunctionId(x) => x.lookup(db).module(db),
-            TypeOwnerId::StaticId(x) => x.lookup(db).module(db),
-            TypeOwnerId::ConstId(x) => x.lookup(db).module(db),
-            TypeOwnerId::InTypeConstId(x) => x.lookup(db).owner.module(db),
-            TypeOwnerId::AdtId(x) => x.module(db),
-            TypeOwnerId::TraitId(x) => x.lookup(db).container,
-            TypeOwnerId::TraitAliasId(x) => x.lookup(db).container,
-            TypeOwnerId::TypeAliasId(x) => x.lookup(db).module(db),
-            TypeOwnerId::ImplId(x) => x.lookup(db).container,
-            TypeOwnerId::EnumVariantId(x) => x.parent.lookup(db).container,
-            TypeOwnerId::ModuleId(x) => *x,
+            TypeOwnerId::FunctionId(it) => it.lookup(db).module(db),
+            TypeOwnerId::StaticId(it) => it.lookup(db).module(db),
+            TypeOwnerId::ConstId(it) => it.lookup(db).module(db),
+            TypeOwnerId::InTypeConstId(it) => it.lookup(db).owner.module(db),
+            TypeOwnerId::AdtId(it) => it.module(db),
+            TypeOwnerId::TraitId(it) => it.lookup(db).container,
+            TypeOwnerId::TraitAliasId(it) => it.lookup(db).container,
+            TypeOwnerId::TypeAliasId(it) => it.lookup(db).module(db),
+            TypeOwnerId::ImplId(it) => it.lookup(db).container,
+            TypeOwnerId::EnumVariantId(it) => it.parent.lookup(db).container,
+            TypeOwnerId::ModuleId(it) => *it,
         }
     }
 }

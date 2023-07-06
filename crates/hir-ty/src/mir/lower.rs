@@ -146,12 +146,12 @@ impl MirLowerError {
                     ConstEvalError::MirEvalError(e) => e.pretty_print(f, db, span_formatter)?,
                 }
             }
-            MirLowerError::MissingFunctionDefinition(owner, x) => {
+            MirLowerError::MissingFunctionDefinition(owner, it) => {
                 let body = db.body(*owner);
                 writeln!(
                     f,
                     "Missing function definition for {}",
-                    body.pretty_print_expr(db.upcast(), *owner, *x)
+                    body.pretty_print_expr(db.upcast(), *owner, *it)
                 )?;
             }
             MirLowerError::TypeMismatch(e) => {
@@ -202,15 +202,15 @@ impl MirLowerError {
 }
 
 macro_rules! not_supported {
-    ($x: expr) => {
-        return Err(MirLowerError::NotSupported(format!($x)))
+    ($it: expr) => {
+        return Err(MirLowerError::NotSupported(format!($it)))
     };
 }
 
 macro_rules! implementation_error {
-    ($x: expr) => {{
-        ::stdx::never!("MIR lower implementation bug: {}", format!($x));
-        return Err(MirLowerError::ImplementationError(format!($x)));
+    ($it: expr) => {{
+        ::stdx::never!("MIR lower implementation bug: {}", format!($it));
+        return Err(MirLowerError::ImplementationError(format!($it)));
     }};
 }
 
@@ -490,8 +490,8 @@ impl<'ctx> MirLowerCtx<'ctx> {
                         // It's probably a unit struct or a zero sized function, so no action is needed.
                         Ok(Some(current))
                     }
-                    x => {
-                        not_supported!("unknown name {x:?} in value name space");
+                    it => {
+                        not_supported!("unknown name {it:?} in value name space");
                     }
                 }
             }
@@ -799,8 +799,8 @@ impl<'ctx> MirLowerCtx<'ctx> {
             Expr::Yield { .. } => not_supported!("yield"),
             Expr::RecordLit { fields, path, spread, ellipsis: _, is_assignee_expr: _ } => {
                 let spread_place = match spread {
-                    &Some(x) => {
-                        let Some((p, c)) = self.lower_expr_as_place(current, x, true)? else {
+                    &Some(it) => {
+                        let Some((p, c)) = self.lower_expr_as_place(current, it, true)? else {
                             return Ok(None);
                         };
                         current = c;
@@ -840,8 +840,8 @@ impl<'ctx> MirLowerCtx<'ctx> {
                                     Some(sp) => operands
                                         .into_iter()
                                         .enumerate()
-                                        .map(|(i, x)| match x {
-                                            Some(x) => x,
+                                        .map(|(i, it)| match it {
+                                            Some(it) => it,
                                             None => {
                                                 let p =
                                                     sp.project(ProjectionElem::Field(FieldId {
@@ -893,7 +893,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                 Ok(Some(current))
             }
             Expr::Cast { expr, type_ref: _ } => {
-                let Some((x, current)) = self.lower_expr_to_some_operand(*expr, current)? else {
+                let Some((it, current)) = self.lower_expr_to_some_operand(*expr, current)? else {
                     return Ok(None);
                 };
                 let source_ty = self.infer[*expr].clone();
@@ -901,7 +901,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                 self.push_assignment(
                     current,
                     place,
-                    Rvalue::Cast(cast_kind(&source_ty, &target_ty)?, x, target_ty),
+                    Rvalue::Cast(cast_kind(&source_ty, &target_ty)?, it, target_ty),
                     expr_id.into(),
                 );
                 Ok(Some(current))
@@ -1003,8 +1003,8 @@ impl<'ctx> MirLowerCtx<'ctx> {
                             .infer
                             .expr_adjustments
                             .get(lhs)
-                            .and_then(|x| x.split_last())
-                            .map(|x| x.1)
+                            .and_then(|it| it.split_last())
+                            .map(|it| it.1)
                             .ok_or(MirLowerError::TypeError(
                                 "adjustment of binary op was missing",
                             ))?;
@@ -1107,15 +1107,15 @@ impl<'ctx> MirLowerCtx<'ctx> {
                 };
                 let mut lp = None;
                 let mut rp = None;
-                if let Some(x) = lhs {
-                    let Some((o, c)) = self.lower_expr_to_some_operand(x, current)? else {
+                if let Some(it) = lhs {
+                    let Some((o, c)) = self.lower_expr_to_some_operand(it, current)? else {
                         return Ok(None);
                     };
                     lp = Some(o);
                     current = c;
                 }
-                if let Some(x) = rhs {
-                    let Some((o, c)) = self.lower_expr_to_some_operand(x, current)? else {
+                if let Some(it) = rhs {
+                    let Some((o, c)) = self.lower_expr_to_some_operand(it, current)? else {
                         return Ok(None);
                     };
                     rp = Some(o);
@@ -1131,8 +1131,8 @@ impl<'ctx> MirLowerCtx<'ctx> {
                             .variant_data
                             .fields()
                             .iter()
-                            .map(|x| {
-                                let o = match x.1.name.as_str() {
+                            .map(|it| {
+                                let o = match it.1.name.as_str() {
                                     Some("start") => lp.take(),
                                     Some("end") => rp.take(),
                                     Some("exhausted") => {
@@ -1164,11 +1164,11 @@ impl<'ctx> MirLowerCtx<'ctx> {
                             .projections
                             .clone()
                             .into_iter()
-                            .map(|x| match x {
+                            .map(|it| match it {
                                 ProjectionElem::Deref => ProjectionElem::Deref,
-                                ProjectionElem::Field(x) => ProjectionElem::Field(x),
-                                ProjectionElem::TupleOrClosureField(x) => {
-                                    ProjectionElem::TupleOrClosureField(x)
+                                ProjectionElem::Field(it) => ProjectionElem::Field(it),
+                                ProjectionElem::TupleOrClosureField(it) => {
+                                    ProjectionElem::TupleOrClosureField(it)
                                 }
                                 ProjectionElem::ConstantIndex { offset, from_end } => {
                                     ProjectionElem::ConstantIndex { offset, from_end }
@@ -1176,8 +1176,8 @@ impl<'ctx> MirLowerCtx<'ctx> {
                                 ProjectionElem::Subslice { from, to } => {
                                     ProjectionElem::Subslice { from, to }
                                 }
-                                ProjectionElem::OpaqueCast(x) => ProjectionElem::OpaqueCast(x),
-                                ProjectionElem::Index(x) => match x {},
+                                ProjectionElem::OpaqueCast(it) => ProjectionElem::OpaqueCast(it),
+                                ProjectionElem::Index(it) => match it {},
                             })
                             .collect(),
                     };
@@ -1209,8 +1209,8 @@ impl<'ctx> MirLowerCtx<'ctx> {
             Expr::Tuple { exprs, is_assignee_expr: _ } => {
                 let Some(values) = exprs
                     .iter()
-                    .map(|x| {
-                        let Some((o, c)) = self.lower_expr_to_some_operand(*x, current)? else {
+                    .map(|it| {
+                        let Some((o, c)) = self.lower_expr_to_some_operand(*it, current)? else {
                             return Ok(None);
                         };
                         current = c;
@@ -1239,8 +1239,8 @@ impl<'ctx> MirLowerCtx<'ctx> {
                     };
                     let Some(values) = elements
                         .iter()
-                        .map(|x| {
-                            let Some((o, c)) = self.lower_expr_to_some_operand(*x, current)? else {
+                        .map(|it| {
+                            let Some((o, c)) = self.lower_expr_to_some_operand(*it, current)? else {
                                 return Ok(None);
                             };
                             current = c;
@@ -1285,7 +1285,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
 
     fn placeholder_subst(&mut self) -> Substitution {
         let placeholder_subst = match self.owner.as_generic_def_id() {
-            Some(x) => TyBuilder::placeholder_subst(self.db, x),
+            Some(it) => TyBuilder::placeholder_subst(self.db, it),
             None => Substitution::empty(Interner),
         };
         placeholder_subst
@@ -1375,8 +1375,8 @@ impl<'ctx> MirLowerCtx<'ctx> {
             }
             hir_def::hir::Literal::Char(c) => u32::from(*c).to_le_bytes().into(),
             hir_def::hir::Literal::Bool(b) => vec![*b as u8],
-            hir_def::hir::Literal::Int(x, _) => x.to_le_bytes()[0..size].into(),
-            hir_def::hir::Literal::Uint(x, _) => x.to_le_bytes()[0..size].into(),
+            hir_def::hir::Literal::Int(it, _) => it.to_le_bytes()[0..size].into(),
+            hir_def::hir::Literal::Uint(it, _) => it.to_le_bytes()[0..size].into(),
             hir_def::hir::Literal::Float(f, _) => match size {
                 8 => f.into_f64().to_le_bytes().into(),
                 4 => f.into_f32().to_le_bytes().into(),
@@ -1526,9 +1526,9 @@ impl<'ctx> MirLowerCtx<'ctx> {
 
     fn expr_ty_after_adjustments(&self, e: ExprId) -> Ty {
         let mut ty = None;
-        if let Some(x) = self.infer.expr_adjustments.get(&e) {
-            if let Some(x) = x.last() {
-                ty = Some(x.target.clone());
+        if let Some(it) = self.infer.expr_adjustments.get(&e) {
+            if let Some(it) = it.last() {
+                ty = Some(it.target.clone());
             }
         }
         ty.unwrap_or_else(|| self.expr_ty_without_adjust(e))
@@ -1550,7 +1550,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
 
     fn discr_temp_place(&mut self, current: BasicBlockId) -> Place {
         match &self.discr_temp {
-            Some(x) => x.clone(),
+            Some(it) => it.clone(),
             None => {
                 let tmp: Place = self
                     .temp(TyBuilder::discr_ty(), current, MirSpan::Unknown)
@@ -1597,7 +1597,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
     }
 
     fn has_adjustments(&self, expr_id: ExprId) -> bool {
-        !self.infer.expr_adjustments.get(&expr_id).map(|x| x.is_empty()).unwrap_or(true)
+        !self.infer.expr_adjustments.get(&expr_id).map(|it| it.is_empty()).unwrap_or(true)
     }
 
     fn merge_blocks(
@@ -1627,7 +1627,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
             ))?
             .end
         {
-            Some(x) => x,
+            Some(it) => it,
             None => {
                 let s = self.new_basic_block();
                 self.current_loop_blocks
@@ -1751,10 +1751,10 @@ impl<'ctx> MirLowerCtx<'ctx> {
         pick_binding: impl Fn(BindingId) -> bool,
     ) -> Result<BasicBlockId> {
         let base_param_count = self.result.param_locals.len();
-        self.result.param_locals.extend(params.clone().map(|(x, ty)| {
+        self.result.param_locals.extend(params.clone().map(|(it, ty)| {
             let local_id = self.result.locals.alloc(Local { ty });
             self.drop_scopes.last_mut().unwrap().locals.push(local_id);
-            if let Pat::Bind { id, subpat: None } = self.body[x] {
+            if let Pat::Bind { id, subpat: None } = self.body[it] {
                 if matches!(
                     self.body.bindings[id].mode,
                     BindingAnnotation::Unannotated | BindingAnnotation::Mutable
@@ -1795,7 +1795,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
 
     fn binding_local(&self, b: BindingId) -> Result<LocalId> {
         match self.result.binding_locals.get(b) {
-            Some(x) => Ok(*x),
+            Some(it) => Ok(*it),
             None => {
                 // FIXME: It should never happens, but currently it will happen in `const_dependent_on_local` test, which
                 // is a hir lowering problem IMO.
@@ -1945,7 +1945,7 @@ pub fn mir_body_for_closure_query(
         implementation_error!("closure has not callable sig");
     };
     let current = ctx.lower_params_and_bindings(
-        args.iter().zip(sig.params().iter()).map(|(x, y)| (*x, y.clone())),
+        args.iter().zip(sig.params().iter()).map(|(it, y)| (*it, y.clone())),
         |_| true,
     )?;
     if let Some(current) = ctx.lower_expr_to_place(*root, return_slot().into(), current)? {
@@ -1964,34 +1964,35 @@ pub fn mir_body_for_closure_query(
         FnTrait::FnMut | FnTrait::Fn => vec![ProjectionElem::Deref],
     };
     ctx.result.walk_places(|p| {
-        if let Some(x) = upvar_map.get(&p.local) {
-            let r = x.iter().find(|x| {
-                if p.projection.len() < x.0.place.projections.len() {
+        if let Some(it) = upvar_map.get(&p.local) {
+            let r = it.iter().find(|it| {
+                if p.projection.len() < it.0.place.projections.len() {
                     return false;
                 }
-                for (x, y) in p.projection.iter().zip(x.0.place.projections.iter()) {
-                    match (x, y) {
+                for (it, y) in p.projection.iter().zip(it.0.place.projections.iter()) {
+                    match (it, y) {
                         (ProjectionElem::Deref, ProjectionElem::Deref) => (),
-                        (ProjectionElem::Field(x), ProjectionElem::Field(y)) if x == y => (),
+                        (ProjectionElem::Field(it), ProjectionElem::Field(y)) if it == y => (),
                         (
-                            ProjectionElem::TupleOrClosureField(x),
+                            ProjectionElem::TupleOrClosureField(it),
                             ProjectionElem::TupleOrClosureField(y),
-                        ) if x == y => (),
+                        ) if it == y => (),
                         _ => return false,
                     }
                 }
                 true
             });
             match r {
-                Some(x) => {
+                Some(it) => {
                     p.local = closure_local;
                     let mut next_projs = closure_projection.clone();
-                    next_projs.push(PlaceElem::TupleOrClosureField(x.1));
+                    next_projs.push(PlaceElem::TupleOrClosureField(it.1));
                     let prev_projs = mem::take(&mut p.projection);
-                    if x.0.kind != CaptureKind::ByValue {
+                    if it.0.kind != CaptureKind::ByValue {
                         next_projs.push(ProjectionElem::Deref);
                     }
-                    next_projs.extend(prev_projs.iter().cloned().skip(x.0.place.projections.len()));
+                    next_projs
+                        .extend(prev_projs.iter().cloned().skip(it.0.place.projections.len()));
                     p.projection = next_projs.into();
                 }
                 None => err = Some(p.clone()),
@@ -2051,8 +2052,8 @@ pub fn lower_to_mir(
     // need to take this input explicitly.
     root_expr: ExprId,
 ) -> Result<MirBody> {
-    if let Some((_, x)) = infer.type_mismatches().next() {
-        return Err(MirLowerError::TypeMismatch(x.clone()));
+    if let Some((_, it)) = infer.type_mismatches().next() {
+        return Err(MirLowerError::TypeMismatch(it.clone()));
     }
     let mut ctx = MirLowerCtx::new(db, owner, body, infer);
     // 0 is return local
@@ -2078,7 +2079,7 @@ pub fn lower_to_mir(
                     body.params
                         .iter()
                         .zip(callable_sig.params().iter())
-                        .map(|(x, y)| (*x, y.clone())),
+                        .map(|(it, y)| (*it, y.clone())),
                     binding_picker,
                 )?;
             }

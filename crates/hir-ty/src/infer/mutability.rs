@@ -73,12 +73,12 @@ impl InferenceContext<'_> {
                 self.infer_mut_expr(c, Mutability::Not);
                 self.infer_mut_expr(body, Mutability::Not);
             }
-            Expr::MethodCall { receiver: x, method_name: _, args, generic_args: _ }
-            | Expr::Call { callee: x, args, is_assignee_expr: _ } => {
-                self.infer_mut_not_expr_iter(args.iter().copied().chain(Some(*x)));
+            Expr::MethodCall { receiver: it, method_name: _, args, generic_args: _ }
+            | Expr::Call { callee: it, args, is_assignee_expr: _ } => {
+                self.infer_mut_not_expr_iter(args.iter().copied().chain(Some(*it)));
             }
             Expr::Match { expr, arms } => {
-                let m = self.pat_iter_bound_mutability(arms.iter().map(|x| x.pat));
+                let m = self.pat_iter_bound_mutability(arms.iter().map(|it| it.pat));
                 self.infer_mut_expr(*expr, m);
                 for arm in arms.iter() {
                     self.infer_mut_expr(arm.expr, Mutability::Not);
@@ -96,7 +96,7 @@ impl InferenceContext<'_> {
                 }
             }
             Expr::RecordLit { path: _, fields, spread, ellipsis: _, is_assignee_expr: _ } => {
-                self.infer_mut_not_expr_iter(fields.iter().map(|x| x.expr).chain(*spread))
+                self.infer_mut_not_expr_iter(fields.iter().map(|it| it.expr).chain(*spread))
             }
             &Expr::Index { base, index } => {
                 if mutability == Mutability::Mut {
@@ -204,8 +204,8 @@ impl InferenceContext<'_> {
     }
 
     /// Checks if the pat contains a `ref mut` binding. Such paths makes the context of bounded expressions
-    /// mutable. For example in `let (ref mut x0, ref x1) = *x;` we need to use `DerefMut` for `*x` but in
-    /// `let (ref x0, ref x1) = *x;` we should use `Deref`.
+    /// mutable. For example in `let (ref mut x0, ref x1) = *it;` we need to use `DerefMut` for `*it` but in
+    /// `let (ref x0, ref x1) = *it;` we should use `Deref`.
     fn pat_bound_mutability(&self, pat: PatId) -> Mutability {
         let mut r = Mutability::Not;
         self.body.walk_bindings_in_pat(pat, |b| {
