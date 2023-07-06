@@ -1,9 +1,17 @@
-error[E0207]: the lifetime parameter `'a` is not constrained by the impl trait, self type, or predicates
-  --> $DIR/unconstrained-lt.rs:10:6
+error: return type captures more lifetimes than trait definition
+  --> $DIR/unconstrained-lt.rs:11:18
    |
 LL | impl<'a, T> Foo for T {
-   |      ^^ unconstrained lifetime parameter
+   |      -- this lifetime was captured
+LL |     fn test() -> &'a () { &() }
+   |                  ^^^^^^
+   |
+note: hidden type must only reference lifetimes captured by this impl trait
+  --> $DIR/unconstrained-lt.rs:7:18
+   |
+LL |     fn test() -> impl Sized;
+   |                  ^^^^^^^^^^
+   = note: hidden type inferred to be `&'a ()`
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0207`.

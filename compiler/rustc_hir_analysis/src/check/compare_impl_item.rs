@@ -1,7 +1,7 @@
 use super::potentially_plural_count;
 use crate::errors::LifetimesOrBoundsMismatchOnTrait;
 use hir::def_id::{DefId, LocalDefId};
-use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_errors::{
     pluralize, struct_span_err, Applicability, DiagnosticId, ErrorGuaranteed, MultiSpan,
 };
@@ -614,8 +614,8 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
 ) -> Result<&'tcx FxHashMap<DefId, ty::EarlyBinder<Ty<'tcx>>>, ErrorGuaranteed> {
     let impl_m = tcx.opt_associated_item(impl_m_def_id.to_def_id()).unwrap();
     let trait_m = tcx.opt_associated_item(impl_m.trait_item_def_id.unwrap()).unwrap();
-    let impl_trait_ref =
-        tcx.impl_trait_ref(impl_m.impl_container(tcx).unwrap()).unwrap().subst_identity();
+    let impl_def_id = impl_m.container_id(tcx);
+    let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap().subst_identity();
     let param_env = tcx.param_env(impl_m_def_id);
 
     // First, check a few of the same things as `compare_impl_method`,
@@ -755,6 +755,14 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     );
     ocx.resolve_regions_and_report_errors(impl_m_def_id, &outlives_env)?;
 
+    let mut self_type_regions = FxHashSet::default();
+    tcx.fold_regions(impl_trait_ref.self_ty(), |re, _| {
+        if let ty::ReEarlyBound(ebr) = *re {
+            self_type_regions.insert(ebr.def_id);
+        }
+        re
+    });
+
     let mut collected_tys = FxHashMap::default();
     for (def_id, (ty, substs)) in collected_types {
         match infcx.fully_resolve((ty, substs)) {
@@ -791,14 +799,14 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
                 // since we previously enforce that the trait method and impl method have the
                 // same generics.
                 let num_trait_substs = trait_to_impl_substs.len();
-                let num_impl_substs = tcx.generics_of(impl_m.container_id(tcx)).params.len();
+                let num_impl_substs = tcx.generics_of(impl_def_id).params.len();
                 let ty = match ty.try_fold_with(&mut RemapHiddenTyRegions {
                     tcx,
                     map,
                     num_trait_substs,
                     num_impl_substs,
+                    self_type_regions: &self_type_regions,
                     def_id,
-                    impl_def_id: impl_m.container_id(tcx),
                     ty,
                     return_span,
                 }) {
@@ -888,18 +896,18 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ImplTraitInTraitCollector<'_, 'tcx> {
     }
 }
 
-struct RemapHiddenTyRegions<'tcx> {
+struct RemapHiddenTyRegions<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     map: FxHashMap<ty::Region<'tcx>, ty::Region<'tcx>>,
+    self_type_regions: &'a FxHashSet<DefId>,
     num_trait_substs: usize,
     num_impl_substs: usize,
     def_id: DefId,
-    impl_def_id: DefId,
     ty: Ty<'tcx>,
     return_span: Span,
 }
 
-impl<'tcx> ty::FallibleTypeFolder<TyCtxt<'tcx>> for RemapHiddenTyRegions<'tcx> {
+impl<'tcx> ty::FallibleTypeFolder<TyCtxt<'tcx>> for RemapHiddenTyRegions<'_, 'tcx> {
     type Error = ErrorGuaranteed;
 
     fn interner(&self) -> TyCtxt<'tcx> {
@@ -929,9 +937,13 @@ impl<'tcx> ty::FallibleTypeFolder<TyCtxt<'tcx>> for RemapHiddenTyRegions<'tcx> {
         match region.kind() {
             // Remap all free regions, which correspond to late-bound regions in the function.
             ty::ReFree(_) => {}
-            // Remap early-bound regions as long as they don't come from the `impl` itself,
+            // Remap early-bound regions as long as they don't come from the impl Self type,
             // in which case we don't really need to renumber them.
-            ty::ReEarlyBound(ebr) if self.tcx.parent(ebr.def_id) != self.impl_def_id => {}
+            ty::ReEarlyBound(ebr) => {
+                if self.self_type_regions.contains(&ebr.def_id) {
+                    return Ok(region);
+                }
+            }
             _ => return Ok(region),
         }
 

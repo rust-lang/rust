@@ -8,9 +8,8 @@ trait Foo {
 }
 
 impl<'a, T> Foo for T {
-    //~^ ERROR the lifetime parameter `'a` is not constrained by the impl trait, self type, or predicates
-
     fn test() -> &'a () { &() }
+    //~^ ERROR return type captures more lifetimes than trait definition
 }
 
 fn main() {}

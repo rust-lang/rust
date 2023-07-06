@@ -1,0 +1,17 @@
+error: return type captures more lifetimes than trait definition
+  --> $DIR/only-mentions-self-lt.rs:12:26
+   |
+LL | impl<'a> Foo<'a> for () {
+   |      -- this lifetime was captured
+LL |     fn test(&'a self) -> &'a Self { self }
+   |                          ^^^^^^^^
+   |
+note: hidden type must only reference lifetimes captured by this impl trait
+  --> $DIR/only-mentions-self-lt.rs:7:26
+   |
+LL |     fn test(&'a self) -> impl Sized;
+   |                          ^^^^^^^^^^
+   = note: hidden type inferred to be `&'a ()`
+
+error: aborting due to previous error
+
