@@ -332,6 +332,39 @@ pub struct InferCtxt<'tcx> {
     next_trait_solver: bool,
 }
 
+impl<'tcx> ty::InferCtxtLike<TyCtxt<'tcx>> for InferCtxt<'tcx> {
+    fn universe_of_ty(&self, ty: ty::InferTy) -> Option<ty::UniverseIndex> {
+        use InferTy::*;
+        match ty {
+            // FIXME(BoxyUwU): this is kind of jank and means that printing unresolved
+            // ty infers will give you the universe of the var it resolved to not the universe
+            // it actually had. It also means that if you have a `?0.1` and infer it to `u8` then
+            // try to print out `?0.1` it will just print `?0`.
+            TyVar(ty_vid) => match self.probe_ty_var(ty_vid) {
+                Err(universe) => Some(universe),
+                Ok(_) => None,
+            },
+            IntVar(_) | FloatVar(_) | FreshTy(_) | FreshIntTy(_) | FreshFloatTy(_) => None,
+        }
+    }
+
+    fn universe_of_ct(&self, ct: ty::InferConst<'tcx>) -> Option<ty::UniverseIndex> {
+        use ty::InferConst::*;
+        match ct {
+            // Same issue as with `universe_of_ty`
+            Var(ct_vid) => match self.probe_const_var(ct_vid) {
+                Err(universe) => Some(universe),
+                Ok(_) => None,
+            },
+            Fresh(_) => None,
+        }
+    }
+
+    fn universe_of_lt(&self, lt: ty::RegionVid) -> Option<ty::UniverseIndex> {
+        Some(self.universe_of_region_vid(lt))
+    }
+}
+
 /// See the `error_reporting` module for more details.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, TypeFoldable, TypeVisitable)]
 pub enum ValuePairs<'tcx> {
@@ -1066,6 +1099,11 @@ impl<'tcx> InferCtxt<'tcx> {
     /// are associated.
     pub fn universe_of_region(&self, r: ty::Region<'tcx>) -> ty::UniverseIndex {
         self.inner.borrow_mut().unwrap_region_constraints().universe(r)
+    }
+
+    /// Return the universe that the region variable `r` was created in.
+    pub fn universe_of_region_vid(&self, vid: ty::RegionVid) -> ty::UniverseIndex {
+        self.inner.borrow_mut().unwrap_region_constraints().var_universe(vid)
     }
 
     /// Number of region variables created so far.

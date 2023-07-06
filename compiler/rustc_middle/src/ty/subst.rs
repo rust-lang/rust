@@ -17,7 +17,6 @@ use smallvec::SmallVec;
 
 use core::intrinsics;
 use std::cmp::Ordering;
-use std::fmt;
 use std::marker::PhantomData;
 use std::mem;
 use std::num::NonZeroUsize;
@@ -77,16 +76,6 @@ impl<'tcx> GenericArgKind<'tcx> {
         };
 
         GenericArg { ptr: unsafe { NonZeroUsize::new_unchecked(ptr | tag) }, marker: PhantomData }
-    }
-}
-
-impl<'tcx> fmt::Debug for GenericArg<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.unpack() {
-            GenericArgKind::Lifetime(lt) => lt.fmt(f),
-            GenericArgKind::Type(ty) => ty.fmt(f),
-            GenericArgKind::Const(ct) => ct.fmt(f),
-        }
     }
 }
 
