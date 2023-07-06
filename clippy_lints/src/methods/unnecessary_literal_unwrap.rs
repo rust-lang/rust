@@ -24,6 +24,7 @@ fn get_ty_from_args<'a>(args: Option<&'a [hir::GenericArg<'a>]>, index: usize) -
     }
 }
 
+#[expect(clippy::too_many_lines)]
 pub(super) fn check(
     cx: &LateContext<'_>,
     expr: &hir::Expr<'_>,
@@ -94,6 +95,24 @@ pub(super) fn check(
                     "Default".to_string()
                 };
                 Some(vec![(expr.span, format!("{default_ty_string}::default()"))])
+            },
+            ("None", "unwrap_or", _) => Some(vec![
+                (expr.span.with_hi(args[0].span.lo()), String::new()),
+                (expr.span.with_lo(args[0].span.hi()), String::new()),
+            ]),
+            ("None", "unwrap_or_else", _) => match args[0].kind {
+                hir::ExprKind::Closure(hir::Closure {
+                    fn_decl:
+                        hir::FnDecl {
+                            output: hir::FnRetTy::DefaultReturn(span) | hir::FnRetTy::Return(hir::Ty { span, .. }),
+                            ..
+                        },
+                    ..
+                }) => Some(vec![
+                    (expr.span.with_hi(span.hi()), String::new()),
+                    (expr.span.with_lo(args[0].span.hi()), String::new()),
+                ]),
+                _ => None,
             },
             _ if call_args.is_empty() => None,
             (_, _, Some(_)) => None,
