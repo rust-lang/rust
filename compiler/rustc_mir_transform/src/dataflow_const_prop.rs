@@ -193,6 +193,14 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
         rvalue: &Rvalue<'tcx>,
         state: &mut State<Self::Value>,
     ) -> ValueOrPlace<Self::Value> {
+        if rvalue.ty(self.local_decls, self.tcx).is_floating_point() {
+            // Our apfloat is old and buggy (https://github.com/rust-lang/rust/issues/113409).
+            // Let's not risk wrong optimization results -- just do nothing for floats.
+            // This affects at least binary ops and casts, so just skip all rvalues.
+            // LLVM has a less buggy apfloat and will take care of const-propagation.
+            return ValueOrPlace::TOP;
+        }
+
         match rvalue {
             Rvalue::Cast(
                 kind @ (CastKind::IntToInt

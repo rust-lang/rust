@@ -520,6 +520,14 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         rvalue: &Rvalue<'tcx>,
         place: Place<'tcx>,
     ) -> Option<()> {
+        if place.ty(&self.ecx.frame().body.local_decls, *self.ecx.tcx).ty.is_floating_point() {
+            // Our apfloat is old and buggy (https://github.com/rust-lang/rust/issues/113409).
+            // Let's not risk wrong optimization results -- just do nothing for floats.
+            // This affects at least binary ops and casts, so just skip all rvalues.
+            // LLVM has a less buggy apfloat and will take care of const-propagation.
+            return None;
+        }
+
         match rvalue {
             Rvalue::BinaryOp(op, box (left, right))
             | Rvalue::CheckedBinaryOp(op, box (left, right)) => {
