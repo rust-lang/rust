@@ -142,7 +142,7 @@ impl IntRange {
         let ty = value.ty();
         let (target_size, bias) = Self::integral_size_and_signed_bias(tcx, ty)?;
         let val = match value {
-            mir::ConstantKind::Ty(c) if let ty::ConstKind::Value(valtree) = c.kind() => {
+            mir::ConstantKind::Ty(c, _) if let ty::ConstKind::Value(valtree) = c.kind() => {
                 valtree.unwrap_leaf().to_bits(target_size).ok()
             },
             // This is a more general form of the previous case.

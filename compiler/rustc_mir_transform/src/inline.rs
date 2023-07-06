@@ -631,7 +631,7 @@ impl<'tcx> Inliner<'tcx> {
                 // because we are calling `subst_and_normalize_erasing_regions`.
                 caller_body.required_consts.extend(
                     callee_body.required_consts.iter().copied().filter(|&ct| match ct.literal {
-                        ConstantKind::Ty(_) => {
+                        ConstantKind::Ty(..) => {
                             bug!("should never encounter ty::UnevaluatedConst in `required_consts`")
                         }
                         ConstantKind::Val(..) | ConstantKind::Unevaluated(..) => true,

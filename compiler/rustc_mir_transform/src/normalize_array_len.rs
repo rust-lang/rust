@@ -93,7 +93,7 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'tcx> {
             *rvalue = Rvalue::Use(Operand::Constant(Box::new(Constant {
                 span: rustc_span::DUMMY_SP,
                 user_ty: None,
-                literal: ConstantKind::from_const(len, self.tcx),
+                literal: ConstantKind::from_const(len, self.tcx.types.usize, self.tcx),
             })));
         }
         self.super_rvalue(rvalue, loc);

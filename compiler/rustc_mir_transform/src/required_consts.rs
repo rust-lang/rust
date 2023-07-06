@@ -16,7 +16,7 @@ impl<'tcx> Visitor<'tcx> for RequiredConstsVisitor<'_, 'tcx> {
     fn visit_constant(&mut self, constant: &Constant<'tcx>, _: Location) {
         let literal = constant.literal;
         match literal {
-            ConstantKind::Ty(c) => match c.kind() {
+            ConstantKind::Ty(c, _) => match c.kind() {
                 ConstKind::Param(_) | ConstKind::Error(_) | ConstKind::Value(_) => {}
                 _ => bug!("only ConstKind::Param/Value should be encountered here, got {:#?}", c),
             },

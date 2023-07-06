@@ -474,7 +474,7 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
             };
 
             let val = match literal {
-                ConstantKind::Ty(ct) => match ct.kind() {
+                ConstantKind::Ty(ct, _ty) => match ct.kind() {
                     ty::ConstKind::Param(p) => format!("Param({})", p),
                     ty::ConstKind::Unevaluated(uv) => {
                         format!("Unevaluated({}, {:?})", self.tcx.def_path_str(uv.def), uv.substs,)
@@ -728,7 +728,7 @@ pub fn write_allocations<'tcx>(
     impl<'tcx> Visitor<'tcx> for CollectAllocIds {
         fn visit_constant(&mut self, c: &Constant<'tcx>, _: Location) {
             match c.literal {
-                ConstantKind::Ty(_) | ConstantKind::Unevaluated(..) => {}
+                ConstantKind::Ty(..) | ConstantKind::Unevaluated(..) => {}
                 ConstantKind::Val(val, _) => {
                     self.0.extend(alloc_ids_from_const_val(val));
                 }

@@ -52,6 +52,15 @@ impl<'tcx> Const<'tcx> {
         self.0.ty
     }
 
+    /// A helper function while we transition into removing [Const::ty].
+    /// Use this instead of `ty` if you can, as this function ensures
+    /// your type matches with the internal state of the [Const].
+    #[inline]
+    pub fn assert_ty_is(self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        assert_eq!(self.0.ty, ty);
+        ty
+    }
+
     #[inline]
     pub fn kind(self) -> ConstKind<'tcx> {
         self.0.kind.clone()

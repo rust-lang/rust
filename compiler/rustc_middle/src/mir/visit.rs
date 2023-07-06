@@ -885,7 +885,10 @@ macro_rules! make_mir_visitor {
 
                 self.visit_span($(& $mutability)? *span);
                 match literal {
-                    ConstantKind::Ty(ct) => self.visit_ty_const($(&$mutability)? *ct, location),
+                    ConstantKind::Ty(ct, ty) => {
+                        self.visit_ty_const($(&$mutability)? *ct, location);
+                        self.visit_ty($(& $mutability)? *ty, TyContext::Location(location))
+                    },
                     ConstantKind::Val(_, ty) => self.visit_ty($(& $mutability)? *ty, TyContext::Location(location)),
                     ConstantKind::Unevaluated(_, ty) => self.visit_ty($(& $mutability)? *ty, TyContext::Location(location)),
                 }

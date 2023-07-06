@@ -79,10 +79,10 @@ pub(crate) fn eval_mir_constant<'tcx>(
 ) -> Option<(ConstValue<'tcx>, Ty<'tcx>)> {
     let constant_kind = fx.monomorphize(constant.literal);
     let uv = match constant_kind {
-        ConstantKind::Ty(const_) => match const_.kind() {
+        ConstantKind::Ty(const_, ty) => match const_.kind() {
             ty::ConstKind::Unevaluated(uv) => uv.expand(),
             ty::ConstKind::Value(val) => {
-                return Some((fx.tcx.valtree_to_const_val((const_.ty(), val)), const_.ty()));
+                return Some((fx.tcx.valtree_to_const_val((ty, val)), const_.assert_ty_is(ty)));
             }
             err => span_bug!(
                 constant.span,

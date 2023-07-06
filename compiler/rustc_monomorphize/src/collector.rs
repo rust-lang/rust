@@ -696,8 +696,10 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
         let literal = self.monomorphize(constant.literal);
         let val = match literal {
             mir::ConstantKind::Val(val, _) => val,
-            mir::ConstantKind::Ty(ct) => match ct.kind() {
-                ty::ConstKind::Value(val) => self.tcx.valtree_to_const_val((ct.ty(), val)),
+            mir::ConstantKind::Ty(ct, ty) => match ct.kind() {
+                ty::ConstKind::Value(val) => {
+                    self.tcx.valtree_to_const_val((ct.assert_ty_is(ty), val))
+                }
                 ty::ConstKind::Unevaluated(ct) => {
                     debug!(?ct);
                     let param_env = ty::ParamEnv::reveal_all();

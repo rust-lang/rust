@@ -265,8 +265,9 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
 
     fn visit_constant(&mut self, ct: &Constant<'tcx>, location: Location) {
         match ct.literal {
-            ConstantKind::Ty(c) => {
+            ConstantKind::Ty(c, ty) => {
                 c.visit_with(self);
+                Visitor::visit_ty(self, ty, TyContext::Location(location));
             }
             ConstantKind::Unevaluated(mir::UnevaluatedConst { def, substs: _, promoted }, ty) => {
                 // Avoid considering `T` unused when constants are of the form:

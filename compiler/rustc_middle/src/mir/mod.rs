@@ -2245,7 +2245,7 @@ pub struct Constant<'tcx> {
 #[derive(Lift, TypeFoldable, TypeVisitable)]
 pub enum ConstantKind<'tcx> {
     /// This constant came from the type system
-    Ty(ty::Const<'tcx>),
+    Ty(ty::Const<'tcx>, Ty<'tcx>),
 
     /// An unevaluated mir constant which is not part of the type system.
     Unevaluated(UnevaluatedConst<'tcx>, Ty<'tcx>),
@@ -2278,7 +2278,7 @@ impl<'tcx> ConstantKind<'tcx> {
     #[inline(always)]
     pub fn ty(&self) -> Ty<'tcx> {
         match self {
-            ConstantKind::Ty(c) => c.ty(),
+            ConstantKind::Ty(c, ty) => c.assert_ty_is(*ty),
             ConstantKind::Val(_, ty) | ConstantKind::Unevaluated(_, ty) => *ty,
         }
     }
@@ -2286,8 +2286,10 @@ impl<'tcx> ConstantKind<'tcx> {
     #[inline]
     pub fn try_to_value(self, tcx: TyCtxt<'tcx>) -> Option<interpret::ConstValue<'tcx>> {
         match self {
-            ConstantKind::Ty(c) => match c.kind() {
-                ty::ConstKind::Value(valtree) => Some(tcx.valtree_to_const_val((c.ty(), valtree))),
+            ConstantKind::Ty(c, ty) => match c.kind() {
+                ty::ConstKind::Value(valtree) => {
+                    Some(tcx.valtree_to_const_val((c.assert_ty_is(ty), valtree)))
+                }
                 _ => None,
             },
             ConstantKind::Val(val, _) => Some(val),
@@ -2298,7 +2300,7 @@ impl<'tcx> ConstantKind<'tcx> {
     #[inline]
     pub fn try_to_scalar(self) -> Option<Scalar> {
         match self {
-            ConstantKind::Ty(c) => match c.kind() {
+            ConstantKind::Ty(c, _) => match c.kind() {
                 ty::ConstKind::Value(valtree) => match valtree {
                     ty::ValTree::Leaf(scalar_int) => Some(Scalar::Int(scalar_int)),
                     ty::ValTree::Branch(_) => None,
@@ -2328,11 +2330,12 @@ impl<'tcx> ConstantKind<'tcx> {
     #[inline]
     pub fn eval(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Self {
         match self {
-            Self::Ty(c) => {
+            Self::Ty(c, ty) => {
                 if let Some(val) = c.try_eval_for_mir(tcx, param_env) {
+                    c.assert_ty_is(ty);
                     match val {
-                        Ok(val) => Self::Val(val, c.ty()),
-                        Err(guar) => Self::Ty(ty::Const::new_error(tcx, guar, self.ty())),
+                        Ok(val) => Self::Val(val, ty),
+                        Err(guar) => Self::Ty(ty::Const::new_error(tcx, guar, ty), ty),
                     }
                 } else {
                     self
@@ -2345,7 +2348,7 @@ impl<'tcx> ConstantKind<'tcx> {
                     Ok(val) => Self::Val(val, ty),
                     Err(ErrorHandled::TooGeneric) => self,
                     Err(ErrorHandled::Reported(guar)) => {
-                        Self::Ty(ty::Const::new_error(tcx, guar.into(), ty))
+                        Self::Ty(ty::Const::new_error(tcx, guar.into(), ty), ty)
                     }
                 }
             }
@@ -2367,7 +2370,7 @@ impl<'tcx> ConstantKind<'tcx> {
         ty: Ty<'tcx>,
     ) -> Option<u128> {
         match self {
-            Self::Ty(ct) => ct.try_eval_bits(tcx, param_env, ty),
+            Self::Ty(ct, ty) => ct.try_eval_bits(tcx, param_env, ct.assert_ty_is(*ty)),
             Self::Val(val, t) => {
                 assert_eq!(*t, ty);
                 let size =
@@ -2392,7 +2395,7 @@ impl<'tcx> ConstantKind<'tcx> {
     #[inline]
     pub fn try_eval_bool(&self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Option<bool> {
         match self {
-            Self::Ty(ct) => ct.try_eval_bool(tcx, param_env),
+            Self::Ty(ct, _) => ct.try_eval_bool(tcx, param_env),
             Self::Val(val, _) => val.try_to_bool(),
             Self::Unevaluated(uneval, _) => {
                 match tcx.const_eval_resolve(param_env, *uneval, None) {
@@ -2410,7 +2413,7 @@ impl<'tcx> ConstantKind<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
     ) -> Option<u64> {
         match self {
-            Self::Ty(ct) => ct.try_eval_target_usize(tcx, param_env),
+            Self::Ty(ct, _) => ct.try_eval_target_usize(tcx, param_env),
             Self::Val(val, _) => val.try_to_target_usize(tcx),
             Self::Unevaluated(uneval, _) => {
                 match tcx.const_eval_resolve(param_env, *uneval, None) {
@@ -2515,7 +2518,7 @@ impl<'tcx> ConstantKind<'tcx> {
                 let ty_const = ty::Const::new_param(tcx, ty::ParamConst::new(index, name), ty);
                 debug!(?ty_const);
 
-                return Self::Ty(ty_const);
+                return Self::Ty(ty_const, ty);
             }
             _ => {}
         }
@@ -2561,14 +2564,14 @@ impl<'tcx> ConstantKind<'tcx> {
         }
     }
 
-    pub fn from_const(c: ty::Const<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
+    pub fn from_const(c: ty::Const<'tcx>, ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
         match c.kind() {
             ty::ConstKind::Value(valtree) => {
-                let const_val = tcx.valtree_to_const_val((c.ty(), valtree));
-                Self::Val(const_val, c.ty())
+                let const_val = tcx.valtree_to_const_val((c.assert_ty_is(ty), valtree));
+                Self::Val(const_val, ty)
             }
-            ty::ConstKind::Unevaluated(uv) => Self::Unevaluated(uv.expand(), c.ty()),
-            _ => Self::Ty(c),
+            ty::ConstKind::Unevaluated(uv) => Self::Unevaluated(uv.expand(), c.assert_ty_is(ty)),
+            _ => Self::Ty(c, ty),
         }
     }
 }
@@ -2775,7 +2778,7 @@ impl<'tcx> Display for Constant<'tcx> {
 impl<'tcx> Display for ConstantKind<'tcx> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         match *self {
-            ConstantKind::Ty(c) => pretty_print_const(c, fmt, true),
+            ConstantKind::Ty(c, _ty) => pretty_print_const(c, fmt, true),
             ConstantKind::Val(val, ty) => pretty_print_const_value(val, ty, fmt),
             // FIXME(valtrees): Correctly print mir constants.
             ConstantKind::Unevaluated(..) => {

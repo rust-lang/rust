@@ -198,11 +198,11 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             }
             (Some(PatKind::Constant { value: lo }), None) => {
                 let hi = ty.numeric_max_val(self.tcx)?;
-                Some((*lo, mir::ConstantKind::from_const(hi, self.tcx)))
+                Some((*lo, mir::ConstantKind::from_const(hi, ty, self.tcx)))
             }
             (None, Some(PatKind::Constant { value: hi })) => {
                 let lo = ty.numeric_min_val(self.tcx)?;
-                Some((mir::ConstantKind::from_const(lo, self.tcx), *hi))
+                Some((mir::ConstantKind::from_const(lo, ty, self.tcx), *hi))
             }
             _ => None,
         }
@@ -525,7 +525,9 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             .tcx
             .const_eval_global_id_for_typeck(param_env_reveal_all, cid, Some(span))
             .map(|val| match val {
-                Some(valtree) => mir::ConstantKind::Ty(ty::Const::new_value(self.tcx, valtree, ty)),
+                Some(valtree) => {
+                    mir::ConstantKind::Ty(ty::Const::new_value(self.tcx, valtree, ty), ty)
+                }
                 None => mir::ConstantKind::Val(
                     self.tcx
                         .const_eval_global_id(param_env_reveal_all, cid, Some(span))
@@ -608,7 +610,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         };
         if let Some(lit_input) = lit_input {
             match tcx.at(expr.span).lit_to_const(lit_input) {
-                Ok(c) => return self.const_to_pat(ConstantKind::Ty(c), id, span, None).kind,
+                Ok(c) => return self.const_to_pat(ConstantKind::Ty(c, ty), id, span, None).kind,
                 // If an error occurred, ignore that it's a literal
                 // and leave reporting the error up to const eval of
                 // the unevaluated constant below.
@@ -632,7 +634,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             self.tcx.const_eval_resolve_for_typeck(self.param_env, ct, Some(span))
         {
             self.const_to_pat(
-                ConstantKind::Ty(ty::Const::new_value(self.tcx, valtree, ty)),
+                ConstantKind::Ty(ty::Const::new_value(self.tcx, valtree, ty), ty),
                 id,
                 span,
                 None,
@@ -674,11 +676,11 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             _ => span_bug!(expr.span, "not a literal: {:?}", expr),
         };
 
-        let lit_input =
-            LitToConstInput { lit: &lit.node, ty: self.typeck_results.expr_ty(expr), neg };
+        let ty = self.typeck_results.expr_ty(expr);
+        let lit_input = LitToConstInput { lit: &lit.node, ty, neg };
         match self.tcx.at(expr.span).lit_to_const(lit_input) {
             Ok(constant) => {
-                self.const_to_pat(ConstantKind::Ty(constant), expr.hir_id, lit.span, None).kind
+                self.const_to_pat(ConstantKind::Ty(constant, ty), expr.hir_id, lit.span, None).kind
             }
             Err(LitToConstError::Reported(_)) => PatKind::Wild,
             Err(LitToConstError::TypeError) => bug!("lower_lit: had type error"),
@@ -858,7 +860,7 @@ pub(crate) fn compare_const_vals<'tcx>(
                 mir::ConstantKind::Val(ConstValue::Scalar(Scalar::Int(a)), _a_ty),
                 mir::ConstantKind::Val(ConstValue::Scalar(Scalar::Int(b)), _b_ty),
             ) => return Some(a.cmp(&b)),
-            (mir::ConstantKind::Ty(a), mir::ConstantKind::Ty(b)) => {
+            (mir::ConstantKind::Ty(a, _), mir::ConstantKind::Ty(b, _)) => {
                 return Some(a.kind().cmp(&b.kind()));
             }
             _ => {}

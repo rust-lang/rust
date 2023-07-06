@@ -619,8 +619,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
         match *val {
-            mir::ConstantKind::Ty(ct) => {
-                let ty = ct.ty();
+            mir::ConstantKind::Ty(ct, ty) => {
+                ct.assert_ty_is(ty);
                 let valtree = self.eval_ty_constant(ct, span)?;
                 let const_val = self.tcx.valtree_to_const_val((ty, valtree));
                 self.const_val_to_op(const_val, ty, layout)

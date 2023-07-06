@@ -124,7 +124,7 @@ impl<'tcx> ConstToPat<'tcx> {
         debug!(?check_body_for_struct_match_violation, ?mir_structural_match_violation);
 
         let inlined_const_as_pat = match cv {
-            mir::ConstantKind::Ty(c) => match c.kind() {
+            mir::ConstantKind::Ty(c, ty) => match c.kind() {
                 ty::ConstKind::Param(_)
                 | ty::ConstKind::Infer(_)
                 | ty::ConstKind::Bound(_, _)
@@ -135,23 +135,21 @@ impl<'tcx> ConstToPat<'tcx> {
                     span_bug!(self.span, "unexpected const in `to_pat`: {:?}", c.kind())
                 }
                 ty::ConstKind::Value(valtree) => self
-                    .recur(valtree, cv.ty(), mir_structural_match_violation.unwrap_or(false))
+                    .recur(
+                        valtree,
+                        c.assert_ty_is(ty),
+                        mir_structural_match_violation.unwrap_or(false),
+                    )
                     .unwrap_or_else(|_| {
-                        Box::new(Pat {
-                            span: self.span,
-                            ty: cv.ty(),
-                            kind: PatKind::Constant { value: cv },
-                        })
+                        Box::new(Pat { span: self.span, ty, kind: PatKind::Constant { value: cv } })
                     }),
             },
             mir::ConstantKind::Unevaluated(_, _) => {
                 span_bug!(self.span, "unevaluated const in `to_pat`: {cv:?}")
             }
-            mir::ConstantKind::Val(_, _) => Box::new(Pat {
-                span: self.span,
-                ty: cv.ty(),
-                kind: PatKind::Constant { value: cv },
-            }),
+            mir::ConstantKind::Val(_, ty) => {
+                Box::new(Pat { span: self.span, ty, kind: PatKind::Constant { value: cv } })
+            }
         };
 
         if !self.saw_const_match_error.get() {
@@ -381,7 +379,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 // `&str` is represented as a valtree, let's keep using this
                 // optimization for now.
                 ty::Str => PatKind::Constant {
-                    value: mir::ConstantKind::Ty(ty::Const::new_value(tcx, cv, ty)),
+                    value: mir::ConstantKind::Ty(ty::Const::new_value(tcx, cv, ty), ty),
                 },
                 // Backwards compatibility hack: support references to non-structural types,
                 // but hard error if we aren't behind a double reference. We could just use
@@ -441,7 +439,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 }
             },
             ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::FnDef(..) => PatKind::Constant {
-                value: mir::ConstantKind::Ty(ty::Const::new_value(tcx, cv, ty)),
+                value: mir::ConstantKind::Ty(ty::Const::new_value(tcx, cv, ty), ty),
             },
             ty::FnPtr(..) | ty::RawPtr(..) => unreachable!(),
             _ => {
