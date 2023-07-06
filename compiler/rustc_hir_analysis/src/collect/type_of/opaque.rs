@@ -84,7 +84,7 @@ pub(super) fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: Local
                 _ => "item",
             },
         });
-        tcx.ty_error(reported)
+        Ty::new_error(tcx, reported)
     }
 }
 
@@ -128,7 +128,8 @@ impl TaitConstraintLocator<'_> {
         // ```
         let tables = self.tcx.typeck(item_def_id);
         if let Some(guar) = tables.tainted_by_errors {
-            self.found = Some(ty::OpaqueHiddenType { span: DUMMY_SP, ty: self.tcx.ty_error(guar) });
+            self.found =
+                Some(ty::OpaqueHiddenType { span: DUMMY_SP, ty: Ty::new_error(self.tcx, guar) });
             return;
         }
 
@@ -162,7 +163,7 @@ impl TaitConstraintLocator<'_> {
             if let Some(prev) = &mut self.found {
                 if concrete_type.ty != prev.ty && !(concrete_type, prev.ty).references_error() {
                     let guar = prev.report_mismatch(&concrete_type, self.def_id, self.tcx).emit();
-                    prev.ty = self.tcx.ty_error(guar);
+                    prev.ty = Ty::new_error(self.tcx, guar);
                 }
             } else {
                 self.found = Some(concrete_type);
@@ -258,7 +259,7 @@ pub(super) fn find_opaque_ty_constraints_for_rpit<'tcx>(
         if let Some(guar) = tables.tainted_by_errors {
             // Some error in the owner fn prevented us from populating
             // the `concrete_opaque_types` table.
-            tcx.ty_error(guar)
+            Ty::new_error(tcx, guar)
         } else {
             // Fall back to the RPIT we inferred during HIR typeck
             if let Some(hir_opaque_ty) = hir_opaque_ty {
@@ -270,7 +271,7 @@ pub(super) fn find_opaque_ty_constraints_for_rpit<'tcx>(
                 // so we can just make the hidden type be `!`.
                 // For backwards compatibility reasons, we fall back to
                 // `()` until we the diverging default is changed.
-                tcx.mk_diverging_default()
+                Ty::new_diverging_default(tcx)
             }
         }
     }

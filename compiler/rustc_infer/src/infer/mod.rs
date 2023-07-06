@@ -725,19 +725,19 @@ impl<'tcx> InferCtxt<'tcx> {
             .type_variables()
             .unsolved_variables()
             .into_iter()
-            .map(|t| self.tcx.mk_ty_var(t))
+            .map(|t| Ty::new_var(self.tcx, t))
             .collect();
         vars.extend(
             (0..inner.int_unification_table().len())
                 .map(|i| ty::IntVid { index: i as u32 })
                 .filter(|&vid| inner.int_unification_table().probe_value(vid).is_none())
-                .map(|v| self.tcx.mk_int_var(v)),
+                .map(|v| Ty::new_int_var(self.tcx, v)),
         );
         vars.extend(
             (0..inner.float_unification_table().len())
                 .map(|i| ty::FloatVid { index: i as u32 })
                 .filter(|&vid| inner.float_unification_table().probe_value(vid).is_none())
-                .map(|v| self.tcx.mk_float_var(v)),
+                .map(|v| Ty::new_float_var(self.tcx, v)),
         );
         vars
     }
@@ -978,7 +978,7 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 
     pub fn next_ty_var(&self, origin: TypeVariableOrigin) -> Ty<'tcx> {
-        self.tcx.mk_ty_var(self.next_ty_var_id(origin))
+        Ty::new_var(self.tcx, self.next_ty_var_id(origin))
     }
 
     pub fn next_ty_var_id_in_universe(
@@ -995,7 +995,7 @@ impl<'tcx> InferCtxt<'tcx> {
         universe: ty::UniverseIndex,
     ) -> Ty<'tcx> {
         let vid = self.next_ty_var_id_in_universe(origin, universe);
-        self.tcx.mk_ty_var(vid)
+        Ty::new_var(self.tcx, vid)
     }
 
     pub fn next_const_var(&self, ty: Ty<'tcx>, origin: ConstVariableOrigin) -> ty::Const<'tcx> {
@@ -1028,7 +1028,7 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 
     pub fn next_int_var(&self) -> Ty<'tcx> {
-        self.tcx.mk_int_var(self.next_int_var_id())
+        Ty::new_int_var(self.tcx, self.next_int_var_id())
     }
 
     fn next_float_var_id(&self) -> FloatVid {
@@ -1036,7 +1036,7 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 
     pub fn next_float_var(&self) -> Ty<'tcx> {
-        self.tcx.mk_float_var(self.next_float_var_id())
+        Ty::new_float_var(self.tcx, self.next_float_var_id())
     }
 
     /// Creates a fresh region variable with the next available index.
@@ -1116,7 +1116,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     },
                 );
 
-                self.tcx.mk_ty_var(ty_var_id).into()
+                Ty::new_var(self.tcx, ty_var_id).into()
             }
             GenericParamDefKind::Const { .. } => {
                 let origin = ConstVariableOrigin {
@@ -1265,7 +1265,7 @@ impl<'tcx> InferCtxt<'tcx> {
         if let Some(value) = inner.int_unification_table().probe_value(vid) {
             value.to_type(self.tcx)
         } else {
-            self.tcx.mk_int_var(inner.int_unification_table().find(vid))
+            Ty::new_int_var(self.tcx, inner.int_unification_table().find(vid))
         }
     }
 
@@ -1276,7 +1276,7 @@ impl<'tcx> InferCtxt<'tcx> {
         if let Some(value) = inner.float_unification_table().probe_value(vid) {
             value.to_type(self.tcx)
         } else {
-            self.tcx.mk_float_var(inner.float_unification_table().find(vid))
+            Ty::new_float_var(self.tcx, inner.float_unification_table().find(vid))
         }
     }
 
@@ -1945,13 +1945,16 @@ fn replace_param_and_infer_substs_with_placeholder<'tcx>(
                     self.idx += 1;
                     idx
                 };
-                self.tcx.mk_placeholder(ty::PlaceholderType {
-                    universe: ty::UniverseIndex::ROOT,
-                    bound: ty::BoundTy {
-                        var: ty::BoundVar::from_u32(idx),
-                        kind: ty::BoundTyKind::Anon,
+                Ty::new_placeholder(
+                    self.tcx,
+                    ty::PlaceholderType {
+                        universe: ty::UniverseIndex::ROOT,
+                        bound: ty::BoundTy {
+                            var: ty::BoundVar::from_u32(idx),
+                            kind: ty::BoundTyKind::Anon,
+                        },
                     },
-                })
+                )
             } else {
                 t.super_fold_with(self)
             }

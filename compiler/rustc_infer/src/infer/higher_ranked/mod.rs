@@ -6,7 +6,7 @@ use super::{HigherRankedType, InferCtxt};
 use crate::infer::CombinedSnapshot;
 use rustc_middle::ty::fold::FnMutDelegate;
 use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
-use rustc_middle::ty::{self, Binder, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, Binder, Ty, TyCtxt, TypeFoldable};
 
 impl<'a, 'tcx> CombineFields<'a, 'tcx> {
     /// Checks whether `for<..> sub <: for<..> sup` holds.
@@ -88,10 +88,10 @@ impl<'tcx> InferCtxt<'tcx> {
                 )
             },
             types: &mut |bound_ty: ty::BoundTy| {
-                self.tcx.mk_placeholder(ty::PlaceholderType {
-                    universe: next_universe,
-                    bound: bound_ty,
-                })
+                Ty::new_placeholder(
+                    self.tcx,
+                    ty::PlaceholderType { universe: next_universe, bound: bound_ty },
+                )
             },
             consts: &mut |bound_var: ty::BoundVar, ty| {
                 ty::Const::new_placeholder(

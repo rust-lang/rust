@@ -143,7 +143,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // a custom error in that case.
         if illegal_sized_bound.is_none() {
             self.add_obligations(
-                self.tcx.mk_fn_ptr(method_sig),
+                Ty::new_fn_ptr(self.tcx, method_sig),
                 all_substs,
                 method_predicates,
                 pick.item.def_id,
@@ -171,7 +171,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // time writing the results into the various typeck results.
         let mut autoderef = self.autoderef(self.call_expr.span, unadjusted_self_ty);
         let Some((ty, n)) = autoderef.nth(pick.autoderefs) else {
-            return self.tcx.ty_error_with_message(
+            return Ty::new_error_with_message(self.tcx,
                 rustc_span::DUMMY_SP,
                 format!("failed autoderef {}", pick.autoderefs),
             );
@@ -187,7 +187,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 // Type we're wrapping in a reference, used later for unsizing
                 let base_ty = target;
 
-                target = self.tcx.mk_ref(region, ty::TypeAndMut { mutbl, ty: target });
+                target = Ty::new_ref(self.tcx, region, ty::TypeAndMut { mutbl, ty: target });
 
                 // Method call receivers are the primary use case
                 // for two-phase borrows.
@@ -200,16 +200,18 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
 
                 if unsize {
                     let unsized_ty = if let ty::Array(elem_ty, _) = base_ty.kind() {
-                        self.tcx.mk_slice(*elem_ty)
+                        Ty::new_slice(self.tcx, *elem_ty)
                     } else {
                         bug!(
                             "AutorefOrPtrAdjustment's unsize flag should only be set for array ty, found {}",
                             base_ty
                         )
                     };
-                    target = self
-                        .tcx
-                        .mk_ref(region, ty::TypeAndMut { mutbl: mutbl.into(), ty: unsized_ty });
+                    target = Ty::new_ref(
+                        self.tcx,
+                        region,
+                        ty::TypeAndMut { mutbl: mutbl.into(), ty: unsized_ty },
+                    );
                     adjustments
                         .push(Adjustment { kind: Adjust::Pointer(PointerCast::Unsize), target });
                 }
@@ -218,7 +220,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 target = match target.kind() {
                     &ty::RawPtr(ty::TypeAndMut { ty, mutbl }) => {
                         assert!(mutbl.is_mut());
-                        self.tcx.mk_ptr(ty::TypeAndMut { mutbl: hir::Mutability::Not, ty })
+                        Ty::new_ptr(self.tcx, ty::TypeAndMut { mutbl: hir::Mutability::Not, ty })
                     }
                     other => panic!("Cannot adjust receiver type {:?} to const ptr", other),
                 };

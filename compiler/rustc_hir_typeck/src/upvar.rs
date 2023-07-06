@@ -300,7 +300,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Build a tuple (U0..Un) of the final upvar types U0..Un
         // and unify the upvar tuple type in the closure with it:
-        let final_tupled_upvars_type = self.tcx.mk_tup(&final_upvar_tys);
+        let final_tupled_upvars_type = Ty::new_tup(self.tcx, &final_upvar_tys);
         self.demand_suptype(span, substs.tupled_upvars_ty(), final_tupled_upvars_type);
 
         let fake_reads = delegate
@@ -314,8 +314,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.typeck_results.borrow_mut().closure_size_eval.insert(
                 closure_def_id,
                 ClosureSizeProfileData {
-                    before_feature_tys: self.tcx.mk_tup(&before_feature_tys),
-                    after_feature_tys: self.tcx.mk_tup(&after_feature_tys),
+                    before_feature_tys: Ty::new_tup(self.tcx, &before_feature_tys),
+                    after_feature_tys: Ty::new_tup(self.tcx, &after_feature_tys),
                 },
             );
         }
@@ -1665,9 +1665,11 @@ fn apply_capture_kind_on_capture_ty<'tcx>(
 ) -> Ty<'tcx> {
     match capture_kind {
         ty::UpvarCapture::ByValue => ty,
-        ty::UpvarCapture::ByRef(kind) => {
-            tcx.mk_ref(region.unwrap(), ty::TypeAndMut { ty: ty, mutbl: kind.to_mutbl_lossy() })
-        }
+        ty::UpvarCapture::ByRef(kind) => Ty::new_ref(
+            tcx,
+            region.unwrap(),
+            ty::TypeAndMut { ty: ty, mutbl: kind.to_mutbl_lossy() },
+        ),
     }
 }
 

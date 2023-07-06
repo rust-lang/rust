@@ -245,7 +245,7 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
                 .and(type_op::normalize::Normalize::new(ty))
                 .fully_perform(self.infcx, span)
                 .unwrap_or_else(|guar| TypeOpOutput {
-                    output: self.infcx.tcx.ty_error(guar),
+                    output: Ty::new_error(self.infcx.tcx, guar),
                     constraints: None,
                     error_info: None,
                 });

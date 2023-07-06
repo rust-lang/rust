@@ -277,7 +277,7 @@ where
                             let origin = *inner.type_variables().var_origin(vid);
                             let new_var_id =
                                 inner.type_variables().new_var(self.for_universe, origin);
-                            let u = self.tcx().mk_ty_var(new_var_id);
+                            let u = Ty::new_var(self.tcx(), new_var_id);
 
                             // Record that we replaced `vid` with `new_var_id` as part of a generalization
                             // operation. This is needed to detect cyclic types. To see why, see the

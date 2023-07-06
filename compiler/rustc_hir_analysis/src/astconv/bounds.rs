@@ -363,7 +363,8 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                                 );
                                 emitted_bad_param_err = true;
                             }
-                            tcx.mk_bound(
+                            Ty::new_bound(
+                                tcx,
                                 ty::INNERMOST,
                                 ty::BoundTy {
                                     var: ty::BoundVar::from_usize(num_bound_vars),
@@ -527,7 +528,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                         }
                         let reported = err.emit();
                         term = match def_kind {
-                            hir::def::DefKind::AssocTy => tcx.ty_error(reported).into(),
+                            hir::def::DefKind::AssocTy => Ty::new_error(tcx, reported).into(),
                             hir::def::DefKind::AssocConst => ty::Const::new_error(
                                 tcx,
                                 reported,
@@ -558,7 +559,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                 // type bound into a trait predicate, since we only want to add predicates
                 // for the `Self` type.
                 if !only_self_bounds.0 {
-                    let param_ty = tcx.mk_alias(ty::Projection, projection_ty.skip_binder());
+                    let param_ty = Ty::new_alias(tcx, ty::Projection, projection_ty.skip_binder());
                     self.add_bounds(
                         param_ty,
                         ast_bounds.iter(),

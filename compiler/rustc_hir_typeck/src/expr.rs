@@ -94,7 +94,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return if let [Adjustment { kind: Adjust::NeverToAny, target }] = &adjustments[..] {
                     target.to_owned()
                 } else {
-                    self.tcx().ty_error(reported)
+                    Ty::new_error(self.tcx(), reported)
                 };
             }
 
@@ -321,7 +321,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     tcx.types.never
                 } else {
                     // There was an error; make type-check fail.
-                    tcx.ty_error_misc()
+                    Ty::new_misc_error(tcx)
                 }
             }
             ExprKind::Ret(ref expr_opt) => self.check_expr_return(expr_opt.as_deref(), expr),
@@ -361,7 +361,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ExprKind::Field(base, field) => self.check_field(expr, &base, field, expected),
             ExprKind::Index(base, idx) => self.check_expr_index(base, idx, expr),
             ExprKind::Yield(value, ref src) => self.check_expr_yield(value, expr, src),
-            hir::ExprKind::Err(guar) => tcx.ty_error(guar),
+            hir::ExprKind::Err(guar) => Ty::new_error(tcx, guar),
         }
     }
 
@@ -399,7 +399,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         {
                             err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
                         }
-                        oprnd_t = tcx.ty_error(err.emit());
+                        oprnd_t = Ty::new_error(tcx, err.emit());
                     }
                 }
                 hir::UnOp::Not => {
@@ -449,10 +449,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let tm = ty::TypeAndMut { ty, mutbl };
         match kind {
-            _ if tm.ty.references_error() => self.tcx.ty_error_misc(),
+            _ if tm.ty.references_error() => Ty::new_misc_error(self.tcx),
             hir::BorrowKind::Raw => {
                 self.check_named_place_expr(oprnd);
-                self.tcx.mk_ptr(tm)
+                Ty::new_ptr(self.tcx, tm)
             }
             hir::BorrowKind::Ref => {
                 // Note: at this point, we cannot say what the best lifetime
@@ -470,7 +470,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // whose address was taken can actually be made to live as long
                 // as it needs to live.
                 let region = self.next_region_var(infer::AddrOfRegion(expr.span));
-                self.tcx.mk_ref(region, tm)
+                Ty::new_ref(self.tcx, region, tm)
             }
         }
     }
@@ -528,11 +528,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let e =
                     self.tcx.sess.delay_span_bug(qpath.span(), "`Res::Err` but no error emitted");
                 self.set_tainted_by_errors(e);
-                tcx.ty_error(e)
+                Ty::new_error(tcx, e)
             }
             Res::Def(DefKind::Variant, _) => {
                 let e = report_unexpected_variant_res(tcx, res, qpath, expr.span, "E0533", "value");
-                tcx.ty_error(e)
+                Ty::new_error(tcx, e)
             }
             _ => self.instantiate_value_path(segs, opt_ty, res, expr.span, expr.hir_id).0,
         };
@@ -620,7 +620,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         Some(ctxt) => ctxt.coerce.as_ref().map(|coerce| coerce.expected_ty()),
                         None => {
                             // Avoid ICE when `break` is inside a closure (#65383).
-                            return tcx.ty_error_with_message(
+                            return Ty::new_error_with_message(
+                                tcx,
                                 expr.span,
                                 "break was outside loop, but no error was emitted",
                             );
@@ -631,7 +632,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // If the loop context is not a `loop { }`, then break with
                 // a value is illegal, and `opt_coerce_to` will be `None`.
                 // Just set expectation to error in that case.
-                let coerce_to = opt_coerce_to.unwrap_or_else(|| tcx.ty_error_misc());
+                let coerce_to = opt_coerce_to.unwrap_or_else(|| Ty::new_misc_error(tcx));
 
                 // Recurse without `enclosing_breakables` borrowed.
                 e_ty = self.check_expr_with_hint(e, coerce_to);
@@ -639,7 +640,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             } else {
                 // Otherwise, this is a break *without* a value. That's
                 // always legal, and is equivalent to `break ()`.
-                e_ty = tcx.mk_unit();
+                e_ty = Ty::new_unit(tcx);
                 cause = self.misc(expr.span);
             }
 
@@ -649,7 +650,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let mut enclosing_breakables = self.enclosing_breakables.borrow_mut();
             let Some(ctxt) = enclosing_breakables.opt_find_breakable(target_id) else {
                 // Avoid ICE when `break` is inside a closure (#65383).
-                return tcx.ty_error_with_message(
+                return Ty::new_error_with_message(tcx,
                     expr.span,
                     "break was outside loop, but no error was emitted",
                 );
@@ -707,7 +708,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // this can only happen if the `break` was not
             // inside a loop at all, which is caught by the
             // loop-checking pass.
-            let err = self.tcx.ty_error_with_message(
+            let err = Ty::new_error_with_message(
+                self.tcx,
                 expr.span,
                 "break was outside loop, but no error was emitted",
             );
@@ -1072,7 +1074,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let result_ty = coerce.complete(self);
-        if let Err(guar) = cond_ty.error_reported() { self.tcx.ty_error(guar) } else { result_ty }
+        if let Err(guar) = cond_ty.error_reported() {
+            Ty::new_error(self.tcx, guar)
+        } else {
+            result_ty
+        }
     }
 
     /// Type check assignment expression `expr` of form `lhs = rhs`.
@@ -1090,7 +1096,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // The expected type is `bool` but this will result in `()` so we can reasonably
             // say that the user intended to write `lhs == rhs` instead of `lhs = rhs`.
             // The likely cause of this is `if foo = bar { .. }`.
-            let actual_ty = self.tcx.mk_unit();
+            let actual_ty = Ty::new_unit(self.tcx);
             let mut err = self.demand_suptype_diag(expr.span, expected_ty, actual_ty).unwrap();
             let lhs_ty = self.check_expr(&lhs);
             let rhs_ty = self.check_expr(&rhs);
@@ -1148,7 +1154,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // If the assignment expression itself is ill-formed, don't
             // bother emitting another error
             let reported = err.emit_unless(lhs_ty.references_error() || rhs_ty.references_error());
-            return self.tcx.ty_error(reported);
+            return Ty::new_error(self.tcx, reported);
         }
 
         let lhs_ty = self.check_expr_with_needs(&lhs, Needs::MutPlace);
@@ -1195,9 +1201,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.require_type_is_sized(lhs_ty, lhs.span, traits::AssignmentLhsSized);
 
         if let Err(guar) = (lhs_ty, rhs_ty).error_reported() {
-            self.tcx.ty_error(guar)
+            Ty::new_error(self.tcx, guar)
         } else {
-            self.tcx.mk_unit()
+            Ty::new_unit(self.tcx)
         }
     }
 
@@ -1252,7 +1258,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // [1]
             self.tcx.sess.delay_span_bug(body.span, "no coercion, but loop may not break");
         }
-        ctxt.coerce.map(|c| c.complete(self)).unwrap_or_else(|| self.tcx.mk_unit())
+        ctxt.coerce.map(|c| c.complete(self)).unwrap_or_else(|| Ty::new_unit(self.tcx))
     }
 
     /// Checks a method call.
@@ -1316,7 +1322,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Eagerly check for some obvious errors.
         if let Err(guar) = (t_expr, t_cast).error_reported() {
-            self.tcx.ty_error(guar)
+            Ty::new_error(self.tcx, guar)
         } else {
             // Defer other checks until we're done type checking.
             let mut deferred_cast_checks = self.deferred_cast_checks.borrow_mut();
@@ -1337,7 +1343,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     deferred_cast_checks.push(cast_check);
                     t_cast
                 }
-                Err(guar) => self.tcx.ty_error(guar),
+                Err(guar) => Ty::new_error(self.tcx, guar),
             }
         }
     }
@@ -1377,7 +1383,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
         let array_len = args.len() as u64;
         self.suggest_array_len(expr, array_len);
-        self.tcx.mk_array(element_ty, array_len)
+        Ty::new_array(self.tcx, element_ty, array_len)
     }
 
     fn suggest_array_len(&self, expr: &'tcx hir::Expr<'tcx>, array_len: u64) {
@@ -1465,18 +1471,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         if let Err(guar) = element_ty.error_reported() {
-            return tcx.ty_error(guar);
+            return Ty::new_error(tcx, guar);
         }
 
         self.check_repeat_element_needs_copy_bound(element, count, element_ty);
 
         self.register_wf_obligation(
-            tcx.mk_array_with_const_len(t, count).into(),
+            Ty::new_array_with_const_len(tcx, t, count).into(),
             expr.span,
             traits::WellFormed(None),
         );
 
-        tcx.mk_array_with_const_len(t, count)
+        Ty::new_array_with_const_len(tcx, t, count)
     }
 
     fn check_repeat_element_needs_copy_bound(
@@ -1539,9 +1545,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             _ => self.check_expr_with_expectation(&e, NoExpectation),
         });
-        let tuple = self.tcx.mk_tup_from_iter(elt_ts_iter);
+        let tuple = Ty::new_tup_from_iter(self.tcx, elt_ts_iter);
         if let Err(guar) = tuple.error_reported() {
-            self.tcx.ty_error(guar)
+            Ty::new_error(self.tcx, guar)
         } else {
             self.require_type_is_sized(tuple, expr.span, traits::TupleInitializerSized);
             tuple
@@ -1561,7 +1567,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Ok(data) => data,
             Err(guar) => {
                 self.check_struct_fields_on_error(fields, base_expr);
-                return self.tcx.ty_error(guar);
+                return Ty::new_error(self.tcx, guar);
             }
         };
 
@@ -1660,7 +1666,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     )
                 };
 
-                tcx.ty_error(guar)
+                Ty::new_error(tcx, guar)
             };
 
             // Make sure to give a type to the field even if there's
@@ -1772,7 +1778,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // `MyStruct<'a, _, F2, C>`, as opposed to just `_`...
                     // This is important to allow coercions to happen in
                     // `other_struct` itself. See `coerce-in-base-expr.rs`.
-                    let fresh_base_ty = self.tcx.mk_adt(*adt, fresh_substs);
+                    let fresh_base_ty = Ty::new_adt(self.tcx, *adt, fresh_substs);
                     self.check_expr_has_type_or_error(
                         base_expr,
                         self.resolve_vars_if_possible(fresh_base_ty),
@@ -2314,7 +2320,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 did,
                 expected.only_has_type(self),
             );
-            return self.tcx().ty_error(guar);
+            return Ty::new_error(self.tcx(), guar);
         }
 
         let guar = if field.name == kw::Empty {
@@ -2400,7 +2406,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             err.emit()
         };
 
-        self.tcx().ty_error(guar)
+        Ty::new_error(self.tcx(), guar)
     }
 
     fn suggest_await_on_field_access(
@@ -2932,7 +2938,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
 
                     let reported = err.emit();
-                    self.tcx.ty_error(reported)
+                    Ty::new_error(self.tcx, reported)
                 }
             }
         }
@@ -3006,7 +3012,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let element_ty = ocx.normalize(
                 &cause,
                 self.param_env,
-                self.tcx.mk_projection(index_trait_output_def_id, impl_trait_ref.substs),
+                Ty::new_projection(self.tcx, index_trait_output_def_id, impl_trait_ref.substs),
             );
 
             let errors = ocx.select_where_possible();
@@ -3054,14 +3060,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // information. Hence, we check the source of the yield expression here and check its
             // value's type against `()` (this check should always hold).
             None if src.is_await() => {
-                self.check_expr_coercible_to_type(&value, self.tcx.mk_unit(), None);
-                self.tcx.mk_unit()
+                self.check_expr_coercible_to_type(&value, Ty::new_unit(self.tcx), None);
+                Ty::new_unit(self.tcx)
             }
             _ => {
                 self.tcx.sess.emit_err(YieldExprOutsideOfGenerator { span: expr.span });
                 // Avoid expressions without types during writeback (#78653).
                 self.check_expr(value);
-                self.tcx.mk_unit()
+                Ty::new_unit(self.tcx)
             }
         }
     }
@@ -3088,11 +3094,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let ty = self.structurally_resolve_type(expr.span, ty);
             match *ty.kind() {
                 ty::FnDef(..) => {
-                    let fnptr_ty = self.tcx.mk_fn_ptr(ty.fn_sig(self.tcx));
+                    let fnptr_ty = Ty::new_fn_ptr(self.tcx, ty.fn_sig(self.tcx));
                     self.demand_coerce(expr, ty, fnptr_ty, None, AllowTwoPhase::No);
                 }
                 ty::Ref(_, base_ty, mutbl) => {
-                    let ptr_ty = self.tcx.mk_ptr(ty::TypeAndMut { ty: base_ty, mutbl });
+                    let ptr_ty = Ty::new_ptr(self.tcx, ty::TypeAndMut { ty: base_ty, mutbl });
                     self.demand_coerce(expr, ty, ptr_ty, None, AllowTwoPhase::No);
                 }
                 _ => {}
@@ -3127,7 +3133,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if asm.options.contains(ast::InlineAsmOptions::NORETURN) {
             self.tcx.types.never
         } else {
-            self.tcx.mk_unit()
+            Ty::new_unit(self.tcx)
         }
     }
 

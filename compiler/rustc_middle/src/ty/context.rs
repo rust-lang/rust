@@ -25,10 +25,10 @@ use crate::traits::solve::{
     ExternalConstraints, ExternalConstraintsData, PredefinedOpaques, PredefinedOpaquesData,
 };
 use crate::ty::{
-    self, AdtDef, AdtDefData, AdtKind, Binder, Clause, Const, ConstData, FloatTy, FloatVar,
-    FloatVid, GenericParamDefKind, ImplPolarity, InferTy, IntTy, IntVar, IntVid, List, ParamConst,
-    ParamTy, PolyExistentialPredicate, PolyFnSig, Predicate, PredicateKind, Region, RegionKind,
-    ReprOptions, TraitObjectVisitor, Ty, TyKind, TyVar, TyVid, TypeAndMut, UintTy, Visibility,
+    self, AdtDef, AdtDefData, AdtKind, Binder, Clause, Const, ConstData, GenericParamDefKind,
+    ImplPolarity, InferTy, List, ParamConst, ParamTy, PolyExistentialPredicate, PolyFnSig,
+    Predicate, PredicateKind, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind,
+    TyVid, TypeAndMut, Visibility,
 };
 use crate::ty::{GenericArg, InternalSubsts, SubstsRef};
 use rustc_ast::{self as ast, attr};
@@ -70,10 +70,9 @@ use rustc_target::abi::{FieldIdx, Layout, LayoutS, TargetDataLayout, VariantIdx}
 use rustc_target::spec::abi;
 use rustc_type_ir::sty::TyKind::*;
 use rustc_type_ir::WithCachedTypeInfo;
-use rustc_type_ir::{CollectAndApply, DynKind, Interner, TypeFlags};
+use rustc_type_ir::{CollectAndApply, Interner, TypeFlags};
 
 use std::any::Any;
-use std::assert_matches::debug_assert_matches;
 use std::borrow::Borrow;
 use std::cmp::Ordering;
 use std::fmt;
@@ -727,30 +726,6 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    /// Constructs a `TyKind::Error` type with current `ErrorGuaranteed`
-    #[track_caller]
-    pub fn ty_error(self, reported: ErrorGuaranteed) -> Ty<'tcx> {
-        self.mk_ty_from_kind(Error(reported))
-    }
-
-    /// Constructs a `TyKind::Error` type and registers a `delay_span_bug` to ensure it gets used.
-    #[track_caller]
-    pub fn ty_error_misc(self) -> Ty<'tcx> {
-        self.ty_error_with_message(DUMMY_SP, "TyKind::Error constructed but no error reported")
-    }
-
-    /// Constructs a `TyKind::Error` type and registers a `delay_span_bug` with the given `msg` to
-    /// ensure it gets used.
-    #[track_caller]
-    pub fn ty_error_with_message<S: Into<MultiSpan>>(
-        self,
-        span: S,
-        msg: impl Into<DiagnosticMessage>,
-    ) -> Ty<'tcx> {
-        let reported = self.sess.delay_span_bug(span, msg);
-        self.mk_ty_from_kind(Error(reported))
-    }
-
     pub fn consider_optimizing<T: Fn() -> String>(self, msg: T) -> bool {
         self.sess.consider_optimizing(|| self.crate_name(LOCAL_CRATE), msg)
     }
@@ -1144,7 +1119,8 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Returns `&'static core::panic::Location<'static>`.
     pub fn caller_location_ty(self) -> Ty<'tcx> {
-        self.mk_imm_ref(
+        Ty::new_imm_ref(
+            self,
             self.lifetimes.re_static,
             self.type_of(self.require_lang_item(LangItem::PanicLocation, None))
                 .subst(self, self.mk_substs(&[self.lifetimes.re_static.into()])),
@@ -1542,7 +1518,10 @@ impl<'tcx> TyCtxt<'tcx> {
     /// unsafe.
     pub fn safe_to_unsafe_fn_ty(self, sig: PolyFnSig<'tcx>) -> Ty<'tcx> {
         assert_eq!(sig.unsafety(), hir::Unsafety::Normal);
-        self.mk_fn_ptr(sig.map_bound(|sig| ty::FnSig { unsafety: hir::Unsafety::Unsafe, ..sig }))
+        Ty::new_fn_ptr(
+            self,
+            sig.map_bound(|sig| ty::FnSig { unsafety: hir::Unsafety::Unsafe, ..sig }),
+        )
     }
 
     /// Given the def_id of a Trait `trait_def_id` and the name of an associated item `assoc_name`
@@ -1616,18 +1595,6 @@ impl<'tcx> TyCtxt<'tcx> {
         })
     }
 
-    // Avoid this in favour of more specific `mk_*` methods, where possible.
-    #[allow(rustc::usage_of_ty_tykind)]
-    #[inline]
-    pub fn mk_ty_from_kind(self, st: TyKind<'tcx>) -> Ty<'tcx> {
-        self.interners.intern_ty(
-            st,
-            self.sess,
-            // This is only used to create a stable hashing context.
-            &self.untracked,
-        )
-    }
-
     #[inline]
     pub fn mk_predicate(self, binder: Binder<'tcx, PredicateKind<'tcx>>) -> Predicate<'tcx> {
         self.interners.intern_predicate(
@@ -1645,174 +1612,6 @@ impl<'tcx> TyCtxt<'tcx> {
         binder: Binder<'tcx, PredicateKind<'tcx>>,
     ) -> Predicate<'tcx> {
         if pred.kind() != binder { self.mk_predicate(binder) } else { pred }
-    }
-
-    pub fn mk_mach_int(self, tm: IntTy) -> Ty<'tcx> {
-        match tm {
-            IntTy::Isize => self.types.isize,
-            IntTy::I8 => self.types.i8,
-            IntTy::I16 => self.types.i16,
-            IntTy::I32 => self.types.i32,
-            IntTy::I64 => self.types.i64,
-            IntTy::I128 => self.types.i128,
-        }
-    }
-
-    pub fn mk_mach_uint(self, tm: UintTy) -> Ty<'tcx> {
-        match tm {
-            UintTy::Usize => self.types.usize,
-            UintTy::U8 => self.types.u8,
-            UintTy::U16 => self.types.u16,
-            UintTy::U32 => self.types.u32,
-            UintTy::U64 => self.types.u64,
-            UintTy::U128 => self.types.u128,
-        }
-    }
-
-    pub fn mk_mach_float(self, tm: FloatTy) -> Ty<'tcx> {
-        match tm {
-            FloatTy::F32 => self.types.f32,
-            FloatTy::F64 => self.types.f64,
-        }
-    }
-
-    #[inline]
-    pub fn mk_static_str(self) -> Ty<'tcx> {
-        self.mk_imm_ref(self.lifetimes.re_static, self.types.str_)
-    }
-
-    #[inline]
-    pub fn mk_adt(self, def: AdtDef<'tcx>, substs: SubstsRef<'tcx>) -> Ty<'tcx> {
-        // Take a copy of substs so that we own the vectors inside.
-        self.mk_ty_from_kind(Adt(def, substs))
-    }
-
-    #[inline]
-    pub fn mk_foreign(self, def_id: DefId) -> Ty<'tcx> {
-        self.mk_ty_from_kind(Foreign(def_id))
-    }
-
-    fn mk_generic_adt(self, wrapper_def_id: DefId, ty_param: Ty<'tcx>) -> Ty<'tcx> {
-        let adt_def = self.adt_def(wrapper_def_id);
-        let substs =
-            InternalSubsts::for_item(self, wrapper_def_id, |param, substs| match param.kind {
-                GenericParamDefKind::Lifetime | GenericParamDefKind::Const { .. } => bug!(),
-                GenericParamDefKind::Type { has_default, .. } => {
-                    if param.index == 0 {
-                        ty_param.into()
-                    } else {
-                        assert!(has_default);
-                        self.type_of(param.def_id).subst(self, substs).into()
-                    }
-                }
-            });
-        self.mk_ty_from_kind(Adt(adt_def, substs))
-    }
-
-    #[inline]
-    pub fn mk_box(self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        let def_id = self.require_lang_item(LangItem::OwnedBox, None);
-        self.mk_generic_adt(def_id, ty)
-    }
-
-    #[inline]
-    pub fn mk_lang_item(self, ty: Ty<'tcx>, item: LangItem) -> Option<Ty<'tcx>> {
-        let def_id = self.lang_items().get(item)?;
-        Some(self.mk_generic_adt(def_id, ty))
-    }
-
-    #[inline]
-    pub fn mk_diagnostic_item(self, ty: Ty<'tcx>, name: Symbol) -> Option<Ty<'tcx>> {
-        let def_id = self.get_diagnostic_item(name)?;
-        Some(self.mk_generic_adt(def_id, ty))
-    }
-
-    #[inline]
-    pub fn mk_maybe_uninit(self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        let def_id = self.require_lang_item(LangItem::MaybeUninit, None);
-        self.mk_generic_adt(def_id, ty)
-    }
-
-    #[inline]
-    pub fn mk_ptr(self, tm: TypeAndMut<'tcx>) -> Ty<'tcx> {
-        self.mk_ty_from_kind(RawPtr(tm))
-    }
-
-    #[inline]
-    pub fn mk_ref(self, r: Region<'tcx>, tm: TypeAndMut<'tcx>) -> Ty<'tcx> {
-        self.mk_ty_from_kind(Ref(r, tm.ty, tm.mutbl))
-    }
-
-    #[inline]
-    pub fn mk_mut_ref(self, r: Region<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.mk_ref(r, TypeAndMut { ty, mutbl: hir::Mutability::Mut })
-    }
-
-    #[inline]
-    pub fn mk_imm_ref(self, r: Region<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.mk_ref(r, TypeAndMut { ty, mutbl: hir::Mutability::Not })
-    }
-
-    #[inline]
-    pub fn mk_mut_ptr(self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.mk_ptr(TypeAndMut { ty, mutbl: hir::Mutability::Mut })
-    }
-
-    #[inline]
-    pub fn mk_imm_ptr(self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.mk_ptr(TypeAndMut { ty, mutbl: hir::Mutability::Not })
-    }
-
-    #[inline]
-    pub fn mk_array(self, ty: Ty<'tcx>, n: u64) -> Ty<'tcx> {
-        self.mk_ty_from_kind(Array(ty, ty::Const::from_target_usize(self, n)))
-    }
-
-    #[inline]
-    pub fn mk_array_with_const_len(self, ty: Ty<'tcx>, ct: Const<'tcx>) -> Ty<'tcx> {
-        self.mk_ty_from_kind(Array(ty, ct))
-    }
-
-    #[inline]
-    pub fn mk_slice(self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.mk_ty_from_kind(Slice(ty))
-    }
-
-    #[inline]
-    pub fn mk_tup(self, ts: &[Ty<'tcx>]) -> Ty<'tcx> {
-        if ts.is_empty() {
-            self.types.unit
-        } else {
-            self.mk_ty_from_kind(Tuple(self.mk_type_list(&ts)))
-        }
-    }
-
-    pub fn mk_tup_from_iter<I, T>(self, iter: I) -> T::Output
-    where
-        I: Iterator<Item = T>,
-        T: CollectAndApply<Ty<'tcx>, Ty<'tcx>>,
-    {
-        T::collect_and_apply(iter, |ts| self.mk_tup(ts))
-    }
-
-    #[inline]
-    pub fn mk_unit(self) -> Ty<'tcx> {
-        self.types.unit
-    }
-
-    #[inline]
-    pub fn mk_diverging_default(self) -> Ty<'tcx> {
-        if self.features().never_type_fallback { self.types.never } else { self.types.unit }
-    }
-
-    #[inline]
-    pub fn mk_fn_def(
-        self,
-        def_id: DefId,
-        substs: impl IntoIterator<Item: Into<GenericArg<'tcx>>>,
-    ) -> Ty<'tcx> {
-        let substs = self.check_and_mk_substs(def_id, substs);
-        self.mk_ty_from_kind(FnDef(def_id, substs))
     }
 
     #[inline(always)]
@@ -1846,131 +1645,20 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
-    pub fn mk_fn_ptr(self, fty: PolyFnSig<'tcx>) -> Ty<'tcx> {
-        self.mk_ty_from_kind(FnPtr(fty))
-    }
-
-    #[inline]
-    pub fn mk_dynamic(
-        self,
-        obj: &'tcx List<PolyExistentialPredicate<'tcx>>,
-        reg: ty::Region<'tcx>,
-        repr: DynKind,
-    ) -> Ty<'tcx> {
-        self.mk_ty_from_kind(Dynamic(obj, reg, repr))
-    }
-
-    #[inline]
-    pub fn mk_projection(
-        self,
-        item_def_id: DefId,
-        substs: impl IntoIterator<Item: Into<GenericArg<'tcx>>>,
-    ) -> Ty<'tcx> {
-        self.mk_alias(ty::Projection, self.mk_alias_ty(item_def_id, substs))
-    }
-
-    #[inline]
-    pub fn mk_closure(self, def_id: DefId, closure_substs: SubstsRef<'tcx>) -> Ty<'tcx> {
-        debug_assert_eq!(
-            closure_substs.len(),
-            self.generics_of(self.typeck_root_def_id(def_id)).count() + 3,
-            "closure constructed with incorrect substitutions"
-        );
-        self.mk_ty_from_kind(Closure(def_id, closure_substs))
-    }
-
-    #[inline]
-    pub fn mk_generator(
-        self,
-        def_id: DefId,
-        generator_substs: SubstsRef<'tcx>,
-        movability: hir::Movability,
-    ) -> Ty<'tcx> {
-        debug_assert_eq!(
-            generator_substs.len(),
-            self.generics_of(self.typeck_root_def_id(def_id)).count() + 5,
-            "generator constructed with incorrect number of substitutions"
-        );
-        self.mk_ty_from_kind(Generator(def_id, generator_substs, movability))
-    }
-
-    #[inline]
-    pub fn mk_generator_witness(self, types: ty::Binder<'tcx, &'tcx List<Ty<'tcx>>>) -> Ty<'tcx> {
-        self.mk_ty_from_kind(GeneratorWitness(types))
-    }
-
-    /// Creates a `&mut Context<'_>` [`Ty`] with erased lifetimes.
-    pub fn mk_task_context(self) -> Ty<'tcx> {
-        let context_did = self.require_lang_item(LangItem::Context, None);
-        let context_adt_ref = self.adt_def(context_did);
-        let context_substs = self.mk_substs(&[self.lifetimes.re_erased.into()]);
-        let context_ty = self.mk_adt(context_adt_ref, context_substs);
-        self.mk_mut_ref(self.lifetimes.re_erased, context_ty)
-    }
-
-    #[inline]
-    pub fn mk_generator_witness_mir(self, id: DefId, substs: SubstsRef<'tcx>) -> Ty<'tcx> {
-        self.mk_ty_from_kind(GeneratorWitnessMIR(id, substs))
-    }
-
-    #[inline]
     pub fn mk_ct_from_kind(self, kind: ty::ConstKind<'tcx>, ty: Ty<'tcx>) -> Const<'tcx> {
         self.intern_const(ty::ConstData { kind, ty })
     }
 
+    // Avoid this in favour of more specific `Ty::new_*` methods, where possible.
+    #[allow(rustc::usage_of_ty_tykind)]
     #[inline]
-    pub fn mk_ty_var(self, v: TyVid) -> Ty<'tcx> {
-        // Use a pre-interned one when possible.
-        self.types
-            .ty_vars
-            .get(v.as_usize())
-            .copied()
-            .unwrap_or_else(|| self.mk_ty_from_kind(Infer(TyVar(v))))
-    }
-
-    #[inline]
-    pub fn mk_int_var(self, v: IntVid) -> Ty<'tcx> {
-        self.mk_ty_from_kind(Infer(IntVar(v)))
-    }
-
-    #[inline]
-    pub fn mk_float_var(self, v: FloatVid) -> Ty<'tcx> {
-        self.mk_ty_from_kind(Infer(FloatVar(v)))
-    }
-
-    #[inline]
-    pub fn mk_fresh_ty(self, n: u32) -> Ty<'tcx> {
-        // Use a pre-interned one when possible.
-        self.types
-            .fresh_tys
-            .get(n as usize)
-            .copied()
-            .unwrap_or_else(|| self.mk_ty_from_kind(Infer(ty::FreshTy(n))))
-    }
-
-    #[inline]
-    pub fn mk_fresh_int_ty(self, n: u32) -> Ty<'tcx> {
-        // Use a pre-interned one when possible.
-        self.types
-            .fresh_int_tys
-            .get(n as usize)
-            .copied()
-            .unwrap_or_else(|| self.mk_ty_from_kind(Infer(ty::FreshIntTy(n))))
-    }
-
-    #[inline]
-    pub fn mk_fresh_float_ty(self, n: u32) -> Ty<'tcx> {
-        // Use a pre-interned one when possible.
-        self.types
-            .fresh_float_tys
-            .get(n as usize)
-            .copied()
-            .unwrap_or_else(|| self.mk_ty_from_kind(Infer(ty::FreshFloatTy(n))))
-    }
-
-    #[inline]
-    pub fn mk_ty_param(self, index: u32, name: Symbol) -> Ty<'tcx> {
-        self.mk_ty_from_kind(Param(ParamTy { index, name }))
+    pub fn mk_ty_from_kind(self, st: TyKind<'tcx>) -> Ty<'tcx> {
+        self.interners.intern_ty(
+            st,
+            self.sess,
+            // This is only used to create a stable hashing context.
+            &self.untracked,
+        )
     }
 
     pub fn mk_param_from_def(self, param: &ty::GenericParamDef) -> GenericArg<'tcx> {
@@ -1978,7 +1666,7 @@ impl<'tcx> TyCtxt<'tcx> {
             GenericParamDefKind::Lifetime => {
                 ty::Region::new_early_bound(self, param.to_early_bound_region_data()).into()
             }
-            GenericParamDefKind::Type { .. } => self.mk_ty_param(param.index, param.name).into(),
+            GenericParamDefKind::Type { .. } => Ty::new_param(self, param.index, param.name).into(),
             GenericParamDefKind::Const { .. } => ty::Const::new_param(
                 self,
                 ParamConst { index: param.index, name: param.name },
@@ -1988,33 +1676,6 @@ impl<'tcx> TyCtxt<'tcx> {
             )
             .into(),
         }
-    }
-
-    #[inline]
-    pub fn mk_bound(self, index: ty::DebruijnIndex, bound_ty: ty::BoundTy) -> Ty<'tcx> {
-        self.mk_ty_from_kind(Bound(index, bound_ty))
-    }
-
-    #[inline]
-    pub fn mk_placeholder(self, placeholder: ty::PlaceholderType) -> Ty<'tcx> {
-        self.mk_ty_from_kind(Placeholder(placeholder))
-    }
-
-    #[inline]
-    pub fn mk_alias(self, kind: ty::AliasKind, alias_ty: ty::AliasTy<'tcx>) -> Ty<'tcx> {
-        debug_assert_matches!(
-            (kind, self.def_kind(alias_ty.def_id)),
-            (ty::Opaque, DefKind::OpaqueTy)
-                | (ty::Projection | ty::Inherent, DefKind::AssocTy)
-                | (ty::Opaque | ty::Projection, DefKind::ImplTraitPlaceholder)
-                | (ty::Weak, DefKind::TyAlias)
-        );
-        self.mk_ty_from_kind(Alias(kind, alias_ty))
-    }
-
-    #[inline]
-    pub fn mk_opaque(self, def_id: DefId, substs: SubstsRef<'tcx>) -> Ty<'tcx> {
-        self.mk_alias(ty::Opaque, self.mk_alias_ty(def_id, substs))
     }
 
     pub fn mk_place_field(self, place: Place<'tcx>, f: FieldIdx, ty: Ty<'tcx>) -> Place<'tcx> {
@@ -2364,21 +2025,6 @@ impl<'tcx> TyCtxt<'tcx> {
     /// (probably due to hashing spans in `ModChild`ren).
     pub fn module_children_local(self, def_id: LocalDefId) -> &'tcx [ModChild] {
         self.resolutions(()).module_children.get(&def_id).map_or(&[], |v| &v[..])
-    }
-}
-
-impl<'tcx> TyCtxtAt<'tcx> {
-    /// Constructs a `TyKind::Error` type and registers a `delay_span_bug` to ensure it gets used.
-    #[track_caller]
-    pub fn ty_error_misc(self) -> Ty<'tcx> {
-        self.tcx.ty_error_with_message(self.span, "TyKind::Error constructed but no error reported")
-    }
-
-    /// Constructs a `TyKind::Error` type and registers a `delay_span_bug` with the given `msg` to
-    /// ensure it gets used.
-    #[track_caller]
-    pub fn ty_error_with_message(self, msg: impl Into<DiagnosticMessage>) -> Ty<'tcx> {
-        self.tcx.ty_error_with_message(self.span, msg)
     }
 }
 

@@ -429,7 +429,7 @@ impl<'tcx> ConstToPat<'tcx> {
                         // arrays.
                         let pointee_ty = match *pointee_ty.kind() {
                             ty::Array(elem_ty, _) if self.treat_byte_string_as_slice => {
-                                tcx.mk_slice(elem_ty)
+                                Ty::new_slice(tcx, elem_ty)
                             }
                             _ => *pointee_ty,
                         };

@@ -288,7 +288,7 @@ pub fn suggest_new_region_bound(
 
                 // Get the identity type for this RPIT
                 let did = item_id.owner_id.to_def_id();
-                let ty = tcx.mk_opaque(did, ty::InternalSubsts::identity_for_item(tcx, did));
+                let ty = Ty::new_opaque(tcx, did, ty::InternalSubsts::identity_for_item(tcx, did));
 
                 if let Some(span) = opaque.bounds.iter().find_map(|arg| match arg {
                     GenericBound::Outlives(Lifetime {

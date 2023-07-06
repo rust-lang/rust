@@ -187,7 +187,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                                 .subst(tcx, goal.predicate.projection_ty.substs),
                             )
                             .into(),
-                        ty::AssocKind::Type => tcx.ty_error(guar).into(),
+                        ty::AssocKind::Type => Ty::new_error(tcx,guar).into(),
                         ty::AssocKind::Fn => unreachable!(),
                     };
                     ecx.eq(goal.param_env, goal.predicate.term, error_term)
@@ -343,7 +343,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                 | ty::Never
                 | ty::Foreign(..) => tcx.types.unit,
 
-                ty::Error(e) => tcx.ty_error(*e),
+                ty::Error(e) => Ty::new_error(tcx, *e),
 
                 ty::Str | ty::Slice(_) => tcx.types.usize,
 

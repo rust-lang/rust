@@ -453,7 +453,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn node_ty(&self, id: hir::HirId) -> Ty<'tcx> {
         match self.typeck_results.borrow().node_types().get(id) {
             Some(&t) => t,
-            None if let Some(e) = self.tainted_by_errors() => self.tcx.ty_error(e),
+            None if let Some(e) = self.tainted_by_errors() => Ty::new_error(self.tcx,e),
             None => {
                 bug!(
                     "no type for node {} in fcx {}",
@@ -467,7 +467,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn node_ty_opt(&self, id: hir::HirId) -> Option<Ty<'tcx>> {
         match self.typeck_results.borrow().node_types().get(id) {
             Some(&t) => Some(t),
-            None if let Some(e) = self.tainted_by_errors() => Some(self.tcx.ty_error(e)),
+            None if let Some(e) = self.tainted_by_errors() => Some(Ty::new_error(self.tcx,e)),
             None => None,
         }
     }
@@ -558,7 +558,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.tcx,
                 self.tcx.typeck_root_def_id(expr_def_id.to_def_id()),
             );
-            let witness = self.tcx.mk_generator_witness_mir(expr_def_id.to_def_id(), substs);
+            let witness = Ty::new_generator_witness_mir(self.tcx, expr_def_id.to_def_id(), substs);
 
             // Unify `interior` with `witness` and collect all the resulting obligations.
             let span = self.tcx.hir().body(body_id).value.span;
@@ -703,7 +703,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     pub(in super::super) fn err_args(&self, len: usize) -> Vec<Ty<'tcx>> {
-        let ty_error = self.tcx.ty_error_misc();
+        let ty_error = Ty::new_misc_error(self.tcx);
         vec![ty_error; len]
     }
 
@@ -1242,7 +1242,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                     let reported = err.emit();
-                    return (tcx.ty_error(reported), res);
+                    return (Ty::new_error(tcx, reported), res);
                 }
             }
         } else {
@@ -1485,7 +1485,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Ok(normalized_ty) => normalized_ty,
                 Err(errors) => {
                     let guar = self.err_ctxt().report_fulfillment_errors(&errors);
-                    return self.tcx.ty_error(guar);
+                    return Ty::new_error(self.tcx,guar);
                 }
             }
         } else {
@@ -1512,7 +1512,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .emit_inference_failure_err(self.body_id, sp, ty.into(), E0282, true)
                     .emit()
             });
-            let err = self.tcx.ty_error(e);
+            let err = Ty::new_error(self.tcx, e);
             self.demand_suptype(sp, err, ty);
             err
         }

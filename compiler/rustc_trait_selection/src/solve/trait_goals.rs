@@ -416,7 +416,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                         tcx.mk_substs_from_iter(a_substs.iter().enumerate().map(|(i, a)| {
                             if unsizing_params.contains(i as u32) { b_substs[i] } else { a }
                         }));
-                    let unsized_a_ty = tcx.mk_adt(a_def, new_a_substs);
+                    let unsized_a_ty = Ty::new_adt(tcx, a_def, new_a_substs);
 
                     // Finally, we require that `TailA: Unsize<TailB>` for the tail field
                     // types.
@@ -436,7 +436,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
 
                     // Substitute just the tail field of B., and require that they're equal.
                     let unsized_a_ty =
-                        tcx.mk_tup_from_iter(a_rest_tys.iter().chain([b_last_ty]).copied());
+                        Ty::new_tup_from_iter(tcx, a_rest_tys.iter().chain([b_last_ty]).copied());
                     ecx.eq(goal.param_env, unsized_a_ty, b_ty)?;
 
                     // Similar to ADTs, require that the rest of the fields are equal.
@@ -495,7 +495,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                             .map(ty::Binder::dummy),
                     );
                 let new_a_data = tcx.mk_poly_existential_predicates_from_iter(new_a_data);
-                let new_a_ty = tcx.mk_dynamic(new_a_data, b_region, ty::Dyn);
+                let new_a_ty = Ty::new_dynamic(tcx, new_a_data, b_region, ty::Dyn);
 
                 // We also require that A's lifetime outlives B's lifetime.
                 ecx.eq(goal.param_env, new_a_ty, b_ty)?;

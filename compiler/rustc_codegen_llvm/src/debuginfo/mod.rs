@@ -454,7 +454,7 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                         ty::Array(ct, _)
                             if (*ct == cx.tcx.types.u8) || cx.layout_of(*ct).is_zst() =>
                         {
-                            cx.tcx.mk_imm_ptr(*ct)
+                            Ty::new_imm_ptr(cx.tcx, *ct)
                         }
                         _ => t,
                     };

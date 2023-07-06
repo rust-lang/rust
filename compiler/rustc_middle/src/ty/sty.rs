@@ -15,6 +15,7 @@ use hir::def::DefKind;
 use polonius_engine::Atom;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::intern::Interned;
+use rustc_error_messages::DiagnosticMessage;
 use rustc_errors::{DiagnosticArgValue, ErrorGuaranteed, IntoDiagnosticArg, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -25,6 +26,7 @@ use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
 use rustc_target::spec::abi::{self, Abi};
+use std::assert_matches::debug_assert_matches;
 use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::fmt;
@@ -33,9 +35,11 @@ use std::ops::{ControlFlow, Deref, Range};
 use ty::util::IntTypeExt;
 
 use rustc_type_ir::sty::TyKind::*;
-use rustc_type_ir::ConstKind as IrConstKind;
-use rustc_type_ir::RegionKind as IrRegionKind;
 use rustc_type_ir::TyKind as IrTyKind;
+use rustc_type_ir::{CollectAndApply, ConstKind as IrConstKind};
+use rustc_type_ir::{DynKind, RegionKind as IrRegionKind};
+
+use super::GenericParamDefKind;
 
 // Re-export the `TyKind` from `rustc_type_ir` here for convenience
 #[rustc_diagnostic_item = "TyKind"]
@@ -1241,7 +1245,7 @@ impl<'tcx> AliasTy<'tcx> {
     }
 
     pub fn to_ty(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
-        tcx.mk_alias(self.kind(tcx), self)
+        Ty::new_alias(tcx, self.kind(tcx), self)
     }
 }
 
@@ -1432,7 +1436,7 @@ impl<'tcx> ParamTy {
 
     #[inline]
     pub fn to_ty(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
-        tcx.mk_ty_param(self.index, self.name)
+        Ty::new_param(tcx, self.index, self.name)
     }
 
     pub fn span_from_generics(&self, tcx: TyCtxt<'tcx>, item_with_generics: DefId) -> Span {
@@ -1870,6 +1874,390 @@ impl<'tcx> Region<'tcx> {
             ty::ReVar(vid) => vid,
             _ => bug!("expected region {:?} to be of kind ReVar", self),
         }
+    }
+}
+
+/// Constructors for `Ty`
+impl<'tcx> Ty<'tcx> {
+    // Avoid this in favour of more specific `new_*` methods, where possible.
+    #[allow(rustc::usage_of_ty_tykind)]
+    #[inline]
+    pub fn new(tcx: TyCtxt<'tcx>, st: TyKind<'tcx>) -> Ty<'tcx> {
+        tcx.mk_ty_from_kind(st)
+    }
+
+    #[inline]
+    pub fn new_infer(tcx: TyCtxt<'tcx>, infer: ty::InferTy) -> Ty<'tcx> {
+        Ty::new(tcx, TyKind::Infer(infer))
+    }
+
+    #[inline]
+    pub fn new_var(tcx: TyCtxt<'tcx>, v: ty::TyVid) -> Ty<'tcx> {
+        // Use a pre-interned one when possible.
+        tcx.types
+            .ty_vars
+            .get(v.as_usize())
+            .copied()
+            .unwrap_or_else(|| Ty::new(tcx, Infer(TyVar(v))))
+    }
+
+    #[inline]
+    pub fn new_int_var(tcx: TyCtxt<'tcx>, v: ty::IntVid) -> Ty<'tcx> {
+        Ty::new_infer(tcx, IntVar(v))
+    }
+
+    #[inline]
+    pub fn new_float_var(tcx: TyCtxt<'tcx>, v: ty::FloatVid) -> Ty<'tcx> {
+        Ty::new_infer(tcx, FloatVar(v))
+    }
+
+    #[inline]
+    pub fn new_fresh(tcx: TyCtxt<'tcx>, n: u32) -> Ty<'tcx> {
+        // Use a pre-interned one when possible.
+        tcx.types
+            .fresh_tys
+            .get(n as usize)
+            .copied()
+            .unwrap_or_else(|| Ty::new_infer(tcx, ty::FreshTy(n)))
+    }
+
+    #[inline]
+    pub fn new_fresh_int(tcx: TyCtxt<'tcx>, n: u32) -> Ty<'tcx> {
+        // Use a pre-interned one when possible.
+        tcx.types
+            .fresh_int_tys
+            .get(n as usize)
+            .copied()
+            .unwrap_or_else(|| Ty::new_infer(tcx, ty::FreshIntTy(n)))
+    }
+
+    #[inline]
+    pub fn new_fresh_float(tcx: TyCtxt<'tcx>, n: u32) -> Ty<'tcx> {
+        // Use a pre-interned one when possible.
+        tcx.types
+            .fresh_float_tys
+            .get(n as usize)
+            .copied()
+            .unwrap_or_else(|| Ty::new_infer(tcx, ty::FreshFloatTy(n)))
+    }
+
+    #[inline]
+    pub fn new_param(tcx: TyCtxt<'tcx>, index: u32, name: Symbol) -> Ty<'tcx> {
+        tcx.mk_ty_from_kind(Param(ParamTy { index, name }))
+    }
+
+    #[inline]
+    pub fn new_bound(
+        tcx: TyCtxt<'tcx>,
+        index: ty::DebruijnIndex,
+        bound_ty: ty::BoundTy,
+    ) -> Ty<'tcx> {
+        Ty::new(tcx, Bound(index, bound_ty))
+    }
+
+    #[inline]
+    pub fn new_placeholder(tcx: TyCtxt<'tcx>, placeholder: ty::PlaceholderType) -> Ty<'tcx> {
+        Ty::new(tcx, Placeholder(placeholder))
+    }
+
+    #[inline]
+    pub fn new_alias(
+        tcx: TyCtxt<'tcx>,
+        kind: ty::AliasKind,
+        alias_ty: ty::AliasTy<'tcx>,
+    ) -> Ty<'tcx> {
+        debug_assert_matches!(
+            (kind, tcx.def_kind(alias_ty.def_id)),
+            (ty::Opaque, DefKind::OpaqueTy)
+                | (ty::Projection | ty::Inherent, DefKind::AssocTy)
+                | (ty::Opaque | ty::Projection, DefKind::ImplTraitPlaceholder)
+                | (ty::Weak, DefKind::TyAlias)
+        );
+        Ty::new(tcx, Alias(kind, alias_ty))
+    }
+
+    #[inline]
+    pub fn new_opaque(tcx: TyCtxt<'tcx>, def_id: DefId, substs: SubstsRef<'tcx>) -> Ty<'tcx> {
+        Ty::new_alias(tcx, ty::Opaque, tcx.mk_alias_ty(def_id, substs))
+    }
+
+    /// Constructs a `TyKind::Error` type with current `ErrorGuaranteed`
+    pub fn new_error(tcx: TyCtxt<'tcx>, reported: ErrorGuaranteed) -> Ty<'tcx> {
+        Ty::new(tcx, Error(reported))
+    }
+
+    /// Constructs a `TyKind::Error` type and registers a `delay_span_bug` to ensure it gets used.
+    #[track_caller]
+    pub fn new_misc_error(tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
+        Ty::new_error_with_message(tcx, DUMMY_SP, "TyKind::Error constructed but no error reported")
+    }
+
+    /// Constructs a `TyKind::Error` type and registers a `delay_span_bug` with the given `msg` to
+    /// ensure it gets used.
+    #[track_caller]
+    pub fn new_error_with_message<S: Into<MultiSpan>>(
+        tcx: TyCtxt<'tcx>,
+        span: S,
+        msg: impl Into<DiagnosticMessage>,
+    ) -> Ty<'tcx> {
+        let reported = tcx.sess.delay_span_bug(span, msg);
+        Ty::new(tcx, Error(reported))
+    }
+
+    #[inline]
+    pub fn new_int(tcx: TyCtxt<'tcx>, i: ty::IntTy) -> Ty<'tcx> {
+        use ty::IntTy::*;
+        match i {
+            Isize => tcx.types.isize,
+            I8 => tcx.types.i8,
+            I16 => tcx.types.i16,
+            I32 => tcx.types.i32,
+            I64 => tcx.types.i64,
+            I128 => tcx.types.i128,
+        }
+    }
+
+    #[inline]
+    pub fn new_uint(tcx: TyCtxt<'tcx>, ui: ty::UintTy) -> Ty<'tcx> {
+        use ty::UintTy::*;
+        match ui {
+            Usize => tcx.types.usize,
+            U8 => tcx.types.u8,
+            U16 => tcx.types.u16,
+            U32 => tcx.types.u32,
+            U64 => tcx.types.u64,
+            U128 => tcx.types.u128,
+        }
+    }
+
+    #[inline]
+    pub fn new_float(tcx: TyCtxt<'tcx>, f: ty::FloatTy) -> Ty<'tcx> {
+        use ty::FloatTy::*;
+        match f {
+            F32 => tcx.types.f32,
+            F64 => tcx.types.f64,
+        }
+    }
+
+    #[inline]
+    pub fn new_ref(tcx: TyCtxt<'tcx>, r: Region<'tcx>, tm: TypeAndMut<'tcx>) -> Ty<'tcx> {
+        Ty::new(tcx, Ref(r, tm.ty, tm.mutbl))
+    }
+
+    #[inline]
+    pub fn new_mut_ref(tcx: TyCtxt<'tcx>, r: Region<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
+        Ty::new_ref(tcx, r, TypeAndMut { ty, mutbl: hir::Mutability::Mut })
+    }
+
+    #[inline]
+    pub fn new_imm_ref(tcx: TyCtxt<'tcx>, r: Region<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
+        Ty::new_ref(tcx, r, TypeAndMut { ty, mutbl: hir::Mutability::Not })
+    }
+
+    #[inline]
+    pub fn new_ptr(tcx: TyCtxt<'tcx>, tm: TypeAndMut<'tcx>) -> Ty<'tcx> {
+        Ty::new(tcx, RawPtr(tm))
+    }
+
+    #[inline]
+    pub fn new_mut_ptr(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
+        Ty::new_ptr(tcx, TypeAndMut { ty, mutbl: hir::Mutability::Mut })
+    }
+
+    #[inline]
+    pub fn new_imm_ptr(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
+        Ty::new_ptr(tcx, TypeAndMut { ty, mutbl: hir::Mutability::Not })
+    }
+
+    #[inline]
+    pub fn new_adt(tcx: TyCtxt<'tcx>, def: AdtDef<'tcx>, substs: SubstsRef<'tcx>) -> Ty<'tcx> {
+        Ty::new(tcx, Adt(def, substs))
+    }
+
+    #[inline]
+    pub fn new_foreign(tcx: TyCtxt<'tcx>, def_id: DefId) -> Ty<'tcx> {
+        Ty::new(tcx, Foreign(def_id))
+    }
+
+    #[inline]
+    pub fn new_array(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, n: u64) -> Ty<'tcx> {
+        Ty::new(tcx, Array(ty, ty::Const::from_target_usize(tcx, n)))
+    }
+
+    #[inline]
+    pub fn new_array_with_const_len(
+        tcx: TyCtxt<'tcx>,
+        ty: Ty<'tcx>,
+        ct: ty::Const<'tcx>,
+    ) -> Ty<'tcx> {
+        Ty::new(tcx, Array(ty, ct))
+    }
+
+    #[inline]
+    pub fn new_slice(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
+        Ty::new(tcx, Slice(ty))
+    }
+
+    #[inline]
+    pub fn new_tup(tcx: TyCtxt<'tcx>, ts: &[Ty<'tcx>]) -> Ty<'tcx> {
+        if ts.is_empty() { tcx.types.unit } else { Ty::new(tcx, Tuple(tcx.mk_type_list(&ts))) }
+    }
+
+    pub fn new_tup_from_iter<I, T>(tcx: TyCtxt<'tcx>, iter: I) -> T::Output
+    where
+        I: Iterator<Item = T>,
+        T: CollectAndApply<Ty<'tcx>, Ty<'tcx>>,
+    {
+        T::collect_and_apply(iter, |ts| Ty::new_tup(tcx, ts))
+    }
+
+    #[inline]
+    pub fn new_fn_def(
+        tcx: TyCtxt<'tcx>,
+        def_id: DefId,
+        substs: impl IntoIterator<Item: Into<GenericArg<'tcx>>>,
+    ) -> Ty<'tcx> {
+        let substs = tcx.check_and_mk_substs(def_id, substs);
+        Ty::new(tcx, FnDef(def_id, substs))
+    }
+
+    #[inline]
+    pub fn new_fn_ptr(tcx: TyCtxt<'tcx>, fty: PolyFnSig<'tcx>) -> Ty<'tcx> {
+        Ty::new(tcx, FnPtr(fty))
+    }
+
+    #[inline]
+    pub fn new_dynamic(
+        tcx: TyCtxt<'tcx>,
+        obj: &'tcx List<PolyExistentialPredicate<'tcx>>,
+        reg: ty::Region<'tcx>,
+        repr: DynKind,
+    ) -> Ty<'tcx> {
+        Ty::new(tcx, Dynamic(obj, reg, repr))
+    }
+
+    #[inline]
+    pub fn new_projection(
+        tcx: TyCtxt<'tcx>,
+        item_def_id: DefId,
+        substs: impl IntoIterator<Item: Into<GenericArg<'tcx>>>,
+    ) -> Ty<'tcx> {
+        Ty::new_alias(tcx, ty::Projection, tcx.mk_alias_ty(item_def_id, substs))
+    }
+
+    #[inline]
+    pub fn new_closure(
+        tcx: TyCtxt<'tcx>,
+        def_id: DefId,
+        closure_substs: SubstsRef<'tcx>,
+    ) -> Ty<'tcx> {
+        debug_assert_eq!(
+            closure_substs.len(),
+            tcx.generics_of(tcx.typeck_root_def_id(def_id)).count() + 3,
+            "closure constructed with incorrect substitutions"
+        );
+        Ty::new(tcx, Closure(def_id, closure_substs))
+    }
+
+    #[inline]
+    pub fn new_generator(
+        tcx: TyCtxt<'tcx>,
+        def_id: DefId,
+        generator_substs: SubstsRef<'tcx>,
+        movability: hir::Movability,
+    ) -> Ty<'tcx> {
+        debug_assert_eq!(
+            generator_substs.len(),
+            tcx.generics_of(tcx.typeck_root_def_id(def_id)).count() + 5,
+            "generator constructed with incorrect number of substitutions"
+        );
+        Ty::new(tcx, Generator(def_id, generator_substs, movability))
+    }
+
+    #[inline]
+    pub fn new_generator_witness(
+        tcx: TyCtxt<'tcx>,
+        types: ty::Binder<'tcx, &'tcx List<Ty<'tcx>>>,
+    ) -> Ty<'tcx> {
+        Ty::new(tcx, GeneratorWitness(types))
+    }
+
+    #[inline]
+    pub fn new_generator_witness_mir(
+        tcx: TyCtxt<'tcx>,
+        id: DefId,
+        substs: SubstsRef<'tcx>,
+    ) -> Ty<'tcx> {
+        Ty::new(tcx, GeneratorWitnessMIR(id, substs))
+    }
+
+    // misc
+
+    #[inline]
+    pub fn new_unit(tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
+        tcx.types.unit
+    }
+
+    #[inline]
+    pub fn new_static_str(tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
+        Ty::new_imm_ref(tcx, tcx.lifetimes.re_static, tcx.types.str_)
+    }
+
+    #[inline]
+    pub fn new_diverging_default(tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
+        if tcx.features().never_type_fallback { tcx.types.never } else { tcx.types.unit }
+    }
+
+    // lang and diagnostic tys
+
+    fn new_generic_adt(tcx: TyCtxt<'tcx>, wrapper_def_id: DefId, ty_param: Ty<'tcx>) -> Ty<'tcx> {
+        let adt_def = tcx.adt_def(wrapper_def_id);
+        let substs =
+            InternalSubsts::for_item(tcx, wrapper_def_id, |param, substs| match param.kind {
+                GenericParamDefKind::Lifetime | GenericParamDefKind::Const { .. } => bug!(),
+                GenericParamDefKind::Type { has_default, .. } => {
+                    if param.index == 0 {
+                        ty_param.into()
+                    } else {
+                        assert!(has_default);
+                        tcx.type_of(param.def_id).subst(tcx, substs).into()
+                    }
+                }
+            });
+        Ty::new(tcx, Adt(adt_def, substs))
+    }
+
+    #[inline]
+    pub fn new_lang_item(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, item: LangItem) -> Option<Ty<'tcx>> {
+        let def_id = tcx.lang_items().get(item)?;
+        Some(Ty::new_generic_adt(tcx, def_id, ty))
+    }
+
+    #[inline]
+    pub fn new_diagnostic_item(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, name: Symbol) -> Option<Ty<'tcx>> {
+        let def_id = tcx.get_diagnostic_item(name)?;
+        Some(Ty::new_generic_adt(tcx, def_id, ty))
+    }
+
+    #[inline]
+    pub fn new_box(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
+        let def_id = tcx.require_lang_item(LangItem::OwnedBox, None);
+        Ty::new_generic_adt(tcx, def_id, ty)
+    }
+
+    #[inline]
+    pub fn new_maybe_uninit(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
+        let def_id = tcx.require_lang_item(LangItem::MaybeUninit, None);
+        Ty::new_generic_adt(tcx, def_id, ty)
+    }
+
+    /// Creates a `&mut Context<'_>` [`Ty`] with erased lifetimes.
+    pub fn new_task_context(tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
+        let context_did = tcx.require_lang_item(LangItem::Context, None);
+        let context_adt_ref = tcx.adt_def(context_did);
+        let context_substs = tcx.mk_substs(&[tcx.lifetimes.re_erased.into()]);
+        let context_ty = Ty::new_adt(tcx, context_adt_ref, context_substs);
+        Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, context_ty)
     }
 }
 
@@ -2316,7 +2704,7 @@ impl<'tcx> Ty<'tcx> {
                 let assoc_items = tcx.associated_item_def_ids(
                     tcx.require_lang_item(hir::LangItem::DiscriminantKind, None),
                 );
-                tcx.mk_projection(assoc_items[0], tcx.mk_substs(&[self.into()]))
+                Ty::new_projection(tcx, assoc_items[0], tcx.mk_substs(&[self.into()]))
             }
 
             ty::Bool

@@ -443,7 +443,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     }
                     if let (hir::TyKind::Infer, false) = (&ty.kind, self.astconv.allow_ty_infer()) {
                         self.inferred_params.push(ty.span);
-                        tcx.ty_error_misc().into()
+                        Ty::new_misc_error(tcx).into()
                     } else {
                         self.astconv.ast_ty_to_ty(ty).into()
                     }
@@ -512,14 +512,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 _ => false,
                             }) {
                                 // Avoid ICE #86756 when type error recovery goes awry.
-                                return tcx.ty_error_misc().into();
+                                return Ty::new_misc_error(tcx).into();
                             }
                             tcx.at(self.span).type_of(param.def_id).subst(tcx, substs).into()
                         } else if infer_args {
                             self.astconv.ty_infer(Some(param), self.span).into()
                         } else {
                             // We've already errored above about the mismatch.
-                            tcx.ty_error_misc().into()
+                            Ty::new_misc_error(tcx).into()
                         }
                     }
                     GenericParamDefKind::Const { has_default } => {
@@ -912,7 +912,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             // referencing a single opaque type) get encoded as a type alias that normalization will
             // then actually instantiate the where bounds of.
             let alias_ty = self.tcx().mk_alias_ty(did, substs);
-            self.tcx().mk_alias(ty::Weak, alias_ty)
+            Ty::new_alias(self.tcx(), ty::Weak, alias_ty)
         } else {
             ty.subst(self.tcx(), substs)
         }
@@ -1573,10 +1573,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
                 fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
                     match *ty.kind() {
-                        ty::Bound(_, bv) => self.tcx.mk_placeholder(ty::PlaceholderType {
-                            universe: self.universe,
-                            bound: bv,
-                        }),
+                        ty::Bound(_, bv) => Ty::new_placeholder(
+                            self.tcx,
+                            ty::PlaceholderType { universe: self.universe, bound: bv },
+                        ),
                         _ => ty.super_fold_with(self),
                     }
                 }
@@ -1665,7 +1665,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     .chain(substs.into_iter().skip(parent_substs.len())),
             );
 
-            let ty = tcx.mk_alias(ty::Inherent, tcx.mk_alias_ty(assoc_item, substs));
+            let ty = Ty::new_alias(tcx, ty::Inherent, tcx.mk_alias_ty(assoc_item, substs));
 
             return Ok(Some((ty, assoc_item)));
         }
@@ -1850,7 +1850,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 &[path_str],
                 item_segment.ident.name,
             );
-            return tcx.ty_error(reported)
+            return Ty::new_error(tcx,reported)
         };
 
         debug!("qpath_to_ty: self_type={:?}", self_ty);
@@ -1873,7 +1873,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         debug!("qpath_to_ty: trait_ref={:?}", trait_ref);
 
-        tcx.mk_projection(item_def_id, item_substs)
+        Ty::new_projection(tcx, item_def_id, item_substs)
     }
 
     pub fn prohibit_generics<'a>(
@@ -2136,7 +2136,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     err.note("`impl Trait` types can't have type parameters");
                 });
                 let substs = self.ast_path_substs_for_ty(span, did, item_segment.0);
-                tcx.mk_opaque(did, substs)
+                Ty::new_opaque(tcx, did, substs)
             }
             Res::Def(
                 DefKind::Enum
@@ -2188,16 +2188,16 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             var: ty::BoundVar::from_u32(index),
                             kind: ty::BoundTyKind::Param(def_id, name),
                         };
-                        tcx.mk_bound(debruijn, br)
+                        Ty::new_bound(tcx, debruijn, br)
                     }
                     Some(rbv::ResolvedArg::EarlyBound(_)) => {
                         let def_id = def_id.expect_local();
                         let item_def_id = tcx.hir().ty_param_owner(def_id);
                         let generics = tcx.generics_of(item_def_id);
                         let index = generics.param_def_id_to_index[&def_id.to_def_id()];
-                        tcx.mk_ty_param(index, tcx.hir().ty_param_name(def_id))
+                        Ty::new_param(tcx, index, tcx.hir().ty_param_name(def_id))
                     }
-                    Some(rbv::ResolvedArg::Error(guar)) => tcx.ty_error(guar),
+                    Some(rbv::ResolvedArg::Error(guar)) => Ty::new_error(tcx, guar),
                     arg => bug!("unexpected bound var resolution for {hir_id:?}: {arg:?}"),
                 }
             }
@@ -2309,7 +2309,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     {
                         err.span_note(impl_.self_ty.span, "not a concrete type");
                     }
-                    tcx.ty_error(err.emit())
+                    Ty::new_error(tcx, err.emit())
                 } else {
                     ty
                 }
@@ -2350,9 +2350,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 match prim_ty {
                     hir::PrimTy::Bool => tcx.types.bool,
                     hir::PrimTy::Char => tcx.types.char,
-                    hir::PrimTy::Int(it) => tcx.mk_mach_int(ty::int_ty(it)),
-                    hir::PrimTy::Uint(uit) => tcx.mk_mach_uint(ty::uint_ty(uit)),
-                    hir::PrimTy::Float(ft) => tcx.mk_mach_float(ty::float_ty(ft)),
+                    hir::PrimTy::Int(it) => Ty::new_int(tcx, ty::int_ty(it)),
+                    hir::PrimTy::Uint(uit) => Ty::new_uint(tcx, ty::uint_ty(uit)),
+                    hir::PrimTy::Float(ft) => Ty::new_float(tcx, ty::float_ty(ft)),
                     hir::PrimTy::Str => tcx.types.str_,
                 }
             }
@@ -2362,7 +2362,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     .sess
                     .delay_span_bug(path.span, "path with `Res::Err` but no error emitted");
                 self.set_tainted_by_errors(e);
-                self.tcx().ty_error(e)
+                Ty::new_error(self.tcx(), e)
             }
             _ => span_bug!(span, "unexpected resolution: {:?}", path.res),
         }
@@ -2387,31 +2387,27 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let tcx = self.tcx();
 
         let result_ty = match &ast_ty.kind {
-            hir::TyKind::Slice(ty) => tcx.mk_slice(self.ast_ty_to_ty(ty)),
+            hir::TyKind::Slice(ty) => Ty::new_slice(tcx, self.ast_ty_to_ty(ty)),
             hir::TyKind::Ptr(mt) => {
-                tcx.mk_ptr(ty::TypeAndMut { ty: self.ast_ty_to_ty(mt.ty), mutbl: mt.mutbl })
+                Ty::new_ptr(tcx, ty::TypeAndMut { ty: self.ast_ty_to_ty(mt.ty), mutbl: mt.mutbl })
             }
             hir::TyKind::Ref(region, mt) => {
                 let r = self.ast_region_to_region(region, None);
                 debug!(?r);
                 let t = self.ast_ty_to_ty_inner(mt.ty, true, false);
-                tcx.mk_ref(r, ty::TypeAndMut { ty: t, mutbl: mt.mutbl })
+                Ty::new_ref(tcx, r, ty::TypeAndMut { ty: t, mutbl: mt.mutbl })
             }
             hir::TyKind::Never => tcx.types.never,
             hir::TyKind::Tup(fields) => {
-                tcx.mk_tup_from_iter(fields.iter().map(|t| self.ast_ty_to_ty(t)))
+                Ty::new_tup_from_iter(tcx, fields.iter().map(|t| self.ast_ty_to_ty(t)))
             }
             hir::TyKind::BareFn(bf) => {
                 require_c_abi_if_c_variadic(tcx, bf.decl, bf.abi, ast_ty.span);
 
-                tcx.mk_fn_ptr(self.ty_of_fn(
-                    ast_ty.hir_id,
-                    bf.unsafety,
-                    bf.abi,
-                    bf.decl,
-                    None,
-                    Some(ast_ty),
-                ))
+                Ty::new_fn_ptr(
+                    tcx,
+                    self.ty_of_fn(ast_ty.hir_id, bf.unsafety, bf.abi, bf.decl, None, Some(ast_ty)),
+                )
             }
             hir::TyKind::TraitObject(bounds, lifetime, repr) => {
                 self.maybe_lint_bare_trait(ast_ty, in_path);
@@ -2458,7 +2454,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let ty = self.ast_ty_to_ty_inner(qself, false, true);
                 self.associated_path_to_ty(ast_ty.hir_id, ast_ty.span, ty, qself, segment, false)
                     .map(|(ty, _, _)| ty)
-                    .unwrap_or_else(|guar| tcx.ty_error(guar))
+                    .unwrap_or_else(|guar| Ty::new_error(tcx, guar))
             }
             &hir::TyKind::Path(hir::QPath::LangItem(lang_item, span, _)) => {
                 let def_id = tcx.require_lang_item(lang_item, Some(span));
@@ -2482,7 +2478,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     }
                 };
 
-                tcx.mk_array_with_const_len(self.ast_ty_to_ty(ty), length)
+                Ty::new_array_with_const_len(tcx, self.ast_ty_to_ty(ty), length)
             }
             hir::TyKind::Typeof(e) => {
                 let ty_erased = tcx.type_of(e.def_id).subst_identity();
@@ -2506,7 +2502,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // handled specially and will not descend into this routine.
                 self.ty_infer(None, ast_ty.span)
             }
-            hir::TyKind::Err(guar) => tcx.ty_error(*guar),
+            hir::TyKind::Err(guar) => Ty::new_error(tcx, *guar),
         };
 
         self.record_ty(ast_ty.hir_id, result_ty, ast_ty.span);
@@ -2543,7 +2539,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         });
         debug!("impl_trait_ty_to_ty: substs={:?}", substs);
 
-        if in_trait { tcx.mk_projection(def_id, substs) } else { tcx.mk_opaque(def_id, substs) }
+        if in_trait {
+            Ty::new_projection(tcx, def_id, substs)
+        } else {
+            Ty::new_opaque(tcx, def_id, substs)
+        }
     }
 
     pub fn ty_of_arg(&self, ty: &hir::Ty<'_>, expected_ty: Option<Ty<'tcx>>) -> Ty<'tcx> {
@@ -2612,7 +2612,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     self.ast_ty_to_ty(output)
                 }
             }
-            hir::FnRetTy::DefaultReturn(..) => tcx.mk_unit(),
+            hir::FnRetTy::DefaultReturn(..) => Ty::new_unit(tcx,),
         };
 
         debug!(?output_ty);
