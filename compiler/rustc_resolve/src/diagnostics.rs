@@ -1,5 +1,3 @@
-use std::ptr;
-
 use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{self, Visitor};
@@ -182,13 +180,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
     }
 
-    pub(crate) fn report_conflict<'b>(
+    pub(crate) fn report_conflict(
         &mut self,
         parent: Module<'_>,
         ident: Ident,
         ns: Namespace,
-        new_binding: &NameBinding<'b>,
-        old_binding: &NameBinding<'b>,
+        new_binding: NameBinding<'a>,
+        old_binding: NameBinding<'a>,
     ) {
         // Error on the second of two conflicting names
         if old_binding.span.lo() > new_binding.span.lo() {
@@ -262,7 +260,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         // See https://github.com/rust-lang/rust/issues/32354
         use NameBindingKind::Import;
-        let can_suggest = |binding: &NameBinding<'_>, import: &self::Import<'_>| {
+        let can_suggest = |binding: NameBinding<'_>, import: self::Import<'_>| {
             !binding.span.is_dummy()
                 && !matches!(import.kind, ImportKind::MacroUse | ImportKind::MacroExport)
         };
@@ -272,22 +270,22 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             (Import { import: new, .. }, Import { import: old, .. })
                 if {
                     (new.has_attributes || old.has_attributes)
-                        && can_suggest(old_binding, old)
-                        && can_suggest(new_binding, new)
+                        && can_suggest(old_binding, *old)
+                        && can_suggest(new_binding, *new)
                 } =>
             {
                 if old.has_attributes {
-                    Some((new, new_binding.span, true))
+                    Some((*new, new_binding.span, true))
                 } else {
-                    Some((old, old_binding.span, true))
+                    Some((*old, old_binding.span, true))
                 }
             }
             // Otherwise prioritize the new binding.
-            (Import { import, .. }, other) if can_suggest(new_binding, import) => {
-                Some((import, new_binding.span, other.is_import()))
+            (Import { import, .. }, other) if can_suggest(new_binding, *import) => {
+                Some((*import, new_binding.span, other.is_import()))
             }
-            (other, Import { import, .. }) if can_suggest(old_binding, import) => {
-                Some((import, old_binding.span, other.is_import()))
+            (other, Import { import, .. }) if can_suggest(old_binding, *import) => {
+                Some((*import, old_binding.span, other.is_import()))
             }
             _ => None,
         };
@@ -341,7 +339,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         &self,
         err: &mut Diagnostic,
         name: Symbol,
-        import: &Import<'_>,
+        import: Import<'_>,
         binding_span: Span,
     ) {
         let suggested_name = if name.as_str().chars().next().unwrap().is_uppercase() {
@@ -413,7 +411,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     fn add_suggestion_for_duplicate_nested_use(
         &self,
         err: &mut Diagnostic,
-        import: &Import<'_>,
+        import: Import<'_>,
         binding_span: Span,
     ) {
         assert!(import.is_nested());
@@ -455,7 +453,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         &mut self,
         finalize: Option<Finalize>,
         path: &[Segment],
-        second_binding: Option<&NameBinding<'_>>,
+        second_binding: Option<NameBinding<'_>>,
     ) {
         let Some(Finalize { node_id, root_span, .. }) = finalize else {
             return;
@@ -1198,7 +1196,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 // avoid suggesting anything with a hygienic name
                 if ident.name == lookup_ident.name
                     && ns == namespace
-                    && !ptr::eq(in_module, parent_scope.module)
+                    && in_module != parent_scope.module
                     && !ident.span.normalize_to_macros_2_0().from_expansion()
                 {
                     let res = name_binding.res();
@@ -1515,7 +1513,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         true
     }
 
-    fn binding_description(&self, b: &NameBinding<'_>, ident: Ident, from_prelude: bool) -> String {
+    fn binding_description(&self, b: NameBinding<'_>, ident: Ident, from_prelude: bool) -> String {
         let res = b.res();
         if b.span.is_dummy() || !self.tcx.sess.source_map().is_span_accessible(b.span) {
             // These already contain the "built-in" prefix or look bad with it.
@@ -1555,7 +1553,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         err.span_label(ident.span, "ambiguous name");
         err.note(format!("ambiguous because of {}", kind.descr()));
 
-        let mut could_refer_to = |b: &NameBinding<'_>, misc: AmbiguityErrorMisc, also: &str| {
+        let mut could_refer_to = |b: NameBinding<'_>, misc: AmbiguityErrorMisc, also: &str| {
             let what = self.binding_description(b, ident, misc == AmbiguityErrorMisc::FromPrelude);
             let note_msg = format!("`{ident}` could{also} refer to {what}");
 
@@ -1595,7 +1593,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     /// If the binding refers to a tuple struct constructor with fields,
     /// returns the span of its fields.
-    fn ctor_fields_span(&self, binding: &NameBinding<'_>) -> Option<Span> {
+    fn ctor_fields_span(&self, binding: NameBinding<'_>) -> Option<Span> {
         if let NameBindingKind::Res(Res::Def(
             DefKind::Ctor(CtorOf::Struct, CtorKind::Fn),
             ctor_def_id,
@@ -1622,7 +1620,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             if ctor_fields_span.is_some() { plain_descr + " constructor" } else { plain_descr };
         let import_descr = nonimport_descr.clone() + " import";
         let get_descr =
-            |b: &NameBinding<'_>| if b.is_import() { &import_descr } else { &nonimport_descr };
+            |b: NameBinding<'_>| if b.is_import() { &import_descr } else { &nonimport_descr };
 
         // Print the primary message.
         let descr = get_descr(binding);
@@ -1702,7 +1700,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 _ => None,
             };
 
-            let first = ptr::eq(binding, first_binding);
+            let first = binding == first_binding;
             let msg = format!(
                 "{and_refers_to}the {item} `{name}`{which} is defined here{dots}",
                 and_refers_to = if first { "" } else { "...and refers to " },
@@ -1732,7 +1730,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     pub(crate) fn find_similarly_named_module_or_crate(
         &mut self,
         ident: Symbol,
-        current_module: &Module<'a>,
+        current_module: Module<'a>,
     ) -> Option<Symbol> {
         let mut candidates = self
             .extern_prelude
@@ -1742,7 +1740,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 self.module_map
                     .iter()
                     .filter(|(_, module)| {
-                        current_module.is_ancestor_of(module) && !ptr::eq(current_module, *module)
+                        current_module.is_ancestor_of(**module) && current_module != **module
                     })
                     .flat_map(|(_, module)| module.kind.name()),
             )
@@ -1762,7 +1760,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         opt_ns: Option<Namespace>, // `None` indicates a module path in import
         parent_scope: &ParentScope<'a>,
         ribs: Option<&PerNS<Vec<Rib<'a>>>>,
-        ignore_binding: Option<&'a NameBinding<'a>>,
+        ignore_binding: Option<NameBinding<'a>>,
         module: Option<ModuleOrUniformRoot<'a>>,
         failed_segment_idx: usize,
         ident: Ident,
@@ -1945,7 +1943,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
 
             suggestion = suggestion.or_else(|| {
-                self.find_similarly_named_module_or_crate(ident.name, &parent_scope.module).map(
+                self.find_similarly_named_module_or_crate(ident.name, parent_scope.module).map(
                     |sugg| {
                         (
                             vec![(ident.span, sugg.to_string())],
@@ -2114,7 +2112,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     /// ```
     pub(crate) fn check_for_module_export_macro(
         &mut self,
-        import: &'a Import<'a>,
+        import: Import<'a>,
         module: ModuleOrUniformRoot<'a>,
         ident: Ident,
     ) -> Option<(Option<Suggestion>, Option<String>)> {
@@ -2126,9 +2124,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             crate_module = parent;
         }
 
-        if ModuleOrUniformRoot::same_def(ModuleOrUniformRoot::Module(crate_module), module) {
-            // Don't make a suggestion if the import was already from the root of the
-            // crate.
+        if module == ModuleOrUniformRoot::Module(crate_module) {
+            // Don't make a suggestion if the import was already from the root of the crate.
             return None;
         }
 
