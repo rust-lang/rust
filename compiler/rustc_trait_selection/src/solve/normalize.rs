@@ -96,7 +96,7 @@ impl<'tcx> NormalizationFolder<'_, 'tcx> {
         let recursion_limit = tcx.recursion_limit();
         if !recursion_limit.value_within_limit(self.depth) {
             self.at.infcx.err_ctxt().report_overflow_error(
-                &ty::Const::new_unevaluated(tcx, uv, ty),
+                &ty::Const::new_unevaluated(tcx, uv, ty).display(ty),
                 self.at.cause.span,
                 true,
                 |_| {},

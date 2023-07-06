@@ -268,7 +268,7 @@ pub(crate) fn print_const(cx: &DocContext<'_>, n: ty::Const<'_>) -> String {
         {
             scalar.to_string()
         }
-        _ => n.to_string(),
+        _ => n.display(n.ty()).to_string(),
     }
 }
 

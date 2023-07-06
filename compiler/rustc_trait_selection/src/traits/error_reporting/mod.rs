@@ -1110,7 +1110,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, ty)) => {
                         let mut diag = self.tcx.sess.struct_span_err(
                             span,
-                            format!("the constant `{}` is not of type `{}`", ct, ty),
+                            format!("the constant `{}` is not of type `{}`", ct.display(ct.ty()), ty),
                         );
                         self.note_type_err(
                             &mut diag,

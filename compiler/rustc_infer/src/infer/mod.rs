@@ -1965,7 +1965,7 @@ fn replace_param_and_infer_substs_with_placeholder<'tcx>(
                 let ty = c.ty();
                 // If the type references param or infer then ICE ICE ICE
                 if ty.has_non_region_param() || ty.has_non_region_infer() {
-                    bug!("const `{c}`'s type should not reference params or types");
+                    bug!("const `{c:?}`'s type should not reference params or types");
                 }
                 ty::Const::new_placeholder(
                     self.tcx,

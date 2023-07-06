@@ -1,5 +1,6 @@
 use crate::middle::resolve_bound_vars as rbv;
 use crate::mir::interpret::{AllocId, ConstValue, LitToConstInput, Scalar};
+use crate::ty::print::Print;
 use crate::ty::{self, InternalSubsts, ParamEnv, ParamEnvAnd, Ty, TyCtxt, TypeVisitableExt};
 use rustc_data_structures::intern::Interned;
 use rustc_error_messages::MultiSpan;
@@ -19,6 +20,7 @@ use rustc_span::DUMMY_SP;
 use rustc_target::abi::Size;
 pub use valtree::*;
 
+use super::print::FmtPrinter;
 use super::sty::ConstKind;
 
 /// Use this rather than `ConstData`, whenever possible.
@@ -50,6 +52,42 @@ impl<'tcx> Const<'tcx> {
     #[inline]
     pub fn ty(self) -> Ty<'tcx> {
         self.0.ty
+    }
+
+    /// A convenience helper for printing this constant for diagnostics.
+    pub fn display(
+        self,
+        ty: Ty<'tcx>,
+    ) -> impl std::fmt::Display
+    + ty::TypeFoldable<TyCtxt<'tcx>>
+    + Print<
+        'tcx,
+        FmtPrinter<'tcx, 'tcx>,
+        Output = FmtPrinter<'tcx, 'tcx>,
+        Error = impl std::fmt::Debug,
+    > + 'tcx {
+        #[derive(TypeFoldable, TypeVisitable, Debug, Clone)]
+        struct Printy<'tcx>(Const<'tcx>, Ty<'tcx>);
+        impl<'tcx> std::fmt::Display for Printy<'tcx> {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                ty::tls::with(|tcx| {
+                    let ct = tcx.lift(self.0).expect("could not lift for printing");
+                    let ty = tcx.lift(self.1).expect("could not lift for printing");
+                    let cx = (ct, ty).print(FmtPrinter::new(tcx, hir::def::Namespace::TypeNS))?;
+                    f.write_str(&cx.into_buffer())?;
+                    Ok(())
+                })
+            }
+        }
+
+        impl<'tcx, P: ty::print::Printer<'tcx>> Print<'tcx, P> for Printy<'tcx> {
+            type Output = P::Const;
+            type Error = P::Error;
+            fn print(&self, cx: P) -> Result<Self::Output, Self::Error> {
+                cx.print_const(self.0, self.1)
+            }
+        }
+        Printy(self, ty)
     }
 
     /// A helper function while we transition into removing [Const::ty].

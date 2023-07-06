@@ -1183,10 +1183,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             (&ty::Adt(def1, sub1), &ty::Adt(def2, sub2)) => {
                 let did1 = def1.did();
                 let did2 = def2.did();
-                let sub_no_defaults_1 =
-                    self.tcx.generics_of(did1).own_substs_no_defaults(self.tcx, sub1);
-                let sub_no_defaults_2 =
-                    self.tcx.generics_of(did2).own_substs_no_defaults(self.tcx, sub2);
+                let generics1 = self.tcx.generics_of(did1);
+                let generics2 = self.tcx.generics_of(did2);
+                let sub_no_defaults_1 = generics1.own_substs_no_defaults(self.tcx, sub1);
+                let sub_no_defaults_2 = generics2.own_substs_no_defaults(self.tcx, sub2);
                 let mut values = (DiagnosticStyledString::new(), DiagnosticStyledString::new());
                 let path1 = self.tcx.def_path_str(did1);
                 let path2 = self.tcx.def_path_str(did2);
@@ -1290,8 +1290,13 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             values.0.push_normal("_");
                             values.1.push_normal("_");
                         } else {
-                            values.0.push_highlighted(ca1.to_string());
-                            values.1.push_highlighted(ca2.to_string());
+                            let tcx = self.tcx;
+                            let ty1 =
+                                tcx.type_of(generics1.param_at(i, tcx).def_id).subst(tcx, sub1);
+                            let ty2 =
+                                tcx.type_of(generics2.param_at(i, tcx).def_id).subst(tcx, sub2);
+                            values.0.push_highlighted(ca1.display(ty1).to_string());
+                            values.1.push_highlighted(ca2.display(ty2).to_string());
                         }
                         self.push_comma(&mut values.0, &mut values.1, len, i);
                     }

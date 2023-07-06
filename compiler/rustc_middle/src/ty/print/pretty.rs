@@ -2703,7 +2703,6 @@ forward_display_to_print! {
     ty::Region<'tcx>,
     Ty<'tcx>,
     &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
-    ty::Const<'tcx>,
 
     // HACK(eddyb) these are exhaustive instead of generic,
     // because `for<'tcx>` isn't possible yet.

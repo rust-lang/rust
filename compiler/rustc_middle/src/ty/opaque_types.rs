@@ -211,7 +211,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReverseMapper<'tcx> {
                             .tcx
                             .sess
                             .create_err(ConstNotUsedTraitAlias {
-                                ct: ct.to_string(),
+                                ct: ct.display(Ty::new_misc_error(self.tcx)).to_string(),
                                 span: self.span,
                             })
                             .emit_unless(self.ignore_errors);

@@ -21,7 +21,7 @@ impl<'tcx> NormalizationError<'tcx> {
     pub fn get_type_for_failure(&self) -> String {
         match self {
             NormalizationError::Type(t) => format!("{}", t),
-            NormalizationError::Const(c) => format!("{}", c),
+            NormalizationError::Const(c) => format!("{}", c.display(c.ty())),
         }
     }
 }

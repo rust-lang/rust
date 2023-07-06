@@ -267,7 +267,9 @@ pub(crate) fn clean_middle_const<'tcx>(
     // FIXME: instead of storing the stringified expression, store `self` directly instead.
     Constant {
         type_: clean_middle_ty(constant.map_bound(|c| c.ty()), cx, None, None),
-        kind: ConstantKind::TyConst { expr: constant.skip_binder().to_string().into() },
+        kind: ConstantKind::TyConst {
+            expr: constant.skip_binder().display(constant.skip_binder().ty()).to_string().into(),
+        },
     }
 }
 
@@ -523,28 +525,34 @@ fn clean_generic_param_def<'tcx>(
                 },
             )
         }
-        ty::GenericParamDefKind::Const { has_default } => (
-            def.name,
-            GenericParamDefKind::Const {
-                ty: Box::new(clean_middle_ty(
-                    ty::Binder::dummy(
-                        cx.tcx
-                            .type_of(def.def_id)
-                            .no_bound_vars()
-                            .expect("const parameter types cannot be generic"),
-                    ),
-                    cx,
-                    Some(def.def_id),
-                    None,
-                )),
-                default: match has_default {
-                    true => Some(Box::new(
-                        cx.tcx.const_param_default(def.def_id).subst_identity().to_string(),
+        ty::GenericParamDefKind::Const { has_default } => {
+            let ty = cx
+                .tcx
+                .type_of(def.def_id)
+                .no_bound_vars()
+                .expect("const parameter types cannot be generic");
+            (
+                def.name,
+                GenericParamDefKind::Const {
+                    ty: Box::new(clean_middle_ty(
+                        ty::Binder::dummy(ty),
+                        cx,
+                        Some(def.def_id),
+                        None,
                     )),
-                    false => None,
+                    default: match has_default {
+                        true => Some(Box::new(
+                            cx.tcx
+                                .const_param_default(def.def_id)
+                                .subst_identity()
+                                .display(ty)
+                                .to_string(),
+                        )),
+                        false => None,
+                    },
                 },
-            },
-        ),
+            )
+        }
     };
 
     GenericParamDef { name, kind }
@@ -597,8 +605,18 @@ fn clean_generic_param<'tcx>(
             param.name.ident().name,
             GenericParamDefKind::Const {
                 ty: Box::new(clean_ty(ty, cx)),
-                default: default
-                    .map(|ct| Box::new(ty::Const::from_anon_const(cx.tcx, ct.def_id).to_string())),
+                default: default.map(|ct| {
+                    Box::new(
+                        ty::Const::from_anon_const(cx.tcx, ct.def_id)
+                            .display(
+                                cx.tcx
+                                    .type_of(param.def_id)
+                                    .no_bound_vars()
+                                    .expect("const parameter types cannot be generic"),
+                            )
+                            .to_string(),
+                    )
+                }),
             },
         ),
     };

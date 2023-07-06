@@ -189,9 +189,12 @@ impl<'tcx> TypeError<'tcx> {
                 &format!("trait `{}`", values.found),
             )
             .into(),
-            ConstMismatch(ref values) => {
-                format!("expected `{}`, found `{}`", values.expected, values.found).into()
-            }
+            ConstMismatch(ref values) => format!(
+                "expected `{}`, found `{}`",
+                values.expected.display(values.expected.ty()),
+                values.found.display(values.found.ty())
+            )
+            .into(),
             IntrinsicCast => "cannot coerce intrinsics to function pointers".into(),
             TargetFeatureCast(_) => {
                 "cannot coerce functions with `#[target_feature]` to safe function pointers".into()

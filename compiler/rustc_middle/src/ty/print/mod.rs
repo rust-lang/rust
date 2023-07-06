@@ -321,8 +321,15 @@ impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for ty::Const<'tcx> {
     type Output = P::Const;
     type Error = P::Error;
     fn print(&self, cx: P) -> Result<Self::Output, Self::Error> {
-        // TODO: implement Print for `(ty::Const, Ty)`
         cx.print_const(*self, self.ty())
+    }
+}
+
+impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for (ty::Const<'tcx>, Ty<'tcx>) {
+    type Output = P::Const;
+    type Error = P::Error;
+    fn print(&self, cx: P) -> Result<Self::Output, Self::Error> {
+        cx.print_const(self.0, self.1)
     }
 }
 
