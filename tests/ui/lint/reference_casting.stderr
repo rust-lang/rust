@@ -1,61 +1,65 @@
 error: casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:19:9
+  --> $DIR/reference_casting.rs:20:9
    |
 LL |         (*(a as *const _ as *mut String)).push_str(" world");
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `#[deny(invalid_reference_casting)]` on by default
+note: the lint level is defined here
+  --> $DIR/reference_casting.rs:4:9
+   |
+LL | #![deny(invalid_reference_casting)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:21:9
+  --> $DIR/reference_casting.rs:22:9
    |
 LL |         *(a as *const _ as *mut _) = String::from("Replaced");
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:23:9
+  --> $DIR/reference_casting.rs:24:9
    |
 LL |         *(a as *const _ as *mut String) += " world";
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:25:25
+  --> $DIR/reference_casting.rs:26:25
    |
 LL |         let _num = &mut *(num as *const i32 as *mut i32);
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:27:25
+  --> $DIR/reference_casting.rs:28:25
    |
 LL |         let _num = &mut *(num as *const i32).cast_mut();
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:29:20
+  --> $DIR/reference_casting.rs:30:20
    |
 LL |         let _num = *{ num as *const i32 }.cast_mut();
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:31:9
+  --> $DIR/reference_casting.rs:32:9
    |
 LL |         *std::ptr::from_ref(num).cast_mut() += 1;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:33:9
+  --> $DIR/reference_casting.rs:34:9
    |
 LL |         *std::ptr::from_ref({ num }).cast_mut() += 1;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:35:9
+  --> $DIR/reference_casting.rs:36:9
    |
 LL |         *{ std::ptr::from_ref(num) }.cast_mut() += 1;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:37:9
+  --> $DIR/reference_casting.rs:38:9
    |
 LL |         *(std::ptr::from_ref({ num }) as *mut i32) += 1;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
