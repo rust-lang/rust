@@ -53,7 +53,7 @@ pub struct BufReader<R: ?Sized> {
 }
 
 impl<R: Read> BufReader<R> {
-    /// Creates a new `BufReader<R>` with a default buffer capacity. The default is currently 8 KB,
+    /// Creates a new `BufReader<R>` with a default buffer capacity. The default is currently 8 KiB,
     /// but may change in the future.
     ///
     /// # Examples
