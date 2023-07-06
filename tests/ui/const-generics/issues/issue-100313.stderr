@@ -4,7 +4,7 @@ error: casting `&T` to `&mut T` is undefined behavior, even if the reference is 
 LL |             *(B as *const bool as *mut bool) = false;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `#[deny(cast_ref_to_mut)]` on by default
+   = note: `#[deny(invalid_reference_casting)]` on by default
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/issue-100313.rs:10:13
