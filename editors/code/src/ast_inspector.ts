@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 
 import { Ctx, Disposable } from "./ctx";
 import { RustEditor, isRustEditor } from "./util";
+import { unwrapUndefinable } from "./undefinable";
 
 // FIXME: consider implementing this via the Tree View API?
 // https://code.visualstudio.com/api/extension-guides/tree-view
@@ -164,8 +165,9 @@ export class AstInspector implements vscode.HoverProvider, vscode.DefinitionProv
         if (!parsedRange) return;
 
         const [begin, end] = parsedRange.slice(1).map((off) => this.positionAt(doc, +off));
-
-        return new vscode.Range(begin, end);
+        const actualBegin = unwrapUndefinable(begin);
+        const actualEnd = unwrapUndefinable(end);
+        return new vscode.Range(actualBegin, actualEnd);
     }
 
     // Memoize the last value, otherwise the CPU is at 100% single core

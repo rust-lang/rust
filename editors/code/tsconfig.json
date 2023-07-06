@@ -3,6 +3,7 @@
     "compilerOptions": {
         "esModuleInterop": false,
         "module": "commonjs",
+        "moduleResolution": "node16",
         "target": "es2021",
         "outDir": "out",
         "lib": ["es2021"],
@@ -12,9 +13,7 @@
         // These disables some enhancement type checking options
         // to update typescript version without any code change.
         "useUnknownInCatchVariables": false,
-        "exactOptionalPropertyTypes": false,
-        "noPropertyAccessFromIndexSignature": false,
-        "noUncheckedIndexedAccess": false
+        "exactOptionalPropertyTypes": false
     },
     "exclude": ["node_modules", ".vscode-test"],
     "include": ["src", "tests"]

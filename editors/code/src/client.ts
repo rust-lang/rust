@@ -9,6 +9,7 @@ import { WorkspaceEdit } from "vscode";
 import { Config, prepareVSCodeConfig } from "./config";
 import { randomUUID } from "crypto";
 import { sep as pathSeparator } from "path";
+import { unwrapUndefinable } from "./undefinable";
 
 export interface Env {
     [name: string]: string;
@@ -323,10 +324,12 @@ export async function createClient(
                         }
                         for (const [group, { index, items }] of groups) {
                             if (items.length === 1) {
-                                result[index] = items[0];
+                                const item = unwrapUndefinable(items[0]);
+                                result[index] = item;
                             } else {
                                 const action = new vscode.CodeAction(group);
-                                action.kind = items[0].kind;
+                                const item = unwrapUndefinable(items[0]);
+                                action.kind = item.kind;
                                 action.command = {
                                     command: "rust-analyzer.applyActionGroup",
                                     title: "",

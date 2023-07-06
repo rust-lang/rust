@@ -6,6 +6,7 @@ import * as ra from "./lsp_ext";
 import { Cargo, getRustcId, getSysroot } from "./toolchain";
 import { Ctx } from "./ctx";
 import { prepareEnv } from "./run";
+import { unwrapUndefinable } from "./undefinable";
 
 const debugOutput = vscode.window.createOutputChannel("Debug");
 type DebugConfigProvider = (
@@ -105,12 +106,13 @@ async function getDebugConfiguration(
     const workspaceFolders = vscode.workspace.workspaceFolders!;
     const isMultiFolderWorkspace = workspaceFolders.length > 1;
     const firstWorkspace = workspaceFolders[0];
-    const workspace =
+    const maybeWorkspace =
         !isMultiFolderWorkspace || !runnable.args.workspaceRoot
             ? firstWorkspace
             : workspaceFolders.find((w) => runnable.args.workspaceRoot?.includes(w.uri.fsPath)) ||
               firstWorkspace;
 
+    const workspace = unwrapUndefinable(maybeWorkspace);
     const wsFolder = path.normalize(workspace.uri.fsPath);
     const workspaceQualifier = isMultiFolderWorkspace ? `:${workspace.name}` : "";
     function simplifyPath(p: string): string {
@@ -130,12 +132,8 @@ async function getDebugConfiguration(
         sourceFileMap[`/rustc/${commitHash}/`] = rustlib;
     }
 
-    const debugConfig = knownEngines[debugEngine.id](
-        runnable,
-        simplifyPath(executable),
-        env,
-        sourceFileMap
-    );
+    const provider = unwrapUndefinable(knownEngines[debugEngine.id]);
+    const debugConfig = provider(runnable, simplifyPath(executable), env, sourceFileMap);
     if (debugConfig.type in debugOptions.engineSettings) {
         const settingsMap = (debugOptions.engineSettings as any)[debugConfig.type];
         for (var key in settingsMap) {
@@ -149,8 +147,9 @@ async function getDebugConfiguration(
         debugConfig.name = `run ${path.basename(executable)}`;
     }
 
-    if (debugConfig.cwd) {
-        debugConfig.cwd = simplifyPath(debugConfig.cwd);
+    const cwd = debugConfig["cwd"];
+    if (cwd) {
+        debugConfig["cwd"] = simplifyPath(cwd);
     }
 
     return debugConfig;

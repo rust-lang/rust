@@ -4,6 +4,7 @@ import * as fs from "fs";
 import { CtxInit } from "./ctx";
 import * as ra from "./lsp_ext";
 import { FetchDependencyListResult } from "./lsp_ext";
+import { unwrapUndefinable } from "./undefinable";
 
 export class RustDependenciesProvider
     implements vscode.TreeDataProvider<Dependency | DependencyFile>
@@ -49,7 +50,12 @@ export class RustDependenciesProvider
     }
 
     getTreeItem(element: Dependency | DependencyFile): vscode.TreeItem | Thenable<vscode.TreeItem> {
-        if (element.id! in this.dependenciesMap) return this.dependenciesMap[element.id!];
+        const dependenciesMap = this.dependenciesMap;
+        const elementId = element.id!;
+        if (elementId in dependenciesMap) {
+            const dependency = unwrapUndefinable(dependenciesMap[elementId]);
+            return dependency;
+        }
         return element;
     }
 
