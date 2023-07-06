@@ -1,0 +1,28 @@
+error: usage of `bool::then` in `filter_map`
+  --> $DIR/filter_map_bool_then.rs:11:27
+   |
+LL |     v.clone().into_iter().filter_map(|i| (i % 2 == 0).then(|| i + 1));
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `filter` then `map` instead: `filter(|i| (i % 2 == 0)).map(|i| i + 1)`
+   |
+   = note: `-D clippy::filter-map-bool-then` implied by `-D warnings`
+
+error: usage of `bool::then` in `filter_map`
+  --> $DIR/filter_map_bool_then.rs:14:10
+   |
+LL |         .filter_map(|i| -> Option<_> { (i % 2 == 0).then(|| i + 1) });
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `filter` then `map` instead: `filter(|i| (i % 2 == 0)).map(|i| i + 1)`
+
+error: usage of `bool::then` in `filter_map`
+  --> $DIR/filter_map_bool_then.rs:18:10
+   |
+LL |         .filter_map(|i| (i % 2 == 0).then(|| i + 1));
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `filter` then `map` instead: `filter(|i| (i % 2 == 0)).map(|i| i + 1)`
+
+error: usage of `bool::then` in `filter_map`
+  --> $DIR/filter_map_bool_then.rs:22:10
+   |
+LL |         .filter_map(|i| (i.clone() % 2 == 0).then(|| i + 1));
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `filter` then `map` instead: `filter(|i| (i.clone() % 2 == 0)).map(|i| i + 1)`
+
+error: aborting due to 4 previous errors
+
