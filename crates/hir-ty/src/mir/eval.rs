@@ -10,10 +10,11 @@ use hir_def::{
     data::adt::{StructFlags, VariantData},
     lang_item::LangItem,
     layout::{TagEncoding, Variants},
-    AdtId, DefWithBodyId, EnumVariantId, FunctionId, HasModule, ItemContainerId, Lookup, StaticId,
-    VariantId,
+    resolver::{HasResolver, TypeNs, ValueNs},
+    AdtId, ConstId, DefWithBodyId, EnumVariantId, FunctionId, HasModule, ItemContainerId, Lookup,
+    StaticId, VariantId,
 };
-use hir_expand::InFile;
+use hir_expand::{mod_path::ModPath, InFile};
 use intern::Interned;
 use la_arena::ArenaMap;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -482,7 +483,7 @@ pub fn interpret_mir(
     assert_placeholder_ty_is_unused: bool,
 ) -> (Result<Const>, String, String) {
     let ty = body.locals[return_slot()].ty.clone();
-    let mut evaluator = Evaluator::new(db, &body, assert_placeholder_ty_is_unused);
+    let mut evaluator = Evaluator::new(db, body.owner, assert_placeholder_ty_is_unused);
     let it: Result<Const> = (|| {
         if evaluator.ptr_size() != std::mem::size_of::<usize>() {
             not_supported!("targets with different pointer size from host");
@@ -506,11 +507,11 @@ pub fn interpret_mir(
 impl Evaluator<'_> {
     pub fn new<'a>(
         db: &'a dyn HirDatabase,
-        body: &MirBody,
+        owner: DefWithBodyId,
         assert_placeholder_ty_is_unused: bool,
     ) -> Evaluator<'a> {
-        let crate_id = body.owner.module(db.upcast()).krate();
-        let trait_env = db.trait_environment_for_body(body.owner);
+        let crate_id = owner.module(db.upcast()).krate();
+        let trait_env = db.trait_environment_for_body(owner);
         Evaluator {
             stack: vec![0],
             heap: vec![0],
@@ -1551,29 +1552,15 @@ impl Evaluator<'_> {
                 let addr = self.eval_static(*st, locals)?;
                 Interval::new(addr, self.ptr_size())
             }
-            Operand::Constant(konst) => {
-                let data = &konst.data(Interner);
-                match &data.value {
-                    chalk_ir::ConstValue::BoundVar(_) => not_supported!("bound var constant"),
-                    chalk_ir::ConstValue::InferenceVar(_) => {
-                        not_supported!("inference var constant")
-                    }
-                    chalk_ir::ConstValue::Placeholder(_) => not_supported!("placeholder constant"),
-                    chalk_ir::ConstValue::Concrete(c) => {
-                        self.allocate_const_in_heap(c, &data.ty, locals, konst)?
-                    }
-                }
-            }
+            Operand::Constant(konst) => self.allocate_const_in_heap(locals, konst)?,
         })
     }
 
-    fn allocate_const_in_heap(
-        &mut self,
-        c: &chalk_ir::ConcreteConst<Interner>,
-        ty: &Ty,
-        locals: &Locals,
-        konst: &chalk_ir::Const<Interner>,
-    ) -> Result<Interval> {
+    fn allocate_const_in_heap(&mut self, locals: &Locals, konst: &Const) -> Result<Interval> {
+        let ty = &konst.data(Interner).ty;
+        let chalk_ir::ConstValue::Concrete(c) = &konst.data(Interner).value else {
+            not_supported!("evaluating non concrete constant");
+        };
         Ok(match &c.interned {
             ConstScalar::Bytes(v, memory_map) => {
                 let mut v: Cow<'_, [u8]> = Cow::Borrowed(v);
@@ -2242,12 +2229,7 @@ impl Evaluator<'_> {
                     Box::new(e),
                 )
             })?;
-            let data = &konst.data(Interner);
-            if let chalk_ir::ConstValue::Concrete(c) = &data.value {
-                self.allocate_const_in_heap(&c, &data.ty, locals, &konst)?
-            } else {
-                not_supported!("unevaluatable static");
-            }
+            self.allocate_const_in_heap(locals, &konst)?
         } else {
             let ty = &self.db.infer(st.into())[self.db.body(st.into()).body_expr];
             let Some((size, align)) = self.size_align_of(&ty, locals)? else {
@@ -2386,6 +2368,73 @@ impl Evaluator<'_> {
         self.stderr.extend(interval.get(self)?.to_vec());
         Ok(())
     }
+}
+
+pub fn render_const_using_debug_impl(
+    db: &dyn HirDatabase,
+    owner: ConstId,
+    c: &Const,
+) -> Result<String> {
+    let mut evaluator = Evaluator::new(db, owner.into(), false);
+    let locals = &Locals {
+        ptr: ArenaMap::new(),
+        body: db
+            .mir_body(owner.into())
+            .map_err(|_| MirEvalError::NotSupported("unreachable".to_string()))?,
+        drop_flags: DropFlags::default(),
+    };
+    let data = evaluator.allocate_const_in_heap(locals, c)?;
+    let resolver = owner.resolver(db.upcast());
+    let Some(TypeNs::TraitId(debug_trait)) = resolver.resolve_path_in_type_ns_fully(
+        db.upcast(),
+        &hir_def::path::Path::from_known_path_with_no_generic(ModPath::from_segments(
+            hir_expand::mod_path::PathKind::Abs,
+            [name![core], name![fmt], name![Debug]].into_iter(),
+        )),
+    ) else {
+        not_supported!("core::fmt::Debug not found");
+    };
+    let Some(debug_fmt_fn) = db.trait_data(debug_trait).method_by_name(&name![fmt]) else {
+        not_supported!("core::fmt::Debug::fmt not found");
+    };
+    // a1 = &[""]
+    let a1 = evaluator.heap_allocate(evaluator.ptr_size() * 2, evaluator.ptr_size());
+    // a2 = &[::core::fmt::ArgumentV1::new(&(THE_CONST), ::core::fmt::Debug::fmt)]
+    // FIXME: we should call the said function, but since its name is going to break in the next rustc version
+    // and its ABI doesn't break yet, we put it in memory manually.
+    let a2 = evaluator.heap_allocate(evaluator.ptr_size() * 2, evaluator.ptr_size());
+    evaluator.write_memory(a2, &data.addr.to_bytes())?;
+    let debug_fmt_fn_ptr = evaluator.vtable_map.id(TyKind::FnDef(
+        db.intern_callable_def(debug_fmt_fn.into()).into(),
+        Substitution::from1(Interner, c.data(Interner).ty.clone()),
+    )
+    .intern(Interner));
+    evaluator.write_memory(a2.offset(evaluator.ptr_size()), &debug_fmt_fn_ptr.to_le_bytes())?;
+    // a3 = ::core::fmt::Arguments::new_v1(a1, a2)
+    // FIXME: similarly, we should call function here, not directly working with memory.
+    let a3 = evaluator.heap_allocate(evaluator.ptr_size() * 6, evaluator.ptr_size());
+    evaluator.write_memory(a3.offset(2 * evaluator.ptr_size()), &a1.to_bytes())?;
+    evaluator.write_memory(a3.offset(3 * evaluator.ptr_size()), &[1])?;
+    evaluator.write_memory(a3.offset(4 * evaluator.ptr_size()), &a2.to_bytes())?;
+    evaluator.write_memory(a3.offset(5 * evaluator.ptr_size()), &[1])?;
+    let Some(ValueNs::FunctionId(format_fn)) = resolver.resolve_path_in_value_ns_fully(
+        db.upcast(),
+        &hir_def::path::Path::from_known_path_with_no_generic(ModPath::from_segments(
+            hir_expand::mod_path::PathKind::Abs,
+            [name![std], name![fmt], name![format]].into_iter(),
+        )),
+    ) else {
+        not_supported!("std::fmt::format not found");
+    };
+    let message_string = evaluator.interpret_mir(
+        db.mir_body(format_fn.into()).map_err(|e| MirEvalError::MirLowerError(format_fn, e))?,
+        [IntervalOrOwned::Borrowed(Interval { addr: a3, size: evaluator.ptr_size() * 6 })]
+            .into_iter(),
+    )?;
+    let addr =
+        Address::from_bytes(&message_string[evaluator.ptr_size()..2 * evaluator.ptr_size()])?;
+    let size = from_bytes!(usize, message_string[2 * evaluator.ptr_size()..]);
+    Ok(std::string::String::from_utf8_lossy(evaluator.read_memory(addr, size)?).into_owned())
 }
 
 pub fn pad16(it: &[u8], is_signed: bool) -> [u8; 16] {

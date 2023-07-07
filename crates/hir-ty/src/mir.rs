@@ -22,7 +22,9 @@ mod pretty;
 mod monomorphization;
 
 pub use borrowck::{borrowck_query, BorrowckResult, MutabilityReason};
-pub use eval::{interpret_mir, pad16, Evaluator, MirEvalError, VTableMap};
+pub use eval::{
+    interpret_mir, pad16, render_const_using_debug_impl, Evaluator, MirEvalError, VTableMap,
+};
 pub use lower::{
     lower_to_mir, mir_body_for_closure_query, mir_body_query, mir_body_recover, MirLowerError,
 };

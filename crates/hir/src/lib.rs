@@ -62,7 +62,6 @@ use hir_ty::{
     all_super_traits, autoderef,
     consteval::{try_const_usize, unknown_const_as_generic, ConstEvalError, ConstExt},
     diagnostics::BodyValidationDiagnostic,
-    display::HexifiedConst,
     layout::{Layout as TyLayout, RustcEnumVariantIdx, TagEncoding},
     method_resolution::{self, TyFingerprint},
     mir::{self, interpret_mir},
@@ -2156,7 +2155,27 @@ impl Const {
 
     pub fn render_eval(self, db: &dyn HirDatabase) -> Result<String, ConstEvalError> {
         let c = db.const_eval(self.id.into(), Substitution::empty(Interner))?;
-        let r = format!("{}", HexifiedConst(c).display(db));
+        let data = &c.data(Interner);
+        if let TyKind::Scalar(s) = data.ty.kind(Interner) {
+            if matches!(s, Scalar::Int(_) | Scalar::Uint(_)) {
+                if let hir_ty::ConstValue::Concrete(c) = &data.value {
+                    if let hir_ty::ConstScalar::Bytes(b, _) = &c.interned {
+                        let value = u128::from_le_bytes(mir::pad16(b, false));
+                        let value_signed =
+                            i128::from_le_bytes(mir::pad16(b, matches!(s, Scalar::Int(_))));
+                        if value >= 10 {
+                            return Ok(format!("{} ({:#X})", value_signed, value));
+                        } else {
+                            return Ok(format!("{}", value_signed));
+                        }
+                    }
+                }
+            }
+        }
+        if let Ok(s) = mir::render_const_using_debug_impl(db, self.id, &c) {
+            return Ok(s);
+        }
+        let r = format!("{}", c.display(db));
         return Ok(r);
     }
 }
