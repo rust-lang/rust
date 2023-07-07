@@ -21,12 +21,6 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             inherent.self_ty(),
             tcx.type_of(impl_def_id).instantiate(tcx, impl_substs),
         )?;
-        self.add_goals(
-            tcx.predicates_of(impl_def_id)
-                .instantiate(tcx, impl_substs)
-                .into_iter()
-                .map(|(pred, _)| goal.with(tcx, pred)),
-        );
 
         // Equate IAT with the RHS of the project goal
         let inherent_substs = inherent.rebase_inherent_args_onto_impl(impl_substs, tcx);
@@ -36,6 +30,14 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             tcx.type_of(inherent.def_id).instantiate(tcx, inherent_substs),
         )
         .expect("expected goal term to be fully unconstrained");
+
+        // Check both where clauses on the impl and IAT
+        self.add_goals(
+            tcx.predicates_of(inherent.def_id)
+                .instantiate(tcx, inherent_substs)
+                .into_iter()
+                .map(|(pred, _)| goal.with(tcx, pred)),
+        );
 
         self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
