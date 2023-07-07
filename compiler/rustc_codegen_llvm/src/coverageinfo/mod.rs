@@ -373,11 +373,6 @@ pub(crate) fn write_mapping_to_buffer(
     }
 }
 
-pub(crate) fn hash_str(strval: &str) -> u64 {
-    let strval = CString::new(strval).expect("null error converting hashable str to C string");
-    unsafe { llvm::LLVMRustCoverageHashCString(strval.as_ptr()) }
-}
-
 pub(crate) fn hash_bytes(bytes: &[u8]) -> u64 {
     unsafe { llvm::LLVMRustCoverageHashByteArray(bytes.as_ptr().cast(), bytes.len()) }
 }

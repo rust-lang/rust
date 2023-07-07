@@ -238,7 +238,7 @@ fn save_function_record(
     let coverage_mapping_size = coverage_mapping_buffer.len();
     let coverage_mapping_val = cx.const_bytes(&coverage_mapping_buffer);
 
-    let func_name_hash = coverageinfo::hash_str(mangled_function_name);
+    let func_name_hash = coverageinfo::hash_bytes(mangled_function_name.as_bytes());
     let func_name_hash_val = cx.const_u64(func_name_hash);
     let coverage_mapping_size_val = cx.const_u32(coverage_mapping_size as u32);
     let source_hash_val = cx.const_u64(source_hash);
