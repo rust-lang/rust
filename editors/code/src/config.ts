@@ -99,7 +99,8 @@ export class Config {
         let onEnterRules: vscode.OnEnterRule[] = [
             {
                 // Carry indentation from the previous line
-                beforeText: /^\s*$/,
+                // if it's only whitespace
+                beforeText: /^\s+$/,
                 action: { indentAction: vscode.IndentAction.None },
             },
             {
