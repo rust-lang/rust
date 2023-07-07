@@ -943,6 +943,30 @@ pub(crate) fn repr_nullable_ptr<'tcx>(
 }
 
 impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
+    // Returns `true` if `ty` is a `()`, or a `repr(transparent)` type whose only non-ZST field
+    // is a generic substituted for `()` - in either case, the type is FFI-safe when used as a
+    // return type.
+    pub fn is_unit_or_equivalent(&self, ty: Ty<'tcx>) -> bool {
+        if ty.is_unit() {
+            return true;
+        }
+
+        if let ty::Adt(def, substs) = ty.kind() && def.repr().transparent() {
+            return def.variants()
+                .iter()
+                .filter_map(|variant| transparent_newtype_field(self.cx.tcx, variant))
+                .all(|field| {
+                    let field_ty = field.ty(self.cx.tcx, substs);
+                    !field_ty.has_opaque_types() && {
+                        let field_ty = self.cx.tcx.normalize_erasing_regions(self.cx.param_env, field_ty);
+                        self.is_unit_or_equivalent(field_ty)
+                    }
+                });
+        }
+
+        false
+    }
+
     /// Check if the type is array and emit an unsafe type lint.
     fn check_for_array_ty(&mut self, sp: Span, ty: Ty<'tcx>) -> bool {
         if let ty::Array(..) = ty.kind() {
@@ -1220,25 +1244,19 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 }
 
                 let sig = tcx.erase_late_bound_regions(sig);
-                if !sig.output().is_unit() {
-                    let r = self.check_type_for_ffi(cache, sig.output());
-                    match r {
-                        FfiSafe => {}
-                        _ => {
-                            return r;
-                        }
-                    }
-                }
                 for arg in sig.inputs() {
-                    let r = self.check_type_for_ffi(cache, *arg);
-                    match r {
+                    match self.check_type_for_ffi(cache, *arg) {
                         FfiSafe => {}
-                        _ => {
-                            return r;
-                        }
+                        r => return r,
                     }
                 }
-                FfiSafe
+
+                let ret_ty = sig.output();
+                if self.is_unit_or_equivalent(ret_ty) {
+                    return FfiSafe;
+                }
+
+                self.check_type_for_ffi(cache, ret_ty)
             }
 
             ty::Foreign(..) => FfiSafe,
@@ -1357,9 +1375,9 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         }
 
         // Don't report FFI errors for unit return types. This check exists here, and not in
-        // `check_foreign_fn` (where it would make more sense) so that normalization has definitely
+        // the caller (where it would make more sense) so that normalization has definitely
         // happened.
-        if is_return_type && ty.is_unit() {
+        if is_return_type && self.is_unit_or_equivalent(ty) {
             return;
         }
 
@@ -1373,9 +1391,6 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                     None,
                 );
             }
-            // If `ty` is a `repr(transparent)` newtype, and the non-zero-sized type is a generic
-            // argument, which after substitution, is `()`, then this branch can be hit.
-            FfiResult::FfiUnsafe { ty, .. } if is_return_type && ty.is_unit() => {}
             FfiResult::FfiUnsafe { ty, reason, help } => {
                 self.emit_ffi_unsafe_type_lint(ty, sp, reason, help);
             }
