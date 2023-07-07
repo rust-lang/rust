@@ -41,7 +41,6 @@ pub trait TypeErrCtxtExt<'tcx> {
 static ALLOWED_FORMAT_SYMBOLS: &[Symbol] = &[
     kw::SelfUpper,
     sym::ItemContext,
-    sym::from_method,
     sym::from_desugaring,
     sym::direct,
     sym::cause,
@@ -169,23 +168,6 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 // this is a "direct", user-specified, rather than derived,
                 // obligation.
                 flags.push((sym::direct, None));
-            }
-        }
-
-        if let ObligationCauseCode::ItemObligation(item)
-        | ObligationCauseCode::BindingObligation(item, _)
-        | ObligationCauseCode::ExprItemObligation(item, ..)
-        | ObligationCauseCode::ExprBindingObligation(item, ..) = *obligation.cause.code()
-        {
-            // FIXME: maybe also have some way of handling methods
-            // from other traits? That would require name resolution,
-            // which we might want to be some sort of hygienic.
-            //
-            // Currently I'm leaving it for what I need for `try`.
-            if self.tcx.trait_of_item(item) == Some(trait_ref.def_id) {
-                let method = self.tcx.item_name(item);
-                flags.push((sym::from_method, None));
-                flags.push((sym::from_method, Some(method.to_string())));
             }
         }
 
@@ -672,7 +654,7 @@ impl<'tcx> OnUnimplementedFormatString {
                             None => {
                                 if let Some(val) = options.get(&s) {
                                     val
-                                } else if s == sym::from_desugaring || s == sym::from_method {
+                                } else if s == sym::from_desugaring {
                                     // don't break messages using these two arguments incorrectly
                                     &empty_string
                                 } else if s == sym::ItemContext {

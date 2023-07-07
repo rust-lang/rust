@@ -759,7 +759,6 @@ symbols! {
         from_desugaring,
         from_fn,
         from_iter,
-        from_method,
         from_output,
         from_residual,
         from_size_align_unchecked,
