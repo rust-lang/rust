@@ -82,7 +82,7 @@ impl LateLintPass<'_> for IncorrectImpls {
                     cx,
                     hir_ty_to_ty(cx.tcx, imp.self_ty),
                     copy_def_id,
-                    trait_impl.substs,
+                    &[],
                 )
         {
             if impl_item.ident.name == sym::clone {
