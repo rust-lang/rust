@@ -842,9 +842,9 @@ dependencies = [
 
 [[package]]
 name = "ui_test"
-version = "0.11.6"
+version = "0.11.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "24a2e70adc9d18b9b4dd80ea57aeec447103c6fbb354a07c080adad451c645e1"
+checksum = "c21899b59f53717dfad29e4f46e5b21a200a1b6888ab86532a07cfc8b48dd78c"
 dependencies = [
  "bstr",
  "cargo-platform",
