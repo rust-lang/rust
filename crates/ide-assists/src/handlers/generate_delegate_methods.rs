@@ -141,29 +141,10 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
                 )
                 .clone_for_update();
 
-                // Create or update an impl block, attach the function to it,
-                // then insert into our code.
-                match impl_def {
-                    Some(impl_def) => {
-                        // Remember where in our source our `impl` block lives.
-                        let impl_def = edit.make_mut(impl_def);
-
-                        // Fixup function indentation.
-                        f.reindent_to(impl_def.indent_level() + 1);
-
-                        // Attach the function to the impl block.
-                        let assoc_items = impl_def.get_or_create_assoc_item_list();
-                        assoc_items.add_item(f.clone().into());
-
-                        // Update the impl block.
-                        ted::replace(impl_def.syntax(), impl_def.syntax());
-
-                        if let Some(cap) = ctx.config.snippet_cap {
-                            edit.add_tabstop_before(cap, f);
-                        }
-                    }
+                // Get the impl to update, or create one if we need to.
+                let impl_def = match impl_def {
+                    Some(impl_def) => edit.make_mut(impl_def),
                     None => {
-                        // Attach the function to the impl block
                         let name = &strukt_name.to_string();
                         let params = strukt.generic_param_list();
                         let ty_params = params.clone();
@@ -177,12 +158,6 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
                             None,
                         )
                         .clone_for_update();
-
-                        // Fixup function indentation.
-                        f.reindent_to(impl_def.indent_level() + 1);
-
-                        let assoc_items = impl_def.get_or_create_assoc_item_list();
-                        assoc_items.add_item(f.clone().into());
 
                         // Fixup impl_def indentation
                         let indent = strukt.indent_level();
@@ -198,10 +173,19 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
                             ],
                         );
 
-                        if let Some(cap) = ctx.config.snippet_cap {
-                            edit.add_tabstop_before(cap, f)
-                        }
+                        impl_def
                     }
+                };
+
+                // Fixup function indentation.
+                // FIXME: Should really be handled by `AssocItemList::add_item`
+                f.reindent_to(impl_def.indent_level() + 1);
+
+                let assoc_items = impl_def.get_or_create_assoc_item_list();
+                assoc_items.add_item(f.clone().into());
+
+                if let Some(cap) = ctx.config.snippet_cap {
+                    edit.add_tabstop_before(cap, f)
                 }
             },
         )?;
