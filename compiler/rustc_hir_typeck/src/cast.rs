@@ -103,15 +103,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         Ok(match *t.kind() {
             ty::Slice(_) | ty::Str => Some(PointerKind::Length),
             ty::Dynamic(ref tty, _, ty::Dyn) => Some(PointerKind::VTable(tty.principal_def_id())),
-            ty::Adt(def, substs) if def.is_struct() => {
-                match def.non_enum_variant().fields.raw.last() {
-                    None => Some(PointerKind::Thin),
-                    Some(f) => {
-                        let field_ty = self.field_ty(span, f, substs);
-                        self.pointer_kind(field_ty, span)?
-                    }
+            ty::Adt(def, substs) if def.is_struct() => match def.non_enum_variant().tail_opt() {
+                None => Some(PointerKind::Thin),
+                Some(f) => {
+                    let field_ty = self.field_ty(span, f, substs);
+                    self.pointer_kind(field_ty, span)?
                 }
-            }
+            },
             ty::Tuple(fields) => match fields.last() {
                 None => Some(PointerKind::Thin),
                 Some(&f) => self.pointer_kind(f, span)?,
