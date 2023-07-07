@@ -1,6 +1,6 @@
 //! This module provides a MIR interpreter, which is used in const eval.
 
-use std::{borrow::Cow, collections::HashMap, fmt::Write, iter, ops::Range};
+use std::{borrow::Cow, cell::RefCell, collections::HashMap, fmt::Write, iter, mem, ops::Range};
 
 use base_db::{CrateId, FileId};
 use chalk_ir::Mutability;
@@ -8,7 +8,7 @@ use either::Either;
 use hir_def::{
     builtin_type::BuiltinType,
     data::adt::{StructFlags, VariantData},
-    lang_item::{lang_attr, LangItem},
+    lang_item::LangItem,
     layout::{TagEncoding, Variants},
     AdtId, DefWithBodyId, EnumVariantId, FunctionId, HasModule, ItemContainerId, Lookup, StaticId,
     VariantId,
@@ -28,7 +28,7 @@ use crate::{
     infer::PointerCast,
     layout::{Layout, LayoutError, RustcEnumVariantIdx},
     mapping::from_chalk,
-    method_resolution::{is_dyn_method, lookup_impl_method},
+    method_resolution::is_dyn_method,
     name, static_lifetime,
     traits::FnTrait,
     utils::{detect_variant_from_bytes, ClosureSubst},
@@ -37,8 +37,8 @@ use crate::{
 };
 
 use super::{
-    return_slot, AggregateKind, BinOp, CastKind, LocalId, MirBody, MirLowerError, MirSpan, Operand,
-    Place, ProjectionElem, Rvalue, StatementKind, TerminatorKind, UnOp,
+    return_slot, AggregateKind, BasicBlockId, BinOp, CastKind, LocalId, MirBody, MirLowerError,
+    MirSpan, Operand, Place, ProjectionElem, Rvalue, StatementKind, TerminatorKind, UnOp,
 };
 
 mod shim;
@@ -114,11 +114,20 @@ impl TlsData {
     }
 }
 
+struct StackFrame {
+    body: Arc<MirBody>,
+    locals: Locals,
+    destination: Option<BasicBlockId>,
+    prev_stack_ptr: usize,
+    span: (MirSpan, DefWithBodyId),
+}
+
 pub struct Evaluator<'a> {
     db: &'a dyn HirDatabase,
     trait_env: Arc<TraitEnvironment>,
     stack: Vec<u8>,
     heap: Vec<u8>,
+    code_stack: Vec<StackFrame>,
     /// Stores the global location of the statics. We const evaluate every static first time we need it
     /// and see it's missing, then we add it to this to reuse.
     static_locations: FxHashMap<StaticId, Address>,
@@ -129,6 +138,7 @@ pub struct Evaluator<'a> {
     thread_local_storage: TlsData,
     stdout: Vec<u8>,
     stderr: Vec<u8>,
+    layout_cache: RefCell<FxHashMap<Ty, Arc<Layout>>>,
     crate_id: CrateId,
     // FIXME: This is a workaround, see the comment on `interpret_mir`
     assert_placeholder_ty_is_unused: bool,
@@ -192,7 +202,7 @@ impl IntervalAndTy {
         addr: Address,
         ty: Ty,
         evaluator: &Evaluator<'_>,
-        locals: &Locals<'_>,
+        locals: &Locals,
     ) -> Result<IntervalAndTy> {
         let size = evaluator.size_of_sized(&ty, locals, "type of interval")?;
         Ok(IntervalAndTy { interval: Interval { addr, size }, ty })
@@ -292,7 +302,7 @@ pub enum MirEvalError {
     TypeIsUnsized(Ty, &'static str),
     NotSupported(String),
     InvalidConst(Const),
-    InFunction(Either<FunctionId, ClosureId>, Box<MirEvalError>, MirSpan, DefWithBodyId),
+    InFunction(Box<MirEvalError>, Vec<(Either<FunctionId, ClosureId>, MirSpan, DefWithBodyId)>),
     ExecutionLimitExceeded,
     StackOverflow,
     TargetDataLayoutNotAvailable,
@@ -310,40 +320,42 @@ impl MirEvalError {
     ) -> std::result::Result<(), std::fmt::Error> {
         writeln!(f, "Mir eval error:")?;
         let mut err = self;
-        while let MirEvalError::InFunction(func, e, span, def) = err {
+        while let MirEvalError::InFunction(e, stack) = err {
             err = e;
-            match func {
-                Either::Left(func) => {
-                    let function_name = db.function_data(*func);
-                    writeln!(
-                        f,
-                        "In function {} ({:?})",
-                        function_name.name.display(db.upcast()),
-                        func
-                    )?;
+            for (func, span, def) in stack.iter().take(30).rev() {
+                match func {
+                    Either::Left(func) => {
+                        let function_name = db.function_data(*func);
+                        writeln!(
+                            f,
+                            "In function {} ({:?})",
+                            function_name.name.display(db.upcast()),
+                            func
+                        )?;
+                    }
+                    Either::Right(clos) => {
+                        writeln!(f, "In {:?}", clos)?;
+                    }
                 }
-                Either::Right(clos) => {
-                    writeln!(f, "In {:?}", clos)?;
-                }
+                let source_map = db.body_with_source_map(*def).1;
+                let span: InFile<SyntaxNodePtr> = match span {
+                    MirSpan::ExprId(e) => match source_map.expr_syntax(*e) {
+                        Ok(s) => s.map(|it| it.into()),
+                        Err(_) => continue,
+                    },
+                    MirSpan::PatId(p) => match source_map.pat_syntax(*p) {
+                        Ok(s) => s.map(|it| match it {
+                            Either::Left(e) => e.into(),
+                            Either::Right(e) => e.into(),
+                        }),
+                        Err(_) => continue,
+                    },
+                    MirSpan::Unknown => continue,
+                };
+                let file_id = span.file_id.original_file(db.upcast());
+                let text_range = span.value.text_range();
+                writeln!(f, "{}", span_formatter(file_id, text_range))?;
             }
-            let source_map = db.body_with_source_map(*def).1;
-            let span: InFile<SyntaxNodePtr> = match span {
-                MirSpan::ExprId(e) => match source_map.expr_syntax(*e) {
-                    Ok(s) => s.map(|it| it.into()),
-                    Err(_) => continue,
-                },
-                MirSpan::PatId(p) => match source_map.pat_syntax(*p) {
-                    Ok(s) => s.map(|it| match it {
-                        Either::Left(e) => e.into(),
-                        Either::Right(e) => e.into(),
-                    }),
-                    Err(_) => continue,
-                },
-                MirSpan::Unknown => continue,
-            };
-            let file_id = span.file_id.original_file(db.upcast());
-            let text_range = span.value.text_range();
-            writeln!(f, "{}", span_formatter(file_id, text_range))?;
         }
         match err {
             MirEvalError::InFunction(..) => unreachable!(),
@@ -423,13 +435,7 @@ impl std::fmt::Debug for MirEvalError {
                 let data = &arg0.data(Interner);
                 f.debug_struct("InvalidConst").field("ty", &data.ty).field("value", &arg0).finish()
             }
-            Self::InFunction(func, e, span, _) => {
-                let mut e = &**e;
-                let mut stack = vec![(*func, *span)];
-                while let Self::InFunction(f, next_e, span, _) = e {
-                    e = &next_e;
-                    stack.push((*f, *span));
-                }
+            Self::InFunction(e, stack) => {
                 f.debug_struct("WithStack").field("error", e).field("stack", &stack).finish()
             }
         }
@@ -459,15 +465,15 @@ impl DropFlags {
 }
 
 #[derive(Debug)]
-struct Locals<'a> {
-    ptr: &'a ArenaMap<LocalId, Interval>,
-    body: &'a MirBody,
+struct Locals {
+    ptr: ArenaMap<LocalId, Interval>,
+    body: Arc<MirBody>,
     drop_flags: DropFlags,
 }
 
 pub fn interpret_mir(
     db: &dyn HirDatabase,
-    body: &MirBody,
+    body: Arc<MirBody>,
     // FIXME: This is workaround. Ideally, const generics should have a separate body (issue #7434), but now
     // they share their body with their parent, so in MIR lowering we have locals of the parent body, which
     // might have placeholders. With this argument, we (wrongly) assume that every placeholder type has
@@ -476,16 +482,16 @@ pub fn interpret_mir(
     assert_placeholder_ty_is_unused: bool,
 ) -> (Result<Const>, String, String) {
     let ty = body.locals[return_slot()].ty.clone();
-    let mut evaluator = Evaluator::new(db, body, assert_placeholder_ty_is_unused);
+    let mut evaluator = Evaluator::new(db, &body, assert_placeholder_ty_is_unused);
     let it: Result<Const> = (|| {
         if evaluator.ptr_size() != std::mem::size_of::<usize>() {
             not_supported!("targets with different pointer size from host");
         }
-        let bytes = evaluator.interpret_mir(&body, None.into_iter())?;
+        let bytes = evaluator.interpret_mir(body.clone(), None.into_iter())?;
         let mut memory_map = evaluator.create_memory_map(
             &bytes,
             &ty,
-            &Locals { ptr: &ArenaMap::new(), body: &body, drop_flags: DropFlags::default() },
+            &Locals { ptr: ArenaMap::new(), body, drop_flags: DropFlags::default() },
         )?;
         memory_map.vtable = evaluator.vtable_map.clone();
         return Ok(intern_const_scalar(ConstScalar::Bytes(bytes, memory_map), ty));
@@ -508,6 +514,7 @@ impl Evaluator<'_> {
         Evaluator {
             stack: vec![0],
             heap: vec![0],
+            code_stack: vec![],
             vtable_map: VTableMap::default(),
             thread_local_storage: TlsData::default(),
             static_locations: HashMap::default(),
@@ -519,14 +526,15 @@ impl Evaluator<'_> {
             assert_placeholder_ty_is_unused,
             stack_depth_limit: 100,
             execution_limit: 1000_000,
+            layout_cache: RefCell::new(HashMap::default()),
         }
     }
 
-    fn place_addr(&self, p: &Place, locals: &Locals<'_>) -> Result<Address> {
+    fn place_addr(&self, p: &Place, locals: &Locals) -> Result<Address> {
         Ok(self.place_addr_and_ty_and_metadata(p, locals)?.0)
     }
 
-    fn place_interval(&self, p: &Place, locals: &Locals<'_>) -> Result<Interval> {
+    fn place_interval(&self, p: &Place, locals: &Locals) -> Result<Interval> {
         let place_addr_and_ty = self.place_addr_and_ty_and_metadata(p, locals)?;
         Ok(Interval {
             addr: place_addr_and_ty.0,
@@ -548,7 +556,7 @@ impl Evaluator<'_> {
     fn place_addr_and_ty_and_metadata<'a>(
         &'a self,
         p: &Place,
-        locals: &'a Locals<'a>,
+        locals: &'a Locals,
     ) -> Result<(Address, Ty, Option<IntervalOrOwned>)> {
         let mut addr = locals.ptr[p.local].addr;
         let mut ty: Ty = locals.body.locals[p.local].ty.clone();
@@ -675,9 +683,15 @@ impl Evaluator<'_> {
     }
 
     fn layout(&self, ty: &Ty) -> Result<Arc<Layout>> {
-        self.db
+        if let Some(x) = self.layout_cache.borrow().get(ty) {
+            return Ok(x.clone());
+        }
+        let r = self
+            .db
             .layout_of_ty(ty.clone(), self.crate_id)
-            .map_err(|e| MirEvalError::LayoutError(e, ty.clone()))
+            .map_err(|e| MirEvalError::LayoutError(e, ty.clone()))?;
+        self.layout_cache.borrow_mut().insert(ty.clone(), r.clone());
+        Ok(r)
     }
 
     fn layout_adt(&self, adt: AdtId, subst: Substitution) -> Result<Arc<Layout>> {
@@ -686,11 +700,11 @@ impl Evaluator<'_> {
         })
     }
 
-    fn place_ty<'a>(&'a self, p: &Place, locals: &'a Locals<'a>) -> Result<Ty> {
+    fn place_ty<'a>(&'a self, p: &Place, locals: &'a Locals) -> Result<Ty> {
         Ok(self.place_addr_and_ty_and_metadata(p, locals)?.1)
     }
 
-    fn operand_ty(&self, o: &Operand, locals: &Locals<'_>) -> Result<Ty> {
+    fn operand_ty(&self, o: &Operand, locals: &Locals) -> Result<Ty> {
         Ok(match o {
             Operand::Copy(p) | Operand::Move(p) => self.place_ty(p, locals)?,
             Operand::Constant(c) => c.data(Interner).ty.clone(),
@@ -701,11 +715,7 @@ impl Evaluator<'_> {
         })
     }
 
-    fn operand_ty_and_eval(
-        &mut self,
-        o: &Operand,
-        locals: &mut Locals<'_>,
-    ) -> Result<IntervalAndTy> {
+    fn operand_ty_and_eval(&mut self, o: &Operand, locals: &mut Locals) -> Result<IntervalAndTy> {
         Ok(IntervalAndTy {
             interval: self.eval_operand(o, locals)?,
             ty: self.operand_ty(o, locals)?,
@@ -714,8 +724,8 @@ impl Evaluator<'_> {
 
     fn interpret_mir(
         &mut self,
-        body: &MirBody,
-        args: impl Iterator<Item = Vec<u8>>,
+        body: Arc<MirBody>,
+        args: impl Iterator<Item = IntervalOrOwned>,
     ) -> Result<Vec<u8>> {
         if let Some(it) = self.stack_depth_limit.checked_sub(1) {
             self.stack_depth_limit = it;
@@ -723,14 +733,192 @@ impl Evaluator<'_> {
             return Err(MirEvalError::StackOverflow);
         }
         let mut current_block_idx = body.start_block;
+        let (mut locals, prev_stack_ptr) = self.create_locals_for_body(body.clone(), None)?;
+        self.fill_locals_for_body(&body, &mut locals, args)?;
+        let prev_code_stack = mem::take(&mut self.code_stack);
+        let span = (MirSpan::Unknown, body.owner);
+        self.code_stack.push(StackFrame { body, locals, destination: None, prev_stack_ptr, span });
+        'stack: loop {
+            let Some(mut my_stack_frame) = self.code_stack.pop() else {
+                not_supported!("missing stack frame");
+            };
+            let e = (|| {
+                let mut locals = &mut my_stack_frame.locals;
+                let body = &*my_stack_frame.body;
+                loop {
+                    let current_block = &body.basic_blocks[current_block_idx];
+                    if let Some(it) = self.execution_limit.checked_sub(1) {
+                        self.execution_limit = it;
+                    } else {
+                        return Err(MirEvalError::ExecutionLimitExceeded);
+                    }
+                    for statement in &current_block.statements {
+                        match &statement.kind {
+                            StatementKind::Assign(l, r) => {
+                                let addr = self.place_addr(l, &locals)?;
+                                let result = self.eval_rvalue(r, &mut locals)?.to_vec(&self)?;
+                                self.write_memory(addr, &result)?;
+                                locals.drop_flags.add_place(l.clone());
+                            }
+                            StatementKind::Deinit(_) => not_supported!("de-init statement"),
+                            StatementKind::StorageLive(_)
+                            | StatementKind::StorageDead(_)
+                            | StatementKind::Nop => (),
+                        }
+                    }
+                    let Some(terminator) = current_block.terminator.as_ref() else {
+                        not_supported!("block without terminator");
+                    };
+                    match &terminator.kind {
+                        TerminatorKind::Goto { target } => {
+                            current_block_idx = *target;
+                        }
+                        TerminatorKind::Call {
+                            func,
+                            args,
+                            destination,
+                            target,
+                            cleanup: _,
+                            from_hir_call: _,
+                        } => {
+                            let destination_interval = self.place_interval(destination, &locals)?;
+                            let fn_ty = self.operand_ty(func, &locals)?;
+                            let args = args
+                                .iter()
+                                .map(|it| self.operand_ty_and_eval(it, &mut locals))
+                                .collect::<Result<Vec<_>>>()?;
+                            let stack_frame = match &fn_ty.data(Interner).kind {
+                                TyKind::Function(_) => {
+                                    let bytes = self.eval_operand(func, &mut locals)?;
+                                    self.exec_fn_pointer(
+                                        bytes,
+                                        destination_interval,
+                                        &args,
+                                        &locals,
+                                        *target,
+                                        terminator.span,
+                                    )?
+                                }
+                                TyKind::FnDef(def, generic_args) => self.exec_fn_def(
+                                    *def,
+                                    generic_args,
+                                    destination_interval,
+                                    &args,
+                                    &locals,
+                                    *target,
+                                    terminator.span,
+                                )?,
+                                it => not_supported!("unknown function type {it:?}"),
+                            };
+                            locals.drop_flags.add_place(destination.clone());
+                            if let Some(stack_frame) = stack_frame {
+                                self.code_stack.push(my_stack_frame);
+                                current_block_idx = stack_frame.body.start_block;
+                                self.code_stack.push(stack_frame);
+                                return Ok(None);
+                            } else {
+                                current_block_idx =
+                                    target.ok_or(MirEvalError::UndefinedBehavior(
+                                        "Diverging function returned".to_owned(),
+                                    ))?;
+                            }
+                        }
+                        TerminatorKind::SwitchInt { discr, targets } => {
+                            let val = u128::from_le_bytes(pad16(
+                                self.eval_operand(discr, &mut locals)?.get(&self)?,
+                                false,
+                            ));
+                            current_block_idx = targets.target_for_value(val);
+                        }
+                        TerminatorKind::Return => {
+                            break;
+                        }
+                        TerminatorKind::Unreachable => {
+                            return Err(MirEvalError::UndefinedBehavior(
+                                "unreachable executed".to_owned(),
+                            ));
+                        }
+                        TerminatorKind::Drop { place, target, unwind: _ } => {
+                            self.drop_place(place, &mut locals, terminator.span)?;
+                            current_block_idx = *target;
+                        }
+                        _ => not_supported!("unknown terminator"),
+                    }
+                }
+                Ok(Some(my_stack_frame))
+            })();
+            let my_stack_frame = match e {
+                Ok(None) => continue 'stack,
+                Ok(Some(x)) => x,
+                Err(e) => {
+                    let my_code_stack = mem::replace(&mut self.code_stack, prev_code_stack);
+                    let mut error_stack = vec![];
+                    for frame in my_code_stack.into_iter().rev() {
+                        if let DefWithBodyId::FunctionId(f) = frame.body.owner {
+                            error_stack.push((Either::Left(f), frame.span.0, frame.span.1));
+                        }
+                    }
+                    return Err(MirEvalError::InFunction(Box::new(e), error_stack));
+                }
+            };
+            match my_stack_frame.destination {
+                None => {
+                    self.code_stack = prev_code_stack;
+                    self.stack_depth_limit += 1;
+                    return Ok(my_stack_frame.locals.ptr[return_slot()].get(self)?.to_vec());
+                }
+                Some(bb) => {
+                    // We don't support const promotion, so we can't truncate the stack yet.
+                    let _ = my_stack_frame.prev_stack_ptr;
+                    // self.stack.truncate(my_stack_frame.prev_stack_ptr);
+                    current_block_idx = bb;
+                }
+            }
+        }
+    }
+
+    fn fill_locals_for_body(
+        &mut self,
+        body: &MirBody,
+        locals: &mut Locals,
+        args: impl Iterator<Item = IntervalOrOwned>,
+    ) -> Result<()> {
+        let mut remain_args = body.param_locals.len();
+        for ((l, interval), value) in locals.ptr.iter().skip(1).zip(args) {
+            locals.drop_flags.add_place(l.into());
+            match value {
+                IntervalOrOwned::Owned(value) => interval.write_from_bytes(self, &value)?,
+                IntervalOrOwned::Borrowed(value) => interval.write_from_interval(self, value)?,
+            }
+            if remain_args == 0 {
+                return Err(MirEvalError::TypeError("more arguments provided"));
+            }
+            remain_args -= 1;
+        }
+        if remain_args > 0 {
+            return Err(MirEvalError::TypeError("not enough arguments provided"));
+        }
+        Ok(())
+    }
+
+    fn create_locals_for_body(
+        &mut self,
+        body: Arc<MirBody>,
+        destination: Option<Interval>,
+    ) -> Result<(Locals, usize)> {
         let mut locals =
-            Locals { ptr: &ArenaMap::new(), body: &body, drop_flags: DropFlags::default() };
+            Locals { ptr: ArenaMap::new(), body: body.clone(), drop_flags: DropFlags::default() };
         let (locals_ptr, stack_size) = {
             let mut stack_ptr = self.stack.len();
             let addr = body
                 .locals
                 .iter()
                 .map(|(id, it)| {
+                    if id == return_slot() {
+                        if let Some(destination) = destination {
+                            return Ok((id, destination));
+                        }
+                    }
                     let (size, align) = self.size_align_of_sized(
                         &it.ty,
                         &locals,
@@ -747,112 +935,13 @@ impl Evaluator<'_> {
             let stack_size = stack_ptr - self.stack.len();
             (addr, stack_size)
         };
-        locals.ptr = &locals_ptr;
+        locals.ptr = locals_ptr;
+        let prev_stack_pointer = self.stack.len();
         self.stack.extend(iter::repeat(0).take(stack_size));
-        let mut remain_args = body.param_locals.len();
-        for ((l, interval), value) in locals_ptr.iter().skip(1).zip(args) {
-            locals.drop_flags.add_place(l.into());
-            interval.write_from_bytes(self, &value)?;
-            if remain_args == 0 {
-                return Err(MirEvalError::TypeError("more arguments provided"));
-            }
-            remain_args -= 1;
-        }
-        if remain_args > 0 {
-            return Err(MirEvalError::TypeError("not enough arguments provided"));
-        }
-        loop {
-            let current_block = &body.basic_blocks[current_block_idx];
-            if let Some(it) = self.execution_limit.checked_sub(1) {
-                self.execution_limit = it;
-            } else {
-                return Err(MirEvalError::ExecutionLimitExceeded);
-            }
-            for statement in &current_block.statements {
-                match &statement.kind {
-                    StatementKind::Assign(l, r) => {
-                        let addr = self.place_addr(l, &locals)?;
-                        let result = self.eval_rvalue(r, &mut locals)?.to_vec(&self)?;
-                        self.write_memory(addr, &result)?;
-                        locals.drop_flags.add_place(l.clone());
-                    }
-                    StatementKind::Deinit(_) => not_supported!("de-init statement"),
-                    StatementKind::StorageLive(_)
-                    | StatementKind::StorageDead(_)
-                    | StatementKind::Nop => (),
-                }
-            }
-            let Some(terminator) = current_block.terminator.as_ref() else {
-                not_supported!("block without terminator");
-            };
-            match &terminator.kind {
-                TerminatorKind::Goto { target } => {
-                    current_block_idx = *target;
-                }
-                TerminatorKind::Call {
-                    func,
-                    args,
-                    destination,
-                    target,
-                    cleanup: _,
-                    from_hir_call: _,
-                } => {
-                    let destination_interval = self.place_interval(destination, &locals)?;
-                    let fn_ty = self.operand_ty(func, &locals)?;
-                    let args = args
-                        .iter()
-                        .map(|it| self.operand_ty_and_eval(it, &mut locals))
-                        .collect::<Result<Vec<_>>>()?;
-                    match &fn_ty.data(Interner).kind {
-                        TyKind::Function(_) => {
-                            let bytes = self.eval_operand(func, &mut locals)?;
-                            self.exec_fn_pointer(
-                                bytes,
-                                destination_interval,
-                                &args,
-                                &locals,
-                                terminator.span,
-                            )?;
-                        }
-                        TyKind::FnDef(def, generic_args) => {
-                            self.exec_fn_def(
-                                *def,
-                                generic_args,
-                                destination_interval,
-                                &args,
-                                &locals,
-                                terminator.span,
-                            )?;
-                        }
-                        it => not_supported!("unknown function type {it:?}"),
-                    }
-                    locals.drop_flags.add_place(destination.clone());
-                    current_block_idx = target.expect("broken mir, function without target");
-                }
-                TerminatorKind::SwitchInt { discr, targets } => {
-                    let val = u128::from_le_bytes(pad16(
-                        self.eval_operand(discr, &mut locals)?.get(&self)?,
-                        false,
-                    ));
-                    current_block_idx = targets.target_for_value(val);
-                }
-                TerminatorKind::Return => {
-                    self.stack_depth_limit += 1;
-                    return Ok(locals.ptr[return_slot()].get(self)?.to_vec());
-                }
-                TerminatorKind::Unreachable => {
-                    return Err(MirEvalError::UndefinedBehavior("unreachable executed".to_owned()));
-                }
-                TerminatorKind::Drop { place, target, unwind: _ } => {
-                    self.drop_place(place, &mut locals, terminator.span)?;
-                    current_block_idx = *target;
-                }
-                _ => not_supported!("unknown terminator"),
-            }
-        }
+        Ok((locals, prev_stack_pointer))
     }
 
-    fn eval_rvalue(&mut self, r: &Rvalue, locals: &mut Locals<'_>) -> Result<IntervalOrOwned> {
+    fn eval_rvalue(&mut self, r: &Rvalue, locals: &mut Locals) -> Result<IntervalOrOwned> {
         use IntervalOrOwned::*;
         Ok(match r {
             Rvalue::Use(it) => Borrowed(self.eval_operand(it, locals)?),
@@ -1372,7 +1461,7 @@ impl Evaluator<'_> {
         &mut self,
         it: VariantId,
         subst: Substitution,
-        locals: &Locals<'_>,
+        locals: &Locals,
     ) -> Result<(usize, Arc<Layout>, Option<(usize, usize, i128)>)> {
         let adt = it.adt_id();
         if let DefWithBodyId::VariantId(f) = locals.body.owner {
@@ -1452,7 +1541,7 @@ impl Evaluator<'_> {
         Ok(result)
     }
 
-    fn eval_operand(&mut self, it: &Operand, locals: &mut Locals<'_>) -> Result<Interval> {
+    fn eval_operand(&mut self, it: &Operand, locals: &mut Locals) -> Result<Interval> {
         Ok(match it {
             Operand::Copy(p) | Operand::Move(p) => {
                 locals.drop_flags.remove_place(p);
@@ -1482,7 +1571,7 @@ impl Evaluator<'_> {
         &mut self,
         c: &chalk_ir::ConcreteConst<Interner>,
         ty: &Ty,
-        locals: &Locals<'_>,
+        locals: &Locals,
         konst: &chalk_ir::Const<Interner>,
     ) -> Result<Interval> {
         Ok(match &c.interned {
@@ -1516,7 +1605,7 @@ impl Evaluator<'_> {
         })
     }
 
-    fn eval_place(&mut self, p: &Place, locals: &Locals<'_>) -> Result<Interval> {
+    fn eval_place(&mut self, p: &Place, locals: &Locals) -> Result<Interval> {
         let addr = self.place_addr(p, locals)?;
         Ok(Interval::new(
             addr,
@@ -1562,7 +1651,7 @@ impl Evaluator<'_> {
         Ok(())
     }
 
-    fn size_align_of(&self, ty: &Ty, locals: &Locals<'_>) -> Result<Option<(usize, usize)>> {
+    fn size_align_of(&self, ty: &Ty, locals: &Locals) -> Result<Option<(usize, usize)>> {
         if let DefWithBodyId::VariantId(f) = locals.body.owner {
             if let Some((adt, _)) = ty.as_adt() {
                 if AdtId::from(f.parent) == adt {
@@ -1586,7 +1675,7 @@ impl Evaluator<'_> {
 
     /// A version of `self.size_of` which returns error if the type is unsized. `what` argument should
     /// be something that complete this: `error: type {ty} was unsized. {what} should be sized`
-    fn size_of_sized(&self, ty: &Ty, locals: &Locals<'_>, what: &'static str) -> Result<usize> {
+    fn size_of_sized(&self, ty: &Ty, locals: &Locals, what: &'static str) -> Result<usize> {
         match self.size_align_of(ty, locals)? {
             Some(it) => Ok(it.0),
             None => Err(MirEvalError::TypeIsUnsized(ty.clone(), what)),
@@ -1598,7 +1687,7 @@ impl Evaluator<'_> {
     fn size_align_of_sized(
         &self,
         ty: &Ty,
-        locals: &Locals<'_>,
+        locals: &Locals,
         what: &'static str,
     ) -> Result<(usize, usize)> {
         match self.size_align_of(ty, locals)? {
@@ -1621,7 +1710,7 @@ impl Evaluator<'_> {
         let ItemContainerId::TraitId(parent) = self.db.lookup_intern_function(def).container else {
             return None;
         };
-        let l = lang_attr(self.db.upcast(), parent)?;
+        let l = self.db.lang_attr(parent.into())?;
         match l {
             FnOnce => Some(FnTrait::FnOnce),
             FnMut => Some(FnTrait::FnMut),
@@ -1630,12 +1719,12 @@ impl Evaluator<'_> {
         }
     }
 
-    fn create_memory_map(&self, bytes: &[u8], ty: &Ty, locals: &Locals<'_>) -> Result<MemoryMap> {
+    fn create_memory_map(&self, bytes: &[u8], ty: &Ty, locals: &Locals) -> Result<MemoryMap> {
         fn rec(
             this: &Evaluator<'_>,
             bytes: &[u8],
             ty: &Ty,
-            locals: &Locals<'_>,
+            locals: &Locals,
             mm: &mut MemoryMap,
         ) -> Result<()> {
             match ty.kind(Interner) {
@@ -1741,7 +1830,7 @@ impl Evaluator<'_> {
         old_vtable: &VTableMap,
         addr: Address,
         ty: &Ty,
-        locals: &Locals<'_>,
+        locals: &Locals,
     ) -> Result<()> {
         // FIXME: support indirect references
         let layout = self.layout(ty)?;
@@ -1815,21 +1904,21 @@ impl Evaluator<'_> {
         bytes: Interval,
         destination: Interval,
         args: &[IntervalAndTy],
-        locals: &Locals<'_>,
+        locals: &Locals,
+        target_bb: Option<BasicBlockId>,
         span: MirSpan,
-    ) -> Result<()> {
+    ) -> Result<Option<StackFrame>> {
         let id = from_bytes!(usize, bytes.get(self)?);
         let next_ty = self.vtable_map.ty(id)?.clone();
         match &next_ty.data(Interner).kind {
             TyKind::FnDef(def, generic_args) => {
-                self.exec_fn_def(*def, generic_args, destination, args, &locals, span)?;
+                self.exec_fn_def(*def, generic_args, destination, args, &locals, target_bb, span)
             }
             TyKind::Closure(id, subst) => {
-                self.exec_closure(*id, bytes.slice(0..0), subst, destination, args, locals, span)?;
+                self.exec_closure(*id, bytes.slice(0..0), subst, destination, args, locals, span)
             }
-            _ => return Err(MirEvalError::TypeError("function pointer to non function")),
+            _ => Err(MirEvalError::TypeError("function pointer to non function")),
         }
-        Ok(())
     }
 
     fn exec_closure(
@@ -1839,9 +1928,9 @@ impl Evaluator<'_> {
         generic_args: &Substitution,
         destination: Interval,
         args: &[IntervalAndTy],
-        locals: &Locals<'_>,
+        locals: &Locals,
         span: MirSpan,
-    ) -> Result<()> {
+    ) -> Result<Option<StackFrame>> {
         let mir_body = self
             .db
             .monomorphized_mir_body_for_closure(
@@ -1859,10 +1948,16 @@ impl Evaluator<'_> {
         let arg_bytes = iter::once(Ok(closure_data))
             .chain(args.iter().map(|it| Ok(it.get(&self)?.to_owned())))
             .collect::<Result<Vec<_>>>()?;
-        let bytes = self.interpret_mir(&mir_body, arg_bytes.into_iter()).map_err(|e| {
-            MirEvalError::InFunction(Either::Right(closure), Box::new(e), span, locals.body.owner)
-        })?;
-        destination.write_from_bytes(self, &bytes)
+        let bytes = self
+            .interpret_mir(mir_body, arg_bytes.into_iter().map(IntervalOrOwned::Owned))
+            .map_err(|e| {
+                MirEvalError::InFunction(
+                    Box::new(e),
+                    vec![(Either::Right(closure), span, locals.body.owner)],
+                )
+            })?;
+        destination.write_from_bytes(self, &bytes)?;
+        Ok(None)
     }
 
     fn exec_fn_def(
@@ -1871,18 +1966,34 @@ impl Evaluator<'_> {
         generic_args: &Substitution,
         destination: Interval,
         args: &[IntervalAndTy],
-        locals: &Locals<'_>,
+        locals: &Locals,
+        target_bb: Option<BasicBlockId>,
         span: MirSpan,
-    ) -> Result<()> {
+    ) -> Result<Option<StackFrame>> {
         let def: CallableDefId = from_chalk(self.db, def);
         let generic_args = generic_args.clone();
         match def {
             CallableDefId::FunctionId(def) => {
                 if let Some(_) = self.detect_fn_trait(def) {
-                    self.exec_fn_trait(def, args, generic_args, locals, destination, span)?;
-                    return Ok(());
+                    return self.exec_fn_trait(
+                        def,
+                        args,
+                        generic_args,
+                        locals,
+                        destination,
+                        target_bb,
+                        span,
+                    );
                 }
-                self.exec_fn_with_args(def, args, generic_args, locals, destination, span)?;
+                self.exec_fn_with_args(
+                    def,
+                    args,
+                    generic_args,
+                    locals,
+                    destination,
+                    target_bb,
+                    span,
+                )
             }
             CallableDefId::StructId(id) => {
                 let (size, variant_layout, tag) =
@@ -1894,6 +2005,7 @@ impl Evaluator<'_> {
                     args.iter().map(|it| it.interval.into()),
                 )?;
                 destination.write_from_bytes(self, &result)?;
+                Ok(None)
             }
             CallableDefId::EnumVariantId(id) => {
                 let (size, variant_layout, tag) =
@@ -1905,9 +2017,9 @@ impl Evaluator<'_> {
                     args.iter().map(|it| it.interval.into()),
                 )?;
                 destination.write_from_bytes(self, &result)?;
+                Ok(None)
             }
         }
-        Ok(())
     }
 
     fn exec_fn_with_args(
@@ -1915,10 +2027,11 @@ impl Evaluator<'_> {
         def: FunctionId,
         args: &[IntervalAndTy],
         generic_args: Substitution,
-        locals: &Locals<'_>,
+        locals: &Locals,
         destination: Interval,
+        target_bb: Option<BasicBlockId>,
         span: MirSpan,
-    ) -> Result<()> {
+    ) -> Result<Option<StackFrame>> {
         if self.detect_and_exec_special_function(
             def,
             args,
@@ -1927,10 +2040,9 @@ impl Evaluator<'_> {
             destination,
             span,
         )? {
-            return Ok(());
+            return Ok(None);
         }
-        let arg_bytes =
-            args.iter().map(|it| Ok(it.get(&self)?.to_owned())).collect::<Result<Vec<_>>>()?;
+        let arg_bytes = args.iter().map(|it| IntervalOrOwned::Borrowed(it.interval));
         if let Some(self_ty_idx) =
             is_dyn_method(self.db, self.trait_env.clone(), def, generic_args.clone())
         {
@@ -1938,8 +2050,10 @@ impl Evaluator<'_> {
             // `&T`, `&mut T`, `Box<T>`, `Rc<T>`, `Arc<T>`, and `Pin<P>` where `P` is one of possible recievers,
             // the vtable is exactly in the `[ptr_size..2*ptr_size]` bytes. So we can use it without branching on
             // the type.
+            let first_arg = arg_bytes.clone().next().unwrap();
+            let first_arg = first_arg.get(self)?;
             let ty =
-                self.vtable_map.ty_of_bytes(&arg_bytes[0][self.ptr_size()..self.ptr_size() * 2])?;
+                self.vtable_map.ty_of_bytes(&first_arg[self.ptr_size()..self.ptr_size() * 2])?;
             let mut args_for_target = args.to_vec();
             args_for_target[0] = IntervalAndTy {
                 interval: args_for_target[0].interval.slice(0..self.ptr_size()),
@@ -1962,40 +2076,65 @@ impl Evaluator<'_> {
                 generics_for_target,
                 locals,
                 destination,
+                target_bb,
                 span,
             );
         }
         let (imp, generic_args) =
-            lookup_impl_method(self.db, self.trait_env.clone(), def, generic_args);
-        self.exec_looked_up_function(generic_args, locals, imp, arg_bytes, span, destination)
+            self.db.lookup_impl_method(self.trait_env.clone(), def, generic_args);
+        self.exec_looked_up_function(
+            generic_args,
+            locals,
+            imp,
+            arg_bytes,
+            span,
+            destination,
+            target_bb,
+        )
     }
 
     fn exec_looked_up_function(
         &mut self,
         generic_args: Substitution,
-        locals: &Locals<'_>,
+        locals: &Locals,
         imp: FunctionId,
-        arg_bytes: Vec<Vec<u8>>,
+        arg_bytes: impl Iterator<Item = IntervalOrOwned>,
         span: MirSpan,
         destination: Interval,
-    ) -> Result<()> {
+        target_bb: Option<BasicBlockId>,
+    ) -> Result<Option<StackFrame>> {
         let def = imp.into();
         let mir_body = self
             .db
             .monomorphized_mir_body(def, generic_args, self.trait_env.clone())
             .map_err(|e| {
                 MirEvalError::InFunction(
-                    Either::Left(imp),
                     Box::new(MirEvalError::MirLowerError(imp, e)),
-                    span,
-                    locals.body.owner,
+                    vec![(Either::Left(imp), span, locals.body.owner)],
                 )
             })?;
-        let result = self.interpret_mir(&mir_body, arg_bytes.iter().cloned()).map_err(|e| {
-            MirEvalError::InFunction(Either::Left(imp), Box::new(e), span, locals.body.owner)
-        })?;
-        destination.write_from_bytes(self, &result)?;
-        Ok(())
+        Ok(if let Some(target_bb) = target_bb {
+            let (mut locals, prev_stack_ptr) =
+                self.create_locals_for_body(mir_body.clone(), Some(destination))?;
+            self.fill_locals_for_body(&mir_body, &mut locals, arg_bytes.into_iter())?;
+            let span = (span, locals.body.owner);
+            Some(StackFrame {
+                body: mir_body,
+                locals,
+                destination: Some(target_bb),
+                prev_stack_ptr,
+                span,
+            })
+        } else {
+            let result = self.interpret_mir(mir_body, arg_bytes).map_err(|e| {
+                MirEvalError::InFunction(
+                    Box::new(e),
+                    vec![(Either::Left(imp), span, locals.body.owner)],
+                )
+            })?;
+            destination.write_from_bytes(self, &result)?;
+            None
+        })
     }
 
     fn exec_fn_trait(
@@ -2003,10 +2142,11 @@ impl Evaluator<'_> {
         def: FunctionId,
         args: &[IntervalAndTy],
         generic_args: Substitution,
-        locals: &Locals<'_>,
+        locals: &Locals,
         destination: Interval,
+        target_bb: Option<BasicBlockId>,
         span: MirSpan,
-    ) -> Result<()> {
+    ) -> Result<Option<StackFrame>> {
         let func = args.get(0).ok_or(MirEvalError::TypeError("fn trait with no arg"))?;
         let mut func_ty = func.ty.clone();
         let mut func_data = func.interval;
@@ -2023,13 +2163,28 @@ impl Evaluator<'_> {
         }
         match &func_ty.data(Interner).kind {
             TyKind::FnDef(def, subst) => {
-                self.exec_fn_def(*def, subst, destination, &args[1..], locals, span)?;
+                return self.exec_fn_def(
+                    *def,
+                    subst,
+                    destination,
+                    &args[1..],
+                    locals,
+                    target_bb,
+                    span,
+                );
             }
             TyKind::Function(_) => {
-                self.exec_fn_pointer(func_data, destination, &args[1..], locals, span)?;
+                return self.exec_fn_pointer(
+                    func_data,
+                    destination,
+                    &args[1..],
+                    locals,
+                    target_bb,
+                    span,
+                );
             }
             TyKind::Closure(closure, subst) => {
-                self.exec_closure(
+                return self.exec_closure(
                     *closure,
                     func_data,
                     &Substitution::from_iter(Interner, ClosureSubst(subst).parent_subst()),
@@ -2037,7 +2192,7 @@ impl Evaluator<'_> {
                     &args[1..],
                     locals,
                     span,
-                )?;
+                );
             }
             _ => {
                 // try to execute the manual impl of `FnTrait` for structs (nightly feature used in std)
@@ -2068,14 +2223,14 @@ impl Evaluator<'_> {
                     generic_args,
                     locals,
                     destination,
+                    target_bb,
                     span,
                 );
             }
         }
-        Ok(())
     }
 
-    fn eval_static(&mut self, st: StaticId, locals: &Locals<'_>) -> Result<Address> {
+    fn eval_static(&mut self, st: StaticId, locals: &Locals) -> Result<Address> {
         if let Some(o) = self.static_locations.get(&st) {
             return Ok(*o);
         };
@@ -2123,7 +2278,7 @@ impl Evaluator<'_> {
         }
     }
 
-    fn drop_place(&mut self, place: &Place, locals: &mut Locals<'_>, span: MirSpan) -> Result<()> {
+    fn drop_place(&mut self, place: &Place, locals: &mut Locals, span: MirSpan) -> Result<()> {
         let (addr, ty, metadata) = self.place_addr_and_ty_and_metadata(place, locals)?;
         if !locals.drop_flags.remove_place(place) {
             return Ok(());
@@ -2138,7 +2293,7 @@ impl Evaluator<'_> {
     fn run_drop_glue_deep(
         &mut self,
         ty: Ty,
-        locals: &Locals<'_>,
+        locals: &Locals,
         addr: Address,
         _metadata: &[u8],
         span: MirSpan,
@@ -2151,8 +2306,7 @@ impl Evaluator<'_> {
             // we can ignore drop in them.
             return Ok(());
         };
-        let (impl_drop_candidate, subst) = lookup_impl_method(
-            self.db,
+        let (impl_drop_candidate, subst) = self.db.lookup_impl_method(
             self.trait_env.clone(),
             drop_fn,
             Substitution::from1(Interner, ty.clone()),
@@ -2162,9 +2316,10 @@ impl Evaluator<'_> {
                 subst,
                 locals,
                 impl_drop_candidate,
-                vec![addr.to_bytes()],
+                [IntervalOrOwned::Owned(addr.to_bytes())].into_iter(),
                 span,
                 Interval { addr: Address::Invalid(0), size: 0 },
+                None,
             )?;
         }
         match ty.kind(Interner) {

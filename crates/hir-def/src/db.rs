@@ -18,7 +18,7 @@ use crate::{
     generics::GenericParams,
     import_map::ImportMap,
     item_tree::{AttrOwner, ItemTree},
-    lang_item::{LangItem, LangItemTarget, LangItems},
+    lang_item::{self, LangItem, LangItemTarget, LangItems},
     nameres::{diagnostics::DefDiagnostic, DefMap},
     visibility::{self, Visibility},
     AttrDefId, BlockId, BlockLoc, ConstBlockId, ConstBlockLoc, ConstId, ConstLoc, DefWithBodyId,
@@ -203,6 +203,9 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + Upcast<dyn ExpandDataba
 
     #[salsa::invoke(AttrsWithOwner::attrs_query)]
     fn attrs(&self, def: AttrDefId) -> Attrs;
+
+    #[salsa::invoke(lang_item::lang_attr_query)]
+    fn lang_attr(&self, def: AttrDefId) -> Option<LangItem>;
 
     #[salsa::transparent]
     #[salsa::invoke(AttrsWithOwner::attrs_with_owner)]

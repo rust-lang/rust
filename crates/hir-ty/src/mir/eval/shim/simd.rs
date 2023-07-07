@@ -50,7 +50,7 @@ impl Evaluator<'_> {
         args: &[IntervalAndTy],
         _generic_args: &Substitution,
         destination: Interval,
-        _locals: &Locals<'_>,
+        _locals: &Locals,
         _span: MirSpan,
     ) -> Result<()> {
         match name {

@@ -228,7 +228,7 @@ pub(crate) fn const_eval_query(
         }
         GeneralConstId::InTypeConstId(c) => db.mir_body(c.into())?,
     };
-    let c = interpret_mir(db, &body, false).0?;
+    let c = interpret_mir(db, body, false).0?;
     Ok(c)
 }
 
@@ -241,7 +241,7 @@ pub(crate) fn const_eval_static_query(
         Substitution::empty(Interner),
         db.trait_environment_for_body(def.into()),
     )?;
-    let c = interpret_mir(db, &body, false).0?;
+    let c = interpret_mir(db, body, false).0?;
     Ok(c)
 }
 
@@ -268,7 +268,7 @@ pub(crate) fn const_eval_discriminant_variant(
         Substitution::empty(Interner),
         db.trait_environment_for_body(def),
     )?;
-    let c = interpret_mir(db, &mir_body, false).0?;
+    let c = interpret_mir(db, mir_body, false).0?;
     let c = try_const_usize(db, &c).unwrap() as i128;
     Ok(c)
 }
@@ -293,7 +293,7 @@ pub(crate) fn eval_to_const(
     }
     let infer = ctx.clone().resolve_all();
     if let Ok(mir_body) = lower_to_mir(ctx.db, ctx.owner, &ctx.body, &infer, expr) {
-        if let Ok(result) = interpret_mir(db, &mir_body, true).0 {
+        if let Ok(result) = interpret_mir(db, Arc::new(mir_body), true).0 {
             return result;
         }
     }

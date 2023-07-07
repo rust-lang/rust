@@ -1986,7 +1986,7 @@ impl Function {
                 return r;
             }
         };
-        let (result, stdout, stderr) = interpret_mir(db, &body, false);
+        let (result, stdout, stderr) = interpret_mir(db, body, false);
         let mut text = match result {
             Ok(_) => "pass".to_string(),
             Err(e) => {

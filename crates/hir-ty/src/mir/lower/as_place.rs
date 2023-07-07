@@ -1,7 +1,7 @@
 //! MIR lowering for places
 
 use super::*;
-use hir_def::{lang_item::lang_attr, FunctionId};
+use hir_def::FunctionId;
 use hir_expand::name;
 
 macro_rules! not_supported {
@@ -162,7 +162,7 @@ impl MirLowerCtx<'_> {
                     let is_builtin = match self.expr_ty_without_adjust(*expr).kind(Interner) {
                         TyKind::Ref(..) | TyKind::Raw(..) => true,
                         TyKind::Adt(id, _) => {
-                            if let Some(lang_item) = lang_attr(self.db.upcast(), id.0) {
+                            if let Some(lang_item) = self.db.lang_attr(id.0.into()) {
                                 lang_item == LangItem::OwnedBox
                             } else {
                                 false

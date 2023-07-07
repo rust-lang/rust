@@ -16,7 +16,7 @@ mod intrinsics;
 
 fn simplify(e: ConstEvalError) -> ConstEvalError {
     match e {
-        ConstEvalError::MirEvalError(MirEvalError::InFunction(_, e, _, _)) => {
+        ConstEvalError::MirEvalError(MirEvalError::InFunction(e, _)) => {
             simplify(ConstEvalError::MirEvalError(*e))
         }
         _ => e,
@@ -2471,7 +2471,7 @@ fn exec_limits() {
     }
     const GOAL: i32 = f(0);
     "#,
-        |e| e == ConstEvalError::MirEvalError(MirEvalError::StackOverflow),
+        |e| e == ConstEvalError::MirEvalError(MirEvalError::ExecutionLimitExceeded),
     );
     // Reasonable code should still work
     check_number(
