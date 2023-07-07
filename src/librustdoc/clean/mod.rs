@@ -1479,8 +1479,97 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
     Item::from_def_id_and_parts(assoc_item.def_id, Some(assoc_item.name), kind, cx)
 }
 
+/// The goal of this function is to return the first `Path` which is not private (ie not private
+/// or `doc(hidden)`). If it's not possible, it'll return the "end type".
+///
+/// If the path is not a re-export or is public, it'll return `None`.
+fn first_non_private(
+    cx: &mut DocContext<'_>,
+    hir_id: hir::HirId,
+    path: &hir::Path<'_>,
+) -> Option<Path> {
+    let (parent_def_id, mut ident) = match &path.segments[..] {
+        [] => return None,
+        // Relative paths are available in the same scope as the owner.
+        [leaf] => (cx.tcx.local_parent(hir_id.owner.def_id), leaf.ident),
+        // So are self paths.
+        [parent, leaf] if parent.ident.name == kw::SelfLower => {
+            (cx.tcx.local_parent(hir_id.owner.def_id), leaf.ident)
+        }
+        // Crate paths are not. We start from the crate root.
+        [parent, leaf] if matches!(parent.ident.name, kw::Crate | kw::PathRoot) => {
+            (LOCAL_CRATE.as_def_id().as_local()?, leaf.ident)
+        }
+        [parent, leaf] if parent.ident.name == kw::Super => {
+            let parent_mod = cx.tcx.parent_module(hir_id);
+            if let Some(super_parent) = cx.tcx.opt_local_parent(parent_mod) {
+                (super_parent, leaf.ident)
+            } else {
+                // If we can't find the parent of the parent, then the parent is already the crate.
+                (LOCAL_CRATE.as_def_id().as_local()?, leaf.ident)
+            }
+        }
+        // Absolute paths are not. We start from the parent of the item.
+        [.., parent, leaf] => (parent.res.opt_def_id()?.as_local()?, leaf.ident),
+    };
+    let target_def_id = path.res.opt_def_id()?;
+    // First we try to get the `DefId` of the item.
+    for child in
+        cx.tcx.module_children_local(parent_def_id).iter().filter(move |c| c.ident == ident)
+    {
+        if let Res::Def(DefKind::Ctor(..), _) | Res::SelfCtor(..) = child.res {
+            continue;
+        }
+
+        if let Some(def_id) = child.res.opt_def_id() && target_def_id == def_id {
+            let mut last_path_res = None;
+            'reexps: for reexp in child.reexport_chain.iter() {
+                if let Some(use_def_id) = reexp.id() &&
+                    let Some(local_use_def_id) = use_def_id.as_local()
+                {
+                    let hir = cx.tcx.hir();
+                    for item_id in hir.module_items(cx.tcx.local_parent(local_use_def_id)) {
+                        let item = hir.item(item_id);
+                        if item.ident == ident && let hir::ItemKind::Use(path, _) = item.kind {
+                            for res in &path.res {
+                                if let Res::Def(DefKind::Ctor(..), _) | Res::SelfCtor(..) = res {
+                                    continue;
+                                }
+                                if !cx.tcx.is_doc_hidden(use_def_id) &&
+                                    cx.tcx.local_visibility(local_use_def_id).is_public() {
+                                    break 'reexps;
+                                }
+                                ident = path.segments.last().unwrap().ident;
+                                last_path_res = Some((path, res));
+                                continue 'reexps;
+                            }
+                        }
+                    }
+                }
+            }
+            if !child.reexport_chain.is_empty() {
+                // So in here, we use the data we gathered from iterating the reexports. If
+                // `last_path_res` is set, it can mean two things:
+                //
+                // 1. We found a public reexport.
+                // 2. We didn't find a public reexport so it's the "end type" path.
+                if let Some((path, res)) = last_path_res {
+                    let path = hir::Path { segments: path.segments, res: *res, span: path.span };
+                    return Some(clean_path(&path, cx));
+                }
+                // If `last_path_res` is `None`, it can mean two things:
+                //
+                // 1. The re-export is public, no need to change anything, just use the path as is.
+                // 2. Nothing was found, so let's just return the original path.
+                return None;
+            }
+        }
+    }
+    None
+}
+
 fn clean_qpath<'tcx>(hir_ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> Type {
-    let hir::Ty { hir_id: _, span, ref kind } = *hir_ty;
+    let hir::Ty { hir_id, span, ref kind } = *hir_ty;
     let hir::TyKind::Path(qpath) = kind else { unreachable!() };
 
     match qpath {
@@ -1497,7 +1586,12 @@ fn clean_qpath<'tcx>(hir_ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> Type 
             if let Some(expanded) = maybe_expand_private_type_alias(cx, path) {
                 expanded
             } else {
-                let path = clean_path(path, cx);
+                // First we check if it's a private re-export.
+                let path = if let Some(path) = first_non_private(cx, hir_id, &path) {
+                    path
+                } else {
+                    clean_path(path, cx)
+                };
                 resolve_type(cx, path)
             }
         }
@@ -1649,7 +1743,7 @@ fn maybe_expand_private_type_alias<'tcx>(
         }
     }
 
-    Some(cx.enter_alias(substs, def_id.to_def_id(), |cx| clean_ty(ty, cx)))
+    Some(cx.enter_alias(substs, def_id.to_def_id(), |cx| clean_ty(&ty, cx)))
 }
 
 pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> Type {
