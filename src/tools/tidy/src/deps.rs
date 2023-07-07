@@ -189,6 +189,7 @@ const PERMITTED_DEPS_LOCATION: &str = concat!(file!(), ":", line!());
 /// rustc. Please check with the compiler team before adding an entry.
 const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     // tidy-alphabetical-start
+    "addr2line",
     "adler",
     "ahash",
     "aho-corasick",
@@ -429,6 +430,7 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "mach",
     "memchr",
     "object",
+    "once_cell",
     "regalloc2",
     "region",
     "rustc-hash",
@@ -614,27 +616,7 @@ fn check_permitted_dependencies(
     let mut deps = HashSet::new();
     for to_check in restricted_dependency_crates {
         let to_check = pkg_from_name(metadata, to_check);
-        use cargo_platform::Cfg;
-        use std::str::FromStr;
-        // We don't expect the compiler to ever run on wasm32, so strip
-        // out those dependencies to avoid polluting the permitted list.
-        deps_of_filtered(metadata, &to_check.id, &mut deps, &|dep_kinds| {
-            dep_kinds.iter().any(|dep_kind| {
-                dep_kind
-                    .target
-                    .as_ref()
-                    .map(|target| {
-                        !target.matches(
-                            "wasm32-unknown-unknown",
-                            &[
-                                Cfg::from_str("target_arch=\"wasm32\"").unwrap(),
-                                Cfg::from_str("target_os=\"unknown\"").unwrap(),
-                            ],
-                        )
-                    })
-                    .unwrap_or(true)
-            })
-        });
+        deps_of_filtered(metadata, &to_check.id, &mut deps, &|_| true);
     }
 
     // Check that the PERMITTED_DEPENDENCIES does not have unused entries.
