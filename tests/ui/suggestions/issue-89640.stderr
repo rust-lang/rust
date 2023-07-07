@@ -1,0 +1,13 @@
+error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `t`
+  --> $DIR/issue-89640.rs:2:8
+   |
+LL |     le t x: i32 = 3;
+   |        ^ expected one of 8 possible tokens
+   |
+help: consider removing the space to spell keyword `let`
+   |
+LL |     let x: i32 = 3;
+   |     ~~~
+
+error: aborting due to previous error
+

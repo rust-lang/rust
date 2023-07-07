@@ -1284,7 +1284,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         ident: Ident,
         ns: Namespace,
         finalize: Option<Finalize>,
-        ignore_binding: Option<&'a NameBinding<'a>>,
+        ignore_binding: Option<NameBinding<'a>>,
     ) -> Option<LexicalScopeBinding<'a>> {
         self.r.resolve_ident_in_lexical_scope(
             ident,
@@ -2972,7 +2972,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         F: FnOnce(Ident, String, Option<Symbol>) -> ResolutionError<'a>,
     {
         // If there is a TraitRef in scope for an impl, then the method must be in the trait.
-        let Some((module, _)) = &self.current_trait_ref else { return; };
+        let Some((module, _)) = self.current_trait_ref else { return; };
         ident.span.normalize_to_macros_2_0_and_adjust(module.expansion);
         let key = BindingKey::new(ident, ns);
         let mut binding = self.r.resolution(module, key).try_borrow().ok().and_then(|r| r.binding);
@@ -3503,7 +3503,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         let report_errors = |this: &mut Self, res: Option<Res>| {
             if this.should_report_errs() {
                 let (err, candidates) =
-                    this.smart_resolve_report_errors(path, path_span, source, res);
+                    this.smart_resolve_report_errors(path, path, path_span, source, res);
 
                 let def_id = this.parent_scope.module.nearest_parent_mod();
                 let instead = res.is_some();
@@ -3560,8 +3560,13 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                 _ => return Some(parent_err),
             };
 
-            let (mut err, candidates) =
-                this.smart_resolve_report_errors(prefix_path, path_span, PathSource::Type, None);
+            let (mut err, candidates) = this.smart_resolve_report_errors(
+                prefix_path,
+                path,
+                path_span,
+                PathSource::Type,
+                None,
+            );
 
             // There are two different error messages user might receive at
             // this point:

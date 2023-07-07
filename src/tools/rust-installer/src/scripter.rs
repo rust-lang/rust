@@ -32,22 +32,19 @@ actor! {
 impl Scripter {
     /// Generates the actual installer script
     pub fn run(self) -> Result<()> {
-        // Replace dashes in the success message with spaces (our arg handling botches spaces)
-        // TODO: still needed? Kept for compatibility for now.
+        // Replace dashes in the product name with spaces (our arg handling botches spaces)
+        // FIXME: still needed? Kept for compatibility for now.
         let product_name = self.product_name.replace('-', " ");
 
         // Replace dashes in the success message with spaces (our arg handling botches spaces)
-        // TODO: still needed? Kept for compatibility for now.
+        // FIXME: still needed? Kept for compatibility for now.
         let success_message = self.success_message.replace('-', " ");
 
         let script = TEMPLATE
             .replace("%%TEMPLATE_PRODUCT_NAME%%", &sh_quote(&product_name))
             .replace("%%TEMPLATE_REL_MANIFEST_DIR%%", &self.rel_manifest_dir)
             .replace("%%TEMPLATE_SUCCESS_MESSAGE%%", &sh_quote(&success_message))
-            .replace(
-                "%%TEMPLATE_LEGACY_MANIFEST_DIRS%%",
-                &sh_quote(&self.legacy_manifest_dirs),
-            )
+            .replace("%%TEMPLATE_LEGACY_MANIFEST_DIRS%%", &sh_quote(&self.legacy_manifest_dirs))
             .replace(
                 "%%TEMPLATE_RUST_INSTALLER_VERSION%%",
                 &sh_quote(&crate::RUST_INSTALLER_VERSION),

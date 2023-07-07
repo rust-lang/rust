@@ -1366,10 +1366,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // ```
                 let ref_ty = match mutability {
                     hir::Mutability::Mut => {
-                        self.tcx.mk_mut_ref(self.tcx.lifetimes.re_static, checked_ty)
+                        Ty::new_mut_ref(self.tcx,self.tcx.lifetimes.re_static, checked_ty)
                     }
                     hir::Mutability::Not => {
-                        self.tcx.mk_imm_ref(self.tcx.lifetimes.re_static, checked_ty)
+                        Ty::new_imm_ref(self.tcx,self.tcx.lifetimes.re_static, checked_ty)
                     }
                 };
                 if self.can_coerce(ref_ty, expected) {

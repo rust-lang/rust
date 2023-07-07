@@ -685,7 +685,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 assert_eq!(self.mir_def.to_def_id(), def_id);
                 let resume_ty = substs.as_generator().resume_ty();
                 let output = substs.as_generator().return_ty();
-                let generator_ty = tcx.mk_generator(def_id, substs, movability);
+                let generator_ty = Ty::new_generator(tcx, def_id, substs, movability);
                 let inputs_and_output =
                     self.infcx.tcx.mk_type_list(&[generator_ty, resume_ty, output]);
                 ty::Binder::dummy(inputs_and_output)

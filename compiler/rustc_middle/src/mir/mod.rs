@@ -1913,7 +1913,7 @@ impl<'tcx> Operand<'tcx> {
         substs: impl IntoIterator<Item = GenericArg<'tcx>>,
         span: Span,
     ) -> Self {
-        let ty = tcx.mk_fn_def(def_id, substs);
+        let ty = Ty::new_fn_def(tcx, def_id, substs);
         Operand::Constant(Box::new(Constant {
             span,
             user_ty: None,
@@ -2329,10 +2329,10 @@ impl<'tcx> ConstantKind<'tcx> {
     pub fn eval(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Self {
         match self {
             Self::Ty(c) => {
-                if let Some(val) = c.kind().try_eval_for_mir(tcx, param_env) {
+                if let Some(val) = c.try_eval_for_mir(tcx, param_env) {
                     match val {
                         Ok(val) => Self::Val(val, c.ty()),
-                        Err(guar) => Self::Ty(tcx.const_error(self.ty(), guar)),
+                        Err(guar) => Self::Ty(ty::Const::new_error(tcx, guar, self.ty())),
                     }
                 } else {
                     self
@@ -2344,7 +2344,9 @@ impl<'tcx> ConstantKind<'tcx> {
                 match tcx.const_eval_resolve(param_env, uneval, None) {
                     Ok(val) => Self::Val(val, ty),
                     Err(ErrorHandled::TooGeneric) => self,
-                    Err(ErrorHandled::Reported(guar)) => Self::Ty(tcx.const_error(ty, guar.into())),
+                    Err(ErrorHandled::Reported(guar)) => {
+                        Self::Ty(ty::Const::new_error(tcx, guar.into(), ty))
+                    }
                 }
             }
         }
@@ -2510,7 +2512,7 @@ impl<'tcx> ConstantKind<'tcx> {
                 let generics = tcx.generics_of(item_def_id);
                 let index = generics.param_def_id_to_index[&def_id];
                 let name = tcx.item_name(def_id);
-                let ty_const = tcx.mk_const(ty::ParamConst::new(index, name), ty);
+                let ty_const = ty::Const::new_param(tcx, ty::ParamConst::new(index, name), ty);
                 debug!(?ty_const);
 
                 return Self::Ty(ty_const);
@@ -2774,7 +2776,7 @@ impl<'tcx> Display for ConstantKind<'tcx> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         match *self {
             ConstantKind::Ty(c) => pretty_print_const(c, fmt, true),
-            ConstantKind::Val(val, ty) => pretty_print_const_value(val, ty, fmt, true),
+            ConstantKind::Val(val, ty) => pretty_print_const_value(val, ty, fmt),
             // FIXME(valtrees): Correctly print mir constants.
             ConstantKind::Unevaluated(..) => {
                 fmt.write_str("_")?;
@@ -2804,13 +2806,16 @@ fn pretty_print_byte_str(fmt: &mut Formatter<'_>, byte_str: &[u8]) -> fmt::Resul
     write!(fmt, "b\"{}\"", byte_str.escape_ascii())
 }
 
-fn comma_sep<'tcx>(fmt: &mut Formatter<'_>, elems: Vec<ConstantKind<'tcx>>) -> fmt::Result {
+fn comma_sep<'tcx>(
+    fmt: &mut Formatter<'_>,
+    elems: Vec<(ConstValue<'tcx>, Ty<'tcx>)>,
+) -> fmt::Result {
     let mut first = true;
-    for elem in elems {
+    for (ct, ty) in elems {
         if !first {
             fmt.write_str(", ")?;
         }
-        fmt.write_str(&format!("{}", elem))?;
+        pretty_print_const_value(ct, ty, fmt)?;
         first = false;
     }
     Ok(())
@@ -2821,7 +2826,6 @@ fn pretty_print_const_value<'tcx>(
     ct: ConstValue<'tcx>,
     ty: Ty<'tcx>,
     fmt: &mut Formatter<'_>,
-    print_ty: bool,
 ) -> fmt::Result {
     use crate::ty::print::PrettyPrinter;
 
@@ -2865,7 +2869,7 @@ fn pretty_print_const_value<'tcx>(
                 }
             }
             (ConstValue::ByRef { alloc, offset }, ty::Array(t, n)) if *t == u8_type => {
-                let n = n.kind().try_to_bits(tcx.data_layout.pointer_size).unwrap();
+                let n = n.try_to_bits(tcx.data_layout.pointer_size).unwrap();
                 // cast is ok because we already checked for pointer size (32 or 64 bit) above
                 let range = AllocRange { start: offset, size: Size::from_bytes(n) };
                 let byte_str = alloc.inner().get_bytes_strip_provenance(&tcx, range).unwrap();
@@ -2880,16 +2884,11 @@ fn pretty_print_const_value<'tcx>(
             // introducing ICEs (e.g. via `layout_of`) from missing bounds.
             // E.g. `transmute([0usize; 2]): (u8, *mut T)` needs to know `T: Sized`
             // to be able to destructure the tuple into `(0u8, *mut T)`
-            //
-            // FIXME(eddyb) for `--emit=mir`/`-Z dump-mir`, we should provide the
-            // correct `ty::ParamEnv` to allow printing *all* constant values.
             (_, ty::Array(..) | ty::Tuple(..) | ty::Adt(..)) if !ty.has_non_region_param() => {
                 let ct = tcx.lift(ct).unwrap();
                 let ty = tcx.lift(ty).unwrap();
-                if let Some(contents) = tcx.try_destructure_mir_constant(
-                    ty::ParamEnv::reveal_all().and(ConstantKind::Val(ct, ty)),
-                ) {
-                    let fields = contents.fields.to_vec();
+                if let Some(contents) = tcx.try_destructure_mir_constant_for_diagnostics((ct, ty)) {
+                    let fields: Vec<(ConstValue<'_>, Ty<'_>)> = contents.fields.to_vec();
                     match *ty.kind() {
                         ty::Array(..) => {
                             fmt.write_str("[")?;
@@ -2928,12 +2927,14 @@ fn pretty_print_const_value<'tcx>(
                                 None => {
                                     fmt.write_str(" {{ ")?;
                                     let mut first = true;
-                                    for (field_def, field) in iter::zip(&variant_def.fields, fields)
+                                    for (field_def, (ct, ty)) in
+                                        iter::zip(&variant_def.fields, fields)
                                     {
                                         if !first {
                                             fmt.write_str(", ")?;
                                         }
-                                        fmt.write_str(&format!("{}: {}", field_def.name, field))?;
+                                        write!(fmt, "{}: ", field_def.name)?;
+                                        pretty_print_const_value(ct, ty, fmt)?;
                                         first = false;
                                     }
                                     fmt.write_str(" }}")?;
@@ -2943,20 +2944,13 @@ fn pretty_print_const_value<'tcx>(
                         _ => unreachable!(),
                     }
                     return Ok(());
-                } else {
-                    // Fall back to debug pretty printing for invalid constants.
-                    fmt.write_str(&format!("{:?}", ct))?;
-                    if print_ty {
-                        fmt.write_str(&format!(": {}", ty))?;
-                    }
-                    return Ok(());
-                };
+                }
             }
             (ConstValue::Scalar(scalar), _) => {
                 let mut cx = FmtPrinter::new(tcx, Namespace::ValueNS);
                 cx.print_alloc_ids = true;
                 let ty = tcx.lift(ty).unwrap();
-                cx = cx.pretty_print_const_scalar(scalar, ty, print_ty)?;
+                cx = cx.pretty_print_const_scalar(scalar, ty)?;
                 fmt.write_str(&cx.into_buffer())?;
                 return Ok(());
             }
@@ -2971,12 +2965,8 @@ fn pretty_print_const_value<'tcx>(
             // their fields instead of just dumping the memory.
             _ => {}
         }
-        // fallback
-        fmt.write_str(&format!("{:?}", ct))?;
-        if print_ty {
-            fmt.write_str(&format!(": {}", ty))?;
-        }
-        Ok(())
+        // Fall back to debug pretty printing for invalid constants.
+        write!(fmt, "{ct:?}: {ty}")
     })
 }
 

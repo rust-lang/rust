@@ -288,6 +288,11 @@ hir_analysis_unrecognized_intrinsic_function =
     unrecognized intrinsic function: `{$name}`
     .label = unrecognized intrinsic
 
+hir_analysis_unused_associated_type_bounds =
+    unnecessary associated type bound for not object safe associated type
+    .note = this associated type has a `where Self: Sized` bound. Thus, while the associated type can be specified, it cannot be used in any way, because trait objects are not `Sized`.
+    .suggestion = remove this bound
+
 hir_analysis_value_of_associated_struct_already_specified =
     the value of the associated type `{$item_name}` (from trait `{$def_path}`) is already specified
     .label = re-bound here

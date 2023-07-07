@@ -211,7 +211,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 if let ty::Ref(region, t_type, mutability) = rcvr_ty.kind() {
                     if needs_mut {
-                        let trait_type = self.tcx.mk_ref(
+                        let trait_type = Ty::new_ref(
+                            self.tcx,
                             *region,
                             ty::TypeAndMut { ty: *t_type, mutbl: mutability.invert() },
                         );
@@ -647,7 +648,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let projection_ty = pred.skip_binder().projection_ty;
 
                         let substs_with_infer_self = tcx.mk_substs_from_iter(
-                            iter::once(tcx.mk_ty_var(ty::TyVid::from_u32(0)).into())
+                            iter::once(Ty::new_var(tcx, ty::TyVid::from_u32(0)).into())
                                 .chain(projection_ty.substs.iter().skip(1)),
                         );
 
@@ -2408,8 +2409,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // just this list.
             for (rcvr_ty, post) in &[
                 (rcvr_ty, ""),
-                (self.tcx.mk_mut_ref(self.tcx.lifetimes.re_erased, rcvr_ty), "&mut "),
-                (self.tcx.mk_imm_ref(self.tcx.lifetimes.re_erased, rcvr_ty), "&"),
+                (Ty::new_mut_ref(self.tcx, self.tcx.lifetimes.re_erased, rcvr_ty), "&mut "),
+                (Ty::new_imm_ref(self.tcx, self.tcx.lifetimes.re_erased, rcvr_ty), "&"),
             ] {
                 match self.lookup_probe_for_diagnostic(
                     item_name,
@@ -2444,10 +2445,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
 
                 for (rcvr_ty, pre) in &[
-                    (self.tcx.mk_lang_item(*rcvr_ty, LangItem::OwnedBox), "Box::new"),
-                    (self.tcx.mk_lang_item(*rcvr_ty, LangItem::Pin), "Pin::new"),
-                    (self.tcx.mk_diagnostic_item(*rcvr_ty, sym::Arc), "Arc::new"),
-                    (self.tcx.mk_diagnostic_item(*rcvr_ty, sym::Rc), "Rc::new"),
+                    (Ty::new_lang_item(self.tcx, *rcvr_ty, LangItem::OwnedBox), "Box::new"),
+                    (Ty::new_lang_item(self.tcx, *rcvr_ty, LangItem::Pin), "Pin::new"),
+                    (Ty::new_diagnostic_item(self.tcx, *rcvr_ty, sym::Arc), "Arc::new"),
+                    (Ty::new_diagnostic_item(self.tcx, *rcvr_ty, sym::Rc), "Rc::new"),
                 ] {
                     if let Some(new_rcvr_t) = *rcvr_ty
                         && let Ok(pick) = self.lookup_probe_for_diagnostic(

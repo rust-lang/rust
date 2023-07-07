@@ -304,7 +304,7 @@ pub enum Subcommand {
             ./x.py test library/std --test-args hash_map
             ./x.py test library/std --stage 0 --no-doc
             ./x.py test tests/ui --bless
-            ./x.py test tests/ui --compare-mode chalk
+            ./x.py test tests/ui --compare-mode next-solver
         Note that `test tests/* --stage N` does NOT depend on `build compiler/rustc --stage N`;
         just like `build library/std --stage N` it tests the compiler produced by the previous
         stage.

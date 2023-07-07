@@ -2,7 +2,6 @@
 //!
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/resolution.html
 
-mod chalk;
 pub mod query;
 pub mod select;
 pub mod solve;
@@ -30,11 +29,7 @@ use std::hash::{Hash, Hasher};
 
 pub use self::select::{EvaluationCache, EvaluationResult, OverflowError, SelectionCache};
 
-pub type CanonicalChalkEnvironmentAndGoal<'tcx> = Canonical<'tcx, ChalkEnvironmentAndGoal<'tcx>>;
-
 pub use self::ObligationCauseCode::*;
-
-pub use self::chalk::{ChalkEnvironmentAndGoal, RustInterner as ChalkRustInterner};
 
 /// Depending on the stage of compilation, we want projection to be
 /// more or less conservative.
@@ -593,6 +588,10 @@ pub enum SelectionError<'tcx> {
     /// Signaling that an error has already been emitted, to avoid
     /// multiple errors being shown.
     ErrorReporting,
+    /// Computing an opaque type's hidden type caused an error (e.g. a cycle error).
+    /// We can thus not know whether the hidden type implements an auto trait, so
+    /// we should not presume anything about it.
+    OpaqueTypeAutoTraitLeakageUnknown(DefId),
 }
 
 #[derive(Clone, Debug, TypeVisitable, Lift)]

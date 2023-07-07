@@ -20,7 +20,7 @@ rustc_hir = { path = "../rustc_hir" }
 rustc_lint_defs = { path = "../rustc_lint_defs" }
 rustc_type_ir = { path = "../rustc_type_ir" }
 unicode-width = "0.1.4"
-termcolor = "1.0"
+termcolor = "1.2.0"
 annotate-snippets = "0.9"
 termize = "0.1.1"
 serde = { version = "1.0.125", features = [ "derive" ] }

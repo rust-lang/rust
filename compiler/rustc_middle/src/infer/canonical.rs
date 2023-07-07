@@ -433,7 +433,8 @@ impl<'tcx> CanonicalVarValues<'tcx> {
                 |(i, info)| -> ty::GenericArg<'tcx> {
                     match info.kind {
                         CanonicalVarKind::Ty(_) | CanonicalVarKind::PlaceholderTy(_) => {
-                            tcx.mk_bound(ty::INNERMOST, ty::BoundVar::from_usize(i).into()).into()
+                            Ty::new_bound(tcx, ty::INNERMOST, ty::BoundVar::from_usize(i).into())
+                                .into()
                         }
                         CanonicalVarKind::Region(_) | CanonicalVarKind::PlaceholderRegion(_) => {
                             let br = ty::BoundRegion {
@@ -443,12 +444,13 @@ impl<'tcx> CanonicalVarValues<'tcx> {
                             ty::Region::new_late_bound(tcx, ty::INNERMOST, br).into()
                         }
                         CanonicalVarKind::Const(_, ty)
-                        | CanonicalVarKind::PlaceholderConst(_, ty) => tcx
-                            .mk_const(
-                                ty::ConstKind::Bound(ty::INNERMOST, ty::BoundVar::from_usize(i)),
-                                ty,
-                            )
-                            .into(),
+                        | CanonicalVarKind::PlaceholderConst(_, ty) => ty::Const::new_bound(
+                            tcx,
+                            ty::INNERMOST,
+                            ty::BoundVar::from_usize(i),
+                            ty,
+                        )
+                        .into(),
                     }
                 },
             )),

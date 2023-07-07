@@ -595,7 +595,16 @@ pub struct Process {
 
 impl Process {
     pub fn kill(&mut self) -> io::Result<()> {
-        cvt(unsafe { c::TerminateProcess(self.handle.as_raw_handle(), 1) })?;
+        let result = unsafe { c::TerminateProcess(self.handle.as_raw_handle(), 1) };
+        if result == c::FALSE {
+            let error = unsafe { c::GetLastError() };
+            // TerminateProcess returns ERROR_ACCESS_DENIED if the process has already been
+            // terminated (by us, or for any other reason). So check if the process was actually
+            // terminated, and if so, do not return an error.
+            if error != c::ERROR_ACCESS_DENIED || self.try_wait().is_err() {
+                return Err(crate::io::Error::from_raw_os_error(error as i32));
+            }
+        }
         Ok(())
     }
 

@@ -117,7 +117,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 },
             );
 
-            return self.tcx.mk_generator(
+            return Ty::new_generator(
+                self.tcx,
                 expr_def_id.to_def_id(),
                 generator_substs.substs,
                 movability,
@@ -128,7 +129,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // the `closures` table.
         let sig = bound_sig.map_bound(|sig| {
             self.tcx.mk_fn_sig(
-                [self.tcx.mk_tup(sig.inputs())],
+                [Ty::new_tup(self.tcx, sig.inputs())],
                 sig.output(),
                 sig.c_variadic,
                 sig.unsafety,
@@ -155,12 +156,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::ClosureSubstsParts {
                 parent_substs,
                 closure_kind_ty,
-                closure_sig_as_fn_ptr_ty: self.tcx.mk_fn_ptr(sig),
+                closure_sig_as_fn_ptr_ty: Ty::new_fn_ptr(self.tcx, sig),
                 tupled_upvars_ty,
             },
         );
 
-        self.tcx.mk_closure(expr_def_id.to_def_id(), closure_substs.substs)
+        Ty::new_closure(self.tcx, expr_def_id.to_def_id(), closure_substs.substs)
     }
 
     /// Given the expected type, figures out what it can about this closure we
@@ -190,7 +191,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 (sig, kind)
             }
             ty::Infer(ty::TyVar(vid)) => self.deduce_closure_signature_from_predicates(
-                self.tcx.mk_ty_var(self.root_var(vid)),
+                Ty::new_var(self.tcx, self.root_var(vid)),
                 self.obligations_for_self_ty(vid).map(|obl| (obl.predicate, obl.cause.span)),
             ),
             ty::FnPtr(sig) => {
@@ -806,7 +807,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         guar: ErrorGuaranteed,
     ) -> ty::PolyFnSig<'tcx> {
         let astconv: &dyn AstConv<'_> = self;
-        let err_ty = self.tcx.ty_error(guar);
+        let err_ty = Ty::new_error(self.tcx, guar);
 
         let supplied_arguments = decl.inputs.iter().map(|a| {
             // Convert the types that the user supplied (if any), but ignore them.

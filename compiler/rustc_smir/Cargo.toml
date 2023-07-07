@@ -8,6 +8,7 @@ rustc_hir = { path = "../rustc_hir" }
 rustc_middle = { path = "../rustc_middle", optional = true }
 rustc_span = { path = "../rustc_span", optional = true }
 tracing = "0.1"
+scoped-tls = "1.0"
 
 [features]
 default = [

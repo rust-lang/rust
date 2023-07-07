@@ -1,11 +1,11 @@
 error[E0391]: cycle detected when computing type of `m::Foo::{opaque#0}`
-  --> $DIR/auto-trait-leakage3.rs:7:16
+  --> $DIR/auto-trait-leakage3.rs:7:20
    |
-LL |     type Foo = impl std::fmt::Debug;
-   |                ^^^^^^^^^^^^^^^^^^^^
+LL |     pub type Foo = impl std::fmt::Debug;
+   |                    ^^^^^^^^^^^^^^^^^^^^
    |
 note: ...which requires type-checking `m::bar`...
-  --> $DIR/auto-trait-leakage3.rs:15:9
+  --> $DIR/auto-trait-leakage3.rs:16:9
    |
 LL |         is_send(foo());
    |         ^^^^^^^
@@ -17,6 +17,48 @@ note: cycle used when checking item types in module `m`
 LL | mod m {
    | ^^^^^
 
-error: aborting due to previous error
+error[E0391]: cycle detected when computing type of `m::Foo::{opaque#0}`
+  --> $DIR/auto-trait-leakage3.rs:7:20
+   |
+LL |     pub type Foo = impl std::fmt::Debug;
+   |                    ^^^^^^^^^^^^^^^^^^^^
+   |
+note: ...which requires type-checking `m::bar`...
+  --> $DIR/auto-trait-leakage3.rs:15:5
+   |
+LL |     pub fn bar() {
+   |     ^^^^^^^^^^^^
+   = note: ...which again requires computing type of `m::Foo::{opaque#0}`, completing the cycle
+note: cycle used when checking item types in module `m`
+  --> $DIR/auto-trait-leakage3.rs:6:1
+   |
+LL | mod m {
+   | ^^^^^
+
+error: cannot check whether the hidden type of `auto_trait_leakage3[211d]::m::Foo::{opaque#0}` satisfies auto traits
+  --> $DIR/auto-trait-leakage3.rs:16:17
+   |
+LL |         is_send(foo());
+   |         ------- ^^^^^
+   |         |
+   |         required by a bound introduced by this call
+   |
+note: opaque type is declared here
+  --> $DIR/auto-trait-leakage3.rs:7:20
+   |
+LL |     pub type Foo = impl std::fmt::Debug;
+   |                    ^^^^^^^^^^^^^^^^^^^^
+note: this item depends on auto traits of the hidden type, but may also be registering the hidden type. This is not supported right now. You can try moving the opaque type and the item that actually registers a hidden type into a new submodule
+  --> $DIR/auto-trait-leakage3.rs:15:12
+   |
+LL |     pub fn bar() {
+   |            ^^^
+note: required by a bound in `is_send`
+  --> $DIR/auto-trait-leakage3.rs:20:19
+   |
+LL |     fn is_send<T: Send>(_: T) {}
+   |                   ^^^^ required by this bound in `is_send`
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0391`.

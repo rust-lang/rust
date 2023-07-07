@@ -91,6 +91,7 @@ use rustc_middle::middle::region;
 use rustc_middle::mir::*;
 use rustc_middle::thir::{Expr, LintLevel};
 
+use rustc_middle::ty::Ty;
 use rustc_span::{Span, DUMMY_SP};
 
 #[derive(Debug)]
@@ -724,7 +725,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     // Add a dummy `Assign` statement to the CFG, with the span for the source code's `continue`
     // statement.
     fn add_dummy_assignment(&mut self, span: Span, block: BasicBlock, source_info: SourceInfo) {
-        let local_decl = LocalDecl::new(self.tcx.mk_unit(), span).internal();
+        let local_decl = LocalDecl::new(Ty::new_unit(self.tcx), span).internal();
         let temp_place = Place::from(self.local_decls.push(local_decl));
         self.cfg.push_assign_unit(block, source_info, temp_place, self.tcx);
     }

@@ -16,7 +16,6 @@ use rustc_middle::ty::{
     self, Binder, GenericParamDefKind, InternalSubsts, SubstsRef, ToPolyTraitRef, ToPredicate,
     TraitPredicate, TraitRef, Ty, TyCtxt, TypeVisitableExt,
 };
-use rustc_session::config::TraitSolver;
 use rustc_span::def_id::DefId;
 
 use crate::traits::project::{normalize_with_depth, normalize_with_depth_to};
@@ -68,7 +67,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             AutoImplCandidate => {
-                let data = self.confirm_auto_impl_candidate(obligation);
+                let data = self.confirm_auto_impl_candidate(obligation)?;
                 ImplSource::Builtin(data)
             }
 
@@ -377,12 +376,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn confirm_auto_impl_candidate(
         &mut self,
         obligation: &TraitObligation<'tcx>,
-    ) -> Vec<PredicateObligation<'tcx>> {
+    ) -> Result<Vec<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
         debug!(?obligation, "confirm_auto_impl_candidate");
 
         let self_ty = self.infcx.shallow_resolve(obligation.predicate.self_ty());
-        let types = self.constituent_types_for_ty(self_ty);
-        self.vtable_auto_impl(obligation, obligation.predicate.def_id(), types)
+        let types = self.constituent_types_for_ty(self_ty)?;
+        Ok(self.vtable_auto_impl(obligation, obligation.predicate.def_id(), types))
     }
 
     /// See `confirm_auto_impl_candidate`.
@@ -588,7 +587,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 let kind = ty::BoundTyKind::Param(param.def_id, param.name);
                                 let bound_var = ty::BoundVariableKind::Ty(kind);
                                 bound_vars.push(bound_var);
-                                tcx.mk_bound(
+                                Ty::new_bound(
+                                    tcx,
                                     ty::INNERMOST,
                                     ty::BoundTy {
                                         var: ty::BoundVar::from_usize(bound_vars.len() - 1),
@@ -614,11 +614,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             GenericParamDefKind::Const { .. } => {
                                 let bound_var = ty::BoundVariableKind::Const;
                                 bound_vars.push(bound_var);
-                                tcx.mk_const(
-                                    ty::ConstKind::Bound(
-                                        ty::INNERMOST,
-                                        ty::BoundVar::from_usize(bound_vars.len() - 1),
-                                    ),
+                                ty::Const::new_bound(
+                                    tcx,
+                                    ty::INNERMOST,
+                                    ty::BoundVar::from_usize(bound_vars.len() - 1),
                                     tcx.type_of(param.def_id)
                                         .no_bound_vars()
                                         .expect("const parameter types cannot be generic"),
@@ -830,13 +829,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         debug!(?closure_def_id, ?trait_ref, ?nested, "confirm closure candidate obligations");
 
-        // FIXME: Chalk
-        if self.tcx().sess.opts.unstable_opts.trait_solver != TraitSolver::Chalk {
-            nested.push(obligation.with(
-                self.tcx(),
-                ty::Binder::dummy(ty::PredicateKind::ClosureKind(closure_def_id, substs, kind)),
-            ));
-        }
+        nested.push(obligation.with(
+            self.tcx(),
+            ty::Binder::dummy(ty::PredicateKind::ClosureKind(closure_def_id, substs, kind)),
+        ));
 
         Ok(nested)
     }
@@ -951,7 +947,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             .map(ty::Binder::dummy),
                     );
                 let existential_predicates = tcx.mk_poly_existential_predicates_from_iter(iter);
-                let source_trait = tcx.mk_dynamic(existential_predicates, r_b, repr_a);
+                let source_trait = Ty::new_dynamic(tcx, existential_predicates, r_b, repr_a);
 
                 // Require that the traits involved in this upcast are **equal**;
                 // only the **lifetime bound** is changed.
@@ -1044,7 +1040,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             .map(ty::Binder::dummy),
                     );
                 let existential_predicates = tcx.mk_poly_existential_predicates_from_iter(iter);
-                let source_trait = tcx.mk_dynamic(existential_predicates, r_b, dyn_a);
+                let source_trait = Ty::new_dynamic(tcx, existential_predicates, r_b, dyn_a);
 
                 // Require that the traits involved in this upcast are **equal**;
                 // only the **lifetime bound** is changed.
@@ -1162,7 +1158,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let substs = tcx.mk_substs_from_iter(substs_a.iter().enumerate().map(|(i, k)| {
                     if unsizing_params.contains(i as u32) { substs_b[i] } else { k }
                 }));
-                let new_struct = tcx.mk_adt(def, substs);
+                let new_struct = Ty::new_adt(tcx, def, substs);
                 let InferOk { obligations, .. } = self
                     .infcx
                     .at(&obligation.cause, obligation.param_env)
@@ -1193,7 +1189,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // Check that the source tuple with the target's
                 // last element is equal to the target.
                 let new_tuple =
-                    tcx.mk_tup_from_iter(a_mid.iter().copied().chain(iter::once(b_last)));
+                    Ty::new_tup_from_iter(tcx, a_mid.iter().copied().chain(iter::once(b_last)));
                 let InferOk { obligations, .. } = self
                     .infcx
                     .at(&obligation.cause, obligation.param_env)

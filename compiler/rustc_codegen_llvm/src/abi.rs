@@ -351,7 +351,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     continue;
                 }
                 PassMode::Indirect { attrs: _, extra_attrs: Some(_), on_stack: _ } => {
-                    let ptr_ty = cx.tcx.mk_mut_ptr(arg.layout.ty);
+                    let ptr_ty = Ty::new_mut_ptr(cx.tcx, arg.layout.ty);
                     let ptr_layout = cx.layout_of(ptr_ty);
                     llargument_tys.push(ptr_layout.scalar_pair_element_llvm_type(cx, 0, true));
                     llargument_tys.push(ptr_layout.scalar_pair_element_llvm_type(cx, 1, true));

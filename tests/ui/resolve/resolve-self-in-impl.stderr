@@ -1,4 +1,20 @@
 error: `Self` is not valid in the self type of an impl block
+  --> $DIR/resolve-self-in-impl.rs:14:13
+   |
+LL | impl Tr for Self {}
+   |             ^^^^
+   |
+   = note: replace `Self` with a different type
+
+error: `Self` is not valid in the self type of an impl block
+  --> $DIR/resolve-self-in-impl.rs:15:15
+   |
+LL | impl Tr for S<Self> {}
+   |               ^^^^
+   |
+   = note: replace `Self` with a different type
+
+error: `Self` is not valid in the self type of an impl block
   --> $DIR/resolve-self-in-impl.rs:16:6
    |
 LL | impl Self {}
@@ -19,22 +35,6 @@ error: `Self` is not valid in the self type of an impl block
    |
 LL | impl (Self, Self) {}
    |       ^^^^  ^^^^
-   |
-   = note: replace `Self` with a different type
-
-error: `Self` is not valid in the self type of an impl block
-  --> $DIR/resolve-self-in-impl.rs:14:13
-   |
-LL | impl Tr for Self {}
-   |             ^^^^
-   |
-   = note: replace `Self` with a different type
-
-error: `Self` is not valid in the self type of an impl block
-  --> $DIR/resolve-self-in-impl.rs:15:15
-   |
-LL | impl Tr for S<Self> {}
-   |               ^^^^
    |
    = note: replace `Self` with a different type
 

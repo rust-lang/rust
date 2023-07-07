@@ -5,6 +5,7 @@ use std::mem;
 
 use rustc_const_eval::interpret::Pointer;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_target::abi::Size;
 
@@ -449,7 +450,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // Make an array with all these pointers inside Miri.
         let tcx = this.tcx;
         let vars_layout = this.layout_of(
-            tcx.mk_array(this.machine.layouts.mut_raw_ptr.ty, u64::try_from(vars.len()).unwrap()),
+            Ty::new_array(tcx.tcx,this.machine.layouts.mut_raw_ptr.ty, u64::try_from(vars.len()).unwrap()),
         )?;
         let vars_place = this.allocate(vars_layout, MiriMemoryKind::Runtime.into())?;
         for (idx, var) in vars.into_iter().enumerate() {

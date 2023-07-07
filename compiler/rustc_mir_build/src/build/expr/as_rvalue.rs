@@ -162,7 +162,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     [],
                     expr_span,
                 );
-                let storage = this.temp(tcx.mk_mut_ptr(tcx.types.u8), expr_span);
+                let storage = this.temp(Ty::new_mut_ptr(tcx, tcx.types.u8), expr_span);
                 let success = this.cfg.start_new_block();
                 this.cfg.terminate(
                     block,
@@ -564,7 +564,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let bool_ty = self.tcx.types.bool;
         let rvalue = match op {
             BinOp::Add | BinOp::Sub | BinOp::Mul if self.check_overflow && ty.is_integral() => {
-                let result_tup = self.tcx.mk_tup(&[ty, bool_ty]);
+                let result_tup = Ty::new_tup(self.tcx, &[ty, bool_ty]);
                 let result_value = self.temp(result_tup, span);
 
                 self.cfg.push_assign(
@@ -598,7 +598,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let (unsigned_rhs, unsigned_ty) = match rhs_ty.kind() {
                     ty::Uint(_) => (rhs.to_copy(), rhs_ty),
                     ty::Int(int_width) => {
-                        let uint_ty = self.tcx.mk_mach_uint(int_width.to_unsigned());
+                        let uint_ty = Ty::new_uint(self.tcx, int_width.to_unsigned());
                         let rhs_temp = self.temp(uint_ty, span);
                         self.cfg.push_assign(
                             block,

@@ -26,14 +26,18 @@ mod canonicalize;
 mod eval_ctxt;
 mod fulfill;
 pub mod inspect;
+mod normalize;
 mod opaques;
 mod project_goals;
 mod search_graph;
 mod trait_goals;
 mod weak_types;
 
-pub use eval_ctxt::{EvalCtxt, InferCtxtEvalExt};
+pub use eval_ctxt::{
+    EvalCtxt, GenerateProofTree, InferCtxtEvalExt, InferCtxtSelectExt, UseGlobalCache,
+};
 pub use fulfill::FulfillmentCtxt;
+pub(crate) use normalize::deeply_normalize;
 
 #[derive(Debug, Clone, Copy)]
 enum SolverMode {
@@ -154,6 +158,43 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             }
             None => self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS),
+        }
+    }
+
+    #[instrument(level = "debug", skip(self))]
+    fn compute_const_evaluatable_goal(
+        &mut self,
+        Goal { param_env, predicate: ct }: Goal<'tcx, ty::Const<'tcx>>,
+    ) -> QueryResult<'tcx> {
+        match ct.kind() {
+            ty::ConstKind::Unevaluated(uv) => {
+                // We never return `NoSolution` here as `try_const_eval_resolve` emits an
+                // error itself when failing to evaluate, so emitting an additional fulfillment
+                // error in that case is unnecessary noise. This may change in the future once
+                // evaluation failures are allowed to impact selection, e.g. generic const
+                // expressions in impl headers or `where`-clauses.
+
+                // FIXME(generic_const_exprs): Implement handling for generic
+                // const expressions here.
+                if let Some(_normalized) = self.try_const_eval_resolve(param_env, uv, ct.ty()) {
+                    self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                } else {
+                    self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
+                }
+            }
+            ty::ConstKind::Infer(_) => {
+                self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
+            }
+            ty::ConstKind::Placeholder(_) | ty::ConstKind::Value(_) | ty::ConstKind::Error(_) => {
+                self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+            }
+            // We can freely ICE here as:
+            // - `Param` gets replaced with a placeholder during canonicalization
+            // - `Bound` cannot exist as we don't have a binder around the self Type
+            // - `Expr` is part of `feature(generic_const_exprs)` and is not implemented yet
+            ty::ConstKind::Param(_) | ty::ConstKind::Bound(_, _) | ty::ConstKind::Expr(_) => {
+                bug!("unexpect const kind: {:?}", ct)
+            }
         }
     }
 

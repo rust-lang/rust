@@ -485,7 +485,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
         let tcx = self.tcx;
 
         // `func == Clone::clone(&ty) -> ty`
-        let func_ty = tcx.mk_fn_def(self.def_id, [ty]);
+        let func_ty = Ty::new_fn_def(tcx, self.def_id, [ty]);
         let func = Operand::Constant(Box::new(Constant {
             span: self.span,
             user_ty: None,
@@ -494,7 +494,11 @@ impl<'tcx> CloneShimBuilder<'tcx> {
 
         let ref_loc = self.make_place(
             Mutability::Not,
-            tcx.mk_ref(tcx.lifetimes.re_erased, ty::TypeAndMut { ty, mutbl: hir::Mutability::Not }),
+            Ty::new_ref(
+                tcx,
+                tcx.lifetimes.re_erased,
+                ty::TypeAndMut { ty, mutbl: hir::Mutability::Not },
+            ),
         );
 
         // `let ref_loc: &ty = &src;`
@@ -644,7 +648,7 @@ fn build_call_shim<'tcx>(
         let untuple_args = sig.inputs();
 
         // Create substitutions for the `Self` and `Args` generic parameters of the shim body.
-        let arg_tup = tcx.mk_tup(untuple_args);
+        let arg_tup = Ty::new_tup(tcx, untuple_args);
 
         (Some([ty.into(), arg_tup.into()]), Some(untuple_args))
     } else {
@@ -680,9 +684,9 @@ fn build_call_shim<'tcx>(
         *self_arg = match rcvr_adjustment.unwrap() {
             Adjustment::Identity => fnty,
             Adjustment::Deref { source } => match source {
-                DerefSource::ImmRef => tcx.mk_imm_ref(tcx.lifetimes.re_erased, fnty),
-                DerefSource::MutRef => tcx.mk_mut_ref(tcx.lifetimes.re_erased, fnty),
-                DerefSource::MutPtr => tcx.mk_mut_ptr(fnty),
+                DerefSource::ImmRef => Ty::new_imm_ref(tcx, tcx.lifetimes.re_erased, fnty),
+                DerefSource::MutRef => Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, fnty),
+                DerefSource::MutPtr => Ty::new_mut_ptr(tcx, fnty),
             },
             Adjustment::RefMut => bug!("`RefMut` is never used with indirect calls: {instance:?}"),
         };
@@ -696,7 +700,7 @@ fn build_call_shim<'tcx>(
         let mut inputs_and_output = sig.inputs_and_output.to_vec();
         let self_arg = &mut inputs_and_output[0];
         debug_assert!(tcx.generics_of(def_id).has_self && *self_arg == tcx.types.self_param);
-        *self_arg = tcx.mk_mut_ptr(*self_arg);
+        *self_arg = Ty::new_mut_ptr(tcx, *self_arg);
         sig.inputs_and_output = tcx.mk_type_list(&inputs_and_output);
     }
 
@@ -720,7 +724,8 @@ fn build_call_shim<'tcx>(
             // let rcvr = &mut rcvr;
             let ref_rcvr = local_decls.push(
                 LocalDecl::new(
-                    tcx.mk_ref(
+                    Ty::new_ref(
+                        tcx,
                         tcx.lifetimes.re_erased,
                         ty::TypeAndMut { ty: sig.inputs()[0], mutbl: hir::Mutability::Mut },
                     ),
@@ -946,7 +951,7 @@ fn build_fn_ptr_addr_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'t
     let rvalue = Rvalue::Cast(
         CastKind::FnPtrToPtr,
         Operand::Move(Place::from(Local::new(1))),
-        tcx.mk_imm_ptr(tcx.types.unit),
+        Ty::new_imm_ptr(tcx, tcx.types.unit),
     );
     let stmt = Statement {
         source_info,

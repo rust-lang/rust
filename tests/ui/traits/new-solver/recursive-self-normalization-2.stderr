@@ -1,16 +1,20 @@
 error[E0275]: overflow evaluating the requirement `<T as Foo1>::Assoc1: Bar`
-  --> $DIR/recursive-self-normalization-2.rs:15:5
+  --> $DIR/recursive-self-normalization-2.rs:16:5
    |
 LL |     needs_bar::<T::Assoc1>();
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`recursive_self_normalization_2`)
 note: required by a bound in `needs_bar`
-  --> $DIR/recursive-self-normalization-2.rs:12:17
+  --> $DIR/recursive-self-normalization-2.rs:13:17
    |
 LL | fn needs_bar<S: Bar>() {}
    |                 ^^^ required by this bound in `needs_bar`
 
-error: aborting due to previous error
+error[E0275]: overflow evaluating the requirement `<T as Foo2>::Assoc2`
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`recursive_self_normalization_2`)
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0275`.

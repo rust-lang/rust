@@ -36,6 +36,11 @@ error[E0433]: failed to resolve: use of undeclared crate or module `bar`
    |
 LL |     pub fn bar() { bar::baz(); }
    |                    ^^^ use of undeclared crate or module `bar`
+   |
+help: consider importing this module
+   |
+LL +     use crate::bar;
+   |
 
 error: aborting due to 4 previous errors
 

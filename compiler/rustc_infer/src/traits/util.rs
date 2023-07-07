@@ -3,7 +3,7 @@ use smallvec::smallvec;
 use crate::infer::outlives::components::{push_outlives_components, Component};
 use crate::traits::{self, Obligation, PredicateObligation};
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
-use rustc_middle::ty::{self, ToPredicate, TyCtxt};
+use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt};
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
@@ -344,7 +344,7 @@ impl<'tcx, O: Elaboratable<'tcx>> Elaborator<'tcx, O> {
                             }
 
                             Component::Param(p) => {
-                                let ty = tcx.mk_ty_param(p.index, p.name);
+                                let ty = Ty::new_param(tcx, p.index, p.name);
                                 Some(ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(ty, r_min)))
                             }
 
@@ -369,9 +369,6 @@ impl<'tcx, O: Elaboratable<'tcx>> Elaborator<'tcx, O> {
                             elaboratable.child(bound_predicate.rebind(clause).to_predicate(tcx))
                         }),
                 );
-            }
-            ty::PredicateKind::Clause(ty::ClauseKind::TypeWellFormedFromEnv(..)) => {
-                // Nothing to elaborate
             }
             ty::PredicateKind::Ambiguous => {}
             ty::PredicateKind::AliasRelate(..) => {

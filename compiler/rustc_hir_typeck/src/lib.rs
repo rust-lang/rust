@@ -154,7 +154,7 @@ fn typeck<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &ty::TypeckResults<'tc
 fn diagnostic_only_typeck<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &ty::TypeckResults<'tcx> {
     let fallback = move || {
         let span = tcx.hir().span(tcx.hir().local_def_id_to_hir_id(def_id));
-        tcx.ty_error_with_message(span, "diagnostic only typeck table used")
+        Ty::new_error_with_message(tcx, span, "diagnostic only typeck table used")
     };
     typeck_with_fallback(tcx, def_id, fallback)
 }

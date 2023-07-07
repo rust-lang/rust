@@ -3,21 +3,37 @@ error[E0433]: failed to resolve: use of undeclared crate or module `env`
    |
 LL |     env::current_dir;
    |     ^^^ use of undeclared crate or module `env`
-
-error[E0433]: failed to resolve: use of undeclared crate or module `vec`
-  --> $DIR/builtin-prelude-no-accidents.rs:7:14
    |
-LL |     type B = vec::Vec<u8>;
-   |              ^^^
-   |              |
-   |              use of undeclared crate or module `vec`
-   |              help: a struct with a similar name exists (notice the capitalization): `Vec`
+help: consider importing this module
+   |
+LL + use std::env;
+   |
 
 error[E0433]: failed to resolve: use of undeclared crate or module `panic`
   --> $DIR/builtin-prelude-no-accidents.rs:6:14
    |
 LL |     type A = panic::PanicInfo;
    |              ^^^^^ use of undeclared crate or module `panic`
+   |
+help: consider importing this module
+   |
+LL + use std::panic;
+   |
+
+error[E0433]: failed to resolve: use of undeclared crate or module `vec`
+  --> $DIR/builtin-prelude-no-accidents.rs:7:14
+   |
+LL |     type B = vec::Vec<u8>;
+   |              ^^^ use of undeclared crate or module `vec`
+   |
+help: a struct with a similar name exists
+   |
+LL |     type B = Vec::Vec<u8>;
+   |              ~~~
+help: consider importing this module
+   |
+LL + use std::vec;
+   |
 
 error: aborting due to 3 previous errors
 

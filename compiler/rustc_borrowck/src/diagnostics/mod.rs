@@ -1050,7 +1050,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             Some(def_id) => type_known_to_meet_bound_modulo_regions(
                                 &self.infcx,
                                 self.param_env,
-                                tcx.mk_imm_ref(tcx.lifetimes.re_erased, ty),
+                                Ty::new_imm_ref(tcx, tcx.lifetimes.re_erased, ty),
                                 def_id,
                             ),
                             _ => false,

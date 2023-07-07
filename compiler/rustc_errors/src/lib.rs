@@ -61,6 +61,7 @@ pub mod emitter;
 pub mod error;
 pub mod json;
 mod lock;
+pub mod markdown;
 pub mod registry;
 mod snippet;
 mod styled_buffer;

@@ -21,29 +21,18 @@ impl<'tcx> InferCtxt<'tcx> {
         recursion_depth: usize,
         obligations: &mut Vec<PredicateObligation<'tcx>>,
     ) -> Ty<'tcx> {
-        if self.next_trait_solver() {
-            // FIXME(-Ztrait-solver=next): Instead of branching here,
-            // completely change the normalization routine with the new solver.
-            //
-            // The new solver correctly handles projection equality so this hack
-            // is not necessary. if re-enabled it should emit `PredicateKind::AliasRelate`
-            // not `PredicateKind::Clause(ClauseKind::Projection(..))` as in the new solver
-            // `Projection` is used as `normalizes-to` which will fail for `<T as Trait>::Assoc eq ?0`.
-            return projection_ty.to_ty(self.tcx);
-        } else {
-            let def_id = projection_ty.def_id;
-            let ty_var = self.next_ty_var(TypeVariableOrigin {
-                kind: TypeVariableOriginKind::NormalizeProjectionType,
-                span: self.tcx.def_span(def_id),
-            });
-            let projection =
-                ty::Binder::dummy(ty::PredicateKind::Clause(ty::ClauseKind::Projection(
-                    ty::ProjectionPredicate { projection_ty, term: ty_var.into() },
-                )));
-            let obligation =
-                Obligation::with_depth(self.tcx, cause, recursion_depth, param_env, projection);
-            obligations.push(obligation);
-            ty_var
-        }
+        debug_assert!(!self.next_trait_solver());
+        let def_id = projection_ty.def_id;
+        let ty_var = self.next_ty_var(TypeVariableOrigin {
+            kind: TypeVariableOriginKind::NormalizeProjectionType,
+            span: self.tcx.def_span(def_id),
+        });
+        let projection = ty::Binder::dummy(ty::PredicateKind::Clause(ty::ClauseKind::Projection(
+            ty::ProjectionPredicate { projection_ty, term: ty_var.into() },
+        )));
+        let obligation =
+            Obligation::with_depth(self.tcx, cause, recursion_depth, param_env, projection);
+        obligations.push(obligation);
+        ty_var
     }
 }

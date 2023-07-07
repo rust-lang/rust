@@ -2,7 +2,7 @@ use crate::error::UnsupportedFnAbi;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::query::TyCtxtAt;
 use crate::ty::normalize_erasing_regions::NormalizationError;
-use crate::ty::{self, ReprOptions, Ty, TyCtxt, TypeVisitableExt};
+use crate::ty::{self, ConstKind, ReprOptions, Ty, TyCtxt, TypeVisitableExt};
 use rustc_error_messages::DiagnosticMessage;
 use rustc_errors::{DiagnosticBuilder, Handler, IntoDiagnostic};
 use rustc_hir as hir;
@@ -133,7 +133,7 @@ impl PrimitiveExt for Primitive {
             F32 => tcx.types.f32,
             F64 => tcx.types.f64,
             // FIXME(erikdesjardins): handle non-default addrspace ptr sizes
-            Pointer(_) => tcx.mk_mut_ptr(tcx.mk_unit()),
+            Pointer(_) => Ty::new_mut_ptr(tcx, Ty::new_unit(tcx)),
         }
     }
 
@@ -480,13 +480,11 @@ fn mul_sorted_consts<'tcx>(
     b: ty::Const<'tcx>,
 ) -> Option<ty::Const<'tcx>> {
     use crate::mir::BinOp::Mul;
-    use ty::ConstKind::Expr;
-    use ty::Expr::Binop;
 
     let mut work = vec![a, b];
     let mut done = vec![];
     while let Some(n) = work.pop() {
-        if let Expr(Binop(Mul, l, r)) = n.kind() {
+        if let ConstKind::Expr(ty::Expr::Binop(Mul, l, r)) = n.kind() {
             work.push(l);
             work.push(r)
         } else {
@@ -517,7 +515,7 @@ fn mul_sorted_consts<'tcx>(
     done.sort_unstable();
 
     // create a single tree from the buffer
-    done.into_iter().reduce(|acc, n| tcx.mk_const(Expr(Binop(Mul, n, acc)), n.ty()))
+    done.into_iter().reduce(|acc, n| ty::Const::new_expr(tcx, ty::Expr::Binop(Mul, n, acc), n.ty()))
 }
 
 pub trait HasTyCtxt<'tcx>: HasDataLayout {
@@ -812,11 +810,11 @@ where
                     // (which may have no non-DST form), and will work as long
                     // as the `Abi` or `FieldsShape` is checked by users.
                     if i == 0 {
-                        let nil = tcx.mk_unit();
+                        let nil = Ty::new_unit(tcx);
                         let unit_ptr_ty = if this.ty.is_unsafe_ptr() {
-                            tcx.mk_mut_ptr(nil)
+                            Ty::new_mut_ptr(tcx, nil)
                         } else {
-                            tcx.mk_mut_ref(tcx.lifetimes.re_static, nil)
+                            Ty::new_mut_ref(tcx, tcx.lifetimes.re_static, nil)
                         };
 
                         // NOTE(eddyb) using an empty `ParamEnv`, and `unwrap`-ing
@@ -829,7 +827,11 @@ where
                     }
 
                     let mk_dyn_vtable = || {
-                        tcx.mk_imm_ref(tcx.lifetimes.re_static, tcx.mk_array(tcx.types.usize, 3))
+                        Ty::new_imm_ref(
+                            tcx,
+                            tcx.lifetimes.re_static,
+                            Ty::new_array(tcx, tcx.types.usize, 3),
+                        )
                         /* FIXME: use actual fn pointers
                         Warning: naively computing the number of entries in the
                         vtable by counting the methods on the trait + methods on
@@ -838,9 +840,9 @@ where
                         Increase this counter if you tried to implement this but
                         failed to do it without duplicating a lot of code from
                         other places in the compiler: 2
-                        tcx.mk_tup(&[
-                            tcx.mk_array(tcx.types.usize, 3),
-                            tcx.mk_array(Option<fn()>),
+                        Ty::new_tup(tcx,&[
+                            Ty::new_array(tcx,tcx.types.usize, 3),
+                            Ty::new_array(tcx,Option<fn()>),
                         ])
                         */
                     };
@@ -852,7 +854,7 @@ where
                     {
                         let metadata = tcx.normalize_erasing_regions(
                             cx.param_env(),
-                            tcx.mk_projection(metadata_def_id, [pointee]),
+                            Ty::new_projection(tcx,metadata_def_id, [pointee]),
                         );
 
                         // Map `Metadata = DynMetadata<dyn Trait>` back to a vtable, since it
@@ -927,15 +929,14 @@ where
 
                 ty::Dynamic(_, _, ty::DynStar) => {
                     if i == 0 {
-                        TyMaybeWithLayout::Ty(tcx.mk_mut_ptr(tcx.types.unit))
+                        TyMaybeWithLayout::Ty(Ty::new_mut_ptr(tcx, tcx.types.unit))
                     } else if i == 1 {
                         // FIXME(dyn-star) same FIXME as above applies here too
-                        TyMaybeWithLayout::Ty(
-                            tcx.mk_imm_ref(
-                                tcx.lifetimes.re_static,
-                                tcx.mk_array(tcx.types.usize, 3),
-                            ),
-                        )
+                        TyMaybeWithLayout::Ty(Ty::new_imm_ref(
+                            tcx,
+                            tcx.lifetimes.re_static,
+                            Ty::new_array(tcx, tcx.types.usize, 3),
+                        ))
                     } else {
                         bug!("no field {i} on dyn*")
                     }
@@ -980,10 +981,8 @@ where
                 })
             }
             ty::FnPtr(fn_sig) if offset.bytes() == 0 => {
-                tcx.layout_of(param_env.and(tcx.mk_fn_ptr(fn_sig))).ok().map(|layout| PointeeInfo {
-                    size: layout.size,
-                    align: layout.align.abi,
-                    safe: None,
+                tcx.layout_of(param_env.and(Ty::new_fn_ptr(tcx, fn_sig))).ok().map(|layout| {
+                    PointeeInfo { size: layout.size, align: layout.align.abi, safe: None }
                 })
             }
             ty::Ref(_, ty, mt) if offset.bytes() == 0 => {

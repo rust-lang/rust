@@ -9,7 +9,7 @@ use rustc_infer::infer::{
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
-use rustc_middle::traits::solve::inspect::{self, CandidateKind};
+use rustc_middle::traits::solve::inspect;
 use rustc_middle::traits::solve::{
     CanonicalInput, CanonicalResponse, Certainty, IsNormalizesToHack, MaybeCause,
     PredefinedOpaques, PredefinedOpaquesData, QueryResult,
@@ -19,7 +19,9 @@ use rustc_middle::ty::{
     self, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable, TypeVisitable,
     TypeVisitableExt, TypeVisitor,
 };
+use rustc_session::config::DumpSolverProofTree;
 use rustc_span::DUMMY_SP;
+use std::io::Write;
 use std::ops::ControlFlow;
 
 use crate::traits::specialization_graph;
@@ -28,9 +30,11 @@ use super::inspect::ProofTreeBuilder;
 use super::search_graph::{self, OverflowHandler};
 use super::SolverMode;
 use super::{search_graph::SearchGraph, Goal};
+pub use select::InferCtxtSelectExt;
 
 mod canonical;
 mod probe;
+mod select;
 
 pub struct EvalCtxt<'a, 'tcx> {
     /// The inference context that backs (mostly) inference and placeholder terms
@@ -111,8 +115,22 @@ impl NestedGoals<'_> {
 
 #[derive(PartialEq, Eq, Debug, Hash, HashStable, Clone, Copy)]
 pub enum GenerateProofTree {
+    Yes(UseGlobalCache),
+    No,
+}
+
+#[derive(PartialEq, Eq, Debug, Hash, HashStable, Clone, Copy)]
+pub enum UseGlobalCache {
     Yes,
     No,
+}
+impl UseGlobalCache {
+    pub fn from_bool(use_cache: bool) -> Self {
+        match use_cache {
+            true => UseGlobalCache::Yes,
+            false => UseGlobalCache::No,
+        }
+    }
 }
 
 pub trait InferCtxtEvalExt<'tcx> {
@@ -140,15 +158,34 @@ impl<'tcx> InferCtxtEvalExt<'tcx> for InferCtxt<'tcx> {
         Result<(bool, Certainty, Vec<Goal<'tcx, ty::Predicate<'tcx>>>), NoSolution>,
         Option<inspect::GoalEvaluation<'tcx>>,
     ) {
-        let mode = if self.intercrate { SolverMode::Coherence } else { SolverMode::Normal };
-        let mut search_graph = search_graph::SearchGraph::new(self.tcx, mode);
+        EvalCtxt::enter_root(self, generate_proof_tree, |ecx| {
+            ecx.evaluate_goal(IsNormalizesToHack::No, goal)
+        })
+    }
+}
+
+impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
+    pub(super) fn solver_mode(&self) -> SolverMode {
+        self.search_graph.solver_mode()
+    }
+
+    /// Creates a root evaluation context and search graph. This should only be
+    /// used from outside of any evaluation, and other methods should be preferred
+    /// over using this manually (such as [`InferCtxtEvalExt::evaluate_root_goal`]).
+    fn enter_root<R>(
+        infcx: &InferCtxt<'tcx>,
+        generate_proof_tree: GenerateProofTree,
+        f: impl FnOnce(&mut EvalCtxt<'_, 'tcx>) -> R,
+    ) -> (R, Option<inspect::GoalEvaluation<'tcx>>) {
+        let mode = if infcx.intercrate { SolverMode::Coherence } else { SolverMode::Normal };
+        let mut search_graph = search_graph::SearchGraph::new(infcx.tcx, mode);
 
         let mut ecx = EvalCtxt {
             search_graph: &mut search_graph,
-            infcx: self,
+            infcx: infcx,
             // Only relevant when canonicalizing the response,
             // which we don't do within this evaluation context.
-            predefined_opaques_in_body: self
+            predefined_opaques_in_body: infcx
                 .tcx
                 .mk_predefined_opaques_in_body(PredefinedOpaquesData::default()),
             // Only relevant when canonicalizing the response.
@@ -156,17 +193,17 @@ impl<'tcx> InferCtxtEvalExt<'tcx> for InferCtxt<'tcx> {
             var_values: CanonicalVarValues::dummy(),
             nested_goals: NestedGoals::new(),
             tainted: Ok(()),
-            inspect: (self.tcx.sess.opts.unstable_opts.dump_solver_proof_tree
-                || matches!(generate_proof_tree, GenerateProofTree::Yes))
-            .then(ProofTreeBuilder::new_root)
-            .unwrap_or_else(ProofTreeBuilder::new_noop),
+            inspect: ProofTreeBuilder::new_maybe_root(infcx.tcx, generate_proof_tree),
         };
-        let result = ecx.evaluate_goal(IsNormalizesToHack::No, goal);
+        let result = f(&mut ecx);
 
         let tree = ecx.inspect.finalize();
-        if let Some(tree) = &tree {
-            // module to allow more granular RUSTC_LOG filtering to just proof tree output
-            super::inspect::dump::print_tree(tree);
+        if let (Some(tree), DumpSolverProofTree::Always) =
+            (&tree, infcx.tcx.sess.opts.unstable_opts.dump_solver_proof_tree)
+        {
+            let mut lock = std::io::stdout().lock();
+            let _ = lock.write_fmt(format_args!("{tree:?}"));
+            let _ = lock.flush();
         }
 
         assert!(
@@ -177,11 +214,66 @@ impl<'tcx> InferCtxtEvalExt<'tcx> for InferCtxt<'tcx> {
         assert!(search_graph.is_empty());
         (result, tree)
     }
-}
 
-impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
-    pub(super) fn solver_mode(&self) -> SolverMode {
-        self.search_graph.solver_mode()
+    /// Creates a nested evaluation context that shares the same search graph as the
+    /// one passed in. This is suitable for evaluation, granted that the search graph
+    /// has had the nested goal recorded on its stack ([`SearchGraph::with_new_goal`]),
+    /// but it's preferable to use other methods that call this one rather than this
+    /// method directly.
+    ///
+    /// This function takes care of setting up the inference context, setting the anchor,
+    /// and registering opaques from the canonicalized input.
+    fn enter_canonical<R>(
+        tcx: TyCtxt<'tcx>,
+        search_graph: &'a mut search_graph::SearchGraph<'tcx>,
+        canonical_input: CanonicalInput<'tcx>,
+        goal_evaluation: &mut ProofTreeBuilder<'tcx>,
+        f: impl FnOnce(&mut EvalCtxt<'_, 'tcx>, Goal<'tcx, ty::Predicate<'tcx>>) -> R,
+    ) -> R {
+        let intercrate = match search_graph.solver_mode() {
+            SolverMode::Normal => false,
+            SolverMode::Coherence => true,
+        };
+        let (ref infcx, input, var_values) = tcx
+            .infer_ctxt()
+            .intercrate(intercrate)
+            .with_next_trait_solver(true)
+            .with_opaque_type_inference(canonical_input.value.anchor)
+            .build_with_canonical(DUMMY_SP, &canonical_input);
+
+        let mut ecx = EvalCtxt {
+            infcx,
+            var_values,
+            predefined_opaques_in_body: input.predefined_opaques_in_body,
+            max_input_universe: canonical_input.max_universe,
+            search_graph,
+            nested_goals: NestedGoals::new(),
+            tainted: Ok(()),
+            inspect: goal_evaluation.new_goal_evaluation_step(input),
+        };
+
+        for &(key, ty) in &input.predefined_opaques_in_body.opaque_types {
+            ecx.insert_hidden_type(key, input.goal.param_env, ty)
+                .expect("failed to prepopulate opaque types");
+        }
+
+        if !ecx.nested_goals.is_empty() {
+            panic!("prepopulating opaque types shouldn't add goals: {:?}", ecx.nested_goals);
+        }
+
+        let result = f(&mut ecx, input.goal);
+
+        goal_evaluation.goal_evaluation_step(ecx.inspect);
+
+        // When creating a query response we clone the opaque type constraints
+        // instead of taking them. This would cause an ICE here, since we have
+        // assertions against dropping an `InferCtxt` without taking opaques.
+        // FIXME: Once we remove support for the old impl we can remove this.
+        if input.anchor != DefiningAnchor::Error {
+            let _ = infcx.take_opaque_types();
+        }
+
+        result
     }
 
     /// The entry point of the solver.
@@ -210,53 +302,17 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
             canonical_input,
             goal_evaluation,
             |search_graph, goal_evaluation| {
-                let intercrate = match search_graph.solver_mode() {
-                    SolverMode::Normal => false,
-                    SolverMode::Coherence => true,
-                };
-                let (ref infcx, input, var_values) = tcx
-                    .infer_ctxt()
-                    .intercrate(intercrate)
-                    .with_next_trait_solver(true)
-                    .with_opaque_type_inference(canonical_input.value.anchor)
-                    .build_with_canonical(DUMMY_SP, &canonical_input);
-
-                let mut ecx = EvalCtxt {
-                    infcx,
-                    var_values,
-                    predefined_opaques_in_body: input.predefined_opaques_in_body,
-                    max_input_universe: canonical_input.max_universe,
+                EvalCtxt::enter_canonical(
+                    tcx,
                     search_graph,
-                    nested_goals: NestedGoals::new(),
-                    tainted: Ok(()),
-                    inspect: goal_evaluation.new_goal_evaluation_step(input),
-                };
-
-                for &(key, ty) in &input.predefined_opaques_in_body.opaque_types {
-                    ecx.insert_hidden_type(key, input.goal.param_env, ty)
-                        .expect("failed to prepopulate opaque types");
-                }
-
-                if !ecx.nested_goals.is_empty() {
-                    panic!(
-                        "prepopulating opaque types shouldn't add goals: {:?}",
-                        ecx.nested_goals
-                    );
-                }
-
-                let result = ecx.compute_goal(input.goal);
-                ecx.inspect.query_result(result);
-                goal_evaluation.goal_evaluation_step(ecx.inspect);
-
-                // When creating a query response we clone the opaque type constraints
-                // instead of taking them. This would cause an ICE here, since we have
-                // assertions against dropping an `InferCtxt` without taking opaques.
-                // FIXME: Once we remove support for the old impl we can remove this.
-                if input.anchor != DefiningAnchor::Error {
-                    let _ = infcx.take_opaque_types();
-                }
-
-                result
+                    canonical_input,
+                    goal_evaluation,
+                    |ecx, goal| {
+                        let result = ecx.compute_goal(goal);
+                        ecx.inspect.query_result(result);
+                        result
+                    },
+                )
             },
         )
     }
@@ -385,24 +441,20 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                 ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(arg)) => {
                     self.compute_well_formed_goal(Goal { param_env, predicate: arg })
                 }
-                ty::PredicateKind::Ambiguous => {
-                    self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
-                }
-                // FIXME: implement this predicate :)
-                ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(_)) => {
-                    self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(ct)) => {
+                    self.compute_const_evaluatable_goal(Goal { param_env, predicate: ct })
                 }
                 ty::PredicateKind::ConstEquate(_, _) => {
                     bug!("ConstEquate should not be emitted when `-Ztrait-solver=next` is active")
-                }
-                ty::PredicateKind::Clause(ty::ClauseKind::TypeWellFormedFromEnv(..)) => {
-                    bug!("TypeWellFormedFromEnv is only used for Chalk")
                 }
                 ty::PredicateKind::AliasRelate(lhs, rhs, direction) => self
                     .compute_alias_relate_goal(Goal {
                         param_env,
                         predicate: (lhs, rhs, direction),
                     }),
+                ty::PredicateKind::Ambiguous => {
+                    self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
+                }
             }
         } else {
             let kind = self.infcx.instantiate_binder_with_placeholders(kind);
@@ -785,7 +837,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         }
     }
 
-    pub(super) fn can_define_opaque_ty(&mut self, def_id: LocalDefId) -> bool {
+    pub(super) fn can_define_opaque_ty(&self, def_id: LocalDefId) -> bool {
         self.infcx.opaque_type_origin(def_id).is_some()
     }
 
@@ -843,25 +895,19 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             if candidate_key.def_id != key.def_id {
                 continue;
             }
-            values.extend(
-                self.probe(|r| CandidateKind::Candidate {
-                    name: "opaque type storage".into(),
-                    result: *r,
-                })
-                .enter(|ecx| {
-                    for (a, b) in std::iter::zip(candidate_key.substs, key.substs) {
-                        ecx.eq(param_env, a, b)?;
-                    }
-                    ecx.eq(param_env, candidate_ty, ty)?;
-                    ecx.add_item_bounds_for_hidden_type(
-                        candidate_key.def_id.to_def_id(),
-                        candidate_key.substs,
-                        param_env,
-                        candidate_ty,
-                    );
-                    ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-                }),
-            );
+            values.extend(self.probe_candidate("opaque type storage").enter(|ecx| {
+                for (a, b) in std::iter::zip(candidate_key.substs, key.substs) {
+                    ecx.eq(param_env, a, b)?;
+                }
+                ecx.eq(param_env, candidate_ty, ty)?;
+                ecx.add_item_bounds_for_hidden_type(
+                    candidate_key.def_id.to_def_id(),
+                    candidate_key.substs,
+                    param_env,
+                    candidate_ty,
+                );
+                ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+            }));
         }
         values
     }
@@ -878,7 +924,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         use rustc_middle::mir::interpret::ErrorHandled;
         match self.infcx.try_const_eval_resolve(param_env, unevaluated, ty, None) {
             Ok(ct) => Some(ct),
-            Err(ErrorHandled::Reported(e)) => Some(self.tcx().const_error(ty, e.into())),
+            Err(ErrorHandled::Reported(e)) => Some(ty::Const::new_error(self.tcx(), e.into(), ty)),
             Err(ErrorHandled::TooGeneric) => None,
         }
     }

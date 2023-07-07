@@ -95,11 +95,13 @@ impl<'tcx> PlaceTy<'tcx> {
             ProjectionElem::Subslice { from, to, from_end } => {
                 PlaceTy::from_ty(match self.ty.kind() {
                     ty::Slice(..) => self.ty,
-                    ty::Array(inner, _) if !from_end => tcx.mk_array(*inner, (to - from) as u64),
+                    ty::Array(inner, _) if !from_end => {
+                        Ty::new_array(tcx, *inner, (to - from) as u64)
+                    }
                     ty::Array(inner, size) if from_end => {
                         let size = size.eval_target_usize(tcx, param_env);
                         let len = size - from - to;
-                        tcx.mk_array(*inner, len)
+                        Ty::new_array(tcx, *inner, len)
                     }
                     _ => bug!("cannot subslice non-array type: `{:?}`", self),
                 })
@@ -162,16 +164,16 @@ impl<'tcx> Rvalue<'tcx> {
         match *self {
             Rvalue::Use(ref operand) => operand.ty(local_decls, tcx),
             Rvalue::Repeat(ref operand, count) => {
-                tcx.mk_array_with_const_len(operand.ty(local_decls, tcx), count)
+                Ty::new_array_with_const_len(tcx, operand.ty(local_decls, tcx), count)
             }
             Rvalue::ThreadLocalRef(did) => tcx.thread_local_ptr_ty(did),
             Rvalue::Ref(reg, bk, ref place) => {
                 let place_ty = place.ty(local_decls, tcx).ty;
-                tcx.mk_ref(reg, ty::TypeAndMut { ty: place_ty, mutbl: bk.to_mutbl_lossy() })
+                Ty::new_ref(tcx, reg, ty::TypeAndMut { ty: place_ty, mutbl: bk.to_mutbl_lossy() })
             }
             Rvalue::AddressOf(mutability, ref place) => {
                 let place_ty = place.ty(local_decls, tcx).ty;
-                tcx.mk_ptr(ty::TypeAndMut { ty: place_ty, mutbl: mutability })
+                Ty::new_ptr(tcx, ty::TypeAndMut { ty: place_ty, mutbl: mutability })
             }
             Rvalue::Len(..) => tcx.types.usize,
             Rvalue::Cast(.., ty) => ty,
@@ -184,7 +186,7 @@ impl<'tcx> Rvalue<'tcx> {
                 let lhs_ty = lhs.ty(local_decls, tcx);
                 let rhs_ty = rhs.ty(local_decls, tcx);
                 let ty = op.ty(tcx, lhs_ty, rhs_ty);
-                tcx.mk_tup(&[ty, tcx.types.bool])
+                Ty::new_tup(tcx, &[ty, tcx.types.bool])
             }
             Rvalue::UnaryOp(UnOp::Not | UnOp::Neg, ref operand) => operand.ty(local_decls, tcx),
             Rvalue::Discriminant(ref place) => place.ty(local_decls, tcx).ty.discriminant_ty(tcx),
@@ -192,17 +194,17 @@ impl<'tcx> Rvalue<'tcx> {
                 tcx.types.usize
             }
             Rvalue::Aggregate(ref ak, ref ops) => match **ak {
-                AggregateKind::Array(ty) => tcx.mk_array(ty, ops.len() as u64),
+                AggregateKind::Array(ty) => Ty::new_array(tcx, ty, ops.len() as u64),
                 AggregateKind::Tuple => {
-                    tcx.mk_tup_from_iter(ops.iter().map(|op| op.ty(local_decls, tcx)))
+                    Ty::new_tup_from_iter(tcx, ops.iter().map(|op| op.ty(local_decls, tcx)))
                 }
                 AggregateKind::Adt(did, _, substs, _, _) => tcx.type_of(did).subst(tcx, substs),
-                AggregateKind::Closure(did, substs) => tcx.mk_closure(did, substs),
+                AggregateKind::Closure(did, substs) => Ty::new_closure(tcx, did, substs),
                 AggregateKind::Generator(did, substs, movability) => {
-                    tcx.mk_generator(did, substs, movability)
+                    Ty::new_generator(tcx, did, substs, movability)
                 }
             },
-            Rvalue::ShallowInitBox(_, ty) => tcx.mk_box(ty),
+            Rvalue::ShallowInitBox(_, ty) => Ty::new_box(tcx, ty),
             Rvalue::CopyForDeref(ref place) => place.ty(local_decls, tcx).ty,
         }
     }

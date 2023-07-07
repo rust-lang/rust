@@ -1,0 +1,9 @@
+error[E0282]: type annotations needed
+  --> $DIR/param-env-region-infer.rs:16:10
+   |
+LL |     t as _
+   |          ^ cannot infer type
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0282`.

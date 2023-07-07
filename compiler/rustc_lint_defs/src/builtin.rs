@@ -3409,6 +3409,7 @@ declare_lint_pass! {
         UNSTABLE_SYNTAX_PRE_EXPANSION,
         UNSUPPORTED_CALLING_CONVENTIONS,
         UNUSED_ASSIGNMENTS,
+        UNUSED_ASSOCIATED_TYPE_BOUNDS,
         UNUSED_ATTRIBUTES,
         UNUSED_CRATE_DEPENDENCIES,
         UNUSED_EXTERN_CRATES,
@@ -3466,6 +3467,32 @@ declare_lint! {
     Deny,
     "detects long const eval operations",
     report_in_external_macro
+}
+
+declare_lint! {
+    /// The `unused_associated_type_bounds` lint is emitted when an
+    /// associated type bound is added to a trait object, but the associated
+    /// type has a `where Self: Sized` bound, and is thus unavailable on the
+    /// trait object anyway.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// trait Foo {
+    ///     type Bar where Self: Sized;
+    /// }
+    /// type Mop = dyn Foo<Bar = ()>;
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Just like methods with `Self: Sized` bounds are unavailable on trait
+    /// objects, associated types can be removed from the trait object.
+    pub UNUSED_ASSOCIATED_TYPE_BOUNDS,
+    Warn,
+    "detects unused `Foo = Bar` bounds in `dyn Trait<Foo = Bar>`"
 }
 
 declare_lint! {

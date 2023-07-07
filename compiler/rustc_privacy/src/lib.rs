@@ -174,7 +174,6 @@ where
             }
             ty::ClauseKind::ConstEvaluatable(ct) => ct.visit_with(self),
             ty::ClauseKind::WellFormed(arg) => arg.visit_with(self),
-            ty::ClauseKind::TypeWellFormedFromEnv(_) => bug!("unexpected clause: {clause}"),
         }
     }
 

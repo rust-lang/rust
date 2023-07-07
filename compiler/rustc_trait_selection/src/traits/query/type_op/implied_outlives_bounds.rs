@@ -1,3 +1,4 @@
+use crate::solve;
 use crate::traits::query::NoSolution;
 use crate::traits::wf;
 use crate::traits::ObligationCtxt;
@@ -6,6 +7,7 @@ use rustc_infer::infer::canonical::Canonical;
 use rustc_infer::infer::outlives::components::{push_outlives_components, Component};
 use rustc_infer::traits::query::OutlivesBound;
 use rustc_middle::infer::canonical::CanonicalQueryResponse;
+use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::{self, ParamEnvAnd, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::source_map::DUMMY_SP;
@@ -134,7 +136,7 @@ pub fn compute_implied_outlives_bounds_inner<'tcx>(
                 | ty::PredicateKind::ConstEquate(..)
                 | ty::PredicateKind::Ambiguous
                 | ty::PredicateKind::AliasRelate(..)
-                | ty::PredicateKind::Clause(ty::ClauseKind::TypeWellFormedFromEnv(..)) => {}
+                 => {}
 
                 // We need to search through *all* WellFormed predicates
                 ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(arg)) => {
@@ -164,19 +166,29 @@ pub fn compute_implied_outlives_bounds_inner<'tcx>(
 
     // We lazily compute the outlives components as
     // `select_all_or_error` constrains inference variables.
-    let implied_bounds = outlives_bounds
-        .into_iter()
-        .flat_map(|ty::OutlivesPredicate(a, r_b)| match a.unpack() {
-            ty::GenericArgKind::Lifetime(r_a) => vec![OutlivesBound::RegionSubRegion(r_b, r_a)],
+    let mut implied_bounds = Vec::new();
+    for ty::OutlivesPredicate(a, r_b) in outlives_bounds {
+        match a.unpack() {
+            ty::GenericArgKind::Lifetime(r_a) => {
+                implied_bounds.push(OutlivesBound::RegionSubRegion(r_b, r_a))
+            }
             ty::GenericArgKind::Type(ty_a) => {
-                let ty_a = ocx.infcx.resolve_vars_if_possible(ty_a);
+                let mut ty_a = ocx.infcx.resolve_vars_if_possible(ty_a);
+                // Need to manually normalize in the new solver as `wf::obligations` does not.
+                if ocx.infcx.next_trait_solver() {
+                    ty_a = solve::deeply_normalize(
+                        ocx.infcx.at(&ObligationCause::dummy(), param_env),
+                        ty_a,
+                    )
+                    .map_err(|_errs| NoSolution)?;
+                }
                 let mut components = smallvec![];
                 push_outlives_components(tcx, ty_a, &mut components);
-                implied_bounds_from_components(r_b, components)
+                implied_bounds.extend(implied_bounds_from_components(r_b, components))
             }
             ty::GenericArgKind::Const(_) => unreachable!(),
-        })
-        .collect();
+        }
+    }
 
     Ok(implied_bounds)
 }

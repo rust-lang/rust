@@ -1,11 +1,10 @@
 // compile-flags: -Ztrait-solver=next
-// known-bug: unknown
 
 trait Test {
     type Assoc;
 }
 
-fn transform<T: Test>(x: T) -> T::Assoc {
+fn transform<T: Test>(x: Inv<T>) -> Inv<T::Assoc> {
     todo!()
 }
 
@@ -17,8 +16,13 @@ impl Test for String {
     type Assoc = String;
 }
 
+struct Inv<T>(Option<*mut T>);
+
 fn main() {
-    let mut x = Default::default();
+    let mut x: Inv<_> = Inv(None);
+    // This ends up equating `Inv<?x>` with `Inv<<?x as Test>::Assoc>`
+    // which fails the occurs check when generalizing `?x`.
     x = transform(x);
-    x = 1i32;
+    //~^ ERROR mismatched types
+    x = Inv::<i32>(None);
 }

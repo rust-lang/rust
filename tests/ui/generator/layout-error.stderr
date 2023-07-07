@@ -4,6 +4,24 @@ error[E0425]: cannot find value `Foo` in this scope
 LL |         let a = Foo;
    |                 ^^^ not found in this scope
 
-error: aborting due to previous error
+error: cannot check whether the hidden type of `layout_error[b009]::main::F::{opaque#0}` satisfies auto traits
+  --> $DIR/layout-error.rs:26:18
+   |
+LL |     static POOL: Task<F> = Task::new();
+   |                  ^^^^^^^
+   |
+note: opaque type is declared here
+  --> $DIR/layout-error.rs:24:14
+   |
+LL |     type F = impl Future;
+   |              ^^^^^^^^^^^
+note: required because it appears within the type `Task<F>`
+  --> $DIR/layout-error.rs:9:12
+   |
+LL | pub struct Task<F: Future>(F);
+   |            ^^^^
+   = note: shared static variables must have a type that implements `Sync`
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0425`.

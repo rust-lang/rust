@@ -53,6 +53,7 @@ macro_rules! float_rounding_test {
 
             test_helpers::test_lanes! {
                 fn to_int_unchecked<const LANES: usize>() {
+                    use core_simd::simd::SimdFloat;
                     // The maximum integer that can be represented by the equivalently sized float has
                     // all of the mantissa digits set to 1, pushed up to the MSB.
                     const ALL_MANTISSA_BITS: IntScalar = ((1 << <Scalar>::MANTISSA_DIGITS) - 1);

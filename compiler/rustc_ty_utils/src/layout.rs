@@ -159,7 +159,7 @@ fn layout_of_uncached<'tcx>(
                 // fall back to structurally deducing metadata.
                 && !pointee.references_error()
             {
-                let pointee_metadata = tcx.mk_projection(metadata_def_id, [pointee]);
+                let pointee_metadata = Ty::new_projection(tcx,metadata_def_id, [pointee]);
                 let metadata_ty = match tcx.try_normalize_erasing_regions(
                     param_env,
                     pointee_metadata,
@@ -672,7 +672,7 @@ fn generator_layout<'tcx>(
     let promoted_layouts = ineligible_locals
         .iter()
         .map(|local| subst_field(info.field_tys[local].ty))
-        .map(|ty| tcx.mk_maybe_uninit(ty))
+        .map(|ty| Ty::new_maybe_uninit(tcx, ty))
         .map(|ty| Ok(cx.layout_of(ty)?.layout));
     let prefix_layouts = substs
         .as_generator()

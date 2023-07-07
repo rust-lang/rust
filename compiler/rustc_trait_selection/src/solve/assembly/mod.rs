@@ -49,7 +49,7 @@ pub(super) enum CandidateSource {
     /// Notable examples are auto traits, `Sized`, and `DiscriminantKind`.
     /// For a list of all traits with builtin impls, check out the
     /// [`EvalCtxt::assemble_builtin_impl_candidates`] method. Not
-    BuiltinImpl,
+    BuiltinImpl(BuiltinImplSource),
     /// An assumption from the environment.
     ///
     /// More precisely we've used the `n-th` assumption in the `param_env`.
@@ -85,6 +85,16 @@ pub(super) enum CandidateSource {
     /// }
     /// ```
     AliasBound,
+}
+
+/// Records additional information about what kind of built-in impl this is.
+/// This should only be used by selection.
+#[derive(Debug, Clone, Copy)]
+pub(super) enum BuiltinImplSource {
+    TraitUpcasting,
+    Object,
+    Misc,
+    Ambiguity,
 }
 
 /// Methods used to assemble candidates for either trait or projection goals.
@@ -295,7 +305,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         // least structurally resolve the type one layer.
         if goal.predicate.self_ty().is_ty_var() {
             return vec![Candidate {
-                source: CandidateSource::BuiltinImpl,
+                source: CandidateSource::BuiltinImpl(BuiltinImplSource::Ambiguity),
                 result: self
                     .evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
                     .unwrap(),
@@ -321,11 +331,20 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         candidates
     }
 
-    /// If the self type of a goal is an alias, computing the relevant candidates is difficult.
+    /// If the self type of a goal is an alias we first try to normalize the self type
+    /// and compute the candidates for the normalized self type in case that succeeds.
     ///
-    /// To deal with this, we first try to normalize the self type and add the candidates for the normalized
-    /// self type to the list of candidates in case that succeeds. We also have to consider candidates with the
-    /// projection as a self type as well
+    /// These candidates are used in addition to the ones with the alias as a self type.
+    /// We do this to simplify both builtin candidates and for better performance.
+    ///
+    /// We generate the builtin candidates on the fly by looking at the self type, e.g.
+    /// add `FnPtr` candidates if the self type is a function pointer. Handling builtin
+    /// candidates while the self type is still an alias seems difficult. This is similar
+    /// to `try_structurally_resolve_type` during hir typeck (FIXME once implemented).
+    ///
+    /// Looking at all impls for some trait goal is prohibitively expensive. We therefore
+    /// only look at implementations with a matching self type. Because of this function,
+    /// we can avoid looking at all existing impls if the self type is an alias.
     #[instrument(level = "debug", skip_all)]
     fn assemble_candidates_after_normalizing_self_ty<G: GoalKind<'tcx>>(
         &mut self,
@@ -344,7 +363,10 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                         let result = ecx.evaluate_added_goals_and_make_canonical_response(
                             Certainty::Maybe(MaybeCause::Overflow),
                         )?;
-                        Ok(vec![Candidate { source: CandidateSource::BuiltinImpl, result }])
+                        Ok(vec![Candidate {
+                            source: CandidateSource::BuiltinImpl(BuiltinImplSource::Ambiguity),
+                            result,
+                        }])
                     },
                     |ecx| {
                         let normalized_ty = ecx.next_ty_infer();
@@ -447,9 +469,10 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         };
 
         match result {
-            Ok(result) => {
-                candidates.push(Candidate { source: CandidateSource::BuiltinImpl, result })
-            }
+            Ok(result) => candidates.push(Candidate {
+                source: CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
+                result,
+            }),
             Err(NoSolution) => (),
         }
 
@@ -457,7 +480,10 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         // `trait Foo: Bar<A> + Bar<B>` and `dyn Foo: Unsize<dyn Bar<_>>`
         if lang_items.unsize_trait() == Some(trait_def_id) {
             for result in G::consider_builtin_dyn_upcast_candidates(self, goal) {
-                candidates.push(Candidate { source: CandidateSource::BuiltinImpl, result });
+                candidates.push(Candidate {
+                    source: CandidateSource::BuiltinImpl(BuiltinImplSource::TraitUpcasting),
+                    result,
+                });
             }
         }
     }
@@ -621,9 +647,10 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         };
 
         match result {
-            Ok(result) => {
-                candidates.push(Candidate { source: CandidateSource::BuiltinImpl, result })
-            }
+            Ok(result) => candidates.push(Candidate {
+                source: CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
+                result,
+            }),
             Err(NoSolution) => (),
         }
     }
@@ -688,9 +715,10 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             }
 
             match G::consider_object_bound_candidate(self, goal, assumption) {
-                Ok(result) => {
-                    candidates.push(Candidate { source: CandidateSource::BuiltinImpl, result })
-                }
+                Ok(result) => candidates.push(Candidate {
+                    source: CandidateSource::BuiltinImpl(BuiltinImplSource::Object),
+                    result,
+                }),
                 Err(NoSolution) => (),
             }
         }
@@ -711,8 +739,10 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                     Err(_) => match self
                         .evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
                     {
-                        Ok(result) => candidates
-                            .push(Candidate { source: CandidateSource::BuiltinImpl, result }),
+                        Ok(result) => candidates.push(Candidate {
+                            source: CandidateSource::BuiltinImpl(BuiltinImplSource::Ambiguity),
+                            result,
+                        }),
                         // FIXME: This will be reachable at some point if we're in
                         // `assemble_candidates_after_normalizing_self_ty` and we get a
                         // universe error. We'll deal with it at this point.

@@ -1,3 +1,4 @@
+//~ ERROR overflow evaluating the requirement `<T as Foo>::Assoc` [E0275]
 // compile-flags: -Ztrait-solver=next
 
 trait Foo {

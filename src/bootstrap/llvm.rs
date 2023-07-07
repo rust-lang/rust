@@ -380,7 +380,10 @@ impl Step for Llvm {
             cfg.define("LLVM_LINK_LLVM_DYLIB", "ON");
         }
 
-        if target.starts_with("riscv") && !target.contains("freebsd") && !target.contains("openbsd")
+        if target.starts_with("riscv")
+            && !target.contains("freebsd")
+            && !target.contains("openbsd")
+            && !target.contains("netbsd")
         {
             // RISC-V GCC erroneously requires linking against
             // `libatomic` when using 1-byte and 2-byte C++
