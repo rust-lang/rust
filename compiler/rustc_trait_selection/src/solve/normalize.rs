@@ -70,7 +70,10 @@ impl<'tcx> NormalizationFolder<'_, 'tcx> {
         // keep the projection unnormalized. This is the case for projections
         // with a `T: Trait` where-clause and opaque types outside of the defining
         // scope.
-        let result = if infcx.predicate_may_hold(&obligation) {
+        // HACK: if alias_ty references errors, then there's a possibility that the
+        // normalized type may remain unconstrained. In that case, let's just bail.
+        // See `dont-try-normalizing-proj-with-errors.rs` in the test suite.
+        let result = if infcx.predicate_may_hold(&obligation) && !alias.references_error() {
             self.fulfill_cx.register_predicate_obligation(infcx, obligation);
             let errors = self.fulfill_cx.select_all_or_error(infcx);
             if !errors.is_empty() {
