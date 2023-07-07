@@ -700,8 +700,13 @@ where
             assert_eq!(src.layout.size, dest.layout.size);
         }
 
+        // Setting `nonoverlapping` here only has an effect when we don't hit the fast-path above,
+        // but that should at least match what LLVM does where `memcpy` is also only used when the
+        // type does not have Scalar/ScalarPair layout.
+        // (Or as the `Assign` docs put it, assignments "not producing primitives" must be
+        // non-overlapping.)
         self.mem_copy(
-            src.ptr, src.align, dest.ptr, dest.align, dest_size, /*nonoverlapping*/ false,
+            src.ptr, src.align, dest.ptr, dest.align, dest_size, /*nonoverlapping*/ true,
         )
     }
 
