@@ -277,11 +277,6 @@ fn run_dep_mode(target: String, mut args: impl Iterator<Item = OsString>) -> Res
     config.program.args.clear(); // We want to give the user full control over flags
     config.build_dependencies_and_link_them()?;
 
-    if let Ok(extra_flags) = env::var("MIRIFLAGS") {
-        for flag in extra_flags.split_whitespace() {
-            config.program.args.push(flag.into());
-        }
-    }
     let mut cmd = config.program.build(&config.out_dir);
 
     cmd.arg(path);
