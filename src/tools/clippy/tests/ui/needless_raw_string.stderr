@@ -12,11 +12,5 @@ error: unnecessary raw string literal
 LL |     br#"aaa"#;
    |     ^^^^^^^^^ help: try: `b"aaa"`
 
-error: unnecessary raw string literal
-  --> $DIR/needless_raw_string.rs:13:5
-   |
-LL |     cr#"aaa"#;
-   |     ^^^^^^^^^ help: try: `c"aaa"`
-
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 

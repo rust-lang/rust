@@ -10,7 +10,8 @@ fn main() {
     br#"aaa"#;
     br#""aaa""#;
     br#"\s"#;
-    cr#"aaa"#;
-    cr#""aaa""#;
-    cr#"\s"#;
+    // currently disabled: https://github.com/rust-lang/rust/issues/113333
+    // cr#"aaa"#;
+    // cr#""aaa""#;
+    // cr#"\s"#;
 }
