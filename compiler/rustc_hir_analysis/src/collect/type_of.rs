@@ -483,9 +483,16 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<Ty
             VariantData::Unit(..) | VariantData::Struct(..) => {
                 tcx.type_of(tcx.hir().get_parent_item(hir_id)).subst_identity()
             }
-            VariantData::Tuple(..) => {
-                let substs = InternalSubsts::identity_for_item(tcx, def_id);
-                Ty::new_fn_def(tcx, def_id.to_def_id(), substs)
+            VariantData::Tuple(fields, ..) => {
+                if let Some(Err(error)) = fields.iter().find_map(|field| {
+                    let field_ty = tcx.type_of(field.def_id).skip_binder();
+                    field_ty.references_error().then_some(field_ty.error_reported())
+                }) {
+                    Ty::new_error(tcx, error)
+                } else {
+                    let substs = InternalSubsts::identity_for_item(tcx, def_id);
+                    Ty::new_fn_def(tcx, def_id.to_def_id(), substs)
+                }
             }
         },
 
