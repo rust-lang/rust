@@ -1,45 +1,45 @@
 error: type named `Error` that implements `Error`
-  --> $DIR/error_impl_error.rs:7:12
+  --> $DIR/error_impl_error.rs:10:16
    |
-LL |     struct Error;
-   |            ^^^^^
+LL |     pub struct Error;
+   |                ^^^^^
    |
 note: `Error` was implemented here
-  --> $DIR/error_impl_error.rs:15:5
+  --> $DIR/error_impl_error.rs:18:5
    |
 LL |     impl std::error::Error for Error {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: `-D clippy::error-impl-error` implied by `-D warnings`
 
 error: type named `Error` that implements `Error`
-  --> $DIR/error_impl_error.rs:20:10
+  --> $DIR/error_impl_error.rs:23:10
    |
 LL |     enum Error {}
    |          ^^^^^
    |
 note: `Error` was implemented here
-  --> $DIR/error_impl_error.rs:28:5
+  --> $DIR/error_impl_error.rs:31:5
    |
 LL |     impl std::error::Error for Error {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: type named `Error` that implements `Error`
-  --> $DIR/error_impl_error.rs:32:11
+  --> $DIR/error_impl_error.rs:35:15
    |
-LL |     union Error {
-   |           ^^^^^
+LL |     pub union Error {
+   |               ^^^^^
    |
 note: `Error` was implemented here
-  --> $DIR/error_impl_error.rs:49:5
+  --> $DIR/error_impl_error.rs:52:5
    |
 LL |     impl std::error::Error for Error {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: type alias named `Error` that implements `Error`
-  --> $DIR/error_impl_error.rs:53:10
+  --> $DIR/error_impl_error.rs:56:14
    |
-LL |     type Error = std::fmt::Error;
-   |          ^^^^^
+LL |     pub type Error = std::fmt::Error;
+   |              ^^^^^
 
 error: aborting due to 4 previous errors
 

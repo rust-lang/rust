@@ -1,10 +1,13 @@
+//@revisions: allow_private disallow_private
+//@[allow_private] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/error_impl_error/allow_private
+//@[disallow_private] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/error_impl_error/disallow_private
 #![allow(unused)]
 #![warn(clippy::error_impl_error)]
 #![no_main]
 
-mod a {
+pub mod a {
     #[derive(Debug)]
-    struct Error;
+    pub struct Error;
 
     impl std::fmt::Display for Error {
         fn fmt(&self, _: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -28,8 +31,8 @@ mod b {
     impl std::error::Error for Error {}
 }
 
-mod c {
-    union Error {
+pub mod c {
+    pub union Error {
         a: u32,
         b: u32,
     }
@@ -49,8 +52,8 @@ mod c {
     impl std::error::Error for Error {}
 }
 
-mod d {
-    type Error = std::fmt::Error;
+pub mod d {
+    pub type Error = std::fmt::Error;
 }
 
 mod e {

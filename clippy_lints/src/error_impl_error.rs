@@ -1,12 +1,11 @@
-use clippy_utils::{
-    diagnostics::{span_lint, span_lint_hir_and_then},
-    path_res,
-    ty::implements_trait,
-};
-use rustc_hir::{def_id::DefId, Item, ItemKind, Node};
+use clippy_utils::diagnostics::{span_lint, span_lint_hir_and_then};
+use clippy_utils::path_res;
+use clippy_utils::ty::implements_trait;
+use rustc_hir::def_id::DefId;
+use rustc_hir::{Item, ItemKind, Node};
 use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::sym;
 
 declare_clippy_lint! {
@@ -15,8 +14,9 @@ declare_clippy_lint! {
     ///
     /// ### Why is this bad?
     /// It can become confusing when a codebase has 20 types all named `Error`, requiring either
-    /// aliasing them in the `use` statement them or qualifying them like `my_module::Error`. This
-    /// severely hinders readability.
+    /// aliasing them in the `use` statement or qualifying them like `my_module::Error`. This
+    /// hinders comprehension, as it requires you to memorize every variation of importing `Error`
+    /// used across a codebase.
     ///
     /// ### Example
     /// ```rust,ignore
@@ -32,14 +32,22 @@ declare_clippy_lint! {
     restriction,
     "types named `Error` that implement `Error`"
 }
-declare_lint_pass!(ErrorImplError => [ERROR_IMPL_ERROR]);
+impl_lint_pass!(ErrorImplError => [ERROR_IMPL_ERROR]);
+
+#[derive(Clone, Copy)]
+pub struct ErrorImplError {
+    pub allow_private_error: bool,
+}
 
 impl<'tcx> LateLintPass<'tcx> for ErrorImplError {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
+        let Self { allow_private_error } = *self;
         let Some(error_def_id) = cx.tcx.get_diagnostic_item(sym::Error) else {
             return;
         };
-
+        if allow_private_error && !cx.effective_visibilities.is_exported(item.owner_id.def_id) {
+            return;
+        }
         match item.kind {
             ItemKind::TyAlias(ty, _) if implements_trait(cx, hir_ty_to_ty(cx.tcx, ty), error_def_id, &[])
                 && item.ident.name == sym::Error =>
@@ -71,6 +79,5 @@ impl<'tcx> LateLintPass<'tcx> for ErrorImplError {
             }
             _ => {},
         }
-        {}
     }
 }

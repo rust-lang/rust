@@ -730,3 +730,13 @@ Whether to allow `r#""#` when `r""` can be used
 * [`unnecessary_raw_string_hashes`](https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_raw_string_hashes)
 
 
+## `allow-private-error`
+Whether to allow private types named `Error` that implement `Error`
+
+**Default Value:** `true` (`bool`)
+
+---
+**Affected lints:**
+* [`error_impl_error`](https://rust-lang.github.io/rust-clippy/master/index.html#error_impl_error)
+
+
