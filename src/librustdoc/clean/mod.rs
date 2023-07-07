@@ -1483,7 +1483,7 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
 /// or `doc(hidden)`). If it's not possible, it'll return the "end type".
 ///
 /// If the path is not a re-export or is public, it'll return `None`.
-fn first_not_private(
+fn first_non_private(
     cx: &mut DocContext<'_>,
     hir_id: hir::HirId,
     path: &hir::Path<'_>,
@@ -1578,7 +1578,7 @@ fn clean_qpath<'tcx>(hir_ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> Type 
                 expanded
             } else {
                 // First we check if it's a private re-export.
-                let path = if let Some(path) = first_not_private(cx, hir_id, &path) {
+                let path = if let Some(path) = first_non_private(cx, hir_id, &path) {
                     path
                 } else {
                     clean_path(path, cx)
