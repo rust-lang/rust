@@ -837,7 +837,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         }
     }
 
-    pub(super) fn can_define_opaque_ty(&mut self, def_id: LocalDefId) -> bool {
+    pub(super) fn can_define_opaque_ty(&self, def_id: LocalDefId) -> bool {
         self.infcx.opaque_type_origin(def_id).is_some()
     }
 
