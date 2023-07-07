@@ -1,7 +1,6 @@
 use clippy_utils::{diagnostics::span_lint_and_sugg, get_parent_node, last_path_segment, ty::implements_trait};
 use rustc_errors::Applicability;
-use rustc_hir::{ExprKind, ImplItem, ImplItemKind, ItemKind, Node, UnOp};
-use rustc_hir_analysis::hir_ty_to_ty;
+use rustc_hir::{ExprKind, ImplItem, ImplItemKind, Node, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::EarlyBinder;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -55,9 +54,6 @@ impl LateLintPass<'_> for IncorrectImpls {
         let Some(Node::Item(item)) = node else {
             return;
         };
-        let ItemKind::Impl(imp) = item.kind else {
-            return;
-        };
         let Some(trait_impl) = cx.tcx.impl_trait_ref(item.owner_id).map(EarlyBinder::skip_binder) else {
             return;
         };
@@ -80,9 +76,9 @@ impl LateLintPass<'_> for IncorrectImpls {
             && let Some(copy_def_id) = cx.tcx.get_diagnostic_item(sym::Copy)
             && implements_trait(
                     cx,
-                    hir_ty_to_ty(cx.tcx, imp.self_ty),
+                    trait_impl.self_ty(),
                     copy_def_id,
-                    trait_impl.substs,
+                    &[],
                 )
         {
             if impl_item.ident.name == sym::clone {
