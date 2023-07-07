@@ -229,6 +229,7 @@ impl ParseSess {
             Some(sm.clone()),
             None,
             fallback_bundle,
+            None,
         );
         ParseSess::with_span_handler(handler, sm)
     }
@@ -259,12 +260,20 @@ impl ParseSess {
     pub fn with_silent_emitter(fatal_note: Option<String>) -> Self {
         let fallback_bundle = fallback_fluent_bundle(Vec::new(), false);
         let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-        let fatal_handler =
-            Handler::with_tty_emitter(ColorConfig::Auto, false, None, None, None, fallback_bundle);
+        let fatal_handler = Handler::with_tty_emitter(
+            ColorConfig::Auto,
+            false,
+            None,
+            None,
+            None,
+            fallback_bundle,
+            None,
+        );
         let handler = Handler::with_emitter(
             false,
             None,
             Box::new(SilentEmitter { fatal_handler, fatal_note }),
+            None,
         );
         ParseSess::with_span_handler(handler, sm)
     }

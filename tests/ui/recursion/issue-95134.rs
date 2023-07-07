@@ -3,6 +3,7 @@
 // compile-flags: -Copt-level=0
 // dont-check-failure-status
 // dont-check-compiler-stderr
+// rustc-env:RUSTC_ICE=0
 
 pub fn encode_num<Writer: ExampleWriter>(n: u32, mut writer: Writer) -> Result<(), Writer::Error> {
     if n > 15 {

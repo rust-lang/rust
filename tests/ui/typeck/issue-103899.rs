@@ -2,6 +2,7 @@
 // failure-status: 101
 // dont-check-compiler-stderr
 // known-bug: #103899
+// rustc-env:RUSTC_ICE=0
 
 trait BaseWithAssoc {
     type Assoc;

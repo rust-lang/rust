@@ -1,4 +1,5 @@
 // failure-status: 101
+// rustc-env:RUSTC_ICE=0
 // known-bug: unknown
 // error-pattern:internal compiler error
 // normalize-stderr-test "internal compiler error.*" -> ""

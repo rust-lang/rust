@@ -2,6 +2,7 @@
 
 // edition:2021
 // compile-flags:-Z treat-err-as-bug=1
+// rustc-env:RUSTC_ICE=0
 // error-pattern: aborting due to `-Z treat-err-as-bug=1`
 // failure-status:101
 // normalize-stderr-test ".*note: .*\n\n" -> ""

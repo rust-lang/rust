@@ -1,4 +1,5 @@
 // compile-flags: -Ztreat-err-as-bug
+// rustc-env:RUSTC_ICE=0
 // failure-status: 101
 // error-pattern: aborting due to `-Z treat-err-as-bug=1`
 // error-pattern: [trigger_delay_span_bug] triggering a delay span bug

@@ -1,5 +1,6 @@
 // failure-status: 101
 // known-bug: unknown
+// rustc-env:RUSTC_ICE=0
 // error-pattern:internal compiler error
 // normalize-stderr-test "internal compiler error.*" -> ""
 // normalize-stderr-test "DefId\([^)]*\)" -> "..."

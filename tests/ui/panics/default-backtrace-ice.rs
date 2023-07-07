@@ -1,4 +1,5 @@
 // unset-rustc-env:RUST_BACKTRACE
+// rustc-env:RUSTC_ICE=0
 // compile-flags:-Z treat-err-as-bug=1
 // error-pattern:stack backtrace:
 // failure-status:101
