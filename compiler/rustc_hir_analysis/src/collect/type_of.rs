@@ -446,10 +446,11 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<Ty
                     ..
                 }) => {
                     if in_trait && !tcx.defaultness(owner).has_value() {
-                        span_bug!(
+                        return ty::EarlyBinder::bind(Ty::new_error_with_message(
+                            tcx,
                             tcx.def_span(def_id),
-                            "tried to get type of this RPITIT with no definition"
-                        );
+                            "tried to get type of this RPITIT with no definition",
+                        ));
                     }
                     opaque::find_opaque_ty_constraints_for_rpit(tcx, def_id, owner)
                 }
