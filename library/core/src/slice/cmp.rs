@@ -86,9 +86,11 @@ where
 
         // SAFETY: `self` and `other` are references and are thus guaranteed to be valid.
         // The two slices have been checked to have the same size above.
+        // We ensure `memcp` is not called on size 0 (since we are not sure references are
+        // sufficiently valid for a C function in that case).
         unsafe {
             let size = mem::size_of_val(self);
-            memcmp(self.as_ptr() as *const u8, other.as_ptr() as *const u8, size) == 0
+            size == 0 || memcmp(self.as_ptr() as *const u8, other.as_ptr() as *const u8, size) == 0
         }
     }
 }
@@ -192,9 +194,15 @@ impl SliceOrd for u8 {
         let diff = left.len() as isize - right.len() as isize;
         // This comparison gets optimized away (on x86_64 and ARM) because the subtraction updates flags.
         let len = if left.len() < right.len() { left.len() } else { right.len() };
+        if len == 0 {
+            // At least one is empty, the length difference decides.
+            return diff.cmp(&0);
+        }
         // SAFETY: `left` and `right` are references and are thus guaranteed to be valid.
         // We use the minimum of both lengths which guarantees that both regions are
         // valid for reads in that interval.
+        // We ensure `memcp` is not called on size 0 (since we are not sure references are
+        // sufficiently valid for a C function in that case).
         let mut order = unsafe { memcmp(left.as_ptr(), right.as_ptr(), len) as isize };
         if order == 0 {
             order = diff;
