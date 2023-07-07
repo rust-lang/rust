@@ -18,7 +18,25 @@ LL |     bytes.iter().map(|b| format!("{b:02X}")).collect()
    = note: `-D clippy::format-collect` implied by `-D warnings`
 
 error: use of `format!` to build up a string from an iterator
-  --> $DIR/format_collect.rs:19:5
+  --> $DIR/format_collect.rs:10:5
+   |
+LL |     bytes.iter().map(|b| {{{{{ format!("{b:02X}") }}}}}).collect()
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: call `fold` instead
+  --> $DIR/format_collect.rs:10:18
+   |
+LL |     bytes.iter().map(|b| {{{{{ format!("{b:02X}") }}}}}).collect()
+   |                  ^^^
+help: ... and use the `write!` macro here
+  --> $DIR/format_collect.rs:10:32
+   |
+LL |     bytes.iter().map(|b| {{{{{ format!("{b:02X}") }}}}}).collect()
+   |                                ^^^^^^^^^^^^^^^^^^
+   = note: this can be written more efficiently by appending to a `String` directly
+
+error: use of `format!` to build up a string from an iterator
+  --> $DIR/format_collect.rs:24:5
    |
 LL | /     (1..10)
 LL | |         .map(|s| {
@@ -29,16 +47,16 @@ LL | |         .collect()
    | |__________________^
    |
 help: call `fold` instead
-  --> $DIR/format_collect.rs:20:10
+  --> $DIR/format_collect.rs:25:10
    |
 LL |         .map(|s| {
    |          ^^^
 help: ... and use the `write!` macro here
-  --> $DIR/format_collect.rs:22:13
+  --> $DIR/format_collect.rs:27:13
    |
 LL |             format!("{s} {y}")
    |             ^^^^^^^^^^^^^^^^^^
    = note: this can be written more efficiently by appending to a `String` directly
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 

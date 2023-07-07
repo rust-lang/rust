@@ -5,6 +5,11 @@ fn hex_encode(bytes: &[u8]) -> String {
     bytes.iter().map(|b| format!("{b:02X}")).collect()
 }
 
+#[rustfmt::skip]
+fn hex_encode_deep(bytes: &[u8]) -> String {
+    bytes.iter().map(|b| {{{{{ format!("{b:02X}") }}}}}).collect()
+}
+
 macro_rules! fmt {
     ($x:ident) => {
         format!("{x:02X}", x = $x)

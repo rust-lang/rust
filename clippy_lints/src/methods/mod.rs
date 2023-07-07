@@ -3385,7 +3385,12 @@ declare_clippy_lint! {
     ///
     /// ### Why is this bad?
     /// This allocates a new string for every element in the iterator.
-    /// This can be done more efficiently by creating the `String` once and appending to it using `Iterator::fold`.
+    /// This can be done more efficiently by creating the `String` once and appending to it in `Iterator::fold`,
+    /// using either the `write!` macro which supports exactly the same syntax as the `format!` macro,
+    /// or concatenating with `+` in case the iterator yields `&str`/`String`.
+    ///
+    /// Note also that `write!`-ing into a `String` can never fail, despite the return type of `write!` being `std::fmt::Result`,
+    /// so it can be safely ignored or unwrapped.
     ///
     /// ### Example
     /// ```rust
