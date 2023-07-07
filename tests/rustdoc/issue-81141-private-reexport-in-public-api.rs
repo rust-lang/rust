@@ -112,3 +112,13 @@ pub fn bar14() -> nested::nested2::Whatever3 {
 pub fn bar15() -> nested::nested2::Whatever4 {
     Whatever
 }
+
+use external::Public as Private;
+
+pub mod external {
+    pub struct Public;
+
+    // @has 'foo/external/fn.make.html'
+    // @has - '//*[@class="rust item-decl"]/code' 'pub fn make() -> Public'
+    pub fn make() -> super::Private { super::Private }
+}

@@ -1497,8 +1497,17 @@ fn first_non_private(
             (cx.tcx.local_parent(hir_id.owner.def_id), leaf.ident)
         }
         // Crate paths are not. We start from the crate root.
-        [parent, leaf] if parent.ident.name == kw::Crate => {
+        [parent, leaf] if matches!(parent.ident.name, kw::Crate | kw::PathRoot) => {
             (LOCAL_CRATE.as_def_id().as_local()?, leaf.ident)
+        }
+        [parent, leaf] if parent.ident.name == kw::Super => {
+            let parent_mod = cx.tcx.parent_module(hir_id);
+            if let Some(super_parent) = cx.tcx.opt_local_parent(parent_mod) {
+                (super_parent, leaf.ident)
+            } else {
+                // If we can't find the parent of the parent, then the parent is already the crate.
+                (LOCAL_CRATE.as_def_id().as_local()?, leaf.ident)
+            }
         }
         // Absolute paths are not. We start from the parent of the item.
         [.., parent, leaf] => (parent.res.opt_def_id()?.as_local()?, leaf.ident),
