@@ -2,6 +2,7 @@
 
 use super::search_graph::OverflowHandler;
 use super::{EvalCtxt, SolverMode};
+use crate::solve::CanonicalResponseExt;
 use crate::traits::coherence;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::def_id::DefId;
@@ -84,7 +85,7 @@ pub(super) enum CandidateSource {
     ///     let _y = x.clone();
     /// }
     /// ```
-    AliasBound,
+    AliasBound(ty::AliasKind),
 }
 
 /// Records additional information about what kind of built-in impl this is.
@@ -510,7 +511,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         goal: Goal<'tcx, G>,
         candidates: &mut Vec<Candidate<'tcx>>,
     ) {
-        let alias_ty = match goal.predicate.self_ty().kind() {
+        let (kind, alias_ty) = match goal.predicate.self_ty().kind() {
             ty::Bool
             | ty::Char
             | ty::Int(_)
@@ -541,14 +542,14 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_))
             | ty::Bound(..) => bug!("unexpected self type for `{goal:?}`"),
             // Excluding IATs and type aliases here as they don't have meaningful item bounds.
-            ty::Alias(ty::Projection | ty::Opaque, alias_ty) => alias_ty,
+            &ty::Alias(kind @ (ty::Projection | ty::Opaque), alias_ty) => (kind, alias_ty),
         };
 
         for assumption in self.tcx().item_bounds(alias_ty.def_id).subst(self.tcx(), alias_ty.substs)
         {
             match G::consider_alias_bound_candidate(self, goal, assumption) {
                 Ok(result) => {
-                    candidates.push(Candidate { source: CandidateSource::AliasBound, result })
+                    candidates.push(Candidate { source: CandidateSource::AliasBound(kind), result })
                 }
                 Err(NoSolution) => (),
             }
@@ -772,23 +773,36 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         // Doing so is incomplete and would therefore be unsound during coherence.
         match self.solver_mode() {
             SolverMode::Coherence => (),
-            // Prioritize `ParamEnv` candidates only if they do not guide inference.
+            // Incompletely prioritize candidates from the environment-
             //
-            // This is still incomplete as we may add incorrect region bounds.
+            // See https://github.com/rust-lang/trait-system-refactor-initiative/issues/45
+            // for more details.
             SolverMode::Normal => {
+                // Prefer candidates from the environment if they only add region constraints.
                 let param_env_responses = candidates
                     .iter()
                     .filter(|c| {
                         matches!(
                             c.source,
-                            CandidateSource::ParamEnv(_) | CandidateSource::AliasBound
+                            CandidateSource::ParamEnv(_) | CandidateSource::AliasBound(_)
                         )
                     })
                     .map(|c| c.result)
                     .collect::<Vec<_>>();
                 if let Some(result) = self.try_merge_responses(&param_env_responses) {
-                    // We strongly prefer alias and param-env bounds here, even if they affect inference.
-                    // See https://github.com/rust-lang/trait-system-refactor-initiative/issues/11.
+                    if result.has_only_region_constraints() {
+                        return Ok(result);
+                    }
+                }
+
+                // Prefer alias bound candidates for opaque types.
+                let opaque_alias_bounds = candidates
+                    .iter()
+                    .filter(|c| matches!(c.source, CandidateSource::AliasBound(ty::Opaque)))
+                    .map(|c| c.result)
+                    .collect::<Vec<_>>();
+
+                if let Some(result) = self.try_merge_responses(&opaque_alias_bounds) {
                     return Ok(result);
                 }
             }
