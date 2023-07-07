@@ -26,7 +26,9 @@ pub trait SimdFloat: Copy + Sealed {
     /// # Example
     /// ```
     /// # #![feature(portable_simd)]
-    /// # use core::simd::Simd;
+    /// # #[cfg(feature = "as_crate")] use core_simd::simd;
+    /// # #[cfg(not(feature = "as_crate"))] use core::simd;
+    /// # use simd::{f32x2, SimdFloat, SimdInt, Simd};
     /// let floats: Simd<f32, 4> = Simd::from_array([1.9, -4.5, f32::INFINITY, f32::NAN]);
     /// let ints = floats.cast::<i32>();
     /// assert_eq!(ints, Simd::from_array([1, -4, i32::MAX, 0]));
