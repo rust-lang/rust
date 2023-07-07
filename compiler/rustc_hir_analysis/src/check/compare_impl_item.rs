@@ -669,11 +669,13 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
         )
         .fold_with(&mut collector);
 
-    debug_assert_ne!(
-        collector.types.len(),
-        0,
-        "expect >1 RPITITs in call to `collect_return_position_impl_trait_in_trait_tys`"
-    );
+    if !unnormalized_trait_sig.output().references_error() {
+        debug_assert_ne!(
+            collector.types.len(),
+            0,
+            "expect >1 RPITITs in call to `collect_return_position_impl_trait_in_trait_tys`"
+        );
+    }
 
     let trait_sig = ocx.normalize(&norm_cause, param_env, unnormalized_trait_sig);
     trait_sig.error_reported()?;
