@@ -187,7 +187,7 @@ mod tests {
 fn main() {
     {
         let (energy_before, energy_after) = nbody::run(1000);
-        println!("Energy before: {}", energy_before);
-        println!("Energy after:  {}", energy_after);
+        println!("Energy before: {energy_before}");
+        println!("Energy after:  {energy_after}");
     }
 }
