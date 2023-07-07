@@ -4,7 +4,7 @@ use rustc_hir::def_id::DefId;
 use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, InferOk};
 use rustc_infer::traits::util::supertraits;
 use rustc_infer::traits::{
-    Obligation, PredicateObligation, Selection, SelectionResult, TraitObligation,
+    Obligation, PolyTraitObligation, PredicateObligation, Selection, SelectionResult,
 };
 use rustc_middle::traits::solve::{CanonicalInput, Certainty, Goal};
 use rustc_middle::traits::{
@@ -23,14 +23,14 @@ use crate::traits::vtable::{count_own_vtable_entries, prepare_vtable_segments, V
 pub trait InferCtxtSelectExt<'tcx> {
     fn select_in_new_trait_solver(
         &self,
-        obligation: &TraitObligation<'tcx>,
+        obligation: &PolyTraitObligation<'tcx>,
     ) -> SelectionResult<'tcx, Selection<'tcx>>;
 }
 
 impl<'tcx> InferCtxtSelectExt<'tcx> for InferCtxt<'tcx> {
     fn select_in_new_trait_solver(
         &self,
-        obligation: &TraitObligation<'tcx>,
+        obligation: &PolyTraitObligation<'tcx>,
     ) -> SelectionResult<'tcx, Selection<'tcx>> {
         assert!(self.next_trait_solver());
 
