@@ -248,6 +248,9 @@ hir_analysis_static_specialize = cannot specialize on `'static` lifetime
 
 hir_analysis_substs_on_overridden_impl = could not resolve substs on overridden impl
 
+hir_analysis_tait_forward_compat = item constrains opaque type that is not in its signature
+    .note = this item must mention the opaque type in its signature in order to be able to register hidden types
+
 hir_analysis_target_feature_on_main = `main` function is not allowed to have `#[target_feature]`
 
 hir_analysis_too_large_static = extern static is too large for the current architecture

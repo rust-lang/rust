@@ -6,7 +6,7 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::DUMMY_SP;
 
-use crate::errors::UnconstrainedOpaqueType;
+use crate::errors::{TaitForwardCompat, UnconstrainedOpaqueType};
 
 /// Checks "defining uses" of opaque `impl Trait` types to ensure that they meet the restrictions
 /// laid for "higher-order pattern unification".
@@ -139,6 +139,15 @@ impl TaitConstraintLocator<'_> {
                 continue;
             }
             constrained = true;
+            if !self.tcx.opaque_types_defined_by(item_def_id).contains(&self.def_id) {
+                self.tcx.sess.emit_err(TaitForwardCompat {
+                    span: hidden_type.span,
+                    item_span: self
+                        .tcx
+                        .def_ident_span(item_def_id)
+                        .unwrap_or_else(|| self.tcx.def_span(item_def_id)),
+                });
+            }
             let concrete_type =
                 self.tcx.erase_regions(hidden_type.remap_generic_params_to_declaration_params(
                     opaque_type_key,

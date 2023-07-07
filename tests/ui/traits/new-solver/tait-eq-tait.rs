@@ -6,12 +6,13 @@
 
 #![feature(type_alias_impl_trait)]
 
-type Tait = impl Sized;
-type Tait2 = impl Sized;
-
-fn mk<T>() -> T { todo!() }
+fn mk<T>() -> T {
+    todo!()
+}
 
 fn main() {
+    type Tait = impl Sized;
+    type Tait2 = impl Sized;
     let x: Tait = 1u32;
     let y: Tait2 = x;
 }

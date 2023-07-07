@@ -226,7 +226,7 @@ fn register_functions(bundle: &mut FluentBundle) {
 pub type LazyFallbackBundle = Lrc<Lazy<FluentBundle, impl FnOnce() -> FluentBundle>>;
 
 /// Return the default `FluentBundle` with standard "en-US" diagnostic messages.
-#[instrument(level = "trace")]
+#[instrument(level = "trace", skip(resources))]
 pub fn fallback_fluent_bundle(
     resources: Vec<&'static str>,
     with_directionality_markers: bool,
@@ -242,7 +242,6 @@ pub fn fallback_fluent_bundle(
         for resource in resources {
             let resource = FluentResource::try_new(resource.to_string())
                 .expect("failed to parse fallback fluent resource");
-            trace!(?resource);
             fallback_bundle.add_resource_overriding(resource);
         }
 

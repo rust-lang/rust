@@ -11,6 +11,11 @@ LL |     let _: &str = bomp();
    |
    = note: expected reference `&str`
             found opaque type `Boo`
+note: this item must have the opaque type in its signature in order to be able to register hidden types
+  --> $DIR/no_revealing_outside_defining_module.rs:14:4
+   |
+LL | fn bomp2() {
+   |    ^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/no_revealing_outside_defining_module.rs:19:5
@@ -25,6 +30,11 @@ LL |     ""
    |
    = note: expected opaque type `Boo`
                 found reference `&'static str`
+note: this item must have the opaque type in its signature in order to be able to register hidden types
+  --> $DIR/no_revealing_outside_defining_module.rs:18:4
+   |
+LL | fn bomp() -> boo::Boo {
+   |    ^^^^
 
 error: aborting due to 2 previous errors
 

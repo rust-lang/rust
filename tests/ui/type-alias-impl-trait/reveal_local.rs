@@ -16,7 +16,7 @@ fn not_good() {
     //~^ ERROR: cannot check whether the hidden type of `reveal_local[9507]::Foo::{opaque#0}` satisfies auto traits
 }
 
-fn not_gooder() {
+fn not_gooder() -> Foo {
     // Constrain `Foo = u32`
     let x: Foo = 22_u32;
 
@@ -24,6 +24,8 @@ fn not_gooder() {
     // need extra roundabout logic to support it.
     is_send::<Foo>();
     //~^ ERROR: cannot check whether the hidden type of `reveal_local[9507]::Foo::{opaque#0}` satisfies auto traits
+
+    x
 }
 
 fn main() {}

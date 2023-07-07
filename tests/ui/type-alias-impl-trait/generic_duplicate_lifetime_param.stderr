@@ -1,5 +1,17 @@
 error: non-defining opaque type use in defining scope
-  --> $DIR/generic_duplicate_lifetime_param.rs:12:5
+  --> $DIR/generic_duplicate_lifetime_param.rs:11:26
+   |
+LL | fn one<'a>(t: &'a ()) -> Two<'a, 'a> {
+   |                          ^^^^^^^^^^^ generic argument `'a` used twice
+   |
+note: for this opaque type
+  --> $DIR/generic_duplicate_lifetime_param.rs:9:20
+   |
+LL | type Two<'a, 'b> = impl std::fmt::Debug + Captures<'a> + Captures<'b>;
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: non-defining opaque type use in defining scope
+  --> $DIR/generic_duplicate_lifetime_param.rs:13:5
    |
 LL |     t
    |     ^
@@ -10,5 +22,5 @@ note: lifetime used multiple times
 LL | type Two<'a, 'b> = impl std::fmt::Debug + Captures<'a> + Captures<'b>;
    |          ^^  ^^
 
-error: aborting due to previous error
+error: aborting due to 2 previous errors
 

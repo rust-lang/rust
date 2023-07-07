@@ -5,10 +5,10 @@ LL |     return func(&"oof");
    |            ^^^^^^^^^^^^ one of the two opaque types used here has to be outside its defining scope
    |
 note: opaque type whose hidden type is being assigned
-  --> $DIR/issue-70877.rs:28:13
+  --> $DIR/issue-70877.rs:28:19
    |
-LL | fn oof() -> impl std::fmt::Debug {
-   |             ^^^^^^^^^^^^^^^^^^^^
+LL | fn oof(_: Foo) -> impl std::fmt::Debug {
+   |                   ^^^^^^^^^^^^^^^^^^^^
 note: opaque type being used as hidden type
   --> $DIR/issue-70877.rs:4:15
    |
