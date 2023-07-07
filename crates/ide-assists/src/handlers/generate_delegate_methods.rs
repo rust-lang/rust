@@ -3,8 +3,7 @@ use std::collections::HashSet;
 use hir::{self, HasCrate, HasSource, HasVisibility};
 use syntax::{
     ast::{
-        self, edit::IndentLevel, edit_in_place::Indent, make, AstNode, HasGenericParams, HasName,
-        HasVisibility as _,
+        self, edit_in_place::Indent, make, AstNode, HasGenericParams, HasName, HasVisibility as _,
     },
     ted,
 };
@@ -141,7 +140,6 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
                     is_unsafe,
                 )
                 .clone_for_update();
-                f.reindent_to(IndentLevel(1));
 
                 // Create or update an impl block, attach the function to it,
                 // then insert into our code.
@@ -149,6 +147,9 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
                     Some(impl_def) => {
                         // Remember where in our source our `impl` block lives.
                         let impl_def = edit.make_mut(impl_def);
+
+                        // Fixup function indentation.
+                        f.reindent_to(impl_def.indent_level() + 1);
 
                         // Attach the function to the impl block.
                         let assoc_items = impl_def.get_or_create_assoc_item_list();
@@ -177,15 +178,22 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
                         )
                         .clone_for_update();
 
+                        // Fixup function indentation.
+                        f.reindent_to(impl_def.indent_level() + 1);
+
                         let assoc_items = impl_def.get_or_create_assoc_item_list();
                         assoc_items.add_item(f.clone().into());
+
+                        // Fixup impl_def indentation
+                        let indent = strukt.indent_level();
+                        impl_def.reindent_to(indent);
 
                         // Insert the impl block.
                         let strukt = edit.make_mut(strukt.clone());
                         ted::insert_all(
                             ted::Position::after(strukt.syntax()),
                             vec![
-                                make::tokens::blank_line().into(),
+                                make::tokens::whitespace(&format!("\n\n{indent}")).into(),
                                 impl_def.syntax().clone().into(),
                             ],
                         );
@@ -243,6 +251,45 @@ impl Person {
     }
 
     #[test]
+    fn test_generate_delegate_create_impl_block_match_indent() {
+        check_assist(
+            generate_delegate_methods,
+            r#"
+mod indent {
+    struct Age(u8);
+    impl Age {
+        fn age(&self) -> u8 {
+            self.0
+        }
+    }
+
+    struct Person {
+        ag$0e: Age,
+    }
+}"#,
+            r#"
+mod indent {
+    struct Age(u8);
+    impl Age {
+        fn age(&self) -> u8 {
+            self.0
+        }
+    }
+
+    struct Person {
+        age: Age,
+    }
+
+    impl Person {
+        $0fn age(&self) -> u8 {
+            self.age.age()
+        }
+    }
+}"#,
+        );
+    }
+
+    #[test]
     fn test_generate_delegate_update_impl_block() {
         check_assist(
             generate_delegate_methods,
@@ -274,6 +321,47 @@ struct Person {
 impl Person {
     $0fn age(&self) -> u8 {
         self.age.age()
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_generate_delegate_update_impl_block_match_indent() {
+        check_assist(
+            generate_delegate_methods,
+            r#"
+mod indent {
+    struct Age(u8);
+    impl Age {
+        fn age(&self) -> u8 {
+            self.0
+        }
+    }
+
+    struct Person {
+        ag$0e: Age,
+    }
+
+    impl Person {}
+}"#,
+            r#"
+mod indent {
+    struct Age(u8);
+    impl Age {
+        fn age(&self) -> u8 {
+            self.0
+        }
+    }
+
+    struct Person {
+        age: Age,
+    }
+
+    impl Person {
+        $0fn age(&self) -> u8 {
+            self.age.age()
+        }
     }
 }"#,
         );
