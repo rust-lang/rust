@@ -95,7 +95,8 @@ no_mangle! {
     target_os = "xous",
     all(target_arch = "x86_64", target_os = "uefi"),
     all(target_arch = "xtensa", target_os = "none"),
-    all(target_vendor = "fortanix", target_env = "sgx")
+    all(target_vendor = "fortanix", target_env = "sgx"),
+    target_env = "msvc"
 ))]
 intrinsics! {
     pub extern "C" fn lgamma_r(x: f64, s: &mut i32) -> f64 {
