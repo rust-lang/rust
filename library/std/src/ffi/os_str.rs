@@ -141,6 +141,51 @@ impl OsString {
         OsString { inner: Buf::from_string(String::new()) }
     }
 
+    /// Converts bytes to an `OsString` without checking that the bytes contains
+    /// valid [`OsStr`]-encoded data.
+    ///
+    /// The byte encoding is an unspecified, platform-specific, self-synchronizing superset of UTF-8.
+    /// By being a self-synchronizing superset of UTF-8, this encoding is also a superset of 7-bit
+    /// ASCII.
+    ///
+    /// See the [module's toplevel documentation about conversions][conversions] for safe,
+    /// cross-platform [conversions] from/to native representations.
+    ///
+    /// # Safety
+    ///
+    /// As the encoding is unspecified, callers must pass in bytes that originated as a mixture of
+    /// validated UTF-8 and bytes from [`OsStr::as_os_str_bytes`] from within the same rust version
+    /// built for the same target platform.  For example, reconstructing an `OsString` from bytes sent
+    /// over the network or stored in a file will likely violate these safety rules.
+    ///
+    /// Due to the encoding being self-synchronizing, the bytes from [`OsStr::as_os_str_bytes`] can be
+    /// split either immediately before or immediately after any valid non-empty UTF-8 substring.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// #![feature(os_str_bytes)]
+    ///
+    /// use std::ffi::OsStr;
+    ///
+    /// let os_str = OsStr::new("Mary had a little lamb");
+    /// let bytes = os_str.as_os_str_bytes();
+    /// let words = bytes.split(|b| *b == b' ');
+    /// let words: Vec<&OsStr> = words.map(|word| {
+    ///     // SAFETY:
+    ///     // - Each `word` only contains content that originated from `OsStr::as_os_str_bytes`
+    ///     // - Only split with ASCII whitespace which is a non-empty UTF-8 substring
+    ///     unsafe { OsStr::from_os_str_bytes_unchecked(word) }
+    /// }).collect();
+    /// ```
+    ///
+    /// [conversions]: super#conversions
+    #[inline]
+    #[unstable(feature = "os_str_bytes", issue = "111544")]
+    pub unsafe fn from_os_str_bytes_unchecked(bytes: Vec<u8>) -> Self {
+        OsString { inner: Buf::from_os_str_bytes_unchecked(bytes) }
+    }
+
     /// Converts to an [`OsStr`] slice.
     ///
     /// # Examples
@@ -157,6 +202,26 @@ impl OsString {
     #[inline]
     pub fn as_os_str(&self) -> &OsStr {
         self
+    }
+
+    /// Converts the `OsString` into a byte slice.  To convert the byte slice back into an
+    /// `OsString`, use the [`OsStr::from_os_str_bytes_unchecked`] function.
+    ///
+    /// The byte encoding is an unspecified, platform-specific, self-synchronizing superset of UTF-8.
+    /// By being a self-synchronizing superset of UTF-8, this encoding is also a superset of 7-bit
+    /// ASCII.
+    ///
+    /// Note: As the encoding is unspecified, any sub-slice of bytes that is not valid UTF-8 should
+    /// be treated as opaque and only comparable within the same rust version built for the same
+    /// target platform.  For example, sending the bytes over the network or storing it in a file
+    /// will likely result in incompatible data.  See [`OsString`] for more encoding details
+    /// and [`std::ffi`] for platform-specific, specified conversions.
+    ///
+    /// [`std::ffi`]: crate::ffi
+    #[inline]
+    #[unstable(feature = "os_str_bytes", issue = "111544")]
+    pub fn into_os_str_bytes(self) -> Vec<u8> {
+        self.inner.into_os_str_bytes()
     }
 
     /// Converts the `OsString` into a [`String`] if it contains valid Unicode data.
