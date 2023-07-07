@@ -817,6 +817,13 @@ impl Step for Rustc {
         if compiler.stage != 0 {
             match builder.config.rust_lto {
                 RustcLto::Thin | RustcLto::Fat => {
+                    if target == "x86_64-pc-windows-msvc" {
+                        panic!(
+                            "(Thin)LTO is currently known to produce miscompilations on `x86_64-pc-windows-msvc`. \
+See https://github.com/rust-lang/rust/issues/109067."
+                        );
+                    }
+
                     // Since using LTO for optimizing dylibs is currently experimental,
                     // we need to pass -Zdylib-lto.
                     cargo.rustflag("-Zdylib-lto");
