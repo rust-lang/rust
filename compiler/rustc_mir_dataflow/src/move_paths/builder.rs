@@ -39,18 +39,18 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
                     locals: body
                         .local_decls
                         .iter_enumerated()
-                        .filter(|(_, l)| !l.is_deref_temp())
-                        .map(|(i, _)| {
-                            (
-                                i,
+                        .map(|(i, l)| {
+                            if l.is_deref_temp() {
+                                MovePathIndex::MAX
+                            } else {
                                 Self::new_move_path(
                                     &mut move_paths,
                                     &mut path_map,
                                     &mut init_path_map,
                                     None,
                                     Place::from(i),
-                                ),
-                            )
+                                )
+                            }
                         })
                         .collect(),
                     projections: Default::default(),
@@ -285,8 +285,14 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
     fn gather_statement(&mut self, stmt: &Statement<'tcx>) {
         match &stmt.kind {
             StatementKind::Assign(box (place, Rvalue::CopyForDeref(reffed))) => {
-                assert!(self.builder.body.local_decls[place.local].is_deref_temp());
-                self.builder.data.rev_lookup.un_derefer.insert(place.as_local().unwrap(), *reffed);
+                let local = place.as_local().unwrap();
+                assert!(self.builder.body.local_decls[local].is_deref_temp());
+
+                let rev_lookup = &mut self.builder.data.rev_lookup;
+
+                rev_lookup.un_derefer.insert(local, reffed.as_ref());
+                let base_local = rev_lookup.un_derefer.deref_chain(local).first().unwrap().local;
+                rev_lookup.locals[local] = rev_lookup.locals[base_local];
             }
             StatementKind::Assign(box (place, rval)) => {
                 self.create_move_path(*place);

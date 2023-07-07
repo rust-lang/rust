@@ -1,6 +1,6 @@
 use crate::move_paths::builder::MoveDat;
 use crate::un_derefer::UnDerefer;
-use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
@@ -291,7 +291,7 @@ impl Init {
 /// Tables mapping from a place to its MovePathIndex.
 #[derive(Debug)]
 pub struct MovePathLookup<'tcx> {
-    locals: FxIndexMap<Local, MovePathIndex>,
+    locals: IndexVec<Local, MovePathIndex>,
 
     /// projections are made from a base-place and a projection
     /// elem. The base-place will have a unique MovePathIndex; we use
@@ -331,17 +331,9 @@ impl<'tcx> MovePathLookup<'tcx> {
         LookupResult::Exact(result)
     }
 
+    #[inline]
     pub fn find_local(&self, local: Local) -> MovePathIndex {
-        let deref_chain = self.un_derefer.deref_chain(local);
-
-        let local = match deref_chain.first() {
-            Some(place) => place.local,
-            None => local,
-        };
-
-        *self.locals.get(&local).unwrap_or_else(|| {
-            bug!("base local ({local:?}) of deref_chain should not be a deref temp")
-        })
+        self.locals[local]
     }
 
     /// An enumerated iterator of `local`s and their associated
@@ -349,7 +341,7 @@ impl<'tcx> MovePathLookup<'tcx> {
     pub fn iter_locals_enumerated(
         &self,
     ) -> impl DoubleEndedIterator<Item = (Local, MovePathIndex)> + ExactSizeIterator + '_ {
-        self.locals.iter().map(|(&l, &idx)| (l, idx))
+        self.locals.iter_enumerated().map(|(l, &idx)| (l, idx))
     }
 }
 
