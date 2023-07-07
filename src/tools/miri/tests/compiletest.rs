@@ -284,7 +284,6 @@ fn run_dep_mode(target: String, mut args: impl Iterator<Item = OsString>) -> Res
     }
     let mut cmd = config.program.build(&config.out_dir);
 
-    cmd.arg("--color").arg("always");
     cmd.arg(path);
 
     cmd.args(args);
