@@ -335,8 +335,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         following_seg: Option<&Segment>,
     ) -> Vec<ImportSuggestion> {
         if let Some(segment) = prefix_path.last() &&
-            let Some(following_seg) = following_seg &&
-            prefix_path.len() == 1
+            let Some(following_seg) = following_seg
         {
             let candidates = self.r.lookup_import_candidates(
                 segment.ident,
