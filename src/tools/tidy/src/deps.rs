@@ -113,7 +113,6 @@ const PERMITTED_DEPS_LOCATION: &str = concat!(file!(), ":", line!());
 /// rustc. Please check with the compiler team before adding an entry.
 const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     // tidy-alphabetical-start
-    "addr2line",
     "adler",
     "ahash",
     "aho-corasick",
