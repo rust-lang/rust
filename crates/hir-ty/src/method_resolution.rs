@@ -682,7 +682,7 @@ pub fn is_dyn_method(
 /// Looks up the impl method that actually runs for the trait method `func`.
 ///
 /// Returns `func` if it's not a method defined in a trait or the lookup failed.
-pub fn lookup_impl_method(
+pub(crate) fn lookup_impl_method_query(
     db: &dyn HirDatabase,
     env: Arc<TraitEnvironment>,
     func: FunctionId,

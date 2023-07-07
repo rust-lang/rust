@@ -32,7 +32,7 @@ impl Evaluator<'_> {
         def: FunctionId,
         args: &[IntervalAndTy],
         generic_args: &Substitution,
-        locals: &Locals<'_>,
+        locals: &Locals,
         destination: Interval,
         span: MirSpan,
     ) -> Result<bool> {
@@ -168,7 +168,7 @@ impl Evaluator<'_> {
 
     fn detect_lang_function(&self, def: FunctionId) -> Option<LangItem> {
         use LangItem::*;
-        let candidate = lang_attr(self.db.upcast(), def)?;
+        let candidate = self.db.lang_attr(def.into())?;
         // We want to execute these functions with special logic
         if [PanicFmt, BeginPanic, SliceLen, DropInPlace].contains(&candidate) {
             return Some(candidate);
@@ -181,7 +181,7 @@ impl Evaluator<'_> {
         it: LangItem,
         generic_args: &Substitution,
         args: &[Vec<u8>],
-        locals: &Locals<'_>,
+        locals: &Locals,
         span: MirSpan,
     ) -> Result<Vec<u8>> {
         use LangItem::*;
@@ -201,7 +201,7 @@ impl Evaluator<'_> {
                         not_supported!("std::fmt::format not found");
                     };
                     let hir_def::resolver::ValueNs::FunctionId(format_fn) = format_fn else { not_supported!("std::fmt::format is not a function") };
-                    let message_string = self.interpret_mir(&*self.db.mir_body(format_fn.into()).map_err(|e| MirEvalError::MirLowerError(format_fn, e))?, args.cloned())?;
+                    let message_string = self.interpret_mir(self.db.mir_body(format_fn.into()).map_err(|e| MirEvalError::MirLowerError(format_fn, e))?, args.map(|x| IntervalOrOwned::Owned(x.clone())))?;
                     let addr = Address::from_bytes(&message_string[self.ptr_size()..2 * self.ptr_size()])?;
                     let size = from_bytes!(usize, message_string[2 * self.ptr_size()..]);
                     Ok(std::string::String::from_utf8_lossy(self.read_memory(addr, size)?).into_owned())
@@ -245,7 +245,7 @@ impl Evaluator<'_> {
         args: &[IntervalAndTy],
         _generic_args: &Substitution,
         destination: Interval,
-        locals: &Locals<'_>,
+        locals: &Locals,
         _span: MirSpan,
     ) -> Result<()> {
         match as_str {
@@ -353,7 +353,7 @@ impl Evaluator<'_> {
         args: &[IntervalAndTy],
         generic_args: &Substitution,
         destination: Interval,
-        locals: &Locals<'_>,
+        locals: &Locals,
         span: MirSpan,
     ) -> Result<()> {
         if let Some(name) = name.strip_prefix("simd_") {
@@ -368,7 +368,7 @@ impl Evaluator<'_> {
         args: &[IntervalAndTy],
         generic_args: &Substitution,
         destination: Interval,
-        locals: &Locals<'_>,
+        locals: &Locals,
         span: MirSpan,
     ) -> Result<()> {
         if let Some(name) = name.strip_prefix("atomic_") {
@@ -873,15 +873,17 @@ impl Evaluator<'_> {
                         .as_trait()
                         .and_then(|it| self.db.trait_data(it).method_by_name(&name![call_once]))
                     {
-                        return self.exec_fn_trait(
+                        self.exec_fn_trait(
                             def,
                             &args,
                             // FIXME: wrong for manual impls of `FnOnce`
                             Substitution::empty(Interner),
                             locals,
                             destination,
+                            None,
                             span,
-                        );
+                        )?;
+                        return Ok(());
                     }
                 }
                 not_supported!("FnOnce was not available for executing const_eval_select");
@@ -894,7 +896,7 @@ impl Evaluator<'_> {
         &mut self,
         ty: &Ty,
         metadata: Interval,
-        locals: &Locals<'_>,
+        locals: &Locals,
     ) -> Result<(usize, usize)> {
         Ok(match ty.kind(Interner) {
             TyKind::Str => (from_bytes!(usize, metadata.get(self)?), 1),
@@ -948,7 +950,7 @@ impl Evaluator<'_> {
         args: &[IntervalAndTy],
         generic_args: &Substitution,
         destination: Interval,
-        locals: &Locals<'_>,
+        locals: &Locals,
         _span: MirSpan,
     ) -> Result<()> {
         // We are a single threaded runtime with no UB checking and no optimization, so
