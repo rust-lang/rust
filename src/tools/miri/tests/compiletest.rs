@@ -288,6 +288,5 @@ fn run_dep_mode(target: String, mut args: impl Iterator<Item = OsString>) -> Res
     cmd.arg(path);
 
     cmd.args(args);
-    println!("Running {cmd:?}");
     if cmd.spawn()?.wait()?.success() { Ok(()) } else { std::process::exit(1) }
 }

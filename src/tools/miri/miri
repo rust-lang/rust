@@ -325,6 +325,7 @@ run|run-dep)
         MIRIFLAGS="$MIRIFLAGS --target $MIRI_TEST_TARGET"
     fi
 
+    CARGO="$CARGO --quiet"
     # First build and get a sysroot.
     $CARGO build $CARGO_EXTRA_FLAGS --manifest-path "$MIRIDIR"/Cargo.toml
     find_sysroot
