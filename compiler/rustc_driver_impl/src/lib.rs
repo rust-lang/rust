@@ -1314,13 +1314,7 @@ pub fn ice_path() -> &'static Option<PathBuf> {
         let mut path = match std::env::var("RUSTC_ICE").as_deref() {
             // Explicitly opting out of writing ICEs to disk.
             Ok("0") => return None,
-            Ok(s) => match PathBuf::try_from(s) {
-                Ok(p) => p,
-                // On parse error, fallback to the default directory, otherwise the backtraces might be
-                // accidentally lost due to a simple typo. The directory might still not be accessible
-                // for some other reason.
-                Err(_) => std::env::current_dir().unwrap_or_default(),
-            },
+            Ok(s) => PathBuf::from(s),
             Err(_) => std::env::current_dir().unwrap_or_default(),
         };
         let now: OffsetDateTime = SystemTime::now().into();
