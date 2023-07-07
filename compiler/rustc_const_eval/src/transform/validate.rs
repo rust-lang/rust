@@ -67,8 +67,8 @@ impl<'tcx> MirPass<'tcx> for Validator {
             unwind_edge_count: 0,
             reachable_blocks: traversal::reachable_as_bitset(body),
             storage_liveness,
-            place_cache: Vec::new(),
-            value_cache: Vec::new(),
+            place_cache: FxHashSet::default(),
+            value_cache: FxHashSet::default(),
         };
         checker.visit_body(body);
         checker.check_cleanup_control_flow();
@@ -95,8 +95,8 @@ struct TypeChecker<'a, 'tcx> {
     unwind_edge_count: usize,
     reachable_blocks: BitSet<BasicBlock>,
     storage_liveness: ResultsCursor<'a, 'tcx, MaybeStorageLive<'static>>,
-    place_cache: Vec<PlaceRef<'tcx>>,
-    value_cache: Vec<u128>,
+    place_cache: FxHashSet<PlaceRef<'tcx>>,
+    value_cache: FxHashSet<u128>,
 }
 
 impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
@@ -951,10 +951,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
 
                 self.value_cache.clear();
                 self.value_cache.extend(targets.iter().map(|(value, _)| value));
-                let all_len = self.value_cache.len();
-                self.value_cache.sort_unstable();
-                self.value_cache.dedup();
-                let has_duplicates = all_len != self.value_cache.len();
+                let has_duplicates = targets.iter().len() != self.value_cache.len();
                 if has_duplicates {
                     self.fail(
                         location,
@@ -987,16 +984,14 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 // passed by a reference to the callee. Consequently they must be non-overlapping.
                 // Currently this simply checks for duplicate places.
                 self.place_cache.clear();
-                self.place_cache.push(destination.as_ref());
+                self.place_cache.insert(destination.as_ref());
+                let mut has_duplicates = false;
                 for arg in args {
                     if let Operand::Move(place) = arg {
-                        self.place_cache.push(place.as_ref());
+                        has_duplicates |= !self.place_cache.insert(place.as_ref());
                     }
                 }
-                let all_len = self.place_cache.len();
-                let mut dedup = FxHashSet::default();
-                self.place_cache.retain(|p| dedup.insert(*p));
-                let has_duplicates = all_len != self.place_cache.len();
+
                 if has_duplicates {
                     self.fail(
                         location,

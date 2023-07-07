@@ -173,10 +173,18 @@ fn candidate_should_be_dropped_in_favor_of<'tcx>(
             victim_idx >= other_idx
         }
         (_, CandidateSource::ParamEnv(_)) => true,
+
+        (
+            CandidateSource::BuiltinImpl(BuiltinImplSource::Object),
+            CandidateSource::BuiltinImpl(BuiltinImplSource::Object),
+        ) => false,
+        (_, CandidateSource::BuiltinImpl(BuiltinImplSource::Object)) => true,
+
         (CandidateSource::Impl(victim_def_id), CandidateSource::Impl(other_def_id)) => {
             tcx.specializes((other_def_id, victim_def_id))
                 && other.result.value.certainty == Certainty::Yes
         }
+
         _ => false,
     }
 }
