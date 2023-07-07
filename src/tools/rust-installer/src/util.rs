@@ -15,8 +15,7 @@ use std::os::windows::fs::symlink_file;
 
 /// Converts a `&Path` to a UTF-8 `&str`.
 pub fn path_to_str(path: &Path) -> Result<&str> {
-    path.to_str()
-        .ok_or_else(|| format_err!("path is not valid UTF-8 '{}'", path.display()))
+    path.to_str().ok_or_else(|| format_err!("path is not valid UTF-8 '{}'", path.display()))
 }
 
 /// Wraps `fs::copy` with a nicer error message.
@@ -27,11 +26,7 @@ pub fn copy<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> Result<u64> {
         Ok(0)
     } else {
         let amt = fs::copy(&from, &to).with_context(|| {
-            format!(
-                "failed to copy '{}' to '{}'",
-                from.as_ref().display(),
-                to.as_ref().display()
-            )
+            format!("failed to copy '{}' to '{}'", from.as_ref().display(), to.as_ref().display())
         })?;
         Ok(amt)
     }
@@ -123,8 +118,12 @@ where
 }
 
 macro_rules! actor_field_default {
-    () => { Default::default() };
-    (= $expr:expr) => { $expr.into() }
+    () => {
+        Default::default()
+    };
+    (= $expr:expr) => {
+        $expr.into()
+    };
 }
 
 /// Creates an "actor" with default values, setters for all fields, and Clap parser support.

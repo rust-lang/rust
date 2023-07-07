@@ -105,7 +105,12 @@ pub(super) fn enter_wf_checking_ctxt<'tcx, F>(
     }
     f(&mut wfcx);
 
-    let assumed_wf_types = wfcx.ocx.assumed_wf_types(param_env, span, body_def_id);
+    let assumed_wf_types = match wfcx.ocx.assumed_wf_types_and_report_errors(param_env, body_def_id)
+    {
+        Ok(wf_types) => wf_types,
+        Err(_guar) => return,
+    };
+
     let implied_bounds = infcx.implied_bounds_tys(param_env, body_def_id, assumed_wf_types);
 
     let errors = wfcx.select_all_or_error();
@@ -556,7 +561,7 @@ fn gather_gat_bounds<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
                 // our example, the type was `Self`, which will also be
                 // `Self` in the GAT.
                 let ty_param = gat_generics.param_at(*ty_idx, tcx);
-                let ty_param = tcx.mk_ty_param(ty_param.index, ty_param.name);
+                let ty_param = Ty::new_param(tcx, ty_param.index, ty_param.name);
                 // Same for the region. In our example, 'a corresponds
                 // to the 'me parameter.
                 let region_param = gat_generics.param_at(*region_a_idx, tcx);

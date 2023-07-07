@@ -38,7 +38,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ty =
             if !lhs_ty.is_ty_var() && !rhs_ty.is_ty_var() && is_builtin_binop(lhs_ty, rhs_ty, op) {
                 self.enforce_builtin_binop_types(lhs.span, lhs_ty, rhs.span, rhs_ty, op);
-                self.tcx.mk_unit()
+                Ty::new_unit(self.tcx)
             } else {
                 return_ty
             };
@@ -297,7 +297,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             // error types are considered "builtin"
             Err(_) if lhs_ty.references_error() || rhs_ty.references_error() => {
-                self.tcx.ty_error_misc()
+                Ty::new_misc_error(self.tcx)
             }
             Err(errors) => {
                 let (_, trait_def_id) =
@@ -568,7 +568,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
 
                 let reported = err.emit();
-                self.tcx.ty_error(reported)
+                Ty::new_error(self.tcx, reported)
             }
         };
 
@@ -752,7 +752,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                     err.emit()
                 });
-                self.tcx.ty_error(guar)
+                Ty::new_error(self.tcx, guar)
             }
         }
     }

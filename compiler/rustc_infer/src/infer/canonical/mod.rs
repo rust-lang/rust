@@ -26,7 +26,7 @@ use crate::infer::{InferCtxt, RegionVariableOrigin, TypeVariableOrigin, TypeVari
 use rustc_index::IndexVec;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::GenericArg;
-use rustc_middle::ty::{self, List, TyCtxt};
+use rustc_middle::ty::{self, List, Ty, TyCtxt};
 use rustc_span::source_map::Span;
 
 pub use rustc_middle::infer::canonical::*;
@@ -128,7 +128,7 @@ impl<'tcx> InferCtxt<'tcx> {
             CanonicalVarKind::PlaceholderTy(ty::PlaceholderType { universe, bound }) => {
                 let universe_mapped = universe_map(universe);
                 let placeholder_mapped = ty::PlaceholderType { universe: universe_mapped, bound };
-                self.tcx.mk_placeholder(placeholder_mapped).into()
+                Ty::new_placeholder(self.tcx, placeholder_mapped).into()
             }
 
             CanonicalVarKind::Region(ui) => self
@@ -155,7 +155,7 @@ impl<'tcx> InferCtxt<'tcx> {
             CanonicalVarKind::PlaceholderConst(ty::PlaceholderConst { universe, bound }, ty) => {
                 let universe_mapped = universe_map(universe);
                 let placeholder_mapped = ty::PlaceholderConst { universe: universe_mapped, bound };
-                self.tcx.mk_const(placeholder_mapped, ty).into()
+                ty::Const::new_placeholder(self.tcx, placeholder_mapped, ty).into()
             }
         }
     }

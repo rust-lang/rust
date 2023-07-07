@@ -65,7 +65,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // us to give better error messages (pointing to a usually better
                 // arm for inconsistent arms or to the whole match when a `()` type
                 // is required).
-                Expectation::ExpectHasType(ety) if ety != self.tcx.mk_unit() => ety,
+                Expectation::ExpectHasType(ety) if ety != Ty::new_unit(self.tcx) => ety,
                 _ => self.next_ty_var(TypeVariableOrigin {
                     kind: TypeVariableOriginKind::MiscVariable,
                     span: expr.span,

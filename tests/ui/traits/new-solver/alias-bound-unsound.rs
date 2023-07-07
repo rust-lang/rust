@@ -21,9 +21,7 @@ impl Foo for () {
 fn main() {
     let x = String::from("hello, world");
     drop(<() as Foo>::copy_me(&x));
-    //~^ ERROR `<() as Foo>::Item: Copy` is not satisfied
-    //~| ERROR `<() as Foo>::Item` is not well-formed
-    //~| ERROR `<() as Foo>::Item` is not well-formed
+    //~^ ERROR the type `&<() as Foo>::Item` is not well-formed
     //~| ERROR `<() as Foo>::Item` is not well-formed
     println!("{x}");
 }

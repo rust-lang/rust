@@ -737,12 +737,18 @@ pub enum PrintRequest {
 pub enum TraitSolver {
     /// Classic trait solver in `rustc_trait_selection::traits::select`
     Classic,
-    /// Chalk trait solver
-    Chalk,
     /// Experimental trait solver in `rustc_trait_selection::solve`
     Next,
     /// Use the new trait solver during coherence
     NextCoherence,
+}
+
+#[derive(Default, Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum DumpSolverProofTree {
+    Always,
+    OnError,
+    #[default]
+    Never,
 }
 
 pub enum Input {
@@ -1021,6 +1027,7 @@ impl Default for Options {
             json_future_incompat: false,
             pretty: None,
             working_dir: RealFileName::LocalPath(std::env::current_dir().unwrap()),
+            color: ColorConfig::Auto,
         }
     }
 }
@@ -2801,6 +2808,7 @@ pub fn build_session_options(
         json_future_incompat,
         pretty,
         working_dir,
+        color,
     }
 }
 

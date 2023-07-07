@@ -1228,7 +1228,7 @@ pub trait PrettyPrinter<'tcx>:
                 // in order to place the projections inside the `<...>`.
                 if !resugared {
                     // Use a type that can't appear in defaults of type parameters.
-                    let dummy_cx = cx.tcx().mk_fresh_ty(0);
+                    let dummy_cx = Ty::new_fresh(cx.tcx(), 0);
                     let principal = principal.with_self_ty(cx.tcx(), dummy_cx);
 
                     let args = cx
@@ -1393,11 +1393,12 @@ pub trait PrettyPrinter<'tcx>:
         self,
         scalar: Scalar,
         ty: Ty<'tcx>,
-        print_ty: bool,
     ) -> Result<Self::Const, Self::Error> {
         match scalar {
-            Scalar::Ptr(ptr, _size) => self.pretty_print_const_scalar_ptr(ptr, ty, print_ty),
-            Scalar::Int(int) => self.pretty_print_const_scalar_int(int, ty, print_ty),
+            Scalar::Ptr(ptr, _size) => self.pretty_print_const_scalar_ptr(ptr, ty),
+            Scalar::Int(int) => {
+                self.pretty_print_const_scalar_int(int, ty, /* print_ty */ true)
+            }
         }
     }
 
@@ -1405,7 +1406,6 @@ pub trait PrettyPrinter<'tcx>:
         mut self,
         ptr: Pointer,
         ty: Ty<'tcx>,
-        print_ty: bool,
     ) -> Result<Self::Const, Self::Error> {
         define_scoped_cx!(self);
 
@@ -1459,7 +1459,7 @@ pub trait PrettyPrinter<'tcx>:
             _ => {}
         }
         // Any pointer values not covered by a branch above
-        self = self.pretty_print_const_pointer(ptr, ty, print_ty)?;
+        self = self.pretty_print_const_pointer(ptr, ty)?;
         Ok(self)
     }
 
@@ -1527,24 +1527,18 @@ pub trait PrettyPrinter<'tcx>:
     /// This is overridden for MIR printing because we only want to hide alloc ids from users, not
     /// from MIR where it is actually useful.
     fn pretty_print_const_pointer<Prov: Provenance>(
-        mut self,
+        self,
         _: Pointer<Prov>,
         ty: Ty<'tcx>,
-        print_ty: bool,
     ) -> Result<Self::Const, Self::Error> {
-        if print_ty {
-            self.typed_value(
-                |mut this| {
-                    this.write_str("&_")?;
-                    Ok(this)
-                },
-                |this| this.print_type(ty),
-                ": ",
-            )
-        } else {
-            self.write_str("&_")?;
-            Ok(self)
-        }
+        self.typed_value(
+            |mut this| {
+                this.write_str("&_")?;
+                Ok(this)
+            },
+            |this| this.print_type(ty),
+            ": ",
+        )
     }
 
     fn pretty_print_byte_str(mut self, byte_str: &'tcx [u8]) -> Result<Self::Const, Self::Error> {
@@ -1601,7 +1595,8 @@ pub trait PrettyPrinter<'tcx>:
             }
             // Aggregates, printed as array/tuple/struct/variant construction syntax.
             (ty::ValTree::Branch(_), ty::Array(..) | ty::Tuple(..) | ty::Adt(..)) => {
-                let contents = self.tcx().destructure_const(self.tcx().mk_const(valtree, ty));
+                let contents =
+                    self.tcx().destructure_const(ty::Const::new_value(self.tcx(), valtree, ty));
                 let fields = contents.fields.iter().copied();
                 match *ty.kind() {
                     ty::Array(..) => {
@@ -2155,7 +2150,6 @@ impl<'tcx> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx> {
         self,
         p: Pointer<Prov>,
         ty: Ty<'tcx>,
-        print_ty: bool,
     ) -> Result<Self::Const, Self::Error> {
         let print = |mut this: Self| {
             define_scoped_cx!(this);
@@ -2166,11 +2160,7 @@ impl<'tcx> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx> {
             }
             Ok(this)
         };
-        if print_ty {
-            self.typed_value(print, |this| this.print_type(ty), ": ")
-        } else {
-            print(self)
-        }
+        self.typed_value(print, |this| this.print_type(ty), ": ")
     }
 }
 
@@ -2746,7 +2736,7 @@ define_print_and_forward_display! {
 
     ty::ExistentialTraitRef<'tcx> {
         // Use a type that can't appear in defaults of type parameters.
-        let dummy_self = cx.tcx().mk_fresh_ty(0);
+        let dummy_self = Ty::new_fresh(cx.tcx(),0);
         let trait_ref = self.with_self_ty(cx.tcx(), dummy_self);
         p!(print(trait_ref.print_only_trait_path()))
     }
@@ -2887,9 +2877,6 @@ define_print_and_forward_display! {
             ty::ClauseKind::WellFormed(arg) => p!(print(arg), " well-formed"),
             ty::ClauseKind::ConstEvaluatable(ct) => {
                 p!("the constant `", print(ct), "` can be evaluated")
-            }
-            ty::ClauseKind::TypeWellFormedFromEnv(ty) => {
-                p!("the type `", print(ty), "` is found in the environment")
             }
         }
     }

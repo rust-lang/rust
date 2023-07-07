@@ -426,7 +426,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Given `Result<_, E>`, check our expected ty is `Result<_, &E>` for
             // `as_ref` and `as_deref` compatibility.
             let error_tys_equate_as_ref = error_tys.map_or(true, |(found, expected)| {
-                self.can_eq(self.param_env, self.tcx.mk_imm_ref(self.tcx.lifetimes.re_erased, found), expected)
+                self.can_eq(self.param_env, Ty::new_imm_ref(self.tcx,self.tcx.lifetimes.re_erased, found), expected)
             });
             // FIXME: This could/should be extended to suggest `as_mut` and `as_deref_mut`,
             // but those checks need to be a bit more delicate and the benefit is diminishing.
@@ -515,7 +515,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if self.tcx.hir().is_inside_const_context(hir_id) || !expected.is_box() || found.is_box() {
             return false;
         }
-        if self.can_coerce(self.tcx.mk_box(found), expected) {
+        if self.can_coerce(Ty::new_box(self.tcx, found), expected) {
             let suggest_boxing = match found.kind() {
                 ty::Tuple(tuple) if tuple.is_empty() => {
                     SuggestBoxing::Unit { start: span.shrink_to_lo(), end: span }
@@ -595,9 +595,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if pin_did.is_none() || self.tcx.lang_items().owned_box().is_none() {
             return false;
         }
-        let box_found = self.tcx.mk_box(found);
-        let pin_box_found = self.tcx.mk_lang_item(box_found, LangItem::Pin).unwrap();
-        let pin_found = self.tcx.mk_lang_item(found, LangItem::Pin).unwrap();
+        let box_found = Ty::new_box(self.tcx, found);
+        let pin_box_found = Ty::new_lang_item(self.tcx, box_found, LangItem::Pin).unwrap();
+        let pin_found = Ty::new_lang_item(self.tcx, found, LangItem::Pin).unwrap();
         match expected.kind() {
             ty::Adt(def, _) if Some(def.did()) == pin_did => {
                 if self.can_coerce(pin_box_found, expected) {

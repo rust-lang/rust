@@ -359,9 +359,6 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                     ProcessResult::Changed(mk_pending(vec![obligation.with(infcx.tcx, pred)]))
                 }
                 ty::PredicateKind::Ambiguous => ProcessResult::Unchanged,
-                ty::PredicateKind::Clause(ty::ClauseKind::TypeWellFormedFromEnv(..)) => {
-                    bug!("TypeWellFormedFromEnv is only used for Chalk")
-                }
                 ty::PredicateKind::AliasRelate(..) => {
                     bug!("AliasRelate is only used for new solver")
                 }
@@ -531,7 +528,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                         debug!("equating consts:\nc1= {:?}\nc2= {:?}", c1, c2);
 
                         use rustc_hir::def::DefKind;
-                        use ty::ConstKind::Unevaluated;
+                        use ty::Unevaluated;
                         match (c1.kind(), c2.kind()) {
                             (Unevaluated(a), Unevaluated(b))
                                 if a.def == b.def && tcx.def_kind(a.def) == DefKind::AssocConst =>
@@ -627,9 +624,6 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                     }
                 }
                 ty::PredicateKind::Ambiguous => ProcessResult::Unchanged,
-                ty::PredicateKind::Clause(ty::ClauseKind::TypeWellFormedFromEnv(..)) => {
-                    bug!("TypeWellFormedFromEnv is only used for Chalk")
-                }
                 ty::PredicateKind::AliasRelate(..) => {
                     bug!("AliasRelate is only used for new solver")
                 }

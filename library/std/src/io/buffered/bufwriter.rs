@@ -81,7 +81,7 @@ pub struct BufWriter<W: ?Sized + Write> {
 }
 
 impl<W: Write> BufWriter<W> {
-    /// Creates a new `BufWriter<W>` with a default buffer capacity. The default is currently 8 KB,
+    /// Creates a new `BufWriter<W>` with a default buffer capacity. The default is currently 8 KiB,
     /// but may change in the future.
     ///
     /// # Examples

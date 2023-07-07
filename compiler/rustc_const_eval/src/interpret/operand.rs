@@ -106,7 +106,7 @@ impl<Prov: Provenance> std::fmt::Display for ImmTy<'_, Prov> {
                     // Just print the ptr value. `pretty_print_const_scalar_ptr` would also try to
                     // print what is points to, which would fail since it has no access to the local
                     // memory.
-                    cx.pretty_print_const_pointer(ptr, ty, true)
+                    cx.pretty_print_const_pointer(ptr, ty)
                 }
             }
         }
@@ -633,7 +633,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
     }
 
-    pub(super) fn const_val_to_op(
+    pub(crate) fn const_val_to_op(
         &self,
         val_val: ConstValue<'tcx>,
         ty: Ty<'tcx>,

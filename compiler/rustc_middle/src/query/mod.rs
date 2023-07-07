@@ -39,8 +39,8 @@ use crate::traits::query::{
 };
 use crate::traits::specialization_graph;
 use crate::traits::{
-    CanonicalChalkEnvironmentAndGoal, CodegenObligationError, EvaluationResult, ImplSource,
-    ObjectSafetyViolation, ObligationCause, OverflowError, WellFormedLoc,
+    CodegenObligationError, EvaluationResult, ImplSource, ObjectSafetyViolation, ObligationCause,
+    OverflowError, WellFormedLoc,
 };
 use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::layout::ValidityRequirement;
@@ -881,7 +881,7 @@ rustc_queries! {
     ///
     /// Note that we've liberated the late bound regions of function signatures, so
     /// this can not be used to check whether these types are well formed.
-    query assumed_wf_types(key: DefId) -> &'tcx ty::List<Ty<'tcx>> {
+    query assumed_wf_types(key: LocalDefId) -> &'tcx [(Ty<'tcx>, Span)] {
         desc { |tcx| "computing the implied bounds of `{}`", tcx.def_path_str(key) }
     }
 
@@ -1087,11 +1087,13 @@ rustc_queries! {
     }
 
     /// Tries to destructure an `mir::ConstantKind` ADT or array into its variant index
-    /// and its field values.
-    query try_destructure_mir_constant(
-        key: ty::ParamEnvAnd<'tcx, mir::ConstantKind<'tcx>>
+    /// and its field values. This should only be used for pretty printing.
+    query try_destructure_mir_constant_for_diagnostics(
+        key: (ConstValue<'tcx>, Ty<'tcx>)
     ) -> Option<mir::DestructuredConstant<'tcx>> {
         desc { "destructuring MIR constant"}
+        no_hash
+        eval_always
     }
 
     query const_caller_location(key: (rustc_span::Symbol, u32, u32)) -> ConstValue<'tcx> {
@@ -1971,15 +1973,6 @@ rustc_queries! {
         desc { "evaluating trait selection obligation `{}`", goal.value.value }
     }
 
-    query evaluate_goal(
-        goal: CanonicalChalkEnvironmentAndGoal<'tcx>
-    ) -> Result<
-        &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, ()>>,
-        NoSolution
-    > {
-        desc { "evaluating trait selection obligation `{}`", goal.value }
-    }
-
     /// Do not call this query directly: part of the `Eq` type-op
     query type_op_ascribe_user_type(
         goal: CanonicalTypeOpAscribeUserTypeGoal<'tcx>
@@ -2205,6 +2198,10 @@ rustc_queries! {
         feedable
         desc { "getting cfg-ed out item names" }
         separate_provide_extern
+    }
+
+    query generics_require_sized_self(def_id: DefId) -> bool {
+        desc { "check whether the item has a `where Self: Sized` bound" }
     }
 }
 

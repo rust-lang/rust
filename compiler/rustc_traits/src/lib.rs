@@ -1,5 +1,4 @@
-//! New recursive solver modeled on Chalk's recursive solver. Most of
-//! the guts are broken up into modules; see the comments in those modules.
+//! Queries that are independent from the main solver code.
 
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
@@ -11,7 +10,6 @@ extern crate tracing;
 #[macro_use]
 extern crate rustc_middle;
 
-mod chalk;
 mod codegen;
 mod dropck_outlives;
 mod evaluate_obligation;
@@ -29,7 +27,6 @@ pub fn provide(p: &mut Providers) {
     dropck_outlives::provide(p);
     evaluate_obligation::provide(p);
     implied_outlives_bounds::provide(p);
-    chalk::provide(p);
     normalize_projection_ty::provide(p);
     normalize_erasing_regions::provide(p);
     type_op::provide(p);

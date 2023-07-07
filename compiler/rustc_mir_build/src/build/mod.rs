@@ -614,7 +614,7 @@ fn construct_error(tcx: TyCtxt<'_>, def: LocalDefId, err: ErrorGuaranteed) -> Bo
     let generator_kind = tcx.generator_kind(def);
     let body_owner_kind = tcx.hir().body_owner_kind(def);
 
-    let ty = tcx.ty_error(err);
+    let ty = Ty::new_error(tcx, err);
     let num_params = match body_owner_kind {
         hir::BodyOwnerKind::Fn => tcx.fn_sig(def).skip_binder().inputs().skip_binder().len(),
         hir::BodyOwnerKind::Closure => {
@@ -942,7 +942,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         match self.unit_temp {
             Some(tmp) => tmp,
             None => {
-                let ty = self.tcx.mk_unit();
+                let ty = Ty::new_unit(self.tcx);
                 let fn_span = self.fn_span;
                 let tmp = self.temp(ty, fn_span);
                 self.unit_temp = Some(tmp);

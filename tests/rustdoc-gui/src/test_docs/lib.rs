@@ -507,3 +507,12 @@ pub mod fields {
         },
     }
 }
+
+pub mod cfgs {
+    #[doc(cfg(all(
+        any(not(feature = "appservice-api-c"), not(feature = "appservice-api-s")),
+        any(not(feature = "client"), not(feature = "server")),
+    )))]
+    /// Some docs.
+    pub mod cfgs {}
+}

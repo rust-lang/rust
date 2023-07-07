@@ -271,7 +271,7 @@ fn compare_method_predicate_entailment<'tcx>(
         infer::HigherRankedType,
         tcx.fn_sig(impl_m.def_id).subst_identity(),
     );
-    let unnormalized_impl_fty = tcx.mk_fn_ptr(ty::Binder::dummy(unnormalized_impl_sig));
+    let unnormalized_impl_fty = Ty::new_fn_ptr(tcx, ty::Binder::dummy(unnormalized_impl_sig));
 
     let norm_cause = ObligationCause::misc(impl_m_span, impl_m_def_id);
     let impl_sig = ocx.normalize(&norm_cause, param_env, unnormalized_impl_sig);
@@ -288,7 +288,7 @@ fn compare_method_predicate_entailment<'tcx>(
     // We also have to add the normalized trait signature
     // as we don't normalize during implied bounds computation.
     wf_tys.extend(trait_sig.inputs_and_output.iter());
-    let trait_fty = tcx.mk_fn_ptr(ty::Binder::dummy(trait_sig));
+    let trait_fty = Ty::new_fn_ptr(tcx, ty::Binder::dummy(trait_sig));
 
     debug!("compare_impl_method: trait_fty={:?}", trait_fty);
 
@@ -669,11 +669,13 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
         )
         .fold_with(&mut collector);
 
-    debug_assert_ne!(
-        collector.types.len(),
-        0,
-        "expect >1 RPITITs in call to `collect_return_position_impl_trait_in_trait_tys`"
-    );
+    if !unnormalized_trait_sig.output().references_error() {
+        debug_assert_ne!(
+            collector.types.len(),
+            0,
+            "expect >1 RPITITs in call to `collect_return_position_impl_trait_in_trait_tys`"
+        );
+    }
 
     let trait_sig = ocx.normalize(&norm_cause, param_env, unnormalized_trait_sig);
     trait_sig.error_reported()?;
@@ -803,7 +805,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
                     return_span,
                 }) {
                     Ok(ty) => ty,
-                    Err(guar) => tcx.ty_error(guar),
+                    Err(guar) => Ty::new_error(tcx, guar),
                 };
                 collected_tys.insert(def_id, ty::EarlyBinder::bind(ty));
             }
@@ -812,7 +814,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
                     return_span,
                     format!("could not fully resolve: {ty} => {err:?}"),
                 );
-                collected_tys.insert(def_id, ty::EarlyBinder::bind(tcx.ty_error(reported)));
+                collected_tys.insert(def_id, ty::EarlyBinder::bind(Ty::new_error(tcx, reported)));
             }
         }
     }
@@ -916,7 +918,7 @@ impl<'tcx> ty::FallibleTypeFolder<TyCtxt<'tcx>> for RemapHiddenTyRegions<'tcx> {
                     _ => arg.try_fold_with(self)?,
                 });
             }
-            Ok(self.tcx.mk_opaque(def_id, self.tcx.mk_substs(&mapped_substs)))
+            Ok(Ty::new_opaque(self.tcx, def_id, self.tcx.mk_substs(&mapped_substs)))
         } else {
             t.try_super_fold_with(self)
         }
@@ -2027,7 +2029,8 @@ pub(super) fn check_type_bounds<'tcx>(
                 let kind = ty::BoundTyKind::Param(param.def_id, param.name);
                 let bound_var = ty::BoundVariableKind::Ty(kind);
                 bound_vars.push(bound_var);
-                tcx.mk_bound(
+                Ty::new_bound(
+                    tcx,
                     ty::INNERMOST,
                     ty::BoundTy { var: ty::BoundVar::from_usize(bound_vars.len() - 1), kind },
                 )
@@ -2047,11 +2050,10 @@ pub(super) fn check_type_bounds<'tcx>(
             GenericParamDefKind::Const { .. } => {
                 let bound_var = ty::BoundVariableKind::Const;
                 bound_vars.push(bound_var);
-                tcx.mk_const(
-                    ty::ConstKind::Bound(
-                        ty::INNERMOST,
-                        ty::BoundVar::from_usize(bound_vars.len() - 1),
-                    ),
+                ty::Const::new_bound(
+                    tcx,
+                    ty::INNERMOST,
+                    ty::BoundVar::from_usize(bound_vars.len() - 1),
                     tcx.type_of(param.def_id)
                         .no_bound_vars()
                         .expect("const parameter types cannot be generic"),
@@ -2121,7 +2123,7 @@ pub(super) fn check_type_bounds<'tcx>(
             _ => bug!(),
         }
     };
-    let assumed_wf_types = ocx.assumed_wf_types(param_env, impl_ty_span, impl_ty_def_id);
+    let assumed_wf_types = ocx.assumed_wf_types_and_report_errors(param_env, impl_ty_def_id)?;
 
     let normalize_cause = ObligationCause::new(
         impl_ty_span,

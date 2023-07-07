@@ -1,8 +1,8 @@
-error[E0271]: type mismatch resolving `[u8; 3] <: <Range<usize> as SliceIndex<[u8]>>::Output`
+error[E0271]: type mismatch resolving `[u8; 3] <: <[u8] as Index<Range<usize>>>::Output`
   --> $DIR/slice-match-byte-lit.rs:6:9
    |
 LL |     match &s[0..3] {
-   |           -------- this expression has type `&<std::ops::Range<usize> as SliceIndex<[u8]>>::Output`
+   |           -------- this expression has type `&<[u8] as Index<std::ops::Range<usize>>>::Output`
 LL |         b"uwu" => {}
    |         ^^^^^^ types differ
 

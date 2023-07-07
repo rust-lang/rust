@@ -876,6 +876,224 @@ where
     }
 }
 
+/// Represents a constant in Rust.
+// #[derive(derive_more::From)]
+pub enum ConstKind<I: Interner> {
+    /// A const generic parameter.
+    Param(I::ParamConst),
+
+    /// Infer the value of the const.
+    Infer(I::InferConst),
+
+    /// Bound const variable, used only when preparing a trait query.
+    Bound(DebruijnIndex, I::BoundConst),
+
+    /// A placeholder const - universally quantified higher-ranked const.
+    Placeholder(I::PlaceholderConst),
+
+    /// An unnormalized const item such as an anon const or assoc const or free const item.
+    /// Right now anything other than anon consts does not actually work properly but this
+    /// should
+    Unevaluated(I::AliasConst),
+
+    /// Used to hold computed value.
+    Value(I::ValueConst),
+
+    /// A placeholder for a const which could not be computed; this is
+    /// propagated to avoid useless error messages.
+    Error(I::ErrorGuaranteed),
+
+    /// Unevaluated non-const-item, used by `feature(generic_const_exprs)` to represent
+    /// const arguments such as `N + 1` or `foo(N)`
+    Expr(I::ExprConst),
+}
+
+const fn const_kind_discriminant<I: Interner>(value: &ConstKind<I>) -> usize {
+    match value {
+        ConstKind::Param(_) => 0,
+        ConstKind::Infer(_) => 1,
+        ConstKind::Bound(_, _) => 2,
+        ConstKind::Placeholder(_) => 3,
+        ConstKind::Unevaluated(_) => 4,
+        ConstKind::Value(_) => 5,
+        ConstKind::Error(_) => 6,
+        ConstKind::Expr(_) => 7,
+    }
+}
+
+impl<I: Interner> hash::Hash for ConstKind<I> {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+        const_kind_discriminant(self).hash(state);
+        match self {
+            ConstKind::Param(p) => p.hash(state),
+            ConstKind::Infer(i) => i.hash(state),
+            ConstKind::Bound(d, b) => {
+                d.hash(state);
+                b.hash(state);
+            }
+            ConstKind::Placeholder(p) => p.hash(state),
+            ConstKind::Unevaluated(u) => u.hash(state),
+            ConstKind::Value(v) => v.hash(state),
+            ConstKind::Error(e) => e.hash(state),
+            ConstKind::Expr(e) => e.hash(state),
+        }
+    }
+}
+
+impl<CTX: HashStableContext, I: Interner> HashStable<CTX> for ConstKind<I>
+where
+    I::ParamConst: HashStable<CTX>,
+    I::InferConst: HashStable<CTX>,
+    I::BoundConst: HashStable<CTX>,
+    I::PlaceholderConst: HashStable<CTX>,
+    I::AliasConst: HashStable<CTX>,
+    I::ValueConst: HashStable<CTX>,
+    I::ErrorGuaranteed: HashStable<CTX>,
+    I::ExprConst: HashStable<CTX>,
+{
+    fn hash_stable(
+        &self,
+        hcx: &mut CTX,
+        hasher: &mut rustc_data_structures::stable_hasher::StableHasher,
+    ) {
+        const_kind_discriminant(self).hash_stable(hcx, hasher);
+        match self {
+            ConstKind::Param(p) => p.hash_stable(hcx, hasher),
+            ConstKind::Infer(i) => i.hash_stable(hcx, hasher),
+            ConstKind::Bound(d, b) => {
+                d.hash_stable(hcx, hasher);
+                b.hash_stable(hcx, hasher);
+            }
+            ConstKind::Placeholder(p) => p.hash_stable(hcx, hasher),
+            ConstKind::Unevaluated(u) => u.hash_stable(hcx, hasher),
+            ConstKind::Value(v) => v.hash_stable(hcx, hasher),
+            ConstKind::Error(e) => e.hash_stable(hcx, hasher),
+            ConstKind::Expr(e) => e.hash_stable(hcx, hasher),
+        }
+    }
+}
+
+impl<I: Interner, D: TyDecoder<I = I>> Decodable<D> for ConstKind<I>
+where
+    I::ParamConst: Decodable<D>,
+    I::InferConst: Decodable<D>,
+    I::BoundConst: Decodable<D>,
+    I::PlaceholderConst: Decodable<D>,
+    I::AliasConst: Decodable<D>,
+    I::ValueConst: Decodable<D>,
+    I::ErrorGuaranteed: Decodable<D>,
+    I::ExprConst: Decodable<D>,
+{
+    fn decode(d: &mut D) -> Self {
+        match Decoder::read_usize(d) {
+            0 => ConstKind::Param(Decodable::decode(d)),
+            1 => ConstKind::Infer(Decodable::decode(d)),
+            2 => ConstKind::Bound(Decodable::decode(d), Decodable::decode(d)),
+            3 => ConstKind::Placeholder(Decodable::decode(d)),
+            4 => ConstKind::Unevaluated(Decodable::decode(d)),
+            5 => ConstKind::Value(Decodable::decode(d)),
+            6 => ConstKind::Error(Decodable::decode(d)),
+            7 => ConstKind::Expr(Decodable::decode(d)),
+            _ => panic!(
+                "{}",
+                format!(
+                    "invalid enum variant tag while decoding `{}`, expected 0..{}",
+                    "ConstKind", 8,
+                )
+            ),
+        }
+    }
+}
+
+impl<I: Interner, E: TyEncoder<I = I>> Encodable<E> for ConstKind<I>
+where
+    I::ParamConst: Encodable<E>,
+    I::InferConst: Encodable<E>,
+    I::BoundConst: Encodable<E>,
+    I::PlaceholderConst: Encodable<E>,
+    I::AliasConst: Encodable<E>,
+    I::ValueConst: Encodable<E>,
+    I::ErrorGuaranteed: Encodable<E>,
+    I::ExprConst: Encodable<E>,
+{
+    fn encode(&self, e: &mut E) {
+        let disc = const_kind_discriminant(self);
+        match self {
+            ConstKind::Param(p) => e.emit_enum_variant(disc, |e| p.encode(e)),
+            ConstKind::Infer(i) => e.emit_enum_variant(disc, |e| i.encode(e)),
+            ConstKind::Bound(d, b) => e.emit_enum_variant(disc, |e| {
+                d.encode(e);
+                b.encode(e);
+            }),
+            ConstKind::Placeholder(p) => e.emit_enum_variant(disc, |e| p.encode(e)),
+            ConstKind::Unevaluated(u) => e.emit_enum_variant(disc, |e| u.encode(e)),
+            ConstKind::Value(v) => e.emit_enum_variant(disc, |e| v.encode(e)),
+            ConstKind::Error(er) => e.emit_enum_variant(disc, |e| er.encode(e)),
+            ConstKind::Expr(ex) => e.emit_enum_variant(disc, |e| ex.encode(e)),
+        }
+    }
+}
+
+impl<I: Interner> PartialOrd for ConstKind<I> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl<I: Interner> Ord for ConstKind<I> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        const_kind_discriminant(self)
+            .cmp(&const_kind_discriminant(other))
+            .then_with(|| match (self, other) {
+                (ConstKind::Param(p1), ConstKind::Param(p2)) => p1.cmp(p2),
+                (ConstKind::Infer(i1), ConstKind::Infer(i2)) => i1.cmp(i2),
+                (ConstKind::Bound(d1, b1), ConstKind::Bound(d2, b2)) => d1.cmp(d2).then_with(|| b1.cmp(b2)),
+                (ConstKind::Placeholder(p1), ConstKind::Placeholder(p2)) => p1.cmp(p2),
+                (ConstKind::Unevaluated(u1), ConstKind::Unevaluated(u2)) => u1.cmp(u2),
+                (ConstKind::Value(v1), ConstKind::Value(v2)) => v1.cmp(v2),
+                (ConstKind::Error(e1), ConstKind::Error(e2)) => e1.cmp(e2),
+                (ConstKind::Expr(e1), ConstKind::Expr(e2)) => e1.cmp(e2),
+                _ => {
+                    debug_assert!(false, "This branch must be unreachable, maybe the match is missing an arm? self = {self:?}, other = {other:?}");
+                    Ordering::Equal
+                }
+            })
+    }
+}
+
+impl<I: Interner> PartialEq for ConstKind<I> {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Param(l0), Self::Param(r0)) => l0 == r0,
+            (Self::Infer(l0), Self::Infer(r0)) => l0 == r0,
+            (Self::Bound(l0, l1), Self::Bound(r0, r1)) => l0 == r0 && l1 == r1,
+            (Self::Placeholder(l0), Self::Placeholder(r0)) => l0 == r0,
+            (Self::Unevaluated(l0), Self::Unevaluated(r0)) => l0 == r0,
+            (Self::Value(l0), Self::Value(r0)) => l0 == r0,
+            (Self::Error(l0), Self::Error(r0)) => l0 == r0,
+            (Self::Expr(l0), Self::Expr(r0)) => l0 == r0,
+            _ => false,
+        }
+    }
+}
+
+impl<I: Interner> Eq for ConstKind<I> {}
+
+impl<I: Interner> Clone for ConstKind<I> {
+    fn clone(&self) -> Self {
+        match self {
+            Self::Param(arg0) => Self::Param(arg0.clone()),
+            Self::Infer(arg0) => Self::Infer(arg0.clone()),
+            Self::Bound(arg0, arg1) => Self::Bound(arg0.clone(), arg1.clone()),
+            Self::Placeholder(arg0) => Self::Placeholder(arg0.clone()),
+            Self::Unevaluated(arg0) => Self::Unevaluated(arg0.clone()),
+            Self::Value(arg0) => Self::Value(arg0.clone()),
+            Self::Error(arg0) => Self::Error(arg0.clone()),
+            Self::Expr(arg0) => Self::Expr(arg0.clone()),
+        }
+    }
+}
+
 /// Representation of regions. Note that the NLL checker uses a distinct
 /// representation of regions. For this reason, it internally replaces all the
 /// regions with inference variables -- the index of the variable is then used

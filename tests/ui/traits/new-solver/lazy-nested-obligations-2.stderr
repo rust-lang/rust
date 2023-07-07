@@ -1,0 +1,39 @@
+error[E0308]: mismatched types
+  --> $DIR/lazy-nested-obligations-2.rs:15:23
+   |
+LL |     let _: V<i32> = V(f);
+   |                     - ^ types differ
+   |                     |
+   |                     arguments to this struct are incorrect
+   |
+   = note: expected associated type `<i32 as With>::F`
+                      found fn item `for<'a> fn(&'a str) {f}`
+   = help: consider constraining the associated type `<i32 as With>::F` to `for<'a> fn(&'a str) {f}` or calling a method that returns `<i32 as With>::F`
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
+note: tuple struct defined here
+  --> $DIR/lazy-nested-obligations-2.rs:16:16
+   |
+LL |     pub struct V<T: With>(<T as With>::F);
+   |                ^
+
+error[E0308]: mismatched types
+  --> $DIR/lazy-nested-obligations-2.rs:21:30
+   |
+LL |     let _: E3<i32> = E3::Var(f);
+   |                      ------- ^ types differ
+   |                      |
+   |                      arguments to this enum variant are incorrect
+   |
+   = note: expected associated type `<i32 as With>::F`
+                      found fn item `for<'a> fn(&'a str) {f}`
+   = help: consider constraining the associated type `<i32 as With>::F` to `for<'a> fn(&'a str) {f}` or calling a method that returns `<i32 as With>::F`
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
+note: tuple variant defined here
+  --> $DIR/lazy-nested-obligations-2.rs:19:9
+   |
+LL |         Var(<T as With>::F),
+   |         ^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

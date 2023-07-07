@@ -5,7 +5,6 @@ use rustc_ast::visit::Visitor;
 use rustc_ast::Crate;
 use rustc_ast::EnumDef;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::intern::Interned;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::def_id::CRATE_DEF_ID;
 use rustc_middle::middle::privacy::Level;
@@ -13,12 +12,10 @@ use rustc_middle::middle::privacy::{EffectiveVisibilities, EffectiveVisibility};
 use rustc_middle::ty::Visibility;
 use std::mem;
 
-type ImportId<'a> = Interned<'a, NameBinding<'a>>;
-
 #[derive(Clone, Copy)]
 enum ParentId<'a> {
     Def(LocalDefId),
-    Import(ImportId<'a>),
+    Import(NameBinding<'a>),
 }
 
 impl ParentId<'_> {
@@ -36,7 +33,7 @@ pub(crate) struct EffectiveVisibilitiesVisitor<'r, 'a, 'tcx> {
     /// While walking import chains we need to track effective visibilities per-binding, and def id
     /// keys in `Resolver::effective_visibilities` are not enough for that, because multiple
     /// bindings can correspond to a single def id in imports. So we keep a separate table.
-    import_effective_visibilities: EffectiveVisibilities<ImportId<'a>>,
+    import_effective_visibilities: EffectiveVisibilities<NameBinding<'a>>,
     // It's possible to recalculate this at any point, but it's relatively expensive.
     current_private_vis: Visibility,
     changed: bool,
@@ -47,7 +44,7 @@ impl Resolver<'_, '_> {
         self.get_nearest_non_block_module(def_id.to_def_id()).nearest_parent_mod().expect_local()
     }
 
-    fn private_vis_import(&mut self, binding: ImportId<'_>) -> Visibility {
+    fn private_vis_import(&mut self, binding: NameBinding<'_>) -> Visibility {
         let NameBindingKind::Import { import, .. } = binding.kind else { unreachable!() };
         Visibility::Restricted(
             import
@@ -75,7 +72,7 @@ impl<'r, 'a, 'tcx> EffectiveVisibilitiesVisitor<'r, 'a, 'tcx> {
     pub(crate) fn compute_effective_visibilities<'c>(
         r: &'r mut Resolver<'a, 'tcx>,
         krate: &'c Crate,
-    ) -> FxHashSet<Interned<'a, NameBinding<'a>>> {
+    ) -> FxHashSet<NameBinding<'a>> {
         let mut visitor = EffectiveVisibilitiesVisitor {
             r,
             def_effective_visibilities: Default::default(),
@@ -133,8 +130,7 @@ impl<'r, 'a, 'tcx> EffectiveVisibilitiesVisitor<'r, 'a, 'tcx> {
                 // lint. For all bindings added to the table this way `is_ambiguity` returns true.
                 let mut parent_id = ParentId::Def(module_id);
                 while let NameBindingKind::Import { binding: nested_binding, .. } = binding.kind {
-                    let binding_id = ImportId::new_unchecked(binding);
-                    self.update_import(binding_id, parent_id);
+                    self.update_import(binding, parent_id);
 
                     if binding.ambiguity.is_some() {
                         // Stop at the root ambiguity, further bindings in the chain should not
@@ -143,7 +139,7 @@ impl<'r, 'a, 'tcx> EffectiveVisibilitiesVisitor<'r, 'a, 'tcx> {
                         break;
                     }
 
-                    parent_id = ParentId::Import(binding_id);
+                    parent_id = ParentId::Import(binding);
                     binding = nested_binding;
                 }
 
@@ -192,7 +188,7 @@ impl<'r, 'a, 'tcx> EffectiveVisibilitiesVisitor<'r, 'a, 'tcx> {
         }
     }
 
-    fn update_import(&mut self, binding: ImportId<'a>, parent_id: ParentId<'a>) {
+    fn update_import(&mut self, binding: NameBinding<'a>, parent_id: ParentId<'a>) {
         let nominal_vis = binding.vis.expect_local();
         let Some(cheap_private_vis) = self.may_update(nominal_vis, parent_id) else { return };
         let inherited_eff_vis = self.effective_vis_or_private(parent_id);

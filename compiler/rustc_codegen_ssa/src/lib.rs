@@ -48,7 +48,6 @@ pub mod back;
 pub mod base;
 pub mod codegen_attrs;
 pub mod common;
-pub mod coverageinfo;
 pub mod debuginfo;
 pub mod errors;
 pub mod glue;

@@ -20,7 +20,8 @@ fn associated_type_bounds<'tcx>(
     ast_bounds: &'tcx [hir::GenericBound<'tcx>],
     span: Span,
 ) -> &'tcx [(ty::Clause<'tcx>, Span)] {
-    let item_ty = tcx.mk_projection(
+    let item_ty = Ty::new_projection(
+        tcx,
         assoc_item_def_id.to_def_id(),
         InternalSubsts::identity_for_item(tcx, assoc_item_def_id),
     );
@@ -91,7 +92,8 @@ pub(super) fn explicit_item_bounds(
                 tcx,
                 opaque_def_id.expect_local(),
                 opaque_ty.bounds,
-                tcx.mk_projection(
+                Ty::new_projection(
+                    tcx,
                     def_id.to_def_id(),
                     ty::InternalSubsts::identity_for_item(tcx, def_id),
                 ),
@@ -117,9 +119,9 @@ pub(super) fn explicit_item_bounds(
         }) => {
             let substs = InternalSubsts::identity_for_item(tcx, def_id);
             let item_ty = if *in_trait && !tcx.lower_impl_trait_in_trait_to_assoc_ty() {
-                tcx.mk_projection(def_id.to_def_id(), substs)
+                Ty::new_projection(tcx, def_id.to_def_id(), substs)
             } else {
-                tcx.mk_opaque(def_id.to_def_id(), substs)
+                Ty::new_opaque(tcx, def_id.to_def_id(), substs)
             };
             opaque_type_bounds(tcx, def_id, bounds, item_ty, *span)
         }

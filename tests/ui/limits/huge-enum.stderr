@@ -1,5 +1,5 @@
 error: values of the type `Option<TYPE>` are too big for the current architecture
-  --> $DIR/huge-enum.rs:16:9
+  --> $DIR/huge-enum.rs:12:9
    |
 LL |     let big: BIG = None;
    |         ^^^

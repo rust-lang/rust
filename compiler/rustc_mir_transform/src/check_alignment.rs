@@ -155,7 +155,7 @@ fn insert_alignment_check<'tcx>(
     new_block: BasicBlock,
 ) {
     // Cast the pointer to a *const ()
-    let const_raw_ptr = tcx.mk_ptr(TypeAndMut { ty: tcx.types.unit, mutbl: Mutability::Not });
+    let const_raw_ptr = Ty::new_ptr(tcx, TypeAndMut { ty: tcx.types.unit, mutbl: Mutability::Not });
     let rvalue = Rvalue::Cast(CastKind::PtrToPtr, Operand::Copy(pointer), const_raw_ptr);
     let thin_ptr = local_decls.push(LocalDecl::with_source_info(const_raw_ptr, source_info)).into();
     block_data

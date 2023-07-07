@@ -97,6 +97,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
                 }
             })
         } else {
+            assert!(!self.intercrate);
             let c_pred = self.canonicalize_query_keep_static(
                 param_env.and(obligation.predicate),
                 &mut _orig_values,

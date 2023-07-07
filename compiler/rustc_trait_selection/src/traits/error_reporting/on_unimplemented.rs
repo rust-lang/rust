@@ -278,7 +278,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             // Arrays give us `[]`, `[{ty}; _]` and `[{ty}; N]`
             if let ty::Array(aty, len) = self_ty.kind() {
                 flags.push((sym::_Self, Some("[]".to_string())));
-                let len = len.kind().try_to_value().and_then(|v| v.try_to_target_usize(self.tcx));
+                let len = len.try_to_value().and_then(|v| v.try_to_target_usize(self.tcx));
                 flags.push((sym::_Self, Some(format!("[{}; _]", aty))));
                 if let Some(n) = len {
                     flags.push((sym::_Self, Some(format!("[{}; {}]", aty, n))));

@@ -73,7 +73,7 @@ fn emit_ptr_va_arg<'ll, 'tcx>(
     let layout = bx.cx.layout_of(target_ty);
     let (llty, size, align) = if indirect {
         (
-            bx.cx.layout_of(bx.cx.tcx.mk_imm_ptr(target_ty)).llvm_type(bx.cx),
+            bx.cx.layout_of(Ty::new_imm_ptr(bx.cx.tcx, target_ty)).llvm_type(bx.cx),
             bx.cx.data_layout().pointer_size,
             bx.cx.data_layout().pointer_align,
         )

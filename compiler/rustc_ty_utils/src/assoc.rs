@@ -5,7 +5,7 @@ use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId};
 use rustc_hir::definitions::DefPathData;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self, ImplTraitInTraitData, InternalSubsts, TyCtxt};
+use rustc_middle::ty::{self, ImplTraitInTraitData, InternalSubsts, Ty, TyCtxt};
 use rustc_span::symbol::kw;
 
 pub fn provide(providers: &mut Providers) {
@@ -301,7 +301,8 @@ fn associated_type_for_impl_trait_in_trait(
     trait_assoc_ty.defaultness(tcx.defaultness(fn_def_id));
 
     // Copy type_of of the opaque.
-    trait_assoc_ty.type_of(ty::EarlyBinder::bind(tcx.mk_opaque(
+    trait_assoc_ty.type_of(ty::EarlyBinder::bind(Ty::new_opaque(
+        tcx,
         opaque_ty_def_id.to_def_id(),
         InternalSubsts::identity_for_item(tcx, opaque_ty_def_id),
     )));
@@ -337,6 +338,7 @@ fn associated_type_for_impl_trait_in_trait(
             param_def_id_to_index,
             has_self: opaque_ty_generics.has_self,
             has_late_bound_regions: opaque_ty_generics.has_late_bound_regions,
+            host_effect_index: parent_generics.host_effect_index,
         }
     });
 
@@ -415,6 +417,7 @@ fn associated_type_for_impl_trait_in_impl(
             param_def_id_to_index,
             has_self: false,
             has_late_bound_regions: trait_assoc_generics.has_late_bound_regions,
+            host_effect_index: parent_generics.host_effect_index,
         }
     });
 

@@ -1,6 +1,5 @@
-// check-pass
 // compile-flags: -Ztrait-solver=next
-// Issue 95863
+// known-bug: #95863
 
 pub trait With {
     type F;

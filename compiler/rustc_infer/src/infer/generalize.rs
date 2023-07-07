@@ -277,7 +277,7 @@ where
                             let origin = *inner.type_variables().var_origin(vid);
                             let new_var_id =
                                 inner.type_variables().new_var(self.for_universe, origin);
-                            let u = self.tcx().mk_ty_var(new_var_id);
+                            let u = Ty::new_var(self.tcx(), new_var_id);
 
                             // Record that we replaced `vid` with `new_var_id` as part of a generalization
                             // operation. This is needed to detect cyclic types. To see why, see the
@@ -398,7 +398,7 @@ where
                                 origin: var_value.origin,
                                 val: ConstVariableValue::Unknown { universe: self.for_universe },
                             });
-                            Ok(self.tcx().mk_const(new_var_id, c.ty()))
+                            Ok(ty::Const::new_var(self.tcx(), new_var_id, c.ty()))
                         }
                     }
                 }
@@ -412,7 +412,11 @@ where
                     substs,
                     substs,
                 )?;
-                Ok(self.tcx().mk_const(ty::UnevaluatedConst { def, substs }, c.ty()))
+                Ok(ty::Const::new_unevaluated(
+                    self.tcx(),
+                    ty::UnevaluatedConst { def, substs },
+                    c.ty(),
+                ))
             }
             ty::ConstKind::Placeholder(placeholder) => {
                 if self.for_universe.can_name(placeholder.universe) {

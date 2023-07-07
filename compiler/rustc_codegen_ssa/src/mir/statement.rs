@@ -65,7 +65,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
             }
             mir::StatementKind::Coverage(box ref coverage) => {
-                self.codegen_coverage(bx, coverage.clone(), statement.source_info.scope);
+                self.codegen_coverage(bx, coverage, statement.source_info.scope);
             }
             mir::StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(ref op)) => {
                 let op_val = self.codegen_operand(bx, op);

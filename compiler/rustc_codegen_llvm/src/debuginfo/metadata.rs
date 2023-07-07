@@ -20,6 +20,7 @@ use crate::llvm::debuginfo::{
 };
 use crate::value::Value;
 
+use cstr::cstr;
 use rustc_codegen_ssa::debuginfo::type_names::cpp_like_debuginfo;
 use rustc_codegen_ssa::debuginfo::type_names::VTableNameKind;
 use rustc_codegen_ssa::traits::*;
@@ -167,7 +168,7 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
     // a (fat) pointer. Make sure it is not called for e.g. `Box<T, NonZSTAllocator>`.
     debug_assert_eq!(
         cx.size_and_align_of(ptr_type),
-        cx.size_and_align_of(cx.tcx.mk_mut_ptr(pointee_type))
+        cx.size_and_align_of(Ty::new_mut_ptr(cx.tcx, pointee_type))
     );
 
     let pointee_type_di_node = type_di_node(cx, pointee_type);
@@ -222,8 +223,11 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
                     //        at all and instead emit regular struct debuginfo for it. We just
                     //        need to make sure that we don't break existing debuginfo consumers
                     //        by doing that (at least not without a warning period).
-                    let layout_type =
-                        if ptr_type.is_box() { cx.tcx.mk_mut_ptr(pointee_type) } else { ptr_type };
+                    let layout_type = if ptr_type.is_box() {
+                        Ty::new_mut_ptr(cx.tcx, pointee_type)
+                    } else {
+                        ptr_type
+                    };
 
                     let layout = cx.layout_of(layout_type);
                     let addr_field = layout.field(cx, abi::FAT_PTR_ADDR);
@@ -811,6 +815,7 @@ pub fn build_compile_unit_di_node<'ll, 'tcx>(
 
     let name_in_debuginfo = name_in_debuginfo.to_string_lossy();
     let work_dir = tcx.sess.opts.working_dir.to_string_lossy(FileNameDisplayPreference::Remapped);
+    let flags = "\0";
     let output_filenames = tcx.output_filenames(());
     let split_name = if tcx.sess.target_can_use_split_dwarf() {
         output_filenames
@@ -847,7 +852,7 @@ pub fn build_compile_unit_di_node<'ll, 'tcx>(
             producer.as_ptr().cast(),
             producer.len(),
             tcx.sess.opts.optimize != config::OptLevel::No,
-            c"".as_ptr().cast(),
+            flags.as_ptr().cast(),
             0,
             // NB: this doesn't actually have any perceptible effect, it seems. LLVM will instead
             // put the path supplied to `MCSplitDwarfFile` into the debug info of the final
@@ -876,7 +881,8 @@ pub fn build_compile_unit_di_node<'ll, 'tcx>(
             );
             let val = llvm::LLVMMetadataAsValue(debug_context.llcontext, gcov_metadata);
 
-            llvm::LLVMAddNamedMetadataOperand(debug_context.llmod, c"llvm.gcov".as_ptr(), val);
+            let llvm_gcov_ident = cstr!("llvm.gcov");
+            llvm::LLVMAddNamedMetadataOperand(debug_context.llmod, llvm_gcov_ident.as_ptr(), val);
         }
 
         // Insert `llvm.ident` metadata on the wasm targets since that will
@@ -889,7 +895,7 @@ pub fn build_compile_unit_di_node<'ll, 'tcx>(
             );
             llvm::LLVMAddNamedMetadataOperand(
                 debug_context.llmod,
-                c"llvm.ident".as_ptr(),
+                cstr!("llvm.ident").as_ptr(),
                 llvm::LLVMMDNodeInContext(debug_context.llcontext, &name_metadata, 1),
             );
         }
@@ -1295,7 +1301,7 @@ fn build_vtable_type_di_node<'ll, 'tcx>(
 
     // All function pointers are described as opaque pointers. This could be improved in the future
     // by describing them as actual function pointers.
-    let void_pointer_ty = tcx.mk_imm_ptr(tcx.types.unit);
+    let void_pointer_ty = Ty::new_imm_ptr(tcx, tcx.types.unit);
     let void_pointer_type_di_node = type_di_node(cx, void_pointer_ty);
     let usize_di_node = type_di_node(cx, tcx.types.usize);
     let (pointer_size, pointer_align) = cx.size_and_align_of(void_pointer_ty);

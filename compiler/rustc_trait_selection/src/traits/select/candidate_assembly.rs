@@ -388,7 +388,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// `FnPtr`, when we wanted to report that it doesn't implement `Trait`.
     #[instrument(level = "trace", skip(self), ret)]
     fn reject_fn_ptr_impls(
-        &self,
+        &mut self,
         impl_def_id: DefId,
         obligation: &TraitObligation<'tcx>,
         impl_self_ty: Ty<'tcx>,
@@ -464,7 +464,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred))
                 })),
             );
-            if let Ok(r) = self.infcx.evaluate_obligation(&obligation) {
+            if let Ok(r) = self.evaluate_root_obligation(&obligation) {
                 if !r.may_apply() {
                     return true;
                 }

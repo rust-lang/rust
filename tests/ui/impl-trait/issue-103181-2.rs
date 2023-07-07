@@ -24,6 +24,8 @@ where
     B: Send, // <- a second bound
 {
     normalize(broken_fut(), ());
+    //~^ ERROR: cannot check whether the hidden type of opaque type satisfies auto traits
+    //~| ERROR: cannot check whether the hidden type of opaque type satisfies auto traits
 }
 
 fn main() {}

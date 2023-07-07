@@ -42,7 +42,7 @@ type Res = def::Res<NodeId>;
 /// Not modularized, can shadow previous `macro_rules` bindings, etc.
 #[derive(Debug)]
 pub(crate) struct MacroRulesBinding<'a> {
-    pub(crate) binding: &'a NameBinding<'a>,
+    pub(crate) binding: NameBinding<'a>,
     /// `macro_rules` scope into which the `macro_rules` item was planted.
     pub(crate) parent_macro_rules_scope: MacroRulesScopeRef<'a>,
     pub(crate) ident: Ident,
@@ -870,7 +870,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     fn prohibit_imported_non_macro_attrs(
         &self,
-        binding: Option<&'a NameBinding<'a>>,
+        binding: Option<NameBinding<'a>>,
         res: Option<Res>,
         span: Span,
     ) {

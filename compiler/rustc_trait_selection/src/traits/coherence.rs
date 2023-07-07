@@ -30,6 +30,7 @@ use std::fmt::Debug;
 use std::iter;
 use std::ops::ControlFlow;
 
+use super::query::evaluate_obligation::InferCtxtExt;
 use super::NormalizeExt;
 
 /// Whether we do the orphan check relative to this crate or
@@ -290,6 +291,20 @@ fn impl_intersection_has_impossible_obligation<'cx, 'tcx>(
 ) -> bool {
     let infcx = selcx.infcx;
 
+    let obligation_guaranteed_to_fail = move |obligation: &PredicateObligation<'tcx>| {
+        if infcx.next_trait_solver() {
+            infcx.evaluate_obligation(obligation).map_or(false, |result| !result.may_apply())
+        } else {
+            // We use `evaluate_root_obligation` to correctly track
+            // intercrate ambiguity clauses. We do not need this in the
+            // new solver.
+            selcx.evaluate_root_obligation(obligation).map_or(
+                false, // Overflow has occurred, and treat the obligation as possibly holding.
+                |result| !result.may_apply(),
+            )
+        }
+    };
+
     let opt_failing_obligation = [&impl1_header.predicates, &impl2_header.predicates]
         .into_iter()
         .flatten()
@@ -297,12 +312,7 @@ fn impl_intersection_has_impossible_obligation<'cx, 'tcx>(
             Obligation::new(infcx.tcx, ObligationCause::dummy(), param_env, predicate)
         })
         .chain(obligations)
-        .find(|o| {
-            selcx.evaluate_root_obligation(o).map_or(
-                false, // Overflow has occurred, and treat the obligation as possibly holding.
-                |result| !result.may_apply(),
-            )
-        });
+        .find(obligation_guaranteed_to_fail);
 
     if let Some(failing_obligation) = opt_failing_obligation {
         debug!("overlap: obligation unsatisfiable {:?}", failing_obligation);
@@ -427,7 +437,11 @@ fn prove_negated_obligation<'tcx>(
     let body_def_id = body_def_id.as_local().unwrap_or(CRATE_DEF_ID);
 
     let ocx = ObligationCtxt::new(&infcx);
-    let wf_tys = ocx.assumed_wf_types(param_env, DUMMY_SP, body_def_id);
+    let Ok(wf_tys) = ocx.assumed_wf_types(param_env, body_def_id)
+    else {
+        return false;
+    };
+
     let outlives_env = OutlivesEnvironment::with_bounds(
         param_env,
         infcx.implied_bounds_tys(param_env, body_def_id, wf_tys),

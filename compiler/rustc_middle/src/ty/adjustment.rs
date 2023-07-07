@@ -132,7 +132,7 @@ impl<'tcx> OverloadedDeref<'tcx> {
             .find(|m| m.kind == ty::AssocKind::Fn)
             .unwrap()
             .def_id;
-        tcx.mk_fn_def(method_def_id, [source])
+        Ty::new_fn_def(tcx, method_def_id, [source])
     }
 }
 

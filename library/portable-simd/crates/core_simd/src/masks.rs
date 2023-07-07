@@ -179,6 +179,7 @@ where
     /// Panics if any lane is not 0 or -1.
     #[inline]
     #[must_use = "method returns a new mask and does not mutate the original value"]
+    #[track_caller]
     pub fn from_int(value: Simd<T, LANES>) -> Self {
         assert!(T::valid(value), "all values must be either 0 or -1",);
         // Safety: the validity has been checked
@@ -217,6 +218,7 @@ where
     /// Panics if `lane` is greater than or equal to the number of lanes in the vector.
     #[inline]
     #[must_use = "method returns a new bool and does not mutate the original value"]
+    #[track_caller]
     pub fn test(&self, lane: usize) -> bool {
         assert!(lane < LANES, "lane index out of range");
         // Safety: the lane index has been checked
@@ -240,6 +242,7 @@ where
     /// # Panics
     /// Panics if `lane` is greater than or equal to the number of lanes in the vector.
     #[inline]
+    #[track_caller]
     pub fn set(&mut self, lane: usize, value: bool) {
         assert!(lane < LANES, "lane index out of range");
         // Safety: the lane index has been checked
@@ -327,6 +330,7 @@ where
     T: MaskElement + fmt::Debug,
     LaneCount<LANES>: SupportedLaneCount,
 {
+    #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list()
             .entries((0..LANES).map(|lane| self.test(lane)))

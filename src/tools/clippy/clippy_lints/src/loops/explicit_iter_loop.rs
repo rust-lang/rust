@@ -149,7 +149,7 @@ fn is_ref_iterable<'tcx>(
                 let self_ty = if mutbl.is_mut() {
                     self_ty
                 } else {
-                    cx.tcx.mk_ref(region, TypeAndMut { ty, mutbl })
+                    Ty::new_ref(cx.tcx,region, TypeAndMut { ty, mutbl })
                 };
                 if implements_trait(cx, self_ty, trait_id, &[])
                     && let Some(ty) =
@@ -164,7 +164,7 @@ fn is_ref_iterable<'tcx>(
             && !self_ty.is_ref()
         {
             // Attempt to borrow
-            let self_ty = cx.tcx.mk_ref(cx.tcx.lifetimes.re_erased, TypeAndMut {
+            let self_ty = Ty::new_ref(cx.tcx,cx.tcx.lifetimes.re_erased, TypeAndMut {
                 ty: self_ty,
                 mutbl,
             });

@@ -77,7 +77,7 @@ use rustc_infer::traits::specialization_graph::Node;
 use rustc_middle::ty::subst::{GenericArg, InternalSubsts, SubstsRef};
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
-use rustc_span::Span;
+use rustc_span::{ErrorGuaranteed, Span};
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
 use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt as _;
 use rustc_trait_selection::traits::{self, translate_substs_with_cause, wf, ObligationCtxt};
@@ -113,7 +113,7 @@ fn check_always_applicable(tcx: TyCtxt<'_>, impl1_def_id: LocalDefId, impl2_node
     let span = tcx.def_span(impl1_def_id);
     check_has_items(tcx, impl1_def_id, impl2_node, span);
 
-    if let Some((impl1_substs, impl2_substs)) = get_impl_substs(tcx, impl1_def_id, impl2_node) {
+    if let Ok((impl1_substs, impl2_substs)) = get_impl_substs(tcx, impl1_def_id, impl2_node) {
         let impl2_def_id = impl2_node.def_id();
         debug!(?impl2_def_id, ?impl2_substs);
 
@@ -171,16 +171,14 @@ fn get_impl_substs(
     tcx: TyCtxt<'_>,
     impl1_def_id: LocalDefId,
     impl2_node: Node,
-) -> Option<(SubstsRef<'_>, SubstsRef<'_>)> {
+) -> Result<(SubstsRef<'_>, SubstsRef<'_>), ErrorGuaranteed> {
     let infcx = &tcx.infer_ctxt().build();
     let ocx = ObligationCtxt::new(infcx);
     let param_env = tcx.param_env(impl1_def_id);
-
-    let assumed_wf_types =
-        ocx.assumed_wf_types(param_env, tcx.def_span(impl1_def_id), impl1_def_id);
+    let impl1_span = tcx.def_span(impl1_def_id);
+    let assumed_wf_types = ocx.assumed_wf_types_and_report_errors(param_env, impl1_def_id)?;
 
     let impl1_substs = InternalSubsts::identity_for_item(tcx, impl1_def_id);
-    let impl1_span = tcx.def_span(impl1_def_id);
     let impl2_substs = translate_substs_with_cause(
         infcx,
         param_env,
@@ -198,8 +196,8 @@ fn get_impl_substs(
 
     let errors = ocx.select_all_or_error();
     if !errors.is_empty() {
-        ocx.infcx.err_ctxt().report_fulfillment_errors(&errors);
-        return None;
+        let guar = ocx.infcx.err_ctxt().report_fulfillment_errors(&errors);
+        return Err(guar);
     }
 
     let implied_bounds = infcx.implied_bounds_tys(param_env, impl1_def_id, assumed_wf_types);
@@ -207,10 +205,10 @@ fn get_impl_substs(
     let _ = ocx.resolve_regions_and_report_errors(impl1_def_id, &outlives_env);
     let Ok(impl2_substs) = infcx.fully_resolve(impl2_substs) else {
         let span = tcx.def_span(impl1_def_id);
-        tcx.sess.emit_err(SubstsOnOverriddenImpl { span });
-        return None;
+        let guar = tcx.sess.emit_err(SubstsOnOverriddenImpl { span });
+        return Err(guar);
     };
-    Some((impl1_substs, impl2_substs))
+    Ok((impl1_substs, impl2_substs))
 }
 
 /// Returns a list of all of the unconstrained subst of the given impl.
@@ -553,7 +551,6 @@ fn trait_predicate_kind<'tcx>(
         | ty::PredicateKind::ClosureKind(..)
         | ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(..))
         | ty::PredicateKind::ConstEquate(..)
-        | ty::PredicateKind::Ambiguous
-        | ty::PredicateKind::Clause(ty::ClauseKind::TypeWellFormedFromEnv(..)) => None,
+        | ty::PredicateKind::Ambiguous => None,
     }
 }

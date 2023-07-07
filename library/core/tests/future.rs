@@ -30,7 +30,6 @@ fn poll_n(val: usize, num: usize) -> PollN {
 }
 
 #[test]
-#[cfg_attr(miri, ignore)] // self-referential generators do not work with Miri's aliasing checks
 fn test_join() {
     block_on(async move {
         let x = join!(async { 0 }).await;

@@ -1,6 +1,6 @@
 //! Values computed by queries that use MIR.
 
-use crate::mir::ConstantKind;
+use crate::mir::interpret::ConstValue;
 use crate::ty::{self, OpaqueHiddenType, Ty, TyCtxt};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::unord::UnordSet;
@@ -444,7 +444,7 @@ impl<'tcx> ClosureOutlivesSubjectTy<'tcx> {
 #[derive(Copy, Clone, Debug, HashStable)]
 pub struct DestructuredConstant<'tcx> {
     pub variant: Option<VariantIdx>,
-    pub fields: &'tcx [ConstantKind<'tcx>],
+    pub fields: &'tcx [(ConstValue<'tcx>, Ty<'tcx>)],
 }
 
 /// Coverage information summarized from a MIR if instrumented for source code coverage (see

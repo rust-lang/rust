@@ -242,15 +242,13 @@ mod imp {
         let mut res = Vec::new();
 
         unsafe {
-            let process_info_sel =
-                sel_registerName(c"processInfo".as_ptr() as *const libc::c_uchar);
-            let arguments_sel = sel_registerName(c"arguments".as_ptr() as *const libc::c_uchar);
-            let utf8_sel = sel_registerName(c"UTF8String".as_ptr() as *const libc::c_uchar);
-            let count_sel = sel_registerName(c"count".as_ptr() as *const libc::c_uchar);
-            let object_at_sel =
-                sel_registerName(c"objectAtIndex:".as_ptr() as *const libc::c_uchar);
+            let process_info_sel = sel_registerName("processInfo\0".as_ptr());
+            let arguments_sel = sel_registerName("arguments\0".as_ptr());
+            let utf8_sel = sel_registerName("UTF8String\0".as_ptr());
+            let count_sel = sel_registerName("count\0".as_ptr());
+            let object_at_sel = sel_registerName("objectAtIndex:\0".as_ptr());
 
-            let klass = objc_getClass(c"NSProcessInfo".as_ptr() as *const libc::c_uchar);
+            let klass = objc_getClass("NSProcessInfo\0".as_ptr());
             let info = objc_msgSend(klass, process_info_sel);
             let args = objc_msgSend(info, arguments_sel);
 

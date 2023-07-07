@@ -188,6 +188,7 @@ else
 fi
 
 if [ ! -z "$SCRIPT" ]; then
+  echo "Executing ${SCRIPT}"
   sh -x -c "$SCRIPT"
 else
   do_make() {

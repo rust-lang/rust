@@ -1,3 +1,4 @@
+//~ ERROR overflow
 // compile-flags: -Ztrait-solver=next
 
 trait Foo1 {

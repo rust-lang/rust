@@ -33,8 +33,10 @@ pub(crate) fn destructure_const<'tcx>(
     let (fields, variant) = match const_.ty().kind() {
         ty::Array(inner_ty, _) | ty::Slice(inner_ty) => {
             // construct the consts for the elements of the array/slice
-            let field_consts =
-                branches.iter().map(|b| tcx.mk_const(*b, *inner_ty)).collect::<Vec<_>>();
+            let field_consts = branches
+                .iter()
+                .map(|b| ty::Const::new_value(tcx, *b, *inner_ty))
+                .collect::<Vec<_>>();
             debug!(?field_consts);
 
             (field_consts, None)
@@ -52,7 +54,7 @@ pub(crate) fn destructure_const<'tcx>(
 
             for (field, field_valtree) in iter::zip(fields, branches) {
                 let field_ty = field.ty(tcx, substs);
-                let field_const = tcx.mk_const(*field_valtree, field_ty);
+                let field_const = ty::Const::new_value(tcx, *field_valtree, field_ty);
                 field_consts.push(field_const);
             }
             debug!(?field_consts);
@@ -61,7 +63,7 @@ pub(crate) fn destructure_const<'tcx>(
         }
         ty::Tuple(elem_tys) => {
             let fields = iter::zip(*elem_tys, branches)
-                .map(|(elem_ty, elem_valtree)| tcx.mk_const(*elem_valtree, elem_ty))
+                .map(|(elem_ty, elem_valtree)| ty::Const::new_value(tcx, *elem_valtree, elem_ty))
                 .collect::<Vec<_>>();
 
             (fields, None)
@@ -117,7 +119,7 @@ fn recurse_build<'tcx>(
             let sp = node.span;
             match tcx.at(sp).lit_to_const(LitToConstInput { lit: &lit.node, ty: node.ty, neg }) {
                 Ok(c) => c,
-                Err(LitToConstError::Reported(guar)) => tcx.const_error(node.ty, guar),
+                Err(LitToConstError::Reported(guar)) => ty::Const::new_error(tcx, guar, node.ty),
                 Err(LitToConstError::TypeError) => {
                     bug!("encountered type error in lit_to_const")
                 }
@@ -125,17 +127,17 @@ fn recurse_build<'tcx>(
         }
         &ExprKind::NonHirLiteral { lit, user_ty: _ } => {
             let val = ty::ValTree::from_scalar_int(lit);
-            tcx.mk_const(val, node.ty)
+            ty::Const::new_value(tcx, val, node.ty)
         }
         &ExprKind::ZstLiteral { user_ty: _ } => {
             let val = ty::ValTree::zst();
-            tcx.mk_const(val, node.ty)
+            ty::Const::new_value(tcx, val, node.ty)
         }
         &ExprKind::NamedConst { def_id, substs, user_ty: _ } => {
             let uneval = ty::UnevaluatedConst::new(def_id, substs);
-            tcx.mk_const(uneval, node.ty)
+            ty::Const::new_unevaluated(tcx, uneval, node.ty)
         }
-        ExprKind::ConstParam { param, .. } => tcx.mk_const(*param, node.ty),
+        ExprKind::ConstParam { param, .. } => ty::Const::new_param(tcx, *param, node.ty),
 
         ExprKind::Call { fun, args, .. } => {
             let fun = recurse_build(tcx, body, *fun, root_span)?;
@@ -145,16 +147,16 @@ fn recurse_build<'tcx>(
                 new_args.push(recurse_build(tcx, body, id, root_span)?);
             }
             let new_args = tcx.mk_const_list(&new_args);
-            tcx.mk_const(Expr::FunctionCall(fun, new_args), node.ty)
+            ty::Const::new_expr(tcx, Expr::FunctionCall(fun, new_args), node.ty)
         }
         &ExprKind::Binary { op, lhs, rhs } if check_binop(op) => {
             let lhs = recurse_build(tcx, body, lhs, root_span)?;
             let rhs = recurse_build(tcx, body, rhs, root_span)?;
-            tcx.mk_const(Expr::Binop(op, lhs, rhs), node.ty)
+            ty::Const::new_expr(tcx, Expr::Binop(op, lhs, rhs), node.ty)
         }
         &ExprKind::Unary { op, arg } if check_unop(op) => {
             let arg = recurse_build(tcx, body, arg, root_span)?;
-            tcx.mk_const(Expr::UnOp(op, arg), node.ty)
+            ty::Const::new_expr(tcx, Expr::UnOp(op, arg), node.ty)
         }
         // This is necessary so that the following compiles:
         //
@@ -175,11 +177,11 @@ fn recurse_build<'tcx>(
         // This is important so that `N as usize as usize` doesnt unify with `N as usize`. (untested)
         &ExprKind::Use { source } => {
             let arg = recurse_build(tcx, body, source, root_span)?;
-            tcx.mk_const(Expr::Cast(CastKind::Use, arg, node.ty), node.ty)
+            ty::Const::new_expr(tcx, Expr::Cast(CastKind::Use, arg, node.ty), node.ty)
         }
         &ExprKind::Cast { source } => {
             let arg = recurse_build(tcx, body, source, root_span)?;
-            tcx.mk_const(Expr::Cast(CastKind::As, arg, node.ty), node.ty)
+            ty::Const::new_expr(tcx, Expr::Cast(CastKind::As, arg, node.ty), node.ty)
         }
         ExprKind::Borrow { arg, .. } => {
             let arg_node = &body.exprs[*arg];

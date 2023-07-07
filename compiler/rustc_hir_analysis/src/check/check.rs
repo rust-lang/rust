@@ -224,7 +224,8 @@ fn check_opaque(tcx: TyCtxt<'_>, id: hir::ItemId) {
     if check_opaque_for_cycles(tcx, item.owner_id.def_id, substs, span, &origin).is_err() {
         return;
     }
-    check_opaque_meets_bounds(tcx, item.owner_id.def_id, span, &origin);
+
+    let _ = check_opaque_meets_bounds(tcx, item.owner_id.def_id, span, &origin);
 }
 
 /// Checks that an opaque type does not use `Self` or `T::Foo` projections that would result
@@ -307,9 +308,9 @@ pub(super) fn check_opaque_for_inheriting_lifetimes(
     {
         let substs = InternalSubsts::identity_for_item(tcx, def_id);
         let opaque_identity_ty = if in_trait && !tcx.lower_impl_trait_in_trait_to_assoc_ty() {
-            tcx.mk_projection(def_id.to_def_id(), substs)
+            Ty::new_projection(tcx, def_id.to_def_id(), substs)
         } else {
-            tcx.mk_opaque(def_id.to_def_id(), substs)
+            Ty::new_opaque(tcx, def_id.to_def_id(), substs)
         };
         let mut visitor = ProhibitOpaqueVisitor {
             opaque_identity_ty,
@@ -395,7 +396,7 @@ fn check_opaque_meets_bounds<'tcx>(
     def_id: LocalDefId,
     span: Span,
     origin: &hir::OpaqueTyOrigin,
-) {
+) -> Result<(), ErrorGuaranteed> {
     let defining_use_anchor = match *origin {
         hir::OpaqueTyOrigin::FnReturn(did) | hir::OpaqueTyOrigin::AsyncFn(did) => did,
         hir::OpaqueTyOrigin::TyAlias { .. } => tcx.impl_trait_parent(def_id),
@@ -409,7 +410,7 @@ fn check_opaque_meets_bounds<'tcx>(
     let ocx = ObligationCtxt::new(&infcx);
 
     let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
-    let opaque_ty = tcx.mk_opaque(def_id.to_def_id(), substs);
+    let opaque_ty = Ty::new_opaque(tcx, def_id.to_def_id(), substs);
 
     // `ReErased` regions appear in the "parent_substs" of closures/generators.
     // We're ignoring them here and replacing them with fresh region variables.
@@ -429,10 +430,10 @@ fn check_opaque_meets_bounds<'tcx>(
         Ok(()) => {}
         Err(ty_err) => {
             let ty_err = ty_err.to_string(tcx);
-            tcx.sess.delay_span_bug(
+            return Err(tcx.sess.delay_span_bug(
                 span,
                 format!("could not unify `{hidden_ty}` with revealed type:\n{ty_err}"),
-            );
+            ));
         }
     }
 
@@ -447,7 +448,8 @@ fn check_opaque_meets_bounds<'tcx>(
     // version.
     let errors = ocx.select_all_or_error();
     if !errors.is_empty() {
-        infcx.err_ctxt().report_fulfillment_errors(&errors);
+        let guar = infcx.err_ctxt().report_fulfillment_errors(&errors);
+        return Err(guar);
     }
     match origin {
         // Checked when type checking the function containing them.
@@ -461,14 +463,15 @@ fn check_opaque_meets_bounds<'tcx>(
             if tcx.def_kind(tcx.parent(def_id.to_def_id())) == DefKind::OpaqueTy => {}
         // Can have different predicates to their defining use
         hir::OpaqueTyOrigin::TyAlias { .. } => {
-            let wf_tys = ocx.assumed_wf_types(param_env, span, def_id);
+            let wf_tys = ocx.assumed_wf_types_and_report_errors(param_env, def_id)?;
             let implied_bounds = infcx.implied_bounds_tys(param_env, def_id, wf_tys);
             let outlives_env = OutlivesEnvironment::with_bounds(param_env, implied_bounds);
-            let _ = ocx.resolve_regions_and_report_errors(defining_use_anchor, &outlives_env);
+            ocx.resolve_regions_and_report_errors(defining_use_anchor, &outlives_env)?;
         }
     }
     // Clean up after ourselves
     let _ = infcx.take_opaque_types();
+    Ok(())
 }
 
 fn is_enum_of_nonnullable_ptr<'tcx>(

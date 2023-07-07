@@ -315,7 +315,7 @@ pub fn unexpected_hidden_region_diagnostic<'tcx>(
 ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
     let mut err = tcx.sess.create_err(errors::OpaqueCapturesLifetime {
         span,
-        opaque_ty: tcx.mk_opaque(opaque_ty_key.def_id.to_def_id(), opaque_ty_key.substs),
+        opaque_ty: Ty::new_opaque(tcx, opaque_ty_key.def_id.to_def_id(), opaque_ty_key.substs),
         opaque_ty_span: tcx.def_span(opaque_ty_key.def_id),
     });
 

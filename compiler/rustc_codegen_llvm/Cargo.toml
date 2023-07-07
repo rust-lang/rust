@@ -8,6 +8,7 @@ test = false
 
 [dependencies]
 bitflags = "1.0"
+cstr = "0.2"
 libc = "0.2"
 measureme = "10.0.0"
 object = { version = "0.31.1", default-features = false, features = [

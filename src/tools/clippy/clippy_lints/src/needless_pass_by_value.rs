@@ -17,7 +17,7 @@ use rustc_hir_typeck::expr_use_visitor as euv;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir::FakeReadCause;
-use rustc_middle::ty::{self, TypeVisitableExt};
+use rustc_middle::ty::{self, TypeVisitableExt, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::kw;
@@ -168,7 +168,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                 (
                     preds.iter().any(|t| cx.tcx.is_diagnostic_item(sym::Borrow, t.def_id())),
                     !preds.is_empty() && {
-                        let ty_empty_region = cx.tcx.mk_imm_ref(cx.tcx.lifetimes.re_erased, ty);
+                        let ty_empty_region = Ty::new_imm_ref(cx.tcx,cx.tcx.lifetimes.re_erased, ty);
                         preds.iter().all(|t| {
                             let ty_params = t.trait_ref.substs.iter().skip(1).collect::<Vec<_>>();
                             implements_trait(cx, ty_empty_region, t.def_id(), &ty_params)

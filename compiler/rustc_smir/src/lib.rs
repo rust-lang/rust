@@ -19,3 +19,6 @@ pub mod stable_mir;
 
 // Make this module private for now since external users should not call these directly.
 mod rustc_smir;
+
+#[macro_use]
+extern crate scoped_tls;

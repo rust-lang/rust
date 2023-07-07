@@ -4,6 +4,7 @@ use crate::late::{LifetimeBinderKind, LifetimeRes, LifetimeRibKind, LifetimeUseS
 use crate::{errors, path_names_to_string};
 use crate::{Module, ModuleKind, ModuleOrUniformRoot};
 use crate::{PathResult, PathSource, Segment};
+use rustc_hir::def::Namespace::{self, *};
 
 use rustc_ast::visit::{FnCtxt, FnKind, LifetimeCtxt};
 use rustc_ast::{
@@ -17,7 +18,6 @@ use rustc_errors::{
     MultiSpan,
 };
 use rustc_hir as hir;
-use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, CtorOf, DefKind};
 use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
 use rustc_hir::PrimTy;
@@ -221,10 +221,14 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 let suggestion = if self.current_trait_ref.is_none()
                     && let Some((fn_kind, _)) = self.diagnostic_metadata.current_function
                     && let Some(FnCtxt::Assoc(_)) = fn_kind.ctxt()
+                    && let FnKind::Fn(_, _, sig, ..) = fn_kind
                     && let Some(items) = self.diagnostic_metadata.current_impl_items
                     && let Some(item) = items.iter().find(|i| {
                         if let AssocItemKind::Fn(..) | AssocItemKind::Const(..) = &i.kind
                             && i.ident.name == item_str.name
+                            // don't suggest if the item is in Fn signature arguments
+                            // issue #112590
+                            && !sig.span.contains(item_span)
                         {
                             debug!(?item_str.name);
                             return true
@@ -318,11 +322,56 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         }
     }
 
+    /// Try to suggest for a module path that cannot be resolved.
+    /// Such as `fmt::Debug` where `fmt` is not resolved without importing,
+    /// here we search with `lookup_import_candidates` for a module named `fmt`
+    /// with `TypeNS` as namespace.
+    ///
+    /// We need a separate function here because we won't suggest for a path with single segment
+    /// and we won't change `SourcePath` api `is_expected` to match `Type` with `DefKind::Mod`
+    pub(crate) fn smart_resolve_partial_mod_path_errors(
+        &mut self,
+        prefix_path: &[Segment],
+        path: &[Segment],
+    ) -> Vec<ImportSuggestion> {
+        let next_seg = if path.len() >= prefix_path.len() + 1 && prefix_path.len() == 1 {
+            path.get(prefix_path.len())
+        } else {
+            None
+        };
+        if let Some(segment) = prefix_path.last() &&
+            let Some(next_seg) = next_seg {
+            let candidates = self.r.lookup_import_candidates(
+                segment.ident,
+                Namespace::TypeNS,
+                &self.parent_scope,
+                &|res: Res| matches!(res, Res::Def(DefKind::Mod, _)),
+            );
+            // double check next seg is valid
+            candidates
+                .into_iter()
+                .filter(|candidate| {
+                    if let Some(def_id) = candidate.did &&
+                        let Some(module) = self.r.get_module(def_id) {
+                            self.r.resolutions(module).borrow().iter().any(|(key, _r)| {
+                                key.ident.name == next_seg.ident.name
+                            })
+                    } else {
+                        false
+                    }
+                })
+                .collect::<Vec<_>>()
+        } else {
+            Vec::new()
+        }
+    }
+
     /// Handles error reporting for `smart_resolve_path_fragment` function.
     /// Creates base error and amends it with one short label and possibly some longer helps/notes.
     pub(crate) fn smart_resolve_report_errors(
         &mut self,
         path: &[Segment],
+        full_path: &[Segment],
         span: Span,
         source: PathSource<'_>,
         res: Option<Res>,
@@ -364,7 +413,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         }
 
         let (found, candidates) =
-            self.try_lookup_name_relaxed(&mut err, source, path, span, res, &base_error);
+            self.try_lookup_name_relaxed(&mut err, source, path, full_path, span, res, &base_error);
         if found {
             return (err, candidates);
         }
@@ -470,6 +519,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         err: &mut Diagnostic,
         source: PathSource<'_>,
         path: &[Segment],
+        full_path: &[Segment],
         span: Span,
         res: Option<Res>,
         base_error: &BaseError,
@@ -637,6 +687,10 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     return (true, candidates);
                 }
             }
+        }
+
+        if candidates.is_empty() {
+            candidates = self.smart_resolve_partial_mod_path_errors(path, full_path);
         }
 
         return (false, candidates);
@@ -1539,7 +1593,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             return None;
         }
 
-        let resolutions = self.r.resolutions(module);
+        let resolutions = self.r.resolutions(*module);
         let targets = resolutions
             .borrow()
             .iter()

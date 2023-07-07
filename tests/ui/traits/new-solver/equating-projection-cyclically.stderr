@@ -1,13 +1,8 @@
 error[E0308]: mismatched types
-  --> $DIR/equating-projection-cyclically.rs:22:19
+  --> $DIR/equating-projection-cyclically.rs:25:9
    |
 LL |     x = transform(x);
-   |                   ^ expected inferred type, found associated type
-   |
-   = note:         expected type `_`
-           found associated type `<_ as Test>::Assoc`
-   = help: consider constraining the associated type `<_ as Test>::Assoc` to `_`
-   = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
+   |         ^^^^^^^^^^^^ cyclic type of infinite size
 
 error: aborting due to previous error
 

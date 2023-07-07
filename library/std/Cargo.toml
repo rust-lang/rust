@@ -18,8 +18,7 @@ panic_unwind = { path = "../panic_unwind", optional = true }
 panic_abort = { path = "../panic_abort" }
 core = { path = "../core", public = true }
 libc = { version = "0.2.146", default-features = false, features = ['rustc-dep-of-std'], public = true }
-# FIXME(Nilstrieb): https://github.com/rust-lang/compiler-builtins/pull/532/files#r1249354225
-compiler_builtins = { version = "=0.1.93" }
+compiler_builtins = { version = "0.1.95" }
 profiler_builtins = { path = "../profiler_builtins", optional = true }
 unwind = { path = "../unwind" }
 hashbrown = { version = "0.14", default-features = false, features = ['rustc-dep-of-std'] }

@@ -4,6 +4,7 @@ use crate::search_paths::SearchPath;
 use crate::utils::NativeLib;
 use crate::{lint, EarlyErrorHandler};
 use rustc_data_structures::profiling::TimePassesFormat;
+use rustc_errors::ColorConfig;
 use rustc_errors::{LanguageIdentifier, TerminalUrl};
 use rustc_target::spec::{CodeModel, LinkerFlavorCli, MergeFunctions, PanicStrategy, SanitizerSet};
 use rustc_target::spec::{
@@ -212,6 +213,7 @@ top_level_options!(
 
         /// The (potentially remapped) working directory
         working_dir: RealFileName [TRACKED],
+        color: ColorConfig [UNTRACKED],
     }
 );
 
@@ -386,7 +388,7 @@ mod desc {
     pub const parse_unpretty: &str = "`string` or `string=string`";
     pub const parse_treat_err_as_bug: &str = "either no value or a number bigger than 0";
     pub const parse_trait_solver: &str =
-        "one of the supported solver modes (`classic`, `chalk`, or `next`)";
+        "one of the supported solver modes (`classic`, `next`, or `next-coherence`)";
     pub const parse_lto: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), `thin`, `fat`, or omitted";
     pub const parse_linker_plugin_lto: &str =
@@ -418,6 +420,7 @@ mod desc {
         "a `,` separated combination of `bti`, `b-key`, `pac-ret`, or `leaf`";
     pub const parse_proc_macro_execution_strategy: &str =
         "one of supported execution strategies (`same-thread`, or `cross-thread`)";
+    pub const parse_dump_solver_proof_tree: &str = "one of: `always`, `on-request`, `on-error`";
 }
 
 mod parse {
@@ -983,7 +986,6 @@ mod parse {
     pub(crate) fn parse_trait_solver(slot: &mut TraitSolver, v: Option<&str>) -> bool {
         match v {
             Some("classic") => *slot = TraitSolver::Classic,
-            Some("chalk") => *slot = TraitSolver::Chalk,
             Some("next") => *slot = TraitSolver::Next,
             Some("next-coherence") => *slot = TraitSolver::NextCoherence,
             // default trait solver is subject to change..
@@ -1238,6 +1240,19 @@ mod parse {
         };
         true
     }
+
+    pub(crate) fn parse_dump_solver_proof_tree(
+        slot: &mut DumpSolverProofTree,
+        v: Option<&str>,
+    ) -> bool {
+        match v {
+            None | Some("always") => *slot = DumpSolverProofTree::Always,
+            Some("never") => *slot = DumpSolverProofTree::Never,
+            Some("on-error") => *slot = DumpSolverProofTree::OnError,
+            _ => return false,
+        };
+        true
+    }
 }
 
 options! {
@@ -1463,8 +1478,11 @@ options! {
         "output statistics about monomorphization collection"),
     dump_mono_stats_format: DumpMonoStatsFormat = (DumpMonoStatsFormat::Markdown, parse_dump_mono_stats, [UNTRACKED],
         "the format to use for -Z dump-mono-stats (`markdown` (default) or `json`)"),
-    dump_solver_proof_tree: bool = (false, parse_bool, [UNTRACKED],
-        "dump a proof tree for every goal evaluated by the new trait solver"),
+    dump_solver_proof_tree: DumpSolverProofTree = (DumpSolverProofTree::Never, parse_dump_solver_proof_tree, [UNTRACKED],
+        "dump a proof tree for every goal evaluated by the new trait solver. If the flag is specified without any options after it
+        then it defaults to `always`. If the flag is not specified at all it defaults to `on-request`."),
+    dump_solver_proof_tree_use_cache: Option<bool> = (None, parse_opt_bool, [UNTRACKED],
+        "determines whether dumped proof trees use the global cache"),
     dwarf_version: Option<u32> = (None, parse_opt_number, [TRACKED],
         "version of DWARF debug information to emit (default: 2 or 4, depending on platform)"),
     dylib_lto: bool = (false, parse_bool, [UNTRACKED],

@@ -148,8 +148,11 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
             return None;
         }
 
-        let (normalized_ty, obligations) =
-            self.structurally_normalize(tcx.mk_projection(tcx.lang_items().deref_target()?, [ty]))?;
+        let (normalized_ty, obligations) = self.structurally_normalize(Ty::new_projection(
+            tcx,
+            tcx.lang_items().deref_target()?,
+            [ty],
+        ))?;
         debug!("overloaded_deref_ty({:?}) = ({:?}, {:?})", ty, normalized_ty, obligations);
         self.state.obligations.extend(obligations);
 

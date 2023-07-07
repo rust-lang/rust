@@ -16,7 +16,7 @@ impl<'tcx> Value<TyCtxt<'tcx>, DepKind> for Ty<'_> {
     fn from_cycle_error(tcx: TyCtxt<'tcx>, _: &[QueryInfo<DepKind>]) -> Self {
         // SAFETY: This is never called when `Self` is not `Ty<'tcx>`.
         // FIXME: Represent the above fact in the trait system somehow.
-        unsafe { std::mem::transmute::<Ty<'tcx>, Ty<'_>>(tcx.ty_error_misc()) }
+        unsafe { std::mem::transmute::<Ty<'tcx>, Ty<'_>>(Ty::new_misc_error(tcx)) }
     }
 }
 
@@ -34,7 +34,7 @@ impl<'tcx> Value<TyCtxt<'tcx>, DepKind> for ty::SymbolName<'_> {
 
 impl<'tcx> Value<TyCtxt<'tcx>, DepKind> for ty::Binder<'_, ty::FnSig<'_>> {
     fn from_cycle_error(tcx: TyCtxt<'tcx>, stack: &[QueryInfo<DepKind>]) -> Self {
-        let err = tcx.ty_error_misc();
+        let err = Ty::new_misc_error(tcx);
 
         let arity = if let Some(frame) = stack.get(0)
             && frame.query.dep_kind == DepKind::fn_sig

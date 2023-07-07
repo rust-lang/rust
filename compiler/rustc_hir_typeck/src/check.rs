@@ -62,11 +62,11 @@ pub(super) fn check_fn<'a, 'tcx>(
             fcx.require_type_is_sized(yield_ty, span, traits::SizedYieldType);
             yield_ty
         } else {
-            tcx.mk_unit()
+            Ty::new_unit(tcx,)
         };
 
         // Resume type defaults to `()` if the generator has no argument.
-        let resume_ty = fn_sig.inputs().get(0).copied().unwrap_or_else(|| tcx.mk_unit());
+        let resume_ty = fn_sig.inputs().get(0).copied().unwrap_or_else(|| Ty::new_unit(tcx,));
 
         fcx.resume_yield_tys = Some((resume_ty, yield_ty));
     }
@@ -256,10 +256,10 @@ fn check_lang_start_fn<'tcx>(
         // for example `start`'s generic should be a type parameter
         let generics = tcx.generics_of(def_id);
         let fn_generic = generics.param_at(0, tcx);
-        let generic_ty = tcx.mk_ty_param(fn_generic.index, fn_generic.name);
+        let generic_ty = Ty::new_param(tcx, fn_generic.index, fn_generic.name);
         let expected_fn_sig =
             tcx.mk_fn_sig([], generic_ty, false, hir::Unsafety::Normal, Abi::Rust);
-        let expected_ty = tcx.mk_fn_ptr(Binder::dummy(expected_fn_sig));
+        let expected_ty = Ty::new_fn_ptr(tcx, Binder::dummy(expected_fn_sig));
 
         // we emit the same error to suggest changing the arg no matter what's wrong with the arg
         let emit_main_fn_arg_err = || {
@@ -316,9 +316,9 @@ fn check_lang_start_fn<'tcx>(
 
         if !argv_is_okay {
             let inner_ptr_ty =
-                tcx.mk_ptr(ty::TypeAndMut { mutbl: hir::Mutability::Not, ty: tcx.types.u8 });
+                Ty::new_ptr(tcx, ty::TypeAndMut { mutbl: hir::Mutability::Not, ty: tcx.types.u8 });
             let expected_ty =
-                tcx.mk_ptr(ty::TypeAndMut { mutbl: hir::Mutability::Not, ty: inner_ptr_ty });
+                Ty::new_ptr(tcx, ty::TypeAndMut { mutbl: hir::Mutability::Not, ty: inner_ptr_ty });
             tcx.sess.emit_err(LangStartIncorrectParam {
                 param_span: decl.inputs[2].span,
                 param_num: 3,
