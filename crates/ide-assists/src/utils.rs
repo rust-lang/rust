@@ -86,7 +86,7 @@ pub fn test_related_attribute(fn_def: &ast::Fn) -> Option<ast::Attr> {
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum IgnoreAssocItems {
-    HiddenDocAttrPresent,
+    DocHiddenAttrPresent,
     No,
 }
 
@@ -106,7 +106,7 @@ pub fn filter_assoc_items(
         .iter()
         .copied()
         .filter(|assoc_item| {
-            !(ignore_items == IgnoreAssocItems::HiddenDocAttrPresent
+            !(ignore_items == IgnoreAssocItems::DocHiddenAttrPresent
                 && assoc_item.attrs(sema.db).has_doc_hidden())
         })
         // Note: This throws away items with no source.

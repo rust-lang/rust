@@ -46,7 +46,7 @@ pub(crate) fn add_missing_impl_members(acc: &mut Assists, ctx: &AssistContext<'_
         acc,
         ctx,
         DefaultMethods::No,
-        IgnoreAssocItems::HiddenDocAttrPresent,
+        IgnoreAssocItems::DocHiddenAttrPresent,
         "add_impl_missing_members",
         "Implement missing members",
     )
@@ -91,7 +91,7 @@ pub(crate) fn add_missing_default_members(
         acc,
         ctx,
         DefaultMethods::Only,
-        IgnoreAssocItems::HiddenDocAttrPresent,
+        IgnoreAssocItems::DocHiddenAttrPresent,
         "add_impl_default_members",
         "Implement default members",
     )
@@ -123,7 +123,7 @@ fn add_missing_impl_members_inner(
 
     let mut ign_item = ignore_items;
 
-    if let IgnoreAssocItems::HiddenDocAttrPresent = ignore_items {
+    if let IgnoreAssocItems::DocHiddenAttrPresent = ignore_items {
         // Relax condition for local crates.
         let db = ctx.db();
         if trait_.module(db).krate().origin(db).is_local() {

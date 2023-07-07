@@ -177,7 +177,7 @@ fn impl_def_from_trait(
     let ignore_items = if trait_.module(sema.db).krate().origin(sema.db).is_local() {
         IgnoreAssocItems::No
     } else {
-        IgnoreAssocItems::HiddenDocAttrPresent
+        IgnoreAssocItems::DocHiddenAttrPresent
     };
 
     let trait_items =
