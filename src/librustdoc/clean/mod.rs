@@ -1488,24 +1488,25 @@ fn first_not_private(
     hir_id: hir::HirId,
     path: &hir::Path<'_>,
 ) -> Option<Path> {
-    if path.segments.is_empty() {
-        return None;
-    }
-    let parent_def_id = if path.segments.len() == 1 {
-        // Then it's available in the same scope as the owner.
-        hir_id.owner.def_id
-    } else {
-        // It's not available in the same scope, so we start from the parent of the item.
-        path.segments[path.segments.len() - 2].res.opt_def_id()?.as_local()?
+    let (parent_def_id, mut ident) = match &path.segments[..] {
+        [] => return None,
+        // Relative paths are available in the same scope as the owner.
+        [leaf] => (cx.tcx.local_parent(hir_id.owner.def_id), leaf.ident),
+        // So are self paths.
+        [parent, leaf] if parent.ident.name == kw::SelfLower => {
+            (cx.tcx.local_parent(hir_id.owner.def_id), leaf.ident)
+        }
+        // Crate paths are not. We start from the crate root.
+        [parent, leaf] if parent.ident.name == kw::Crate => {
+            (LOCAL_CRATE.as_def_id().as_local()?, leaf.ident)
+        }
+        // Absolute paths are not. We start from the parent of the item.
+        [.., parent, leaf] => (parent.res.opt_def_id()?.as_local()?, leaf.ident),
     };
     let target_def_id = path.res.opt_def_id()?;
-    let mut ident = path.segments.last().unwrap().ident;
     // First we try to get the `DefId` of the item.
-    for child in cx
-        .tcx
-        .module_children_local(cx.tcx.local_parent(parent_def_id))
-        .iter()
-        .filter(move |c| c.ident == ident)
+    for child in
+        cx.tcx.module_children_local(parent_def_id).iter().filter(move |c| c.ident == ident)
     {
         if let Res::Def(DefKind::Ctor(..), _) | Res::SelfCtor(..) = child.res {
             continue;
@@ -1518,26 +1519,20 @@ fn first_not_private(
                     let Some(local_use_def_id) = use_def_id.as_local()
                 {
                     let hir = cx.tcx.hir();
-                    // let parent_mod = hir.local_def_id_to_hir_id();
                     for item_id in hir.module_items(cx.tcx.local_parent(local_use_def_id)) {
                         let item = hir.item(item_id);
-                        if item.ident == ident {
-                            match item.kind {
-                                hir::ItemKind::Use(path, _) => {
-                                    for res in &path.res {
-                                        if let Res::Def(DefKind::Ctor(..), _) | Res::SelfCtor(..) = res {
-                                            continue;
-                                        }
-                                        if !cx.tcx.is_doc_hidden(use_def_id) &&
-                                            cx.tcx.local_visibility(local_use_def_id).is_public() {
-                                            break 'reexps;
-                                        }
-                                        ident = path.segments.last().unwrap().ident;
-                                        last_path_res = Some((path, res));
-                                        continue 'reexps;
-                                    }
+                        if item.ident == ident && let hir::ItemKind::Use(path, _) = item.kind {
+                            for res in &path.res {
+                                if let Res::Def(DefKind::Ctor(..), _) | Res::SelfCtor(..) = res {
+                                    continue;
                                 }
-                                _ => {}
+                                if !cx.tcx.is_doc_hidden(use_def_id) &&
+                                    cx.tcx.local_visibility(local_use_def_id).is_public() {
+                                    break 'reexps;
+                                }
+                                ident = path.segments.last().unwrap().ident;
+                                last_path_res = Some((path, res));
+                                continue 'reexps;
                             }
                         }
                     }
