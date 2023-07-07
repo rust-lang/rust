@@ -165,7 +165,7 @@ extern "C" uint64_t LLVMRustCoverageHashCString(const char *StrVal) {
 
 extern "C" uint64_t LLVMRustCoverageHashByteArray(
     const char *Bytes,
-    unsigned NumBytes) {
+    size_t NumBytes) {
   StringRef StrRef(Bytes, NumBytes);
   return IndexedInstrProf::ComputeHash(StrRef);
 }
