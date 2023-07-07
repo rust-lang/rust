@@ -95,8 +95,9 @@ const USE_LZ: bool = {
         // LZD or LZCNT on SPARC only exists for the VIS 3 extension and later.
         cfg!(target_feature = "vis3")
     } else if cfg!(any(target_arch = "riscv32", target_arch = "riscv64")) {
-        // The `B` extension on RISC-V determines if a CLZ assembly instruction exists
-        cfg!(target_feature = "b")
+        // The 'Zbb' Basic Bit-Manipulation extension on RISC-V
+        // determines if a CLZ assembly instruction exists
+        cfg!(target_feature = "zbb")
     } else {
         // All other common targets Rust supports should have CLZ instructions
         true
