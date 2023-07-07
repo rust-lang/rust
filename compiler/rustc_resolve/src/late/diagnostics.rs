@@ -350,9 +350,10 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 .filter(|candidate| {
                     if let Some(def_id) = candidate.did &&
                         let Some(module) = self.r.get_module(def_id) {
-                            self.r.resolutions(module).borrow().iter().any(|(key, _r)| {
-                                key.ident.name == following_seg.ident.name
-                            })
+                                Some(def_id) != self.parent_scope.module.opt_def_id() &&
+                                self.r.resolutions(module).borrow().iter().any(|(key, _r)| {
+                                    key.ident.name == following_seg.ident.name
+                                })
                     } else {
                         false
                     }
