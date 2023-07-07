@@ -77,6 +77,6 @@ the constant doesn't use them in any way. This can cause
 [some interesting errors][pcg-unused-substs] and breaks some already stable code.
 
 [`ty::Const`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Const.html
-[`ty::ConstKind`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.ConstKind.html
+[`ty::ConstKind`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_type_ir/sty/enum.ConstKind.html
 [`ty::TyKind`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_type_ir/sty/enum.TyKind.html
 [pcg-unused-substs]: https://github.com/rust-lang/project-const-generics/issues/33
