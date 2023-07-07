@@ -6,7 +6,7 @@
 struct TransparentCustomZst(());
 extern "C" {
     fn good17(p: TransparentCustomZst);
-    //~^ WARNING: `extern` block uses type `TransparentCustomZst`, which is not FFI-safe
+    //~^ WARNING: `extern` block uses type `()`, which is not FFI-safe
 }
 
 fn main() {}
