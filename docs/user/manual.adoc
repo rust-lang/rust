@@ -141,6 +141,8 @@ If you're not using Code, you can compile and install only the LSP server:
 $ cargo xtask install --server
 ----
 
+Make sure that `.cargo/bin` is in `$PATH` and precedes paths where `rust-analyzer` may also be installed.
+
 === rust-analyzer Language Server Binary
 
 Other editors generally require the `rust-analyzer` binary to be in `$PATH`.
