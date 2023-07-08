@@ -12,10 +12,10 @@ LL |     = [0; (i8::MAX + 1u8) as usize];
    |
    = help: the trait `Add<u8>` is not implemented for `i8`
    = help: the following other types implement trait `Add<Rhs>`:
+             <i8 as Add>
+             <i8 as Add<&i8>>
              <&'a i8 as Add<i8>>
              <&i8 as Add<&i8>>
-             <i8 as Add<&i8>>
-             <i8 as Add>
 
 error: aborting due to 2 previous errors
 

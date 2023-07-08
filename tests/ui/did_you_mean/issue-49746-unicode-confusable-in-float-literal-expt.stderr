@@ -23,14 +23,14 @@ LL | const UNIVERSAL_GRAVITATIONAL_CONSTANT: f64 = 6.674e−11; // m³⋅kg⁻¹
    |
    = help: the trait `Sub<{integer}>` is not implemented for `{float}`
    = help: the following other types implement trait `Sub<Rhs>`:
-             <&'a f32 as Sub<f32>>
-             <&'a f64 as Sub<f64>>
-             <&'a i128 as Sub<i128>>
-             <&'a i16 as Sub<i16>>
-             <&'a i32 as Sub<i32>>
-             <&'a i64 as Sub<i64>>
-             <&'a i8 as Sub<i8>>
-             <&'a isize as Sub<isize>>
+             <isize as Sub>
+             <isize as Sub<&isize>>
+             <i8 as Sub>
+             <i8 as Sub<&i8>>
+             <i16 as Sub>
+             <i16 as Sub<&i16>>
+             <i32 as Sub>
+             <i32 as Sub<&i32>>
            and 48 others
 
 error: aborting due to 3 previous errors

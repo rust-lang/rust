@@ -12,7 +12,6 @@ use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::{self, InferCtxt};
 use crate::solve::{GenerateProofTree, InferCtxtEvalExt, UseGlobalCache};
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
-use crate::traits::query::normalize::QueryNormalizeExt as _;
 use crate::traits::specialize::to_pretty_impl_header;
 use crate::traits::NormalizeExt;
 use on_unimplemented::{AppendConstMessage, OnUnimplementedNote, TypeErrCtxtExt as _};
@@ -33,7 +32,7 @@ use rustc_middle::traits::solve::Goal;
 use rustc_middle::traits::{DefiningAnchor, SelectionOutputTypeParameterMismatch};
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::fold::{TypeFolder, TypeSuperFoldable};
+use rustc_middle::ty::fold::{BottomUpFolder, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::print::{with_forced_trimmed_paths, FmtPrinter, Print};
 use rustc_middle::ty::{
     self, SubtypePredicate, ToPolyTraitRef, ToPredicate, TraitRef, Ty, TyCtxt, TypeFoldable,
@@ -63,7 +62,7 @@ pub enum CandidateSimilarity {
     Fuzzy { ignoring_lifetimes: bool },
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ImplCandidate<'tcx> {
     pub trait_ref: ty::TraitRef<'tcx>,
     pub similarity: CandidateSimilarity,
@@ -1941,10 +1940,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         other: bool,
     ) -> bool {
         let other = if other { "other " } else { "" };
-        let report = |mut candidates: Vec<TraitRef<'tcx>>, err: &mut Diagnostic| {
-            candidates.sort();
-            candidates.dedup();
-            let len = candidates.len();
+        let report = |candidates: Vec<TraitRef<'tcx>>, err: &mut Diagnostic| {
             if candidates.is_empty() {
                 return false;
             }
@@ -1973,11 +1969,14 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 candidates.iter().map(|c| c.print_only_trait_path().to_string()).collect();
             traits.sort();
             traits.dedup();
+            // FIXME: this could use a better heuristic, like just checking
+            // that substs[1..] is the same.
+            let all_traits_equal = traits.len() == 1;
 
-            let mut candidates: Vec<String> = candidates
+            let candidates: Vec<String> = candidates
                 .into_iter()
                 .map(|c| {
-                    if traits.len() == 1 {
+                    if all_traits_equal {
                         format!("\n  {}", c.self_ty())
                     } else {
                         format!("\n  {}", c)
@@ -1985,14 +1984,16 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 })
                 .collect();
 
-            candidates.sort();
-            candidates.dedup();
             let end = if candidates.len() <= 9 { candidates.len() } else { 8 };
             err.help(format!(
                 "the following {other}types implement trait `{}`:{}{}",
                 trait_ref.print_only_trait_path(),
                 candidates[..end].join(""),
-                if len > 9 { format!("\nand {} others", len - 8) } else { String::new() }
+                if candidates.len() > 9 {
+                    format!("\nand {} others", candidates.len() - 8)
+                } else {
+                    String::new()
+                }
             ));
             true
         };
@@ -2006,7 +2007,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 // Mentioning implementers of `Copy`, `Debug` and friends is not useful.
                 return false;
             }
-            let normalized_impl_candidates: Vec<_> = self
+            let mut impl_candidates: Vec<_> = self
                 .tcx
                 .all_impls(def_id)
                 // Ignore automatically derived impls and `!Trait` impls.
@@ -2033,7 +2034,10 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     }
                 })
                 .collect();
-            return report(normalized_impl_candidates, err);
+
+            impl_candidates.sort();
+            impl_candidates.dedup();
+            return report(impl_candidates, err);
         }
 
         // Sort impl candidates so that ordering is consistent for UI tests.
@@ -2042,27 +2046,25 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         //
         // Prefer more similar candidates first, then sort lexicographically
         // by their normalized string representation.
-        let mut normalized_impl_candidates_and_similarities = impl_candidates
+        let mut impl_candidates: Vec<_> = impl_candidates
             .iter()
-            .copied()
-            .map(|ImplCandidate { trait_ref, similarity }| {
-                // FIXME(compiler-errors): This should be using `NormalizeExt::normalize`
-                let normalized = self
-                    .at(&ObligationCause::dummy(), ty::ParamEnv::empty())
-                    .query_normalize(trait_ref)
-                    .map_or(trait_ref, |normalized| normalized.value);
-                (similarity, normalized)
+            .cloned()
+            .map(|mut cand| {
+                // Fold the consts so that they shows up as, e.g., `10`
+                // instead of `core::::array::{impl#30}::{constant#0}`.
+                cand.trait_ref = cand.trait_ref.fold_with(&mut BottomUpFolder {
+                    tcx: self.tcx,
+                    ty_op: |ty| ty,
+                    lt_op: |lt| lt,
+                    ct_op: |ct| ct.eval(self.tcx, ty::ParamEnv::empty()),
+                });
+                cand
             })
-            .collect::<Vec<_>>();
-        normalized_impl_candidates_and_similarities.sort();
-        normalized_impl_candidates_and_similarities.dedup();
+            .collect();
+        impl_candidates.sort_by_key(|cand| (cand.similarity, cand.trait_ref));
+        impl_candidates.dedup();
 
-        let normalized_impl_candidates = normalized_impl_candidates_and_similarities
-            .into_iter()
-            .map(|(_, normalized)| normalized)
-            .collect::<Vec<_>>();
-
-        report(normalized_impl_candidates, err)
+        report(impl_candidates.into_iter().map(|cand| cand.trait_ref).collect(), err)
     }
 
     fn report_similar_impl_candidates_for_root_obligation(
