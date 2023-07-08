@@ -427,9 +427,9 @@ fn merge_codegen_units<'tcx>(
         // zero-padded suffixes, which means they are automatically sorted by
         // names. The numeric suffix width depends on the number of CGUs, which
         // is always greater than zero:
-        // - [1,9]     CGUS: `0`, `1`, `2`, ...
-        // - [10,99]   CGUS: `00`, `01`, `02`, ...
-        // - [100,999] CGUS: `000`, `001`, `002`, ...
+        // - [1,9]     CGUs: `0`, `1`, `2`, ...
+        // - [10,99]   CGUs: `00`, `01`, `02`, ...
+        // - [100,999] CGUs: `000`, `001`, `002`, ...
         // - etc.
         //
         // If we didn't zero-pad the sorted-by-name order would be `XYZ-cgu.0`,
@@ -458,7 +458,7 @@ fn internalize_symbols<'tcx>(
     /// used to keep track of that.
     #[derive(Clone, PartialEq, Eq, Debug)]
     enum MonoItemPlacement {
-        SingleCgu { cgu_name: Symbol },
+        SingleCgu(Symbol),
         MultipleCgus,
     }
 
@@ -466,7 +466,7 @@ fn internalize_symbols<'tcx>(
     let single_codegen_unit = codegen_units.len() == 1;
 
     if !single_codegen_unit {
-        for cgu in codegen_units.iter_mut() {
+        for cgu in codegen_units.iter() {
             for item in cgu.items().keys() {
                 // If there is more than one codegen unit, we need to keep track
                 // in which codegen units each monomorphization is placed.
@@ -474,13 +474,13 @@ fn internalize_symbols<'tcx>(
                     Entry::Occupied(e) => {
                         let placement = e.into_mut();
                         debug_assert!(match *placement {
-                            MonoItemPlacement::SingleCgu { cgu_name } => cgu_name != cgu.name(),
+                            MonoItemPlacement::SingleCgu(cgu_name) => cgu_name != cgu.name(),
                             MonoItemPlacement::MultipleCgus => true,
                         });
                         *placement = MonoItemPlacement::MultipleCgus;
                     }
                     Entry::Vacant(e) => {
-                        e.insert(MonoItemPlacement::SingleCgu { cgu_name: cgu.name() });
+                        e.insert(MonoItemPlacement::SingleCgu(cgu.name()));
                     }
                 }
             }
@@ -490,7 +490,7 @@ fn internalize_symbols<'tcx>(
     // For each internalization candidates in each codegen unit, check if it is
     // used from outside its defining codegen unit.
     for cgu in codegen_units {
-        let home_cgu = MonoItemPlacement::SingleCgu { cgu_name: cgu.name() };
+        let home_cgu = MonoItemPlacement::SingleCgu(cgu.name());
 
         for (item, linkage_and_visibility) in cgu.items_mut() {
             if !internalization_candidates.contains(item) {
@@ -501,20 +501,20 @@ fn internalize_symbols<'tcx>(
             if !single_codegen_unit {
                 debug_assert_eq!(mono_item_placements[item], home_cgu);
 
-                if let Some(user_items) = cx.usage_map.get_user_items(*item) {
-                    if user_items
-                        .iter()
-                        .filter_map(|user_item| {
-                            // Some user mono items might not have been
-                            // instantiated. We can safely ignore those.
-                            mono_item_placements.get(user_item)
-                        })
-                        .any(|placement| *placement != home_cgu)
-                    {
-                        // Found a user from another CGU, so skip to the next item
-                        // without marking this one as internal.
-                        continue;
-                    }
+                if cx
+                    .usage_map
+                    .get_user_items(*item)
+                    .iter()
+                    .filter_map(|user_item| {
+                        // Some user mono items might not have been
+                        // instantiated. We can safely ignore those.
+                        mono_item_placements.get(user_item)
+                    })
+                    .any(|placement| *placement != home_cgu)
+                {
+                    // Found a user from another CGU, so skip to the next item
+                    // without marking this one as internal.
+                    continue;
                 }
             }
 
