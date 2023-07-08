@@ -53,7 +53,7 @@ pub(crate) fn generate_derive(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opt
             Some(tt) => {
                 // Just move the cursor.
                 let tt = edit.make_mut(tt);
-                edit.add_tabstop_before_token(cap, tt.r_paren_token().unwrap());
+                edit.add_tabstop_before_token(cap, tt.right_delimiter_token().unwrap());
             }
         };
     })
@@ -99,6 +99,38 @@ mod m {
             generate_derive,
             "#[derive(Clone)]\nstruct Foo { a: i32$0, }",
             "#[derive(Clone$0)]\nstruct Foo { a: i32, }",
+        );
+    }
+
+    #[test]
+    fn add_derive_existing_with_brackets() {
+        check_assist(
+            generate_derive,
+            "
+#[derive[Clone]]
+struct Foo { a: i32$0, }
+",
+            "
+#[derive[Clone$0]]
+struct Foo { a: i32, }
+",
+        );
+    }
+
+    #[test]
+    fn add_derive_existing_missing_delimiter() {
+        // since `#[derive]` isn't a simple attr call (i.e. `#[derive()]`)
+        // we don't consider it as a proper derive attr and generate a new
+        // one instead
+        check_assist(
+            generate_derive,
+            "
+#[derive]
+struct Foo { a: i32$0, }",
+            "
+#[derive]
+#[derive($0)]
+struct Foo { a: i32, }",
         );
     }
 
