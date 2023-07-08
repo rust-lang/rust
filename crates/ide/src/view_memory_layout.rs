@@ -1,10 +1,10 @@
 use hir::{Field, HirDisplay, Layout, Semantics, Type};
 use ide_db::{
-    defs::{Definition, IdentClass},
-    helpers::pick_best_token,
+    defs::Definition,
+    helpers::{get_definition, pick_best_token},
     RootDatabase,
 };
-use syntax::{AstNode, SyntaxKind, SyntaxToken};
+use syntax::{AstNode, SyntaxKind};
 
 use crate::FilePosition;
 
@@ -23,16 +23,40 @@ pub struct RecursiveMemoryLayout {
     pub nodes: Vec<MemoryLayoutNode>,
 }
 
-fn get_definition(sema: &Semantics<'_, RootDatabase>, token: SyntaxToken) -> Option<Definition> {
-    for token in sema.descend_into_macros(token) {
-        let def = IdentClass::classify_token(sema, &token).map(IdentClass::definitions_no_ops);
-        if let Some(&[x]) = def.as_deref() {
-            return Some(x);
-        }
-    }
-    None
+enum FieldOrTupleIdx {
+    Field(Field),
+    TupleIdx(usize),
 }
 
+impl FieldOrTupleIdx {
+    fn name(&self, db: &RootDatabase) -> String {
+        match *self {
+            FieldOrTupleIdx::Field(f) => f
+                .name(db)
+                .as_str()
+                .map(|s| s.to_owned())
+                .unwrap_or_else(|| format!(".{}", f.name(db).as_tuple_index().unwrap())),
+            FieldOrTupleIdx::TupleIdx(i) => format!(".{i}").to_owned(),
+        }
+    }
+
+    fn index(&self) -> usize {
+        match *self {
+            FieldOrTupleIdx::Field(f) => f.index(),
+            FieldOrTupleIdx::TupleIdx(i) => i,
+        }
+    }
+}
+
+// Feature: View Memory Layout
+//
+// Displays the recursive memory layout of a datatype.
+//
+// |===
+// | Editor  | Action Name
+//
+// | VS Code | **rust-analyzer: View Memory Layout**
+// |===
 pub(crate) fn view_memory_layout(
     db: &RootDatabase,
     position: FilePosition,
@@ -53,33 +77,11 @@ pub(crate) fn view_memory_layout(
         Definition::BuiltinType(it) => it.ty(db),
         Definition::SelfType(it) => it.self_ty(db),
         Definition::Local(it) => it.ty(db),
+        Definition::Field(it) => it.ty(db),
+        Definition::Const(it) => it.ty(db),
+        Definition::Static(it) => it.ty(db),
         _ => return None,
     };
-
-    enum FieldOrTupleIdx {
-        Field(Field),
-        TupleIdx(usize),
-    }
-
-    impl FieldOrTupleIdx {
-        fn name(&self, db: &RootDatabase) -> String {
-            match *self {
-                FieldOrTupleIdx::Field(f) => f
-                    .name(db)
-                    .as_str()
-                    .map(|s| s.to_owned())
-                    .unwrap_or_else(|| format!("{:#?}", f.name(db).as_tuple_index().unwrap())),
-                FieldOrTupleIdx::TupleIdx(i) => format!(".{i}").to_owned(),
-            }
-        }
-
-        fn index(&self) -> usize {
-            match *self {
-                FieldOrTupleIdx::Field(f) => f.index(),
-                FieldOrTupleIdx::TupleIdx(i) => i,
-            }
-        }
-    }
 
     fn read_layout(
         nodes: &mut Vec<MemoryLayoutNode>,
@@ -100,11 +102,11 @@ pub(crate) fn view_memory_layout(
             )
             .collect::<Vec<_>>();
 
-        fields.sort_by_key(|(f, _)| layout.field_offset(f.index()).unwrap_or(u64::MAX));
-
         if fields.len() == 0 {
             return;
         }
+
+        fields.sort_by_key(|(f, _)| layout.field_offset(f.index()).unwrap());
 
         let children_start = nodes.len();
         nodes[parent_idx].children_start = children_start as i64;
@@ -148,8 +150,21 @@ pub(crate) fn view_memory_layout(
     ty.layout(db)
         .map(|layout| {
             let item_name = match def {
-                Definition::Local(l) => l.name(db).as_str().unwrap().to_owned(),
-                _ => "[ROOT]".to_owned(),
+                // def is a datatype
+                Definition::Adt(_)
+                | Definition::TypeAlias(_)
+                | Definition::BuiltinType(_)
+                | Definition::SelfType(_) => "[ROOT]".to_owned(),
+
+                // def is an item
+                def => def
+                    .name(db)
+                    .map(|n| {
+                        n.as_str()
+                            .map(|s| s.to_owned())
+                            .unwrap_or_else(|| format!(".{}", n.as_tuple_index().unwrap()))
+                    })
+                    .unwrap_or("[ROOT]".to_owned()),
             };
 
             let typename = ty.display(db).to_string();
@@ -169,4 +184,190 @@ pub(crate) fn view_memory_layout(
             RecursiveMemoryLayout { nodes }
         })
         .ok()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use crate::fixture;
+
+    fn make_memory_layout(ra_fixture: &str) -> Option<RecursiveMemoryLayout> {
+        let (analysis, position, _) = fixture::annotations(ra_fixture);
+
+        view_memory_layout(&analysis.db, position)
+    }
+
+    fn check_item_info<T>(node: &MemoryLayoutNode, item_name: &str, check_typename: bool) {
+        assert_eq!(node.item_name, item_name);
+        assert_eq!(node.size, core::mem::size_of::<T>() as u64);
+        assert_eq!(node.alignment, core::mem::align_of::<T>() as u64);
+        if check_typename {
+            assert_eq!(node.typename, std::any::type_name::<T>());
+        }
+    }
+
+    #[test]
+    fn view_memory_layout_none() {
+        assert!(make_memory_layout(r#"$0"#).is_none());
+        assert!(make_memory_layout(r#"stru$0ct Blah {}"#).is_none());
+    }
+
+    #[test]
+    fn view_memory_layout_primitive() {
+        let ml = make_memory_layout(
+            r#"
+fn main() {
+    let foo$0 = 109; // default i32
+}
+"#,
+        )
+        .unwrap();
+
+        assert_eq!(ml.nodes.len(), 1);
+        assert_eq!(ml.nodes[0].parent_idx, -1);
+        assert_eq!(ml.nodes[0].children_start, -1);
+        check_item_info::<i32>(&ml.nodes[0], "foo", true);
+        assert_eq!(ml.nodes[0].offset, 0);
+    }
+
+    #[test]
+    fn view_memory_layout_constant() {
+        let ml = make_memory_layout(
+            r#"
+const BLAH$0: bool = 0;
+"#,
+        )
+        .unwrap();
+
+        assert_eq!(ml.nodes.len(), 1);
+        assert_eq!(ml.nodes[0].parent_idx, -1);
+        assert_eq!(ml.nodes[0].children_start, -1);
+        check_item_info::<bool>(&ml.nodes[0], "BLAH", true);
+        assert_eq!(ml.nodes[0].offset, 0);
+    }
+
+    #[test]
+    fn view_memory_layout_static() {
+        let ml = make_memory_layout(
+            r#"
+static BLAH$0: bool = 0;
+"#,
+        )
+        .unwrap();
+
+        assert_eq!(ml.nodes.len(), 1);
+        assert_eq!(ml.nodes[0].parent_idx, -1);
+        assert_eq!(ml.nodes[0].children_start, -1);
+        check_item_info::<bool>(&ml.nodes[0], "BLAH", true);
+        assert_eq!(ml.nodes[0].offset, 0);
+    }
+
+    #[test]
+    fn view_memory_layout_tuple() {
+        let ml = make_memory_layout(
+            r#"
+fn main() {
+    let x$0 = (101.0, 111u8, 119i64);
+}
+        "#,
+        )
+        .unwrap();
+
+        assert_eq!(ml.nodes.len(), 4);
+        assert_eq!(ml.nodes[0].children_start, 1);
+        assert_eq!(ml.nodes[0].children_len, 3);
+        check_item_info::<(f64, u8, i64)>(&ml.nodes[0], "x", true);
+    }
+
+    #[test]
+    fn view_memory_layout_struct() {
+        let ml = make_memory_layout(
+            r#"
+#[repr(C)]
+struct Blah$0 {
+    a: u32,
+    b: (i32, u8),
+    c: i8,
+}
+"#,
+        )
+        .unwrap();
+
+        #[repr(C)] // repr C makes this testable, rustc doesn't enforce a layout otherwise ;-;
+        struct Blah {
+            a: u32,
+            b: (i32, u8),
+            c: i8,
+        }
+
+        assert_eq!(ml.nodes.len(), 6);
+        check_item_info::<Blah>(&ml.nodes[0], "[ROOT]", false);
+        assert_eq!(ml.nodes[0].offset, 0);
+
+        check_item_info::<u32>(&ml.nodes[1], "a", true);
+        assert_eq!(ml.nodes[1].offset, 0);
+
+        check_item_info::<(i32, u8)>(&ml.nodes[2], "b", true);
+        assert_eq!(ml.nodes[2].offset, 4);
+
+        check_item_info::<i8>(&ml.nodes[3], "c", true);
+        assert_eq!(ml.nodes[3].offset, 12);
+    }
+
+    #[test]
+    fn view_memory_layout_member() {
+        let ml = make_memory_layout(
+            r#"
+struct Oof {
+    a$0: bool
+}
+"#,
+        )
+        .unwrap();
+
+        assert_eq!(ml.nodes.len(), 1);
+        assert_eq!(ml.nodes[0].parent_idx, -1);
+        assert_eq!(ml.nodes[0].children_start, -1);
+        check_item_info::<bool>(&ml.nodes[0], "a", true);
+        // NOTE: this should not give the memory layout relative to the parent structure, but the type referred to by the member variable alone.
+        assert_eq!(ml.nodes[0].offset, 0);
+    }
+
+    #[test]
+    fn view_memory_layout_alias() {
+        let ml_a = make_memory_layout(
+            r#"
+struct X {
+    a: u32,
+    b: i8,
+    c: (f32, f32),
+}
+
+type Foo$0 = X;
+        "#,
+        )
+        .unwrap();
+        let ml_b = make_memory_layout(
+            r#"
+struct X$0 {
+    a: u32,
+    b: i8,
+    c: (f32, f32),
+}
+        "#,
+        )
+        .unwrap();
+
+        ml_a.nodes.iter().zip(ml_b.nodes.iter()).for_each(|(a, b)| {
+            assert_eq!(a.item_name, b.item_name);
+            assert_eq!(a.typename, b.typename);
+            assert_eq!(a.size, b.size);
+            assert_eq!(a.alignment, b.alignment);
+            assert_eq!(a.offset, b.offset);
+            assert_eq!(a.parent_idx, b.parent_idx);
+            assert_eq!(a.children_start, b.children_start);
+            assert_eq!(a.children_len, b.children_len);
+        })
+    }
 }

@@ -726,7 +726,10 @@ impl Analysis {
         self.with_db(|db| move_item::move_item(db, range, direction))
     }
 
-    pub fn get_recursive_memory_layout(&self, position: FilePosition) -> Cancellable<Option<RecursiveMemoryLayout>> {
+    pub fn get_recursive_memory_layout(
+        &self,
+        position: FilePosition,
+    ) -> Cancellable<Option<RecursiveMemoryLayout>> {
         self.with_db(|db| view_memory_layout(db, position))
     }
 

@@ -218,7 +218,5 @@ export type RecursiveMemoryLayoutNode = {
     children_len: number;
 };
 export type RecursiveMemoryLayout = {
-    name: string;
-    expansion: string;
     nodes: RecursiveMemoryLayoutNode[];
 };

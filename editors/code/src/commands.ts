@@ -1142,8 +1142,6 @@ export function viewMemoryLayout(ctx: CtxInit): Cmd {
             position,
         });
 
-        // if (expanded == null) return "Not available";
-
         const document = vscode.window.createWebviewPanel(
             "memory_layout",
             "[Memory Layout]",
