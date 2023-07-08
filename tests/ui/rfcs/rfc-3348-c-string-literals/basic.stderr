@@ -1,0 +1,25 @@
+error: prefix `c` is unknown
+  --> $DIR/basic.rs:8:27
+   |
+LL |     assert_eq!(b"test\0", c"test".to_bytes_with_nul());
+   |                           ^ unknown prefix
+   |
+   = note: prefixed identifiers and literals are reserved since Rust 2021
+help: consider inserting whitespace here
+   |
+LL |     assert_eq!(b"test\0", c "test".to_bytes_with_nul());
+   |                            +
+
+error: no rules expected the token `"test"`
+  --> $DIR/basic.rs:8:28
+   |
+LL |     assert_eq!(b"test\0", c"test".to_bytes_with_nul());
+   |                            -^^^^^
+   |                            |
+   |                            no rules expected this token in macro call
+   |                            help: missing comma here
+   |
+   = note: while trying to match sequence start
+
+error: aborting due to 2 previous errors
+

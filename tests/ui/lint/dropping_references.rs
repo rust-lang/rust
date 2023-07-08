@@ -97,3 +97,22 @@ fn issue10122(x: u8) {
         _ => (),
     }
 }
+
+fn issue112653() {
+    fn foo() -> Result<&'static u8, ()> {
+        println!("doing foo");
+        Ok(&0) // result is not always useful, the side-effect matters
+    }
+    fn bar() {
+        println!("doing bar");
+    }
+
+    fn stuff() -> Result<(), ()> {
+        match 42 {
+            0 => drop(foo()?),  // drop is needed because we only care about side-effects
+            1 => bar(),
+            _ => (),  // doing nothing (no side-effects needed here)
+        }
+        Ok(())
+    }
+}
