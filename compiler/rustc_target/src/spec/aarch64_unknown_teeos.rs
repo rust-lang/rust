@@ -1,6 +1,6 @@
 use crate::spec::Target;
 
-use super::{Cc, Lld, LinkerFlavor};
+use super::{Cc, LinkerFlavor, Lld};
 
 pub fn target() -> Target {
     let mut base = super::teeos_base::opts();
