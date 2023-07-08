@@ -22,7 +22,7 @@
 //! Our current behavior is ¯\_(ツ)_/¯.
 use std::fmt;
 
-use base_db::{AnchoredPathBuf, FileId, FileRange};
+use base_db::{AnchoredPathBuf, CrateOrigin, FileId, FileRange};
 use either::Either;
 use hir::{FieldSource, HasSource, InFile, ModuleSource, Semantics};
 use stdx::never;
@@ -77,6 +77,15 @@ impl Definition {
                 bail!("Cannot rename builtin type")
             }
             Definition::SelfType(_) => bail!("Cannot rename `Self`"),
+            Definition::Adt(hir::Adt::Struct(strukt)) => {
+                if !matches!(
+                    strukt.module(sema.db).krate().origin(sema.db),
+                    CrateOrigin::Local { .. }
+                ) {
+                    bail!("Cannot rename a non-local struct.")
+                }
+                rename_reference(sema, Definition::Adt(hir::Adt::Struct(strukt)), new_name)
+            }
             def => rename_reference(sema, def, new_name),
         }
     }

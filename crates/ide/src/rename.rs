@@ -2529,6 +2529,7 @@ fn main() {
 ",
         )
     }
+<<<<<<< HEAD
 
     #[test]
     fn extern_crate() {
@@ -2634,4 +2635,21 @@ use qux as frob;
         // ",
         //         );
     }
+||||||| parent of 948d9f274 (Disallow renaming of non-local structs)
+=======
+
+    #[test]
+    fn disallow_renaming_for_non_local_struct() {
+        check(
+            "Baz",
+            r#"
+//- /lib.rs crate:lib new_source_root:library
+pub struct S$0;
+//- /main.rs crate:main deps:lib new_source_root:local
+use lib::S;
+"#,
+            "error: Cannot rename a non-local struct.",
+        );
+    }
+>>>>>>> 948d9f274 (Disallow renaming of non-local structs)
 }
