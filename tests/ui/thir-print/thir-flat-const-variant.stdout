@@ -1,0 +1,399 @@
+DefId(0:8 ~ thir_flat_const_variant[1f54]::{impl#0}::BAR1):
+Thir {
+    body_type: Const(
+        Foo,
+    ),
+    arms: [],
+    blocks: [],
+    exprs: [
+        Expr {
+            kind: Tuple {
+                fields: [],
+            },
+            ty: (),
+            temp_lifetime: Some(
+                Node(3),
+            ),
+            span: $DIR/thir-flat-const-variant.rs:12:32: 12:34 (#0),
+        },
+        Expr {
+            kind: Scope {
+                region_scope: Node(7),
+                lint_level: Explicit(
+                    HirId(DefId(0:8 ~ thir_flat_const_variant[1f54]::{impl#0}::BAR1).7),
+                ),
+                value: e0,
+            },
+            ty: (),
+            temp_lifetime: Some(
+                Node(3),
+            ),
+            span: $DIR/thir-flat-const-variant.rs:12:32: 12:34 (#0),
+        },
+        Expr {
+            kind: Adt(
+                AdtExpr {
+                    adt_def: Foo,
+                    variant_index: 0,
+                    substs: [],
+                    user_ty: None,
+                    fields: [
+                        FieldExpr {
+                            name: 0,
+                            expr: e1,
+                        },
+                    ],
+                    base: None,
+                },
+            ),
+            ty: Foo,
+            temp_lifetime: Some(
+                Node(3),
+            ),
+            span: $DIR/thir-flat-const-variant.rs:12:23: 12:35 (#0),
+        },
+        Expr {
+            kind: Scope {
+                region_scope: Node(3),
+                lint_level: Explicit(
+                    HirId(DefId(0:8 ~ thir_flat_const_variant[1f54]::{impl#0}::BAR1).3),
+                ),
+                value: e2,
+            },
+            ty: Foo,
+            temp_lifetime: Some(
+                Node(3),
+            ),
+            span: $DIR/thir-flat-const-variant.rs:12:23: 12:35 (#0),
+        },
+        Expr {
+            kind: Scope {
+                region_scope: Destruction(3),
+                lint_level: Inherited,
+                value: e3,
+            },
+            ty: Foo,
+            temp_lifetime: Some(
+                Node(3),
+            ),
+            span: $DIR/thir-flat-const-variant.rs:12:23: 12:35 (#0),
+        },
+    ],
+    stmts: [],
+    params: [],
+}
+
+DefId(0:9 ~ thir_flat_const_variant[1f54]::{impl#0}::BAR2):
+Thir {
+    body_type: Const(
+        Foo,
+    ),
+    arms: [],
+    blocks: [],
+    exprs: [
+        Expr {
+            kind: Tuple {
+                fields: [],
+            },
+            ty: (),
+            temp_lifetime: Some(
+                Node(3),
+            ),
+            span: $DIR/thir-flat-const-variant.rs:13:33: 13:35 (#0),
+        },
+        Expr {
+            kind: Scope {
+                region_scope: Node(8),
+                lint_level: Explicit(
+                    HirId(DefId(0:9 ~ thir_flat_const_variant[1f54]::{impl#0}::BAR2).8),
+                ),
+                value: e0,
+            },
+            ty: (),
+            temp_lifetime: Some(
+                Node(3),
+            ),
+            span: $DIR/thir-flat-const-variant.rs:13:33: 13:35 (#0),
+        },
+        Expr {
+            kind: Adt(
+                AdtExpr {
+                    adt_def: Foo,
+                    variant_index: 0,
+                    substs: [],
+                    user_ty: None,
+                    fields: [
+                        FieldExpr {
+                            name: 0,
+                            expr: e1,
+                        },
+                    ],
+                    base: None,
+                },
+            ),
+            ty: Foo,
+            temp_lifetime: Some(
+                Node(3),
+            ),
+            span: $DIR/thir-flat-const-variant.rs:13:23: 13:36 (#0),
+        },
+        Expr {
+            kind: Scope {
+                region_scope: Node(3),
+                lint_level: Explicit(
+                    HirId(DefId(0:9 ~ thir_flat_const_variant[1f54]::{impl#0}::BAR2).3),
+                ),
+                value: e2,
+            },
+            ty: Foo,
+            temp_lifetime: Some(
+                Node(3),
+            ),
+            span: $DIR/thir-flat-const-variant.rs:13:23: 13:36 (#0),
+        },
+        Expr {
+            kind: Scope {
+                region_scope: Destruction(3),
+                lint_level: Inherited,
+                value: e3,
+            },
+            ty: Foo,
+            temp_lifetime: Some(
+                Node(3),
+            ),
+            span: $DIR/thir-flat-const-variant.rs:13:23: 13:36 (#0),
+        },
+    ],
+    stmts: [],
+    params: [],
+}
+
+DefId(0:10 ~ thir_flat_const_variant[1f54]::{impl#0}::BAR3):
+Thir {
+    body_type: Const(
+        Foo,
+    ),
+    arms: [],
+    blocks: [],
+    exprs: [
+        Expr {
+            kind: Tuple {
+                fields: [],
+            },
+            ty: (),
+            temp_lifetime: Some(
+                Node(3),
+            ),
+            span: $DIR/thir-flat-const-variant.rs:14:33: 14:35 (#0),
+        },
+        Expr {
+            kind: Scope {
+                region_scope: Node(7),
+                lint_level: Explicit(
+                    HirId(DefId(0:10 ~ thir_flat_const_variant[1f54]::{impl#0}::BAR3).7),
+                ),
+                value: e0,
+            },
+            ty: (),
+            temp_lifetime: Some(
+                Node(3),
+            ),
+            span: $DIR/thir-flat-const-variant.rs:14:33: 14:35 (#0),
+        },
+        Expr {
+            kind: Adt(
+                AdtExpr {
+                    adt_def: Foo,
+                    variant_index: 0,
+                    substs: [],
+                    user_ty: None,
+                    fields: [
+                        FieldExpr {
+                            name: 0,
+                            expr: e1,
+                        },
+                    ],
+                    base: None,
+                },
+            ),
+            ty: Foo,
+            temp_lifetime: Some(
+                Node(3),
+            ),
+            span: $DIR/thir-flat-const-variant.rs:14:24: 14:36 (#0),
+        },
+        Expr {
+            kind: Scope {
+                region_scope: Node(3),
+                lint_level: Explicit(
+                    HirId(DefId(0:10 ~ thir_flat_const_variant[1f54]::{impl#0}::BAR3).3),
+                ),
+                value: e2,
+            },
+            ty: Foo,
+            temp_lifetime: Some(
+                Node(3),
+            ),
+            span: $DIR/thir-flat-const-variant.rs:14:24: 14:36 (#0),
+        },
+        Expr {
+            kind: Scope {
+                region_scope: Destruction(3),
+                lint_level: Inherited,
+                value: e3,
+            },
+            ty: Foo,
+            temp_lifetime: Some(
+                Node(3),
+            ),
+            span: $DIR/thir-flat-const-variant.rs:14:24: 14:36 (#0),
+        },
+    ],
+    stmts: [],
+    params: [],
+}
+
+DefId(0:11 ~ thir_flat_const_variant[1f54]::{impl#0}::BAR4):
+Thir {
+    body_type: Const(
+        Foo,
+    ),
+    arms: [],
+    blocks: [],
+    exprs: [
+        Expr {
+            kind: Tuple {
+                fields: [],
+            },
+            ty: (),
+            temp_lifetime: Some(
+                Node(3),
+            ),
+            span: $DIR/thir-flat-const-variant.rs:15:34: 15:36 (#0),
+        },
+        Expr {
+            kind: Scope {
+                region_scope: Node(8),
+                lint_level: Explicit(
+                    HirId(DefId(0:11 ~ thir_flat_const_variant[1f54]::{impl#0}::BAR4).8),
+                ),
+                value: e0,
+            },
+            ty: (),
+            temp_lifetime: Some(
+                Node(3),
+            ),
+            span: $DIR/thir-flat-const-variant.rs:15:34: 15:36 (#0),
+        },
+        Expr {
+            kind: Adt(
+                AdtExpr {
+                    adt_def: Foo,
+                    variant_index: 0,
+                    substs: [],
+                    user_ty: None,
+                    fields: [
+                        FieldExpr {
+                            name: 0,
+                            expr: e1,
+                        },
+                    ],
+                    base: None,
+                },
+            ),
+            ty: Foo,
+            temp_lifetime: Some(
+                Node(3),
+            ),
+            span: $DIR/thir-flat-const-variant.rs:15:24: 15:37 (#0),
+        },
+        Expr {
+            kind: Scope {
+                region_scope: Node(3),
+                lint_level: Explicit(
+                    HirId(DefId(0:11 ~ thir_flat_const_variant[1f54]::{impl#0}::BAR4).3),
+                ),
+                value: e2,
+            },
+            ty: Foo,
+            temp_lifetime: Some(
+                Node(3),
+            ),
+            span: $DIR/thir-flat-const-variant.rs:15:24: 15:37 (#0),
+        },
+        Expr {
+            kind: Scope {
+                region_scope: Destruction(3),
+                lint_level: Inherited,
+                value: e3,
+            },
+            ty: Foo,
+            temp_lifetime: Some(
+                Node(3),
+            ),
+            span: $DIR/thir-flat-const-variant.rs:15:24: 15:37 (#0),
+        },
+    ],
+    stmts: [],
+    params: [],
+}
+
+DefId(0:12 ~ thir_flat_const_variant[1f54]::main):
+Thir {
+    body_type: Fn(
+        fn(),
+    ),
+    arms: [],
+    blocks: [
+        Block {
+            targeted_by_break: false,
+            region_scope: Node(1),
+            opt_destruction_scope: None,
+            span: $DIR/thir-flat-const-variant.rs:18:11: 18:13 (#0),
+            stmts: [],
+            expr: None,
+            safety_mode: Safe,
+        },
+    ],
+    exprs: [
+        Expr {
+            kind: Block {
+                block: b0,
+            },
+            ty: (),
+            temp_lifetime: Some(
+                Node(2),
+            ),
+            span: $DIR/thir-flat-const-variant.rs:18:11: 18:13 (#0),
+        },
+        Expr {
+            kind: Scope {
+                region_scope: Node(2),
+                lint_level: Explicit(
+                    HirId(DefId(0:12 ~ thir_flat_const_variant[1f54]::main).2),
+                ),
+                value: e0,
+            },
+            ty: (),
+            temp_lifetime: Some(
+                Node(2),
+            ),
+            span: $DIR/thir-flat-const-variant.rs:18:11: 18:13 (#0),
+        },
+        Expr {
+            kind: Scope {
+                region_scope: Destruction(2),
+                lint_level: Inherited,
+                value: e1,
+            },
+            ty: (),
+            temp_lifetime: Some(
+                Node(2),
+            ),
+            span: $DIR/thir-flat-const-variant.rs:18:11: 18:13 (#0),
+        },
+    ],
+    stmts: [],
+    params: [],
+}
+
