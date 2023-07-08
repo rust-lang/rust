@@ -103,7 +103,7 @@ fn adt_sized_constraint(tcx: TyCtxt<'_>, def_id: DefId) -> &[Ty<'_>] {
     let result = tcx.mk_type_list_from_iter(
         def.variants()
             .iter()
-            .filter_map(|v| v.fields.raw.last())
+            .filter_map(|v| v.tail_opt())
             .flat_map(|f| sized_constraint_for_ty(tcx, def, tcx.type_of(f.did).subst_identity())),
     );
 

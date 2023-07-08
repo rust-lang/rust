@@ -22,7 +22,7 @@ use rustc_trait_selection::traits::{
 /// This also expects that `trait_ref` is fully normalized.
 pub fn codegen_select_candidate<'tcx>(
     tcx: TyCtxt<'tcx>,
-    (param_env, trait_ref): (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>),
+    (param_env, trait_ref): (ty::ParamEnv<'tcx>, ty::TraitRef<'tcx>),
 ) -> Result<&'tcx ImplSource<'tcx, ()>, CodegenObligationError> {
     // We expect the input to be fully normalized.
     debug_assert_eq!(trait_ref, tcx.normalize_erasing_regions(param_env, trait_ref));

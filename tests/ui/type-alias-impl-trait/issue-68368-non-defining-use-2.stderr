@@ -1,3 +1,15 @@
+error[E0792]: non-defining opaque type use in defining scope
+  --> $DIR/issue-68368-non-defining-use-2.rs:9:15
+   |
+LL | fn f<'a>() -> Alias<'a, ()> {}
+   |               ^^^^^^^^^^^^^ argument `()` is not a generic parameter
+   |
+note: for this opaque type
+  --> $DIR/issue-68368-non-defining-use-2.rs:7:21
+   |
+LL | type Alias<'a, U> = impl Trait<U>;
+   |                     ^^^^^^^^^^^^^
+
 error[E0792]: expected generic type parameter, found `()`
   --> $DIR/issue-68368-non-defining-use-2.rs:9:29
    |
@@ -7,6 +19,6 @@ LL |
 LL | fn f<'a>() -> Alias<'a, ()> {}
    |                             ^^
 
-error: aborting due to previous error
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0792`.

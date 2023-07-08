@@ -223,8 +223,7 @@ fn expand_macro<'cx>(
             // Replace all the tokens for the corresponding positions in the macro, to maintain
             // proper positions in error reporting, while maintaining the macro_backtrace.
             if tts.len() == rhs.tts.len() {
-                tts = tts.map_enumerated(|i, tt| {
-                    let mut tt = tt.clone();
+                tts = tts.map_enumerated_owned(|i, mut tt| {
                     let rhs_tt = &rhs.tts[i];
                     let ctxt = tt.span().ctxt();
                     match (&mut tt, rhs_tt) {

@@ -366,7 +366,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                 }
 
                 ty::Adt(def, substs) if def.is_struct() => {
-                    match def.non_enum_variant().fields.raw.last() {
+                    match def.non_enum_variant().tail_opt() {
                         None => tcx.types.unit,
                         Some(field_def) => {
                             let self_ty = field_def.ty(tcx, substs);

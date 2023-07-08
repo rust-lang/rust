@@ -12,8 +12,9 @@ fn main() {
     br##"Hello "world"!"##;
     br######" "### "## "# "######;
     br######" "aa" "# "## "######;
-    cr#"aaa"#;
-    cr##"Hello "world"!"##;
-    cr######" "### "## "# "######;
-    cr######" "aa" "# "## "######;
+    // currently disabled: https://github.com/rust-lang/rust/issues/113333
+    // cr#"aaa"#;
+    // cr##"Hello "world"!"##;
+    // cr######" "### "## "# "######;
+    // cr######" "aa" "# "## "######;
 }

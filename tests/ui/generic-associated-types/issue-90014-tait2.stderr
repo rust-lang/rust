@@ -1,0 +1,12 @@
+error: 
+  --> $DIR/issue-90014-tait2.rs:41:27
+   |
+LL |     fn make_fut(&self) -> Box<dyn for<'a> Trait<'a, Thing = Fut<'a>>> {
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^query stack during panic:
+#0 [typeck] type-checking `<impl at $DIR/issue-90014-tait2.rs:40:1: 40:13>::make_fut`
+#1 [type_of] computing type of `Fut::{opaque#0}`
+#2 [check_mod_item_types] checking item types in top-level module
+#3 [analysis] running analysis passes on this crate
+end of query stack
+error: aborting due to previous error
+

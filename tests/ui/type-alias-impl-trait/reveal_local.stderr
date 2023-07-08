@@ -78,8 +78,8 @@ LL | type Foo = impl Debug;
 note: ...which requires type-checking `not_gooder`...
   --> $DIR/reveal_local.rs:19:1
    |
-LL | fn not_gooder() {
-   | ^^^^^^^^^^^^^^^
+LL | fn not_gooder() -> Foo {
+   | ^^^^^^^^^^^^^^^^^^^^^^
    = note: ...which again requires computing type of `Foo::{opaque#0}`, completing the cycle
 note: cycle used when checking item types in top-level module
   --> $DIR/reveal_local.rs:1:1
@@ -107,7 +107,7 @@ LL | type Foo = impl Debug;
 note: this item depends on auto traits of the hidden type, but may also be registering the hidden type. This is not supported right now. You can try moving the opaque type and the item that actually registers a hidden type into a new submodule
   --> $DIR/reveal_local.rs:19:4
    |
-LL | fn not_gooder() {
+LL | fn not_gooder() -> Foo {
    |    ^^^^^^^^^^
 note: required by a bound in `is_send`
   --> $DIR/reveal_local.rs:10:15

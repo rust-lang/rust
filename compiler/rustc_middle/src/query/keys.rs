@@ -318,11 +318,11 @@ impl<'tcx> Key for (LocalDefId, DefId, SubstsRef<'tcx>) {
     }
 }
 
-impl<'tcx> Key for (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>) {
+impl<'tcx> Key for (ty::ParamEnv<'tcx>, ty::TraitRef<'tcx>) {
     type CacheSelector = DefaultCacheSelector<Self>;
 
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
-        tcx.def_span(self.1.def_id())
+        tcx.def_span(self.1.def_id)
     }
 }
 

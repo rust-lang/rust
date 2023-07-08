@@ -1,19 +1,22 @@
 #![feature(generators, generator_trait, rustc_attrs)]
 #![feature(type_alias_impl_trait)]
 
-use std::ops::Generator;
+// check-pass
 
-type GenOnce<Y, R> = impl Generator<Yield = Y, Return = R>;
+mod gen {
+    use std::ops::Generator;
 
-const fn const_generator<Y, R>(yielding: Y, returning: R) -> GenOnce<Y, R> {
-    move || {
-        yield yielding;
+    pub type GenOnce<Y, R> = impl Generator<Yield = Y, Return = R>;
 
-        return returning;
+    pub const fn const_generator<Y, R>(yielding: Y, returning: R) -> GenOnce<Y, R> {
+        move || {
+            yield yielding;
+
+            return returning;
+        }
     }
 }
 
-const FOO: GenOnce<usize, usize> = const_generator(10, 100);
+const FOO: gen::GenOnce<usize, usize> = gen::const_generator(10, 100);
 
-#[rustc_error]
-fn main() {} //~ ERROR
+fn main() {}
