@@ -7,7 +7,7 @@ use rustc_arena::DroplessArena;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self, CrateVariancesMap, ImplTraitInTraitData, SubstsRef, Ty, TyCtxt};
+use rustc_middle::ty::{self, CrateVariancesMap, SubstsRef, Ty, TyCtxt};
 use rustc_middle::ty::{TypeSuperVisitable, TypeVisitable};
 use std::ops::ControlFlow;
 
@@ -58,13 +58,6 @@ fn variances_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Variance] {
         }
         DefKind::OpaqueTy | DefKind::ImplTraitPlaceholder => {
             return variance_of_opaque(tcx, item_def_id);
-        }
-        DefKind::AssocTy => {
-            if let Some(ImplTraitInTraitData::Trait { .. }) =
-                tcx.opt_rpitit_info(item_def_id.to_def_id())
-            {
-                return variance_of_opaque(tcx, item_def_id);
-            }
         }
         _ => {}
     }
@@ -125,7 +118,8 @@ fn variance_of_opaque(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Varianc
                 // FIXME(-Zlower-impl-trait-in-trait-to-assoc-ty) check whether this is necessary
                 // at all for RPITITs.
                 ty::Alias(_, ty::AliasTy { def_id, substs, .. })
-                    if self.tcx.is_impl_trait_in_trait(*def_id) =>
+                    if self.tcx.is_impl_trait_in_trait(*def_id)
+                        && !self.tcx.lower_impl_trait_in_trait_to_assoc_ty() =>
                 {
                     self.visit_opaque(*def_id, substs)
                 }
