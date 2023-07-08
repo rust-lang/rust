@@ -22,7 +22,7 @@ use rustc_middle::ty::{self, TyCtxt, TypeSuperVisitable, TypeVisitor};
 use rustc_session::lint;
 use rustc_span::def_id::DefId;
 use rustc_span::symbol::{sym, Ident};
-use rustc_span::Span;
+use rustc_span::{Span, DUMMY_SP};
 use std::fmt;
 
 use crate::errors;
@@ -338,7 +338,17 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
 
                 Scope::TraitRefBoundary { .. } => {
                     // We should only see super trait lifetimes if there is a `Binder` above
-                    assert!(supertrait_bound_vars.is_empty());
+                    // though this may happen when we call `poly_trait_ref_binder_info` with
+                    // an (erroneous, #113423) associated return type bound in an impl header.
+                    if !supertrait_bound_vars.is_empty() {
+                        self.tcx.sess.delay_span_bug(
+                            DUMMY_SP,
+                            format!(
+                                "found supertrait lifetimes without a binder to append \
+                                them to: {supertrait_bound_vars:?}"
+                            ),
+                        );
+                    }
                     break (vec![], BinderScopeType::Normal);
                 }
 
