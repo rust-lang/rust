@@ -1,6 +1,6 @@
 use clippy_utils::{
     diagnostics::span_lint_and_then,
-    expr_or_init, get_attr, match_def_path, path_to_local, paths,
+    expr_or_init, get_attr, path_to_local,
     source::{indent_of, snippet},
 };
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
@@ -13,6 +13,7 @@ use rustc_hir::{
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty::{subst::GenericArgKind, Ty, TypeAndMut};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_span::sym;
 use rustc_span::{symbol::Ident, Span, DUMMY_SP};
 use std::borrow::Cow;
 
@@ -435,7 +436,7 @@ fn has_drop(expr: &hir::Expr<'_>, first_bind_ident: &Ident, lcx: &LateContext<'_
     if let hir::ExprKind::Call(fun, args) = expr.kind
         && let hir::ExprKind::Path(hir::QPath::Resolved(_, fun_path)) = &fun.kind
         && let Res::Def(DefKind::Fn, did) = fun_path.res
-        && match_def_path(lcx, did, &paths::DROP)
+        && lcx.tcx.is_diagnostic_item(sym::mem_drop, did)
         && let [first_arg, ..] = args
         && let hir::ExprKind::Path(hir::QPath::Resolved(_, arg_path)) = &first_arg.kind
         && let [first_arg_ps, .. ] = arg_path.segments
