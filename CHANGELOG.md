@@ -4834,6 +4834,7 @@ Released 2018-09-13
 [`inconsistent_digit_grouping`]: https://rust-lang.github.io/rust-clippy/master/index.html#inconsistent_digit_grouping
 [`inconsistent_struct_constructor`]: https://rust-lang.github.io/rust-clippy/master/index.html#inconsistent_struct_constructor
 [`incorrect_clone_impl_on_copy_type`]: https://rust-lang.github.io/rust-clippy/master/index.html#incorrect_clone_impl_on_copy_type
+[`incorrect_partial_ord_impl_on_ord_type`]: https://rust-lang.github.io/rust-clippy/master/index.html#incorrect_partial_ord_impl_on_ord_type
 [`index_refutable_slice`]: https://rust-lang.github.io/rust-clippy/master/index.html#index_refutable_slice
 [`indexing_slicing`]: https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
 [`ineffective_bit_mask`]: https://rust-lang.github.io/rust-clippy/master/index.html#ineffective_bit_mask

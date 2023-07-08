@@ -207,6 +207,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::implicit_saturating_sub::IMPLICIT_SATURATING_SUB_INFO,
     crate::inconsistent_struct_constructor::INCONSISTENT_STRUCT_CONSTRUCTOR_INFO,
     crate::incorrect_impls::INCORRECT_CLONE_IMPL_ON_COPY_TYPE_INFO,
+    crate::incorrect_impls::INCORRECT_PARTIAL_ORD_IMPL_ON_ORD_TYPE_INFO,
     crate::index_refutable_slice::INDEX_REFUTABLE_SLICE_INFO,
     crate::indexing_slicing::INDEXING_SLICING_INFO,
     crate::indexing_slicing::OUT_OF_BOUNDS_INDEXING_INFO,
