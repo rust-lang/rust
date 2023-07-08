@@ -965,7 +965,8 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
             w,
             "object-safety",
             "Object Safety",
-            &format!("<div class=\"object-safety-info\">This trait is <b>not</b> \
+            &format!(
+                "<div class=\"object-safety-info\">This trait is <b>not</b> \
                 <a href=\"{base}/reference/items/traits.html#object-safety\">\
                 object safe</a>.</div>",
                 base = crate::clean::utils::DOC_RUST_LANG_ORG_CHANNEL
