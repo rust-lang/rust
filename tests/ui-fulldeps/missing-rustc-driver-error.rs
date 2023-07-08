@@ -3,6 +3,8 @@
 // compile-flags: --emit link
 // The exactly list of required crates depends on the target. as such only test Unix targets.
 // only-unix
+// normalize-stderr-test ".*crate .* required.*\n\n" -> ""
+// normalize-stderr-test: "aborting due to [0-9]+" -> "aborting due to NUMBER"
 
 #![feature(rustc_private)]
 
