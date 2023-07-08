@@ -6,14 +6,14 @@ LL |     1 + Some(1);
    |
    = help: the trait `Add<Option<{integer}>>` is not implemented for `{integer}`
    = help: the following other types implement trait `Add<Rhs>`:
-             <&'a f32 as Add<f32>>
-             <&'a f64 as Add<f64>>
-             <&'a i128 as Add<i128>>
-             <&'a i16 as Add<i16>>
-             <&'a i32 as Add<i32>>
-             <&'a i64 as Add<i64>>
-             <&'a i8 as Add<i8>>
-             <&'a isize as Add<isize>>
+             <isize as Add>
+             <isize as Add<&isize>>
+             <i8 as Add>
+             <i8 as Add<&i8>>
+             <i16 as Add>
+             <i16 as Add<&i16>>
+             <i32 as Add>
+             <i32 as Add<&i32>>
            and 48 others
 
 error[E0277]: cannot subtract `Option<{integer}>` from `usize`
@@ -24,10 +24,10 @@ LL |     2 as usize - Some(1);
    |
    = help: the trait `Sub<Option<{integer}>>` is not implemented for `usize`
    = help: the following other types implement trait `Sub<Rhs>`:
+             <usize as Sub>
+             <usize as Sub<&usize>>
              <&'a usize as Sub<usize>>
              <&usize as Sub<&usize>>
-             <usize as Sub<&usize>>
-             <usize as Sub>
 
 error[E0277]: cannot multiply `{integer}` by `()`
   --> $DIR/binops.rs:4:7
@@ -37,14 +37,14 @@ LL |     3 * ();
    |
    = help: the trait `Mul<()>` is not implemented for `{integer}`
    = help: the following other types implement trait `Mul<Rhs>`:
-             <&'a f32 as Mul<f32>>
-             <&'a f64 as Mul<f64>>
-             <&'a i128 as Mul<i128>>
-             <&'a i16 as Mul<i16>>
-             <&'a i32 as Mul<i32>>
-             <&'a i64 as Mul<i64>>
-             <&'a i8 as Mul<i8>>
-             <&'a isize as Mul<isize>>
+             <isize as Mul>
+             <isize as Mul<&isize>>
+             <i8 as Mul>
+             <i8 as Mul<&i8>>
+             <i16 as Mul>
+             <i16 as Mul<&i16>>
+             <i32 as Mul>
+             <i32 as Mul<&i32>>
            and 49 others
 
 error[E0277]: cannot divide `{integer}` by `&str`
@@ -55,14 +55,14 @@ LL |     4 / "";
    |
    = help: the trait `Div<&str>` is not implemented for `{integer}`
    = help: the following other types implement trait `Div<Rhs>`:
-             <&'a f32 as Div<f32>>
-             <&'a f64 as Div<f64>>
-             <&'a i128 as Div<i128>>
-             <&'a i16 as Div<i16>>
-             <&'a i32 as Div<i32>>
-             <&'a i64 as Div<i64>>
-             <&'a i8 as Div<i8>>
-             <&'a isize as Div<isize>>
+             <isize as Div>
+             <isize as Div<&isize>>
+             <i8 as Div>
+             <i8 as Div<&i8>>
+             <i16 as Div>
+             <i16 as Div<&i16>>
+             <i32 as Div>
+             <i32 as Div<&i32>>
            and 54 others
 
 error[E0277]: can't compare `{integer}` with `String`
@@ -73,14 +73,14 @@ LL |     5 < String::new();
    |
    = help: the trait `PartialOrd<String>` is not implemented for `{integer}`
    = help: the following other types implement trait `PartialOrd<Rhs>`:
-             f32
-             f64
-             i128
+             isize
+             i8
              i16
              i32
              i64
-             i8
-             isize
+             i128
+             usize
+             u8
            and 6 others
 
 error[E0277]: can't compare `{integer}` with `Result<{integer}, _>`
@@ -91,14 +91,14 @@ LL |     6 == Ok(1);
    |
    = help: the trait `PartialEq<Result<{integer}, _>>` is not implemented for `{integer}`
    = help: the following other types implement trait `PartialEq<Rhs>`:
-             f32
-             f64
-             i128
+             isize
+             i8
              i16
              i32
              i64
-             i8
-             isize
+             i128
+             usize
+             u8
            and 6 others
 
 error: aborting due to 6 previous errors

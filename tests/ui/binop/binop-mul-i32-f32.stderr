@@ -6,10 +6,10 @@ LL |     x * y
    |
    = help: the trait `Mul<f32>` is not implemented for `i32`
    = help: the following other types implement trait `Mul<Rhs>`:
+             <i32 as Mul>
+             <i32 as Mul<&i32>>
              <&'a i32 as Mul<i32>>
              <&i32 as Mul<&i32>>
-             <i32 as Mul<&i32>>
-             <i32 as Mul>
 
 error: aborting due to previous error
 
