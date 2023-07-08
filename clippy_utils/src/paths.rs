@@ -57,6 +57,7 @@ pub const LATE_CONTEXT: [&str; 2] = ["rustc_lint", "LateContext"];
 pub const LATE_LINT_PASS: [&str; 3] = ["rustc_lint", "passes", "LateLintPass"];
 #[cfg(feature = "internal")]
 pub const LINT: [&str; 2] = ["rustc_lint_defs", "Lint"];
+pub const DROP: [&str; 3] = ["core", "mem", "drop"];
 pub const MEM_SWAP: [&str; 3] = ["core", "mem", "swap"];
 #[cfg(feature = "internal")]
 pub const MSRV: [&str; 3] = ["clippy_utils", "msrvs", "Msrv"];
