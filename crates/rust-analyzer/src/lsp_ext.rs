@@ -185,16 +185,9 @@ pub struct ExpandedMacro {
 pub enum ViewRecursiveMemoryLayout {}
 
 impl Request for ViewRecursiveMemoryLayout {
-    type Params = ViewRecursiveMemoryLayoutParams;
+    type Params = lsp_types::TextDocumentPositionParams;
     type Result = Option<RecursiveMemoryLayout>;
     const METHOD: &'static str = "rust-analyzer/viewRecursiveMemoryLayout";
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct ViewRecursiveMemoryLayoutParams {
-    pub text_document: TextDocumentIdentifier,
-    pub position: Position,
 }
 
 #[derive(Deserialize, Serialize, Debug)]

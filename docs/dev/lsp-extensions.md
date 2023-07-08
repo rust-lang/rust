@@ -1,5 +1,5 @@
 <!---
-lsp_ext.rs hash: 12bf360ee77cc63d
+lsp_ext.rs hash: 149a5be3c5e469d1
 
 If you need to change the above hash to make the test pass, please check if you
 need to adjust this doc as well and ping this issue:
@@ -889,17 +889,9 @@ Returns all crates from this workspace, so it can be used create a viewTree to h
 
 ## View Recursive Memory Layout
 
-**Method:** `rust-analyzer/fetchDependencyList`
+**Method:** `rust-analyzer/viewRecursiveMemoryLayout`
 
-**Request:**
-
-```typescript
-/// Holds a location in a text document, the location may be a datatype or a variable and it will do its best to locate the desired type.
-export interface ViewRecursiveMemoryLayoutParams {
-  textDocument: TextDocumentIdentifier;
-  position: Position;
-}
-```
+**Request:** `TextDocumentPositionParams`
 
 **Response:**
 

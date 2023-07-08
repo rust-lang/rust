@@ -151,7 +151,7 @@ export const serverStatus = new lc.NotificationType<ServerStatusParams>(
 );
 export const ssr = new lc.RequestType<SsrParams, lc.WorkspaceEdit, void>("experimental/ssr");
 export const viewRecursiveMemoryLayout = new lc.RequestType<
-    ViewRecursiveMemoryLayoutParams,
+    lc.TextDocumentPositionParams,
     RecursiveMemoryLayout | null,
     void
 >("rust-analyzer/viewRecursiveMemoryLayout");
@@ -203,10 +203,6 @@ export type SsrParams = {
     selections: readonly lc.Range[];
 };
 
-export type ViewRecursiveMemoryLayoutParams = {
-    textDocument: lc.TextDocumentIdentifier;
-    position: lc.Position;
-};
 export type RecursiveMemoryLayoutNode = {
     item_name: string;
     typename: string;
