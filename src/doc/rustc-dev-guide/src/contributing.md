@@ -2,7 +2,7 @@
 
 <!-- toc -->
 
-## Bug Reports
+## Bug reports
 
 While bugs are unfortunate, they're a reality in software. We can't fix what we
 don't know about, so please report liberally. If you're not sure if something
@@ -16,8 +16,7 @@ please follow our [instructions for reporting security vulnerabilities][vuln]**.
 If you're using the nightly channel, please check if the bug exists in the
 latest toolchain before filing your bug. It might be fixed already.
 
-If you have the chance, before reporting a bug, please [search existing
-issues](https://github.com/rust-lang/rust/issues?q=is%3Aissue),
+If you have the chance, before reporting a bug, please [search existing issues],
 as it's possible that someone else has already reported your error. This doesn't
 always work, and sometimes it's hard to know what to search for, so consider this
 extra credit. We won't mind if you accidentally file a duplicate report.
@@ -33,22 +32,22 @@ Opening an issue is as easy as following [this
 link](https://github.com/rust-lang/rust/issues/new/choose) and filling out the fields
 in the appropriate provided template.
 
-## Bug Fixes or "Normal" code changes
+## Bug fixes or "normal" code changes
 
-For most PRs, no special procedures are needed. You can just [open a PR][prs], and it
+For most PRs, no special procedures are needed. You can just [open a PR], and it
 will be reviewed, approved, and merged. This includes most bug fixes,
 refactorings, and other user-invisible changes. The next few sections talk
 about exceptions to this rule.
 
-Also, note that it is perfectly acceptable to open WIP PRs or GitHub [Draft
-PRs][draft]. Some people prefer to do this so they can get feedback along the
+Also, note that it is perfectly acceptable to open WIP PRs or GitHub [Draft PRs].
+Some people prefer to do this so they can get feedback along the
 way or share their code with a collaborator. Others do this so they can utilize
-the CI to build and test their PR (e.g. if you are developing on a laptop).
+the CI to build and test their PR (e.g. when developing on a slow machine).
 
-[prs]: #pull-requests
-[draft]: https://github.blog/2019-02-14-introducing-draft-pull-requests/
+[open a PR]: #pull-requests
+[Draft PRs]: https://github.blog/2019-02-14-introducing-draft-pull-requests/
 
-## New Features
+## New features
 
 Rust has strong backwards-compatibility guarantees. Thus, new features can't
 just be implemented directly in stable Rust. Instead, we have 3 release
@@ -63,13 +62,11 @@ channels: stable, beta, and nightly.
 See [this chapter on implementing new features](./implementing_new_features.md) for more
 information.
 
-### Breaking Changes
+### Breaking changes
 
-Breaking changes have a [dedicated section][breaking-changes] in the dev-guide.
+Breaking changes have a [dedicated section][Breaking Changes] in the dev-guide.
 
-[breaking-changes]: ./bug-fix-procedure.md
-
-### Major Changes
+### Major changes
 
 The compiler team has a special process for large changes, whether or not they
 cause breakage. This process is called a Major Change Proposal (MCP). MCP is a
@@ -80,12 +77,12 @@ Example of things that might require MCPs include major refactorings, changes
 to important types, or important changes to how the compiler does something, or
 smaller user-facing changes.
 
-**When in doubt, ask on [zulip][z]. It would be a shame to put a lot of work
+**When in doubt, ask on [zulip]. It would be a shame to put a lot of work
 into a PR that ends up not getting merged!** [See this document][mcpinfo] for
 more info on MCPs.
 
 [mcpinfo]: https://forge.rust-lang.org/compiler/mcp.html
-[z]: https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler
+[zulip]: https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler
 
 ### Performance
 
@@ -95,19 +92,19 @@ few years into [gradually improving it][perfdash].
 [perfdash]: https://perf.rust-lang.org/dashboard.html
 
 If you suspect that your change may cause a performance regression (or
-improvement), you can request a "perf run" (your reviewer may also request one
+improvement), you can request a "perf run" (and your reviewer may also request one
 before approving). This is yet another bot that will compile a collection of
 benchmarks on a compiler with your changes. The numbers are reported
 [here][perf], and you can see a comparison of your changes against the latest
 master.
 
-For an introduction to the performance of Rust code in general
-which would also be useful in rustc development, see [The Rust Performance Book].
+> For an introduction to the performance of Rust code in general
+> which would also be useful in rustc development, see [The Rust Performance Book].
 
 [perf]: https://perf.rust-lang.org
 [The Rust Performance Book]: https://nnethercote.github.io/perf-book/
 
-## Pull Requests
+## Pull requests
 
 Pull requests (or PRs for short) are the primary mechanism we use to change Rust.
 GitHub itself has some [great documentation][about-pull-requests] on using the
@@ -135,15 +132,15 @@ to the end of the pull request description, and [@rustbot] will assign
 them instead of a random person. This is entirely optional.
 
 You can also assign a random reviewer from a specific team by writing `r? rust-lang/groupname`.
-So if you were making a diagnostics change, then you could get a reviewer from the diagnostics
-team by adding:
+As an example,
+if you were making a diagnostics change,
+then you could get a reviewer from the diagnostics team by adding:
 
     r? rust-lang/diagnostics
 
-For a full list of possible `groupname` check the `adhoc_groups` section at the
-[triagebot.toml config file](https://github.com/rust-lang/rust/blob/master/triagebot.toml)
-or the list of teams in the [rust-lang teams
-database](https://github.com/rust-lang/team/tree/master/teams).
+For a full list of possible `groupname`s,
+check the `adhoc_groups` section at the [triagebot.toml config file],
+or the list of teams in the [rust-lang teams database].
 
 ### Waiting for reviews
 
@@ -175,23 +172,20 @@ Zulip ([#t-release/triage]). They have knowledge of when to ping, who might be
 on vacation, etc.
 
 The reviewer may request some changes using the GitHub code review interface.
-They may also request special procedures (such as a [crater] run; [see
-below][break]) for some PRs.
+They may also request special procedures for some PRs.
+See [Crater] and [Breaking Changes] chapters for some examples of such procedures.
 
 [r?]: https://github.com/rust-lang/rust/pull/78133#issuecomment-712692371
 [#t-release/triage]: https://rust-lang.zulipchat.com/#narrow/stream/242269-t-release.2Ftriage
-[break]: #breaking-changes
-[crater]: tests/crater.md
+[Crater]: tests/crater.md
 
 ### CI
 
-In addition to being reviewed by a human, pull requests are automatically tested
+In addition to being reviewed by a human, pull requests are automatically tested,
 thanks to continuous integration (CI). Basically, every time you open and update
 a pull request, CI builds the compiler and tests it against the
-[compiler test suite][rctd], and also performs other tests such as checking that
+[compiler test suite], and also performs other tests such as checking that
 your pull request is in compliance with Rust's style guidelines.
-
-[rctd]: tests/intro.md
 
 Running continuous integration tests allows PR authors to catch mistakes early
 without going through a first review cycle, and also helps reviewers stay aware
@@ -211,7 +205,7 @@ on the pull request with an `r+`. It will look something like this:
     @bors r+
 
 This tells [@bors], our lovable integration bot, that your pull request has
-been approved. The PR then enters the [merge queue][merge-queue], where [@bors]
+been approved. The PR then enters the [merge queue], where [@bors]
 will run *all* the tests on *every* platform we support. If it all works out,
 [@bors] will merge your code into `master` and close the pull request.
 
@@ -228,25 +222,23 @@ Be patient; this can take a while and the queue can sometimes be long. PRs are n
 
 [@rustbot]: https://github.com/rustbot
 [@bors]: https://github.com/bors
-[merge-queue]: https://bors.rust-lang.org/queue/rust
 
 ### Opening a PR
 
 You are now ready to file a pull request? Great! Here are a few points you
 should be aware of.
 
-All pull requests should be filed against the `master` branch, except in very
-particular scenarios. Unless you know for sure that you should target another
-branch, `master` will be the right choice (it's also the default).
+All pull requests should be filed against the `master` branch,
+unless you know for sure that you should target a different branch.
 
 Make sure your pull request is in compliance with Rust's style guidelines by running
 
     $ ./x test tidy --bless
 
 We recommend to make this check before every pull request (and every new commit
-in a pull request); you can add [git hooks](https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks)
-before every push to make sure you never forget to make this check. The
-CI will also run tidy and will fail if tidy fails.
+in a pull request); you can add [git hooks]
+before every push to make sure you never forget to make this check.
+The CI will also run tidy and will fail if tidy fails.
 
 Rust follows a _no merge-commit policy_, meaning, when you encounter merge
 conflicts you are expected to always rebase instead of merging.  E.g. always use
@@ -270,11 +262,11 @@ the issue in question.
 [labeling]: ./rustbot.md#issue-relabeling
 [closing-keywords]: https://docs.github.com/en/issues/tracking-your-work-with-issues/linking-a-pull-request-to-an-issue
 
-## External Dependencies
+## External dependencies
 
 This section has moved to ["Using External Repositories"](./external-repos.md).
 
-## Writing Documentation
+## Writing documentation
 
 Documentation improvements are very welcome. The source of `doc.rust-lang.org`
 is located in [`src/doc`] in the tree, and standard API documentation is generated
@@ -284,13 +276,9 @@ function in the same way as other pull requests.
 [`src/doc`]: https://github.com/rust-lang/rust/tree/master/src/doc
 [std-root]: https://github.com/rust-lang/rust/blob/master/library/std/src/lib.rs#L1
 
-To find documentation-related issues, sort by the [A-docs label][adocs].
+To find documentation-related issues, sort by the [A-docs label].
 
-[adocs]: https://github.com/rust-lang/rust/issues?q=is%3Aopen%20is%3Aissue%20label%3AA-docs
-
-You can find documentation style guidelines in [RFC 1574][rfc1574].
-
-[rfc1574]: https://github.com/rust-lang/rfcs/blob/master/text/1574-more-api-documentation-conventions.md#appendix-a-full-conventions-text
+You can find documentation style guidelines in [RFC 1574].
 
 To build the standard library documentation, use `x doc --stage 0 library --open`.
 To build the documentation for a book (e.g. the unstable book), use `x doc src/doc/unstable-book.`
@@ -304,22 +292,23 @@ The CSS might be messed up, but you can verify that the HTML is right.
 
 ### Contributing to rustc-dev-guide
 
-Contributions to the [rustc-dev-guide][rdg] are always welcome, and can be made directly at
+Contributions to the [rustc-dev-guide] are always welcome, and can be made directly at
 [the rust-lang/rustc-dev-guide repo][rdgrepo].
 The issue tracker in that repo is also a great way to find things that need doing.
 There are issues for beginners and advanced compiler devs alike!
 
 Just a few things to keep in mind:
 
-- Please limit line length to 100 characters. This is enforced by CI, and you can run the checks
-  locally with `ci/lengthcheck.sh`.
+- Please limit line length to 100 characters.
+  This is enforced by CI,
+  and you can run the checks locally with `ci/lengthcheck.sh`.
 
 - When contributing text to the guide, please contextualize the information with some time period
   and/or a reason so that the reader knows how much to trust or mistrust the information.
   Aim to provide a reasonable amount of context, possibly including but not limited to:
 
-  - A reason for why the data may be out of date other than "change", as change is a constant across
-    the project.
+  - A reason for why the data may be out of date other than "change",
+    as change is a constant across the project.
 
   - The date the comment was added, e.g. instead of writing _"Currently, ..."_
     or _"As of now, ..."_,
@@ -360,19 +349,15 @@ Just a few things to keep in mind:
   subsections) it might benefit from having a Table of Contents at the beginning, which you can
   auto-generate by including the `<!-- toc -->` marker.
 
-[rdg]: https://rustc-dev-guide.rust-lang.org/
-[rdgrepo]: https://github.com/rust-lang/rustc-dev-guide
+## Issue triage
 
-## Issue Triage
+Sometimes, an issue will stay open, even though the bug has been fixed.
+And sometimes, the original bug may go stale because something has changed in the meantime.
 
-Sometimes, an issue will stay open, even though the bug has been fixed. And
-sometimes, the original bug may go stale because something has changed in the
-meantime.
-
-It can be helpful to go through older bug reports and make sure that they are
-still valid. Load up an older issue, double check that it's still true, and
-leave a comment letting us know if it is or is not. The [least recently
-updated sort][lru] is good for finding issues like this.
+It can be helpful to go through older bug reports and make sure that they are still valid.
+Load up an older issue, double check that it's still true,
+and leave a comment letting us know if it is or is not.
+The [least recently updated sort][lru] is good for finding issues like this.
 
 [Thanks to `@rustbot`][rustbot], anyone can help triage issues by adding
 appropriate labels to issues that haven't been triaged yet:
@@ -468,8 +453,19 @@ This is used for [RFCs], issues, and pull requests.
 [rfcbot]: https://github.com/anp/rfcbot-rs/
 [RFCs]: https://github.com/rust-lang/rfcs
 
-## Helpful Links and Information
+## Helpful links and information
 
-This section has moved to the ["About this guide"][more-links] chapter.
+This section has moved to the ["About this guide"] chapter.
 
-[more-links]: ./about-this-guide.md#other-places-to-find-information
+["About this guide"]: about-this-guide.md#other-places-to-find-information
+[search existing issues]: https://github.com/rust-lang/rust/issues?q=is%3Aissue
+[Breaking Changes]: bug-fix-procedure.md
+[triagebot.toml config file]: https://github.com/rust-lang/rust/blob/HEAD/triagebot.toml
+[rust-lang teams database]: https://github.com/rust-lang/team/tree/HEAD/teams
+[compiler test suite]: tests/intro.md
+[merge queue]: https://bors.rust-lang.org/queue/rust
+[git hooks]: https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks
+[A-docs label]: https://github.com/rust-lang/rust/issues?q=is%3Aopen%20is%3Aissue%20label%3AA-docs
+[RFC 1574]: https://github.com/rust-lang/rfcs/blob/master/text/1574-more-api-documentation-conventions.md#appendix-a-full-conventions-text
+[rustc-dev-guide]: https://rustc-dev-guide.rust-lang.org/
+[rdgrepo]: https://github.com/rust-lang/rustc-dev-guide
