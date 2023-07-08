@@ -1,4 +1,4 @@
-use super::{LinkArgs, Cc, Lld, LinkerFlavor, PanicStrategy};
+use super::{Cc, LinkArgs, LinkerFlavor, Lld, PanicStrategy};
 use crate::spec::{RelroLevel, TargetOptions};
 
 pub fn opts() -> TargetOptions {
