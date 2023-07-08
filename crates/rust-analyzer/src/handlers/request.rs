@@ -1692,7 +1692,7 @@ pub(crate) fn handle_move_item(
 pub(crate) fn handle_view_recursive_memory_layout(
     snap: GlobalStateSnapshot,
     params: lsp_ext::ViewRecursiveMemoryLayoutParams,
-) -> Result<Option<lsp_ext::RecursiveMemoryLayout>> {
+) -> anyhow::Result<Option<lsp_ext::RecursiveMemoryLayout>> {
     let _p = profile::span("view_recursive_memory_layout");
     let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
     let line_index = snap.file_line_index(file_id)?;
