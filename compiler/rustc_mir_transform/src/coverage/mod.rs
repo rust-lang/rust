@@ -8,9 +8,9 @@ mod spans;
 #[cfg(test)]
 mod tests;
 
-use counters::CoverageCounters;
-use graph::{BasicCoverageBlock, BasicCoverageBlockData, CoverageGraph};
-use spans::{CoverageSpan, CoverageSpans};
+use self::counters::{BcbCounter, CoverageCounters};
+use self::graph::{BasicCoverageBlock, BasicCoverageBlockData, CoverageGraph};
+use self::spans::{CoverageSpan, CoverageSpans};
 
 use crate::MirPass;
 
@@ -270,8 +270,11 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
 
         ////////////////////////////////////////////////////
         // Finally, inject the intermediate expressions collected along the way.
-        for intermediate_expression in self.coverage_counters.intermediate_expressions.drain(..) {
-            inject_intermediate_expression(self.mir_body, intermediate_expression);
+        for intermediate_expression in &self.coverage_counters.intermediate_expressions {
+            inject_intermediate_expression(
+                self.mir_body,
+                self.make_mir_coverage_kind(intermediate_expression),
+            );
         }
     }
 
@@ -314,7 +317,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
 
             inject_statement(
                 self.mir_body,
-                counter_kind,
+                self.make_mir_coverage_kind(&counter_kind),
                 self.bcb_leader_bb(bcb),
                 Some(code_region),
             );
@@ -362,7 +365,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
             );
 
             match counter_kind {
-                CoverageKind::Counter { .. } => {
+                BcbCounter::Counter { .. } => {
                     let inject_to_bb = if let Some(from_bcb) = edge_from_bcb {
                         // The MIR edge starts `from_bb` (the outgoing / last BasicBlock in
                         // `from_bcb`) and ends at `to_bb` (the incoming / first BasicBlock in the
@@ -395,12 +398,17 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
                         target_bb
                     };
 
-                    inject_statement(self.mir_body, counter_kind, inject_to_bb, None);
+                    inject_statement(
+                        self.mir_body,
+                        self.make_mir_coverage_kind(&counter_kind),
+                        inject_to_bb,
+                        None,
+                    );
                 }
-                CoverageKind::Expression { .. } => {
-                    inject_intermediate_expression(self.mir_body, counter_kind)
-                }
-                _ => bug!("CoverageKind should be a counter"),
+                BcbCounter::Expression { .. } => inject_intermediate_expression(
+                    self.mir_body,
+                    self.make_mir_coverage_kind(&counter_kind),
+                ),
             }
         }
     }
@@ -421,8 +429,19 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
     }
 
     #[inline]
-    fn format_counter(&self, counter_kind: &CoverageKind) -> String {
+    fn format_counter(&self, counter_kind: &BcbCounter) -> String {
         self.coverage_counters.debug_counters.format_counter(counter_kind)
+    }
+
+    fn make_mir_coverage_kind(&self, counter_kind: &BcbCounter) -> CoverageKind {
+        match *counter_kind {
+            BcbCounter::Counter { function_source_hash, id } => {
+                CoverageKind::Counter { function_source_hash, id }
+            }
+            BcbCounter::Expression { id, lhs, op, rhs } => {
+                CoverageKind::Expression { id, lhs, op, rhs }
+            }
+        }
     }
 }
 

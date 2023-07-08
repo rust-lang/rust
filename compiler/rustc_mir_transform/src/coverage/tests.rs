@@ -34,7 +34,6 @@ use itertools::Itertools;
 use rustc_data_structures::graph::WithNumNodes;
 use rustc_data_structures::graph::WithSuccessors;
 use rustc_index::{Idx, IndexVec};
-use rustc_middle::mir::coverage::CoverageKind;
 use rustc_middle::mir::*;
 use rustc_middle::ty;
 use rustc_span::{self, BytePos, Pos, Span, DUMMY_SP};
@@ -685,7 +684,7 @@ fn test_make_bcb_counters() {
         assert_eq!(
             0, // bcb1 has a `Counter` with id = 0
             match coverage_counters.bcb_counter(bcb1).expect("should have a counter") {
-                CoverageKind::Counter { id, .. } => id,
+                counters::BcbCounter::Counter { id, .. } => id,
                 _ => panic!("expected a Counter"),
             }
             .as_u32()
@@ -695,7 +694,7 @@ fn test_make_bcb_counters() {
         assert_eq!(
             1, // bcb2 has a `Counter` with id = 1
             match coverage_counters.bcb_counter(bcb2).expect("should have a counter") {
-                CoverageKind::Counter { id, .. } => id,
+                counters::BcbCounter::Counter { id, .. } => id,
                 _ => panic!("expected a Counter"),
             }
             .as_u32()
