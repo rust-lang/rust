@@ -3,6 +3,9 @@
 //! For that, we define APIs that will temporarily be public to 3P that exposes rustc internal APIs
 //! until stable MIR is complete.
 
+use std::fmt::Debug;
+use std::string::ToString;
+
 use crate::{
     rustc_smir::Tables,
     stable_mir::{self, with},
@@ -48,4 +51,11 @@ pub fn crate_num(item: &stable_mir::Crate) -> CrateNum {
 
 pub fn run(tcx: TyCtxt<'_>, f: impl FnOnce()) {
     crate::stable_mir::run(Tables { tcx, def_ids: vec![], types: vec![] }, f);
+}
+
+/// A type that provides internal information but that can still be used for debug purpose.
+pub type Opaque = impl Debug + ToString + Clone;
+
+pub(crate) fn opaque<T: Debug>(value: &T) -> Opaque {
+    format!("{value:?}")
 }
