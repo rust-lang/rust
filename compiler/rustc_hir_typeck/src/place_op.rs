@@ -6,7 +6,7 @@ use rustc_hir as hir;
 use rustc_hir_analysis::autoderef::Autoderef;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::InferOk;
-use rustc_middle::ty::adjustment::{Adjust, Adjustment, OverloadedDeref, PointerCast};
+use rustc_middle::ty::adjustment::{Adjust, Adjustment, OverloadedDeref, PointerCoercion};
 use rustc_middle::ty::adjustment::{AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc_middle::ty::{self, Ty};
 use rustc_span::symbol::{sym, Ident};
@@ -173,7 +173,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 if unsize {
                     adjustments.push(Adjustment {
-                        kind: Adjust::Pointer(PointerCast::Unsize),
+                        kind: Adjust::Pointer(PointerCoercion::Unsize),
                         target: method.sig.inputs()[0],
                     });
                 }
@@ -441,7 +441,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if let [
                 ..,
                 Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(..)), .. },
-                Adjustment { kind: Adjust::Pointer(PointerCast::Unsize), ref mut target },
+                Adjustment { kind: Adjust::Pointer(PointerCoercion::Unsize), ref mut target },
             ] = adjustments[..]
             {
                 *target = method.sig.inputs()[0];

@@ -535,7 +535,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::Cast { .. }
             | ExprKind::Use { .. }
             | ExprKind::NeverToAny { .. }
-            | ExprKind::Pointer { .. }
+            | ExprKind::PointerCoercion { .. }
             | ExprKind::Repeat { .. }
             | ExprKind::Borrow { .. }
             | ExprKind::AddressOf { .. }

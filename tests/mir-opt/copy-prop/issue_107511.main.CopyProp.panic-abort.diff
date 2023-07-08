@@ -47,7 +47,7 @@
           StorageLive(_6);
           StorageLive(_7);
           _7 = &_2;
-          _6 = move _7 as &[i32] (Pointer(Unsize));
+          _6 = move _7 as &[i32] (PointerCoercion(Unsize));
           StorageDead(_7);
           _5 = core::slice::<impl [i32]>::len(move _6) -> [return: bb1, unwind unreachable];
       }

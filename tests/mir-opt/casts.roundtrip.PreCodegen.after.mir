@@ -8,7 +8,7 @@ fn roundtrip(_1: *const u8) -> *const u8 {
     bb0: {
         StorageLive(_2);
         _2 = _1 as *mut u8 (PtrToPtr);
-        _0 = move _2 as *const u8 (Pointer(MutToConstPointer));
+        _0 = move _2 as *const u8 (PointerCoercion(MutToConstPointer));
         StorageDead(_2);
         return;
     }

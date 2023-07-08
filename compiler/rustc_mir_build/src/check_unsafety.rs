@@ -303,7 +303,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             | ExprKind::NeverToAny { .. }
             | ExprKind::PlaceTypeAscription { .. }
             | ExprKind::ValueTypeAscription { .. }
-            | ExprKind::Pointer { .. }
+            | ExprKind::PointerCoercion { .. }
             | ExprKind::Repeat { .. }
             | ExprKind::StaticRef { .. }
             | ExprKind::ThreadLocalRef { .. }

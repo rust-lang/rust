@@ -62,7 +62,7 @@
       }
   
       bb1: {
-          _3 = move _4 as std::boxed::Box<dyn std::fmt::Display> (Pointer(Unsize));
+          _3 = move _4 as std::boxed::Box<dyn std::fmt::Display> (PointerCoercion(Unsize));
           StorageDead(_4);
           _2 = Result::<Box<dyn std::fmt::Display>, <T as Err>::Err>::Ok(move _3);
           StorageDead(_3);
@@ -95,7 +95,7 @@
           _26 = const _;
           _14 = &(*_26);
           _13 = &(*_14);
-          _12 = move _13 as &[&str] (Pointer(Unsize));
+          _12 = move _13 as &[&str] (PointerCoercion(Unsize));
           StorageDead(_13);
           StorageLive(_16);
           StorageLive(_17);
@@ -126,7 +126,7 @@
           StorageDead(_20);
           _18 = &_19;
           _17 = &(*_18);
-          _16 = move _17 as &[core::fmt::rt::Argument<'_>] (Pointer(Unsize));
+          _16 = move _17 as &[core::fmt::rt::Argument<'_>] (PointerCoercion(Unsize));
           StorageDead(_17);
           _11 = Arguments::<'_>::new_v1(move _12, move _16) -> [return: bb5, unwind unreachable];
       }

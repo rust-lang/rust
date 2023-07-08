@@ -300,7 +300,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let cast_kind = mir_cast_kind(ty, expr.ty);
                 block.and(Rvalue::Cast(cast_kind, source, expr.ty))
             }
-            ExprKind::Pointer { cast, source } => {
+            ExprKind::PointerCoercion { cast, source } => {
                 let source = unpack!(
                     block = this.as_operand(
                         block,
@@ -310,7 +310,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         NeedsTemporary::No
                     )
                 );
-                block.and(Rvalue::Cast(CastKind::Pointer(cast), source, expr.ty))
+                block.and(Rvalue::Cast(CastKind::PointerCoercion(cast), source, expr.ty))
             }
             ExprKind::Array { ref fields } => {
                 // (*) We would (maybe) be closer to codegen if we

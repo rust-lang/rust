@@ -13,7 +13,7 @@ use rustc_middle::middle::region;
 use rustc_middle::mir::{self, BinOp, BorrowKind, UnOp};
 use rustc_middle::thir::*;
 use rustc_middle::ty::adjustment::{
-    Adjust, Adjustment, AutoBorrow, AutoBorrowMutability, PointerCast,
+    Adjust, Adjustment, AutoBorrow, AutoBorrowMutability, PointerCoercion,
 };
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::{
@@ -125,11 +125,16 @@ impl<'tcx> Cx<'tcx> {
         };
 
         let kind = match adjustment.kind {
-            Adjust::Pointer(PointerCast::Unsize) => {
+            Adjust::Pointer(PointerCoercion::Unsize) => {
                 adjust_span(&mut expr);
-                ExprKind::Pointer { cast: PointerCast::Unsize, source: self.thir.exprs.push(expr) }
+                ExprKind::PointerCoercion {
+                    cast: PointerCoercion::Unsize,
+                    source: self.thir.exprs.push(expr),
+                }
             }
-            Adjust::Pointer(cast) => ExprKind::Pointer { cast, source: self.thir.exprs.push(expr) },
+            Adjust::Pointer(cast) => {
+                ExprKind::PointerCoercion { cast, source: self.thir.exprs.push(expr) }
+            }
             Adjust::NeverToAny if adjustment.target.is_never() => return expr,
             Adjust::NeverToAny => ExprKind::NeverToAny { source: self.thir.exprs.push(expr) },
             Adjust::Deref(None) => {
@@ -192,9 +197,9 @@ impl<'tcx> Cx<'tcx> {
             // Special cased so that we can type check that the element
             // type of the source matches the pointed to type of the
             // destination.
-            ExprKind::Pointer {
+            ExprKind::PointerCoercion {
                 source: self.mirror_expr(source),
-                cast: PointerCast::ArrayToPointer,
+                cast: PointerCoercion::ArrayToPointer,
             }
         } else {
             // check whether this is casting an enum variant discriminant

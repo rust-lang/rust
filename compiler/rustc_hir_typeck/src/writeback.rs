@@ -11,7 +11,7 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_infer::infer::error_reporting::TypeAnnotationNeeded::E0282;
 use rustc_middle::hir::place::Place as HirPlace;
 use rustc_middle::mir::FakeReadCause;
-use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCast};
+use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCoercion};
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt};
 use rustc_middle::ty::{self, ClosureSizeProfileData, Ty, TyCtxt};
@@ -251,7 +251,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                         // Since this is "after" the other adjustment to be
                         // discarded, we do an extra `pop()`
                         if let Some(Adjustment {
-                            kind: Adjust::Pointer(PointerCast::Unsize), ..
+                            kind: Adjust::Pointer(PointerCoercion::Unsize), ..
                         }) = a.pop()
                         {
                             // So the borrow discard actually happens here

@@ -10,7 +10,7 @@ use rustc_hir_analysis::astconv::generics::{
 use rustc_hir_analysis::astconv::{AstConv, CreateSubstsForGenericArgsCtxt, IsMethodCall};
 use rustc_infer::infer::{self, DefineOpaqueTypes, InferOk};
 use rustc_middle::traits::{ObligationCauseCode, UnifyReceiverContext};
-use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCast};
+use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCoercion};
 use rustc_middle::ty::adjustment::{AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::{self, SubstsRef};
@@ -212,8 +212,10 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                         region,
                         ty::TypeAndMut { mutbl: mutbl.into(), ty: unsized_ty },
                     );
-                    adjustments
-                        .push(Adjustment { kind: Adjust::Pointer(PointerCast::Unsize), target });
+                    adjustments.push(Adjustment {
+                        kind: Adjust::Pointer(PointerCoercion::Unsize),
+                        target,
+                    });
                 }
             }
             Some(probe::AutorefOrPtrAdjustment::ToConstPtr) => {
@@ -226,7 +228,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 };
 
                 adjustments.push(Adjustment {
-                    kind: Adjust::Pointer(PointerCast::MutToConstPointer),
+                    kind: Adjust::Pointer(PointerCoercion::MutToConstPointer),
                     target,
                 });
             }

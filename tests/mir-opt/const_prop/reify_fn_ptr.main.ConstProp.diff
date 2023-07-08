@@ -13,7 +13,7 @@
           StorageLive(_1);
           StorageLive(_2);
           StorageLive(_3);
-          _3 = main as fn() (Pointer(ReifyFnPointer));
+          _3 = main as fn() (PointerCoercion(ReifyFnPointer));
           _2 = move _3 as usize (PointerExposeAddress);
           StorageDead(_3);
           _1 = move _2 as *const fn() (PointerFromExposedAddress);
