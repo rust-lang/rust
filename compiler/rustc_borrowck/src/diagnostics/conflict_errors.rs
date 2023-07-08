@@ -1329,42 +1329,168 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             issue_span: Span,
             expr_span: Span,
             body_expr: Option<&'hir hir::Expr<'hir>>,
-            loop_bind: Option<Symbol>,
+            loop_bind: Option<&'hir Ident>,
+            loop_span: Option<Span>,
+            head_span: Option<Span>,
+            pat_span: Option<Span>,
+            head: Option<&'hir hir::Expr<'hir>>,
         }
         impl<'hir> Visitor<'hir> for ExprFinder<'hir> {
             fn visit_expr(&mut self, ex: &'hir hir::Expr<'hir>) {
-                if let hir::ExprKind::Loop(hir::Block{ stmts: [stmt, ..], ..}, _, hir::LoopSource::ForLoop, _) = ex.kind &&
-                    let hir::StmtKind::Expr(hir::Expr{ kind: hir::ExprKind::Match(call, [_, bind, ..], _), ..}) = stmt.kind &&
-                    let hir::ExprKind::Call(path, _args) = call.kind &&
-                    let hir::ExprKind::Path(hir::QPath::LangItem(LangItem::IteratorNext, _, _, )) = path.kind &&
-                    let hir::PatKind::Struct(path, [field, ..], _) = bind.pat.kind &&
-                    let hir::QPath::LangItem(LangItem::OptionSome, _, _) = path &&
-                    let PatField { pat: hir::Pat{ kind: hir::PatKind::Binding(_, _, ident, ..), .. }, ..} = field &&
-                    self.issue_span.source_equal(call.span) {
-                        self.loop_bind = Some(ident.name);
+                // Try to find
+                // let result = match IntoIterator::into_iter(<head>) {
+                //     mut iter => {
+                //         [opt_ident]: loop {
+                //             match Iterator::next(&mut iter) {
+                //                 None => break,
+                //                 Some(<pat>) => <body>,
+                //             };
+                //         }
+                //     }
+                // };
+                // corresponding to the desugaring of a for loop `for <pat> in <head> { <body> }`.
+                if let hir::ExprKind::Call(path, [arg]) = ex.kind
+                    && let hir::ExprKind::Path(
+                        hir::QPath::LangItem(LangItem::IntoIterIntoIter, _, _),
+                    ) = path.kind
+                    && arg.span.contains(self.issue_span)
+                {
+                    // Find `IntoIterator::into_iter(<head>)`
+                    self.head = Some(arg);
+                }
+                if let hir::ExprKind::Loop(
+                    hir::Block { stmts: [stmt, ..], .. },
+                    _,
+                    hir::LoopSource::ForLoop,
+                    _,
+                ) = ex.kind
+                    && let hir::StmtKind::Expr(hir::Expr {
+                        kind: hir::ExprKind::Match(call, [_, bind, ..], _),
+                        span: head_span,
+                        ..
+                    }) = stmt.kind
+                    && let hir::ExprKind::Call(path, _args) = call.kind
+                    && let hir::ExprKind::Path(
+                        hir::QPath::LangItem(LangItem::IteratorNext, _, _),
+                    ) = path.kind
+                    && let hir::PatKind::Struct(path, [field, ..], _) = bind.pat.kind
+                    && let hir::QPath::LangItem(LangItem::OptionSome, pat_span, _) = path
+                    && call.span.contains(self.issue_span)
+                {
+                    // Find `<pat>` and the span for the whole `for` loop.
+                    if let PatField { pat: hir::Pat {
+                        kind: hir::PatKind::Binding(_, _, ident, ..),
+                        ..
+                    }, ..} = field {
+                        self.loop_bind = Some(ident);
                     }
+                    self.head_span = Some(*head_span);
+                    self.pat_span = Some(pat_span);
+                    self.loop_span = Some(stmt.span);
+                }
 
-                if let hir::ExprKind::MethodCall(body_call, _recv, ..) = ex.kind &&
-                    body_call.ident.name == sym::next && ex.span.source_equal(self.expr_span) {
-                        self.body_expr = Some(ex);
+                if let hir::ExprKind::MethodCall(body_call, recv, ..) = ex.kind
+                    && body_call.ident.name == sym::next
+                    && recv.span.source_equal(self.expr_span)
+                {
+                    self.body_expr = Some(ex);
                 }
 
                 hir::intravisit::walk_expr(self, ex);
             }
         }
-        let mut finder =
-            ExprFinder { expr_span: span, issue_span, loop_bind: None, body_expr: None };
+        let mut finder = ExprFinder {
+            expr_span: span,
+            issue_span,
+            loop_bind: None,
+            body_expr: None,
+            head_span: None,
+            loop_span: None,
+            pat_span: None,
+            head: None,
+        };
         finder.visit_expr(hir.body(body_id).value);
 
-        if let Some(loop_bind) = finder.loop_bind &&
-            let Some(body_expr) = finder.body_expr &&
-                let Some(def_id) = typeck_results.type_dependent_def_id(body_expr.hir_id) &&
-                let Some(trait_did) = tcx.trait_of_item(def_id) &&
-                tcx.is_diagnostic_item(sym::Iterator, trait_did) {
-                    err.note(format!(
-                        "a for loop advances the iterator for you, the result is stored in `{loop_bind}`."
+        if let Some(body_expr) = finder.body_expr
+            && let Some(loop_span) = finder.loop_span
+            && let Some(def_id) = typeck_results.type_dependent_def_id(body_expr.hir_id)
+            && let Some(trait_did) = tcx.trait_of_item(def_id)
+            && tcx.is_diagnostic_item(sym::Iterator, trait_did)
+        {
+            if let Some(loop_bind) = finder.loop_bind {
+                err.note(format!(
+                    "a for loop advances the iterator for you, the result is stored in `{}`",
+                    loop_bind.name,
+                ));
+            } else {
+                err.note(
+                    "a for loop advances the iterator for you, the result is stored in its pattern",
+                );
+            }
+            let msg = "if you want to call `next` on a iterator within the loop, consider using \
+                       `while let`";
+            if let Some(head) = finder.head
+                && let Some(pat_span) = finder.pat_span
+                && loop_span.contains(body_expr.span)
+                && loop_span.contains(head.span)
+            {
+                let sm = self.infcx.tcx.sess.source_map();
+
+                let mut sugg = vec![];
+                if let hir::ExprKind::Path(hir::QPath::Resolved(None, _)) = head.kind {
+                    // A bare path doesn't need a `let` assignment, it's already a simple
+                    // binding access.
+                    // As a new binding wasn't added, we don't need to modify the advancing call.
+                    sugg.push((
+                        loop_span.with_hi(pat_span.lo()),
+                        format!("while let Some("),
                     ));
-                    err.help("if you want to call `next` on an iterator within the loop, consider using `while let`.");
+                    sugg.push((
+                        pat_span.shrink_to_hi().with_hi(head.span.lo()),
+                        ") = ".to_string(),
+                    ));
+                    sugg.push((
+                        head.span.shrink_to_hi(),
+                        ".next()".to_string(),
+                    ));
+                } else {
+                    // Needs a new a `let` binding.
+                    let indent = if let Some(indent) = sm.indentation_before(loop_span) {
+                        format!("\n{indent}")
+                    } else {
+                        " ".to_string()
+                    };
+                    let Ok(head_str) = sm.span_to_snippet(head.span) else {
+                        err.help(msg);
+                        return;
+                    };
+                    sugg.push((
+                        loop_span.with_hi(pat_span.lo()),
+                        format!("let iter = {head_str};{indent}while let Some("),
+                    ));
+                    sugg.push((
+                        pat_span.shrink_to_hi().with_hi(head.span.hi()),
+                        ") = iter.next()".to_string(),
+                    ));
+                    // As a new binding was added, we should change how the iterator is advanced to
+                    // use the newly introduced binding.
+                    if let hir::ExprKind::MethodCall(_, recv, ..) = body_expr.kind
+                        && let hir::ExprKind::Path(hir::QPath::Resolved(None, ..)) = recv.kind
+                    {
+                        // As we introduced a `let iter = <head>;`, we need to change where the
+                        // already borrowed value was accessed from `<recv>.next()` to
+                        // `iter.next()`.
+                        sugg.push((recv.span, "iter".to_string()));
+                    }
+                }
+                err.multipart_suggestion(
+                    msg,
+                    sugg,
+                    Applicability::MaybeIncorrect,
+                );
+            } else {
+                err.help(msg);
+            }
         }
     }
 
