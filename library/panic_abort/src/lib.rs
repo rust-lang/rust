@@ -78,6 +78,16 @@ pub unsafe fn __rust_start_panic(_payload: &mut dyn BoxMeUp) -> u32 {
                 }
                 core::intrinsics::unreachable();
             }
+        } else if #[cfg(target_os = "teeos")] {
+            mod teeos {
+                extern "C" {
+                    pub fn TEE_Panic(panicCode: u32) -> !;
+                }
+            }
+
+            unsafe fn abort() -> ! {
+                teeos::TEE_Panic(1);
+            }
         } else {
             unsafe fn abort() -> ! {
                 core::intrinsics::abort();
