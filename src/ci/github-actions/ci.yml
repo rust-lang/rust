@@ -302,7 +302,7 @@ concurrency:
   # For a given workflow, if we push to the same branch, cancel all previous builds on that branch.
   # We add an exception for try builds (try branch) and unrolled rollup builds (try-perf), which
   # are all triggered on the same branch, but which should be able to run concurrently.
-  group: ${{ ((github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf') && github.sha) || github.ref }}
+  group: ${{ github.workflow }}-${{ ((github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf') && github.sha) || github.ref }}
   cancel-in-progress: true
 
 jobs:
