@@ -799,6 +799,10 @@ impl Step for Clippy {
             // The tests succeeded; nothing to do.
             return;
         }
+
+        if !builder.config.cmd.bless() {
+            crate::detail_exit_macro!(1);
+        }
     }
 }
 
