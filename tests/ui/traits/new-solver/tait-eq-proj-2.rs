@@ -8,9 +8,11 @@
 
 type Tait = impl Iterator<Item = impl Sized>;
 
-fn mk<T>() -> T { todo!() }
+fn mk<T>() -> T {
+    todo!()
+}
 
-fn a() {
+fn a(_: Tait) {
     let x: Tait = mk();
     let mut array = mk();
     let mut z = IntoIterator::into_iter(array);

@@ -12,11 +12,13 @@ type Foo = impl Sized;
 
 fn needs_send<T: Send>() {}
 
-fn test() {
+fn test(_: Foo) {
     needs_send::<Foo>();
     //[not_send]~^ ERROR type annotations needed: cannot satisfy `Foo: Send`
 }
 
-fn main() {
+fn defines(_: Foo) {
     let _: Foo = ();
 }
+
+fn main() {}

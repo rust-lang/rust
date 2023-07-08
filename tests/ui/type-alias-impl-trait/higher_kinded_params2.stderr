@@ -1,0 +1,15 @@
+error: item constrains opaque type that is not in its signature
+  --> $DIR/higher_kinded_params2.rs:26:13
+   |
+LL |         f = g;
+   |             ^
+   |
+   = note: this item must mention the opaque type in its signature in order to be able to register hidden types
+note: this item must mention the opaque type in its signature in order to be able to register hidden types
+  --> $DIR/higher_kinded_params2.rs:25:8
+   |
+LL |     fn successors(&self, mut f: for<'x> fn(&'x ()) -> <&'x A as B>::C) -> Successors<'_> {
+   |        ^^^^^^^^^^
+
+error: aborting due to previous error
+

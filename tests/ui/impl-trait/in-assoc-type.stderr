@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/in-assoc-type.rs:17:22
+  --> $DIR/in-assoc-type.rs:20:22
    |
 LL |     type Bar = impl std::fmt::Debug;
    |                -------------------- the expected opaque type
@@ -12,7 +12,7 @@ LL |     fn foo(&self) -> <Self as Foo<()>>::Bar {}
    = note: expected opaque type `<() as Foo<()>>::Bar`
                 found unit type `()`
 note: this item must have the opaque type in its signature in order to be able to register hidden types
-  --> $DIR/in-assoc-type.rs:17:8
+  --> $DIR/in-assoc-type.rs:20:8
    |
 LL |     fn foo(&self) -> <Self as Foo<()>>::Bar {}
    |        ^^^

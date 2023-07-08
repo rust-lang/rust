@@ -95,7 +95,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 tcx,
                 ObligationCause::dummy(),
                 orig_env,
-                ty::Binder::dummy(ty::TraitPredicate {
+                ty::TraitPredicate {
                     trait_ref,
                     constness: ty::BoundConstness::NotConst,
                     polarity: if polarity {
@@ -103,7 +103,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                     } else {
                         ImplPolarity::Negative
                     },
-                }),
+                },
             ));
             if let Ok(Some(ImplSource::UserDefined(_))) = result {
                 debug!(
@@ -292,7 +292,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 new_env,
                 pred,
             ));
-            let result = select.select(&obligation);
+            let result = select.poly_select(&obligation);
 
             match result {
                 Ok(Some(ref impl_source)) => {

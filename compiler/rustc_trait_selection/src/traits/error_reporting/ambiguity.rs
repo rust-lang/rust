@@ -1,7 +1,7 @@
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::{InferCtxt, LateBoundRegionConversionTime};
 use rustc_infer::traits::util::elaborate;
-use rustc_infer::traits::{Obligation, ObligationCause, TraitObligation};
+use rustc_infer::traits::{Obligation, ObligationCause, PolyTraitObligation};
 use rustc_middle::ty;
 use rustc_span::{Span, DUMMY_SP};
 
@@ -14,7 +14,7 @@ pub enum Ambiguity {
 
 pub fn recompute_applicable_impls<'tcx>(
     infcx: &InferCtxt<'tcx>,
-    obligation: &TraitObligation<'tcx>,
+    obligation: &PolyTraitObligation<'tcx>,
 ) -> Vec<Ambiguity> {
     let tcx = infcx.tcx;
     let param_env = obligation.param_env;

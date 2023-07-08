@@ -1,0 +1,22 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-90014-tait.rs:19:9
+   |
+LL |     type Fut<'a> = impl Future<Output = ()>;
+   |                    ------------------------ the expected future
+...
+LL |     fn make_fut<'a>(&'a self) -> Self::Fut<'a> {
+   |                                  ------------- expected `Foo<'_>::Fut<'a>` because of return type
+LL |         async { () }
+   |         ^^^^^^^^^^^^ expected future, found `async` block
+   |
+   = note: expected opaque type `Foo<'_>::Fut<'a>`
+            found `async` block `[async block@$DIR/issue-90014-tait.rs:19:9: 19:21]`
+note: this item must have the opaque type in its signature in order to be able to register hidden types
+  --> $DIR/issue-90014-tait.rs:18:8
+   |
+LL |     fn make_fut<'a>(&'a self) -> Self::Fut<'a> {
+   |        ^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

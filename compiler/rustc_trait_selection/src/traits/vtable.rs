@@ -362,7 +362,7 @@ pub(crate) fn vtable_trait_upcasting_coercion_new_vptr_slot<'tcx>(
 
     let trait_ref = ty::TraitRef::new(tcx, unsize_trait_did, [source, target]);
 
-    match tcx.codegen_select_candidate((ty::ParamEnv::reveal_all(), ty::Binder::dummy(trait_ref))) {
+    match tcx.codegen_select_candidate((ty::ParamEnv::reveal_all(), trait_ref)) {
         Ok(ImplSource::TraitUpcasting(implsrc_traitcasting)) => {
             implsrc_traitcasting.vtable_vptr_slot
         }

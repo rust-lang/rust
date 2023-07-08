@@ -134,7 +134,7 @@ pub trait LayoutCalculator {
         scalar_valid_range: (Bound<u128>, Bound<u128>),
         discr_range_of_repr: impl Fn(i128, i128) -> (Integer, bool),
         discriminants: impl Iterator<Item = (VariantIdx, i128)>,
-        niche_optimize_enum: bool,
+        dont_niche_optimize_enum: bool,
         always_sized: bool,
     ) -> Option<LayoutS> {
         let dl = self.current_data_layout();
@@ -183,10 +183,10 @@ pub trait LayoutCalculator {
             // (Typechecking will reject discriminant-sizing attrs.)
 
             let v = present_first;
-            let kind = if is_enum || variants[v].is_empty() {
+            let kind = if is_enum || variants[v].is_empty() || always_sized {
                 StructKind::AlwaysSized
             } else {
-                if !always_sized { StructKind::MaybeUnsized } else { StructKind::AlwaysSized }
+                StructKind::MaybeUnsized
             };
 
             let mut st = self.univariant(dl, &variants[v], repr, kind)?;
@@ -280,7 +280,7 @@ pub trait LayoutCalculator {
         }
 
         let calculate_niche_filling_layout = || -> Option<TmpLayout> {
-            if niche_optimize_enum {
+            if dont_niche_optimize_enum {
                 return None;
             }
 

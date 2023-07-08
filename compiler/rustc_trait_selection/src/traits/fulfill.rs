@@ -4,7 +4,7 @@ use rustc_data_structures::obligation_forest::{Error, ForestObligation, Outcome}
 use rustc_data_structures::obligation_forest::{ObligationForest, ObligationProcessor};
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_infer::traits::ProjectionCacheKey;
-use rustc_infer::traits::{SelectionError, TraitEngine, TraitObligation};
+use rustc_infer::traits::{PolyTraitObligation, SelectionError, TraitEngine};
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
@@ -667,7 +667,7 @@ impl<'a, 'tcx> FulfillProcessor<'a, 'tcx> {
     fn process_trait_obligation(
         &mut self,
         obligation: &PredicateObligation<'tcx>,
-        trait_obligation: TraitObligation<'tcx>,
+        trait_obligation: PolyTraitObligation<'tcx>,
         stalled_on: &mut Vec<TyOrConstInferVar<'tcx>>,
     ) -> ProcessResult<PendingPredicateObligation<'tcx>, FulfillmentErrorCode<'tcx>> {
         let infcx = self.selcx.infcx;
@@ -683,7 +683,7 @@ impl<'a, 'tcx> FulfillProcessor<'a, 'tcx> {
             }
         }
 
-        match self.selcx.select(&trait_obligation) {
+        match self.selcx.poly_select(&trait_obligation) {
             Ok(Some(impl_source)) => {
                 debug!("selecting trait at depth {} yielded Ok(Some)", obligation.recursion_depth);
                 ProcessResult::Changed(mk_pending(impl_source.nested_obligations()))

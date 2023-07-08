@@ -80,7 +80,7 @@ fn resolve_associated_item<'tcx>(
 
     let trait_ref = ty::TraitRef::from_method(tcx, trait_id, rcvr_substs);
 
-    let vtbl = match tcx.codegen_select_candidate((param_env, ty::Binder::dummy(trait_ref))) {
+    let vtbl = match tcx.codegen_select_candidate((param_env, trait_ref)) {
         Ok(vtbl) => vtbl,
         Err(CodegenObligationError::Ambiguity) => {
             let reported = tcx.sess.delay_span_bug(
