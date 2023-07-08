@@ -11,7 +11,7 @@ mod fulfill;
 pub mod misc;
 mod object_safety;
 pub mod outlives_bounds;
-mod project;
+pub mod project;
 pub mod query;
 #[cfg_attr(not(bootstrap), allow(hidden_glob_reexports))]
 mod select;

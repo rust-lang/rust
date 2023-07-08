@@ -257,7 +257,7 @@ impl<T> Trait<T> for X {
                             );
                         }
                     }
-                    (ty::Alias(ty::Opaque, alias), _) | (_, ty::Alias(ty::Opaque, alias)) if alias.def_id.is_local() && matches!(tcx.def_kind(body_owner_def_id), DefKind::AssocFn | DefKind::AssocConst) => {
+                    (ty::Alias(ty::Opaque, alias), _) | (_, ty::Alias(ty::Opaque, alias)) if alias.def_id.is_local() && matches!(tcx.def_kind(body_owner_def_id), DefKind::Fn | DefKind::Static(_) | DefKind::Const | DefKind::AssocFn | DefKind::AssocConst) => {
                         if tcx.is_type_alias_impl_trait(alias.def_id) {
                             if !tcx.opaque_types_defined_by(body_owner_def_id.expect_local()).contains(&alias.def_id.expect_local()) {
                                 let sp = tcx.def_ident_span(body_owner_def_id).unwrap_or_else(|| tcx.def_span(body_owner_def_id));

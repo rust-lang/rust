@@ -28,7 +28,7 @@ goals together. Essentially:
 
 */
 
-fn a() {
+fn a(_: Tait) {
     let _: Tait = IntoIterator::into_iter([0i32; 32]);
 }
 
