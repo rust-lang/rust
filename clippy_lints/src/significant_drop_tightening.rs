@@ -7,11 +7,13 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_errors::Applicability;
 use rustc_hir::{
     self as hir,
+    def::{DefKind, Res},
     intravisit::{walk_expr, Visitor},
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty::{subst::GenericArgKind, Ty, TypeAndMut};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_span::sym;
 use rustc_span::{symbol::Ident, Span, DUMMY_SP};
 use std::borrow::Cow;
 
@@ -333,7 +335,7 @@ impl<'ap, 'lc, 'others, 'stmt, 'tcx> Visitor<'tcx> for StmtsChecker<'ap, 'lc, 'o
                         }
                     },
                     hir::StmtKind::Semi(expr) => {
-                        if has_drop(expr, &apa.first_bind_ident) {
+                        if has_drop(expr, &apa.first_bind_ident, self.cx) {
                             apa.has_expensive_expr_after_last_attr = false;
                             apa.last_stmt_span = DUMMY_SP;
                             return;
@@ -430,11 +432,11 @@ fn dummy_stmt_expr<'any>(expr: &'any hir::Expr<'any>) -> hir::Stmt<'any> {
     }
 }
 
-fn has_drop(expr: &hir::Expr<'_>, first_bind_ident: &Ident) -> bool {
+fn has_drop(expr: &hir::Expr<'_>, first_bind_ident: &Ident, lcx: &LateContext<'_>) -> bool {
     if let hir::ExprKind::Call(fun, args) = expr.kind
         && let hir::ExprKind::Path(hir::QPath::Resolved(_, fun_path)) = &fun.kind
-        && let [fun_ident, ..] = fun_path.segments
-        && fun_ident.ident.name == rustc_span::sym::drop
+        && let Res::Def(DefKind::Fn, did) = fun_path.res
+        && lcx.tcx.is_diagnostic_item(sym::mem_drop, did)
         && let [first_arg, ..] = args
         && let hir::ExprKind::Path(hir::QPath::Resolved(_, arg_path)) = &first_arg.kind
         && let [first_arg_ps, .. ] = arg_path.segments
