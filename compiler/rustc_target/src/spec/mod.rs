@@ -1485,7 +1485,7 @@ supported_targets! {
 
     ("x86_64-unknown-none", x86_64_unknown_none),
 
-    ("aarch64-unknown-teeos", aarch64-unknown-teeos),
+    ("aarch64-unknown-teeos", aarch64_unknown_teeos),
 
     ("mips64-openwrt-linux-musl", mips64_openwrt_linux_musl),
 
