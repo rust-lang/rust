@@ -142,6 +142,7 @@ $ cargo xtask install --server
 ----
 
 Make sure that `.cargo/bin` is in `$PATH` and precedes paths where `rust-analyzer` may also be installed.
+Specifically, `rustup` includes a proxy called `rust-analyzer`, which can cause problems if you're planning to use a source build or even a downloaded binary.
 
 === rust-analyzer Language Server Binary
 
