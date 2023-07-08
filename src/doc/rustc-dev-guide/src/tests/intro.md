@@ -43,9 +43,9 @@ The standard library relies very heavily on documentation tests to cover its fun
 However, unit tests and integration tests can also be used as needed.
 Almost all of the compiler packages have doctests disabled.
 
-The standard library and compiler always place all unit tests in a separate `tests` file
-(this is enforced in [tidy][tidy-unit-tests]).
-This approach ensures that when the test file is changed, the crate does not need to be recompiled.
+All standard library and compiler unit tests are placed in separate `tests` file
+(which is enforced in [tidy][tidy-unit-tests]).
+This ensures that when the test file is changed, the crate does not need to be recompiled.
 For example:
 
 ```rust,ignore
@@ -53,10 +53,9 @@ For example:
 mod tests;
 ```
 
-If it wasn't done this way, and the tests were placed in the same file as the source,
-then changing or adding a test would cause the crate you are working on to be recompiled.
-If you were working on something like `core`,
-then that would require recompiling the entire standard library, and the entirety of `rustc`.
+If it wasn't done this way,
+and you were working on something like `core`,
+that would require recompiling the entire standard library, and the entirety of `rustc`.
 
 `./x test` includes some CLI options for controlling the behavior with these tests:
 
