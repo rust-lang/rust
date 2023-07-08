@@ -70,6 +70,7 @@ mod fuchsia_base;
 mod haiku_base;
 mod hermit_base;
 mod illumos_base;
+mod teeos_base;
 mod l4re_base;
 mod linux_base;
 mod linux_gnu_base;
@@ -1483,6 +1484,8 @@ supported_targets! {
     ("armv7-unknown-linux-uclibceabihf", armv7_unknown_linux_uclibceabihf),
 
     ("x86_64-unknown-none", x86_64_unknown_none),
+
+    ("aarch64-unknown-teeos", aarch64-unknown-teeos),
 
     ("mips64-openwrt-linux-musl", mips64_openwrt_linux_musl),
 
