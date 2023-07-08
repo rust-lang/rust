@@ -243,9 +243,12 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                 let name = param.name.ident().name;
                 let param_const = ty::ParamConst::new(index, name);
 
-                let ct_ty = tcx.type_of(param.def_id.to_def_id()).subst_identity();
+                let ct_ty = tcx
+                    .type_of(param.def_id.to_def_id())
+                    .no_bound_vars()
+                    .expect("const parameters cannot be generic");
 
-                let ct = tcx.mk_const(param_const, ct_ty);
+                let ct = ty::Const::new_param(tcx, param_const, ct_ty);
 
                 predicates.insert((
                     ty::ClauseKind::ConstArgHasType(ct, ct_ty).to_predicate(tcx),
@@ -716,6 +719,7 @@ pub(super) fn type_param_predicates(
     (item_def_id, def_id, assoc_name): (LocalDefId, LocalDefId, Ident),
 ) -> ty::GenericPredicates<'_> {
     use rustc_hir::*;
+    use rustc_middle::ty::Ty;
 
     // In the AST, bounds can derive from two places. Either
     // written inline like `<T: Foo>` or in a where-clause like
@@ -725,7 +729,7 @@ pub(super) fn type_param_predicates(
     let param_owner = tcx.hir().ty_param_owner(def_id);
     let generics = tcx.generics_of(param_owner);
     let index = generics.param_def_id_to_index[&def_id.to_def_id()];
-    let ty = tcx.mk_ty_param(index, tcx.hir().ty_param_name(def_id));
+    let ty = Ty::new_param(tcx, index, tcx.hir().ty_param_name(def_id));
 
     // Don't look for bounds where the type parameter isn't in scope.
     let parent = if item_def_id == param_owner {

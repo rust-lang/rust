@@ -308,9 +308,9 @@ pub(super) fn check_opaque_for_inheriting_lifetimes(
     {
         let substs = InternalSubsts::identity_for_item(tcx, def_id);
         let opaque_identity_ty = if in_trait && !tcx.lower_impl_trait_in_trait_to_assoc_ty() {
-            tcx.mk_projection(def_id.to_def_id(), substs)
+            Ty::new_projection(tcx, def_id.to_def_id(), substs)
         } else {
-            tcx.mk_opaque(def_id.to_def_id(), substs)
+            Ty::new_opaque(tcx, def_id.to_def_id(), substs)
         };
         let mut visitor = ProhibitOpaqueVisitor {
             opaque_identity_ty,
@@ -410,7 +410,7 @@ fn check_opaque_meets_bounds<'tcx>(
     let ocx = ObligationCtxt::new(&infcx);
 
     let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
-    let opaque_ty = tcx.mk_opaque(def_id.to_def_id(), substs);
+    let opaque_ty = Ty::new_opaque(tcx, def_id.to_def_id(), substs);
 
     // `ReErased` regions appear in the "parent_substs" of closures/generators.
     // We're ignoring them here and replacing them with fresh region variables.

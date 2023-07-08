@@ -403,7 +403,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .borrow_mut()
                     .treat_byte_string_as_slice
                     .insert(lt.hir_id.local_id);
-                pat_ty = tcx.mk_imm_ref(tcx.lifetimes.re_static, tcx.mk_slice(tcx.types.u8));
+                pat_ty = Ty::new_imm_ref(tcx,tcx.lifetimes.re_static, Ty::new_slice(tcx,tcx.types.u8));
             }
         }
 
@@ -412,7 +412,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let expected = self.resolve_vars_if_possible(expected);
             pat_ty = match expected.kind() {
                 ty::Adt(def, _) if Some(def.did()) == tcx.lang_items().string() => expected,
-                ty::Str => tcx.mk_static_str(),
+                ty::Str => Ty::new_static_str(tcx,),
                 _ => pat_ty,
             };
         }
@@ -474,7 +474,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // There exists a side that didn't meet our criteria that the end-point
             // be of a numeric or char type, as checked in `calc_side` above.
             let guar = self.emit_err_pat_range(span, lhs, rhs);
-            return self.tcx.ty_error(guar);
+            return Ty::new_error(self.tcx, guar);
         }
 
         // Unify each side with `expected`.
@@ -494,7 +494,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         demand_eqtype(&mut rhs, lhs);
 
         if let (Some((true, ..)), _) | (_, Some((true, ..))) = (lhs, rhs) {
-            return self.tcx.ty_error_misc();
+            return Ty::new_misc_error(self.tcx);
         }
 
         // Find the unified type and check if it's of numeric or char type again.
@@ -510,7 +510,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 *fail = true;
             }
             let guar = self.emit_err_pat_range(span, lhs, rhs);
-            return self.tcx.ty_error(guar);
+            return Ty::new_error(self.tcx, guar);
         }
         ty
     }
@@ -848,7 +848,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let (variant, pat_ty) = match self.check_struct_path(qpath, pat.hir_id) {
             Ok(data) => data,
             Err(guar) => {
-                let err = self.tcx.ty_error(guar);
+                let err = Ty::new_error(self.tcx, guar);
                 for field in fields {
                     let ti = ti;
                     self.check_pat(field.pat, err, def_bm, ti);
@@ -864,7 +864,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if self.check_struct_pat_fields(pat_ty, &pat, variant, fields, has_rest_pat, def_bm, ti) {
             pat_ty
         } else {
-            self.tcx.ty_error_misc()
+            Ty::new_misc_error(self.tcx)
         }
     }
 
@@ -884,12 +884,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Res::Err => {
                 let e = tcx.sess.delay_span_bug(qpath.span(), "`Res::Err` but no error emitted");
                 self.set_tainted_by_errors(e);
-                return tcx.ty_error(e);
+                return Ty::new_error(tcx, e);
             }
             Res::Def(DefKind::AssocFn | DefKind::Ctor(_, CtorKind::Fn) | DefKind::Variant, _) => {
                 let expected = "unit struct, unit variant or constant";
                 let e = report_unexpected_variant_res(tcx, res, qpath, pat.span, "E0533", expected);
-                return tcx.ty_error(e);
+                return Ty::new_error(tcx, e);
             }
             Res::SelfCtor(..)
             | Res::Def(
@@ -1032,7 +1032,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let tcx = self.tcx;
         let on_error = |e| {
             for pat in subpats {
-                self.check_pat(pat, tcx.ty_error(e), def_bm, ti);
+                self.check_pat(pat, Ty::new_error(tcx, e), def_bm, ti);
             }
         };
         let report_unexpected_res = |res: Res| {
@@ -1049,7 +1049,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let e = tcx.sess.delay_span_bug(pat.span, "`Res::Err` but no error emitted");
             self.set_tainted_by_errors(e);
             on_error(e);
-            return tcx.ty_error(e);
+            return Ty::new_error(tcx, e);
         }
 
         // Type-check the path.
@@ -1057,7 +1057,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.instantiate_value_path(segments, opt_ty, res, pat.span, pat.hir_id);
         if !pat_ty.is_fn() {
             let e = report_unexpected_res(res);
-            return tcx.ty_error(e);
+            return Ty::new_error(tcx, e);
         }
 
         let variant = match res {
@@ -1065,11 +1065,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let e = tcx.sess.delay_span_bug(pat.span, "`Res::Err` but no error emitted");
                 self.set_tainted_by_errors(e);
                 on_error(e);
-                return tcx.ty_error(e);
+                return Ty::new_error(tcx, e);
             }
             Res::Def(DefKind::AssocConst | DefKind::AssocFn, _) => {
                 let e = report_unexpected_res(res);
-                return tcx.ty_error(e);
+                return Ty::new_error(tcx, e);
             }
             Res::Def(DefKind::Ctor(_, CtorKind::Fn), _) => tcx.expect_variant_res(res),
             _ => bug!("unexpected pattern resolution: {:?}", res),
@@ -1112,7 +1112,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let e =
                 self.e0023(pat.span, res, qpath, subpats, &variant.fields.raw, expected, had_err);
             on_error(e);
-            return tcx.ty_error(e);
+            return Ty::new_error(tcx, e);
         }
         pat_ty
     }
@@ -1303,16 +1303,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             )
         });
         let element_tys = tcx.mk_type_list_from_iter(element_tys_iter);
-        let pat_ty = tcx.mk_tup(element_tys);
+        let pat_ty = Ty::new_tup(tcx, element_tys);
         if let Some(mut err) = self.demand_eqtype_pat_diag(span, expected, pat_ty, ti) {
             let reported = err.emit();
             // Walk subpatterns with an expected type of `err` in this case to silence
             // further errors being emitted when using the bindings. #50333
-            let element_tys_iter = (0..max_len).map(|_| tcx.ty_error(reported));
+            let element_tys_iter = (0..max_len).map(|_| Ty::new_error(tcx, reported));
             for (_, elem) in elements.iter().enumerate_and_adjust(max_len, ddpos) {
-                self.check_pat(elem, tcx.ty_error(reported), def_bm, ti);
+                self.check_pat(elem, Ty::new_error(tcx, reported), def_bm, ti);
             }
-            tcx.mk_tup_from_iter(element_tys_iter)
+            Ty::new_tup_from_iter(tcx, element_tys_iter)
         } else {
             for (i, elem) in elements.iter().enumerate_and_adjust(max_len, ddpos) {
                 self.check_pat(elem, element_tys[i], def_bm, ti);
@@ -1357,7 +1357,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Occupied(occupied) => {
                     no_field_errors = false;
                     let guar = self.error_field_already_bound(span, field.ident, *occupied.get());
-                    tcx.ty_error(guar)
+                    Ty::new_error(tcx, guar)
                 }
                 Vacant(vacant) => {
                     vacant.insert(span);
@@ -1371,7 +1371,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .unwrap_or_else(|| {
                             inexistent_fields.push(field);
                             no_field_errors = false;
-                            tcx.ty_error_misc()
+                            Ty::new_misc_error(tcx)
                         })
                 }
             };
@@ -1951,12 +1951,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     kind: TypeVariableOriginKind::TypeInference,
                     span: inner.span,
                 });
-                let box_ty = tcx.mk_box(inner_ty);
+                let box_ty = Ty::new_box(tcx, inner_ty);
                 self.demand_eqtype_pat(span, expected, box_ty, ti);
                 (box_ty, inner_ty)
             }
             Err(guar) => {
-                let err = tcx.ty_error(guar);
+                let err = Ty::new_error(tcx, guar);
                 (err, err)
             }
         };
@@ -2007,7 +2007,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
             Err(guar) => {
-                let err = tcx.ty_error(guar);
+                let err = Ty::new_error(tcx, guar);
                 (err, err)
             }
         };
@@ -2019,7 +2019,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn new_ref_ty(&self, span: Span, mutbl: hir::Mutability, ty: Ty<'tcx>) -> Ty<'tcx> {
         let region = self.next_region_var(infer::PatternRegion(span));
         let mt = ty::TypeAndMut { ty, mutbl };
-        self.tcx.mk_ref(region, mt)
+        Ty::new_ref(self.tcx, region, mt)
     }
 
     /// Type check a slice pattern.
@@ -2061,7 +2061,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .error_reported()
                     .err()
                     .unwrap_or_else(|| self.error_expected_array_or_slice(span, expected, ti));
-                let err = self.tcx.ty_error(guar);
+                let err = Ty::new_error(self.tcx, guar);
                 (err, Some(err), err)
             }
         };
@@ -2108,7 +2108,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             } else if let Some(pat_len) = len.checked_sub(min_len) {
                 // The variable-length pattern was there,
                 // so it has an array type with the remaining elements left as its size...
-                return (Some(self.tcx.mk_array(element_ty, pat_len)), arr_ty);
+                return (Some(Ty::new_array(self.tcx, element_ty, pat_len)), arr_ty);
             } else {
                 // ...however, in this case, there were no remaining elements.
                 // That is, the slice pattern requires more than the array type offers.
@@ -2117,7 +2117,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else if slice.is_none() {
             // We have a pattern with a fixed length,
             // which we can use to infer the length of the array.
-            let updated_arr_ty = self.tcx.mk_array(element_ty, min_len);
+            let updated_arr_ty = Ty::new_array(self.tcx, element_ty, min_len);
             self.demand_eqtype(span, updated_arr_ty, arr_ty);
             return (None, updated_arr_ty);
         } else {
@@ -2128,7 +2128,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         // If we get here, we must have emitted an error.
-        (Some(self.tcx.ty_error(guar)), arr_ty)
+        (Some(Ty::new_error(self.tcx, guar)), arr_ty)
     }
 
     fn error_scrutinee_inconsistent_length(

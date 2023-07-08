@@ -1,7 +1,7 @@
 use crate::*;
 use rustc_ast::ast::Mutability;
 use rustc_middle::ty::layout::LayoutOf as _;
-use rustc_middle::ty::{self, Instance};
+use rustc_middle::ty::{self, Instance, Ty};
 use rustc_span::{BytePos, Loc, Symbol};
 use rustc_target::{abi::Size, spec::abi::Abi};
 
@@ -71,7 +71,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let len: u64 = ptrs.len().try_into().unwrap();
 
         let ptr_ty = this.machine.layouts.mut_raw_ptr.ty;
-        let array_layout = this.layout_of(tcx.mk_array(ptr_ty, len)).unwrap();
+        let array_layout = this.layout_of(Ty::new_array(tcx.tcx,ptr_ty, len)).unwrap();
 
         match flags {
             // storage for pointers is allocated by miri

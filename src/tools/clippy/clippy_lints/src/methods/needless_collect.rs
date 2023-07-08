@@ -215,7 +215,7 @@ fn iterates_same_ty<'tcx>(cx: &LateContext<'tcx>, iter_ty: Ty<'tcx>, collect_ty:
         && let Some(into_iter_item_proj) = make_projection(cx.tcx, into_iter_trait, item, [collect_ty])
         && let Ok(into_iter_item_ty) = cx.tcx.try_normalize_erasing_regions(
             cx.param_env,
-            cx.tcx.mk_projection(into_iter_item_proj.def_id, into_iter_item_proj.substs)
+            Ty::new_projection(cx.tcx,into_iter_item_proj.def_id, into_iter_item_proj.substs)
         )
     {
         iter_item_ty == into_iter_item_ty
@@ -238,7 +238,7 @@ fn is_contains_sig(cx: &LateContext<'_>, call_id: HirId, iter_expr: &Expr<'_>) -
             .associated_items(iter_trait)
             .find_by_name_and_kind(cx.tcx, Ident::with_dummy_span(Symbol::intern("Item")), AssocKind::Type, iter_trait)
         && let substs = cx.tcx.mk_substs(&[GenericArg::from(typeck.expr_ty_adjusted(iter_expr))])
-        && let proj_ty = cx.tcx.mk_projection(iter_item.def_id, substs)
+        && let proj_ty = Ty::new_projection(cx.tcx,iter_item.def_id, substs)
         && let Ok(item_ty) = cx.tcx.try_normalize_erasing_regions(cx.param_env, proj_ty)
     {
         item_ty == EarlyBinder::bind(search_ty).subst(cx.tcx, cx.typeck_results().node_substs(call_id))

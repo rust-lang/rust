@@ -122,10 +122,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "byteorder", // via ruzstd in object in thorin-dwp
     "cc",
     "cfg-if",
-    "chalk-derive",
-    "chalk-engine",
-    "chalk-ir",
-    "chalk-solve",
     "compiler_builtins",
     "convert_case", // dependency of derive_more
     "cpufeatures",
@@ -135,6 +131,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "crossbeam-epoch",
     "crossbeam-utils",
     "crypto-common",
+    "cstr",
     "datafrog",
     "derive_more",
     "digest",
@@ -149,7 +146,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "fallible-iterator", // dependency of `thorin`
     "fastrand",
     "field-offset",
-    "fixedbitset",
     "flate2",
     "fluent-bundle",
     "fluent-langneg",
@@ -199,7 +195,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "parking_lot_core",
     "pathdiff",
     "perf-event-open-sys",
-    "petgraph",
     "pin-project-lite",
     "polonius-engine",
     "ppv-lite86",

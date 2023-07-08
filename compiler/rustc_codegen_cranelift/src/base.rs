@@ -706,7 +706,6 @@ fn codegen_stmt<'tcx>(
                     let times = fx
                         .monomorphize(times)
                         .eval(fx.tcx, ParamEnv::reveal_all())
-                        .kind()
                         .try_to_bits(fx.tcx.data_layout.pointer_size)
                         .unwrap();
                     if operand.layout().size.bytes() == 0 {
@@ -747,7 +746,7 @@ fn codegen_stmt<'tcx>(
                 }
                 Rvalue::ShallowInitBox(ref operand, content_ty) => {
                     let content_ty = fx.monomorphize(content_ty);
-                    let box_layout = fx.layout_of(fx.tcx.mk_box(content_ty));
+                    let box_layout = fx.layout_of(Ty::new_box(fx.tcx, content_ty));
                     let operand = codegen_operand(fx, operand);
                     let operand = operand.load_scalar(fx);
                     lval.write_cvalue(fx, CValue::by_val(operand, box_layout));
@@ -888,7 +887,7 @@ pub(crate) fn codegen_place<'tcx>(
                         let ptr = cplace.to_ptr();
                         cplace = CPlace::for_ptr(
                             ptr.offset_i64(fx, elem_layout.size.bytes() as i64 * (from as i64)),
-                            fx.layout_of(fx.tcx.mk_array(*elem_ty, to - from)),
+                            fx.layout_of(Ty::new_array(fx.tcx, *elem_ty, to - from)),
                         );
                     }
                     ty::Slice(elem_ty) => {

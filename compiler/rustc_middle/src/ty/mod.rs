@@ -66,6 +66,10 @@ use std::{fmt, str};
 
 pub use crate::ty::diagnostics::*;
 pub use rustc_type_ir::AliasKind::*;
+pub use rustc_type_ir::ConstKind::{
+    Bound as BoundCt, Error as ErrorCt, Expr as ExprCt, Infer as InferCt, Param as ParamCt,
+    Placeholder as PlaceholderCt, Unevaluated, Value,
+};
 pub use rustc_type_ir::DynKind::*;
 pub use rustc_type_ir::InferTy::*;
 pub use rustc_type_ir::RegionKind::*;
@@ -81,7 +85,7 @@ pub use self::closure::{
     CAPTURE_STRUCT_LOCAL,
 };
 pub use self::consts::{
-    Const, ConstData, ConstInt, ConstKind, Expr, InferConst, ScalarInt, UnevaluatedConst, ValTree,
+    Const, ConstData, ConstInt, Expr, InferConst, ScalarInt, UnevaluatedConst, ValTree,
 };
 pub use self::context::{
     tls, CtxtInterners, DeducedParamAttrs, FreeRegionInfo, GlobalCtxt, Lift, TyCtxt, TyCtxtFeed,
@@ -93,7 +97,7 @@ pub use self::rvalue_scopes::RvalueScopes;
 pub use self::sty::BoundRegionKind::*;
 pub use self::sty::{
     AliasTy, Article, Binder, BoundRegion, BoundRegionKind, BoundTy, BoundTyKind, BoundVar,
-    BoundVariableKind, CanonicalPolyFnSig, ClosureSubsts, ClosureSubstsParts, ConstVid,
+    BoundVariableKind, CanonicalPolyFnSig, ClosureSubsts, ClosureSubstsParts, ConstKind, ConstVid,
     EarlyBoundRegion, ExistentialPredicate, ExistentialProjection, ExistentialTraitRef, FnSig,
     FreeRegion, GenSig, GeneratorSubsts, GeneratorSubstsParts, InlineConstSubsts,
     InlineConstSubstsParts, ParamConst, ParamTy, PolyExistentialPredicate,
@@ -554,8 +558,7 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::Coerce(_)
             | PredicateKind::Clause(ClauseKind::ConstEvaluatable(_))
             | PredicateKind::ConstEquate(_, _)
-            | PredicateKind::Ambiguous
-            | PredicateKind::Clause(ClauseKind::TypeWellFormedFromEnv(_)) => true,
+            | PredicateKind::Ambiguous => true,
         }
     }
 }
@@ -661,11 +664,6 @@ pub enum ClauseKind<'tcx> {
 
     /// Constant initializer must evaluate successfully.
     ConstEvaluatable(ty::Const<'tcx>),
-
-    /// Represents a type found in the environment that we can use for implied bounds.
-    ///
-    /// Only used for Chalk.
-    TypeWellFormedFromEnv(Ty<'tcx>),
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
@@ -1308,6 +1306,13 @@ impl<'tcx> ToPredicate<'tcx> for TraitRef<'tcx> {
     }
 }
 
+impl<'tcx> ToPredicate<'tcx, TraitPredicate<'tcx>> for TraitRef<'tcx> {
+    #[inline(always)]
+    fn to_predicate(self, _tcx: TyCtxt<'tcx>) -> TraitPredicate<'tcx> {
+        self.without_const()
+    }
+}
+
 impl<'tcx> ToPredicate<'tcx, Clause<'tcx>> for TraitRef<'tcx> {
     #[inline(always)]
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Clause<'tcx> {
@@ -1424,8 +1429,7 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::Clause(ClauseKind::TypeOutlives(..))
             | PredicateKind::Clause(ClauseKind::ConstEvaluatable(..))
             | PredicateKind::ConstEquate(..)
-            | PredicateKind::Ambiguous
-            | PredicateKind::Clause(ClauseKind::TypeWellFormedFromEnv(..)) => None,
+            | PredicateKind::Ambiguous => None,
         }
     }
 
@@ -1445,8 +1449,7 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::Clause(ClauseKind::TypeOutlives(..))
             | PredicateKind::Clause(ClauseKind::ConstEvaluatable(..))
             | PredicateKind::ConstEquate(..)
-            | PredicateKind::Ambiguous
-            | PredicateKind::Clause(ClauseKind::TypeWellFormedFromEnv(..)) => None,
+            | PredicateKind::Ambiguous => None,
         }
     }
 
@@ -1466,8 +1469,7 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::ClosureKind(..)
             | PredicateKind::Clause(ClauseKind::ConstEvaluatable(..))
             | PredicateKind::ConstEquate(..)
-            | PredicateKind::Ambiguous
-            | PredicateKind::Clause(ClauseKind::TypeWellFormedFromEnv(..)) => None,
+            | PredicateKind::Ambiguous => None,
         }
     }
 
@@ -2032,6 +2034,22 @@ impl VariantDef {
         assert!(self.fields.len() == 1);
 
         &self.fields[FieldIdx::from_u32(0)]
+    }
+
+    /// Returns the last field in this variant, if present.
+    #[inline]
+    pub fn tail_opt(&self) -> Option<&FieldDef> {
+        self.fields.raw.last()
+    }
+
+    /// Returns the last field in this variant.
+    ///
+    /// # Panics
+    ///
+    /// Panics, if the variant has no fields.
+    #[inline]
+    pub fn tail(&self) -> &FieldDef {
+        self.tail_opt().expect("expected unsized ADT to have a tail field")
     }
 }
 

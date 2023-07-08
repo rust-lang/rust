@@ -213,7 +213,7 @@ impl<'tcx> SearchGraph<'tcx> {
         inspect: &mut ProofTreeBuilder<'tcx>,
         mut loop_body: impl FnMut(&mut Self, &mut ProofTreeBuilder<'tcx>) -> QueryResult<'tcx>,
     ) -> QueryResult<'tcx> {
-        if self.should_use_global_cache() {
+        if self.should_use_global_cache() && inspect.use_global_cache() {
             if let Some(result) = tcx.new_solver_evaluation_cache.get(&canonical_input, tcx) {
                 debug!(?canonical_input, ?result, "cache hit");
                 inspect.cache_hit(CacheHit::Global);

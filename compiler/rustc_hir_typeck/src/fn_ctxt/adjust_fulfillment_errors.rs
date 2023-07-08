@@ -254,7 +254,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             type BreakTy = ty::GenericArg<'tcx>;
             fn visit_ty(&mut self, ty: Ty<'tcx>) -> std::ops::ControlFlow<Self::BreakTy> {
                 if let Some(origin) = self.0.type_var_origin(ty)
-                    && let rustc_infer::infer::type_variable::TypeVariableOriginKind::TypeParameterDefinition(_, Some(def_id)) =
+                    && let rustc_infer::infer::type_variable::TypeVariableOriginKind::TypeParameterDefinition(_, def_id) =
                         origin.kind
                     && let generics = self.0.tcx.generics_of(self.1)
                     && let Some(index) = generics.param_def_id_to_index(self.0.tcx, def_id)

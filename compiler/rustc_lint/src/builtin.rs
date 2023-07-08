@@ -674,21 +674,21 @@ impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
                     return;
                 }
                 let def = cx.tcx.adt_def(item.owner_id);
-                (def, cx.tcx.mk_adt(def, ty::List::empty()))
+                (def, Ty::new_adt(cx.tcx, def, ty::List::empty()))
             }
             hir::ItemKind::Union(_, ref ast_generics) => {
                 if !ast_generics.params.is_empty() {
                     return;
                 }
                 let def = cx.tcx.adt_def(item.owner_id);
-                (def, cx.tcx.mk_adt(def, ty::List::empty()))
+                (def, Ty::new_adt(cx.tcx, def, ty::List::empty()))
             }
             hir::ItemKind::Enum(_, ref ast_generics) => {
                 if !ast_generics.params.is_empty() {
                     return;
                 }
                 let def = cx.tcx.adt_def(item.owner_id);
-                (def, cx.tcx.mk_adt(def, ty::List::empty()))
+                (def, Ty::new_adt(cx.tcx, def, ty::List::empty()))
             }
             _ => return,
         };
@@ -1606,8 +1606,7 @@ impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
                     // Ignore bounds that a user can't type
                     | ClauseKind::WellFormed(..)
                     // FIXME(generic_const_exprs): `ConstEvaluatable` can be written
-                    | ClauseKind::ConstEvaluatable(..)
-                    | ClauseKind::TypeWellFormedFromEnv(_)  => continue,
+                    | ClauseKind::ConstEvaluatable(..)  => continue,
                 };
                 if predicate.is_global() {
                     cx.emit_spanned_lint(

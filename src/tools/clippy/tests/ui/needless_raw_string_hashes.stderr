@@ -36,23 +36,5 @@ error: unnecessary hashes around raw string literal
 LL |     br######" "aa" "# "## "######;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `br###" "aa" "# "## "###`
 
-error: unnecessary hashes around raw string literal
-  --> $DIR/needless_raw_string_hashes.rs:16:5
-   |
-LL |     cr##"Hello "world"!"##;
-   |     ^^^^^^^^^^^^^^^^^^^^^^ help: try: `cr#"Hello "world"!"#`
-
-error: unnecessary hashes around raw string literal
-  --> $DIR/needless_raw_string_hashes.rs:17:5
-   |
-LL |     cr######" "### "## "# "######;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `cr####" "### "## "# "####`
-
-error: unnecessary hashes around raw string literal
-  --> $DIR/needless_raw_string_hashes.rs:18:5
-   |
-LL |     cr######" "aa" "# "## "######;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `cr###" "aa" "# "## "###`
-
-error: aborting due to 9 previous errors
+error: aborting due to 6 previous errors
 

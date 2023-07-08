@@ -28,7 +28,7 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
         | ty::Char => Ok(vec![]),
 
         // Treat `str` like it's defined as `struct str([u8]);`
-        ty::Str => Ok(vec![tcx.mk_slice(tcx.types.u8)]),
+        ty::Str => Ok(vec![Ty::new_slice(tcx, tcx.types.u8)]),
 
         ty::Dynamic(..)
         | ty::Param(..)
@@ -233,7 +233,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<'tcx>(
             {
                 Ok(Some(
                     sig.subst(tcx, substs)
-                        .map_bound(|sig| (tcx.mk_tup(sig.inputs()), sig.output())),
+                        .map_bound(|sig| (Ty::new_tup(tcx, sig.inputs()), sig.output())),
                 ))
             } else {
                 Err(NoSolution)
@@ -242,7 +242,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<'tcx>(
         // keep this in sync with assemble_fn_pointer_candidates until the old solver is removed.
         ty::FnPtr(sig) => {
             if sig.is_fn_trait_compatible() {
-                Ok(Some(sig.map_bound(|sig| (tcx.mk_tup(sig.inputs()), sig.output()))))
+                Ok(Some(sig.map_bound(|sig| (Ty::new_tup(tcx, sig.inputs()), sig.output()))))
             } else {
                 Err(NoSolution)
             }

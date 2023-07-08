@@ -10,8 +10,8 @@ use rustc_infer::traits::{ImplSource, Obligation, ObligationCause};
 use rustc_middle::mir::{self, CallSource};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
+use rustc_middle::ty::TraitRef;
 use rustc_middle::ty::{suggest_constraining_type_param, Adt, Closure, FnDef, FnPtr, Param, Ty};
-use rustc_middle::ty::{Binder, TraitRef};
 use rustc_middle::util::{call_kind, CallDesugaringKind, CallKind};
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::sym;
@@ -137,12 +137,8 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                     }
                 }
                 Adt(..) => {
-                    let obligation = Obligation::new(
-                        tcx,
-                        ObligationCause::dummy(),
-                        param_env,
-                        Binder::dummy(trait_ref),
-                    );
+                    let obligation =
+                        Obligation::new(tcx, ObligationCause::dummy(), param_env, trait_ref);
 
                     let infcx = tcx.infer_ctxt().build();
                     let mut selcx = SelectionContext::new(&infcx);

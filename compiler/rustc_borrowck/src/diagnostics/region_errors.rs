@@ -508,7 +508,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         let generic_arg = substs[param_index as usize];
                         let identity_substs =
                             InternalSubsts::identity_for_item(self.infcx.tcx, adt.did());
-                        let base_ty = self.infcx.tcx.mk_adt(*adt, identity_substs);
+                        let base_ty = Ty::new_adt(self.infcx.tcx, *adt, identity_substs);
                         let base_generic_arg = identity_substs[param_index as usize];
                         let adt_desc = adt.descr();
 

@@ -650,7 +650,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // Adjust receiver argument. Layout can be any (thin) ptr.
                 args[0] = ImmTy::from_immediate(
                     Scalar::from_maybe_pointer(adjusted_receiver, self).into(),
-                    self.layout_of(self.tcx.mk_mut_ptr(dyn_ty))?,
+                    self.layout_of(Ty::new_mut_ptr(self.tcx.tcx, dyn_ty))?,
                 )
                 .into();
                 trace!("Patched receiver operand to {:#?}", args[0]);
@@ -703,7 +703,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         let arg = ImmTy::from_immediate(
             place.to_ref(self),
-            self.layout_of(self.tcx.mk_mut_ptr(place.layout.ty))?,
+            self.layout_of(Ty::new_mut_ptr(self.tcx.tcx, place.layout.ty))?,
         );
         let ret = MPlaceTy::fake_alloc_zst(self.layout_of(self.tcx.types.unit)?);
 

@@ -22,6 +22,7 @@ are currently defined running NetBSD:
 | `i686-unknown-netbsd`          | [32-bit i386 with SSE](https://wiki.netbsd.org/ports/i386/) |
 | `mipsel-unknown-netbsd`        | [32-bit mips, requires mips32 cpu support](https://wiki.netbsd.org/ports/evbmips/) |
 | `powerpc-unknown-netbsd`       | [Various 32-bit PowerPC systems, e.g. MacPPC](https://wiki.netbsd.org/ports/macppc/) |
+| `riscv64gc-unknown-netbsd`     | [64-bit RISC-V](https://wiki.netbsd.org/ports/riscv/)
 | `sparc64-unknown-netbsd`       | [Sun UltraSPARC systems](https://wiki.netbsd.org/ports/sparc64/) |
 
 All use the "native" `stdc++` library which goes along with the natively

@@ -2,6 +2,7 @@
 
 use crate::infer::canonical::Canonical;
 use crate::mir;
+use crate::mir::interpret::ConstValue;
 use crate::traits;
 use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::layout::{TyAndLayout, ValidityRequirement};
@@ -317,15 +318,23 @@ impl<'tcx> Key for (LocalDefId, DefId, SubstsRef<'tcx>) {
     }
 }
 
-impl<'tcx> Key for (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>) {
+impl<'tcx> Key for (ty::ParamEnv<'tcx>, ty::TraitRef<'tcx>) {
     type CacheSelector = DefaultCacheSelector<Self>;
 
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
-        tcx.def_span(self.1.def_id())
+        tcx.def_span(self.1.def_id)
     }
 }
 
 impl<'tcx> Key for (ty::Const<'tcx>, FieldIdx) {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
+    fn default_span(&self, _: TyCtxt<'_>) -> Span {
+        DUMMY_SP
+    }
+}
+
+impl<'tcx> Key for (ConstValue<'tcx>, Ty<'tcx>) {
     type CacheSelector = DefaultCacheSelector<Self>;
 
     fn default_span(&self, _: TyCtxt<'_>) -> Span {

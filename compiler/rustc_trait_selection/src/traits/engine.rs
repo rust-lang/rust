@@ -1,8 +1,8 @@
 use std::cell::RefCell;
 use std::fmt::Debug;
 
+use super::FulfillmentContext;
 use super::TraitEngine;
-use super::{ChalkFulfillmentContext, FulfillmentContext};
 use crate::solve::FulfillmentCtxt as NextFulfillmentCtxt;
 use crate::traits::error_reporting::TypeErrCtxtExt;
 use crate::traits::NormalizeExt;
@@ -39,7 +39,6 @@ impl<'tcx> TraitEngineExt<'tcx> for dyn TraitEngine<'tcx> {
             (TraitSolver::Next | TraitSolver::NextCoherence, true) => {
                 Box::new(NextFulfillmentCtxt::new(infcx))
             }
-            (TraitSolver::Chalk, false) => Box::new(ChalkFulfillmentContext::new(infcx)),
             _ => bug!(
                 "incompatible combination of -Ztrait-solver flag ({:?}) and InferCtxt::next_trait_solver ({:?})",
                 infcx.tcx.sess.opts.unstable_opts.trait_solver,

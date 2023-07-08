@@ -7,6 +7,7 @@ use std::os::unix::ffi::{OsStrExt, OsStringExt};
 #[cfg(windows)]
 use std::os::windows::ffi::{OsStrExt, OsStringExt};
 
+use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::LayoutOf;
 
 use crate::*;
@@ -140,7 +141,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let size = u64::try_from(os_str.len()).unwrap().checked_add(1).unwrap(); // Make space for `0` terminator.
         let this = self.eval_context_mut();
 
-        let arg_type = this.tcx.mk_array(this.tcx.types.u8, size);
+        let arg_type = Ty::new_array(this.tcx.tcx,this.tcx.types.u8, size);
         let arg_place = this.allocate(this.layout_of(arg_type).unwrap(), memkind)?;
         let (written, _) = self.write_os_str_to_c_str(os_str, arg_place.ptr, size).unwrap();
         assert!(written);
@@ -156,7 +157,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let size = u64::try_from(os_str.len()).unwrap().checked_add(1).unwrap(); // Make space for `0x0000` terminator.
         let this = self.eval_context_mut();
 
-        let arg_type = this.tcx.mk_array(this.tcx.types.u16, size);
+        let arg_type = Ty::new_array(this.tcx.tcx,this.tcx.types.u16, size);
         let arg_place = this.allocate(this.layout_of(arg_type).unwrap(), memkind)?;
         let (written, _) =
             self.write_os_str_to_wide_str(os_str, arg_place.ptr, size, /*truncate*/ false).unwrap();

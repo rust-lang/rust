@@ -10,7 +10,7 @@ use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceC
 use rustc_middle::mir::*;
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts};
 use rustc_middle::ty::{self, adjustment::PointerCast, Instance, InstanceDef, Ty, TyCtxt};
-use rustc_middle::ty::{Binder, TraitRef, TypeVisitableExt};
+use rustc_middle::ty::{TraitRef, TypeVisitableExt};
 use rustc_mir_dataflow::{self, Analysis};
 use rustc_span::{sym, Span, Symbol};
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
@@ -755,10 +755,9 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     }
 
                     let trait_ref = TraitRef::from_method(tcx, trait_id, substs);
-                    let poly_trait_pred =
-                        Binder::dummy(trait_ref).with_constness(ty::BoundConstness::ConstIfConst);
+                    let trait_ref = trait_ref.with_constness(ty::BoundConstness::ConstIfConst);
                     let obligation =
-                        Obligation::new(tcx, ObligationCause::dummy(), param_env, poly_trait_pred);
+                        Obligation::new(tcx, ObligationCause::dummy(), param_env, trait_ref);
 
                     let implsrc = {
                         let infcx = tcx.infer_ctxt().build();
@@ -776,11 +775,11 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                         }
                         // Closure: Fn{Once|Mut}
                         Ok(Some(ImplSource::Builtin(_)))
-                            if poly_trait_pred.self_ty().skip_binder().is_closure()
+                            if trait_ref.self_ty().is_closure()
                                 && tcx.fn_trait_kind_from_def_id(trait_id).is_some() =>
                         {
                             let ty::Closure(closure_def_id, substs) =
-                                *poly_trait_pred.self_ty().no_bound_vars().unwrap().kind()
+                                *trait_ref.self_ty().kind()
                             else {
                                 unreachable!()
                             };
@@ -840,7 +839,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                                     tcx,
                                     ObligationCause::dummy_with_span(*fn_span),
                                     param_env,
-                                    poly_trait_pred,
+                                    trait_ref,
                                 );
 
                                 // improve diagnostics by showing what failed. Our requirements are stricter this time

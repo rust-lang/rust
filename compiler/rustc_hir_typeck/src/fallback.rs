@@ -104,7 +104,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         // type, `?T` is not considered unsolved, but `?I` is. The
         // same is true for float variables.)
         let fallback = match ty.kind() {
-            _ if let Some(e) = self.tainted_by_errors() => self.tcx.ty_error(e),
+            _ if let Some(e) = self.tainted_by_errors() => Ty::new_error(self.tcx,e),
             ty::Infer(ty::IntVar(_)) => self.tcx.types.i32,
             ty::Infer(ty::FloatVar(_)) => self.tcx.types.f64,
             _ => match diverging_fallback.get(&ty) {
@@ -287,7 +287,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         let mut diverging_fallback = FxHashMap::default();
         diverging_fallback.reserve(diverging_vids.len());
         for &diverging_vid in &diverging_vids {
-            let diverging_ty = self.tcx.mk_ty_var(diverging_vid);
+            let diverging_ty = Ty::new_var(self.tcx, diverging_vid);
             let root_vid = self.root_var(diverging_vid);
             let can_reach_non_diverging = coercion_graph
                 .depth_first_search(root_vid)
@@ -334,7 +334,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                 diverging_fallback.insert(diverging_ty, self.tcx.types.unit);
             } else {
                 debug!("fallback to ! - all diverging: {:?}", diverging_vid);
-                diverging_fallback.insert(diverging_ty, self.tcx.mk_diverging_default());
+                diverging_fallback.insert(diverging_ty, Ty::new_diverging_default(self.tcx));
             }
         }
 

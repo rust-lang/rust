@@ -97,7 +97,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
             }
 
             let proj_ty =
-                cx.tcx.mk_projection(proj.projection_ty.def_id, proj.projection_ty.substs);
+                Ty::new_projection(cx.tcx, proj.projection_ty.def_id, proj.projection_ty.substs);
             // For every instance of the projection type in the bounds,
             // replace them with the term we're assigning to the associated
             // type in our opaque type.
@@ -144,7 +144,8 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                         OPAQUE_HIDDEN_INFERRED_BOUND,
                         pred_span,
                         OpaqueHiddenInferredBoundLint {
-                            ty: cx.tcx.mk_opaque(
+                            ty: Ty::new_opaque(
+                                cx.tcx,
                                 def_id,
                                 ty::InternalSubsts::identity_for_item(cx.tcx, def_id),
                             ),

@@ -9,6 +9,7 @@ use rustc_index::IndexSlice;
 use rustc_middle::mir;
 use rustc_middle::ty;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
+use rustc_middle::ty::Ty;
 use rustc_target::abi::{self, Abi, Align, FieldIdx, HasDataLayout, Size, FIRST_VARIANT};
 
 use super::{
@@ -395,7 +396,7 @@ where
         // (Transmuting is okay since this is an in-memory place. We also double-check the size
         // stays the same.)
         let (len, e_ty) = mplace.layout.ty.simd_size_and_type(*self.tcx);
-        let array = self.tcx.mk_array(e_ty, len);
+        let array = Ty::new_array(self.tcx.tcx, e_ty, len);
         let layout = self.layout_of(array)?;
         assert_eq!(layout.size, mplace.layout.size);
         Ok((MPlaceTy { layout, ..*mplace }, len))
@@ -775,7 +776,8 @@ where
         let meta = Scalar::from_target_usize(u64::try_from(str.len()).unwrap(), self);
         let mplace = MemPlace { ptr: ptr.into(), meta: MemPlaceMeta::Meta(meta) };
 
-        let ty = self.tcx.mk_ref(
+        let ty = Ty::new_ref(
+            self.tcx.tcx,
             self.tcx.lifetimes.re_static,
             ty::TypeAndMut { ty: self.tcx.types.str_, mutbl },
         );

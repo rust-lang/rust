@@ -11,7 +11,6 @@
 #![feature(let_chains)]
 #![feature(never_type)]
 #![feature(impl_trait_in_assoc_type)]
-#![feature(c_str_literals)]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
 #![deny(rustc::untranslatable_diagnostic)]

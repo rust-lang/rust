@@ -683,7 +683,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     ProjectionElem::Deref => {
                         let fake_borrow_deref_ty = base_place.ty(&self.local_decls, tcx).ty;
                         let fake_borrow_ty =
-                            tcx.mk_imm_ref(tcx.lifetimes.re_erased, fake_borrow_deref_ty);
+                            Ty::new_imm_ref(tcx, tcx.lifetimes.re_erased, fake_borrow_deref_ty);
                         let fake_borrow_temp =
                             self.local_decls.push(LocalDecl::new(fake_borrow_ty, expr_span));
                         let projection = tcx.mk_place_elems(&base_place.projection);

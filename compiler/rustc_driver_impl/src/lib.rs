@@ -24,6 +24,7 @@ use rustc_data_structures::profiling::{
 };
 use rustc_data_structures::sync::SeqCst;
 use rustc_errors::registry::{InvalidErrorCode, Registry};
+use rustc_errors::{markdown, ColorConfig};
 use rustc_errors::{
     DiagnosticMessage, ErrorGuaranteed, Handler, PResult, SubdiagnosticMessage, TerminalUrl,
 };
@@ -282,7 +283,7 @@ fn run_compiler(
     interface::set_thread_safe_mode(&sopts.unstable_opts);
 
     if let Some(ref code) = matches.opt_str("explain") {
-        handle_explain(&early_error_handler, diagnostics_registry(), code);
+        handle_explain(&early_error_handler, diagnostics_registry(), code, sopts.color);
         return Ok(());
     }
 
@@ -540,7 +541,7 @@ impl Compilation {
     }
 }
 
-fn handle_explain(handler: &EarlyErrorHandler, registry: Registry, code: &str) {
+fn handle_explain(handler: &EarlyErrorHandler, registry: Registry, code: &str, color: ColorConfig) {
     let upper_cased_code = code.to_ascii_uppercase();
     let normalised =
         if upper_cased_code.starts_with('E') { upper_cased_code } else { format!("E{code:0>4}") };
@@ -564,7 +565,7 @@ fn handle_explain(handler: &EarlyErrorHandler, registry: Registry, code: &str) {
                 text.push('\n');
             }
             if io::stdout().is_terminal() {
-                show_content_with_pager(&text);
+                show_md_content_with_pager(&text, color);
             } else {
                 safe_print!("{text}");
             }
@@ -575,34 +576,72 @@ fn handle_explain(handler: &EarlyErrorHandler, registry: Registry, code: &str) {
     }
 }
 
-fn show_content_with_pager(content: &str) {
+/// If color is always or auto, print formatted & colorized markdown. If color is never or
+/// if formatted printing fails, print the raw text.
+///
+/// Prefers a pager, falls back standard print
+fn show_md_content_with_pager(content: &str, color: ColorConfig) {
+    let mut fallback_to_println = false;
     let pager_name = env::var_os("PAGER").unwrap_or_else(|| {
         if cfg!(windows) { OsString::from("more.com") } else { OsString::from("less") }
     });
 
-    let mut fallback_to_println = false;
+    let mut cmd = Command::new(&pager_name);
+    // FIXME: find if other pagers accept color options
+    let mut print_formatted = if pager_name == "less" {
+        cmd.arg("-r");
+        true
+    } else if ["bat", "catbat", "delta"].iter().any(|v| *v == pager_name) {
+        true
+    } else {
+        false
+    };
 
-    match Command::new(pager_name).stdin(Stdio::piped()).spawn() {
-        Ok(mut pager) => {
-            if let Some(pipe) = pager.stdin.as_mut() {
-                if pipe.write_all(content.as_bytes()).is_err() {
-                    fallback_to_println = true;
-                }
-            }
+    if color == ColorConfig::Never {
+        print_formatted = false;
+    } else if color == ColorConfig::Always {
+        print_formatted = true;
+    }
 
-            if pager.wait().is_err() {
+    let mdstream = markdown::MdStream::parse_str(content);
+    let bufwtr = markdown::create_stdout_bufwtr();
+    let mut mdbuf = bufwtr.buffer();
+    if mdstream.write_termcolor_buf(&mut mdbuf).is_err() {
+        print_formatted = false;
+    }
+
+    if let Ok(mut pager) = cmd.stdin(Stdio::piped()).spawn() {
+        if let Some(pipe) = pager.stdin.as_mut() {
+            let res = if print_formatted {
+                pipe.write_all(mdbuf.as_slice())
+            } else {
+                pipe.write_all(content.as_bytes())
+            };
+
+            if res.is_err() {
                 fallback_to_println = true;
             }
         }
-        Err(_) => {
+
+        if pager.wait().is_err() {
             fallback_to_println = true;
         }
+    } else {
+        fallback_to_println = true;
     }
 
     // If pager fails for whatever reason, we should still print the content
     // to standard output
     if fallback_to_println {
-        safe_print!("{content}");
+        let fmt_success = match color {
+            ColorConfig::Auto => io::stdout().is_terminal() && bufwtr.print(&mdbuf).is_ok(),
+            ColorConfig::Always => bufwtr.print(&mdbuf).is_ok(),
+            ColorConfig::Never => false,
+        };
+
+        if !fmt_success {
+            safe_print!("{content}");
+        }
     }
 }
 

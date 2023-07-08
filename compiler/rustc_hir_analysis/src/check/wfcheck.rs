@@ -561,7 +561,7 @@ fn gather_gat_bounds<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
                 // our example, the type was `Self`, which will also be
                 // `Self` in the GAT.
                 let ty_param = gat_generics.param_at(*ty_idx, tcx);
-                let ty_param = tcx.mk_ty_param(ty_param.index, ty_param.name);
+                let ty_param = Ty::new_param(tcx, ty_param.index, ty_param.name);
                 // Same for the region. In our example, 'a corresponds
                 // to the 'me parameter.
                 let region_param = gat_generics.param_at(*region_a_idx, tcx);
@@ -981,7 +981,7 @@ fn check_type_defn<'tcx>(tcx: TyCtxt<'tcx>, item: &hir::Item<'tcx>, all_sized: b
             // intermediate types must be sized.
             let needs_drop_copy = || {
                 packed && {
-                    let ty = tcx.type_of(variant.fields.raw.last().unwrap().did).subst_identity();
+                    let ty = tcx.type_of(variant.tail().did).subst_identity();
                     let ty = tcx.erase_regions(ty);
                     if ty.has_infer() {
                         tcx.sess

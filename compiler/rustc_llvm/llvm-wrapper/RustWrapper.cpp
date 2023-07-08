@@ -121,6 +121,32 @@ extern "C" LLVMValueRef LLVMRustGetNamedValue(LLVMModuleRef M, const char *Name,
   return wrap(unwrap(M)->getNamedValue(StringRef(Name, NameLen)));
 }
 
+enum class LLVMRustTailCallKind {
+  None,
+  Tail,
+  MustTail,
+  NoTail,
+};
+
+static CallInst::TailCallKind fromRust(LLVMRustTailCallKind Kind) {
+  switch (Kind) {
+  case LLVMRustTailCallKind::None:
+    return CallInst::TailCallKind::TCK_None;
+  case LLVMRustTailCallKind::Tail:
+    return CallInst::TailCallKind::TCK_Tail;
+  case LLVMRustTailCallKind::MustTail:
+    return CallInst::TailCallKind::TCK_MustTail;
+  case LLVMRustTailCallKind::NoTail:
+    return CallInst::TailCallKind::TCK_NoTail;
+  default:
+    report_fatal_error("bad CallInst::TailCallKind.");
+  }
+}
+
+extern "C" void LLVMRustSetTailCallKind(LLVMValueRef Call, LLVMRustTailCallKind TCK) {
+  unwrap<CallInst>(Call)->setTailCallKind(fromRust(TCK));
+}
+
 extern "C" LLVMValueRef LLVMRustGetOrInsertFunction(LLVMModuleRef M,
                                                     const char *Name,
                                                     size_t NameLen,

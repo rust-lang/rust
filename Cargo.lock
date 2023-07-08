@@ -434,60 +434,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "chalk-derive"
-version = "0.92.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ff5053a8a42dbff5279a82423946fc56dc1253b76cf211b2b3c14b3aad4e1281"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.8",
- "synstructure 0.13.0",
-]
-
-[[package]]
-name = "chalk-engine"
-version = "0.92.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b9d0e18f29b8b0f4dcf7d31fe00c884af67719699e381e8dcc9d9624b1621c60"
-dependencies = [
- "chalk-derive",
- "chalk-ir",
- "chalk-solve",
- "rustc-hash",
- "tracing",
-]
-
-[[package]]
-name = "chalk-ir"
-version = "0.92.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8a56de2146a8ed0fcd54f4bd50db852f1de4eac9e1efe568494f106c21b77d2a"
-dependencies = [
- "bitflags 1.3.2",
- "chalk-derive",
- "lazy_static",
-]
-
-[[package]]
-name = "chalk-solve"
-version = "0.92.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b392e02b4c81ec76d3748da839fc70a5539b83d27c9030668463d34d5110b860"
-dependencies = [
- "chalk-derive",
- "chalk-ir",
- "ena",
- "indexmap 1.9.3",
- "itertools",
- "petgraph",
- "rustc-hash",
- "tracing",
- "tracing-subscriber",
- "tracing-tree",
-]
-
-[[package]]
 name = "chrono"
 version = "0.4.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -691,9 +637,9 @@ dependencies = [
 
 [[package]]
 name = "compiler_builtins"
-version = "0.1.93"
+version = "0.1.95"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "76630810d973ecea3dbf611e1b7aecfb1012751ef1ff8de3998f89014a166781"
+checksum = "6866e0f3638013234db3c89ead7a14d278354338e7237257407500009012b23f"
 dependencies = [
  "cc",
  "rustc-std-workspace-core",
@@ -818,6 +764,16 @@ checksum = "1bfb12502f3fc46cca1bb51ac28df9d618d813cdc3d2f25b9fe775a34af26bb3"
 dependencies = [
  "generic-array",
  "typenum",
+]
+
+[[package]]
+name = "cstr"
+version = "0.2.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c11a39d776a3b35896711da8a04dc1835169dcd36f710878187637314e47941b"
+dependencies = [
+ "proc-macro2",
+ "quote",
 ]
 
 [[package]]
@@ -1167,12 +1123,6 @@ dependencies = [
  "redox_syscall 0.2.16",
  "windows-sys 0.48.0",
 ]
-
-[[package]]
-name = "fixedbitset"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "37ab347416e802de484e4d03c7316c48f1ecb56574dfd4a46a80f173ce1de04d"
 
 [[package]]
 name = "flate2"
@@ -2467,16 +2417,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "petgraph"
-version = "0.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "467d164a6de56270bd7c4d070df81d07beace25012d5103ced4e9ff08d6afdb7"
-dependencies = [
- "fixedbitset",
- "indexmap 1.9.3",
-]
-
-[[package]]
 name = "phf"
 version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3086,6 +3026,7 @@ name = "rustc_codegen_llvm"
 version = "0.0.0"
 dependencies = [
  "bitflags 1.3.2",
+ "cstr",
  "libc",
  "measureme",
  "object",
@@ -3675,7 +3616,6 @@ name = "rustc_middle"
 version = "0.0.0"
 dependencies = [
  "bitflags 1.3.2",
- "chalk-ir",
  "derive_more",
  "either",
  "field-offset",
@@ -4008,6 +3948,7 @@ dependencies = [
  "rustc_hir",
  "rustc_middle",
  "rustc_span",
+ "scoped-tls",
  "tracing",
 ]
 
@@ -4102,9 +4043,6 @@ dependencies = [
 name = "rustc_traits"
 version = "0.0.0"
 dependencies = [
- "chalk-engine",
- "chalk-ir",
- "chalk-solve",
  "rustc_ast",
  "rustc_data_structures",
  "rustc_hir",
@@ -5033,7 +4971,6 @@ dependencies = [
  "thread_local",
  "tracing",
  "tracing-core",
- "tracing-log",
 ]
 
 [[package]]

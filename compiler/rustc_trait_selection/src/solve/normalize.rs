@@ -96,7 +96,7 @@ impl<'tcx> NormalizationFolder<'_, 'tcx> {
         let recursion_limit = tcx.recursion_limit();
         if !recursion_limit.value_within_limit(self.depth) {
             self.at.infcx.err_ctxt().report_overflow_error(
-                &tcx.mk_const(uv, ty),
+                &ty::Const::new_unevaluated(tcx, uv, ty),
                 self.at.cause.span,
                 true,
                 |_| {},
@@ -131,7 +131,7 @@ impl<'tcx> NormalizationFolder<'_, 'tcx> {
             let ct = infcx.resolve_vars_if_possible(new_infer_ct);
             ct.try_fold_with(self)?
         } else {
-            tcx.mk_const(uv, ty).try_super_fold_with(self)?
+            ty::Const::new_unevaluated(tcx, uv, ty).try_super_fold_with(self)?
         };
 
         self.depth -= 1;
@@ -159,6 +159,7 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for NormalizationFolder<'_, 'tcx> {
     fn try_fold_ty(&mut self, ty: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
         let reveal = self.at.param_env.reveal();
         let infcx = self.at.infcx;
+        debug_assert_eq!(ty, infcx.shallow_resolve(ty));
         if !needs_normalization(&ty, reveal) {
             return Ok(ty);
         }
@@ -192,6 +193,7 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for NormalizationFolder<'_, 'tcx> {
     fn try_fold_const(&mut self, ct: ty::Const<'tcx>) -> Result<ty::Const<'tcx>, Self::Error> {
         let reveal = self.at.param_env.reveal();
         let infcx = self.at.infcx;
+        debug_assert_eq!(ct, infcx.shallow_resolve(ct));
         if !needs_normalization(&ct, reveal) {
             return Ok(ct);
         }

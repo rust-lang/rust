@@ -90,15 +90,15 @@ impl<'tcx> UnifyValue for UnifiedRegion<'tcx> {
 impl ToType for ty::IntVarValue {
     fn to_type<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match *self {
-            ty::IntType(i) => tcx.mk_mach_int(i),
-            ty::UintType(i) => tcx.mk_mach_uint(i),
+            ty::IntType(i) => Ty::new_int(tcx, i),
+            ty::UintType(i) => Ty::new_uint(tcx, i),
         }
     }
 }
 
 impl ToType for ty::FloatVarValue {
     fn to_type<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
-        tcx.mk_mach_float(self.0)
+        Ty::new_float(tcx, self.0)
     }
 }
 

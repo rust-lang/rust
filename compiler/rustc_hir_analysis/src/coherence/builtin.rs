@@ -336,15 +336,17 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: LocalDefId) -> Coe
             infcx.sub_regions(infer::RelateObjectBound(span), r_b, r_a);
             let mt_a = ty::TypeAndMut { ty: ty_a, mutbl: mutbl_a };
             let mt_b = ty::TypeAndMut { ty: ty_b, mutbl: mutbl_b };
-            check_mutbl(mt_a, mt_b, &|ty| tcx.mk_imm_ref(r_b, ty))
+            check_mutbl(mt_a, mt_b, &|ty| Ty::new_imm_ref(tcx, r_b, ty))
         }
 
         (&ty::Ref(_, ty_a, mutbl_a), &ty::RawPtr(mt_b)) => {
             let mt_a = ty::TypeAndMut { ty: ty_a, mutbl: mutbl_a };
-            check_mutbl(mt_a, mt_b, &|ty| tcx.mk_imm_ptr(ty))
+            check_mutbl(mt_a, mt_b, &|ty| Ty::new_imm_ptr(tcx, ty))
         }
 
-        (&ty::RawPtr(mt_a), &ty::RawPtr(mt_b)) => check_mutbl(mt_a, mt_b, &|ty| tcx.mk_imm_ptr(ty)),
+        (&ty::RawPtr(mt_a), &ty::RawPtr(mt_b)) => {
+            check_mutbl(mt_a, mt_b, &|ty| Ty::new_imm_ptr(tcx, ty))
+        }
 
         (&ty::Adt(def_a, substs_a), &ty::Adt(def_b, substs_b))
             if def_a.is_struct() && def_b.is_struct() =>

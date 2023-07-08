@@ -25,9 +25,11 @@ impl<'tcx> InferCtxt<'tcx> {
             "impl has stricter requirements than trait"
         );
 
-        if let Some(span) = self.tcx.hir().span_if_local(trait_item_def_id) {
-            let item_name = self.tcx.item_name(impl_item_def_id.to_def_id());
-            err.span_label(span, format!("definition of `{}` from trait", item_name));
+        if !self.tcx.is_impl_trait_in_trait(trait_item_def_id) {
+            if let Some(span) = self.tcx.hir().span_if_local(trait_item_def_id) {
+                let item_name = self.tcx.item_name(impl_item_def_id.to_def_id());
+                err.span_label(span, format!("definition of `{}` from trait", item_name));
+            }
         }
 
         err.span_label(error_span, format!("impl has extra requirement {}", requirement));

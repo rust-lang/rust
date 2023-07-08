@@ -331,11 +331,20 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         candidates
     }
 
-    /// If the self type of a goal is an alias, computing the relevant candidates is difficult.
+    /// If the self type of a goal is an alias we first try to normalize the self type
+    /// and compute the candidates for the normalized self type in case that succeeds.
     ///
-    /// To deal with this, we first try to normalize the self type and add the candidates for the normalized
-    /// self type to the list of candidates in case that succeeds. We also have to consider candidates with the
-    /// projection as a self type as well
+    /// These candidates are used in addition to the ones with the alias as a self type.
+    /// We do this to simplify both builtin candidates and for better performance.
+    ///
+    /// We generate the builtin candidates on the fly by looking at the self type, e.g.
+    /// add `FnPtr` candidates if the self type is a function pointer. Handling builtin
+    /// candidates while the self type is still an alias seems difficult. This is similar
+    /// to `try_structurally_resolve_type` during hir typeck (FIXME once implemented).
+    ///
+    /// Looking at all impls for some trait goal is prohibitively expensive. We therefore
+    /// only look at implementations with a matching self type. Because of this function,
+    /// we can avoid looking at all existing impls if the self type is an alias.
     #[instrument(level = "debug", skip_all)]
     fn assemble_candidates_after_normalizing_self_ty<G: GoalKind<'tcx>>(
         &mut self,

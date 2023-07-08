@@ -841,7 +841,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(thir_unsafeck, true);
     tracked!(tiny_const_eval_limit, true);
     tracked!(tls_model, Some(TlsModel::GeneralDynamic));
-    tracked!(trait_solver, TraitSolver::Chalk);
+    tracked!(trait_solver, TraitSolver::NextCoherence);
     tracked!(translate_remapped_path_to_local_path, false);
     tracked!(trap_unreachable, Some(false));
     tracked!(treat_err_as_bug, NonZeroUsize::new(1));

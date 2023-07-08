@@ -9,7 +9,7 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint;
 use rustc_span::symbol::{kw, Symbol};
-use rustc_span::Span;
+use rustc_span::{sym, Span};
 
 pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
     use rustc_hir::*;
@@ -101,6 +101,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                         param_def_id_to_index,
                         has_self: generics.has_self,
                         has_late_bound_regions: generics.has_late_bound_regions,
+                        host_effect_index: None,
                     };
                 } else {
                     // HACK(eddyb) this provides the correct generics when
@@ -226,10 +227,12 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
     let has_self = opt_self.is_some();
     let mut parent_has_self = false;
     let mut own_start = has_self as u32;
+    let mut host_effect_index = None;
     let parent_count = parent_def_id.map_or(0, |def_id| {
         let generics = tcx.generics_of(def_id);
         assert!(!has_self);
         parent_has_self = generics.has_self;
+        host_effect_index = generics.host_effect_index;
         own_start = generics.count() as u32;
         generics.parent_count + generics.params.len()
     });
@@ -251,11 +254,11 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
 
     // Now create the real type and const parameters.
     let type_start = own_start - has_self as u32 + params.len() as u32;
-    let mut i = 0;
+    let mut i: u32 = 0;
     let mut next_index = || {
         let prev = i;
         i += 1;
-        prev as u32 + type_start
+        prev + type_start
     };
 
     const TYPE_DEFAULT_NOT_ALLOWED: &'static str = "defaults for type parameters are only allowed in \
@@ -295,7 +298,13 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
             })
         }
         GenericParamKind::Const { default, .. } => {
-            if !matches!(allow_defaults, Defaults::Allowed) && default.is_some() {
+            let is_host_param = tcx.has_attr(param.def_id, sym::rustc_host);
+
+            if !matches!(allow_defaults, Defaults::Allowed)
+                && default.is_some()
+                // `rustc_host` effect params are allowed to have defaults.
+                && !is_host_param
+            {
                 tcx.sess.span_err(
                     param.span,
                     "defaults for const parameters are only allowed in \
@@ -303,8 +312,18 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                 );
             }
 
+            let index = next_index();
+
+            if is_host_param {
+                if let Some(idx) = host_effect_index {
+                    bug!("parent also has host effect param? index: {idx}, def: {def_id:?}");
+                }
+
+                host_effect_index = Some(parent_count + index as usize);
+            }
+
             Some(ty::GenericParamDef {
-                index: next_index(),
+                index,
                 name: param.name.ident().name,
                 def_id: param.def_id.to_def_id(),
                 pure_wrt_drop: param.pure_wrt_drop,
@@ -356,6 +375,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
         param_def_id_to_index,
         has_self: has_self || parent_has_self,
         has_late_bound_regions: has_late_bound_regions(tcx, node),
+        host_effect_index,
     }
 }
 

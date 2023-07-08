@@ -90,7 +90,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
         }
         let reported = err.emit();
-        Some((self.tcx.ty_error(reported), self.tcx.ty_error(reported)))
+        Some((Ty::new_error(self.tcx, reported), Ty::new_error(self.tcx, reported)))
     }
 
     /// To type-check `base_expr[index_expr]`, we progressively autoderef
@@ -138,7 +138,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if unsize {
                 // We only unsize arrays here.
                 if let ty::Array(element_ty, _) = adjusted_ty.kind() {
-                    self_ty = self.tcx.mk_slice(*element_ty);
+                    self_ty = Ty::new_slice(self.tcx, *element_ty);
                 } else {
                     continue;
                 }
@@ -162,7 +162,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let ty::Ref(region, _, hir::Mutability::Not) = method.sig.inputs()[0].kind() {
                     adjustments.push(Adjustment {
                         kind: Adjust::Borrow(AutoBorrow::Ref(*region, AutoBorrowMutability::Not)),
-                        target: self.tcx.mk_ref(
+                        target: Ty::new_ref(
+                            self.tcx,
                             *region,
                             ty::TypeAndMut { mutbl: hir::Mutability::Not, ty: adjusted_ty },
                         ),
@@ -427,9 +428,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         allow_two_phase_borrow: AllowTwoPhase::No,
                     };
                     adjustment.kind = Adjust::Borrow(AutoBorrow::Ref(*region, mutbl));
-                    adjustment.target = self
-                        .tcx
-                        .mk_ref(*region, ty::TypeAndMut { ty: source, mutbl: mutbl.into() });
+                    adjustment.target = Ty::new_ref(
+                        self.tcx,
+                        *region,
+                        ty::TypeAndMut { ty: source, mutbl: mutbl.into() },
+                    );
                 }
                 source = adjustment.target;
             }

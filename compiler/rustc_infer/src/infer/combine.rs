@@ -189,11 +189,11 @@ impl<'tcx> InferCtxt<'tcx> {
             // HACK: equating both sides with `[const error]` eagerly prevents us
             // from leaving unconstrained inference vars during things like impl
             // matching in the solver.
-            let a_error = self.tcx.const_error(a.ty(), guar);
+            let a_error = ty::Const::new_error(self.tcx, guar, a.ty());
             if let ty::ConstKind::Infer(InferConst::Var(vid)) = a.kind() {
                 return self.unify_const_variable(vid, a_error, relation.param_env());
             }
-            let b_error = self.tcx.const_error(b.ty(), guar);
+            let b_error = ty::Const::new_error(self.tcx, guar, b.ty());
             if let ty::ConstKind::Infer(InferConst::Var(vid)) = b.kind() {
                 return self.unify_const_variable(vid, b_error, relation.param_env());
             }
@@ -322,8 +322,8 @@ impl<'tcx> InferCtxt<'tcx> {
             .unify_var_value(vid, Some(val))
             .map_err(|e| int_unification_error(vid_is_expected, e))?;
         match val {
-            IntType(v) => Ok(self.tcx.mk_mach_int(v)),
-            UintType(v) => Ok(self.tcx.mk_mach_uint(v)),
+            IntType(v) => Ok(Ty::new_int(self.tcx, v)),
+            UintType(v) => Ok(Ty::new_uint(self.tcx, v)),
         }
     }
 
@@ -338,7 +338,7 @@ impl<'tcx> InferCtxt<'tcx> {
             .float_unification_table()
             .unify_var_value(vid, Some(ty::FloatVarValue(val)))
             .map_err(|e| float_unification_error(vid_is_expected, e))?;
-        Ok(self.tcx.mk_mach_float(val))
+        Ok(Ty::new_float(self.tcx, val))
     }
 }
 

@@ -1,0 +1,12 @@
+error[E0792]: expected generic lifetime parameter, found `'_`
+  --> $DIR/issue-109054.rs:18:9
+   |
+LL | type ReturnType<'a> = impl std::future::Future<Output = u32> + 'a;
+   |                 -- this generic parameter must be used with a generic lifetime parameter
+...
+LL |         &inner
+   |         ^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0792`.

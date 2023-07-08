@@ -24,11 +24,11 @@ cfg_if::cfg_if! {
     if #[cfg(target_os = "fuchsia")] {
         // fuchsia doesn't have /dev/null
     } else if #[cfg(target_os = "redox")] {
-        const DEV_NULL: &CStr = c"null:";
+        const DEV_NULL: &str = "null:\0";
     } else if #[cfg(target_os = "vxworks")] {
-        const DEV_NULL: &CStr = c"/null";
+        const DEV_NULL: &str = "/null\0";
     } else {
-        const DEV_NULL: &CStr = c"/dev/null";
+        const DEV_NULL: &str = "/dev/null\0";
     }
 }
 
@@ -474,7 +474,8 @@ impl Stdio {
                 let mut opts = OpenOptions::new();
                 opts.read(readable);
                 opts.write(!readable);
-                let fd = File::open_c(DEV_NULL, &opts)?;
+                let path = unsafe { CStr::from_ptr(DEV_NULL.as_ptr() as *const _) };
+                let fd = File::open_c(&path, &opts)?;
                 Ok((ChildStdio::Owned(fd.into_inner()), None))
             }
 

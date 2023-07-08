@@ -1906,6 +1906,7 @@ fn test_stable_pointers() {
     assert_eq!(*v0, 13);
 
     // Smoke test that would fire even outside Miri if an actual relocation happened.
+    // Also ensures the pointer is still writeable after all this.
     *v0 -= 13;
     assert_eq!(v[0], 0);
 }

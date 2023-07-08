@@ -1,5 +1,5 @@
 // compile-flags: -Ztrait-solver=next
-// known-bug: #112825
+// check-pass
 
 // Makes sure we don't prepopulate the MIR typeck of `define`
 // with `Foo<T, U> = T`, but instead, `Foo<B, A> = B`, so that
@@ -12,7 +12,7 @@ type Foo<T: Send, U> = impl NeedsSend<T>;
 trait NeedsSend<T> {}
 impl<T: Send> NeedsSend<T> for T {}
 
-fn define<A, B: Send>(a: A, b: B) {
+fn define<A, B: Send>(a: A, b: B, _: Foo<B, A>) {
     let y: Option<Foo<B, A>> = Some(b);
 }
 

@@ -311,6 +311,7 @@ jobs:
     name: PR - ${{ matrix.name }}
     env:
       <<: [*shared-ci-variables, *public-variables]
+      PR_CI_JOB: 1
     if: github.event_name == 'pull_request'
     continue-on-error: ${{ matrix.name == 'mingw-check-tidy' }}
     strategy:
@@ -372,18 +373,6 @@ jobs:
             <<: *job-linux-8c
 
           - name: dist-loongarch64-linux
-            <<: *job-linux-8c
-
-          - name: dist-mips-linux
-            <<: *job-linux-8c
-
-          - name: dist-mips64-linux
-            <<: *job-linux-8c
-
-          - name: dist-mips64el-linux
-            <<: *job-linux-8c
-
-          - name: dist-mipsel-linux
             <<: *job-linux-8c
 
           - name: dist-powerpc-linux
@@ -481,11 +470,6 @@ jobs:
             <<: *job-linux-8c
 
           - name: x86_64-gnu-llvm-14
-            env:
-              RUST_BACKTRACE: 1
-            <<: *job-linux-8c
-
-          - name: x86_64-gnu-llvm-14-stage1
             env:
               RUST_BACKTRACE: 1
             <<: *job-linux-8c
@@ -606,16 +590,10 @@ jobs:
               SCRIPT: make ci-msvc
             <<: *job-windows-8c
 
-          - name: x86_64-msvc-cargo
+          - name: x86_64-msvc-ext
             env:
-              SCRIPT: python x.py --stage 2 test src/tools/cargotest src/tools/cargo
-              RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-lld
-            <<: *job-windows-8c
-
-          - name: x86_64-msvc-tools
-            env:
-              SCRIPT: src/ci/docker/host-x86_64/x86_64-gnu-tools/checktools.sh x.py /tmp/toolstate/toolstates.json windows
-              RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --save-toolstates=/tmp/toolstate/toolstates.json
+              SCRIPT: python x.py --stage 2 test src/tools/cargotest src/tools/cargo && src/ci/docker/host-x86_64/x86_64-gnu-tools/checktools.sh x.py /tmp/toolstate/toolstates.json windows
+              RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-lld --save-toolstates=/tmp/toolstate/toolstates.json
               DEPLOY_TOOLSTATES_JSON: toolstates-windows.json
             <<: *job-windows-8c
 

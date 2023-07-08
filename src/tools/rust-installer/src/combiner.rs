@@ -71,25 +71,16 @@ impl Combiner {
 
         // Merge each installer into the work directory of the new installer.
         let components = create_new_file(package_dir.join("components"))?;
-        for input_tarball in self
-            .input_tarballs
-            .split(',')
-            .map(str::trim)
-            .filter(|s| !s.is_empty())
+        for input_tarball in self.input_tarballs.split(',').map(str::trim).filter(|s| !s.is_empty())
         {
             // Extract the input tarballs
             let compression =
                 CompressionFormat::detect_from_path(input_tarball).ok_or_else(|| {
                     anyhow::anyhow!("couldn't figure out the format of {}", input_tarball)
                 })?;
-            Archive::new(compression.decode(input_tarball)?)
-                .unpack(&self.work_dir)
-                .with_context(|| {
-                    format!(
-                        "unable to extract '{}' into '{}'",
-                        &input_tarball, self.work_dir
-                    )
-                })?;
+            Archive::new(compression.decode(input_tarball)?).unpack(&self.work_dir).with_context(
+                || format!("unable to extract '{}' into '{}'", &input_tarball, self.work_dir),
+            )?;
 
             let pkg_name =
                 input_tarball.trim_end_matches(&format!(".tar.{}", compression.extension()));
@@ -126,12 +117,8 @@ impl Combiner {
 
         // Write the installer version.
         let version = package_dir.join("rust-installer-version");
-        writeln!(
-            create_new_file(version)?,
-            "{}",
-            crate::RUST_INSTALLER_VERSION
-        )
-        .context("failed to write new installer version")?;
+        writeln!(create_new_file(version)?, "{}", crate::RUST_INSTALLER_VERSION)
+            .context("failed to write new installer version")?;
 
         // Copy the overlay.
         if !self.non_installed_overlay.is_empty() {

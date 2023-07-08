@@ -5,7 +5,7 @@ use rustc_errors::{
     error_code, Applicability, DiagnosticBuilder, ErrorGuaranteed, Handler, IntoDiagnostic,
     MultiSpan,
 };
-use rustc_macros::{Diagnostic, Subdiagnostic};
+use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::{self, print::TraitRefPrintOnlyTraitPath, Ty};
 use rustc_span::{symbol::Ident, Span, Symbol};
 
@@ -182,6 +182,16 @@ pub struct UnconstrainedOpaqueType {
     pub span: Span,
     pub name: Symbol,
     pub what: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_tait_forward_compat)]
+#[note]
+pub struct TaitForwardCompat {
+    #[primary_span]
+    pub span: Span,
+    #[note]
+    pub item_span: Span,
 }
 
 pub struct MissingTypeParams {
@@ -899,4 +909,12 @@ pub(crate) enum LateBoundInApit {
         #[label]
         param_span: Span,
     },
+}
+
+#[derive(LintDiagnostic)]
+#[diag(hir_analysis_unused_associated_type_bounds)]
+#[note]
+pub struct UnusedAssociatedTypeBounds {
+    #[suggestion(code = "")]
+    pub span: Span,
 }

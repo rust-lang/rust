@@ -525,7 +525,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             .tcx
             .const_eval_global_id_for_typeck(param_env_reveal_all, cid, Some(span))
             .map(|val| match val {
-                Some(valtree) => mir::ConstantKind::Ty(self.tcx.mk_const(valtree, ty)),
+                Some(valtree) => mir::ConstantKind::Ty(ty::Const::new_value(self.tcx, valtree, ty)),
                 None => mir::ConstantKind::Val(
                     self.tcx
                         .const_eval_global_id(param_env_reveal_all, cid, Some(span))
@@ -631,7 +631,13 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         if let Ok(Some(valtree)) =
             self.tcx.const_eval_resolve_for_typeck(self.param_env, ct, Some(span))
         {
-            self.const_to_pat(ConstantKind::Ty(self.tcx.mk_const(valtree, ty)), id, span, None).kind
+            self.const_to_pat(
+                ConstantKind::Ty(ty::Const::new_value(self.tcx, valtree, ty)),
+                id,
+                span,
+                None,
+            )
+            .kind
         } else {
             // If that fails, convert it to an opaque constant pattern.
             match tcx.const_eval_resolve(self.param_env, uneval, None) {

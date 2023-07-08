@@ -103,15 +103,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         Ok(match *t.kind() {
             ty::Slice(_) | ty::Str => Some(PointerKind::Length),
             ty::Dynamic(ref tty, _, ty::Dyn) => Some(PointerKind::VTable(tty.principal_def_id())),
-            ty::Adt(def, substs) if def.is_struct() => {
-                match def.non_enum_variant().fields.raw.last() {
-                    None => Some(PointerKind::Thin),
-                    Some(f) => {
-                        let field_ty = self.field_ty(span, f, substs);
-                        self.pointer_kind(field_ty, span)?
-                    }
+            ty::Adt(def, substs) if def.is_struct() => match def.non_enum_variant().tail_opt() {
+                None => Some(PointerKind::Thin),
+                Some(f) => {
+                    let field_ty = self.field_ty(span, f, substs);
+                    self.pointer_kind(field_ty, span)?
                 }
-            }
+            },
             ty::Tuple(fields) => match fields.last() {
                 None => Some(PointerKind::Thin),
                 Some(&f) => self.pointer_kind(f, span)?,
@@ -393,7 +391,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                         && fcx
                             .try_coerce(
                                 self.expr,
-                                fcx.tcx.mk_ref(
+                                Ty::new_ref(fcx.tcx,
                                     fcx.tcx.lifetimes.re_erased,
                                     TypeAndMut { ty: expr_ty, mutbl },
                                 ),
@@ -410,7 +408,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                         && fcx
                             .try_coerce(
                                 self.expr,
-                                fcx.tcx.mk_ref(
+                                Ty::new_ref(fcx.tcx,
                                     expr_reg,
                                     TypeAndMut { ty: expr_ty, mutbl: Mutability::Mut },
                                 ),
@@ -428,7 +426,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                         && fcx
                             .try_coerce(
                                 self.expr,
-                                fcx.tcx.mk_ref(reg, TypeAndMut { ty: self.expr_ty, mutbl }),
+                                Ty::new_ref(fcx.tcx,reg, TypeAndMut { ty: self.expr_ty, mutbl }),
                                 self.cast_ty,
                                 AllowTwoPhase::No,
                                 None,
@@ -441,7 +439,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     && fcx
                         .try_coerce(
                             self.expr,
-                            fcx.tcx.mk_ref(
+                            Ty::new_ref(fcx.tcx,
                                 fcx.tcx.lifetimes.re_erased,
                                 TypeAndMut { ty: self.expr_ty, mutbl },
                             ),
@@ -765,7 +763,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                         let res = fcx.try_coerce(
                             self.expr,
                             self.expr_ty,
-                            fcx.tcx.mk_fn_ptr(f),
+                            Ty::new_fn_ptr(fcx.tcx, f),
                             AllowTwoPhase::No,
                             None,
                         );
@@ -957,7 +955,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 // from a region pointer to a vector.
 
                 // Coerce to a raw pointer so that we generate AddressOf in MIR.
-                let array_ptr_type = fcx.tcx.mk_ptr(m_expr);
+                let array_ptr_type = Ty::new_ptr(fcx.tcx, m_expr);
                 fcx.try_coerce(self.expr, self.expr_ty, array_ptr_type, AllowTwoPhase::No, None)
                     .unwrap_or_else(|_| {
                         bug!(

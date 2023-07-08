@@ -5,6 +5,7 @@ use rustc_middle::mir;
 use rustc_middle::ty;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
+use rustc_middle::ty::Ty;
 use rustc_session::config::DebugInfo;
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{BytePos, Span};
@@ -421,9 +422,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         let create_alloca = |bx: &mut Bx, place: PlaceRef<'tcx, Bx::Value>, refcount| {
             // Create a variable which will be a pointer to the actual value
-            let ptr_ty = bx
-                .tcx()
-                .mk_ptr(ty::TypeAndMut { mutbl: mir::Mutability::Mut, ty: place.layout.ty });
+            let ptr_ty = Ty::new_ptr(
+                bx.tcx(),
+                ty::TypeAndMut { mutbl: mir::Mutability::Mut, ty: place.layout.ty },
+            );
             let ptr_layout = bx.layout_of(ptr_ty);
             let alloca = PlaceRef::alloca(bx, ptr_layout);
             bx.set_var_name(alloca.llval, &format!("{}.ref{}.dbg.spill", var.name, refcount));
@@ -525,8 +527,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 };
 
                 for _ in 0..var.references {
-                    var_ty =
-                        bx.tcx().mk_ptr(ty::TypeAndMut { mutbl: mir::Mutability::Mut, ty: var_ty });
+                    var_ty = Ty::new_ptr(
+                        bx.tcx(),
+                        ty::TypeAndMut { mutbl: mir::Mutability::Mut, ty: var_ty },
+                    );
                 }
 
                 self.cx.create_dbg_var(var.name, var_ty, dbg_scope, var_kind, span)

@@ -1,5 +1,7 @@
 use rustc_data_structures::fx::FxHashSet;
+use rustc_hir::intravisit::Visitor;
 use rustc_hir::{def::DefKind, def_id::LocalDefId};
+use rustc_hir::{intravisit, CRATE_HIR_ID};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::util::{CheckRegions, NotUniqueParam};
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -51,7 +53,7 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
 
     fn parent(&self) -> Option<LocalDefId> {
         match self.tcx.def_kind(self.item) {
-            DefKind::Fn => None,
+            DefKind::AnonConst | DefKind::InlineConst | DefKind::Fn | DefKind::TyAlias => None,
             DefKind::AssocFn | DefKind::AssocTy | DefKind::AssocConst => {
                 Some(self.tcx.local_parent(self.item))
             }
@@ -60,6 +62,73 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
                 "unhandled item with opaque types: {other:?}"
             ),
         }
+    }
+
+    /// Returns `true` if `opaque_hir_id` is a sibling or a child of a sibling of `self.item`.
+    ///
+    /// Example:
+    /// ```ignore UNSOLVED (is this a bug?)
+    /// # #![feature(type_alias_impl_trait)]
+    /// pub mod foo {
+    ///     pub mod bar {
+    ///         pub trait Bar { /* ... */ }
+    ///         pub type Baz = impl Bar;
+    ///
+    ///         # impl Bar for () {}
+    ///         fn f1() -> Baz { /* ... */ }
+    ///     }
+    ///     fn f2() -> bar::Baz { /* ... */ }
+    /// }
+    /// ```
+    ///
+    /// and `opaque_def_id` is the `DefId` of the definition of the opaque type `Baz`.
+    /// For the above example, this function returns `true` for `f1` and `false` for `f2`.
+    #[instrument(level = "trace", skip(self), ret)]
+    fn check_tait_defining_scope(&self, opaque_def_id: LocalDefId) -> bool {
+        let mut hir_id = self.tcx.hir().local_def_id_to_hir_id(self.item);
+        let opaque_hir_id = self.tcx.hir().local_def_id_to_hir_id(opaque_def_id);
+
+        // Named opaque types can be defined by any siblings or children of siblings.
+        let scope = self.tcx.hir().get_defining_scope(opaque_hir_id);
+        // We walk up the node tree until we hit the root or the scope of the opaque type.
+        while hir_id != scope && hir_id != CRATE_HIR_ID {
+            hir_id = self.tcx.hir().get_parent_item(hir_id).into();
+        }
+        // Syntactically, we are allowed to define the concrete type if:
+        hir_id == scope
+    }
+
+    fn collect_body_and_predicate_taits(&mut self) {
+        // Look at all where bounds.
+        self.tcx.predicates_of(self.item).instantiate_identity(self.tcx).visit_with(self);
+        // An item is allowed to constrain opaques declared within its own body (but not nested within
+        // nested functions).
+        self.collect_taits_declared_in_body();
+    }
+
+    #[instrument(level = "trace", skip(self))]
+    fn collect_taits_declared_in_body(&mut self) {
+        let body = self.tcx.hir().body(self.tcx.hir().body_owned_by(self.item)).value;
+        struct TaitInBodyFinder<'a, 'tcx> {
+            collector: &'a mut OpaqueTypeCollector<'tcx>,
+        }
+        impl<'v> intravisit::Visitor<'v> for TaitInBodyFinder<'_, '_> {
+            #[instrument(level = "trace", skip(self))]
+            fn visit_nested_item(&mut self, id: rustc_hir::ItemId) {
+                let id = id.owner_id.def_id;
+                if let DefKind::TyAlias = self.collector.tcx.def_kind(id) {
+                    let items = self.collector.tcx.opaque_types_defined_by(id);
+                    self.collector.opaques.extend(items);
+                }
+            }
+            #[instrument(level = "trace", skip(self))]
+            // Recurse into these, as they are type checked with their parent
+            fn visit_nested_body(&mut self, id: rustc_hir::BodyId) {
+                let body = self.collector.tcx.hir().body(id);
+                self.visit_body(body);
+            }
+        }
+        TaitInBodyFinder { collector: self }.visit_expr(body);
     }
 }
 
@@ -71,6 +140,21 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
             ty::Alias(ty::Opaque, alias_ty) if alias_ty.def_id.is_local() => {
                 if !self.seen.insert(alias_ty.def_id.expect_local()) {
                     return ControlFlow::Continue(());
+                }
+
+                // TAITs outside their defining scopes are ignored.
+                let origin = self.tcx.opaque_type_origin(alias_ty.def_id.expect_local());
+                trace!(?origin);
+                match origin {
+                    rustc_hir::OpaqueTyOrigin::FnReturn(_)
+                    | rustc_hir::OpaqueTyOrigin::AsyncFn(_) => {}
+                    rustc_hir::OpaqueTyOrigin::TyAlias { in_assoc_ty } => {
+                        if !in_assoc_ty {
+                            if !self.check_tait_defining_scope(alias_ty.def_id.expect_local()) {
+                                return ControlFlow::Continue(());
+                            }
+                        }
+                    }
                 }
 
                 self.opaques.push(alias_ty.def_id.expect_local());
@@ -188,33 +272,36 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
 fn opaque_types_defined_by<'tcx>(tcx: TyCtxt<'tcx>, item: LocalDefId) -> &'tcx [LocalDefId] {
     let kind = tcx.def_kind(item);
     trace!(?kind);
-    // FIXME(type_alias_impl_trait): This is definitely still wrong except for RPIT and impl trait in assoc types.
+    let mut collector = OpaqueTypeCollector::new(tcx, item);
     match kind {
-        // We're also doing this for `AssocTy` for the wf checks in `check_opaque_meets_bounds`
-        DefKind::Fn | DefKind::AssocFn | DefKind::AssocTy | DefKind::AssocConst => {
-            let mut collector = OpaqueTypeCollector::new(tcx, item);
-            match kind {
-                // Walk over the signature of the function-like to find the opaques.
-                DefKind::AssocFn | DefKind::Fn => {
-                    let ty_sig = tcx.fn_sig(item).subst_identity();
-                    let hir_sig = tcx.hir().get_by_def_id(item).fn_sig().unwrap();
-                    // Walk over the inputs and outputs manually in order to get good spans for them.
-                    collector.visit_spanned(hir_sig.decl.output.span(), ty_sig.output());
-                    for (hir, ty) in hir_sig.decl.inputs.iter().zip(ty_sig.inputs().iter()) {
-                        collector.visit_spanned(hir.span, ty.map_bound(|x| *x));
-                    }
-                }
-                // Walk over the type of the item to find opaques.
-                DefKind::AssocTy | DefKind::AssocConst => {
-                    let span = match tcx.hir().get_by_def_id(item).ty() {
-                        Some(ty) => ty.span,
-                        _ => tcx.def_span(item),
-                    };
-                    collector.visit_spanned(span, tcx.type_of(item).subst_identity());
-                }
-                _ => unreachable!(),
+        // Walk over the signature of the function-like to find the opaques.
+        DefKind::AssocFn | DefKind::Fn => {
+            let ty_sig = tcx.fn_sig(item).subst_identity();
+            let hir_sig = tcx.hir().get_by_def_id(item).fn_sig().unwrap();
+            // Walk over the inputs and outputs manually in order to get good spans for them.
+            collector.visit_spanned(hir_sig.decl.output.span(), ty_sig.output());
+            for (hir, ty) in hir_sig.decl.inputs.iter().zip(ty_sig.inputs().iter()) {
+                collector.visit_spanned(hir.span, ty.map_bound(|x| *x));
             }
-            tcx.arena.alloc_from_iter(collector.opaques)
+            collector.collect_body_and_predicate_taits();
+        }
+        // Walk over the type of the item to find opaques.
+        DefKind::Static(_) | DefKind::Const | DefKind::AssocConst | DefKind::AnonConst => {
+            let span = match tcx.hir().get_by_def_id(item).ty() {
+                Some(ty) => ty.span,
+                _ => tcx.def_span(item),
+            };
+            collector.visit_spanned(span, tcx.type_of(item).subst_identity());
+            collector.collect_body_and_predicate_taits();
+        }
+        // We're also doing this for `AssocTy` for the wf checks in `check_opaque_meets_bounds`
+        DefKind::TyAlias | DefKind::AssocTy => {
+            tcx.type_of(item).subst_identity().visit_with(&mut collector);
+        }
+        DefKind::OpaqueTy => {
+            for (pred, span) in tcx.explicit_item_bounds(item).subst_identity_iter_copied() {
+                collector.visit_spanned(span, pred);
+            }
         }
         DefKind::Mod
         | DefKind::Struct
@@ -222,31 +309,26 @@ fn opaque_types_defined_by<'tcx>(tcx: TyCtxt<'tcx>, item: LocalDefId) -> &'tcx [
         | DefKind::Enum
         | DefKind::Variant
         | DefKind::Trait
-        | DefKind::TyAlias
         | DefKind::ForeignTy
         | DefKind::TraitAlias
         | DefKind::TyParam
-        | DefKind::Const
         | DefKind::ConstParam
-        | DefKind::Static(_)
         | DefKind::Ctor(_, _)
         | DefKind::Macro(_)
         | DefKind::ExternCrate
         | DefKind::Use
         | DefKind::ForeignMod
-        | DefKind::AnonConst
-        | DefKind::InlineConst
-        | DefKind::OpaqueTy
         | DefKind::ImplTraitPlaceholder
         | DefKind::Field
         | DefKind::LifetimeParam
         | DefKind::GlobalAsm
-        | DefKind::Impl { .. }
-        | DefKind::Closure
-        | DefKind::Generator => {
-            span_bug!(tcx.def_span(item), "{kind:?} is type checked as part of its parent")
+        | DefKind::Impl { .. } => {}
+        // Closures and generators are type checked with their parent, so there is no difference here.
+        DefKind::Closure | DefKind::Generator | DefKind::InlineConst => {
+            return tcx.opaque_types_defined_by(tcx.local_parent(item));
         }
     }
+    tcx.arena.alloc_from_iter(collector.opaques)
 }
 
 pub(super) fn provide(providers: &mut Providers) {

@@ -3,7 +3,6 @@
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/resolution.html
 
 pub mod auto_trait;
-mod chalk_fulfill;
 pub(crate) mod coherence;
 pub mod const_evaluatable;
 mod engine;
@@ -12,7 +11,7 @@ mod fulfill;
 pub mod misc;
 mod object_safety;
 pub mod outlives_bounds;
-mod project;
+pub mod project;
 pub mod query;
 #[cfg_attr(not(bootstrap), allow(hidden_glob_reexports))]
 mod select;
@@ -73,8 +72,6 @@ pub use self::util::{
 };
 pub use self::util::{expand_trait_aliases, TraitAliasExpander};
 pub use self::util::{get_vtable_index_of_object_method, impl_item_is_final, upcast_choices};
-
-pub use self::chalk_fulfill::FulfillmentContext as ChalkFulfillmentContext;
 
 pub use rustc_infer::traits::*;
 

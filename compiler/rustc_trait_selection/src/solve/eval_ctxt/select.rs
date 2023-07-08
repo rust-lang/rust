@@ -4,7 +4,7 @@ use rustc_hir::def_id::DefId;
 use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, InferOk};
 use rustc_infer::traits::util::supertraits;
 use rustc_infer::traits::{
-    Obligation, PredicateObligation, Selection, SelectionResult, TraitObligation,
+    Obligation, PolyTraitObligation, PredicateObligation, Selection, SelectionResult,
 };
 use rustc_middle::traits::solve::{CanonicalInput, Certainty, Goal};
 use rustc_middle::traits::{
@@ -23,14 +23,14 @@ use crate::traits::vtable::{count_own_vtable_entries, prepare_vtable_segments, V
 pub trait InferCtxtSelectExt<'tcx> {
     fn select_in_new_trait_solver(
         &self,
-        obligation: &TraitObligation<'tcx>,
+        obligation: &PolyTraitObligation<'tcx>,
     ) -> SelectionResult<'tcx, Selection<'tcx>>;
 }
 
 impl<'tcx> InferCtxtSelectExt<'tcx> for InferCtxt<'tcx> {
     fn select_in_new_trait_solver(
         &self,
-        obligation: &TraitObligation<'tcx>,
+        obligation: &PolyTraitObligation<'tcx>,
     ) -> SelectionResult<'tcx, Selection<'tcx>> {
         assert!(self.next_trait_solver());
 
@@ -52,7 +52,11 @@ impl<'tcx> InferCtxtSelectExt<'tcx> for InferCtxt<'tcx> {
                 let mut i = 0;
                 while i < candidates.len() {
                     let should_drop_i = (0..candidates.len()).filter(|&j| i != j).any(|j| {
-                        candidate_should_be_dropped_in_favor_of(&candidates[i], &candidates[j])
+                        candidate_should_be_dropped_in_favor_of(
+                            ecx.tcx(),
+                            &candidates[i],
+                            &candidates[j],
+                        )
                     });
                     if should_drop_i {
                         candidates.swap_remove(i);
@@ -160,12 +164,27 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
 }
 
 fn candidate_should_be_dropped_in_favor_of<'tcx>(
+    tcx: TyCtxt<'tcx>,
     victim: &Candidate<'tcx>,
     other: &Candidate<'tcx>,
 ) -> bool {
     match (victim.source, other.source) {
-        (CandidateSource::ParamEnv(i), CandidateSource::ParamEnv(j)) => i >= j,
+        (CandidateSource::ParamEnv(victim_idx), CandidateSource::ParamEnv(other_idx)) => {
+            victim_idx >= other_idx
+        }
         (_, CandidateSource::ParamEnv(_)) => true,
+
+        (
+            CandidateSource::BuiltinImpl(BuiltinImplSource::Object),
+            CandidateSource::BuiltinImpl(BuiltinImplSource::Object),
+        ) => false,
+        (_, CandidateSource::BuiltinImpl(BuiltinImplSource::Object)) => true,
+
+        (CandidateSource::Impl(victim_def_id), CandidateSource::Impl(other_def_id)) => {
+            tcx.specializes((other_def_id, victim_def_id))
+                && other.result.value.certainty == Certainty::Yes
+        }
+
         _ => false,
     }
 }
@@ -202,15 +221,16 @@ fn rematch_object<'tcx>(
     mut nested: Vec<PredicateObligation<'tcx>>,
 ) -> SelectionResult<'tcx, Selection<'tcx>> {
     let self_ty = goal.predicate.self_ty();
-    let source_trait_ref = if let ty::Dynamic(data, _, ty::Dyn) = self_ty.kind() {
-        data.principal().unwrap().with_self_ty(infcx.tcx, self_ty)
-    } else {
+    let ty::Dynamic(data, _, source_kind) = *self_ty.kind()
+    else {
         bug!()
     };
+    let source_trait_ref = data.principal().unwrap().with_self_ty(infcx.tcx, self_ty);
 
     let (is_upcasting, target_trait_ref_unnormalized) = if Some(goal.predicate.def_id())
         == infcx.tcx.lang_items().unsize_trait()
     {
+        assert_eq!(source_kind, ty::Dyn, "cannot upcast dyn*");
         if let ty::Dynamic(data, _, ty::Dyn) = goal.predicate.trait_ref.substs.type_at(1).kind() {
             (true, data.principal().unwrap().with_self_ty(infcx.tcx, self_ty))
         } else {
@@ -277,7 +297,8 @@ fn rematch_object<'tcx>(
         bug!();
     };
 
-    // If we're upcasting, get the offset of the vtable pointer, which is
+    // If we're upcasting, get the offset of the vtable pointer, otherwise get
+    // the base of the vtable.
     Ok(Some(if is_upcasting {
         ImplSource::TraitUpcasting(ImplSourceTraitUpcastingData { vtable_vptr_slot, nested })
     } else {

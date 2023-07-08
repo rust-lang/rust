@@ -1904,8 +1904,8 @@ impl FromInner<imp::ExitCode> for ExitCode {
 }
 
 impl Child {
-    /// Forces the child process to exit. If the child has already exited, an [`InvalidInput`]
-    /// error is returned.
+    /// Forces the child process to exit. If the child has already exited, `Ok(())`
+    /// is returned.
     ///
     /// The mapping to [`ErrorKind`]s is not part of the compatibility contract of the function.
     ///
@@ -1920,7 +1920,7 @@ impl Child {
     ///
     /// let mut command = Command::new("yes");
     /// if let Ok(mut child) = command.spawn() {
-    ///     child.kill().expect("command wasn't running");
+    ///     child.kill().expect("command couldn't be killed");
     /// } else {
     ///     println!("yes command didn't start");
     /// }

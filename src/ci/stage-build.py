@@ -840,6 +840,11 @@ def run_tests(pipeline: Pipeline):
     cargo_path = cargo_dir / "bin" / f"cargo{pipeline.executable_extension()}"
     assert cargo_path.is_file()
 
+    # Specify path to a LLVM config so that LLVM is not rebuilt.
+    # It doesn't really matter which LLVM config we choose, because no sysroot will be compiled.
+    llvm_config = pipeline.build_artifacts() / "llvm" / "bin" / f"llvm-config{pipeline.executable_extension()}"
+    assert llvm_config.is_file()
+
     config_content = f"""profile = "user"
 changelog-seen = 2
 
@@ -847,8 +852,8 @@ changelog-seen = 2
 rustc = "{rustc_path.as_posix()}"
 cargo = "{cargo_path.as_posix()}"
 
-[llvm]
-download-ci-llvm = true
+[target.{PGO_HOST}]
+llvm-config = "{llvm_config.as_posix()}"
 """
     logging.info(f"Using following `config.toml` for running tests:\n{config_content}")
 

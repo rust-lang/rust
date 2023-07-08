@@ -11,7 +11,7 @@ use rustc_errors::{
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::error::TypeError;
-use rustc_middle::ty::{self, IsSuggestable, Region};
+use rustc_middle::ty::{self, IsSuggestable, Region, Ty};
 use rustc_span::symbol::kw;
 
 use super::ObligationCauseAsDiagArg;
@@ -304,7 +304,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         let trait_substs = trait_ref
             .subst_identity()
             // Replace the explicit self type with `Self` for better suggestion rendering
-            .with_self_ty(self.tcx, self.tcx.mk_ty_param(0, kw::SelfUpper))
+            .with_self_ty(self.tcx, Ty::new_param(self.tcx, 0, kw::SelfUpper))
             .substs;
         let trait_item_substs = ty::InternalSubsts::identity_for_item(self.tcx, impl_item_def_id)
             .rebase_onto(self.tcx, impl_def_id, trait_substs);

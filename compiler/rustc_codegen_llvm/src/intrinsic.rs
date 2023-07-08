@@ -873,23 +873,29 @@ fn get_rust_try_fn<'ll, 'tcx>(
 
     // Define the type up front for the signature of the rust_try function.
     let tcx = cx.tcx;
-    let i8p = tcx.mk_mut_ptr(tcx.types.i8);
+    let i8p = Ty::new_mut_ptr(tcx, tcx.types.i8);
     // `unsafe fn(*mut i8) -> ()`
-    let try_fn_ty = tcx.mk_fn_ptr(ty::Binder::dummy(tcx.mk_fn_sig(
-        [i8p],
-        tcx.mk_unit(),
-        false,
-        hir::Unsafety::Unsafe,
-        Abi::Rust,
-    )));
+    let try_fn_ty = Ty::new_fn_ptr(
+        tcx,
+        ty::Binder::dummy(tcx.mk_fn_sig(
+            [i8p],
+            Ty::new_unit(tcx),
+            false,
+            hir::Unsafety::Unsafe,
+            Abi::Rust,
+        )),
+    );
     // `unsafe fn(*mut i8, *mut i8) -> ()`
-    let catch_fn_ty = tcx.mk_fn_ptr(ty::Binder::dummy(tcx.mk_fn_sig(
-        [i8p, i8p],
-        tcx.mk_unit(),
-        false,
-        hir::Unsafety::Unsafe,
-        Abi::Rust,
-    )));
+    let catch_fn_ty = Ty::new_fn_ptr(
+        tcx,
+        ty::Binder::dummy(tcx.mk_fn_sig(
+            [i8p, i8p],
+            Ty::new_unit(tcx),
+            false,
+            hir::Unsafety::Unsafe,
+            Abi::Rust,
+        )),
+    );
     // `unsafe fn(unsafe fn(*mut i8) -> (), *mut i8, unsafe fn(*mut i8, *mut i8) -> ()) -> i32`
     let rust_fn_sig = ty::Binder::dummy(cx.tcx.mk_fn_sig(
         [try_fn_ty, i8p, catch_fn_ty],
