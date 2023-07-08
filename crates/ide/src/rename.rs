@@ -2639,7 +2639,7 @@ use qux as frob;
 =======
 
     #[test]
-    fn disallow_renaming_for_non_local_struct() {
+    fn disallow_renaming_for_non_local_definition() {
         check(
             "Baz",
             r#"
@@ -2648,7 +2648,7 @@ pub struct S$0;
 //- /main.rs crate:main deps:lib new_source_root:local
 use lib::S;
 "#,
-            "error: Cannot rename a non-local struct.",
+            "error: Cannot rename a non-local definition.",
         );
     }
 >>>>>>> 948d9f274 (Disallow renaming of non-local structs)

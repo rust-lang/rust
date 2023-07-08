@@ -71,20 +71,24 @@ impl Definition {
         sema: &Semantics<'_, RootDatabase>,
         new_name: &str,
     ) -> Result<SourceChange> {
+        if let Some(krate) = self.krate(sema.db) {
+            if !matches!(krate.origin(sema.db), CrateOrigin::Local { .. }) {
+                bail!("Cannot rename a non-local definition.")
+            }
+        }
+
         match *self {
             Definition::Module(module) => rename_mod(sema, module, new_name),
             Definition::BuiltinType(_) => {
                 bail!("Cannot rename builtin type")
             }
             Definition::SelfType(_) => bail!("Cannot rename `Self`"),
-            Definition::Adt(hir::Adt::Struct(strukt)) => {
-                if !matches!(
-                    strukt.module(sema.db).krate().origin(sema.db),
-                    CrateOrigin::Local { .. }
-                ) {
-                    bail!("Cannot rename a non-local struct.")
+            Definition::Macro(mac) => {
+                if mac.is_builtin_derive(sema.db) {
+                    bail!("Cannot rename builtin macro")
                 }
-                rename_reference(sema, Definition::Adt(hir::Adt::Struct(strukt)), new_name)
+
+                rename_reference(sema, Definition::Macro(mac), new_name)
             }
             def => rename_reference(sema, def, new_name),
         }
