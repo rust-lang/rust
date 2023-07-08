@@ -184,6 +184,7 @@ mod manual_assert;
 mod manual_async_fn;
 mod manual_bits;
 mod manual_clamp;
+mod manual_float_methods;
 mod manual_is_ascii_check;
 mod manual_let_else;
 mod manual_main_separator_str;
@@ -1073,6 +1074,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|_| Box::new(manual_range_patterns::ManualRangePatterns));
     store.register_early_pass(|| Box::new(visibility::Visibility));
     store.register_late_pass(move |_| Box::new(tuple_array_conversions::TupleArrayConversions { msrv: msrv() }));
+    store.register_late_pass(|_| Box::new(manual_float_methods::ManualFloatMethods));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
