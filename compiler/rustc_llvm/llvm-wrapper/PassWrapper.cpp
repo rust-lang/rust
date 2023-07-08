@@ -740,14 +740,18 @@ LLVMRustOptimize(
 
   if (InstrumentCoverage) {
     PipelineStartEPCallbacks.push_back(
-      [InstrProfileOutput](ModulePassManager &MPM, OptimizationLevel Level) {
+      [InstrProfileOutput, TargetTriple](ModulePassManager &MPM, OptimizationLevel Level) {
         InstrProfOptions Options;
         if (InstrProfileOutput) {
           Options.InstrProfileOutput = InstrProfileOutput;
         }
         // cargo run tests in multhreading mode by default
         // so use atomics for coverage counters
-        Options.Atomic = true;
+        // This only works on platforms that support 64 bit atomic operations
+        // So, don't do it on 32 bit platforms
+        if (TargetTriple.isArch64Bit()){
+          Options.Atomic = true;
+        }
         MPM.addPass(InstrProfiling(Options, false));
       }
     );
