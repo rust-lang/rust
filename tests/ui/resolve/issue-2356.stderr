@@ -1,18 +1,3 @@
-error[E0425]: cannot find function `default` in this scope
-  --> $DIR/issue-2356.rs:31:5
-   |
-LL |     default();
-   |     ^^^^^^^
-   |
-help: you might have meant to call the associated function
-   |
-LL |     Self::default();
-   |     ~~~~~~~~~~~~~
-help: consider importing this function
-   |
-LL + use std::default::default;
-   |
-
 error[E0425]: cannot find value `whiskers` in this scope
   --> $DIR/issue-2356.rs:39:5
    |
@@ -63,6 +48,12 @@ error[E0425]: cannot find function `clone` in this scope
    |
 LL |     clone();
    |     ^^^^^ help: you might have meant to call the method: `self.clone`
+
+error[E0425]: cannot find function `default` in this scope
+  --> $DIR/issue-2356.rs:31:5
+   |
+LL |     default();
+   |     ^^^^^^^ help: you might have meant to call the associated function: `Self::default`
 
 error[E0425]: cannot find function `shave` in this scope
   --> $DIR/issue-2356.rs:41:5
