@@ -233,7 +233,14 @@ impl Thread {
                 };
                 secs -= ts.tv_sec as u64;
                 let ts_ptr = &mut ts as *mut _;
-                if libc::nanosleep(ts_ptr, ts_ptr) == -1 {
+                // Since linux kernel d6ed449 (v >~ 4.19) the MONOTONIC clock
+                // used by nanosleep behaves like the BOOTTIME clock.
+                // Ensures sleep behaves the same on linux regardless of kernel.
+                #[cfg(target_os = "linux")]
+                let ret = libc::clock_nanosleep(libc::CLOCK_BOOTTIME, 0, ts_ptr, ts_ptr);
+                #[cfg(not(target_os = "linux"))]
+                let ret = libc::nanosleep(ts_ptr, ts_ptr);
+                if ret == -1 {
                     assert_eq!(os::errno(), libc::EINTR);
                     secs += ts.tv_sec as u64;
                     nsecs = ts.tv_nsec;
