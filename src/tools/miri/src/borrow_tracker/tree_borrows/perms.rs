@@ -138,6 +138,11 @@ impl Permission {
         Self { inner: Reserved { ty_is_freeze } }
     }
 
+    /// Default initial permission for return place.
+    pub fn new_active() -> Self {
+        Self { inner: Active }
+    }
+
     /// Default initial permission of a reborrowed shared reference
     pub fn new_frozen() -> Self {
         Self { inner: Frozen }
