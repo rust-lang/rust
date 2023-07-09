@@ -902,7 +902,9 @@ impl Step for Src {
 
     /// Creates the `rust-src` installer component
     fn run(self, builder: &Builder<'_>) -> GeneratedTarball {
-        builder.update_submodule(&Path::new("src/llvm-project"));
+        if !builder.config.dry_run() {
+            builder.update_submodule(&Path::new("src/llvm-project"));
+        }
 
         let tarball = Tarball::new_targetless(builder, "rust-src");
 
