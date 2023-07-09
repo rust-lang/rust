@@ -3,7 +3,8 @@
     unused,
     clippy::many_single_char_names,
     clippy::needless_lifetimes,
-    clippy::redundant_clone
+    clippy::redundant_clone,
+    clippy::needless_pass_by_ref_mut
 )]
 #![warn(clippy::ptr_arg)]
 

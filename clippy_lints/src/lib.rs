@@ -230,6 +230,7 @@ mod needless_for_each;
 mod needless_if;
 mod needless_late_init;
 mod needless_parens_on_range_literals;
+mod needless_pass_by_ref_mut;
 mod needless_pass_by_value;
 mod needless_question_mark;
 mod needless_update;
@@ -1058,6 +1059,11 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     let stack_size_threshold = conf.stack_size_threshold;
     store.register_late_pass(move |_| Box::new(large_stack_frames::LargeStackFrames::new(stack_size_threshold)));
     store.register_late_pass(|_| Box::new(single_range_in_vec_init::SingleRangeInVecInit));
+    store.register_late_pass(move |_| {
+        Box::new(needless_pass_by_ref_mut::NeedlessPassByRefMut::new(
+            avoid_breaking_exported_api,
+        ))
+    });
     store.register_late_pass(|_| Box::new(incorrect_impls::IncorrectImpls));
     store.register_late_pass(move |_| {
         Box::new(single_call_fn::SingleCallFn {
