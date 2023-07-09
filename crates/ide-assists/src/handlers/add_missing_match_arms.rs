@@ -75,13 +75,17 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
         .collect();
 
     let module = ctx.sema.scope(expr.syntax())?.module();
-    let (mut missing_pats, is_non_exhaustive): (
+    let (mut missing_pats, is_non_exhaustive, has_hidden_variants): (
         Peekable<Box<dyn Iterator<Item = (ast::Pat, bool)>>>,
+        bool,
         bool,
     ) = if let Some(enum_def) = resolve_enum_def(&ctx.sema, &expr) {
         let is_non_exhaustive = enum_def.is_non_exhaustive(ctx.db(), module.krate());
 
         let variants = enum_def.variants(ctx.db());
+
+        let has_hidden_variants =
+            variants.iter().any(|variant| variant.should_be_hidden(ctx.db(), module.krate()));
 
         let missing_pats = variants
             .into_iter()
@@ -101,7 +105,7 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
         } else {
             Box::new(missing_pats)
         };
-        (missing_pats.peekable(), is_non_exhaustive)
+        (missing_pats.peekable(), is_non_exhaustive, has_hidden_variants)
     } else if let Some(enum_defs) = resolve_tuple_of_enum_def(&ctx.sema, &expr) {
         let is_non_exhaustive =
             enum_defs.iter().any(|enum_def| enum_def.is_non_exhaustive(ctx.db(), module.krate()));
@@ -124,6 +128,12 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
         if n_arms > 256 {
             return None;
         }
+
+        let has_hidden_variants = variants_of_enums
+            .iter()
+            .flatten()
+            .any(|variant| variant.should_be_hidden(ctx.db(), module.krate()));
+
         let missing_pats = variants_of_enums
             .into_iter()
             .multi_cartesian_product()
@@ -139,7 +149,11 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
                 (ast::Pat::from(make::tuple_pat(patterns)), is_hidden)
             })
             .filter(|(variant_pat, _)| is_variant_missing(&top_lvl_pats, variant_pat));
-        ((Box::new(missing_pats) as Box<dyn Iterator<Item = _>>).peekable(), is_non_exhaustive)
+        (
+            (Box::new(missing_pats) as Box<dyn Iterator<Item = _>>).peekable(),
+            is_non_exhaustive,
+            has_hidden_variants,
+        )
     } else if let Some((enum_def, len)) = resolve_array_of_enum_def(&ctx.sema, &expr) {
         let is_non_exhaustive = enum_def.is_non_exhaustive(ctx.db(), module.krate());
         let variants = enum_def.variants(ctx.db());
@@ -147,6 +161,9 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
         if len.pow(variants.len() as u32) > 256 {
             return None;
         }
+
+        let has_hidden_variants =
+            variants.iter().any(|variant| variant.should_be_hidden(ctx.db(), module.krate()));
 
         let variants_of_enums = vec![variants; len];
 
@@ -164,14 +181,20 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
                 (ast::Pat::from(make::slice_pat(patterns)), is_hidden)
             })
             .filter(|(variant_pat, _)| is_variant_missing(&top_lvl_pats, variant_pat));
-        ((Box::new(missing_pats) as Box<dyn Iterator<Item = _>>).peekable(), is_non_exhaustive)
+        (
+            (Box::new(missing_pats) as Box<dyn Iterator<Item = _>>).peekable(),
+            is_non_exhaustive,
+            has_hidden_variants,
+        )
     } else {
         return None;
     };
 
     let mut needs_catch_all_arm = is_non_exhaustive && !has_catch_all_arm;
 
-    if !needs_catch_all_arm && missing_pats.peek().is_none() {
+    if !needs_catch_all_arm
+        && ((has_hidden_variants && has_catch_all_arm) || missing_pats.peek().is_none())
+    {
         return None;
     }
 
@@ -181,11 +204,17 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
         target_range,
         |builder| {
             let new_match_arm_list = match_arm_list.clone_for_update();
-            let missing_arms = missing_pats
-                .map(|(pat, hidden)| {
-                    (make::match_arm(iter::once(pat), None, make::ext::expr_todo()), hidden)
+
+            // having any hidden variants means that we need a catch-all arm
+            needs_catch_all_arm |= has_hidden_variants;
+
+            let missing_arms = missing_pats.filter_map(|(pat, hidden)| {
+                // filter out hidden patterns because they're handled by the catch-all arm
+                (!hidden).then(|| {
+                    make::match_arm(iter::once(pat), None, make::ext::expr_todo())
+                        .clone_for_update()
                 })
-                .map(|(it, hidden)| (it.clone_for_update(), hidden));
+            });
 
             let catch_all_arm = new_match_arm_list
                 .arms()
@@ -204,15 +233,13 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
                     cov_mark::hit!(add_missing_match_arms_empty_expr);
                 }
             }
+
             let mut first_new_arm = None;
-            for (arm, hidden) in missing_arms {
-                if hidden {
-                    needs_catch_all_arm = !has_catch_all_arm;
-                } else {
-                    first_new_arm.get_or_insert_with(|| arm.clone());
-                    new_match_arm_list.add_arm(arm);
-                }
+            for arm in missing_arms {
+                first_new_arm.get_or_insert_with(|| arm.clone());
+                new_match_arm_list.add_arm(arm);
             }
+
             if needs_catch_all_arm && !has_catch_all_arm {
                 cov_mark::hit!(added_wildcard_pattern);
                 let arm = make::match_arm(
@@ -1621,10 +1648,9 @@ pub enum E { #[doc(hidden)] A, }
         );
     }
 
-    // FIXME: I don't think the assist should be applicable in this case
     #[test]
     fn does_not_fill_wildcard_with_wildcard() {
-        check_assist(
+        check_assist_not_applicable(
             add_missing_match_arms,
             r#"
 //- /main.rs crate:main deps:e
@@ -1635,13 +1661,6 @@ fn foo(t: ::e::E) {
 }
 //- /e.rs crate:e
 pub enum E { #[doc(hidden)] A, }
-"#,
-            r#"
-fn foo(t: ::e::E) {
-    match t {
-        _ => todo!(),
-    }
-}
 "#,
         );
     }
@@ -1777,7 +1796,7 @@ fn foo(t: ::e::E, b: bool) {
 
     #[test]
     fn does_not_fill_wildcard_with_partial_wildcard_and_wildcard() {
-        check_assist(
+        check_assist_not_applicable(
             add_missing_match_arms,
             r#"
 //- /main.rs crate:main deps:e
@@ -1789,14 +1808,6 @@ fn foo(t: ::e::E, b: bool) {
 }
 //- /e.rs crate:e
 pub enum E { #[doc(hidden)] A, }"#,
-            r#"
-fn foo(t: ::e::E, b: bool) {
-    match t {
-        _ if b => todo!(),
-        _ => todo!(),
-    }
-}
-"#,
         );
     }
 
