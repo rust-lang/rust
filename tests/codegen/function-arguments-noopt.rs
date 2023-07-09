@@ -42,7 +42,7 @@ pub fn borrow_call(x: &i32, f: fn(&i32) -> &i32) -> &i32 {
   f(x)
 }
 
-// CHECK: void @struct_({{%S\*|ptr}} sret(%S){{( %0)?}}, {{%S\*|ptr}} %x)
+// CHECK: void @struct_({{%S\*|ptr}} sret(%S){{( %_0)?}}, {{%S\*|ptr}} %x)
 #[no_mangle]
 pub fn struct_(x: S) -> S {
   x
@@ -51,7 +51,7 @@ pub fn struct_(x: S) -> S {
 // CHECK-LABEL: @struct_call
 #[no_mangle]
 pub fn struct_call(x: S, f: fn(S) -> S) -> S {
-  // CHECK: call void %f({{%S\*|ptr}} sret(%S){{( %0)?}}, {{%S\*|ptr}} %{{.+}})
+  // CHECK: call void %f({{%S\*|ptr}} sret(%S){{( %_0)?}}, {{%S\*|ptr}} %{{.+}})
   f(x)
 }
 
