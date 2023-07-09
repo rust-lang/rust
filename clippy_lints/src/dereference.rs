@@ -1296,8 +1296,8 @@ fn referent_used_exactly_once<'tcx>(
     possible_borrowers: &mut Vec<(LocalDefId, PossibleBorrowerMap<'tcx, 'tcx>)>,
     reference: &Expr<'tcx>,
 ) -> bool {
-    let mir = enclosing_mir(cx.tcx, reference.hir_id);
-    if let Some(local) = expr_local(cx.tcx, reference)
+    if let Some(mir) = enclosing_mir(cx.tcx, reference.hir_id)
+        && let Some(local) = expr_local(cx.tcx, reference)
         && let [location] = *local_assignments(mir, local).as_slice()
         && let Some(statement) = mir.basic_blocks[location.block].statements.get(location.statement_index)
         && let StatementKind::Assign(box (_, Rvalue::Ref(_, _, place))) = statement.kind
