@@ -24,7 +24,7 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-ins
   qemu-system-x86 \
   && rm -rf /var/lib/apt/lists/*
 
-RUN curl -sL https://nodejs.org/dist/v15.14.0/node-v15.14.0-linux-x64.tar.xz | \
+RUN curl -sL https://nodejs.org/dist/v18.12.0/node-v18.12.0-linux-x64.tar.xz | \
   tar -xJ
 
 # Install 32-bit OVMF files for the i686-unknown-uefi test. This package
@@ -42,7 +42,7 @@ RUN sh /scripts/sccache.sh
 
 ENV RUST_CONFIGURE_ARGS \
   --musl-root-x86_64=/usr/local/x86_64-linux-musl \
-  --set build.nodejs=/node-v15.14.0-linux-x64/bin/node \
+  --set build.nodejs=/node-v18.12.0-linux-x64/bin/node \
   --set rust.lld
 
 # Some run-make tests have assertions about code size, and enabling debug
@@ -58,6 +58,8 @@ ENV WASM_SCRIPT python3 /checkout/x.py --stage 2 test --host='' --target $WASM_T
   tests/ui \
   tests/mir-opt \
   tests/codegen-units \
+  tests/codegen \
+  tests/assembly \
   library/core
 
 ENV NVPTX_TARGETS=nvptx64-nvidia-cuda
