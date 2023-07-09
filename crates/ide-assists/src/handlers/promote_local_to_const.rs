@@ -8,13 +8,10 @@ use ide_db::{
 use stdx::to_upper_snake_case;
 use syntax::{
     ast::{self, make, HasName},
-    AstNode, WalkEvent,
+    ted, AstNode, WalkEvent,
 };
 
-use crate::{
-    assist_context::{AssistContext, Assists},
-    utils::{render_snippet, Cursor},
-};
+use crate::assist_context::{AssistContext, Assists};
 
 // Assist: promote_local_to_const
 //
@@ -75,24 +72,28 @@ pub(crate) fn promote_local_to_const(acc: &mut Assists, ctx: &AssistContext<'_>)
         AssistId("promote_local_to_const", AssistKind::Refactor),
         "Promote local to constant",
         target,
-        |builder| {
+        |edit| {
             let name = to_upper_snake_case(&name.to_string());
             let usages = Definition::Local(local).usages(&ctx.sema).all();
             if let Some(usages) = usages.references.get(&ctx.file_id()) {
                 for usage in usages {
-                    builder.replace(usage.range, &name);
+                    let Some(usage) = usage.name.as_name_ref().cloned() else {
+                        continue
+                    };
+                    let usage = edit.make_mut(usage);
+                    ted::replace(usage.syntax(), make::name_ref(&name).clone_for_update().syntax());
                 }
             }
 
-            let item = make::item_const(None, make::name(&name), make::ty(&ty), initializer);
-            match ctx.config.snippet_cap.zip(item.name()) {
-                Some((cap, name)) => builder.replace_snippet(
-                    cap,
-                    target,
-                    render_snippet(cap, item.syntax(), Cursor::Before(name.syntax())),
-                ),
-                None => builder.replace(target, item.to_string()),
+            let item = make::item_const(None, make::name(&name), make::ty(&ty), initializer)
+                .clone_for_update();
+            let let_stmt = edit.make_mut(let_stmt);
+
+            if let Some((cap, name)) = ctx.config.snippet_cap.zip(item.name()) {
+                edit.add_tabstop_before(cap, name);
             }
+
+            ted::replace(let_stmt.syntax(), item.syntax());
         },
     )
 }
