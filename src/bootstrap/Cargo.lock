@@ -85,6 +85,10 @@ dependencies = [
 [[package]]
 name = "build_helper"
 version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_derive",
+]
 
 [[package]]
 name = "cc"

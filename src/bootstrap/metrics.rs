@@ -7,7 +7,10 @@
 use crate::builder::{Builder, Step};
 use crate::util::t;
 use crate::Build;
-use serde_derive::{Deserialize, Serialize};
+use build_helper::metrics::{
+    JsonInvocation, JsonInvocationSystemStats, JsonNode, JsonRoot, JsonStepSystemStats, Test,
+    TestOutcome, TestSuite, TestSuiteMetadata,
+};
 use std::cell::RefCell;
 use std::fs::File;
 use std::io::BufWriter;
@@ -241,98 +244,7 @@ struct StepMetrics {
     test_suites: Vec<TestSuite>,
 }
 
-#[derive(Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-struct JsonRoot {
-    #[serde(default)] // For version 0 the field was not present.
-    format_version: usize,
-    system_stats: JsonInvocationSystemStats,
-    invocations: Vec<JsonInvocation>,
-}
-
-#[derive(Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-struct JsonInvocation {
-    // Unix timestamp in seconds
-    //
-    // This is necessary to easily correlate this invocation with logs or other data.
-    start_time: u64,
-    duration_including_children_sec: f64,
-    children: Vec<JsonNode>,
-}
-
-#[derive(Serialize, Deserialize)]
-#[serde(tag = "kind", rename_all = "snake_case")]
-enum JsonNode {
-    RustbuildStep {
-        #[serde(rename = "type")]
-        type_: String,
-        debug_repr: String,
-
-        duration_excluding_children_sec: f64,
-        system_stats: JsonStepSystemStats,
-
-        children: Vec<JsonNode>,
-    },
-    TestSuite(TestSuite),
-}
-
-#[derive(Serialize, Deserialize)]
-struct TestSuite {
-    metadata: TestSuiteMetadata,
-    tests: Vec<Test>,
-}
-
-#[derive(Serialize, Deserialize)]
-#[serde(tag = "kind", rename_all = "snake_case")]
-pub(crate) enum TestSuiteMetadata {
-    CargoPackage {
-        crates: Vec<String>,
-        target: String,
-        host: String,
-        stage: u32,
-    },
-    Compiletest {
-        suite: String,
-        mode: String,
-        compare_mode: Option<String>,
-        target: String,
-        host: String,
-        stage: u32,
-    },
-}
-
-#[derive(Serialize, Deserialize)]
-pub(crate) struct Test {
-    name: String,
-    #[serde(flatten)]
-    outcome: TestOutcome,
-}
-
-#[derive(Serialize, Deserialize)]
-#[serde(tag = "outcome", rename_all = "snake_case")]
-pub(crate) enum TestOutcome {
-    Passed,
-    Failed,
-    Ignored { ignore_reason: Option<String> },
-}
-
-#[derive(Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-struct JsonInvocationSystemStats {
-    cpu_threads_count: usize,
-    cpu_model: String,
-
-    memory_total_bytes: u64,
-}
-
-#[derive(Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-struct JsonStepSystemStats {
-    cpu_utilization_percent: f64,
-}
-
-#[derive(Deserialize)]
+#[derive(serde_derive::Deserialize)]
 struct OnlyFormatVersion {
     #[serde(default)] // For version 0 the field was not present.
     format_version: usize,

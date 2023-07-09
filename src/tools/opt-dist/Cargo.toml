@@ -1,0 +1,22 @@
+[package]
+name = "opt-dist"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+build_helper = { path = "../build_helper" }
+env_logger = "0.10"
+log = "0.4"
+anyhow = { version = "1", features = ["backtrace"] }
+humantime = "2"
+humansize = "2"
+sysinfo = { version = "0.29", default-features = false }
+fs_extra = "1"
+camino = "1"
+reqwest = { version = "0.11", features = ["blocking"] }
+zip = { version = "0.6", default-features = false, features = ["deflate"] }
+tar = "0.4"
+xz = "0.1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+glob = "0.3"

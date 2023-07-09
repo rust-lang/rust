@@ -141,9 +141,9 @@ impl<'a> Renderer<'a> {
         self.builder.metrics.record_test(
             &test.name,
             match outcome {
-                Outcome::Ok | Outcome::BenchOk => crate::metrics::TestOutcome::Passed,
-                Outcome::Failed => crate::metrics::TestOutcome::Failed,
-                Outcome::Ignored { reason } => crate::metrics::TestOutcome::Ignored {
+                Outcome::Ok | Outcome::BenchOk => build_helper::metrics::TestOutcome::Passed,
+                Outcome::Failed => build_helper::metrics::TestOutcome::Failed,
+                Outcome::Ignored { reason } => build_helper::metrics::TestOutcome::Ignored {
                     ignore_reason: reason.map(|s| s.to_string()),
                 },
             },

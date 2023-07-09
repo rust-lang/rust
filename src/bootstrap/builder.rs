@@ -665,6 +665,7 @@ impl<'a> Builder<'a> {
                 llvm::Lld,
                 llvm::CrtBeginEnd,
                 tool::RustdocGUITest,
+                tool::OptimizedDist
             ),
             Kind::Check | Kind::Clippy | Kind::Fix => describe!(
                 check::Std,

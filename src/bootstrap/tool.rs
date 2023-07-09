@@ -303,6 +303,7 @@ bootstrap_tool!(
     SuggestTests, "src/tools/suggest-tests", "suggest-tests";
     GenerateWindowsSys, "src/tools/generate-windows-sys", "generate-windows-sys";
     RustdocGUITest, "src/tools/rustdoc-gui-test", "rustdoc-gui-test", is_unstable_tool = true, allow_features = "test";
+    OptimizedDist, "src/tools/opt-dist", "opt-dist";
 );
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]
