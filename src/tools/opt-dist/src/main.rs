@@ -17,10 +17,6 @@ mod timer;
 mod training;
 mod utils;
 
-fn is_try_build() -> bool {
-    std::env::var("DIST_TRY_BUILD").unwrap_or_else(|_| "0".to_string()) != "0"
-}
-
 fn execute_pipeline(
     env: &dyn Environment,
     timer: &mut Timer,
@@ -117,14 +113,6 @@ fn execute_pipeline(
     // The previous PGO optimized rustc build and PGO optimized LLVM builds should be reused.
     timer.section("Stage 4 (final build)", |stage| dist.run(stage))?;
 
-    // After dist has finished, run a subset of the test suite on the optimized artifacts to discover
-    // possible regressions.
-    // The tests are not executed for try builds, which can be in various broken states, so we don't
-    // want to gatekeep them with tests.
-    if !is_try_build() {
-        timer.section("Run tests", |_| run_tests(env))?;
-    }
-
     Ok(())
 }
 
@@ -144,23 +132,6 @@ fn main() -> anyhow::Result<()> {
 
     if let Ok(config) = std::fs::read_to_string("config.toml") {
         log::info!("Contents of `config.toml`:\n{config}");
-    }
-
-    // Skip components that are not needed for try builds to speed them up
-    if is_try_build() {
-        log::info!("Skipping building of unimportant components for a try build");
-        for target in [
-            "rust-docs",
-            "rustc-docs",
-            "rust-docs-json",
-            "rust-analyzer",
-            "rustc-src",
-            "clippy",
-            "miri",
-            "rustfmt",
-        ] {
-            build_args.extend(["--exclude".to_string(), target.to_string()]);
-        }
     }
 
     let mut timer = Timer::new();
