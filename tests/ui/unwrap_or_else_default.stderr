@@ -36,5 +36,53 @@ error: use of `.unwrap_or_else(..)` to construct default value
 LL |     empty_string.unwrap_or_else(|| "".to_string());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `empty_string.unwrap_or_default()`
 
-error: aborting due to 6 previous errors
+error: use of `.unwrap_or_else(..)` to construct default value
+  --> $DIR/unwrap_or_else_default.rs:78:5
+   |
+LL |     option.unwrap_or_else(Vec::new).push(1);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `option.unwrap_or_default()`
+
+error: use of `.unwrap_or_else(..)` to construct default value
+  --> $DIR/unwrap_or_else_default.rs:81:5
+   |
+LL |     option.unwrap_or_else(Vec::new).push(1);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `option.unwrap_or_default()`
+
+error: use of `.unwrap_or_else(..)` to construct default value
+  --> $DIR/unwrap_or_else_default.rs:84:5
+   |
+LL |     option.unwrap_or_else(Vec::new).push(1);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `option.unwrap_or_default()`
+
+error: use of `.unwrap_or_else(..)` to construct default value
+  --> $DIR/unwrap_or_else_default.rs:87:5
+   |
+LL |     option.unwrap_or_else(Vec::new).push(1);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `option.unwrap_or_default()`
+
+error: use of `.unwrap_or_else(..)` to construct default value
+  --> $DIR/unwrap_or_else_default.rs:90:5
+   |
+LL |     option.unwrap_or_else(Vec::new).push(1);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `option.unwrap_or_default()`
+
+error: use of `.unwrap_or_else(..)` to construct default value
+  --> $DIR/unwrap_or_else_default.rs:93:5
+   |
+LL |     option.unwrap_or_else(Vec::new).push(1);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `option.unwrap_or_default()`
+
+error: use of `.unwrap_or_else(..)` to construct default value
+  --> $DIR/unwrap_or_else_default.rs:96:5
+   |
+LL |     option.unwrap_or_else(Vec::new).push(1);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `option.unwrap_or_default()`
+
+error: use of `.unwrap_or_else(..)` to construct default value
+  --> $DIR/unwrap_or_else_default.rs:99:5
+   |
+LL |     option.unwrap_or_else(Vec::new).push(1);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `option.unwrap_or_default()`
+
+error: aborting due to 14 previous errors
 

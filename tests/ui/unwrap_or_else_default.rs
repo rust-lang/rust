@@ -74,4 +74,41 @@ fn unwrap_or_else_default() {
     empty_string.unwrap_or_else(|| "".to_string());
 }
 
+fn type_certainty(option: Option<Vec<u64>>) {
+    option.unwrap_or_else(Vec::new).push(1);
+
+    let option: std::option::Option<std::vec::Vec<u64>> = None;
+    option.unwrap_or_else(Vec::new).push(1);
+
+    let option: Option<Vec<u64>> = None;
+    option.unwrap_or_else(Vec::new).push(1);
+
+    let option = std::option::Option::<std::vec::Vec<u64>>::None;
+    option.unwrap_or_else(Vec::new).push(1);
+
+    let option = Option::<Vec<u64>>::None;
+    option.unwrap_or_else(Vec::new).push(1);
+
+    let option = std::option::Option::None::<std::vec::Vec<u64>>;
+    option.unwrap_or_else(Vec::new).push(1);
+
+    let option = Option::None::<Vec<u64>>;
+    option.unwrap_or_else(Vec::new).push(1);
+
+    let option = None::<Vec<u64>>;
+    option.unwrap_or_else(Vec::new).push(1);
+
+    // should not be changed: type annotation with infer, unconcretized initializer
+    let option: Option<Vec<_>> = None;
+    option.unwrap_or_else(Vec::new).push(1);
+
+    // should not be changed: no type annotation, unconcretized initializer
+    let option = Option::None;
+    option.unwrap_or_else(Vec::new).push(1);
+
+    // should not be changed: no type annotation, unconcretized initializer
+    let option = None;
+    option.unwrap_or_else(Vec::new).push(1);
+}
+
 fn main() {}

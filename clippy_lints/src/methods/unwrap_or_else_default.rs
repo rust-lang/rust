@@ -4,7 +4,7 @@ use super::UNWRAP_OR_ELSE_DEFAULT;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::is_default_equivalent_call;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::ty::{expr_type_is_certain, is_type_diagnostic_item};
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -17,6 +17,10 @@ pub(super) fn check<'tcx>(
     recv: &'tcx hir::Expr<'_>,
     u_arg: &'tcx hir::Expr<'_>,
 ) {
+    if !expr_type_is_certain(cx, recv) {
+        return;
+    }
+
     // something.unwrap_or_else(Default::default)
     // ^^^^^^^^^- recv          ^^^^^^^^^^^^^^^^- u_arg
     // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^- expr
