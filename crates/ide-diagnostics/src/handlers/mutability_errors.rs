@@ -797,6 +797,22 @@ fn main() {
 }
 "#,
         );
+        check_diagnostics(
+            r#"
+struct Foo(i32);
+
+const X: Foo = Foo(5);
+const Y: Foo = Foo(12);
+
+const fn f(mut a: Foo) -> bool {
+         //^^^^^ 💡 warn: variable does not need to be mutable
+    match a {
+        X | Y => true,
+        _ => false,
+    }
+}
+"#,
+        );
     }
 
     #[test]
