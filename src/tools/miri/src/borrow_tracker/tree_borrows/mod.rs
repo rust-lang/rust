@@ -514,9 +514,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let ptr_layout = this.layout_of(Ty::new_mut_ptr(this.tcx.tcx, return_place.layout.ty))?;
         let val = ImmTy::from_immediate(return_place.to_ref(this), ptr_layout);
         // Reborrow it. With protection! That is part of the point.
-        // FIXME: do we truly want a 2phase borrow here?
         let new_perm = Some(NewPermission {
-            initial_state: Permission::new_unique_2phase(/*freeze*/ false),
+            initial_state: Permission::new_active(),
             zero_size: false,
             protector: Some(ProtectorKind::StrongProtector),
         });
