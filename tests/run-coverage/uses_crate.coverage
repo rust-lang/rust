@@ -148,8 +148,8 @@ $DIR/auxiliary/used_crate.rs:
   100|       |// `unused_generic_function<T>()`, below.
 
 $DIR/uses_crate.rs:
-    1|       |// FIXME #110395
-    2|       |// ignore-linux
+    1|       |// This test was failing on Linux for a while due to #110393 somehow making
+    2|       |// the unused functions not instrumented, but it seems to be fine now.
     3|       |
     4|       |// Validates coverage now works with optimizations
     5|       |// compile-flags: -C opt-level=3
