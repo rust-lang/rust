@@ -179,6 +179,7 @@ function createCommands(): Record<string, CommandFactory> {
         runFlycheck: { enabled: commands.runFlycheck },
         ssr: { enabled: commands.ssr },
         serverVersion: { enabled: commands.serverVersion },
+        viewMemoryLayout: { enabled: commands.viewMemoryLayout },
         // Internal commands which are invoked by the server.
         applyActionGroup: { enabled: commands.applyActionGroup },
         applySnippetWorkspaceEdit: { enabled: commands.applySnippetWorkspaceEditCommand },

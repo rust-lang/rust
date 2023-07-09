@@ -3,13 +3,14 @@
 
 use std::collections::HashMap;
 
-use hir::{db::HirDatabase, Crate, Module, Semantics};
+use hir::{db::HirDatabase, Crate, Module};
+use ide_db::helpers::get_definition;
 use ide_db::{
     base_db::{FileId, FileRange, SourceDatabaseExt},
-    defs::{Definition, IdentClass},
+    defs::Definition,
     FxHashSet, RootDatabase,
 };
-use syntax::{AstNode, SyntaxKind::*, SyntaxToken, TextRange, T};
+use syntax::{AstNode, SyntaxKind::*, TextRange, T};
 
 use crate::{
     hover::hover_for_definition,
@@ -212,16 +213,6 @@ impl StaticIndex<'_> {
         }
         this
     }
-}
-
-fn get_definition(sema: &Semantics<'_, RootDatabase>, token: SyntaxToken) -> Option<Definition> {
-    for token in sema.descend_into_macros(token) {
-        let def = IdentClass::classify_token(sema, &token).map(IdentClass::definitions_no_ops);
-        if let Some(&[it]) = def.as_deref() {
-            return Some(it);
-        }
-    }
-    None
 }
 
 #[cfg(test)]

@@ -60,6 +60,7 @@ mod interpret_function;
 mod view_item_tree;
 mod shuffle_crate_graph;
 mod fetch_crates;
+mod view_memory_layout;
 
 use std::ffi::OsStr;
 
@@ -74,6 +75,7 @@ use ide_db::{
 };
 use syntax::SourceFile;
 use triomphe::Arc;
+use view_memory_layout::{view_memory_layout, RecursiveMemoryLayout};
 
 use crate::navigation_target::{ToNav, TryToNav};
 
@@ -722,6 +724,13 @@ impl Analysis {
         direction: Direction,
     ) -> Cancellable<Option<TextEdit>> {
         self.with_db(|db| move_item::move_item(db, range, direction))
+    }
+
+    pub fn get_recursive_memory_layout(
+        &self,
+        position: FilePosition,
+    ) -> Cancellable<Option<RecursiveMemoryLayout>> {
+        self.with_db(|db| view_memory_layout(db, position))
     }
 
     /// Performs an operation on the database that may be canceled.

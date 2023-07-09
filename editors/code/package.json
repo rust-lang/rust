@@ -284,6 +284,11 @@
                 "command": "rust-analyzer.revealDependency",
                 "title": "Reveal File",
                 "category": "rust-analyzer"
+            },
+            {
+                "command": "rust-analyzer.viewMemoryLayout",
+                "title": "View Memory Layout",
+                "category": "rust-analyzer"
             }
         ],
         "keybindings": [
@@ -2066,6 +2071,10 @@
                 },
                 {
                     "command": "rust-analyzer.openCargoToml",
+                    "when": "inRustProject"
+                },
+                {
+                    "command": "rust-analyzer.viewMemoryLayout",
                     "when": "inRustProject"
                 }
             ],
