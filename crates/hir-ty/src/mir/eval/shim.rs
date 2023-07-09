@@ -888,6 +888,13 @@ impl Evaluator<'_> {
                 }
                 not_supported!("FnOnce was not available for executing const_eval_select");
             }
+            "read_via_copy" | "volatile_load" => {
+                let [arg] = args else {
+                    return Err(MirEvalError::TypeError("read_via_copy args are not provided"));
+                };
+                let addr = Address::from_bytes(arg.interval.get(self)?)?;
+                destination.write_from_interval(self, Interval { addr, size: destination.size })
+            }
             _ => not_supported!("unknown intrinsic {name}"),
         }
     }
