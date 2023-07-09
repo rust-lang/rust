@@ -117,12 +117,7 @@ impl Step for CrateBootstrap {
             SourceType::InTree,
             &[],
         );
-        builder.info(&format!(
-            "{} {} stage0 ({})",
-            builder.kind.description(),
-            path,
-            bootstrap_host,
-        ));
+        let _group = builder.msg(Kind::Test, compiler.stage, path, compiler.host, bootstrap_host);
         let crate_name = path.rsplit_once('/').unwrap().1;
         run_cargo_test(cargo, &[], &[], crate_name, compiler, bootstrap_host, builder);
     }
@@ -163,6 +158,15 @@ You can skip linkcheck with --exclude src/tools/linkchecker"
         // Test the linkchecker itself.
         let bootstrap_host = builder.config.build;
         let compiler = builder.compiler(0, bootstrap_host);
+
+        let self_test_group = builder.msg(
+            Kind::Test,
+            compiler.stage,
+            "linkchecker self tests",
+            bootstrap_host,
+            bootstrap_host,
+        );
+
         let cargo = tool::prepare_tool_cargo(
             builder,
             compiler,
@@ -174,6 +178,7 @@ You can skip linkcheck with --exclude src/tools/linkchecker"
             &[],
         );
         run_cargo_test(cargo, &[], &[], "linkchecker", compiler, bootstrap_host, builder);
+        drop(self_test_group);
 
         if builder.doc_tests == DocTests::No {
             return;
@@ -182,13 +187,14 @@ You can skip linkcheck with --exclude src/tools/linkchecker"
         // Build all the default documentation.
         builder.default_doc(&[]);
 
+        // Build the linkchecker before calling `msg`, since GHA doesn't support nested groups.
+        let mut linkchecker = builder.tool_cmd(Tool::Linkchecker);
+
         // Run the linkchecker.
+        let _guard =
+            builder.msg(Kind::Test, compiler.stage, "Linkcheck", bootstrap_host, bootstrap_host);
         let _time = util::timeit(&builder);
-        try_run(
-            builder,
-            builder.tool_cmd(Tool::Linkchecker).arg(builder.out.join(host.triple).join("doc")),
-        )
-        .unwrap();
+        try_run(builder, linkchecker.arg(builder.out.join(host.triple).join("doc"))).unwrap();
     }
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -2676,6 +2682,10 @@ impl Step for Bootstrap {
 
     /// Tests the build system itself.
     fn run(self, builder: &Builder<'_>) {
+        let host = builder.config.build;
+        let compiler = builder.compiler(0, host);
+        let _guard = builder.msg(Kind::Test, 0, "bootstrap", host, host);
+
         let mut check_bootstrap = Command::new(&builder.python());
         check_bootstrap
             .args(["-m", "unittest", "bootstrap_test.py"])
@@ -2686,8 +2696,6 @@ impl Step for Bootstrap {
         // Use `python -m unittest` manually if you want to pass arguments.
         try_run(builder, &mut check_bootstrap).unwrap();
 
-        let host = builder.config.build;
-        let compiler = builder.compiler(0, host);
         let mut cmd = Command::new(&builder.initial_cargo);
         cmd.arg("test")
             .current_dir(builder.src.join("src/bootstrap"))
@@ -2755,7 +2763,13 @@ impl Step for TierCheck {
             cargo.arg("--verbose");
         }
 
-        builder.info("platform support check");
+        let _guard = builder.msg(
+            Kind::Test,
+            self.compiler.stage,
+            "platform support check",
+            self.compiler.host,
+            self.compiler.host,
+        );
         try_run(builder, &mut cargo.into()).unwrap();
     }
 }
@@ -2803,8 +2817,6 @@ impl Step for RustInstaller {
 
     /// Ensure the version placeholder replacement tool builds
     fn run(self, builder: &Builder<'_>) {
-        builder.info("test rust-installer");
-
         let bootstrap_host = builder.config.build;
         let compiler = builder.compiler(0, bootstrap_host);
         let cargo = tool::prepare_tool_cargo(
@@ -2816,6 +2828,14 @@ impl Step for RustInstaller {
             "src/tools/rust-installer",
             SourceType::InTree,
             &[],
+        );
+
+        let _guard = builder.msg(
+            Kind::Test,
+            compiler.stage,
+            "rust-installer",
+            bootstrap_host,
+            bootstrap_host,
         );
         run_cargo_test(cargo, &[], &[], "installer", compiler, bootstrap_host, builder);
 

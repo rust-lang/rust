@@ -1073,7 +1073,16 @@ impl Step for RustcBook {
         // config.toml), then this needs to explicitly update the dylib search
         // path.
         builder.add_rustc_lib_path(self.compiler, &mut cmd);
+        let doc_generator_guard = builder.msg(
+            Kind::Run,
+            self.compiler.stage,
+            "lint-docs",
+            self.compiler.host,
+            self.target,
+        );
         builder.run(&mut cmd);
+        drop(doc_generator_guard);
+
         // Run rustbook/mdbook to generate the HTML pages.
         builder.ensure(RustbookSrc {
             target: self.target,

@@ -154,13 +154,13 @@ fi
 # check for clock drifts. An HTTP URL is used instead of HTTPS since on Azure
 # Pipelines it happened that the certificates were marked as expired.
 datecheck() {
-  echo "== clock drift check =="
+  echo "::group::Clock drift check"
   echo -n "  local time: "
   date
   echo -n "  network time: "
   curl -fs --head http://ci-caches.rust-lang.org | grep ^Date: \
       | sed 's/Date: //g' || true
-  echo "== end clock drift check =="
+  echo "::endgroup::"
 }
 datecheck
 trap datecheck EXIT
@@ -177,6 +177,7 @@ retry make prepare
 
 # Display the CPU and memory information. This helps us know why the CI timing
 # is fluctuating.
+echo "::group::Display CPU and Memory information"
 if isMacOS; then
     system_profiler SPHardwareDataType || true
     sysctl hw || true
@@ -186,6 +187,7 @@ else
     cat /proc/meminfo || true
     ncpus=$(grep processor /proc/cpuinfo | wc -l)
 fi
+echo "::endgroup::"
 
 if [ ! -z "$SCRIPT" ]; then
   echo "Executing ${SCRIPT}"
@@ -218,4 +220,6 @@ if [ "$RUN_CHECK_WITH_PARALLEL_QUERIES" != "" ]; then
   CARGO_INCREMENTAL=0 ../x check
 fi
 
+echo "::group::sccache stats"
 sccache --show-stats || true
+echo "::endgroup::"
