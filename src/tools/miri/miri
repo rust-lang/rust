@@ -124,7 +124,7 @@ rustc-pull)
     git commit rust-version -m "Preparing for merge from rustc" || (echo "FAILED to commit rust-version file, something went wrong"; exit 1)
     # Fetch given rustc commit and note down which one that was
     git fetch http://localhost:8000/rust-lang/rust.git@$FETCH_COMMIT$JOSH_FILTER.git || (echo "FAILED to fetch new commits, something went wrong"; exit 1)
-    git merge FETCH_HEAD --no-ff -m "Merge from rustc" || (echo "FAILED to merge new commits, something went wrong"; exit 1)
+    git merge FETCH_HEAD --no-ff -m "Merge from rustc" || (echo "FAILED to merge new commits ($(git rev-parse FETCH_HEAD)), something went wrong"; exit 1)
     exit 0
     ;;
 rustc-push)
@@ -325,6 +325,7 @@ run|run-dep)
         MIRIFLAGS="$MIRIFLAGS --target $MIRI_TEST_TARGET"
     fi
 
+    CARGO="$CARGO --quiet"
     # First build and get a sysroot.
     $CARGO build $CARGO_EXTRA_FLAGS --manifest-path "$MIRIDIR"/Cargo.toml
     find_sysroot

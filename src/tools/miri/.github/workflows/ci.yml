@@ -15,6 +15,10 @@ on:
 env:
   CARGO_UNSTABLE_SPARSE_REGISTRY: 'true'
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   build:
     runs-on: ${{ matrix.os }}
@@ -59,12 +63,9 @@ jobs:
 
       - name: Install rustup-toolchain-install-master
         if: ${{ steps.cache.outputs.cache-hit != 'true' }}
-        shell: bash
-        run: |
-          cargo install -f rustup-toolchain-install-master
+        run: cargo install -f rustup-toolchain-install-master
 
       - name: Install "master" toolchain
-        shell: bash
         run: |
           if [[ ${{ github.event_name }} == 'schedule' ]]; then
             echo "Building against latest rustc git version"
@@ -79,7 +80,7 @@ jobs:
           cargo -V
 
       - name: Test
-        run: bash ./ci.sh
+        run: ./ci.sh
 
   style:
     name: style checks
@@ -111,14 +112,10 @@ jobs:
 
       - name: Install rustup-toolchain-install-master
         if: ${{ steps.cache.outputs.cache-hit != 'true' }}
-        shell: bash
-        run: |
-          cargo install -f rustup-toolchain-install-master
+        run: cargo install -f rustup-toolchain-install-master
 
       - name: Install "master" toolchain
-        shell: bash
-        run: |
-          ./miri toolchain
+        run: ./miri toolchain
 
       - name: Show Rust version
         run: |
@@ -138,7 +135,6 @@ jobs:
   # workflow is successful listening to webhooks only.
   #
   # ALL THE PREVIOUS JOBS NEED TO BE ADDED TO THE `needs` SECTION OF THIS JOB!
-  # (`fmt` is deliberately not listed, we want bors to ignore it.)
   end-success:
     name: bors build finished
     runs-on: ubuntu-latest
@@ -166,12 +162,12 @@ jobs:
       - name: Install zulip-send
         run: pip3 install zulip
       - name: Send Zulip notification
-        shell: bash
         env:
           ZULIP_BOT_EMAIL: ${{ secrets.ZULIP_BOT_EMAIL }}
           ZULIP_API_TOKEN: ${{ secrets.ZULIP_API_TOKEN }}
         run: |
-          ~/.local/bin/zulip-send --stream miri --subject "Cron Job Failure (miri, $(date -u +%Y-%m))" \
+          ~/.local/bin/zulip-send --user $ZULIP_BOT_EMAIL --api-key $ZULIP_API_TOKEN --site https://rust-lang.zulipchat.com \
+            --stream miri --subject "Cron Job Failure (miri, $(date -u +%Y-%m))" \
             --message 'Dear @*T-miri*,
 
           It would appear that the [Miri cron job build]('"https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"') failed.
@@ -183,9 +179,12 @@ jobs:
 
           Thanks in advance!
           Sincerely,
-          The Miri Cronjobs Bot' \
-            --user $ZULIP_BOT_EMAIL --api-key $ZULIP_API_TOKEN --site https://rust-lang.zulipchat.com
+          The Miri Cronjobs Bot'
+
       # Attempt to auto-sync with rustc
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 256 # get a bit more of the history
       - name: install josh-proxy
         run: cargo +stable install josh-proxy --git https://github.com/josh-project/josh --tag r22.12.06
       - name: start josh-proxy
@@ -196,16 +195,24 @@ jobs:
           git config --global user.email 'miri@cron.bot'
       - name: get changes from rustc
         run: ./miri rustc-pull
+      - name: Install rustup-toolchain-install-master
+        run: cargo install -f rustup-toolchain-install-master
       - name: format changes (if any)
         run: |
           ./miri toolchain
           ./miri fmt --check || (./miri fmt && git commit -am "fmt")
       - name: Push changes to a branch
         run: |
-          git switch -c "rustup$(date -u +%Y-%m)"
-          git push
+          BRANCH="rustup$(date -u +%Y-%m-%d)"
+          git switch -c $BRANCH
+          git push -u origin $BRANCH
       - name: Create Pull Request
-        run: gh pr create -B master --title 'Automatic sync from rustc' --body ''
+        run: |
+          PR=$(gh pr create -B master --title 'Automatic sync from rustc' --body '')
+          ~/.local/bin/zulip-send --user $ZULIP_BOT_EMAIL --api-key $ZULIP_API_TOKEN --site https://rust-lang.zulipchat.com \
+            --stream miri --subject "Cron Job Failure (miri, $(date -u +%Y-%m))" \
+            --message "A PR doing a rustc-pull [has been automatically created]($PR) for your convenience."
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
+          ZULIP_BOT_EMAIL: ${{ secrets.ZULIP_BOT_EMAIL }}
+          ZULIP_API_TOKEN: ${{ secrets.ZULIP_API_TOKEN }}

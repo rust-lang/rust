@@ -430,12 +430,15 @@ impl<'tcx> Stack {
                 .find_granting(AccessKind::Write, derived_from, exposed_tags)
                 .map_err(|()| dcx.grant_error(self))?;
 
-            let (Some(granting_idx), ProvenanceExtra::Concrete(_)) = (granting_idx, derived_from) else {
+            let (Some(granting_idx), ProvenanceExtra::Concrete(_)) = (granting_idx, derived_from)
+            else {
                 // The parent is a wildcard pointer or matched the unknown bottom.
                 // This is approximate. Nobody knows what happened, so forget everything.
                 // The new thing is SRW anyway, so we cannot push it "on top of the unknown part"
                 // (for all we know, it might join an SRW group inside the unknown).
-                trace!("reborrow: forgetting stack entirely due to SharedReadWrite reborrow from wildcard or unknown");
+                trace!(
+                    "reborrow: forgetting stack entirely due to SharedReadWrite reborrow from wildcard or unknown"
+                );
                 self.set_unknown_bottom(global.next_ptr_tag);
                 return Ok(());
             };
@@ -1008,7 +1011,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         // We have to turn the place into a pointer to use the existing code.
         // (The pointer type does not matter, so we use a raw pointer.)
-        let ptr_layout = this.layout_of(Ty::new_mut_ptr(this.tcx.tcx,return_place.layout.ty))?;
+        let ptr_layout = this.layout_of(Ty::new_mut_ptr(this.tcx.tcx, return_place.layout.ty))?;
         let val = ImmTy::from_immediate(return_place.to_ref(this), ptr_layout);
         // Reborrow it. With protection! That is part of the point.
         let new_perm = NewPermission::Uniform {

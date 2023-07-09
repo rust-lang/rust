@@ -483,7 +483,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
                 // `index` is an array, not a SIMD type
                 let ty::Array(_, index_len) = index.layout.ty.kind() else {
-                    span_bug!(this.cur_span(), "simd_shuffle index argument has non-array type {}", index.layout.ty)
+                    span_bug!(
+                        this.cur_span(),
+                        "simd_shuffle index argument has non-array type {}",
+                        index.layout.ty
+                    )
                 };
                 let index_len = index_len.eval_target_usize(*this.tcx, this.param_env());
 
@@ -622,9 +626,7 @@ fn fmax_op<'tcx>(
     right: &ImmTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, Scalar<Provenance>> {
     assert_eq!(left.layout.ty, right.layout.ty);
-    let ty::Float(float_ty) = left.layout.ty.kind() else {
-        bug!("fmax operand is not a float")
-    };
+    let ty::Float(float_ty) = left.layout.ty.kind() else { bug!("fmax operand is not a float") };
     let left = left.to_scalar();
     let right = right.to_scalar();
     Ok(match float_ty {
@@ -638,9 +640,7 @@ fn fmin_op<'tcx>(
     right: &ImmTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, Scalar<Provenance>> {
     assert_eq!(left.layout.ty, right.layout.ty);
-    let ty::Float(float_ty) = left.layout.ty.kind() else {
-        bug!("fmin operand is not a float")
-    };
+    let ty::Float(float_ty) = left.layout.ty.kind() else { bug!("fmin operand is not a float") };
     let left = left.to_scalar();
     let right = right.to_scalar();
     Ok(match float_ty {

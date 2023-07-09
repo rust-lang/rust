@@ -256,7 +256,9 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
             ptr_size.bytes()
         );
 
-        let Some(new_perm) = new_perm else { return Ok(Some((alloc_id, orig_tag))); };
+        let Some(new_perm) = new_perm else {
+            return Ok(Some((alloc_id, orig_tag)));
+        };
 
         if let Some(protect) = new_perm.protector {
             // We register the protection in two different places.
@@ -509,7 +511,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         // We have to turn the place into a pointer to use the existing code.
         // (The pointer type does not matter, so we use a raw pointer.)
-        let ptr_layout = this.layout_of(Ty::new_mut_ptr(this.tcx.tcx,return_place.layout.ty))?;
+        let ptr_layout = this.layout_of(Ty::new_mut_ptr(this.tcx.tcx, return_place.layout.ty))?;
         let val = ImmTy::from_immediate(return_place.to_ref(this), ptr_layout);
         // Reborrow it. With protection! That is part of the point.
         // FIXME: do we truly want a 2phase borrow here?

@@ -763,6 +763,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let ptr_dest = this.read_pointer(ptr_dest)?;
                 let ptr_src = this.read_pointer(ptr_src)?;
                 let n = this.read_target_usize(n)?;
+
+                // C requires that this must always be a valid pointer, even if `n` is zero, so we better check that.
+                // (This is more than Rust requires, so `mem_copy` is not sufficient.)
+                this.ptr_get_alloc_id(ptr_dest)?;
+                this.ptr_get_alloc_id(ptr_src)?;
+
                 this.mem_copy(
                     ptr_src,
                     Align::ONE,

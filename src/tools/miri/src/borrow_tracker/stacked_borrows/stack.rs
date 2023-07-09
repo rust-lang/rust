@@ -196,19 +196,19 @@ impl<'tcx> Stack {
         let ProvenanceExtra::Concrete(tag) = tag else {
             // Handle the wildcard case.
             // Go search the stack for an exposed tag.
-            if let Some(idx) =
-                self.borrows
-                    .iter()
-                    .enumerate() // we also need to know *where* in the stack
-                    .rev() // search top-to-bottom
-                    .find_map(|(idx, item)| {
-                        // If the item fits and *might* be this wildcard, use it.
-                        if item.perm().grants(access) && exposed_tags.contains(&item.tag()) {
-                            Some(idx)
-                        } else {
-                            None
-                        }
-                    })
+            if let Some(idx) = self
+                .borrows
+                .iter()
+                .enumerate() // we also need to know *where* in the stack
+                .rev() // search top-to-bottom
+                .find_map(|(idx, item)| {
+                    // If the item fits and *might* be this wildcard, use it.
+                    if item.perm().grants(access) && exposed_tags.contains(&item.tag()) {
+                        Some(idx)
+                    } else {
+                        None
+                    }
+                })
             {
                 return Ok(Some(idx));
             }
