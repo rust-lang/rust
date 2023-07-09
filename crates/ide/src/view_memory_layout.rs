@@ -1,3 +1,5 @@
+use std::fmt;
+
 use hir::{Field, HirDisplay, Layout, Semantics, Type};
 use ide_db::{
     defs::Definition,
@@ -21,6 +23,36 @@ pub struct MemoryLayoutNode {
 
 pub struct RecursiveMemoryLayout {
     pub nodes: Vec<MemoryLayoutNode>,
+}
+
+// NOTE: this is currently strictly for testing and so isn't super useful as a visualization tool, however it could be adapted to become one?
+impl fmt::Display for RecursiveMemoryLayout {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fn process(
+            fmt: &mut fmt::Formatter<'_>,
+            nodes: &Vec<MemoryLayoutNode>,
+            idx: usize,
+            depth: usize,
+        ) -> fmt::Result {
+            let mut out = "\t".repeat(depth);
+            let node = &nodes[idx];
+            out += &format!(
+                "{}: {} (size: {}, align: {}, field offset: {})\n",
+                node.item_name, node.typename, node.size, node.alignment, node.offset
+            );
+            write!(fmt, "{}", out)?;
+            if node.children_start != -1 {
+                for j in nodes[idx].children_start
+                    ..(nodes[idx].children_start + nodes[idx].children_len as i64)
+                {
+                    process(fmt, nodes, j as usize, depth + 1)?;
+                }
+            }
+            Ok(())
+        }
+
+        process(fmt, &self.nodes, 0, 0)
+    }
 }
 
 enum FieldOrTupleIdx {
@@ -191,20 +223,12 @@ mod tests {
     use super::*;
 
     use crate::fixture;
+    use expect_test::expect;
 
     fn make_memory_layout(ra_fixture: &str) -> Option<RecursiveMemoryLayout> {
         let (analysis, position, _) = fixture::annotations(ra_fixture);
 
         view_memory_layout(&analysis.db, position)
-    }
-
-    fn check_item_info<T>(node: &MemoryLayoutNode, item_name: &str, check_typename: bool) {
-        assert_eq!(node.item_name, item_name);
-        assert_eq!(node.size, core::mem::size_of::<T>() as u64);
-        assert_eq!(node.alignment, core::mem::align_of::<T>() as u64);
-        if check_typename {
-            assert_eq!(node.typename, std::any::type_name::<T>());
-        }
     }
 
     #[test]
@@ -215,75 +239,88 @@ mod tests {
 
     #[test]
     fn view_memory_layout_primitive() {
-        let ml = make_memory_layout(
-            r#"
+        expect![[r#"
+            foo: i32 (size: 4, align: 4, field offset: 0)
+        "#]]
+        .assert_eq(
+            &make_memory_layout(
+                r#"
 fn main() {
     let foo$0 = 109; // default i32
 }
 "#,
-        )
-        .unwrap();
-
-        assert_eq!(ml.nodes.len(), 1);
-        assert_eq!(ml.nodes[0].parent_idx, -1);
-        assert_eq!(ml.nodes[0].children_start, -1);
-        check_item_info::<i32>(&ml.nodes[0], "foo", true);
-        assert_eq!(ml.nodes[0].offset, 0);
+            )
+            .unwrap()
+            .to_string(),
+        );
     }
 
     #[test]
     fn view_memory_layout_constant() {
-        let ml = make_memory_layout(
-            r#"
+        expect![[r#"
+            BLAH: bool (size: 1, align: 1, field offset: 0)
+        "#]]
+        .assert_eq(
+            &make_memory_layout(
+                r#"
 const BLAH$0: bool = 0;
 "#,
-        )
-        .unwrap();
-
-        assert_eq!(ml.nodes.len(), 1);
-        assert_eq!(ml.nodes[0].parent_idx, -1);
-        assert_eq!(ml.nodes[0].children_start, -1);
-        check_item_info::<bool>(&ml.nodes[0], "BLAH", true);
-        assert_eq!(ml.nodes[0].offset, 0);
+            )
+            .unwrap()
+            .to_string(),
+        );
     }
 
     #[test]
     fn view_memory_layout_static() {
-        let ml = make_memory_layout(
-            r#"
+        expect![[r#"
+            BLAH: bool (size: 1, align: 1, field offset: 0)
+        "#]]
+        .assert_eq(
+            &make_memory_layout(
+                r#"
 static BLAH$0: bool = 0;
 "#,
-        )
-        .unwrap();
-
-        assert_eq!(ml.nodes.len(), 1);
-        assert_eq!(ml.nodes[0].parent_idx, -1);
-        assert_eq!(ml.nodes[0].children_start, -1);
-        check_item_info::<bool>(&ml.nodes[0], "BLAH", true);
-        assert_eq!(ml.nodes[0].offset, 0);
+            )
+            .unwrap()
+            .to_string(),
+        );
     }
 
     #[test]
     fn view_memory_layout_tuple() {
-        let ml = make_memory_layout(
-            r#"
+        expect![[r#"
+            x: (f64, u8, i64) (size: 24, align: 8, field offset: 0)
+            	.0: f64 (size: 8, align: 8, field offset: 0)
+            	.1: u8 (size: 1, align: 1, field offset: 8)
+            	.2: i64 (size: 8, align: 8, field offset: 16)
+        "#]]
+        .assert_eq(
+            &make_memory_layout(
+                r#"
 fn main() {
     let x$0 = (101.0, 111u8, 119i64);
 }
-        "#,
-        )
-        .unwrap();
-
-        assert_eq!(ml.nodes.len(), 4);
-        assert_eq!(ml.nodes[0].children_start, 1);
-        assert_eq!(ml.nodes[0].children_len, 3);
-        check_item_info::<(f64, u8, i64)>(&ml.nodes[0], "x", true);
+"#,
+            )
+            .unwrap()
+            .to_string(),
+        );
     }
 
     #[test]
-    fn view_memory_layout_struct() {
-        let ml = make_memory_layout(
-            r#"
+    fn view_memory_layout_c_struct() {
+        expect![[r#"
+            [ROOT]: Blah (size: 16, align: 4, field offset: 0)
+            	a: u32 (size: 4, align: 4, field offset: 0)
+            	b: (i32, u8) (size: 8, align: 4, field offset: 4)
+            		.0: i32 (size: 4, align: 4, field offset: 0)
+            		.1: u8 (size: 1, align: 1, field offset: 4)
+            	c: i8 (size: 1, align: 1, field offset: 12)
+        "#]]
+        .assert_eq(
+            &make_memory_layout(
+                r#"
 #[repr(C)]
 struct Blah$0 {
     a: u32,
@@ -291,47 +328,54 @@ struct Blah$0 {
     c: i8,
 }
 "#,
-        )
-        .unwrap();
+            )
+            .unwrap()
+            .to_string(),
+        );
+    }
 
-        #[repr(C)] // repr C makes this testable, rustc doesn't enforce a layout otherwise ;-;
-        struct Blah {
-            a: u32,
-            b: (i32, u8),
-            c: i8,
-        }
-
-        assert_eq!(ml.nodes.len(), 6);
-        check_item_info::<Blah>(&ml.nodes[0], "[ROOT]", false);
-        assert_eq!(ml.nodes[0].offset, 0);
-
-        check_item_info::<u32>(&ml.nodes[1], "a", true);
-        assert_eq!(ml.nodes[1].offset, 0);
-
-        check_item_info::<(i32, u8)>(&ml.nodes[2], "b", true);
-        assert_eq!(ml.nodes[2].offset, 4);
-
-        check_item_info::<i8>(&ml.nodes[3], "c", true);
-        assert_eq!(ml.nodes[3].offset, 12);
+    #[test]
+    fn view_memory_layout_struct() {
+        expect![[r#"
+            [ROOT]: Blah (size: 16, align: 4, field offset: 0)
+            	b: (i32, u8) (size: 8, align: 4, field offset: 0)
+            		.0: i32 (size: 4, align: 4, field offset: 0)
+            		.1: u8 (size: 1, align: 1, field offset: 4)
+            	a: u32 (size: 4, align: 4, field offset: 8)
+            	c: i8 (size: 1, align: 1, field offset: 12)
+        "#]]
+        .assert_eq(
+            &make_memory_layout(
+                r#"
+struct Blah$0 {
+    a: u32,
+    b: (i32, u8),
+    c: i8,
+}
+"#,
+            )
+            .unwrap()
+            .to_string(),
+        );
     }
 
     #[test]
     fn view_memory_layout_member() {
-        let ml = make_memory_layout(
-            r#"
+        expect![[r#"
+            a: bool (size: 1, align: 1, field offset: 0)
+        "#]]
+        .assert_eq(
+            &make_memory_layout(
+                r#"
+#[repr(C)]
 struct Oof {
-    a$0: bool
+    a$0: bool,
 }
 "#,
-        )
-        .unwrap();
-
-        assert_eq!(ml.nodes.len(), 1);
-        assert_eq!(ml.nodes[0].parent_idx, -1);
-        assert_eq!(ml.nodes[0].children_start, -1);
-        check_item_info::<bool>(&ml.nodes[0], "a", true);
-        // NOTE: this should not give the memory layout relative to the parent structure, but the type referred to by the member variable alone.
-        assert_eq!(ml.nodes[0].offset, 0);
+            )
+            .unwrap()
+            .to_string(),
+        );
     }
 
     #[test]
@@ -345,9 +389,10 @@ struct X {
 }
 
 type Foo$0 = X;
-        "#,
+"#,
         )
         .unwrap();
+
         let ml_b = make_memory_layout(
             r#"
 struct X$0 {
@@ -355,19 +400,10 @@ struct X$0 {
     b: i8,
     c: (f32, f32),
 }
-        "#,
+"#,
         )
         .unwrap();
 
-        ml_a.nodes.iter().zip(ml_b.nodes.iter()).for_each(|(a, b)| {
-            assert_eq!(a.item_name, b.item_name);
-            assert_eq!(a.typename, b.typename);
-            assert_eq!(a.size, b.size);
-            assert_eq!(a.alignment, b.alignment);
-            assert_eq!(a.offset, b.offset);
-            assert_eq!(a.parent_idx, b.parent_idx);
-            assert_eq!(a.children_start, b.children_start);
-            assert_eq!(a.children_len, b.children_len);
-        })
+        assert_eq!(ml_a.to_string(), ml_b.to_string());
     }
 }
