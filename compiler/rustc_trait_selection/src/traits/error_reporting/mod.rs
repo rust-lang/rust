@@ -2380,9 +2380,9 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         let trait_impls = self.tcx.trait_impls_of(data.trait_ref.def_id);
 
                         if trait_impls.blanket_impls().is_empty()
-                            && let Some(impl_def_id) = trait_impls.non_blanket_impls().values().flatten().next()
+                            && let Some(impl_def_id) = trait_impls.non_blanket_impls().values().flat_map(|b| &**b).next()
                         {
-                            let non_blanket_impl_count = trait_impls.non_blanket_impls().values().flatten().count();
+                            let non_blanket_impl_count = trait_impls.non_blanket_impls().values().flat_map(|b| &**b).count();
                             // If there is only one implementation of the trait, suggest using it.
                             // Otherwise, use a placeholder comment for the implementation.
                             let (message, impl_suggestion) = if non_blanket_impl_count == 1 {(

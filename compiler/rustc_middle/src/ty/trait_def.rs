@@ -84,17 +84,17 @@ pub enum TraitSpecializationKind {
 
 #[derive(Default, Debug, HashStable)]
 pub struct TraitImpls {
-    blanket_impls: Vec<DefId>,
+    blanket_impls: Box<[DefId]>,
     /// Impls indexed by their simplified self type, for fast lookup.
-    non_blanket_impls: FxIndexMap<SimplifiedType, Vec<DefId>>,
+    non_blanket_impls: FxIndexMap<SimplifiedType, Box<[DefId]>>,
 }
 
 impl TraitImpls {
     pub fn blanket_impls(&self) -> &[DefId] {
-        self.blanket_impls.as_slice()
+        &self.blanket_impls
     }
 
-    pub fn non_blanket_impls(&self) -> &FxIndexMap<SimplifiedType, Vec<DefId>> {
+    pub fn non_blanket_impls(&self) -> &FxIndexMap<SimplifiedType, Box<[DefId]>> {
         &self.non_blanket_impls
     }
 }
@@ -119,7 +119,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
 
         for v in impls.non_blanket_impls.values() {
-            for &impl_def_id in v {
+            for &impl_def_id in &**v {
                 f(impl_def_id);
             }
         }
@@ -172,12 +172,12 @@ impl<'tcx> TyCtxt<'tcx> {
         // of `Clone` for `Option<T>`, `Vec<T>`, `ConcreteType` and so on.
         if let Some(simp) = fast_reject::simplify_type(self, self_ty, treat_params) {
             if let Some(impls) = impls.non_blanket_impls.get(&simp) {
-                for &impl_def_id in impls {
+                for &impl_def_id in &**impls {
                     f(impl_def_id);
                 }
             }
         } else {
-            for &impl_def_id in impls.non_blanket_impls.values().flatten() {
+            for &impl_def_id in impls.non_blanket_impls.values().flat_map(|b| &**b) {
                 f(impl_def_id);
             }
         }
@@ -205,13 +205,14 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn all_impls(self, trait_def_id: DefId) -> impl Iterator<Item = DefId> + 'tcx {
         let TraitImpls { blanket_impls, non_blanket_impls } = self.trait_impls_of(trait_def_id);
 
-        blanket_impls.iter().chain(non_blanket_impls.iter().flat_map(|(_, v)| v)).cloned()
+        blanket_impls.iter().chain(non_blanket_impls.iter().flat_map(|(_, v)| &**v)).cloned()
     }
 }
 
 /// Query provider for `trait_impls_of`.
 pub(super) fn trait_impls_of_provider(tcx: TyCtxt<'_>, trait_id: DefId) -> TraitImpls {
-    let mut impls = TraitImpls::default();
+    let mut blanket_impls = Vec::new();
+    let mut non_blanket_impls = FxIndexMap::<SimplifiedType, Vec<DefId>>::default();
 
     // Traits defined in the current crate can't have impls in upstream
     // crates, so we don't bother querying the cstore.
@@ -221,13 +222,9 @@ pub(super) fn trait_impls_of_provider(tcx: TyCtxt<'_>, trait_id: DefId) -> Trait
                 tcx.implementations_of_trait((cnum, trait_id)).iter()
             {
                 if let Some(simplified_self_ty) = simplified_self_ty {
-                    impls
-                        .non_blanket_impls
-                        .entry(simplified_self_ty)
-                        .or_default()
-                        .push(impl_def_id);
+                    non_blanket_impls.entry(simplified_self_ty).or_default().push(impl_def_id);
                 } else {
-                    impls.blanket_impls.push(impl_def_id);
+                    blanket_impls.push(impl_def_id);
                 }
             }
         }
@@ -244,13 +241,19 @@ pub(super) fn trait_impls_of_provider(tcx: TyCtxt<'_>, trait_id: DefId) -> Trait
         if let Some(simplified_self_ty) =
             fast_reject::simplify_type(tcx, impl_self_ty, TreatParams::AsCandidateKey)
         {
-            impls.non_blanket_impls.entry(simplified_self_ty).or_default().push(impl_def_id);
+            non_blanket_impls.entry(simplified_self_ty).or_default().push(impl_def_id);
         } else {
-            impls.blanket_impls.push(impl_def_id);
+            blanket_impls.push(impl_def_id);
         }
     }
 
-    impls
+    TraitImpls {
+        blanket_impls: blanket_impls.into_boxed_slice(),
+        non_blanket_impls: non_blanket_impls
+            .into_iter()
+            .map(|(k, v)| (k, v.into_boxed_slice()))
+            .collect(),
+    }
 }
 
 /// Query provider for `incoherent_impls`.
