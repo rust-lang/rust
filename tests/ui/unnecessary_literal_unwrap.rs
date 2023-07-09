@@ -68,6 +68,16 @@ fn unwrap_methods_result() {
     Ok::<_, ()>(1).unwrap_or_else(|_| 2);
 }
 
+fn unwrap_from_binding() {
+    macro_rules! from_macro {
+        () => {
+            Some("")
+        };
+    }
+    let val = from_macro!();
+    let _ = val.unwrap_or("");
+}
+
 fn main() {
     unwrap_option_some();
     unwrap_option_none();
