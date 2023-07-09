@@ -100,10 +100,7 @@ fn highlight_closure_captures(
             .flat_map(|local| {
                 let usages = Definition::Local(local)
                     .usages(sema)
-                    .set_scope(Some(SearchScope::file_range(FileRange {
-                        file_id,
-                        range: search_range,
-                    })))
+                    .in_scope(&SearchScope::file_range(FileRange { file_id, range: search_range }))
                     .include_self_refs()
                     .all()
                     .references
@@ -139,7 +136,7 @@ fn highlight_references(
         .iter()
         .filter_map(|&d| {
             d.usages(sema)
-                .set_scope(Some(SearchScope::single_file(file_id)))
+                .in_scope(&SearchScope::single_file(file_id))
                 .include_self_refs()
                 .all()
                 .references
@@ -183,7 +180,7 @@ fn highlight_references(
                         .filter_map(|item| {
                             Definition::from(item)
                                 .usages(sema)
-                                .set_scope(Some(SearchScope::file_range(FileRange {
+                                .set_scope(Some(&SearchScope::file_range(FileRange {
                                     file_id,
                                     range: trait_item_use_scope.text_range(),
                                 })))

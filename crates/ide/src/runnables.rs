@@ -232,7 +232,7 @@ fn find_related_tests(
     for def in defs {
         let defs = def
             .usages(sema)
-            .set_scope(search_scope.clone())
+            .set_scope(search_scope.as_ref())
             .all()
             .references
             .into_values()

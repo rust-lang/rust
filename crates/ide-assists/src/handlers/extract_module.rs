@@ -478,7 +478,7 @@ impl Module {
         let selection_range = ctx.selection_trimmed();
         let curr_file_id = ctx.file_id();
         let search_scope = SearchScope::single_file(curr_file_id);
-        let usage_res = def.usages(&ctx.sema).in_scope(search_scope).all();
+        let usage_res = def.usages(&ctx.sema).in_scope(&search_scope).all();
         let file = ctx.sema.parse(curr_file_id);
 
         let mut exists_inside_sel = false;
