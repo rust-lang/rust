@@ -2234,6 +2234,24 @@ fn main() {
 }
 
 #[test]
+fn doctest_remove_unused_imports() {
+    check_doc_test(
+        "remove_unused_imports",
+        r#####"
+struct X();
+mod foo {
+    use super::X$0;
+}
+"#####,
+        r#####"
+struct X();
+mod foo {
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_remove_unused_param() {
     check_doc_test(
         "remove_unused_param",
