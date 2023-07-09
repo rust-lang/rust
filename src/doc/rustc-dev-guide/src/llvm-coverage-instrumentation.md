@@ -199,7 +199,7 @@ statements is only implemented for LLVM, at this time.
 [backend-lowering-mir]: backend/lowering-mir.md
 [codegen-statement]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/mir/struct.FunctionCx.html#method.codegen_statement
 [codegen-coverage]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/mir/struct.FunctionCx.html#method.codegen_coverage
-[function-coverage]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/coverageinfo/map/struct.FunctionCoverage.html
+[function-coverage]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_llvm/coverageinfo/map_data/struct.FunctionCoverage.html
 [instrprof-increment]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/trait.BuilderMethods.html#tymethod.instrprof_increment
 
 ### Coverage Map Generation
