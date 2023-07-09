@@ -875,11 +875,10 @@ impl Default for StringOrBool {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
-#[serde(untagged)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum RustOptimize {
-    #[serde(deserialize_with = "deserialize_and_validate_opt_level")]
     String(String),
+    Int(u8),
     Bool(bool),
 }
 
@@ -889,26 +888,74 @@ impl Default for RustOptimize {
     }
 }
 
-fn deserialize_and_validate_opt_level<'de, D>(d: D) -> Result<String, D::Error>
-where
-    D: serde::de::Deserializer<'de>,
-{
-    let v = String::deserialize(d)?;
-    if ["0", "1", "2", "3", "s", "z"].iter().find(|x| **x == v).is_some() {
-        Ok(v)
-    } else {
-        Err(format!(r#"unrecognized option for rust optimize: "{}", expected one of "0", "1", "2", "3", "s", "z""#, v)).map_err(serde::de::Error::custom)
+impl<'de> Deserialize<'de> for RustOptimize {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_any(OptimizeVisitor)
     }
+}
+
+struct OptimizeVisitor;
+
+impl<'de> serde::de::Visitor<'de> for OptimizeVisitor {
+    type Value = RustOptimize;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(r#"one of: 0, 1, 2, 3, "s", "z", true, false"#)
+    }
+
+    fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        if ["s", "z"].iter().find(|x| **x == value).is_some() {
+            Ok(RustOptimize::String(value.to_string()))
+        } else {
+            Err(format_optimize_error_msg(value)).map_err(serde::de::Error::custom)
+        }
+    }
+
+    fn visit_i64<E>(self, value: i64) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        if matches!(value, 0..=3) {
+            Ok(RustOptimize::Int(value as u8))
+        } else {
+            Err(format_optimize_error_msg(value)).map_err(serde::de::Error::custom)
+        }
+    }
+
+    fn visit_bool<E>(self, value: bool) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        Ok(RustOptimize::Bool(value))
+    }
+}
+
+fn format_optimize_error_msg(v: impl std::fmt::Display) -> String {
+    format!(
+        r#"unrecognized option for rust optimize: "{}", expected one of 0, 1, 2, 3, "s", "z", true, false"#,
+        v
+    )
 }
 
 impl RustOptimize {
     pub(crate) fn is_release(&self) -> bool {
-        if let RustOptimize::Bool(true) | RustOptimize::String(_) = &self { true } else { false }
+        match &self {
+            RustOptimize::Bool(true) | RustOptimize::String(_) => true,
+            RustOptimize::Int(i) => *i > 0,
+            RustOptimize::Bool(false) => false,
+        }
     }
 
     pub(crate) fn get_opt_level(&self) -> Option<String> {
         match &self {
             RustOptimize::String(s) => Some(s.clone()),
+            RustOptimize::Int(i) => Some(i.to_string()),
             RustOptimize::Bool(_) => None,
         }
     }
