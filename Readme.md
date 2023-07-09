@@ -105,6 +105,12 @@ $ rustc +$(cat $cg_gccjit_dir/rust-toolchain) -Cpanic=abort -Zcodegen-backend=$c
     <dd>Display the time it took to perform codegen for a crate</dd>
 </dl>
 
+## Licensing
+
+While this crate is licensed under a dual Apache/MIT license, it links to `libgccjit` which is under the GPLv3+ and thus, the resulting toolchain (rustc + GCC codegen) will need to be released under the GPL license.
+
+However, programs compiled with `rustc_codegen_gcc` do not need to be released under a GPL license.
+
 ## Debugging
 
 Sometimes, libgccjit will crash and output an error like this:
