@@ -40,6 +40,7 @@ declare_clippy_lint! {
 #[derive(Default)]
 pub struct UselessConversion {
     try_desugar_arm: Vec<HirId>,
+    expn_depth: u32,
 }
 
 impl_lint_pass!(UselessConversion => [USELESS_CONVERSION]);
@@ -102,21 +103,11 @@ fn into_iter_deep_call<'hir>(cx: &LateContext<'_>, mut expr: &'hir Expr<'hir>) -
     (expr, depth)
 }
 
-/// Checks if the given `expr` is an argument of a macro invocation.
-/// This is a slow-ish operation, so consider calling this late
-/// to avoid slowing down the lint in the happy path when not emitting a warning
-fn is_macro_argument(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    if let Some(parent) = get_parent_expr(cx, expr) {
-        parent.span.from_expansion() || is_macro_argument(cx, parent)
-    } else {
-        false
-    }
-}
-
 #[expect(clippy::too_many_lines)]
 impl<'tcx> LateLintPass<'tcx> for UselessConversion {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         if e.span.from_expansion() {
+            self.expn_depth += 1;
             return;
         }
 
@@ -185,7 +176,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                             && let Some(&into_iter_param) = sig.inputs().get(kind.param_pos(arg_pos))
                             && let ty::Param(param) = into_iter_param.kind()
                             && let Some(span) = into_iter_bound(cx, parent_fn_did, into_iter_did, param.index)
-                            && !is_macro_argument(cx, e)
+                            && self.expn_depth == 0
                         {
                             // Get the "innermost" `.into_iter()` call, e.g. given this expression:
                             // `foo.into_iter().into_iter()`
@@ -320,6 +311,9 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
     fn check_expr_post(&mut self, _: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         if Some(&e.hir_id) == self.try_desugar_arm.last() {
             self.try_desugar_arm.pop();
+        }
+        if e.span.from_expansion() {
+            self.expn_depth -= 1;
         }
     }
 }
