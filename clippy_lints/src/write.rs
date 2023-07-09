@@ -522,7 +522,7 @@ fn check_literal(cx: &LateContext<'_>, format_args: &FormatArgs, name: &str) {
                     {
                         let replacement = replacement.replace('{', "{{").replace('}', "}}");
                         diag.multipart_suggestion(
-                            "try this",
+                            "try",
                             vec![(*placeholder_span, replacement), (removal_span, String::new())],
                             Applicability::MachineApplicable,
                         );

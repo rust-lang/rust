@@ -30,7 +30,7 @@ LL |     println!("Hello {} is {:.*}", "x", local_i32, local_f64);
    |                                   ^^^
    |
    = note: `-D clippy::print-literal` implied by `-D warnings`
-help: try this
+help: try
    |
 LL -     println!("Hello {} is {:.*}", "x", local_i32, local_f64);
 LL +     println!("Hello x is {:.*}", local_i32, local_f64);

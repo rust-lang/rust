@@ -29,7 +29,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, name
             NEEDLESS_OPTION_AS_DEREF,
             expr.span,
             "derefed type is same as origin",
-            "try this",
+            "try",
             snippet_opt(cx, recv.span).unwrap(),
             Applicability::MachineApplicable,
         );

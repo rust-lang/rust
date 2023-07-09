@@ -64,7 +64,7 @@ pub(super) fn check<'tcx>(
                 MAP_UNWRAP_OR,
                 expr.span,
                 msg,
-                "try this",
+                "try",
                 format!("{var_snippet}.map_or_else({unwrap_snippet}, {map_snippet})"),
                 Applicability::MachineApplicable,
             );

@@ -144,7 +144,7 @@ LL | |         E::A => false,
 LL | |         E::B => false,
 LL | |         _ => true,
 LL | |     };
-   | |_____^ help: try this: `!matches!(x, E::A | E::B)`
+   | |_____^ help: try: `!matches!(x, E::A | E::B)`
    |
    = note: `-D clippy::match-like-matches-macro` implied by `-D warnings`
 

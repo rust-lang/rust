@@ -2,7 +2,7 @@ error: this pattern creates a reference to a reference
   --> $DIR/needless_borrow_pat.rs:59:14
    |
 LL |         Some(ref x) => x,
-   |              ^^^^^ help: try this: `x`
+   |              ^^^^^ help: try: `x`
    |
    = note: `-D clippy::needless-borrow` implied by `-D warnings`
 
@@ -12,7 +12,7 @@ error: this pattern creates a reference to a reference
 LL |         Some(ref x) => *x,
    |              ^^^^^
    |
-help: try this
+help: try
    |
 LL |         Some(x) => x,
    |              ~     ~
@@ -23,7 +23,7 @@ error: this pattern creates a reference to a reference
 LL |         Some(ref x) => {
    |              ^^^^^
    |
-help: try this
+help: try
    |
 LL ~         Some(x) => {
 LL |             f1(x);
@@ -34,13 +34,13 @@ error: this pattern creates a reference to a reference
   --> $DIR/needless_borrow_pat.rs:81:14
    |
 LL |         Some(ref x) => m1!(x),
-   |              ^^^^^ help: try this: `x`
+   |              ^^^^^ help: try: `x`
 
 error: this pattern creates a reference to a reference
   --> $DIR/needless_borrow_pat.rs:86:15
    |
 LL |     let _ = |&ref x: &&String| {
-   |               ^^^^^ help: try this: `x`
+   |               ^^^^^ help: try: `x`
 
 error: this pattern creates a reference to a reference
   --> $DIR/needless_borrow_pat.rs:91:10
@@ -48,7 +48,7 @@ error: this pattern creates a reference to a reference
 LL |     let (ref y,) = (&x,);
    |          ^^^^^
    |
-help: try this
+help: try
    |
 LL ~     let (y,) = (&x,);
 LL ~     let _: &String = y;
@@ -58,7 +58,7 @@ error: this pattern creates a reference to a reference
   --> $DIR/needless_borrow_pat.rs:101:14
    |
 LL |         Some(ref x) => x.0,
-   |              ^^^^^ help: try this: `x`
+   |              ^^^^^ help: try: `x`
 
 error: this pattern creates a reference to a reference
   --> $DIR/needless_borrow_pat.rs:111:14
@@ -66,7 +66,7 @@ error: this pattern creates a reference to a reference
 LL |         E::A(ref x) | E::B(ref x) => *x,
    |              ^^^^^         ^^^^^
    |
-help: try this
+help: try
    |
 LL |         E::A(x) | E::B(x) => x,
    |              ~         ~     ~
@@ -75,7 +75,7 @@ error: this pattern creates a reference to a reference
   --> $DIR/needless_borrow_pat.rs:117:21
    |
 LL |         if let Some(ref x) = Some(&String::new());
-   |                     ^^^^^ help: try this: `x`
+   |                     ^^^^^ help: try: `x`
 
 error: this pattern creates a reference to a reference
   --> $DIR/needless_borrow_pat.rs:125:12
@@ -83,7 +83,7 @@ error: this pattern creates a reference to a reference
 LL | fn f2<'a>(&ref x: &&'a String) -> &'a String {
    |            ^^^^^
    |
-help: try this
+help: try
    |
 LL ~ fn f2<'a>(&x: &&'a String) -> &'a String {
 LL |     let _: &String = x;
@@ -94,7 +94,7 @@ error: this pattern creates a reference to a reference
   --> $DIR/needless_borrow_pat.rs:132:11
    |
 LL |     fn f(&ref x: &&String) {
-   |           ^^^^^ help: try this: `x`
+   |           ^^^^^ help: try: `x`
 
 error: this pattern creates a reference to a reference
   --> $DIR/needless_borrow_pat.rs:140:11
@@ -102,7 +102,7 @@ error: this pattern creates a reference to a reference
 LL |     fn f(&ref x: &&String) {
    |           ^^^^^
    |
-help: try this
+help: try
    |
 LL ~     fn f(&x: &&String) {
 LL ~         let _: &String = x;

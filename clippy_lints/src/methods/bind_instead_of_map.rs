@@ -87,7 +87,7 @@ pub(crate) trait BindInsteadOfMap {
                     BIND_INSTEAD_OF_MAP,
                     expr.span,
                     &msg,
-                    "try this",
+                    "try",
                     note,
                     app,
                 );
@@ -124,7 +124,7 @@ pub(crate) trait BindInsteadOfMap {
         span_lint_and_then(cx, BIND_INSTEAD_OF_MAP, expr.span, &msg, |diag| {
             multispan_sugg_with_applicability(
                 diag,
-                "try this",
+                "try",
                 Applicability::MachineApplicable,
                 std::iter::once((span, Self::GOOD_METHOD_NAME.into())).chain(
                     suggs

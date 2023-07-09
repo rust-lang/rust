@@ -10,7 +10,7 @@ LL | |     };
    | |_____^
    |
    = note: `-D clippy::single-match` implied by `-D warnings`
-help: try this
+help: try
    |
 LL ~     if let Some(y) = x {
 LL +         println!("{:?}", y);
@@ -27,7 +27,7 @@ LL | |         // is expanded before we can do anything.
 LL | |         Some(y) => println!("{:?}", y),
 LL | |         _ => (),
 LL | |     }
-   | |_____^ help: try this: `if let Some(y) = x { println!("{:?}", y) }`
+   | |_____^ help: try: `if let Some(y) = x { println!("{:?}", y) }`
 
 error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
   --> $DIR/single_match.rs:31:5
@@ -36,7 +36,7 @@ LL | /     match z {
 LL | |         (2..=3, 7..=9) => dummy(),
 LL | |         _ => {},
 LL | |     };
-   | |_____^ help: try this: `if let (2..=3, 7..=9) = z { dummy() }`
+   | |_____^ help: try: `if let (2..=3, 7..=9) = z { dummy() }`
 
 error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
   --> $DIR/single_match.rs:60:5
@@ -45,7 +45,7 @@ LL | /     match x {
 LL | |         Some(y) => dummy(),
 LL | |         None => (),
 LL | |     };
-   | |_____^ help: try this: `if let Some(y) = x { dummy() }`
+   | |_____^ help: try: `if let Some(y) = x { dummy() }`
 
 error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
   --> $DIR/single_match.rs:65:5
@@ -54,7 +54,7 @@ LL | /     match y {
 LL | |         Ok(y) => dummy(),
 LL | |         Err(..) => (),
 LL | |     };
-   | |_____^ help: try this: `if let Ok(y) = y { dummy() }`
+   | |_____^ help: try: `if let Ok(y) = y { dummy() }`
 
 error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
   --> $DIR/single_match.rs:72:5
@@ -63,7 +63,7 @@ LL | /     match c {
 LL | |         Cow::Borrowed(..) => dummy(),
 LL | |         Cow::Owned(..) => (),
 LL | |     };
-   | |_____^ help: try this: `if let Cow::Borrowed(..) = c { dummy() }`
+   | |_____^ help: try: `if let Cow::Borrowed(..) = c { dummy() }`
 
 error: you seem to be trying to use `match` for an equality check. Consider using `if`
   --> $DIR/single_match.rs:93:5
@@ -72,7 +72,7 @@ LL | /     match x {
 LL | |         "test" => println!(),
 LL | |         _ => (),
 LL | |     }
-   | |_____^ help: try this: `if x == "test" { println!() }`
+   | |_____^ help: try: `if x == "test" { println!() }`
 
 error: you seem to be trying to use `match` for an equality check. Consider using `if`
   --> $DIR/single_match.rs:106:5
@@ -81,7 +81,7 @@ LL | /     match x {
 LL | |         Foo::A => println!(),
 LL | |         _ => (),
 LL | |     }
-   | |_____^ help: try this: `if x == Foo::A { println!() }`
+   | |_____^ help: try: `if x == Foo::A { println!() }`
 
 error: you seem to be trying to use `match` for an equality check. Consider using `if`
   --> $DIR/single_match.rs:112:5
@@ -90,7 +90,7 @@ LL | /     match x {
 LL | |         FOO_C => println!(),
 LL | |         _ => (),
 LL | |     }
-   | |_____^ help: try this: `if x == FOO_C { println!() }`
+   | |_____^ help: try: `if x == FOO_C { println!() }`
 
 error: you seem to be trying to use `match` for an equality check. Consider using `if`
   --> $DIR/single_match.rs:117:5
@@ -99,7 +99,7 @@ LL | /     match &&x {
 LL | |         Foo::A => println!(),
 LL | |         _ => (),
 LL | |     }
-   | |_____^ help: try this: `if x == Foo::A { println!() }`
+   | |_____^ help: try: `if x == Foo::A { println!() }`
 
 error: you seem to be trying to use `match` for an equality check. Consider using `if`
   --> $DIR/single_match.rs:123:5
@@ -108,7 +108,7 @@ LL | /     match &x {
 LL | |         Foo::A => println!(),
 LL | |         _ => (),
 LL | |     }
-   | |_____^ help: try this: `if x == &Foo::A { println!() }`
+   | |_____^ help: try: `if x == &Foo::A { println!() }`
 
 error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
   --> $DIR/single_match.rs:140:5
@@ -117,7 +117,7 @@ LL | /     match x {
 LL | |         Bar::A => println!(),
 LL | |         _ => (),
 LL | |     }
-   | |_____^ help: try this: `if let Bar::A = x { println!() }`
+   | |_____^ help: try: `if let Bar::A = x { println!() }`
 
 error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
   --> $DIR/single_match.rs:148:5
@@ -126,7 +126,7 @@ LL | /     match x {
 LL | |         None => println!(),
 LL | |         _ => (),
 LL | |     };
-   | |_____^ help: try this: `if let None = x { println!() }`
+   | |_____^ help: try: `if let None = x { println!() }`
 
 error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
   --> $DIR/single_match.rs:170:5
@@ -135,7 +135,7 @@ LL | /     match x {
 LL | |         (Some(_), _) => {},
 LL | |         (None, _) => {},
 LL | |     }
-   | |_____^ help: try this: `if let (Some(_), _) = x {}`
+   | |_____^ help: try: `if let (Some(_), _) = x {}`
 
 error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
   --> $DIR/single_match.rs:176:5
@@ -144,7 +144,7 @@ LL | /     match x {
 LL | |         (Some(E::V), _) => todo!(),
 LL | |         (_, _) => {},
 LL | |     }
-   | |_____^ help: try this: `if let (Some(E::V), _) = x { todo!() }`
+   | |_____^ help: try: `if let (Some(E::V), _) = x { todo!() }`
 
 error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
   --> $DIR/single_match.rs:182:5
@@ -153,7 +153,7 @@ LL | /     match (Some(42), Some(E::V), Some(42)) {
 LL | |         (.., Some(E::V), _) => {},
 LL | |         (..) => {},
 LL | |     }
-   | |_____^ help: try this: `if let (.., Some(E::V), _) = (Some(42), Some(E::V), Some(42)) {}`
+   | |_____^ help: try: `if let (.., Some(E::V), _) = (Some(42), Some(E::V), Some(42)) {}`
 
 error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
   --> $DIR/single_match.rs:254:5
@@ -167,7 +167,7 @@ LL | |         _ => {},
 LL | |     }
    | |_____^
    |
-help: try this
+help: try
    |
 LL ~     if let Some(v) = bar { unsafe {
 LL +         let r = &v as *const i32;
@@ -187,7 +187,7 @@ LL | |         _ => {},
 LL | |     }
    | |_____^
    |
-help: try this
+help: try
    |
 LL ~     if let Some(v) = bar {
 LL +         unsafe {

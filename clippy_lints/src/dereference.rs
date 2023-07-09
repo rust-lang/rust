@@ -589,7 +589,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                     pat.spans,
                     "this pattern creates a reference to a reference",
                     |diag| {
-                        diag.multipart_suggestion("try this", replacements, app);
+                        diag.multipart_suggestion("try", replacements, app);
                     },
                 );
             }
@@ -1531,7 +1531,7 @@ fn report<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, state: State, data
                     Mutability::Not => "explicit `deref` method call",
                     Mutability::Mut => "explicit `deref_mut` method call",
                 },
-                "try this",
+                "try",
                 format!("{addr_of_str}{deref_str}{expr_str}"),
                 app,
             );
@@ -1593,7 +1593,7 @@ fn report<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, state: State, data
                         } else {
                             format!("{prefix}{snip}")
                         };
-                    diag.span_suggestion(data.span, "try this", sugg, app);
+                    diag.span_suggestion(data.span, "try", sugg, app);
                 },
             );
         },
@@ -1620,7 +1620,7 @@ fn report<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, state: State, data
                 |diag| {
                     let mut app = Applicability::MachineApplicable;
                     let snip = snippet_with_context(cx, expr.span, data.span.ctxt(), "..", &mut app).0;
-                    diag.span_suggestion(data.span, "try this", snip.into_owned(), app);
+                    diag.span_suggestion(data.span, "try", snip.into_owned(), app);
                 },
             );
         },
