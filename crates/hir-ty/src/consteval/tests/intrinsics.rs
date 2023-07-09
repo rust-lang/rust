@@ -164,6 +164,24 @@ fn transmute() {
 }
 
 #[test]
+fn read_via_copy() {
+    check_number(
+        r#"
+        extern "rust-intrinsic" {
+            pub fn read_via_copy<T>(e: *const T) -> T;
+            pub fn volatile_load<T>(e: *const T) -> T;
+        }
+
+        const GOAL: i32 = {
+            let x = 2;
+            read_via_copy(&x) + volatile_load(&x)
+        };
+        "#,
+        4,
+    );
+}
+
+#[test]
 fn const_eval_select() {
     check_number(
         r#"
