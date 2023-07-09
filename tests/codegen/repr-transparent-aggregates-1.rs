@@ -11,6 +11,7 @@
 // ignore-s390x
 // ignore-windows
 // ignore-loongarch64
+// ignore-wasm32-bare
 // See repr-transparent.rs
 
 #![feature(transparent_unions)]
