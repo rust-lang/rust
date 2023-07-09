@@ -720,6 +720,8 @@ jobs:
           - &dist-x86_64-linux
             name: dist-x86_64-linux
             <<: *job-linux-16c
+          - name: dist-various-2
+            <<: *job-linux-8c
 
   master:
     name: master

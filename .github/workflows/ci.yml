@@ -565,6 +565,9 @@ jobs:
           - name: dist-x86_64-linux
             os: ubuntu-20.04-16core-64gb
             env: {}
+          - name: dist-various-2
+            os: ubuntu-20.04-8core-32gb
+            env: {}
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:
