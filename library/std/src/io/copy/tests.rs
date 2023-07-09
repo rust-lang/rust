@@ -1,4 +1,6 @@
 use crate::cmp::{max, min};
+use crate::collections::VecDeque;
+use crate::io;
 use crate::io::*;
 
 #[test]
@@ -19,7 +21,7 @@ struct ShortReader {
 
 impl Read for ShortReader {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
-        let bytes = min(self.cap, self.read_size);
+        let bytes = min(self.cap, self.read_size).min(buf.len());
         self.cap -= bytes;
         self.observed_buffer = max(self.observed_buffer, buf.len());
         Ok(bytes)
@@ -76,6 +78,40 @@ fn copy_specializes_bufreader() {
         sink.observed_buffer, buf_sz,
         "expected a large buffer to be provided to the writer"
     );
+}
+
+#[test]
+fn copy_specializes_to_vec() {
+    let cap = 123456;
+    let mut source = ShortReader { cap, observed_buffer: 0, read_size: 1337 };
+    let mut sink = Vec::new();
+    assert_eq!(cap as u64, io::copy(&mut source, &mut sink).unwrap());
+    assert!(
+        source.observed_buffer > DEFAULT_BUF_SIZE,
+        "expected a large buffer to be provided to the reader"
+    );
+}
+
+#[test]
+fn copy_specializes_from_vecdeque() {
+    let mut source = VecDeque::with_capacity(100 * 1024);
+    for _ in 0..20 * 1024 {
+        source.push_front(0);
+    }
+    for _ in 0..20 * 1024 {
+        source.push_back(0);
+    }
+    let mut sink = WriteObserver { observed_buffer: 0 };
+    assert_eq!(40 * 1024u64, io::copy(&mut source, &mut sink).unwrap());
+    assert_eq!(20 * 1024, sink.observed_buffer);
+}
+
+#[test]
+fn copy_specializes_from_slice() {
+    let mut source = [1; 60 * 1024].as_slice();
+    let mut sink = WriteObserver { observed_buffer: 0 };
+    assert_eq!(60 * 1024u64, io::copy(&mut source, &mut sink).unwrap());
+    assert_eq!(60 * 1024, sink.observed_buffer);
 }
 
 #[cfg(unix)]
