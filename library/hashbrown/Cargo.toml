@@ -19,7 +19,9 @@ ahash = { version = "0.8.0", default-features = false, optional = true }
 # For external trait impls
 rayon = { version = "1.0", optional = true }
 serde = { version = "1.0.25", default-features = false, optional = true }
-rkyv = { version = "0.7.42", optional = true, default-features = false, features = ["alloc"]}
+rkyv = { version = "0.7.42", optional = true, default-features = false, features = [
+    "alloc",
+] }
 
 # When built as part of libstd
 core = { version = "1.0.0", optional = true, package = "rustc-std-workspace-core" }
@@ -27,7 +29,12 @@ compiler_builtins = { version = "0.1.2", optional = true }
 alloc = { version = "1.0.0", optional = true, package = "rustc-std-workspace-alloc" }
 
 # Support for allocators that use allocator-api2
-allocator-api2 = { version = "0.2.9", optional = true, default-features = false, features = ["alloc"] }
+allocator-api2 = { version = "0.2.9", optional = true, default-features = false, features = [
+    "alloc",
+] }
+
+# Equivalent trait which can be shared with other hash table implementations.
+equivalent = { version = "1.0", optional = true, default-features = false }
 
 [dev-dependencies]
 lazy_static = "1.4"
@@ -45,7 +52,13 @@ default = ["ahash", "inline-more", "allocator-api2"]
 nightly = ["allocator-api2?/nightly", "bumpalo/allocator_api"]
 
 rustc-internal-api = []
-rustc-dep-of-std = ["nightly", "core", "compiler_builtins", "alloc", "rustc-internal-api"]
+rustc-dep-of-std = [
+    "nightly",
+    "core",
+    "compiler_builtins",
+    "alloc",
+    "rustc-internal-api",
+]
 raw = []
 
 # Enables usage of `#[inline]` on far more functions than by default in this

@@ -117,6 +117,11 @@ pub mod hash_set {
 pub use crate::map::HashMap;
 pub use crate::set::HashSet;
 
+#[cfg(feature = "equivalent")]
+use equivalent::Equivalent;
+
+// This is only used as a fallback when building as part of `std`.
+#[cfg(not(feature = "equivalent"))]
 /// Key equivalence trait.
 ///
 /// This trait defines the function used to compare the input value with the
@@ -140,6 +145,7 @@ pub trait Equivalent<K: ?Sized> {
     fn equivalent(&self, key: &K) -> bool;
 }
 
+#[cfg(not(feature = "equivalent"))]
 impl<Q: ?Sized, K: ?Sized> Equivalent<K> for Q
 where
     Q: Eq,
