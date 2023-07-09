@@ -73,4 +73,4 @@ pub union UnionBool { b:bool }
 // CHECK: define {{(dso_local )?}}noundef zeroext i1 @test_UnionBool(i8 %b)
 #[no_mangle]
 pub fn test_UnionBool(b: UnionBool) -> bool { unsafe { b.b }  }
-// CHECK: %0 = trunc i8 %b to i1
+// CHECK: %_0 = trunc i8 %b to i1

@@ -400,10 +400,20 @@ changelog-seen = 2
 # =============================================================================
 [rust]
 
-# Whether or not to optimize the compiler and standard library.
+# Whether or not to optimize when compiling the compiler and standard library,
+# and what level of optimization to use.
 # WARNING: Building with optimize = false is NOT SUPPORTED. Due to bootstrapping,
 # building without optimizations takes much longer than optimizing. Further, some platforms
 # fail to build without this optimization (c.f. #65352).
+# The valid options are:
+# true - Enable optimizations.
+# false - Disable optimizations.
+# 0 - Disable optimizations.
+# 1 - Basic optimizations.
+# 2 - Some optimizations.
+# 3 - All optimizations.
+# "s" - Optimize for binary size.
+# "z" - Optimize for binary size, but also turn off loop vectorization.
 #optimize = true
 
 # Indicates that the build should be configured for debugging Rust. A
@@ -757,7 +767,7 @@ changelog-seen = 2
 # This option will override the same option under [build] section.
 #profiler = build.profiler (bool)
 
-# This option supports enable `rpath` in each target independently, 
+# This option supports enable `rpath` in each target independently,
 # and will override the same option under [rust] section. It only works on Unix platforms
 #rpath = rust.rpath (bool)
 

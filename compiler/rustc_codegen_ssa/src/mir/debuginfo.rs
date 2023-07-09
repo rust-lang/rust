@@ -328,8 +328,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         let local_ref = &self.locals[local];
 
-        // FIXME Should the return place be named?
-        let name = if bx.sess().fewer_names() || local == mir::RETURN_PLACE {
+        let name = if bx.sess().fewer_names() {
             None
         } else {
             Some(match whole_local_var.or(fallback_var.clone()) {
