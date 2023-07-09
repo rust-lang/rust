@@ -71,7 +71,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let len: u64 = ptrs.len().try_into().unwrap();
 
         let ptr_ty = this.machine.layouts.mut_raw_ptr.ty;
-        let array_layout = this.layout_of(Ty::new_array(tcx.tcx,ptr_ty, len)).unwrap();
+        let array_layout = this.layout_of(Ty::new_array(tcx.tcx, ptr_ty, len)).unwrap();
 
         match flags {
             // storage for pointers is allocated by miri

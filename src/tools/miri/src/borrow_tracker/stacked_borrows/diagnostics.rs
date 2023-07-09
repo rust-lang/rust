@@ -221,7 +221,10 @@ impl AllocHistory {
 impl<'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'history, 'ecx, 'mir, 'tcx> {
     pub fn start_grant(&mut self, perm: Permission) {
         let Operation::Retag(op) = &mut self.operation else {
-            unreachable!("start_grant must only be called during a retag, this is: {:?}", self.operation)
+            unreachable!(
+                "start_grant must only be called during a retag, this is: {:?}",
+                self.operation
+            )
         };
         op.permission = Some(perm);
 
@@ -286,7 +289,8 @@ impl<'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'history, 'ecx, 'mir, 'tcx> {
         tag: BorTag,
         protector_tag: Option<BorTag>,
     ) -> Option<TagHistory> {
-        let Some(created) = self.history
+        let Some(created) = self
+            .history
             .creations
             .iter()
             .rev()
@@ -315,22 +319,27 @@ impl<'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'history, 'ecx, 'mir, 'tcx> {
                         None
                     }
                 })
-            }).or_else(|| {
+            })
+            .or_else(|| {
                 // If we didn't find a retag that created this tag, it might be the base tag of
                 // this allocation.
                 if self.history.base.0.tag() == tag {
                     Some((
-                        format!("{tag:?} was created here, as the base tag for {:?}", self.history.id),
-                        self.history.base.1.data()
+                        format!(
+                            "{tag:?} was created here, as the base tag for {:?}",
+                            self.history.id
+                        ),
+                        self.history.base.1.data(),
                     ))
                 } else {
                     None
                 }
-            }) else {
-                // But if we don't have a creation event, this is related to a wildcard, and there
-                // is really nothing we can do to help.
-                return None;
-            };
+            })
+        else {
+            // But if we don't have a creation event, this is related to a wildcard, and there
+            // is really nothing we can do to help.
+            return None;
+        };
 
         let invalidated = self.history.invalidations.iter().rev().find_map(|event| {
             if event.tag == tag { Some(event.generate_diagnostic()) } else { None }

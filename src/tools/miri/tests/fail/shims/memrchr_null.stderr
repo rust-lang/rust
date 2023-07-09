@@ -1,0 +1,15 @@
+error: Undefined Behavior: memory access failed: null pointer is a dangling pointer (it has no provenance)
+  --> $DIR/memrchr_null.rs:LL:CC
+   |
+LL |         libc::memrchr(ptr::null(), 0, 0);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: null pointer is a dangling pointer (it has no provenance)
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: BACKTRACE:
+   = note: inside `main` at $DIR/memrchr_null.rs:LL:CC
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+
