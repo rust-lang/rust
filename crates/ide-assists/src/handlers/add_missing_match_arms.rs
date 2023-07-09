@@ -8,10 +8,7 @@ use itertools::Itertools;
 use syntax::ast::edit_in_place::Removable;
 use syntax::ast::{self, make, AstNode, HasName, MatchArmList, MatchExpr, Pat};
 
-use crate::{
-    utils::{self, render_snippet, Cursor},
-    AssistContext, AssistId, AssistKind, Assists,
-};
+use crate::{utils, AssistContext, AssistId, AssistKind, Assists};
 
 // Assist: add_missing_match_arms
 //
@@ -202,7 +199,7 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
         AssistId("add_missing_match_arms", AssistKind::QuickFix),
         "Fill match arms",
         target_range,
-        |builder| {
+        |edit| {
             let new_match_arm_list = match_arm_list.clone_for_update();
 
             // having any hidden variants means that we need a catch-all arm
@@ -252,24 +249,39 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
                 new_match_arm_list.add_arm(arm);
             }
 
-            let old_range = ctx.sema.original_range(match_arm_list.syntax()).range;
-            match (first_new_arm, ctx.config.snippet_cap) {
-                (Some(first_new_arm), Some(cap)) => {
-                    let extend_lifetime;
-                    let cursor =
-                        match first_new_arm.syntax().descendants().find_map(ast::WildcardPat::cast)
-                        {
-                            Some(it) => {
-                                extend_lifetime = it.syntax().clone();
-                                Cursor::Replace(&extend_lifetime)
-                            }
-                            None => Cursor::Before(first_new_arm.syntax()),
-                        };
-                    let snippet = render_snippet(cap, new_match_arm_list.syntax(), cursor);
-                    builder.replace_snippet(cap, old_range, snippet);
+            if let (Some(first_new_arm), Some(cap)) = (first_new_arm, ctx.config.snippet_cap) {
+                match first_new_arm.syntax().descendants().find_map(ast::WildcardPat::cast) {
+                    Some(it) => edit.add_placeholder_snippet(cap, it),
+                    None => edit.add_tabstop_before(cap, first_new_arm),
                 }
-                _ => builder.replace(old_range, new_match_arm_list.to_string()),
             }
+
+            // FIXME: Hack for mutable syntax trees not having great support for macros
+            // Just replace the element that the original range came from
+            let old_place = {
+                // Find the original element
+                let old_file_range = ctx.sema.original_range(match_arm_list.syntax());
+                let file = ctx.sema.parse(old_file_range.file_id);
+                let old_place = file.syntax().covering_element(old_file_range.range);
+
+                // Make `old_place` mut
+                match old_place {
+                    syntax::SyntaxElement::Node(it) => {
+                        syntax::SyntaxElement::from(edit.make_syntax_mut(it))
+                    }
+                    syntax::SyntaxElement::Token(it) => {
+                        // Don't have a way to make tokens mut, so instead make the parent mut
+                        // and find the token again
+                        let parent = edit.make_syntax_mut(it.parent().unwrap());
+                        let mut_token =
+                            parent.covering_element(it.text_range()).into_token().unwrap();
+
+                        syntax::SyntaxElement::from(mut_token)
+                    }
+                }
+            };
+
+            syntax::ted::replace(old_place, new_match_arm_list.syntax());
         },
     )
 }
