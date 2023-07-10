@@ -101,12 +101,9 @@ impl<'tcx> Tables<'tcx> {
             ty::Ref(_, _, _) => todo!(),
             ty::FnDef(_, _) => todo!(),
             ty::FnPtr(_) => todo!(),
-            ty::Placeholder(..) => todo!(),
             ty::Dynamic(_, _, _) => todo!(),
             ty::Closure(_, _) => todo!(),
             ty::Generator(_, _, _) => todo!(),
-            ty::GeneratorWitness(_) => todo!(),
-            ty::GeneratorWitnessMIR(_, _) => todo!(),
             ty::Never => todo!(),
             ty::Tuple(fields) => TyKind::RigidTy(RigidTy::Tuple(
                 fields.iter().map(|ty| self.intern_ty(ty)).collect(),
@@ -114,8 +111,13 @@ impl<'tcx> Tables<'tcx> {
             ty::Alias(_, _) => todo!(),
             ty::Param(_) => todo!(),
             ty::Bound(_, _) => todo!(),
-            ty::Infer(_) => todo!(),
-            ty::Error(_) => todo!(),
+            ty::Placeholder(..)
+            | ty::GeneratorWitness(_)
+            | ty::GeneratorWitnessMIR(_, _)
+            | ty::Infer(_)
+            | ty::Error(_) => {
+                unreachable!();
+            }
         }
     }
 
