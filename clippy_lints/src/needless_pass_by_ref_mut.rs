@@ -22,7 +22,7 @@ declare_clippy_lint! {
     /// ### What it does
     /// Check if a `&mut` function argument is actually used mutably.
     ///
-    /// Be careful if the function is publically reexported as it would break compatibility with
+    /// Be careful if the function is publicly reexported as it would break compatibility with
     /// users of this function.
     ///
     /// ### Why is this bad?
