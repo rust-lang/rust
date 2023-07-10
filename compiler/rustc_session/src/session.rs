@@ -1292,7 +1292,13 @@ impl Session {
         // As a result 16 was chosen here! Mostly because it was a power of 2
         // and most benchmarks agreed it was roughly a local optimum. Not very
         // scientific.
-        CodegenUnits::Default(16)
+        // njn: make this nicer
+        let n = 16;
+        let n = std::cmp::min(
+            n,
+            std::thread::available_parallelism().map_or(n, std::num::NonZeroUsize::get),
+        );
+        CodegenUnits::Default(n)
     }
 
     pub fn teach(&self, code: &DiagnosticId) -> bool {
