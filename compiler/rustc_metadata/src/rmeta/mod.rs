@@ -136,7 +136,8 @@ impl<T> LazyArray<T> {
 /// eagerly and in-order.
 struct LazyTable<I, T> {
     position: NonZeroUsize,
-    encoded_size: usize,
+    width: usize,
+    len: usize,
     _marker: PhantomData<fn(I) -> T>,
 }
 
@@ -147,9 +148,10 @@ impl<I: 'static, T: ParameterizedOverTcx> ParameterizedOverTcx for LazyTable<I, 
 impl<I, T> LazyTable<I, T> {
     fn from_position_and_encoded_size(
         position: NonZeroUsize,
-        encoded_size: usize,
+        width: usize,
+        len: usize,
     ) -> LazyTable<I, T> {
-        LazyTable { position, encoded_size, _marker: PhantomData }
+        LazyTable { position, width, len, _marker: PhantomData }
     }
 }
 

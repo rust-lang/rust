@@ -360,8 +360,8 @@ impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
         self.read_lazy_offset_then(|pos| LazyArray::from_position_and_num_elems(pos, len))
     }
 
-    fn read_lazy_table<I, T>(&mut self, len: usize) -> LazyTable<I, T> {
-        self.read_lazy_offset_then(|pos| LazyTable::from_position_and_encoded_size(pos, len))
+    fn read_lazy_table<I, T>(&mut self, width: usize, len: usize) -> LazyTable<I, T> {
+        self.read_lazy_offset_then(|pos| LazyTable::from_position_and_encoded_size(pos, width, len))
     }
 
     #[inline]
@@ -665,8 +665,9 @@ impl<'a, 'tcx, T> Decodable<DecodeContext<'a, 'tcx>> for LazyArray<T> {
 
 impl<'a, 'tcx, I: Idx, T> Decodable<DecodeContext<'a, 'tcx>> for LazyTable<I, T> {
     fn decode(decoder: &mut DecodeContext<'a, 'tcx>) -> Self {
+        let width = decoder.read_usize();
         let len = decoder.read_usize();
-        decoder.read_lazy_table(len)
+        decoder.read_lazy_table(width, len)
     }
 }
 
