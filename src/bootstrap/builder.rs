@@ -13,7 +13,7 @@ use std::process::Command;
 use std::time::{Duration, Instant};
 
 use crate::cache::{Cache, Interned, INTERNER};
-use crate::config::{SplitDebuginfo, TargetSelection};
+use crate::config::{DryRun, SplitDebuginfo, TargetSelection};
 use crate::doc;
 use crate::flags::{Color, Subcommand};
 use crate::install;
@@ -281,11 +281,15 @@ impl StepDescription {
 
     fn is_excluded(&self, builder: &Builder<'_>, pathset: &PathSet) -> bool {
         if builder.config.exclude.iter().any(|e| pathset.has(&e, builder.kind)) {
-            println!("Skipping {:?} because it is excluded", pathset);
+            if !matches!(builder.config.dry_run, DryRun::SelfCheck) {
+                println!("Skipping {:?} because it is excluded", pathset);
+            }
             return true;
         }
 
-        if !builder.config.exclude.is_empty() {
+        if !builder.config.exclude.is_empty()
+            && !matches!(builder.config.dry_run, DryRun::SelfCheck)
+        {
             builder.verbose(&format!(
                 "{:?} not skipped for {:?} -- not in {:?}",
                 pathset, self.name, builder.config.exclude
