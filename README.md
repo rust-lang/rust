@@ -22,8 +22,9 @@ Read ["Installation"] from [The Book].
 
 The Rust build system uses a Python script called `x.py` to build the compiler,
 which manages the bootstrapping process. It lives at the root of the project.
-It also uses a file named `config.toml` to determine various configuration settings for the build.
-You can see a full list of options in `config.example.toml`.
+It also uses a file named `config.toml` to determine various configuration
+settings for the build. You can see a full list of options in
+`config.example.toml`.
 
 The `x.py` command can be run directly on most Unix systems in the following
 format:
@@ -33,7 +34,8 @@ format:
 ```
 
 This is how the documentation and examples assume you are running `x.py`.
-See the [rustc dev guide][rustcguidebuild] if this does not work on your platform.
+See the [rustc dev guide][rustcguidebuild] if this does not work on your
+platform.
 
 More information about `x.py` can be found by running it with the `--help` flag
 or reading the [rustc dev guide][rustcguidebuild].
@@ -105,24 +107,26 @@ See [the rustc-dev-guide for more info][sysllvm].
 
    When complete, `./x.py install` will place several programs into
    `$PREFIX/bin`: `rustc`, the Rust compiler, and `rustdoc`, the
-   API-documentation tool. By default, it will also include [Cargo], Rust's package manager.
-   You can disable this behavior by passing `--set build.extended=false` to `./configure`.
+   API-documentation tool. By default, it will also include [Cargo], Rust's
+   package manager. You can disable this behavior by passing
+   `--set build.extended=false` to `./configure`.
 
 [Cargo]: https://github.com/rust-lang/cargo
 
 #### Configure and Make
 
-This project provides a configure script and makefile (the latter of which just invokes `x.py`).
-`./configure` is the recommended way to programatically generate a `config.toml`. `make` is not
-recommended (we suggest using `x.py` directly), but it is supported and we try not to break it
-unnecessarily.
+This project provides a configure script and makefile (the latter of which just
+invokes `x.py`). `./configure` is the recommended way to programatically
+generate a `config.toml`. `make` is not recommended (we suggest using `x.py`
+directly), but it is supported and we try not to break it unnecessarily.
 
 ```sh
 ./configure
 make && sudo make install
 ```
 
-`configure` generates a `config.toml` which can also be used with normal `x.py` invocations.
+`configure` generates a `config.toml` which can also be used with normal `x.py`
+invocations.
 
 ### Building on Windows
 
@@ -193,7 +197,7 @@ toolchain.
 #### MSVC
 
 MSVC builds of Rust additionally require an installation of Visual Studio 2017
-(or later) so `rustc` can use its linker.  The simplest way is to get
+(or later) so `rustc` can use its linker. The simplest way is to get
 [Visual Studio], check the "C++ build tools" and "Windows 10 SDK" workload.
 
 [Visual Studio]: https://visualstudio.microsoft.com/downloads/
@@ -234,7 +238,8 @@ Windows build triples are:
 
 The build triple can be specified by either specifying `--build=<triple>` when
 invoking `x.py` commands, or by creating a `config.toml` file (as described in
-[Building on a Unix-like system](#building-on-a-unix-like-system)), and passing `--set build.build=<triple>` to `./configure`.
+[Building on a Unix-like system](#building-on-a-unix-like-system)), and passing
+`--set build.build=<triple>` to `./configure`.
 
 ## Building Documentation
 

@@ -2524,6 +2524,8 @@ pub fn build_session_options(
 
     let error_format = parse_error_format(handler, matches, color, json_rendered);
 
+    handler.abort_if_error_and_set_error_format(error_format);
+
     let diagnostic_width = matches.opt_get("diagnostic-width").unwrap_or_else(|_| {
         handler.early_error("`--diagnostic-width` must be an positive integer");
     });

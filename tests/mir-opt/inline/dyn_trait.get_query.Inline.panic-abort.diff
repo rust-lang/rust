@@ -31,7 +31,7 @@
           _4 = &(*_2);
 -         _0 = try_execute_query::<<Q as Query>::C>(move _4) -> [return: bb2, unwind unreachable];
 +         StorageLive(_5);
-+         _5 = _4 as &dyn Cache<V = <Q as Query>::V> (Pointer(Unsize));
++         _5 = _4 as &dyn Cache<V = <Q as Query>::V> (PointerCoercion(Unsize));
 +         _0 = <dyn Cache<V = <Q as Query>::V> as Cache>::store_nocache(_5) -> [return: bb2, unwind unreachable];
       }
   

@@ -28,7 +28,7 @@
           _9 = const _;
           _3 = &(*_9);
           _2 = &raw const (*_3);
-          _1 = move _2 as *const [i32] (Pointer(Unsize));
+          _1 = move _2 as *const [i32] (PointerCoercion(Unsize));
           StorageDead(_2);
           StorageDead(_3);
           StorageLive(_5);

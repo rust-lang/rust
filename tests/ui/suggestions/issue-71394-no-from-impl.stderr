@@ -5,14 +5,14 @@ LL |     let _: &[i8] = data.into();
    |                         ^^^^ the trait `From<&[u8]>` is not implemented for `&[i8]`
    |
    = help: the following other types implement trait `From<T>`:
-             <&'input [u8] as From<gimli::read::endian_slice::EndianSlice<'input, Endian>>>
-             <[T; 10] as From<(T, T, T, T, T, T, T, T, T, T)>>
-             <[T; 11] as From<(T, T, T, T, T, T, T, T, T, T, T)>>
-             <[T; 12] as From<(T, T, T, T, T, T, T, T, T, T, T, T)>>
+             <[bool; LANES] as From<Mask<T, LANES>>>
+             <[T; N] as From<Simd<T, N>>>
              <[T; 1] as From<(T,)>>
              <[T; 2] as From<(T, T)>>
              <[T; 3] as From<(T, T, T)>>
              <[T; 4] as From<(T, T, T, T)>>
+             <[T; 5] as From<(T, T, T, T, T)>>
+             <[T; 6] as From<(T, T, T, T, T, T)>>
            and 7 others
    = note: required for `&[u8]` to implement `Into<&[i8]>`
 

@@ -9,8 +9,8 @@ LL |     x?;
    |
    = help: the trait `FromResidual<Option<Infallible>>` is not implemented for `Result<u32, ()>`
    = help: the following other types implement trait `FromResidual<R>`:
-             <Result<T, F> as FromResidual<Result<Infallible, E>>>
              <Result<T, F> as FromResidual<Yeet<E>>>
+             <Result<T, F> as FromResidual<Result<Infallible, E>>>
 
 error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromResidual`)
   --> $DIR/try-on-option.rs:11:6

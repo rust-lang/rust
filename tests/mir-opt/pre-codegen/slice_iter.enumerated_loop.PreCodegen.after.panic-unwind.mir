@@ -131,7 +131,7 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
         _9 = _4 as *mut T (PtrToPtr);
         StorageLive(_10);
         StorageLive(_24);
-        _10 = _9 as *const T (Pointer(MutToConstPointer));
+        _10 = _9 as *const T (PointerCoercion(MutToConstPointer));
         _11 = NonNull::<T> { pointer: _10 };
         StorageDead(_24);
         StorageDead(_10);

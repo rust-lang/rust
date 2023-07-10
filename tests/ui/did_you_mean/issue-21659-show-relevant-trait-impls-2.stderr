@@ -7,12 +7,12 @@ LL |     f1.foo(1usize);
    |        required by a bound introduced by this call
    |
    = help: the following other types implement trait `Foo<A>`:
+             <Bar as Foo<i8>>
              <Bar as Foo<i16>>
              <Bar as Foo<i32>>
-             <Bar as Foo<i8>>
+             <Bar as Foo<u8>>
              <Bar as Foo<u16>>
              <Bar as Foo<u32>>
-             <Bar as Foo<u8>>
 
 error: aborting due to previous error
 

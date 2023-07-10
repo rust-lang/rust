@@ -78,7 +78,7 @@ fn slice_get_unchecked_mut_range(_1: &mut [u32], _2: std::ops::Range<usize>) -> 
         StorageLive(_12);
         StorageLive(_11);
         StorageLive(_10);
-        _10 = _9 as *const () (Pointer(MutToConstPointer));
+        _10 = _9 as *const () (PointerCoercion(MutToConstPointer));
         _11 = ptr::metadata::PtrComponents::<[u32]> { data_address: move _10, metadata: _6 };
         StorageDead(_10);
         _12 = ptr::metadata::PtrRepr::<[u32]> { const_ptr: move _11 };

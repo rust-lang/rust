@@ -1,5 +1,5 @@
-// FIXME #110395
-// ignore-linux
+// This test was failing on Linux for a while due to #110393 somehow making
+// the unused functions not instrumented, but it seems to be fine now.
 
 // Validates coverage now works with optimizations
 // compile-flags: -C opt-level=3

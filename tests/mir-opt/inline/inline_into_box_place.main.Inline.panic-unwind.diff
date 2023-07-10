@@ -181,7 +181,7 @@
 +         StorageDead(_17);
 +         StorageLive(_19);
 +         StorageLive(_20);
-+         _19 = _16 as *const u8 (Pointer(MutToConstPointer));
++         _19 = _16 as *const u8 (PointerCoercion(MutToConstPointer));
 +         _15 = NonNull::<u8> { pointer: _19 };
 +         StorageDead(_20);
 +         StorageDead(_19);

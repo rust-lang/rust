@@ -1,0 +1,16 @@
+error[E0277]: the trait bound `impl Foo<u8>: Foo<char>` is not satisfied
+  --> $DIR/return-dont-satisfy-bounds.rs:13:34
+   |
+LL |     fn foo<F2: Foo<u8>>(self) -> impl Foo<u8> {
+   |                                  ^^^^^^^^^^^^ the trait `Foo<char>` is not implemented for `impl Foo<u8>`
+   |
+   = help: the trait `Foo<char>` is implemented for `Bar`
+note: required by a bound in `Foo::{opaque#0}`
+  --> $DIR/return-dont-satisfy-bounds.rs:7:30
+   |
+LL |     fn foo<F2>(self) -> impl Foo<T>;
+   |                              ^^^^^^ required by this bound in `Foo::{opaque#0}`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

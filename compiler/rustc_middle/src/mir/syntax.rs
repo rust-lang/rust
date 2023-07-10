@@ -7,7 +7,7 @@ use super::{BasicBlock, Constant, Local, SwitchTargets, UserTypeProjection};
 
 use crate::mir::coverage::{CodeRegion, CoverageKind};
 use crate::traits::Reveal;
-use crate::ty::adjustment::PointerCast;
+use crate::ty::adjustment::PointerCoercion;
 use crate::ty::subst::SubstsRef;
 use crate::ty::{self, List, Ty};
 use crate::ty::{Region, UserTypeAnnotationIndex};
@@ -1230,9 +1230,9 @@ pub enum CastKind {
     /// An address-to-pointer cast that picks up an exposed provenance.
     /// See the docs on `from_exposed_addr` for more details.
     PointerFromExposedAddress,
-    /// All sorts of pointer-to-pointer casts. Note that reference-to-raw-ptr casts are
+    /// Pointer related casts that are done by coercions. Note that reference-to-raw-ptr casts are
     /// translated into `&raw mut/const *r`, i.e., they are not actually casts.
-    Pointer(PointerCast),
+    PointerCoercion(PointerCoercion),
     /// Cast into a dyn* object.
     DynStar,
     IntToInt,

@@ -302,7 +302,7 @@ concurrency:
   # For a given workflow, if we push to the same branch, cancel all previous builds on that branch.
   # We add an exception for try builds (try branch) and unrolled rollup builds (try-perf), which
   # are all triggered on the same branch, but which should be able to run concurrently.
-  group: ${{ ((github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf') && github.sha) || github.ref }}
+  group: ${{ github.workflow }}-${{ ((github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf') && github.sha) || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -643,7 +643,7 @@ jobs:
                 --target=x86_64-pc-windows-msvc
                 --enable-full-tools
                 --enable-profiler
-              SCRIPT: PGO_HOST=x86_64-pc-windows-msvc python src/ci/stage-build.py python x.py dist bootstrap --include-default-paths
+              SCRIPT: python x.py build --set rust.debug=true opt-dist && PGO_HOST=x86_64-pc-windows-msvc ./build/x86_64-pc-windows-msvc/stage0-tools-bin/opt-dist python x.py dist bootstrap --include-default-paths
               DIST_REQUIRE_ALL_TOOLS: 1
             <<: *job-windows-8c
 

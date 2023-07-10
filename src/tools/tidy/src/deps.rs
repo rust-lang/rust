@@ -40,10 +40,12 @@ const EXCEPTIONS: &[(&str, &str)] = &[
     ("ar_archive_writer", "Apache-2.0 WITH LLVM-exception"), // rustc
     ("colored", "MPL-2.0"),                                  // rustfmt
     ("dissimilar", "Apache-2.0"),                            // rustdoc, rustc_lexer (few tests) via expect-test, (dev deps)
+    ("encoding_rs", "(Apache-2.0 OR MIT) AND BSD-3-Clause"), // opt-dist
     ("fluent-langneg", "Apache-2.0"),                        // rustc (fluent translations)
     ("fortanix-sgx-abi", "MPL-2.0"),                         // libstd but only for `sgx` target. FIXME: this dependency violates the documentation comment above.
     ("instant", "BSD-3-Clause"),                             // rustc_driver/tracing-subscriber/parking_lot
     ("mdbook", "MPL-2.0"),                                   // mdbook
+    ("openssl", "Apache-2.0"),                               // opt-dist
     ("ryu", "Apache-2.0 OR BSL-1.0"),                        // cargo/... (because of serde)
     ("self_cell", "Apache-2.0"),                             // rustc (fluent translations)
     ("snap", "BSD-3-Clause"),                                // rustc
@@ -142,6 +144,8 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "elsa",
     "ena",
     "equivalent",
+    "errno",
+    "errno-dragonfly",
     "expect-test",
     "fallible-iterator", // dependency of `thorin`
     "fastrand",

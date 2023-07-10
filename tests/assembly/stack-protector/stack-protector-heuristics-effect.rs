@@ -3,6 +3,7 @@
 // ignore-macos slightly different policy on stack protection of arrays
 // ignore-windows stack check code uses different function names
 // ignore-nvptx64 stack protector is not supported
+// ignore-wasm32-bare
 // [all] compile-flags: -Z stack-protector=all
 // [strong] compile-flags: -Z stack-protector=strong
 // [basic] compile-flags: -Z stack-protector=basic

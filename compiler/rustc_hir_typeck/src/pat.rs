@@ -394,8 +394,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut pat_ty = ty;
         if let hir::ExprKind::Lit(Spanned { node: ast::LitKind::ByteStr(..), .. }) = lt.kind {
             let expected = self.structurally_resolve_type(span, expected);
-            if let ty::Ref(_, inner_ty, _) = expected.kind()
-                && matches!(inner_ty.kind(), ty::Slice(_))
+            if let ty::Ref(_, inner_ty, _) = *expected.kind()
+                && self.try_structurally_resolve_type(span, inner_ty).is_slice()
             {
                 let tcx = self.tcx;
                 trace!(?lt.hir_id.local_id, "polymorphic byte string lit");

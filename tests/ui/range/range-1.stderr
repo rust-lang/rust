@@ -12,13 +12,13 @@ LL |     for i in false..true {}
    |
    = help: the following other types implement trait `Step`:
              char
-             i128
+             isize
+             i8
              i16
              i32
              i64
-             i8
-             isize
-             u128
+             i128
+             usize
            and 5 others
    = note: required for `std::ops::Range<bool>` to implement `Iterator`
    = note: required for `std::ops::Range<bool>` to implement `IntoIterator`

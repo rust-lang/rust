@@ -38,7 +38,7 @@ pub fn replace_ref_str<'a>(r: &mut &'a str, v: &'a str) -> &'a str {
 pub fn replace_short_array(r: &mut [u32; 3], v: [u32; 3]) -> [u32; 3] {
     // CHECK-NOT: alloca
     // CHECK: %[[R:.+]] = load <3 x i32>, ptr %r, align 4
-    // CHECK: store <3 x i32> %[[R]], ptr %0
+    // CHECK: store <3 x i32> %[[R]], ptr %result
     // CHECK: %[[V:.+]] = load <3 x i32>, ptr %v, align 4
     // CHECK: store <3 x i32> %[[V]], ptr %r
     std::mem::replace(r, v)
