@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 # https://github.com/rust-lang/rustfmt/issues/5675
 export LD_LIBRARY_PATH=$(rustc --print sysroot)/lib:$LD_LIBRARY_PATH
 
@@ -143,9 +145,15 @@ function check_repo() {
         init_submodules $SUBMODULES
     fi
 
+
+    # rustfmt --check returns 1 if a diff was found
+    # Also check_diff returns 1 if there was a diff between master rustfmt and the feature branch
+    # so we want to ignore the exit status check
+    set +e
     check_diff $REPO_NAME
     # append the status of running `check_diff` to the STATUSES array
     STATUSES+=($?)
+    set -e
 
     echo "removing tmp_dir $tmp_dir"
     rm -rf $tmp_dir
