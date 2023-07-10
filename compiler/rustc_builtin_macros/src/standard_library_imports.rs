@@ -44,20 +44,29 @@ pub fn inject(
 
     // .rev() to preserve ordering above in combination with insert(0, ...)
     for &name in names.iter().rev() {
-        let ident = if edition >= Edition2018 {
-            Ident::new(name, span)
-        } else {
-            Ident::new(name, call_site)
-        };
-        krate.items.insert(
-            0,
+        let ident_span = if edition >= Edition2018 { span } else { call_site };
+        let item = if name == sym::compiler_builtins {
+            // compiler_builtins is a private implementation detail. We only
+            // need to insert it into the crate graph for linking and should not
+            // expose any of its public API.
+            //
+            // FIXME(#113634) We should inject this during post-processing like
+            // we do for the panic runtime, profiler runtime, etc.
             cx.item(
                 span,
-                ident,
+                Ident::new(kw::Underscore, ident_span),
+                thin_vec![],
+                ast::ItemKind::ExternCrate(Some(name)),
+            )
+        } else {
+            cx.item(
+                span,
+                Ident::new(name, ident_span),
                 thin_vec![cx.attr_word(sym::macro_use, span)],
                 ast::ItemKind::ExternCrate(None),
-            ),
-        );
+            )
+        };
+        krate.items.insert(0, item);
     }
 
     // The crates have been injected, the assumption is that the first one is

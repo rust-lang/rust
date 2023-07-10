@@ -19,17 +19,17 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
     Punct {
         ch: '#',
         spacing: Alone,
-        span: $DIR/allowed-attr-stmt-expr.rs:35:9: 35:10 (#11),
+        span: $DIR/allowed-attr-stmt-expr.rs:35:9: 35:10 (#10),
     },
     Group {
         delimiter: Bracket,
         stream: TokenStream [
             Ident {
                 ident: "rustc_dummy",
-                span: $DIR/allowed-attr-stmt-expr.rs:35:11: 35:22 (#11),
+                span: $DIR/allowed-attr-stmt-expr.rs:35:11: 35:22 (#10),
             },
         ],
-        span: $DIR/allowed-attr-stmt-expr.rs:35:10: 35:23 (#11),
+        span: $DIR/allowed-attr-stmt-expr.rs:35:10: 35:23 (#10),
     },
     Ident {
         ident: "struct",
@@ -206,17 +206,17 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
     Punct {
         ch: '#',
         spacing: Alone,
-        span: $DIR/allowed-attr-stmt-expr.rs:35:9: 35:10 (#32),
+        span: $DIR/allowed-attr-stmt-expr.rs:35:9: 35:10 (#31),
     },
     Group {
         delimiter: Bracket,
         stream: TokenStream [
             Ident {
                 ident: "rustc_dummy",
-                span: $DIR/allowed-attr-stmt-expr.rs:35:11: 35:22 (#32),
+                span: $DIR/allowed-attr-stmt-expr.rs:35:11: 35:22 (#31),
             },
         ],
-        span: $DIR/allowed-attr-stmt-expr.rs:35:10: 35:23 (#32),
+        span: $DIR/allowed-attr-stmt-expr.rs:35:10: 35:23 (#31),
     },
     Punct {
         ch: '#',

@@ -6,19 +6,19 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
         stream: TokenStream [
             Ident {
                 ident: "struct",
-                span: $DIR/nonterminal-token-hygiene.rs:31:5: 31:11 (#5),
+                span: $DIR/nonterminal-token-hygiene.rs:31:5: 31:11 (#4),
             },
             Ident {
                 ident: "S",
-                span: $DIR/nonterminal-token-hygiene.rs:31:12: 31:13 (#5),
+                span: $DIR/nonterminal-token-hygiene.rs:31:12: 31:13 (#4),
             },
             Punct {
                 ch: ';',
                 spacing: Alone,
-                span: $DIR/nonterminal-token-hygiene.rs:31:13: 31:14 (#5),
+                span: $DIR/nonterminal-token-hygiene.rs:31:13: 31:14 (#4),
             },
         ],
-        span: $DIR/nonterminal-token-hygiene.rs:21:27: 21:32 (#6),
+        span: $DIR/nonterminal-token-hygiene.rs:21:27: 21:32 (#5),
     },
 ]
 #![feature /* 0#0 */(prelude_import)]
@@ -39,8 +39,7 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
 use ::core /* 0#1 */::prelude /* 0#1 */::rust_2015 /* 0#1 */::*;
 #[macro_use /* 0#1 */]
 extern crate core /* 0#2 */;
-#[macro_use /* 0#1 */]
-extern crate compiler_builtins /* 0#2 */;
+extern crate compiler_builtins /* 442 */ as _ /* 0#2 */;
 // Don't load unnecessary hygiene information from std
 extern crate std /* 0#0 */;
 
@@ -59,9 +58,9 @@ macro_rules! outer
 }
 
 struct S /* 0#0 */;
-macro inner /* 0#4 */ { () => { print_bang! { struct S; } } }
+macro inner /* 0#3 */ { () => { print_bang! { struct S; } } }
 
-struct S /* 0#5 */;
+struct S /* 0#4 */;
 // OK, not a duplicate definition of `S`
 
 fn main /* 0#0 */() {}
@@ -71,22 +70,20 @@ Expansions:
 crate0::{{expn0}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: Root
 crate0::{{expn1}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: AstPass(StdImports)
 crate0::{{expn2}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: Macro(Bang, "outer")
-crate0::{{expn3}}: parent: crate0::{{expn2}}, call_site_ctxt: #4, def_site_ctxt: #4, kind: Macro(Bang, "inner")
-crate0::{{expn4}}: parent: crate0::{{expn3}}, call_site_ctxt: #6, def_site_ctxt: #0, kind: Macro(Bang, "print_bang")
+crate0::{{expn3}}: parent: crate0::{{expn2}}, call_site_ctxt: #3, def_site_ctxt: #3, kind: Macro(Bang, "inner")
+crate0::{{expn4}}: parent: crate0::{{expn3}}, call_site_ctxt: #5, def_site_ctxt: #0, kind: Macro(Bang, "print_bang")
 crate1::{{expnNNN}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: Macro(Attr, "derive")
 crate1::{{expnNNN}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: Macro(Attr, "derive")
 crate1::{{expnNNN}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: Macro(Bang, "include")
-crate2::{{expn1}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: AstPass(StdImports)
 
 SyntaxContexts:
 #0: parent: #0, outer_mark: (crate0::{{expn0}}, Opaque)
 #1: parent: #0, outer_mark: (crate0::{{expn1}}, Opaque)
 #2: parent: #0, outer_mark: (crate0::{{expn1}}, Transparent)
-#3: parent: #0, outer_mark: (crate2::{{expn1}}, Opaque)
-#4: parent: #0, outer_mark: (crate0::{{expn2}}, SemiTransparent)
-#5: parent: #0, outer_mark: (crate0::{{expn3}}, Opaque)
-#6: parent: #4, outer_mark: (crate0::{{expn3}}, Opaque)
-#7: parent: #0, outer_mark: (crate0::{{expn4}}, Opaque)
-#8: parent: #6, outer_mark: (crate0::{{expn4}}, Transparent)
-#9: parent: #5, outer_mark: (crate0::{{expn4}}, SemiTransparent)
+#3: parent: #0, outer_mark: (crate0::{{expn2}}, SemiTransparent)
+#4: parent: #0, outer_mark: (crate0::{{expn3}}, Opaque)
+#5: parent: #3, outer_mark: (crate0::{{expn3}}, Opaque)
+#6: parent: #0, outer_mark: (crate0::{{expn4}}, Opaque)
+#7: parent: #5, outer_mark: (crate0::{{expn4}}, Transparent)
+#8: parent: #4, outer_mark: (crate0::{{expn4}}, SemiTransparent)
 */
