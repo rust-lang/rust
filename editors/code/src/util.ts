@@ -69,20 +69,24 @@ export async function sendRequestWithRetry<TParam, TRet>(
             return await (token
                 ? client.sendRequest(reqType, param, token)
                 : client.sendRequest(reqType, param));
-        } catch (error) {
+        } catch (error: unknown) {
             if (delay === null) {
                 log.warn("LSP request timed out", { method: reqType.method, param, error });
                 throw error;
             }
-            if (error.code === lc.LSPErrorCodes.RequestCancelled) {
-                throw error;
+
+            if (error instanceof lc.ResponseError) {
+                switch (error.code) {
+                    case lc.LSPErrorCodes.RequestCancelled:
+                        throw error;
+                    case lc.LSPErrorCodes.ContentModified:
+                        await sleep(delay);
+                        continue;
+                }
             }
 
-            if (error.code !== lc.LSPErrorCodes.ContentModified) {
-                log.warn("LSP request failed", { method: reqType.method, param, error });
-                throw error;
-            }
-            await sleep(delay);
+            log.warn("LSP request failed", { method: reqType.method, param, error });
+            throw error;
         }
     }
     throw "unreachable";
