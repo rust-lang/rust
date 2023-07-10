@@ -20,8 +20,8 @@ use ::mbe::TokenMap;
 use base_db::{fixture::WithFixture, ProcMacro, SourceDatabase};
 use expect_test::Expect;
 use hir_expand::{
-    db::{ExpandDatabase, TokenExpander},
-    AstId, InFile, MacroDefId, MacroDefKind, MacroFile,
+    db::{DeclarativeMacroExpander, ExpandDatabase},
+    AstId, InFile, MacroFile,
 };
 use stdx::format_to;
 use syntax::{
@@ -100,32 +100,29 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
         let call_offset = macro_.syntax().text_range().start().into();
         let file_ast_id = db.ast_id_map(source.file_id).ast_id(&macro_);
         let ast_id = AstId::new(source.file_id, file_ast_id.upcast());
-        let kind = MacroDefKind::Declarative(ast_id);
 
-        let macro_def = db
-            .macro_def(MacroDefId { krate, kind, local_inner: false, allow_internal_unsafe: false })
-            .unwrap();
-        if let TokenExpander::DeclarativeMacro { mac, def_site_token_map } = &*macro_def {
-            let tt = match &macro_ {
-                ast::Macro::MacroRules(mac) => mac.token_tree().unwrap(),
-                ast::Macro::MacroDef(_) => unimplemented!(""),
-            };
+        let DeclarativeMacroExpander { mac, def_site_token_map } =
+            &*db.decl_macro_expander(krate, ast_id);
+        assert_eq!(mac.err(), None);
+        let tt = match &macro_ {
+            ast::Macro::MacroRules(mac) => mac.token_tree().unwrap(),
+            ast::Macro::MacroDef(_) => unimplemented!(""),
+        };
 
-            let tt_start = tt.syntax().text_range().start();
-            tt.syntax().descendants_with_tokens().filter_map(SyntaxElement::into_token).for_each(
-                |token| {
-                    let range = token.text_range().checked_sub(tt_start).unwrap();
-                    if let Some(id) = def_site_token_map.token_by_range(range) {
-                        let offset = (range.end() + tt_start).into();
-                        text_edits.push((offset..offset, format!("#{}", id.0)));
-                    }
-                },
-            );
-            text_edits.push((
-                call_offset..call_offset,
-                format!("// call ids will be shifted by {:?}\n", mac.shift()),
-            ));
-        }
+        let tt_start = tt.syntax().text_range().start();
+        tt.syntax().descendants_with_tokens().filter_map(SyntaxElement::into_token).for_each(
+            |token| {
+                let range = token.text_range().checked_sub(tt_start).unwrap();
+                if let Some(id) = def_site_token_map.token_by_range(range) {
+                    let offset = (range.end() + tt_start).into();
+                    text_edits.push((offset..offset, format!("#{}", id.0)));
+                }
+            },
+        );
+        text_edits.push((
+            call_offset..call_offset,
+            format!("// call ids will be shifted by {:?}\n", mac.shift()),
+        ));
     }
 
     for macro_call in source_file.syntax().descendants().filter_map(ast::MacroCall::cast) {

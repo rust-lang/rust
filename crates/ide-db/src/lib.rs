@@ -201,7 +201,7 @@ impl RootDatabase {
             // hir_db::ParseMacroExpansionQuery
             // hir_db::InternMacroCallQuery
             hir_db::MacroArgTextQuery
-            hir_db::MacroDefQuery
+            hir_db::DeclMacroExpanderQuery
             // hir_db::MacroExpandQuery
             hir_db::ExpandProcMacroQuery
             hir_db::HygieneFrameQuery

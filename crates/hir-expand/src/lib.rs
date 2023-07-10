@@ -274,7 +274,7 @@ impl HirFileId {
 
         let arg_tt = loc.kind.arg(db)?;
 
-        let macro_def = db.macro_def(loc.def).ok()?;
+        let macro_def = db.macro_def(loc.def);
         let (parse, exp_map) = db.parse_macro_expansion(macro_file).value;
         let macro_arg = db.macro_arg(macro_file.macro_call_id).unwrap_or_else(|| {
             Arc::new((
@@ -287,7 +287,7 @@ impl HirFileId {
         let def = loc.def.ast_id().left().and_then(|id| {
             let def_tt = match id.to_node(db) {
                 ast::Macro::MacroRules(mac) => mac.token_tree()?,
-                ast::Macro::MacroDef(_) if matches!(*macro_def, TokenExpander::BuiltinAttr(_)) => {
+                ast::Macro::MacroDef(_) if matches!(macro_def, TokenExpander::BuiltInAttr(_)) => {
                     return None
                 }
                 ast::Macro::MacroDef(mac) => mac.body()?,
@@ -633,7 +633,7 @@ pub struct ExpansionInfo {
     /// The `macro_rules!` or attribute input.
     attr_input_or_mac_def: Option<InFile<ast::TokenTree>>,
 
-    macro_def: Arc<TokenExpander>,
+    macro_def: TokenExpander,
     macro_arg: Arc<(tt::Subtree, mbe::TokenMap, fixup::SyntaxFixupUndoInfo)>,
     /// A shift built from `macro_arg`'s subtree, relevant for attributes as the item is the macro arg
     /// and as such we need to shift tokens if they are part of an attributes input instead of their item.
@@ -780,9 +780,9 @@ impl ExpansionInfo {
             }
             _ => match origin {
                 mbe::Origin::Call => (&self.macro_arg.1, self.arg.clone()),
-                mbe::Origin::Def => match (&*self.macro_def, &self.attr_input_or_mac_def) {
-                    (TokenExpander::DeclarativeMacro { def_site_token_map, .. }, Some(tt)) => {
-                        (def_site_token_map, tt.syntax().cloned())
+                mbe::Origin::Def => match (&self.macro_def, &self.attr_input_or_mac_def) {
+                    (TokenExpander::DeclarativeMacro(expander), Some(tt)) => {
+                        (&expander.def_site_token_map, tt.syntax().cloned())
                     }
                     _ => panic!("`Origin::Def` used with non-`macro_rules!` macro"),
                 },
