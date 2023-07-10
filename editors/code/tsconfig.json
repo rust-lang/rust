@@ -10,8 +10,8 @@
         "sourceMap": true,
         "rootDir": ".",
         "newLine": "LF",
-        // These disables some enhancement type checking options
-        // to update typescript version without any code change.
+
+        // FIXME: https://github.com/rust-lang/rust-analyzer/issues/15253
         "exactOptionalPropertyTypes": false
     },
     "exclude": ["node_modules", ".vscode-test"],
