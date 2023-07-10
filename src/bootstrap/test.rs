@@ -940,6 +940,13 @@ impl Step for RustdocJSStd {
                 self.target,
                 DocumentationFormat::HTML,
             ));
+            let _guard = builder.msg(
+                Kind::Test,
+                builder.top_stage,
+                "rustdoc-js-std",
+                builder.config.build,
+                self.target,
+            );
             builder.run(&mut command);
         } else {
             builder.info("No nodejs found, skipping \"tests/rustdoc-js-std\" tests");
@@ -2860,16 +2867,14 @@ impl Step for RustInstaller {
             &[],
         );
 
-        run_cargo_test(
-            cargo,
-            &[],
-            &[],
-            "installer",
+        let _guard = builder.msg(
+            Kind::Test,
+            compiler.stage,
             "rust-installer",
-            compiler,
             bootstrap_host,
-            builder,
+            bootstrap_host,
         );
+        run_cargo_test(cargo, &[], &[], "installer", None, compiler, bootstrap_host, builder);
 
         // We currently don't support running the test.sh script outside linux(?) environments.
         // Eventually this should likely migrate to #[test]s in rust-installer proper rather than a
