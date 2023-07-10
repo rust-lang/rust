@@ -1505,6 +1505,8 @@ fn first_non_private(
     hir_id: hir::HirId,
     path: &hir::Path<'_>,
 ) -> Option<Path> {
+    use std::mem::transmute;
+
     let (parent_def_id, mut ident) = match &path.segments[..] {
         [] => return None,
         // Relative paths are available in the same scope as the owner.
@@ -1574,9 +1576,27 @@ fn first_non_private(
                 //
                 // 1. We found a public reexport.
                 // 2. We didn't find a public reexport so it's the "end type" path.
-                if let Some((path, res)) = last_path_res {
-                    let path = hir::Path { segments: path.segments, res: *res, span: path.span };
-                    return Some(clean_path(&path, cx));
+                if let Some((new_path, _)) = last_path_res {
+                    // In here we need to play with the path data one last time to provide it the
+                    // missing `args` and `res` of the final `Path` we get, which, since it comes
+                    // from a re-export, doesn't have the generics that were originally there, so
+                    // we add them by hand.
+                    let mut segments = new_path.segments.to_vec();
+                    if let Some(last) = segments.last_mut() {
+                        // `transmute` is needed because we are using a wrong lifetime. Since
+                        // `segments` will be dropped at the end of this block, it's fine.
+                        last.args = unsafe {
+                            transmute(
+                                path.segments.last().as_ref().unwrap().args.clone(),
+                            )
+                        };
+                        last.res = path.res;
+                    }
+                    // `transmute` is needed because we are using a wrong lifetime. Since
+                    // `segments` will be dropped at the end of this block, it's fine.
+                    let segments = unsafe { transmute(segments.as_slice()) };
+                    let new_path = hir::Path { segments, res: path.res, span: new_path.span };
+                    return Some(clean_path(&new_path, cx));
                 }
                 // If `last_path_res` is `None`, it can mean two things:
                 //
