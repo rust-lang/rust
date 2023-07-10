@@ -97,7 +97,7 @@ def _download(path, url, probably_big, verbose, exception):
         print("downloading {}".format(url), file=sys.stderr)
 
     try:
-        if probably_big or verbose:
+        if (probably_big or verbose) and "GITHUB_ACTIONS" not in os.environ:
             option = "-#"
         else:
             option = "-s"
