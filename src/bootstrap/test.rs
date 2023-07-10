@@ -1893,14 +1893,6 @@ impl Step for BookTest {
     ///
     /// This uses the `rustdoc` that sits next to `compiler`.
     fn run(self, builder: &Builder<'_>) {
-        let host = self.compiler.host;
-        let _guard = builder.msg(
-            Kind::Test,
-            self.compiler.stage,
-            &format!("book {}", self.name),
-            host,
-            host,
-        );
         // External docs are different from local because:
         // - Some books need pre-processing by mdbook before being tested.
         // - They need to save their state to toolstate.
@@ -1943,7 +1935,7 @@ impl BookTest {
         let _guard = builder.msg(
             Kind::Test,
             compiler.stage,
-            format_args!("rustbook {}", self.path.display()),
+            format_args!("mdbook {}", self.path.display()),
             compiler.host,
             compiler.host,
         );
@@ -1959,8 +1951,12 @@ impl BookTest {
     /// This runs `rustdoc --test` on all `.md` files in the path.
     fn run_local_doc(self, builder: &Builder<'_>) {
         let compiler = self.compiler;
+        let host = self.compiler.host;
 
-        builder.ensure(compile::Std::new(compiler, compiler.host));
+        builder.ensure(compile::Std::new(compiler, host));
+
+        let _guard =
+            builder.msg(Kind::Test, compiler.stage, &format!("book {}", self.name), host, host);
 
         // Do a breadth-first traversal of the `src/doc` directory and just run
         // tests for all files that end in `*.md`
