@@ -55,7 +55,9 @@ impl TokenExpander {
             TokenExpander::Builtin(it) => it.expand(db, id, tt).map_err(Into::into),
             TokenExpander::BuiltinEager(it) => it.expand(db, id, tt).map_err(Into::into),
             TokenExpander::BuiltinAttr(it) => it.expand(db, id, tt),
-            TokenExpander::BuiltinDerive(it) => it.expand(db, id, tt),
+            TokenExpander::BuiltinDerive(_) => {
+                unreachable!("builtin derives should be expanded manually")
+            }
             TokenExpander::ProcMacro(_) => {
                 unreachable!("ExpandDatabase::expand_proc_macro should be used for proc macros")
             }
@@ -232,6 +234,11 @@ pub fn expand_speculative(
         MacroDefKind::BuiltInAttr(BuiltinAttrExpander::Derive, _) => {
             pseudo_derive_attr_expansion(&tt, attr_arg.as_ref()?)
         }
+        MacroDefKind::BuiltInDerive(expander, ..) => {
+            // this cast is a bit sus, can we avoid losing the typedness here?
+            let adt = ast::Adt::cast(speculative_args.clone()).unwrap();
+            expander.expand(db, actual_macro_call, &adt, &spec_args_tmap)
+        }
         _ => macro_def.expand(db, actual_macro_call, &tt),
     };
 
@@ -333,6 +340,9 @@ fn macro_arg(
     Some(Arc::new((tt, tmap, fixups.undo_info)))
 }
 
+/// Certain macro calls expect some nodes in the input to be preprocessed away, namely:
+/// - derives expect all `#[derive(..)]` invocations up to the currently invoked one to be stripped
+/// - attributes expect the invoking attribute to be stripped
 fn censor_for_macro_input(loc: &MacroCallLoc, node: &SyntaxNode) -> FxHashSet<SyntaxNode> {
     // FIXME: handle `cfg_attr`
     (|| {
@@ -451,37 +461,59 @@ fn macro_expand(db: &dyn ExpandDatabase, id: MacroCallId) -> ExpandResult<Arc<tt
         return ExpandResult { value: Arc::new(arg.0.clone()), err: error.clone() };
     }
 
-    if let MacroDefKind::ProcMacro(..) = loc.def.kind {
-        return db.expand_proc_macro(id);
-    }
+    let (ExpandResult { value: mut tt, mut err }, tmap) = match loc.def.kind {
+        MacroDefKind::ProcMacro(..) => return db.expand_proc_macro(id),
+        MacroDefKind::BuiltInDerive(expander, ..) => {
+            let arg = db.macro_arg_text(id).unwrap();
 
-    let expander = match db.macro_def(loc.def) {
-        Ok(it) => it,
-        // FIXME: We should make sure to enforce a variant that invalid macro
-        // definitions do not get expanders that could reach this call path!
-        Err(err) => {
-            return ExpandResult {
-                value: Arc::new(tt::Subtree {
-                    delimiter: tt::Delimiter::UNSPECIFIED,
-                    token_trees: vec![],
-                }),
-                err: Some(ExpandError::other(format!("invalid macro definition: {err}"))),
-            }
+            let node = SyntaxNode::new_root(arg);
+            let censor = censor_for_macro_input(&loc, &node);
+            let mut fixups = fixup::fixup_syntax(&node);
+            fixups.replace.extend(censor.into_iter().map(|node| (node.into(), Vec::new())));
+            let (tmap, _) = mbe::syntax_node_to_token_map_with_modifications(
+                &node,
+                fixups.token_map,
+                fixups.next_id,
+                fixups.replace,
+                fixups.append,
+            );
+
+            // this cast is a bit sus, can we avoid losing the typedness here?
+            let adt = ast::Adt::cast(node).unwrap();
+            (expander.expand(db, id, &adt, &tmap), Some((tmap, fixups.undo_info)))
+        }
+        _ => {
+            let expander = match db.macro_def(loc.def) {
+                Ok(it) => it,
+                // FIXME: We should make sure to enforce a variant that invalid macro
+                // definitions do not get expanders that could reach this call path!
+                Err(err) => {
+                    return ExpandResult {
+                        value: Arc::new(tt::Subtree {
+                            delimiter: tt::Delimiter::UNSPECIFIED,
+                            token_trees: vec![],
+                        }),
+                        err: Some(ExpandError::other(format!("invalid macro definition: {err}"))),
+                    }
+                }
+            };
+            let Some(macro_arg) = db.macro_arg(id) else {
+                return ExpandResult {
+                    value: Arc::new(tt::Subtree {
+                        delimiter: tt::Delimiter::UNSPECIFIED,
+                        token_trees: Vec::new(),
+                    }),
+                    // FIXME: We should make sure to enforce an invariant that invalid macro
+                    // calls do not reach this call path!
+                    err: Some(ExpandError::other("invalid token tree")),
+                };
+            };
+            let (arg, arg_tm, undo_info) = &*macro_arg;
+            let mut res = expander.expand(db, id, arg);
+            fixup::reverse_fixups(&mut res.value, arg_tm, undo_info);
+            (res, None)
         }
     };
-    let Some(macro_arg) = db.macro_arg(id) else {
-        return ExpandResult {
-            value: Arc::new(tt::Subtree {
-                delimiter: tt::Delimiter::UNSPECIFIED,
-                token_trees: Vec::new(),
-            }),
-            // FIXME: We should make sure to enforce an invariant that invalid macro
-            // calls do not reach this call path!
-            err: Some(ExpandError::other("invalid token tree")),
-        };
-    };
-    let (arg_tt, arg_tm, undo_info) = &*macro_arg;
-    let ExpandResult { value: mut tt, mut err } = expander.expand(db, id, arg_tt);
 
     if let Some(EagerCallInfo { error, .. }) = loc.eager.as_deref() {
         // FIXME: We should report both errors!
@@ -493,7 +525,9 @@ fn macro_expand(db: &dyn ExpandDatabase, id: MacroCallId) -> ExpandResult<Arc<tt
         return value;
     }
 
-    fixup::reverse_fixups(&mut tt, arg_tm, undo_info);
+    if let Some((arg_tm, undo_info)) = &tmap {
+        fixup::reverse_fixups(&mut tt, arg_tm, undo_info);
+    }
 
     ExpandResult { value: Arc::new(tt), err }
 }

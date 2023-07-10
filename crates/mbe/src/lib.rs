@@ -34,7 +34,8 @@ pub use ::parser::TopEntryPoint;
 
 pub use crate::{
     syntax_bridge::{
-        parse_exprs_with_sep, parse_to_token_tree, syntax_node_to_token_tree,
+        parse_exprs_with_sep, parse_to_token_tree, syntax_node_to_token_map,
+        syntax_node_to_token_map_with_modifications, syntax_node_to_token_tree,
         syntax_node_to_token_tree_with_modifications, token_tree_to_syntax_node, SyntheticToken,
         SyntheticTokenId,
     },
