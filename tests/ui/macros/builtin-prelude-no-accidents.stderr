@@ -26,10 +26,6 @@ error[E0433]: failed to resolve: use of undeclared crate or module `vec`
 LL |     type B = vec::Vec<u8>;
    |              ^^^ use of undeclared crate or module `vec`
    |
-help: a struct with a similar name exists
-   |
-LL |     type B = Vec::Vec<u8>;
-   |              ~~~
 help: consider importing this module
    |
 LL + use std::vec;

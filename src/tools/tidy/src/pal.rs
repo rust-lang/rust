@@ -39,7 +39,6 @@ const EXCEPTION_PATHS: &[&str] = &[
     "library/panic_unwind",
     "library/unwind",
     "library/rtstartup", // Not sure what to do about this. magic stuff for mingw
-    "library/term",      // Not sure how to make this crate portable, but test crate needs it.
     "library/test",      // Probably should defer to unstable `std::sys` APIs.
     // The `VaList` implementation must have platform specific code.
     // The Windows implementation of a `va_list` is always a character

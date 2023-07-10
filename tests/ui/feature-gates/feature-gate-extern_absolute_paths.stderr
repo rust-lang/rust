@@ -13,6 +13,15 @@ LL |     let _: u8 = ::core::default::Default();
    |                   ^^^^ maybe a missing crate `core`?
    |
    = help: consider adding `extern crate core` to use the `core` crate
+help: consider importing this module
+   |
+LL + use std::default;
+   |
+help: if you import `default`, refer to it directly
+   |
+LL -     let _: u8 = ::core::default::Default();
+LL +     let _: u8 = default::Default();
+   |
 
 error: aborting due to 2 previous errors
 
