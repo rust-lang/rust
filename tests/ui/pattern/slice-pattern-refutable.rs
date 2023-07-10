@@ -1,3 +1,5 @@
+// Test that we do not infer the expected types of patterns to an array
+// if we're in a refutable pattern.
 #![allow(unused_variables)]
 
 struct Zeroes;

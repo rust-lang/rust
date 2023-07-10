@@ -4,12 +4,6 @@ error[E0425]: cannot find value `does_not_exist` in this scope
 LL |     match does_not_exist {
    |           ^^^^^^^^^^^^^^ not found in this scope
 
-error[E0423]: expected value, found trait `Default`
-  --> $DIR/slice-pat-type-mismatches.rs:33:11
-   |
-LL |     match Default
-   |           ^^^^^^^ not a value
-
 error[E0529]: expected an array or slice, found `String`
   --> $DIR/slice-pat-type-mismatches.rs:3:9
    |
@@ -28,7 +22,13 @@ error[E0528]: pattern requires at least 4 elements but array has 3
 LL |         [0, 1, 2, 3, x @ ..] => {}
    |         ^^^^^^^^^^^^^^^^^^^^ pattern cannot match array of 3 elements
 
+error[E0282]: type annotations needed
+  --> $DIR/slice-pat-type-mismatches.rs:34:9
+   |
+LL |         [] => {}
+   |         ^^ cannot infer type
+
 error: aborting due to 5 previous errors
 
-Some errors have detailed explanations: E0423, E0425, E0527, E0528, E0529.
-For more information about an error, try `rustc --explain E0423`.
+Some errors have detailed explanations: E0282, E0425, E0527, E0528, E0529.
+For more information about an error, try `rustc --explain E0282`.

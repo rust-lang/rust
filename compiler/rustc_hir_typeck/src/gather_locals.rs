@@ -21,7 +21,7 @@ pub(super) enum DeclOrigin<'a> {
 }
 
 impl<'a> DeclOrigin<'a> {
-    pub(super) fn try_get_els(&self) -> Option<&'a hir::Block<'a>> {
+    pub(super) fn try_get_else(&self) -> Option<&'a hir::Block<'a>> {
         match self {
             Self::LocalDecl { els } => *els,
             Self::LetExpr => None,

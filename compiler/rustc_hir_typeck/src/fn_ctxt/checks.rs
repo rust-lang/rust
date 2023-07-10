@@ -1478,7 +1478,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let pat_ty = self.node_ty(decl.pat.hir_id);
         self.overwrite_local_ty_if_err(decl.hir_id, decl.pat, pat_ty);
 
-        if let Some(blk) = decl.origin.try_get_els() {
+        if let Some(blk) = decl.origin.try_get_else() {
             let previous_diverges = self.diverges.get();
             let else_ty = self.check_block_with_expected(blk, NoExpectation);
             let cause = self.cause(blk.span, ObligationCauseCode::LetElse);

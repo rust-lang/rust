@@ -163,7 +163,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Conversely, inside this module, `check_pat_top` should never be used.
     #[instrument(level = "debug", skip(self, pat_info))]
     fn check_pat(&self, pat: &'tcx Pat<'tcx>, expected: Ty<'tcx>, pat_info: PatInfo<'tcx, '_>) {
-        let PatInfo { binding_mode: def_bm, top_info: ti, decl_origin } = pat_info;
+        let PatInfo { binding_mode: def_bm, top_info: ti, .. } = pat_info;
         let path_res = match &pat.kind {
             PatKind::Path(qpath) => {
                 Some(self.resolve_ty_and_res_fully_qualified_call(qpath, pat.hir_id, pat.span))
@@ -172,76 +172,39 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
         let adjust_mode = self.calc_adjust_mode(pat, path_res.map(|(res, ..)| res));
         let (expected, def_bm) = self.calc_default_binding_mode(pat, expected, def_bm, adjust_mode);
+        let pat_info =
+            PatInfo { binding_mode: def_bm, top_info: ti, decl_origin: pat_info.decl_origin };
 
         let ty = match pat.kind {
             PatKind::Wild => expected,
             PatKind::Lit(lt) => self.check_pat_lit(pat.span, lt, expected, ti),
             PatKind::Range(lhs, rhs, _) => self.check_pat_range(pat.span, lhs, rhs, expected, ti),
-            PatKind::Binding(ba, var_id, _, sub) => self.check_pat_ident(
-                pat,
-                ba,
-                var_id,
-                sub,
-                expected,
-                PatInfo { binding_mode: def_bm, top_info: ti, decl_origin },
-            ),
-            PatKind::TupleStruct(ref qpath, subpats, ddpos) => self.check_pat_tuple_struct(
-                pat,
-                qpath,
-                subpats,
-                ddpos,
-                expected,
-                PatInfo { binding_mode: def_bm, top_info: ti, decl_origin },
-            ),
+            PatKind::Binding(ba, var_id, _, sub) => {
+                self.check_pat_ident(pat, ba, var_id, sub, expected, pat_info)
+            }
+            PatKind::TupleStruct(ref qpath, subpats, ddpos) => {
+                self.check_pat_tuple_struct(pat, qpath, subpats, ddpos, expected, pat_info)
+            }
             PatKind::Path(ref qpath) => {
                 self.check_pat_path(pat, qpath, path_res.unwrap(), expected, ti)
             }
-            PatKind::Struct(ref qpath, fields, has_rest_pat) => self.check_pat_struct(
-                pat,
-                qpath,
-                fields,
-                has_rest_pat,
-                expected,
-                PatInfo { binding_mode: def_bm, top_info: ti, decl_origin },
-            ),
+            PatKind::Struct(ref qpath, fields, has_rest_pat) => {
+                self.check_pat_struct(pat, qpath, fields, has_rest_pat, expected, pat_info)
+            }
             PatKind::Or(pats) => {
                 for pat in pats {
-                    self.check_pat(
-                        pat,
-                        expected,
-                        PatInfo { binding_mode: def_bm, top_info: ti, decl_origin },
-                    );
+                    self.check_pat(pat, expected, pat_info);
                 }
                 expected
             }
-            PatKind::Tuple(elements, ddpos) => self.check_pat_tuple(
-                pat.span,
-                elements,
-                ddpos,
-                expected,
-                PatInfo { binding_mode: def_bm, top_info: ti, decl_origin },
-            ),
-            PatKind::Box(inner) => self.check_pat_box(
-                pat.span,
-                inner,
-                expected,
-                PatInfo { binding_mode: def_bm, top_info: ti, decl_origin },
-            ),
-            PatKind::Ref(inner, mutbl) => self.check_pat_ref(
-                pat,
-                inner,
-                mutbl,
-                expected,
-                PatInfo { binding_mode: def_bm, top_info: ti, decl_origin },
-            ),
-            PatKind::Slice(before, slice, after) => self.check_pat_slice(
-                pat.span,
-                before,
-                slice,
-                after,
-                expected,
-                PatInfo { binding_mode: def_bm, top_info: ti, decl_origin },
-            ),
+            PatKind::Tuple(elements, ddpos) => {
+                self.check_pat_tuple(pat.span, elements, ddpos, expected, pat_info)
+            }
+            PatKind::Box(inner) => self.check_pat_box(pat.span, inner, expected, pat_info),
+            PatKind::Ref(inner, mutbl) => self.check_pat_ref(pat, inner, mutbl, expected, pat_info),
+            PatKind::Slice(before, slice, after) => {
+                self.check_pat_slice(pat.span, before, slice, after, expected, pat_info)
+            }
         };
 
         self.write_ty(pat.hir_id, ty);
@@ -624,7 +587,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         pat_info: PatInfo<'tcx, '_>,
     ) -> Ty<'tcx> {
-        let PatInfo { binding_mode: def_bm, top_info: ti, decl_origin } = pat_info;
+        let PatInfo { binding_mode: def_bm, top_info: ti, .. } = pat_info;
 
         // Determine the binding mode...
         let bm = match ba {
@@ -663,11 +626,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         if let Some(p) = sub {
-            self.check_pat(
-                p,
-                expected,
-                PatInfo { binding_mode: def_bm, top_info: ti, decl_origin },
-            );
+            self.check_pat(p, expected, pat_info);
         }
 
         local_ty
@@ -892,37 +851,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         pat_info: PatInfo<'tcx, '_>,
     ) -> Ty<'tcx> {
-        let PatInfo { binding_mode: def_bm, top_info: ti, decl_origin } = pat_info;
-
         // Resolve the path and check the definition for errors.
         let (variant, pat_ty) = match self.check_struct_path(qpath, pat.hir_id) {
             Ok(data) => data,
             Err(guar) => {
                 let err = Ty::new_error(self.tcx, guar);
                 for field in fields {
-                    let ti = ti;
-                    self.check_pat(
-                        field.pat,
-                        err,
-                        PatInfo { binding_mode: def_bm, top_info: ti, decl_origin },
-                    );
+                    self.check_pat(field.pat, err, pat_info);
                 }
                 return err;
             }
         };
 
         // Type-check the path.
-        self.demand_eqtype_pat(pat.span, expected, pat_ty, ti);
+        self.demand_eqtype_pat(pat.span, expected, pat_ty, pat_info.top_info);
 
         // Type-check subpatterns.
-        if self.check_struct_pat_fields(
-            pat_ty,
-            &pat,
-            variant,
-            fields,
-            has_rest_pat,
-            PatInfo { binding_mode: def_bm, top_info: ti, decl_origin },
-        ) {
+        if self.check_struct_pat_fields(pat_ty, &pat, variant, fields, has_rest_pat, pat_info) {
             pat_ty
         } else {
             Ty::new_misc_error(self.tcx)
@@ -2144,11 +2089,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// If we're in an irrefutable pattern we prefer the array impl candidate given that
     /// the slice impl candidate would be be rejected anyway (if no ambiguity existed).
     fn pat_is_irrefutable(&self, decl_origin: Option<DeclOrigin<'_>>) -> bool {
-        if let Some(decl_origin) = decl_origin {
-            decl_origin.try_get_els().is_none()
-                && matches!(decl_origin, DeclOrigin::LocalDecl { .. })
-        } else {
-            false
+        match decl_origin {
+            Some(DeclOrigin::LocalDecl { els: None }) => true,
+            Some(DeclOrigin::LocalDecl { els: Some(_) } | DeclOrigin::LetExpr) | None => false,
         }
     }
 
@@ -2183,6 +2126,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let expected = self.structurally_resolve_type(span, expected);
+        debug!(?expected);
+
         let (element_ty, opt_slice_ty, inferred) = match *expected.kind() {
             // An array, so we might have something like `let [a, b, c] = [0, 1, 2];`.
             ty::Array(element_ty, len) => {

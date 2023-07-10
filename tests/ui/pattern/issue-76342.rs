@@ -1,4 +1,7 @@
 // check-pass
+
+// Test that we infer the expected type of a pattern to an array of the given length.
+
 #![allow(unused_variables)]
 struct Zeroes;
 impl Into<[usize; 2]> for Zeroes {

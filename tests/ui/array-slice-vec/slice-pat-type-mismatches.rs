@@ -30,9 +30,8 @@ fn main() {
 }
 
 fn another_fn_to_avoid_suppression() {
-    match Default
-    //~^ ERROR expected value, found trait
-    {
+    match Default::default() {
         [] => {}
+        //~^ ERROR type annotations needed
     };
 }
