@@ -373,7 +373,7 @@ export function ssr(ctx: CtxInit): Cmd {
                         selections,
                     });
                 } catch (e) {
-                    return e.toString();
+                    return String(e);
                 }
                 return null;
             },
@@ -1156,7 +1156,7 @@ export function viewMemoryLayout(ctx: CtxInit): Cmd {
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
-    <style>   
+    <style>
         * {
             box-sizing: border-box;
         }

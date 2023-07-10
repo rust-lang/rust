@@ -12,7 +12,6 @@
         "newLine": "LF",
         // These disables some enhancement type checking options
         // to update typescript version without any code change.
-        "useUnknownInCatchVariables": false,
         "exactOptionalPropertyTypes": false
     },
     "exclude": ["node_modules", ".vscode-test"],
