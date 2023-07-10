@@ -415,6 +415,7 @@ impl Step for RustAnalyzer {
         cargo.env("SKIP_SLOW_TESTS", "1");
 
         cargo.add_rustc_lib_path(builder, compiler);
+        builder.msg_sysroot_tool(Kind::Test, compiler.stage, "rust-analyzer", host, host);
         run_cargo_test(cargo, &[], &[], "rust-analyzer", compiler, host, builder);
     }
 }
@@ -464,6 +465,7 @@ impl Step for Rustfmt {
 
         cargo.add_rustc_lib_path(builder, compiler);
 
+        builder.msg_sysroot_tool(Kind::Test, compiler.stage, "rustfmt", host, host);
         run_cargo_test(cargo, &[], &[], "rustfmt", compiler, host, builder);
     }
 }
@@ -556,6 +558,13 @@ impl Miri {
         cargo.env("RUST_BACKTRACE", "1");
 
         let mut cargo = Command::from(cargo);
+        let _guard = builder.msg(
+            Kind::Build,
+            compiler.stage + 1,
+            "miri sysroot",
+            compiler.host,
+            compiler.host,
+        );
         builder.run(&mut cargo);
 
         // # Determine where Miri put its sysroot.
@@ -633,6 +642,8 @@ impl Step for Miri {
             SourceType::InTree,
             &[],
         );
+        let _guard = builder.msg_sysroot_tool(Kind::Test, compiler.stage, "miri", host, host);
+
         cargo.add_rustc_lib_path(builder, compiler);
 
         // miri tests need to know about the stage sysroot
@@ -800,6 +811,8 @@ impl Step for Clippy {
         if builder.config.cmd.bless() {
             cargo.env("BLESS", "Gesundheit");
         }
+
+        builder.msg_sysroot_tool(Kind::Test, compiler.stage, "clippy", host, host);
 
         if builder.try_run(&mut cargo).is_ok() {
             // The tests succeeded; nothing to do.
@@ -1056,6 +1069,13 @@ impl Step for RustdocGUI {
         }
 
         let _time = util::timeit(&builder);
+        let _guard = builder.msg_sysroot_tool(
+            Kind::Test,
+            self.compiler.stage,
+            "rustdoc-gui",
+            self.compiler.host,
+            self.target,
+        );
         crate::render_tests::try_run_tests(builder, &mut cmd, true);
     }
 }
