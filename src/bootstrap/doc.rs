@@ -222,7 +222,7 @@ impl Step for TheBook {
         let shared_assets = builder.ensure(SharedAssets { target });
 
         // build the redirect pages
-        builder.msg_doc(compiler, "book redirect pages", target);
+        let _guard = builder.msg_doc(compiler, "book redirect pages", target);
         for file in t!(fs::read_dir(builder.src.join(&relative_path).join("redirects"))) {
             let file = t!(file);
             let path = file.path();
@@ -306,7 +306,7 @@ impl Step for Standalone {
     fn run(self, builder: &Builder<'_>) {
         let target = self.target;
         let compiler = self.compiler;
-        builder.msg_doc(compiler, "standalone", target);
+        let _guard = builder.msg_doc(compiler, "standalone", target);
         let out = builder.doc_out(target);
         t!(fs::create_dir_all(&out));
 
@@ -812,8 +812,6 @@ macro_rules! tool_doc {
                     SourceType::Submodule
                 };
 
-                builder.msg_doc(compiler, stringify!($tool).to_lowercase(), target);
-
                 // Symlink compiler docs to the output directory of rustdoc documentation.
                 let out_dirs = [
                     builder.stage_out(compiler, Mode::ToolRustc).join(target.triple).join("doc"),
@@ -852,6 +850,8 @@ macro_rules! tool_doc {
                 cargo.rustdocflag("--show-type-layout");
                 cargo.rustdocflag("--generate-link-to-definition");
                 cargo.rustdocflag("-Zunstable-options");
+
+                let _guard = builder.msg_doc(compiler, stringify!($tool).to_lowercase(), target);
                 builder.run(&mut cargo.into());
             }
         }
@@ -1073,7 +1073,16 @@ impl Step for RustcBook {
         // config.toml), then this needs to explicitly update the dylib search
         // path.
         builder.add_rustc_lib_path(self.compiler, &mut cmd);
+        let doc_generator_guard = builder.msg(
+            Kind::Run,
+            self.compiler.stage,
+            "lint-docs",
+            self.compiler.host,
+            self.target,
+        );
         builder.run(&mut cmd);
+        drop(doc_generator_guard);
+
         // Run rustbook/mdbook to generate the HTML pages.
         builder.ensure(RustbookSrc {
             target: self.target,
