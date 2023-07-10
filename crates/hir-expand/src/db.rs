@@ -35,7 +35,7 @@ pub struct DeclarativeMacroExpander {
 }
 
 impl DeclarativeMacroExpander {
-    pub fn expand(&self, tt: &tt::Subtree) -> ExpandResult<tt::Subtree> {
+    pub fn expand(&self, tt: tt::Subtree) -> ExpandResult<tt::Subtree> {
         match self.mac.err() {
             Some(e) => ExpandResult::new(
                 tt::Subtree::empty(),
@@ -43,6 +43,14 @@ impl DeclarativeMacroExpander {
             ),
             None => self.mac.expand(tt).map_err(Into::into),
         }
+    }
+
+    pub fn map_id_down(&self, token_id: tt::TokenId) -> tt::TokenId {
+        self.mac.map_id_down(token_id)
+    }
+
+    pub fn map_id_up(&self, token_id: tt::TokenId) -> (tt::TokenId, mbe::Origin) {
+        self.mac.map_id_up(token_id)
     }
 }
 
@@ -61,10 +69,11 @@ pub enum TokenExpander {
     ProcMacro(ProcMacroExpander),
 }
 
+// FIXME: Get rid of these methods
 impl TokenExpander {
     pub(crate) fn map_id_down(&self, id: tt::TokenId) -> tt::TokenId {
         match self {
-            TokenExpander::DeclarativeMacro(expander) => expander.mac.map_id_down(id),
+            TokenExpander::DeclarativeMacro(expander) => expander.map_id_down(id),
             TokenExpander::BuiltIn(..)
             | TokenExpander::BuiltInEager(..)
             | TokenExpander::BuiltInAttr(..)
@@ -75,7 +84,7 @@ impl TokenExpander {
 
     pub(crate) fn map_id_up(&self, id: tt::TokenId) -> (tt::TokenId, mbe::Origin) {
         match self {
-            TokenExpander::DeclarativeMacro(expander) => expander.mac.map_id_up(id),
+            TokenExpander::DeclarativeMacro(expander) => expander.map_id_up(id),
             TokenExpander::BuiltIn(..)
             | TokenExpander::BuiltInEager(..)
             | TokenExpander::BuiltInAttr(..)
@@ -167,7 +176,6 @@ pub fn expand_speculative(
     token_to_map: SyntaxToken,
 ) -> Option<(SyntaxNode, SyntaxToken)> {
     let loc = db.lookup_intern_macro_call(actual_macro_call);
-    let macro_def = db.macro_def(loc.def);
     let token_range = token_to_map.text_range();
 
     // Build the subtree and token mapping for the speculative args
@@ -225,7 +233,12 @@ pub fn expand_speculative(
         None => {
             let range = token_range.checked_sub(speculative_args.text_range().start())?;
             let token_id = spec_args_tmap.token_by_range(range)?;
-            macro_def.map_id_down(token_id)
+            match loc.def.kind {
+                MacroDefKind::Declarative(it) => {
+                    db.decl_macro_expander(loc.krate, it).map_id_down(token_id)
+                }
+                _ => token_id,
+            }
         }
     };
 
@@ -244,7 +257,7 @@ pub fn expand_speculative(
             let adt = ast::Adt::cast(speculative_args.clone()).unwrap();
             expander.expand(db, actual_macro_call, &adt, &spec_args_tmap)
         }
-        MacroDefKind::Declarative(it) => db.decl_macro_expander(loc.krate, it).expand(&tt),
+        MacroDefKind::Declarative(it) => db.decl_macro_expander(loc.krate, it).expand(tt),
         MacroDefKind::BuiltIn(it, _) => it.expand(db, actual_macro_call, &tt).map_err(Into::into),
         MacroDefKind::BuiltInEager(it, _) => {
             it.expand(db, actual_macro_call, &tt).map_err(Into::into)
@@ -518,7 +531,7 @@ fn macro_expand(db: &dyn ExpandDatabase, id: MacroCallId) -> ExpandResult<Arc<tt
             let (arg, arg_tm, undo_info) = &*macro_arg;
             let mut res = match loc.def.kind {
                 MacroDefKind::Declarative(id) => {
-                    db.decl_macro_expander(loc.def.krate, id).expand(&arg)
+                    db.decl_macro_expander(loc.def.krate, id).expand(arg.clone())
                 }
                 MacroDefKind::BuiltIn(it, _) => it.expand(db, id, &arg).map_err(Into::into),
                 MacroDefKind::BuiltInEager(it, _) => it.expand(db, id, &arg).map_err(Into::into),

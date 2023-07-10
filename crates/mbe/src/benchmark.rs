@@ -38,7 +38,7 @@ fn benchmark_expand_macro_rules() {
         invocations
             .into_iter()
             .map(|(id, tt)| {
-                let res = rules[&id].expand(&tt);
+                let res = rules[&id].expand(tt);
                 assert!(res.err.is_none());
                 res.value.token_trees.len()
             })
@@ -102,7 +102,7 @@ fn invocation_fixtures(rules: &FxHashMap<String, DeclarativeMacro>) -> Vec<(Stri
                     for op in rule.lhs.iter() {
                         collect_from_op(op, &mut subtree, &mut seed);
                     }
-                    if it.expand(&subtree).err.is_none() {
+                    if it.expand(subtree.clone()).err.is_none() {
                         res.push((name.clone(), subtree));
                         break;
                     }

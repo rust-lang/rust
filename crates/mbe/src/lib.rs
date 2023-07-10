@@ -311,9 +311,7 @@ impl DeclarativeMacro {
         DeclarativeMacro { rules: rules.into_boxed_slice(), shift: Shift::new(tt), is_2021, err }
     }
 
-    pub fn expand(&self, tt: &tt::Subtree) -> ExpandResult<tt::Subtree> {
-        // apply shift
-        let mut tt = tt.clone();
+    pub fn expand(&self, mut tt: tt::Subtree) -> ExpandResult<tt::Subtree> {
         self.shift.shift_all(&mut tt);
         expander::expand_rules(&self.rules, &tt, self.is_2021)
     }
