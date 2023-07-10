@@ -1165,7 +1165,7 @@ impl<'a> From<Cow<'a, OsStr>> for OsString {
     }
 }
 
-#[stable(feature = "str_tryfrom_osstr_impl", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "str_tryfrom_osstr_impl", since = "1.72.0")]
 impl<'a> TryFrom<&'a OsStr> for &'a str {
     type Error = crate::str::Utf8Error;
 
