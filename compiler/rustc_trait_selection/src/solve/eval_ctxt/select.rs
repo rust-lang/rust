@@ -40,7 +40,7 @@ impl<'tcx> InferCtxtSelectExt<'tcx> for InferCtxt<'tcx> {
             self.instantiate_binder_with_placeholders(obligation.predicate),
         );
 
-        let (result, _) = EvalCtxt::enter_root(self, GenerateProofTree::No, |ecx| {
+        let (result, _) = EvalCtxt::enter_root(self, GenerateProofTree::Never, |ecx| {
             let goal = Goal::new(ecx.tcx(), trait_goal.param_env, trait_goal.predicate);
             let (orig_values, canonical_goal) = ecx.canonicalize_goal(goal);
             let mut candidates = ecx.compute_canonical_trait_candidates(canonical_goal);

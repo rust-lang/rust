@@ -116,7 +116,8 @@ impl NestedGoals<'_> {
 #[derive(PartialEq, Eq, Debug, Hash, HashStable, Clone, Copy)]
 pub enum GenerateProofTree {
     Yes(UseGlobalCache),
-    No,
+    IfEnabled,
+    Never,
 }
 
 #[derive(PartialEq, Eq, Debug, Hash, HashStable, Clone, Copy)]
@@ -202,7 +203,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
             (&tree, infcx.tcx.sess.opts.unstable_opts.dump_solver_proof_tree)
         {
             let mut lock = std::io::stdout().lock();
-            let _ = lock.write_fmt(format_args!("{tree:?}"));
+            let _ = lock.write_fmt(format_args!("{tree:?}\n"));
             let _ = lock.flush();
         }
 
