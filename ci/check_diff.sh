@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# https://github.com/rust-lang/rustfmt/issues/5675
+export LD_LIBRARY_PATH=$(rustc --print sysroot)/lib:$LD_LIBRARY_PATH
+
 function print_usage() {
     echo "usage check_diff REMOTE_REPO FEATURE_BRANCH [COMMIT_HASH] [OPTIONAL_RUSTFMT_CONFIGS]"
 }
