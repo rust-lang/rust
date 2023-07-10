@@ -473,17 +473,6 @@ where
                 }
             }
 
-            ty::Alias(ty::Projection, proj) if self.tcx.is_impl_trait_in_trait(proj.def_id) => {
-                // Skip lifetime parameters that are not captures.
-                let variances = self.tcx.variances_of(proj.def_id);
-
-                for (v, s) in std::iter::zip(variances, proj.substs.iter()) {
-                    if *v != ty::Variance::Bivariant {
-                        s.visit_with(self);
-                    }
-                }
-            }
-
             _ => {
                 ty.super_visit_with(self);
             }

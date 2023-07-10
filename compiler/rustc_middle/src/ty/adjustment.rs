@@ -6,7 +6,7 @@ use rustc_span::Span;
 use rustc_target::abi::FieldIdx;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
-pub enum PointerCast {
+pub enum PointerCoercion {
     /// Go from a fn-item type to a fn-pointer type.
     ReifyFnPointer,
 
@@ -99,7 +99,7 @@ pub enum Adjust<'tcx> {
     /// Take the address and produce either a `&` or `*` pointer.
     Borrow(AutoBorrow<'tcx>),
 
-    Pointer(PointerCast),
+    Pointer(PointerCoercion),
 
     /// Cast into a dyn* object.
     DynStar,

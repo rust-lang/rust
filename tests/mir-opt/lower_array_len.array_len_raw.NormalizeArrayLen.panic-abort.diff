@@ -25,7 +25,7 @@
           StorageLive(_4);
           _4 = &_1;
           _3 = &(*_4);
-          _2 = move _3 as &[u8] (Pointer(Unsize));
+          _2 = move _3 as &[u8] (PointerCoercion(Unsize));
           StorageDead(_3);
           StorageDead(_4);
           StorageLive(_5);

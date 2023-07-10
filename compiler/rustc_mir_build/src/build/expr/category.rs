@@ -63,7 +63,7 @@ impl Category {
             | ExprKind::Binary { .. }
             | ExprKind::Box { .. }
             | ExprKind::Cast { .. }
-            | ExprKind::Pointer { .. }
+            | ExprKind::PointerCoercion { .. }
             | ExprKind::Repeat { .. }
             | ExprKind::Assign { .. }
             | ExprKind::AssignOp { .. }

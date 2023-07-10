@@ -54,7 +54,8 @@ COPY host-x86_64/dist-x86_64-linux/build-clang.sh /tmp/
 RUN ./build-clang.sh
 ENV CC=clang CXX=clang++
 
-# rustc-perf version from 2023-03-15
+# rustc-perf version from 2023-05-30
+# Should also be changed in the opt-dist tool for other environments.
 ENV PERF_COMMIT 8b2ac3042e1ff2c0074455a0a3618adef97156b1
 RUN curl -LS -o perf.zip https://github.com/rust-lang/rustc-perf/archive/$PERF_COMMIT.zip && \
     unzip perf.zip && \
@@ -81,7 +82,9 @@ ENV RUST_CONFIGURE_ARGS \
       --set rust.jemalloc \
       --set rust.use-lld=true \
       --set rust.lto=thin
-ENV SCRIPT python3 ../src/ci/stage-build.py python3 ../x.py dist \
+
+ENV SCRIPT python3 ../x.py build --set rust.debug=true opt-dist && \
+    ./build/$HOSTS/stage0-tools-bin/opt-dist python3 ../x.py dist \
     --host $HOSTS --target $HOSTS \
     --include-default-paths \
     build-manifest bootstrap

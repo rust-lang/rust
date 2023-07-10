@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed
-  --> $DIR/param-env-region-infer.rs:16:10
+  --> $DIR/param-env-region-infer.rs:18:10
    |
 LL |     t as _
    |          ^ cannot infer type

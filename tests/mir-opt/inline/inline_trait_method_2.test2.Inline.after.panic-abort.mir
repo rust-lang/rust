@@ -13,7 +13,7 @@ fn test2(_1: &dyn X) -> bool {
         StorageLive(_2);
         StorageLive(_3);
         _3 = &(*_1);
-        _2 = move _3 as &dyn X (Pointer(Unsize));
+        _2 = move _3 as &dyn X (PointerCoercion(Unsize));
         StorageDead(_3);
         _0 = <dyn X as X>::y(_2) -> [return: bb1, unwind unreachable];
     }

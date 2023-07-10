@@ -6,8 +6,8 @@ LL |     vec![(), ()].iter().sum::<i32>();
    |
    = help: the trait `Sum<&()>` is not implemented for `i32`
    = help: the following other types implement trait `Sum<A>`:
-             <i32 as Sum<&'a i32>>
              <i32 as Sum>
+             <i32 as Sum<&'a i32>>
 note: the method call chain might not have had the expected associated types
   --> $DIR/sum.rs:4:18
    |
@@ -26,8 +26,8 @@ LL |     vec![(), ()].iter().product::<i32>();
    |
    = help: the trait `Product<&()>` is not implemented for `i32`
    = help: the following other types implement trait `Product<A>`:
-             <i32 as Product<&'a i32>>
              <i32 as Product>
+             <i32 as Product<&'a i32>>
 note: the method call chain might not have had the expected associated types
   --> $DIR/sum.rs:7:18
    |

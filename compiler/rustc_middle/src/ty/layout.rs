@@ -1110,12 +1110,11 @@ where
 ///
 /// This takes two primary parameters:
 ///
-/// * `codegen_fn_attr_flags` - these are flags calculated as part of the
-///   codegen attrs for a defined function. For function pointers this set of
-///   flags is the empty set. This is only applicable for Rust-defined
-///   functions, and generally isn't needed except for small optimizations where
-///   we try to say a function which otherwise might look like it could unwind
-///   doesn't actually unwind (such as for intrinsics and such).
+/// * `fn_def_id` - the `DefId` of the function. If this is provided then we can
+///   determine more precisely if the function can unwind. If this is not provided
+///   then we will only infer whether the function can unwind or not based on the
+///   ABI of the function. For example, a function marked with `#[rustc_nounwind]`
+///   is known to not unwind even if it's using Rust ABI.
 ///
 /// * `abi` - this is the ABI that the function is defined with. This is the
 ///   primary factor for determining whether a function can unwind or not.
@@ -1147,11 +1146,6 @@ where
 ///   aborts the process.
 /// * This affects whether functions have the LLVM `nounwind` attribute, which
 ///   affects various optimizations and codegen.
-///
-/// FIXME: this is actually buggy with respect to Rust functions. Rust functions
-/// compiled with `-Cpanic=unwind` and referenced from another crate compiled
-/// with `-Cpanic=abort` will look like they can't unwind when in fact they
-/// might (from a foreign exception or similar).
 #[inline]
 #[tracing::instrument(level = "debug", skip(tcx))]
 pub fn fn_can_unwind(tcx: TyCtxt<'_>, fn_def_id: Option<DefId>, abi: SpecAbi) -> bool {

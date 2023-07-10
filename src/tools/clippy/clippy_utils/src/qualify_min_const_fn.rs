@@ -16,7 +16,7 @@ use rustc_middle::mir::{
 };
 use rustc_middle::traits::{ImplSource, ObligationCause};
 use rustc_middle::ty::subst::GenericArgKind;
-use rustc_middle::ty::{self, adjustment::PointerCast, Ty, TyCtxt};
+use rustc_middle::ty::{self, adjustment::PointerCoercion, Ty, TyCtxt};
 use rustc_middle::ty::{BoundConstness, TraitRef};
 use rustc_semver::RustcVersion;
 use rustc_span::symbol::sym;
@@ -119,18 +119,18 @@ fn check_rvalue<'tcx>(
             | CastKind::FloatToFloat
             | CastKind::FnPtrToPtr
             | CastKind::PtrToPtr
-            | CastKind::Pointer(PointerCast::MutToConstPointer | PointerCast::ArrayToPointer),
+            | CastKind::PointerCoercion(PointerCoercion::MutToConstPointer | PointerCoercion::ArrayToPointer),
             operand,
             _,
         ) => check_operand(tcx, operand, span, body),
         Rvalue::Cast(
-            CastKind::Pointer(
-                PointerCast::UnsafeFnPointer | PointerCast::ClosureFnPointer(_) | PointerCast::ReifyFnPointer,
+            CastKind::PointerCoercion(
+                PointerCoercion::UnsafeFnPointer | PointerCoercion::ClosureFnPointer(_) | PointerCoercion::ReifyFnPointer,
             ),
             _,
             _,
         ) => Err((span, "function pointer casts are not allowed in const fn".into())),
-        Rvalue::Cast(CastKind::Pointer(PointerCast::Unsize), op, cast_ty) => {
+        Rvalue::Cast(CastKind::PointerCoercion(PointerCoercion::Unsize), op, cast_ty) => {
             let pointee_ty = if let Some(deref_ty) = cast_ty.builtin_deref(true) {
                 deref_ty.ty
             } else {

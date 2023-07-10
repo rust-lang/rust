@@ -22,7 +22,7 @@
           StorageLive(_6);
           StorageLive(_7);
           _7 = &(*_2);
-          _6 = move _7 as &[u8] (Pointer(Unsize));
+          _6 = move _7 as &[u8] (PointerCoercion(Unsize));
           StorageDead(_7);
 -         _5 = Len((*_6));
 +         _5 = const N;

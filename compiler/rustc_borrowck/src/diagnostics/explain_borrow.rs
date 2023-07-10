@@ -9,7 +9,7 @@ use rustc_middle::mir::{
     Body, CallSource, CastKind, ConstraintCategory, FakeReadCause, Local, LocalInfo, Location,
     Operand, Place, Rvalue, Statement, StatementKind, TerminatorKind,
 };
-use rustc_middle::ty::adjustment::PointerCast;
+use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::{self, RegionVid, TyCtxt};
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{sym, DesugaringKind, Span};
@@ -584,7 +584,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         },
                         // If we see an unsized cast, then if it is our data we should check
                         // whether it is being cast to a trait object.
-                        Rvalue::Cast(CastKind::Pointer(PointerCast::Unsize), operand, ty) => {
+                        Rvalue::Cast(
+                            CastKind::PointerCoercion(PointerCoercion::Unsize),
+                            operand,
+                            ty,
+                        ) => {
                             match operand {
                                 Operand::Copy(place) | Operand::Move(place) => {
                                     if let Some(from) = place.as_local() {
