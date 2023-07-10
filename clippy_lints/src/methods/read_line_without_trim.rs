@@ -5,9 +5,10 @@ use clippy_utils::source::snippet;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::visitors::for_each_local_use_after_expr;
 use clippy_utils::{get_parent_expr, match_def_path};
+use rustc_ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
-use rustc_hir::{Expr, ExprKind, QPath};
+use rustc_hir::{BinOpKind, Expr, ExprKind, QPath};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::sym;
@@ -30,37 +31,67 @@ pub fn check(cx: &LateContext<'_>, call: &Expr<'_>, recv: &Expr<'_>, arg: &Expr<
         // now let's check if the first use of the string passed to `::read_line()` is
         // parsed into a type that will always fail if it has a trailing newline.
         for_each_local_use_after_expr(cx, local_id, call.hir_id, |expr| {
-            if let Some(parent) = get_parent_expr(cx, expr)
-                && let ExprKind::MethodCall(segment, .., span) = parent.kind
-                && segment.ident.name == sym!(parse)
-                && let parse_result_ty = cx.typeck_results().expr_ty(parent)
-                && is_type_diagnostic_item(cx, parse_result_ty, sym::Result)
-                && let ty::Adt(_, args) = parse_result_ty.kind()
-                && let Some(ok_ty) = args[0].as_type()
-                && parse_fails_on_trailing_newline(ok_ty)
-            {
-                let local_snippet = snippet(cx, expr.span, "<expr>");
-                span_lint_and_then(
-                    cx,
-                    READ_LINE_WITHOUT_TRIM,
-                    span,
-                    "calling `.parse()` without trimming the trailing newline character",
-                    |diag| {
-                        diag.span_note(
-                            call.span,
-                            "call to `.read_line()` here, \
-                            which leaves a trailing newline character in the buffer, \
-                            which in turn will cause `.parse()` to fail",
-                        );
+            if let Some(parent) = get_parent_expr(cx, expr) {
+                if let ExprKind::MethodCall(segment, .., span) = parent.kind
+                    && segment.ident.name == sym!(parse)
+                    && let parse_result_ty = cx.typeck_results().expr_ty(parent)
+                    && is_type_diagnostic_item(cx, parse_result_ty, sym::Result)
+                    && let ty::Adt(_, substs) = parse_result_ty.kind()
+                    && let Some(ok_ty) = substs[0].as_type()
+                    && parse_fails_on_trailing_newline(ok_ty)
+                {
+                    let local_snippet: std::borrow::Cow<'_, str> = snippet(cx, expr.span, "<expr>");
+                    span_lint_and_then(
+                        cx,
+                        READ_LINE_WITHOUT_TRIM,
+                        span,
+                        "calling `.parse()` without trimming the trailing newline character",
+                        |diag| {
+                            diag.span_note(
+                                call.span,
+                                "call to `.read_line()` here, \
+                                which leaves a trailing newline character in the buffer, \
+                                which in turn will cause `.parse()` to fail",
+                            );
 
-                        diag.span_suggestion(
-                            expr.span,
-                            "try",
-                            format!("{local_snippet}.trim_end()"),
-                            Applicability::MachineApplicable,
-                        );
-                    },
-                );
+                            diag.span_suggestion(
+                                expr.span,
+                                "try",
+                                format!("{local_snippet}.trim_end()"),
+                                Applicability::MachineApplicable,
+                            );
+                        },
+                    );
+                } else if let ExprKind::Binary(binop, _, right) = parent.kind
+                    && let BinOpKind::Eq = binop.node
+                    && let ExprKind::Lit(lit) = right.kind
+                    && let LitKind::Str(sym, _) = lit.node
+                    && !sym.as_str().ends_with('\n')
+                {
+                    span_lint_and_then(
+                        cx,
+                        READ_LINE_WITHOUT_TRIM,
+                        parent.span,
+                        "comparing a string literal without trimming the trailing newline character",
+                        |diag| {
+                            let local_snippet = snippet(cx, expr.span, "<expr>");
+
+                            diag.span_note(
+                                call.span,
+                                "call to `.read_line()` here, \
+                                which leaves a trailing newline character in the buffer, \
+                                which in turn will cause the comparison to always fail",
+                            );
+
+                            diag.span_suggestion(
+                                expr.span,
+                                "try",
+                                format!("{local_snippet}.trim_end()"),
+                                Applicability::MachineApplicable,
+                            );
+                        },
+                    );
+                }
             }
 
             // only consider the first use to prevent this scenario:
