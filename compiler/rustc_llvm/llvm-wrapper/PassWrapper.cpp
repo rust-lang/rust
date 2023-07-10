@@ -1,46 +1,51 @@
-#include <stdio.h>
+#include "LLVMWrapper.h"
 
 #include <cstddef>
 #include <iomanip>
+
+#if LLVM_VERSION_LT(16, 0)
+#include <stdio.h>
 #include <vector>
 #include <set>
-
-#include "LLVMWrapper.h"
 
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/TargetLibraryInfo.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
 #include "llvm/CodeGen/CommandFlags.h"
+#include "llvm/IR/IntrinsicInst.h"
+#include "llvm/Object/ObjectFile.h"
+#include "llvm/Passes/PassBuilder.h"
+#include "llvm/Support/CBindingWrapping.h"
+#include "llvm/Support/Host.h"
+#include "llvm/Transforms/IPO/AlwaysInliner.h"
+#include "llvm/Transforms/IPO/FunctionImport.h"
+#include "llvm/Transforms/Utils/AddDiscriminators.h"
+#include "llvm/Bitcode/BitcodeWriter.h"
+#include "llvm/Transforms/Instrumentation.h"
+#include "llvm/Support/TimeProfiler.h"
+#include "llvm/Transforms/Utils.h"
+#endif
+
 #include "llvm/CodeGen/TargetSubtargetInfo.h"
 #include "llvm/IR/AutoUpgrade.h"
 #include "llvm/IR/AssemblyAnnotationWriter.h"
-#include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/MC/TargetRegistry.h"
-#include "llvm/Object/ObjectFile.h"
 #include "llvm/Object/IRObjectFile.h"
-#include "llvm/Passes/PassBuilder.h"
 #include "llvm/Passes/PassPlugin.h"
 #include "llvm/Passes/StandardInstrumentations.h"
-#include "llvm/Support/CBindingWrapping.h"
 #include "llvm/Support/FileSystem.h"
 #if LLVM_VERSION_GE(17, 0)
 #include "llvm/Support/VirtualFileSystem.h"
 #endif
 #include "llvm/Target/TargetMachine.h"
-#include "llvm/Transforms/IPO/AlwaysInliner.h"
-#include "llvm/Transforms/IPO/FunctionImport.h"
 #include "llvm/Transforms/IPO/Internalize.h"
 #include "llvm/Transforms/IPO/LowerTypeTests.h"
 #include "llvm/Transforms/IPO/ThinLTOBitcodeWriter.h"
-#include "llvm/Transforms/Utils/AddDiscriminators.h"
 #include "llvm/Transforms/Utils/FunctionImportUtils.h"
 #include "llvm/LTO/LTO.h"
-#include "llvm/Bitcode/BitcodeWriter.h"
 
-#include "llvm/Transforms/Instrumentation.h"
 #include "llvm/Transforms/Instrumentation/AddressSanitizer.h"
-#include "llvm/Support/TimeProfiler.h"
 #include "llvm/Transforms/Instrumentation/GCOVProfiler.h"
 #include "llvm/Transforms/Instrumentation/InstrProfiling.h"
 #include "llvm/Transforms/Instrumentation/ThreadSanitizer.h"
@@ -48,7 +53,6 @@
 #include "llvm/Transforms/Instrumentation/HWAddressSanitizer.h"
 #include "llvm/Transforms/Utils/CanonicalizeAliases.h"
 #include "llvm/Transforms/Utils/NameAnonGlobals.h"
-#include "llvm/Transforms/Utils.h"
 
 using namespace llvm;
 

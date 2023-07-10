@@ -1,12 +1,20 @@
 #include "LLVMWrapper.h"
 #include "llvm/ADT/Statistic.h"
+
+#if LLVM_VERSION_LT(16, 0)
 #include "llvm/IR/DebugInfoMetadata.h"
 #include "llvm/IR/DiagnosticHandler.h"
-#include "llvm/IR/DiagnosticInfo.h"
-#include "llvm/IR/DiagnosticPrinter.h"
 #include "llvm/IR/GlobalVariable.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Intrinsics.h"
+#include "llvm/Object/ObjectFile.h"
+#include "llvm/Pass.h"
+#include "llvm/Bitcode/BitcodeWriter.h"
+#include "llvm/ADT/Optional.h"
+#endif
+
+#include "llvm/IR/DiagnosticInfo.h"
+#include "llvm/IR/DiagnosticPrinter.h"
 #include "llvm/IR/IntrinsicsARM.h"
 #include "llvm/IR/LLVMRemarkStreamer.h"
 #include "llvm/IR/Mangler.h"
@@ -19,13 +27,7 @@
 #endif
 #include "llvm/Object/Archive.h"
 #include "llvm/Object/COFFImportFile.h"
-#include "llvm/Object/ObjectFile.h"
-#include "llvm/Pass.h"
-#include "llvm/Bitcode/BitcodeWriter.h"
 #include "llvm/Support/Signals.h"
-#if LLVM_VERSION_LT(16, 0)
-#include "llvm/ADT/Optional.h"
-#endif
 
 #include <iostream>
 
