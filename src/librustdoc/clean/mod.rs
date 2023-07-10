@@ -1552,7 +1552,8 @@ fn first_non_private(
                                 if let Res::Def(DefKind::Ctor(..), _) | Res::SelfCtor(..) = res {
                                     continue;
                                 }
-                                if !cx.tcx.is_doc_hidden(use_def_id) &&
+                                if (cx.render_options.document_hidden ||
+                                    !cx.tcx.is_doc_hidden(use_def_id)) &&
                                     // We never check for "cx.render_options.document_private"
                                     // because if a re-export is not fully public, it's never
                                     // documented.
