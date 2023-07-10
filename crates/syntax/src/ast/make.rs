@@ -10,6 +10,8 @@
 //! `parse(format!())` we use internally is an implementation detail -- long
 //! term, it will be replaced with direct tree manipulation.
 use itertools::Itertools;
+use parser::T;
+use rowan::NodeOrToken;
 use stdx::{format_to, never};
 
 use crate::{ast, utils::is_raw_identifier, AstNode, SourceFile, SyntaxKind, SyntaxToken};
@@ -1028,6 +1030,41 @@ pub fn struct_(
     };
 
     ast_from_text(&format!("{visibility}struct {strukt_name}{type_params}{field_list}{semicolon}",))
+}
+
+pub fn attr_outer(meta: ast::Meta) -> ast::Attr {
+    ast_from_text(&format!("#[{meta}]"))
+}
+
+pub fn attr_inner(meta: ast::Meta) -> ast::Attr {
+    ast_from_text(&format!("#![{meta}]"))
+}
+
+pub fn meta_expr(path: ast::Path, expr: ast::Expr) -> ast::Meta {
+    ast_from_text(&format!("#[{path} = {expr}]"))
+}
+
+pub fn meta_token_tree(path: ast::Path, tt: ast::TokenTree) -> ast::Meta {
+    ast_from_text(&format!("#[{path}{tt}]"))
+}
+
+pub fn meta_path(path: ast::Path) -> ast::Meta {
+    ast_from_text(&format!("#[{path}]"))
+}
+
+pub fn token_tree(
+    delimiter: SyntaxKind,
+    tt: Vec<NodeOrToken<ast::TokenTree, SyntaxToken>>,
+) -> ast::TokenTree {
+    let (l_delimiter, r_delimiter) = match delimiter {
+        T!['('] => ('(', ')'),
+        T!['['] => ('[', ']'),
+        T!['{'] => ('{', '}'),
+        _ => panic!("invalid delimiter `{delimiter:?}`"),
+    };
+    let tt = tt.into_iter().join("");
+
+    ast_from_text(&format!("tt!{l_delimiter}{tt}{r_delimiter}"))
 }
 
 #[track_caller]
