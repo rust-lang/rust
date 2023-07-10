@@ -1553,6 +1553,9 @@ fn first_non_private(
                                     continue;
                                 }
                                 if !cx.tcx.is_doc_hidden(use_def_id) &&
+                                    // We never check for "cx.render_options.document_private"
+                                    // because if a re-export is not fully public, it's never
+                                    // documented.
                                     cx.tcx.local_visibility(local_use_def_id).is_public() {
                                     break 'reexps;
                                 }
