@@ -7,7 +7,7 @@ use std::{
     process::{Command, Stdio},
 };
 
-use build_helper::{util::try_run, ci::CiEnv};
+use build_helper::{ci::CiEnv, util::try_run};
 use once_cell::sync::OnceCell;
 use xz2::bufread::XzDecoder;
 

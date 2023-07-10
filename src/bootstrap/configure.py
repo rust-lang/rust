@@ -550,6 +550,8 @@ if __name__ == "__main__":
     # If 'config.toml' already exists, exit the script at this point
     quit_if_file_exists('config.toml')
 
+    if "GITHUB_ACTIONS" in os.environ:
+        print("::group::Configure the build")
     p("processing command line")
     # Parse all known arguments into a configuration structure that reflects the
     # TOML we're going to write out
@@ -572,3 +574,5 @@ if __name__ == "__main__":
 
     p("")
     p("run `python {}/x.py --help`".format(rust_dir))
+    if "GITHUB_ACTIONS" in os.environ:
+        print("::endgroup::")
