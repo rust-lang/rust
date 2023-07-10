@@ -113,16 +113,12 @@ pub(super) fn explicit_item_bounds(
             ..
         }) => associated_type_bounds(tcx, def_id, bounds, *span),
         hir::Node::Item(hir::Item {
-            kind: hir::ItemKind::OpaqueTy(hir::OpaqueTy { bounds, in_trait, .. }),
+            kind: hir::ItemKind::OpaqueTy(hir::OpaqueTy { bounds, .. }),
             span,
             ..
         }) => {
             let substs = InternalSubsts::identity_for_item(tcx, def_id);
-            let item_ty = if *in_trait && !tcx.lower_impl_trait_in_trait_to_assoc_ty() {
-                Ty::new_projection(tcx, def_id.to_def_id(), substs)
-            } else {
-                Ty::new_opaque(tcx, def_id.to_def_id(), substs)
-            };
+            let item_ty = Ty::new_opaque(tcx, def_id.to_def_id(), substs);
             opaque_type_bounds(tcx, def_id, bounds, item_ty, *span)
         }
         hir::Node::Item(hir::Item { kind: hir::ItemKind::TyAlias(..), .. }) => &[],

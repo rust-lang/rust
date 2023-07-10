@@ -56,7 +56,7 @@ fn variances_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Variance] {
             let crate_map = tcx.crate_variances(());
             return crate_map.variances.get(&item_def_id.to_def_id()).copied().unwrap_or(&[]);
         }
-        DefKind::OpaqueTy | DefKind::ImplTraitPlaceholder => {
+        DefKind::OpaqueTy => {
             return variance_of_opaque(tcx, item_def_id);
         }
         _ => {}
@@ -112,14 +112,6 @@ fn variance_of_opaque(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Varianc
             match t.kind() {
                 ty::Alias(_, ty::AliasTy { def_id, substs, .. })
                     if matches!(self.tcx.def_kind(*def_id), DefKind::OpaqueTy) =>
-                {
-                    self.visit_opaque(*def_id, substs)
-                }
-                // FIXME(-Zlower-impl-trait-in-trait-to-assoc-ty) check whether this is necessary
-                // at all for RPITITs.
-                ty::Alias(_, ty::AliasTy { def_id, substs, .. })
-                    if self.tcx.is_impl_trait_in_trait(*def_id)
-                        && !self.tcx.lower_impl_trait_in_trait_to_assoc_ty() =>
                 {
                     self.visit_opaque(*def_id, substs)
                 }

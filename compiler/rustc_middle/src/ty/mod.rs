@@ -2688,7 +2688,6 @@ impl<'tcx> TyCtxt<'tcx> {
             | Some(ImplTraitInTraitData::Impl { fn_def_id, .. }) => fn_def_id,
             None => {
                 while let def_kind = self.def_kind(def_id) && def_kind != DefKind::AssocFn {
-                    debug_assert_eq!(def_kind, DefKind::ImplTraitPlaceholder);
                     def_id = self.parent(def_id);
                 }
                 def_id
@@ -2720,26 +2719,9 @@ impl<'tcx> TyCtxt<'tcx> {
 
         let Some(trait_item_def_id) = item.trait_item_def_id else { return false; };
 
-        if self.lower_impl_trait_in_trait_to_assoc_ty() {
-            return !self
-                .associated_types_for_impl_traits_in_associated_fn(trait_item_def_id)
-                .is_empty();
-        }
-
-        // FIXME(RPITIT): This does a somewhat manual walk through the signature
-        // of the trait fn to look for any RPITITs, but that's kinda doing a lot
-        // of work. We can probably remove this when we refactor RPITITs to be
-        // associated types.
-        self.fn_sig(trait_item_def_id).subst_identity().skip_binder().output().walk().any(|arg| {
-            if let ty::GenericArgKind::Type(ty) = arg.unpack()
-                && let ty::Alias(ty::Projection, data) = ty.kind()
-                && self.def_kind(data.def_id) == DefKind::ImplTraitPlaceholder
-            {
-                true
-            } else {
-                false
-            }
-        })
+        return !self
+            .associated_types_for_impl_traits_in_associated_fn(trait_item_def_id)
+            .is_empty();
     }
 }
 

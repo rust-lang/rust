@@ -1237,7 +1237,7 @@ impl<'tcx> AliasTy<'tcx> {
     pub fn kind(self, tcx: TyCtxt<'tcx>) -> ty::AliasKind {
         match tcx.def_kind(self.def_id) {
             DefKind::AssocTy if let DefKind::Impl { of_trait: false } = tcx.def_kind(tcx.parent(self.def_id)) => ty::Inherent,
-            DefKind::AssocTy | DefKind::ImplTraitPlaceholder => ty::Projection,
+            DefKind::AssocTy => ty::Projection,
             DefKind::OpaqueTy => ty::Opaque,
             DefKind::TyAlias => ty::Weak,
             kind => bug!("unexpected DefKind in AliasTy: {kind:?}"),
@@ -1265,9 +1265,6 @@ impl<'tcx> AliasTy<'tcx> {
     pub fn trait_def_id(self, tcx: TyCtxt<'tcx>) -> DefId {
         match tcx.def_kind(self.def_id) {
             DefKind::AssocTy | DefKind::AssocConst => tcx.parent(self.def_id),
-            DefKind::ImplTraitPlaceholder => {
-                tcx.parent(tcx.impl_trait_in_trait_parent_fn(self.def_id))
-            }
             kind => bug!("expected a projection AliasTy; found {kind:?}"),
         }
     }
@@ -1970,7 +1967,6 @@ impl<'tcx> Ty<'tcx> {
             (kind, tcx.def_kind(alias_ty.def_id)),
             (ty::Opaque, DefKind::OpaqueTy)
                 | (ty::Projection | ty::Inherent, DefKind::AssocTy)
-                | (ty::Opaque | ty::Projection, DefKind::ImplTraitPlaceholder)
                 | (ty::Weak, DefKind::TyAlias)
         );
         Ty::new(tcx, Alias(kind, alias_ty))

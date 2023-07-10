@@ -302,16 +302,11 @@ pub(super) fn check_opaque_for_inheriting_lifetimes(
 
     if let ItemKind::OpaqueTy(&hir::OpaqueTy {
         origin: hir::OpaqueTyOrigin::AsyncFn(..) | hir::OpaqueTyOrigin::FnReturn(..),
-        in_trait,
         ..
     }) = item.kind
     {
         let substs = InternalSubsts::identity_for_item(tcx, def_id);
-        let opaque_identity_ty = if in_trait && !tcx.lower_impl_trait_in_trait_to_assoc_ty() {
-            Ty::new_projection(tcx, def_id.to_def_id(), substs)
-        } else {
-            Ty::new_opaque(tcx, def_id.to_def_id(), substs)
-        };
+        let opaque_identity_ty = Ty::new_opaque(tcx, def_id.to_def_id(), substs);
         let mut visitor = ProhibitOpaqueVisitor {
             opaque_identity_ty,
             parent_count: tcx.generics_of(def_id).parent_count as u32,
@@ -573,17 +568,6 @@ fn check_item_type(tcx: TyCtxt<'_>, id: hir::ItemId) {
             {
                 // Skip opaques from RPIT in traits with no default body.
             } else {
-                check_opaque(tcx, id);
-            }
-        }
-        DefKind::ImplTraitPlaceholder => {
-            let parent = tcx.impl_trait_in_trait_parent_fn(id.owner_id.to_def_id());
-            // Only check the validity of this opaque type if the function has a default body
-            if let hir::Node::TraitItem(hir::TraitItem {
-                kind: hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(_)),
-                ..
-            }) = tcx.hir().get_by_def_id(parent.expect_local())
-            {
                 check_opaque(tcx, id);
             }
         }
