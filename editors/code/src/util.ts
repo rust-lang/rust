@@ -1,4 +1,3 @@
-import * as lc from "vscode-languageclient/node";
 import * as vscode from "vscode";
 import { strict as nativeAssert } from "assert";
 import { exec, ExecOptions, spawnSync } from "child_process";
@@ -56,37 +55,6 @@ export const log = new (class {
         });
     }
 })();
-
-export async function sendRequestWithRetry<TParam, TRet>(
-    client: lc.LanguageClient,
-    reqType: lc.RequestType<TParam, TRet, unknown>,
-    param: TParam,
-    token?: vscode.CancellationToken
-): Promise<TRet> {
-    // The sequence is `10 * (2 ** (2 * n))` where n is 1, 2, 3...
-    for (const delay of [40, 160, 640, 2560, 10240, null]) {
-        try {
-            return await (token
-                ? client.sendRequest(reqType, param, token)
-                : client.sendRequest(reqType, param));
-        } catch (error) {
-            if (delay === null) {
-                log.warn("LSP request timed out", { method: reqType.method, param, error });
-                throw error;
-            }
-            if (error.code === lc.LSPErrorCodes.RequestCancelled) {
-                throw error;
-            }
-
-            if (error.code !== lc.LSPErrorCodes.ContentModified) {
-                log.warn("LSP request failed", { method: reqType.method, param, error });
-                throw error;
-            }
-            await sleep(delay);
-        }
-    }
-    throw "unreachable";
-}
 
 export function sleep(ms: number) {
     return new Promise((resolve) => setTimeout(resolve, ms));
