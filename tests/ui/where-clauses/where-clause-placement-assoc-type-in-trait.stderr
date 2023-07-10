@@ -1,5 +1,5 @@
 warning: where clause not allowed here
-  --> $DIR/type-alias-where-fixable.rs:13:16
+  --> $DIR/where-clause-placement-assoc-type-in-trait.rs:8:16
    |
 LL |     type Assoc where u32: Copy = ();
    |                ^^^^^^^^^^^^^^^
@@ -13,7 +13,7 @@ LL +     type Assoc  = () where u32: Copy;
    |
 
 warning: where clause not allowed here
-  --> $DIR/type-alias-where-fixable.rs:16:17
+  --> $DIR/where-clause-placement-assoc-type-in-trait.rs:11:17
    |
 LL |     type Assoc2 where u32: Copy = () where i32: Copy;
    |                 ^^^^^^^^^^^^^^^
@@ -25,18 +25,5 @@ LL -     type Assoc2 where u32: Copy = () where i32: Copy;
 LL +     type Assoc2  = () where i32: Copy, u32: Copy;
    |
 
-warning: where clause not allowed here
-  --> $DIR/type-alias-where-fixable.rs:24:17
-   |
-LL |     type Assoc2 where u32: Copy, i32: Copy = ();
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #89122 <https://github.com/rust-lang/rust/issues/89122> for more information
-help: move it to the end of the type declaration
-   |
-LL -     type Assoc2 where u32: Copy, i32: Copy = ();
-LL +     type Assoc2  = () where u32: Copy, i32: Copy;
-   |
-
-warning: 3 warnings emitted
+warning: 2 warnings emitted
 
