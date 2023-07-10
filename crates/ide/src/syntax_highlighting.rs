@@ -265,10 +265,14 @@ fn traverse(
 
         // set macro and attribute highlighting states
         match event.clone() {
-            Enter(NodeOrToken::Node(node)) if ast::TokenTree::can_cast(node.kind()) => {
+            Enter(NodeOrToken::Node(node))
+                if current_macro.is_none() && ast::TokenTree::can_cast(node.kind()) =>
+            {
                 tt_level += 1;
             }
-            Leave(NodeOrToken::Node(node)) if ast::TokenTree::can_cast(node.kind()) => {
+            Leave(NodeOrToken::Node(node))
+                if current_macro.is_none() && ast::TokenTree::can_cast(node.kind()) =>
+            {
                 tt_level -= 1;
             }
             Enter(NodeOrToken::Node(node)) if ast::Attr::can_cast(node.kind()) => {
@@ -387,7 +391,7 @@ fn traverse(
             };
         let descended_element = if in_macro {
             // Attempt to descend tokens into macro-calls.
-            match element {
+            let res = match element {
                 NodeOrToken::Token(token) if token.kind() != COMMENT => {
                     let token = match attr_or_derive_item {
                         Some(AttrOrDerive::Attr(_)) => {
@@ -412,7 +416,8 @@ fn traverse(
                     }
                 }
                 e => e,
-            }
+            };
+            res
         } else {
             element
         };

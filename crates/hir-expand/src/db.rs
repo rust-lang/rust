@@ -338,7 +338,7 @@ fn macro_arg(
 ) -> Option<Arc<(tt::Subtree, mbe::TokenMap, fixup::SyntaxFixupUndoInfo)>> {
     let loc = db.lookup_intern_macro_call(id);
 
-    if let Some(EagerCallInfo { arg, arg_id: Some(_), error: _ }) = loc.eager.as_deref() {
+    if let Some(EagerCallInfo { arg, arg_id: _, error: _ }) = loc.eager.as_deref() {
         return Some(Arc::new((arg.0.clone(), arg.1.clone(), Default::default())));
     }
 
@@ -404,7 +404,7 @@ fn censor_for_macro_input(loc: &MacroCallLoc, node: &SyntaxNode) -> FxHashSet<Sy
 
 fn macro_arg_text(db: &dyn ExpandDatabase, id: MacroCallId) -> Option<GreenNode> {
     let loc = db.lookup_intern_macro_call(id);
-    let arg = loc.kind.arg(db)?;
+    let arg = loc.kind.arg(db)?.value;
     if matches!(loc.kind, MacroCallKind::FnLike { .. }) {
         let first = arg.first_child_or_token().map_or(T![.], |it| it.kind());
         let last = arg.last_child_or_token().map_or(T![.], |it| it.kind());
@@ -490,8 +490,14 @@ fn macro_def(db: &dyn ExpandDatabase, id: MacroDefId) -> TokenExpander {
 fn macro_expand(db: &dyn ExpandDatabase, id: MacroCallId) -> ExpandResult<Arc<tt::Subtree>> {
     let _p = profile::span("macro_expand");
     let loc = db.lookup_intern_macro_call(id);
+
+    // This might look a bit odd, but we do not expand the inputs to eager macros here.
+    // Eager macros inputs are expanded, well, eagerly when we collect the macro calls.
+    // That kind of expansion uses the ast id map of an eager macros input though which goes through
+    // the HirFileId machinery. As eager macro inputs are assigned a macro file id that query
+    // will end up going through here again, whereas we want to just want to inspect the raw input.
+    // As such we just return the input subtree here.
     if let Some(EagerCallInfo { arg, arg_id: None, error }) = loc.eager.as_deref() {
-        // This is an input expansion for an eager macro. These are already pre-expanded
         return ExpandResult { value: Arc::new(arg.0.clone()), err: error.clone() };
     }
 

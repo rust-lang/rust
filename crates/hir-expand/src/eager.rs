@@ -67,26 +67,37 @@ pub fn expand_eager_macro_input(
         })),
         kind: MacroCallKind::FnLike { ast_id: call_id, expand_to: ExpandTo::Expr },
     });
-    let arg_as_expr = match db.macro_arg_text(arg_id) {
-        Some(it) => it,
-        None => {
-            return Ok(ExpandResult {
-                value: None,
-                err: Some(ExpandError::other("invalid token tree")),
-            })
-        }
+
+    let ExpandResult { value: expanded_eager_input, err } = {
+        let arg_as_expr = match db.macro_arg_text(arg_id) {
+            Some(it) => it,
+            None => {
+                return Ok(ExpandResult {
+                    value: None,
+                    err: Some(ExpandError::other("invalid token tree")),
+                })
+            }
+        };
+
+        eager_macro_recur(
+            db,
+            &Hygiene::new(db, macro_call.file_id),
+            InFile::new(arg_id.as_file(), SyntaxNode::new_root(arg_as_expr)),
+            krate,
+            resolver,
+        )?
     };
-    let ExpandResult { value: expanded_eager_input, err } = eager_macro_recur(
-        db,
-        &Hygiene::new(db, macro_call.file_id),
-        InFile::new(arg_id.as_file(), SyntaxNode::new_root(arg_as_expr)),
-        krate,
-        resolver,
-    )?;
+
     let Some(expanded_eager_input) = expanded_eager_input else {
         return Ok(ExpandResult { value: None, err });
     };
-    let (mut subtree, token_map) = mbe::syntax_node_to_token_tree(&expanded_eager_input);
+    // FIXME: This token map is pointless, it points into the expanded eager syntax node, but that
+    // node doesn't exist outside this function so we can't use this tokenmap.
+    // Ideally we'd need to patch the tokenmap of the pre-expanded input and then put that here
+    // or even better, forego expanding into a SyntaxNode altogether and instead construct a subtree
+    // in place! But that is kind of difficult.
+    let (mut subtree, _token_map) = mbe::syntax_node_to_token_tree(&expanded_eager_input);
+    let token_map = Default::default();
     subtree.delimiter = crate::tt::Delimiter::unspecified();
 
     let loc = MacroCallLoc {

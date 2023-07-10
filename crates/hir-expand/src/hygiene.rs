@@ -149,16 +149,12 @@ impl HygieneInfo {
                     token_id = unshifted;
                     (&attr_args.1, self.attr_input_or_mac_def_start?)
                 }
-                None => (
-                    &self.macro_arg.1,
-                    InFile::new(loc.kind.file_id(), loc.kind.arg(db)?.text_range().start()),
-                ),
+                None => (&self.macro_arg.1, loc.kind.arg(db)?.map(|it| it.text_range().start())),
             },
             _ => match origin {
-                mbe::Origin::Call => (
-                    &self.macro_arg.1,
-                    InFile::new(loc.kind.file_id(), loc.kind.arg(db)?.text_range().start()),
-                ),
+                mbe::Origin::Call => {
+                    (&self.macro_arg.1, loc.kind.arg(db)?.map(|it| it.text_range().start()))
+                }
                 mbe::Origin::Def => match (&self.macro_def, &self.attr_input_or_mac_def_start) {
                     (TokenExpander::DeclarativeMacro(expander), Some(tt)) => {
                         (&expander.def_site_token_map, *tt)
