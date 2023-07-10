@@ -1616,17 +1616,6 @@ extern "C" void LLVMRustSetLinkage(LLVMValueRef V,
   LLVMSetLinkage(V, fromRust(RustLinkage));
 }
 
-// FIXME: replace with LLVMConstInBoundsGEP2 when bumped minimal version to llvm-14
-extern "C" LLVMValueRef LLVMRustConstInBoundsGEP2(LLVMTypeRef Ty,
-                                                  LLVMValueRef ConstantVal,
-                                                  LLVMValueRef *ConstantIndices,
-                                                  unsigned NumIndices) {
-  ArrayRef<Constant *> IdxList(unwrap<Constant>(ConstantIndices, NumIndices),
-                               NumIndices);
-  Constant *Val = unwrap<Constant>(ConstantVal);
-  return wrap(ConstantExpr::getInBoundsGetElementPtr(unwrap(Ty), Val, IdxList));
-}
-
 extern "C" bool LLVMRustConstIntGetZExtValue(LLVMValueRef CV, uint64_t *value) {
     auto C = unwrap<llvm::ConstantInt>(CV);
     if (C->getBitWidth() > 64)
