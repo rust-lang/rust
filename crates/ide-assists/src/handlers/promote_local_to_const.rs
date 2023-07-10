@@ -77,9 +77,7 @@ pub(crate) fn promote_local_to_const(acc: &mut Assists, ctx: &AssistContext<'_>)
             let usages = Definition::Local(local).usages(&ctx.sema).all();
             if let Some(usages) = usages.references.get(&ctx.file_id()) {
                 for usage in usages {
-                    let Some(usage) = usage.name.as_name_ref().cloned() else {
-                        continue
-                    };
+                    let Some(usage) = usage.name.as_name_ref().cloned() else { continue };
                     let usage = edit.make_mut(usage);
                     ted::replace(usage.syntax(), make::name_ref(&name).clone_for_update().syntax());
                 }
