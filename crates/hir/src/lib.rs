@@ -62,7 +62,8 @@ use hir_expand::{name::name, MacroCallKind};
 use hir_ty::{
     all_super_traits, autoderef,
     consteval::{try_const_usize, unknown_const_as_generic, ConstEvalError, ConstExt},
-    diagnostics::BodyValidationDiagnostic, known_const_to_string,
+    diagnostics::BodyValidationDiagnostic,
+    known_const_to_string,
     layout::{Layout as TyLayout, RustcEnumVariantIdx, TagEncoding},
     method_resolution::{self, TyFingerprint},
     mir::{self, interpret_mir},

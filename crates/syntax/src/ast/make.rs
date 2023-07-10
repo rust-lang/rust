@@ -509,7 +509,7 @@ pub fn expr_literal(text: &str) -> ast::Literal {
     ast_from_text(&format!("fn f() {{ let _ = {text}; }}"))
 }
 
-pub fn expr_const_value(text: &str) -> ast::Expr {
+pub fn expr_const_value(text: &str) -> ast::ConstArg {
     ast_from_text(&format!("trait Foo<const N: usize = {text}> {{}}"))
 }
 

@@ -160,9 +160,10 @@ impl<'a> PathTransform<'a> {
                 }
                 (Either::Left(k), None) => {
                     if let Some(default) = k.default(db) {
-                        let default = ast::make::expr_const_value(&default);
-                        const_substs.insert(k, default.syntax().clone_for_update());
-                        // FIXME: transform the default value
+                        if let Some(default) = ast::make::expr_const_value(&default).expr() {
+                            const_substs.insert(k, default.syntax().clone_for_update());
+                            // FIXME: transform the default value
+                        }
                     }
                 }
                 _ => (), // ignore mismatching params

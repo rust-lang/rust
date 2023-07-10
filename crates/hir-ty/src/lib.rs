@@ -723,6 +723,10 @@ where
 
 pub fn known_const_to_string(konst: &Const, db: &dyn HirDatabase) -> Option<String> {
     if let ConstValue::Concrete(c) = &konst.interned().value {
+        if let ConstScalar::UnevaluatedConst(GeneralConstId::InTypeConstId(_), _) = &c.interned {
+            // FIXME: stringify the block expression
+            return None;
+        }
         if c.interned == ConstScalar::Unknown {
             return None;
         }

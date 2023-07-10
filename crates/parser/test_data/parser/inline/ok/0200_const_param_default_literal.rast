@@ -21,10 +21,11 @@ SOURCE_FILE
         WHITESPACE " "
         EQ "="
         WHITESPACE " "
-        PREFIX_EXPR
-          MINUS "-"
-          LITERAL
-            INT_NUMBER "1"
+        CONST_ARG
+          PREFIX_EXPR
+            MINUS "-"
+            LITERAL
+              INT_NUMBER "1"
       R_ANGLE ">"
     SEMICOLON ";"
   WHITESPACE "\n"
