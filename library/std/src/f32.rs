@@ -500,10 +500,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn log2(self) -> f32 {
-        #[cfg(target_os = "android")]
-        return crate::sys::android::log2f32(self);
-        #[cfg(not(target_os = "android"))]
-        return unsafe { intrinsics::log2f32(self) };
+        crate::sys::log2f32(self)
     }
 
     /// Returns the base 10 logarithm of the number.
