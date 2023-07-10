@@ -486,10 +486,6 @@ message = "This PR changes src/bootstrap/defaults/config.codegen.toml. If approp
 
 [mentions."src/bootstrap/llvm.rs"]
 message = "This PR changes how LLVM is built. Consider updating src/bootstrap/download-ci-llvm-stamp."
-[mentions."compiler/rustc_llvm/build.rs"]
-message = "This PR changes how LLVM is built. Consider updating src/bootstrap/download-ci-llvm-stamp."
-[mentions."compiler/rustc_llvm/llvm-wrapper"]
-message = "This PR changes how LLVM is built. Consider updating src/bootstrap/download-ci-llvm-stamp."
 
 [mentions."tests/ui/deriving/deriving-all-codegen.stdout"]
 message = "Changes to the code generated for builtin derived traits."
