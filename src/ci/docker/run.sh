@@ -79,7 +79,7 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
       loaded_images=$(/usr/bin/timeout -k 720 600 docker load -i /tmp/rustci_docker_cache \
         | sed 's/.* sha/sha/')
       set -e
-      echo "Downloaded containers:\n$loaded_images"
+      printf "Downloaded containers:\n$loaded_images\n"
     fi
 
     dockerfile="$docker_dir/$image/Dockerfile"
@@ -89,12 +89,14 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
     else
         context="$script_dir"
     fi
+    echo "::group::Building docker image for $image"
     retry docker \
       build \
       --rm \
       -t rust-ci \
       -f "$dockerfile" \
       "$context"
+    echo "::endgroup::"
 
     if [ "$CI" != "" ]; then
       s3url="s3://$SCCACHE_BUCKET/docker/$cksum"

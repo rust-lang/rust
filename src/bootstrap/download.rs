@@ -7,7 +7,7 @@ use std::{
     process::{Command, Stdio},
 };
 
-use build_helper::util::try_run;
+use build_helper::{ci::CiEnv, util::try_run};
 use once_cell::sync::OnceCell;
 use xz2::bufread::XzDecoder;
 
@@ -213,7 +213,6 @@ impl Config {
         // Try curl. If that fails and we are on windows, fallback to PowerShell.
         let mut curl = Command::new("curl");
         curl.args(&[
-            "-#",
             "-y",
             "30",
             "-Y",
@@ -224,6 +223,12 @@ impl Config {
             "3",
             "-SRf",
         ]);
+        // Don't print progress in CI; the \r wrapping looks bad and downloads don't take long enough for progress to be useful.
+        if CiEnv::is_ci() {
+            curl.arg("-s");
+        } else {
+            curl.arg("--progress-bar");
+        }
         curl.arg(url);
         let f = File::create(tempfile).unwrap();
         curl.stdout(Stdio::from(f));
