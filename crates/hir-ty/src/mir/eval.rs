@@ -137,6 +137,7 @@ pub struct Evaluator<'a> {
     /// time of use.
     vtable_map: VTableMap,
     thread_local_storage: TlsData,
+    random_state: oorandom::Rand64,
     stdout: Vec<u8>,
     stderr: Vec<u8>,
     layout_cache: RefCell<FxHashMap<Ty, Arc<Layout>>>,
@@ -147,6 +148,8 @@ pub struct Evaluator<'a> {
     execution_limit: usize,
     /// An additional limit on stack depth, to prevent stack overflow
     stack_depth_limit: usize,
+    /// Maximum count of bytes that heap and stack can grow
+    memory_limit: usize,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -520,6 +523,7 @@ impl Evaluator<'_> {
             thread_local_storage: TlsData::default(),
             static_locations: HashMap::default(),
             db,
+            random_state: oorandom::Rand64::new(0),
             trait_env,
             crate_id,
             stdout: vec![],
@@ -527,6 +531,7 @@ impl Evaluator<'_> {
             assert_placeholder_ty_is_unused,
             stack_depth_limit: 100,
             execution_limit: 1000_000,
+            memory_limit: 1000_000_000, // 2GB, 1GB for stack and 1GB for heap
             layout_cache: RefCell::new(HashMap::default()),
         }
     }
@@ -938,6 +943,11 @@ impl Evaluator<'_> {
         };
         locals.ptr = locals_ptr;
         let prev_stack_pointer = self.stack.len();
+        if stack_size > self.memory_limit {
+            return Err(MirEvalError::Panic(format!(
+                "Stack overflow. Tried to grow stack to {stack_size} bytes"
+            )));
+        }
         self.stack.extend(iter::repeat(0).take(stack_size));
         Ok((locals, prev_stack_pointer))
     }
@@ -1180,7 +1190,7 @@ impl Evaluator<'_> {
                 let Some((size, align)) = self.size_align_of(ty, locals)? else {
                     not_supported!("unsized box initialization");
                 };
-                let addr = self.heap_allocate(size, align);
+                let addr = self.heap_allocate(size, align)?;
                 Owned(addr.to_bytes())
             }
             Rvalue::CopyForDeref(_) => not_supported!("copy for deref"),
@@ -1565,7 +1575,7 @@ impl Evaluator<'_> {
             ConstScalar::Bytes(v, memory_map) => {
                 let mut v: Cow<'_, [u8]> = Cow::Borrowed(v);
                 let patch_map = memory_map.transform_addresses(|b, align| {
-                    let addr = self.heap_allocate(b.len(), align);
+                    let addr = self.heap_allocate(b.len(), align)?;
                     self.write_memory(addr, b)?;
                     Ok(addr.to_usize())
                 })?;
@@ -1580,7 +1590,7 @@ impl Evaluator<'_> {
                         return Err(MirEvalError::InvalidConst(konst.clone()));
                     }
                 }
-                let addr = self.heap_allocate(size, align);
+                let addr = self.heap_allocate(size, align)?;
                 self.write_memory(addr, &v)?;
                 self.patch_addresses(&patch_map, &memory_map.vtable, addr, ty, locals)?;
                 Interval::new(addr, size)
@@ -1683,13 +1693,19 @@ impl Evaluator<'_> {
         }
     }
 
-    fn heap_allocate(&mut self, size: usize, align: usize) -> Address {
+    fn heap_allocate(&mut self, size: usize, align: usize) -> Result<Address> {
+        if !align.is_power_of_two() || align > 10000 {
+            return Err(MirEvalError::UndefinedBehavior(format!("Alignment {align} is invalid")));
+        }
         while self.heap.len() % align != 0 {
             self.heap.push(0);
         }
+        if size.checked_add(self.heap.len()).map_or(true, |x| x > self.memory_limit) {
+            return Err(MirEvalError::Panic(format!("Memory allocation of {size} bytes failed")));
+        }
         let pos = self.heap.len();
         self.heap.extend(iter::repeat(0).take(size));
-        Address::Heap(pos)
+        Ok(Address::Heap(pos))
     }
 
     fn detect_fn_trait(&self, def: FunctionId) -> Option<FnTrait> {
@@ -2200,7 +2216,7 @@ impl Evaluator<'_> {
                     )?;
                     // FIXME: there is some leak here
                     let size = layout.size.bytes_usize();
-                    let addr = self.heap_allocate(size, layout.align.abi.bytes() as usize);
+                    let addr = self.heap_allocate(size, layout.align.abi.bytes() as usize)?;
                     self.write_memory(addr, &result)?;
                     IntervalAndTy { interval: Interval { addr, size }, ty }
                 };
@@ -2235,10 +2251,10 @@ impl Evaluator<'_> {
             let Some((size, align)) = self.size_align_of(&ty, locals)? else {
                 not_supported!("unsized extern static");
             };
-            let addr = self.heap_allocate(size, align);
+            let addr = self.heap_allocate(size, align)?;
             Interval::new(addr, size)
         };
-        let addr = self.heap_allocate(self.ptr_size(), self.ptr_size());
+        let addr = self.heap_allocate(self.ptr_size(), self.ptr_size())?;
         self.write_memory(addr, &result.addr.to_bytes())?;
         self.static_locations.insert(st, addr);
         Ok(addr)
@@ -2398,11 +2414,11 @@ pub fn render_const_using_debug_impl(
         not_supported!("core::fmt::Debug::fmt not found");
     };
     // a1 = &[""]
-    let a1 = evaluator.heap_allocate(evaluator.ptr_size() * 2, evaluator.ptr_size());
+    let a1 = evaluator.heap_allocate(evaluator.ptr_size() * 2, evaluator.ptr_size())?;
     // a2 = &[::core::fmt::ArgumentV1::new(&(THE_CONST), ::core::fmt::Debug::fmt)]
     // FIXME: we should call the said function, but since its name is going to break in the next rustc version
     // and its ABI doesn't break yet, we put it in memory manually.
-    let a2 = evaluator.heap_allocate(evaluator.ptr_size() * 2, evaluator.ptr_size());
+    let a2 = evaluator.heap_allocate(evaluator.ptr_size() * 2, evaluator.ptr_size())?;
     evaluator.write_memory(a2, &data.addr.to_bytes())?;
     let debug_fmt_fn_ptr = evaluator.vtable_map.id(TyKind::FnDef(
         db.intern_callable_def(debug_fmt_fn.into()).into(),
@@ -2412,7 +2428,7 @@ pub fn render_const_using_debug_impl(
     evaluator.write_memory(a2.offset(evaluator.ptr_size()), &debug_fmt_fn_ptr.to_le_bytes())?;
     // a3 = ::core::fmt::Arguments::new_v1(a1, a2)
     // FIXME: similarly, we should call function here, not directly working with memory.
-    let a3 = evaluator.heap_allocate(evaluator.ptr_size() * 6, evaluator.ptr_size());
+    let a3 = evaluator.heap_allocate(evaluator.ptr_size() * 6, evaluator.ptr_size())?;
     evaluator.write_memory(a3.offset(2 * evaluator.ptr_size()), &a1.to_bytes())?;
     evaluator.write_memory(a3.offset(3 * evaluator.ptr_size()), &[1])?;
     evaluator.write_memory(a3.offset(4 * evaluator.ptr_size()), &a2.to_bytes())?;
