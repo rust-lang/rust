@@ -115,7 +115,7 @@ function compile_rustfmt() {
     git fetch feature $FEATURE_BRANCH
 
     cargo build --release --bin rustfmt && cp target/release/rustfmt $1/rustfmt
-    if [ -z "$OPTIONAL_COMMIT_HASH" ]; then
+    if [ -z "$OPTIONAL_COMMIT_HASH" ] || [ "$FEATURE_BRANCH" = "$OPTIONAL_COMMIT_HASH" ]; then
         git switch $FEATURE_BRANCH
     else
         git switch $OPTIONAL_COMMIT_HASH --detach
