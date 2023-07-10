@@ -1,0 +1,39 @@
+error[E0391]: cycle detected when computing type of `Foo::{opaque#0}`
+  --> $DIR/const-promoted-opaque.rs:13:12
+   |
+LL | type Foo = impl Sized;
+   |            ^^^^^^^^^^
+   |
+note: ...which requires borrow-checking `FOO`...
+  --> $DIR/const-promoted-opaque.rs:20:1
+   |
+LL | const FOO: Foo = std::sync::atomic::AtomicU8::new(42);
+   | ^^^^^^^^^^^^^^
+note: ...which requires promoting constants in MIR for `FOO`...
+  --> $DIR/const-promoted-opaque.rs:20:1
+   |
+LL | const FOO: Foo = std::sync::atomic::AtomicU8::new(42);
+   | ^^^^^^^^^^^^^^
+note: ...which requires const checking `FOO`...
+  --> $DIR/const-promoted-opaque.rs:20:1
+   |
+LL | const FOO: Foo = std::sync::atomic::AtomicU8::new(42);
+   | ^^^^^^^^^^^^^^
+   = note: ...which requires computing whether `Foo` is freeze...
+   = note: ...which requires evaluating trait selection obligation `Foo: core::marker::Freeze`...
+   = note: ...which again requires computing type of `Foo::{opaque#0}`, completing the cycle
+note: cycle used when checking item types in top-level module
+  --> $DIR/const-promoted-opaque.rs:2:1
+   |
+LL | / #![feature(type_alias_impl_trait)]
+LL | |
+LL | | //! Check that we do not cause cycle errors when trying to
+LL | | //! obtain information about interior mutability of an opaque type.
+...  |
+LL | |     let _: &'static _ = &FOO;
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0391`.
