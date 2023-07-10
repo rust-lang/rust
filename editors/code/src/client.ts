@@ -6,7 +6,7 @@ import * as Is from "vscode-languageclient/lib/common/utils/is";
 import { assert } from "./util";
 import * as diagnostics from "./diagnostics";
 import { WorkspaceEdit } from "vscode";
-import { Config, prepareVSCodeConfig } from "./config";
+import { type Config, prepareVSCodeConfig } from "./config";
 import { randomUUID } from "crypto";
 import { sep as pathSeparator } from "path";
 import { unwrapUndefinable } from "./undefinable";

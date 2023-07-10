@@ -1,10 +1,10 @@
 import * as os from "os";
 import * as vscode from "vscode";
 import * as path from "path";
-import * as ra from "./lsp_ext";
+import type * as ra from "./lsp_ext";
 
 import { Cargo, getRustcId, getSysroot } from "./toolchain";
-import { Ctx } from "./ctx";
+import type { Ctx } from "./ctx";
 import { prepareEnv } from "./run";
 import { unwrapUndefinable } from "./undefinable";
 

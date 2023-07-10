@@ -3,23 +3,23 @@ import * as lc from "vscode-languageclient";
 import * as ra from "./lsp_ext";
 import * as path from "path";
 
-import { Ctx, Cmd, CtxInit, discoverWorkspace } from "./ctx";
+import { type Ctx, type Cmd, type CtxInit, discoverWorkspace } from "./ctx";
 import { applySnippetWorkspaceEdit, applySnippetTextEdits } from "./snippets";
 import { spawnSync } from "child_process";
-import { RunnableQuickPick, selectRunnable, createTask, createArgs } from "./run";
+import { type RunnableQuickPick, selectRunnable, createTask, createArgs } from "./run";
 import { AstInspector } from "./ast_inspector";
 import {
     isRustDocument,
     isCargoTomlDocument,
     sleep,
     isRustEditor,
-    RustEditor,
-    RustDocument,
+    type RustEditor,
+    type RustDocument,
 } from "./util";
 import { startDebugSession, makeDebugConfig } from "./debug";
-import { LanguageClient } from "vscode-languageclient/node";
+import type { LanguageClient } from "vscode-languageclient/node";
 import { LINKED_COMMANDS } from "./client";
-import { DependencyId } from "./dependencies_provider";
+import type { DependencyId } from "./dependencies_provider";
 import { unwrapUndefinable } from "./undefinable";
 
 export * from "./ast_inspector";

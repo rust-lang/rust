@@ -1,11 +1,11 @@
 import * as vscode from "vscode";
-import * as lc from "vscode-languageclient";
+import type * as lc from "vscode-languageclient";
 import * as ra from "./lsp_ext";
 import * as tasks from "./tasks";
 
-import { CtxInit } from "./ctx";
+import type { CtxInit } from "./ctx";
 import { makeDebugConfig } from "./debug";
-import { Config, RunnableEnvCfg } from "./config";
+import type { Config, RunnableEnvCfg } from "./config";
 import { unwrapUndefinable } from "./undefinable";
 
 const quickPickButtons = [
