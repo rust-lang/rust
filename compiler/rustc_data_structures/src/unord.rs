@@ -168,6 +168,14 @@ impl<T: Ord, I: Iterator<Item = T>> UnordItems<T, I> {
     }
 }
 
+/// A marker trait specifying that `Self` can consume `UnordItems<_>` without
+/// exposing any internal ordering.
+///
+/// Note: right now this is just a marker trait. It could be extended to contain
+/// some useful, common methods though, like `len`, `clear`, or the various
+/// kinds of `to_sorted`.
+trait UnordCollection {}
+
 /// This is a set collection type that tries very hard to not expose
 /// any internal iteration. This is a useful property when trying to
 /// uphold the determinism invariants imposed by the query system.
@@ -181,6 +189,8 @@ impl<T: Ord, I: Iterator<Item = T>> UnordItems<T, I> {
 pub struct UnordSet<V: Eq + Hash> {
     inner: FxHashSet<V>,
 }
+
+impl<V: Eq + Hash> UnordCollection for UnordSet<V> {}
 
 impl<V: Eq + Hash> Default for UnordSet<V> {
     #[inline]
@@ -285,16 +295,28 @@ impl<V: Eq + Hash> UnordSet<V> {
         to_sorted_vec(hcx, self.inner.into_iter(), cache_sort_key, |x| x)
     }
 
-    // We can safely extend this UnordSet from a set of unordered values because that
-    // won't expose the internal ordering anywhere.
-    #[inline]
-    pub fn extend_unord<I: Iterator<Item = V>>(&mut self, items: UnordItems<V, I>) {
-        self.inner.extend(items.0)
-    }
-
     #[inline]
     pub fn clear(&mut self) {
         self.inner.clear();
+    }
+}
+
+pub trait ExtendUnord<T> {
+    /// Extend this unord collection with the given `UnordItems`.
+    /// This method is called `extend_unord` instead of just `extend` so it
+    /// does not conflict with `Extend::extend`. Otherwise there would be many
+    /// places where the two methods would have to be explicitly disambiguated
+    /// via UFCS.
+    fn extend_unord<I: Iterator<Item = T>>(&mut self, items: UnordItems<T, I>);
+}
+
+// Note: it is important that `C` implements `UnordCollection` in addition to
+// `Extend`, otherwise this impl would leak the internal iteration order of
+// `items`, e.g. when calling `some_vec.extend_unord(some_unord_items)`.
+impl<C: Extend<T> + UnordCollection, T> ExtendUnord<T> for C {
+    #[inline]
+    fn extend_unord<I: Iterator<Item = T>>(&mut self, items: UnordItems<T, I>) {
+        self.extend(items.0)
     }
 }
 
@@ -344,6 +366,8 @@ impl<HCX, V: Hash + Eq + HashStable<HCX>> HashStable<HCX> for UnordSet<V> {
 pub struct UnordMap<K: Eq + Hash, V> {
     inner: FxHashMap<K, V>,
 }
+
+impl<K: Eq + Hash, V> UnordCollection for UnordMap<K, V> {}
 
 impl<K: Eq + Hash, V> Default for UnordMap<K, V> {
     #[inline]
@@ -443,13 +467,6 @@ impl<K: Eq + Hash, V> UnordMap<K, V> {
     #[inline]
     pub fn into_items(self) -> UnordItems<(K, V), impl Iterator<Item = (K, V)>> {
         UnordItems(self.inner.into_iter())
-    }
-
-    // We can safely extend this UnordMap from a set of unordered values because that
-    // won't expose the internal ordering anywhere.
-    #[inline]
-    pub fn extend<I: Iterator<Item = (K, V)>>(&mut self, items: UnordItems<(K, V), I>) {
-        self.inner.extend(items.0)
     }
 
     /// Returns the entries of this map in stable sort order (as defined by `ToStableHashKey`).
@@ -571,14 +588,9 @@ impl<V> UnordBag<V> {
     pub fn into_items(self) -> UnordItems<V, impl Iterator<Item = V>> {
         UnordItems(self.inner.into_iter())
     }
-
-    // We can safely extend this UnordSet from a set of unordered values because that
-    // won't expose the internal ordering anywhere.
-    #[inline]
-    pub fn extend<I: Iterator<Item = V>>(&mut self, items: UnordItems<V, I>) {
-        self.inner.extend(items.0)
-    }
 }
+
+impl<T> UnordCollection for UnordBag<T> {}
 
 impl<T> Extend<T> for UnordBag<T> {
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {

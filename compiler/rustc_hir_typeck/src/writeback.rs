@@ -4,6 +4,7 @@
 
 use crate::FnCtxt;
 use hir::def_id::LocalDefId;
+use rustc_data_structures::unord::ExtendUnord;
 use rustc_errors::{ErrorGuaranteed, StashKey};
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, Visitor};
@@ -526,7 +527,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         let fcx_typeck_results = self.fcx.typeck_results.borrow();
         assert_eq!(fcx_typeck_results.hir_owner, self.typeck_results.hir_owner);
 
-        self.typeck_results.user_provided_sigs.extend(
+        self.typeck_results.user_provided_sigs.extend_unord(
             fcx_typeck_results.user_provided_sigs.items().map(|(&def_id, c_sig)| {
                 if cfg!(debug_assertions) && c_sig.has_infer() {
                     span_bug!(

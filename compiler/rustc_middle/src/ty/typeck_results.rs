@@ -9,7 +9,7 @@ use crate::{
 };
 use rustc_data_structures::{
     fx::FxIndexMap,
-    unord::{UnordItems, UnordSet},
+    unord::{ExtendUnord, UnordItems, UnordSet},
 };
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
@@ -635,7 +635,7 @@ impl<'a, V> LocalTableInContextMut<'a, V> {
         &mut self,
         items: UnordItems<(hir::HirId, V), impl Iterator<Item = (hir::HirId, V)>>,
     ) {
-        self.data.extend(items.map(|(id, value)| {
+        self.data.extend_unord(items.map(|(id, value)| {
             validate_hir_id_for_typeck_results(self.hir_owner, id);
             (id.local_id, value)
         }))

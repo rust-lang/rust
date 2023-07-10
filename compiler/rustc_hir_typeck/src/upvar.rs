@@ -33,7 +33,7 @@
 use super::FnCtxt;
 
 use crate::expr_use_visitor as euv;
-use rustc_data_structures::unord::UnordSet;
+use rustc_data_structures::unord::{ExtendUnord, UnordSet};
 use rustc_errors::{Applicability, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;

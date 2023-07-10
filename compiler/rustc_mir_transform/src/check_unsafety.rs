@@ -1,4 +1,4 @@
-use rustc_data_structures::unord::{UnordItems, UnordSet};
+use rustc_data_structures::unord::{ExtendUnord, UnordItems, UnordSet};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
