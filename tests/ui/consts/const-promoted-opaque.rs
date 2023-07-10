@@ -11,7 +11,6 @@
 //[unit] check-pass
 
 type Foo = impl Sized;
-//[string,atomic]~^ ERROR cycle detected
 
 #[cfg(string)]
 const FOO: Foo = String::new();
@@ -24,10 +23,14 @@ const FOO: Foo = ();
 
 const BAR: () = {
     let _: &'static _ = &FOO;
+    //[string,atomic]~^ ERROR: destructor of `Foo` cannot be evaluated at compile-time
+    //[string,atomic]~| ERROR: temporary value dropped while borrowed
 };
 
 const BAZ: &Foo = &FOO;
+//[string,atomic]~^ ERROR: constants cannot refer to interior mutable data
 
 fn main() {
     let _: &'static _ = &FOO;
+    //[string,atomic]~^ ERROR: temporary value dropped while borrowed
 }
