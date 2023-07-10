@@ -567,20 +567,6 @@ pub fn check_platform_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>)
         | sym::simd_reduce_min_nanless
         | sym::simd_reduce_max_nanless => (2, vec![param(0)], param(1)),
         sym::simd_shuffle => (3, vec![param(0), param(0), param(1)], param(2)),
-        name if name.as_str().starts_with("simd_shuffle") => {
-            match name.as_str()["simd_shuffle".len()..].parse() {
-                Ok(n) => {
-                    let params = vec![param(0), param(0), Ty::new_array(tcx, tcx.types.u32, n)];
-                    (2, params, param(1))
-                }
-                Err(_) => {
-                    let msg =
-                        format!("unrecognized platform-specific intrinsic function: `{name}`");
-                    tcx.sess.struct_span_err(it.span, msg).emit();
-                    return;
-                }
-            }
-        }
         _ => {
             let msg = format!("unrecognized platform-specific intrinsic function: `{name}`");
             tcx.sess.struct_span_err(it.span, msg).emit();
