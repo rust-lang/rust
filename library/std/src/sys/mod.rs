@@ -23,6 +23,7 @@
 #![allow(missing_debug_implementations)]
 
 pub mod common;
+mod personality;
 
 cfg_if::cfg_if! {
     if #[cfg(unix)] {
