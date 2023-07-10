@@ -302,12 +302,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
     }
 
-    fn retag_return_place(&mut self) -> InterpResult<'tcx> {
+    fn protect_place(&mut self, place: &MPlaceTy<'tcx, Provenance>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let method = this.machine.borrow_tracker.as_ref().unwrap().borrow().borrow_tracker_method;
         match method {
-            BorrowTrackerMethod::StackedBorrows => this.sb_retag_return_place(),
-            BorrowTrackerMethod::TreeBorrows => this.tb_retag_return_place(),
+            BorrowTrackerMethod::StackedBorrows => this.sb_protect_place(place),
+            BorrowTrackerMethod::TreeBorrows => this.tb_protect_place(place),
         }
     }
 

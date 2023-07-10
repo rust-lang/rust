@@ -17,7 +17,7 @@ use rustc_target::spec::abi::Abi as CallAbi;
 use crate::const_eval::CheckAlignment;
 
 use super::{
-    AllocBytes, AllocId, AllocRange, Allocation, ConstAllocation, Frame, ImmTy, InterpCx,
+    AllocBytes, AllocId, AllocRange, Allocation, ConstAllocation, FnArg, Frame, ImmTy, InterpCx,
     InterpResult, MemoryKind, OpTy, Operand, PlaceTy, Pointer, Provenance, Scalar,
 };
 
@@ -84,7 +84,7 @@ pub trait AllocMap<K: Hash + Eq, V> {
 
 /// Methods of this trait signifies a point where CTFE evaluation would fail
 /// and some use case dependent behaviour can instead be applied.
-pub trait Machine<'mir, 'tcx>: Sized {
+pub trait Machine<'mir, 'tcx: 'mir>: Sized {
     /// Additional memory kinds a machine wishes to distinguish from the builtin ones
     type MemoryKind: Debug + std::fmt::Display + MayLeak + Eq + 'static;
 
@@ -182,7 +182,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         abi: CallAbi,
-        args: &[OpTy<'tcx, Self::Provenance>],
+        args: &[FnArg<'tcx, Self::Provenance>],
         destination: &PlaceTy<'tcx, Self::Provenance>,
         target: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
@@ -194,7 +194,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         fn_val: Self::ExtraFnVal,
         abi: CallAbi,
-        args: &[OpTy<'tcx, Self::Provenance>],
+        args: &[FnArg<'tcx, Self::Provenance>],
         destination: &PlaceTy<'tcx, Self::Provenance>,
         target: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
@@ -418,6 +418,18 @@ pub trait Machine<'mir, 'tcx>: Sized {
         Ok(())
     }
 
+    /// Called on places used for in-place function argument and return value handling.
+    ///
+    /// These places need to be protected to make sure the program cannot tell whether the
+    /// argument/return value was actually copied or passed in-place..
+    fn protect_in_place_function_argument(
+        ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        place: &PlaceTy<'tcx, Self::Provenance>,
+    ) -> InterpResult<'tcx> {
+        // Without an aliasing model, all we can do is put `Uninit` into the place.
+        ecx.write_uninit(place)
+    }
+
     /// Called immediately before a new stack frame gets pushed.
     fn init_frame_extra(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
@@ -436,6 +448,14 @@ pub trait Machine<'mir, 'tcx>: Sized {
 
     /// Called immediately after a stack frame got pushed and its locals got initialized.
     fn after_stack_push(_ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
+        Ok(())
+    }
+
+    /// Called just before the return value is copied to the caller-provided return place.
+    fn before_stack_pop(
+        _ecx: &InterpCx<'mir, 'tcx, Self>,
+        _frame: &Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>,
+    ) -> InterpResult<'tcx> {
         Ok(())
     }
 
@@ -484,7 +504,7 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
         _ecx: &mut InterpCx<$mir, $tcx, Self>,
         fn_val: !,
         _abi: CallAbi,
-        _args: &[OpTy<$tcx>],
+        _args: &[FnArg<$tcx>],
         _destination: &PlaceTy<$tcx, Self::Provenance>,
         _target: Option<mir::BasicBlock>,
         _unwind: mir::UnwindAction,

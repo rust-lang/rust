@@ -354,25 +354,27 @@ where
     #[inline]
     pub(super) fn get_place_alloc(
         &self,
-        place: &MPlaceTy<'tcx, M::Provenance>,
+        mplace: &MPlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, Option<AllocRef<'_, 'tcx, M::Provenance, M::AllocExtra, M::Bytes>>>
     {
-        assert!(place.layout.is_sized());
-        assert!(!place.meta.has_meta());
-        let size = place.layout.size;
-        self.get_ptr_alloc(place.ptr, size, place.align)
+        let (size, _align) = self
+            .size_and_align_of_mplace(&mplace)?
+            .unwrap_or((mplace.layout.size, mplace.layout.align.abi));
+        // Due to packed places, only `mplace.align` matters.
+        self.get_ptr_alloc(mplace.ptr, size, mplace.align)
     }
 
     #[inline]
     pub(super) fn get_place_alloc_mut(
         &mut self,
-        place: &MPlaceTy<'tcx, M::Provenance>,
+        mplace: &MPlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, Option<AllocRefMut<'_, 'tcx, M::Provenance, M::AllocExtra, M::Bytes>>>
     {
-        assert!(place.layout.is_sized());
-        assert!(!place.meta.has_meta());
-        let size = place.layout.size;
-        self.get_ptr_alloc_mut(place.ptr, size, place.align)
+        let (size, _align) = self
+            .size_and_align_of_mplace(&mplace)?
+            .unwrap_or((mplace.layout.size, mplace.layout.align.abi));
+        // Due to packed places, only `mplace.align` matters.
+        self.get_ptr_alloc_mut(mplace.ptr, size, mplace.align)
     }
 
     /// Check if this mplace is dereferenceable and sufficiently aligned.
