@@ -117,9 +117,8 @@ impl Step for CrateBootstrap {
             SourceType::InTree,
             &[],
         );
-        let _group = builder.msg(Kind::Test, compiler.stage, path, compiler.host, bootstrap_host);
         let crate_name = path.rsplit_once('/').unwrap().1;
-        run_cargo_test(cargo, &[], &[], crate_name, compiler, bootstrap_host, builder);
+        run_cargo_test(cargo, &[], &[], crate_name, crate_name, compiler, bootstrap_host, builder);
     }
 }
 
@@ -159,14 +158,6 @@ You can skip linkcheck with --exclude src/tools/linkchecker"
         let bootstrap_host = builder.config.build;
         let compiler = builder.compiler(0, bootstrap_host);
 
-        let self_test_group = builder.msg(
-            Kind::Test,
-            compiler.stage,
-            "linkchecker self tests",
-            bootstrap_host,
-            bootstrap_host,
-        );
-
         let cargo = tool::prepare_tool_cargo(
             builder,
             compiler,
@@ -177,8 +168,16 @@ You can skip linkcheck with --exclude src/tools/linkchecker"
             SourceType::InTree,
             &[],
         );
-        run_cargo_test(cargo, &[], &[], "linkchecker", compiler, bootstrap_host, builder);
-        drop(self_test_group);
+        run_cargo_test(
+            cargo,
+            &[],
+            &[],
+            "linkchecker",
+            "linkchecker self tests",
+            compiler,
+            bootstrap_host,
+            builder,
+        );
 
         if builder.doc_tests == DocTests::No {
             return;
@@ -415,8 +414,7 @@ impl Step for RustAnalyzer {
         cargo.env("SKIP_SLOW_TESTS", "1");
 
         cargo.add_rustc_lib_path(builder, compiler);
-        builder.msg_sysroot_tool(Kind::Test, compiler.stage, "rust-analyzer", host, host);
-        run_cargo_test(cargo, &[], &[], "rust-analyzer", compiler, host, builder);
+        run_cargo_test(cargo, &[], &[], "rust-analyzer", "rust-analyzer", compiler, host, builder);
     }
 }
 
@@ -465,8 +463,7 @@ impl Step for Rustfmt {
 
         cargo.add_rustc_lib_path(builder, compiler);
 
-        builder.msg_sysroot_tool(Kind::Test, compiler.stage, "rustfmt", host, host);
-        run_cargo_test(cargo, &[], &[], "rustfmt", compiler, host, builder);
+        run_cargo_test(cargo, &[], &[], "rustfmt", "rustfmt", compiler, host, builder);
     }
 }
 
@@ -514,7 +511,16 @@ impl Step for RustDemangler {
         cargo.env("RUST_DEMANGLER_DRIVER_PATH", rust_demangler);
         cargo.add_rustc_lib_path(builder, compiler);
 
-        run_cargo_test(cargo, &[], &[], "rust-demangler", compiler, host, builder);
+        run_cargo_test(
+            cargo,
+            &[],
+            &[],
+            "rust-demangler",
+            "rust-demangler",
+            compiler,
+            host,
+            builder,
+        );
     }
 }
 
@@ -756,7 +762,16 @@ impl Step for CompiletestTest {
             &[],
         );
         cargo.allow_features("test");
-        run_cargo_test(cargo, &[], &[], "compiletest", compiler, host, builder);
+        run_cargo_test(
+            cargo,
+            &[],
+            &[],
+            "compiletest",
+            "compiletest self test",
+            compiler,
+            host,
+            builder,
+        );
     }
 }
 
@@ -812,7 +827,7 @@ impl Step for Clippy {
             cargo.env("BLESS", "Gesundheit");
         }
 
-        builder.msg_sysroot_tool(Kind::Test, compiler.stage, "clippy", host, host);
+        let _guard = builder.msg_sysroot_tool(Kind::Test, compiler.stage, "clippy", host, host);
 
         if builder.try_run(&mut cargo).is_ok() {
             // The tests succeeded; nothing to do.
@@ -2207,11 +2222,12 @@ impl Step for CrateLibrustc {
 /// Given a `cargo test` subcommand, add the appropriate flags and run it.
 ///
 /// Returns whether the test succeeded.
-fn run_cargo_test(
+fn run_cargo_test<'a>(
     cargo: impl Into<Command>,
     libtest_args: &[&str],
     crates: &[Interned<String>],
     primary_crate: &str,
+    description: impl Into<Option<&'a str>>,
     compiler: Compiler,
     target: TargetSelection,
     builder: &Builder<'_>,
@@ -2219,6 +2235,9 @@ fn run_cargo_test(
     let mut cargo =
         prepare_cargo_test(cargo, libtest_args, crates, primary_crate, compiler, target, builder);
     let _time = util::timeit(&builder);
+    let _group = description.into().and_then(|what| {
+        builder.msg_sysroot_tool(Kind::Test, compiler.stage, what, compiler.host, target)
+    });
 
     #[cfg(feature = "build-metrics")]
     builder.metrics.begin_test_suite(
@@ -2384,14 +2403,16 @@ impl Step for Crate {
             _ => panic!("can only test libraries"),
         };
 
-        let _guard = builder.msg(
-            builder.kind,
-            compiler.stage,
-            crate_description(&self.crates),
-            compiler.host,
+        run_cargo_test(
+            cargo,
+            &[],
+            &self.crates,
+            &self.crates[0],
+            &*crate_description(&self.crates),
+            compiler,
             target,
+            builder,
         );
-        run_cargo_test(cargo, &[], &self.crates, &self.crates[0], compiler, target, builder);
     }
 }
 
@@ -2484,17 +2505,11 @@ impl Step for CrateRustdoc {
         dylib_path.insert(0, PathBuf::from(&*libdir));
         cargo.env(dylib_path_var(), env::join_paths(&dylib_path).unwrap());
 
-        let _guard = builder.msg_sysroot_tool(
-            builder.kind,
-            compiler.stage,
-            "rustdoc",
-            compiler.host,
-            target,
-        );
         run_cargo_test(
             cargo,
             &[],
             &[INTERNER.intern_str("rustdoc:0.0.0")],
+            "rustdoc",
             "rustdoc",
             compiler,
             target,
@@ -2551,12 +2566,11 @@ impl Step for CrateRustdocJsonTypes {
             &[]
         };
 
-        let _guard =
-            builder.msg(builder.kind, compiler.stage, "rustdoc-json-types", compiler.host, target);
         run_cargo_test(
             cargo,
             libtest_args,
             &[INTERNER.intern_str("rustdoc-json-types")],
+            "rustdoc-json-types",
             "rustdoc-json-types",
             compiler,
             target,
@@ -2728,7 +2742,7 @@ impl Step for Bootstrap {
         }
         // rustbuild tests are racy on directory creation so just run them one at a time.
         // Since there's not many this shouldn't be a problem.
-        run_cargo_test(cmd, &["--test-threads=1"], &[], "bootstrap", compiler, host, builder);
+        run_cargo_test(cmd, &["--test-threads=1"], &[], "bootstrap", None, compiler, host, builder);
     }
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -2846,14 +2860,16 @@ impl Step for RustInstaller {
             &[],
         );
 
-        let _guard = builder.msg(
-            Kind::Test,
-            compiler.stage,
+        run_cargo_test(
+            cargo,
+            &[],
+            &[],
+            "installer",
             "rust-installer",
+            compiler,
             bootstrap_host,
-            bootstrap_host,
+            builder,
         );
-        run_cargo_test(cargo, &[], &[], "installer", compiler, bootstrap_host, builder);
 
         // We currently don't support running the test.sh script outside linux(?) environments.
         // Eventually this should likely migrate to #[test]s in rust-installer proper rather than a
