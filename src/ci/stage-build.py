@@ -22,6 +22,7 @@ from typing import Callable, ContextManager, Dict, Iterable, Iterator, List, Opt
     Tuple, Union
 
 PGO_HOST = os.environ["PGO_HOST"]
+CHANNEL = os.environ["RUST_RELEASE_CHANNEL"]
 
 LOGGER = logging.getLogger("stage-build")
 
@@ -816,10 +817,10 @@ def run_tests(pipeline: Pipeline):
         return extracted_path
 
     # Extract rustc, libstd, cargo and src archives to create the optimized sysroot
-    rustc_dir = extract_dist_dir(f"rustc-nightly-{PGO_HOST}") / "rustc"
-    libstd_dir = extract_dist_dir(f"rust-std-nightly-{PGO_HOST}") / f"rust-std-{PGO_HOST}"
-    cargo_dir = extract_dist_dir(f"cargo-nightly-{PGO_HOST}") / "cargo"
-    extracted_src_dir = extract_dist_dir("rust-src-nightly") / "rust-src"
+    rustc_dir = extract_dist_dir(f"rustc-{CHANNEL}-{PGO_HOST}") / "rustc"
+    libstd_dir = extract_dist_dir(f"rust-std-{CHANNEL}-{PGO_HOST}") / f"rust-std-{PGO_HOST}"
+    cargo_dir = extract_dist_dir(f"cargo-{CHANNEL}-{PGO_HOST}") / "cargo"
+    extracted_src_dir = extract_dist_dir(f"rust-src-{CHANNEL}") / "rust-src"
 
     # We need to manually copy libstd to the extracted rustc sysroot
     shutil.copytree(
@@ -827,7 +828,7 @@ def run_tests(pipeline: Pipeline):
         rustc_dir / "lib" / "rustlib" / PGO_HOST / "lib"
     )
 
-    # Extract sources - they aren't in the `rustc-nightly-{host}` tarball, so we need to manually copy libstd
+    # Extract sources - they aren't in the `rustc-{CHANNEL}-{host}` tarball, so we need to manually copy libstd
     # sources to the extracted sysroot. We need sources available so that `-Zsimulate-remapped-rust-src-base`
     # works correctly.
     shutil.copytree(
