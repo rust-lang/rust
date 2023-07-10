@@ -140,7 +140,7 @@ impl Evaluator<'_> {
                 };
                 let size = from_bytes!(usize, size.get(self)?);
                 let align = from_bytes!(usize, align.get(self)?);
-                let result = self.heap_allocate(size, align);
+                let result = self.heap_allocate(size, align)?;
                 destination.write_from_bytes(self, &result.to_bytes())?;
             }
             "rustc_deallocator" => { /* no-op for now */ }
@@ -155,7 +155,7 @@ impl Evaluator<'_> {
                 } else {
                     let ptr = Address::from_bytes(ptr.get(self)?)?;
                     let align = from_bytes!(usize, align.get(self)?);
-                    let result = self.heap_allocate(new_size, align);
+                    let result = self.heap_allocate(new_size, align)?;
                     Interval { addr: result, size: old_size }
                         .write_from_interval(self, Interval { addr: ptr, size: old_size })?;
                     destination.write_from_bytes(self, &result.to_bytes())?;
@@ -239,6 +239,34 @@ impl Evaluator<'_> {
         }
     }
 
+    fn exec_syscall(
+        &mut self,
+        id: i64,
+        args: &[IntervalAndTy],
+        destination: Interval,
+        _locals: &Locals,
+        _span: MirSpan,
+    ) -> Result<()> {
+        match id {
+            318 => {
+                // SYS_getrandom
+                let [buf, len, _flags] = args else {
+                    return Err(MirEvalError::TypeError("SYS_getrandom args are not provided"));
+                };
+                let addr = Address::from_bytes(buf.get(self)?)?;
+                let size = from_bytes!(usize, len.get(self)?);
+                for i in 0..size {
+                    let rand_byte = self.random_state.rand_u64() as u8;
+                    self.write_memory(addr.offset(i), &[rand_byte])?;
+                }
+                destination.write_from_interval(self, len.interval)
+            }
+            _ => {
+                not_supported!("Unknown syscall id {id:?}")
+            }
+        }
+    }
+
     fn exec_extern_c(
         &mut self,
         as_str: &str,
@@ -246,7 +274,7 @@ impl Evaluator<'_> {
         _generic_args: &Substitution,
         destination: Interval,
         locals: &Locals,
-        _span: MirSpan,
+        span: MirSpan,
     ) -> Result<()> {
         match as_str {
             "memcmp" => {
@@ -342,6 +370,15 @@ impl Evaluator<'_> {
                 // return 0 as success
                 destination.write_from_bytes(self, &0u64.to_le_bytes()[0..destination.size])?;
                 Ok(())
+            }
+            "syscall" => {
+                let Some((id, rest)) = args.split_first() else {
+                    return Err(MirEvalError::TypeError(
+                        "syscall arg1 is not provided",
+                    ));
+                };
+                let id = from_bytes!(i64, id.get(self)?);
+                self.exec_syscall(id, rest, destination, locals, span)
             }
             _ => not_supported!("unknown external function {as_str}"),
         }

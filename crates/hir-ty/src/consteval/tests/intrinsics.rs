@@ -602,3 +602,41 @@ fn rotate() {
         320192512,
     );
 }
+
+#[test]
+fn simd() {
+    check_number(
+        r#"
+        pub struct i8x16(
+            i8,i8,i8,i8,i8,i8,i8,i8,i8,i8,i8,i8,i8,i8,i8,i8,
+        );
+        extern "platform-intrinsic" {
+            pub fn simd_bitmask<T, U>(x: T) -> U;
+        }
+        const GOAL: u16 = simd_bitmask(i8x16(
+            0, 1, 0, 0, 2, 255, 100, 0, 50, 0, 1, 1, 0, 0, 0, 0
+        ));
+        "#,
+        0b0000110101110010,
+    );
+    check_number(
+        r#"
+        pub struct i8x16(
+            i8,i8,i8,i8,i8,i8,i8,i8,i8,i8,i8,i8,i8,i8,i8,i8,
+        );
+        extern "platform-intrinsic" {
+            pub fn simd_lt<T, U>(x: T, y: T) -> U;
+            pub fn simd_bitmask<T, U>(x: T) -> U;
+        }
+        const GOAL: u16 = simd_bitmask(simd_lt::<i8x16, i8x16>(
+            i8x16(
+                -105, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+            ),
+            i8x16(
+                -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11
+            ),
+        ));
+        "#,
+        0xFFFF,
+    );
+}

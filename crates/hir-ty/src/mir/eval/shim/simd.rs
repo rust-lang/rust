@@ -22,7 +22,7 @@ macro_rules! not_supported {
 }
 
 impl Evaluator<'_> {
-    fn detect_simd_ty(&self, ty: &Ty) -> Result<usize> {
+    fn detect_simd_ty(&self, ty: &Ty) -> Result<(usize, Ty)> {
         match ty.kind(Interner) {
             TyKind::Adt(id, subst) => {
                 let len = match subst.as_slice(Interner).get(1).and_then(|it| it.constant(Interner))
@@ -30,13 +30,21 @@ impl Evaluator<'_> {
                     Some(len) => len,
                     _ => {
                         if let AdtId::StructId(id) = id.0 {
-                            return Ok(self.db.struct_data(id).variant_data.fields().len());
+                            let struct_data = self.db.struct_data(id);
+                            let fields = struct_data.variant_data.fields();
+                            let Some((first_field, _)) = fields.iter().next() else {
+                                not_supported!("simd type with no field");
+                            };
+                            let field_ty = self.db.field_types(id.into())[first_field]
+                                .clone()
+                                .substitute(Interner, subst);
+                            return Ok((fields.len(), field_ty));
                         }
                         return Err(MirEvalError::TypeError("simd type with no len param"));
                     }
                 };
                 match try_const_usize(self.db, len) {
-                    Some(it) => Ok(it as usize),
+                    Some(_) => not_supported!("array like simd type"),
                     None => Err(MirEvalError::TypeError("simd type with unevaluatable len param")),
                 }
             }
@@ -75,7 +83,8 @@ impl Evaluator<'_> {
                 let [left, right] = args else {
                     return Err(MirEvalError::TypeError("simd args are not provided"));
                 };
-                let len = self.detect_simd_ty(&left.ty)?;
+                let (len, ty) = self.detect_simd_ty(&left.ty)?;
+                let is_signed = matches!(ty.as_builtin(), Some(BuiltinType::Int(_)));
                 let size = left.interval.size / len;
                 let dest_size = destination.size / len;
                 let mut destination_bytes = vec![];
@@ -87,6 +96,13 @@ impl Evaluator<'_> {
                         if it != Ordering::Equal {
                             result = it;
                             break;
+                        }
+                    }
+                    if is_signed {
+                        if let Some((&l, &r)) = l.iter().zip(r).rev().next() {
+                            if l != r {
+                                result = (l as i8).cmp(&(r as i8));
+                            }
                         }
                     }
                     let result = match result {
@@ -102,9 +118,9 @@ impl Evaluator<'_> {
             }
             "bitmask" => {
                 let [op] = args else {
-                    return Err(MirEvalError::TypeError("simd_shuffle args are not provided"));
+                    return Err(MirEvalError::TypeError("simd_bitmask args are not provided"));
                 };
-                let op_len = self.detect_simd_ty(&op.ty)?;
+                let (op_len, _) = self.detect_simd_ty(&op.ty)?;
                 let op_count = op.interval.size / op_len;
                 let mut result: u64 = 0;
                 for (i, val) in op.get(self)?.chunks(op_count).enumerate() {
@@ -131,7 +147,7 @@ impl Evaluator<'_> {
                         ))
                     }
                 };
-                let left_len = self.detect_simd_ty(&left.ty)?;
+                let (left_len, _) = self.detect_simd_ty(&left.ty)?;
                 let left_size = left.interval.size / left_len;
                 let vector =
                     left.get(self)?.chunks(left_size).chain(right.get(self)?.chunks(left_size));

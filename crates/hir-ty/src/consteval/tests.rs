@@ -2495,6 +2495,28 @@ fn exec_limits() {
 }
 
 #[test]
+fn memory_limit() {
+    check_fail(
+        r#"
+        extern "Rust" {
+            #[rustc_allocator]
+            fn __rust_alloc(size: usize, align: usize) -> *mut u8;
+        }
+
+        const GOAL: u8 = unsafe {
+            __rust_alloc(30_000_000_000, 1); // 30GB
+            2
+        };
+        "#,
+        |e| {
+            e == ConstEvalError::MirEvalError(MirEvalError::Panic(
+                "Memory allocation of 30000000000 bytes failed".to_string(),
+            ))
+        },
+    );
+}
+
+#[test]
 fn type_error() {
     check_fail(
         r#"

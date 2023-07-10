@@ -614,6 +614,34 @@ fn main() {
 }
 
 #[test]
+fn syscalls() {
+    check_pass(
+        r#"
+//- minicore: option
+
+extern "C" {
+    pub unsafe extern "C" fn syscall(num: i64, ...) -> i64;
+}
+
+const SYS_getrandom: i64 = 318;
+
+fn should_not_reach() {
+    _ // FIXME: replace this function with panic when that works
+}
+
+fn main() {
+    let mut x: i32 = 0;
+    let r = syscall(SYS_getrandom, &mut x, 4usize, 0);
+    if r != 4 {
+        should_not_reach();
+    }
+}
+
+"#,
+    )
+}
+
+#[test]
 fn posix_tls() {
     check_pass(
         r#"

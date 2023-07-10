@@ -600,6 +600,7 @@ dependencies = [
  "limit",
  "nohash-hasher",
  "once_cell",
+ "oorandom",
  "profile",
  "project-model",
  "rustc-hash",
