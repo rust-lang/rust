@@ -147,13 +147,6 @@ pub(crate) trait Stable {
     fn stable(&self) -> Self::T;
 }
 
-impl Stable for DefId {
-    type T = stable_mir::CrateItem;
-    fn stable(&self) -> Self::T {
-        rustc_internal::crate_item(*self)
-    }
-}
-
 impl<'tcx> Stable for mir::Statement<'tcx> {
     type T = stable_mir::mir::Statement;
     fn stable(&self) -> Self::T {
@@ -188,7 +181,9 @@ impl<'tcx> Stable for mir::Rvalue<'tcx> {
             Ref(region, kind, place) => {
                 stable_mir::mir::Rvalue::Ref(opaque(region), kind.stable(), place.stable())
             }
-            ThreadLocalRef(def_id) => stable_mir::mir::Rvalue::ThreadLocalRef(def_id.stable()),
+            ThreadLocalRef(def_id) => {
+                stable_mir::mir::Rvalue::ThreadLocalRef(rustc_internal::crate_item(*def_id))
+            }
             AddressOf(mutability, place) => {
                 stable_mir::mir::Rvalue::AddressOf(mutability.stable(), place.stable())
             }
