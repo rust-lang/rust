@@ -63,7 +63,7 @@ export async function run(): Promise<void> {
     const context = new Context();
 
     const testFiles = (await readdir(path.resolve(__dirname))).filter((name) =>
-        name.endsWith(".test.js")
+        name.endsWith(".test.js"),
     );
     for (const testFile of testFiles) {
         try {

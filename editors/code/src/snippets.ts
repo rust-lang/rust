@@ -17,7 +17,9 @@ export async function applySnippetWorkspaceEdit(edit: vscode.WorkspaceEdit) {
                 for (const indel of edits) {
                     assert(
                         !parseSnippet(indel.newText),
-                        `bad ws edit: snippet received with multiple edits: ${JSON.stringify(edit)}`
+                        `bad ws edit: snippet received with multiple edits: ${JSON.stringify(
+                            edit,
+                        )}`,
                     );
                     builder.replace(indel.range, indel.newText);
                 }
@@ -32,7 +34,7 @@ async function editorFromUri(uri: vscode.Uri): Promise<vscode.TextEditor | undef
         await vscode.window.showTextDocument(uri, {});
     }
     return vscode.window.visibleTextEditors.find(
-        (it) => it.document.uri.toString() === uri.toString()
+        (it) => it.document.uri.toString() === uri.toString(),
     );
 }
 
@@ -56,8 +58,8 @@ export async function applySnippetTextEdits(editor: vscode.TextEditor, edits: vs
                 selections.push(
                     new vscode.Selection(
                         new vscode.Position(startLine, startColumn),
-                        new vscode.Position(startLine, endColumn)
-                    )
+                        new vscode.Position(startLine, endColumn),
+                    ),
                 );
                 builder.replace(indel.range, newText);
             } else {

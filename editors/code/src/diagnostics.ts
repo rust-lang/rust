@@ -89,7 +89,7 @@ export class AnsiDecorationProvider implements vscode.Disposable {
     }
 
     private _getDecorations(
-        uri: vscode.Uri
+        uri: vscode.Uri,
     ): ProviderResult<[TextEditorDecorationType, Range[]][]> {
         const stringContents = getRenderedDiagnostic(this.ctx, uri);
         const lines = stringContents.split("\n");
@@ -117,7 +117,7 @@ export class AnsiDecorationProvider implements vscode.Disposable {
                     lineNumber,
                     offset - totalEscapeLength,
                     lineNumber,
-                    offset + content.length - totalEscapeLength
+                    offset + content.length - totalEscapeLength,
                 );
 
                 offset += content.length;
@@ -183,7 +183,7 @@ export class AnsiDecorationProvider implements vscode.Disposable {
 
     private static _convertColor(
         color?: string,
-        truecolor?: string
+        truecolor?: string,
     ): ThemeColor | string | undefined {
         if (!color) {
             return undefined;

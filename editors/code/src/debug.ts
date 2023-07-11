@@ -13,7 +13,7 @@ type DebugConfigProvider = (
     config: ra.Runnable,
     executable: string,
     env: Record<string, string>,
-    sourceFileMap?: Record<string, string>
+    sourceFileMap?: Record<string, string>,
 ) => vscode.DebugConfiguration;
 
 export async function makeDebugConfig(ctx: Ctx, runnable: ra.Runnable): Promise<void> {
@@ -31,7 +31,7 @@ export async function makeDebugConfig(ctx: Ctx, runnable: ra.Runnable): Promise<
         const answer = await vscode.window.showErrorMessage(
             `Launch configuration '${debugConfig.name}' already exists!`,
             "Cancel",
-            "Update"
+            "Update",
         );
         if (answer === "Cancel") return;
 
@@ -68,7 +68,7 @@ export async function startDebugSession(ctx: Ctx, runnable: ra.Runnable): Promis
 
 async function getDebugConfiguration(
     ctx: Ctx,
-    runnable: ra.Runnable
+    runnable: ra.Runnable,
 ): Promise<vscode.DebugConfiguration | undefined> {
     const editor = ctx.activeRustEditor;
     if (!editor) return;
@@ -92,7 +92,7 @@ async function getDebugConfiguration(
     if (!debugEngine) {
         await vscode.window.showErrorMessage(
             `Install [CodeLLDB](https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb)` +
-                ` or [MS C++ tools](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools) extension for debugging.`
+                ` or [MS C++ tools](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools) extension for debugging.`,
         );
         return;
     }
@@ -157,7 +157,7 @@ async function getDebugConfiguration(
 
 async function getDebugExecutable(
     runnable: ra.Runnable,
-    env: Record<string, string>
+    env: Record<string, string>,
 ): Promise<string> {
     const cargo = new Cargo(runnable.args.workspaceRoot || ".", debugOutput, env);
     const executable = await cargo.executableFromArgs(runnable.args.cargoArgs);
@@ -170,7 +170,7 @@ function getLldbDebugConfig(
     runnable: ra.Runnable,
     executable: string,
     env: Record<string, string>,
-    sourceFileMap?: Record<string, string>
+    sourceFileMap?: Record<string, string>,
 ): vscode.DebugConfiguration {
     return {
         type: "lldb",
@@ -189,7 +189,7 @@ function getCppvsDebugConfig(
     runnable: ra.Runnable,
     executable: string,
     env: Record<string, string>,
-    sourceFileMap?: Record<string, string>
+    sourceFileMap?: Record<string, string>,
 ): vscode.DebugConfiguration {
     return {
         type: os.platform() === "win32" ? "cppvsdbg" : "cppdbg",

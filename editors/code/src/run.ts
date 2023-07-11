@@ -16,7 +16,7 @@ export async function selectRunnable(
     ctx: CtxInit,
     prevRunnable?: RunnableQuickPick,
     debuggeeOnly = false,
-    showButtons: boolean = true
+    showButtons: boolean = true,
 ): Promise<RunnableQuickPick | undefined> {
     const editor = ctx.activeRustEditor;
     if (!editor) return;
@@ -84,7 +84,7 @@ export async function selectRunnable(
                     }
                 }
             }),
-            quickPick
+            quickPick,
         );
         quickPick.show();
     });
@@ -103,7 +103,7 @@ export class RunnableQuickPick implements vscode.QuickPickItem {
 
 export function prepareEnv(
     runnable: ra.Runnable,
-    runnableEnvCfg: RunnableEnvCfg
+    runnableEnvCfg: RunnableEnvCfg,
 ): Record<string, string> {
     const env: Record<string, string> = { RUST_BACKTRACE: "short" };
 
@@ -156,7 +156,7 @@ export async function createTask(runnable: ra.Runnable, config: Config): Promise
         args,
         config.problemMatcher,
         config.cargoRunner,
-        true
+        true,
     );
 
     cargoTask.presentationOptions.clear = true;
