@@ -8,6 +8,11 @@ LL |         HelperStruct { helpers, is_empty: helpers[0].is_empty() }
    |                        -------            ^^^^^^^^^^ value borrowed here after move
    |                        |
    |                        value moved here
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |         HelperStruct { helpers.clone(), is_empty: helpers[0].is_empty() }
+   |                               ++++++++
 
 error: aborting due to previous error
 

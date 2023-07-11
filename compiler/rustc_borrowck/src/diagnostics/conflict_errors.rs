@@ -363,21 +363,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
         }
         let hir = self.infcx.tcx.hir();
-        if let Some(hir::Node::Item(hir::Item {
-            kind: hir::ItemKind::Fn(_, _, body_id),
-            ..
-        })) = hir.find(self.mir_hir_id())
-            && let Some(hir::Node::Expr(expr)) = hir.find(body_id.hir_id)
-        {
+        if let Some(body_id) = hir.maybe_body_owned_by(self.mir_def_id()) {
+            let expr = hir.body(body_id).value;
             let place = &self.move_data.move_paths[mpi].place;
-            let span = place.as_local()
-                .map(|local| self.body.local_decls[local].source_info.span);
-            let mut finder = ExpressionFinder {
-                expr_span: move_span,
-                expr: None,
-                pat: None,
-                parent_pat: None,
-            };
+            let span = place.as_local().map(|local| self.body.local_decls[local].source_info.span);
+            let mut finder =
+                ExpressionFinder { expr_span: move_span, expr: None, pat: None, parent_pat: None };
             finder.visit_expr(expr);
             if let Some(span) = span && let Some(expr) = finder.expr {
                 for (_, expr) in hir.parent_iter(expr.hir_id) {
