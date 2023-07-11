@@ -449,6 +449,8 @@ pub(crate) unsafe fn llvm_optimize(
         Some(llvm::SanitizerOptions {
             sanitize_address: config.sanitizer.contains(SanitizerSet::ADDRESS),
             sanitize_address_recover: config.sanitizer_recover.contains(SanitizerSet::ADDRESS),
+            sanitize_cfi: config.sanitizer.contains(SanitizerSet::CFI),
+            sanitize_kcfi: config.sanitizer.contains(SanitizerSet::KCFI),
             sanitize_memory: config.sanitizer.contains(SanitizerSet::MEMORY),
             sanitize_memory_recover: config.sanitizer_recover.contains(SanitizerSet::MEMORY),
             sanitize_memory_track_origins: config.sanitizer_memory_track_origins as c_int,
@@ -484,6 +486,7 @@ pub(crate) unsafe fn llvm_optimize(
         &*module.module_llvm.tm,
         to_pass_builder_opt_level(opt_level),
         opt_stage,
+        cgcx.opts.cg.linker_plugin_lto.enabled(),
         config.no_prepopulate_passes,
         config.verify_llvm_ir,
         using_thin_buffers,
