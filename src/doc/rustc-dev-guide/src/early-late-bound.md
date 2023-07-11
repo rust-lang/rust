@@ -1,107 +1,199 @@
-# Early and Late Bound Variables
+# Early and Late Bound Parameter Definitions
 
-In Rust, item definitions (like `fn`) can often have generic parameters, which
-are always [_universally_ quantified][quant]. That is, if you have a function
-like
+Understanding this page likely requires a rudimentary understanding of higher ranked
+trait bounds/`for<'a>`and also what types such as `dyn for<'a> Trait<'a>` and 
+`for<'a> fn(&'a u32)` mean. Reading [the nomincon chapter](https://doc.rust-lang.org/nomicon/hrtb.html)
+on HRTB may be useful for understanding this syntax. The meaning of `for<'a> fn(&'a u32)`
+is incredibly similar to the meaning of `T: for<'a> Trait<'a>`.
 
+If you are looking for information on the `RegionKind` variants `ReLateBound` and `ReEarlyBound`
+you should look at the section on [bound vars and params](./bound-vars-and-params.md). This section
+discusses what makes generic parameters on functions and closures late/early bound. Not the general
+concept of bound vars and generic parameters which `RegionKind` has named somewhat confusingly
+with this topic.
+
+## What does it mean for parameters to be early or late bound
+
+All function definitions conceptually have a zst (this is represented by `TyKind::FnDef` in rustc).
+The only generics on this zst are the early bound parameters of the function definition. e.g.
 ```rust
-fn foo<T>(x: T) { }
-```
+fn foo<'a>(_: &'a u32) {}
 
-this function is defined "for all T" (not "for some specific T", which would be
-[_existentially_ quantified][quant]).
-
-[quant]: ./appendix/background.md#quantified
-
-While Rust *items* can be quantified over types, lifetimes, and constants, the
-types of values in Rust are only ever quantified over lifetimes. So you can
-have a type like `for<'a> fn(&'a u32)`, which represents a function pointer
-that takes a reference with any lifetime, or `for<'a> dyn Trait<'a>`, which is
-a `dyn` trait for a trait implemented for any lifetime; but we have no type
-like `for<T> fn(T)`, which would be a function that takes a value of *any type*
-as a parameter. This is a consequence of monomorphization -- to support a value
-of type `for<T> fn(T)`, we would need a single function pointer that can be
-used for a parameter of any type, but in Rust we generate customized code for
-each parameter type.
-
-One consequence of this asymmetry is a weird split in how we represent some
-generic types: _early-_ and _late-_ bound parameters.
-Basically, if we cannot represent a type (e.g. a universally quantified type),
-we have to bind it _early_ so that the unrepresentable type is never around.
-
-Consider the following example:
-
-```rust,ignore
-fn foo<'a, 'b, T>(x: &'a u32, y: &'b T) where T: 'b { ... }
-```
-
-We cannot treat `'a`, `'b`, and `T` in the same way.  Types in Rust can't have
-`for<T> { .. }`, only `for<'a> {...}`, so whenever you reference `foo` the type
-you get back can't be `for<'a, 'b, T> fn(&'a u32, y: &'b T)`. Instead, the `T`
-must be substituted early. In particular, you have:
-
-```rust,ignore
-let x = foo; // T, 'b have to be substituted here
-x(...);      // 'a substituted here, at the point of call
-x(...);      // 'a substituted here with a different value
-```
-
-## Early-bound parameters
-
-Early-bound parameters in rustc are identified by an index, stored in the
-[`ParamTy`] struct for types or the [`EarlyBoundRegion`] struct for lifetimes.
-The index counts from the outermost declaration in scope. This means that as you
-add more binders inside, the index doesn't change.
-
-For example,
-
-```rust,ignore
-trait Foo<T> {
-  type Bar<U> = (Self, T, U);
+fn main() {
+    let b = foo;
+    //  ^ `b` has type `FnDef(foo, [])` (no substs because `'a` is late bound)
+    assert!(std::mem::size_of_val(&b) == 0);
 }
 ```
 
-Here, the type `(Self, T, U)` would be `($0, $1, $2)`, where `$N` means a
-[`ParamTy`] with the index of `N`.
+In order to call `b` the late bound parameters do need to be provided, these are inferred at the
+call site instead of when we refer to `foo`.
+```rust
+fn main() {
+    let b = foo;
+    let a: &'static u32 = &10;
+    foo(a);
+    // the lifetime argument for `'a` on `foo` is inferred at the callsite
+    // the generic parameter `'a` on `foo` is inferred to `'static` here
+}
+```
 
-In rustc, the [`Generics`] structure carries this information. So the
-[`Generics`] for `Bar` above would be just like for `U` and would indicate the
-'parent' generics of `Foo`, which declares `Self` and `T`.  You can read more
-in [this chapter](./generics.md).
+Because late bound parameters are not part of the `FnDef`'s substs this allows us to prove trait
+bounds such as `F: for<'a> Fn(&'a u32)` where `F` is `foo`'s `FnDef`. e.g.
+```rust
+fn foo_early<'a, T: Trait<'a>>(_: &'a u32, _: T) {}
+fn foo_late<'a, T>(_: &'a u32, _: T) {}
 
-[`ParamTy`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.ParamTy.html
-[`EarlyBoundRegion`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.EarlyBoundRegion.html
-[`Generics`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Generics.html
+fn accepts_hr_func<F: for<'a> Fn(&'a u32, u32)>(_: F) {}
 
-## Late-bound parameters
+fn main() {
+    // doesnt work, the substituted bound is `for<'a> FnDef<'?0>: Fn(&'a u32, u32)`
+    // `foo_early` only implements `for<'a> FnDef<'a>: Fn(&'a u32, u32)`- the lifetime
+    // of the borrow in the function argument must be the same as the lifetime
+    // on the `FnDef`.
+    accepts_hr_func(foo_early);
+    
+    // works, the substituted bound is `for<'a> FnDef: Fn(&'a u32, u32)`
+    accepts_hr_func(foo_late);
+}
 
-Late-bound parameters in `rustc` are handled quite differently (they are also
-specialized to lifetimes since, right now, only late-bound lifetimes are
-supported, though with GATs that has to change). We indicate their potential
-presence by a [`Binder`] type. The [`Binder`] doesn't know how many variables
-there are at that binding level. This can only be determined by walking the
-type itself and collecting them. So a type like `for<'a, 'b> ('a, 'b)` would be
-`for (^0.a, ^0.b)`. Here, we just write `for` because we don't know the names
-of the things bound within.
+// the builtin `Fn` impls for `foo_early` and `foo_late` look something like:
+// `foo_early`
+impl<'a, T: Trait<'a>> Fn(&'a u32, T) for FooEarlyFnDef<'a, T> { ... }
+// `foo_late`
+impl<'a, T> Fn(&'a u32, T) for FooLateFnDef<T> { ... }
 
-Moreover, a reference to a late-bound lifetime is written `^0.a`:
+```
 
-- The `0` is the index; it identifies that this lifetime is bound in the
-  innermost binder (the `for`).
-- The `a` is the "name"; late-bound lifetimes in rustc are identified by a
-  "name" -- the [`BoundRegionKind`] enum. This enum can contain a
-  [`DefId`][defid] or it might have various "anonymous" numbered names. The
-  latter arise from types like `fn(&u32, &u32)`, which are equivalent to
-  something like `for<'a, 'b> fn(&'a u32, &'b u32)`, but the names of those
-  lifetimes must be generated.
+Early bound parameters are present on the `FnDef`. Late bound generic parameters are not present
+on the `FnDef` but are instead constrained by the builtin `Fn*` impl.
 
-This setup of not knowing the full set of variables at a binding level has some
-advantages and some disadvantages. The disadvantage is that you must walk the
-type to find out what is bound at the given level and so forth. The advantage
-is primarily that, when constructing types from Rust syntax, if we encounter
-anonymous regions like in `fn(&u32)`, we just create a fresh index and don't have
-to update the binder.
+The same distinction applies to closures. Instead of `FnDef` we are talking about the anonymous
+closure type. Closures are [currently unsound](https://github.com/rust-lang/rust/issues/84366) in
+ways that are closely related to the distinction between early/late bound
+parameters (more on this later)
 
-[`Binder`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Binder.html
-[`BoundRegionKind`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.BoundRegionKind.html
-[defid]: ./hir.html#identifiers-in-the-hir
+The early/late boundness of generic parameters is only relevent for the desugaring of
+functions/closures into types with builtin `Fn*` impls. It does not make sense to talk about
+in other contexts.
+
+The `generics_of` query in rustc only contains early bound parameters. In this way it acts more
+like `generics_of(my_func)` is the generics for the FnDef than the generics provided to the function
+body although it's not clear to the author of this section if this was the actual justification for
+making `generics_of` behave this way.
+
+## What parameters are currently late bound
+
+Below are the current requirements for determining if a generic parameter is late bound. It is worth
+keeping in mind that these are not necessarily set in stone and it is almost certainly possible to 
+be more flexible.
+
+### Must be a lifetime parameter
+
+Rust can't support types such as `for<T> dyn Trait<T>` or `for<T> fn(T)`, this is a
+fundamental limitation of the language as we are required to monomorphize type/const
+parameters and cannot do so behind dynamic dispatch. (technically we could probably
+support `for<T> dyn MarkerTrait<T>` as there is nothing to monomorphize)
+
+Not being able to support `for<T> dyn Trait<T>` resulted in making all type and const
+parameters early bound. Only lifetime parameters can be late bound.
+
+### Must not appear in the where clauses
+
+In order for a generic parameter to be late bound it must not appear in any where clauses.
+This is currently an incredibly simplistic check that causes lifetimes to be early bound even
+if the where clause they appear in are always true, or implied by well formedness of function
+arguments. e.g.
+```rust
+fn foo1<'a: 'a>(_: &'a u32) {}
+//     ^^ early bound parameter because it's in a `'a: 'a` clause
+//        even though the bound obviously holds all the time
+fn foo2<'a, T: Trait<'a>(a: T, b: &'a u32) {}
+//     ^^ early bound parameter because it's used in the `T: Trait<'a>` clause
+fn foo3<'a, T: 'a>(_: &'a T) {}
+//     ^^ early bound parameter because it's used in the `T: 'a` clause
+//        even though that bound is implied by wellformedness of `&'a T`
+fn foo4<'a, 'b: 'a>(_: Inv<&'a ()>, _: Inv<&'b ()>) {}
+//      ^^  ^^         ^^^ note:
+//      ^^  ^^         `Inv` stands for `Invariant` and is used to
+//      ^^  ^^          make the the type parameter invariant. This
+//      ^^  ^^          is necessary for demonstration purposes as
+//      ^^  ^^          `for<'a, 'b> fn(&'a (), &'b ())` and
+//      ^^  ^^          `for<'a> fn(&'a u32, &'a u32)` are subtypes-
+//      ^^  ^^          of eachother which makes the bound trivially
+//      ^^  ^^          satisfiable when making the fnptr. `Inv`
+//      ^^  ^^          disables this subtyping.
+//      ^^  ^^
+//      ^^^^^^ both early bound parameters because they are present in the
+//            `'b: 'a` clause
+```
+
+The reason for this requirement is that we cannot represent the `T: Trait<'a>` or `'a: 'b` clauses
+on a function pointer. `for<'a, 'b> fn(Inv<&'a ()>, Inv<&'b ()>)` is not a valid function pointer to
+represent`foo4` as it would allow calling the function without `'b: 'a` holding.
+
+### Must be constrained by where clauses or function argument types
+
+The builtin impls of the `Fn*` traits for closures and `FnDef`s cannot not have any unconstrained
+parameters. For example the following impl is illegal:
+```rust
+impl<'a> Trait for u32 { type Assoc = &'a u32; }
+```
+We must not end up with a similar impl for the `Fn*` traits e.g.
+```rust
+impl<'a> Fn<()> for FnDef { type Assoc = &'a u32 }
+```
+
+Violating this rule can trivially lead to unsoundness as seen in [#84366](https://github.com/rust-lang/rust/issues/84366).
+Additionally if we ever support late bound type params then an impl like:
+```rust
+impl<T> Fn<()> for FnDef { type Assoc = T; }
+```
+would break the compiler in various ways.
+
+In order to ensure that everything functions correctly, we do not allow generic parameters to
+be late bound if it would result in a builtin impl that does not constrain all of the generic
+parameters on the builtin impl. Making a generic parameter be early bound trivially makes it be
+constrained by the builtin impl as it ends up on the self type.
+
+Because of the requirement that late bound parameters must not appear in where clauses, checking
+this is simpler than the rules for checking impl headers constrain all the parameters on the impl.
+We only have to ensure that all late bound parameters appear at least once in the function argument
+types outside of an alias (e.g. an associated type).
+
+The requirement that they not indirectly be in the substs of an alias for it to count is the
+same as why the follow code is forbidden:
+```rust
+impl<T: Trait> OtherTrait for <T as Trait>::Assoc { type Assoc = T }
+```
+There is no guarantee that `<T as Trait>::Assoc` will normalize to different types for every
+instantiation of `T`. If we were to allow this impl we could get overlapping impls and the
+same is true of the builtin `Fn*` impls.
+
+## Making more generic parameters late bound
+
+It is generally considered desirable for more parameters to be late bound as it makes
+the builtin `Fn*` impls more flexible. Right now many of the requirements for making
+a parameter late bound are overly restrictive as they are tied to what we can currently 
+(or can ever) do with fn ptrs.
+
+It would be theoretically possible to support late bound params in `where`-clauses in the 
+language by introducing implication types which would allow us to express types such as: 
+`for<'a, 'b: 'a> fn(Inv<&'a u32>, Inv<&'b u32>)` which would ensure `'b: 'a` is upheld when
+calling the function pointer. 
+
+It would also be theoretically possible to support it by making the coercion to a fn ptr
+instantiate the parameter with an infer var while still allowing the FnDef to not have the
+generic parameter present as trait impls are perfectly capable of representing the where clauses
+on the function on the impl itself. This would also allow us to support late bound type/const
+vars allowing bounds like `F: for<T> Fn(T)` to hold.
+
+It is almost somewhat unclear if we can change the `Fn` traits to be structured differently
+so that we never have to make a parameter early bound just to make the builtin impl have all
+generics be constrained. Of all the possible causes of a generic parameter being early bound
+this seems the most difficult to remove.
+
+Whether these would be good ideas to implement is a separate question- they are only brought
+up to illustrate that the current rules are not necessarily set in stone and a result of
+"its the only way of doing this".
+
