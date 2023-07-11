@@ -1612,12 +1612,12 @@ pub(crate) fn generic_defaults_query(
                         let unknown = unknown_const_as_generic(
                             db.const_param_ty(ConstParamId::from_unchecked(id)),
                         );
-                        let val = p.default.as_ref().map_or(unknown, |c| {
+                        let mut val = p.default.as_ref().map_or(unknown, |c| {
                             let c = ctx.lower_const(c, ctx.lower_ty(&p.ty));
                             chalk_ir::GenericArg::new(Interner, GenericArgData::Const(c))
                         });
-                        // FIXME: check if complex default values refer to
-                        // previous parameters they should not.
+                        // Each default can only refer to previous parameters, see above.
+                        val = fallback_bound_vars(val, idx, parent_start_idx);
                         return make_binders(db, &generic_params, val);
                     }
                 };

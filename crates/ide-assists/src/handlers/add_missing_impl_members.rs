@@ -519,6 +519,37 @@ impl<X> Foo<X> for () {
     }
 
     #[test]
+    fn test_const_substitution_with_defaults_2() {
+        check_assist(
+            add_missing_impl_members,
+            r#"
+mod m {
+    pub const LEN: usize = 42;
+    pub trait Foo<const M: usize = LEN, const N: usize = M, T = [bool; N]> {
+        fn get_t(&self) -> T;
+    }
+}
+
+impl m::Foo for () {
+    $0
+}"#,
+            r#"
+mod m {
+    pub const LEN: usize = 42;
+    pub trait Foo<const M: usize = LEN, const N: usize = M, T = [bool; N]> {
+        fn get_t(&self) -> T;
+    }
+}
+
+impl m::Foo for () {
+    fn get_t(&self) -> [bool; m::LEN] {
+        ${0:todo!()}
+    }
+}"#,
+        )
+    }
+
+    #[test]
     fn test_cursor_after_empty_impl_def() {
         check_assist(
             add_missing_impl_members,
