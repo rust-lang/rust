@@ -1074,11 +1074,7 @@ impl Step for Cargo {
 
         tarball.add_file(&cargo, "bin", 0o755);
         tarball.add_file(etc.join("_cargo"), "share/zsh/site-functions", 0o644);
-        tarball.add_renamed_file(
-            etc.join("cargo.bashcomp.sh"),
-            "src/etc/bash_completion.d",
-            "cargo",
-        );
+        tarball.add_renamed_file(etc.join("cargo.bashcomp.sh"), "etc/bash_completion.d", "cargo");
         tarball.add_dir(etc.join("man"), "share/man/man1");
         tarball.add_legal_and_readme_to("share/doc/cargo");
 
