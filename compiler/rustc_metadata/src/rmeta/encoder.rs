@@ -608,7 +608,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 trace!("encoding {} further alloc ids", new_n - n);
                 for idx in n..new_n {
                     let id = self.interpret_allocs[idx];
-                    let pos = self.position() as u32;
+                    let pos = self.position() as u64;
                     interpret_alloc_index.push(pos);
                     interpret::specialized_encode_alloc_id(self, tcx, id);
                 }
