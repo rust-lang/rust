@@ -131,7 +131,6 @@ mod extra_unused_type_parameters;
 mod fallible_impl_from;
 mod float_literal;
 mod floating_point_arithmetic;
-mod fn_null_check;
 mod format;
 mod format_args;
 mod format_impl;
@@ -1003,7 +1002,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
             semicolon_outside_block_ignore_multiline,
         ))
     });
-    store.register_late_pass(|_| Box::new(fn_null_check::FnNullCheck));
     store.register_late_pass(|_| Box::new(permissions_set_readonly_false::PermissionsSetReadonlyFalse));
     store.register_late_pass(|_| Box::new(size_of_ref::SizeOfRef));
     store.register_late_pass(|_| Box::new(multiple_unsafe_ops_per_block::MultipleUnsafeOpsPerBlock));

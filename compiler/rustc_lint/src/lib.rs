@@ -58,6 +58,7 @@ mod early;
 mod enum_intrinsics_non_enums;
 mod errors;
 mod expect;
+mod fn_null_check;
 mod for_loops_over_fallibles;
 pub mod hidden_unicode_codepoints;
 mod internal;
@@ -102,6 +103,7 @@ use cast_ref_to_mut::*;
 use deref_into_dyn_supertrait::*;
 use drop_forget_useless::*;
 use enum_intrinsics_non_enums::EnumIntrinsicsNonEnums;
+use fn_null_check::*;
 use for_loops_over_fallibles::*;
 use hidden_unicode_codepoints::*;
 use internal::*;
@@ -225,6 +227,7 @@ late_lint_methods!(
             // Depends on types used in type definitions
             MissingCopyImplementations: MissingCopyImplementations,
             // Depends on referenced function signatures in expressions
+            IncorrectFnNullChecks: IncorrectFnNullChecks,
             MutableTransmutes: MutableTransmutes,
             TypeAliasBounds: TypeAliasBounds,
             TrivialConstraints: TrivialConstraints,

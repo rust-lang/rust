@@ -1,0 +1,67 @@
+warning: function pointers are not nullable, so checking them for null will always return false
+  --> $DIR/fn_null_check.rs:6:8
+   |
+LL |     if (fn_ptr as *mut ()).is_null() {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: wrap the function pointer inside an `Option` and use `Option::is_none` to check for null pointer value
+   = note: `#[warn(incorrect_fn_null_checks)]` on by default
+
+warning: function pointers are not nullable, so checking them for null will always return false
+  --> $DIR/fn_null_check.rs:8:8
+   |
+LL |     if (fn_ptr as *const u8).is_null() {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: wrap the function pointer inside an `Option` and use `Option::is_none` to check for null pointer value
+
+warning: function pointers are not nullable, so checking them for null will always return false
+  --> $DIR/fn_null_check.rs:10:8
+   |
+LL |     if (fn_ptr as *const ()) == std::ptr::null() {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: wrap the function pointer inside an `Option` and use `Option::is_none` to check for null pointer value
+
+warning: function pointers are not nullable, so checking them for null will always return false
+  --> $DIR/fn_null_check.rs:12:8
+   |
+LL |     if (fn_ptr as *mut ()) == std::ptr::null_mut() {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: wrap the function pointer inside an `Option` and use `Option::is_none` to check for null pointer value
+
+warning: function pointers are not nullable, so checking them for null will always return false
+  --> $DIR/fn_null_check.rs:14:8
+   |
+LL |     if (fn_ptr as *const ()) == (0 as *const ()) {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: wrap the function pointer inside an `Option` and use `Option::is_none` to check for null pointer value
+
+warning: function pointers are not nullable, so checking them for null will always return false
+  --> $DIR/fn_null_check.rs:16:8
+   |
+LL |     if <*const _>::is_null(fn_ptr as *const ()) {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: wrap the function pointer inside an `Option` and use `Option::is_none` to check for null pointer value
+
+warning: function pointers are not nullable, so checking them for null will always return false
+  --> $DIR/fn_null_check.rs:18:8
+   |
+LL |     if (fn_ptr as *mut fn() as *const fn() as *const ()).is_null() {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: wrap the function pointer inside an `Option` and use `Option::is_none` to check for null pointer value
+
+warning: function pointers are not nullable, so checking them for null will always return false
+  --> $DIR/fn_null_check.rs:20:8
+   |
+LL |     if (fn_ptr as fn() as *const ()).is_null() {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: wrap the function pointer inside an `Option` and use `Option::is_none` to check for null pointer value
+
+warning: 8 warnings emitted
+
