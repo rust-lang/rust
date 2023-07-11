@@ -419,8 +419,7 @@ impl CStr {
     pub const unsafe fn from_bytes_with_nul_unchecked(bytes: &[u8]) -> &CStr {
         #[inline]
         fn rt_impl(bytes: &[u8]) -> &CStr {
-            // Chance at catching some UB at runtime with debug builds.
-            debug_assert!(!bytes.is_empty() && bytes[bytes.len() - 1] == 0);
+            debug_assert!(!bytes.is_empty() && memchr::memchr(0, bytes) == Some(bytes.len() - 1));
 
             // SAFETY: Casting to CStr is safe because its internal representation
             // is a [u8] too (safe only inside std).
