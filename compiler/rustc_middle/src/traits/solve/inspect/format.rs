@@ -4,7 +4,7 @@ pub(super) struct ProofTreeFormatter<'a, 'b> {
     f: &'a mut (dyn Write + 'b),
 }
 
-/// A formatter which adds 4 spaces of identation to its input before
+/// A formatter which adds 4 spaces of indentation to its input before
 /// passing it on to its nested formatter.
 ///
 /// We can use this for arbitrary levels of indentation by nesting it.
