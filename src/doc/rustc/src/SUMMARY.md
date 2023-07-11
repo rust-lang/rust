@@ -38,6 +38,7 @@
     - [mipsel-sony-psx](platform-support/mipsel-sony-psx.md)
     - [nvptx64-nvidia-cuda](platform-support/nvptx64-nvidia-cuda.md)
     - [riscv32imac-unknown-xous-elf](platform-support/riscv32imac-unknown-xous-elf.md)
+    - [sparc-unknown-none-elf](./platform-support/sparc-unknown-none-elf.md)
     - [*-pc-windows-gnullvm](platform-support/pc-windows-gnullvm.md)
     - [\*-nto-qnx-\*](platform-support/nto-qnx.md)
     - [\*-unknown-netbsd\*](platform-support/netbsd.md)
