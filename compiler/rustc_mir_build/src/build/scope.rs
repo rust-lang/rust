@@ -769,12 +769,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // the MIR->HIR mapping.
                 (current_id, parent_id)
             } else {
-                // Use `maybe_lint_level_root_bounded` with `self.hir_id` as a bound
-                // to avoid adding Hir dependencies on our parents.
-                // We estimate the true lint roots here to avoid creating a lot of source scopes.
+                // Use `maybe_lint_level_root_bounded` to avoid adding Hir dependencies on our
+                // parents. We estimate the true lint roots here to avoid creating a lot of source
+                // scopes.
                 (
-                    self.maybe_lint_level_root_bounded(current_id, self.hir_id),
-                    self.maybe_lint_level_root_bounded(parent_id, self.hir_id),
+                    self.maybe_lint_level_root_bounded(current_id),
+                    if parent_id == self.hir_id {
+                        parent_id // this is very common
+                    } else {
+                        self.maybe_lint_level_root_bounded(parent_id)
+                    },
                 )
             };
 
@@ -784,16 +788,24 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
-    /// Walks upwards from `id` to find a node which might change lint levels with attributes.
-    /// It stops at `bound` and just returns it if reached.
-    fn maybe_lint_level_root_bounded(&self, mut id: HirId, bound: HirId) -> HirId {
+    /// Walks upwards from `orig_id` to find a node which might change lint levels with attributes.
+    /// It stops at `self.hir_id` and just returns it if reached.
+    fn maybe_lint_level_root_bounded(&mut self, orig_id: HirId) -> HirId {
+        // This assertion lets us just store `ItemLocalId` in the cache, rather
+        // than the full `HirId`.
+        assert_eq!(orig_id.owner, self.hir_id.owner);
+
+        let mut id = orig_id;
         let hir = self.tcx.hir();
         loop {
-            if id == bound {
-                return bound;
+            if id == self.hir_id {
+                // This is a moderately common case, mostly hit for previously unseen nodes.
+                break;
             }
 
             if hir.attrs(id).iter().any(|attr| Level::from_attr(attr).is_some()) {
+                // This is a rare case. It's for a node path that doesn't reach the root due to an
+                // intervening lint level attribute. This result doesn't get cached.
                 return id;
             }
 
@@ -802,7 +814,22 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 bug!("lint traversal reached the root of the crate");
             }
             id = next;
+
+            // This lookup is just an optimization; it can be removed without affecting
+            // functionality. It might seem strange to see this at the end of this loop, but the
+            // `orig_id` passed in to this function is almost always previously unseen, for which a
+            // lookup will be a miss. So we only do lookups for nodes up the parent chain, where
+            // cache lookups have a very high hit rate.
+            if self.lint_level_roots_cache.contains(id.local_id) {
+                break;
+            }
         }
+
+        // `orig_id` traced to `self_id`; record this fact. If `orig_id` is a leaf node it will
+        // rarely (never?) subsequently be searched for, but it's hard to know if that is the case.
+        // The performance wins from the cache all come from caching non-leaf nodes.
+        self.lint_level_roots_cache.insert(orig_id.local_id);
+        self.hir_id
     }
 
     /// Creates a new source scope, nested in the current one.

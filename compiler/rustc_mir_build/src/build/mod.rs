@@ -10,6 +10,7 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{GeneratorKind, Node};
+use rustc_index::bit_set::GrowableBitSet;
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_middle::hir::place::PlaceBase as HirPlaceBase;
@@ -215,6 +216,14 @@ struct Builder<'a, 'tcx> {
     unit_temp: Option<Place<'tcx>>,
 
     var_debug_info: Vec<VarDebugInfo<'tcx>>,
+
+    // A cache for `maybe_lint_level_roots_bounded`. That function is called
+    // repeatedly, and each time it effectively traces a path through a tree
+    // structure from a node towards the root, doing an attribute check on each
+    // node along the way. This cache records which nodes trace all the way to
+    // the root (most of them do) and saves us from retracing many sub-paths
+    // many times, and rechecking many nodes.
+    lint_level_roots_cache: GrowableBitSet<hir::ItemLocalId>,
 }
 
 type CaptureMap<'tcx> = SortedIndexMultiMap<usize, hir::HirId, Capture<'tcx>>;
@@ -725,6 +734,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             var_indices: Default::default(),
             unit_temp: None,
             var_debug_info: vec![],
+            lint_level_roots_cache: GrowableBitSet::new_empty(),
         };
 
         assert_eq!(builder.cfg.start_new_block(), START_BLOCK);
