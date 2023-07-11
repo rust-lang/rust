@@ -29,9 +29,7 @@ in [this chapter](./generics.md).
 
 ## Late-bound parameters
 
-Late-bound parameters in `rustc` are handled quite differently (they are also
-specialized to lifetimes since, right now, only late-bound lifetimes are
-supported, though with GATs that has to change). We indicate their potential
+Late-bound parameters in `rustc` are handled differently. We indicate their
 presence by a [`Binder`] type. The [`Binder`] doesn't know how many variables
 there are at that binding level. This can only be determined by walking the
 type itself and collecting them. So a type like `for<'a, 'b> ('a, 'b)` would be
