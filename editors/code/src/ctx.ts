@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import * as lc from "vscode-languageclient/node";
+import type * as lc from "vscode-languageclient/node";
 import * as ra from "./lsp_ext";
 import * as path from "path";
 
@@ -12,19 +12,19 @@ import {
     isRustEditor,
     LazyOutputChannel,
     log,
-    RustEditor,
+    type RustEditor,
 } from "./util";
-import { ServerStatusParams } from "./lsp_ext";
+import type { ServerStatusParams } from "./lsp_ext";
 import {
-    Dependency,
-    DependencyFile,
+    type Dependency,
+    type DependencyFile,
     RustDependenciesProvider,
-    DependencyId,
+    type DependencyId,
 } from "./dependencies_provider";
 import { execRevealDependency } from "./commands";
 import { PersistentState } from "./persistent_state";
 import { bootstrap } from "./bootstrap";
-import { ExecOptions } from "child_process";
+import type { ExecOptions } from "child_process";
 
 // We only support local folders, not eg. Live Share (`vlsl:` scheme), so don't activate if
 // only those are in use. We use "Empty" to represent these scenarios

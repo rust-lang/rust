@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import * as toolchain from "./toolchain";
-import { Config } from "./config";
+import type { Config } from "./config";
 import { log } from "./util";
 import { unwrapUndefinable } from "./undefinable";
 

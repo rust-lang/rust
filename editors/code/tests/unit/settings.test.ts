@@ -1,5 +1,5 @@
 import * as assert from "assert";
-import { Context } from ".";
+import type { Context } from ".";
 import { substituteVariablesInEnv } from "../../src/config";
 
 export async function getTests(ctx: Context) {

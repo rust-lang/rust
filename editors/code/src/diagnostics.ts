@@ -1,7 +1,13 @@
 import * as anser from "anser";
 import * as vscode from "vscode";
-import { ProviderResult, Range, TextEditorDecorationType, ThemeColor, window } from "vscode";
-import { Ctx } from "./ctx";
+import {
+    type ProviderResult,
+    Range,
+    type TextEditorDecorationType,
+    ThemeColor,
+    window,
+} from "vscode";
+import type { Ctx } from "./ctx";
 import { unwrapUndefinable } from "./undefinable";
 
 export const URI_SCHEME = "rust-analyzer-diagnostics-view";

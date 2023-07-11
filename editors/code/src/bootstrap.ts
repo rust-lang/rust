@@ -1,8 +1,8 @@
 import * as vscode from "vscode";
 import * as os from "os";
-import { Config } from "./config";
+import type { Config } from "./config";
 import { log, isValidExecutable } from "./util";
-import { PersistentState } from "./persistent_state";
+import type { PersistentState } from "./persistent_state";
 import { exec } from "child_process";
 
 export async function bootstrap(

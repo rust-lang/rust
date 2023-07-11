@@ -1,9 +1,9 @@
 import * as vscode from "vscode";
 import * as fspath from "path";
 import * as fs from "fs";
-import { CtxInit } from "./ctx";
+import type { CtxInit } from "./ctx";
 import * as ra from "./lsp_ext";
-import { FetchDependencyListResult } from "./lsp_ext";
+import type { FetchDependencyListResult } from "./lsp_ext";
 import { unwrapUndefinable } from "./undefinable";
 
 export class RustDependenciesProvider

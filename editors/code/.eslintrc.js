@@ -33,5 +33,14 @@ module.exports = {
         "@typescript-eslint/semi": ["error", "always"],
         "@typescript-eslint/no-unnecessary-type-assertion": "error",
         "@typescript-eslint/no-floating-promises": "error",
+
+        "@typescript-eslint/consistent-type-imports": [
+            "error",
+            {
+                prefer: "type-imports",
+                fixStyle: "inline-type-imports",
+            },
+        ],
+        "@typescript-eslint/no-import-type-side-effects": "error",
     },
 };

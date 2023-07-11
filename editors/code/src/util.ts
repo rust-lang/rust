@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import { strict as nativeAssert } from "assert";
-import { exec, ExecOptions, spawnSync } from "child_process";
+import { exec, type ExecOptions, spawnSync } from "child_process";
 import { inspect } from "util";
 
 export function assert(condition: boolean, explanation: string): asserts condition {
