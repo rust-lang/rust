@@ -217,7 +217,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'cx, 'tcx> 
         };
 
         // See note in `rustc_trait_selection::traits::project` about why we
-        // wait to fold the substs.
+        // wait to fold the args.
 
         // Wrap this in a closure so we don't accidentally return from the outer function
         let res = match kind {
@@ -227,7 +227,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'cx, 'tcx> 
                     Reveal::UserFacing => ty.try_super_fold_with(self)?,
 
                     Reveal::All => {
-                        let substs = data.substs.try_fold_with(self)?;
+                        let args = data.args.try_fold_with(self)?;
                         let recursion_limit = self.interner().recursion_limit();
                         if !recursion_limit.value_within_limit(self.anon_depth) {
                             // A closure or generator may have itself as in its upvars.
@@ -243,14 +243,14 @@ impl<'cx, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'cx, 'tcx> 
                         }
 
                         let generic_ty = self.interner().type_of(data.def_id);
-                        let concrete_ty = generic_ty.subst(self.interner(), substs);
+                        let concrete_ty = generic_ty.instantiate(self.interner(), args);
                         self.anon_depth += 1;
                         if concrete_ty == ty {
                             bug!(
-                                "infinite recursion generic_ty: {:#?}, substs: {:#?}, \
+                                "infinite recursion generic_ty: {:#?}, args: {:#?}, \
                                  concrete_ty: {:#?}, ty: {:#?}",
                                 generic_ty,
-                                substs,
+                                args,
                                 concrete_ty,
                                 ty
                             );

@@ -90,7 +90,7 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         let tcx = self.tcx;
         let callee_ty = instance.ty(tcx, ty::ParamEnv::reveal_all());
 
-        let ty::FnDef(def_id, substs) = *callee_ty.kind() else {
+        let ty::FnDef(def_id, fn_args) = *callee_ty.kind() else {
             bug!("expected fn item type, found {}", callee_ty);
         };
 
@@ -163,7 +163,7 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             }
 
             sym::volatile_load | sym::unaligned_volatile_load => {
-                let tp_ty = substs.type_at(0);
+                let tp_ty = fn_args.type_at(0);
                 let ptr = args[0].immediate();
                 let load = if let PassMode::Cast(ty, _) = &fn_abi.ret.mode {
                     let llty = ty.llvm_type(self);
@@ -298,7 +298,7 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
 
             sym::raw_eq => {
                 use abi::Abi::*;
-                let tp_ty = substs.type_at(0);
+                let tp_ty = fn_args.type_at(0);
                 let layout = self.layout_of(tp_ty).layout;
                 let use_integer_compare = match layout.abi() {
                     Scalar(_) | ScalarPair(_, _) => true,

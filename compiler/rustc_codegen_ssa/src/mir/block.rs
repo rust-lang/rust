@@ -491,7 +491,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     //
                     let virtual_drop = Instance {
                         def: ty::InstanceDef::Virtual(drop_fn.def_id(), 0),
-                        substs: drop_fn.substs,
+                        args: drop_fn.args,
                     };
                     debug!("ty = {:?}", ty);
                     debug!("drop_fn = {:?}", drop_fn);
@@ -531,7 +531,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     // SO THEN WE CAN USE THE ABOVE CODE.
                     let virtual_drop = Instance {
                         def: ty::InstanceDef::Virtual(drop_fn.def_id(), 0),
-                        substs: drop_fn.substs,
+                        args: drop_fn.args,
                     };
                     debug!("ty = {:?}", ty);
                     debug!("drop_fn = {:?}", drop_fn);
@@ -687,7 +687,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // which mentions the offending type, even from a const context.
         let panic_intrinsic = intrinsic.and_then(|s| ValidityRequirement::from_intrinsic(s));
         if let Some(requirement) = panic_intrinsic {
-            let ty = instance.unwrap().substs.type_at(0);
+            let ty = instance.unwrap().args.type_at(0);
 
             let do_panic = !bx
                 .tcx()
@@ -760,13 +760,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let callee = self.codegen_operand(bx, func);
 
         let (instance, mut llfn) = match *callee.layout.ty.kind() {
-            ty::FnDef(def_id, substs) => (
+            ty::FnDef(def_id, args) => (
                 Some(
                     ty::Instance::expect_resolve(
                         bx.tcx(),
                         ty::ParamEnv::reveal_all(),
                         def_id,
-                        substs,
+                        args,
                     )
                     .polymorphize(bx.tcx()),
                 ),
@@ -1125,12 +1125,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
                 mir::InlineAsmOperand::SymFn { ref value } => {
                     let literal = self.monomorphize(value.literal);
-                    if let ty::FnDef(def_id, substs) = *literal.ty().kind() {
+                    if let ty::FnDef(def_id, args) = *literal.ty().kind() {
                         let instance = ty::Instance::resolve_for_fn_ptr(
                             bx.tcx(),
                             ty::ParamEnv::reveal_all(),
                             def_id,
-                            substs,
+                            args,
                         )
                         .unwrap();
                         InlineAsmOperandRef::SymFn { instance }

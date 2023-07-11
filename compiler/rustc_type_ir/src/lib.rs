@@ -40,7 +40,7 @@ pub trait HashStableContext {}
 
 pub trait Interner: Sized {
     type AdtDef: Clone + Debug + Hash + Ord;
-    type SubstsRef: Clone + DebugWithInfcx<Self> + Hash + Ord;
+    type GenericArgsRef: Clone + DebugWithInfcx<Self> + Hash + Ord;
     type DefId: Clone + Debug + Hash + Ord;
     type Binder<T>;
     type Ty: Clone + DebugWithInfcx<Self> + Hash + Ord;

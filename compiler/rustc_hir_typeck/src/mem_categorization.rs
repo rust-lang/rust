@@ -595,7 +595,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
     fn total_fields_in_tuple(&self, pat_hir_id: hir::HirId, span: Span) -> McResult<usize> {
         let ty = self.typeck_results.node_type(pat_hir_id);
         match ty.kind() {
-            ty::Tuple(substs) => Ok(substs.len()),
+            ty::Tuple(args) => Ok(args.len()),
             _ => {
                 self.tcx().sess.delay_span_bug(span, "tuple pattern not applied to a tuple");
                 Err(())

@@ -63,10 +63,10 @@ impl<'tcx> LateLintPass<'tcx> for FutureNotSend {
             return;
         }
         let ret_ty = return_ty(cx, cx.tcx.hir().local_def_id_to_hir_id(fn_def_id).expect_owner());
-        if let ty::Alias(ty::Opaque, AliasTy { def_id, substs, .. }) = *ret_ty.kind() {
+        if let ty::Alias(ty::Opaque, AliasTy { def_id, args, .. }) = *ret_ty.kind() {
             let preds = cx.tcx.explicit_item_bounds(def_id);
             let mut is_future = false;
-            for (p, _span) in preds.subst_iter_copied(cx.tcx, substs) {
+            for (p, _span) in preds.arg_iter_copied(cx.tcx, args) {
                 if let Some(trait_pred) = p.as_trait_clause() {
                     if Some(trait_pred.skip_binder().trait_ref.def_id) == cx.tcx.lang_items().future_trait() {
                         is_future = true;

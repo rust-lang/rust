@@ -295,7 +295,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         let bounds = tcx.item_bounds(alias_ty.def_id);
         trace!("{:#?}", bounds.skip_binder());
         bounds
-            .subst_iter(tcx, alias_ty.substs)
+            .arg_iter(tcx, alias_ty.args)
             .filter_map(|p| p.as_type_outlives_clause())
             .filter_map(|p| p.no_bound_vars())
             .map(|OutlivesPredicate(_, r)| r)

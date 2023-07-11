@@ -4,7 +4,7 @@ note: external requirements
 LL |     twice(cell, value, |a, b| invoke(a, b));
    |                        ^^^^^^
    |
-   = note: defining type: generic::<T>::{closure#0} with closure substs [
+   = note: defining type: generic::<T>::{closure#0} with closure args [
                i16,
                for<Region(BrAnon(None)), Region(BrAnon(None))> extern "rust-call" fn((std::option::Option<std::cell::Cell<&'?1 &ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon(None) }) ()>>, &ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrAnon(None) }) T)),
                (),
@@ -26,7 +26,7 @@ note: external requirements
 LL |     twice(cell, value, |a, b| invoke(a, b));
    |                        ^^^^^^
    |
-   = note: defining type: generic_fail::<T>::{closure#0} with closure substs [
+   = note: defining type: generic_fail::<T>::{closure#0} with closure args [
                i16,
                for<Region(BrAnon(None)), Region(BrAnon(None))> extern "rust-call" fn((std::option::Option<std::cell::Cell<&'?1 &ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon(None) }) ()>>, &ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrAnon(None) }) T)),
                (),

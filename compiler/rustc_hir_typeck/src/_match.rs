@@ -535,12 +535,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 let sig = self.body_fn_sig()?;
 
-                let substs = sig.output().walk().find_map(|arg| {
+                let args = sig.output().walk().find_map(|arg| {
                     if let ty::GenericArgKind::Type(ty) = arg.unpack()
-                        && let ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) = *ty.kind()
+                        && let ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) = *ty.kind()
                         && def_id == rpit_def_id
                     {
-                        Some(substs)
+                        Some(args)
                     } else {
                         None
                     }
@@ -551,26 +551,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
 
                 for ty in [first_ty, second_ty] {
-                    for (clause, _) in self
-                        .tcx
-                        .explicit_item_bounds(rpit_def_id)
-                        .subst_iter_copied(self.tcx, substs)
+                    for (clause, _) in
+                        self.tcx.explicit_item_bounds(rpit_def_id).arg_iter_copied(self.tcx, args)
                     {
                         let pred = clause.kind().rebind(match clause.kind().skip_binder() {
                             ty::ClauseKind::Trait(trait_pred) => {
                                 // FIXME(rpitit): This will need to be fixed when we move to associated types
                                 assert!(matches!(
                                     *trait_pred.trait_ref.self_ty().kind(),
-                                    ty::Alias(_, ty::AliasTy { def_id, substs: alias_substs, .. })
-                                    if def_id == rpit_def_id && substs == alias_substs
+                                    ty::Alias(_, ty::AliasTy { def_id, args: alias_args, .. })
+                                    if def_id == rpit_def_id && args == alias_args
                                 ));
                                 ty::ClauseKind::Trait(trait_pred.with_self_ty(self.tcx, ty))
                             }
                             ty::ClauseKind::Projection(mut proj_pred) => {
                                 assert!(matches!(
                                     *proj_pred.projection_ty.self_ty().kind(),
-                                    ty::Alias(_, ty::AliasTy { def_id, substs: alias_substs, .. })
-                                    if def_id == rpit_def_id && substs == alias_substs
+                                    ty::Alias(_, ty::AliasTy { def_id, args: alias_args, .. })
+                                    if def_id == rpit_def_id && args == alias_args
                                 ));
                                 proj_pred = proj_pred.with_self_ty(self.tcx, ty);
                                 ty::ClauseKind::Projection(proj_pred)

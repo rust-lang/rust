@@ -88,7 +88,7 @@ fn handle_uninit_vec_pair<'tcx>(
         if let Some((set_len_self, call_span)) = extract_set_len_self(cx, maybe_set_len);
         if vec.location.eq_expr(cx, set_len_self);
         if let ty::Ref(_, vec_ty, _) = cx.typeck_results().expr_ty_adjusted(set_len_self).kind();
-        if let ty::Adt(_, substs) = vec_ty.kind();
+        if let ty::Adt(_, args) = vec_ty.kind();
         // `#[allow(...)]` attribute can be set on enclosing unsafe block of `set_len()`
         if !is_lint_allowed(cx, UNINIT_VEC, maybe_set_len.hir_id);
         then {
@@ -96,7 +96,7 @@ fn handle_uninit_vec_pair<'tcx>(
                 // with_capacity / reserve -> set_len
 
                 // Check T of Vec<T>
-                if !is_uninit_value_valid_for_ty(cx, substs.type_at(0)) {
+                if !is_uninit_value_valid_for_ty(cx, args.type_at(0)) {
                     // FIXME: #7698, false positive of the internal lints
                     #[expect(clippy::collapsible_span_lint_calls)]
                     span_lint_and_then(

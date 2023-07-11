@@ -317,7 +317,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ExprKind::Adt(box AdtExpr {
                 adt_def,
                 variant_index,
-                substs,
+                args,
                 ref user_ty,
                 ref fields,
                 ref base,
@@ -382,7 +382,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let adt = Box::new(AggregateKind::Adt(
                     adt_def.did(),
                     variant_index,
-                    substs,
+                    args,
                     user_ty,
                     active_field_index,
                 ));

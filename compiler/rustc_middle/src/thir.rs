@@ -19,8 +19,8 @@ use rustc_middle::middle::region;
 use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::mir::{self, BinOp, BorrowKind, FakeReadCause, Mutability, UnOp};
 use rustc_middle::ty::adjustment::PointerCoercion;
-use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::{self, AdtDef, FnSig, List, Ty, UpvarSubsts};
+use rustc_middle::ty::GenericArgsRef;
+use rustc_middle::ty::{self, AdtDef, FnSig, List, Ty, UpvarArgs};
 use rustc_middle::ty::{CanonicalUserType, CanonicalUserTypeAnnotation};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{sym, Span, Symbol, DUMMY_SP};
@@ -150,9 +150,9 @@ pub struct AdtExpr<'tcx> {
     pub adt_def: AdtDef<'tcx>,
     /// The variant of the ADT.
     pub variant_index: VariantIdx,
-    pub substs: SubstsRef<'tcx>,
+    pub args: GenericArgsRef<'tcx>,
 
-    /// Optional user-given substs: for something like `let x =
+    /// Optional user-given args: for something like `let x =
     /// Bar::<T> { ... }`.
     pub user_ty: UserTy<'tcx>,
 
@@ -164,7 +164,7 @@ pub struct AdtExpr<'tcx> {
 #[derive(Clone, Debug, HashStable)]
 pub struct ClosureExpr<'tcx> {
     pub closure_id: LocalDefId,
-    pub substs: UpvarSubsts<'tcx>,
+    pub args: UpvarArgs<'tcx>,
     pub upvars: Box<[ExprId]>,
     pub movability: Option<hir::Movability>,
     pub fake_reads: Vec<(ExprId, FakeReadCause, hir::HirId)>,
@@ -418,7 +418,7 @@ pub enum ExprKind<'tcx> {
     /// An inline `const` block, e.g. `const {}`.
     ConstBlock {
         did: DefId,
-        substs: SubstsRef<'tcx>,
+        args: GenericArgsRef<'tcx>,
     },
     /// An array literal constructed from one repeated element, e.g. `[1; 5]`.
     Repeat {
@@ -466,7 +466,7 @@ pub enum ExprKind<'tcx> {
     /// Associated constants and named constants
     NamedConst {
         def_id: DefId,
-        substs: SubstsRef<'tcx>,
+        args: GenericArgsRef<'tcx>,
         user_ty: UserTy<'tcx>,
     },
     ConstParam {
@@ -714,7 +714,7 @@ pub enum PatKind<'tcx> {
     /// multiple variants.
     Variant {
         adt_def: AdtDef<'tcx>,
-        substs: SubstsRef<'tcx>,
+        args: GenericArgsRef<'tcx>,
         variant_index: VariantIdx,
         subpatterns: Vec<FieldPat<'tcx>>,
     },

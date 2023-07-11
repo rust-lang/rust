@@ -2,7 +2,7 @@ use crate::def_use::{self, DefUse};
 use crate::location::{LocationIndex, LocationTable};
 use rustc_middle::mir::visit::{MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{Body, Local, Location, Place};
-use rustc_middle::ty::subst::GenericArg;
+use rustc_middle::ty::GenericArg;
 use rustc_mir_dataflow::move_paths::{LookupResult, MoveData, MovePathIndex};
 
 use super::TypeChecker;

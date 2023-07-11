@@ -68,17 +68,17 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                     //        ^ parent_def_id
                     //
                     // then we only want to return generics for params to the left of `N`. If we don't do that we
-                    // end up with that const looking like: `ty::ConstKind::Unevaluated(def_id, substs: [N#0])`.
+                    // end up with that const looking like: `ty::ConstKind::Unevaluated(def_id, args: [N#0])`.
                     //
-                    // This causes ICEs (#86580) when building the substs for Foo in `fn foo() -> Foo { .. }` as
-                    // we substitute the defaults with the partially built substs when we build the substs. Subst'ing
-                    // the `N#0` on the unevaluated const indexes into the empty substs we're in the process of building.
+                    // This causes ICEs (#86580) when building the args for Foo in `fn foo() -> Foo { .. }` as
+                    // we substitute the defaults with the partially built args when we build the args. Subst'ing
+                    // the `N#0` on the unevaluated const indexes into the empty args we're in the process of building.
                     //
                     // We fix this by having this function return the parent's generics ourselves and truncating the
                     // generics to only include non-forward declared params (with the exception of the `Self` ty)
                     //
-                    // For the above code example that means we want `substs: []`
-                    // For the following struct def we want `substs: [N#0]` when generics_of is called on
+                    // For the above code example that means we want `args: []`
+                    // For the following struct def we want `args: [N#0]` when generics_of is called on
                     // the def id of the `{ N + 1 }` anon const
                     // struct Foo<const N: usize, const M: usize = { N + 1 }>;
                     //
@@ -93,7 +93,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
 
                     return ty::Generics {
                         // we set the parent of these generics to be our parent's parent so that we
-                        // dont end up with substs: [N, M, N] for the const default on a struct like this:
+                        // dont end up with args: [N, M, N] for the const default on a struct like this:
                         // struct Foo<const N: usize, const M: usize = { ... }>;
                         parent: generics.parent,
                         parent_count: generics.parent_count,

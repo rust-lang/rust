@@ -1721,7 +1721,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                         },
                     ));
                     bound_vars
-                        .extend(self.tcx.fn_sig(assoc_fn.def_id).subst_identity().bound_vars());
+                        .extend(self.tcx.fn_sig(assoc_fn.def_id).instantiate_identity().bound_vars());
                     bound_vars
                 } else {
                     self.tcx.sess.delay_span_bug(
@@ -2038,12 +2038,12 @@ fn is_late_bound_map(
                     hir::Path { res: Res::Def(DefKind::TyAlias, alias_def), segments, span },
                 )) => {
                     // See comments on `ConstrainedCollectorPostAstConv` for why this arm does not just consider
-                    // substs to be unconstrained.
+                    // args to be unconstrained.
                     let generics = self.tcx.generics_of(alias_def);
                     let mut walker = ConstrainedCollectorPostAstConv {
                         arg_is_constrained: vec![false; generics.params.len()].into_boxed_slice(),
                     };
-                    walker.visit_ty(self.tcx.type_of(alias_def).subst_identity());
+                    walker.visit_ty(self.tcx.type_of(alias_def).instantiate_identity());
 
                     match segments.last() {
                         Some(hir::PathSegment { args: Some(args), .. }) => {

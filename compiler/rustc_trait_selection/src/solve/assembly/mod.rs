@@ -542,7 +542,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             ty::Alias(ty::Projection | ty::Opaque, alias_ty) => alias_ty,
         };
 
-        for assumption in self.tcx().item_bounds(alias_ty.def_id).subst(self.tcx(), alias_ty.substs)
+        for assumption in
+            self.tcx().item_bounds(alias_ty.def_id).instantiate(self.tcx(), alias_ty.args)
         {
             match G::consider_alias_bound_candidate(self, goal, assumption) {
                 Ok(result) => {

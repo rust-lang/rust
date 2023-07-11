@@ -42,7 +42,7 @@ use rustc_infer::infer::UpvarRegion;
 use rustc_middle::hir::place::{Place, PlaceBase, PlaceWithHirId, Projection, ProjectionKind};
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::{
-    self, ClosureSizeProfileData, Ty, TyCtxt, TypeckResults, UpvarCapture, UpvarSubsts,
+    self, ClosureSizeProfileData, Ty, TyCtxt, TypeckResults, UpvarArgs, UpvarCapture,
 };
 use rustc_session::lint;
 use rustc_span::sym;
@@ -169,9 +169,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         // Extract the type of the closure.
         let ty = self.node_ty(closure_hir_id);
-        let (closure_def_id, substs) = match *ty.kind() {
-            ty::Closure(def_id, substs) => (def_id, UpvarSubsts::Closure(substs)),
-            ty::Generator(def_id, substs, _) => (def_id, UpvarSubsts::Generator(substs)),
+        let (closure_def_id, args) = match *ty.kind() {
+            ty::Closure(def_id, args) => (def_id, UpvarArgs::Closure(args)),
+            ty::Generator(def_id, args, _) => (def_id, UpvarArgs::Generator(args)),
             ty::Error(_) => {
                 // #51714: skip analysis when we have already encountered type errors
                 return;
@@ -187,8 +187,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
         let closure_def_id = closure_def_id.expect_local();
 
-        let infer_kind = if let UpvarSubsts::Closure(closure_substs) = substs {
-            self.closure_kind(closure_substs).is_none().then_some(closure_substs)
+        let infer_kind = if let UpvarArgs::Closure(closure_args) = args {
+            self.closure_kind(closure_args).is_none().then_some(closure_args)
         } else {
             None
         };
@@ -257,10 +257,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let before_feature_tys = self.final_upvar_tys(closure_def_id);
 
-        if let Some(closure_substs) = infer_kind {
+        if let Some(closure_args) = infer_kind {
             // Unify the (as yet unbound) type variable in the closure
-            // substs with the kind we inferred.
-            let closure_kind_ty = closure_substs.as_closure().kind_ty();
+            // args with the kind we inferred.
+            let closure_kind_ty = closure_args.as_closure().kind_ty();
             self.demand_eqtype(span, closure_kind.to_ty(self.tcx), closure_kind_ty);
 
             // If we have an origin, store it.
@@ -295,14 +295,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Equate the type variables for the upvars with the actual types.
         let final_upvar_tys = self.final_upvar_tys(closure_def_id);
         debug!(
-            "analyze_closure: id={:?} substs={:?} final_upvar_tys={:?}",
-            closure_hir_id, substs, final_upvar_tys
+            "analyze_closure: id={:?} args={:?} final_upvar_tys={:?}",
+            closure_hir_id, args, final_upvar_tys
         );
 
         // Build a tuple (U0..Un) of the final upvar types U0..Un
         // and unify the upvar tuple type in the closure with it:
         let final_tupled_upvars_type = Ty::new_tup(self.tcx, &final_upvar_tys);
-        self.demand_suptype(span, substs.tupled_upvars_ty(), final_tupled_upvars_type);
+        self.demand_suptype(span, args.tupled_upvars_ty(), final_tupled_upvars_type);
 
         let fake_reads = delegate
             .fake_reads
@@ -1383,7 +1383,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::Ref(..) => unreachable!(),
             ty::RawPtr(..) => unreachable!(),
 
-            ty::Adt(def, substs) => {
+            ty::Adt(def, args) => {
                 // Multi-variant enums are captured in entirety,
                 // which would've been handled in the case of single empty slice in `captured_by_move_projs`.
                 assert_eq!(def.variants().len(), 1);
@@ -1410,7 +1410,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             })
                             .collect();
 
-                        let after_field_ty = field.ty(self.tcx, substs);
+                        let after_field_ty = field.ty(self.tcx, args);
                         self.has_significant_drop_outside_of_captures(
                             closure_def_id,
                             closure_span,

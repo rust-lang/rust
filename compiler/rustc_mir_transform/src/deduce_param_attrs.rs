@@ -166,7 +166,7 @@ pub fn deduced_param_attrs<'tcx>(
 
     // Codegen won't use this information for anything if all the function parameters are passed
     // directly. Detect that and bail, for compilation speed.
-    let fn_ty = tcx.type_of(def_id).subst_identity();
+    let fn_ty = tcx.type_of(def_id).instantiate_identity();
     if matches!(fn_ty.kind(), ty::FnDef(..)) {
         if fn_ty
             .fn_sig(tcx)

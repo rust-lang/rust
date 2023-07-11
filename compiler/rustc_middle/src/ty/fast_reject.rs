@@ -1,6 +1,6 @@
 use crate::mir::Mutability;
-use crate::ty::subst::GenericArgKind;
-use crate::ty::{self, SubstsRef, Ty, TyCtxt, TypeVisitableExt};
+use crate::ty::GenericArgKind;
+use crate::ty::{self, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt};
 use rustc_hir::def_id::DefId;
 use std::fmt::Debug;
 use std::hash::Hash;
@@ -188,12 +188,12 @@ pub struct DeepRejectCtxt {
 }
 
 impl DeepRejectCtxt {
-    pub fn substs_refs_may_unify<'tcx>(
+    pub fn args_refs_may_unify<'tcx>(
         self,
-        obligation_substs: SubstsRef<'tcx>,
-        impl_substs: SubstsRef<'tcx>,
+        obligation_args: GenericArgsRef<'tcx>,
+        impl_args: GenericArgsRef<'tcx>,
     ) -> bool {
-        iter::zip(obligation_substs, impl_substs).all(|(obl, imp)| {
+        iter::zip(obligation_args, impl_args).all(|(obl, imp)| {
             match (obl.unpack(), imp.unpack()) {
                 // We don't fast reject based on regions for now.
                 (GenericArgKind::Lifetime(_), GenericArgKind::Lifetime(_)) => true,
@@ -258,9 +258,9 @@ impl DeepRejectCtxt {
                 }
                 _ => false,
             },
-            ty::Adt(obl_def, obl_substs) => match k {
-                &ty::Adt(impl_def, impl_substs) => {
-                    obl_def == impl_def && self.substs_refs_may_unify(obl_substs, impl_substs)
+            ty::Adt(obl_def, obl_args) => match k {
+                &ty::Adt(impl_def, impl_args) => {
+                    obl_def == impl_def && self.args_refs_may_unify(obl_args, impl_args)
                 }
                 _ => false,
             },

@@ -324,10 +324,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             ty::Array(..) | ty::Slice(..) => {
                 self.cannot_move_out_of_interior_noncopy(span, ty, None)
             }
-            ty::Closure(def_id, closure_substs)
+            ty::Closure(def_id, closure_args)
                 if def_id.as_local() == Some(self.mir_def_id()) && upvar_field.is_some() =>
             {
-                let closure_kind_ty = closure_substs.as_closure().kind_ty();
+                let closure_kind_ty = closure_args.as_closure().kind_ty();
                 let closure_kind = match closure_kind_ty.to_opt_closure_kind() {
                     Some(kind @ (ty::ClosureKind::Fn | ty::ClosureKind::FnMut)) => kind,
                     Some(ty::ClosureKind::FnOnce) => {

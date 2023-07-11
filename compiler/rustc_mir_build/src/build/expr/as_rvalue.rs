@@ -16,7 +16,7 @@ use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use rustc_middle::ty::cast::{mir_cast_kind, CastTy};
 use rustc_middle::ty::layout::IntegerExt;
-use rustc_middle::ty::{self, Ty, UpvarSubsts};
+use rustc_middle::ty::{self, Ty, UpvarArgs};
 use rustc_span::Span;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
@@ -382,7 +382,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             ExprKind::Closure(box ClosureExpr {
                 closure_id,
-                substs,
+                args,
                 ref upvars,
                 movability,
                 ref fake_reads,
@@ -470,19 +470,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     })
                     .collect();
 
-                let result = match substs {
-                    UpvarSubsts::Generator(substs) => {
+                let result = match args {
+                    UpvarArgs::Generator(args) => {
                         // We implicitly set the discriminant to 0. See
                         // librustc_mir/transform/deaggregator.rs for details.
                         let movability = movability.unwrap();
-                        Box::new(AggregateKind::Generator(
-                            closure_id.to_def_id(),
-                            substs,
-                            movability,
-                        ))
+                        Box::new(AggregateKind::Generator(closure_id.to_def_id(), args, movability))
                     }
-                    UpvarSubsts::Closure(substs) => {
-                        Box::new(AggregateKind::Closure(closure_id.to_def_id(), substs))
+                    UpvarArgs::Closure(args) => {
+                        Box::new(AggregateKind::Closure(closure_id.to_def_id(), args))
                     }
                 };
                 block.and(Rvalue::Aggregate(result, operands))

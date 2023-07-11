@@ -341,8 +341,8 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             // If we have an method return type bound, then we need to substitute
             // the method's early bound params with suitable late-bound params.
             let mut num_bound_vars = candidate.bound_vars().len();
-            let substs =
-                candidate.skip_binder().substs.extend_to(tcx, assoc_item.def_id, |param, _| {
+            let args =
+                candidate.skip_binder().args.extend_to(tcx, assoc_item.def_id, |param, _| {
                     let subst = match param.kind {
                         ty::GenericParamDefKind::Lifetime => ty::Region::new_late_bound(
                             tcx,
@@ -422,7 +422,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             // params (and trait ref's late bound params). This logic is very similar to
             // `Predicate::subst_supertrait`, and it's no coincidence why.
             let shifted_output = tcx.shift_bound_var_indices(num_bound_vars, output);
-            let subst_output = ty::EarlyBinder::bind(shifted_output).subst(tcx, substs);
+            let subst_output = ty::EarlyBinder::bind(shifted_output).instantiate(tcx, args);
 
             let bound_vars = tcx.late_bound_vars(binding.hir_id);
             ty::Binder::bind_with_vars(subst_output, bound_vars)
@@ -438,16 +438,16 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                     infer_args: false,
                 };
 
-                let substs_trait_ref_and_assoc_item = self.create_substs_for_associated_item(
+                let args_trait_ref_and_assoc_item = self.create_args_for_associated_item(
                     path_span,
                     assoc_item.def_id,
                     &item_segment,
-                    trait_ref.substs,
+                    trait_ref.args,
                 );
 
-                debug!(?substs_trait_ref_and_assoc_item);
+                debug!(?args_trait_ref_and_assoc_item);
 
-                tcx.mk_alias_ty(assoc_item.def_id, substs_trait_ref_and_assoc_item)
+                tcx.mk_alias_ty(assoc_item.def_id, args_trait_ref_and_assoc_item)
             })
         };
 
@@ -533,7 +533,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                                 tcx,
                                 reported,
                                 tcx.type_of(assoc_item_def_id)
-                                    .subst(tcx, projection_ty.skip_binder().substs),
+                                    .instantiate(tcx, projection_ty.skip_binder().args),
                             )
                             .into(),
                             _ => unreachable!(),

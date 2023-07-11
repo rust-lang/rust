@@ -37,9 +37,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         let generics = self.tcx.generics_of(def_id);
-        let predicate_substs = match unsubstituted_pred.kind().skip_binder() {
-            ty::ClauseKind::Trait(pred) => pred.trait_ref.substs.to_vec(),
-            ty::ClauseKind::Projection(pred) => pred.projection_ty.substs.to_vec(),
+        let predicate_args = match unsubstituted_pred.kind().skip_binder() {
+            ty::ClauseKind::Trait(pred) => pred.trait_ref.args.to_vec(),
+            ty::ClauseKind::Projection(pred) => pred.projection_ty.args.to_vec(),
             ty::ClauseKind::ConstArgHasType(arg, ty) => {
                 vec![ty.into(), arg.into()]
             }
@@ -48,7 +48,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         let find_param_matching = |matches: &dyn Fn(ty::ParamTerm) -> bool| {
-            predicate_substs.iter().find_map(|arg| {
+            predicate_args.iter().find_map(|arg| {
                 arg.walk().find_map(|arg| {
                     if let ty::GenericArgKind::Type(ty) = arg.unpack()
                         && let ty::Param(param_ty) = *ty.kind()
@@ -238,12 +238,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         param_to_point_at: ty::GenericArg<'tcx>,
         segment: &hir::PathSegment<'tcx>,
     ) -> bool {
-        let own_substs = self
+        let own_args = self
             .tcx
             .generics_of(def_id)
-            .own_substs(ty::InternalSubsts::identity_for_item(self.tcx, def_id));
+            .own_args(ty::GenericArgs::identity_for_item(self.tcx, def_id));
         let Some((index, _)) =
-            own_substs.iter().enumerate().find(|(_, arg)| **arg == param_to_point_at)
+            own_args.iter().enumerate().find(|(_, arg)| **arg == param_to_point_at)
         else {
             return false;
         };
@@ -271,7 +271,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         origin.kind
                     && let generics = self.0.tcx.generics_of(self.1)
                     && let Some(index) = generics.param_def_id_to_index(self.0.tcx, def_id)
-                    && let Some(subst) = ty::InternalSubsts::identity_for_item(self.0.tcx, self.1)
+                    && let Some(subst) = ty::GenericArgs::identity_for_item(self.0.tcx, self.1)
                         .get(index as usize)
                 {
                     ControlFlow::Break(*subst)
@@ -311,13 +311,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Option<(&'tcx hir::Expr<'tcx>, Ty<'tcx>)> {
         let def = self.tcx.adt_def(def_id);
 
-        let identity_substs = ty::InternalSubsts::identity_for_item(self.tcx, def_id);
+        let identity_args = ty::GenericArgs::identity_for_item(self.tcx, def_id);
         let fields_referencing_param: Vec<_> = def
             .variant_with_id(variant_def_id)
             .fields
             .iter()
             .filter(|field| {
-                let field_ty = field.ty(self.tcx, identity_substs);
+                let field_ty = field.ty(self.tcx, identity_args);
                 find_param_in_ty(field_ty.into(), param_to_point_at)
             })
             .collect();
@@ -328,7 +328,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // same rules that check_expr_struct uses for macro hygiene.
                 if self.tcx.adjust_ident(expr_field.ident, variant_def_id) == field.ident(self.tcx)
                 {
-                    return Some((expr_field.expr, self.tcx.type_of(field.did).subst_identity()));
+                    return Some((
+                        expr_field.expr,
+                        self.tcx.type_of(field.did).instantiate_identity(),
+                    ));
                 }
             }
         }
@@ -355,7 +358,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         receiver: Option<&'tcx hir::Expr<'tcx>>,
         args: &'tcx [hir::Expr<'tcx>],
     ) -> bool {
-        let ty = self.tcx.type_of(def_id).subst_identity();
+        let ty = self.tcx.type_of(def_id).instantiate_identity();
         if !ty.is_fn() {
             return false;
         }
@@ -497,7 +500,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::TraitRef::new(
                 self.tcx,
                 obligation.impl_or_alias_def_id,
-                ty::InternalSubsts::identity_for_item(self.tcx, obligation.impl_or_alias_def_id),
+                ty::GenericArgs::identity_for_item(self.tcx, obligation.impl_or_alias_def_id),
             )
         } else {
             self.tcx
@@ -861,7 +864,7 @@ fn find_param_in_ty<'tcx>(
                 // This logic may seem a bit strange, but typically when
                 // we have a projection type in a function signature, the
                 // argument that's being passed into that signature is
-                // not actually constraining that projection's substs in
+                // not actually constraining that projection's args in
                 // a meaningful way. So we skip it, and see improvements
                 // in some UI tests.
                 walk.skip_current_subtree();

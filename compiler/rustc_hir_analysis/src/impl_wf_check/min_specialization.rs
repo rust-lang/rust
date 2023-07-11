@@ -14,15 +14,15 @@
 //! To enforce this requirement on specializations we take the following
 //! approach:
 //!
-//! 1. Match up the substs for `impl2` so that the implemented trait and
+//! 1. Match up the args for `impl2` so that the implemented trait and
 //!    self-type match those for `impl1`.
-//! 2. Check for any direct use of `'static` in the substs of `impl2`.
+//! 2. Check for any direct use of `'static` in the args of `impl2`.
 //! 3. Check that all of the generic parameters of `impl1` occur at most once
-//!    in the *unconstrained* substs for `impl2`. A parameter is constrained if
+//!    in the *unconstrained* args for `impl2`. A parameter is constrained if
 //!    its value is completely determined by an associated type projection
 //!    predicate.
 //! 4. Check that all predicates on `impl1` either exist on `impl2` (after
-//!    matching substs), or are well-formed predicates for the trait's type
+//!    matching args), or are well-formed predicates for the trait's type
 //!    arguments.
 //!
 //! ## Example
@@ -74,13 +74,13 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::specialization_graph::Node;
-use rustc_middle::ty::subst::{GenericArg, InternalSubsts, SubstsRef};
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{GenericArg, GenericArgs, GenericArgsRef};
 use rustc_span::{ErrorGuaranteed, Span};
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
 use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt as _;
-use rustc_trait_selection::traits::{self, translate_substs_with_cause, wf, ObligationCtxt};
+use rustc_trait_selection::traits::{self, translate_args_with_cause, wf, ObligationCtxt};
 
 pub(super) fn check_min_specialization(tcx: TyCtxt<'_>, impl_def_id: LocalDefId) {
     if let Some(node) = parent_specialization_node(tcx, impl_def_id) {
@@ -113,20 +113,20 @@ fn check_always_applicable(tcx: TyCtxt<'_>, impl1_def_id: LocalDefId, impl2_node
     let span = tcx.def_span(impl1_def_id);
     check_has_items(tcx, impl1_def_id, impl2_node, span);
 
-    if let Ok((impl1_substs, impl2_substs)) = get_impl_substs(tcx, impl1_def_id, impl2_node) {
+    if let Ok((impl1_args, impl2_args)) = get_impl_args(tcx, impl1_def_id, impl2_node) {
         let impl2_def_id = impl2_node.def_id();
-        debug!(?impl2_def_id, ?impl2_substs);
+        debug!(?impl2_def_id, ?impl2_args);
 
-        let parent_substs = if impl2_node.is_from_trait() {
-            impl2_substs.to_vec()
+        let parent_args = if impl2_node.is_from_trait() {
+            impl2_args.to_vec()
         } else {
-            unconstrained_parent_impl_substs(tcx, impl2_def_id, impl2_substs)
+            unconstrained_parent_impl_args(tcx, impl2_def_id, impl2_args)
         };
 
         check_constness(tcx, impl1_def_id, impl2_node, span);
-        check_static_lifetimes(tcx, &parent_substs, span);
-        check_duplicate_params(tcx, impl1_substs, &parent_substs, span);
-        check_predicates(tcx, impl1_def_id, impl1_substs, impl2_node, impl2_substs, span);
+        check_static_lifetimes(tcx, &parent_args, span);
+        check_duplicate_params(tcx, impl1_args, &parent_args, span);
+        check_predicates(tcx, impl1_def_id, impl1_args, impl2_node, impl2_args, span);
     }
 }
 
@@ -167,23 +167,23 @@ fn check_constness(tcx: TyCtxt<'_>, impl1_def_id: LocalDefId, impl2_node: Node, 
 /// ```
 ///
 /// Would return `S1 = [C]` and `S2 = [Vec<C>, C]`.
-fn get_impl_substs(
+fn get_impl_args(
     tcx: TyCtxt<'_>,
     impl1_def_id: LocalDefId,
     impl2_node: Node,
-) -> Result<(SubstsRef<'_>, SubstsRef<'_>), ErrorGuaranteed> {
+) -> Result<(GenericArgsRef<'_>, GenericArgsRef<'_>), ErrorGuaranteed> {
     let infcx = &tcx.infer_ctxt().build();
     let ocx = ObligationCtxt::new(infcx);
     let param_env = tcx.param_env(impl1_def_id);
     let impl1_span = tcx.def_span(impl1_def_id);
     let assumed_wf_types = ocx.assumed_wf_types_and_report_errors(param_env, impl1_def_id)?;
 
-    let impl1_substs = InternalSubsts::identity_for_item(tcx, impl1_def_id);
-    let impl2_substs = translate_substs_with_cause(
+    let impl1_args = GenericArgs::identity_for_item(tcx, impl1_def_id);
+    let impl2_args = translate_args_with_cause(
         infcx,
         param_env,
         impl1_def_id.to_def_id(),
-        impl1_substs,
+        impl1_args,
         impl2_node,
         |_, span| {
             traits::ObligationCause::new(
@@ -203,12 +203,12 @@ fn get_impl_substs(
     let implied_bounds = infcx.implied_bounds_tys(param_env, impl1_def_id, assumed_wf_types);
     let outlives_env = OutlivesEnvironment::with_bounds(param_env, implied_bounds);
     let _ = ocx.resolve_regions_and_report_errors(impl1_def_id, &outlives_env);
-    let Ok(impl2_substs) = infcx.fully_resolve(impl2_substs) else {
+    let Ok(impl2_args) = infcx.fully_resolve(impl2_args) else {
         let span = tcx.def_span(impl1_def_id);
         let guar = tcx.sess.emit_err(SubstsOnOverriddenImpl { span });
         return Err(guar);
     };
-    Ok((impl1_substs, impl2_substs))
+    Ok((impl1_args, impl2_args))
 }
 
 /// Returns a list of all of the unconstrained subst of the given impl.
@@ -217,17 +217,17 @@ fn get_impl_substs(
 ///
 /// impl<'a, T, I> ... where &'a I: IntoIterator<Item=&'a T>
 ///
-/// This would return the substs corresponding to `['a, I]`, because knowing
+/// This would return the args corresponding to `['a, I]`, because knowing
 /// `'a` and `I` determines the value of `T`.
-fn unconstrained_parent_impl_substs<'tcx>(
+fn unconstrained_parent_impl_args<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_def_id: DefId,
-    impl_substs: SubstsRef<'tcx>,
+    impl_args: GenericArgsRef<'tcx>,
 ) -> Vec<GenericArg<'tcx>> {
     let impl_generic_predicates = tcx.predicates_of(impl_def_id);
     let mut unconstrained_parameters = FxHashSet::default();
     let mut constrained_params = FxHashSet::default();
-    let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).map(ty::EarlyBinder::subst_identity);
+    let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).map(ty::EarlyBinder::instantiate_identity);
 
     // Unfortunately the functions in `constrained_generic_parameters` don't do
     // what we want here. We want only a list of constrained parameters while
@@ -255,7 +255,7 @@ fn unconstrained_parent_impl_substs<'tcx>(
         }
     }
 
-    impl_substs
+    impl_args
         .iter()
         .enumerate()
         .filter(|&(idx, _)| !constrained_params.contains(&(idx as u32)))
@@ -264,7 +264,7 @@ fn unconstrained_parent_impl_substs<'tcx>(
 }
 
 /// Check that parameters of the derived impl don't occur more than once in the
-/// equated substs of the base impl.
+/// equated args of the base impl.
 ///
 /// For example forbid the following:
 ///
@@ -280,19 +280,19 @@ fn unconstrained_parent_impl_substs<'tcx>(
 /// impl<T> Tr<T> for Vec<T> { }
 /// ```
 ///
-/// The substs for the parent impl here are `[T, Vec<T>]`, which repeats `T`,
-/// but `S` is constrained in the parent impl, so `parent_substs` is only
+/// The args for the parent impl here are `[T, Vec<T>]`, which repeats `T`,
+/// but `S` is constrained in the parent impl, so `parent_args` is only
 /// `[Vec<T>]`. This means we allow this impl.
 fn check_duplicate_params<'tcx>(
     tcx: TyCtxt<'tcx>,
-    impl1_substs: SubstsRef<'tcx>,
-    parent_substs: &Vec<GenericArg<'tcx>>,
+    impl1_args: GenericArgsRef<'tcx>,
+    parent_args: &Vec<GenericArg<'tcx>>,
     span: Span,
 ) {
-    let mut base_params = cgp::parameters_for(parent_substs, true);
+    let mut base_params = cgp::parameters_for(parent_args, true);
     base_params.sort_by_key(|param| param.0);
     if let (_, [duplicate, ..]) = base_params.partition_dedup() {
-        let param = impl1_substs[duplicate.0 as usize];
+        let param = impl1_args[duplicate.0 as usize];
         tcx.sess
             .struct_span_err(span, format!("specializing impl repeats parameter `{}`", param))
             .emit();
@@ -309,10 +309,10 @@ fn check_duplicate_params<'tcx>(
 /// ```
 fn check_static_lifetimes<'tcx>(
     tcx: TyCtxt<'tcx>,
-    parent_substs: &Vec<GenericArg<'tcx>>,
+    parent_args: &Vec<GenericArg<'tcx>>,
     span: Span,
 ) {
-    if tcx.any_free_region_meets(parent_substs, |r| r.is_static()) {
+    if tcx.any_free_region_meets(parent_args, |r| r.is_static()) {
         tcx.sess.emit_err(errors::StaticSpecialize { span });
     }
 }
@@ -331,14 +331,14 @@ fn check_static_lifetimes<'tcx>(
 fn check_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl1_def_id: LocalDefId,
-    impl1_substs: SubstsRef<'tcx>,
+    impl1_args: GenericArgsRef<'tcx>,
     impl2_node: Node,
-    impl2_substs: SubstsRef<'tcx>,
+    impl2_args: GenericArgsRef<'tcx>,
     span: Span,
 ) {
     let impl1_predicates: Vec<_> = traits::elaborate(
         tcx,
-        tcx.predicates_of(impl1_def_id).instantiate(tcx, impl1_substs).into_iter(),
+        tcx.predicates_of(impl1_def_id).instantiate(tcx, impl1_args).into_iter(),
     )
     .collect();
 
@@ -350,7 +350,7 @@ fn check_predicates<'tcx>(
         traits::elaborate(
             tcx,
             tcx.predicates_of(impl2_node.def_id())
-                .instantiate(tcx, impl2_substs)
+                .instantiate(tcx, impl2_args)
                 .into_iter()
                 .map(|(c, _s)| c.as_predicate()),
         )
@@ -385,7 +385,7 @@ fn check_predicates<'tcx>(
         .map(|(c, _span)| c.as_predicate());
 
     // Include the well-formed predicates of the type parameters of the impl.
-    for arg in tcx.impl_trait_ref(impl1_def_id).unwrap().subst_identity().substs {
+    for arg in tcx.impl_trait_ref(impl1_def_id).unwrap().instantiate_identity().args {
         let infcx = &tcx.infer_ctxt().build();
         let obligations =
             wf::obligations(infcx, tcx.param_env(impl1_def_id), impl1_def_id, 0, arg, span)

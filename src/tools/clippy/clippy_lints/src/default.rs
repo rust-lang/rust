@@ -150,7 +150,7 @@ impl<'tcx> LateLintPass<'tcx> for Default {
                     .fields
                     .iter()
                     .all(|field| {
-                        is_copy(cx, cx.tcx.type_of(field.did).subst_identity())
+                        is_copy(cx, cx.tcx.type_of(field.did).instantiate_identity())
                     });
                 if !has_drop(cx, binding_type) || all_fields_are_copy;
                 then {
@@ -219,11 +219,11 @@ impl<'tcx> LateLintPass<'tcx> for Default {
 
                 // give correct suggestion if generics are involved (see #6944)
                 let binding_type = if_chain! {
-                    if let ty::Adt(adt_def, substs) = binding_type.kind();
-                    if !substs.is_empty();
+                    if let ty::Adt(adt_def, args) = binding_type.kind();
+                    if !args.is_empty();
                     then {
                         let adt_def_ty_name = cx.tcx.item_name(adt_def.did());
-                        let generic_args = substs.iter().collect::<Vec<_>>();
+                        let generic_args = args.iter().collect::<Vec<_>>();
                         let tys_str = generic_args
                             .iter()
                             .map(ToString::to_string)

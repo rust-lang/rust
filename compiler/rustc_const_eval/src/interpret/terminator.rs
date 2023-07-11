@@ -135,8 +135,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         let fn_val = self.get_ptr_fn(fn_ptr)?;
                         (fn_val, self.fn_abi_of_fn_ptr(fn_sig_binder, extra_args)?, false)
                     }
-                    ty::FnDef(def_id, substs) => {
-                        let instance = self.resolve(def_id, substs)?;
+                    ty::FnDef(def_id, args) => {
+                        let instance = self.resolve(def_id, args)?;
                         (
                             FnVal::Instance(instance),
                             self.fn_abi_of_instance(instance, extra_args)?,
@@ -748,7 +748,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
                     let trait_def_id = tcx.trait_of_item(def_id).unwrap();
                     let virtual_trait_ref =
-                        ty::TraitRef::from_method(tcx, trait_def_id, instance.substs);
+                        ty::TraitRef::from_method(tcx, trait_def_id, instance.args);
                     let existential_trait_ref =
                         ty::ExistentialTraitRef::erase_self_ty(tcx, virtual_trait_ref);
                     let concrete_trait_ref = existential_trait_ref.with_self_ty(tcx, dyn_ty);
@@ -757,7 +757,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         tcx,
                         self.param_env,
                         def_id,
-                        instance.substs.rebase_onto(tcx, trait_def_id, concrete_trait_ref.substs),
+                        instance.args.rebase_onto(tcx, trait_def_id, concrete_trait_ref.args),
                     )
                     .unwrap();
                     assert_eq!(fn_inst, concrete_method);

@@ -202,8 +202,9 @@ fn rematch_impl<'tcx>(
     impl_def_id: DefId,
     mut nested: Vec<PredicateObligation<'tcx>>,
 ) -> SelectionResult<'tcx, Selection<'tcx>> {
-    let substs = infcx.fresh_substs_for_item(DUMMY_SP, impl_def_id);
-    let impl_trait_ref = infcx.tcx.impl_trait_ref(impl_def_id).unwrap().subst(infcx.tcx, substs);
+    let args = infcx.fresh_args_for_item(DUMMY_SP, impl_def_id);
+    let impl_trait_ref =
+        infcx.tcx.impl_trait_ref(impl_def_id).unwrap().instantiate(infcx.tcx, args);
 
     nested.extend(
         infcx
@@ -214,12 +215,12 @@ fn rematch_impl<'tcx>(
     );
 
     nested.extend(
-        infcx.tcx.predicates_of(impl_def_id).instantiate(infcx.tcx, substs).into_iter().map(
+        infcx.tcx.predicates_of(impl_def_id).instantiate(infcx.tcx, args).into_iter().map(
             |(pred, _)| Obligation::new(infcx.tcx, ObligationCause::dummy(), goal.param_env, pred),
         ),
     );
 
-    Ok(Some(ImplSource::UserDefined(ImplSourceUserDefinedData { impl_def_id, substs, nested })))
+    Ok(Some(ImplSource::UserDefined(ImplSourceUserDefinedData { impl_def_id, args, nested })))
 }
 
 fn rematch_object<'tcx>(
@@ -231,21 +232,20 @@ fn rematch_object<'tcx>(
     let ty::Dynamic(data, _, source_kind) = *self_ty.kind() else { bug!() };
     let source_trait_ref = data.principal().unwrap().with_self_ty(infcx.tcx, self_ty);
 
-    let (is_upcasting, target_trait_ref_unnormalized) = if Some(goal.predicate.def_id())
-        == infcx.tcx.lang_items().unsize_trait()
-    {
-        assert_eq!(source_kind, ty::Dyn, "cannot upcast dyn*");
-        if let ty::Dynamic(data, _, ty::Dyn) = goal.predicate.trait_ref.substs.type_at(1).kind() {
-            // FIXME: We also need to ensure that the source lifetime outlives the
-            // target lifetime. This doesn't matter for codegen, though, and only
-            // *really* matters if the goal's certainty is ambiguous.
-            (true, data.principal().unwrap().with_self_ty(infcx.tcx, self_ty))
+    let (is_upcasting, target_trait_ref_unnormalized) =
+        if Some(goal.predicate.def_id()) == infcx.tcx.lang_items().unsize_trait() {
+            assert_eq!(source_kind, ty::Dyn, "cannot upcast dyn*");
+            if let ty::Dynamic(data, _, ty::Dyn) = goal.predicate.trait_ref.args.type_at(1).kind() {
+                // FIXME: We also need to ensure that the source lifetime outlives the
+                // target lifetime. This doesn't matter for codegen, though, and only
+                // *really* matters if the goal's certainty is ambiguous.
+                (true, data.principal().unwrap().with_self_ty(infcx.tcx, self_ty))
+            } else {
+                bug!()
+            }
         } else {
-            bug!()
-        }
-    } else {
-        (false, ty::Binder::dummy(goal.predicate.trait_ref))
-    };
+            (false, ty::Binder::dummy(goal.predicate.trait_ref))
+        };
 
     let mut target_trait_ref = None;
     for candidate_trait_ref in supertraits(infcx.tcx, source_trait_ref) {
@@ -323,7 +323,7 @@ fn rematch_unsize<'tcx>(
 ) -> SelectionResult<'tcx, Selection<'tcx>> {
     let tcx = infcx.tcx;
     let a_ty = goal.predicate.self_ty();
-    let b_ty = goal.predicate.trait_ref.substs.type_at(1);
+    let b_ty = goal.predicate.trait_ref.args.type_at(1);
 
     match (a_ty.kind(), b_ty.kind()) {
         (_, &ty::Dynamic(data, region, ty::Dyn)) => {
@@ -364,7 +364,7 @@ fn rematch_unsize<'tcx>(
             );
         }
         // Struct unsizing `Struct<T>` -> `Struct<U>` where `T: Unsize<U>`
-        (&ty::Adt(a_def, a_substs), &ty::Adt(b_def, b_substs))
+        (&ty::Adt(a_def, a_args), &ty::Adt(b_def, b_args))
             if a_def.is_struct() && a_def.did() == b_def.did() =>
         {
             let unsizing_params = tcx.unsizing_params_for_adt(a_def.did());
@@ -382,17 +382,19 @@ fn rematch_unsize<'tcx>(
                 .expect("expected unsized ADT to have a tail field");
             let tail_field_ty = tcx.type_of(tail_field.did);
 
-            let a_tail_ty = tail_field_ty.subst(tcx, a_substs);
-            let b_tail_ty = tail_field_ty.subst(tcx, b_substs);
+            let a_tail_ty = tail_field_ty.instantiate(tcx, a_args);
+            let b_tail_ty = tail_field_ty.instantiate(tcx, b_args);
 
             // Substitute just the unsizing params from B into A. The type after
             // this substitution must be equal to B. This is so we don't unsize
             // unrelated type parameters.
-            let new_a_substs =
-                tcx.mk_substs_from_iter(a_substs.iter().enumerate().map(|(i, a)| {
-                    if unsizing_params.contains(i as u32) { b_substs[i] } else { a }
-                }));
-            let unsized_a_ty = Ty::new_adt(tcx, a_def, new_a_substs);
+            let new_a_args = tcx.mk_args_from_iter(
+                a_args
+                    .iter()
+                    .enumerate()
+                    .map(|(i, a)| if unsizing_params.contains(i as u32) { b_args[i] } else { a }),
+            );
+            let unsized_a_ty = Ty::new_adt(tcx, a_def, new_a_args);
 
             nested.extend(
                 infcx

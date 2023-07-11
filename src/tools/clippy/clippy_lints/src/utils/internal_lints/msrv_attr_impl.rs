@@ -7,7 +7,7 @@ use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::ty::{self, subst::GenericArgKind};
+use rustc_middle::ty::{self, GenericArgKind};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
@@ -39,7 +39,7 @@ impl LateLintPass<'_> for MsrvAttrImpl {
             if self_ty_def.all_fields().any(|f| {
                 cx.tcx
                     .type_of(f.did)
-                    .subst_identity()
+                    .instantiate_identity()
                     .walk()
                     .filter(|t| matches!(t.unpack(), GenericArgKind::Type(_)))
                     .any(|t| match_type(cx, t.expect_ty(), &paths::MSRV))

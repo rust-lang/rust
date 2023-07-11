@@ -549,7 +549,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         // Select just those fields of the `with`
         // expression that will actually be used
         match with_place.place.ty().kind() {
-            ty::Adt(adt, substs) if adt.is_struct() => {
+            ty::Adt(adt, args) if adt.is_struct() => {
                 // Consume those fields of the with expression that are needed.
                 for (f_index, with_field) in adt.non_enum_variant().fields.iter_enumerated() {
                     let is_mentioned = fields
@@ -559,7 +559,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                         let field_place = self.mc.cat_projection(
                             &*with_expr,
                             with_place.clone(),
-                            with_field.ty(self.tcx(), substs),
+                            with_field.ty(self.tcx(), args),
                             ProjectionKind::Field(f_index, FIRST_VARIANT),
                         );
                         self.delegate_consume(&field_place, field_place.hir_id);

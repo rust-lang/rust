@@ -40,9 +40,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // This attribute causes us to dump some writeback information
         // in the form of errors, which is used for unit tests.
-        let rustc_dump_user_substs = self.tcx.has_attr(item_def_id, sym::rustc_dump_user_substs);
+        let rustc_dump_user_args = self.tcx.has_attr(item_def_id, sym::rustc_dump_user_args);
 
-        let mut wbcx = WritebackCx::new(self, body, rustc_dump_user_substs);
+        let mut wbcx = WritebackCx::new(self, body, rustc_dump_user_args);
         for param in body.params {
             wbcx.visit_node_id(param.pat.span, param.hir_id);
         }
@@ -100,14 +100,14 @@ struct WritebackCx<'cx, 'tcx> {
 
     body: &'tcx hir::Body<'tcx>,
 
-    rustc_dump_user_substs: bool,
+    rustc_dump_user_args: bool,
 }
 
 impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     fn new(
         fcx: &'cx FnCtxt<'cx, 'tcx>,
         body: &'tcx hir::Body<'tcx>,
-        rustc_dump_user_substs: bool,
+        rustc_dump_user_args: bool,
     ) -> WritebackCx<'cx, 'tcx> {
         let owner = body.id().hir_id.owner;
 
@@ -115,7 +115,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             fcx,
             typeck_results: ty::TypeckResults::new(owner),
             body,
-            rustc_dump_user_substs,
+            rustc_dump_user_args,
         };
 
         // HACK: We specifically don't want the (opaque) error from tainting our
@@ -152,7 +152,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
                 if inner_ty.is_scalar() {
                     self.typeck_results.type_dependent_defs_mut().remove(e.hir_id);
-                    self.typeck_results.node_substs_mut().remove(e.hir_id);
+                    self.typeck_results.node_args_mut().remove(e.hir_id);
                 }
             }
             hir::ExprKind::Binary(ref op, lhs, rhs) | hir::ExprKind::AssignOp(ref op, lhs, rhs) => {
@@ -161,7 +161,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
                 if lhs_ty.is_scalar() && rhs_ty.is_scalar() {
                     self.typeck_results.type_dependent_defs_mut().remove(e.hir_id);
-                    self.typeck_results.node_substs_mut().remove(e.hir_id);
+                    self.typeck_results.node_args_mut().remove(e.hir_id);
 
                     match e.kind {
                         hir::ExprKind::Binary(..) => {
@@ -239,7 +239,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 if self.is_builtin_index(e, base_ty_inner, index_ty) {
                     // Remove the method call record
                     self.typeck_results.type_dependent_defs_mut().remove(e.hir_id);
-                    self.typeck_results.node_substs_mut().remove(e.hir_id);
+                    self.typeck_results.node_args_mut().remove(e.hir_id);
 
                     if let Some(a) = self.typeck_results.adjustments_mut().get_mut(base.hir_id) {
                         // Discard the need for a mutable borrow
@@ -477,7 +477,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         assert_eq!(fcx_typeck_results.hir_owner, self.typeck_results.hir_owner);
         let common_hir_owner = fcx_typeck_results.hir_owner;
 
-        if self.rustc_dump_user_substs {
+        if self.rustc_dump_user_args {
             let sorted_user_provided_types =
                 fcx_typeck_results.user_provided_types().items_in_stable_order();
 
@@ -485,7 +485,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             for (local_id, c_ty) in sorted_user_provided_types {
                 let hir_id = hir::HirId { owner: common_hir_owner, local_id };
 
-                if let ty::UserType::TypeOf(_, user_substs) = c_ty.value {
+                if let ty::UserType::TypeOf(_, user_args) = c_ty.value {
                     // This is a unit-testing mechanism.
                     let span = self.tcx().hir().span(hir_id);
                     // We need to buffer the errors in order to guarantee a consistent
@@ -493,7 +493,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                     let err = self
                         .tcx()
                         .sess
-                        .struct_span_err(span, format!("user substs: {:?}", user_substs));
+                        .struct_span_err(span, format!("user args: {:?}", user_args));
                     err.buffer(&mut errors_buffer);
                 }
             }
@@ -631,11 +631,11 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         debug!(?n_ty);
 
         // Resolve any substitutions
-        if let Some(substs) = self.fcx.typeck_results.borrow().node_substs_opt(hir_id) {
-            let substs = self.resolve(substs, &span);
-            debug!("write_substs_to_tcx({:?}, {:?})", hir_id, substs);
-            assert!(!substs.has_infer() && !substs.has_placeholders());
-            self.typeck_results.node_substs_mut().insert(hir_id, substs);
+        if let Some(args) = self.fcx.typeck_results.borrow().node_args_opt(hir_id) {
+            let args = self.resolve(args, &span);
+            debug!("write_args_to_tcx({:?}, {:?})", hir_id, args);
+            assert!(!args.has_infer() && !args.has_placeholders());
+            self.typeck_results.node_args_mut().insert(hir_id, args);
         }
     }
 

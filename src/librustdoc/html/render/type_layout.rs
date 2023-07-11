@@ -39,7 +39,7 @@ pub(crate) fn document_type_layout<'a, 'cx: 'a>(
 
         let tcx = cx.tcx();
         let param_env = tcx.param_env(ty_def_id);
-        let ty = tcx.type_of(ty_def_id).subst_identity();
+        let ty = tcx.type_of(ty_def_id).instantiate_identity();
         let type_layout = tcx.layout_of(param_env.and(ty));
 
         let variants =

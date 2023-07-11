@@ -477,7 +477,7 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
                 ConstantKind::Ty(ct) => match ct.kind() {
                     ty::ConstKind::Param(p) => format!("Param({})", p),
                     ty::ConstKind::Unevaluated(uv) => {
-                        format!("Unevaluated({}, {:?})", self.tcx.def_path_str(uv.def), uv.substs,)
+                        format!("Unevaluated({}, {:?})", self.tcx.def_path_str(uv.def), uv.args,)
                     }
                     ty::ConstKind::Value(val) => format!("Value({})", fmt_valtree(&val)),
                     ty::ConstKind::Error(_) => "Error".to_string(),
@@ -491,7 +491,7 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
                     format!(
                         "Unevaluated({}, {:?}, {:?})",
                         self.tcx.def_path_str(uv.def),
-                        uv.substs,
+                        uv.args,
                         uv.promoted,
                     )
                 }
@@ -512,16 +512,16 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
         self.super_rvalue(rvalue, location);
         if let Rvalue::Aggregate(kind, _) = rvalue {
             match **kind {
-                AggregateKind::Closure(def_id, substs) => {
+                AggregateKind::Closure(def_id, args) => {
                     self.push("closure");
                     self.push(&format!("+ def_id: {:?}", def_id));
-                    self.push(&format!("+ substs: {:#?}", substs));
+                    self.push(&format!("+ args: {:#?}", args));
                 }
 
-                AggregateKind::Generator(def_id, substs, movability) => {
+                AggregateKind::Generator(def_id, args, movability) => {
                     self.push("generator");
                     self.push(&format!("+ def_id: {:?}", def_id));
-                    self.push(&format!("+ substs: {:#?}", substs));
+                    self.push(&format!("+ args: {:#?}", args));
                     self.push(&format!("+ movability: {:?}", movability));
                 }
 

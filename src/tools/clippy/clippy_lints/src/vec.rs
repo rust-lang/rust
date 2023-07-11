@@ -230,8 +230,8 @@ fn size_of(cx: &LateContext<'_>, expr: &Expr<'_>) -> u64 {
 
 /// Returns the item type of the vector (i.e., the `T` in `Vec<T>`).
 fn vec_type(ty: Ty<'_>) -> Ty<'_> {
-    if let ty::Adt(_, substs) = ty.kind() {
-        substs.type_at(0)
+    if let ty::Adt(_, args) = ty.kind() {
+        args.type_at(0)
     } else {
         panic!("The type of `vec!` is a not a struct?");
     }

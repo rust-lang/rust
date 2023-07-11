@@ -15,9 +15,9 @@ use rustc_middle::thir::*;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AutoBorrow, AutoBorrowMutability, PointerCoercion,
 };
-use rustc_middle::ty::subst::InternalSubsts;
+use rustc_middle::ty::GenericArgs;
 use rustc_middle::ty::{
-    self, AdtKind, InlineConstSubsts, InlineConstSubstsParts, ScalarInt, Ty, UpvarSubsts, UserType,
+    self, AdtKind, InlineConstArgs, InlineConstArgsParts, ScalarInt, Ty, UpvarArgs, UserType,
 };
 use rustc_span::{sym, Span};
 use rustc_target::abi::{FieldIdx, FIRST_VARIANT};
@@ -210,7 +210,7 @@ impl<'tcx> Cx<'tcx> {
 
             let res = self.typeck_results().qpath_res(qpath, source.hir_id);
             let ty = self.typeck_results().node_type(source.hir_id);
-            let ty::Adt(adt_def, substs) = ty.kind() else {
+            let ty::Adt(adt_def, args) = ty.kind() else {
                 return ExprKind::Cast { source: self.mirror_expr(source) };
             };
 
@@ -242,7 +242,7 @@ impl<'tcx> Cx<'tcx> {
                 // in case we are offsetting from a computed discriminant
                 // and not the beginning of discriminants (which is always `0`)
                 Some(did) => {
-                    let kind = ExprKind::NamedConst { def_id: did, substs, user_ty: None };
+                    let kind = ExprKind::NamedConst { def_id: did, args, user_ty: None };
                     let lhs =
                         self.thir.exprs.push(Expr { temp_lifetime, ty: discr_ty, span, kind });
                     let bin = ExprKind::Binary { op: BinOp::Add, lhs, rhs: offset };
@@ -372,7 +372,7 @@ impl<'tcx> Cx<'tcx> {
                         None
                     };
                     if let Some((adt_def, index)) = adt_data {
-                        let substs = self.typeck_results().node_substs(fun.hir_id);
+                        let node_args = self.typeck_results().node_args(fun.hir_id);
                         let user_provided_types = self.typeck_results().user_provided_types();
                         let user_ty =
                             user_provided_types.get(fun.hir_id).copied().map(|mut u_ty| {
@@ -393,7 +393,7 @@ impl<'tcx> Cx<'tcx> {
                             .collect();
                         ExprKind::Adt(Box::new(AdtExpr {
                             adt_def,
-                            substs,
+                            args: node_args,
                             variant_index: index,
                             fields: field_refs,
                             user_ty,
@@ -511,7 +511,7 @@ impl<'tcx> Cx<'tcx> {
             }
 
             hir::ExprKind::Struct(ref qpath, ref fields, ref base) => match expr_ty.kind() {
-                ty::Adt(adt, substs) => match adt.adt_kind() {
+                ty::Adt(adt, args) => match adt.adt_kind() {
                     AdtKind::Struct | AdtKind::Union => {
                         let user_provided_types = self.typeck_results().user_provided_types();
                         let user_ty = user_provided_types.get(expr.hir_id).copied().map(Box::new);
@@ -519,7 +519,7 @@ impl<'tcx> Cx<'tcx> {
                         ExprKind::Adt(Box::new(AdtExpr {
                             adt_def: *adt,
                             variant_index: FIRST_VARIANT,
-                            substs,
+                            args,
                             user_ty,
                             fields: self.field_refs(fields),
                             base: base.map(|base| FruInfo {
@@ -546,7 +546,7 @@ impl<'tcx> Cx<'tcx> {
                                 ExprKind::Adt(Box::new(AdtExpr {
                                     adt_def: *adt,
                                     variant_index: index,
-                                    substs,
+                                    args,
                                     user_ty,
                                     fields: self.field_refs(fields),
                                     base: None,
@@ -565,10 +565,10 @@ impl<'tcx> Cx<'tcx> {
 
             hir::ExprKind::Closure { .. } => {
                 let closure_ty = self.typeck_results().expr_ty(expr);
-                let (def_id, substs, movability) = match *closure_ty.kind() {
-                    ty::Closure(def_id, substs) => (def_id, UpvarSubsts::Closure(substs), None),
-                    ty::Generator(def_id, substs, movability) => {
-                        (def_id, UpvarSubsts::Generator(substs), Some(movability))
+                let (def_id, args, movability) = match *closure_ty.kind() {
+                    ty::Closure(def_id, args) => (def_id, UpvarArgs::Closure(args), None),
+                    ty::Generator(def_id, args, movability) => {
+                        (def_id, UpvarArgs::Generator(args), Some(movability))
                     }
                     _ => {
                         span_bug!(expr.span, "closure expr w/o closure type: {:?}", closure_ty);
@@ -580,7 +580,7 @@ impl<'tcx> Cx<'tcx> {
                     .tcx
                     .closure_captures(def_id)
                     .iter()
-                    .zip(substs.upvar_tys())
+                    .zip(args.upvar_tys())
                     .map(|(captured_place, ty)| {
                         let upvars = self.capture_upvar(expr, captured_place, ty);
                         self.thir.exprs.push(upvars)
@@ -601,7 +601,7 @@ impl<'tcx> Cx<'tcx> {
 
                 ExprKind::Closure(Box::new(ClosureExpr {
                     closure_id: def_id,
-                    substs,
+                    args,
                     upvars,
                     movability,
                     fake_reads,
@@ -684,13 +684,11 @@ impl<'tcx> Cx<'tcx> {
                 let ty = self.typeck_results().node_type(anon_const.hir_id);
                 let did = anon_const.def_id.to_def_id();
                 let typeck_root_def_id = tcx.typeck_root_def_id(did);
-                let parent_substs =
-                    tcx.erase_regions(InternalSubsts::identity_for_item(tcx, typeck_root_def_id));
-                let substs =
-                    InlineConstSubsts::new(tcx, InlineConstSubstsParts { parent_substs, ty })
-                        .substs;
+                let parent_args =
+                    tcx.erase_regions(GenericArgs::identity_for_item(tcx, typeck_root_def_id));
+                let args = InlineConstArgs::new(tcx, InlineConstArgsParts { parent_args, ty }).args;
 
-                ExprKind::ConstBlock { did, substs }
+                ExprKind::ConstBlock { did, args }
             }
             // Now comes the rote stuff:
             hir::ExprKind::Repeat(ref v, _) => {
@@ -809,12 +807,12 @@ impl<'tcx> Cx<'tcx> {
         Expr { temp_lifetime, ty: expr_ty, span: expr.span, kind }
     }
 
-    fn user_substs_applied_to_res(
+    fn user_args_applied_to_res(
         &mut self,
         hir_id: hir::HirId,
         res: Res,
     ) -> Option<Box<ty::CanonicalUserType<'tcx>>> {
-        debug!("user_substs_applied_to_res: res={:?}", res);
+        debug!("user_args_applied_to_res: res={:?}", res);
         let user_provided_type = match res {
             // A reference to something callable -- e.g., a fn, method, or
             // a tuple-struct or tuple-variant. This has the type of a
@@ -832,15 +830,15 @@ impl<'tcx> Cx<'tcx> {
             // this variant -- but with the substitutions given by the
             // user.
             Res::Def(DefKind::Ctor(_, CtorKind::Const), _) => {
-                self.user_substs_applied_to_ty_of_hir_id(hir_id).map(Box::new)
+                self.user_args_applied_to_ty_of_hir_id(hir_id).map(Box::new)
             }
 
             // `Self` is used in expression as a tuple struct constructor or a unit struct constructor
-            Res::SelfCtor(_) => self.user_substs_applied_to_ty_of_hir_id(hir_id).map(Box::new),
+            Res::SelfCtor(_) => self.user_args_applied_to_ty_of_hir_id(hir_id).map(Box::new),
 
-            _ => bug!("user_substs_applied_to_res: unexpected res {:?} at {:?}", res, hir_id),
+            _ => bug!("user_args_applied_to_res: unexpected res {:?} at {:?}", res, hir_id),
         };
-        debug!("user_substs_applied_to_res: user_provided_type={:?}", user_provided_type);
+        debug!("user_args_applied_to_res: user_provided_type={:?}", user_provided_type);
         user_provided_type
     }
 
@@ -859,13 +857,13 @@ impl<'tcx> Cx<'tcx> {
                     self.typeck_results().type_dependent_def(expr.hir_id).unwrap_or_else(|| {
                         span_bug!(expr.span, "no type-dependent def for method callee")
                     });
-                let user_ty = self.user_substs_applied_to_res(expr.hir_id, Res::Def(kind, def_id));
+                let user_ty = self.user_args_applied_to_res(expr.hir_id, Res::Def(kind, def_id));
                 debug!("method_callee: user_ty={:?}", user_ty);
                 (
                     Ty::new_fn_def(
                         self.tcx(),
                         def_id,
-                        self.typeck_results().node_substs(expr.hir_id),
+                        self.typeck_results().node_args(expr.hir_id),
                     ),
                     user_ty,
                 )
@@ -892,14 +890,14 @@ impl<'tcx> Cx<'tcx> {
     }
 
     fn convert_path_expr(&mut self, expr: &'tcx hir::Expr<'tcx>, res: Res) -> ExprKind<'tcx> {
-        let substs = self.typeck_results().node_substs(expr.hir_id);
+        let args = self.typeck_results().node_args(expr.hir_id);
         match res {
             // A regular function, constructor function or a constant.
             Res::Def(DefKind::Fn, _)
             | Res::Def(DefKind::AssocFn, _)
             | Res::Def(DefKind::Ctor(_, CtorKind::Fn), _)
             | Res::SelfCtor(_) => {
-                let user_ty = self.user_substs_applied_to_res(expr.hir_id, res);
+                let user_ty = self.user_args_applied_to_res(expr.hir_id, res);
                 ExprKind::ZstLiteral { user_ty }
             }
 
@@ -914,8 +912,8 @@ impl<'tcx> Cx<'tcx> {
             }
 
             Res::Def(DefKind::Const, def_id) | Res::Def(DefKind::AssocConst, def_id) => {
-                let user_ty = self.user_substs_applied_to_res(expr.hir_id, res);
-                ExprKind::NamedConst { def_id, substs, user_ty }
+                let user_ty = self.user_args_applied_to_res(expr.hir_id, res);
+                ExprKind::NamedConst { def_id, args, user_ty }
             }
 
             Res::Def(DefKind::Ctor(_, CtorKind::Const), def_id) => {
@@ -926,10 +924,10 @@ impl<'tcx> Cx<'tcx> {
                 match ty.kind() {
                     // A unit struct/variant which is used as a value.
                     // We return a completely different ExprKind here to account for this special case.
-                    ty::Adt(adt_def, substs) => ExprKind::Adt(Box::new(AdtExpr {
+                    ty::Adt(adt_def, args) => ExprKind::Adt(Box::new(AdtExpr {
                         adt_def: *adt_def,
                         variant_index: adt_def.variant_index_with_ctor_id(def_id),
-                        substs,
+                        args,
                         user_ty,
                         fields: Box::new([]),
                         base: None,

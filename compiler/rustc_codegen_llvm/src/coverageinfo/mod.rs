@@ -22,7 +22,7 @@ use rustc_middle::mir::coverage::{
 use rustc_middle::mir::Coverage;
 use rustc_middle::ty;
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt};
-use rustc_middle::ty::subst::InternalSubsts;
+use rustc_middle::ty::GenericArgs;
 use rustc_middle::ty::Instance;
 use rustc_middle::ty::Ty;
 
@@ -250,7 +250,7 @@ fn declare_unused_fn<'tcx>(cx: &CodegenCx<'_, 'tcx>, def_id: DefId) -> Instance<
 
     let instance = Instance::new(
         def_id,
-        InternalSubsts::for_item(tcx, def_id, |param, _| {
+        GenericArgs::for_item(tcx, def_id, |param, _| {
             if let ty::GenericParamDefKind::Lifetime = param.kind {
                 tcx.lifetimes.re_erased.into()
             } else {

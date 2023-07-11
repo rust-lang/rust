@@ -23,10 +23,10 @@ use rustc_middle::mir::interpret::{
 use rustc_middle::mir::{self, ConstantKind, UserTypeProjection};
 use rustc_middle::mir::{BorrowKind, Mutability};
 use rustc_middle::thir::{Ascription, BindingMode, FieldPat, LocalVarId, Pat, PatKind, PatRange};
-use rustc_middle::ty::subst::{GenericArg, SubstsRef};
 use rustc_middle::ty::CanonicalUserTypeAnnotation;
 use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::{self, AdtDef, Region, Ty, TyCtxt, UserType};
+use rustc_middle::ty::{GenericArg, GenericArgsRef};
 use rustc_span::{Span, Symbol};
 use rustc_target::abi::FieldIdx;
 
@@ -416,8 +416,8 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 let enum_id = self.tcx.parent(variant_id);
                 let adt_def = self.tcx.adt_def(enum_id);
                 if adt_def.is_enum() {
-                    let substs = match ty.kind() {
-                        ty::Adt(_, substs) | ty::FnDef(_, substs) => substs,
+                    let args = match ty.kind() {
+                        ty::Adt(_, args) | ty::FnDef(_, args) => args,
                         ty::Error(_) => {
                             // Avoid ICE (#50585)
                             return PatKind::Wild;
@@ -426,7 +426,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     };
                     PatKind::Variant {
                         adt_def,
-                        substs,
+                        args,
                         variant_index: adt_def.variant_index_with_id(variant_id),
                         subpatterns,
                     }
@@ -460,7 +460,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             }
         };
 
-        if let Some(user_ty) = self.user_substs_applied_to_ty_of_hir_id(hir_id) {
+        if let Some(user_ty) = self.user_args_applied_to_ty_of_hir_id(hir_id) {
             debug!("lower_variant_or_leaf: kind={:?} user_ty={:?} span={:?}", kind, user_ty, span);
             let annotation = CanonicalUserTypeAnnotation {
                 user_ty: Box::new(user_ty),
@@ -496,13 +496,13 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         // Use `Reveal::All` here because patterns are always monomorphic even if their function
         // isn't.
         let param_env_reveal_all = self.param_env.with_reveal_all_normalized(self.tcx);
-        // N.B. There is no guarantee that substs collected in typeck results are fully normalized,
+        // N.B. There is no guarantee that args collected in typeck results are fully normalized,
         // so they need to be normalized in order to pass to `Instance::resolve`, which will ICE
         // if given unnormalized types.
-        let substs = self
+        let args = self
             .tcx
-            .normalize_erasing_regions(param_env_reveal_all, self.typeck_results.node_substs(id));
-        let instance = match ty::Instance::resolve(self.tcx, param_env_reveal_all, def_id, substs) {
+            .normalize_erasing_regions(param_env_reveal_all, self.typeck_results.node_args(id));
+        let instance = match ty::Instance::resolve(self.tcx, param_env_reveal_all, def_id, args) {
             Ok(Some(i)) => i,
             Ok(None) => {
                 // It should be assoc consts if there's no error but we cannot resolve it.
@@ -617,16 +617,14 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         }
 
         let typeck_root_def_id = tcx.typeck_root_def_id(def_id.to_def_id());
-        let parent_substs =
-            tcx.erase_regions(ty::InternalSubsts::identity_for_item(tcx, typeck_root_def_id));
-        let substs =
-            ty::InlineConstSubsts::new(tcx, ty::InlineConstSubstsParts { parent_substs, ty })
-                .substs;
+        let parent_args =
+            tcx.erase_regions(ty::GenericArgs::identity_for_item(tcx, typeck_root_def_id));
+        let args = ty::InlineConstArgs::new(tcx, ty::InlineConstArgsParts { parent_args, ty }).args;
 
-        let uneval = mir::UnevaluatedConst { def: def_id.to_def_id(), substs, promoted: None };
-        debug_assert!(!substs.has_free_regions());
+        let uneval = mir::UnevaluatedConst { def: def_id.to_def_id(), args, promoted: None };
+        debug_assert!(!args.has_free_regions());
 
-        let ct = ty::UnevaluatedConst { def: def_id.to_def_id(), substs: substs };
+        let ct = ty::UnevaluatedConst { def: def_id.to_def_id(), args: args };
         // First try using a valtree in order to destructure the constant into a pattern.
         if let Ok(Some(valtree)) =
             self.tcx.const_eval_resolve_for_typeck(self.param_env, ct, Some(span))
@@ -754,7 +752,7 @@ macro_rules! ClonePatternFoldableImpls {
 ClonePatternFoldableImpls! { <'tcx>
     Span, FieldIdx, Mutability, Symbol, LocalVarId, usize,
     Region<'tcx>, Ty<'tcx>, BindingMode, AdtDef<'tcx>,
-    SubstsRef<'tcx>, &'tcx GenericArg<'tcx>, UserType<'tcx>,
+    GenericArgsRef<'tcx>, &'tcx GenericArg<'tcx>, UserType<'tcx>,
     UserTypeProjection, CanonicalUserTypeAnnotation<'tcx>
 }
 
@@ -804,10 +802,10 @@ impl<'tcx> PatternFoldable<'tcx> for PatKind<'tcx> {
                     is_primary,
                 }
             }
-            PatKind::Variant { adt_def, substs, variant_index, ref subpatterns } => {
+            PatKind::Variant { adt_def, args, variant_index, ref subpatterns } => {
                 PatKind::Variant {
                     adt_def: adt_def.fold_with(folder),
-                    substs: substs.fold_with(folder),
+                    args: args.fold_with(folder),
                     variant_index,
                     subpatterns: subpatterns.fold_with(folder),
                 }

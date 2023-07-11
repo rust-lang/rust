@@ -3,23 +3,35 @@
 use crate::intrinsics::*;
 use crate::prelude::*;
 
-use rustc_middle::ty::subst::SubstsRef;
+use rustc_middle::ty::GenericArgsRef;
 
 pub(crate) fn codegen_llvm_intrinsic_call<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     intrinsic: &str,
-    substs: SubstsRef<'tcx>,
+    generic_args: GenericArgsRef<'tcx>,
     args: &[mir::Operand<'tcx>],
     ret: CPlace<'tcx>,
     target: Option<BasicBlock>,
 ) {
     if intrinsic.starts_with("llvm.aarch64") {
         return llvm_aarch64::codegen_aarch64_llvm_intrinsic_call(
-            fx, intrinsic, substs, args, ret, target,
+            fx,
+            intrinsic,
+            generic_args,
+            args,
+            ret,
+            target,
         );
     }
     if intrinsic.starts_with("llvm.x86") {
-        return llvm_x86::codegen_x86_llvm_intrinsic_call(fx, intrinsic, substs, args, ret, target);
+        return llvm_x86::codegen_x86_llvm_intrinsic_call(
+            fx,
+            intrinsic,
+            generic_args,
+            args,
+            ret,
+            target,
+        );
     }
 
     match intrinsic {

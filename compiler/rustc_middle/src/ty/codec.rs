@@ -13,7 +13,7 @@ use crate::mir::{
     interpret::{AllocId, ConstAllocation},
 };
 use crate::traits;
-use crate::ty::subst::SubstsRef;
+use crate::ty::GenericArgsRef;
 use crate::ty::{self, AdtDef, Ty};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::ty::TyCtxt;
@@ -254,12 +254,12 @@ impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for ty::Clause<'tcx> {
     }
 }
 
-impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for SubstsRef<'tcx> {
+impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for GenericArgsRef<'tcx> {
     fn decode(decoder: &mut D) -> Self {
         let len = decoder.read_usize();
         let tcx = decoder.interner();
-        tcx.mk_substs_from_iter(
-            (0..len).map::<ty::subst::GenericArg<'tcx>, _>(|_| Decodable::decode(decoder)),
+        tcx.mk_args_from_iter(
+            (0..len).map::<ty::GenericArg<'tcx>, _>(|_| Decodable::decode(decoder)),
         )
     }
 }

@@ -51,36 +51,36 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
             Ok(tys.iter().collect())
         }
 
-        ty::Closure(_, ref substs) => Ok(vec![substs.as_closure().tupled_upvars_ty()]),
+        ty::Closure(_, ref args) => Ok(vec![args.as_closure().tupled_upvars_ty()]),
 
-        ty::Generator(_, ref substs, _) => {
-            let generator_substs = substs.as_generator();
-            Ok(vec![generator_substs.tupled_upvars_ty(), generator_substs.witness()])
+        ty::Generator(_, ref args, _) => {
+            let generator_args = args.as_generator();
+            Ok(vec![generator_args.tupled_upvars_ty(), generator_args.witness()])
         }
 
         ty::GeneratorWitness(types) => Ok(ecx.instantiate_binder_with_placeholders(types).to_vec()),
 
-        ty::GeneratorWitnessMIR(def_id, substs) => Ok(ecx
+        ty::GeneratorWitnessMIR(def_id, args) => Ok(ecx
             .tcx()
             .generator_hidden_types(def_id)
             .map(|bty| {
                 ecx.instantiate_binder_with_placeholders(replace_erased_lifetimes_with_bound_vars(
                     tcx,
-                    bty.subst(tcx, substs),
+                    bty.instantiate(tcx, args),
                 ))
             })
             .collect()),
 
         // For `PhantomData<T>`, we pass `T`.
-        ty::Adt(def, substs) if def.is_phantom_data() => Ok(vec![substs.type_at(0)]),
+        ty::Adt(def, args) if def.is_phantom_data() => Ok(vec![args.type_at(0)]),
 
-        ty::Adt(def, substs) => Ok(def.all_fields().map(|f| f.ty(tcx, substs)).collect()),
+        ty::Adt(def, args) => Ok(def.all_fields().map(|f| f.ty(tcx, args)).collect()),
 
-        ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => {
+        ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => {
             // We can resolve the `impl Trait` to its concrete type,
             // which enforces a DAG between the functions requiring
             // the auto trait bounds in question.
-            Ok(vec![tcx.type_of(def_id).subst(tcx, substs)])
+            Ok(vec![tcx.type_of(def_id).instantiate(tcx, args)])
         }
     }
 }
@@ -146,9 +146,9 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_sized_trait<'tcx>(
 
         ty::Tuple(tys) => Ok(tys.to_vec()),
 
-        ty::Adt(def, substs) => {
+        ty::Adt(def, args) => {
             let sized_crit = def.sized_constraint(ecx.tcx());
-            Ok(sized_crit.subst_iter_copied(ecx.tcx(), substs).collect())
+            Ok(sized_crit.arg_iter_copied(ecx.tcx(), args).collect())
         }
     }
 }
@@ -192,11 +192,11 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
 
         ty::Tuple(tys) => Ok(tys.to_vec()),
 
-        ty::Closure(_, substs) => Ok(vec![substs.as_closure().tupled_upvars_ty()]),
+        ty::Closure(_, args) => Ok(vec![args.as_closure().tupled_upvars_ty()]),
 
-        ty::Generator(_, substs, Movability::Movable) => {
+        ty::Generator(_, args, Movability::Movable) => {
             if ecx.tcx().features().generator_clone {
-                let generator = substs.as_generator();
+                let generator = args.as_generator();
                 Ok(vec![generator.tupled_upvars_ty(), generator.witness()])
             } else {
                 Err(NoSolution)
@@ -205,13 +205,13 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
 
         ty::GeneratorWitness(types) => Ok(ecx.instantiate_binder_with_placeholders(types).to_vec()),
 
-        ty::GeneratorWitnessMIR(def_id, substs) => Ok(ecx
+        ty::GeneratorWitnessMIR(def_id, args) => Ok(ecx
             .tcx()
             .generator_hidden_types(def_id)
             .map(|bty| {
                 ecx.instantiate_binder_with_placeholders(replace_erased_lifetimes_with_bound_vars(
                     ecx.tcx(),
-                    bty.subst(ecx.tcx(), substs),
+                    bty.instantiate(ecx.tcx(), args),
                 ))
             })
             .collect()),
@@ -226,13 +226,13 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<'tcx>(
 ) -> Result<Option<ty::Binder<'tcx, (Ty<'tcx>, Ty<'tcx>)>>, NoSolution> {
     match *self_ty.kind() {
         // keep this in sync with assemble_fn_pointer_candidates until the old solver is removed.
-        ty::FnDef(def_id, substs) => {
+        ty::FnDef(def_id, args) => {
             let sig = tcx.fn_sig(def_id);
             if sig.skip_binder().is_fn_trait_compatible()
                 && tcx.codegen_fn_attrs(def_id).target_features.is_empty()
             {
                 Ok(Some(
-                    sig.subst(tcx, substs)
+                    sig.instantiate(tcx, args)
                         .map_bound(|sig| (Ty::new_tup(tcx, sig.inputs()), sig.output())),
                 ))
             } else {
@@ -247,9 +247,9 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<'tcx>(
                 Err(NoSolution)
             }
         }
-        ty::Closure(_, substs) => {
-            let closure_substs = substs.as_closure();
-            match closure_substs.kind_ty().to_opt_closure_kind() {
+        ty::Closure(_, args) => {
+            let closure_args = args.as_closure();
+            match closure_args.kind_ty().to_opt_closure_kind() {
                 // If the closure's kind doesn't extend the goal kind,
                 // then the closure doesn't implement the trait.
                 Some(closure_kind) => {
@@ -265,7 +265,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<'tcx>(
                     }
                 }
             }
-            Ok(Some(closure_substs.sig().map_bound(|sig| (sig.inputs()[0], sig.output()))))
+            Ok(Some(closure_args.sig().map_bound(|sig| (sig.inputs()[0], sig.output()))))
         }
         ty::Bool
         | ty::Char
@@ -347,13 +347,13 @@ pub(in crate::solve) fn predicates_for_object_candidate<'tcx>(
     let tcx = ecx.tcx();
     let mut requirements = vec![];
     requirements.extend(
-        tcx.super_predicates_of(trait_ref.def_id).instantiate(tcx, trait_ref.substs).predicates,
+        tcx.super_predicates_of(trait_ref.def_id).instantiate(tcx, trait_ref.args).predicates,
     );
     for item in tcx.associated_items(trait_ref.def_id).in_definition_order() {
         // FIXME(associated_const_equality): Also add associated consts to
         // the requirements here.
         if item.kind == ty::AssocKind::Type {
-            requirements.extend(tcx.item_bounds(item.def_id).subst_iter(tcx, trait_ref.substs));
+            requirements.extend(tcx.item_bounds(item.def_id).arg_iter(tcx, trait_ref.args));
         }
     }
 

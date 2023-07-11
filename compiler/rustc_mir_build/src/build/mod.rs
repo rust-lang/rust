@@ -482,7 +482,7 @@ fn construct_fn<'tcx>(
     let (yield_ty, return_ty) = if generator_kind.is_some() {
         let gen_ty = arguments[thir::UPVAR_ENV_PARAM].ty;
         let gen_sig = match gen_ty.kind() {
-            ty::Generator(_, gen_substs, ..) => gen_substs.as_generator().sig(),
+            ty::Generator(_, gen_args, ..) => gen_args.as_generator().sig(),
             _ => {
                 span_bug!(span, "generator w/o generator type: {:?}", gen_ty)
             }
@@ -627,11 +627,9 @@ fn construct_error(tcx: TyCtxt<'_>, def: LocalDefId, err: ErrorGuaranteed) -> Bo
     let num_params = match body_owner_kind {
         hir::BodyOwnerKind::Fn => tcx.fn_sig(def).skip_binder().inputs().skip_binder().len(),
         hir::BodyOwnerKind::Closure => {
-            let ty = tcx.type_of(def).subst_identity();
+            let ty = tcx.type_of(def).instantiate_identity();
             match ty.kind() {
-                ty::Closure(_, substs) => {
-                    1 + substs.as_closure().sig().inputs().skip_binder().len()
-                }
+                ty::Closure(_, args) => 1 + args.as_closure().sig().inputs().skip_binder().len(),
                 ty::Generator(..) => 2,
                 _ => bug!("expected closure or generator, found {ty:?}"),
             }
@@ -778,9 +776,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             closure_ty = *ty;
         }
 
-        let upvar_substs = match closure_ty.kind() {
-            ty::Closure(_, substs) => ty::UpvarSubsts::Closure(substs),
-            ty::Generator(_, substs, _) => ty::UpvarSubsts::Generator(substs),
+        let upvar_args = match closure_ty.kind() {
+            ty::Closure(_, args) => ty::UpvarArgs::Closure(args),
+            ty::Generator(_, args, _) => ty::UpvarArgs::Generator(args),
             _ => return,
         };
 
@@ -789,7 +787,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // with the closure's DefId. Here, we run through that vec of UpvarIds for
         // the given closure and use the necessary information to create upvar
         // debuginfo and to fill `self.upvars`.
-        let capture_tys = upvar_substs.upvar_tys();
+        let capture_tys = upvar_args.upvar_tys();
 
         let tcx = self.tcx;
         self.upvars = tcx

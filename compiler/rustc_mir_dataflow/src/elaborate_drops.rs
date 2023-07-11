@@ -4,8 +4,8 @@ use rustc_index::Idx;
 use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::*;
 use rustc_middle::traits::Reveal;
-use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::util::IntTypeExt;
+use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
 use std::{fmt, iter};
@@ -263,7 +263,7 @@ where
         base_place: Place<'tcx>,
         variant_path: D::Path,
         variant: &'tcx ty::VariantDef,
-        substs: SubstsRef<'tcx>,
+        args: GenericArgsRef<'tcx>,
     ) -> Vec<(Place<'tcx>, Option<D::Path>)> {
         variant
             .fields
@@ -276,7 +276,7 @@ where
 
                 assert_eq!(self.elaborator.param_env().reveal(), Reveal::All);
                 let field_ty =
-                    tcx.normalize_erasing_regions(self.elaborator.param_env(), f.ty(tcx, substs));
+                    tcx.normalize_erasing_regions(self.elaborator.param_env(), f.ty(tcx, args));
 
                 (tcx.mk_place_field(base_place, field, field_ty), subpath)
             })
@@ -414,16 +414,16 @@ where
     fn open_drop_for_box_contents(
         &mut self,
         adt: ty::AdtDef<'tcx>,
-        substs: SubstsRef<'tcx>,
+        args: GenericArgsRef<'tcx>,
         succ: BasicBlock,
         unwind: Unwind,
     ) -> BasicBlock {
         // drop glue is sent straight to codegen
         // box cannot be directly dereferenced
-        let unique_ty = adt.non_enum_variant().fields[FieldIdx::new(0)].ty(self.tcx(), substs);
+        let unique_ty = adt.non_enum_variant().fields[FieldIdx::new(0)].ty(self.tcx(), args);
         let unique_variant = unique_ty.ty_adt_def().unwrap().non_enum_variant();
-        let nonnull_ty = unique_variant.fields[FieldIdx::from_u32(0)].ty(self.tcx(), substs);
-        let ptr_ty = Ty::new_imm_ptr(self.tcx(), substs[0].expect_ty());
+        let nonnull_ty = unique_variant.fields[FieldIdx::from_u32(0)].ty(self.tcx(), args);
+        let ptr_ty = Ty::new_imm_ptr(self.tcx(), args[0].expect_ty());
 
         let unique_place = self.tcx().mk_place_field(self.place, FieldIdx::new(0), unique_ty);
         let nonnull_place = self.tcx().mk_place_field(unique_place, FieldIdx::new(0), nonnull_ty);
@@ -436,7 +436,11 @@ where
     }
 
     #[instrument(level = "debug", ret)]
-    fn open_drop_for_adt(&mut self, adt: ty::AdtDef<'tcx>, substs: SubstsRef<'tcx>) -> BasicBlock {
+    fn open_drop_for_adt(
+        &mut self,
+        adt: ty::AdtDef<'tcx>,
+        args: GenericArgsRef<'tcx>,
+    ) -> BasicBlock {
         if adt.variants().is_empty() {
             return self.elaborator.patch().new_block(BasicBlockData {
                 statements: vec![],
@@ -453,7 +457,7 @@ where
         let contents_drop = if skip_contents {
             (self.succ, self.unwind)
         } else {
-            self.open_drop_for_adt_contents(adt, substs)
+            self.open_drop_for_adt_contents(adt, args)
         };
 
         if adt.is_box() {
@@ -463,7 +467,7 @@ where
                 .1
                 .map(|unwind| self.destructor_call_block((unwind, Unwind::InCleanup)));
 
-            self.open_drop_for_box_contents(adt, substs, succ, unwind)
+            self.open_drop_for_box_contents(adt, args, succ, unwind)
         } else if adt.has_dtor(self.tcx()) {
             self.destructor_call_block(contents_drop)
         } else {
@@ -474,7 +478,7 @@ where
     fn open_drop_for_adt_contents(
         &mut self,
         adt: ty::AdtDef<'tcx>,
-        substs: SubstsRef<'tcx>,
+        args: GenericArgsRef<'tcx>,
     ) -> (BasicBlock, Unwind) {
         let (succ, unwind) = self.drop_ladder_bottom();
         if !adt.is_enum() {
@@ -482,18 +486,18 @@ where
                 self.place,
                 self.path,
                 &adt.variant(FIRST_VARIANT),
-                substs,
+                args,
             );
             self.drop_ladder(fields, succ, unwind)
         } else {
-            self.open_drop_for_multivariant(adt, substs, succ, unwind)
+            self.open_drop_for_multivariant(adt, args, succ, unwind)
         }
     }
 
     fn open_drop_for_multivariant(
         &mut self,
         adt: ty::AdtDef<'tcx>,
-        substs: SubstsRef<'tcx>,
+        args: GenericArgsRef<'tcx>,
         succ: BasicBlock,
         unwind: Unwind,
     ) -> (BasicBlock, Unwind) {
@@ -515,7 +519,7 @@ where
                     self.place,
                     ProjectionElem::Downcast(Some(variant.name), variant_index),
                 );
-                let fields = self.move_paths_for_fields(base_place, variant_path, &variant, substs);
+                let fields = self.move_paths_for_fields(base_place, variant_path, &variant, args);
                 values.push(discr.val);
                 if let Unwind::To(unwind) = unwind {
                     // We can't use the half-ladder from the original
@@ -550,7 +554,7 @@ where
                 let have_field_with_drop_glue = variant
                     .fields
                     .iter()
-                    .any(|field| field.ty(tcx, substs).needs_drop(tcx, param_env));
+                    .any(|field| field.ty(tcx, args).needs_drop(tcx, param_env));
                 if have_field_with_drop_glue {
                     have_otherwise_with_drop_glue = true;
                 }
@@ -856,8 +860,8 @@ where
     fn open_drop(&mut self) -> BasicBlock {
         let ty = self.place_ty(self.place);
         match ty.kind() {
-            ty::Closure(_, substs) => {
-                let tys: Vec<_> = substs.as_closure().upvar_tys().collect();
+            ty::Closure(_, args) => {
+                let tys: Vec<_> = args.as_closure().upvar_tys().collect();
                 self.open_drop_for_tuple(&tys)
             }
             // Note that `elaborate_drops` only drops the upvars of a generator,
@@ -866,12 +870,12 @@ where
             // This should only happen for the self argument on the resume function.
             // It effectively only contains upvars until the generator transformation runs.
             // See librustc_body/transform/generator.rs for more details.
-            ty::Generator(_, substs, _) => {
-                let tys: Vec<_> = substs.as_generator().upvar_tys().collect();
+            ty::Generator(_, args, _) => {
+                let tys: Vec<_> = args.as_generator().upvar_tys().collect();
                 self.open_drop_for_tuple(&tys)
             }
             ty::Tuple(fields) => self.open_drop_for_tuple(fields),
-            ty::Adt(def, substs) => self.open_drop_for_adt(*def, substs),
+            ty::Adt(def, args) => self.open_drop_for_adt(*def, args),
             ty::Dynamic(..) => self.complete_drop(self.succ, self.unwind),
             ty::Array(ety, size) => {
                 let size = size.try_eval_target_usize(self.tcx(), self.elaborator.param_env());

@@ -70,7 +70,7 @@ pub fn provide(providers: &mut Providers) {
 
 fn enforce_impl_params_are_constrained(tcx: TyCtxt<'_>, impl_def_id: LocalDefId) {
     // Every lifetime used in an associated type must be constrained.
-    let impl_self_ty = tcx.type_of(impl_def_id).subst_identity();
+    let impl_self_ty = tcx.type_of(impl_def_id).instantiate_identity();
     if impl_self_ty.references_error() {
         // Don't complain about unconstrained type params when self ty isn't known due to errors.
         // (#36836)
@@ -85,7 +85,7 @@ fn enforce_impl_params_are_constrained(tcx: TyCtxt<'_>, impl_def_id: LocalDefId)
     }
     let impl_generics = tcx.generics_of(impl_def_id);
     let impl_predicates = tcx.predicates_of(impl_def_id);
-    let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).map(ty::EarlyBinder::subst_identity);
+    let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).map(ty::EarlyBinder::instantiate_identity);
 
     let mut input_parameters = cgp::parameters_for_impl(impl_self_ty, impl_trait_ref);
     cgp::identify_constrained_generic_params(
@@ -104,7 +104,7 @@ fn enforce_impl_params_are_constrained(tcx: TyCtxt<'_>, impl_def_id: LocalDefId)
             match item.kind {
                 ty::AssocKind::Type => {
                     if item.defaultness(tcx).has_value() {
-                        cgp::parameters_for(&tcx.type_of(def_id).subst_identity(), true)
+                        cgp::parameters_for(&tcx.type_of(def_id).instantiate_identity(), true)
                     } else {
                         vec![]
                     }

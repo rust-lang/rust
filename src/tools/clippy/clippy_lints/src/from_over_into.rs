@@ -76,9 +76,9 @@ impl<'tcx> LateLintPass<'tcx> for FromOverInto {
             && let Some(into_trait_seg) = hir_trait_ref.path.segments.last()
             // `impl Into<target_ty> for self_ty`
             && let Some(GenericArgs { args: [GenericArg::Type(target_ty)], .. }) = into_trait_seg.args
-            && let Some(middle_trait_ref) = cx.tcx.impl_trait_ref(item.owner_id).map(ty::EarlyBinder::subst_identity)
+            && let Some(middle_trait_ref) = cx.tcx.impl_trait_ref(item.owner_id).map(ty::EarlyBinder::instantiate_identity)
             && cx.tcx.is_diagnostic_item(sym::Into, middle_trait_ref.def_id)
-            && !matches!(middle_trait_ref.substs.type_at(1).kind(), ty::Alias(ty::Opaque, _))
+            && !matches!(middle_trait_ref.args.type_at(1).kind(), ty::Alias(ty::Opaque, _))
         {
             span_lint_and_then(
                 cx,

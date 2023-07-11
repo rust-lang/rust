@@ -806,7 +806,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
 
-            PatKind::Variant { adt_def, substs: _, variant_index, ref subpatterns } => {
+            PatKind::Variant { adt_def, args: _, variant_index, ref subpatterns } => {
                 for subpattern in subpatterns {
                     let subpattern_user_ty =
                         pattern_user_ty.clone().variant(adt_def, variant_index, subpattern.field);

@@ -42,7 +42,7 @@ pub(crate) fn destructure_const<'tcx>(
             (field_consts, None)
         }
         ty::Adt(def, _) if def.variants().is_empty() => bug!("unreachable"),
-        ty::Adt(def, substs) => {
+        ty::Adt(def, args) => {
             let (variant_idx, branches) = if def.is_enum() {
                 let (head, rest) = branches.split_first().unwrap();
                 (VariantIdx::from_u32(head.unwrap_leaf().try_to_u32().unwrap()), rest)
@@ -53,7 +53,7 @@ pub(crate) fn destructure_const<'tcx>(
             let mut field_consts = Vec::with_capacity(fields.len());
 
             for (field, field_valtree) in iter::zip(fields, branches) {
-                let field_ty = field.ty(tcx, substs);
+                let field_ty = field.ty(tcx, args);
                 let field_const = ty::Const::new_value(tcx, *field_valtree, field_ty);
                 field_consts.push(field_const);
             }
@@ -133,8 +133,8 @@ fn recurse_build<'tcx>(
             let val = ty::ValTree::zst();
             ty::Const::new_value(tcx, val, node.ty)
         }
-        &ExprKind::NamedConst { def_id, substs, user_ty: _ } => {
-            let uneval = ty::UnevaluatedConst::new(def_id, substs);
+        &ExprKind::NamedConst { def_id, args, user_ty: _ } => {
+            let uneval = ty::UnevaluatedConst::new(def_id, args);
             ty::Const::new_unevaluated(tcx, uneval, node.ty)
         }
         ExprKind::ConstParam { param, .. } => ty::Const::new_param(tcx, *param, node.ty),
@@ -306,8 +306,9 @@ impl<'a, 'tcx> IsThirPolymorphic<'a, 'tcx> {
         }
 
         match expr.kind {
-            thir::ExprKind::NamedConst { substs, .. }
-            | thir::ExprKind::ConstBlock { substs, .. } => substs.has_non_region_param(),
+            thir::ExprKind::NamedConst { args, .. } | thir::ExprKind::ConstBlock { args, .. } => {
+                args.has_non_region_param()
+            }
             thir::ExprKind::ConstParam { .. } => true,
             thir::ExprKind::Repeat { value, count } => {
                 self.visit_expr(&self.thir()[value]);

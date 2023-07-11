@@ -22,7 +22,7 @@ pub enum ErrorHandled {
     /// *guaranteed* to fail. Warnings/lints *must not* produce `Reported`.
     Reported(ReportedErrorInfo),
     /// Don't emit an error, the evaluation failed because the MIR was generic
-    /// and the substs didn't fully monomorphize it.
+    /// and the args didn't fully monomorphize it.
     TooGeneric,
 }
 

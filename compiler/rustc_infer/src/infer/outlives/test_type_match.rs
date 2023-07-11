@@ -157,7 +157,7 @@ impl<'tcx> TypeRelation<'tcx> for Match<'tcx> {
         a: T,
         b: T,
     ) -> RelateResult<'tcx, T> {
-        // Opaque types substs have lifetime parameters.
+        // Opaque types args have lifetime parameters.
         // We must not check them to be equal, as we never insert anything to make them so.
         if variance != ty::Bivariant { self.relate(a, b) } else { Ok(a) }
     }

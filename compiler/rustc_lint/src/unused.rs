@@ -286,22 +286,25 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                 }
                 ty::Adt(def, _) => is_def_must_use(cx, def.did(), span),
                 ty::Alias(ty::Opaque, ty::AliasTy { def_id: def, .. }) => {
-                    elaborate(cx.tcx, cx.tcx.explicit_item_bounds(def).subst_identity_iter_copied())
-                        // We only care about self bounds for the impl-trait
-                        .filter_only_self()
-                        .find_map(|(pred, _span)| {
-                            // We only look at the `DefId`, so it is safe to skip the binder here.
-                            if let ty::ClauseKind::Trait(ref poly_trait_predicate) =
-                                pred.kind().skip_binder()
-                            {
-                                let def_id = poly_trait_predicate.trait_ref.def_id;
+                    elaborate(
+                        cx.tcx,
+                        cx.tcx.explicit_item_bounds(def).instantiate_identity_iter_copied(),
+                    )
+                    // We only care about self bounds for the impl-trait
+                    .filter_only_self()
+                    .find_map(|(pred, _span)| {
+                        // We only look at the `DefId`, so it is safe to skip the binder here.
+                        if let ty::ClauseKind::Trait(ref poly_trait_predicate) =
+                            pred.kind().skip_binder()
+                        {
+                            let def_id = poly_trait_predicate.trait_ref.def_id;
 
-                                is_def_must_use(cx, def_id, span)
-                            } else {
-                                None
-                            }
-                        })
-                        .map(|inner| MustUsePath::Opaque(Box::new(inner)))
+                            is_def_must_use(cx, def_id, span)
+                        } else {
+                            None
+                        }
+                    })
+                    .map(|inner| MustUsePath::Opaque(Box::new(inner)))
                 }
                 ty::Dynamic(binders, _, _) => binders.iter().find_map(|predicate| {
                     if let ty::ExistentialPredicate::Trait(ref trait_ref) = predicate.skip_binder()

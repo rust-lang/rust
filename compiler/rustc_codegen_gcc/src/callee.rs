@@ -17,8 +17,8 @@ use crate::context::CodegenCx;
 pub fn get_fn<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, instance: Instance<'tcx>) -> Function<'gcc> {
     let tcx = cx.tcx();
 
-    assert!(!instance.substs.has_infer());
-    assert!(!instance.substs.has_escaping_bound_vars());
+    assert!(!instance.args.has_infer());
+    assert!(!instance.args.has_escaping_bound_vars());
 
     let sym = tcx.symbol_name(instance).name;
 
@@ -100,7 +100,7 @@ pub fn get_fn<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, instance: Instance<'tcx>) 
             // whether we are sharing generics or not. The important thing here is
             // that the visibility we apply to the declaration is the same one that
             // has been applied to the definition (wherever that definition may be).
-            let is_generic = instance.substs.non_erasable_generics().next().is_some();
+            let is_generic = instance.args.non_erasable_generics().next().is_some();
 
             if is_generic {
                 // This is a monomorphization. Its expected visibility depends

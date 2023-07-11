@@ -76,7 +76,9 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
         // For every projection predicate in the opaque type's explicit bounds,
         // check that the type that we're assigning actually satisfies the bounds
         // of the associated type.
-        for (pred, pred_span) in cx.tcx.explicit_item_bounds(def_id).subst_identity_iter_copied() {
+        for (pred, pred_span) in
+            cx.tcx.explicit_item_bounds(def_id).instantiate_identity_iter_copied()
+        {
             // Liberate bound regions in the predicate since we
             // don't actually care about lifetimes in this check.
             let predicate = cx.tcx.liberate_late_bound_regions(def_id, pred.kind());
@@ -99,7 +101,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
             }
 
             let proj_ty =
-                Ty::new_projection(cx.tcx, proj.projection_ty.def_id, proj.projection_ty.substs);
+                Ty::new_projection(cx.tcx, proj.projection_ty.def_id, proj.projection_ty.args);
             // For every instance of the projection type in the bounds,
             // replace them with the term we're assigning to the associated
             // type in our opaque type.
@@ -115,7 +117,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
             for (assoc_pred, assoc_pred_span) in cx
                 .tcx
                 .explicit_item_bounds(proj.projection_ty.def_id)
-                .subst_iter_copied(cx.tcx, &proj.projection_ty.substs)
+                .arg_iter_copied(cx.tcx, &proj.projection_ty.args)
             {
                 let assoc_pred = assoc_pred.fold_with(proj_replacer);
                 let Ok(assoc_pred) = traits::fully_normalize(
@@ -154,7 +156,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                             ty: Ty::new_opaque(
                                 cx.tcx,
                                 def_id,
-                                ty::InternalSubsts::identity_for_item(cx.tcx, def_id),
+                                ty::GenericArgs::identity_for_item(cx.tcx, def_id),
                             ),
                             proj_ty: proj_term,
                             assoc_pred_span,

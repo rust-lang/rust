@@ -358,8 +358,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 };
 
                 let kind = match parent_ty.ty.kind() {
-                    &ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => {
-                        self.tcx.type_of(def_id).subst(self.tcx, substs).kind()
+                    &ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => {
+                        self.tcx.type_of(def_id).instantiate(self.tcx, args).kind()
                     }
                     kind => kind,
                 };
@@ -372,23 +372,23 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         };
                         check_equal(self, location, *f_ty);
                     }
-                    ty::Adt(adt_def, substs) => {
+                    ty::Adt(adt_def, args) => {
                         let var = parent_ty.variant_index.unwrap_or(FIRST_VARIANT);
                         let Some(field) = adt_def.variant(var).fields.get(f) else {
                             fail_out_of_bounds(self, location);
                             return;
                         };
-                        check_equal(self, location, field.ty(self.tcx, substs));
+                        check_equal(self, location, field.ty(self.tcx, args));
                     }
-                    ty::Closure(_, substs) => {
-                        let substs = substs.as_closure();
-                        let Some(f_ty) = substs.upvar_tys().nth(f.as_usize()) else {
+                    ty::Closure(_, args) => {
+                        let args = args.as_closure();
+                        let Some(f_ty) = args.upvar_tys().nth(f.as_usize()) else {
                             fail_out_of_bounds(self, location);
                             return;
                         };
                         check_equal(self, location, f_ty);
                     }
-                    &ty::Generator(def_id, substs, _) => {
+                    &ty::Generator(def_id, args, _) => {
                         let f_ty = if let Some(var) = parent_ty.variant_index {
                             let gen_body = if def_id == self.body.source.def_id() {
                                 self.body
@@ -419,8 +419,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
 
                             f_ty.ty
                         } else {
-                            let Some(f_ty) = substs.as_generator().prefix_tys().nth(f.index())
-                            else {
+                            let Some(f_ty) = args.as_generator().prefix_tys().nth(f.index()) else {
                                 fail_out_of_bounds(self, location);
                                 return;
                             };
@@ -735,7 +734,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
 
                             current_ty = self.tcx.normalize_erasing_regions(self.param_env, f_ty);
                         }
-                        ty::Adt(adt_def, substs) => {
+                        ty::Adt(adt_def, args) => {
                             if adt_def.is_enum() {
                                 self.fail(
                                     location,
@@ -749,7 +748,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                                 return;
                             };
 
-                            let f_ty = field.ty(self.tcx, substs);
+                            let f_ty = field.ty(self.tcx, args);
                             current_ty = self.tcx.normalize_erasing_regions(self.param_env, f_ty);
                         }
                         _ => {

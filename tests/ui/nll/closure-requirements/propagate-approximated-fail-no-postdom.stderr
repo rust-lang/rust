@@ -4,7 +4,7 @@ note: no external requirements
 LL |         |_outlives1, _outlives2, _outlives3, x, y| {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: defining type: supply::{closure#0} with closure substs [
+   = note: defining type: supply::{closure#0} with closure args [
                i16,
                for<Region(BrAnon(None)), Region(BrAnon(None))> extern "rust-call" fn((std::cell::Cell<&'?1 &ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon(None) }) u32>, std::cell::Cell<&'?2 &ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon(None) }) u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrAnon(None) }) &'?3 u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon(None) }) u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrAnon(None) }) u32>)),
                (),

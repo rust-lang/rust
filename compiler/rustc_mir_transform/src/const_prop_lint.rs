@@ -16,7 +16,7 @@ use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::{LayoutError, LayoutOf, LayoutOfHelpers, TyAndLayout};
-use rustc_middle::ty::InternalSubsts;
+use rustc_middle::ty::GenericArgs;
 use rustc_middle::ty::{
     self, ConstInt, Instance, ParamEnv, ScalarInt, Ty, TyCtxt, TypeVisitableExt,
 };
@@ -55,7 +55,7 @@ impl<'tcx> MirLint<'tcx> for ConstProp {
             return;
         }
 
-        let is_generator = tcx.type_of(def_id.to_def_id()).subst_identity().is_generator();
+        let is_generator = tcx.type_of(def_id.to_def_id()).instantiate_identity().is_generator();
         // FIXME(welseywiser) const prop doesn't work on generators because of query cycles
         // computing their layout.
         if is_generator {
@@ -171,7 +171,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         tcx: TyCtxt<'tcx>,
     ) -> ConstPropagator<'mir, 'tcx> {
         let def_id = body.source.def_id();
-        let substs = &InternalSubsts::identity_for_item(tcx, def_id);
+        let args = &GenericArgs::identity_for_item(tcx, def_id);
         let param_env = tcx.param_env_reveal_all_normalized(def_id);
 
         let can_const_prop = CanConstProp::check(tcx, param_env, body);
@@ -183,7 +183,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         );
 
         let ret_layout = ecx
-            .layout_of(body.bound_return_ty().subst(tcx, substs))
+            .layout_of(body.bound_return_ty().instantiate(tcx, args))
             .ok()
             // Don't bother allocating memory for large values.
             // I don't know how return types can seem to be unsized but this happens in the
@@ -199,7 +199,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             .into();
 
         ecx.push_stack_frame(
-            Instance::new(def_id, substs),
+            Instance::new(def_id, args),
             dummy_body,
             &ret,
             StackPopCleanup::Root { cleanup: false },

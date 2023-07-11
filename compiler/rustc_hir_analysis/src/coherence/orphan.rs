@@ -5,8 +5,8 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{struct_span_err, DelayDm};
 use rustc_errors::{Diagnostic, ErrorGuaranteed};
 use rustc_hir as hir;
-use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::util::CheckRegions;
+use rustc_middle::ty::GenericArgs;
 use rustc_middle::ty::{
     self, AliasKind, ImplPolarity, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
     TypeVisitor,
@@ -22,7 +22,7 @@ pub(crate) fn orphan_check_impl(
     tcx: TyCtxt<'_>,
     impl_def_id: LocalDefId,
 ) -> Result<(), ErrorGuaranteed> {
-    let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap().subst_identity();
+    let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap().instantiate_identity();
     trait_ref.error_reported()?;
 
     let ret = do_orphan_check_impl(tcx, trait_ref, impl_def_id);
@@ -488,10 +488,10 @@ fn lint_auto_trait_impl<'tcx>(
     trait_ref: ty::TraitRef<'tcx>,
     impl_def_id: LocalDefId,
 ) {
-    assert_eq!(trait_ref.substs.len(), 1);
+    assert_eq!(trait_ref.args.len(), 1);
     let self_ty = trait_ref.self_ty();
-    let (self_type_did, substs) = match self_ty.kind() {
-        ty::Adt(def, substs) => (def.did(), substs),
+    let (self_type_did, args) = match self_ty.kind() {
+        ty::Adt(def, args) => (def.did(), args),
         _ => {
             // FIXME: should also lint for stuff like `&i32` but
             // considering that auto traits are unstable, that
@@ -502,9 +502,9 @@ fn lint_auto_trait_impl<'tcx>(
     };
 
     // Impls which completely cover a given root type are fine as they
-    // disable auto impls entirely. So only lint if the substs
-    // are not a permutation of the identity substs.
-    let Err(arg) = tcx.uses_unique_generic_params(substs, CheckRegions::No) else {
+    // disable auto impls entirely. So only lint if the args
+    // are not a permutation of the identity args.
+    let Err(arg) = tcx.uses_unique_generic_params(args, CheckRegions::No) else {
         // ok
         return;
     };
@@ -585,14 +585,14 @@ fn fast_reject_auto_impl<'tcx>(tcx: TyCtxt<'tcx>, trait_def_id: DefId, self_ty: 
             }
 
             match t.kind() {
-                ty::Adt(def, substs) if def.is_phantom_data() => substs.visit_with(self),
-                ty::Adt(def, substs) => {
+                ty::Adt(def, args) if def.is_phantom_data() => args.visit_with(self),
+                ty::Adt(def, args) => {
                     // @lcnr: This is the only place where cycles can happen. We avoid this
                     // by only visiting each `DefId` once.
                     //
                     // This will be is incorrect in subtle cases, but I don't care :)
                     if self.seen.insert(def.did()) {
-                        for ty in def.all_fields().map(|field| field.ty(tcx, substs)) {
+                        for ty in def.all_fields().map(|field| field.ty(tcx, args)) {
                             ty.visit_with(self)?;
                         }
                     }
@@ -605,9 +605,7 @@ fn fast_reject_auto_impl<'tcx>(tcx: TyCtxt<'tcx>, trait_def_id: DefId, self_ty: 
     }
 
     let self_ty_root = match self_ty.kind() {
-        ty::Adt(def, _) => {
-            Ty::new_adt(tcx, *def, InternalSubsts::identity_for_item(tcx, def.did()))
-        }
+        ty::Adt(def, _) => Ty::new_adt(tcx, *def, GenericArgs::identity_for_item(tcx, def.did())),
         _ => unimplemented!("unexpected self ty {:?}", self_ty),
     };
 

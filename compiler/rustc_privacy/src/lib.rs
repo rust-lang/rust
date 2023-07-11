@@ -28,7 +28,7 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::privacy::{EffectiveVisibilities, EffectiveVisibility, Level};
 use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
-use rustc_middle::ty::subst::InternalSubsts;
+use rustc_middle::ty::GenericArgs;
 use rustc_middle::ty::{self, Const, GenericParamDefKind};
 use rustc_middle::ty::{TraitRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor};
 use rustc_session::lint;
@@ -129,19 +129,19 @@ where
     V: DefIdVisitor<'tcx> + ?Sized,
 {
     fn visit_trait(&mut self, trait_ref: TraitRef<'tcx>) -> ControlFlow<V::BreakTy> {
-        let TraitRef { def_id, substs, .. } = trait_ref;
+        let TraitRef { def_id, args, .. } = trait_ref;
         self.def_id_visitor.visit_def_id(def_id, "trait", &trait_ref.print_only_trait_path())?;
-        if V::SHALLOW { ControlFlow::Continue(()) } else { substs.visit_with(self) }
+        if V::SHALLOW { ControlFlow::Continue(()) } else { args.visit_with(self) }
     }
 
     fn visit_projection_ty(&mut self, projection: ty::AliasTy<'tcx>) -> ControlFlow<V::BreakTy> {
         let tcx = self.def_id_visitor.tcx();
-        let (trait_ref, assoc_substs) = projection.trait_ref_and_own_substs(tcx);
+        let (trait_ref, assoc_args) = projection.trait_ref_and_own_args(tcx);
         self.visit_trait(trait_ref)?;
         if V::SHALLOW {
             ControlFlow::Continue(())
         } else {
-            assoc_substs.iter().try_for_each(|subst| subst.visit_with(self))
+            assoc_args.iter().try_for_each(|subst| subst.visit_with(self))
         }
     }
 
@@ -178,7 +178,7 @@ where
 
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<V::BreakTy> {
         let tcx = self.def_id_visitor.tcx();
-        // InternalSubsts are not visited here because they are visited below
+        // GenericArgs are not visited here because they are visited below
         // in `super_visit_with`.
         match *ty.kind() {
             ty::Adt(ty::AdtDef(Interned(&ty::AdtDefData { did: def_id, .. }, _)), ..)
@@ -194,16 +194,16 @@ where
                 // Something like `fn() -> Priv {my_func}` is considered a private type even if
                 // `my_func` is public, so we need to visit signatures.
                 if let ty::FnDef(..) = ty.kind() {
-                    // FIXME: this should probably use `substs` from `FnDef`
-                    tcx.fn_sig(def_id).subst_identity().visit_with(self)?;
+                    // FIXME: this should probably use `args` from `FnDef`
+                    tcx.fn_sig(def_id).instantiate_identity().visit_with(self)?;
                 }
-                // Inherent static methods don't have self type in substs.
+                // Inherent static methods don't have self type in args.
                 // Something like `fn() {my_method}` type of the method
                 // `impl Pub<Priv> { pub fn my_method() {} }` is considered a private type,
                 // so we need to visit the self type additionally.
                 if let Some(assoc_item) = tcx.opt_associated_item(def_id) {
                     if let Some(impl_def_id) = assoc_item.impl_container(tcx) {
-                        tcx.type_of(impl_def_id).subst_identity().visit_with(self)?;
+                        tcx.type_of(impl_def_id).instantiate_identity().visit_with(self)?;
                     }
                 }
             }
@@ -219,7 +219,7 @@ where
                     // free type aliases, but this isn't done yet.
                     return ControlFlow::Continue(());
                 }
-                // This will also visit substs if necessary, so we don't need to recurse.
+                // This will also visit args if necessary, so we don't need to recurse.
                 return self.visit_projection_ty(proj);
             }
             ty::Alias(ty::Inherent, data) => {
@@ -238,11 +238,11 @@ where
                     &LazyDefPathStr { def_id: data.def_id, tcx },
                 )?;
 
-                // This will also visit substs if necessary, so we don't need to recurse.
+                // This will also visit args if necessary, so we don't need to recurse.
                 return if V::SHALLOW {
                     ControlFlow::Continue(())
                 } else {
-                    data.substs.iter().try_for_each(|subst| subst.visit_with(self))
+                    data.args.iter().try_for_each(|subst| subst.visit_with(self))
                 };
             }
             ty::Dynamic(predicates, ..) => {
@@ -253,10 +253,10 @@ where
                         ty::ExistentialPredicate::Trait(trait_ref) => trait_ref,
                         ty::ExistentialPredicate::Projection(proj) => proj.trait_ref(tcx),
                         ty::ExistentialPredicate::AutoTrait(def_id) => {
-                            ty::ExistentialTraitRef { def_id, substs: InternalSubsts::empty() }
+                            ty::ExistentialTraitRef { def_id, args: GenericArgs::empty() }
                         }
                     };
-                    let ty::ExistentialTraitRef { def_id, substs: _ } = trait_ref;
+                    let ty::ExistentialTraitRef { def_id, args: _ } = trait_ref;
                     self.def_id_visitor.visit_def_id(def_id, "trait", &trait_ref)?;
                 }
             }
@@ -357,9 +357,9 @@ trait VisibilityLike: Sized {
         effective_visibilities: &EffectiveVisibilities,
     ) -> Self {
         let mut find = FindMin::<_, SHALLOW> { tcx, effective_visibilities, min: Self::MAX };
-        find.visit(tcx.type_of(def_id).subst_identity());
+        find.visit(tcx.type_of(def_id).instantiate_identity());
         if let Some(trait_ref) = tcx.impl_trait_ref(def_id) {
-            find.visit_trait(trait_ref.subst_identity());
+            find.visit_trait(trait_ref.instantiate_identity());
         }
         find.min
     }
@@ -727,7 +727,7 @@ impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
                 // Type inference is very smart sometimes. It can make an impl reachable even some
                 // components of its type or trait are unreachable. E.g. methods of
                 // `impl ReachableTrait<UnreachableTy> for ReachableTy<UnreachableTy> { ... }`
-                // can be usable from other crates (#57264). So we skip substs when calculating
+                // can be usable from other crates (#57264). So we skip args when calculating
                 // reachability and consider an impl reachable if its "shallow" type and trait are
                 // reachable.
                 //
@@ -823,13 +823,15 @@ impl ReachEverythingInTheInterfaceVisitor<'_, '_> {
                 GenericParamDefKind::Lifetime => {}
                 GenericParamDefKind::Type { has_default, .. } => {
                     if has_default {
-                        self.visit(self.ev.tcx.type_of(param.def_id).subst_identity());
+                        self.visit(self.ev.tcx.type_of(param.def_id).instantiate_identity());
                     }
                 }
                 GenericParamDefKind::Const { has_default } => {
-                    self.visit(self.ev.tcx.type_of(param.def_id).subst_identity());
+                    self.visit(self.ev.tcx.type_of(param.def_id).instantiate_identity());
                     if has_default {
-                        self.visit(self.ev.tcx.const_param_default(param.def_id).subst_identity());
+                        self.visit(
+                            self.ev.tcx.const_param_default(param.def_id).instantiate_identity(),
+                        );
                     }
                 }
             }
@@ -843,13 +845,13 @@ impl ReachEverythingInTheInterfaceVisitor<'_, '_> {
     }
 
     fn ty(&mut self) -> &mut Self {
-        self.visit(self.ev.tcx.type_of(self.item_def_id).subst_identity());
+        self.visit(self.ev.tcx.type_of(self.item_def_id).instantiate_identity());
         self
     }
 
     fn trait_ref(&mut self) -> &mut Self {
         if let Some(trait_ref) = self.ev.tcx.impl_trait_ref(self.item_def_id) {
-            self.visit_trait(trait_ref.subst_identity());
+            self.visit_trait(trait_ref.instantiate_identity());
         }
         self
     }
@@ -1124,7 +1126,7 @@ impl<'tcx> TypePrivacyVisitor<'tcx> {
         let typeck_results = self.typeck_results();
         let result: ControlFlow<()> = try {
             self.visit(typeck_results.node_type(id))?;
-            self.visit(typeck_results.node_substs(id))?;
+            self.visit(typeck_results.node_args(id))?;
             if let Some(adjustments) = typeck_results.adjustments().get(id) {
                 adjustments.iter().try_for_each(|adjustment| self.visit(adjustment.target))?;
             }
@@ -1259,7 +1261,7 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
                 // Method calls have to be checked specially.
                 self.span = segment.ident.span;
                 if let Some(def_id) = self.typeck_results().type_dependent_def_id(expr.hir_id) {
-                    if self.visit(self.tcx.type_of(def_id).subst_identity()).is_break() {
+                    if self.visit(self.tcx.type_of(def_id).instantiate_identity()).is_break() {
                         return;
                     }
                 } else {
@@ -1736,12 +1738,12 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
                 GenericParamDefKind::Lifetime => {}
                 GenericParamDefKind::Type { has_default, .. } => {
                     if has_default {
-                        self.visit(self.tcx.type_of(param.def_id).subst_identity());
+                        self.visit(self.tcx.type_of(param.def_id).instantiate_identity());
                     }
                 }
                 // FIXME(generic_const_exprs): May want to look inside const here
                 GenericParamDefKind::Const { .. } => {
-                    self.visit(self.tcx.type_of(param.def_id).subst_identity());
+                    self.visit(self.tcx.type_of(param.def_id).instantiate_identity());
                 }
             }
         }
@@ -1768,7 +1770,7 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
 
     fn ty(&mut self) -> &mut Self {
         self.in_primary_interface = true;
-        self.visit(self.tcx.type_of(self.item_def_id).subst_identity());
+        self.visit(self.tcx.type_of(self.item_def_id).instantiate_identity());
         self
     }
 

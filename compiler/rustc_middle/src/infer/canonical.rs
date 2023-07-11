@@ -23,7 +23,7 @@
 
 use crate::infer::MemberConstraint;
 use crate::mir::ConstraintCategory;
-use crate::ty::subst::GenericArg;
+use crate::ty::GenericArg;
 use crate::ty::{self, BoundVar, List, Region, Ty, TyCtxt};
 use rustc_macros::HashStable;
 use smallvec::SmallVec;
@@ -63,7 +63,7 @@ impl<'tcx> ty::TypeFoldable<TyCtxt<'tcx>> for CanonicalVarInfos<'tcx> {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TyDecodable, TyEncodable)]
 #[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub struct CanonicalVarValues<'tcx> {
-    pub var_values: ty::SubstsRef<'tcx>,
+    pub var_values: ty::GenericArgsRef<'tcx>,
 }
 
 impl CanonicalVarValues<'_> {
@@ -429,7 +429,7 @@ impl<'tcx> CanonicalVarValues<'tcx> {
         infos: CanonicalVarInfos<'tcx>,
     ) -> CanonicalVarValues<'tcx> {
         CanonicalVarValues {
-            var_values: tcx.mk_substs_from_iter(infos.iter().enumerate().map(
+            var_values: tcx.mk_args_from_iter(infos.iter().enumerate().map(
                 |(i, info)| -> ty::GenericArg<'tcx> {
                     match info.kind {
                         CanonicalVarKind::Ty(_) | CanonicalVarKind::PlaceholderTy(_) => {

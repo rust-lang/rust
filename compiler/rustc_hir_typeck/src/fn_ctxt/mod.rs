@@ -288,14 +288,14 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
             poly_trait_ref,
         );
 
-        let item_substs = self.astconv().create_substs_for_associated_item(
+        let item_args = self.astconv().create_args_for_associated_item(
             span,
             item_def_id,
             item_segment,
-            trait_ref.substs,
+            trait_ref.args,
         );
 
-        Ty::new_projection(self.tcx(), item_def_id, item_substs)
+        Ty::new_projection(self.tcx(), item_def_id, item_args)
     }
 
     fn probe_adt(&self, span: Span, ty: Ty<'tcx>) -> Option<ty::AdtDef<'tcx>> {

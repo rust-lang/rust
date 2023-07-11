@@ -4,7 +4,7 @@ use crate::{
     traits::ObligationCause,
     ty::{
         self, tls, BindingMode, BoundVar, CanonicalPolyFnSig, ClosureSizeProfileData,
-        GenericArgKind, InternalSubsts, SubstsRef, Ty, UserSubsts,
+        GenericArgKind, GenericArgs, GenericArgsRef, Ty, UserArgs,
     },
 };
 use rustc_data_structures::{
@@ -53,7 +53,7 @@ pub struct TypeckResults<'tcx> {
     /// of this node. This only applies to nodes that refer to entities
     /// parameterized by type parameters, such as generic fns, types, or
     /// other items.
-    node_substs: ItemLocalMap<SubstsRef<'tcx>>,
+    node_args: ItemLocalMap<GenericArgsRef<'tcx>>,
 
     /// This will either store the canonicalized types provided by the user
     /// or the substitutions that the user explicitly gave (if any) attached
@@ -264,7 +264,7 @@ impl<'tcx> TypeckResults<'tcx> {
             user_provided_types: Default::default(),
             user_provided_sigs: Default::default(),
             node_types: Default::default(),
-            node_substs: Default::default(),
+            node_args: Default::default(),
             adjustments: Default::default(),
             pat_binding_modes: Default::default(),
             pat_adjustments: Default::default(),
@@ -384,18 +384,18 @@ impl<'tcx> TypeckResults<'tcx> {
         self.node_types.get(&id.local_id).cloned()
     }
 
-    pub fn node_substs_mut(&mut self) -> LocalTableInContextMut<'_, SubstsRef<'tcx>> {
-        LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.node_substs }
+    pub fn node_args_mut(&mut self) -> LocalTableInContextMut<'_, GenericArgsRef<'tcx>> {
+        LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.node_args }
     }
 
-    pub fn node_substs(&self, id: hir::HirId) -> SubstsRef<'tcx> {
+    pub fn node_args(&self, id: hir::HirId) -> GenericArgsRef<'tcx> {
         validate_hir_id_for_typeck_results(self.hir_owner, id);
-        self.node_substs.get(&id.local_id).cloned().unwrap_or_else(|| InternalSubsts::empty())
+        self.node_args.get(&id.local_id).cloned().unwrap_or_else(|| GenericArgs::empty())
     }
 
-    pub fn node_substs_opt(&self, id: hir::HirId) -> Option<SubstsRef<'tcx>> {
+    pub fn node_args_opt(&self, id: hir::HirId) -> Option<GenericArgsRef<'tcx>> {
         validate_hir_id_for_typeck_results(self.hir_owner, id);
-        self.node_substs.get(&id.local_id).cloned()
+        self.node_args.get(&id.local_id).cloned()
     }
 
     /// Returns the type of a pattern as a monotype. Like [`expr_ty`], this function
@@ -670,12 +670,12 @@ impl<'tcx> CanonicalUserType<'tcx> {
     pub fn is_identity(&self) -> bool {
         match self.value {
             UserType::Ty(_) => false,
-            UserType::TypeOf(_, user_substs) => {
-                if user_substs.user_self_ty.is_some() {
+            UserType::TypeOf(_, user_args) => {
+                if user_args.user_self_ty.is_some() {
                     return false;
                 }
 
-                iter::zip(user_substs.substs, BoundVar::new(0)..).all(|(kind, cvar)| {
+                iter::zip(user_args.args, BoundVar::new(0)..).all(|(kind, cvar)| {
                     match kind.unpack() {
                         GenericArgKind::Type(ty) => match ty.kind() {
                             ty::Bound(debruijn, b) => {
@@ -720,5 +720,5 @@ pub enum UserType<'tcx> {
 
     /// The canonical type is the result of `type_of(def_id)` with the
     /// given substitutions applied.
-    TypeOf(DefId, UserSubsts<'tcx>),
+    TypeOf(DefId, UserArgs<'tcx>),
 }

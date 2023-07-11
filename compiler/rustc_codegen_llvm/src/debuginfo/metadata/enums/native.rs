@@ -175,7 +175,7 @@ pub(super) fn build_generator_di_node<'ll, 'tcx>(
                 .indices()
                 .map(|variant_index| {
                     // FIXME: This is problematic because just a number is not a valid identifier.
-                    //        GeneratorSubsts::variant_name(variant_index), would be consistent
+                    //        GeneratorArgs::variant_name(variant_index), would be consistent
                     //        with enums?
                     let variant_name = format!("{}", variant_index.as_usize()).into();
 

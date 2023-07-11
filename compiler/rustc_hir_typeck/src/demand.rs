@@ -712,7 +712,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .filter(|c| c.item.def_id != pick.item.def_id)
             .map(|c| {
                 let m = c.item;
-                let substs = ty::InternalSubsts::for_item(self.tcx, m.def_id, |param, _| {
+                let generic_args = ty::GenericArgs::for_item(self.tcx, m.def_id, |param, _| {
                     self.var_for_def(deref.span, param)
                 });
                 let mutability =
@@ -727,7 +727,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         format!(
                             "{}({}",
                             with_no_trimmed_paths!(
-                                self.tcx.def_path_str_with_substs(m.def_id, substs,)
+                                self.tcx.def_path_str_with_args(m.def_id, generic_args,)
                             ),
                             mutability,
                         ),
@@ -824,10 +824,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
     ) -> bool {
-        let ty::Adt(e, substs_e) = expected.kind() else {
+        let ty::Adt(e, args_e) = expected.kind() else {
             return false;
         };
-        let ty::Adt(f, substs_f) = found.kind() else {
+        let ty::Adt(f, args_f) = found.kind() else {
             return false;
         };
         if e.did() != f.did() {
@@ -846,8 +846,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else {
             return false;
         }
-        let e = substs_e.type_at(1);
-        let f = substs_f.type_at(1);
+        let e = args_e.type_at(1);
+        let f = args_f.type_at(1);
         if self
             .infcx
             .type_implements_trait(
@@ -880,7 +880,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         expr_ty: Ty<'tcx>,
     ) -> bool {
-        if let ty::Adt(expected_adt, substs) = expected.kind() {
+        if let ty::Adt(expected_adt, args) = expected.kind() {
             if let hir::ExprKind::Field(base, ident) = expr.kind {
                 let base_ty = self.typeck_results.borrow().expr_ty(base);
                 if self.can_eq(self.param_env, base_ty, expected)
@@ -979,7 +979,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let note_about_variant_field_privacy = (field_is_local && !field_is_accessible)
                         .then(|| " (its field is private, but it's local to this crate and its privacy can be changed)".to_string());
 
-                    let sole_field_ty = sole_field.ty(self.tcx, substs);
+                    let sole_field_ty = sole_field.ty(self.tcx, args);
                     if self.can_coerce(expr_ty, sole_field_ty) {
                         let variant_path =
                             with_no_trimmed_paths!(self.tcx.def_path_str(variant.def_id));
@@ -1072,9 +1072,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let tcx = self.tcx;
         let (adt, unwrap) = match expected.kind() {
             // In case Option<NonZero*> is wanted, but * is provided, suggest calling new
-            ty::Adt(adt, substs) if tcx.is_diagnostic_item(sym::Option, adt.did()) => {
+            ty::Adt(adt, args) if tcx.is_diagnostic_item(sym::Option, adt.did()) => {
                 // Unwrap option
-                let ty::Adt(adt, _) = substs.type_at(0).kind() else {
+                let ty::Adt(adt, _) = args.type_at(0).kind() else {
                     return false;
                 };
 

@@ -8,7 +8,7 @@
 use crate::error::DropCheckOverflow;
 use crate::infer::canonical::{Canonical, QueryResponse};
 use crate::ty::error::TypeError;
-use crate::ty::subst::GenericArg;
+use crate::ty::GenericArg;
 use crate::ty::{self, Ty, TyCtxt};
 use rustc_span::source_map::Span;
 
@@ -132,7 +132,7 @@ impl<'tcx> DropckOutlivesResult<'tcx> {
 pub struct DropckConstraint<'tcx> {
     /// Types that are required to be alive in order for this
     /// type to be valid for destruction.
-    pub outlives: Vec<ty::subst::GenericArg<'tcx>>,
+    pub outlives: Vec<ty::GenericArg<'tcx>>,
 
     /// Types that could not be resolved: projections and params.
     pub dtorck_types: Vec<Ty<'tcx>>,

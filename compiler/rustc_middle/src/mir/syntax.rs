@@ -8,7 +8,7 @@ use super::{BasicBlock, Constant, Local, SwitchTargets, UserTypeProjection};
 use crate::mir::coverage::{CodeRegion, CoverageKind};
 use crate::traits::Reveal;
 use crate::ty::adjustment::PointerCoercion;
-use crate::ty::subst::SubstsRef;
+use crate::ty::GenericArgsRef;
 use crate::ty::{self, List, Ty};
 use crate::ty::{Region, UserTypeAnnotationIndex};
 
@@ -1268,10 +1268,10 @@ pub enum AggregateKind<'tcx> {
     /// active field number and is present only for union expressions
     /// -- e.g., for a union expression `SomeUnion { c: .. }`, the
     /// active field index would identity the field `c`
-    Adt(DefId, VariantIdx, SubstsRef<'tcx>, Option<UserTypeAnnotationIndex>, Option<FieldIdx>),
+    Adt(DefId, VariantIdx, GenericArgsRef<'tcx>, Option<UserTypeAnnotationIndex>, Option<FieldIdx>),
 
-    Closure(DefId, SubstsRef<'tcx>),
-    Generator(DefId, SubstsRef<'tcx>, hir::Movability),
+    Closure(DefId, GenericArgsRef<'tcx>),
+    Generator(DefId, GenericArgsRef<'tcx>, hir::Movability),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]

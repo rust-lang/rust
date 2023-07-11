@@ -192,12 +192,12 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
                     fields.iter().map(|e| self.parse_operand(*e)).collect::<Result<_, _>>()?
                 ))
             },
-            ExprKind::Adt(box AdtExpr{ adt_def, variant_index, substs, fields, .. }) => {
+            ExprKind::Adt(box AdtExpr{ adt_def, variant_index, args, fields, .. }) => {
                 let is_union = adt_def.is_union();
                 let active_field_index = is_union.then(|| fields[0].name);
 
                 Ok(Rvalue::Aggregate(
-                    Box::new(AggregateKind::Adt(adt_def.did(), *variant_index, substs, None, active_field_index)),
+                    Box::new(AggregateKind::Adt(adt_def.did(), *variant_index, args, None, active_field_index)),
                     fields.iter().map(|f| self.parse_operand(f.expr)).collect::<Result<_, _>>()?
                 ))
             },

@@ -103,7 +103,7 @@ impl<'tcx> InferCtxt<'tcx> {
         }
         let (a, b) = if a_is_expected { (a, b) } else { (b, a) };
         let process = |a: Ty<'tcx>, b: Ty<'tcx>, a_is_expected| match *a.kind() {
-            ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) if def_id.is_local() => {
+            ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) if def_id.is_local() => {
                 let def_id = def_id.expect_local();
                 match self.defining_use_anchor {
                     DefiningAnchor::Bind(_) => {
@@ -165,7 +165,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     }
                 }
                 Some(self.register_hidden_type(
-                    OpaqueTypeKey { def_id, substs },
+                    OpaqueTypeKey { def_id, args },
                     cause.clone(),
                     param_env,
                     b,
@@ -214,12 +214,12 @@ impl<'tcx> InferCtxt<'tcx> {
     /// fn foo<'a, 'b>(..) -> (Foo1<'a>, Foo2<'b>) { .. }
     ///                    //  ^^^^ ^^
     ///                    //  |    |
-    ///                    //  |    substs
+    ///                    //  |    args
     ///                    //  def_id
     /// ```
     ///
     /// As indicating in the comments above, each of those references
-    /// is (in the compiler) basically a substitution (`substs`)
+    /// is (in the compiler) basically a substitution (`args`)
     /// applied to the type of a suitable `def_id` (which identifies
     /// `Foo1` or `Foo2`).
     ///
@@ -278,7 +278,7 @@ impl<'tcx> InferCtxt<'tcx> {
     ///
     /// We generally prefer to make `<=` constraints, since they
     /// integrate best into the region solver. To do that, we find the
-    /// "minimum" of all the arguments that appear in the substs: that
+    /// "minimum" of all the arguments that appear in the args: that
     /// is, some region which is less than all the others. In the case
     /// of `Foo1<'a>`, that would be `'a` (it's the only choice, after
     /// all). Then we apply that as a least bound to the variables
@@ -350,7 +350,7 @@ impl<'tcx> InferCtxt<'tcx> {
         // opaque type definition.
         let choice_regions: Lrc<Vec<ty::Region<'tcx>>> = Lrc::new(
             opaque_type_key
-                .substs
+                .args
                 .iter()
                 .enumerate()
                 .filter(|(i, _)| variances[*i] == ty::Variance::Invariant)
@@ -445,28 +445,28 @@ where
         }
 
         match ty.kind() {
-            ty::Closure(_, ref substs) => {
+            ty::Closure(_, ref args) => {
                 // Skip lifetime parameters of the enclosing item(s)
 
-                substs.as_closure().tupled_upvars_ty().visit_with(self);
-                substs.as_closure().sig_as_fn_ptr_ty().visit_with(self);
+                args.as_closure().tupled_upvars_ty().visit_with(self);
+                args.as_closure().sig_as_fn_ptr_ty().visit_with(self);
             }
 
-            ty::Generator(_, ref substs, _) => {
+            ty::Generator(_, ref args, _) => {
                 // Skip lifetime parameters of the enclosing item(s)
                 // Also skip the witness type, because that has no free regions.
 
-                substs.as_generator().tupled_upvars_ty().visit_with(self);
-                substs.as_generator().return_ty().visit_with(self);
-                substs.as_generator().yield_ty().visit_with(self);
-                substs.as_generator().resume_ty().visit_with(self);
+                args.as_generator().tupled_upvars_ty().visit_with(self);
+                args.as_generator().return_ty().visit_with(self);
+                args.as_generator().yield_ty().visit_with(self);
+                args.as_generator().resume_ty().visit_with(self);
             }
 
-            ty::Alias(ty::Opaque, ty::AliasTy { def_id, ref substs, .. }) => {
+            ty::Alias(ty::Opaque, ty::AliasTy { def_id, ref args, .. }) => {
                 // Skip lifetime parameters that are not captures.
                 let variances = self.tcx.variances_of(*def_id);
 
-                for (v, s) in std::iter::zip(variances, substs.iter()) {
+                for (v, s) in std::iter::zip(variances, args.iter()) {
                     if *v != ty::Variance::Bivariant {
                         s.visit_with(self);
                     }
@@ -519,7 +519,7 @@ impl<'tcx> InferCtxt<'tcx> {
 
         self.add_item_bounds_for_hidden_type(
             opaque_type_key.def_id.to_def_id(),
-            opaque_type_key.substs,
+            opaque_type_key.args,
             cause,
             param_env,
             hidden_ty,
@@ -582,7 +582,7 @@ impl<'tcx> InferCtxt<'tcx> {
     pub fn add_item_bounds_for_hidden_type(
         &self,
         def_id: DefId,
-        substs: ty::SubstsRef<'tcx>,
+        args: ty::GenericArgsRef<'tcx>,
         cause: ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         hidden_ty: Ty<'tcx>,
@@ -591,7 +591,7 @@ impl<'tcx> InferCtxt<'tcx> {
         let tcx = self.tcx;
         let item_bounds = tcx.explicit_item_bounds(def_id);
 
-        for (predicate, _) in item_bounds.subst_iter_copied(tcx, substs) {
+        for (predicate, _) in item_bounds.arg_iter_copied(tcx, args) {
             let predicate = predicate.fold_with(&mut BottomUpFolder {
                 tcx,
                 ty_op: |ty| match *ty.kind() {
@@ -614,17 +614,18 @@ impl<'tcx> InferCtxt<'tcx> {
                     }
                     // Replace all other mentions of the same opaque type with the hidden type,
                     // as the bounds must hold on the hidden type after all.
-                    ty::Alias(ty::Opaque, ty::AliasTy { def_id: def_id2, substs: substs2, .. })
-                        if def_id == def_id2 && substs == substs2 =>
+                    ty::Alias(ty::Opaque, ty::AliasTy { def_id: def_id2, args: args2, .. })
+                        if def_id == def_id2 && args == args2 =>
                     {
                         hidden_ty
                     }
                     // FIXME(RPITIT): This can go away when we move to associated types
                     // FIXME(inherent_associated_types): Extend this to support `ty::Inherent`, too.
-                    ty::Alias(
-                        ty::Projection,
-                        ty::AliasTy { def_id: def_id2, substs: substs2, .. },
-                    ) if def_id == def_id2 && substs == substs2 => hidden_ty,
+                    ty::Alias(ty::Projection, ty::AliasTy { def_id: def_id2, args: args2, .. })
+                        if def_id == def_id2 && args == args2 =>
+                    {
+                        hidden_ty
+                    }
                     _ => ty,
                 },
                 lt_op: |lt| lt,

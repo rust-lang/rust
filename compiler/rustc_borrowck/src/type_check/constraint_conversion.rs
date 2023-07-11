@@ -5,7 +5,7 @@ use rustc_infer::infer::outlives::obligations::{TypeOutlives, TypeOutlivesDelega
 use rustc_infer::infer::region_constraints::{GenericKind, VerifyBound};
 use rustc_infer::infer::{self, InferCtxt, SubregionOrigin};
 use rustc_middle::mir::{ClosureOutlivesSubject, ClosureRegionRequirements, ConstraintCategory};
-use rustc_middle::ty::subst::GenericArgKind;
+use rustc_middle::ty::GenericArgKind;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_middle::ty::{TypeFoldable, TypeVisitableExt};
 use rustc_span::{Span, DUMMY_SP};
@@ -89,20 +89,20 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
 
     /// Given an instance of the closure type, this method instantiates the "extra" requirements
     /// that we computed for the closure. This has the effect of adding new outlives obligations
-    /// to existing region variables in `closure_substs`.
+    /// to existing region variables in `closure_args`.
     #[instrument(skip(self), level = "debug")]
     pub fn apply_closure_requirements(
         &mut self,
         closure_requirements: &ClosureRegionRequirements<'tcx>,
         closure_def_id: DefId,
-        closure_substs: ty::SubstsRef<'tcx>,
+        closure_args: ty::GenericArgsRef<'tcx>,
     ) {
-        // Extract the values of the free regions in `closure_substs`
+        // Extract the values of the free regions in `closure_args`
         // into a vector. These are the regions that we will be
         // relating to one another.
         let closure_mapping = &UniversalRegions::closure_mapping(
             self.tcx,
-            closure_substs,
+            closure_args,
             closure_requirements.num_external_vids,
             closure_def_id.expect_local(),
         );
