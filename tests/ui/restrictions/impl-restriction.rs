@@ -1,6 +1,6 @@
-// compile-flags: --crate-type=lib
 // aux-build: external-impl-restriction.rs
 
+#![crate_type = "lib"]
 #![feature(impl_restriction)]
 
 extern crate external_impl_restriction as external;

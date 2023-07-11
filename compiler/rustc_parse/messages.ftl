@@ -286,6 +286,8 @@ parse_if_expression_missing_then_block = this `if` expression is missing a block
     .add_then_block = add a block here
     .condition_possibly_unfinished = this binary operation is possibly unfinished
 
+parse_impl_restriction_on_trait_alias = trait aliases cannot be implemented
+
 parse_in_in_typo =
     expected iterable, found keyword `in`
     .suggestion = remove the duplicated `in`
@@ -309,12 +311,12 @@ parse_inclusive_range_no_end = inclusive range with no end
 parse_incorrect_braces_trait_bounds = incorrect braces around trait bounds
     .suggestion = remove the parentheses
 
-parse_incorrect_restriction = incorrect {$noun} restriction
-    .help = some possible {$noun} restrictions are:
-            `{$keyword}(crate)`: {$adjective} only in the current crate
-            `{$keyword}(super)`: {$adjective} only in the current module's parent
-            `{$keyword}(in path::to::module)`: {$adjective} only in the specified path
-    .suggestion = make this {$adjective} only to module `{$path}` with `in`
+parse_incorrect_restriction = incorrect {parse_restriction_noun} restriction
+    .help = some possible {parse_restriction_noun} restrictions are:
+            `{$keyword}(crate)`: {parse_restriction_adjective} only in the current crate
+            `{$keyword}(super)`: {parse_restriction_adjective} only in the current module's parent
+            `{$keyword}(in path::to::module)`: {parse_restriction_adjective} only in the specified path
+    .suggestion = make this {parse_restriction_adjective} only to module `{$path}` with `in`
 
 parse_incorrect_semicolon =
     expected item, found `;`
@@ -325,13 +327,6 @@ parse_incorrect_use_of_await =
     incorrect use of `await`
     .parentheses_suggestion = `await` is not a method call, remove the parentheses
     .postfix_suggestion = `await` is a postfix operation
-
-parse_incorrect_visibility_restriction = incorrect visibility restriction
-    .help = some possible visibility restrictions are:
-            `pub(crate)`: visible only on the current crate
-            `pub(super)`: visible only in the current module's parent
-            `pub(in path::to::module)`: visible only on the specified path
-    .suggestion = make this visible only to module `{$inner_str}` with `in`
 
 parse_inner_attr_explanation = inner attributes, like `#![no_std]`, annotate the item enclosing them, and are usually found at the beginning of source files
 parse_inner_attr_not_permitted = an inner attribute is not permitted in this context
@@ -675,12 +670,28 @@ parse_require_colon_after_labeled_expression = labeled expression must be follow
     .label = the label
     .suggestion = add `:` after the label
 
-parse_restriction_missing_path = incorrect {$noun} restriction
-    .help = some possible {$noun} restrictions are:
-            `{$keyword}(crate)`: {$adjective} only in the current crate
-            `{$keyword}(super)`: {$adjective} only in the current module's parent
-            `{$keyword}(in path::to::module)`: {$adjective} only in the specified path
-    .suggestion = make this {$adjective} only to the current crate
+# internal use only
+parse_restriction_adjective = { $keyword ->
+    [impl] implementable
+    [mut] mutable
+    [pub] visible
+    *[DEFAULT_IS_BUG] BUG
+}
+
+parse_restriction_missing_path = incorrect {parse_restriction_noun} restriction
+    .help = some possible {parse_restriction_noun} restrictions are:
+            `{$keyword}(crate)`: {parse_restriction_adjective} only in the current crate
+            `{$keyword}(super)`: {parse_restriction_adjective} only in the current module's parent
+            `{$keyword}(in path::to::module)`: {parse_restriction_adjective} only in the specified path
+    .suggestion = make this {parse_restriction_adjective} only to the current crate
+
+# internal use only
+parse_restriction_noun = { $keyword ->
+    [impl] impl
+    [mut] mut
+    [pub] visibility
+    *[DEFAULT_IS_BUG] BUG
+}
 
 parse_return_types_use_thin_arrow = return types are denoted using `->`
     .suggestion = use `->` instead

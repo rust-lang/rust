@@ -312,21 +312,18 @@ impl<Id: Into<DefId> + Copy> Restriction<Id> {
         !tcx.is_descendant_of(module, restricted_to.into())
     }
 
-    /// Obtain the [`Span`] of the restriction. Panics if the restriction is unrestricted.
-    pub fn expect_span(&self) -> Span {
+    /// Obtain the [`Span`] of the restriction. If unrestricted, an empty span is returned.
+    pub fn span(&self) -> Span {
         match self {
-            Restriction::Unrestricted => bug!("called `expect_span` on an unrestricted item"),
+            Restriction::Unrestricted => rustc_span::DUMMY_SP,
             Restriction::Restricted(_, span) => *span,
         }
     }
 
-    pub fn expect_restriction_path(
-        &self,
-        tcx: TyCtxt<'_>,
-        krate: rustc_span::def_id::CrateNum,
-    ) -> String {
+    /// Obtain the path of the restriction. If unrestricted, an empty string is returned.
+    pub fn restriction_path(&self, tcx: TyCtxt<'_>, krate: rustc_span::def_id::CrateNum) -> String {
         let Restriction::Restricted(def_id, _) = self else {
-            bug!("called `expect_restricted_path` on an unrestricted item")
+            return String::new();
         };
 
         let def_id: DefId = (*def_id).into();

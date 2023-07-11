@@ -1444,12 +1444,8 @@ impl<'a> Parser<'a> {
             }
         } else {
             if Kind::REQUIRES_EXPLICIT_PATH {
-                self.sess.emit_err(RestrictionMissingPath {
-                    span: kw_span,
-                    noun: Kind::NOUN,
-                    adjective: Kind::ADJECTIVE,
-                    keyword: Kind::KEYWORD_STR,
-                });
+                self.sess
+                    .emit_err(RestrictionMissingPath { span: kw_span, keyword: Kind::KEYWORD_STR });
             }
             Ok(Restriction::unrestricted().with_span(gate(kw_span)))
         }
@@ -1464,8 +1460,6 @@ impl<'a> Parser<'a> {
         self.sess.emit_err(IncorrectRestriction {
             span: path.span,
             path: pprust::path_to_string(&path),
-            adjective: Kind::ADJECTIVE,
-            noun: Kind::NOUN,
             keyword: Kind::KEYWORD_STR,
         });
 

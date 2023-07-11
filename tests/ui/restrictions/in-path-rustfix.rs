@@ -1,6 +1,6 @@
 // run-rustfix
-// compile-flags: --crate-type=lib
 
+#![crate_type = "lib"]
 #![feature(mut_restriction)]
 
 pub mod a {

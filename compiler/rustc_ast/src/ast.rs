@@ -2732,8 +2732,6 @@ pub mod restriction_kind {
             requires_explicit_path: $requires_explicit_path:ident,
             name: $name:ident,
             keyword: $keyword_sym:path => $keyword_str:literal,
-            adjective: $adjective:literal,
-            noun: $noun:literal,
             feature_gate: $feature_gate:expr $(,)?
         ) => {
             #[derive(Debug, Clone, Copy, Encodable, Decodable)]
@@ -2743,8 +2741,6 @@ pub mod restriction_kind {
                 const REQUIRES_EXPLICIT_PATH: bool = $requires_explicit_path;
                 const KEYWORD_SYM: Symbol = $keyword_sym;
                 const KEYWORD_STR: &'static str = $keyword_str;
-                const ADJECTIVE: &'static str = $adjective;
-                const NOUN: &'static str = $noun;
                 const FEATURE_GATE: Option<Symbol> = $feature_gate;
             }
 
@@ -2761,8 +2757,6 @@ pub mod restriction_kind {
         const REQUIRES_EXPLICIT_PATH: bool;
         const KEYWORD_SYM: Symbol;
         const KEYWORD_STR: &'static str;
-        const ADJECTIVE: &'static str;
-        const NOUN: &'static str;
         const FEATURE_GATE: Option<Symbol>;
     }
 
@@ -2770,24 +2764,18 @@ pub mod restriction_kind {
         requires_explicit_path: false,
         name: Visibility,
         keyword: kw::Pub => "pub",
-        adjective: "visible",
-        noun: "visibility",
         feature_gate: None,
     }
     restriction! {
         requires_explicit_path: true,
         name: Impl,
         keyword: kw::Impl => "impl",
-        adjective: "implementable",
-        noun: "impl",
         feature_gate: Some(sym::impl_restriction),
     }
     restriction! {
         requires_explicit_path: true,
         name: Mut,
         keyword: kw::Mut => "mut",
-        adjective: "mutable",
-        noun: "mut",
         feature_gate: Some(sym::mut_restriction),
     }
 }

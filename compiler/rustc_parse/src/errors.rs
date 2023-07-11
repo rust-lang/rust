@@ -819,8 +819,6 @@ pub(crate) struct IncorrectRestriction {
     #[suggestion(code = "in {path}", applicability = "machine-applicable")]
     pub span: Span,
     pub path: String,
-    pub noun: &'static str,
-    pub adjective: &'static str,
     pub keyword: &'static str,
 }
 
@@ -831,9 +829,14 @@ pub(crate) struct RestrictionMissingPath {
     #[primary_span]
     #[suggestion(code = "{keyword}(crate)", applicability = "maybe-incorrect")]
     pub span: Span,
-    pub noun: &'static str,
-    pub adjective: &'static str,
     pub keyword: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_impl_restriction_on_trait_alias)]
+pub(crate) struct ImplRestrictionOnTraitAlias {
+    #[primary_span]
+    pub span: Span,
 }
 
 #[derive(Diagnostic)]

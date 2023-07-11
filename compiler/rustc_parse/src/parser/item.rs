@@ -859,8 +859,7 @@ impl<'a> Parser<'a> {
 
             let whole_span = lo.to(self.prev_token.span);
             if !matches!(impl_restriction.level, RestrictionLevel::Implied) {
-                let msg = "trait aliases cannot be implemented";
-                self.struct_span_err(whole_span, msg).span_label(whole_span, msg).emit();
+                self.sess.emit_err(errors::ImplRestrictionOnTraitAlias { span: whole_span });
             }
             if is_auto == IsAuto::Yes {
                 self.sess.emit_err(errors::TraitAliasCannotBeAuto { span: whole_span });

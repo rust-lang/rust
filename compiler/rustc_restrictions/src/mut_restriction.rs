@@ -92,9 +92,9 @@ impl<'tcx> Visitor<'tcx> for MutRestrictionChecker<'_, 'tcx> {
                         if field_mut_restriction.is_restricted_in(body_did, self.tcx) {
                             self.tcx.sess.emit_err(errors::MutOfRestrictedField {
                                 mut_span: self.span,
-                                restriction_span: field_mut_restriction.expect_span(),
+                                restriction_span: field_mut_restriction.span(),
                                 restriction_path: field_mut_restriction
-                                    .expect_restriction_path(self.tcx, body_did.krate),
+                                    .restriction_path(self.tcx, body_did.krate),
                             });
                         }
                     }
@@ -117,9 +117,9 @@ impl<'tcx> Visitor<'tcx> for MutRestrictionChecker<'_, 'tcx> {
             if construction_restriction.is_restricted_in(body_did, self.tcx) {
                 self.tcx.sess.emit_err(errors::ConstructionOfTyWithMutRestrictedField {
                     construction_span: self.span,
-                    restriction_span: construction_restriction.expect_span(),
+                    restriction_span: construction_restriction.span(),
                     restriction_path: construction_restriction
-                        .expect_restriction_path(self.tcx, body_did.krate),
+                        .restriction_path(self.tcx, body_did.krate),
                     note: (),
                     article: "a",
                     description: adt_def.variant_descr(),

@@ -30,9 +30,9 @@ impl<'v> Visitor<'v> for ImplOfRestrictedTraitVisitor<'v> {
             if restriction.is_restricted_in(item.owner_id.to_def_id(), self.tcx) {
                 let impl_span =
                     self.tcx.span_of_impl(item.owner_id.to_def_id()).expect("impl should be local");
-                let restriction_span = restriction.expect_span();
+                let restriction_span = restriction.span();
                 let restriction_path =
-                    restriction.expect_restriction_path(self.tcx, hir::def_id::LOCAL_CRATE);
+                    restriction.restriction_path(self.tcx, hir::def_id::LOCAL_CRATE);
                 let diag =
                     errors::ImplOfRestrictedTrait { impl_span, restriction_span, restriction_path };
                 self.tcx.sess.emit_err(diag);
