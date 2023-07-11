@@ -243,8 +243,16 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
                 s if s.contains("r6") => elf::EF_MIPS_ARCH_32R6,
                 _ => elf::EF_MIPS_ARCH_32R2,
             };
-            // The only ABI LLVM supports for 32-bit MIPS CPUs is o32.
-            let mut e_flags = elf::EF_MIPS_CPIC | elf::EF_MIPS_ABI_O32 | arch;
+
+            let mut e_flags = elf::EF_MIPS_CPIC | arch;
+
+            // If the ABI is explicitly given, use it or default to O32.
+            match sess.target.options.llvm_abiname.to_lowercase().as_str() {
+                "n32" => e_flags |= elf::EF_MIPS_ABI2,
+                "o32" => e_flags |= elf::EF_MIPS_ABI_O32,
+                _ => e_flags |= elf::EF_MIPS_ABI_O32,
+            };
+
             if sess.target.options.relocation_model != RelocModel::Static {
                 e_flags |= elf::EF_MIPS_PIC;
             }
