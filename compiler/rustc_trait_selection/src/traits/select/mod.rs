@@ -2284,8 +2284,8 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
     fn constituent_types_for_ty(
         &self,
         t: ty::Binder<'tcx, Ty<'tcx>>,
-    ) -> Result<ty::Binder<'tcx, Vec<Ty<'tcx>>>, SelectionError<'tcx>> {
-        Ok(match *t.skip_binder().kind() {
+    ) -> ty::Binder<'tcx, Vec<Ty<'tcx>>> {
+        match *t.skip_binder().kind() {
             ty::Uint(_)
             | ty::Int(_)
             | ty::Bool
@@ -2349,16 +2349,12 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             }
 
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => {
-                let ty = self.tcx().type_of(def_id);
-                if ty.skip_binder().references_error() {
-                    return Err(SelectionError::OpaqueTypeAutoTraitLeakageUnknown(def_id));
-                }
                 // We can resolve the `impl Trait` to its concrete type,
                 // which enforces a DAG between the functions requiring
                 // the auto trait bounds in question.
-                t.rebind(vec![ty.subst(self.tcx(), substs)])
+                t.rebind(vec![self.tcx().type_of(def_id).subst(self.tcx(), substs)])
             }
-        })
+        }
     }
 
     fn collect_predicates_for_types(

@@ -67,7 +67,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             AutoImplCandidate => {
-                let data = self.confirm_auto_impl_candidate(obligation)?;
+                let data = self.confirm_auto_impl_candidate(obligation);
                 ImplSource::Builtin(data)
             }
 
@@ -376,12 +376,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn confirm_auto_impl_candidate(
         &mut self,
         obligation: &PolyTraitObligation<'tcx>,
-    ) -> Result<Vec<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
+    ) -> Vec<PredicateObligation<'tcx>> {
         debug!(?obligation, "confirm_auto_impl_candidate");
 
         let self_ty = self.infcx.shallow_resolve(obligation.predicate.self_ty());
-        let types = self.constituent_types_for_ty(self_ty)?;
-        Ok(self.vtable_auto_impl(obligation, obligation.predicate.def_id(), types))
+        let types = self.constituent_types_for_ty(self_ty);
+        self.vtable_auto_impl(obligation, obligation.predicate.def_id(), types)
     }
 
     /// See `confirm_auto_impl_candidate`.

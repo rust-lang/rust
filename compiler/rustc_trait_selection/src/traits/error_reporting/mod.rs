@@ -29,7 +29,7 @@ use rustc_infer::infer::error_reporting::TypeErrCtxt;
 use rustc_infer::infer::{InferOk, TypeTrace};
 use rustc_middle::traits::select::OverflowError;
 use rustc_middle::traits::solve::Goal;
-use rustc_middle::traits::{DefiningAnchor, SelectionOutputTypeParameterMismatch};
+use rustc_middle::traits::SelectionOutputTypeParameterMismatch;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::{BottomUpFolder, TypeFolder, TypeSuperFoldable};
@@ -1151,11 +1151,6 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 }
             }
 
-            SelectionError::OpaqueTypeAutoTraitLeakageUnknown(def_id) => self.report_opaque_type_auto_trait_leakage(
-                &obligation,
-                def_id,
-            ),
-
             TraitNotObjectSafe(did) => {
                 let violations = self.tcx.object_safety_violations(did);
                 report_object_safety_error(self.tcx, span, did, violations)
@@ -1174,10 +1169,16 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
 
             // Already reported in the query.
-            SelectionError::NotConstEvaluatable(NotConstEvaluatable::Error(_)) |
+            SelectionError::NotConstEvaluatable(NotConstEvaluatable::Error(_)) => {
+                // FIXME(eddyb) remove this once `ErrorGuaranteed` becomes a proof token.
+                self.tcx.sess.delay_span_bug(span, "`ErrorGuaranteed` without an error");
+                return;
+            }
             // Already reported.
-            Overflow(OverflowError::Error(_)) => return,
-
+            Overflow(OverflowError::Error(_)) => {
+                self.tcx.sess.delay_span_bug(span, "`OverflowError` has been reported");
+                return;
+            }
             Overflow(_) => {
                 bug!("overflow should be handled before the `report_selection_error` path");
             }
@@ -1467,12 +1468,6 @@ trait InferCtxtPrivExt<'tcx> {
         found_trait_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
         expected_trait_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
         terr: TypeError<'tcx>,
-    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed>;
-
-    fn report_opaque_type_auto_trait_leakage(
-        &self,
-        obligation: &PredicateObligation<'tcx>,
-        def_id: DefId,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed>;
 
     fn report_type_parameter_mismatch_error(
@@ -3201,39 +3196,6 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             TypeTrace::poly_trait_refs(&cause, true, expected_trait_ref, found_trait_ref),
             terr,
         )
-    }
-
-    fn report_opaque_type_auto_trait_leakage(
-        &self,
-        obligation: &PredicateObligation<'tcx>,
-        def_id: DefId,
-    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        let name = match self.tcx.opaque_type_origin(def_id.expect_local()) {
-            hir::OpaqueTyOrigin::FnReturn(_) | hir::OpaqueTyOrigin::AsyncFn(_) => {
-                format!("opaque type")
-            }
-            hir::OpaqueTyOrigin::TyAlias { .. } => {
-                format!("`{}`", self.tcx.def_path_debug_str(def_id))
-            }
-        };
-        let mut err = self.tcx.sess.struct_span_err(
-            obligation.cause.span,
-            format!("cannot check whether the hidden type of {name} satisfies auto traits"),
-        );
-        err.span_note(self.tcx.def_span(def_id), "opaque type is declared here");
-        match self.defining_use_anchor {
-            DefiningAnchor::Bubble | DefiningAnchor::Error => {}
-            DefiningAnchor::Bind(bind) => {
-                err.span_note(
-                    self.tcx.def_ident_span(bind).unwrap_or_else(|| self.tcx.def_span(bind)),
-                    "this item depends on auto traits of the hidden type, \
-                    but may also be registering the hidden type. \
-                    This is not supported right now. \
-                    You can try moving the opaque type and the item that actually registers a hidden type into a new submodule".to_string(),
-                );
-            }
-        };
-        err
     }
 
     fn report_type_parameter_mismatch_error(
