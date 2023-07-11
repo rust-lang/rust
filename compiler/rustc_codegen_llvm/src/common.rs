@@ -290,7 +290,7 @@ impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                     }
                 };
                 let llval = unsafe {
-                    llvm::LLVMRustConstInBoundsGEP2(
+                    llvm::LLVMConstInBoundsGEP2(
                         self.type_i8(),
                         self.const_bitcast(base_addr, self.type_i8p_ext(base_addr_space)),
                         &self.const_usize(offset.bytes()),
@@ -320,7 +320,7 @@ impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
     fn const_ptr_byte_offset(&self, base_addr: Self::Value, offset: abi::Size) -> Self::Value {
         unsafe {
-            llvm::LLVMRustConstInBoundsGEP2(
+            llvm::LLVMConstInBoundsGEP2(
                 self.type_i8(),
                 self.const_bitcast(base_addr, self.type_i8p()),
                 &self.const_usize(offset.bytes()),

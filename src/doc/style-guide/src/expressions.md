@@ -803,6 +803,16 @@ foo(|param| {
     action();
     foo(param)
 })
+
+let x = combinable([
+    an_expr,
+    another_expr,
+]);
+
+let arr = [combinable(
+    an_expr,
+    another_expr,
+)];
 ```
 
 Such behaviour should extend recursively, however, tools may choose to limit the
