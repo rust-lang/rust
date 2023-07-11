@@ -10,7 +10,7 @@ use rustc_hir::{
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::adjustment::{Adjust, PointerCoercion};
-use rustc_middle::ty::{self, Adt, AdtDef, SubstsRef, Ty, TypeckResults};
+use rustc_middle::ty::{self, Adt, AdtDef, GenericArgsRef, Ty, TypeckResults};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::sym;
 
@@ -80,7 +80,7 @@ fn is_path_self(e: &Expr<'_>) -> bool {
 fn contains_trait_object(ty: Ty<'_>) -> bool {
     match ty.kind() {
         ty::Ref(_, ty, _) => contains_trait_object(*ty),
-        ty::Adt(def, substs) => def.is_box() && substs[0].as_type().map_or(false, contains_trait_object),
+        ty::Adt(def, args) => def.is_box() && args[0].as_type().map_or(false, contains_trait_object),
         ty::Dynamic(..) => true,
         _ => false,
     }
@@ -92,18 +92,18 @@ fn check_struct<'tcx>(
     self_ty: &hir::Ty<'_>,
     func_expr: &Expr<'_>,
     adt_def: AdtDef<'_>,
-    substs: SubstsRef<'_>,
+    ty_args: GenericArgsRef<'_>,
     typeck_results: &'tcx TypeckResults<'tcx>,
 ) {
     if let TyKind::Path(QPath::Resolved(_, p)) = self_ty.kind {
         if let Some(PathSegment { args, .. }) = p.segments.last() {
             let args = args.map(|a| a.args).unwrap_or(&[]);
 
-            // substs contains the generic parameters of the type declaration, while args contains the arguments
+            // ty_args contains the generic parameters of the type declaration, while args contains the arguments
             // used at instantiation time. If both len are not equal, it means that some parameters were not
             // provided (which means that the default values were used); in this case we will not risk
             // suggesting too broad a rewrite. We won't either if any argument is a type or a const.
-            if substs.len() != args.len() || args.iter().any(|arg| !matches!(arg, GenericArg::Lifetime(_))) {
+            if ty_args.len() != args.len() || args.iter().any(|arg| !matches!(arg, GenericArg::Lifetime(_))) {
                 return;
             }
         }
@@ -214,7 +214,7 @@ impl<'tcx> LateLintPass<'tcx> for DerivableImpls {
             if let Some(Node::ImplItem(impl_item)) = cx.tcx.hir().find(impl_item_hir);
             if let ImplItemKind::Fn(_, b) = &impl_item.kind;
             if let Body { value: func_expr, .. } = cx.tcx.hir().body(*b);
-            if let &Adt(adt_def, substs) = cx.tcx.type_of(item.owner_id).subst_identity().kind();
+            if let &Adt(adt_def, args) = cx.tcx.type_of(item.owner_id).instantiate_identity().kind();
             if let attrs = cx.tcx.hir().attrs(item.hir_id());
             if !attrs.iter().any(|attr| attr.doc_str().is_some());
             if let child_attrs = cx.tcx.hir().attrs(impl_item_hir);
@@ -222,7 +222,7 @@ impl<'tcx> LateLintPass<'tcx> for DerivableImpls {
 
             then {
                 if adt_def.is_struct() {
-                    check_struct(cx, item, self_ty, func_expr, adt_def, substs, cx.tcx.typeck_body(*b));
+                    check_struct(cx, item, self_ty, func_expr, adt_def, args, cx.tcx.typeck_body(*b));
                 } else if adt_def.is_enum() && self.msrv.meets(msrvs::DEFAULT_ENUM_ATTRIBUTE) {
                     check_enum(cx, item, func_expr, adt_def);
                 }

@@ -145,7 +145,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             then {
                 // `self_ty` is the semantic self type of `impl <trait> for <type>`. This cannot be
                 // `Self`.
-                let self_ty = impl_trait_ref.subst_identity().self_ty();
+                let self_ty = impl_trait_ref.instantiate_identity().self_ty();
 
                 // `trait_method_sig` is the signature of the function, how it is declared in the
                 // trait, not in the impl of the trait.
@@ -154,7 +154,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
                     .associated_item(impl_item.owner_id)
                     .trait_item_def_id
                     .expect("impl method matches a trait method");
-                let trait_method_sig = cx.tcx.fn_sig(trait_method).subst_identity();
+                let trait_method_sig = cx.tcx.fn_sig(trait_method).instantiate_identity();
                 let trait_method_sig = cx.tcx.erase_late_bound_regions(trait_method_sig);
 
                 // `impl_inputs_outputs` is an iterator over the types (`hir::Ty`) declared in the
@@ -226,7 +226,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             } else {
                 hir_ty_to_ty(cx.tcx, hir_ty)
             };
-            if same_type_and_consts(ty, cx.tcx.type_of(impl_id).subst_identity());
+            if same_type_and_consts(ty, cx.tcx.type_of(impl_id).instantiate_identity());
             then {
                 span_lint(cx, hir_ty.span);
             }
@@ -238,7 +238,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             if !expr.span.from_expansion();
             if self.msrv.meets(msrvs::TYPE_ALIAS_ENUM_VARIANTS);
             if let Some(&StackItem::Check { impl_id, .. }) = self.stack.last();
-            if cx.typeck_results().expr_ty(expr) == cx.tcx.type_of(impl_id).subst_identity();
+            if cx.typeck_results().expr_ty(expr) == cx.tcx.type_of(impl_id).instantiate_identity();
             then {} else { return; }
         }
         match expr.kind {
@@ -262,7 +262,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             if let PatKind::Path(QPath::Resolved(_, path))
                  | PatKind::TupleStruct(QPath::Resolved(_, path), _, _)
                  | PatKind::Struct(QPath::Resolved(_, path), _, _) = pat.kind;
-            if cx.typeck_results().pat_ty(pat) == cx.tcx.type_of(impl_id).subst_identity();
+            if cx.typeck_results().pat_ty(pat) == cx.tcx.type_of(impl_id).instantiate_identity();
             then {
                 check_path(cx, path);
             }

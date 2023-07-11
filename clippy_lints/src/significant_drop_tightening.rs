@@ -10,7 +10,7 @@ use rustc_hir::{
     intravisit::{walk_expr, Visitor},
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::ty::{subst::GenericArgKind, Ty, TypeAndMut};
+use rustc_middle::ty::{GenericArgKind, Ty, TypeAndMut};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{symbol::Ident, Span, DUMMY_SP};
 use std::borrow::Cow;
