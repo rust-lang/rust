@@ -90,8 +90,8 @@ use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;
 use rustc_middle::thir::{Expr, LintLevel};
-
 use rustc_middle::ty::Ty;
+use rustc_session::lint::Level;
 use rustc_span::{Span, DUMMY_SP};
 
 #[derive(Debug)]
@@ -773,14 +773,35 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // to avoid adding Hir dependencies on our parents.
                 // We estimate the true lint roots here to avoid creating a lot of source scopes.
                 (
-                    self.tcx.maybe_lint_level_root_bounded(current_id, self.hir_id),
-                    self.tcx.maybe_lint_level_root_bounded(parent_id, self.hir_id),
+                    self.maybe_lint_level_root_bounded(current_id, self.hir_id),
+                    self.maybe_lint_level_root_bounded(parent_id, self.hir_id),
                 )
             };
 
         if current_root != parent_root {
             let lint_level = LintLevel::Explicit(current_root);
             self.source_scope = self.new_source_scope(span, lint_level, safety);
+        }
+    }
+
+    /// Walks upwards from `id` to find a node which might change lint levels with attributes.
+    /// It stops at `bound` and just returns it if reached.
+    fn maybe_lint_level_root_bounded(&self, mut id: HirId, bound: HirId) -> HirId {
+        let hir = self.tcx.hir();
+        loop {
+            if id == bound {
+                return bound;
+            }
+
+            if hir.attrs(id).iter().any(|attr| Level::from_attr(attr).is_some()) {
+                return id;
+            }
+
+            let next = hir.parent_id(id);
+            if next == id {
+                bug!("lint traversal reached the root of the crate");
+            }
+            id = next;
         }
     }
 
