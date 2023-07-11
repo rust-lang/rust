@@ -24,7 +24,7 @@ pub enum ValTree<'tcx> {
     Leaf(ScalarInt),
 
     //SliceOrStr(ValSlice<'tcx>),
-    // dont use SliceOrStr for now
+    // don't use SliceOrStr for now
     /// The fields of any kind of aggregate. Structs, tuples and arrays are represented by
     /// listing their fields' values in order.
     ///
