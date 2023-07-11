@@ -742,9 +742,9 @@ impl<B: WriteBackendMethods> WorkItem<B> {
         }
 
         match self {
-            WorkItem::Optimize(m) => desc("opt", "optimize module {}", &m.name),
-            WorkItem::CopyPostLtoArtifacts(m) => desc("cpy", "copy LTO artifacts for {}", &m.name),
-            WorkItem::LTO(m) => desc("lto", "LTO module {}", m.name()),
+            WorkItem::Optimize(m) => desc("opt", "optimize module", &m.name),
+            WorkItem::CopyPostLtoArtifacts(m) => desc("cpy", "copy LTO artifacts for", &m.name),
+            WorkItem::LTO(m) => desc("lto", "LTO module", m.name()),
         }
     }
 }
