@@ -1,5 +1,5 @@
-// This should fail even without validation, but some MIR opts mask the error
-//@compile-flags: -Zmiri-disable-validation -Zmir-opt-level=0
+// This should fail even without validation
+//@compile-flags: -Zmiri-disable-validation
 
 unsafe fn make_ref<'a>(x: *mut i32) -> &'a mut i32 {
     &mut *x
