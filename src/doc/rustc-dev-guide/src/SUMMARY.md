@@ -124,6 +124,7 @@
         - [Canonicalization](./solve/canonicalization.md)
         - [Coinduction](./solve/coinduction.md)
         - [Proof trees](./solve/proof-trees.md)
+        - [Normalization](./solve/normalization.md)
 - [Type checking](./type-checking.md)
     - [Method Lookup](./method-lookup.md)
     - [Variance](./variance.md)
