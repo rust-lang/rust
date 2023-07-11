@@ -56,7 +56,7 @@
         "@vscode/test-electron": "^2.3.3",
         "@vscode/vsce": "^2.19.0",
         "esbuild": "^0.18.10",
-        "eslint": "^8.43.0",
+        "eslint": "^8.44.0",
         "eslint-config-prettier": "^8.8.0",
         "ovsx": "^0.8.2",
         "prettier": "^3.0.0",
