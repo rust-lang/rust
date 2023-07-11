@@ -188,7 +188,7 @@ impl Config {
             patchelf.args(&["--set-interpreter", dynamic_linker.trim_end()]);
         }
 
-        self.try_run(patchelf.arg(fname)).unwrap();
+        let _ = self.try_run(patchelf.arg(fname));
     }
 
     fn download_file(&self, url: &str, dest_path: &Path, help_on_error: &str) {
