@@ -696,7 +696,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     ) -> Result<(), NoSolution> {
         self.infcx
             .at(&ObligationCause::dummy(), param_env)
-            .eq(DefineOpaqueTypes::No, lhs, rhs)
+            .eq(DefineOpaqueTypes::Yes, lhs, rhs)
             .map(|InferOk { value: (), obligations }| {
                 self.add_goals(obligations.into_iter().map(|o| o.into()));
             })
@@ -715,7 +715,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     ) -> Result<(), NoSolution> {
         self.infcx
             .at(&ObligationCause::dummy(), param_env)
-            .sub(DefineOpaqueTypes::No, sub, sup)
+            .sub(DefineOpaqueTypes::Yes, sub, sup)
             .map(|InferOk { value: (), obligations }| {
                 self.add_goals(obligations.into_iter().map(|o| o.into()));
             })
@@ -739,7 +739,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     ) -> Result<Vec<Goal<'tcx, ty::Predicate<'tcx>>>, NoSolution> {
         self.infcx
             .at(&ObligationCause::dummy(), param_env)
-            .eq(DefineOpaqueTypes::No, lhs, rhs)
+            .eq(DefineOpaqueTypes::Yes, lhs, rhs)
             .map(|InferOk { value: (), obligations }| {
                 obligations.into_iter().map(|o| o.into()).collect()
             })

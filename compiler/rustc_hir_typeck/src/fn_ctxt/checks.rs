@@ -296,7 +296,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // 3. Check if the formal type is a supertype of the checked one
             //    and register any such obligations for future type checks
             let supertype_error = self.at(&self.misc(provided_arg.span), self.param_env).sup(
-                DefineOpaqueTypes::No,
+                DefineOpaqueTypes::Yes,
                 formal_input_ty,
                 coerced_ty,
             );
@@ -591,7 +591,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Using probe here, since we don't want this subtyping to affect inference.
             let subtyping_error = self.probe(|_| {
                 self.at(&self.misc(arg_span), self.param_env)
-                    .sup(DefineOpaqueTypes::No, formal_input_ty, coerced_ty)
+                    .sup(DefineOpaqueTypes::Yes, formal_input_ty, coerced_ty)
                     .err()
             });
 

@@ -564,7 +564,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let span = self.tcx.hir().body(body_id).value.span;
             let ok = self
                 .at(&self.misc(span), self.param_env)
-                .eq(DefineOpaqueTypes::No, interior, witness)
+                .eq(DefineOpaqueTypes::Yes, interior, witness)
                 .expect("Failed to unify generator interior type");
             let mut obligations = ok.obligations;
 
@@ -1400,7 +1400,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let impl_ty = self.normalize(span, tcx.type_of(impl_def_id).subst(tcx, substs));
             let self_ty = self.normalize(span, self_ty);
             match self.at(&self.misc(span), self.param_env).eq(
-                DefineOpaqueTypes::No,
+                DefineOpaqueTypes::Yes,
                 impl_ty,
                 self_ty,
             ) {

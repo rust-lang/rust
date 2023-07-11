@@ -30,10 +30,14 @@ use super::*;
 use rustc_middle::ty::relate::{Relate, TypeRelation};
 use rustc_middle::ty::{Const, ImplSubject};
 
-/// Whether we should define opaque types or just treat them opaquely.
+/// Whether we should define opaque types or just treat them opaquely with
+/// the old trait solver. This is completely ignored with the new solver.
 ///
-/// Currently only used to prevent predicate matching from matching anything
-/// against opaque types.
+/// Currently only used to prevent the the trait solver from matching anything
+/// against opaque types. The issue there is that we may use the trait solver
+/// with `DefiningAnchor::Bubble` which would cause us to unify opaque types
+/// with any impl even outside of their defining scope, causing a lot of unexpected
+/// errors.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum DefineOpaqueTypes {
     Yes,

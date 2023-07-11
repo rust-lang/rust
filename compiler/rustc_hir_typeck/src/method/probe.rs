@@ -936,7 +936,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 if let Some(self_ty) = self_ty {
                     if self
                         .at(&ObligationCause::dummy(), self.param_env)
-                        .sup(DefineOpaqueTypes::No, fty.inputs()[0], self_ty)
+                        .sup(DefineOpaqueTypes::Yes, fty.inputs()[0], self_ty)
                         .is_err()
                     {
                         return false;
@@ -1455,7 +1455,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             }
             TraitCandidate(trait_ref) => self.probe(|_| {
                 let _ = self.at(&ObligationCause::dummy(), self.param_env).sup(
-                    DefineOpaqueTypes::No,
+                    DefineOpaqueTypes::Yes,
                     candidate.xform_self_ty,
                     self_ty,
                 );
@@ -1486,7 +1486,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         self.probe(|_| {
             // First check that the self type can be related.
             let sub_obligations = match self.at(&ObligationCause::dummy(), self.param_env).sup(
-                DefineOpaqueTypes::No,
+                DefineOpaqueTypes::Yes,
                 probe.xform_self_ty,
                 self_ty,
             ) {
@@ -1698,7 +1698,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 if let ProbeResult::Match = result
                     && self
                     .at(&ObligationCause::dummy(), self.param_env)
-                    .sup(DefineOpaqueTypes::No, return_ty, xform_ret_ty)
+                    .sup(DefineOpaqueTypes::Yes, return_ty, xform_ret_ty)
                     .is_err()
                 {
                     result = ProbeResult::BadReturnType;

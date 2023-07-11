@@ -502,7 +502,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 substs,
             })),
         );
-        match self.at(&cause, self.param_env).sup(DefineOpaqueTypes::No, method_self_ty, self_ty) {
+        match self.at(&cause, self.param_env).sup(DefineOpaqueTypes::Yes, method_self_ty, self_ty) {
             Ok(InferOk { obligations, value: () }) => {
                 self.register_predicates(obligations);
             }

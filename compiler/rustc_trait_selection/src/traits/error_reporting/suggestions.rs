@@ -3543,7 +3543,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         self.probe(|_| {
                             match self
                                 .at(&ObligationCause::misc(expr.span, body_id), param_env)
-                                .eq(DefineOpaqueTypes::No, expected, actual)
+                                .eq(DefineOpaqueTypes::Yes, expected, actual)
                             {
                                 Ok(_) => (), // We ignore nested obligations here for now.
                                 Err(err) => type_diffs.push(err),

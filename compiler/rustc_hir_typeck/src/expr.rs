@@ -1736,7 +1736,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 let target_ty = self.field_ty(base_expr.span, f, substs);
                                 let cause = self.misc(base_expr.span);
                                 match self.at(&cause, self.param_env).sup(
-                                    DefineOpaqueTypes::No,
+                                    DefineOpaqueTypes::Yes,
                                     target_ty,
                                     fru_ty,
                                 ) {

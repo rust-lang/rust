@@ -327,7 +327,7 @@ pub fn resolve_interior<'a, 'tcx>(
 
     // Unify the type variable inside the generator with the new witness
     match fcx.at(&fcx.misc(body.value.span), fcx.param_env).eq(
-        DefineOpaqueTypes::No,
+        DefineOpaqueTypes::Yes,
         interior,
         witness,
     ) {

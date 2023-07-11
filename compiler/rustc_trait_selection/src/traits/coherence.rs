@@ -376,7 +376,7 @@ fn impl_intersection_has_negative_obligation(
     // do the impls unify? If not, then it's not currently possible to prove any
     // obligations about their intersection.
     let Ok(InferOk { obligations: equate_obligations, .. }) =
-        infcx.at(&ObligationCause::dummy(), impl_env).eq(DefineOpaqueTypes::No,subject1, subject2)
+        infcx.at(&ObligationCause::dummy(), impl_env).eq(DefineOpaqueTypes::Yes,subject1, subject2)
     else {
         debug!("explicit_disjoint: {:?} does not unify with {:?}", subject1, subject2);
         return false;

@@ -160,7 +160,7 @@ fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: LocalDef
     use rustc_type_ir::sty::TyKind::*;
     match (source.kind(), target.kind()) {
         (&Ref(r_a, _, mutbl_a), Ref(r_b, _, mutbl_b))
-            if infcx.at(&cause, param_env).eq(DefineOpaqueTypes::No, r_a, *r_b).is_ok()
+            if infcx.at(&cause, param_env).eq(DefineOpaqueTypes::Yes, r_a, *r_b).is_ok()
                 && mutbl_a == *mutbl_b => {}
         (&RawPtr(tm_a), &RawPtr(tm_b)) if tm_a.mutbl == tm_b.mutbl => (),
         (&Adt(def_a, substs_a), &Adt(def_b, substs_b))
@@ -205,7 +205,7 @@ fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: LocalDef
                     }
 
                     if let Ok(ok) =
-                        infcx.at(&cause, param_env).eq(DefineOpaqueTypes::No, ty_a, ty_b)
+                        infcx.at(&cause, param_env).eq(DefineOpaqueTypes::Yes, ty_a, ty_b)
                     {
                         if ok.obligations.is_empty() {
                             create_err(
@@ -427,7 +427,7 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: LocalDefId) -> Coe
                     // we may have to evaluate constraint
                     // expressions in the course of execution.)
                     // See e.g., #41936.
-                    if let Ok(ok) = infcx.at(&cause, param_env).eq(DefineOpaqueTypes::No, a, b) {
+                    if let Ok(ok) = infcx.at(&cause, param_env).eq(DefineOpaqueTypes::Yes, a, b) {
                         if ok.obligations.is_empty() {
                             return None;
                         }

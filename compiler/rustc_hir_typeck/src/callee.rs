@@ -787,7 +787,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let Some(idx) = generics.host_effect_index {
             let param = callee_substs.const_at(idx);
             let cause = self.misc(span);
-            match self.at(&cause, self.param_env).eq(infer::DefineOpaqueTypes::No, effect, param) {
+            match self.at(&cause, self.param_env).eq(infer::DefineOpaqueTypes::Yes, effect, param) {
                 Ok(infer::InferOk { obligations, value: () }) => {
                     self.register_predicates(obligations);
                 }
