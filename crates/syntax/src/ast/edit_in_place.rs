@@ -14,7 +14,7 @@ use crate::{
     SyntaxNode, SyntaxToken,
 };
 
-use super::HasName;
+use super::{HasArgList, HasName};
 
 pub trait GenericParamsOwnerEdit: ast::HasGenericParams {
     fn get_or_create_generic_param_list(&self) -> ast::GenericParamList;
@@ -357,6 +357,24 @@ impl ast::PathSegment {
         if self.generic_arg_list().is_none() {
             let arg_list = make::generic_arg_list(empty()).clone_for_update();
             ted::append_child(self.syntax(), arg_list.syntax());
+        }
+        self.generic_arg_list().unwrap()
+    }
+}
+
+impl ast::MethodCallExpr {
+    pub fn get_or_create_generic_arg_list(&self) -> ast::GenericArgList {
+        if self.generic_arg_list().is_none() {
+            let generic_arg_list = make::turbofish_generic_arg_list(empty()).clone_for_update();
+
+            if let Some(arg_list) = self.arg_list() {
+                ted::insert_raw(
+                    ted::Position::before(arg_list.syntax()),
+                    generic_arg_list.syntax(),
+                );
+            } else {
+                ted::append_child(self.syntax(), generic_arg_list.syntax());
+            }
         }
         self.generic_arg_list().unwrap()
     }
