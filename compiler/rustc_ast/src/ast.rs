@@ -2800,8 +2800,12 @@ pub enum RestrictionLevel {
     Implied,
 }
 
-impl From<Restriction<restriction_kind::Visibility>> for Visibility {
-    fn from(restriction: Restriction<restriction_kind::Visibility>) -> Self {
+pub type VisibilityRestriction = Restriction<restriction_kind::Visibility>;
+pub type ImplRestriction = Restriction<restriction_kind::Impl>;
+pub type MutRestriction = Restriction<restriction_kind::Mut>;
+
+impl From<VisibilityRestriction> for Visibility {
+    fn from(restriction: VisibilityRestriction) -> Self {
         match restriction.level {
             RestrictionLevel::Unrestricted => Self {
                 kind: VisibilityKind::Public,
@@ -2863,7 +2867,7 @@ pub struct FieldDef {
     pub id: NodeId,
     pub span: Span,
     pub vis: Visibility,
-    pub mut_restriction: Restriction<restriction_kind::Mut>,
+    pub mut_restriction: MutRestriction,
     pub ident: Option<Ident>,
 
     pub ty: P<Ty>,
@@ -3003,7 +3007,7 @@ impl Default for FnHeader {
 
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct Trait {
-    pub impl_restriction: Restriction<restriction_kind::Impl>,
+    pub impl_restriction: ImplRestriction,
     pub unsafety: Unsafe,
     pub is_auto: IsAuto,
     pub generics: Generics,

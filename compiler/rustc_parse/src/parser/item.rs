@@ -1646,7 +1646,7 @@ impl<'a> Parser<'a> {
         adt_ty: &str,
         lo: Span,
         vis: Visibility,
-        mut_restriction: Restriction<ast::restriction_kind::Mut>,
+        mut_restriction: MutRestriction,
         attrs: AttrVec,
     ) -> PResult<'a, FieldDef> {
         let mut seen_comma: bool = false;
@@ -1786,7 +1786,7 @@ impl<'a> Parser<'a> {
         adt_ty: &str,
         lo: Span,
         vis: Visibility,
-        mut_restriction: Restriction<ast::restriction_kind::Mut>,
+        mut_restriction: MutRestriction,
         attrs: AttrVec,
     ) -> PResult<'a, FieldDef> {
         let name = self.parse_field_ident(adt_ty, lo)?;
