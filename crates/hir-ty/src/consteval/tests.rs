@@ -1,6 +1,7 @@
 use base_db::{fixture::WithFixture, FileId};
 use chalk_ir::Substitution;
 use hir_def::db::DefDatabase;
+use test_utils::skip_slow_tests;
 
 use crate::{
     consteval::try_const_usize, db::HirDatabase, mir::pad16, test_db::TestDB, Const, ConstScalar,
@@ -2458,6 +2459,10 @@ fn const_trait_assoc() {
 
 #[test]
 fn exec_limits() {
+    if skip_slow_tests() {
+        return;
+    }
+
     check_fail(
         r#"
     const GOAL: usize = loop {};
