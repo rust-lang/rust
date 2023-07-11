@@ -6,6 +6,7 @@ use std::mem;
 use crate::clean::{self, Item, ItemId, ItemIdSet};
 use crate::fold::{strip_item, DocFolder};
 use crate::formats::cache::Cache;
+use crate::visit_ast::inherits_doc_hidden;
 use crate::visit_lib::RustdocEffectiveVisibilities;
 
 pub(crate) struct Stripper<'a, 'tcx> {
@@ -162,7 +163,12 @@ impl<'a> ImplStripper<'a, '_> {
             // If the "for" item is exported and the impl block isn't `#[doc(hidden)]`, then we
             // need to keep it.
             self.cache.effective_visibilities.is_exported(self.tcx, for_def_id)
-                && !item.is_doc_hidden()
+                && ((!item.is_doc_hidden()
+                    && for_def_id
+                        .as_local()
+                        .map(|def_id| !inherits_doc_hidden(self.tcx, def_id, None))
+                        .unwrap_or(true))
+                    || self.cache.inlined_items.contains(&for_def_id))
         } else {
             false
         }
