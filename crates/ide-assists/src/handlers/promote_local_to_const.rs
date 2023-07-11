@@ -67,11 +67,11 @@ pub(crate) fn promote_local_to_const(acc: &mut Assists, ctx: &AssistContext<'_>)
         cov_mark::hit!(promote_local_non_const);
         return None;
     }
-    let target = let_stmt.syntax().text_range();
+
     acc.add(
         AssistId("promote_local_to_const", AssistKind::Refactor),
         "Promote local to constant",
-        target,
+        let_stmt.syntax().text_range(),
         |edit| {
             let name = to_upper_snake_case(&name.to_string());
             let usages = Definition::Local(local).usages(&ctx.sema).all();

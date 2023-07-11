@@ -205,13 +205,15 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
             // having any hidden variants means that we need a catch-all arm
             needs_catch_all_arm |= has_hidden_variants;
 
-            let missing_arms = missing_pats.filter_map(|(pat, hidden)| {
-                // filter out hidden patterns because they're handled by the catch-all arm
-                (!hidden).then(|| {
+            let missing_arms = missing_pats
+                .filter(|(_, hidden)| {
+                    // filter out hidden patterns because they're handled by the catch-all arm
+                    !hidden
+                })
+                .map(|(pat, _)| {
                     make::match_arm(iter::once(pat), None, make::ext::expr_todo())
                         .clone_for_update()
-                })
-            });
+                });
 
             let catch_all_arm = new_match_arm_list
                 .arms()

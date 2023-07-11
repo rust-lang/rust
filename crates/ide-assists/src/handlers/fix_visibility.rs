@@ -100,14 +100,14 @@ fn add_vis_to_referenced_record_field(acc: &mut Assists, ctx: &AssistContext<'_>
     let target_module = parent.module(ctx.db());
 
     let in_file_source = record_field_def.source(ctx.db())?;
-    let (vis_owner, target): (ast::AnyHasVisibility, TextRange) = match in_file_source.value {
+    let (vis_owner, target) = match in_file_source.value {
         hir::FieldSource::Named(it) => {
-            let s = it.syntax();
-            (ast::AnyHasVisibility::cast(s.clone()).unwrap(), s.text_range())
+            let range = it.syntax().text_range();
+            (ast::AnyHasVisibility::new(it), range)
         }
         hir::FieldSource::Pos(it) => {
-            let s = it.syntax();
-            (ast::AnyHasVisibility::cast(s.clone()).unwrap(), s.text_range())
+            let range = it.syntax().text_range();
+            (ast::AnyHasVisibility::new(it), range)
         }
     };
 
@@ -152,12 +152,8 @@ fn target_data_for_def(
         let source = x.source(db)?;
         let in_file_syntax = source.syntax();
         let file_id = in_file_syntax.file_id;
-        let syntax = in_file_syntax.value;
-        Some((
-            ast::AnyHasVisibility::cast(syntax.clone()).unwrap(),
-            syntax.text_range(),
-            file_id.original_file(db.upcast()),
-        ))
+        let range = in_file_syntax.value.text_range();
+        Some((ast::AnyHasVisibility::new(source.value), range, file_id.original_file(db.upcast())))
     }
 
     let target_name;
@@ -198,8 +194,8 @@ fn target_data_for_def(
             target_name = m.name(db);
             let in_file_source = m.declaration_source(db)?;
             let file_id = in_file_source.file_id.original_file(db.upcast());
-            let syntax = in_file_source.value.syntax();
-            (ast::AnyHasVisibility::cast(syntax.clone()).unwrap(), syntax.text_range(), file_id)
+            let range = in_file_source.value.syntax().text_range();
+            (ast::AnyHasVisibility::new(in_file_source.value), range, file_id)
         }
         // FIXME
         hir::ModuleDef::Macro(_) => return None,
