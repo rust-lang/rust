@@ -87,7 +87,8 @@ where
         // SAFETY: `self` and `other` are references and are thus guaranteed to be valid.
         // The two slices have been checked to have the same size above.
         unsafe {
-            let size = mem::size_of_val(self);
+            let size =
+                if self.as_ptr() == other.as_ptr().cast() { 0 } else { mem::size_of_val(self) };
             memcmp(self.as_ptr() as *const u8, other.as_ptr() as *const u8, size) == 0
         }
     }
