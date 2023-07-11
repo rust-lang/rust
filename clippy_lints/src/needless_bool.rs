@@ -106,7 +106,7 @@ declare_clippy_lint! {
     /// # let mut skip: bool;
     /// skip = !must_keep(x, y);
     /// ```
-    #[clippy::version = "1.69.0"]
+    #[clippy::version = "1.71.0"]
     pub NEEDLESS_BOOL_ASSIGN,
     complexity,
     "setting the same boolean variable in both branches of an if-statement"
