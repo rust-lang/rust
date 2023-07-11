@@ -4,7 +4,6 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::{self, TyCtxt};
 use smallvec::{smallvec, SmallVec};
 
-use std::iter;
 use std::mem;
 
 use super::abs_domain::Lift;
@@ -40,22 +39,22 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
                     locals: body
                         .local_decls
                         .iter_enumerated()
-                        .filter(|(_, l)| !l.is_deref_temp())
-                        .map(|(i, _)| {
-                            (
-                                i,
+                        .map(|(i, l)| {
+                            if l.is_deref_temp() {
+                                MovePathIndex::MAX
+                            } else {
                                 Self::new_move_path(
                                     &mut move_paths,
                                     &mut path_map,
                                     &mut init_path_map,
                                     None,
                                     Place::from(i),
-                                ),
-                            )
+                                )
+                            }
                         })
                         .collect(),
                     projections: Default::default(),
-                    derefer_sidetable: Default::default(),
+                    un_derefer: Default::default(),
                 },
                 move_paths,
                 path_map,
@@ -100,11 +99,10 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
     ///
     /// Maybe we should have separate "borrowck" and "moveck" modes.
     fn move_path_for(&mut self, place: Place<'tcx>) -> Result<MovePathIndex, MoveError<'tcx>> {
-        let deref_chain = self.builder.data.rev_lookup.deref_chain(place.as_ref());
+        let data = &mut self.builder.data;
 
         debug!("lookup({:?})", place);
-        let mut base =
-            self.builder.data.rev_lookup.find_local(deref_chain.first().unwrap_or(&place).local);
+        let mut base = data.rev_lookup.find_local(place.local);
 
         // The move path index of the first union that we find. Once this is
         // some we stop creating child move paths, since moves from unions
@@ -113,55 +111,60 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
         // from `*(u.f: &_)` isn't allowed.
         let mut union_path = None;
 
-        for place in deref_chain.into_iter().chain(iter::once(place)) {
-            for (place_ref, elem) in place.as_ref().iter_projections() {
-                let body = self.builder.body;
-                let tcx = self.builder.tcx;
-                let place_ty = place_ref.ty(body, tcx).ty;
-                match place_ty.kind() {
-                    ty::Ref(..) | ty::RawPtr(..) => {
-                        return Err(MoveError::cannot_move_out_of(
-                            self.loc,
-                            BorrowedContent {
-                                target_place: place_ref.project_deeper(&[elem], tcx),
-                            },
-                        ));
-                    }
-                    ty::Adt(adt, _) if adt.has_dtor(tcx) && !adt.is_box() => {
-                        return Err(MoveError::cannot_move_out_of(
-                            self.loc,
-                            InteriorOfTypeWithDestructor { container_ty: place_ty },
-                        ));
-                    }
-                    ty::Adt(adt, _) if adt.is_union() => {
-                        union_path.get_or_insert(base);
-                    }
-                    ty::Slice(_) => {
-                        return Err(MoveError::cannot_move_out_of(
-                            self.loc,
-                            InteriorOfSliceOrArray {
-                                ty: place_ty,
-                                is_index: matches!(elem, ProjectionElem::Index(..)),
-                            },
-                        ));
-                    }
-
-                    ty::Array(..) => {
-                        if let ProjectionElem::Index(..) = elem {
-                            return Err(MoveError::cannot_move_out_of(
-                                self.loc,
-                                InteriorOfSliceOrArray { ty: place_ty, is_index: true },
-                            ));
-                        }
-                    }
-
-                    _ => {}
-                };
-
-                if union_path.is_none() {
-                    base = self
-                        .add_move_path(base, elem, |tcx| place_ref.project_deeper(&[elem], tcx));
+        for (place_ref, elem) in data.rev_lookup.un_derefer.iter_projections(place.as_ref()) {
+            let body = self.builder.body;
+            let tcx = self.builder.tcx;
+            let place_ty = place_ref.ty(body, tcx).ty;
+            match place_ty.kind() {
+                ty::Ref(..) | ty::RawPtr(..) => {
+                    return Err(MoveError::cannot_move_out_of(
+                        self.loc,
+                        BorrowedContent { target_place: place_ref.project_deeper(&[elem], tcx) },
+                    ));
                 }
+                ty::Adt(adt, _) if adt.has_dtor(tcx) && !adt.is_box() => {
+                    return Err(MoveError::cannot_move_out_of(
+                        self.loc,
+                        InteriorOfTypeWithDestructor { container_ty: place_ty },
+                    ));
+                }
+                ty::Adt(adt, _) if adt.is_union() => {
+                    union_path.get_or_insert(base);
+                }
+                ty::Slice(_) => {
+                    return Err(MoveError::cannot_move_out_of(
+                        self.loc,
+                        InteriorOfSliceOrArray {
+                            ty: place_ty,
+                            is_index: matches!(elem, ProjectionElem::Index(..)),
+                        },
+                    ));
+                }
+
+                ty::Array(..) => {
+                    if let ProjectionElem::Index(..) = elem {
+                        return Err(MoveError::cannot_move_out_of(
+                            self.loc,
+                            InteriorOfSliceOrArray { ty: place_ty, is_index: true },
+                        ));
+                    }
+                }
+
+                _ => {}
+            };
+
+            if union_path.is_none() {
+                // inlined from add_move_path because of a borrowck conflict with the iterator
+                base =
+                    *data.rev_lookup.projections.entry((base, elem.lift())).or_insert_with(|| {
+                        MoveDataBuilder::new_move_path(
+                            &mut data.move_paths,
+                            &mut data.path_map,
+                            &mut data.init_path_map,
+                            Some(base),
+                            place_ref.project_deeper(&[elem], tcx),
+                        )
+                    })
             }
         }
 
@@ -282,10 +285,14 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
     fn gather_statement(&mut self, stmt: &Statement<'tcx>) {
         match &stmt.kind {
             StatementKind::Assign(box (place, Rvalue::CopyForDeref(reffed))) => {
-                assert!(place.projection.is_empty());
-                if self.builder.body.local_decls[place.local].is_deref_temp() {
-                    self.builder.data.rev_lookup.derefer_sidetable.insert(place.local, *reffed);
-                }
+                let local = place.as_local().unwrap();
+                assert!(self.builder.body.local_decls[local].is_deref_temp());
+
+                let rev_lookup = &mut self.builder.data.rev_lookup;
+
+                rev_lookup.un_derefer.insert(local, reffed.as_ref());
+                let base_local = rev_lookup.un_derefer.deref_chain(local).first().unwrap().local;
+                rev_lookup.locals[local] = rev_lookup.locals[base_local];
             }
             StatementKind::Assign(box (place, rval)) => {
                 self.create_move_path(*place);
@@ -306,7 +313,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             StatementKind::StorageLive(_) => {}
             StatementKind::StorageDead(local) => {
                 // DerefTemp locals (results of CopyForDeref) don't actually move anything.
-                if !self.builder.data.rev_lookup.derefer_sidetable.contains_key(&local) {
+                if !self.builder.body.local_decls[*local].is_deref_temp() {
                     self.gather_move(Place::from(*local));
                 }
             }

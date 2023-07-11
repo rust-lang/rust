@@ -731,11 +731,11 @@ fn switch_on_enum_discriminant<'mir, 'tcx>(
 
 struct OnMutBorrow<F>(F);
 
-impl<F> Visitor<'_> for OnMutBorrow<F>
+impl<'tcx, F> Visitor<'tcx> for OnMutBorrow<F>
 where
-    F: FnMut(&mir::Place<'_>),
+    F: FnMut(&mir::Place<'tcx>),
 {
-    fn visit_rvalue(&mut self, rvalue: &mir::Rvalue<'_>, location: Location) {
+    fn visit_rvalue(&mut self, rvalue: &mir::Rvalue<'tcx>, location: Location) {
         // FIXME: Does `&raw const foo` allow mutation? See #90413.
         match rvalue {
             mir::Rvalue::Ref(_, mir::BorrowKind::Mut { .. }, place)
@@ -756,7 +756,7 @@ where
 fn for_each_mut_borrow<'tcx>(
     mir: &impl MirVisitable<'tcx>,
     location: Location,
-    f: impl FnMut(&mir::Place<'_>),
+    f: impl FnMut(&mir::Place<'tcx>),
 ) {
     let mut vis = OnMutBorrow(f);
 
