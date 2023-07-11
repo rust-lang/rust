@@ -1332,7 +1332,19 @@ impl<'a> TryFrom<&'a str> for LookupHost {
     type Error = io::Error;
 
     fn try_from(v: &'a str) -> io::Result<LookupHost> {
-        TryFrom::try_from((v, 0u16))
+        macro_rules! try_opt {
+            ($e:expr, $msg:expr) => {
+                match $e {
+                    Some(r) => r,
+                    None => return Err(io::const_io_error!(io::ErrorKind::InvalidInput, $msg)),
+                }
+            };
+        }
+
+        // split the string by ':' and convert the second part to u16
+        let (host, port_str) = try_opt!(v.rsplit_once(':'), "invalid socket address");
+        let port: u16 = try_opt!(port_str.parse().ok(), "invalid port value");
+        TryFrom::try_from((host, port))
     }
 }
 
