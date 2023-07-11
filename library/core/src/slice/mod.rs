@@ -659,10 +659,17 @@ impl<T> [T] {
     where
         I: SliceIndex<Self>,
     {
+        #[cfg(debug_assertions)]
+        {
+            self.get(index).unwrap()
+        }
+        #[cfg(not(debug_assertions))]
         // SAFETY: the caller must uphold most of the safety requirements for `get_unchecked`;
         // the slice is dereferenceable because `self` is a safe reference.
         // The returned pointer is safe because impls of `SliceIndex` have to guarantee that it is.
-        unsafe { &*index.get_unchecked(self) }
+        unsafe {
+            &*index.get_unchecked(self)
+        }
     }
 
     /// Returns a mutable reference to an element or subslice, without doing
@@ -696,10 +703,17 @@ impl<T> [T] {
     where
         I: SliceIndex<Self>,
     {
+        #[cfg(debug_assertions)]
+        {
+            self.get_mut(index).unwrap()
+        }
+        #[cfg(not(debug_assertions))]
         // SAFETY: the caller must uphold the safety requirements for `get_unchecked_mut`;
         // the slice is dereferenceable because `self` is a safe reference.
         // The returned pointer is safe because impls of `SliceIndex` have to guarantee that it is.
-        unsafe { &mut *index.get_unchecked_mut(self) }
+        unsafe {
+            &mut *index.get_unchecked_mut(self)
+        }
     }
 
     /// Returns a raw pointer to the slice's buffer.
