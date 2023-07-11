@@ -59,7 +59,7 @@
         "eslint": "^8.43.0",
         "eslint-config-prettier": "^8.8.0",
         "ovsx": "^0.8.1",
-        "prettier": "^2.8.8",
+        "prettier": "^3.0.0",
         "tslib": "^2.6.0",
         "typescript": "^5.1.6"
     },
