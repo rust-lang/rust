@@ -1,5 +1,5 @@
 error[E0432]: unresolved import `bar::gpriv`
-  --> $DIR/privacy3.rs:18:9
+  --> $DIR/privacy3.rs:20:9
    |
 LL |     use bar::gpriv;
    |         ^^^^^^^^^^ no `gpriv` in `bar`

@@ -16,18 +16,6 @@ LL |     std::mem::transmute(v)
    = note: source type: `[[u32; H]; W]` (this type does not have a fixed size)
    = note: target type: `[[u32; W]; H]` (size can vary because of [u32; W])
 
-error[E0308]: mismatched types
-  --> $DIR/transmute-fail.rs:12:53
-   |
-LL | fn bar<const W: bool, const H: usize>(v: [[u32; H]; W]) -> [[u32; W]; H] {
-   |                                                     ^ expected `usize`, found `bool`
-
-error[E0308]: mismatched types
-  --> $DIR/transmute-fail.rs:12:67
-   |
-LL | fn bar<const W: bool, const H: usize>(v: [[u32; H]; W]) -> [[u32; W]; H] {
-   |                                                                   ^ expected `usize`, found `bool`
-
 error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
   --> $DIR/transmute-fail.rs:23:5
    |
@@ -45,6 +33,18 @@ LL |     std::mem::transmute(v)
    |
    = note: source type: `[[[u32; 8888888]; 9999999]; 777777777]` (values of the type `[[u32; 8888888]; 9999999]` are too big for the current architecture)
    = note: target type: `[[[u32; 9999999]; 777777777]; 8888888]` (values of the type `[[u32; 9999999]; 777777777]` are too big for the current architecture)
+
+error[E0308]: mismatched types
+  --> $DIR/transmute-fail.rs:12:53
+   |
+LL | fn bar<const W: bool, const H: usize>(v: [[u32; H]; W]) -> [[u32; W]; H] {
+   |                                                     ^ expected `usize`, found `bool`
+
+error[E0308]: mismatched types
+  --> $DIR/transmute-fail.rs:12:67
+   |
+LL | fn bar<const W: bool, const H: usize>(v: [[u32; H]; W]) -> [[u32; W]; H] {
+   |                                                                   ^ expected `usize`, found `bool`
 
 error: aborting due to 6 previous errors
 
