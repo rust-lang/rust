@@ -9,7 +9,7 @@ edition = "2021"
 [dependencies]
 log = "0.4.17"
 serde_json = "1.0.96"
-serde = "1.0.156"
+serde = { version = "1.0.156", features = ["derive"] }
 crossbeam-channel = "0.5.6"
 
 [dev-dependencies]
