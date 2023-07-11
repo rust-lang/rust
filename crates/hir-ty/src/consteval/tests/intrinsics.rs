@@ -511,6 +511,24 @@ fn copy_nonoverlapping() {
 }
 
 #[test]
+fn write_bytes() {
+    check_number(
+        r#"
+        extern "rust-intrinsic" {
+            fn write_bytes<T>(dst: *mut T, val: u8, count: usize);
+        }
+
+        const GOAL: i32 = unsafe {
+            let mut x = 2;
+            write_bytes(&mut x, 5, 1);
+            x
+        };
+        "#,
+        0x05050505,
+    );
+}
+
+#[test]
 fn copy() {
     check_number(
         r#"
@@ -542,6 +560,20 @@ fn ctpop() {
         const GOAL: i64 = ctpop(-29);
         "#,
         61,
+    );
+}
+
+#[test]
+fn ctlz() {
+    check_number(
+        r#"
+        extern "rust-intrinsic" {
+            pub fn ctlz<T: Copy>(x: T) -> T;
+        }
+
+        const GOAL: u8 = ctlz(0b0001_1100_u8);
+        "#,
+        3,
     );
 }
 

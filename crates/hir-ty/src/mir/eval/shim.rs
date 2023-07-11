@@ -800,15 +800,25 @@ impl Evaluator<'_> {
             }
             "ctpop" => {
                 let [arg] = args else {
-                    return Err(MirEvalError::TypeError("likely arg is not provided"));
+                    return Err(MirEvalError::TypeError("ctpop arg is not provided"));
                 };
                 let result = u128::from_le_bytes(pad16(arg.get(self)?, false)).count_ones();
                 destination
                     .write_from_bytes(self, &(result as u128).to_le_bytes()[0..destination.size])
             }
+            "ctlz" | "ctlz_nonzero" => {
+                let [arg] = args else {
+                    return Err(MirEvalError::TypeError("cttz arg is not provided"));
+                };
+                let result =
+                    u128::from_le_bytes(pad16(arg.get(self)?, false)).leading_zeros() as usize;
+                let result = result - (128 - arg.interval.size * 8);
+                destination
+                    .write_from_bytes(self, &(result as u128).to_le_bytes()[0..destination.size])
+            }
             "cttz" | "cttz_nonzero" => {
                 let [arg] = args else {
-                    return Err(MirEvalError::TypeError("likely arg is not provided"));
+                    return Err(MirEvalError::TypeError("cttz arg is not provided"));
                 };
                 let result = u128::from_le_bytes(pad16(arg.get(self)?, false)).trailing_zeros();
                 destination
@@ -931,6 +941,24 @@ impl Evaluator<'_> {
                 };
                 let addr = Address::from_bytes(arg.interval.get(self)?)?;
                 destination.write_from_interval(self, Interval { addr, size: destination.size })
+            }
+            "write_bytes" => {
+                let [dst, val, count] = args else {
+                    return Err(MirEvalError::TypeError("write_bytes args are not provided"));
+                };
+                let count = from_bytes!(usize, count.get(self)?);
+                let val = from_bytes!(u8, val.get(self)?);
+                let Some(ty) = generic_args.as_slice(Interner).get(0).and_then(|it| it.ty(Interner))
+                else {
+                    return Err(MirEvalError::TypeError(
+                        "write_bytes generic arg is not provided",
+                    ));
+                };
+                let dst = Address::from_bytes(dst.get(self)?)?;
+                let size = self.size_of_sized(ty, locals, "copy_nonoverlapping ptr type")?;
+                let size = count * size;
+                self.write_memory_using_ref(dst, size)?.fill(val);
+                Ok(())
             }
             _ => not_supported!("unknown intrinsic {name}"),
         }

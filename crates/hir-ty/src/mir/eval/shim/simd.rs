@@ -44,7 +44,12 @@ impl Evaluator<'_> {
                     }
                 };
                 match try_const_usize(self.db, len) {
-                    Some(_) => not_supported!("array like simd type"),
+                    Some(len) => {
+                        let Some(ty) = subst.as_slice(Interner).get(0).and_then(|it| it.ty(Interner)) else {
+                            return Err(MirEvalError::TypeError("simd type with no ty param"));
+                        };
+                        Ok((len as usize, ty.clone()))
+                    }
                     None => Err(MirEvalError::TypeError("simd type with unevaluatable len param")),
                 }
             }

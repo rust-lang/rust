@@ -1726,6 +1726,18 @@ fn function_pointer() {
     );
     check_number(
         r#"
+    fn add2(x: u8) -> u8 {
+        x + 2
+    }
+    const GOAL: u8 = {
+        let plus2 = add2 as fn(u8) -> u8;
+        plus2(3)
+    };
+        "#,
+        5,
+    );
+    check_number(
+        r#"
     //- minicore: coerce_unsized, index, slice
     fn add2(x: u8) -> u8 {
         x + 2

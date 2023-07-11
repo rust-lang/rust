@@ -1627,24 +1627,26 @@ impl Evaluator<'_> {
             .ok_or_else(|| MirEvalError::UndefinedBehavior("out of bound memory read".to_string()))
     }
 
-    fn write_memory(&mut self, addr: Address, r: &[u8]) -> Result<()> {
-        if r.is_empty() {
-            return Ok(());
-        }
+    fn write_memory_using_ref(&mut self, addr: Address, size: usize) -> Result<&mut [u8]> {
         let (mem, pos) = match addr {
             Stack(it) => (&mut self.stack, it),
             Heap(it) => (&mut self.heap, it),
             Invalid(it) => {
                 return Err(MirEvalError::UndefinedBehavior(format!(
-                    "write invalid memory address {it} with content {r:?}"
+                    "write invalid memory address {it} with size {size}"
                 )));
             }
         };
-        mem.get_mut(pos..pos + r.len())
-            .ok_or_else(|| {
-                MirEvalError::UndefinedBehavior("out of bound memory write".to_string())
-            })?
-            .copy_from_slice(r);
+        Ok(mem.get_mut(pos..pos + size).ok_or_else(|| {
+            MirEvalError::UndefinedBehavior("out of bound memory write".to_string())
+        })?)
+    }
+
+    fn write_memory(&mut self, addr: Address, r: &[u8]) -> Result<()> {
+        if r.is_empty() {
+            return Ok(());
+        }
+        self.write_memory_using_ref(addr, r.len())?.copy_from_slice(r);
         Ok(())
     }
 
