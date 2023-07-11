@@ -9,7 +9,7 @@
 //!
 //! function u0:22(i64) -> i8, i8 system_v {
 //! ; symbol _ZN97_$LT$example..IsNotEmpty$u20$as$u20$mini_core..FnOnce$LT$$LP$$RF$$RF$$u5b$u16$u5d$$C$$RP$$GT$$GT$9call_once17hd517c453d67c0915E
-//! ; instance Instance { def: Item(WithOptConstParam { did: DefId(0:42 ~ example[4e51]::{impl#0}::call_once), const_param_did: None }), substs: [ReErased, ReErased] }
+//! ; instance Instance { def: Item(WithOptConstParam { did: DefId(0:42 ~ example[4e51]::{impl#0}::call_once), const_param_did: None }), args: [ReErased, ReErased] }
 //! ; abi FnAbi { args: [ArgAbi { layout: TyAndLayout { ty: IsNotEmpty, layout: Layout { size: Size(0 bytes), align: AbiAndPrefAlign { abi: Align(1 bytes), pref: Align(8 bytes) }, abi: Aggregate { sized: true }, fields: Arbitrary { offsets: [], memory_index: [] }, largest_niche: None, variants: Single { index: 0 } } }, mode: Ignore }, ArgAbi { layout: TyAndLayout { ty: &&[u16], layout: Layout { size: Size(8 bytes), align: AbiAndPrefAlign { abi: Align(8 bytes), pref: Align(8 bytes) }, abi: Scalar(Initialized { value: Pointer(AddressSpace(0)), valid_range: 1..=18446744073709551615 }), fields: Primitive, largest_niche: Some(Niche { offset: Size(0 bytes), value: Pointer(AddressSpace(0)), valid_range: 1..=18446744073709551615 }), variants: Single { index: 0 } } }, mode: Direct(ArgAttributes { regular: NonNull | NoUndef, arg_ext: None, pointee_size: Size(0 bytes), pointee_align: Some(Align(8 bytes)) }) }], ret: ArgAbi { layout: TyAndLayout { ty: (u8, u8), layout: Layout { size: Size(2 bytes), align: AbiAndPrefAlign { abi: Align(1 bytes), pref: Align(8 bytes) }, abi: ScalarPair(Initialized { value: Int(I8, false), valid_range: 0..=255 }, Initialized { value: Int(I8, false), valid_range: 0..=255 }), fields: Arbitrary { offsets: [Size(0 bytes), Size(1 bytes)], memory_index: [0, 1] }, largest_niche: None, variants: Single { index: 0 } } }, mode: Pair(ArgAttributes { regular: NoUndef, arg_ext: None, pointee_size: Size(0 bytes), pointee_align: None }, ArgAttributes { regular: NoUndef, arg_ext: None, pointee_size: Size(0 bytes), pointee_align: None }) }, c_variadic: false, fixed_count: 1, conv: Rust, can_unwind: false }
 //!
 //! ; kind  loc.idx   param    pass mode                            ty
@@ -25,7 +25,7 @@
 //!
 //!     ss0 = explicit_slot 16
 //!     sig0 = (i64, i64) -> i8, i8 system_v
-//!     fn0 = colocated u0:23 sig0 ; Instance { def: Item(WithOptConstParam { did: DefId(0:46 ~ example[4e51]::{impl#1}::call_mut), const_param_did: None }), substs: [ReErased, ReErased] }
+//!     fn0 = colocated u0:23 sig0 ; Instance { def: Item(WithOptConstParam { did: DefId(0:46 ~ example[4e51]::{impl#1}::call_mut), const_param_did: None }), args: [ReErased, ReErased] }
 //!
 //! block0(v0: i64):
 //!     nop
@@ -261,7 +261,7 @@ pub(crate) fn write_clif_file(
 
 impl fmt::Debug for FunctionCx<'_, '_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "{:?}", self.instance.substs)?;
+        writeln!(f, "{:?}", self.instance.args)?;
         writeln!(f, "{:?}", self.local_map)?;
 
         let mut clif = String::new();

@@ -24,7 +24,7 @@ pub(crate) use llvm::codegen_llvm_intrinsic_call;
 use rustc_middle::ty;
 use rustc_middle::ty::layout::{HasParamEnv, ValidityRequirement};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
-use rustc_middle::ty::subst::SubstsRef;
+use rustc_middle::ty::GenericArgsRef;
 use rustc_span::symbol::{kw, sym, Symbol};
 
 use crate::prelude::*;
@@ -213,13 +213,13 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
     source_info: mir::SourceInfo,
 ) {
     let intrinsic = fx.tcx.item_name(instance.def_id());
-    let substs = instance.substs;
+    let instance_args = instance.args;
 
     if intrinsic.as_str().starts_with("simd_") {
         self::simd::codegen_simd_intrinsic_call(
             fx,
             intrinsic,
-            substs,
+            instance_args,
             args,
             destination,
             target.expect("target for simd intrinsic"),
@@ -233,7 +233,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             fx,
             instance,
             intrinsic,
-            substs,
+            instance_args,
             args,
             destination,
             target,
@@ -365,7 +365,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     instance: Instance<'tcx>,
     intrinsic: Symbol,
-    substs: SubstsRef<'tcx>,
+    generic_args: GenericArgsRef<'tcx>,
     args: &[mir::Operand<'tcx>],
     ret: CPlace<'tcx>,
     destination: Option<BasicBlock>,
@@ -394,7 +394,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let dst = dst.load_scalar(fx);
             let count = count.load_scalar(fx);
 
-            let elem_ty = substs.type_at(0);
+            let elem_ty = generic_args.type_at(0);
             let elem_size: u64 = fx.layout_of(elem_ty).size.bytes();
             assert_eq!(args.len(), 3);
             let byte_amount =
@@ -410,7 +410,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let src = src.load_scalar(fx);
             let count = count.load_scalar(fx);
 
-            let elem_ty = substs.type_at(0);
+            let elem_ty = generic_args.type_at(0);
             let elem_size: u64 = fx.layout_of(elem_ty).size.bytes();
             assert_eq!(args.len(), 3);
             let byte_amount =
@@ -428,7 +428,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
         sym::size_of_val => {
             intrinsic_args!(fx, args => (ptr); intrinsic);
 
-            let layout = fx.layout_of(substs.type_at(0));
+            let layout = fx.layout_of(generic_args.type_at(0));
             // Note: Can't use is_unsized here as truly unsized types need to take the fixed size
             // branch
             let size = if let Abi::ScalarPair(_, _) = ptr.layout().abi {
@@ -443,7 +443,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
         sym::min_align_of_val => {
             intrinsic_args!(fx, args => (ptr); intrinsic);
 
-            let layout = fx.layout_of(substs.type_at(0));
+            let layout = fx.layout_of(generic_args.type_at(0));
             // Note: Can't use is_unsized here as truly unsized types need to take the fixed size
             // branch
             let align = if let Abi::ScalarPair(_, _) = ptr.layout().abi {
@@ -602,7 +602,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
         sym::assert_inhabited | sym::assert_zero_valid | sym::assert_mem_uninitialized_valid => {
             intrinsic_args!(fx, args => (); intrinsic);
 
-            let ty = substs.type_at(0);
+            let ty = generic_args.type_at(0);
 
             let requirement = ValidityRequirement::from_intrinsic(intrinsic);
 
@@ -674,7 +674,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             intrinsic_args!(fx, args => (ptr, base); intrinsic);
             let ptr = ptr.load_scalar(fx);
             let base = base.load_scalar(fx);
-            let ty = substs.type_at(0);
+            let ty = generic_args.type_at(0);
 
             let pointee_size: u64 = fx.layout_of(ty).size.bytes();
             let diff_bytes = fx.bcx.ins().isub(ptr, base);
@@ -720,7 +720,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             intrinsic_args!(fx, args => (ptr); intrinsic);
             let ptr = ptr.load_scalar(fx);
 
-            let ty = substs.type_at(0);
+            let ty = generic_args.type_at(0);
             match ty.kind() {
                 ty::Uint(UintTy::U128) | ty::Int(IntTy::I128) => {
                     // FIXME implement 128bit atomics
@@ -751,7 +751,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             intrinsic_args!(fx, args => (ptr, val); intrinsic);
             let ptr = ptr.load_scalar(fx);
 
-            let ty = substs.type_at(0);
+            let ty = generic_args.type_at(0);
             match ty.kind() {
                 ty::Uint(UintTy::U128) | ty::Int(IntTy::I128) => {
                     // FIXME implement 128bit atomics
@@ -1128,7 +1128,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let lhs_ref = lhs_ref.load_scalar(fx);
             let rhs_ref = rhs_ref.load_scalar(fx);
 
-            let size = fx.layout_of(substs.type_at(0)).layout.size();
+            let size = fx.layout_of(generic_args.type_at(0)).layout.size();
             // FIXME add and use emit_small_memcmp
             let is_eq_value = if size == Size::ZERO {
                 // No bytes means they're trivially equal

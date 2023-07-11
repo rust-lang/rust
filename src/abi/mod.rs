@@ -70,7 +70,7 @@ pub(crate) fn get_function_sig<'tcx>(
     default_call_conv: CallConv,
     inst: Instance<'tcx>,
 ) -> Signature {
-    assert!(!inst.substs.has_infer());
+    assert!(!inst.args.has_infer());
     clif_sig_from_fn_abi(
         tcx,
         default_call_conv,
@@ -377,16 +377,16 @@ pub(crate) fn codegen_terminator_call<'tcx>(
     let ret_place = codegen_place(fx, destination);
 
     // Handle special calls like intrinsics and empty drop glue.
-    let instance = if let ty::FnDef(def_id, substs) = *func.layout().ty.kind() {
+    let instance = if let ty::FnDef(def_id, fn_args) = *func.layout().ty.kind() {
         let instance =
-            ty::Instance::expect_resolve(fx.tcx, ty::ParamEnv::reveal_all(), def_id, substs)
+            ty::Instance::expect_resolve(fx.tcx, ty::ParamEnv::reveal_all(), def_id, fn_args)
                 .polymorphize(fx.tcx);
 
         if fx.tcx.symbol_name(instance).name.starts_with("llvm.") {
             crate::intrinsics::codegen_llvm_intrinsic_call(
                 fx,
                 &fx.tcx.symbol_name(instance).name,
-                substs,
+                fn_args,
                 args,
                 ret_place,
                 target,
@@ -611,7 +611,7 @@ pub(crate) fn codegen_drop<'tcx>(
                 // `Instance::resolve_drop_in_place`?
                 let virtual_drop = Instance {
                     def: ty::InstanceDef::Virtual(drop_instance.def_id(), 0),
-                    substs: drop_instance.substs,
+                    args: drop_instance.args,
                 };
                 let fn_abi =
                     RevealAllLayoutCx(fx.tcx).fn_abi_of_instance(virtual_drop, ty::List::empty());
@@ -648,7 +648,7 @@ pub(crate) fn codegen_drop<'tcx>(
 
                 let virtual_drop = Instance {
                     def: ty::InstanceDef::Virtual(drop_instance.def_id(), 0),
-                    substs: drop_instance.substs,
+                    args: drop_instance.args,
                 };
                 let fn_abi =
                     RevealAllLayoutCx(fx.tcx).fn_abi_of_instance(virtual_drop, ty::List::empty());
