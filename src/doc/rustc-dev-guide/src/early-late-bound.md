@@ -15,7 +15,7 @@ with this topic.
 ## What does it mean for parameters to be early or late bound
 
 All function definitions conceptually have a ZST (this is represented by `TyKind::FnDef` in rustc).
-The only generics on this zst are the early bound parameters of the function definition. e.g.
+The only generics on this ZST are the early bound parameters of the function definition. e.g.
 ```rust
 fn foo<'a>(_: &'a u32) {}
 
