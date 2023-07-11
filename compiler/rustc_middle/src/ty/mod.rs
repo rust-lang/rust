@@ -301,15 +301,15 @@ pub enum Restriction<Id = DefId> {
 }
 
 impl<Id: Into<DefId> + Copy> Restriction<Id> {
-    /// Returns `true` if this restriction applies in the given module. This
-    /// means the behavior is _not_ allowed.
-    pub fn is_restricted_in(self, module: DefId, tcx: TyCtxt<'_>) -> bool {
+    /// Returns `true` if the behavior is allowed/unrestricted in the given module. A value of
+    /// `false` indicates that the behavior is prohibited.
+    pub fn is_allowed_in(self, module: DefId, tcx: TyCtxt<'_>) -> bool {
         let restricted_to = match self {
-            Restriction::Unrestricted => return false,
+            Restriction::Unrestricted => return true,
             Restriction::Restricted(module, _) => module,
         };
 
-        !tcx.is_descendant_of(module, restricted_to.into())
+        tcx.is_descendant_of(module, restricted_to.into())
     }
 
     /// Obtain the [`Span`] of the restriction. If unrestricted, an empty span is returned.

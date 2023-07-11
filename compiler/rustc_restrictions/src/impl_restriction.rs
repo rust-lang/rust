@@ -27,7 +27,7 @@ impl<'v> Visitor<'v> for ImplOfRestrictedTraitVisitor<'v> {
 
             let restriction = self.tcx.impl_restriction(trait_def_id);
 
-            if restriction.is_restricted_in(item.owner_id.to_def_id(), self.tcx) {
+            if !restriction.is_allowed_in(item.owner_id.to_def_id(), self.tcx) {
                 let impl_span =
                     self.tcx.span_of_impl(item.owner_id.to_def_id()).expect("impl should be local");
                 let restriction_span = restriction.span();

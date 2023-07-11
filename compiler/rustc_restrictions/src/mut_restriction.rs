@@ -89,7 +89,7 @@ impl<'tcx> Visitor<'tcx> for MutRestrictionChecker<'_, 'tcx> {
                         let field_def = field_ty.field_def(field);
                         let field_mut_restriction = self.tcx.mut_restriction(field_def.did);
 
-                        if field_mut_restriction.is_restricted_in(body_did, self.tcx) {
+                        if !field_mut_restriction.is_allowed_in(body_did, self.tcx) {
                             self.tcx.sess.emit_err(errors::MutOfRestrictedField {
                                 mut_span: self.span,
                                 restriction_span: field_mut_restriction.span(),
@@ -114,7 +114,7 @@ impl<'tcx> Visitor<'tcx> for MutRestrictionChecker<'_, 'tcx> {
             let construction_restriction = self.tcx.adt_expression_restriction(variant.def_id);
 
             let body_did = self.body.source.instance.def_id();
-            if construction_restriction.is_restricted_in(body_did, self.tcx) {
+            if !construction_restriction.is_allowed_in(body_did, self.tcx) {
                 self.tcx.sess.emit_err(errors::ConstructionOfTyWithMutRestrictedField {
                     construction_span: self.span,
                     restriction_span: construction_restriction.span(),
