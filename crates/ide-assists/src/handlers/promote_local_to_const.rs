@@ -76,10 +76,12 @@ pub(crate) fn promote_local_to_const(acc: &mut Assists, ctx: &AssistContext<'_>)
             let name = to_upper_snake_case(&name.to_string());
             let usages = Definition::Local(local).usages(&ctx.sema).all();
             if let Some(usages) = usages.references.get(&ctx.file_id()) {
+                let name = make::name_ref(&name);
+
                 for usage in usages {
                     let Some(usage) = usage.name.as_name_ref().cloned() else { continue };
                     let usage = edit.make_mut(usage);
-                    ted::replace(usage.syntax(), make::name_ref(&name).clone_for_update().syntax());
+                    ted::replace(usage.syntax(), name.clone_for_update().syntax());
                 }
             }
 
@@ -151,6 +153,27 @@ fn foo() {
 fn foo() {
     const $0X: i32 = 0;
     let y = X;
+}
+",
+        );
+    }
+
+    #[test]
+    fn multiple_uses() {
+        check_assist(
+            promote_local_to_const,
+            r"
+fn foo() {
+    let x$0 = 0;
+    let y = x;
+    let z = (x, x, x, x);
+}
+",
+            r"
+fn foo() {
+    const $0X: i32 = 0;
+    let y = X;
+    let z = (X, X, X, X);
 }
 ",
         );
