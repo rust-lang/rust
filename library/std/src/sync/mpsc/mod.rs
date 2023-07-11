@@ -347,7 +347,7 @@ pub struct Sender<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T: Send> Send for Sender<T> {}
 
-#[stable(feature = "mpsc_sender_sync", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "mpsc_sender_sync", since = "1.72.0")]
 unsafe impl<T: Send> Sync for Sender<T> {}
 
 /// The sending-half of Rust's synchronous [`sync_channel`] type.
