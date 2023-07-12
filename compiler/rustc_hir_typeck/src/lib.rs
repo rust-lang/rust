@@ -141,7 +141,7 @@ fn has_typeck_results(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 }
 
 fn used_trait_imports(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &UnordSet<LocalDefId> {
-    &*tcx.typeck(def_id).used_trait_imports
+    &tcx.typeck(def_id).used_trait_imports
 }
 
 fn typeck<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &ty::TypeckResults<'tcx> {
