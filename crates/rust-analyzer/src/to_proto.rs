@@ -884,7 +884,7 @@ fn outside_workspace_annotation_id() -> String {
     String::from("OutsideWorkspace")
 }
 
-fn merge_text_and_snippet_edit(
+fn merge_text_and_snippet_edits(
     line_index: &LineIndex,
     edit: TextEdit,
     snippet_edit: Option<SnippetEdit>,
@@ -905,34 +905,33 @@ fn merge_text_and_snippet_edit(
         };
 
         // insert any snippets before the text edit
-        let first_snippet_in_or_after_edit = loop {
-            let Some((snippet_index, snippet_range)) = snippets.peek() else { break None };
-
-            // check if we're entirely before the range
-            // only possible for tabstops
-            if snippet_range.end() < new_range.start()
-                && stdx::always!(
-                    snippet_range.is_empty(),
-                    "placeholder range is before any text edits"
-                )
-            {
-                let range = range(&line_index, *snippet_range);
-                let new_text = format!("${snippet_index}");
-
-                edits.push(SnippetTextEdit {
-                    range,
-                    new_text,
-                    insert_text_format: Some(lsp_types::InsertTextFormat::SNIPPET),
-                    annotation_id: None,
-                })
-            } else {
-                break Some((snippet_index, snippet_range));
-            }
-        };
-
-        if first_snippet_in_or_after_edit
-            .is_some_and(|(_, range)| new_range.intersect(*range).is_some())
+        for (snippet_index, snippet_range) in
+            snippets.take_while_ref(|(_, range)| range.end() < new_range.start())
         {
+            let snippet_range = if stdx::never!(
+                !snippet_range.is_empty(),
+                "placeholder range {:?} is before current text edit range {:?}",
+                snippet_range,
+                new_range
+            ) {
+                // only possible for tabstops, so make sure it's an empty/insert range
+                TextRange::empty(snippet_range.start())
+            } else {
+                snippet_range
+            };
+
+            let range = range(&line_index, snippet_range);
+            let new_text = format!("${snippet_index}");
+
+            edits.push(SnippetTextEdit {
+                range,
+                new_text,
+                insert_text_format: Some(lsp_types::InsertTextFormat::SNIPPET),
+                annotation_id: None,
+            })
+        }
+
+        if snippets.peek().is_some_and(|(_, range)| new_range.intersect(*range).is_some()) {
             // at least one snippet edit intersects this text edit,
             // so gather all of the edits that intersect this text edit
             let mut all_snippets = snippets
@@ -984,11 +983,15 @@ fn merge_text_and_snippet_edit(
     // so it's either a tail of text edits or tabstops
     edits.extend(text_edits.map(|indel| snippet_text_edit(line_index, false, indel)));
     edits.extend(snippets.map(|(snippet_index, snippet_range)| {
-        stdx::always!(
-            snippet_range.is_empty(),
+        let snippet_range = if stdx::never!(
+            !snippet_range.is_empty(),
             "found placeholder snippet {:?} without a text edit",
             snippet_range
-        );
+        ) {
+            TextRange::empty(snippet_range.start())
+        } else {
+            snippet_range
+        };
 
         let range = range(&line_index, snippet_range);
         let new_text = format!("${snippet_index}");
@@ -1012,7 +1015,7 @@ pub(crate) fn snippet_text_document_edit(
 ) -> Cancellable<lsp_ext::SnippetTextDocumentEdit> {
     let text_document = optional_versioned_text_document_identifier(snap, file_id);
     let line_index = snap.file_line_index(file_id)?;
-    let mut edits = merge_text_and_snippet_edit(&line_index, edit, snippet_edit);
+    let mut edits = merge_text_and_snippet_edits(&line_index, edit, snippet_edit);
 
     if snap.analysis.is_library_file(file_id)? && snap.config.change_annotation_support() {
         for edit in &mut edits {
