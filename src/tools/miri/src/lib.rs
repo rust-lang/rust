@@ -43,15 +43,17 @@
 // Needed for rustdoc from bootstrap (with `-Znormalize-docs`).
 #![recursion_limit = "256"]
 
+extern crate either; // the one from rustc
+
 extern crate rustc_apfloat;
 extern crate rustc_ast;
-extern crate rustc_errors;
-#[macro_use]
-extern crate rustc_middle;
 extern crate rustc_const_eval;
 extern crate rustc_data_structures;
+extern crate rustc_errors;
 extern crate rustc_hir;
 extern crate rustc_index;
+#[macro_use]
+extern crate rustc_middle;
 extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;

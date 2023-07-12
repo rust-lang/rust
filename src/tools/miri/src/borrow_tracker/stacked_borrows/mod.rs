@@ -994,35 +994,25 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
     }
 
-    /// After a stack frame got pushed, retag the return place so that we are sure
-    /// it does not alias with anything.
+    /// Protect a place so that it cannot be used any more for the duration of the current function
+    /// call.
     ///
-    /// This is a HACK because there is nothing in MIR that would make the retag
-    /// explicit. Also see <https://github.com/rust-lang/rust/issues/71117>.
-    fn sb_retag_return_place(&mut self) -> InterpResult<'tcx> {
+    /// This is used to ensure soundness of in-place function argument/return passing.
+    fn sb_protect_place(&mut self, place: &MPlaceTy<'tcx, Provenance>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        let return_place = &this.frame().return_place;
-        if return_place.layout.is_zst() {
-            // There may not be any memory here, nothing to do.
-            return Ok(());
-        }
-        // We need this to be in-memory to use tagged pointers.
-        let return_place = this.force_allocation(&return_place.clone())?;
 
-        // We have to turn the place into a pointer to use the existing code.
+        // We have to turn the place into a pointer to use the usual retagging logic.
         // (The pointer type does not matter, so we use a raw pointer.)
-        let ptr_layout = this.layout_of(Ty::new_mut_ptr(this.tcx.tcx, return_place.layout.ty))?;
-        let val = ImmTy::from_immediate(return_place.to_ref(this), ptr_layout);
-        // Reborrow it. With protection! That is part of the point.
+        let ptr_layout = this.layout_of(Ty::new_mut_ptr(this.tcx.tcx, place.layout.ty))?;
+        let ptr = ImmTy::from_immediate(place.to_ref(this), ptr_layout);
+        // Reborrow it. With protection! That is the entire point.
         let new_perm = NewPermission::Uniform {
             perm: Permission::Unique,
             access: Some(AccessKind::Write),
             protector: Some(ProtectorKind::StrongProtector),
         };
-        let val = this.sb_retag_reference(&val, new_perm, RetagCause::FnReturnPlace)?;
-        // And use reborrowed pointer for return place.
-        let return_place = this.ref_to_mplace(&val)?;
-        this.frame_mut().return_place = return_place.into();
+        let _new_ptr = this.sb_retag_reference(&ptr, new_perm, RetagCause::InPlaceFnPassing)?;
+        // We just throw away `new_ptr`, so nobody can access this memory while it is protected.
 
         Ok(())
     }

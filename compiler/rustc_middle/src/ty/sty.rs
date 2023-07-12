@@ -35,9 +35,12 @@ use std::ops::{ControlFlow, Deref, Range};
 use ty::util::IntTypeExt;
 
 use rustc_type_ir::sty::TyKind::*;
+use rustc_type_ir::CollectAndApply;
+use rustc_type_ir::ConstKind as IrConstKind;
+use rustc_type_ir::DebugWithInfcx;
+use rustc_type_ir::DynKind;
+use rustc_type_ir::RegionKind as IrRegionKind;
 use rustc_type_ir::TyKind as IrTyKind;
-use rustc_type_ir::{CollectAndApply, ConstKind as IrConstKind};
-use rustc_type_ir::{DynKind, RegionKind as IrRegionKind};
 
 use super::GenericParamDefKind;
 
@@ -694,6 +697,15 @@ pub enum ExistentialPredicate<'tcx> {
     AutoTrait(DefId),
 }
 
+impl<'tcx> DebugWithInfcx<TyCtxt<'tcx>> for ExistentialPredicate<'tcx> {
+    fn fmt<InfCtx: rustc_type_ir::InferCtxtLike<TyCtxt<'tcx>>>(
+        this: rustc_type_ir::OptWithInfcx<'_, TyCtxt<'tcx>, InfCtx, &Self>,
+        f: &mut core::fmt::Formatter<'_>,
+    ) -> core::fmt::Result {
+        fmt::Debug::fmt(&this.data, f)
+    }
+}
+
 impl<'tcx> ExistentialPredicate<'tcx> {
     /// Compares via an ordering that will not change if modules are reordered or other changes are
     /// made to the tree. In particular, this ordering is preserved across incremental compilations.
@@ -1237,7 +1249,7 @@ impl<'tcx> AliasTy<'tcx> {
     pub fn kind(self, tcx: TyCtxt<'tcx>) -> ty::AliasKind {
         match tcx.def_kind(self.def_id) {
             DefKind::AssocTy if let DefKind::Impl { of_trait: false } = tcx.def_kind(tcx.parent(self.def_id)) => ty::Inherent,
-            DefKind::AssocTy | DefKind::ImplTraitPlaceholder => ty::Projection,
+            DefKind::AssocTy => ty::Projection,
             DefKind::OpaqueTy => ty::Opaque,
             DefKind::TyAlias => ty::Weak,
             kind => bug!("unexpected DefKind in AliasTy: {kind:?}"),
@@ -1265,9 +1277,6 @@ impl<'tcx> AliasTy<'tcx> {
     pub fn trait_def_id(self, tcx: TyCtxt<'tcx>) -> DefId {
         match tcx.def_kind(self.def_id) {
             DefKind::AssocTy | DefKind::AssocConst => tcx.parent(self.def_id),
-            DefKind::ImplTraitPlaceholder => {
-                tcx.parent(tcx.impl_trait_in_trait_parent_fn(self.def_id))
-            }
             kind => bug!("expected a projection AliasTy; found {kind:?}"),
         }
     }
@@ -1571,12 +1580,6 @@ impl<'tcx> Deref for Region<'tcx> {
     #[inline]
     fn deref(&self) -> &RegionKind<'tcx> {
         &self.0.0
-    }
-}
-
-impl<'tcx> fmt::Debug for Region<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self.kind())
     }
 }
 
@@ -1970,7 +1973,6 @@ impl<'tcx> Ty<'tcx> {
             (kind, tcx.def_kind(alias_ty.def_id)),
             (ty::Opaque, DefKind::OpaqueTy)
                 | (ty::Projection | ty::Inherent, DefKind::AssocTy)
-                | (ty::Opaque | ty::Projection, DefKind::ImplTraitPlaceholder)
                 | (ty::Weak, DefKind::TyAlias)
         );
         Ty::new(tcx, Alias(kind, alias_ty))

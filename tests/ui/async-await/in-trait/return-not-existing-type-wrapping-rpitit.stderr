@@ -1,0 +1,9 @@
+error[E0412]: cannot find type `Missing` in this scope
+  --> $DIR/return-not-existing-type-wrapping-rpitit.rs:8:25
+   |
+LL |     fn bar() -> Wrapper<Missing<impl Sized>>;
+   |                         ^^^^^^^ not found in this scope
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0412`.

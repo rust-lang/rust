@@ -30,6 +30,7 @@ impl<T: ?Sized> *const T {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_ptr_is_null", issue = "74939")]
+    #[rustc_diagnostic_item = "ptr_const_is_null"]
     #[inline]
     pub const fn is_null(self) -> bool {
         #[inline]

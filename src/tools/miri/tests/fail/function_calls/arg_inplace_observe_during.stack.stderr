@@ -1,0 +1,37 @@
+error: Undefined Behavior: not granting access to tag <TAG> because that would remove [Unique for <TAG>] which is strongly protected because it is an argument of call ID
+  --> $DIR/arg_inplace_observe_during.rs:LL:CC
+   |
+LL |     unsafe { ptr.read() };
+   |              ^^^^^^^^^^ not granting access to tag <TAG> because that would remove [Unique for <TAG>] which is strongly protected because it is an argument of call ID
+   |
+   = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
+   = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
+help: <TAG> was created by a SharedReadWrite retag at offsets [0x0..0x4]
+  --> $DIR/arg_inplace_observe_during.rs:LL:CC
+   |
+LL | /     mir! {
+LL | |         let unit: ();
+LL | |         {
+LL | |             let non_copy = S(42);
+...  |
+LL | |
+LL | |     }
+   | |_____^
+help: <TAG> is this argument
+  --> $DIR/arg_inplace_observe_during.rs:LL:CC
+   |
+LL |     x.0 = 0;
+   |     ^^^^^^^
+   = note: BACKTRACE (of the first span):
+   = note: inside `change_arg` at $DIR/arg_inplace_observe_during.rs:LL:CC
+note: inside `main`
+  --> $DIR/arg_inplace_observe_during.rs:LL:CC
+   |
+LL |             Call(unit, after_call, change_arg(Move(*ptr), ptr))
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: this error originates in the macro `::core::intrinsics::mir::__internal_remove_let` which comes from the expansion of the macro `mir` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

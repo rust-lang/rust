@@ -30,7 +30,7 @@ use super::{
 use crate::const_eval;
 use crate::errors::{DanglingPtrInFinal, UnsupportedUntypedPointer};
 
-pub trait CompileTimeMachine<'mir, 'tcx, T> = Machine<
+pub trait CompileTimeMachine<'mir, 'tcx: 'mir, T> = Machine<
         'mir,
         'tcx,
         MemoryKind = T,

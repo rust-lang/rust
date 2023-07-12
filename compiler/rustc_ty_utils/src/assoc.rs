@@ -24,70 +24,54 @@ fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &[DefId] {
     let item = tcx.hir().expect_item(def_id);
     match item.kind {
         hir::ItemKind::Trait(.., ref trait_item_refs) => {
-            if tcx.lower_impl_trait_in_trait_to_assoc_ty() {
-                // We collect RPITITs for each trait method's return type and create a
-                // corresponding associated item using associated_types_for_impl_traits_in_associated_fn
-                // query.
-                tcx.arena.alloc_from_iter(
-                    trait_item_refs
-                        .iter()
-                        .map(|trait_item_ref| trait_item_ref.id.owner_id.to_def_id())
-                        .chain(
-                            trait_item_refs
-                                .iter()
-                                .filter(|trait_item_ref| {
-                                    matches!(trait_item_ref.kind, hir::AssocItemKind::Fn { .. })
-                                })
-                                .flat_map(|trait_item_ref| {
-                                    let trait_fn_def_id =
-                                        trait_item_ref.id.owner_id.def_id.to_def_id();
-                                    tcx.associated_types_for_impl_traits_in_associated_fn(
-                                        trait_fn_def_id,
-                                    )
-                                })
-                                .map(|def_id| *def_id),
-                        ),
-                )
-            } else {
-                tcx.arena.alloc_from_iter(
-                    trait_item_refs
-                        .iter()
-                        .map(|trait_item_ref| trait_item_ref.id.owner_id.to_def_id()),
-                )
-            }
+            // We collect RPITITs for each trait method's return type and create a
+            // corresponding associated item using associated_types_for_impl_traits_in_associated_fn
+            // query.
+            tcx.arena.alloc_from_iter(
+                trait_item_refs
+                    .iter()
+                    .map(|trait_item_ref| trait_item_ref.id.owner_id.to_def_id())
+                    .chain(
+                        trait_item_refs
+                            .iter()
+                            .filter(|trait_item_ref| {
+                                matches!(trait_item_ref.kind, hir::AssocItemKind::Fn { .. })
+                            })
+                            .flat_map(|trait_item_ref| {
+                                let trait_fn_def_id = trait_item_ref.id.owner_id.def_id.to_def_id();
+                                tcx.associated_types_for_impl_traits_in_associated_fn(
+                                    trait_fn_def_id,
+                                )
+                            })
+                            .map(|def_id| *def_id),
+                    ),
+            )
         }
         hir::ItemKind::Impl(ref impl_) => {
-            if tcx.lower_impl_trait_in_trait_to_assoc_ty() {
-                // We collect RPITITs for each trait method's return type, on the impl side too and
-                // create a corresponding associated item using
-                // associated_types_for_impl_traits_in_associated_fn query.
-                tcx.arena.alloc_from_iter(
-                    impl_
-                        .items
-                        .iter()
-                        .map(|impl_item_ref| impl_item_ref.id.owner_id.to_def_id())
-                        .chain(impl_.of_trait.iter().flat_map(|_| {
-                            impl_
-                                .items
-                                .iter()
-                                .filter(|impl_item_ref| {
-                                    matches!(impl_item_ref.kind, hir::AssocItemKind::Fn { .. })
-                                })
-                                .flat_map(|impl_item_ref| {
-                                    let impl_fn_def_id =
-                                        impl_item_ref.id.owner_id.def_id.to_def_id();
-                                    tcx.associated_types_for_impl_traits_in_associated_fn(
-                                        impl_fn_def_id,
-                                    )
-                                })
-                                .map(|def_id| *def_id)
-                        })),
-                )
-            } else {
-                tcx.arena.alloc_from_iter(
-                    impl_.items.iter().map(|impl_item_ref| impl_item_ref.id.owner_id.to_def_id()),
-                )
-            }
+            // We collect RPITITs for each trait method's return type, on the impl side too and
+            // create a corresponding associated item using
+            // associated_types_for_impl_traits_in_associated_fn query.
+            tcx.arena.alloc_from_iter(
+                impl_
+                    .items
+                    .iter()
+                    .map(|impl_item_ref| impl_item_ref.id.owner_id.to_def_id())
+                    .chain(impl_.of_trait.iter().flat_map(|_| {
+                        impl_
+                            .items
+                            .iter()
+                            .filter(|impl_item_ref| {
+                                matches!(impl_item_ref.kind, hir::AssocItemKind::Fn { .. })
+                            })
+                            .flat_map(|impl_item_ref| {
+                                let impl_fn_def_id = impl_item_ref.id.owner_id.def_id.to_def_id();
+                                tcx.associated_types_for_impl_traits_in_associated_fn(
+                                    impl_fn_def_id,
+                                )
+                            })
+                            .map(|def_id| *def_id)
+                    })),
+            )
         }
         _ => span_bug!(item.span, "associated_item_def_ids: not impl or trait"),
     }

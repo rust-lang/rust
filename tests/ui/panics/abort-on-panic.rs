@@ -1,4 +1,6 @@
 // run-pass
+// revisions: current next
+//[next] compile-flags: -Ztrait-solver=next
 
 #![allow(unused_must_use)]
 #![feature(c_unwind)]

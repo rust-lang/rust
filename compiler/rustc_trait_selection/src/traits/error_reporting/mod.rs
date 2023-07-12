@@ -1640,6 +1640,8 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     )
                     .into(),
                 };
+                // FIXME(-Ztrait-solver=next): For diagnostic purposes, it would be nice
+                // to deeply normalize this type.
                 let normalized_term =
                     ocx.normalize(&obligation.cause, obligation.param_env, unnormalized_term);
 

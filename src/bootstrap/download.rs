@@ -402,7 +402,11 @@ impl Config {
 
     fn ci_component_contents(&self, stamp_file: &str) -> Vec<String> {
         assert!(self.download_rustc());
-        let ci_rustc_dir = self.out.join(&*self.build.triple).join("ci-rustc");
+        if self.dry_run() {
+            return vec![];
+        }
+
+        let ci_rustc_dir = self.ci_rustc_dir();
         let stamp_file = ci_rustc_dir.join(stamp_file);
         let contents_file = t!(File::open(&stamp_file), stamp_file.display().to_string());
         t!(BufReader::new(contents_file).lines().collect())
@@ -419,7 +423,7 @@ impl Config {
         self.download_toolchain(
             &version,
             "ci-rustc",
-            commit,
+            &format!("{commit}-{}", self.llvm_assertions),
             &extra_components,
             Self::download_ci_component,
         );
@@ -495,8 +499,15 @@ impl Config {
 
     /// Download a single component of a CI-built toolchain (not necessarily a published nightly).
     // NOTE: intentionally takes an owned string to avoid downloading multiple times by accident
-    fn download_ci_component(&self, filename: String, prefix: &str, commit: &str) {
-        Self::download_component(self, DownloadSource::CI, filename, prefix, commit, "ci-rustc")
+    fn download_ci_component(&self, filename: String, prefix: &str, commit_with_assertions: &str) {
+        Self::download_component(
+            self,
+            DownloadSource::CI,
+            filename,
+            prefix,
+            commit_with_assertions,
+            "ci-rustc",
+        )
     }
 
     fn download_component(
@@ -516,11 +527,18 @@ impl Config {
         let bin_root = self.out.join(self.build.triple).join(destination);
         let tarball = cache_dir.join(&filename);
         let (base_url, url, should_verify) = match mode {
-            DownloadSource::CI => (
-                self.stage0_metadata.config.artifacts_server.clone(),
-                format!("{key}/{filename}"),
-                false,
-            ),
+            DownloadSource::CI => {
+                let dist_server = if self.llvm_assertions {
+                    self.stage0_metadata.config.artifacts_with_llvm_assertions_server.clone()
+                } else {
+                    self.stage0_metadata.config.artifacts_server.clone()
+                };
+                let url = format!(
+                    "{}/{filename}",
+                    key.strip_suffix(&format!("-{}", self.llvm_assertions)).unwrap()
+                );
+                (dist_server, url, false)
+            }
             DownloadSource::Dist => {
                 let dist_server = env::var("RUSTUP_DIST_SERVER")
                     .unwrap_or(self.stage0_metadata.config.dist_server.to_string());

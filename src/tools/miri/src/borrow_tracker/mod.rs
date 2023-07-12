@@ -74,7 +74,7 @@ pub struct FrameState {
 
 impl VisitTags for FrameState {
     fn visit_tags(&self, _visit: &mut dyn FnMut(BorTag)) {
-        // `protected_tags` are fine to GC.
+        // `protected_tags` are already recorded by `GlobalStateInner`.
     }
 }
 
@@ -108,9 +108,12 @@ pub struct GlobalStateInner {
 }
 
 impl VisitTags for GlobalStateInner {
-    fn visit_tags(&self, _visit: &mut dyn FnMut(BorTag)) {
-        // The only candidate is base_ptr_tags, and that does not need visiting since we don't ever
-        // GC the bottommost tag.
+    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
+        for &tag in self.protected_tags.keys() {
+            visit(tag);
+        }
+        // The only other candidate is base_ptr_tags, and that does not need visiting since we don't ever
+        // GC the bottommost/root tag.
     }
 }
 
@@ -302,12 +305,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
     }
 
-    fn retag_return_place(&mut self) -> InterpResult<'tcx> {
+    fn protect_place(&mut self, place: &MPlaceTy<'tcx, Provenance>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let method = this.machine.borrow_tracker.as_ref().unwrap().borrow().borrow_tracker_method;
         match method {
-            BorrowTrackerMethod::StackedBorrows => this.sb_retag_return_place(),
-            BorrowTrackerMethod::TreeBorrows => this.tb_retag_return_place(),
+            BorrowTrackerMethod::StackedBorrows => this.sb_protect_place(place),
+            BorrowTrackerMethod::TreeBorrows => this.tb_protect_place(place),
         }
     }
 

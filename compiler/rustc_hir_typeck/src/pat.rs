@@ -335,8 +335,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         mut def_bm: BindingMode,
     ) -> (Ty<'tcx>, BindingMode) {
-        let mut expected = self.resolve_vars_with_obligations(expected);
-
+        let mut expected = self.try_structurally_resolve_type(pat.span, expected);
         // Peel off as many `&` or `&mut` from the scrutinee type as possible. For example,
         // for `match &&&mut Some(5)` the loop runs three times, aborting when it reaches
         // the `Some(5)` which is not of type Ref.
@@ -353,7 +352,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Preserve the reference type. We'll need it later during THIR lowering.
             pat_adjustments.push(expected);
 
-            expected = inner_ty;
+            expected = self.try_structurally_resolve_type(pat.span, inner_ty);
             def_bm = ty::BindByReference(match def_bm {
                 // If default binding mode is by value, make it `ref` or `ref mut`
                 // (depending on whether we observe `&` or `&mut`).
@@ -627,6 +626,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         local_ty
     }
 
+    /// When a variable is bound several times in a `PatKind::Or`, it'll resolve all of the
+    /// subsequent bindings of the same name to the first usage. Verify that all of these
+    /// bindings have the same type by comparing them all against the type of that first pat.
     fn check_binding_alt_eq_ty(
         &self,
         ba: hir::BindingAnnotation,
@@ -638,7 +640,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let var_ty = self.local_ty(span, var_id);
         if let Some(mut err) = self.demand_eqtype_pat_diag(span, var_ty, ty, ti) {
             let hir = self.tcx.hir();
-            let var_ty = self.resolve_vars_with_obligations(var_ty);
+            let var_ty = self.resolve_vars_if_possible(var_ty);
             let msg = format!("first introduced with type `{var_ty}` here");
             err.span_label(hir.span(var_id), msg);
             let in_match = hir.parent_iter(var_id).any(|(_, n)| {
@@ -656,7 +658,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 &mut err,
                 span,
                 var_ty,
-                self.resolve_vars_with_obligations(ty),
+                self.resolve_vars_if_possible(ty),
                 ba,
             );
             err.emit();

@@ -464,52 +464,53 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         span: Span,
     ) -> Option<TypeErrorAdditionalDiags> {
         let hir = self.tcx.hir();
-        if let Some(node) = self.tcx.hir().find_by_def_id(cause.body_id) &&
-            let hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::Fn(_sig, _, body_id), ..
-                }) = node {
-        let body = hir.body(*body_id);
+        if let Some(body_id) = self.tcx.hir().maybe_body_owned_by(cause.body_id) {
+            let body = hir.body(body_id);
 
-        /// Find the if expression with given span
-        struct IfVisitor {
-            pub result: bool,
-            pub found_if: bool,
-            pub err_span: Span,
-        }
+            /// Find the if expression with given span
+            struct IfVisitor {
+                pub result: bool,
+                pub found_if: bool,
+                pub err_span: Span,
+            }
 
-        impl<'v> Visitor<'v> for IfVisitor {
-            fn visit_expr(&mut self, ex: &'v hir::Expr<'v>) {
-                if self.result { return; }
-                match ex.kind {
-                    hir::ExprKind::If(cond, _, _) => {
-                        self.found_if = true;
-                        walk_expr(self, cond);
-                        self.found_if = false;
+            impl<'v> Visitor<'v> for IfVisitor {
+                fn visit_expr(&mut self, ex: &'v hir::Expr<'v>) {
+                    if self.result {
+                        return;
                     }
-                    _ => walk_expr(self, ex),
+                    match ex.kind {
+                        hir::ExprKind::If(cond, _, _) => {
+                            self.found_if = true;
+                            walk_expr(self, cond);
+                            self.found_if = false;
+                        }
+                        _ => walk_expr(self, ex),
+                    }
+                }
+
+                fn visit_stmt(&mut self, ex: &'v hir::Stmt<'v>) {
+                    if let hir::StmtKind::Local(hir::Local {
+                                    span, pat: hir::Pat{..}, ty: None, init: Some(_), ..
+                                }) = &ex.kind
+                                && self.found_if
+                                && span.eq(&self.err_span) {
+                                self.result = true;
+                            }
+                    walk_stmt(self, ex);
+                }
+
+                fn visit_body(&mut self, body: &'v hir::Body<'v>) {
+                    hir::intravisit::walk_body(self, body);
                 }
             }
 
-            fn visit_stmt(&mut self, ex: &'v hir::Stmt<'v>) {
-                if let hir::StmtKind::Local(hir::Local {
-                        span, pat: hir::Pat{..}, ty: None, init: Some(_), ..
-                    }) = &ex.kind
-                    && self.found_if
-                    && span.eq(&self.err_span) {
-                        self.result = true;
-                }
-                walk_stmt(self, ex);
-            }
-
-            fn visit_body(&mut self, body: &'v hir::Body<'v>) {
-                hir::intravisit::walk_body(self, body);
-            }
-        }
-
-        let mut visitor = IfVisitor { err_span: span, found_if: false, result: false };
-        visitor.visit_body(&body);
-        if visitor.result {
-                return Some(TypeErrorAdditionalDiags::AddLetForLetChains{span: span.shrink_to_lo()});
+            let mut visitor = IfVisitor { err_span: span, found_if: false, result: false };
+            visitor.visit_body(&body);
+            if visitor.result {
+                return Some(TypeErrorAdditionalDiags::AddLetForLetChains {
+                    span: span.shrink_to_lo(),
+                });
             }
         }
         None

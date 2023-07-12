@@ -109,20 +109,7 @@ fn enforce_impl_params_are_constrained(tcx: TyCtxt<'_>, impl_def_id: LocalDefId)
                         vec![]
                     }
                 }
-                ty::AssocKind::Fn => {
-                    if !tcx.lower_impl_trait_in_trait_to_assoc_ty()
-                        && item.defaultness(tcx).has_value()
-                        && tcx.impl_method_has_trait_impl_trait_tys(item.def_id)
-                        && let Ok(table) = tcx.collect_return_position_impl_trait_in_trait_tys(def_id)
-                    {
-                        table.values().copied().flat_map(|ty| {
-                            cgp::parameters_for(&ty.subst_identity(), true)
-                        }).collect()
-                    } else {
-                        vec![]
-                    }
-                }
-                ty::AssocKind::Const => vec![],
+                ty::AssocKind::Fn | ty::AssocKind::Const => vec![],
             }
         })
         .collect();

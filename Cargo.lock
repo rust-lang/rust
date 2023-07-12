@@ -3021,7 +3021,6 @@ dependencies = [
 name = "rls"
 version = "2.0.0"
 dependencies = [
- "serde",
  "serde_json",
 ]
 
@@ -4234,6 +4233,7 @@ dependencies = [
  "rustc_hir",
  "rustc_middle",
  "rustc_span",
+ "rustc_target",
  "scoped-tls",
  "tracing",
 ]
