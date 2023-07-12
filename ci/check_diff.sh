@@ -114,15 +114,28 @@ function compile_rustfmt() {
     git remote add feature $REMOTE_REPO
     git fetch feature $FEATURE_BRANCH
 
-    cargo build --release --bin rustfmt && cp target/release/rustfmt $1/rustfmt
+    CARGO_VERSON=$(cargo --version)
+    echo -e "\ncompiling with $CARGO_VERSON\n"
+
+    echo "Building rustfmt from src"
+    cargo build -q --release --bin rustfmt && cp target/release/rustfmt $1/rustfmt
+
     if [ -z "$OPTIONAL_COMMIT_HASH" ] || [ "$FEATURE_BRANCH" = "$OPTIONAL_COMMIT_HASH" ]; then
         git switch $FEATURE_BRANCH
     else
         git switch $OPTIONAL_COMMIT_HASH --detach
     fi
-    cargo build --release --bin rustfmt && cp target/release/rustfmt $1/feature_rustfmt
+
+    echo "Building feature rustfmt from src"
+    cargo build -q --release --bin rustfmt && cp target/release/rustfmt $1/feature_rustfmt
+
     RUSFMT_BIN=$1/rustfmt
+    RUSTFMT_VERSION=$($RUSFMT_BIN --version)
+    echo -e "\nRUSFMT_BIN $RUSTFMT_VERSION\n"
+
     FEATURE_BIN=$1/feature_rustfmt
+    FEATURE_VERSION=$($FEATURE_BIN --version)
+    echo -e "FEATURE_BIN $FEATURE_VERSION\n"
 }
 
 # Check the diff for running rustfmt and the feature branch on all the .rs files in the repo.
@@ -155,7 +168,7 @@ function check_repo() {
     STATUSES+=($?)
     set -e
 
-    echo "removing tmp_dir $tmp_dir"
+    echo -e "removing tmp_dir $tmp_dir\n\n"
     rm -rf $tmp_dir
     cd $WORKDIR
 }
