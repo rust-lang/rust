@@ -246,24 +246,6 @@ Some submodules are not actually needed; for example, `src/llvm-project` doesn't
 out if you're using `download-ci-llvm`.  To avoid having to keep fetching its history, you can use
 `git submodule deinit -f src/llvm-project`, which will also avoid it showing as modified again.
 
-Note that, as of <!-- date-check --> Aug 2022,
-there is a [bug][#77620] if you use worktrees,
-submodules, and `x` in a commit hook.
-If you run into an error like the following,
-it's not anything you did wrong:
-
-```
-error: failed to read `/home/jyn/rustc-worktree/src/tools/cargo/Cargo.toml`
-
-Caused by:
-  No such file or directory (os error 2)
-```
-
-There is a workaround in [the issue][#77620-workaround].
-
-[#77620]: https://github.com/rust-lang/rust/issues/77620
-[#77620-workaround]: https://github.com/rust-lang/rust/issues/77620#issuecomment-705228229
-
 ## Rebasing and Conflicts
 
 When you edit your code locally, you are making changes to the version of
