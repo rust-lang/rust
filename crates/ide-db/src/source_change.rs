@@ -121,24 +121,8 @@ impl From<IntMap<FileId, TextEdit>> for SourceChange {
     }
 }
 
-impl From<IntMap<FileId, (TextEdit, Option<SnippetEdit>)>> for SourceChange {
-    fn from(source_file_edits: IntMap<FileId, (TextEdit, Option<SnippetEdit>)>) -> SourceChange {
-        SourceChange { source_file_edits, file_system_edits: Vec::new(), is_snippet: false }
-    }
-}
-
 impl FromIterator<(FileId, TextEdit)> for SourceChange {
     fn from_iter<T: IntoIterator<Item = (FileId, TextEdit)>>(iter: T) -> Self {
-        let mut this = SourceChange::default();
-        this.extend(iter);
-        this
-    }
-}
-
-impl FromIterator<(FileId, (TextEdit, Option<SnippetEdit>))> for SourceChange {
-    fn from_iter<T: IntoIterator<Item = (FileId, (TextEdit, Option<SnippetEdit>))>>(
-        iter: T,
-    ) -> Self {
         let mut this = SourceChange::default();
         this.extend(iter);
         this
