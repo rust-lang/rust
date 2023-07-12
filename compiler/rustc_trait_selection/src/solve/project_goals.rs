@@ -9,7 +9,6 @@ use rustc_hir::LangItem;
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::specialization_graph::LeafDef;
 use rustc_infer::traits::Reveal;
-use rustc_middle::traits::solve::inspect::CandidateKind;
 use rustc_middle::traits::solve::{CanonicalResponse, Certainty, Goal, QueryResult};
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::ProjectionPredicate;
@@ -146,8 +145,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
             return Err(NoSolution);
         }
 
-        ecx.probe(
-            |r| CandidateKind::Candidate { name: "impl".into(), result: *r }).enter(
+        ecx.probe_candidate_formatted(|| format!("impl {impl_def_id:?}")).enter(
             |ecx| {
                 let impl_substs = ecx.fresh_substs_for_item(impl_def_id);
                 let impl_trait_ref = impl_trait_ref.subst(tcx, impl_substs);

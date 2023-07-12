@@ -55,10 +55,23 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         impl FnOnce(&QueryResult<'tcx>) -> inspect::CandidateKind<'tcx>,
         QueryResult<'tcx>,
     > {
+        self.probe_candidate_formatted(move || name)
+    }
+
+    pub(in crate::solve) fn probe_candidate_formatted<S: ToString>(
+        &mut self,
+        name: impl FnOnce() -> S,
+    ) -> ProbeCtxt<
+        '_,
+        'a,
+        'tcx,
+        impl FnOnce(&QueryResult<'tcx>) -> inspect::CandidateKind<'tcx>,
+        QueryResult<'tcx>,
+    > {
         ProbeCtxt {
             ecx: self,
             probe_kind: move |result: &QueryResult<'tcx>| inspect::CandidateKind::Candidate {
-                name: name.to_string(),
+                name: name().to_string(),
                 result: *result,
             },
             _result: PhantomData,

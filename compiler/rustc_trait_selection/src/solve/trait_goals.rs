@@ -62,7 +62,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             },
         };
 
-        ecx.probe_candidate("impl").enter(|ecx| {
+        ecx.probe_candidate_formatted(|| format!("impl {impl_def_id:?}")).enter(|ecx| {
             let impl_substs = ecx.fresh_substs_for_item(impl_def_id);
             let impl_trait_ref = impl_trait_ref.subst(tcx, impl_substs);
 
