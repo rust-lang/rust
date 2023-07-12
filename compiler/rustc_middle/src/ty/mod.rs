@@ -162,8 +162,8 @@ pub struct ResolverOutputs {
 #[derive(Debug)]
 pub struct ResolverGlobalCtxt {
     pub visibilities: FxHashMap<LocalDefId, Visibility>,
-    pub impl_restrictions: FxHashMap<DefId, ImplRestriction>,
-    pub mut_restrictions: FxHashMap<DefId, MutRestriction>,
+    pub impl_restrictions: FxHashMap<LocalDefId, ImplRestriction>,
+    pub mut_restrictions: FxHashMap<LocalDefId, MutRestriction>,
     /// This field is used to decide whether we should make `PRIVATE_IN_PUBLIC` a hard error.
     pub has_pub_restricted: bool,
     /// Item with a given `LocalDefId` was defined during macro expansion with ID `ExpnId`.

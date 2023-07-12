@@ -23,7 +23,7 @@ pub(crate) fn provide(providers: &mut Providers) {
 fn mut_restriction(tcx: TyCtxt<'_>, def_id: LocalDefId) -> MutRestriction {
     tracing::debug!("mut_restriction({def_id:?})");
 
-    match tcx.resolutions(()).mut_restrictions.get(&def_id.to_def_id()) {
+    match tcx.resolutions(()).mut_restrictions.get(&def_id) {
         Some(restriction) => *restriction,
         None => span_bug!(tcx.def_span(def_id), "mut restriction not found for {def_id:?}"),
     }
