@@ -3,7 +3,7 @@ use super::config;
 use super::path::{Dirs, RelPath};
 use super::prepare::{apply_patches, GitRepo};
 use super::rustc_info::get_default_sysroot;
-use super::utils::{spawn_and_wait, spawn_and_wait_with_input, CargoProject, Compiler};
+use super::utils::{spawn_and_wait, spawn_and_wait_with_input, CargoProject, Compiler, LogGroup};
 use super::{CodegenBackend, SysrootKind};
 use std::env;
 use std::ffi::OsStr;
@@ -386,15 +386,17 @@ impl<'a> TestRunner<'a> {
             let tag = tag.to_uppercase();
             let is_jit_test = tag == "JIT";
 
-            if !config::get_bool(config)
+            let _guard = if !config::get_bool(config)
                 || (is_jit_test && !self.jit_supported)
                 || self.skip_tests.contains(&config)
             {
                 eprintln!("[{tag}] {testname} (skipped)");
                 continue;
             } else {
+                let guard = LogGroup::guard(&format!("[{tag}] {testname}"));
                 eprintln!("[{tag}] {testname}");
-            }
+                guard
+            };
 
             match *cmd {
                 TestCaseCmd::Custom { func } => func(self),

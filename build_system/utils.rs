@@ -3,6 +3,7 @@ use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::process::{self, Command, Stdio};
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use super::path::{Dirs, RelPath};
 
@@ -257,6 +258,33 @@ pub(crate) fn is_ci() -> bool {
 
 pub(crate) fn is_ci_opt() -> bool {
     env::var("CI_OPT").is_ok()
+}
+
+static IN_GROUP: AtomicBool = AtomicBool::new(false);
+pub(crate) struct LogGroup {
+    is_gha: bool,
+}
+
+impl LogGroup {
+    pub(crate) fn guard(name: &str) -> LogGroup {
+        let is_gha = env::var("GITHUB_ACTIONS").is_ok();
+
+        assert!(!IN_GROUP.swap(true, Ordering::SeqCst));
+        if is_gha {
+            eprintln!("::group::{name}");
+        }
+
+        LogGroup { is_gha }
+    }
+}
+
+impl Drop for LogGroup {
+    fn drop(&mut self) {
+        if self.is_gha {
+            eprintln!("::endgroup::");
+        }
+        IN_GROUP.store(false, Ordering::SeqCst);
+    }
 }
 
 pub(crate) fn maybe_incremental(cmd: &mut Command) {
