@@ -1,6 +1,11 @@
+// revisions: llvm mir-opt3
 // compile-flags: -C opt-level=3 -Z merge-functions=disabled --edition=2021
 // only-x86_64
 // ignore-debug: the debug assertions get in the way
+// [mir-opt3]compile-flags: -Zmir-opt-level=3
+// [mir-opt3]build-pass
+
+// mir-opt3 is a regression test for https://github.com/rust-lang/rust/issues/98016
 
 #![crate_type = "lib"]
 #![feature(portable_simd)]
