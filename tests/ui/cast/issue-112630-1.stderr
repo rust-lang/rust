@@ -1,0 +1,14 @@
+error[E0412]: cannot find type `B` in this scope
+  --> $DIR/issue-112630-1.rs:1:9
+   |
+LL | fn f(_: B) {}
+   |         ^ not found in this scope
+   |
+help: you might be missing a type parameter
+   |
+LL | fn f<B>(_: B) {}
+   |     +++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0412`.
