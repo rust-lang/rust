@@ -6,11 +6,72 @@ document.
 
 ## Unreleased / Beta / In Rust Nightly
 
-[83e42a23...master](https://github.com/rust-lang/rust-clippy/compare/83e42a23...master)
+[435a8ad8...master](https://github.com/rust-lang/rust-clippy/compare/435a8ad8...master)
+
+## Rust 1.71
+
+Current stable, released 2023-07-13
+
+<!-- FIXME: Remove the request for feedback, with the next changelog -->
+
+We're trying out a new shorter changelog format, that only contains significant changes.
+You can check out the list of merged pull requests for a list of all changes.
+If you have any feedback related to the new format, please share it in 
+[#10847](https://github.com/rust-lang/rust-clippy/issues/10847)
+
+[View all 78 merged pull requests](https://github.com/rust-lang/rust-clippy/pulls?q=merged%3A2023-04-11T20%3A05%3A26Z..2023-05-20T13%3A48%3A17Z+base%3Amaster)
+
+### New Lints
+
+* [`non_minimal_cfg`]
+  [#10763](https://github.com/rust-lang/rust-clippy/pull/10763)
+* [`manual_next_back`]
+  [#10769](https://github.com/rust-lang/rust-clippy/pull/10769)
+* [`ref_patterns`]
+  [#10736](https://github.com/rust-lang/rust-clippy/pull/10736)
+* [`default_constructed_unit_structs`]
+  [#10716](https://github.com/rust-lang/rust-clippy/pull/10716)
+* [`manual_while_let_some`]
+  [#10647](https://github.com/rust-lang/rust-clippy/pull/10647)
+* [`needless_bool_assign`]
+  [#10432](https://github.com/rust-lang/rust-clippy/pull/10432)
+* [`items_after_test_module`]
+  [#10578](https://github.com/rust-lang/rust-clippy/pull/10578)
+
+### Moves and Deprecations
+
+* Rename `integer_arithmetic` to `arithmetic_side_effects`
+  [#10674](https://github.com/rust-lang/rust-clippy/pull/10674)
+* Moved [`redundant_clone`] to `nursery` (Now allow-by-default)
+  [#10873](https://github.com/rust-lang/rust-clippy/pull/10873)
+
+### Enhancements
+
+* [`invalid_regex`]: Now supports the new syntax introduced after regex v1.8.0
+  [#10682](https://github.com/rust-lang/rust-clippy/pull/10682)
+* [`semicolon_outside_block`]: Added [`semicolon-outside-block-ignore-multiline`] as a new config value.
+  [#10656](https://github.com/rust-lang/rust-clippy/pull/10656)
+* [`semicolon_inside_block`]: Added [`semicolon-inside-block-ignore-singleline`] as a new config value.
+  [#10656](https://github.com/rust-lang/rust-clippy/pull/10656)
+* [`unnecessary_box_returns`]: Added [`unnecessary-box-size`] as a new config value to set the maximum
+  size of `T` in `Box<T>` to be linted.
+  [#10651](https://github.com/rust-lang/rust-clippy/pull/10651)
+
+### Documentation Improvements
+
+* `cargo clippy --explain LINT` now shows possible configuration options for the explained lint
+  [#10751](https://github.com/rust-lang/rust-clippy/pull/10751)
+* New config values mentioned in this changelog will now be linked.
+  [#10889](https://github.com/rust-lang/rust-clippy/pull/10889)
+* Several sections of [Clippy's book] have been reworked
+  [#10652](https://github.com/rust-lang/rust-clippy/pull/10652)
+  [#10622](https://github.com/rust-lang/rust-clippy/pull/10622)
+
+[Clippy's book]: https://doc.rust-lang.org/clippy/
 
 ## Rust 1.70
 
-Current stable, released 2023-06-01
+Released 2023-06-01
 
 [View all 91 merged pull requests](https://github.com/rust-lang/rust-clippy/pulls?q=merged%3A2023-02-26T01%3A05%3A43Z..2023-04-11T13%3A27%3A30Z+base%3Amaster)
 

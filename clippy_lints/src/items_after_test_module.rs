@@ -32,7 +32,7 @@ declare_clippy_lint! {
     ///     // [...]
     /// }
     /// ```
-    #[clippy::version = "1.70.0"]
+    #[clippy::version = "1.71.0"]
     pub ITEMS_AFTER_TEST_MODULE,
     style,
     "An item was found after the testing module `tests`"
