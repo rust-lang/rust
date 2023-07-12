@@ -323,8 +323,8 @@ impl SwitchTargets {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Terminator {
-    span: MirSpan,
-    kind: TerminatorKind,
+    pub span: MirSpan,
+    pub kind: TerminatorKind,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
