@@ -7,6 +7,7 @@ use std::{collections::hash_map::Entry, iter, mem};
 
 use crate::SnippetCap;
 use base_db::{AnchoredPathBuf, FileId};
+use itertools::Itertools;
 use nohash_hasher::IntMap;
 use stdx::never;
 use syntax::{
@@ -17,7 +18,7 @@ use text_edit::{TextEdit, TextEditBuilder};
 
 #[derive(Default, Debug, Clone)]
 pub struct SourceChange {
-    pub source_file_edits: IntMap<FileId, TextEdit>,
+    pub source_file_edits: IntMap<FileId, (TextEdit, Option<SnippetEdit>)>,
     pub file_system_edits: Vec<FileSystemEdit>,
     pub is_snippet: bool,
 }
@@ -26,7 +27,7 @@ impl SourceChange {
     /// Creates a new SourceChange with the given label
     /// from the edits.
     pub fn from_edits(
-        source_file_edits: IntMap<FileId, TextEdit>,
+        source_file_edits: IntMap<FileId, (TextEdit, Option<SnippetEdit>)>,
         file_system_edits: Vec<FileSystemEdit>,
     ) -> Self {
         SourceChange { source_file_edits, file_system_edits, is_snippet: false }
@@ -34,7 +35,7 @@ impl SourceChange {
 
     pub fn from_text_edit(file_id: FileId, edit: TextEdit) -> Self {
         SourceChange {
-            source_file_edits: iter::once((file_id, edit)).collect(),
+            source_file_edits: iter::once((file_id, (edit, None))).collect(),
             ..Default::default()
         }
     }
@@ -42,12 +43,31 @@ impl SourceChange {
     /// Inserts a [`TextEdit`] for the given [`FileId`]. This properly handles merging existing
     /// edits for a file if some already exist.
     pub fn insert_source_edit(&mut self, file_id: FileId, edit: TextEdit) {
+        self.insert_source_and_snippet_edit(file_id, edit, None)
+    }
+
+    /// Inserts a [`TextEdit`] and potentially a [`SnippetEdit`] for the given [`FileId`].
+    /// This properly handles merging existing edits for a file if some already exist.
+    pub fn insert_source_and_snippet_edit(
+        &mut self,
+        file_id: FileId,
+        edit: TextEdit,
+        snippet_edit: Option<SnippetEdit>,
+    ) {
         match self.source_file_edits.entry(file_id) {
             Entry::Occupied(mut entry) => {
-                never!(entry.get_mut().union(edit).is_err(), "overlapping edits for same file");
+                let value = entry.get_mut();
+                never!(value.0.union(edit).is_err(), "overlapping edits for same file");
+                never!(
+                    value.1.is_some() && snippet_edit.is_some(),
+                    "overlapping snippet edits for same file"
+                );
+                if value.1.is_none() {
+                    value.1 = snippet_edit;
+                }
             }
             Entry::Vacant(entry) => {
-                entry.insert(edit);
+                entry.insert((edit, snippet_edit));
             }
         }
     }
@@ -57,7 +77,7 @@ impl SourceChange {
     }
 
     pub fn get_source_edit(&self, file_id: FileId) -> Option<&TextEdit> {
-        self.source_file_edits.get(&file_id)
+        self.source_file_edits.get(&file_id).map(|(edit, _)| edit)
     }
 
     pub fn merge(mut self, other: SourceChange) -> SourceChange {
@@ -70,7 +90,18 @@ impl SourceChange {
 
 impl Extend<(FileId, TextEdit)> for SourceChange {
     fn extend<T: IntoIterator<Item = (FileId, TextEdit)>>(&mut self, iter: T) {
-        iter.into_iter().for_each(|(file_id, edit)| self.insert_source_edit(file_id, edit));
+        self.extend(iter.into_iter().map(|(file_id, edit)| (file_id, (edit, None))))
+    }
+}
+
+impl Extend<(FileId, (TextEdit, Option<SnippetEdit>))> for SourceChange {
+    fn extend<T: IntoIterator<Item = (FileId, (TextEdit, Option<SnippetEdit>))>>(
+        &mut self,
+        iter: T,
+    ) {
+        iter.into_iter().for_each(|(file_id, (edit, snippet_edit))| {
+            self.insert_source_and_snippet_edit(file_id, edit, snippet_edit)
+        });
     }
 }
 
@@ -82,6 +113,14 @@ impl Extend<FileSystemEdit> for SourceChange {
 
 impl From<IntMap<FileId, TextEdit>> for SourceChange {
     fn from(source_file_edits: IntMap<FileId, TextEdit>) -> SourceChange {
+        let source_file_edits =
+            source_file_edits.into_iter().map(|(file_id, edit)| (file_id, (edit, None))).collect();
+        SourceChange { source_file_edits, file_system_edits: Vec::new(), is_snippet: false }
+    }
+}
+
+impl From<IntMap<FileId, (TextEdit, Option<SnippetEdit>)>> for SourceChange {
+    fn from(source_file_edits: IntMap<FileId, (TextEdit, Option<SnippetEdit>)>) -> SourceChange {
         SourceChange { source_file_edits, file_system_edits: Vec::new(), is_snippet: false }
     }
 }
@@ -91,6 +130,73 @@ impl FromIterator<(FileId, TextEdit)> for SourceChange {
         let mut this = SourceChange::default();
         this.extend(iter);
         this
+    }
+}
+
+impl FromIterator<(FileId, (TextEdit, Option<SnippetEdit>))> for SourceChange {
+    fn from_iter<T: IntoIterator<Item = (FileId, (TextEdit, Option<SnippetEdit>))>>(
+        iter: T,
+    ) -> Self {
+        let mut this = SourceChange::default();
+        this.extend(iter);
+        this
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SnippetEdit(Vec<(u32, TextRange)>);
+
+impl SnippetEdit {
+    fn new(snippets: Vec<Snippet>) -> Self {
+        let mut snippet_ranges = snippets
+            .into_iter()
+            .zip(1..)
+            .with_position()
+            .map(|pos| {
+                let (snippet, index) = match pos {
+                    itertools::Position::First(it) | itertools::Position::Middle(it) => it,
+                    // last/only snippet gets index 0
+                    itertools::Position::Last((snippet, _))
+                    | itertools::Position::Only((snippet, _)) => (snippet, 0),
+                };
+
+                let range = match snippet {
+                    Snippet::Tabstop(pos) => TextRange::empty(pos),
+                    Snippet::Placeholder(range) => range,
+                };
+                (index, range)
+            })
+            .collect_vec();
+
+        snippet_ranges.sort_by_key(|(_, range)| range.start());
+
+        // Ensure that none of the ranges overlap
+        let disjoint_ranges =
+            snippet_ranges.windows(2).all(|ranges| ranges[0].1.end() <= ranges[1].1.start());
+        stdx::always!(disjoint_ranges);
+
+        SnippetEdit(snippet_ranges)
+    }
+
+    /// Inserts all of the snippets into the given text.
+    pub fn apply(&self, text: &mut String) {
+        // Start from the back so that we don't have to adjust ranges
+        for (index, range) in self.0.iter().rev() {
+            if range.is_empty() {
+                // is a tabstop
+                text.insert_str(range.start().into(), &format!("${index}"));
+            } else {
+                // is a placeholder
+                text.insert(range.end().into(), '}');
+                text.insert_str(range.start().into(), &format!("${{{index}:"));
+            }
+        }
+    }
+
+    /// Gets the underlying snippet index + text range
+    /// Tabstops are represented by an empty range, and placeholders use the range that they were given
+    pub fn into_edit_ranges(self) -> Vec<(u32, TextRange)> {
+        self.0
     }
 }
 
@@ -275,6 +381,16 @@ impl SourceChangeBuilder {
 
     pub fn finish(mut self) -> SourceChange {
         self.commit();
+
+        // Only one file can have snippet edits
+        stdx::never!(self
+            .source_change
+            .source_file_edits
+            .iter()
+            .filter(|(_, (_, snippet_edit))| snippet_edit.is_some())
+            .at_most_one()
+            .is_err());
+
         mem::take(&mut self.source_change)
     }
 }
@@ -294,6 +410,13 @@ impl From<FileSystemEdit> for SourceChange {
             is_snippet: false,
         }
     }
+}
+
+enum Snippet {
+    /// A tabstop snippet (e.g. `$0`).
+    Tabstop(TextSize),
+    /// A placeholder snippet (e.g. `${0:placeholder}`).
+    Placeholder(TextRange),
 }
 
 enum PlaceSnippet {

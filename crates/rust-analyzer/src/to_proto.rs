@@ -973,7 +973,7 @@ pub(crate) fn snippet_workspace_edit(
         let ops = snippet_text_document_ops(snap, op)?;
         document_changes.extend_from_slice(&ops);
     }
-    for (file_id, edit) in source_change.source_file_edits {
+    for (file_id, (edit, _snippet_edit)) in source_change.source_file_edits {
         let edit = snippet_text_document_edit(snap, source_change.is_snippet, file_id, edit)?;
         document_changes.push(lsp_ext::SnippetDocumentChangeOperation::Edit(edit));
     }

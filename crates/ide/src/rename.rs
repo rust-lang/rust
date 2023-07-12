@@ -367,7 +367,7 @@ mod tests {
                 let mut file_id: Option<FileId> = None;
                 for edit in source_change.source_file_edits {
                     file_id = Some(edit.0);
-                    for indel in edit.1.into_iter() {
+                    for indel in edit.1 .0.into_iter() {
                         text_edit_builder.replace(indel.delete, indel.insert);
                     }
                 }
@@ -895,14 +895,17 @@ mod foo$0;
                     source_file_edits: {
                         FileId(
                             1,
-                        ): TextEdit {
-                            indels: [
-                                Indel {
-                                    insert: "foo2",
-                                    delete: 4..7,
-                                },
-                            ],
-                        },
+                        ): (
+                            TextEdit {
+                                indels: [
+                                    Indel {
+                                        insert: "foo2",
+                                        delete: 4..7,
+                                    },
+                                ],
+                            },
+                            None,
+                        ),
                     },
                     file_system_edits: [
                         MoveFile {
@@ -944,24 +947,30 @@ use crate::foo$0::FooContent;
                     source_file_edits: {
                         FileId(
                             0,
-                        ): TextEdit {
-                            indels: [
-                                Indel {
-                                    insert: "quux",
-                                    delete: 8..11,
-                                },
-                            ],
-                        },
+                        ): (
+                            TextEdit {
+                                indels: [
+                                    Indel {
+                                        insert: "quux",
+                                        delete: 8..11,
+                                    },
+                                ],
+                            },
+                            None,
+                        ),
                         FileId(
                             2,
-                        ): TextEdit {
-                            indels: [
-                                Indel {
-                                    insert: "quux",
-                                    delete: 11..14,
-                                },
-                            ],
-                        },
+                        ): (
+                            TextEdit {
+                                indels: [
+                                    Indel {
+                                        insert: "quux",
+                                        delete: 11..14,
+                                    },
+                                ],
+                            },
+                            None,
+                        ),
                     },
                     file_system_edits: [
                         MoveFile {
@@ -997,14 +1006,17 @@ mod fo$0o;
                     source_file_edits: {
                         FileId(
                             0,
-                        ): TextEdit {
-                            indels: [
-                                Indel {
-                                    insert: "foo2",
-                                    delete: 4..7,
-                                },
-                            ],
-                        },
+                        ): (
+                            TextEdit {
+                                indels: [
+                                    Indel {
+                                        insert: "foo2",
+                                        delete: 4..7,
+                                    },
+                                ],
+                            },
+                            None,
+                        ),
                     },
                     file_system_edits: [
                         MoveDir {
@@ -1047,14 +1059,17 @@ mod outer { mod fo$0o; }
                     source_file_edits: {
                         FileId(
                             0,
-                        ): TextEdit {
-                            indels: [
-                                Indel {
-                                    insert: "bar",
-                                    delete: 16..19,
-                                },
-                            ],
-                        },
+                        ): (
+                            TextEdit {
+                                indels: [
+                                    Indel {
+                                        insert: "bar",
+                                        delete: 16..19,
+                                    },
+                                ],
+                            },
+                            None,
+                        ),
                     },
                     file_system_edits: [
                         MoveFile {
@@ -1120,24 +1135,30 @@ pub mod foo$0;
                     source_file_edits: {
                         FileId(
                             0,
-                        ): TextEdit {
-                            indels: [
-                                Indel {
-                                    insert: "foo2",
-                                    delete: 27..30,
-                                },
-                            ],
-                        },
+                        ): (
+                            TextEdit {
+                                indels: [
+                                    Indel {
+                                        insert: "foo2",
+                                        delete: 27..30,
+                                    },
+                                ],
+                            },
+                            None,
+                        ),
                         FileId(
                             1,
-                        ): TextEdit {
-                            indels: [
-                                Indel {
-                                    insert: "foo2",
-                                    delete: 8..11,
-                                },
-                            ],
-                        },
+                        ): (
+                            TextEdit {
+                                indels: [
+                                    Indel {
+                                        insert: "foo2",
+                                        delete: 8..11,
+                                    },
+                                ],
+                            },
+                            None,
+                        ),
                     },
                     file_system_edits: [
                         MoveFile {
@@ -1187,14 +1208,17 @@ mod quux;
                     source_file_edits: {
                         FileId(
                             0,
-                        ): TextEdit {
-                            indels: [
-                                Indel {
-                                    insert: "foo2",
-                                    delete: 4..7,
-                                },
-                            ],
-                        },
+                        ): (
+                            TextEdit {
+                                indels: [
+                                    Indel {
+                                        insert: "foo2",
+                                        delete: 4..7,
+                                    },
+                                ],
+                            },
+                            None,
+                        ),
                     },
                     file_system_edits: [
                         MoveFile {
@@ -1325,18 +1349,21 @@ pub fn baz() {}
                     source_file_edits: {
                         FileId(
                             0,
-                        ): TextEdit {
-                            indels: [
-                                Indel {
-                                    insert: "r#fn",
-                                    delete: 4..7,
-                                },
-                                Indel {
-                                    insert: "r#fn",
-                                    delete: 22..25,
-                                },
-                            ],
-                        },
+                        ): (
+                            TextEdit {
+                                indels: [
+                                    Indel {
+                                        insert: "r#fn",
+                                        delete: 4..7,
+                                    },
+                                    Indel {
+                                        insert: "r#fn",
+                                        delete: 22..25,
+                                    },
+                                ],
+                            },
+                            None,
+                        ),
                     },
                     file_system_edits: [
                         MoveFile {
@@ -1395,18 +1422,21 @@ pub fn baz() {}
                     source_file_edits: {
                         FileId(
                             0,
-                        ): TextEdit {
-                            indels: [
-                                Indel {
-                                    insert: "foo",
-                                    delete: 4..8,
-                                },
-                                Indel {
-                                    insert: "foo",
-                                    delete: 23..27,
-                                },
-                            ],
-                        },
+                        ): (
+                            TextEdit {
+                                indels: [
+                                    Indel {
+                                        insert: "foo",
+                                        delete: 4..8,
+                                    },
+                                    Indel {
+                                        insert: "foo",
+                                        delete: 23..27,
+                                    },
+                                ],
+                            },
+                            None,
+                        ),
                     },
                     file_system_edits: [
                         MoveFile {
