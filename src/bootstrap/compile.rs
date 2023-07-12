@@ -904,6 +904,11 @@ impl Step for Rustc {
             cargo.arg("-p").arg(krate);
         }
 
+        if compiler.stage == 1 {
+            // Relocations are required for BOLT to work.
+            cargo.rustflag(&format!("-Clink-args=-Wl,-q"));
+        }
+
         let _guard = builder.msg_sysroot_tool(
             Kind::Build,
             compiler.stage,

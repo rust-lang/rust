@@ -12,7 +12,7 @@ use crate::environment::{Environment, EnvironmentBuilder};
 use crate::exec::{cmd, Bootstrap};
 use crate::tests::run_tests;
 use crate::timer::Timer;
-use crate::training::{gather_llvm_bolt_profiles, gather_llvm_profiles, gather_rustc_profiles};
+use crate::training::{gather_bolt_profiles, gather_llvm_profiles, gather_rustc_profiles};
 use crate::utils::io::{copy_directory, move_directory, reset_directory};
 use crate::utils::{
     clear_llvm_files, format_env_variables, print_binary_sizes, print_free_disk_space,
@@ -267,9 +267,13 @@ fn execute_pipeline(
                 ".so",
             )?;
 
+            log::info!("Optimizing {llvm_lib} with BOLT");
+
             // Instrument it and gather profiles
             let profile = with_bolt_instrumented(&llvm_lib, || {
-                stage.section("Gather profiles", |_| gather_llvm_bolt_profiles(env))
+                stage.section("Gather profiles", |_| {
+                    gather_bolt_profiles(env, "LLVM", llvm_benchmarks(env))
+                })
             })?;
             print_free_disk_space()?;
 
@@ -287,6 +291,35 @@ fn execute_pipeline(
         None
     };
 
+    let rustc_bolt_profile = if env.supports_bolt() {
+        // Stage 4: Build BOLT instrumented rustc
+        timer.section("Stage 4 (Rustc BOLT)", |stage| {
+            // Find the path to the `librustc_driver.so` file
+            let rustc_lib = io::find_file_in_dir(
+                &env.build_artifacts().join("stage2").join("lib"),
+                "librustc_driver",
+                ".so",
+            )?;
+
+            log::info!("Optimizing {rustc_lib} with BOLT");
+
+            // Instrument it and gather profiles
+            let profile = with_bolt_instrumented(&rustc_lib, || {
+                stage.section("Gather profiles", |_| {
+                    gather_bolt_profiles(env, "rustc", rustc_benchmarks(env))
+                })
+            })?;
+            print_free_disk_space()?;
+
+            // Now optimize the library with BOLT.
+            bolt_optimize(&rustc_lib, &profile).context("Could not optimize rustc with BOLT")?;
+
+            Ok(Some(profile))
+        })?
+    } else {
+        None
+    };
+
     let mut dist = Bootstrap::dist(env, &dist_args)
         .llvm_pgo_optimize(&llvm_pgo_profile)
         .rustc_pgo_optimize(&rustc_pgo_profile)
@@ -295,10 +328,13 @@ fn execute_pipeline(
     if let Some(llvm_bolt_profile) = llvm_bolt_profile {
         dist = dist.with_bolt_profile(llvm_bolt_profile);
     }
+    if let Some(rustc_bolt_profile) = rustc_bolt_profile {
+        dist = dist.with_bolt_profile(rustc_bolt_profile);
+    }
 
     // Final stage: Assemble the dist artifacts
     // The previous PGO optimized rustc build and PGO optimized LLVM builds should be reused.
-    timer.section("Stage 4 (final build)", |stage| dist.run(stage))?;
+    timer.section("Stage 5 (final build)", |stage| dist.run(stage))?;
 
     // After dist has finished, run a subset of the test suite on the optimized artifacts to discover
     // possible regressions.

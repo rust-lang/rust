@@ -27,8 +27,6 @@ const RUSTC_PGO_CRATES: &[&str] = &[
     "bitmaps-3.1.0",
 ];
 
-const LLVM_BOLT_CRATES: &[&str] = LLVM_PGO_CRATES;
-
 fn init_compiler_benchmarks(
     env: &Environment,
     profiles: &[&str],
@@ -113,6 +111,14 @@ fn log_profile_stats(
     Ok(())
 }
 
+pub fn llvm_benchmarks(env: &dyn Environment) -> CmdBuilder {
+    init_compiler_benchmarks(env, &["Debug", "Opt"], &["Full"], LLVM_PGO_CRATES)
+}
+
+pub fn rustc_benchmarks(env: &dyn Environment) -> CmdBuilder {
+    init_compiler_benchmarks(env, &["Check", "Debug", "Opt"], &["All"], RUSTC_PGO_CRATES)
+}
+
 pub struct LlvmPGOProfile(pub Utf8PathBuf);
 
 pub fn gather_llvm_profiles(
@@ -122,9 +128,7 @@ pub fn gather_llvm_profiles(
     log::info!("Running benchmarks with PGO instrumented LLVM");
 
     with_log_group("Running benchmarks", || {
-        init_compiler_benchmarks(env, &["Debug", "Opt"], &["Full"], LLVM_PGO_CRATES)
-            .run()
-            .context("Cannot gather LLVM PGO profiles")
+        llvm_benchmarks(env).run().context("Cannot gather LLVM PGO profiles")
     })?;
 
     let merged_profile = env.artifact_dir().join("llvm-pgo.profdata");
@@ -157,7 +161,7 @@ pub fn gather_rustc_profiles(
     // Here we're profiling the `rustc` frontend, so we also include `Check`.
     // The benchmark set includes various stress tests that put the frontend under pressure.
     with_log_group("Running benchmarks", || {
-        init_compiler_benchmarks(env, &["Check", "Debug", "Opt"], &["All"], RUSTC_PGO_CRATES)
+        rustc_benchmarks(env)
             .env("LLVM_PROFILE_FILE", profile_template.as_str())
             .run()
             .context("Cannot gather rustc PGO profiles")
@@ -176,20 +180,22 @@ pub fn gather_rustc_profiles(
     Ok(RustcPGOProfile(merged_profile))
 }
 
-pub struct LlvmBoltProfile(pub Utf8PathBuf);
+pub struct BoltProfile(pub Utf8PathBuf);
 
-pub fn gather_llvm_bolt_profiles(env: &Environment) -> anyhow::Result<LlvmBoltProfile> {
-    log::info!("Running benchmarks with BOLT instrumented LLVM");
+pub fn gather_bolt_profiles(
+    env: &Environment,
+    name: &str,
+    benchmarks: CmdBuilder,
+) -> anyhow::Result<BoltProfile> {
+    log::info!("Running benchmarks with BOLT instrumented {name}");
 
     with_log_group("Running benchmarks", || {
-        init_compiler_benchmarks(env, &["Check", "Debug", "Opt"], &["Full"], LLVM_BOLT_CRATES)
-            .run()
-            .context("Cannot gather LLVM BOLT profiles")
+        benchmarks.run().with_context(|| "Cannot gather {name} BOLT profiles")
     })?;
 
-    let merged_profile = env.artifact_dir().join("llvm-bolt.profdata");
+    let merged_profile = env.artifact_dir().join(format!("{name}-bolt.profdata"));
     let profile_root = Utf8PathBuf::from("/tmp/prof.fdata");
-    log::info!("Merging LLVM BOLT profiles to {merged_profile}");
+    log::info!("Merging {name} BOLT profiles to {merged_profile}");
 
     let profiles: Vec<_> =
         glob::glob(&format!("{profile_root}*"))?.collect::<Result<Vec<_>, _>>()?;
@@ -204,7 +210,7 @@ pub fn gather_llvm_bolt_profiles(env: &Environment) -> anyhow::Result<LlvmBoltPr
             .context("Cannot merge BOLT profiles")
     })?;
 
-    log::info!("LLVM BOLT statistics");
+    log::info!("{name} BOLT statistics");
     log::info!(
         "{merged_profile}: {}",
         humansize::format_size(std::fs::metadata(merged_profile.as_std_path())?.len(), BINARY)
@@ -219,5 +225,14 @@ pub fn gather_llvm_bolt_profiles(env: &Environment) -> anyhow::Result<LlvmBoltPr
     log::info!("{profile_root}: {}", humansize::format_size(size, BINARY));
     log::info!("Profile file count: {}", profiles.len());
 
-    Ok(LlvmBoltProfile(merged_profile))
+    // Delete the gathered profiles
+    for profile in glob::glob(&format!("{profile_root}*"))?.into_iter() {
+        if let Ok(profile) = profile {
+            if let Err(error) = std::fs::remove_file(&profile) {
+                log::error!("Cannot delete BOLT profile {}: {error:?}", profile.display());
+            }
+        }
+    }
+
+    Ok(BoltProfile(merged_profile))
 }

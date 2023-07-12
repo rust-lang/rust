@@ -1,7 +1,7 @@
 use anyhow::Context;
 
 use crate::exec::cmd;
-use crate::training::LlvmBoltProfile;
+use crate::training::BoltProfile;
 use camino::{Utf8Path, Utf8PathBuf};
 
 use crate::utils::io::copy_file;
@@ -40,7 +40,7 @@ pub fn with_bolt_instrumented<F: FnOnce() -> anyhow::Result<R>, R>(
 }
 
 /// Optimizes the file at `path` with BOLT in-place using the given `profile`.
-pub fn bolt_optimize(path: &Utf8Path, profile: &LlvmBoltProfile) -> anyhow::Result<()> {
+pub fn bolt_optimize(path: &Utf8Path, profile: &BoltProfile) -> anyhow::Result<()> {
     // Copy the artifact to a new location, so that we do not use the same input and output file.
     // BOLT cannot handle optimizing when the input and output is the same file, because it performs
     // in-place patching.
