@@ -14,10 +14,10 @@ extern crate source_code;
 #[path = "auxiliary/source-code-bar.rs"]
 pub mod bar;
 
-// @count - '//pre[@class="rust"]//a[@href="auxiliary/source-code-bar.rs.html#5"]' 4
+// @count - '//pre[@class="rust"]//a[@href="auxiliary/source-code-bar.rs.html#5-7"]' 4
 use bar::Bar;
-// @has - '//pre[@class="rust"]//a[@href="auxiliary/source-code-bar.rs.html#13"]' 'self'
-// @has - '//pre[@class="rust"]//a[@href="auxiliary/source-code-bar.rs.html#14"]' 'Trait'
+// @has - '//pre[@class="rust"]//a[@href="auxiliary/source-code-bar.rs.html#13-17"]' 'self'
+// @has - '//pre[@class="rust"]//a[@href="auxiliary/source-code-bar.rs.html#14-16"]' 'Trait'
 use bar::sub::{self, Trait};
 
 pub struct Foo;
@@ -32,7 +32,8 @@ fn babar() {}
 // @has - '//pre[@class="rust"]//a/@href' '/primitive.u32.html'
 // @has - '//pre[@class="rust"]//a/@href' '/primitive.str.html'
 // @count - '//pre[@class="rust"]//a[@href="#23"]' 5
-// @has - '//pre[@class="rust"]//a[@href="../../source_code/struct.SourceCode.html"]' 'source_code::SourceCode'
+// @has - '//pre[@class="rust"]//a[@href="../../source_code/struct.SourceCode.html"]' \
+//        'source_code::SourceCode'
 pub fn foo(a: u32, b: &str, c: String, d: Foo, e: bar::Bar, f: source_code::SourceCode) {
     let x = 12;
     let y: Foo = Foo;
@@ -42,15 +43,15 @@ pub fn foo(a: u32, b: &str, c: String, d: Foo, e: bar::Bar, f: source_code::Sour
     y.hello();
 }
 
-// @has - '//pre[@class="rust"]//a[@href="auxiliary/source-code-bar.rs.html#14"]' 'bar::sub::Trait'
-// @has - '//pre[@class="rust"]//a[@href="auxiliary/source-code-bar.rs.html#14"]' 'Trait'
+// @has - '//pre[@class="rust"]//a[@href="auxiliary/source-code-bar.rs.html#14-16"]' 'bar::sub::Trait'
+// @has - '//pre[@class="rust"]//a[@href="auxiliary/source-code-bar.rs.html#14-16"]' 'Trait'
 pub fn foo2<T: bar::sub::Trait, V: Trait>(t: &T, v: &V, b: bool) {}
 
 pub trait AnotherTrait {}
 pub trait WhyNot {}
 
-// @has - '//pre[@class="rust"]//a[@href="#49"]' 'AnotherTrait'
-// @has - '//pre[@class="rust"]//a[@href="#50"]' 'WhyNot'
+// @has - '//pre[@class="rust"]//a[@href="#50"]' 'AnotherTrait'
+// @has - '//pre[@class="rust"]//a[@href="#51"]' 'WhyNot'
 pub fn foo3<T, V>(t: &T, v: &V)
 where
     T: AnotherTrait,
@@ -59,7 +60,7 @@ where
 
 pub trait AnotherTrait2 {}
 
-// @has - '//pre[@class="rust"]//a[@href="#60"]' 'AnotherTrait2'
+// @has - '//pre[@class="rust"]//a[@href="#61"]' 'AnotherTrait2'
 pub fn foo4() {
     let x: Vec<AnotherTrait2> = Vec::new();
 }
