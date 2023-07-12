@@ -1,6 +1,11 @@
+// revisions: llvm mir-opt3
 // compile-flags: -C opt-level=3 -Z merge-functions=disabled --edition=2021
 // only-x86_64
 // ignore-debug: the debug assertions get in the way
+// [mir-opt3]compile-flags: -Zmir-opt-level=3
+// [mir-opt3]build-pass
+
+// mir-opt3 is a regression test for https://github.com/rust-lang/rust/issues/98016
 
 #![crate_type = "lib"]
 #![feature(portable_simd)]
@@ -47,9 +52,8 @@ pub fn wider_reduce_iter(x: Simd<u8, N>) -> u16 {
 #[no_mangle]
 // CHECK-LABEL: @wider_reduce_into_iter
 pub fn wider_reduce_into_iter(x: Simd<u8, N>) -> u16 {
-    // FIXME MIR inlining messes up LLVM optimizations.
-    // WOULD-CHECK: zext <8 x i8>
-    // WOULD-CHECK-SAME: to <8 x i16>
-    // WOULD-CHECK: call i16 @llvm.vector.reduce.add.v8i16(<8 x i16>
+    // CHECK: zext <8 x i8>
+    // CHECK-SAME: to <8 x i16>
+    // CHECK: call i16 @llvm.vector.reduce.add.v8i16(<8 x i16>
     x.to_array().into_iter().map(u16::from).sum()
 }
