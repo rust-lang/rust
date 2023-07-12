@@ -69,7 +69,6 @@ trivially_parameterized_over_tcx! {
     ty::TraitDef,
     ty::UnusedGenericParams,
     ty::Visibility<DefIndex>,
-    ty::Restriction,
     ty::adjustment::CoerceUnsizedInfo,
     ty::fast_reject::SimplifiedType,
     rustc_ast::Attribute,
@@ -104,6 +103,10 @@ trivially_parameterized_over_tcx! {
     rustc_span::hygiene::SyntaxContextData,
     rustc_span::symbol::Ident,
     rustc_type_ir::Variance,
+}
+
+impl<const KIND: ty::RestrictionKind> ty::ParameterizedOverTcx for ty::Restriction<KIND> {
+    type Value<'tcx> = Self;
 }
 
 // HACK(compiler-errors): This macro rule can only take a fake path,

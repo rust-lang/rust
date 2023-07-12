@@ -11,6 +11,7 @@
 #![feature(box_patterns)]
 #![feature(extract_if)]
 #![feature(if_let_guard)]
+#![feature(inline_const)]
 #![feature(iter_intersperse)]
 #![feature(let_chains)]
 #![feature(never_type)]
@@ -981,9 +982,9 @@ pub struct Resolver<'a, 'tcx> {
     visibilities: FxHashMap<LocalDefId, ty::Visibility>,
     has_pub_restricted: bool,
     /// trait def -> restriction scope
-    impl_restrictions: FxHashMap<DefId, ty::Restriction>,
+    impl_restrictions: FxHashMap<DefId, ty::ImplRestriction>,
     /// field def -> restriction scope
-    mut_restrictions: FxHashMap<DefId, ty::Restriction>,
+    mut_restrictions: FxHashMap<DefId, ty::MutRestriction>,
     used_imports: FxHashSet<NodeId>,
     maybe_unused_trait_imports: FxIndexSet<LocalDefId>,
 

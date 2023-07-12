@@ -6,7 +6,7 @@ use rustc_middle::mir::{AggregateKind, Rvalue};
 use rustc_middle::mir::{Body, Location, Place, ProjectionElem, Statement, Terminator};
 use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
-use rustc_middle::ty::{Restriction, TyCtxt};
+use rustc_middle::ty::{MutRestriction, Restriction, TyCtxt};
 use rustc_span::Span;
 
 use crate::errors;
@@ -20,7 +20,7 @@ pub(crate) fn provide(providers: &mut Providers) {
     };
 }
 
-fn mut_restriction(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Restriction {
+fn mut_restriction(tcx: TyCtxt<'_>, def_id: LocalDefId) -> MutRestriction {
     tracing::debug!("mut_restriction({def_id:?})");
 
     match tcx.resolutions(()).mut_restrictions.get(&def_id.to_def_id()) {
@@ -48,7 +48,7 @@ fn check_mut_restriction(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 /// restricted.
 // This is a query to allow the compiler to cache the output. This avoids the need to recompute the
 // same information for every ADT expression.
-fn adt_expression_restriction(tcx: TyCtxt<'_>, variant_def_id: DefId) -> Restriction {
+fn adt_expression_restriction(tcx: TyCtxt<'_>, variant_def_id: DefId) -> MutRestriction {
     let res = Res::Def(tcx.def_kind(variant_def_id), variant_def_id);
     let variant = tcx.expect_variant_res(res);
 

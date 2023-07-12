@@ -2727,13 +2727,13 @@ pub mod restriction_kind {
 
     /// Helper macro to generate the type, derive the relevant bounds, and implement the sealed
     /// trait.
-    macro_rules! restriction {
-        (
+    macro_rules! define_restrictions {
+        ($(Restriction {
             requires_explicit_path: $requires_explicit_path:ident,
             name: $name:ident,
             keyword: $keyword_sym:path => $keyword_str:literal,
             feature_gate: $feature_gate:expr $(,)?
-        ) => {
+        }),* $(,)?) => {$(
             #[derive(Debug, Clone, Copy, Encodable, Decodable)]
             pub enum $name {}
 
@@ -2742,10 +2742,12 @@ pub mod restriction_kind {
                 const KEYWORD_SYM: Symbol = $keyword_sym;
                 const KEYWORD_STR: &'static str = $keyword_str;
                 const FEATURE_GATE: Option<Symbol> = $feature_gate;
+
+                const MIDDLE_KIND: u8 = ${index()};
             }
 
             impl sealed::Sealed for $name {}
-        };
+        )*};
     }
 
     // FIXME(jhpratt) After a bootstrap, replace this with the now-implemented native syntax.
@@ -2758,26 +2760,30 @@ pub mod restriction_kind {
         const KEYWORD_SYM: Symbol;
         const KEYWORD_STR: &'static str;
         const FEATURE_GATE: Option<Symbol>;
+
+        const MIDDLE_KIND: u8;
     }
 
-    restriction! {
-        requires_explicit_path: false,
-        name: Visibility,
-        keyword: kw::Pub => "pub",
-        feature_gate: None,
-    }
-    restriction! {
-        requires_explicit_path: true,
-        name: Impl,
-        keyword: kw::Impl => "impl",
-        feature_gate: Some(sym::impl_restriction),
-    }
-    restriction! {
-        requires_explicit_path: true,
-        name: Mut,
-        keyword: kw::Mut => "mut",
-        feature_gate: Some(sym::mut_restriction),
-    }
+    define_restrictions![
+        Restriction {
+            requires_explicit_path: false,
+            name: Visibility,
+            keyword: kw::Pub => "pub",
+            feature_gate: None,
+        },
+        Restriction {
+            requires_explicit_path: true,
+            name: Impl,
+            keyword: kw::Impl => "impl",
+            feature_gate: Some(sym::impl_restriction),
+        },
+        Restriction {
+            requires_explicit_path: true,
+            name: Mut,
+            keyword: kw::Mut => "mut",
+            feature_gate: Some(sym::mut_restriction),
+        },
+    ];
 }
 pub use restriction_kind::RestrictionKind;
 

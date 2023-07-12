@@ -162,8 +162,8 @@ pub struct ResolverOutputs {
 #[derive(Debug)]
 pub struct ResolverGlobalCtxt {
     pub visibilities: FxHashMap<LocalDefId, Visibility>,
-    pub impl_restrictions: FxHashMap<DefId, Restriction>,
-    pub mut_restrictions: FxHashMap<DefId, Restriction>,
+    pub impl_restrictions: FxHashMap<DefId, ImplRestriction>,
+    pub mut_restrictions: FxHashMap<DefId, MutRestriction>,
     /// This field is used to decide whether we should make `PRIVATE_IN_PUBLIC` a hard error.
     pub has_pub_restricted: bool,
     /// Item with a given `LocalDefId` was defined during macro expansion with ID `ExpnId`.
@@ -292,15 +292,23 @@ pub enum Visibility<Id = LocalDefId> {
     Restricted(Id),
 }
 
+// FIXME(jhpratt) Once #![feature(adt_const_params)] is no longer incomplete, replace this with an
+// enum of the various kinds of restrictions.
+pub type RestrictionKind = u8;
+pub type MutRestriction =
+    Restriction<{ <rustc_ast::restriction_kind::Mut as rustc_ast::RestrictionKind>::MIDDLE_KIND }>;
+pub type ImplRestriction =
+    Restriction<{ <rustc_ast::restriction_kind::Impl as rustc_ast::RestrictionKind>::MIDDLE_KIND }>;
+
 #[derive(Clone, Debug, PartialEq, Eq, Copy, Hash, Encodable, Decodable, HashStable)]
-pub enum Restriction<Id = DefId> {
+pub enum Restriction<const KIND: RestrictionKind, Id = DefId> {
     /// The restriction does not affect the item.
     Unrestricted,
     /// The restriction only applies outside of this path.
     Restricted(Id, Span),
 }
 
-impl<Id: Into<DefId> + Copy> Restriction<Id> {
+impl<const KIND: RestrictionKind, Id: Into<DefId> + Copy> Restriction<KIND, Id> {
     /// Returns `true` if the behavior is allowed/unrestricted in the given module. A value of
     /// `false` indicates that the behavior is prohibited.
     pub fn is_allowed_in(self, module: DefId, tcx: TyCtxt<'_>) -> bool {
@@ -361,7 +369,7 @@ impl<Id: Into<DefId> + Copy> Restriction<Id> {
         iter.fold(Restriction::Unrestricted, |left, right| Self::stricter_of(left, right, tcx))
     }
 
-    pub fn map_id<OutId>(self, f: impl FnOnce(Id) -> OutId) -> Restriction<OutId> {
+    pub fn map_id<OutId>(self, f: impl FnOnce(Id) -> OutId) -> Restriction<KIND, OutId> {
         match self {
             Restriction::Unrestricted => Restriction::Unrestricted,
             Restriction::Restricted(id, span) => Restriction::Restricted(f(id), span),

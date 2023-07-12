@@ -43,7 +43,10 @@ impl<'v> Visitor<'v> for ImplOfRestrictedTraitVisitor<'v> {
     }
 }
 
-fn impl_restriction(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Restriction {
+fn impl_restriction(
+    tcx: TyCtxt<'_>,
+    def_id: LocalDefId,
+) -> ty::ImplRestriction {
     match tcx.resolutions(()).impl_restrictions.get(&def_id.to_def_id()) {
         Some(restriction) => *restriction,
         None => bug!("impl restriction not found for {def_id:?}"),

@@ -325,21 +325,32 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
         self.r.field_def_ids.insert(def_id, self.r.tcx.arena.alloc_from_iter(def_ids));
     }
 
-    fn resolve_restriction<Kind: ast::RestrictionKind>(
+    fn resolve_restriction<
+        AstKind: ast::RestrictionKind,
+        const MIDDLE_KIND: ty::RestrictionKind,
+    >(
         &mut self,
-        restriction: &ast::Restriction<Kind>,
-    ) -> ty::Restriction {
+        restriction: &ast::Restriction<AstKind>,
+    ) -> ty::Restriction<{ MIDDLE_KIND }> {
+        const { assert!(AstKind::MIDDLE_KIND == MIDDLE_KIND) };
+
         self.try_resolve_restriction(restriction, true).unwrap_or_else(|err| {
             self.r.report_restriction_error(err);
             ty::Restriction::Unrestricted
         })
     }
 
-    fn try_resolve_restriction<'ast, Kind: ast::RestrictionKind>(
+    fn try_resolve_restriction<
+        'ast,
+        AstKind: ast::RestrictionKind,
+        const MIDDLE_KIND: ty::RestrictionKind,
+    >(
         &mut self,
-        restriction: &'ast ast::Restriction<Kind>,
+        restriction: &'ast ast::Restriction<AstKind>,
         finalize: bool,
-    ) -> Result<ty::Restriction, RestrictionResolutionError<'ast>> {
+    ) -> Result<ty::Restriction<{ MIDDLE_KIND }>, RestrictionResolutionError<'ast>> {
+        const { assert!(AstKind::MIDDLE_KIND == MIDDLE_KIND) };
+
         let parent_scope = &self.parent_scope;
         match restriction.level {
             ast::RestrictionLevel::Unrestricted => Ok(ty::Restriction::Unrestricted),

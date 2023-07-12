@@ -13,6 +13,7 @@
 #![feature(const_trait_impl)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
+#![feature(macro_metavar_expr)]
 #![feature(min_specialization)]
 #![feature(negative_impls)]
 #![feature(stmt_expr_attributes)]

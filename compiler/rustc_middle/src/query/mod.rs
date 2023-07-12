@@ -1695,7 +1695,7 @@ rustc_queries! {
         feedable
     }
 
-    query impl_restriction(def_id: DefId) -> ty::Restriction {
+    query impl_restriction(def_id: DefId) -> ty::ImplRestriction {
         desc { |tcx| "computing impl restriction for `{}`", tcx.def_path_str(def_id) }
         separate_provide_extern
     }
@@ -1713,7 +1713,7 @@ rustc_queries! {
         desc { "computing the uninhabited predicate of `{}`", key }
     }
 
-    query mut_restriction(def_id: DefId) -> ty::Restriction {
+    query mut_restriction(def_id: DefId) -> ty::MutRestriction {
         desc { |tcx| "computing mut restriction for `{}`", tcx.def_path_str(def_id) }
         separate_provide_extern
     }
@@ -1722,7 +1722,7 @@ rustc_queries! {
         desc { "checking mut restrictions" }
     }
 
-    query adt_expression_restriction(variant_def_id: DefId) -> ty::Restriction {
+    query adt_expression_restriction(variant_def_id: DefId) -> ty::MutRestriction {
         desc {
             "computing where `{}` can be constructed via an ADT expression",
             tcx.def_path_str(variant_def_id)
