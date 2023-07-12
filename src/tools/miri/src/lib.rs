@@ -55,6 +55,7 @@ extern crate rustc_index;
 extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
+extern crate either; // the one from rustc
 
 // Necessary to pull in object code as the rest of the rustc crates are shipped only as rmeta
 // files.

@@ -22,8 +22,8 @@ use rustc_target::spec::abi::Abi as CallAbi;
 
 use crate::MirPass;
 use rustc_const_eval::interpret::{
-    self, compile_time_machine, AllocId, ConstAllocation, ConstValue, Frame, ImmTy, Immediate,
-    InterpCx, InterpResult, LocalValue, MemoryKind, OpTy, PlaceTy, Pointer, Scalar,
+    self, compile_time_machine, AllocId, ConstAllocation, ConstValue, FnArg, Frame, ImmTy,
+    Immediate, InterpCx, InterpResult, LocalValue, MemoryKind, OpTy, PlaceTy, Pointer, Scalar,
     StackPopCleanup,
 };
 
@@ -185,7 +185,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
         _instance: ty::Instance<'tcx>,
         _abi: CallAbi,
-        _args: &[OpTy<'tcx>],
+        _args: &[FnArg<'tcx>],
         _destination: &PlaceTy<'tcx>,
         _target: Option<BasicBlock>,
         _unwind: UnwindAction,

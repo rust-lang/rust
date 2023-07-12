@@ -1,0 +1,39 @@
+error: Undefined Behavior: read access through <TAG> (root of the allocation) is forbidden
+  --> $DIR/return_pointer_aliasing.rs:LL:CC
+   |
+LL |     unsafe { ptr.read() };
+   |              ^^^^^^^^^^ read access through <TAG> (root of the allocation) is forbidden
+   |
+   = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
+   = help: the accessed tag <TAG> (root of the allocation) is foreign to the protected tag <TAG> (i.e., it is not a child)
+   = help: this foreign read access would cause the protected tag <TAG> to transition from Active to Frozen
+   = help: this transition would be a loss of write permissions, which is not allowed for protected tags
+help: the accessed tag <TAG> was created here
+  --> $DIR/return_pointer_aliasing.rs:LL:CC
+   |
+LL | /     mir! {
+LL | |         {
+LL | |             let x = 0;
+LL | |             let ptr = &raw mut x;
+...  |
+LL | |         }
+LL | |     }
+   | |_____^
+help: the protected tag <TAG> was created here, in the initial state Active
+  --> $DIR/return_pointer_aliasing.rs:LL:CC
+   |
+LL |     unsafe { ptr.read() };
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   = note: BACKTRACE (of the first span):
+   = note: inside `myfun` at $DIR/return_pointer_aliasing.rs:LL:CC
+note: inside `main`
+  --> $DIR/return_pointer_aliasing.rs:LL:CC
+   |
+LL |             Call(*ptr, after_call, myfun(ptr))
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: this error originates in the macro `::core::intrinsics::mir::__internal_remove_let` which comes from the expansion of the macro `mir` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

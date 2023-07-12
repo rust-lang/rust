@@ -13,7 +13,7 @@ use super::{InterpCx, MPlaceTy, Machine, OpTy, PlaceTy};
 /// A thing that we can project into, and that has a layout.
 /// This wouldn't have to depend on `Machine` but with the current type inference,
 /// that's just more convenient to work with (avoids repeating all the `Machine` bounds).
-pub trait Value<'mir, 'tcx, M: Machine<'mir, 'tcx>>: Sized {
+pub trait Value<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>>: Sized {
     /// Gets this value's layout.
     fn layout(&self) -> TyAndLayout<'tcx>;
 
@@ -54,7 +54,7 @@ pub trait Value<'mir, 'tcx, M: Machine<'mir, 'tcx>>: Sized {
 /// A thing that we can project into given *mutable* access to `ecx`, and that has a layout.
 /// This wouldn't have to depend on `Machine` but with the current type inference,
 /// that's just more convenient to work with (avoids repeating all the `Machine` bounds).
-pub trait ValueMut<'mir, 'tcx, M: Machine<'mir, 'tcx>>: Sized {
+pub trait ValueMut<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>>: Sized {
     /// Gets this value's layout.
     fn layout(&self) -> TyAndLayout<'tcx>;
 

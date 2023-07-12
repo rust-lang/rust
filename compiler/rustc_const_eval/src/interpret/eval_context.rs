@@ -682,11 +682,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         return_to_block: StackPopCleanup,
     ) -> InterpResult<'tcx> {
         trace!("body: {:#?}", body);
-        // Clobber previous return place contents, nobody is supposed to be able to see them any more
-        // This also checks dereferenceable, but not align. We rely on all constructed places being
-        // sufficiently aligned (in particular we rely on `deref_operand` checking alignment).
-        self.write_uninit(return_place)?;
-        // first push a stack frame so we have access to the local substs
+        // First push a stack frame so we have access to the local substs
         let pre_frame = Frame {
             body,
             loc: Right(body.span), // Span used for errors caused during preamble.
@@ -804,6 +800,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         if unwinding && self.frame_idx() == 0 {
             throw_ub_custom!(fluent::const_eval_unwind_past_top);
         }
+
+        M::before_stack_pop(self, self.frame())?;
 
         // Copy return value. Must of course happen *before* we deallocate the locals.
         let copy_ret_result = if !unwinding {
