@@ -4,7 +4,7 @@ error[E0382]: borrow of moved value: `x`
 LL |     let x = Foo(Box::new(3));
    |         - move occurs because `x` has type `Foo`, which does not implement the `Copy` trait
 LL |     let _y = {x} + x.clone(); // the `{x}` forces a move to occur
-   |               -    ^^^^^^^^^ value borrowed here after move
+   |               -    ^ value borrowed here after move
    |               |
    |               value moved here
    |

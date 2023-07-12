@@ -12,7 +12,7 @@ note: `Option::<T>::unwrap` takes ownership of the receiver `self`, which moves 
 help: you can `clone` the value and consume it, but this might not be your desired behavior
    |
 LL |                 if selection.1.clone().unwrap().contains(selection.0) {
-   |                                ++++++++
+   |                               ++++++++
 
 error[E0507]: cannot move out of `selection.1` which is behind a shared reference
   --> $DIR/option-content-move.rs:27:20
@@ -28,7 +28,7 @@ note: `Result::<T, E>::unwrap` takes ownership of the receiver `self`, which mov
 help: you can `clone` the value and consume it, but this might not be your desired behavior
    |
 LL |                 if selection.1.clone().unwrap().contains(selection.0) {
-   |                                ++++++++
+   |                               ++++++++
 
 error: aborting due to 2 previous errors
 

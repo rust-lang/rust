@@ -7,10 +7,7 @@ LL |     for _c in chars.by_ref() {
    |               first mutable borrow occurs here
    |               first borrow later used here
 LL |         chars.next();
-   |         ^^^^^^^^^^^^ second mutable borrow occurs here
-   |
-   = note: a for loop advances the iterator for you, the result is stored in `_c`.
-   = help: if you want to call `next` on a iterator within the loop, consider using `while let`.
+   |         ^^^^^ second mutable borrow occurs here
 
 error[E0382]: borrow of moved value: `iter`
   --> $DIR/issue-102972.rs:12:9
@@ -20,10 +17,8 @@ LL |     let mut iter = v.iter();
 LL |     for _i in iter {
    |               ---- `iter` moved due to this implicit call to `.into_iter()`
 LL |         iter.next();
-   |         ^^^^^^^^^^^ value borrowed here after move
+   |         ^^^^ value borrowed here after move
    |
-   = note: a for loop advances the iterator for you, the result is stored in `_i`.
-   = help: if you want to call `next` on a iterator within the loop, consider using `while let`.
 note: `into_iter` takes ownership of the receiver `self`, which moves `iter`
   --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
 

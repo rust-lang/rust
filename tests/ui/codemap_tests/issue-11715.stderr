@@ -7,7 +7,7 @@ LL |     let z = &mut x;
    |             ^^^^^^ second mutable borrow occurs here
 LL |     z.use_mut();
 LL |     y.use_mut();
-   |     ----------- first borrow later used here
+   |     - first borrow later used here
 
 error: aborting due to previous error
 

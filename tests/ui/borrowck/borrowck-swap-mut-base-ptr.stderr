@@ -7,7 +7,7 @@ LL |     swap(&mut t0, &mut t1);
    |          ^^^^^^^ mutable borrow occurs here
 LL |     *t1 = 22;
 LL |     p.use_ref();
-   |     ----------- immutable borrow later used here
+   |     - immutable borrow later used here
 
 error: aborting due to previous error
 

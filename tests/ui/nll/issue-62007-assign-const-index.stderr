@@ -17,7 +17,7 @@ LL | fn to_refs<T>(mut list: [&mut List<T>; 2]) -> Vec<&mut T> {
    |                          - let's call the lifetime of this reference `'1`
 ...
 LL |         if let Some(n) = list[0].next.as_mut() {
-   |                          ^^^^^^^^^^^^^^^^^^^^^
+   |                          ^^^^^^^^^^^^---------
    |                          |
    |                          `list[_].next` was mutably borrowed here in the previous iteration of the loop
    |                          argument requires that `list[_].next` is borrowed for `'1`

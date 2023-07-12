@@ -7,7 +7,7 @@ LL |         for v in self.0.values() {
    |                  |      help: use mutable method: `values_mut()`
    |                  this iterator yields `&` references
 LL |             v.flush();
-   |             ^^^^^^^^^ `v` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |             ^ `v` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
 error: aborting due to previous error
 

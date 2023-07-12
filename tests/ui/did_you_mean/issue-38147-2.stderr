@@ -2,7 +2,7 @@ error[E0596]: cannot borrow `*self.s` as mutable, as it is behind a `&` referenc
   --> $DIR/issue-38147-2.rs:9:9
    |
 LL |         self.s.push('x');
-   |         ^^^^^^^^^^^^^^^^ cannot borrow as mutable
+   |         ^^^^^^ cannot borrow as mutable
    |
 help: consider changing this to be mutable
    |
@@ -13,7 +13,7 @@ error[E0596]: cannot borrow `*self.longer_name` as mutable, as it is behind a `&
   --> $DIR/issue-38147-2.rs:12:9
    |
 LL |         self.longer_name.push(13);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^ cannot borrow as mutable
+   |         ^^^^^^^^^^^^^^^^ cannot borrow as mutable
    |
 help: consider changing this to be mutable
    |

@@ -9,7 +9,7 @@ LL |         let c_ref = &c;
 LL |     }
    |     - `c` dropped here while still borrowed
 LL |     f.use_mut();
-   |     ----------- borrow later used here
+   |     - borrow later used here
 
 error: aborting due to previous error
 
