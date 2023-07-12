@@ -177,18 +177,13 @@ pub(crate) fn compile_fn(
         match module.define_function(codegened_func.func_id, context) {
             Ok(()) => {}
             Err(ModuleError::Compilation(CodegenError::ImplLimitExceeded)) => {
-                // FIXME pass the error to the main thread and do a span_fatal instead
-                rustc_session::early_error(
-                    rustc_session::config::ErrorOutputType::HumanReadable(
-                        rustc_errors::emitter::HumanReadableErrorType::Default(
-                            rustc_errors::emitter::ColorConfig::Auto,
-                        ),
-                    ),
-                    format!(
-                        "backend implementation limit exceeded while compiling {name}",
-                        name = codegened_func.symbol_name
-                    ),
+                let handler = rustc_session::EarlyErrorHandler::new(
+                    rustc_session::config::ErrorOutputType::default(),
                 );
+                handler.early_error(format!(
+                    "backend implementation limit exceeded while compiling {name}",
+                    name = codegened_func.symbol_name
+                ));
             }
             Err(err) => {
                 panic!("Error while defining {name}: {err:?}", name = codegened_func.symbol_name);

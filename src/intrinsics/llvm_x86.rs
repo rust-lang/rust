@@ -531,7 +531,7 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
 
             let (cb_out, c) = llvm_add_sub(fx, BinOp::Add, c_in, a, b);
 
-            let layout = fx.layout_of(fx.tcx.mk_tup(&[fx.tcx.types.u8, a.layout().ty]));
+            let layout = fx.layout_of(Ty::new_tup(fx.tcx, &[fx.tcx.types.u8, a.layout().ty]));
             let val = CValue::by_val_pair(cb_out, c, layout);
             ret.write_cvalue(fx, val);
         }
@@ -550,7 +550,7 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
 
             let (cb_out, c) = llvm_add_sub(fx, BinOp::Sub, b_in, a, b);
 
-            let layout = fx.layout_of(fx.tcx.mk_tup(&[fx.tcx.types.u8, a.layout().ty]));
+            let layout = fx.layout_of(Ty::new_tup(fx.tcx, &[fx.tcx.types.u8, a.layout().ty]));
             let val = CValue::by_val_pair(cb_out, c, layout);
             ret.write_cvalue(fx, val);
         }
