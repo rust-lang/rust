@@ -20,7 +20,7 @@ struct UseFactsExtractor<'me, 'tcx> {
 }
 
 // A Visitor to walk through the MIR and extract point-wise facts
-impl UseFactsExtractor<'_, '_> {
+impl<'tcx> UseFactsExtractor<'_, 'tcx> {
     fn location_to_index(&self, location: Location) -> LocationIndex {
         self.location_table.mid_index(location)
     }
@@ -45,7 +45,7 @@ impl UseFactsExtractor<'_, '_> {
         self.path_accessed_at_base.push((path, self.location_to_index(location)));
     }
 
-    fn place_to_mpi(&self, place: &Place<'_>) -> Option<MovePathIndex> {
+    fn place_to_mpi(&self, place: &Place<'tcx>) -> Option<MovePathIndex> {
         match self.move_data.rev_lookup.find(place.as_ref()) {
             LookupResult::Exact(mpi) => Some(mpi),
             LookupResult::Parent(mmpi) => mmpi,

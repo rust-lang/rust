@@ -575,14 +575,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok(op)
     }
 
-    /// Evaluate a bunch of operands at once
-    pub(super) fn eval_operands(
-        &self,
-        ops: &[mir::Operand<'tcx>],
-    ) -> InterpResult<'tcx, Vec<OpTy<'tcx, M::Provenance>>> {
-        ops.iter().map(|op| self.eval_operand(op, None)).collect()
-    }
-
     fn eval_ty_constant(
         &self,
         val: ty::Const<'tcx>,

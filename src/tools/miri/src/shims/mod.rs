@@ -31,7 +31,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         &mut self,
         instance: ty::Instance<'tcx>,
         abi: Abi,
-        args: &[OpTy<'tcx, Provenance>],
+        args: &[FnArg<'tcx, Provenance>],
         dest: &PlaceTy<'tcx, Provenance>,
         ret: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
@@ -41,7 +41,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         // There are some more lang items we want to hook that CTFE does not hook (yet).
         if this.tcx.lang_items().align_offset_fn() == Some(instance.def.def_id()) {
-            let [ptr, align] = check_arg_count(args)?;
+            let args = this.copy_fn_args(args)?;
+            let [ptr, align] = check_arg_count(&args)?;
             if this.align_offset(ptr, align, dest, ret, unwind)? {
                 return Ok(None);
             }
@@ -55,7 +56,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             // to run extra MIR), and Ok(Some(body)) if we found MIR to run for the
             // foreign function
             // Any needed call to `goto_block` will be performed by `emulate_foreign_item`.
-            return this.emulate_foreign_item(instance.def_id(), abi, args, dest, ret, unwind);
+            let args = this.copy_fn_args(args)?; // FIXME: Should `InPlace` arguments be reset to uninit?
+            return this.emulate_foreign_item(instance.def_id(), abi, &args, dest, ret, unwind);
         }
 
         // Otherwise, load the MIR.

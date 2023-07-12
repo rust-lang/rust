@@ -1050,10 +1050,6 @@ pub type PlaceElem<'tcx> = ProjectionElem<Local, Ty<'tcx>>;
 /// there may be other effects: if the type has a validity constraint loading the place might be UB
 /// if the validity constraint is not met.
 ///
-/// **Needs clarification:** Ralf proposes that loading a place not have side-effects.
-/// This is what is implemented in miri today. Are these the semantics we want for MIR? Is this
-/// something we can even decide without knowing more about Rust's memory model?
-///
 /// **Needs clarification:** Is loading a place that has its variant index set well-formed? Miri
 /// currently implements it, but it seems like this may be something to check against in the
 /// validator.
@@ -1070,6 +1066,16 @@ pub enum Operand<'tcx> {
     /// This *may* additionally overwrite the place with `uninit` bytes, depending on how we decide
     /// in [UCG#188]. You should not emit MIR that may attempt a subsequent second load of this
     /// place without first re-initializing it.
+    ///
+    /// **Needs clarification:** The operational impact of `Move` is unclear. Currently (both in
+    /// Miri and codegen) it has no effect at all unless it appears in an argument to `Call`; for
+    /// `Call` it allows the argument to be passed to the callee "in-place", i.e. the callee might
+    /// just get a reference to this place instead of a full copy. Miri implements this with a
+    /// combination of aliasing model "protectors" and putting `uninit` into the place. Ralf
+    /// proposes that we don't want these semantics for `Move` in regular assignments, because
+    /// loading a place should not have side-effects, and the aliasing model "protectors" are
+    /// inherently tied to a function call. Are these the semantics we want for MIR? Is this
+    /// something we can even decide without knowing more about Rust's memory model?
     ///
     /// [UCG#188]: https://github.com/rust-lang/unsafe-code-guidelines/issues/188
     Move(Place<'tcx>),

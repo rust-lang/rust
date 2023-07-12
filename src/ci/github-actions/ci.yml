@@ -90,7 +90,7 @@ x--expand-yaml-anchors--remove:
     <<: *base-job
 
   - &job-macos-xl
-    os: macos-latest # We use the standard runner for now
+    os: macos-13 # We use the standard runner for now
     <<: *base-job
 
   - &job-windows-8c

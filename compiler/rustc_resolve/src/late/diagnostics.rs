@@ -332,15 +332,11 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
     pub(crate) fn smart_resolve_partial_mod_path_errors(
         &mut self,
         prefix_path: &[Segment],
-        path: &[Segment],
+        following_seg: Option<&Segment>,
     ) -> Vec<ImportSuggestion> {
-        let next_seg = if path.len() >= prefix_path.len() + 1 && prefix_path.len() == 1 {
-            path.get(prefix_path.len())
-        } else {
-            None
-        };
         if let Some(segment) = prefix_path.last() &&
-            let Some(next_seg) = next_seg {
+            let Some(following_seg) = following_seg
+        {
             let candidates = self.r.lookup_import_candidates(
                 segment.ident,
                 Namespace::TypeNS,
@@ -353,9 +349,10 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 .filter(|candidate| {
                     if let Some(def_id) = candidate.did &&
                         let Some(module) = self.r.get_module(def_id) {
-                            self.r.resolutions(module).borrow().iter().any(|(key, _r)| {
-                                key.ident.name == next_seg.ident.name
-                            })
+                                Some(def_id) != self.parent_scope.module.opt_def_id() &&
+                                self.r.resolutions(module).borrow().iter().any(|(key, _r)| {
+                                    key.ident.name == following_seg.ident.name
+                                })
                     } else {
                         false
                     }
@@ -371,7 +368,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
     pub(crate) fn smart_resolve_report_errors(
         &mut self,
         path: &[Segment],
-        full_path: &[Segment],
+        following_seg: Option<&Segment>,
         span: Span,
         source: PathSource<'_>,
         res: Option<Res>,
@@ -412,8 +409,15 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             return (err, Vec::new());
         }
 
-        let (found, candidates) =
-            self.try_lookup_name_relaxed(&mut err, source, path, full_path, span, res, &base_error);
+        let (found, candidates) = self.try_lookup_name_relaxed(
+            &mut err,
+            source,
+            path,
+            following_seg,
+            span,
+            res,
+            &base_error,
+        );
         if found {
             return (err, candidates);
         }
@@ -422,7 +426,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
 
         // if we have suggested using pattern matching, then don't add needless suggestions
         // for typos.
-        fallback |= self.suggest_typo(&mut err, source, path, span, &base_error);
+        fallback |= self.suggest_typo(&mut err, source, path, following_seg, span, &base_error);
 
         if fallback {
             // Fallback label.
@@ -519,7 +523,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         err: &mut Diagnostic,
         source: PathSource<'_>,
         path: &[Segment],
-        full_path: &[Segment],
+        following_seg: Option<&Segment>,
         span: Span,
         res: Option<Res>,
         base_error: &BaseError,
@@ -590,8 +594,9 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         }
 
         // Try finding a suitable replacement.
-        let typo_sugg =
-            self.lookup_typo_candidate(path, source.namespace(), is_expected).to_opt_suggestion();
+        let typo_sugg = self
+            .lookup_typo_candidate(path, following_seg, source.namespace(), is_expected)
+            .to_opt_suggestion();
         if path.len() == 1 && self.self_type_is_available() {
             if let Some(candidate) =
                 self.lookup_assoc_candidate(ident, ns, is_expected, source.is_call())
@@ -690,7 +695,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         }
 
         if candidates.is_empty() {
-            candidates = self.smart_resolve_partial_mod_path_errors(path, full_path);
+            candidates = self.smart_resolve_partial_mod_path_errors(path, following_seg);
         }
 
         return (false, candidates);
@@ -776,12 +781,14 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         err: &mut Diagnostic,
         source: PathSource<'_>,
         path: &[Segment],
+        following_seg: Option<&Segment>,
         span: Span,
         base_error: &BaseError,
     ) -> bool {
         let is_expected = &|res| source.is_expected(res);
         let ident_span = path.last().map_or(span, |ident| ident.ident.span);
-        let typo_sugg = self.lookup_typo_candidate(path, source.namespace(), is_expected);
+        let typo_sugg =
+            self.lookup_typo_candidate(path, following_seg, source.namespace(), is_expected);
         let is_in_same_file = &|sp1, sp2| {
             let source_map = self.r.tcx.sess.source_map();
             let file1 = source_map.span_to_filename(sp1);
@@ -1715,6 +1722,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
     fn lookup_typo_candidate(
         &mut self,
         path: &[Segment],
+        following_seg: Option<&Segment>,
         ns: Namespace,
         filter_fn: &impl Fn(Res) -> bool,
     ) -> TypoCandidate {
@@ -1793,6 +1801,26 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             }
         }
 
+        // if next_seg is present, let's filter everything that does not continue the path
+        if let Some(following_seg) = following_seg {
+            names.retain(|suggestion| match suggestion.res {
+                Res::Def(DefKind::Struct | DefKind::Enum | DefKind::Union, _) => {
+                    // FIXME: this is not totally accurate, but mostly works
+                    suggestion.candidate != following_seg.ident.name
+                }
+                Res::Def(DefKind::Mod, def_id) => self.r.get_module(def_id).map_or_else(
+                    || false,
+                    |module| {
+                        self.r
+                            .resolutions(module)
+                            .borrow()
+                            .iter()
+                            .any(|(key, _)| key.ident.name == following_seg.ident.name)
+                    },
+                ),
+                _ => true,
+            });
+        }
         let name = path[path.len() - 1].ident.name;
         // Make sure error reporting is deterministic.
         names.sort_by(|a, b| a.candidate.as_str().cmp(b.candidate.as_str()));

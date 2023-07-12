@@ -2128,7 +2128,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         let span = path.span;
         match path.res {
-            Res::Def(DefKind::OpaqueTy | DefKind::ImplTraitPlaceholder, did) => {
+            Res::Def(DefKind::OpaqueTy, did) => {
                 // Check for desugared `impl Trait`.
                 assert!(tcx.is_type_alias_impl_trait(did));
                 let item_segment = path.segments.split_last().unwrap();
@@ -2439,7 +2439,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         // If this is an RPITIT and we are using the new RPITIT lowering scheme, we
                         // generate the def_id of an associated type for the trait and return as
                         // type a projection.
-                        let def_id = if in_trait && tcx.lower_impl_trait_in_trait_to_assoc_ty() {
+                        let def_id = if in_trait {
                             tcx.associated_type_for_impl_trait_in_trait(local_def_id).to_def_id()
                         } else {
                             local_def_id.to_def_id()

@@ -109,8 +109,6 @@ pub enum DefKind {
     InlineConst,
     /// Opaque type, aka `impl Trait`.
     OpaqueTy,
-    /// A return-position `impl Trait` in a trait definition
-    ImplTraitPlaceholder,
     Field,
     /// Lifetime parameter: the `'a` in `struct Foo<'a> { ... }`
     LifetimeParam,
@@ -143,7 +141,6 @@ impl DefKind {
             DefKind::Ctor(CtorOf::Struct, CtorKind::Fn) => "tuple struct",
             DefKind::Ctor(CtorOf::Struct, CtorKind::Const) => "unit struct",
             DefKind::OpaqueTy => "opaque type",
-            DefKind::ImplTraitPlaceholder => "opaque type in trait",
             DefKind::TyAlias => "type alias",
             DefKind::TraitAlias => "trait alias",
             DefKind::AssocTy => "associated type",
@@ -227,8 +224,7 @@ impl DefKind {
             | DefKind::Use
             | DefKind::ForeignMod
             | DefKind::GlobalAsm
-            | DefKind::Impl { .. }
-            | DefKind::ImplTraitPlaceholder => None,
+            | DefKind::Impl { .. } => None,
         }
     }
 
@@ -262,7 +258,6 @@ impl DefKind {
             | DefKind::Use
             | DefKind::ForeignMod
             | DefKind::OpaqueTy
-            | DefKind::ImplTraitPlaceholder
             | DefKind::Impl { .. }
             | DefKind::Field
             | DefKind::TyParam

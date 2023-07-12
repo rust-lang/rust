@@ -3,7 +3,6 @@
 use std::cmp::Ordering;
 use std::{fmt, hash};
 
-use crate::DebruijnIndex;
 use crate::FloatTy;
 use crate::HashStableContext;
 use crate::IntTy;
@@ -11,6 +10,7 @@ use crate::Interner;
 use crate::TyDecoder;
 use crate::TyEncoder;
 use crate::UintTy;
+use crate::{DebruijnIndex, DebugWithInfcx, InferCtxtLike, OptWithInfcx};
 
 use self::RegionKind::*;
 use self::TyKind::*;
@@ -503,42 +503,48 @@ impl<I: Interner> hash::Hash for TyKind<I> {
     }
 }
 
-// This is manually implemented because a derive would require `I: Debug`
-impl<I: Interner> fmt::Debug for TyKind<I> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
+impl<I: Interner> DebugWithInfcx<I> for TyKind<I> {
+    fn fmt<InfCtx: InferCtxtLike<I>>(
+        this: OptWithInfcx<'_, I, InfCtx, &Self>,
+        f: &mut core::fmt::Formatter<'_>,
+    ) -> fmt::Result {
+        match this.data {
             Bool => write!(f, "bool"),
             Char => write!(f, "char"),
             Int(i) => write!(f, "{i:?}"),
             Uint(u) => write!(f, "{u:?}"),
             Float(float) => write!(f, "{float:?}"),
-            Adt(d, s) => f.debug_tuple_field2_finish("Adt", d, s),
+            Adt(d, s) => f.debug_tuple_field2_finish("Adt", d, &this.wrap(s)),
             Foreign(d) => f.debug_tuple_field1_finish("Foreign", d),
             Str => write!(f, "str"),
-            Array(t, c) => write!(f, "[{t:?}; {c:?}]"),
-            Slice(t) => write!(f, "[{t:?}]"),
+            Array(t, c) => write!(f, "[{:?}; {:?}]", &this.wrap(t), &this.wrap(c)),
+            Slice(t) => write!(f, "[{:?}]", &this.wrap(t)),
             RawPtr(p) => {
                 let (ty, mutbl) = I::ty_and_mut_to_parts(p.clone());
                 match I::mutability_is_mut(mutbl) {
                     true => write!(f, "*mut "),
                     false => write!(f, "*const "),
                 }?;
-                write!(f, "{ty:?}")
+                write!(f, "{:?}", &this.wrap(ty))
             }
             Ref(r, t, m) => match I::mutability_is_mut(m.clone()) {
-                true => write!(f, "&{r:?} mut {t:?}"),
-                false => write!(f, "&{r:?} {t:?}"),
+                true => write!(f, "&{:?} mut {:?}", &this.wrap(r), &this.wrap(t)),
+                false => write!(f, "&{:?} {:?}", &this.wrap(r), &this.wrap(t)),
             },
-            FnDef(d, s) => f.debug_tuple_field2_finish("FnDef", d, s),
-            FnPtr(s) => write!(f, "{s:?}"),
+            FnDef(d, s) => f.debug_tuple_field2_finish("FnDef", d, &this.wrap(s)),
+            FnPtr(s) => write!(f, "{:?}", &this.wrap(s)),
             Dynamic(p, r, repr) => match repr {
-                DynKind::Dyn => write!(f, "dyn {p:?} + {r:?}"),
-                DynKind::DynStar => write!(f, "dyn* {p:?} + {r:?}"),
+                DynKind::Dyn => write!(f, "dyn {:?} + {:?}", &this.wrap(p), &this.wrap(r)),
+                DynKind::DynStar => {
+                    write!(f, "dyn* {:?} + {:?}", &this.wrap(p), &this.wrap(r))
+                }
             },
-            Closure(d, s) => f.debug_tuple_field2_finish("Closure", d, s),
-            Generator(d, s, m) => f.debug_tuple_field3_finish("Generator", d, s, m),
-            GeneratorWitness(g) => f.debug_tuple_field1_finish("GeneratorWitness", g),
-            GeneratorWitnessMIR(d, s) => f.debug_tuple_field2_finish("GeneratorWitnessMIR", d, s),
+            Closure(d, s) => f.debug_tuple_field2_finish("Closure", d, &this.wrap(s)),
+            Generator(d, s, m) => f.debug_tuple_field3_finish("Generator", d, &this.wrap(s), m),
+            GeneratorWitness(g) => f.debug_tuple_field1_finish("GeneratorWitness", &this.wrap(g)),
+            GeneratorWitnessMIR(d, s) => {
+                f.debug_tuple_field2_finish("GeneratorWitnessMIR", d, &this.wrap(s))
+            }
             Never => write!(f, "!"),
             Tuple(t) => {
                 let mut iter = t.clone().into_iter();
@@ -547,26 +553,32 @@ impl<I: Interner> fmt::Debug for TyKind<I> {
 
                 match iter.next() {
                     None => return write!(f, ")"),
-                    Some(ty) => write!(f, "{ty:?}")?,
+                    Some(ty) => write!(f, "{:?}", &this.wrap(ty))?,
                 };
 
                 match iter.next() {
                     None => return write!(f, ",)"),
-                    Some(ty) => write!(f, "{ty:?})")?,
+                    Some(ty) => write!(f, "{:?})", &this.wrap(ty))?,
                 }
 
                 for ty in iter {
-                    write!(f, ", {ty:?}")?;
+                    write!(f, ", {:?}", &this.wrap(ty))?;
                 }
                 write!(f, ")")
             }
-            Alias(i, a) => f.debug_tuple_field2_finish("Alias", i, a),
+            Alias(i, a) => f.debug_tuple_field2_finish("Alias", i, &this.wrap(a)),
             Param(p) => write!(f, "{p:?}"),
             Bound(d, b) => crate::debug_bound_var(f, *d, b),
             Placeholder(p) => write!(f, "{p:?}"),
-            Infer(t) => write!(f, "{t:?}"),
+            Infer(t) => write!(f, "{:?}", this.wrap(t)),
             TyKind::Error(_) => write!(f, "{{type error}}"),
         }
+    }
+}
+// This is manually implemented because a derive would require `I: Debug`
+impl<I: Interner> fmt::Debug for TyKind<I> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        OptWithInfcx::new_no_ctx(self).fmt(f)
     }
 }
 
@@ -1356,21 +1368,23 @@ impl<I: Interner> hash::Hash for RegionKind<I> {
     }
 }
 
-// This is manually implemented because a derive would require `I: Debug`
-impl<I: Interner> fmt::Debug for RegionKind<I> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
+impl<I: Interner> DebugWithInfcx<I> for RegionKind<I> {
+    fn fmt<InfCtx: InferCtxtLike<I>>(
+        this: OptWithInfcx<'_, I, InfCtx, &Self>,
+        f: &mut core::fmt::Formatter<'_>,
+    ) -> core::fmt::Result {
+        match this.data {
             ReEarlyBound(data) => write!(f, "ReEarlyBound({data:?})"),
 
             ReLateBound(binder_id, bound_region) => {
                 write!(f, "ReLateBound({binder_id:?}, {bound_region:?})")
             }
 
-            ReFree(fr) => fr.fmt(f),
+            ReFree(fr) => write!(f, "{fr:?}"),
 
             ReStatic => f.write_str("ReStatic"),
 
-            ReVar(vid) => vid.fmt(f),
+            ReVar(vid) => write!(f, "{:?}", &this.wrap(vid)),
 
             RePlaceholder(placeholder) => write!(f, "RePlaceholder({placeholder:?})"),
 
@@ -1378,6 +1392,11 @@ impl<I: Interner> fmt::Debug for RegionKind<I> {
 
             ReError(_) => f.write_str("ReError"),
         }
+    }
+}
+impl<I: Interner> fmt::Debug for RegionKind<I> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        OptWithInfcx::new_no_ctx(self).fmt(f)
     }
 }
 

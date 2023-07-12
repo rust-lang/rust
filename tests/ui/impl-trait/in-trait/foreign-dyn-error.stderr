@@ -5,7 +5,7 @@ LL |     let _: &dyn rpitit::Foo = todo!();
    |            ^^^^^^^^^^^^^^^^ `Foo` cannot be made into an object
    |
 note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
-  --> $DIR/auxiliary/rpitit.rs:8:21
+  --> $DIR/auxiliary/rpitit.rs:6:21
    |
 LL |     fn bar(self) -> impl Deref<Target = impl Sized>;
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait cannot be made into an object because method `bar` references an `impl Trait` type in its return type

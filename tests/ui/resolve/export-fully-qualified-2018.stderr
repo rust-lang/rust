@@ -3,11 +3,6 @@ error[E0433]: failed to resolve: use of undeclared crate or module `foo`
    |
 LL |     pub fn bar() { foo::baz(); }
    |                    ^^^ use of undeclared crate or module `foo`
-   |
-help: consider importing this module
-   |
-LL +     use crate::foo;
-   |
 
 error: aborting due to previous error
 

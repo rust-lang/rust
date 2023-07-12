@@ -318,7 +318,6 @@ fn opaque_types_defined_by<'tcx>(tcx: TyCtxt<'tcx>, item: LocalDefId) -> &'tcx [
         | DefKind::ExternCrate
         | DefKind::Use
         | DefKind::ForeignMod
-        | DefKind::ImplTraitPlaceholder
         | DefKind::Field
         | DefKind::LifetimeParam
         | DefKind::GlobalAsm

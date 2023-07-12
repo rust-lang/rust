@@ -1300,14 +1300,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         });
                     }
                 }
-                AssocItemKind::Type(box TyAlias {
-                    generics,
-                    where_clauses,
-                    where_predicates_split,
-                    bounds,
-                    ty,
-                    ..
-                }) => {
+                AssocItemKind::Type(box TyAlias { bounds, ty, .. }) => {
                     if ty.is_none() {
                         self.session.emit_err(errors::AssocTypeWithoutBody {
                             span: item.span,
@@ -1315,16 +1308,24 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         });
                     }
                     self.check_type_no_bounds(bounds, "`impl`s");
-                    if ty.is_some() {
-                        self.check_gat_where(
-                            item.id,
-                            generics.where_clause.predicates.split_at(*where_predicates_split).0,
-                            *where_clauses,
-                        );
-                    }
                 }
                 _ => {}
             }
+        }
+
+        if let AssocItemKind::Type(box TyAlias {
+            generics,
+            where_clauses,
+            where_predicates_split,
+            ty: Some(_),
+            ..
+        }) = &item.kind
+        {
+            self.check_gat_where(
+                item.id,
+                generics.where_clause.predicates.split_at(*where_predicates_split).0,
+                *where_clauses,
+            );
         }
 
         if ctxt == AssocCtxt::Trait || self.in_trait_impl {

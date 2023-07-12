@@ -1,7 +1,5 @@
 // check-pass
 // aux-build: rpitit.rs
-// [next] compile-flags: -Zlower-impl-trait-in-trait-to-assoc-ty
-// revisions: current next
 
 extern crate rpitit;
 
@@ -11,7 +9,9 @@ use std::sync::Arc;
 // Implement an RPITIT from another crate.
 struct Local;
 impl Foo for Local {
-    fn bar(self) -> Arc<String> { Arc::new(String::new()) }
+    fn bar(self) -> Arc<String> {
+        Arc::new(String::new())
+    }
 }
 
 fn generic(f: impl Foo) {

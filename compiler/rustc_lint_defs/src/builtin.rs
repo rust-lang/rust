@@ -4084,7 +4084,7 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// The preferred location for where clauses on associated types in impls
+    /// The preferred location for where clauses on associated types
     /// is after the type. However, for most of generic associated types development,
     /// it was only accepted before the equals. To provide a transition period and
     /// further evaluate this change, both are currently accepted. At some point in

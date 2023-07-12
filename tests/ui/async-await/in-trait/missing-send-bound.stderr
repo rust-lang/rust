@@ -1,0 +1,20 @@
+error: future cannot be sent between threads safely
+  --> $DIR/missing-send-bound.rs:14:20
+   |
+LL |     assert_is_send(test::<T>());
+   |                    ^^^^^^^^^^^ future returned by `test` is not `Send`
+   |
+   = help: within `impl Future<Output = ()>`, the trait `Send` is not implemented for `impl Future<Output = ()>`
+note: future is not `Send` as it awaits another future which is not `Send`
+  --> $DIR/missing-send-bound.rs:10:5
+   |
+LL |     T::bar().await;
+   |     ^^^^^^^^ await occurs here on type `impl Future<Output = ()>`, which is not `Send`
+note: required by a bound in `assert_is_send`
+  --> $DIR/missing-send-bound.rs:18:27
+   |
+LL | fn assert_is_send(_: impl Send) {}
+   |                           ^^^^ required by this bound in `assert_is_send`
+
+error: aborting due to previous error
+

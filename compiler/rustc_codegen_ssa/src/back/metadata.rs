@@ -12,7 +12,6 @@ use object::{
 
 use snap::write::FrameEncoder;
 
-use object::elf::NT_GNU_PROPERTY_TYPE_0;
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::owned_slice::{try_slice_owned, OwnedSlice};
 use rustc_metadata::fs::METADATA_FILENAME;
@@ -124,7 +123,7 @@ fn add_gnu_property_note(
     let mut data: Vec<u8> = Vec::new();
     let n_namsz: u32 = 4; // Size of the n_name field
     let n_descsz: u32 = 16; // Size of the n_desc field
-    let n_type: u32 = NT_GNU_PROPERTY_TYPE_0; // Type of note descriptor
+    let n_type: u32 = object::elf::NT_GNU_PROPERTY_TYPE_0; // Type of note descriptor
     let header_values = [n_namsz, n_descsz, n_type];
     header_values.iter().for_each(|v| {
         data.extend_from_slice(&match endianness {
@@ -134,8 +133,8 @@ fn add_gnu_property_note(
     });
     data.extend_from_slice(b"GNU\0"); // Owner of the program property note
     let pr_type: u32 = match architecture {
-        Architecture::X86_64 => 0xc0000002,
-        Architecture::Aarch64 => 0xc0000000,
+        Architecture::X86_64 => object::elf::GNU_PROPERTY_X86_FEATURE_1_AND,
+        Architecture::Aarch64 => object::elf::GNU_PROPERTY_AARCH64_FEATURE_1_AND,
         _ => unreachable!(),
     };
     let pr_datasz: u32 = 4; //size of the pr_data field
@@ -243,8 +242,16 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
                 s if s.contains("r6") => elf::EF_MIPS_ARCH_32R6,
                 _ => elf::EF_MIPS_ARCH_32R2,
             };
-            // The only ABI LLVM supports for 32-bit MIPS CPUs is o32.
-            let mut e_flags = elf::EF_MIPS_CPIC | elf::EF_MIPS_ABI_O32 | arch;
+
+            let mut e_flags = elf::EF_MIPS_CPIC | arch;
+
+            // If the ABI is explicitly given, use it or default to O32.
+            match sess.target.options.llvm_abiname.to_lowercase().as_str() {
+                "n32" => e_flags |= elf::EF_MIPS_ABI2,
+                "o32" => e_flags |= elf::EF_MIPS_ABI_O32,
+                _ => e_flags |= elf::EF_MIPS_ABI_O32,
+            };
+
             if sess.target.options.relocation_model != RelocModel::Static {
                 e_flags |= elf::EF_MIPS_PIC;
             }

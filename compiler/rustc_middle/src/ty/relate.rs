@@ -567,15 +567,9 @@ pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
 
         // Alias tend to mostly already be handled downstream due to normalization.
         (&ty::Alias(a_kind, a_data), &ty::Alias(b_kind, b_data)) => {
-            // FIXME(-Zlower-impl-trait-in-trait-to-assoc-ty): This if can be removed
-            // and the assert uncommented once the new desugaring is stable.
-            if a_kind == b_kind {
-                let alias_ty = relation.relate(a_data, b_data)?;
-                // assert_eq!(a_kind, b_kind);
-                Ok(Ty::new_alias(tcx, a_kind, alias_ty))
-            } else {
-                Err(TypeError::Sorts(expected_found(relation, a, b)))
-            }
+            let alias_ty = relation.relate(a_data, b_data)?;
+            assert_eq!(a_kind, b_kind);
+            Ok(Ty::new_alias(tcx, a_kind, alias_ty))
         }
 
         _ => Err(TypeError::Sorts(expected_found(relation, a, b))),

@@ -4,14 +4,18 @@ version = "0.0.0"
 edition = "2021"
 
 [dependencies]
-rustc_hir = { path = "../rustc_hir" }
+# Use optional dependencies for rustc_* in order to support building this crate separately.
+rustc_hir = { path = "../rustc_hir", optional = true }
 rustc_middle = { path = "../rustc_middle", optional = true }
 rustc_span = { path = "../rustc_span", optional = true }
+rustc_target = { path = "../rustc_target", optional = true }
 tracing = "0.1"
 scoped-tls = "1.0"
 
 [features]
 default = [
+    "rustc_hir",
     "rustc_middle",
     "rustc_span",
+    "rustc_target",
 ]

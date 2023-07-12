@@ -1,5 +1,6 @@
 // needs-sanitizer-support
 // needs-sanitizer-address
+// ignore-cross-compile
 //
 // compile-flags: -Z sanitizer=address -O
 //

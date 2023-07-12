@@ -451,12 +451,11 @@ foo(
 
 #### Multi-line elements
 
-If any element in a chain is formatted across multiple lines, then that element
-and any later elements must be on their own line. Earlier elements may be kept
-on a single line. E.g.,
+If any element in a chain is formatted across multiple lines, put that element
+and any later elements on their own lines.
 
 ```rust
-a.b.c()?.d
+a.b.c()?
     .foo(
         an_expr,
         another_expr,
@@ -803,6 +802,16 @@ foo(|param| {
     action();
     foo(param)
 })
+
+let x = combinable([
+    an_expr,
+    another_expr,
+]);
+
+let arr = [combinable(
+    an_expr,
+    another_expr,
+)];
 ```
 
 Such behaviour should extend recursively, however, tools may choose to limit the
