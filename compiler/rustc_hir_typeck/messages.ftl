@@ -94,5 +94,8 @@ hir_typeck_suggest_ptr_null_mut = consider using `core::ptr::null_mut` instead
 hir_typeck_union_pat_dotdot = `..` cannot be used in union patterns
 
 hir_typeck_union_pat_multiple_fields = union patterns should have exactly one field
+
+hir_typeck_writeback_found_err = found type error in writeback
+
 hir_typeck_yield_expr_outside_of_generator =
     yield expression outside of generator literal
