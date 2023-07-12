@@ -887,12 +887,8 @@ fn outside_workspace_annotation_id() -> String {
 fn merge_text_and_snippet_edits(
     line_index: &LineIndex,
     edit: TextEdit,
-    snippet_edit: Option<SnippetEdit>,
+    snippet_edit: SnippetEdit,
 ) -> Vec<SnippetTextEdit> {
-    let Some(snippet_edit) = snippet_edit else {
-        return edit.into_iter().map(|it| snippet_text_edit(&line_index, false, it)).collect();
-    };
-
     let mut edits: Vec<SnippetTextEdit> = vec![];
     let mut snippets = snippet_edit.into_edit_ranges().into_iter().peekable();
     let mut text_edits = edit.into_iter();
@@ -1009,13 +1005,18 @@ fn merge_text_and_snippet_edits(
 
 pub(crate) fn snippet_text_document_edit(
     snap: &GlobalStateSnapshot,
+    is_snippet: bool,
     file_id: FileId,
     edit: TextEdit,
     snippet_edit: Option<SnippetEdit>,
 ) -> Cancellable<lsp_ext::SnippetTextDocumentEdit> {
     let text_document = optional_versioned_text_document_identifier(snap, file_id);
     let line_index = snap.file_line_index(file_id)?;
-    let mut edits = merge_text_and_snippet_edits(&line_index, edit, snippet_edit);
+    let mut edits = if let Some(snippet_edit) = snippet_edit {
+        merge_text_and_snippet_edits(&line_index, edit, snippet_edit)
+    } else {
+        edit.into_iter().map(|it| snippet_text_edit(&line_index, is_snippet, it)).collect()
+    };
 
     if snap.analysis.is_library_file(file_id)? && snap.config.change_annotation_support() {
         for edit in &mut edits {
@@ -1098,9 +1099,10 @@ pub(crate) fn snippet_workspace_edit(
     for (file_id, (edit, snippet_edit)) in source_change.source_file_edits {
         let edit = snippet_text_document_edit(
             snap,
+            source_change.is_snippet,
             file_id,
             edit,
-            snippet_edit.filter(|_| source_change.is_snippet),
+            snippet_edit,
         )?;
         document_changes.push(lsp_ext::SnippetDocumentChangeOperation::Edit(edit));
     }
