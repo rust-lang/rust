@@ -83,6 +83,8 @@ codegen_llvm_unknown_ctarget_feature_prefix =
     unknown feature specified for `-Ctarget-feature`: `{$feature}`
     .note = features must begin with a `+` to enable or `-` to disable it
 
+codegen_llvm_unknown_debuginfo_compression = unknown debuginfo compression algorithm {$algorithm} - will fall back to uncompressed debuginfo
+
 codegen_llvm_write_bytecode = failed to write bytecode to {$path}: {$err}
 
 codegen_llvm_write_ir = failed to write LLVM IR to {$path}
