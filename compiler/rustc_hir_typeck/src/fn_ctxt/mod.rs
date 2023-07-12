@@ -48,6 +48,11 @@ pub struct FnCtxt<'a, 'tcx> {
     /// eventually).
     pub(super) param_env: ty::ParamEnv<'tcx>,
 
+    /// The module in which the current function is defined. This
+    /// is used to compute type inhabitedness, which accounts for
+    /// visibility information.
+    pub(super) parent_module: DefId,
+
     /// Number of errors that had been reported when we started
     /// checking this function. On exit, if we find that *more* errors
     /// have been reported, we will skip regionck and other work that
@@ -104,7 +109,7 @@ pub struct FnCtxt<'a, 'tcx> {
     ///
     /// An expression represents dead code if, after checking it,
     /// the diverges flag is set to something other than `Maybe`.
-    pub(super) diverges: Cell<Diverges>,
+    pub(super) diverges: Cell<Diverges<'tcx>>,
 
     pub(super) enclosing_breakables: RefCell<EnclosingBreakables<'tcx>>,
 
@@ -122,6 +127,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         FnCtxt {
             body_id,
             param_env,
+            parent_module: inh.tcx.parent_module_from_def_id(body_id).to_def_id(),
             err_count_on_creation: inh.tcx.sess.err_count(),
             ret_coercion: None,
             ret_coercion_span: Cell::new(None),

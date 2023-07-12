@@ -3,19 +3,20 @@
   
   fn h() -> () {
       let mut _0: ();
-      let _1: (!, !);
-+     let mut _2: fn() -> ! {sleep};
-+     let mut _7: ();
+      let mut _1: !;
+      let _2: (!, !);
++     let mut _3: fn() -> ! {sleep};
++     let mut _8: ();
 +     scope 1 (inlined call_twice::<!, fn() -> ! {sleep}>) {
-+         debug f => _2;
-+         let mut _3: &fn() -> ! {sleep};
-+         let mut _4: !;
-+         let mut _5: &fn() -> ! {sleep};
-+         let mut _6: !;
++         debug f => _3;
++         let mut _4: &fn() -> ! {sleep};
++         let mut _5: !;
++         let mut _6: &fn() -> ! {sleep};
++         let mut _7: !;
 +         scope 2 {
-+             debug a => _4;
++             debug a => _5;
 +             scope 3 {
-+                 debug b => _6;
++                 debug b => _7;
 +             }
 +         }
 +         scope 4 (inlined <fn() -> ! {sleep} as Fn<()>>::call - shim(fn() -> ! {sleep})) {
@@ -25,16 +26,16 @@
 +     }
   
       bb0: {
-          StorageLive(_1);
--         _1 = call_twice::<!, fn() -> ! {sleep}>(sleep) -> unwind unreachable;
-+         StorageLive(_2);
-+         _2 = sleep;
-+         StorageLive(_4);
-+         StorageLive(_6);
+          StorageLive(_2);
+-         _2 = call_twice::<!, fn() -> ! {sleep}>(sleep) -> unwind unreachable;
 +         StorageLive(_3);
-+         _3 = &_2;
++         _3 = sleep;
++         StorageLive(_5);
 +         StorageLive(_7);
-+         _7 = const ();
++         StorageLive(_4);
++         _4 = &_3;
++         StorageLive(_8);
++         _8 = const ();
 +         goto -> bb1;
 +     }
 + 

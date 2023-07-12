@@ -326,6 +326,7 @@ impl InlineAsmReg {
             InlineAsmArch::RiscV32 | InlineAsmArch::RiscV64 => {
                 Self::RiscV(RiscVInlineAsmReg::parse(name)?)
             }
+            #[allow(unreachable_code)] // NvptxInlineAsmReg::parse does not return.
             InlineAsmArch::Nvptx64 => Self::Nvptx(NvptxInlineAsmReg::parse(name)?),
             InlineAsmArch::PowerPC | InlineAsmArch::PowerPC64 => {
                 Self::PowerPC(PowerPCInlineAsmReg::parse(name)?)
@@ -336,7 +337,9 @@ impl InlineAsmReg {
                 Self::Mips(MipsInlineAsmReg::parse(name)?)
             }
             InlineAsmArch::S390x => Self::S390x(S390xInlineAsmReg::parse(name)?),
+            #[allow(unreachable_code)] // SpirVInlineAsmReg::parse does not return.
             InlineAsmArch::SpirV => Self::SpirV(SpirVInlineAsmReg::parse(name)?),
+            #[allow(unreachable_code)] // WasmInlineAsmReg::parse does not return.
             InlineAsmArch::Wasm32 | InlineAsmArch::Wasm64 => {
                 Self::Wasm(WasmInlineAsmReg::parse(name)?)
             }

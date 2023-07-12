@@ -1,0 +1,12 @@
+warning: unreachable expression
+  --> $DIR/issue-46855.rs:15:43
+   |
+LL | fn foo(xs: [(Never, u32); 1]) -> u32 { xs[0].1 }
+   |                                        -- ^ unreachable expression
+   |                                        |
+   |                                        this expression has type `[(Never, u32); 1]`, which is uninhabited
+   |
+   = note: `#[warn(unreachable_code)]` on by default
+
+warning: 1 warning emitted
+

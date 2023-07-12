@@ -2,7 +2,7 @@ use crate::callee::{self, DeferredCallResolution};
 use crate::errors::CtorIsPrivate;
 use crate::method::{self, MethodCallee, SelfSource};
 use crate::rvalue_scopes;
-use crate::{BreakableCtxt, Diverges, Expectation, FnCtxt, RawTy};
+use crate::{BreakableCtxt, DivergeReason, Diverges, Expectation, FnCtxt, RawTy};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, Diagnostic, ErrorGuaranteed, MultiSpan, StashKey};
@@ -40,6 +40,7 @@ use rustc_trait_selection::traits::{
     self, NormalizeExt, ObligationCauseCode, ObligationCtxt, StructurallyNormalizeExt,
 };
 
+use std::borrow::Cow;
 use std::collections::hash_map::Entry;
 use std::slice;
 
@@ -47,36 +48,46 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Produces warning on the given node, if the current point in the
     /// function is unreachable, and there hasn't been another warning.
     pub(in super::super) fn warn_if_unreachable(&self, id: hir::HirId, span: Span, kind: &str) {
-        // FIXME: Combine these two 'if' expressions into one once
-        // let chains are implemented
-        if let Diverges::Always { span: orig_span, custom_note } = self.diverges.get() {
-            // If span arose from a desugaring of `if` or `while`, then it is the condition itself,
-            // which diverges, that we are about to lint on. This gives suboptimal diagnostics.
-            // Instead, stop here so that the `if`- or `while`-expression's block is linted instead.
-            if !span.is_desugaring(DesugaringKind::CondTemporary)
-                && !span.is_desugaring(DesugaringKind::Async)
-                && !orig_span.is_desugaring(DesugaringKind::Await)
-            {
-                self.diverges.set(Diverges::WarnedAlways);
+        let Diverges::Always(reason, diverging_expr) = self.diverges.get() else {
+            return;
+        };
+        // If span arose from a desugaring of `if` or `while`, then it is the condition itself,
+        // which diverges, that we are about to lint on. This gives suboptimal diagnostics.
+        // Instead, stop here so that the `if`- or `while`-expression's block is linted instead.
+        if matches!(
+            span.desugaring_kind(),
+            Some(DesugaringKind::Async | DesugaringKind::Await | DesugaringKind::CondTemporary)
+        ) {
+            return;
+        }
 
-                debug!("warn_if_unreachable: id={:?} span={:?} kind={}", id, span, kind);
+        self.diverges.set(Diverges::WarnedAlways);
 
-                let msg = format!("unreachable {}", kind);
-                self.tcx().struct_span_lint_hir(
-                    lint::builtin::UNREACHABLE_CODE,
-                    id,
-                    span,
-                    msg.clone(),
-                    |lint| {
-                        lint.span_label(span, msg).span_label(
-                            orig_span,
-                            custom_note
-                                .unwrap_or("any code following this expression is unreachable"),
-                        )
-                    },
-                )
+        if matches!(reason, DivergeReason::Uninhabited) {
+            if let Some(impl_of) = self.tcx.impl_of_method(self.body_id.to_def_id()) {
+                if self.tcx.has_attr(impl_of, sym::automatically_derived) {
+                    // Built-in derives are generated before typeck,
+                    // so they may contain unreachable code if there are uninhabited types
+                    return;
+                }
             }
         }
+
+        debug!("warn_if_unreachable: id={:?} span={:?} kind={}", id, span, kind);
+
+        let msg = format!("unreachable {}", kind);
+        self.tcx().struct_span_lint_hir(lint::builtin::UNREACHABLE_CODE, id, span, msg.clone(), |lint| {
+            let label = match reason {
+                DivergeReason::AllArmsDiverge =>
+                    Cow::Borrowed("any code following this `match` expression is unreachable, as all arms diverge"),
+                DivergeReason::Uninhabited => format!(
+                    "this expression has type `{}`, which is uninhabited",
+                    self.typeck_results.borrow().node_type(diverging_expr.hir_id)
+                ).into(),
+                DivergeReason::Other => Cow::Borrowed("any code following this expression is unreachable"),
+            };
+            lint.span_label(span, msg).span_label(diverging_expr.span, label)
+        });
     }
 
     /// Resolves type and const variables in `ty` if possible. Unlike the infcx

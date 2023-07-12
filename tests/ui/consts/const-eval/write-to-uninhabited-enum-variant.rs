@@ -1,5 +1,5 @@
 // run-pass
-
+#![allow(unreachable_code)]
 #![allow(dead_code)]
 
 enum Empty { }
