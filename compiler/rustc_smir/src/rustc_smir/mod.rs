@@ -8,7 +8,7 @@
 //! For now, we are developing everything inside `rustc`, thus, we keep this module private.
 
 use crate::rustc_internal::{self, opaque};
-use crate::stable_mir::ty::{FloatTy, IntTy, RigidTy, TyKind, UintTy};
+use crate::stable_mir::ty::{AdtSubsts, FloatTy, GenericArgKind, IntTy, RigidTy, TyKind, UintTy};
 use crate::stable_mir::{self, Context};
 use rustc_middle::mir;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -94,7 +94,25 @@ impl<'tcx> Tables<'tcx> {
                 ty::FloatTy::F32 => TyKind::RigidTy(RigidTy::Float(FloatTy::F32)),
                 ty::FloatTy::F64 => TyKind::RigidTy(RigidTy::Float(FloatTy::F64)),
             },
-            ty::Adt(_, _) => todo!(),
+            ty::Adt(adt_def, substs) => TyKind::RigidTy(RigidTy::Adt(
+                rustc_internal::adt_def(adt_def.did()),
+                AdtSubsts(
+                    substs
+                        .iter()
+                        .map(|arg| match arg.unpack() {
+                            ty::GenericArgKind::Lifetime(region) => {
+                                GenericArgKind::Lifetime(opaque(&region))
+                            }
+                            ty::GenericArgKind::Type(ty) => {
+                                GenericArgKind::Type(self.intern_ty(ty))
+                            }
+                            ty::GenericArgKind::Const(const_) => {
+                                GenericArgKind::Const(opaque(&const_))
+                            }
+                        })
+                        .collect(),
+                ),
+            )),
             ty::Foreign(_) => todo!(),
             ty::Str => todo!(),
             ty::Array(_, _) => todo!(),
