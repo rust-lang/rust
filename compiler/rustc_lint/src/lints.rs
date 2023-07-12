@@ -615,9 +615,17 @@ pub struct ExpectationNote {
 
 // fn_null_check.rs
 #[derive(LintDiagnostic)]
-#[diag(lint_fn_null_check)]
-#[help]
-pub struct FnNullCheckDiag;
+pub enum FnNullCheckDiag<'a> {
+    #[diag(lint_fn_null_check_fn_ptr)]
+    #[help(lint_help)]
+    FnPtr,
+    #[diag(lint_fn_null_check_ref)]
+    Ref {
+        orig_ty: Ty<'a>,
+        #[label]
+        label: Span,
+    },
+}
 
 // for_loops_over_fallibles.rs
 #[derive(LintDiagnostic)]

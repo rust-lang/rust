@@ -31,7 +31,7 @@ declare_lint! {
 
 declare_lint_pass!(IncorrectFnNullChecks => [INCORRECT_FN_NULL_CHECKS]);
 
-fn is_fn_ptr_cast(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+fn incorrect_check<'a>(cx: &LateContext<'a>, expr: &Expr<'_>) -> Option<FnNullCheckDiag<'a>> {
     let mut expr = expr.peel_blocks();
     let mut had_at_least_one_cast = false;
     while let ExprKind::Cast(cast_expr, cast_ty) = expr.kind
@@ -39,7 +39,18 @@ fn is_fn_ptr_cast(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
         expr = cast_expr.peel_blocks();
         had_at_least_one_cast = true;
     }
-    had_at_least_one_cast && cx.typeck_results().expr_ty_adjusted(expr).is_fn()
+    if !had_at_least_one_cast {
+        None
+    } else {
+        let orig_ty = cx.typeck_results().expr_ty(expr);
+        if orig_ty.is_fn() {
+            Some(FnNullCheckDiag::FnPtr)
+        } else if orig_ty.is_ref() {
+            Some(FnNullCheckDiag::Ref { orig_ty, label: expr.span })
+        } else {
+            None
+        }
+    }
 }
 
 impl<'tcx> LateLintPass<'tcx> for IncorrectFnNullChecks {
@@ -54,9 +65,9 @@ impl<'tcx> LateLintPass<'tcx> for IncorrectFnNullChecks {
                         cx.tcx.get_diagnostic_name(def_id),
                         Some(sym::ptr_const_is_null | sym::ptr_is_null)
                     )
-                    && is_fn_ptr_cast(cx, arg) =>
+                    && let Some(diag) = incorrect_check(cx, arg) =>
             {
-                cx.emit_spanned_lint(INCORRECT_FN_NULL_CHECKS, expr.span, FnNullCheckDiag)
+                cx.emit_spanned_lint(INCORRECT_FN_NULL_CHECKS, expr.span, diag)
             }
 
             // Catching:
@@ -67,17 +78,20 @@ impl<'tcx> LateLintPass<'tcx> for IncorrectFnNullChecks {
                         cx.tcx.get_diagnostic_name(def_id),
                         Some(sym::ptr_const_is_null | sym::ptr_is_null)
                     )
-                    && is_fn_ptr_cast(cx, receiver) =>
+                    && let Some(diag) = incorrect_check(cx, receiver) =>
             {
-                cx.emit_spanned_lint(INCORRECT_FN_NULL_CHECKS, expr.span, FnNullCheckDiag)
+                cx.emit_spanned_lint(INCORRECT_FN_NULL_CHECKS, expr.span, diag)
             }
 
             ExprKind::Binary(op, left, right) if matches!(op.node, BinOpKind::Eq) => {
                 let to_check: &Expr<'_>;
-                if is_fn_ptr_cast(cx, left) {
+                let diag: FnNullCheckDiag<'_>;
+                if let Some(ddiag) = incorrect_check(cx, left) {
                     to_check = right;
-                } else if is_fn_ptr_cast(cx, right) {
+                    diag = ddiag;
+                } else if let Some(ddiag) = incorrect_check(cx, right) {
                     to_check = left;
+                    diag = ddiag;
                 } else {
                     return;
                 }
@@ -89,7 +103,7 @@ impl<'tcx> LateLintPass<'tcx> for IncorrectFnNullChecks {
                         if let ExprKind::Lit(spanned) = cast_expr.kind
                             && let LitKind::Int(v, _) = spanned.node && v == 0 =>
                     {
-                        cx.emit_spanned_lint(INCORRECT_FN_NULL_CHECKS, expr.span, FnNullCheckDiag)
+                        cx.emit_spanned_lint(INCORRECT_FN_NULL_CHECKS, expr.span, diag)
                     },
 
                     // Catching:
@@ -100,7 +114,7 @@ impl<'tcx> LateLintPass<'tcx> for IncorrectFnNullChecks {
                             && let Some(diag_item) = cx.tcx.get_diagnostic_name(def_id)
                             && (diag_item == sym::ptr_null || diag_item == sym::ptr_null_mut) =>
                     {
-                        cx.emit_spanned_lint(INCORRECT_FN_NULL_CHECKS, expr.span, FnNullCheckDiag)
+                        cx.emit_spanned_lint(INCORRECT_FN_NULL_CHECKS, expr.span, diag)
                     },
 
                     _ => {},
