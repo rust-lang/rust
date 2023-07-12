@@ -133,7 +133,7 @@ impl FromIterator<(FileId, TextEdit)> for SourceChange {
 pub struct SnippetEdit(Vec<(u32, TextRange)>);
 
 impl SnippetEdit {
-    fn new(snippets: Vec<Snippet>) -> Self {
+    pub fn new(snippets: Vec<Snippet>) -> Self {
         let mut snippet_ranges = snippets
             .into_iter()
             .zip(1..)
@@ -157,8 +157,10 @@ impl SnippetEdit {
         snippet_ranges.sort_by_key(|(_, range)| range.start());
 
         // Ensure that none of the ranges overlap
-        let disjoint_ranges =
-            snippet_ranges.windows(2).all(|ranges| ranges[0].1.end() <= ranges[1].1.start());
+        let disjoint_ranges = snippet_ranges
+            .iter()
+            .zip(snippet_ranges.iter().skip(1))
+            .all(|((_, left), (_, right))| left.end() <= right.start() || left == right);
         stdx::always!(disjoint_ranges);
 
         SnippetEdit(snippet_ranges)
@@ -393,7 +395,7 @@ impl From<FileSystemEdit> for SourceChange {
     }
 }
 
-enum Snippet {
+pub enum Snippet {
     /// A tabstop snippet (e.g. `$0`).
     Tabstop(TextSize),
     /// A placeholder snippet (e.g. `${0:placeholder}`).

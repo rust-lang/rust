@@ -904,8 +904,8 @@ fn merge_text_and_snippet_edits(
         for (snippet_index, snippet_range) in
             snippets.take_while_ref(|(_, range)| range.end() < new_range.start())
         {
-            let snippet_range = if stdx::never!(
-                !snippet_range.is_empty(),
+            let snippet_range = if !stdx::always!(
+                snippet_range.is_empty(),
                 "placeholder range {:?} is before current text edit range {:?}",
                 snippet_range,
                 new_range
@@ -957,7 +957,7 @@ fn merge_text_and_snippet_edits(
                     text_edit.new_text.insert_str(start, &format!("${index}"));
                 } else {
                     text_edit.new_text.insert(end, '}');
-                    text_edit.new_text.insert_str(start, &format!("${{{index}"));
+                    text_edit.new_text.insert_str(start, &format!("${{{index}:"));
                 }
             }
 
@@ -974,13 +974,10 @@ fn merge_text_and_snippet_edits(
         }
     }
 
-    // insert any remaining edits
-    // either one of the two or both should've run out at this point,
-    // so it's either a tail of text edits or tabstops
-    edits.extend(text_edits.map(|indel| snippet_text_edit(line_index, false, indel)));
+    // insert any remaining tabstops
     edits.extend(snippets.map(|(snippet_index, snippet_range)| {
-        let snippet_range = if stdx::never!(
-            !snippet_range.is_empty(),
+        let snippet_range = if !stdx::always!(
+            snippet_range.is_empty(),
             "found placeholder snippet {:?} without a text edit",
             snippet_range
         ) {
@@ -1542,7 +1539,9 @@ pub(crate) fn rename_error(err: RenameError) -> crate::LspError {
 
 #[cfg(test)]
 mod tests {
+    use expect_test::{expect, Expect};
     use ide::{Analysis, FilePosition};
+    use ide_db::source_change::Snippet;
     use test_utils::extract_offset;
     use triomphe::Arc;
 
@@ -1610,6 +1609,481 @@ fn bar(_: usize) {}
         };
         assert!(docs.contains("bar(5)"));
         assert!(!docs.contains("use crate::bar"));
+    }
+
+    fn check_rendered_snippets(edit: TextEdit, snippets: SnippetEdit, expect: Expect) {
+        let text = r#"/* place to put all ranges in */"#;
+        let line_index = LineIndex {
+            index: Arc::new(ide::LineIndex::new(text)),
+            endings: LineEndings::Unix,
+            encoding: PositionEncoding::Utf8,
+        };
+
+        let res = merge_text_and_snippet_edits(&line_index, edit, snippets);
+        expect.assert_debug_eq(&res);
+    }
+
+    #[test]
+    fn snippet_rendering_only_tabstops() {
+        let edit = TextEdit::builder().finish();
+        let snippets = SnippetEdit::new(vec![
+            Snippet::Tabstop(0.into()),
+            Snippet::Tabstop(0.into()),
+            Snippet::Tabstop(1.into()),
+            Snippet::Tabstop(1.into()),
+        ]);
+
+        check_rendered_snippets(
+            edit,
+            snippets,
+            expect![[r#"
+            [
+                SnippetTextEdit {
+                    range: Range {
+                        start: Position {
+                            line: 0,
+                            character: 0,
+                        },
+                        end: Position {
+                            line: 0,
+                            character: 0,
+                        },
+                    },
+                    new_text: "$1",
+                    insert_text_format: Some(
+                        Snippet,
+                    ),
+                    annotation_id: None,
+                },
+                SnippetTextEdit {
+                    range: Range {
+                        start: Position {
+                            line: 0,
+                            character: 0,
+                        },
+                        end: Position {
+                            line: 0,
+                            character: 0,
+                        },
+                    },
+                    new_text: "$2",
+                    insert_text_format: Some(
+                        Snippet,
+                    ),
+                    annotation_id: None,
+                },
+                SnippetTextEdit {
+                    range: Range {
+                        start: Position {
+                            line: 0,
+                            character: 1,
+                        },
+                        end: Position {
+                            line: 0,
+                            character: 1,
+                        },
+                    },
+                    new_text: "$3",
+                    insert_text_format: Some(
+                        Snippet,
+                    ),
+                    annotation_id: None,
+                },
+                SnippetTextEdit {
+                    range: Range {
+                        start: Position {
+                            line: 0,
+                            character: 1,
+                        },
+                        end: Position {
+                            line: 0,
+                            character: 1,
+                        },
+                    },
+                    new_text: "$0",
+                    insert_text_format: Some(
+                        Snippet,
+                    ),
+                    annotation_id: None,
+                },
+            ]
+        "#]],
+        );
+    }
+
+    #[test]
+    fn snippet_rendering_only_text_edits() {
+        let mut edit = TextEdit::builder();
+        edit.insert(0.into(), "abc".to_owned());
+        edit.insert(3.into(), "def".to_owned());
+        let edit = edit.finish();
+        let snippets = SnippetEdit::new(vec![]);
+
+        check_rendered_snippets(
+            edit,
+            snippets,
+            expect![[r#"
+            [
+                SnippetTextEdit {
+                    range: Range {
+                        start: Position {
+                            line: 0,
+                            character: 0,
+                        },
+                        end: Position {
+                            line: 0,
+                            character: 0,
+                        },
+                    },
+                    new_text: "abc",
+                    insert_text_format: None,
+                    annotation_id: None,
+                },
+                SnippetTextEdit {
+                    range: Range {
+                        start: Position {
+                            line: 0,
+                            character: 3,
+                        },
+                        end: Position {
+                            line: 0,
+                            character: 3,
+                        },
+                    },
+                    new_text: "def",
+                    insert_text_format: None,
+                    annotation_id: None,
+                },
+            ]
+        "#]],
+        );
+    }
+
+    #[test]
+    fn snippet_rendering_tabstop_after_text_edit() {
+        let mut edit = TextEdit::builder();
+        edit.insert(0.into(), "abc".to_owned());
+        let edit = edit.finish();
+        let snippets = SnippetEdit::new(vec![Snippet::Tabstop(7.into())]);
+
+        check_rendered_snippets(
+            edit,
+            snippets,
+            expect![[r#"
+            [
+                SnippetTextEdit {
+                    range: Range {
+                        start: Position {
+                            line: 0,
+                            character: 0,
+                        },
+                        end: Position {
+                            line: 0,
+                            character: 0,
+                        },
+                    },
+                    new_text: "abc",
+                    insert_text_format: None,
+                    annotation_id: None,
+                },
+                SnippetTextEdit {
+                    range: Range {
+                        start: Position {
+                            line: 0,
+                            character: 7,
+                        },
+                        end: Position {
+                            line: 0,
+                            character: 7,
+                        },
+                    },
+                    new_text: "$0",
+                    insert_text_format: Some(
+                        Snippet,
+                    ),
+                    annotation_id: None,
+                },
+            ]
+        "#]],
+        );
+    }
+
+    #[test]
+    fn snippet_rendering_tabstops_before_text_edit() {
+        let mut edit = TextEdit::builder();
+        edit.insert(2.into(), "abc".to_owned());
+        let edit = edit.finish();
+        let snippets =
+            SnippetEdit::new(vec![Snippet::Tabstop(0.into()), Snippet::Tabstop(0.into())]);
+
+        check_rendered_snippets(
+            edit,
+            snippets,
+            expect![[r#"
+                [
+                    SnippetTextEdit {
+                        range: Range {
+                            start: Position {
+                                line: 0,
+                                character: 0,
+                            },
+                            end: Position {
+                                line: 0,
+                                character: 0,
+                            },
+                        },
+                        new_text: "$1",
+                        insert_text_format: Some(
+                            Snippet,
+                        ),
+                        annotation_id: None,
+                    },
+                    SnippetTextEdit {
+                        range: Range {
+                            start: Position {
+                                line: 0,
+                                character: 0,
+                            },
+                            end: Position {
+                                line: 0,
+                                character: 0,
+                            },
+                        },
+                        new_text: "$0",
+                        insert_text_format: Some(
+                            Snippet,
+                        ),
+                        annotation_id: None,
+                    },
+                    SnippetTextEdit {
+                        range: Range {
+                            start: Position {
+                                line: 0,
+                                character: 2,
+                            },
+                            end: Position {
+                                line: 0,
+                                character: 2,
+                            },
+                        },
+                        new_text: "abc",
+                        insert_text_format: None,
+                        annotation_id: None,
+                    },
+                ]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn snippet_rendering_tabstops_between_text_edits() {
+        let mut edit = TextEdit::builder();
+        edit.insert(0.into(), "abc".to_owned());
+        edit.insert(7.into(), "abc".to_owned());
+        let edit = edit.finish();
+        let snippets =
+            SnippetEdit::new(vec![Snippet::Tabstop(4.into()), Snippet::Tabstop(4.into())]);
+
+        check_rendered_snippets(
+            edit,
+            snippets,
+            expect![[r#"
+            [
+                SnippetTextEdit {
+                    range: Range {
+                        start: Position {
+                            line: 0,
+                            character: 0,
+                        },
+                        end: Position {
+                            line: 0,
+                            character: 0,
+                        },
+                    },
+                    new_text: "abc",
+                    insert_text_format: None,
+                    annotation_id: None,
+                },
+                SnippetTextEdit {
+                    range: Range {
+                        start: Position {
+                            line: 0,
+                            character: 4,
+                        },
+                        end: Position {
+                            line: 0,
+                            character: 4,
+                        },
+                    },
+                    new_text: "$1",
+                    insert_text_format: Some(
+                        Snippet,
+                    ),
+                    annotation_id: None,
+                },
+                SnippetTextEdit {
+                    range: Range {
+                        start: Position {
+                            line: 0,
+                            character: 4,
+                        },
+                        end: Position {
+                            line: 0,
+                            character: 4,
+                        },
+                    },
+                    new_text: "$0",
+                    insert_text_format: Some(
+                        Snippet,
+                    ),
+                    annotation_id: None,
+                },
+                SnippetTextEdit {
+                    range: Range {
+                        start: Position {
+                            line: 0,
+                            character: 7,
+                        },
+                        end: Position {
+                            line: 0,
+                            character: 7,
+                        },
+                    },
+                    new_text: "abc",
+                    insert_text_format: None,
+                    annotation_id: None,
+                },
+            ]
+        "#]],
+        );
+    }
+
+    #[test]
+    fn snippet_rendering_multiple_tabstops_in_text_edit() {
+        let mut edit = TextEdit::builder();
+        edit.insert(0.into(), "abcdefghijkl".to_owned());
+        let edit = edit.finish();
+        let snippets = SnippetEdit::new(vec![
+            Snippet::Tabstop(0.into()),
+            Snippet::Tabstop(5.into()),
+            Snippet::Tabstop(12.into()),
+        ]);
+
+        check_rendered_snippets(
+            edit,
+            snippets,
+            expect![[r#"
+            [
+                SnippetTextEdit {
+                    range: Range {
+                        start: Position {
+                            line: 0,
+                            character: 0,
+                        },
+                        end: Position {
+                            line: 0,
+                            character: 0,
+                        },
+                    },
+                    new_text: "$1abcde$2fghijkl$0",
+                    insert_text_format: Some(
+                        Snippet,
+                    ),
+                    annotation_id: None,
+                },
+            ]
+        "#]],
+        );
+    }
+
+    #[test]
+    fn snippet_rendering_multiple_placeholders_in_text_edit() {
+        let mut edit = TextEdit::builder();
+        edit.insert(0.into(), "abcdefghijkl".to_owned());
+        let edit = edit.finish();
+        let snippets = SnippetEdit::new(vec![
+            Snippet::Placeholder(TextRange::new(0.into(), 3.into())),
+            Snippet::Placeholder(TextRange::new(5.into(), 7.into())),
+            Snippet::Placeholder(TextRange::new(10.into(), 12.into())),
+        ]);
+
+        check_rendered_snippets(
+            edit,
+            snippets,
+            expect![[r#"
+            [
+                SnippetTextEdit {
+                    range: Range {
+                        start: Position {
+                            line: 0,
+                            character: 0,
+                        },
+                        end: Position {
+                            line: 0,
+                            character: 0,
+                        },
+                    },
+                    new_text: "${1:abc}de${2:fg}hij${0:kl}",
+                    insert_text_format: Some(
+                        Snippet,
+                    ),
+                    annotation_id: None,
+                },
+            ]
+        "#]],
+        );
+    }
+
+    #[test]
+    fn snippet_rendering_escape_snippet_bits() {
+        // only needed for snippet formats
+        let mut edit = TextEdit::builder();
+        edit.insert(0.into(), r"abc\def$".to_owned());
+        edit.insert(8.into(), r"ghi\jkl$".to_owned());
+        let edit = edit.finish();
+        let snippets =
+            SnippetEdit::new(vec![Snippet::Placeholder(TextRange::new(0.into(), 3.into()))]);
+
+        check_rendered_snippets(
+            edit,
+            snippets,
+            expect![[r#"
+            [
+                SnippetTextEdit {
+                    range: Range {
+                        start: Position {
+                            line: 0,
+                            character: 0,
+                        },
+                        end: Position {
+                            line: 0,
+                            character: 0,
+                        },
+                    },
+                    new_text: "${0:abc}\\\\def\\$",
+                    insert_text_format: Some(
+                        Snippet,
+                    ),
+                    annotation_id: None,
+                },
+                SnippetTextEdit {
+                    range: Range {
+                        start: Position {
+                            line: 0,
+                            character: 8,
+                        },
+                        end: Position {
+                            line: 0,
+                            character: 8,
+                        },
+                    },
+                    new_text: "ghi\\jkl$",
+                    insert_text_format: None,
+                    annotation_id: None,
+                },
+            ]
+        "#]],
+        );
     }
 
     // `Url` is not able to parse windows paths on unix machines.
