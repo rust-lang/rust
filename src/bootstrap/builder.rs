@@ -1718,6 +1718,16 @@ impl<'a> Builder<'a> {
             cargo.env("RUSTC_HOST_CRT_STATIC", x.to_string());
         }
 
+        // Users won't have the original cargo registry from the CI builder available, even if they have `rust-src` installed.
+        // Don't show their sources in UI tests even if they're available.
+        // As a happy side-effect, this fixes a few UI tests when download-rustc is enabled.
+        // NOTE: only set this when building std so the error messages are better for rustc itself.
+        if mode == Mode::Std {
+            let cargo_home =
+                env::var("CARGO_HOME").unwrap_or_else(|_| env::var("HOME").unwrap() + "/.cargo");
+            rustflags.arg(&format!("--remap-path-prefix={cargo_home}=/cargo/FAKE_PREFIX"));
+        }
+
         if let Some(map_to) = self.build.debuginfo_map_to(GitRepo::Rustc) {
             let map = format!("{}={}", self.build.src.display(), map_to);
             cargo.env("RUSTC_DEBUGINFO_MAP", map);
