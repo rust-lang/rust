@@ -1,0 +1,75 @@
+error: comment with 4 forward slashes (`////`). This looks like a doc comment, but it isn't
+  --> $DIR/four_forward_slashes.rs:13:1
+   |
+LL | / //// whoops
+LL | | fn a() {}
+   | |_
+   |
+   = note: `-D clippy::four-forward-slashes` implied by `-D warnings`
+help: make this a doc comment by removing one `/`
+   |
+LL + /// whoops
+   |
+
+error: comment with 4 forward slashes (`////`). This looks like a doc comment, but it isn't
+  --> $DIR/four_forward_slashes.rs:16:1
+   |
+LL | / //// whoops
+LL | | #[allow(dead_code)]
+   | |_
+   |
+help: make this a doc comment by removing one `/`
+   |
+LL + /// whoops
+   |
+
+error: comment with 4 forward slashes (`////`). This looks like a doc comment, but it isn't
+  --> $DIR/four_forward_slashes.rs:21:1
+   |
+LL | / //// two borked comments!
+LL | | #[track_caller]
+   | |_
+   |
+help: make this a doc comment by removing one `/`
+   |
+LL + /// two borked comments!
+   |
+
+error: comment with 4 forward slashes (`////`). This looks like a doc comment, but it isn't
+  --> $DIR/four_forward_slashes.rs:20:1
+   |
+LL | / //// whoops
+LL | | //// two borked comments!
+   | |_
+   |
+help: make this a doc comment by removing one `/`
+   |
+LL + /// whoops
+   |
+
+error: comment with 4 forward slashes (`////`). This looks like a doc comment, but it isn't
+  --> $DIR/four_forward_slashes.rs:28:1
+   |
+LL | / //// between attributes
+LL | | #[allow(dead_code)]
+   | |_
+   |
+help: make this a doc comment by removing one `/`
+   |
+LL + /// between attributes
+   |
+
+error: comment with 4 forward slashes (`////`). This looks like a doc comment, but it isn't
+  --> $DIR/four_forward_slashes.rs:32:1
+   |
+LL | /     //// not very start of contents
+LL | | fn h() {}
+   | |_
+   |
+help: make this a doc comment by removing one `/`
+   |
+LL + /// not very start of contents
+   |
+
+error: aborting due to 6 previous errors
+

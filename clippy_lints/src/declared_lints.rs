@@ -184,6 +184,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::formatting::SUSPICIOUS_ASSIGNMENT_FORMATTING_INFO,
     crate::formatting::SUSPICIOUS_ELSE_FORMATTING_INFO,
     crate::formatting::SUSPICIOUS_UNARY_OP_FORMATTING_INFO,
+    crate::four_forward_slashes::FOUR_FORWARD_SLASHES_INFO,
     crate::from_over_into::FROM_OVER_INTO_INFO,
     crate::from_raw_with_void_ptr::FROM_RAW_WITH_VOID_PTR_INFO,
     crate::from_str_radix_10::FROM_STR_RADIX_10_INFO,
