@@ -748,6 +748,27 @@ fn normalize_ws_between_braces(node: &SyntaxNode) -> Option<()> {
     Some(())
 }
 
+pub trait HasVisibilityEdit: ast::HasVisibility {
+    fn set_visibility(&self, visbility: ast::Visibility) {
+        match self.visibility() {
+            Some(current_visibility) => {
+                ted::replace(current_visibility.syntax(), visbility.syntax())
+            }
+            None => {
+                let vis_before = self
+                    .syntax()
+                    .children_with_tokens()
+                    .find(|it| !matches!(it.kind(), WHITESPACE | COMMENT | ATTR))
+                    .unwrap_or_else(|| self.syntax().first_child_or_token().unwrap());
+
+                ted::insert(ted::Position::before(vis_before), visbility.syntax());
+            }
+        }
+    }
+}
+
+impl<T: ast::HasVisibility> HasVisibilityEdit for T {}
+
 pub trait Indent: AstNode + Clone + Sized {
     fn indent_level(&self) -> IndentLevel {
         IndentLevel::from_node(self.syntax())
