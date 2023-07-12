@@ -92,7 +92,7 @@ pub(crate) fn maybe_codegen_checked<'tcx>(
     match bin_op {
         BinOp::BitAnd | BinOp::BitOr | BinOp::BitXor => unreachable!(),
         BinOp::Mul if is_signed => {
-            let out_ty = fx.tcx.mk_tup(&[lhs.layout().ty, fx.tcx.types.bool]);
+            let out_ty = Ty::new_tup(fx.tcx, &[lhs.layout().ty, fx.tcx.types.bool]);
             let oflow = CPlace::new_stack_slot(fx, fx.layout_of(fx.tcx.types.i32));
             let lhs = lhs.load_scalar(fx);
             let rhs = rhs.load_scalar(fx);
@@ -112,7 +112,7 @@ pub(crate) fn maybe_codegen_checked<'tcx>(
             Some(CValue::by_val_pair(res, oflow, fx.layout_of(out_ty)))
         }
         BinOp::Add | BinOp::Sub | BinOp::Mul => {
-            let out_ty = fx.tcx.mk_tup(&[lhs.layout().ty, fx.tcx.types.bool]);
+            let out_ty = Ty::new_tup(fx.tcx, &[lhs.layout().ty, fx.tcx.types.bool]);
             let out_place = CPlace::new_stack_slot(fx, fx.layout_of(out_ty));
             let param_types = vec![
                 AbiParam::special(fx.pointer_type, ArgumentPurpose::StructReturn),

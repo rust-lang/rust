@@ -1,6 +1,6 @@
-//! Codegen of the [`PointerCast::Unsize`] operation.
+//! Codegen of the [`PointerCoercion::Unsize`] operation.
 //!
-//! [`PointerCast::Unsize`]: `rustc_middle::ty::adjustment::PointerCast::Unsize`
+//! [`PointerCoercion::Unsize`]: `rustc_middle::ty::adjustment::PointerCoercion::Unsize`
 
 use crate::prelude::*;
 
