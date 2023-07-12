@@ -75,7 +75,7 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
         | c::ERROR_BAD_NET_NAME => return NotFound,
         c::ERROR_NO_DATA => return BrokenPipe,
         c::ERROR_INVALID_NAME | c::ERROR_BAD_PATHNAME => return InvalidFilename,
-        c::ERROR_INVALID_PARAMETER => return InvalidInput,
+        c::ERROR_INVALID_PARAMETER | c::ERROR_BAD_COMMAND => return InvalidInput,
         c::ERROR_NOT_ENOUGH_MEMORY | c::ERROR_OUTOFMEMORY => return OutOfMemory,
         c::ERROR_SEM_TIMEOUT
         | c::WAIT_TIMEOUT
