@@ -52,6 +52,7 @@ use hir_expand::name;
 use la_arena::{Arena, Idx};
 use mir::{MirEvalError, VTableMap};
 use rustc_hash::FxHashSet;
+use syntax::AstNode;
 use traits::FnTrait;
 use triomphe::Arc;
 use utils::Generics;
@@ -723,12 +724,12 @@ where
 
 pub fn known_const_to_string(konst: &Const, db: &dyn HirDatabase) -> Option<String> {
     if let ConstValue::Concrete(c) = &konst.interned().value {
-        if let ConstScalar::UnevaluatedConst(GeneralConstId::InTypeConstId(_), _) = &c.interned {
-            // FIXME: stringify the block expression
-            return None;
-        }
-        if c.interned == ConstScalar::Unknown {
-            return None;
+        match c.interned {
+            ConstScalar::UnevaluatedConst(GeneralConstId::InTypeConstId(cid), _) => {
+                return Some(cid.source(db.upcast()).syntax().to_string());
+            }
+            ConstScalar::Unknown => return None,
+            _ => (),
         }
     }
     Some(konst.display(db).to_string())

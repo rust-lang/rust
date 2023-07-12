@@ -156,6 +156,7 @@ impl<'a> PathTransform<'a> {
                         // is a standalone statement or a part of another expresson)
                         // and sometimes require slight modifications; see
                         // https://doc.rust-lang.org/reference/statements.html#expression-statements
+                        // (default values in curly brackets can cause the same problem)
                         const_substs.insert(k, expr.syntax().clone());
                     }
                 }

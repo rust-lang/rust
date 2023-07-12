@@ -550,6 +550,41 @@ impl m::Foo for () {
     }
 
     #[test]
+    fn test_const_substitution_with_defaults_3() {
+        check_assist(
+            add_missing_default_members,
+            r#"
+mod m {
+    pub const VAL: usize = 0;
+
+    pub trait Foo<const N: usize = {40 + 2}, const M: usize = {VAL + 1}> {
+        fn get_n(&self) -> usize { N }
+        fn get_m(&self) -> usize { M }
+    }
+}
+
+impl m::Foo for () {
+    $0
+}"#,
+            r#"
+mod m {
+    pub const VAL: usize = 0;
+
+    pub trait Foo<const N: usize = {40 + 2}, const M: usize = {VAL + 1}> {
+        fn get_n(&self) -> usize { N }
+        fn get_m(&self) -> usize { M }
+    }
+}
+
+impl m::Foo for () {
+    $0fn get_n(&self) -> usize { {40 + 2} }
+
+    fn get_m(&self) -> usize { {m::VAL + 1} }
+}"#,
+        )
+    }
+
+    #[test]
     fn test_cursor_after_empty_impl_def() {
         check_assist(
             add_missing_impl_members,
