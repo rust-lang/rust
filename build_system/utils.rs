@@ -168,6 +168,8 @@ pub(crate) fn git_command<'a>(repo_dir: impl Into<Option<&'a Path>>, cmd: &str) 
         .arg("user.email=dummy@example.com")
         .arg("-c")
         .arg("core.autocrlf=false")
+        .arg("-c")
+        .arg("commit.gpgSign=false")
         .arg(cmd);
     if let Some(repo_dir) = repo_dir.into() {
         git_cmd.current_dir(repo_dir);
