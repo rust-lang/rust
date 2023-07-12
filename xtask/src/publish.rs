@@ -79,6 +79,7 @@ fn update_release(sh: &Shell, tag_name: &str, release_notes: &str) -> anyhow::Re
     let release_id = cmd!(sh, "jq .id").stdin(release_json).read()?;
 
     let mut patch = String::new();
+    // note: the GitHub API doesn't update the target commit if the tag already exists
     write_json::object(&mut patch)
         .string("tag_name", tag_name)
         .string("target_commitish", "master")
