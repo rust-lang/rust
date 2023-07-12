@@ -1880,6 +1880,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
 
 fn cast_kind(source_ty: &Ty, target_ty: &Ty) -> Result<CastKind> {
     Ok(match (source_ty.kind(Interner), target_ty.kind(Interner)) {
+        (TyKind::FnDef(..), TyKind::Function(_)) => CastKind::Pointer(PointerCast::ReifyFnPointer),
         (TyKind::Scalar(s), TyKind::Scalar(t)) => match (s, t) {
             (chalk_ir::Scalar::Float(_), chalk_ir::Scalar::Float(_)) => CastKind::FloatToFloat,
             (chalk_ir::Scalar::Float(_), _) => CastKind::FloatToInt,
