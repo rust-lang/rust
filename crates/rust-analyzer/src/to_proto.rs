@@ -10,8 +10,8 @@ use ide::{
     CompletionItemKind, CompletionRelevance, Documentation, FileId, FileRange, FileSystemEdit,
     Fold, FoldKind, Highlight, HlMod, HlOperator, HlPunct, HlRange, HlTag, Indel, InlayHint,
     InlayHintLabel, InlayHintLabelPart, InlayKind, Markup, NavigationTarget, ReferenceCategory,
-    RenameError, Runnable, Severity, SignatureHelp, SourceChange, StructureNodeKind, SymbolKind,
-    TextEdit, TextRange, TextSize,
+    RenameError, Runnable, Severity, SignatureHelp, SnippetEdit, SourceChange, StructureNodeKind,
+    SymbolKind, TextEdit, TextRange, TextSize,
 };
 use itertools::Itertools;
 use serde_json::to_value;
@@ -22,7 +22,7 @@ use crate::{
     config::{CallInfoConfig, Config},
     global_state::GlobalStateSnapshot,
     line_index::{LineEndings, LineIndex, PositionEncoding},
-    lsp_ext,
+    lsp_ext::{self, SnippetTextEdit},
     lsp_utils::invalid_params_error,
     semantic_tokens::{self, standard_fallback_type},
 };
@@ -884,16 +884,135 @@ fn outside_workspace_annotation_id() -> String {
     String::from("OutsideWorkspace")
 }
 
+fn merge_text_and_snippet_edit(
+    line_index: &LineIndex,
+    edit: TextEdit,
+    snippet_edit: Option<SnippetEdit>,
+) -> Vec<SnippetTextEdit> {
+    let Some(snippet_edit) = snippet_edit else {
+        return edit.into_iter().map(|it| snippet_text_edit(&line_index, false, it)).collect();
+    };
+
+    let mut edits: Vec<SnippetTextEdit> = vec![];
+    let mut snippets = snippet_edit.into_edit_ranges().into_iter().peekable();
+    let mut text_edits = edit.into_iter();
+
+    while let Some(current_indel) = text_edits.next() {
+        let new_range = {
+            let insert_len =
+                TextSize::try_from(current_indel.insert.len()).unwrap_or(TextSize::from(u32::MAX));
+            TextRange::at(current_indel.delete.start(), insert_len)
+        };
+
+        // insert any snippets before the text edit
+        let first_snippet_in_or_after_edit = loop {
+            let Some((snippet_index, snippet_range)) = snippets.peek() else { break None };
+
+            // check if we're entirely before the range
+            // only possible for tabstops
+            if snippet_range.end() < new_range.start()
+                && stdx::always!(
+                    snippet_range.is_empty(),
+                    "placeholder range is before any text edits"
+                )
+            {
+                let range = range(&line_index, *snippet_range);
+                let new_text = format!("${snippet_index}");
+
+                edits.push(SnippetTextEdit {
+                    range,
+                    new_text,
+                    insert_text_format: Some(lsp_types::InsertTextFormat::SNIPPET),
+                    annotation_id: None,
+                })
+            } else {
+                break Some((snippet_index, snippet_range));
+            }
+        };
+
+        if first_snippet_in_or_after_edit
+            .is_some_and(|(_, range)| new_range.intersect(*range).is_some())
+        {
+            // at least one snippet edit intersects this text edit,
+            // so gather all of the edits that intersect this text edit
+            let mut all_snippets = snippets
+                .take_while_ref(|(_, range)| new_range.intersect(*range).is_some())
+                .collect_vec();
+
+            // ensure all of the ranges are wholly contained inside of the new range
+            all_snippets.retain(|(_, range)| {
+                    stdx::always!(
+                        new_range.contains_range(*range),
+                        "found placeholder range {:?} which wasn't fully inside of text edit's new range {:?}", range, new_range
+                    )
+                });
+
+            let mut text_edit = text_edit(line_index, current_indel);
+
+            // escape out snippet text
+            stdx::replace(&mut text_edit.new_text, '\\', r"\\");
+            stdx::replace(&mut text_edit.new_text, '$', r"\$");
+
+            // ...and apply!
+            for (index, range) in all_snippets.iter().rev() {
+                let start = (range.start() - new_range.start()).into();
+                let end = (range.end() - new_range.start()).into();
+
+                if range.is_empty() {
+                    text_edit.new_text.insert_str(start, &format!("${index}"));
+                } else {
+                    text_edit.new_text.insert(end, '}');
+                    text_edit.new_text.insert_str(start, &format!("${{{index}"));
+                }
+            }
+
+            edits.push(SnippetTextEdit {
+                range: text_edit.range,
+                new_text: text_edit.new_text,
+                insert_text_format: Some(lsp_types::InsertTextFormat::SNIPPET),
+                annotation_id: None,
+            })
+        } else {
+            // snippet edit was beyond the current one
+            // since it wasn't consumed, it's available for the next pass
+            edits.push(snippet_text_edit(line_index, false, current_indel));
+        }
+    }
+
+    // insert any remaining edits
+    // either one of the two or both should've run out at this point,
+    // so it's either a tail of text edits or tabstops
+    edits.extend(text_edits.map(|indel| snippet_text_edit(line_index, false, indel)));
+    edits.extend(snippets.map(|(snippet_index, snippet_range)| {
+        stdx::always!(
+            snippet_range.is_empty(),
+            "found placeholder snippet {:?} without a text edit",
+            snippet_range
+        );
+
+        let range = range(&line_index, snippet_range);
+        let new_text = format!("${snippet_index}");
+
+        SnippetTextEdit {
+            range,
+            new_text,
+            insert_text_format: Some(lsp_types::InsertTextFormat::SNIPPET),
+            annotation_id: None,
+        }
+    }));
+
+    edits
+}
+
 pub(crate) fn snippet_text_document_edit(
     snap: &GlobalStateSnapshot,
-    is_snippet: bool,
     file_id: FileId,
     edit: TextEdit,
+    snippet_edit: Option<SnippetEdit>,
 ) -> Cancellable<lsp_ext::SnippetTextDocumentEdit> {
     let text_document = optional_versioned_text_document_identifier(snap, file_id);
     let line_index = snap.file_line_index(file_id)?;
-    let mut edits: Vec<_> =
-        edit.into_iter().map(|it| snippet_text_edit(&line_index, is_snippet, it)).collect();
+    let mut edits = merge_text_and_snippet_edit(&line_index, edit, snippet_edit);
 
     if snap.analysis.is_library_file(file_id)? && snap.config.change_annotation_support() {
         for edit in &mut edits {
@@ -973,8 +1092,13 @@ pub(crate) fn snippet_workspace_edit(
         let ops = snippet_text_document_ops(snap, op)?;
         document_changes.extend_from_slice(&ops);
     }
-    for (file_id, (edit, _snippet_edit)) in source_change.source_file_edits {
-        let edit = snippet_text_document_edit(snap, source_change.is_snippet, file_id, edit)?;
+    for (file_id, (edit, snippet_edit)) in source_change.source_file_edits {
+        let edit = snippet_text_document_edit(
+            snap,
+            file_id,
+            edit,
+            snippet_edit.filter(|_| source_change.is_snippet),
+        )?;
         document_changes.push(lsp_ext::SnippetDocumentChangeOperation::Edit(edit));
     }
     let mut workspace_edit = lsp_ext::SnippetWorkspaceEdit {

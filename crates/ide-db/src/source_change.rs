@@ -11,8 +11,7 @@ use itertools::Itertools;
 use nohash_hasher::IntMap;
 use stdx::never;
 use syntax::{
-    algo, ast, ted, AstNode, SyntaxElement, SyntaxNode, SyntaxNodePtr, SyntaxToken, TextRange,
-    TextSize,
+    algo, AstNode, SyntaxElement, SyntaxNode, SyntaxNodePtr, SyntaxToken, TextRange, TextSize,
 };
 use text_edit::{TextEdit, TextEditBuilder};
 
@@ -76,8 +75,11 @@ impl SourceChange {
         self.file_system_edits.push(edit);
     }
 
-    pub fn get_source_edit(&self, file_id: FileId) -> Option<&TextEdit> {
-        self.source_file_edits.get(&file_id).map(|(edit, _)| edit)
+    pub fn get_source_and_snippet_edit(
+        &self,
+        file_id: FileId,
+    ) -> Option<&(TextEdit, Option<SnippetEdit>)> {
+        self.source_file_edits.get(&file_id)
     }
 
     pub fn merge(mut self, other: SourceChange) -> SourceChange {
@@ -258,24 +260,19 @@ impl SourceChangeBuilder {
     }
 
     fn commit(&mut self) {
-        // Render snippets first so that they get bundled into the tree diff
-        if let Some(mut snippets) = self.snippet_builder.take() {
-            // Last snippet always has stop index 0
-            let last_stop = snippets.places.pop().unwrap();
-            last_stop.place(0);
-
-            for (index, stop) in snippets.places.into_iter().enumerate() {
-                stop.place(index + 1)
-            }
-        }
+        let snippet_edit = self.snippet_builder.take().map(|builder| {
+            SnippetEdit::new(
+                builder.places.into_iter().map(PlaceSnippet::finalize_position).collect_vec(),
+            )
+        });
 
         if let Some(tm) = self.mutated_tree.take() {
-            algo::diff(&tm.immutable, &tm.mutable_clone).into_text_edit(&mut self.edit)
+            algo::diff(&tm.immutable, &tm.mutable_clone).into_text_edit(&mut self.edit);
         }
 
         let edit = mem::take(&mut self.edit).finish();
-        if !edit.is_empty() {
-            self.source_change.insert_source_edit(self.file_id, edit);
+        if !edit.is_empty() || snippet_edit.is_some() {
+            self.source_change.insert_source_and_snippet_edit(self.file_id, edit, snippet_edit);
         }
     }
 
@@ -429,57 +426,11 @@ enum PlaceSnippet {
 }
 
 impl PlaceSnippet {
-    /// Places the snippet before or over an element with the given tab stop index
-    fn place(self, order: usize) {
-        // ensure the target element is still attached
-        match &self {
-            PlaceSnippet::Before(element)
-            | PlaceSnippet::After(element)
-            | PlaceSnippet::Over(element) => {
-                // element should still be in the tree, but if it isn't
-                // then it's okay to just ignore this place
-                if stdx::never!(element.parent().is_none()) {
-                    return;
-                }
-            }
-        }
-
+    fn finalize_position(self) -> Snippet {
         match self {
-            PlaceSnippet::Before(element) => {
-                ted::insert_raw(ted::Position::before(&element), Self::make_tab_stop(order));
-            }
-            PlaceSnippet::After(element) => {
-                ted::insert_raw(ted::Position::after(&element), Self::make_tab_stop(order));
-            }
-            PlaceSnippet::Over(element) => {
-                let position = ted::Position::before(&element);
-                element.detach();
-
-                let snippet = ast::SourceFile::parse(&format!("${{{order}:_}}"))
-                    .syntax_node()
-                    .clone_for_update();
-
-                let placeholder =
-                    snippet.descendants().find_map(ast::UnderscoreExpr::cast).unwrap();
-                ted::replace(placeholder.syntax(), element);
-
-                ted::insert_raw(position, snippet);
-            }
+            PlaceSnippet::Before(it) => Snippet::Tabstop(it.text_range().start()),
+            PlaceSnippet::After(it) => Snippet::Tabstop(it.text_range().end()),
+            PlaceSnippet::Over(it) => Snippet::Placeholder(it.text_range()),
         }
-    }
-
-    fn make_tab_stop(order: usize) -> SyntaxNode {
-        let stop = ast::SourceFile::parse(&format!("stop!(${order})"))
-            .syntax_node()
-            .descendants()
-            .find_map(ast::TokenTree::cast)
-            .unwrap()
-            .syntax()
-            .clone_for_update();
-
-        stop.first_token().unwrap().detach();
-        stop.last_token().unwrap().detach();
-
-        stop
     }
 }
