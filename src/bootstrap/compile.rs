@@ -688,8 +688,8 @@ fn cp_rustc_component_to_ci_sysroot(
     contents: Vec<String>,
 ) {
     let sysroot = builder.ensure(Sysroot { compiler, force_recompile: false });
+    let ci_rustc_dir = builder.config.ci_rustc_dir();
 
-    let ci_rustc_dir = builder.out.join(&*builder.build.build.triple).join("ci-rustc");
     for file in contents {
         let src = ci_rustc_dir.join(&file);
         let dst = sysroot.join(file);
@@ -1424,7 +1424,7 @@ impl Step for Sysroot {
                 // FIXME: this is wrong when compiler.host != build, but we don't support that today
                 OsStr::new(std::env::consts::DLL_EXTENSION),
             ];
-            let ci_rustc_dir = builder.ci_rustc_dir(builder.config.build);
+            let ci_rustc_dir = builder.config.ci_rustc_dir();
             builder.cp_filtered(&ci_rustc_dir, &sysroot, &|path| {
                 if path.extension().map_or(true, |ext| !filtered_extensions.contains(&ext)) {
                     return true;
