@@ -9,7 +9,15 @@ document.
 [435a8ad8...master](https://github.com/rust-lang/rust-clippy/compare/435a8ad8...master)
 
 ## Rust 1.71
-Current beta, released 2023-07-13
+
+Current stable, released 2023-07-13
+
+<!-- FIXME: Remove the request for feedback, with the next changelog -->
+
+We're trying out a new shorter changelog format, that only contains significant changes.
+You can check out the list of merged pull requests for a list of all changes.
+If you have any feedback related to the new format, please share it in 
+[#10847](https://github.com/rust-lang/rust-clippy/issues/10847)
 
 [View all 78 merged pull requests](https://github.com/rust-lang/rust-clippy/pulls?q=merged%3A2023-04-11T20%3A05%3A26Z..2023-05-20T13%3A48%3A17Z+base%3Amaster)
 
@@ -63,7 +71,7 @@ Current beta, released 2023-07-13
 
 ## Rust 1.70
 
-Current stable, released 2023-06-01
+Released 2023-06-01
 
 [View all 91 merged pull requests](https://github.com/rust-lang/rust-clippy/pulls?q=merged%3A2023-02-26T01%3A05%3A43Z..2023-04-11T13%3A27%3A30Z+base%3Amaster)
 
