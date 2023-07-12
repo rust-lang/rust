@@ -100,6 +100,7 @@ rm -r tests/run-make/sepcomp-cci-copies # same
 rm -r tests/run-make/volatile-intrinsics # same
 rm tests/ui/abi/stack-protector.rs # requires stack protector support
 rm -r tests/run-make/emit-stack-sizes # requires support for -Z emit-stack-sizes
+rm -r tests/run-make/optimization-remarks-dir # remarks are LLVM specific
 
 # giving different but possibly correct results
 # =============================================
@@ -118,6 +119,7 @@ rm tests/ui/suggestions/derive-trait-for-method-call.rs # same
 rm tests/ui/typeck/issue-46112.rs # same
 rm tests/ui/consts/const_cmp_type_id.rs # same
 rm tests/ui/consts/issue-73976-monomorphic.rs # same
+rm tests/ui/rfcs/rfc-3348-c-string-literals/non-ascii.rs # same
 
 # rustdoc-clif passes extra args, suppressing the help message when no args are passed
 rm -r tests/run-make/issue-88756-default-output
@@ -149,6 +151,8 @@ rm tests/ui/backtrace.rs # TODO warning
 rm tests/ui/process/nofile-limit.rs # TODO some AArch64 linking issue
 
 rm tests/ui/stdio-is-blocking.rs # really slow with unoptimized libstd
+
+rm tests/ui/panic-handler/weak-lang-item-2.rs # Will be fixed by #113568
 
 cp ../dist/bin/rustdoc-clif ../dist/bin/rustdoc # some tests expect bin/rustdoc to exist
 
