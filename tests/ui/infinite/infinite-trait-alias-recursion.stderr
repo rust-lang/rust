@@ -1,4 +1,4 @@
-error[E0391]: cycle detected when computing the super predicates of `T1`
+error[E0391]: cycle detected when computing the super predicates of `T1`. see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information.
   --> $DIR/infinite-trait-alias-recursion.rs:3:12
    |
 LL | trait T1 = T2;
