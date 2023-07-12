@@ -1375,6 +1375,25 @@ impl Config {
         let mut omit_git_hash = None;
 
         if let Some(rust) = toml.rust {
+            set(&mut config.channel, rust.channel);
+
+            config.download_rustc_commit = config.download_ci_rustc_commit(rust.download_rustc);
+            // This list is incomplete, please help by expanding it!
+            if config.download_rustc_commit.is_some() {
+                // We need the channel used by the downloaded compiler to match the one we set for rustdoc;
+                // otherwise rustdoc-ui tests break.
+                let ci_channel = t!(fs::read_to_string(config.src.join("src/ci/channel")));
+                let ci_channel = ci_channel.trim_end();
+                if config.channel != ci_channel
+                    && !(config.channel == "dev" && ci_channel == "nightly")
+                {
+                    panic!(
+                        "setting rust.channel={} is incompatible with download-rustc",
+                        config.channel
+                    );
+                }
+            }
+
             debug = rust.debug;
             debug_assertions = rust.debug_assertions;
             debug_assertions_std = rust.debug_assertions_std;
@@ -1386,6 +1405,7 @@ impl Config {
             debuginfo_level_std = rust.debuginfo_level_std;
             debuginfo_level_tools = rust.debuginfo_level_tools;
             debuginfo_level_tests = rust.debuginfo_level_tests;
+
             config.rust_split_debuginfo = rust
                 .split_debuginfo
                 .as_deref()
@@ -1401,7 +1421,6 @@ impl Config {
             set(&mut config.jemalloc, rust.jemalloc);
             set(&mut config.test_compare_mode, rust.test_compare_mode);
             set(&mut config.backtrace, rust.backtrace);
-            set(&mut config.channel, rust.channel);
             config.description = rust.description;
             set(&mut config.rust_dist_src, rust.dist_src);
             set(&mut config.verbose_tests, rust.verbose_tests);
@@ -1442,8 +1461,6 @@ impl Config {
             config.rust_codegen_units_std = rust.codegen_units_std.map(threads_from_config);
             config.rust_profile_use = flags.rust_profile_use.or(rust.profile_use);
             config.rust_profile_generate = flags.rust_profile_generate.or(rust.profile_generate);
-            config.download_rustc_commit = config.download_ci_rustc_commit(rust.download_rustc);
-
             config.rust_lto = rust
                 .lto
                 .as_deref()
@@ -1555,6 +1572,11 @@ impl Config {
                 let mut target = Target::from_triple(&triple);
 
                 if let Some(ref s) = cfg.llvm_config {
+                    if config.download_rustc_commit.is_some() && triple == &*config.build.triple {
+                        panic!(
+                            "setting llvm_config for the host is incompatible with download-rustc"
+                        );
+                    }
                     target.llvm_config = Some(config.src.join(s));
                 }
                 target.llvm_has_rust_patches = cfg.llvm_has_rust_patches;
@@ -1825,6 +1847,12 @@ impl Config {
         self.out.join(&*self.build.triple).join("ci-llvm")
     }
 
+    /// Directory where the extracted `rustc-dev` component is stored.
+    pub(crate) fn ci_rustc_dir(&self) -> PathBuf {
+        assert!(self.download_rustc());
+        self.out.join(self.build.triple).join("ci-rustc")
+    }
+
     /// Determine whether llvm should be linked dynamically.
     ///
     /// If `false`, llvm should be linked statically.
@@ -1860,11 +1888,11 @@ impl Config {
         self.download_rustc_commit().is_some()
     }
 
-    pub(crate) fn download_rustc_commit(&self) -> Option<&'static str> {
+    pub(crate) fn download_rustc_commit(&self) -> Option<&str> {
         static DOWNLOAD_RUSTC: OnceCell<Option<String>> = OnceCell::new();
         if self.dry_run() && DOWNLOAD_RUSTC.get().is_none() {
             // avoid trying to actually download the commit
-            return None;
+            return self.download_rustc_commit.as_deref();
         }
 
         DOWNLOAD_RUSTC
