@@ -372,7 +372,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
 
                         codegen_panic_inner(
                             fx,
-                            rustc_hir::LangItem::PanicBoundsCheck,
+                            rustc_hir::LangItem::PanicMisalignedPointerDereference,
                             &[required, found, location],
                             source_info.span,
                         );
