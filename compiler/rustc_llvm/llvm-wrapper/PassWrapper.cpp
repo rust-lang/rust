@@ -407,6 +407,7 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
     bool RelaxELFRelocations,
     bool UseInitArray,
     const char *SplitDwarfFile,
+    const char *DebugInfoCompression,
     bool ForceEmulatedTls,
     const char *ArgsCstrBuff, size_t ArgsCstrBuffLen) {
 
@@ -438,6 +439,16 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
   if (SplitDwarfFile) {
       Options.MCOptions.SplitDwarfFile = SplitDwarfFile;
   }
+#if LLVM_VERSION_GE(16, 0)
+  if (!strcmp("zlib", DebugInfoCompression) && llvm::compression::zlib::isAvailable()) {
+    Options.CompressDebugSections = DebugCompressionType::Zlib;
+  } else if (!strcmp("zstd", DebugInfoCompression) && llvm::compression::zstd::isAvailable()) {
+    Options.CompressDebugSections = DebugCompressionType::Zstd;
+  } else if (!strcmp("none", DebugInfoCompression)) {
+    Options.CompressDebugSections = DebugCompressionType::None;
+  }
+#endif
+
   Options.RelaxELFRelocations = RelaxELFRelocations;
   Options.UseInitArray = UseInitArray;
 
