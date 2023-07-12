@@ -1,7 +1,6 @@
 use anyhow::Context;
 use camino::Utf8Path;
 use fs_extra::dir::CopyOptions;
-use std::fs::File;
 
 /// Delete and re-create the directory.
 pub fn reset_directory(path: &Utf8Path) -> anyhow::Result<()> {
@@ -33,16 +32,5 @@ pub fn delete_directory(path: &Utf8Path) -> anyhow::Result<()> {
     log::info!("Deleting directory `{path}`");
     std::fs::remove_dir_all(path.as_std_path())
         .context(format!("Cannot remove directory {path}"))?;
-    Ok(())
-}
-
-pub fn unpack_archive(path: &Utf8Path, dest_dir: &Utf8Path) -> anyhow::Result<()> {
-    log::info!("Unpacking directory `{path}` into `{dest_dir}`");
-
-    assert!(path.as_str().ends_with(".tar.xz"));
-    let file = File::open(path.as_std_path())?;
-    let file = xz::read::XzDecoder::new(file);
-    let mut archive = tar::Archive::new(file);
-    archive.unpack(dest_dir.as_std_path())?;
     Ok(())
 }

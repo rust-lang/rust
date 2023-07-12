@@ -3,7 +3,6 @@ use log::LevelFilter;
 
 use crate::environment::{create_environment, Environment};
 use crate::exec::Bootstrap;
-use crate::tests::run_tests;
 use crate::timer::Timer;
 use crate::training::{gather_llvm_bolt_profiles, gather_llvm_profiles, gather_rustc_profiles};
 use crate::utils::io::reset_directory;
@@ -12,7 +11,6 @@ use crate::utils::{clear_llvm_files, format_env_variables, print_free_disk_space
 mod environment;
 mod exec;
 mod metrics;
-mod tests;
 mod timer;
 mod training;
 mod utils;
@@ -126,7 +124,7 @@ fn main() -> anyhow::Result<()> {
         .parse_default_env()
         .init();
 
-    let mut build_args: Vec<String> = std::env::args().skip(1).collect();
+    let build_args: Vec<String> = std::env::args().skip(1).collect();
     log::info!("Running optimized build pipeline with args `{}`", build_args.join(" "));
     log::info!("Environment values\n{}", format_env_variables());
 
