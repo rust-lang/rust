@@ -103,11 +103,6 @@ Rustdoc
 - [Add a new `rustdoc::unescaped_backticks` lint for broken inline code.](https://github.com/rust-lang/rust/pull/105848/)
 - [Support strikethrough with single tildes.](https://github.com/rust-lang/rust/pull/111152/) (`~~old~~` vs. `~new~`)
 
-<a id="1.71.0-Misc"></a>
-
-Misc
-----
-
 <a id="1.71.0-Compatibility-Notes"></a>
 
 Compatibility Notes
@@ -130,16 +125,6 @@ Compatibility Notes
   [`RUSTUP_TOOLCHAIN`](https://github.com/rust-lang/cargo/pull/12107/) in the `[env]` configuration
   table. This is considered to be not a use case Cargo would like to support, since it will likely
   cause problems or lead to confusion.
-
-<a id="1.71.0-Internal-Changes"></a>
-
-Internal Changes
-----------------
-
-These changes do not affect any public interfaces of Rust, but they represent
-significant improvements to the performance or internals of rustc and related
-tools.
-
 
 Version 1.70.0 (2023-06-01)
 ==========================
