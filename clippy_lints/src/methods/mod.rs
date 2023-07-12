@@ -4019,7 +4019,7 @@ impl Methods {
                     }
                     unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
                 },
-                ("unwrap_or_default", []) => {
+                ("unwrap_or_default" | "unwrap_unchecked" | "unwrap_err_unchecked", []) => {
                     unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
                 }
                 ("unwrap_or_else", [u_arg]) => {

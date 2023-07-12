@@ -78,6 +78,16 @@ fn unwrap_from_binding() {
     let _ = val.unwrap_or("");
 }
 
+fn unwrap_unchecked() {
+    let _ = unsafe { Some(1).unwrap_unchecked() };
+    let _ = unsafe { Some(1).unwrap_unchecked() + *(&1 as *const i32) }; // needs to keep the unsafe block
+    let _ = unsafe { Some(1).unwrap_unchecked() } + 1;
+    let _ = unsafe { Ok::<_, ()>(1).unwrap_unchecked() };
+    let _ = unsafe { Ok::<_, ()>(1).unwrap_unchecked() + *(&1 as *const i32) };
+    let _ = unsafe { Ok::<_, ()>(1).unwrap_unchecked() } + 1;
+    let _ = unsafe { Err::<(), i32>(123).unwrap_err_unchecked() };
+}
+
 fn main() {
     unwrap_option_some();
     unwrap_option_none();
@@ -85,4 +95,5 @@ fn main() {
     unwrap_result_err();
     unwrap_methods_option();
     unwrap_methods_result();
+    unwrap_unchecked();
 }
