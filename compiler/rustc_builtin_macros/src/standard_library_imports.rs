@@ -4,7 +4,7 @@ use rustc_expand::expand::ExpansionConfig;
 use rustc_session::Session;
 use rustc_span::edition::Edition::*;
 use rustc_span::hygiene::AstPass;
-use rustc_span::symbol::{kw, sym, Ident, Symbol};
+use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::DUMMY_SP;
 use thin_vec::thin_vec;
 
@@ -17,17 +17,12 @@ pub fn inject(
     let orig_num_items = krate.items.len();
     let edition = sess.parse_sess.edition;
 
-    // the first name in this list is the crate name of the crate with the prelude
-    let names: &[Symbol] = if attr::contains_name(pre_configured_attrs, sym::no_core) {
+    let name = if attr::contains_name(pre_configured_attrs, sym::no_core) {
         return 0;
     } else if attr::contains_name(pre_configured_attrs, sym::no_std) {
-        if attr::contains_name(pre_configured_attrs, sym::compiler_builtins) {
-            &[sym::core]
-        } else {
-            &[sym::core, sym::compiler_builtins]
-        }
+        sym::core
     } else {
-        &[sym::std]
+        sym::std
     };
 
     let expn_id = resolver.expansion_for_ast_pass(
@@ -42,27 +37,17 @@ pub fn inject(
     let ecfg = ExpansionConfig::default("std_lib_injection".to_string());
     let cx = ExtCtxt::new(sess, ecfg, resolver, None);
 
-    // .rev() to preserve ordering above in combination with insert(0, ...)
-    for &name in names.iter().rev() {
-        let ident = if edition >= Edition2018 {
-            Ident::new(name, span)
-        } else {
-            Ident::new(name, call_site)
-        };
-        krate.items.insert(
-            0,
-            cx.item(
-                span,
-                ident,
-                thin_vec![cx.attr_word(sym::macro_use, span)],
-                ast::ItemKind::ExternCrate(None),
-            ),
-        );
-    }
-
-    // The crates have been injected, the assumption is that the first one is
-    // the one with the prelude.
-    let name = names[0];
+    let ident =
+        if edition >= Edition2018 { Ident::new(name, span) } else { Ident::new(name, call_site) };
+    krate.items.insert(
+        0,
+        cx.item(
+            span,
+            ident,
+            thin_vec![cx.attr_word(sym::macro_use, span)],
+            ast::ItemKind::ExternCrate(None),
+        ),
+    );
 
     let root = (edition == Edition2015).then_some(kw::PathRoot);
 

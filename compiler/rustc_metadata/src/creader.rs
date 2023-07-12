@@ -758,6 +758,27 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         self.inject_dependency_if(cnum, "a panic runtime", &|data| data.needs_panic_runtime());
     }
 
+    fn inject_compiler_builtins(&mut self, krate: &ast::Crate) {
+        // Don't inject compiler_builtins for core and compiler_builtins.
+        if attr::contains_name(&krate.attrs, sym::no_core)
+            || attr::contains_name(&krate.attrs, sym::compiler_builtins)
+        {
+            return;
+        }
+
+        info!("loading compiler_builtins");
+
+        let Some(cnum) = self.resolve_crate(sym::compiler_builtins, DUMMY_SP, CrateDepKind::Implicit) else {
+            return;
+        };
+        let data = self.cstore.get_crate_data(cnum);
+
+        // Sanity check the loaded crate to ensure it is indeed compiler_builtins
+        if !data.is_compiler_builtins() {
+            self.sess.emit_err(errors::NotCompilerBuiltins { crate_name: sym::compiler_builtins });
+        }
+    }
+
     fn inject_profiler_runtime(&mut self, krate: &ast::Crate) {
         if self.sess.opts.unstable_opts.no_profiler_runtime
             || !(self.sess.instrument_coverage()
@@ -968,6 +989,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
 
     pub fn postprocess(&mut self, krate: &ast::Crate) {
         self.inject_forced_externs();
+        self.inject_compiler_builtins(krate);
         self.inject_profiler_runtime(krate);
         self.inject_allocator_crate(krate);
         self.inject_panic_runtime(krate);

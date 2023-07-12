@@ -333,6 +333,12 @@ pub struct NoPanicStrategy {
 }
 
 #[derive(Diagnostic)]
+#[diag(metadata_not_compiler_builtins)]
+pub struct NotCompilerBuiltins {
+    pub crate_name: Symbol,
+}
+
+#[derive(Diagnostic)]
 #[diag(metadata_profiler_builtins_needs_core)]
 pub struct ProfilerBuiltinsNeedsCore;
 

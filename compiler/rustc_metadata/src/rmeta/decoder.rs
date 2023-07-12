@@ -1700,6 +1700,10 @@ impl CrateMetadata {
         self.root.panic_runtime
     }
 
+    pub(crate) fn is_compiler_builtins(&self) -> bool {
+        self.root.compiler_builtins
+    }
+
     pub(crate) fn is_profiler_runtime(&self) -> bool {
         self.root.profiler_runtime
     }

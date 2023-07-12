@@ -216,6 +216,9 @@ metadata_no_transitive_needs_dep =
 metadata_non_ascii_name =
     cannot load a crate with a non-ascii name `{$crate_name}`
 
+metadata_not_compiler_builtins =
+    the crate `{$crate_name}` is not the compiler builtins crate
+
 metadata_not_profiler_runtime =
     the crate `{$crate_name}` is not a profiler runtime
 
