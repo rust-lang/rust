@@ -1,4 +1,4 @@
-error[E0391]: cycle detected when computing layout of `Foo<()>`
+error[E0391]: cycle detected when computing layout of `Foo<()>`. see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information.
    |
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
    = note: ...which requires computing layout of `<() as A>::Assoc`...

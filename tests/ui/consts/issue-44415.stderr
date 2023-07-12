@@ -1,4 +1,4 @@
-error[E0391]: cycle detected when evaluating type-level constant
+error[E0391]: cycle detected when evaluating type-level constant. see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information.
   --> $DIR/issue-44415.rs:6:17
    |
 LL |     bytes: [u8; unsafe { intrinsics::size_of::<Foo>() }],

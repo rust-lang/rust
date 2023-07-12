@@ -1,4 +1,4 @@
-error[E0391]: cycle detected when computing type of `Foo::X`
+error[E0391]: cycle detected when computing type of `Foo::X`. see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information.
   --> $DIR/cycle-trait-default-type-trait.rs:4:23
    |
 LL | trait Foo<X = Box<dyn Foo>> {

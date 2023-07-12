@@ -1,4 +1,4 @@
-error[E0391]: cycle detected when elaborating drops for `<impl at $DIR/issue-24949-assoc-const-static-recursion-trait.rs:11:1: 11:28>::BAR`
+error[E0391]: cycle detected when elaborating drops for `<impl at $DIR/issue-24949-assoc-const-static-recursion-trait.rs:11:1: 11:28>::BAR`. see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information.
   --> $DIR/issue-24949-assoc-const-static-recursion-trait.rs:12:22
    |
 LL |     const BAR: u32 = TRAIT_REF_BAR;
