@@ -1742,6 +1742,18 @@ impl Config {
         }
     }
 
+    /// Runs a command, printing out nice contextual information if it fails.
+    /// Exits if the command failed to execute at all, otherwise returns its
+    /// `status.success()`.
+    #[deprecated = "use `Builder::try_run` instead where possible"]
+    pub(crate) fn try_run(&self, cmd: &mut Command) -> Result<(), ()> {
+        if self.dry_run() {
+            return Ok(());
+        }
+        self.verbose(&format!("running: {:?}", cmd));
+        build_helper::util::try_run(cmd, self.is_verbose())
+    }
+
     /// A git invocation which runs inside the source directory.
     ///
     /// Use this rather than `Command::new("git")` in order to support out-of-tree builds.

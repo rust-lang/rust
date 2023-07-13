@@ -333,7 +333,6 @@ forward! {
     create(path: &Path, s: &str),
     remove(f: &Path),
     tempdir() -> PathBuf,
-    try_run(cmd: &mut Command) -> Result<(), ()>,
     llvm_link_shared() -> bool,
     download_rustc() -> bool,
     initial_rustfmt() -> Option<PathBuf>,
@@ -617,7 +616,9 @@ impl Build {
         }
 
         // Save any local changes, but avoid running `git stash pop` if there are none (since it will exit with an error).
+        #[allow(deprecated)] // diff-index reports the modifications through the exit status
         let has_local_modifications = self
+            .config
             .try_run(
                 Command::new("git")
                     .args(&["diff-index", "--quiet", "HEAD"])
@@ -977,6 +978,21 @@ impl Build {
         }
         self.verbose(&format!("running: {:?}", cmd));
         try_run_suppressed(cmd)
+    }
+
+    /// Runs a command, printing out contextual info if it fails, and delaying errors until the build finishes.
+    pub(crate) fn try_run(&self, cmd: &mut Command) -> bool {
+        if !self.fail_fast {
+            #[allow(deprecated)] // can't use Build::try_run, that's us
+            if self.config.try_run(cmd).is_err() {
+                let mut failures = self.delayed_failures.borrow_mut();
+                failures.push(format!("{:?}", cmd));
+                return false;
+            }
+        } else {
+            self.run(cmd);
+        }
+        true
     }
 
     pub fn is_verbose_than(&self, level: usize) -> bool {
