@@ -16,7 +16,6 @@ use rustc_hir::Node;
 use rustc_middle::middle::region;
 use rustc_middle::thir::*;
 use rustc_middle::ty::{self, RvalueScopes, Ty, TyCtxt};
-use rustc_span::Span;
 
 pub(crate) fn thir_body(
     tcx: TyCtxt<'_>,
@@ -62,14 +61,6 @@ struct Cx<'tcx> {
     typeck_results: &'tcx ty::TypeckResults<'tcx>,
     rvalue_scopes: &'tcx RvalueScopes,
 
-    /// When applying adjustments to the expression
-    /// with the given `HirId`, use the given `Span`,
-    /// instead of the usual span. This is used to
-    /// assign the span of an overall method call
-    /// (e.g. `my_val.foo()`) to the adjustment expressions
-    /// for the receiver.
-    adjustment_span: Option<(HirId, Span)>,
-
     /// False to indicate that adjustments should not be applied. Only used for `custom_mir`
     apply_adjustments: bool,
 
@@ -110,7 +101,6 @@ impl<'tcx> Cx<'tcx> {
             typeck_results,
             rvalue_scopes: &typeck_results.rvalue_scopes,
             body_owner: def.to_def_id(),
-            adjustment_span: None,
             apply_adjustments: hir
                 .attrs(hir_id)
                 .iter()

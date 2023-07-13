@@ -2,9 +2,8 @@ error[E0499]: cannot borrow `*self` as mutable more than once at a time
   --> $DIR/suggest-local-var-double-mut.rs:12:22
    |
 LL |             self.foo(self.bar());
-   |             ---------^^^^^^^^^^-
-   |             |    |   |
-   |             |    |   second mutable borrow occurs here
+   |             ---- --- ^^^^ second mutable borrow occurs here
+   |             |    |
    |             |    first borrow later used by call
    |             first mutable borrow occurs here
    |

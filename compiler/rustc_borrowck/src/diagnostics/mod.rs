@@ -1121,7 +1121,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             err.eager_subdiagnostic(
                                 &self.infcx.tcx.sess.parse_sess.span_diagnostic,
                                 CaptureReasonSuggest::FreshReborrow {
-                                    span: fn_call_span.shrink_to_lo(),
+                                    span: move_span.shrink_to_hi(),
                                 });
                         }
                         if let Some(clone_trait) = tcx.lang_items().clone_trait()
@@ -1135,10 +1135,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             && self.infcx.predicate_must_hold_modulo_regions(&o)
                         {
                             err.span_suggestion_verbose(
-                                fn_call_span.shrink_to_lo(),
+                                move_span.shrink_to_hi(),
                                 "you can `clone` the value and consume it, but this might not be \
                                  your desired behavior",
-                                "clone().".to_string(),
+                                ".clone()".to_string(),
                                 Applicability::MaybeIncorrect,
                             );
                         }

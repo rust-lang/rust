@@ -2,7 +2,7 @@ error[E0502]: cannot borrow `foo` as mutable because it is also borrowed as immu
   --> $DIR/borrowck-issue-49631.rs:20:9
    |
 LL |     while let Some(Ok(string)) = foo.get() {
-   |                                  --------- immutable borrow occurs here
+   |                                  --- immutable borrow occurs here
 LL |         foo.mutate();
    |         ^^^^^^^^^^^^ mutable borrow occurs here
 LL |

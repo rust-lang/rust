@@ -9,7 +9,7 @@ LL |         let _ref_to_val: &Value = &x;
 LL |         eat(x);
    |             ^ move out of `x` occurs here
 LL |         _ref_to_val.use_ref();
-   |         --------------------- borrow later used here
+   |         ----------- borrow later used here
 
 error: aborting due to previous error
 

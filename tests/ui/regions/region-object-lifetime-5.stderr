@@ -1,8 +1,11 @@
-error[E0515]: cannot return reference to local data `*x`
+error[E0515]: cannot return value referencing local data `*x`
   --> $DIR/region-object-lifetime-5.rs:11:5
    |
 LL |     x.borrowed()
-   |     ^^^^^^^^^^^^ returns a reference to data owned by the current function
+   |     -^^^^^^^^^^^
+   |     |
+   |     returns a value referencing data owned by the current function
+   |     `*x` is borrowed here
 
 error: aborting due to previous error
 

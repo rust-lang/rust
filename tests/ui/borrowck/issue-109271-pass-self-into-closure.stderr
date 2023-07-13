@@ -26,9 +26,8 @@ error[E0499]: cannot borrow `v` as mutable more than once at a time
   --> $DIR/issue-109271-pass-self-into-closure.rs:21:12
    |
 LL |     v.call(|(), this: &mut S| v.set());
-   |     -------^^^^^^^^^^^^^^^^^^---------
-   |     | |    |                  |
-   |     | |    |                  second borrow occurs due to use of `v` in closure
+   |     - ---- ^^^^^^^^^^^^^^^^^^ - second borrow occurs due to use of `v` in closure
+   |     | |    |
    |     | |    second mutable borrow occurs here
    |     | first borrow later used by call
    |     first mutable borrow occurs here
@@ -63,21 +62,14 @@ LL ~         S::get(&this);
 error[E0499]: cannot borrow `v` as mutable more than once at a time
   --> $DIR/issue-109271-pass-self-into-closure.rs:25:12
    |
-LL |       v.call(|(), this: &mut S| {
-   |       - ---- ^^^^^^^^^^^^^^^^^^ second mutable borrow occurs here
-   |       | |
-   |  _____| first borrow later used by call
-   | |
-LL | |
-LL | |
-LL | |
-LL | |         _ = v;
-LL | |         v.set();
-   | |         - second borrow occurs due to use of `v` in closure
-...  |
-LL | |         _ = v.add(3);
-LL | |     });
-   | |______- first mutable borrow occurs here
+LL |     v.call(|(), this: &mut S| {
+   |     - ---- ^^^^^^^^^^^^^^^^^^ second mutable borrow occurs here
+   |     | |
+   |     | first borrow later used by call
+   |     first mutable borrow occurs here
+...
+LL |         v.set();
+   |         - second borrow occurs due to use of `v` in closure
 
 error: aborting due to 5 previous errors
 

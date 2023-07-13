@@ -13,7 +13,7 @@ note: `into_future` takes ownership of the receiver `self`, which moves `f`
 help: you can `clone` the value and consume it, but this might not be your desired behavior
    |
 LL |     f.clone().await;
-   |       ++++++++
+   |      ++++++++
 
 error: aborting due to previous error
 

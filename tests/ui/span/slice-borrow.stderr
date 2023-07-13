@@ -7,7 +7,7 @@ LL |         let x: &[isize] = &vec![1, 2, 3, 4, 5];
 LL |     }
    |     - temporary value is freed at the end of this statement
 LL |     y.use_ref();
-   |     ----------- borrow later used here
+   |     - borrow later used here
    |
    = note: consider using a `let` binding to create a longer lived value
    = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)

@@ -2,7 +2,7 @@ error[E0596]: cannot borrow `*inner` as mutable, as it is behind a `&` reference
   --> $DIR/issue-91206.rs:13:5
    |
 LL |     inner.clear();
-   |     ^^^^^^^^^^^^^ `inner` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |     ^^^^^ `inner` is a `&` reference, so the data it refers to cannot be borrowed as mutable
    |
 help: consider specifying this binding's type
    |

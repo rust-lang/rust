@@ -2,7 +2,7 @@ error[E0596]: cannot borrow `*TAB[_]` as mutable, as `TAB` is an immutable stati
   --> $DIR/issue-42344.rs:4:5
    |
 LL |     TAB[0].iter_mut();
-   |     ^^^^^^^^^^^^^^^^^ cannot borrow as mutable
+   |     ^^^^^^ cannot borrow as mutable
 
 error: aborting due to previous error
 
