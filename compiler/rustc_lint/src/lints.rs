@@ -613,13 +613,13 @@ pub struct ExpectationNote {
     pub rationale: Symbol,
 }
 
-// fn_null_check.rs
+// ptr_nulls.rs
 #[derive(LintDiagnostic)]
-pub enum FnNullCheckDiag<'a> {
-    #[diag(lint_fn_null_check_fn_ptr)]
+pub enum PtrNullChecksDiag<'a> {
+    #[diag(lint_ptr_null_checks_fn_ptr)]
     #[help(lint_help)]
     FnPtr,
-    #[diag(lint_fn_null_check_ref)]
+    #[diag(lint_ptr_null_checks_ref)]
     Ref {
         orig_ty: Ty<'a>,
         #[label]
