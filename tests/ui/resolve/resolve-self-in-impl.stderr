@@ -38,7 +38,7 @@ LL | impl (Self, Self) {}
    |
    = note: replace `Self` with a different type
 
-error[E0391]: cycle detected when computing trait implemented by `<impl at $DIR/resolve-self-in-impl.rs:19:1: 19:23>`. see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information.
+error[E0391]: cycle detected when computing trait implemented by `<impl at $DIR/resolve-self-in-impl.rs:19:1: 19:23>`
   --> $DIR/resolve-self-in-impl.rs:19:1
    |
 LL | impl Tr<Self::A> for S {}

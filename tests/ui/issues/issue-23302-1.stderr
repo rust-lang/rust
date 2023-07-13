@@ -1,4 +1,4 @@
-error[E0391]: cycle detected when const-evaluating + checking `X::A::{constant#0}`. see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information.
+error[E0391]: cycle detected when const-evaluating + checking `X::A::{constant#0}`
   --> $DIR/issue-23302-1.rs:4:9
    |
 LL |     A = X::A as isize,

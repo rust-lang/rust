@@ -1,4 +1,4 @@
-error[E0391]: cycle detected when computing the bounds for type parameter `T`. see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information.
+error[E0391]: cycle detected when computing the bounds for type parameter `T`
   --> $DIR/issue-21177.rs:6:21
    |
 LL | fn foo<T: Trait<A = T::B>>() { }

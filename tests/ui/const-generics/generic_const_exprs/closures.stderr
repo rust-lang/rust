@@ -1,4 +1,4 @@
-error[E0391]: cycle detected when building an abstract representation for `test::{constant#0}`. see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information.
+error[E0391]: cycle detected when building an abstract representation for `test::{constant#0}`
   --> $DIR/closures.rs:3:35
    |
 LL | fn test<const N: usize>() -> [u8; N + (|| 42)()] {}

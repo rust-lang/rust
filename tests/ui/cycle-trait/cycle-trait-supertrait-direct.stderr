@@ -1,4 +1,4 @@
-error[E0391]: cycle detected when computing the super predicates of `Chromosome`. see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information.
+error[E0391]: cycle detected when computing the super predicates of `Chromosome`
   --> $DIR/cycle-trait-supertrait-direct.rs:3:19
    |
 LL | trait Chromosome: Chromosome {

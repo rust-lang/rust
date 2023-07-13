@@ -1,4 +1,4 @@
-error[E0391]: cycle detected when computing type of `Foo::{opaque#0}`. see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information.
+error[E0391]: cycle detected when computing type of `Foo::{opaque#0}`
   --> $DIR/reveal_local.rs:5:12
    |
 LL | type Foo = impl Debug;
@@ -28,7 +28,7 @@ LL | |
 LL | | fn main() {}
    | |____________^
 
-error[E0391]: cycle detected when computing type of `Foo::{opaque#0}`. see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information.
+error[E0391]: cycle detected when computing type of `Foo::{opaque#0}`
   --> $DIR/reveal_local.rs:5:12
    |
 LL | type Foo = impl Debug;
@@ -79,7 +79,7 @@ note: required by a bound in `is_send`
 LL | fn is_send<T: Send>() {}
    |               ^^^^ required by this bound in `is_send`
 
-error[E0391]: cycle detected when computing type of `Foo::{opaque#0}`. see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information.
+error[E0391]: cycle detected when computing type of `Foo::{opaque#0}`
   --> $DIR/reveal_local.rs:5:12
    |
 LL | type Foo = impl Debug;

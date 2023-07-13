@@ -1,4 +1,4 @@
-error[E0391]: cycle detected when computing the super predicates of `B`. see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information.
+error[E0391]: cycle detected when computing the super predicates of `B`
   --> $DIR/cycle-trait-supertrait-indirect.rs:7:10
    |
 LL | trait B: C {

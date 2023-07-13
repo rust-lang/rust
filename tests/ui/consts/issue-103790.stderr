@@ -22,7 +22,7 @@ help: add missing generic argument
 LL | struct S<const S: (), const S: S<S> = { S }>;
    |                                 +++
 
-error[E0391]: cycle detected when computing type of `S::S`. see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information.
+error[E0391]: cycle detected when computing type of `S::S`
   --> $DIR/issue-103790.rs:4:32
    |
 LL | struct S<const S: (), const S: S = { S }>;
@@ -40,7 +40,7 @@ note: cycle used when computing type of `S`
 LL | struct S<const S: (), const S: S = { S }>;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0391]: cycle detected when computing type of `S`. see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information.
+error[E0391]: cycle detected when computing type of `S`
   --> $DIR/issue-103790.rs:4:1
    |
 LL | struct S<const S: (), const S: S = { S }>;

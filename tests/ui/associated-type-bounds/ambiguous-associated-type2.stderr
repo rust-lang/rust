@@ -1,4 +1,4 @@
-error[E0391]: cycle detected when computing the super traits of `Baz` with associated type name `Item`. see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information.
+error[E0391]: cycle detected when computing the super traits of `Baz` with associated type name `Item`
   --> $DIR/ambiguous-associated-type2.rs:7:1
    |
 LL | trait Baz: Foo + Bar<Self::Item> {}

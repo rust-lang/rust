@@ -1,4 +1,4 @@
-error[E0391]: cycle detected when const-evaluating + checking `FOO`. see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information.
+error[E0391]: cycle detected when const-evaluating + checking `FOO`
   --> $DIR/recursive-zst-static.rs:10:1
    |
 LL | static FOO: () = FOO;

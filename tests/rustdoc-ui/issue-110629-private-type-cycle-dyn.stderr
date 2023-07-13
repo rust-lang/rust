@@ -1,4 +1,4 @@
-error[E0391]: cycle detected when expanding type alias `Bar`. see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information.
+error[E0391]: cycle detected when expanding type alias `Bar`
   --> $DIR/issue-110629-private-type-cycle-dyn.rs:1:38
    |
 LL | type Bar<'a, 'b> = Box<dyn PartialEq<Bar<'a, 'b>>>;

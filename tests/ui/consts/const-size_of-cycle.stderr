@@ -1,4 +1,4 @@
-error[E0391]: cycle detected when evaluating type-level constant. see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information.
+error[E0391]: cycle detected when evaluating type-level constant
   --> $DIR/const-size_of-cycle.rs:4:17
    |
 LL |     bytes: [u8; std::mem::size_of::<Foo>()]
