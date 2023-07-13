@@ -149,7 +149,7 @@ mod opaque_types;
 mod parameterized;
 mod rvalue_scopes;
 mod structural_impls;
-#[cfg_attr(not(bootstrap), allow(hidden_glob_reexports))]
+#[allow(hidden_glob_reexports)]
 mod sty;
 mod typeck_results;
 

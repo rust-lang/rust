@@ -13,12 +13,12 @@ mod object_safety;
 pub mod outlives_bounds;
 pub mod project;
 pub mod query;
-#[cfg_attr(not(bootstrap), allow(hidden_glob_reexports))]
+#[allow(hidden_glob_reexports)]
 mod select;
 mod specialize;
 mod structural_match;
 mod structural_normalize;
-#[cfg_attr(not(bootstrap), allow(hidden_glob_reexports))]
+#[allow(hidden_glob_reexports)]
 mod util;
 pub mod vtable;
 pub mod wf;

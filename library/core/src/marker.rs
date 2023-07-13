@@ -140,8 +140,7 @@ unsafe impl<T: Sync + ?Sized> Send for &T {}
 )]
 #[fundamental] // for Default, for example, which requires that `[T]: !Default` be evaluatable
 #[rustc_specialization_trait]
-#[cfg_attr(not(bootstrap), rustc_deny_explicit_impl(implement_via_object = false))]
-#[cfg_attr(bootstrap, rustc_deny_explicit_impl)]
+#[rustc_deny_explicit_impl(implement_via_object = false)]
 #[rustc_coinductive]
 pub trait Sized {
     // Empty.
@@ -174,8 +173,7 @@ pub trait Sized {
 /// [nomicon-coerce]: ../../nomicon/coercions.html
 #[unstable(feature = "unsize", issue = "18598")]
 #[lang = "unsize"]
-#[cfg_attr(not(bootstrap), rustc_deny_explicit_impl(implement_via_object = false))]
-#[cfg_attr(bootstrap, rustc_deny_explicit_impl)]
+#[rustc_deny_explicit_impl(implement_via_object = false)]
 pub trait Unsize<T: ?Sized> {
     // Empty.
 }
@@ -856,8 +854,7 @@ impl<T: ?Sized> StructuralEq for PhantomData<T> {}
     reason = "this trait is unlikely to ever be stabilized, use `mem::discriminant` instead"
 )]
 #[lang = "discriminant_kind"]
-#[cfg_attr(not(bootstrap), rustc_deny_explicit_impl(implement_via_object = false))]
-#[cfg_attr(bootstrap, rustc_deny_explicit_impl)]
+#[rustc_deny_explicit_impl(implement_via_object = false)]
 pub trait DiscriminantKind {
     /// The type of the discriminant, which must satisfy the trait
     /// bounds required by `mem::Discriminant`.
@@ -962,8 +959,7 @@ marker_impls! {
 #[unstable(feature = "const_trait_impl", issue = "67792")]
 #[lang = "destruct"]
 #[rustc_on_unimplemented(message = "can't drop `{Self}`", append_const_msg)]
-#[cfg_attr(not(bootstrap), rustc_deny_explicit_impl(implement_via_object = false))]
-#[cfg_attr(bootstrap, rustc_deny_explicit_impl)]
+#[rustc_deny_explicit_impl(implement_via_object = false)]
 #[const_trait]
 pub trait Destruct {}
 
@@ -974,8 +970,7 @@ pub trait Destruct {}
 #[unstable(feature = "tuple_trait", issue = "none")]
 #[lang = "tuple_trait"]
 #[rustc_on_unimplemented(message = "`{Self}` is not a tuple")]
-#[cfg_attr(not(bootstrap), rustc_deny_explicit_impl(implement_via_object = false))]
-#[cfg_attr(bootstrap, rustc_deny_explicit_impl)]
+#[rustc_deny_explicit_impl(implement_via_object = false)]
 pub trait Tuple {}
 
 /// A marker for pointer-like types.
@@ -1020,7 +1015,6 @@ marker_impls! {
 
 // FIXME(adt_const_params): Add to marker_impls call above once not in bootstrap
 #[unstable(feature = "adt_const_params", issue = "95174")]
-#[cfg(not(bootstrap))]
 impl ConstParamTy for () {}
 
 /// A common trait implemented by all function pointers.
@@ -1030,8 +1024,7 @@ impl ConstParamTy for () {}
     reason = "internal trait for implementing various traits for all function pointers"
 )]
 #[lang = "fn_ptr_trait"]
-#[cfg_attr(not(bootstrap), rustc_deny_explicit_impl(implement_via_object = false))]
-#[cfg_attr(bootstrap, rustc_deny_explicit_impl)]
+#[rustc_deny_explicit_impl(implement_via_object = false)]
 pub trait FnPtr: Copy + Clone {
     /// Returns the address of the function pointer.
     #[lang = "fn_ptr_addr"]
