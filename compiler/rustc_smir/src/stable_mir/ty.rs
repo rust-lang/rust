@@ -1,6 +1,8 @@
 use super::with;
 use crate::rustc_internal::Opaque;
 
+type Const = Opaque;
+
 #[derive(Copy, Clone, Debug)]
 pub struct Ty(pub usize);
 
@@ -53,5 +55,3 @@ pub enum FloatTy {
     F32,
     F64,
 }
-
-type Const = Opaque;
