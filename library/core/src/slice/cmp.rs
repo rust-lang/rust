@@ -1,8 +1,7 @@
 //! Comparison traits for `[T]`.
 
-use crate::cmp::{self, BytewiseEq, Ordering};
+use crate::cmp::{self, Ordering};
 use crate::ffi;
-use crate::mem;
 
 use super::from_raw_parts;
 use super::memchr;
@@ -92,20 +91,28 @@ where
 }
 
 // Use memcmp for bytewise equality when the types allow
-impl<A, B> SlicePartialEq<B> for [A]
-where
-    A: BytewiseEq<B>,
-{
-    fn equal(&self, other: &[B]) -> bool {
-        if self.len() != other.len() {
-            return false;
-        }
+// and `memcmp` is not equivalent to our generic case
+#[cfg(not(target_env = "musl"))]
+mod bytewise_memcmp {
+    use super::{memcmp, SlicePartialEq};
+    use crate::cmp::BytewiseEq;
+    use crate::mem;
 
-        // SAFETY: `self` and `other` are references and are thus guaranteed to be valid.
-        // The two slices have been checked to have the same size above.
-        unsafe {
-            let size = mem::size_of_val(self);
-            memcmp(self.as_ptr() as *const u8, other.as_ptr() as *const u8, size) == 0
+    impl<A, B> SlicePartialEq<B> for [A]
+    where
+        A: BytewiseEq<B>,
+    {
+        fn equal(&self, other: &[B]) -> bool {
+            if self.len() != other.len() {
+                return false;
+            }
+
+            // SAFETY: `self` and `other` are references and are thus guaranteed to be valid.
+            // The two slices have been checked to have the same size above.
+            unsafe {
+                let size = mem::size_of_val(self);
+                memcmp(self.as_ptr() as *const u8, other.as_ptr() as *const u8, size) == 0
+            }
         }
     }
 }
