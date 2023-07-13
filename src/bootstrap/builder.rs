@@ -902,21 +902,6 @@ impl<'a> Builder<'a> {
         Self::new_internal(build, kind, paths.to_owned())
     }
 
-    /// Creates a new standalone builder for use outside of the normal process
-    pub fn new_standalone(
-        build: &mut Build,
-        kind: Kind,
-        paths: Vec<PathBuf>,
-        stage: Option<u32>,
-    ) -> Builder<'_> {
-        // FIXME: don't mutate `build`
-        if let Some(stage) = stage {
-            build.config.stage = stage;
-        }
-
-        Self::new_internal(build, kind, paths.to_owned())
-    }
-
     pub fn execute_cli(&self) {
         self.run_step_descriptions(&Builder::get_step_descriptions(self.kind), &self.paths);
     }
