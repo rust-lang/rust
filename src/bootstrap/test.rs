@@ -48,19 +48,6 @@ const MIR_OPT_BLESS_TARGET_MAPPING: &[(&str, &str)] = &[
     // build for, so there is no entry for "aarch64-apple-darwin" here.
 ];
 
-fn try_run_quiet(builder: &Builder<'_>, cmd: &mut Command) -> bool {
-    if !builder.fail_fast {
-        if !builder.try_run_quiet(cmd) {
-            let mut failures = builder.delayed_failures.borrow_mut();
-            failures.push(format!("{:?}", cmd));
-            return false;
-        }
-    } else {
-        builder.run_quiet(cmd);
-    }
-    true
-}
-
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct CrateBootstrap {
     path: Interned<PathBuf>,
@@ -2134,7 +2121,7 @@ fn markdown_test(builder: &Builder<'_>, compiler: Compiler, markdown: &Path) -> 
     if builder.config.verbose_tests {
         builder.run_delaying_failure(&mut cmd)
     } else {
-        try_run_quiet(builder, &mut cmd)
+        builder.run_quiet_delaying_failure(&mut cmd)
     }
 }
 

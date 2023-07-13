@@ -972,12 +972,21 @@ impl Build {
     /// Runs a command, printing out nice contextual information if it fails.
     /// Exits if the command failed to execute at all, otherwise returns its
     /// `status.success()`.
-    fn try_run_quiet(&self, cmd: &mut Command) -> bool {
+    fn run_quiet_delaying_failure(&self, cmd: &mut Command) -> bool {
         if self.config.dry_run() {
             return true;
         }
-        self.verbose(&format!("running: {:?}", cmd));
-        try_run_suppressed(cmd)
+        if !self.fail_fast {
+            self.verbose(&format!("running: {:?}", cmd));
+            if !try_run_suppressed(cmd) {
+                let mut failures = self.delayed_failures.borrow_mut();
+                failures.push(format!("{:?}", cmd));
+                return false;
+            }
+        } else {
+            self.run_quiet(cmd);
+        }
+        true
     }
 
     /// Runs a command, printing out contextual info if it fails, and delaying errors until the build finishes.
