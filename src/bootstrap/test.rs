@@ -180,9 +180,7 @@ You can skip linkcheck with --exclude src/tools/linkchecker"
         let _guard =
             builder.msg(Kind::Test, compiler.stage, "Linkcheck", bootstrap_host, bootstrap_host);
         let _time = util::timeit(&builder);
-        builder.try_run(
-            linkchecker.arg(builder.out.join(host.triple).join("doc")),
-        );
+        builder.run_delaying_failure(linkchecker.arg(builder.out.join(host.triple).join("doc")));
     }
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -235,7 +233,9 @@ impl Step for HtmlCheck {
         builder.default_doc(&[]);
         builder.ensure(crate::doc::Rustc::new(builder.top_stage, self.target, builder));
 
-        builder.try_run(builder.tool_cmd(Tool::HtmlChecker).arg(builder.doc_out(self.target)));
+        builder.run_delaying_failure(
+            builder.tool_cmd(Tool::HtmlChecker).arg(builder.doc_out(self.target)),
+        );
     }
 }
 
@@ -274,7 +274,7 @@ impl Step for Cargotest {
 
         let _time = util::timeit(&builder);
         let mut cmd = builder.tool_cmd(Tool::CargoTest);
-        builder.try_run(
+        builder.run_delaying_failure(
             cmd.arg(&cargo)
                 .arg(&out_dir)
                 .args(builder.config.test_args())
@@ -876,7 +876,7 @@ impl Step for RustdocTheme {
                 util::lld_flag_no_threads(self.compiler.host.contains("windows")),
             );
         }
-        builder.try_run(&mut cmd);
+        builder.run_delaying_failure(&mut cmd);
     }
 }
 
@@ -1136,7 +1136,7 @@ help: to skip test's attempt to check tidiness, pass `--exclude src/tools/tidy` 
         }
 
         builder.info("tidy check");
-        builder.try_run(&mut cmd);
+        builder.run_delaying_failure(&mut cmd);
 
         builder.ensure(ExpandYamlAnchors);
 
@@ -1181,7 +1181,7 @@ impl Step for ExpandYamlAnchors {
     /// by the user before committing CI changes.
     fn run(self, builder: &Builder<'_>) {
         builder.info("Ensuring the YAML anchors in the GitHub Actions config were expanded");
-        builder.try_run(
+        builder.run_delaying_failure(
             &mut builder.tool_cmd(Tool::ExpandYamlAnchors).arg("check").arg(&builder.src),
         );
     }
@@ -1970,7 +1970,7 @@ impl BookTest {
             compiler.host,
         );
         let _time = util::timeit(&builder);
-        let toolstate = if builder.try_run(&mut rustbook_cmd) {
+        let toolstate = if builder.run_delaying_failure(&mut rustbook_cmd) {
             ToolState::TestPass
         } else {
             ToolState::TestFail
@@ -2132,7 +2132,7 @@ fn markdown_test(builder: &Builder<'_>, compiler: Compiler, markdown: &Path) -> 
     cmd.arg("--test-args").arg(test_args);
 
     if builder.config.verbose_tests {
-        builder.try_run(&mut cmd)
+        builder.run_delaying_failure(&mut cmd)
     } else {
         try_run_quiet(builder, &mut cmd)
     }
@@ -2160,7 +2160,7 @@ impl Step for RustcGuide {
 
         let src = builder.src.join(relative_path);
         let mut rustbook_cmd = builder.tool_cmd(Tool::Rustbook);
-        let toolstate = if builder.try_run(rustbook_cmd.arg("linkcheck").arg(&src)) {
+        let toolstate = if builder.run_delaying_failure(rustbook_cmd.arg("linkcheck").arg(&src)) {
             ToolState::TestPass
         } else {
             ToolState::TestFail
@@ -2713,7 +2713,7 @@ impl Step for Bootstrap {
             .current_dir(builder.src.join("src/bootstrap/"));
         // NOTE: we intentionally don't pass test_args here because the args for unittest and cargo test are mutually incompatible.
         // Use `python -m unittest` manually if you want to pass arguments.
-        builder.try_run(&mut check_bootstrap);
+        builder.run_delaying_failure(&mut check_bootstrap);
 
         let mut cmd = Command::new(&builder.initial_cargo);
         cmd.arg("test")
@@ -2789,7 +2789,7 @@ impl Step for TierCheck {
             self.compiler.host,
             self.compiler.host,
         );
-        builder.try_run(&mut cargo.into());
+        builder.run_delaying_failure(&mut cargo.into());
     }
 }
 
@@ -2875,7 +2875,7 @@ impl Step for RustInstaller {
         cmd.env("CARGO", &builder.initial_cargo);
         cmd.env("RUSTC", &builder.initial_rustc);
         cmd.env("TMP_DIR", &tmpdir);
-        builder.try_run(&mut cmd);
+        builder.run_delaying_failure(&mut cmd);
     }
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {

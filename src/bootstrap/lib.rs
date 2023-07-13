@@ -981,7 +981,7 @@ impl Build {
     }
 
     /// Runs a command, printing out contextual info if it fails, and delaying errors until the build finishes.
-    pub(crate) fn try_run(&self, cmd: &mut Command) -> bool {
+    pub(crate) fn run_delaying_failure(&self, cmd: &mut Command) -> bool {
         if !self.fail_fast {
             #[allow(deprecated)] // can't use Build::try_run, that's us
             if self.config.try_run(cmd).is_err() {
