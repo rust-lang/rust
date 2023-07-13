@@ -186,18 +186,14 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
         let Some((_, feature)) = supported_tys.iter().find(|&&(t, _)| t == asm_ty) else {
             let msg = format!("type `{ty}` cannot be used with this register class");
             let mut err = self.tcx.sess.struct_span_err(expr.span, msg);
-            let supported_tys: Vec<_> =
-                supported_tys.iter().map(|(t, _)| t.to_string()).collect();
+            let supported_tys: Vec<_> = supported_tys.iter().map(|(t, _)| t.to_string()).collect();
             err.note(format!(
                 "register class `{}` supports these types: {}",
                 reg_class.name(),
                 supported_tys.join(", "),
             ));
             if let Some(suggest) = reg_class.suggest_class(asm_arch, asm_ty) {
-                err.help(format!(
-                    "consider using the `{}` register class instead",
-                    suggest.name()
-                ));
+                err.help(format!("consider using the `{}` register class instead", suggest.name()));
             }
             err.emit();
             return Some(asm_ty);

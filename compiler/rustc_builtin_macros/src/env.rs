@@ -83,7 +83,12 @@ pub fn expand_env<'cx>(
         None => {
             // Use the string literal in the code in the diagnostic to avoid confusing diagnostics,
             // e.g. when the literal contains escape sequences.
-            let ast::ExprKind::Lit(ast::token::Lit { kind: ast::token::LitKind::Str, symbol: original_var, ..}) = &var_expr.kind else {
+            let ast::ExprKind::Lit(ast::token::Lit {
+                kind: ast::token::LitKind::Str,
+                symbol: original_var,
+                ..
+            }) = &var_expr.kind
+            else {
                 unreachable!("`expr_to_string` ensures this is a string lit")
             };
             cx.emit_err(errors::EnvNotDefined {

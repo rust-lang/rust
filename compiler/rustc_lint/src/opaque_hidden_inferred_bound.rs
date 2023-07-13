@@ -68,7 +68,9 @@ declare_lint_pass!(OpaqueHiddenInferredBound => [OPAQUE_HIDDEN_INFERRED_BOUND]);
 
 impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {
-        let hir::ItemKind::OpaqueTy(opaque) = &item.kind else { return; };
+        let hir::ItemKind::OpaqueTy(opaque) = &item.kind else {
+            return;
+        };
         let def_id = item.owner_id.def_id.to_def_id();
         let infcx = &cx.tcx.infer_ctxt().build();
         // For every projection predicate in the opaque type's explicit bounds,
@@ -116,7 +118,12 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                 .subst_iter_copied(cx.tcx, &proj.projection_ty.substs)
             {
                 let assoc_pred = assoc_pred.fold_with(proj_replacer);
-                let Ok(assoc_pred) = traits::fully_normalize(infcx, traits::ObligationCause::dummy(), cx.param_env, assoc_pred) else {
+                let Ok(assoc_pred) = traits::fully_normalize(
+                    infcx,
+                    traits::ObligationCause::dummy(),
+                    cx.param_env,
+                    assoc_pred,
+                ) else {
                     continue;
                 };
                 // If that predicate doesn't hold modulo regions (but passed during type-check),

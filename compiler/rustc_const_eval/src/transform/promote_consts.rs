@@ -759,11 +759,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             let (mut rvalue, source_info) = {
                 let statement = &mut self.source[loc.block].statements[loc.statement_index];
                 let StatementKind::Assign(box (_, rhs)) = &mut statement.kind else {
-                    span_bug!(
-                        statement.source_info.span,
-                        "{:?} is not an assignment",
-                        statement
-                    );
+                    span_bug!(statement.source_info.span, "{:?} is not an assignment", statement);
                 };
 
                 (
@@ -859,7 +855,9 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             let local_decls = &mut self.source.local_decls;
             let loc = candidate.location;
             let statement = &mut blocks[loc.block].statements[loc.statement_index];
-            let StatementKind::Assign(box (_, Rvalue::Ref(region, borrow_kind, place))) = &mut statement.kind else {
+            let StatementKind::Assign(box (_, Rvalue::Ref(region, borrow_kind, place))) =
+                &mut statement.kind
+            else {
                 bug!()
             };
 

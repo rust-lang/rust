@@ -94,7 +94,9 @@ pub fn get_git_modified_files(
     git_dir: Option<&Path>,
     extensions: &Vec<&str>,
 ) -> Result<Option<Vec<String>>, String> {
-    let Ok(updated_master) = updated_master_branch(git_dir) else { return Ok(None); };
+    let Ok(updated_master) = updated_master_branch(git_dir) else {
+        return Ok(None);
+    };
 
     let git = || {
         let mut git = Command::new("git");
@@ -119,7 +121,9 @@ pub fn get_git_modified_files(
 
 /// Returns the files that haven't been added to git yet.
 pub fn get_git_untracked_files(git_dir: Option<&Path>) -> Result<Option<Vec<String>>, String> {
-    let Ok(_updated_master) = updated_master_branch(git_dir) else { return Ok(None); };
+    let Ok(_updated_master) = updated_master_branch(git_dir) else {
+        return Ok(None);
+    };
     let mut git = Command::new("git");
     if let Some(git_dir) = git_dir {
         git.current_dir(git_dir);

@@ -325,8 +325,8 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                         // Can't have BrEnv in functions, constants or generators.
                         bug!("BrEnv outside of closure.");
                     };
-                    let hir::ExprKind::Closure(&hir::Closure { fn_decl_span, .. })
-                        = tcx.hir().expect_expr(self.mir_hir_id()).kind
+                    let hir::ExprKind::Closure(&hir::Closure { fn_decl_span, .. }) =
+                        tcx.hir().expect_expr(self.mir_hir_id()).kind
                     else {
                         bug!("Closure is not defined by a closure expr");
                     };

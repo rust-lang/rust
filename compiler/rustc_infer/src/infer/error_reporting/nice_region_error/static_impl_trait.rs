@@ -503,7 +503,9 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
 
         // Get the `Ident` of the method being called and the corresponding `impl` (to point at
         // `Bar` in `impl Foo for dyn Bar {}` and the definition of the method being called).
-        let Some((ident, self_ty)) = NiceRegionError::get_impl_ident_and_self_ty_from_trait(tcx, instance.def_id(), &v.0) else {
+        let Some((ident, self_ty)) =
+            NiceRegionError::get_impl_ident_and_self_ty_from_trait(tcx, instance.def_id(), &v.0)
+        else {
             return false;
         };
 

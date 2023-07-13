@@ -3150,7 +3150,9 @@ impl<'hir> Item<'hir> {
     /// Expect an [`ItemKind::ForeignMod`] or panic.
     #[track_caller]
     pub fn expect_foreign_mod(&self) -> (Abi, &'hir [ForeignItemRef]) {
-        let ItemKind::ForeignMod { abi, items } = self.kind else { self.expect_failed("a foreign module") };
+        let ItemKind::ForeignMod { abi, items } = self.kind else {
+            self.expect_failed("a foreign module")
+        };
         (abi, items)
     }
 
@@ -3201,14 +3203,18 @@ impl<'hir> Item<'hir> {
     pub fn expect_trait(
         self,
     ) -> (IsAuto, Unsafety, &'hir Generics<'hir>, GenericBounds<'hir>, &'hir [TraitItemRef]) {
-        let ItemKind::Trait(is_auto, unsafety, gen, bounds, items) = self.kind else { self.expect_failed("a trait") };
+        let ItemKind::Trait(is_auto, unsafety, gen, bounds, items) = self.kind else {
+            self.expect_failed("a trait")
+        };
         (is_auto, unsafety, gen, bounds, items)
     }
 
     /// Expect an [`ItemKind::TraitAlias`] or panic.
     #[track_caller]
     pub fn expect_trait_alias(&self) -> (&'hir Generics<'hir>, GenericBounds<'hir>) {
-        let ItemKind::TraitAlias(gen, bounds) = self.kind else { self.expect_failed("a trait alias") };
+        let ItemKind::TraitAlias(gen, bounds) = self.kind else {
+            self.expect_failed("a trait alias")
+        };
         (gen, bounds)
     }
 

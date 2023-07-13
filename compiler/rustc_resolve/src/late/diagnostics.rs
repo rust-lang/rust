@@ -446,20 +446,29 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         err: &mut Diagnostic,
         base_error: &BaseError,
     ) {
-        let Some(ty) = self.diagnostic_metadata.current_type_path else { return; };
-        let TyKind::Path(_, path) = &ty.kind else { return; };
+        let Some(ty) = self.diagnostic_metadata.current_type_path else {
+            return;
+        };
+        let TyKind::Path(_, path) = &ty.kind else {
+            return;
+        };
         for segment in &path.segments {
-            let Some(params) = &segment.args else { continue; };
-            let ast::GenericArgs::AngleBracketed(ref params) = params.deref() else { continue; };
+            let Some(params) = &segment.args else {
+                continue;
+            };
+            let ast::GenericArgs::AngleBracketed(ref params) = params.deref() else {
+                continue;
+            };
             for param in &params.args {
-                let ast::AngleBracketedArg::Constraint(constraint) = param else { continue; };
+                let ast::AngleBracketedArg::Constraint(constraint) = param else {
+                    continue;
+                };
                 let ast::AssocConstraintKind::Bound { bounds } = &constraint.kind else {
                     continue;
                 };
                 for bound in bounds {
-                    let ast::GenericBound::Trait(trait_ref, ast::TraitBoundModifier::None)
-                        = bound else
-                    {
+                    let ast::GenericBound::Trait(trait_ref, ast::TraitBoundModifier::None) = bound
+                    else {
                         continue;
                     };
                     if base_error.span == trait_ref.span {
@@ -1148,7 +1157,11 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     &poly_trait_ref.trait_ref.path.segments[..]
                 {
                     if ident.span == span {
-                        let Some(new_where_bound_predicate) = mk_where_bound_predicate(path, poly_trait_ref, ty) else { return false; };
+                        let Some(new_where_bound_predicate) =
+                            mk_where_bound_predicate(path, poly_trait_ref, ty)
+                        else {
+                            return false;
+                        };
                         err.span_suggestion_verbose(
                             *where_span,
                             format!("constrain the associated type to `{}`", ident),
@@ -1831,7 +1844,8 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             None,
         ) {
             Some(found) => {
-                let Some(sugg) = names.into_iter().find(|suggestion| suggestion.candidate == found) else {
+                let Some(sugg) = names.into_iter().find(|suggestion| suggestion.candidate == found)
+                else {
                     return TypoCandidate::None;
                 };
                 if found == name {
@@ -2677,7 +2691,9 @@ fn mk_where_bound_predicate(
     use rustc_span::DUMMY_SP;
     let modified_segments = {
         let mut segments = path.segments.clone();
-        let [preceding @ .., second_last, last] = segments.as_mut_slice() else { return None; };
+        let [preceding @ .., second_last, last] = segments.as_mut_slice() else {
+            return None;
+        };
         let mut segments = ThinVec::from(preceding);
 
         let added_constraint = ast::AngleBracketedArg::Constraint(ast::AssocConstraint {

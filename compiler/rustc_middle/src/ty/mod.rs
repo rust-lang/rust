@@ -149,7 +149,7 @@ mod opaque_types;
 mod parameterized;
 mod rvalue_scopes;
 mod structural_impls;
-#[cfg_attr(not(bootstrap), allow(hidden_glob_reexports))]
+#[allow(hidden_glob_reexports)]
 mod sty;
 mod typeck_results;
 
@@ -2713,12 +2713,16 @@ impl<'tcx> TyCtxt<'tcx> {
             return false;
         }
 
-        let Some(item) = self.opt_associated_item(def_id) else { return false; };
+        let Some(item) = self.opt_associated_item(def_id) else {
+            return false;
+        };
         if item.container != ty::AssocItemContainer::ImplContainer {
             return false;
         }
 
-        let Some(trait_item_def_id) = item.trait_item_def_id else { return false; };
+        let Some(trait_item_def_id) = item.trait_item_def_id else {
+            return false;
+        };
 
         return !self
             .associated_types_for_impl_traits_in_associated_fn(trait_item_def_id)

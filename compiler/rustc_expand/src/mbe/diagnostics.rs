@@ -42,7 +42,8 @@ pub(super) fn failed_to_match_macro<'cx>(
         return result;
     }
 
-    let Some(BestFailure { token, msg: label, remaining_matcher, .. }) = tracker.best_failure else {
+    let Some(BestFailure { token, msg: label, remaining_matcher, .. }) = tracker.best_failure
+    else {
         return DummyResult::any(sp);
     };
 

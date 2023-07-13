@@ -1671,7 +1671,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_info_for_macro(&mut self, def_id: LocalDefId) {
         let tcx = self.tcx;
 
-        let hir::ItemKind::Macro(ref macro_def, _) = tcx.hir().expect_item(def_id).kind else { bug!() };
+        let hir::ItemKind::Macro(ref macro_def, _) = tcx.hir().expect_item(def_id).kind else {
+            bug!()
+        };
         self.tables.is_macro_rules.set(def_id.local_def_index, macro_def.macro_rules);
         record!(self.tables.macro_definition[def_id.to_def_id()] <- &*macro_def.body);
     }
@@ -1911,7 +1913,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             FxHashMap::default();
 
         for id in tcx.hir().items() {
-            let DefKind::Impl { of_trait } = tcx.def_kind(id.owner_id) else { continue; };
+            let DefKind::Impl { of_trait } = tcx.def_kind(id.owner_id) else {
+                continue;
+            };
             let def_id = id.owner_id.to_def_id();
 
             self.tables.defaultness.set_some(def_id.index, tcx.defaultness(def_id));

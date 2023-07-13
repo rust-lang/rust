@@ -714,7 +714,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             _ => None,
         };
 
-        let Some(borrow_level) = borrow_level else { return false; };
+        let Some(borrow_level) = borrow_level else {
+            return false;
+        };
         let sugg = move_sites
             .iter()
             .map(|move_site| {
@@ -763,7 +765,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             .typeck_root_def_id(self.mir_def_id().to_def_id())
             .as_local()
             .and_then(|def_id| tcx.hir().get_generics(def_id))
-        else { return; };
+        else {
+            return;
+        };
         // Try to find predicates on *generic params* that would allow copying `ty`
         let ocx = ObligationCtxt::new(&self.infcx);
         let copy_did = tcx.require_lang_item(LangItem::Copy, Some(span));
@@ -1220,18 +1224,20 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             return;
         };
         let inner_param_uses = find_all_local_uses::find(self.body, inner_param.local);
-        let Some((inner_call_loc, inner_call_term)) = inner_param_uses.into_iter().find_map(|loc| {
-            let Either::Right(term) = self.body.stmt_at(loc) else {
-                debug!("{:?} is a statement, so it can't be a call", loc);
-                return None;
-            };
-            let TerminatorKind::Call { args, .. } = &term.kind else {
-                debug!("not a call: {:?}", term);
-                return None;
-            };
-            debug!("checking call args for uses of inner_param: {:?}", args);
-            args.contains(&Operand::Move(inner_param)).then_some((loc, term))
-        }) else {
+        let Some((inner_call_loc, inner_call_term)) =
+            inner_param_uses.into_iter().find_map(|loc| {
+                let Either::Right(term) = self.body.stmt_at(loc) else {
+                    debug!("{:?} is a statement, so it can't be a call", loc);
+                    return None;
+                };
+                let TerminatorKind::Call { args, .. } = &term.kind else {
+                    debug!("not a call: {:?}", term);
+                    return None;
+                };
+                debug!("checking call args for uses of inner_param: {:?}", args);
+                args.contains(&Operand::Move(inner_param)).then_some((loc, term))
+            })
+        else {
             debug!("no uses of inner_param found as a by-move call arg");
             return;
         };
@@ -1442,21 +1448,24 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         }
 
         // Get closure's arguments
-        let ty::Closure(_, substs) = typeck_results.expr_ty(closure_expr).kind() else { /* hir::Closure can be a generator too */ return };
+        let ty::Closure(_, substs) = typeck_results.expr_ty(closure_expr).kind() else {
+            /* hir::Closure can be a generator too */
+            return;
+        };
         let sig = substs.as_closure().sig();
         let tupled_params =
             tcx.erase_late_bound_regions(sig.inputs().iter().next().unwrap().map_bound(|&b| b));
         let ty::Tuple(params) = tupled_params.kind() else { return };
 
         // Find the first argument with a matching type, get its name
-        let Some((_, this_name)) = params
-            .iter()
-            .zip(hir.body_param_names(closure.body))
-            .find(|(param_ty, name)|{
+        let Some((_, this_name)) =
+            params.iter().zip(hir.body_param_names(closure.body)).find(|(param_ty, name)| {
                 // FIXME: also support deref for stuff like `Rc` arguments
                 param_ty.peel_refs() == local_ty && name != &Ident::empty()
             })
-            else { return };
+        else {
+            return;
+        };
 
         let spans;
         if let Some((_path_expr, qpath)) = finder.error_path
@@ -2899,7 +2908,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         {
                             let def_id = def_id.expect_local();
                             for operand in operands {
-                                let (Operand::Copy(assigned_from) | Operand::Move(assigned_from)) = operand else {
+                                let (Operand::Copy(assigned_from) | Operand::Move(assigned_from)) =
+                                    operand
+                                else {
                                     continue;
                                 };
                                 debug!(
@@ -2908,7 +2919,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                 );
 
                                 // Find the local from the operand.
-                                let Some(assigned_from_local) = assigned_from.local_or_deref_local() else {
+                                let Some(assigned_from_local) =
+                                    assigned_from.local_or_deref_local()
+                                else {
                                     continue;
                                 };
 
@@ -2961,7 +2974,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         );
 
                         // Find the local from the rvalue.
-                        let Some(assigned_from_local) = assigned_from.local_or_deref_local() else { continue };
+                        let Some(assigned_from_local) = assigned_from.local_or_deref_local() else {
+                            continue;
+                        };
                         debug!(
                             "annotate_argument_and_return_for_borrow: \
                              assigned_from_local={:?}",
@@ -3009,7 +3024,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         assigned_to, args
                     );
                     for operand in args {
-                        let (Operand::Copy(assigned_from) | Operand::Move(assigned_from)) = operand else {
+                        let (Operand::Copy(assigned_from) | Operand::Move(assigned_from)) = operand
+                        else {
                             continue;
                         };
                         debug!(

@@ -1610,8 +1610,7 @@ fn report_diagnostic(
     DiagnosticInfo { item, ori_link: _, dox, link_range }: &DiagnosticInfo<'_>,
     decorate: impl FnOnce(&mut Diagnostic, Option<rustc_span::Span>, MarkdownLinkRange),
 ) {
-    let Some(hir_id) = DocContext::as_local_hir_id(tcx, item.item_id)
-    else {
+    let Some(hir_id) = DocContext::as_local_hir_id(tcx, item.item_id) else {
         // If non-local, no need to check anything.
         info!("ignoring warning from parent crate: {}", msg);
         return;

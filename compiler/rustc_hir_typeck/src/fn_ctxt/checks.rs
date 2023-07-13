@@ -753,11 +753,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         errors.retain(|error| {
-            let Error::Invalid(
-                provided_idx,
-                expected_idx,
-                Compatibility::Incompatible(Some(e)),
-            ) = error else { return true };
+            let Error::Invalid(provided_idx, expected_idx, Compatibility::Incompatible(Some(e))) =
+                error
+            else {
+                return true;
+            };
             let (provided_ty, provided_span) = provided_arg_tys[*provided_idx];
             let trace =
                 mk_trace(provided_span, formal_and_expected_inputs[*expected_idx], provided_ty);

@@ -525,8 +525,13 @@ fn layout_of_uncached<'tcx>(
                 let FieldsShape::Arbitrary { offsets: sized_offsets, .. } = &layout.fields else {
                     bug!("unexpected FieldsShape for sized layout of {ty:?}: {:?}", layout.fields);
                 };
-                let FieldsShape::Arbitrary { offsets: unsized_offsets, .. } = &unsized_layout.fields else {
-                    bug!("unexpected FieldsShape for unsized layout of {ty:?}: {:?}", unsized_layout.fields);
+                let FieldsShape::Arbitrary { offsets: unsized_offsets, .. } =
+                    &unsized_layout.fields
+                else {
+                    bug!(
+                        "unexpected FieldsShape for unsized layout of {ty:?}: {:?}",
+                        unsized_layout.fields
+                    );
                 };
 
                 let (sized_tail, sized_fields) = sized_offsets.raw.split_last().unwrap();

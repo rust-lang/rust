@@ -2109,14 +2109,13 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         found: Ty<'tcx>,
         expected_fields: &List<Ty<'tcx>>,
     ) -> Option<TypeErrorAdditionalDiags> {
-        let [expected_tup_elem] = expected_fields[..] else { return None};
+        let [expected_tup_elem] = expected_fields[..] else { return None };
 
         if !self.same_type_modulo_infer(expected_tup_elem, found) {
             return None;
         }
 
-        let Ok(code) = self.tcx.sess().source_map().span_to_snippet(span)
-            else { return None };
+        let Ok(code) = self.tcx.sess().source_map().span_to_snippet(span) else { return None };
 
         let sugg = if code.starts_with('(') && code.ends_with(')') {
             let before_close = span.hi() - BytePos::from_u32(1);

@@ -190,7 +190,8 @@ pub fn parse_check_cfg(handler: &EarlyErrorHandler, specs: Vec<String>) -> Check
                                                 ExpectedValues::Some(FxHashSet::default())
                                             });
 
-                                        let ExpectedValues::Some(expected_values) = expected_values else {
+                                        let ExpectedValues::Some(expected_values) = expected_values
+                                        else {
                                             bug!("`expected_values` should be a list a values")
                                         };
 

@@ -419,7 +419,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         }
 
         let Some(InferSource { span, kind }) = local_visitor.infer_source else {
-            return self.bad_inference_failure_err(failure_span, arg_data, error_code)
+            return self.bad_inference_failure_err(failure_span, arg_data, error_code);
         };
 
         let (source_kind, name) = kind.ty_localized_msg(self);
@@ -1157,9 +1157,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
                 continue;
             }
 
-            let Some(param_ty) = self.opt_node_type(param.hir_id) else {
-                continue
-            };
+            let Some(param_ty) = self.opt_node_type(param.hir_id) else { continue };
 
             if self.generic_arg_contains_target(param_ty.into()) {
                 self.update_infer_source(InferSource {

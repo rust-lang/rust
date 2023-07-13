@@ -157,8 +157,7 @@ pub fn parse_asm_args<'a>(
         } else if p.eat_keyword(sym::sym) {
             let expr = p.parse_expr()?;
             let ast::ExprKind::Path(qself, path) = &expr.kind else {
-                let err = diag
-                    .create_err(errors::AsmSymNoPath { span: expr.span });
+                let err = diag.create_err(errors::AsmSymNoPath { span: expr.span });
                 return Err(err);
             };
             let sym = ast::InlineAsmSym {

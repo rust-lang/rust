@@ -38,8 +38,9 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         let ObligationCauseCode::MatchImpl(parent, impl_def_id) = code else {
             return None;
         };
-        let (ObligationCauseCode::BindingObligation(_, binding_span) | ObligationCauseCode::ExprBindingObligation(_, binding_span, ..))
-            = *parent.code() else {
+        let (ObligationCauseCode::BindingObligation(_, binding_span)
+        | ObligationCauseCode::ExprBindingObligation(_, binding_span, ..)) = *parent.code()
+        else {
             return None;
         };
 
@@ -67,7 +68,8 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             let hir::Node::Item(hir::Item {
                 kind: hir::ItemKind::Impl(hir::Impl { self_ty: impl_self_ty, .. }),
                 ..
-            }) = impl_node else {
+            }) = impl_node
+            else {
                 bug!("Node not an impl.");
             };
 

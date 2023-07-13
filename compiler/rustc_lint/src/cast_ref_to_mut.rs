@@ -37,7 +37,9 @@ declare_lint_pass!(CastRefToMut => [CAST_REF_TO_MUT]);
 
 impl<'tcx> LateLintPass<'tcx> for CastRefToMut {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
-        let ExprKind::Unary(UnOp::Deref, e) = &expr.kind else { return; };
+        let ExprKind::Unary(UnOp::Deref, e) = &expr.kind else {
+            return;
+        };
 
         let e = e.peel_blocks();
         let e = if let ExprKind::Cast(e, t) = e.kind

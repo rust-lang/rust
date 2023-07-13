@@ -199,7 +199,7 @@ pub(super) fn build_enum_type_di_node<'ll, 'tcx>(
     let enum_type = unique_type_id.expect_ty();
     let &ty::Adt(enum_adt_def, _) = enum_type.kind() else {
         bug!("build_enum_type_di_node() called with non-enum type: `{:?}`", enum_type)
-        };
+    };
 
     let enum_type_and_layout = cx.layout_of(enum_type);
     let enum_type_name = compute_debuginfo_type_name(cx.tcx, enum_type, false);
@@ -667,7 +667,9 @@ fn build_union_fields_for_direct_tag_generator<'ll, 'tcx>(
     generator_type_and_layout: TyAndLayout<'tcx>,
     generator_type_di_node: &'ll DIType,
 ) -> SmallVec<&'ll DIType> {
-    let Variants::Multiple { tag_encoding: TagEncoding::Direct, tag_field, .. } = generator_type_and_layout.variants else {
+    let Variants::Multiple { tag_encoding: TagEncoding::Direct, tag_field, .. } =
+        generator_type_and_layout.variants
+    else {
         bug!("This function only supports layouts with directly encoded tags.")
     };
 

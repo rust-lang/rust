@@ -182,9 +182,7 @@ pub(super) fn transcribe<'a>(
                     LockstepIterSize::Constraint(len, _) => {
                         // We do this to avoid an extra clone above. We know that this is a
                         // sequence already.
-                        let mbe::TokenTree::Sequence(sp, seq) = seq else {
-                            unreachable!()
-                        };
+                        let mbe::TokenTree::Sequence(sp, seq) = seq else { unreachable!() };
 
                         // Is the repetition empty?
                         if len == 0 {
@@ -399,7 +397,9 @@ fn lockstep_iter_size(
         }
         TokenTree::MetaVarExpr(_, expr) => {
             let default_rslt = LockstepIterSize::Unconstrained;
-            let Some(ident) = expr.ident() else { return default_rslt; };
+            let Some(ident) = expr.ident() else {
+                return default_rslt;
+            };
             let name = MacroRulesNormalizedIdent::new(ident);
             match lookup_cur_matched(name, interpolations, repeats) {
                 Some(MatchedSeq(ads)) => {

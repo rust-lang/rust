@@ -102,7 +102,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         found_expr: &mut &'tcx hir::Expr<'tcx>,
         expected_expr: &mut Option<&'tcx hir::Expr<'tcx>>,
     ) {
-        let Some(expected_expr) = expected_expr else { return; };
+        let Some(expected_expr) = expected_expr else {
+            return;
+        };
 
         if !found_expr.span.eq_ctxt(expected_expr.span) {
             return;
@@ -121,11 +123,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let hir::ExprKind::Unary(
             hir::UnOp::Deref,
             hir::Expr { kind: hir::ExprKind::Path(found_path), .. },
-        ) = found_expr.kind else { return; };
+        ) = found_expr.kind
+        else {
+            return;
+        };
         let hir::ExprKind::Unary(
             hir::UnOp::Deref,
             hir::Expr { kind: hir::ExprKind::Path(expected_path), .. },
-        ) = expected_expr.kind else { return; };
+        ) = expected_expr.kind
+        else {
+            return;
+        };
 
         for (path, name, idx, var) in [
             (expected_path, "left_val", 0, expected_expr),
@@ -285,16 +293,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> bool {
         let hir = self.tcx.hir();
 
-        let hir::ExprKind::Path(hir::QPath::Resolved(None, p)) = expr.kind else { return false; };
-        let [hir::PathSegment { ident, args: None, .. }] = p.segments else { return false; };
-        let hir::def::Res::Local(local_hir_id) = p.res else { return false; };
-        let hir::Node::Pat(pat) = hir.get(local_hir_id) else { return false; };
+        let hir::ExprKind::Path(hir::QPath::Resolved(None, p)) = expr.kind else {
+            return false;
+        };
+        let [hir::PathSegment { ident, args: None, .. }] = p.segments else {
+            return false;
+        };
+        let hir::def::Res::Local(local_hir_id) = p.res else {
+            return false;
+        };
+        let hir::Node::Pat(pat) = hir.get(local_hir_id) else {
+            return false;
+        };
         let (init_ty_hir_id, init) = match hir.get_parent(pat.hir_id) {
             hir::Node::Local(hir::Local { ty: Some(ty), init, .. }) => (ty.hir_id, *init),
             hir::Node::Local(hir::Local { init: Some(init), .. }) => (init.hir_id, Some(*init)),
             _ => return false,
         };
-        let Some(init_ty) = self.node_ty_opt(init_ty_hir_id) else { return false; };
+        let Some(init_ty) = self.node_ty_opt(init_ty_hir_id) else {
+            return false;
+        };
 
         // Locate all the usages of the relevant binding.
         struct FindExprs<'tcx> {
@@ -413,14 +431,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Bindings always update their recorded type after the fact, so we
             // need to look at the *following* usage's type to see when the
             // binding became incompatible.
-            let [binding, next_usage] = *window else { continue; };
+            let [binding, next_usage] = *window else {
+                continue;
+            };
 
             // Don't go past the binding (always gonna be a nonsense label if so)
             if binding.hir_id == expr.hir_id {
                 break;
             }
 
-            let Some(next_use_ty) = self.node_ty_opt(next_usage.hir_id) else { continue; };
+            let Some(next_use_ty) = self.node_ty_opt(next_usage.hir_id) else {
+                continue;
+            };
 
             // If the type is not constrained in a way making it not possible to
             // equate with `expected_ty` by this point, skip.
@@ -634,27 +656,36 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         error: Option<TypeError<'tcx>>,
     ) {
         let parent = self.tcx.hir().parent_id(expr.hir_id);
-        let Some(TypeError::Sorts(ExpectedFound { expected, .. })) = error else {return;};
-        let Some(hir::Node::Expr(hir::Expr {
-                    kind: hir::ExprKind::Assign(lhs, rhs, _), ..
-                })) = self.tcx.hir().find(parent) else {return; };
+        let Some(TypeError::Sorts(ExpectedFound { expected, .. })) = error else {
+            return;
+        };
+        let Some(hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Assign(lhs, rhs, _), .. })) =
+            self.tcx.hir().find(parent)
+        else {
+            return;
+        };
         if rhs.hir_id != expr.hir_id || expected.is_closure() {
             return;
         }
-        let hir::ExprKind::Unary(hir::UnOp::Deref, deref) = lhs.kind else { return; };
-        let hir::ExprKind::MethodCall(path, base, args, _) = deref.kind else { return; };
-        let Some(self_ty) = self.typeck_results.borrow().expr_ty_adjusted_opt(base) else { return; };
+        let hir::ExprKind::Unary(hir::UnOp::Deref, deref) = lhs.kind else {
+            return;
+        };
+        let hir::ExprKind::MethodCall(path, base, args, _) = deref.kind else {
+            return;
+        };
+        let Some(self_ty) = self.typeck_results.borrow().expr_ty_adjusted_opt(base) else {
+            return;
+        };
 
-        let Ok(pick) = self
-            .lookup_probe_for_diagnostic(
-                path.ident,
-                self_ty,
-                deref,
-                probe::ProbeScope::TraitsInScope,
-                None,
-            ) else {
-                return;
-            };
+        let Ok(pick) = self.lookup_probe_for_diagnostic(
+            path.ident,
+            self_ty,
+            deref,
+            probe::ProbeScope::TraitsInScope,
+            None,
+        ) else {
+            return;
+        };
         let in_scope_methods = self.probe_for_name_many(
             probe::Mode::MethodCall,
             path.ident,
@@ -793,8 +824,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
     ) -> bool {
-        let ty::Adt(e, substs_e) = expected.kind() else { return false; };
-        let ty::Adt(f, substs_f) = found.kind() else { return false; };
+        let ty::Adt(e, substs_e) = expected.kind() else {
+            return false;
+        };
+        let ty::Adt(f, substs_f) = found.kind() else {
+            return false;
+        };
         if e.did() != f.did() {
             return false;
         }
@@ -1039,7 +1074,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // In case Option<NonZero*> is wanted, but * is provided, suggest calling new
             ty::Adt(adt, substs) if tcx.is_diagnostic_item(sym::Option, adt.did()) => {
                 // Unwrap option
-                let ty::Adt(adt, _) = substs.type_at(0).kind() else { return false; };
+                let ty::Adt(adt, _) = substs.type_at(0).kind() else {
+                    return false;
+                };
 
                 (adt, "")
             }
@@ -1061,10 +1098,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             (sym::NonZeroI128, tcx.types.i128),
         ];
 
-        let Some((s, _)) = map
-            .iter()
-            .find(|&&(s, t)| self.tcx.is_diagnostic_item(s, adt.did()) && self.can_coerce(expr_ty, t))
-            else { return false; };
+        let Some((s, _)) = map.iter().find(|&&(s, t)| {
+            self.tcx.is_diagnostic_item(s, adt.did()) && self.can_coerce(expr_ty, t)
+        }) else {
+            return false;
+        };
 
         let path = self.tcx.def_path_str(adt.non_enum_variant().def_id);
 
@@ -1152,7 +1190,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         let local_parent = self.tcx.hir().parent_id(local_id);
-        let Some(Node::Param(hir::Param { hir_id: param_hir_id, .. })) = self.tcx.hir().find(local_parent) else {
+        let Some(Node::Param(hir::Param { hir_id: param_hir_id, .. })) =
+            self.tcx.hir().find(local_parent)
+        else {
             return None;
         };
 
@@ -1161,7 +1201,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             hir_id: expr_hir_id,
             kind: hir::ExprKind::Closure(hir::Closure { fn_decl: closure_fn_decl, .. }),
             ..
-        })) = self.tcx.hir().find(param_parent) else {
+        })) = self.tcx.hir().find(param_parent)
+        else {
             return None;
         };
 
@@ -1174,7 +1215,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ..
             })),
             1,
-        ) = (hir, closure_params_len) else {
+        ) = (hir, closure_params_len)
+        else {
             return None;
         };
 
@@ -2028,11 +2070,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if !hir::is_range_literal(expr) {
             return;
         }
-        let hir::ExprKind::Struct(
-            hir::QPath::LangItem(LangItem::Range, ..),
-            [start, end],
-            _,
-        ) = expr.kind else { return; };
+        let hir::ExprKind::Struct(hir::QPath::LangItem(LangItem::Range, ..), [start, end], _) =
+            expr.kind
+        else {
+            return;
+        };
         let parent = self.tcx.hir().parent_id(expr.hir_id);
         if let Some(hir::Node::ExprField(_)) = self.tcx.hir().find(parent) {
             // Ignore `Foo { field: a..Default::default() }`
@@ -2048,8 +2090,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // cannot guide the method probe.
             expectation = None;
         }
-        let hir::ExprKind::Call(method_name, _) = expr.kind else { return; };
-        let ty::Adt(adt, _) = checked_ty.kind() else { return; };
+        let hir::ExprKind::Call(method_name, _) = expr.kind else {
+            return;
+        };
+        let ty::Adt(adt, _) = checked_ty.kind() else {
+            return;
+        };
         if self.tcx.lang_items().range_struct() != Some(adt.did()) {
             return;
         }
@@ -2059,8 +2105,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         }
         // Check if start has method named end.
-        let hir::ExprKind::Path(hir::QPath::Resolved(None, p)) = method_name.kind else { return; };
-        let [hir::PathSegment { ident, .. }] = p.segments else { return; };
+        let hir::ExprKind::Path(hir::QPath::Resolved(None, p)) = method_name.kind else {
+            return;
+        };
+        let [hir::PathSegment { ident, .. }] = p.segments else {
+            return;
+        };
         let self_ty = self.typeck_results.borrow().expr_ty(start.expr);
         let Ok(_pick) = self.lookup_probe_for_diagnostic(
             *ident,
@@ -2068,7 +2118,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             expr,
             probe::ProbeScope::AllTraits,
             expectation,
-        ) else { return; };
+        ) else {
+            return;
+        };
         let mut sugg = ".";
         let mut span = start.expr.span.between(end.expr.span);
         if span.lo() + BytePos(2) == span.hi() {
@@ -2097,17 +2149,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if !checked_ty.is_unit() {
             return;
         }
-        let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = expr.kind else { return; };
-        let hir::def::Res::Local(hir_id) = path.res else { return; };
+        let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = expr.kind else {
+            return;
+        };
+        let hir::def::Res::Local(hir_id) = path.res else {
+            return;
+        };
         let Some(hir::Node::Pat(pat)) = self.tcx.hir().find(hir_id) else {
             return;
         };
-        let Some(hir::Node::Local(hir::Local {
-            ty: None,
-            init: Some(init),
-            ..
-        })) = self.tcx.hir().find_parent(pat.hir_id) else { return; };
-        let hir::ExprKind::Block(block, None) = init.kind else { return; };
+        let Some(hir::Node::Local(hir::Local { ty: None, init: Some(init), .. })) =
+            self.tcx.hir().find_parent(pat.hir_id)
+        else {
+            return;
+        };
+        let hir::ExprKind::Block(block, None) = init.kind else {
+            return;
+        };
         if block.expr.is_some() {
             return;
         }
@@ -2115,8 +2173,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             err.span_label(block.span, "this empty block is missing a tail expression");
             return;
         };
-        let hir::StmtKind::Semi(tail_expr) = stmt.kind else { return; };
-        let Some(ty) = self.node_ty_opt(tail_expr.hir_id) else { return; };
+        let hir::StmtKind::Semi(tail_expr) = stmt.kind else {
+            return;
+        };
+        let Some(ty) = self.node_ty_opt(tail_expr.hir_id) else {
+            return;
+        };
         if self.can_eq(self.param_env, expected_ty, ty) {
             err.span_suggestion_short(
                 stmt.span.with_lo(tail_expr.span.hi()),
@@ -2135,7 +2197,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &hir::Expr<'_>,
         checked_ty: Ty<'tcx>,
     ) {
-        let Some(hir::Node::Expr(parent_expr)) = self.tcx.hir().find_parent(expr.hir_id) else { return; };
+        let Some(hir::Node::Expr(parent_expr)) = self.tcx.hir().find_parent(expr.hir_id) else {
+            return;
+        };
         enum CallableKind {
             Function,
             Method,
@@ -2151,7 +2215,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return;
             }
             let fn_sig = fn_ty.fn_sig(self.tcx).skip_binder();
-            let Some(&arg) = fn_sig.inputs().get(arg_idx + if matches!(kind, CallableKind::Method) { 1 } else { 0 }) else { return; };
+            let Some(&arg) = fn_sig
+                .inputs()
+                .get(arg_idx + if matches!(kind, CallableKind::Method) { 1 } else { 0 })
+            else {
+                return;
+            };
             if matches!(arg.kind(), ty::Param(_))
                 && fn_sig.output().contains(arg)
                 && self.node_ty(args[arg_idx].hir_id) == checked_ty
@@ -2185,8 +2254,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
         match parent_expr.kind {
             hir::ExprKind::Call(fun, args) => {
-                let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = fun.kind else { return; };
-                let hir::def::Res::Def(kind, def_id) = path.res else { return; };
+                let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = fun.kind else {
+                    return;
+                };
+                let hir::def::Res::Def(kind, def_id) = path.res else {
+                    return;
+                };
                 let callable_kind = if matches!(kind, hir::def::DefKind::Ctor(_, _)) {
                     CallableKind::Constructor
                 } else {
@@ -2195,7 +2268,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 maybe_emit_help(def_id, path.segments[0].ident, args, callable_kind);
             }
             hir::ExprKind::MethodCall(method, _receiver, args, _span) => {
-                let Some(def_id) = self.typeck_results.borrow().type_dependent_def_id(parent_expr.hir_id) else { return; };
+                let Some(def_id) =
+                    self.typeck_results.borrow().type_dependent_def_id(parent_expr.hir_id)
+                else {
+                    return;
+                };
                 maybe_emit_help(def_id, method.ident, args, CallableKind::Method)
             }
             _ => return,

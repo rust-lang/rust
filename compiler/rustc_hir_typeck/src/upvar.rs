@@ -644,7 +644,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             for capture in captures {
                 match capture.info.capture_kind {
                     ty::UpvarCapture::ByRef(_) => {
-                        let PlaceBase::Upvar(upvar_id) = capture.place.base else { bug!("expected upvar") };
+                        let PlaceBase::Upvar(upvar_id) = capture.place.base else {
+                            bug!("expected upvar")
+                        };
                         let origin = UpvarRegion(upvar_id, closure_span);
                         let upvar_region = self.next_region_var(origin);
                         capture.region = Some(upvar_region);
@@ -1064,14 +1066,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // ```
             debug!("no path starting from it is used");
 
-
             match closure_clause {
                 // Only migrate if closure is a move closure
                 hir::CaptureBy::Value => {
                     let mut diagnostics_info = FxHashSet::default();
-                    let upvars = self.tcx.upvars_mentioned(closure_def_id).expect("must be an upvar");
+                    let upvars =
+                        self.tcx.upvars_mentioned(closure_def_id).expect("must be an upvar");
                     let upvar = upvars[&var_hir_id];
-                    diagnostics_info.insert(UpvarMigrationInfo::CapturingNothing { use_span: upvar.span });
+                    diagnostics_info
+                        .insert(UpvarMigrationInfo::CapturingNothing { use_span: upvar.span });
                     return Some(diagnostics_info);
                 }
                 hir::CaptureBy::Ref => {}

@@ -739,7 +739,10 @@ fn build_foreign_type_di_node<'ll, 'tcx>(
     debug!("build_foreign_type_di_node: {:?}", t);
 
     let &ty::Foreign(def_id) = unique_type_id.expect_ty().kind() else {
-        bug!("build_foreign_type_di_node() called with unexpected type: {:?}", unique_type_id.expect_ty());
+        bug!(
+            "build_foreign_type_di_node() called with unexpected type: {:?}",
+            unique_type_id.expect_ty()
+        );
     };
 
     build_type_with_children(

@@ -499,15 +499,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Expectation<'tcx>,
     ) {
         if let [callee_expr, rest @ ..] = arg_exprs {
-            let Some(callee_ty) = self.typeck_results.borrow().expr_ty_adjusted_opt(callee_expr) else {
+            let Some(callee_ty) = self.typeck_results.borrow().expr_ty_adjusted_opt(callee_expr)
+            else {
                 return;
             };
 
             // First, do a probe with `IsSuggestion(true)` to avoid emitting
             // any strange errors. If it's successful, then we'll do a true
             // method lookup.
-            let Ok(pick) = self
-            .lookup_probe_for_diagnostic(
+            let Ok(pick) = self.lookup_probe_for_diagnostic(
                 segment.ident,
                 callee_ty,
                 call_expr,

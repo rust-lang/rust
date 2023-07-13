@@ -186,7 +186,11 @@ fn calculate_debuginfo_offset<
             } => {
                 let offset = indirect_offsets.last_mut().unwrap_or(&mut direct_offset);
                 let FieldsShape::Array { stride, count: _ } = place.layout().fields else {
-                    span_bug!(var.source_info.span, "ConstantIndex on non-array type {:?}", place.layout())
+                    span_bug!(
+                        var.source_info.span,
+                        "ConstantIndex on non-array type {:?}",
+                        place.layout()
+                    )
                 };
                 *offset += stride * index;
                 place = place.project_constant_index(bx, index);

@@ -226,13 +226,11 @@ fn fulfill_implication<'tcx>(
         util::impl_subject_and_oblig(selcx, param_env, target_impl, target_substs, error_cause);
 
     // do the impls unify? If not, no specialization.
-    let Ok(InferOk { obligations: more_obligations, .. }) =
-        infcx.at(&ObligationCause::dummy(), param_env).eq(DefineOpaqueTypes::No, source_trait, target_trait)
+    let Ok(InferOk { obligations: more_obligations, .. }) = infcx
+        .at(&ObligationCause::dummy(), param_env)
+        .eq(DefineOpaqueTypes::No, source_trait, target_trait)
     else {
-        debug!(
-            "fulfill_implication: {:?} does not unify with {:?}",
-            source_trait, target_trait
-        );
+        debug!("fulfill_implication: {:?} does not unify with {:?}", source_trait, target_trait);
         return Err(());
     };
 

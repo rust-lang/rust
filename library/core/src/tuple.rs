@@ -1,7 +1,6 @@
 // See src/libstd/primitive_docs.rs for documentation.
 
 use crate::cmp::Ordering::{self, *};
-#[cfg(not(bootstrap))]
 use crate::marker::ConstParamTy;
 use crate::marker::{StructuralEq, StructuralPartialEq};
 
@@ -51,7 +50,6 @@ macro_rules! tuple_impls {
         maybe_tuple_doc! {
             $($T)+ @
             #[unstable(feature = "structural_match", issue = "31434")]
-            #[cfg(not(bootstrap))]
             impl<$($T: ConstParamTy),+> ConstParamTy for ($($T,)+)
             {}
         }

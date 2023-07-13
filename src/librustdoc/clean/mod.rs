@@ -167,8 +167,7 @@ fn clean_generic_bound<'tcx>(
             let trait_ref = ty::Binder::dummy(ty::TraitRef::identity(cx.tcx, def_id));
 
             let generic_args = clean_generic_args(generic_args, cx);
-            let GenericArgs::AngleBracketed { bindings, .. } = generic_args
-            else {
+            let GenericArgs::AngleBracketed { bindings, .. } = generic_args else {
                 bug!("clean: parenthesized `GenericBound::LangItemTrait`");
             };
 

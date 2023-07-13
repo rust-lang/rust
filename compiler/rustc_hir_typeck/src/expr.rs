@@ -650,7 +650,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let mut enclosing_breakables = self.enclosing_breakables.borrow_mut();
             let Some(ctxt) = enclosing_breakables.opt_find_breakable(target_id) else {
                 // Avoid ICE when `break` is inside a closure (#65383).
-                return Ty::new_error_with_message(tcx,
+                return Ty::new_error_with_message(
+                    tcx,
                     expr.span,
                     "break was outside loop, but no error was emitted",
                 );
@@ -1390,11 +1391,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let parent_node = self.tcx.hir().parent_iter(expr.hir_id).find(|(_, node)| {
             !matches!(node, hir::Node::Expr(hir::Expr { kind: hir::ExprKind::AddrOf(..), .. }))
         });
-        let Some((_,
+        let Some((
+            _,
             hir::Node::Local(hir::Local { ty: Some(ty), .. })
-            | hir::Node::Item(hir::Item { kind: hir::ItemKind::Const(ty, _), .. }))
-        ) = parent_node else {
-            return
+            | hir::Node::Item(hir::Item { kind: hir::ItemKind::Const(ty, _), .. }),
+        )) = parent_node
+        else {
+            return;
         };
         if let hir::TyKind::Array(_, length) = ty.peel_refs().kind
             && let hir::ArrayLen::Body(hir::AnonConst { hir_id, .. }) = length
@@ -2416,7 +2419,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         base: &'tcx hir::Expr<'tcx>,
         ty: Ty<'tcx>,
     ) {
-        let Some(output_ty) = self.get_impl_future_output_ty(ty) else { return; };
+        let Some(output_ty) = self.get_impl_future_output_ty(ty) else {
+            return;
+        };
         let mut add_label = true;
         if let ty::Adt(def, _) = output_ty.kind() {
             // no field access on enum type

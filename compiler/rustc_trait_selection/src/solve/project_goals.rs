@@ -146,89 +146,88 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
             return Err(NoSolution);
         }
 
-        ecx.probe(
-            |r| CandidateKind::Candidate { name: "impl".into(), result: *r }).enter(
-            |ecx| {
-                let impl_substs = ecx.fresh_substs_for_item(impl_def_id);
-                let impl_trait_ref = impl_trait_ref.subst(tcx, impl_substs);
+        ecx.probe(|r| CandidateKind::Candidate { name: "impl".into(), result: *r }).enter(|ecx| {
+            let impl_substs = ecx.fresh_substs_for_item(impl_def_id);
+            let impl_trait_ref = impl_trait_ref.subst(tcx, impl_substs);
 
-                ecx.eq(goal.param_env, goal_trait_ref, impl_trait_ref)?;
+            ecx.eq(goal.param_env, goal_trait_ref, impl_trait_ref)?;
 
-                let where_clause_bounds = tcx
-                    .predicates_of(impl_def_id)
-                    .instantiate(tcx, impl_substs)
-                    .predicates
-                    .into_iter()
-                    .map(|pred| goal.with(tcx, pred));
-                ecx.add_goals(where_clause_bounds);
+            let where_clause_bounds = tcx
+                .predicates_of(impl_def_id)
+                .instantiate(tcx, impl_substs)
+                .predicates
+                .into_iter()
+                .map(|pred| goal.with(tcx, pred));
+            ecx.add_goals(where_clause_bounds);
 
-                // In case the associated item is hidden due to specialization, we have to
-                // return ambiguity this would otherwise be incomplete, resulting in
-                // unsoundness during coherence (#105782).
-                let Some(assoc_def) = fetch_eligible_assoc_item_def(
-                    ecx,
-                    goal.param_env,
-                    goal_trait_ref,
-                    goal.predicate.def_id(),
-                    impl_def_id
-                )? else {
-                    return ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS);
-                };
+            // In case the associated item is hidden due to specialization, we have to
+            // return ambiguity this would otherwise be incomplete, resulting in
+            // unsoundness during coherence (#105782).
+            let Some(assoc_def) = fetch_eligible_assoc_item_def(
+                ecx,
+                goal.param_env,
+                goal_trait_ref,
+                goal.predicate.def_id(),
+                impl_def_id,
+            )?
+            else {
+                return ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS);
+            };
 
-                if !assoc_def.item.defaultness(tcx).has_value() {
-                    let guar = tcx.sess.delay_span_bug(
-                        tcx.def_span(assoc_def.item.def_id),
-                        "missing value for assoc item in impl",
-                    );
-                    let error_term = match assoc_def.item.kind {
-                        ty::AssocKind::Const => ty::Const::new_error(tcx,
-                            guar,
-                            tcx.type_of(goal.predicate.def_id())
-                                .subst(tcx, goal.predicate.projection_ty.substs),
-                            )
-                            .into(),
-                        ty::AssocKind::Type => Ty::new_error(tcx,guar).into(),
-                        ty::AssocKind::Fn => unreachable!(),
-                    };
-                    ecx.eq(goal.param_env, goal.predicate.term, error_term)
-                        .expect("expected goal term to be fully unconstrained");
-                    return ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
-                }
-
-                // Getting the right substitutions here is complex, e.g. given:
-                // - a goal `<Vec<u32> as Trait<i32>>::Assoc<u64>`
-                // - the applicable impl `impl<T> Trait<i32> for Vec<T>`
-                // - and the impl which defines `Assoc` being `impl<T, U> Trait<U> for Vec<T>`
-                //
-                // We first rebase the goal substs onto the impl, going from `[Vec<u32>, i32, u64]`
-                // to `[u32, u64]`.
-                //
-                // And then map these substs to the substs of the defining impl of `Assoc`, going
-                // from `[u32, u64]` to `[u32, i32, u64]`.
-                let impl_substs_with_gat = goal.predicate.projection_ty.substs.rebase_onto(
-                    tcx,
-                    goal_trait_ref.def_id,
-                    impl_substs,
+            if !assoc_def.item.defaultness(tcx).has_value() {
+                let guar = tcx.sess.delay_span_bug(
+                    tcx.def_span(assoc_def.item.def_id),
+                    "missing value for assoc item in impl",
                 );
-                let substs = ecx.translate_substs(
-                    goal.param_env,
-                    impl_def_id,
-                    impl_substs_with_gat,
-                    assoc_def.defining_node,
-                );
-
-                // Finally we construct the actual value of the associated type.
-                let term = match assoc_def.item.kind {
-                    ty::AssocKind::Type => tcx.type_of(assoc_def.item.def_id).map_bound(|ty| ty.into()),
-                    ty::AssocKind::Const => bug!("associated const projection is not supported yet"),
-                    ty::AssocKind::Fn => unreachable!("we should never project to a fn"),
+                let error_term = match assoc_def.item.kind {
+                    ty::AssocKind::Const => ty::Const::new_error(
+                        tcx,
+                        guar,
+                        tcx.type_of(goal.predicate.def_id())
+                            .subst(tcx, goal.predicate.projection_ty.substs),
+                    )
+                    .into(),
+                    ty::AssocKind::Type => Ty::new_error(tcx, guar).into(),
+                    ty::AssocKind::Fn => unreachable!(),
                 };
-
-                ecx.eq(goal.param_env, goal.predicate.term, term.subst(tcx, substs))
+                ecx.eq(goal.param_env, goal.predicate.term, error_term)
                     .expect("expected goal term to be fully unconstrained");
-                ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-            },
-        )
+                return ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
+            }
+
+            // Getting the right substitutions here is complex, e.g. given:
+            // - a goal `<Vec<u32> as Trait<i32>>::Assoc<u64>`
+            // - the applicable impl `impl<T> Trait<i32> for Vec<T>`
+            // - and the impl which defines `Assoc` being `impl<T, U> Trait<U> for Vec<T>`
+            //
+            // We first rebase the goal substs onto the impl, going from `[Vec<u32>, i32, u64]`
+            // to `[u32, u64]`.
+            //
+            // And then map these substs to the substs of the defining impl of `Assoc`, going
+            // from `[u32, u64]` to `[u32, i32, u64]`.
+            let impl_substs_with_gat = goal.predicate.projection_ty.substs.rebase_onto(
+                tcx,
+                goal_trait_ref.def_id,
+                impl_substs,
+            );
+            let substs = ecx.translate_substs(
+                goal.param_env,
+                impl_def_id,
+                impl_substs_with_gat,
+                assoc_def.defining_node,
+            );
+
+            // Finally we construct the actual value of the associated type.
+            let term = match assoc_def.item.kind {
+                ty::AssocKind::Type => tcx.type_of(assoc_def.item.def_id).map_bound(|ty| ty.into()),
+                ty::AssocKind::Const => bug!("associated const projection is not supported yet"),
+                ty::AssocKind::Fn => unreachable!("we should never project to a fn"),
+            };
+
+            ecx.eq(goal.param_env, goal.predicate.term, term.subst(tcx, substs))
+                .expect("expected goal term to be fully unconstrained");
+            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+        })
     }
 
     fn consider_auto_trait_candidate(

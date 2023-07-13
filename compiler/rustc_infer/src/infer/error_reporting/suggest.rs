@@ -526,13 +526,23 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         diag: &mut Diagnostic,
     ) {
         // 0. Extract fn_decl from hir
-        let hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Closure(hir::Closure { body, fn_decl, .. }), .. }) = hir else { return; };
+        let hir::Node::Expr(hir::Expr {
+            kind: hir::ExprKind::Closure(hir::Closure { body, fn_decl, .. }),
+            ..
+        }) = hir
+        else {
+            return;
+        };
         let hir::Body { params, .. } = self.tcx.hir().body(*body);
 
         // 1. Get the substs of the closure.
         // 2. Assume exp_found is FnOnce / FnMut / Fn, we can extract function parameters from [1].
-        let Some(expected) = exp_found.expected.skip_binder().substs.get(1) else { return; };
-        let Some(found) = exp_found.found.skip_binder().substs.get(1) else { return; };
+        let Some(expected) = exp_found.expected.skip_binder().substs.get(1) else {
+            return;
+        };
+        let Some(found) = exp_found.found.skip_binder().substs.get(1) else {
+            return;
+        };
         let expected = expected.unpack();
         let found = found.unpack();
         // 3. Extract the tuple type from Fn trait and suggest the change.
@@ -711,7 +721,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
         let hir = self.tcx.hir();
         for stmt in blk.stmts.iter().rev() {
-            let hir::StmtKind::Local(local) = &stmt.kind else { continue; };
+            let hir::StmtKind::Local(local) = &stmt.kind else {
+                continue;
+            };
             local.pat.walk(&mut find_compatible_candidates);
         }
         match hir.find_parent(blk.hir_id) {

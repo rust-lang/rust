@@ -1432,9 +1432,9 @@ impl CheckAttrVisitor<'_> {
         };
 
         let Some(ItemLike::Item(Item {
-            kind: ItemKind::Fn(FnSig { decl, .. }, generics, _),
-            ..
-        }))  = item else {
+            kind: ItemKind::Fn(FnSig { decl, .. }, generics, _), ..
+        })) = item
+        else {
             bug!("should be a function item");
         };
 
@@ -2106,8 +2106,12 @@ impl CheckAttrVisitor<'_> {
         }
 
         let tcx = self.tcx;
-        let Some(token_stream_def_id) = tcx.get_diagnostic_item(sym::TokenStream) else { return; };
-        let Some(token_stream) = tcx.type_of(token_stream_def_id).no_bound_vars() else { return; };
+        let Some(token_stream_def_id) = tcx.get_diagnostic_item(sym::TokenStream) else {
+            return;
+        };
+        let Some(token_stream) = tcx.type_of(token_stream_def_id).no_bound_vars() else {
+            return;
+        };
 
         let def_id = hir_id.expect_owner().def_id;
         let param_env = ty::ParamEnv::empty();

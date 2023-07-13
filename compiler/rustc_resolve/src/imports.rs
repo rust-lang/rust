@@ -1300,9 +1300,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let ImportKind::Glob { id, is_prelude, .. } = import.kind else { unreachable!() };
 
         let ModuleOrUniformRoot::Module(module) = import.imported_module.get().unwrap() else {
-            self.tcx.sess.create_err(CannotGlobImportAllCrates {
-                span: import.span,
-            }).emit();
+            self.tcx.sess.create_err(CannotGlobImportAllCrates { span: import.span }).emit();
             return;
         };
 

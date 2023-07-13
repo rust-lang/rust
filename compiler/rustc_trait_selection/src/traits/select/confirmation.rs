@@ -342,7 +342,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let Some(assume) = rustc_transmute::Assume::from_const(
             self.infcx.tcx,
             obligation.param_env,
-            predicate.trait_ref.substs.const_at(3)
+            predicate.trait_ref.substs.const_at(3),
         ) else {
             return Err(Unimplemented);
         };
@@ -662,10 +662,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let tcx = self.tcx();
 
-        let Some(self_ty) = self
-            .infcx
-            .shallow_resolve(obligation.self_ty().no_bound_vars()) else
-        {
+        let Some(self_ty) = self.infcx.shallow_resolve(obligation.self_ty().no_bound_vars()) else {
             // FIXME: Ideally we'd support `for<'a> fn(&'a ()): Fn(&'a ())`,
             // but we do not currently. Luckily, such a bound is not
             // particularly useful, so we don't expect users to write

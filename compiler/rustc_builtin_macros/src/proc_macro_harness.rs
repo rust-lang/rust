@@ -89,7 +89,9 @@ impl<'a> CollectProcMacros<'a> {
     }
 
     fn collect_custom_derive(&mut self, item: &'a ast::Item, attr: &'a ast::Attribute) {
-        let Some((trait_name, proc_attrs)) = parse_macro_name_and_helper_attrs(self.handler, attr, "derive") else {
+        let Some((trait_name, proc_attrs)) =
+            parse_macro_name_and_helper_attrs(self.handler, attr, "derive")
+        else {
             return;
         };
 

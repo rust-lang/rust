@@ -929,7 +929,9 @@ fn for_each_late_bound_region_in_item<'tcx>(
     }
 
     for bound_var in tcx.late_bound_vars(tcx.hir().local_def_id_to_hir_id(mir_def_id)) {
-        let ty::BoundVariableKind::Region(bound_region) = bound_var else { continue; };
+        let ty::BoundVariableKind::Region(bound_region) = bound_var else {
+            continue;
+        };
         let liberated_region = ty::Region::new_free(tcx, mir_def_id.to_def_id(), bound_region);
         f(liberated_region);
     }

@@ -749,9 +749,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                 // `fn foo<'a>() -> MyAnonTy<'a> { ... }`
                 //          ^                 ^this gets resolved in the current scope
                 for lifetime in lifetimes {
-                    let hir::GenericArg::Lifetime(lifetime) = lifetime else {
-                        continue
-                    };
+                    let hir::GenericArg::Lifetime(lifetime) = lifetime else { continue };
                     self.visit_lifetime(lifetime);
 
                     // Check for predicates like `impl for<'a> Trait<impl OtherTrait<'a>>`
@@ -759,12 +757,8 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     // well-supported at the moment, so this doesn't work.
                     // In the future, this should be fixed and this error should be removed.
                     let def = self.map.defs.get(&lifetime.hir_id).cloned();
-                    let Some(ResolvedArg::LateBound(_, _, def_id)) = def else {
-                        continue
-                    };
-                    let Some(def_id) = def_id.as_local() else {
-                        continue
-                    };
+                    let Some(ResolvedArg::LateBound(_, _, def_id)) = def else { continue };
+                    let Some(def_id) = def_id.as_local() else { continue };
                     let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
                     // Ensure that the parent of the def is an item, not HRTB
                     let parent_id = self.tcx.hir().parent_id(hir_id);

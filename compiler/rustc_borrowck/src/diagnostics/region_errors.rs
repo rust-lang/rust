@@ -224,12 +224,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let mut hrtb_bounds = vec![];
         gat_id_and_generics.iter().flatten().for_each(|(gat_hir_id, generics)| {
             for pred in generics.predicates {
-                let BoundPredicate(
-                        WhereBoundPredicate {
-                            bound_generic_params,
-                            bounds,
-                            ..
-                        }) = pred else { continue; };
+                let BoundPredicate(WhereBoundPredicate { bound_generic_params, bounds, .. }) = pred
+                else {
+                    continue;
+                };
                 if bound_generic_params
                     .iter()
                     .rfind(|bgp| hir.local_def_id_to_hir_id(bgp.def_id) == *gat_hir_id)
@@ -813,7 +811,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 return;
             }
             let suitable_region = self.infcx.tcx.is_suitable_region(f);
-            let Some(suitable_region) = suitable_region else { return; };
+            let Some(suitable_region) = suitable_region else {
+                return;
+            };
 
             let fn_returns = self.infcx.tcx.return_type_impl_or_dyn_traits(suitable_region.def_id);
 
@@ -848,7 +848,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             let Some((alias_tys, alias_span, lt_addition_span)) = self
                 .infcx
                 .tcx
-                .return_type_impl_or_dyn_traits_with_type_alias(suitable_region.def_id) else { return; };
+                .return_type_impl_or_dyn_traits_with_type_alias(suitable_region.def_id)
+            else {
+                return;
+            };
 
             // in case the return type of the method is a type alias
             let mut spans_suggs: Vec<_> = Vec::new();
@@ -932,8 +935,13 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let mut visitor = TraitObjectVisitor(FxIndexSet::default());
         visitor.visit_ty(param.param_ty);
 
-        let Some((ident, self_ty)) =
-            NiceRegionError::get_impl_ident_and_self_ty_from_trait(tcx, instance.def_id(), &visitor.0) else { return; };
+        let Some((ident, self_ty)) = NiceRegionError::get_impl_ident_and_self_ty_from_trait(
+            tcx,
+            instance.def_id(),
+            &visitor.0,
+        ) else {
+            return;
+        };
 
         self.suggest_constrain_dyn_trait_in_impl(diag, &visitor.0, ident, self_ty);
     }
@@ -981,23 +989,25 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         sup: RegionVid,
     ) {
         let (Some(sub), Some(sup)) = (self.to_error_region(sub), self.to_error_region(sup)) else {
-            return
+            return;
         };
 
         let Some((ty_sub, _)) = self
             .infcx
             .tcx
             .is_suitable_region(sub)
-            .and_then(|anon_reg| find_anon_type(self.infcx.tcx, sub, &anon_reg.boundregion)) else {
-            return
+            .and_then(|anon_reg| find_anon_type(self.infcx.tcx, sub, &anon_reg.boundregion))
+        else {
+            return;
         };
 
         let Some((ty_sup, _)) = self
             .infcx
             .tcx
             .is_suitable_region(sup)
-            .and_then(|anon_reg| find_anon_type(self.infcx.tcx, sup, &anon_reg.boundregion)) else {
-            return
+            .and_then(|anon_reg| find_anon_type(self.infcx.tcx, sup, &anon_reg.boundregion))
+        else {
+            return;
         };
 
         suggest_adding_lifetime_params(self.infcx.tcx, sub, ty_sup, ty_sub, diag);

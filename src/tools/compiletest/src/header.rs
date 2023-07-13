@@ -596,7 +596,10 @@ pub fn line_directive<'line>(
         if ln.starts_with('[') {
             // A comment like `//[foo]` is specific to revision `foo`
             let Some(close_brace) = ln.find(']') else {
-                panic!("malformed condition directive: expected `{}[foo]`, found `{}`", comment, ln);
+                panic!(
+                    "malformed condition directive: expected `{}[foo]`, found `{}`",
+                    comment, ln
+                );
             };
 
             let lncfg = &ln[1..close_brace];

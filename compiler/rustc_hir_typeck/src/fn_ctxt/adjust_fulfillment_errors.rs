@@ -14,14 +14,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         error: &mut traits::FulfillmentError<'tcx>,
     ) -> bool {
-        let (traits::ExprItemObligation(def_id, hir_id, idx) | traits::ExprBindingObligation(def_id, _, hir_id, idx))
-            = *error.obligation.cause.code().peel_derives() else { return false; };
+        let (traits::ExprItemObligation(def_id, hir_id, idx)
+        | traits::ExprBindingObligation(def_id, _, hir_id, idx)) =
+            *error.obligation.cause.code().peel_derives()
+        else {
+            return false;
+        };
         let hir = self.tcx.hir();
-        let hir::Node::Expr(expr) = hir.get(hir_id) else { return false; };
+        let hir::Node::Expr(expr) = hir.get(hir_id) else {
+            return false;
+        };
 
-        let Some(unsubstituted_pred) =
-            self.tcx.predicates_of(def_id).instantiate_identity(self.tcx).predicates.into_iter().nth(idx)
-            else { return false; };
+        let Some(unsubstituted_pred) = self
+            .tcx
+            .predicates_of(def_id)
+            .instantiate_identity(self.tcx)
+            .predicates
+            .into_iter()
+            .nth(idx)
+        else {
+            return false;
+        };
 
         let generics = self.tcx.generics_of(def_id);
         let predicate_substs = match unsubstituted_pred.kind().skip_binder() {
@@ -229,14 +242,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .tcx
             .generics_of(def_id)
             .own_substs(ty::InternalSubsts::identity_for_item(self.tcx, def_id));
-        let Some((index, _)) = own_substs
-            .iter()
-            .enumerate()
-            .find(|(_, arg)| **arg == param_to_point_at) else { return false };
-        let Some(arg) = segment
-            .args()
-            .args
-            .get(index) else { return false; };
+        let Some((index, _)) =
+            own_substs.iter().enumerate().find(|(_, arg)| **arg == param_to_point_at)
+        else {
+            return false;
+        };
+        let Some(arg) = segment.args().args.get(index) else {
+            return false;
+        };
         error.obligation.cause.span = arg
             .span()
             .find_ancestor_in_same_ctxt(error.obligation.cause.span)
@@ -573,9 +586,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Find out which of `in_ty_elements` refer to `param`.
             // FIXME: It may be better to take the first if there are multiple,
             // just so that the error points to a smaller expression.
-            let Some((drill_expr, drill_ty)) = is_iterator_singleton(expr_elements.iter().zip( in_ty_elements.iter()).filter(|(_expr_elem, in_ty_elem)| {
-                find_param_in_ty((*in_ty_elem).into(), param)
-            })) else {
+            let Some((drill_expr, drill_ty)) =
+                is_iterator_singleton(expr_elements.iter().zip(in_ty_elements.iter()).filter(
+                    |(_expr_elem, in_ty_elem)| find_param_in_ty((*in_ty_elem).into(), param),
+                ))
+            else {
                 // The param is not mentioned, or it is mentioned in multiple indexes.
                 return Err(expr);
             };
@@ -594,7 +609,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         {
             // First, confirm that this struct is the same one as in the types, and if so,
             // find the right variant.
-            let Res::Def(expr_struct_def_kind, expr_struct_def_id) = self.typeck_results.borrow().qpath_res(expr_struct_path, expr.hir_id) else {
+            let Res::Def(expr_struct_def_kind, expr_struct_def_id) =
+                self.typeck_results.borrow().qpath_res(expr_struct_path, expr.hir_id)
+            else {
                 return Err(expr);
             };
 
@@ -621,16 +638,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             // We need to know which of the generic parameters mentions our target param.
             // We expect that at least one of them does, since it is expected to be mentioned.
-            let Some((drill_generic_index, generic_argument_type)) =
-                is_iterator_singleton(
-                    in_ty_adt_generic_args.iter().enumerate().filter(
-                        |(_index, in_ty_generic)| {
-                            find_param_in_ty(*in_ty_generic, param)
-                        },
-                    ),
-                ) else {
-                    return Err(expr);
-                };
+            let Some((drill_generic_index, generic_argument_type)) = is_iterator_singleton(
+                in_ty_adt_generic_args
+                    .iter()
+                    .enumerate()
+                    .filter(|(_index, in_ty_generic)| find_param_in_ty(*in_ty_generic, param)),
+            ) else {
+                return Err(expr);
+            };
 
             let struct_generic_parameters: &ty::Generics = self.tcx.generics_of(in_ty_adt.did());
             if drill_generic_index >= struct_generic_parameters.params.len() {
@@ -703,7 +718,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
             // This is (possibly) a constructor call, like `Some(...)` or `MyStruct(a, b, c)`.
 
-            let Res::Def(expr_struct_def_kind, expr_ctor_def_id) = self.typeck_results.borrow().qpath_res(expr_callee_path, expr_callee.hir_id) else {
+            let Res::Def(expr_struct_def_kind, expr_ctor_def_id) =
+                self.typeck_results.borrow().qpath_res(expr_callee_path, expr_callee.hir_id)
+            else {
                 return Err(expr);
             };
 
@@ -744,16 +761,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             // We need to know which of the generic parameters mentions our target param.
             // We expect that at least one of them does, since it is expected to be mentioned.
-            let Some((drill_generic_index, generic_argument_type)) =
-                is_iterator_singleton(
-                    in_ty_adt_generic_args.iter().enumerate().filter(
-                        |(_index, in_ty_generic)| {
-                            find_param_in_ty(*in_ty_generic, param)
-                        },
-                    ),
-                ) else {
-                    return Err(expr);
-                };
+            let Some((drill_generic_index, generic_argument_type)) = is_iterator_singleton(
+                in_ty_adt_generic_args
+                    .iter()
+                    .enumerate()
+                    .filter(|(_index, in_ty_generic)| find_param_in_ty(*in_ty_generic, param)),
+            ) else {
+                return Err(expr);
+            };
 
             let struct_generic_parameters: &ty::Generics = self.tcx.generics_of(in_ty_adt.did());
             if drill_generic_index >= struct_generic_parameters.params.len() {
@@ -794,7 +809,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .iter()
                     .map(|field| field.ty(self.tcx, *in_ty_adt_generic_args))
                     .enumerate()
-                    .filter(|(_index, field_type)| find_param_in_ty((*field_type).into(), param))
+                    .filter(|(_index, field_type)| find_param_in_ty((*field_type).into(), param)),
             ) else {
                 return Err(expr);
             };

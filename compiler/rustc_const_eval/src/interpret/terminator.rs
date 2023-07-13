@@ -390,7 +390,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             ));
             // Allocate enough memory to hold `src`.
             let Some((size, align)) = self.size_and_align_of_mplace(&src)? else {
-                span_bug!(self.cur_span(), "unsized fn arg with `extern` type tail should not be allowed")
+                span_bug!(
+                    self.cur_span(),
+                    "unsized fn arg with `extern` type tail should not be allowed"
+                )
             };
             let ptr = self.allocate_ptr(size, align, MemoryKind::Stack)?;
             let dest_place =
@@ -468,10 +471,18 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             | ty::InstanceDef::ThreadLocalShim(..)
             | ty::InstanceDef::Item(_) => {
                 // We need MIR for this fn
-                let Some((body, instance)) =
-                    M::find_mir_or_eval_fn(self, instance, caller_abi, args, destination, target, unwind)? else {
-                        return Ok(());
-                    };
+                let Some((body, instance)) = M::find_mir_or_eval_fn(
+                    self,
+                    instance,
+                    caller_abi,
+                    args,
+                    destination,
+                    target,
+                    unwind,
+                )?
+                else {
+                    return Ok(());
+                };
 
                 // Compute callee information using the `instance` returned by
                 // `find_mir_or_eval_fn`.
@@ -702,8 +713,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         .tcx
                         .struct_tail_erasing_lifetimes(receiver_place.layout.ty, self.param_env);
                     let ty::Dynamic(data, _, ty::Dyn) = receiver_tail.kind() else {
-                            span_bug!(self.cur_span(), "dynamic call on non-`dyn` type {}", receiver_tail)
-                        };
+                        span_bug!(
+                            self.cur_span(),
+                            "dynamic call on non-`dyn` type {}",
+                            receiver_tail
+                        )
+                    };
                     assert!(receiver_place.layout.is_unsized());
 
                     // Get the required information from the vtable.
@@ -721,7 +736,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
                 // Now determine the actual method to call. We can do that in two different ways and
                 // compare them to ensure everything fits.
-                let Some(ty::VtblEntry::Method(fn_inst)) = self.get_vtable_entries(vptr)?.get(idx).copied() else {
+                let Some(ty::VtblEntry::Method(fn_inst)) =
+                    self.get_vtable_entries(vptr)?.get(idx).copied()
+                else {
                     // FIXME(fee1-dead) these could be variants of the UB info enum instead of this
                     throw_ub_custom!(fluent::const_eval_dyn_call_not_a_method);
                 };

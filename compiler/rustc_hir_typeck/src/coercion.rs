@@ -1670,7 +1670,9 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         expr: &hir::Expr<'tcx>,
         ret_exprs: &Vec<&'tcx hir::Expr<'tcx>>,
     ) {
-        let hir::ExprKind::Loop(_, _, _, loop_span) = expr.kind else { return;};
+        let hir::ExprKind::Loop(_, _, _, loop_span) = expr.kind else {
+            return;
+        };
         let mut span: MultiSpan = vec![loop_span].into();
         span.push_span_label(loop_span, "this might have zero elements to iterate on");
         const MAXITER: usize = 3;

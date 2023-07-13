@@ -793,9 +793,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDebugImplementations {
             _ => return,
         }
 
-        let Some(debug) = cx.tcx.get_diagnostic_item(sym::Debug) else {
-            return
-        };
+        let Some(debug) = cx.tcx.get_diagnostic_item(sym::Debug) else { return };
 
         if self.impling_types.is_none() {
             let mut impls = LocalDefIdSet::default();
@@ -1458,9 +1456,7 @@ impl TypeAliasBounds {
 
 impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &hir::Item<'_>) {
-        let hir::ItemKind::TyAlias(ty, type_alias_generics) = &item.kind else {
-            return
-        };
+        let hir::ItemKind::TyAlias(ty, type_alias_generics) = &item.kind else { return };
         if cx.tcx.type_of(item.owner_id.def_id).skip_binder().has_opaque_types() {
             // Bounds are respected for `type X = impl Trait` and `type X = (impl Trait, Y);`
             return;
@@ -2147,8 +2143,8 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                             match predicate.bounded_ty.kind {
                                 hir::TyKind::Path(hir::QPath::Resolved(None, path)) => {
                                     let Res::Def(DefKind::TyParam, def_id) = path.res else {
-                                    continue;
-                                };
+                                        continue;
+                                    };
                                     let index = ty_generics.param_def_id_to_index[&def_id];
                                     (
                                         Self::lifetimes_outliving_type(inferred_outlives, index),
@@ -2570,7 +2566,10 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                         Some((variant, definitely_inhabited))
                     });
                     let Some(first_variant) = potential_variants.next() else {
-                        return Some(InitError::from("enums with no inhabited variants have no valid value").spanned(span));
+                        return Some(
+                            InitError::from("enums with no inhabited variants have no valid value")
+                                .spanned(span),
+                        );
                     };
                     // So we have at least one potentially inhabited variant. Might we have two?
                     let Some(second_variant) = potential_variants.next() else {
@@ -3181,7 +3180,7 @@ impl<'tcx> LateLintPass<'tcx> for NamedAsmLabels {
                         let mut chars = possible_label.chars();
                         let Some(c) = chars.next() else {
                             // Empty string means a leading ':' in this section, which is not a label
-                            break
+                            break;
                         };
                         // A label starts with an alphabetic character or . or _ and continues with alphanumeric characters, _, or $
                         if (c.is_alphabetic() || matches!(c, '.' | '_'))

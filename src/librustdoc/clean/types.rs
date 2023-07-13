@@ -451,11 +451,7 @@ impl Item {
     pub(crate) fn links(&self, cx: &Context<'_>) -> Vec<RenderedLink> {
         use crate::html::format::{href, link_tooltip};
 
-        let Some(links) = cx.cache()
-            .intra_doc_links
-            .get(&self.item_id) else {
-                return vec![]
-            };
+        let Some(links) = cx.cache().intra_doc_links.get(&self.item_id) else { return vec![] };
         links
             .iter()
             .filter_map(|ItemLink { link: s, link_text, page_id: id, ref fragment }| {
@@ -484,11 +480,9 @@ impl Item {
     /// the link text, but does need to know which `[]`-bracketed names
     /// are actually links.
     pub(crate) fn link_names(&self, cache: &Cache) -> Vec<RenderedLink> {
-        let Some(links) = cache
-            .intra_doc_links
-            .get(&self.item_id) else {
-                return vec![];
-            };
+        let Some(links) = cache.intra_doc_links.get(&self.item_id) else {
+            return vec![];
+        };
         links
             .iter()
             .map(|ItemLink { link: s, link_text, .. }| RenderedLink {

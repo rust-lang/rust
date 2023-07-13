@@ -214,9 +214,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             stack.clear();
             stack.insert(bb);
             loop {
-                let Some(parent)= parent[bb].take() else {
-                    break
-                };
+                let Some(parent) = parent[bb].take() else { break };
                 let no_cycle = stack.insert(parent);
                 if !no_cycle {
                     self.fail(
@@ -399,7 +397,10 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             };
 
                             let Some(layout) = gen_body.generator_layout() else {
-                                self.fail(location, format!("No generator layout for {:?}", parent_ty));
+                                self.fail(
+                                    location,
+                                    format!("No generator layout for {:?}", parent_ty),
+                                );
                                 return;
                             };
 
@@ -409,13 +410,17 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             };
 
                             let Some(f_ty) = layout.field_tys.get(local) else {
-                                self.fail(location, format!("Out of bounds local {:?} for {:?}", local, parent_ty));
+                                self.fail(
+                                    location,
+                                    format!("Out of bounds local {:?} for {:?}", local, parent_ty),
+                                );
                                 return;
                             };
 
                             f_ty.ty
                         } else {
-                            let Some(f_ty) = substs.as_generator().prefix_tys().nth(f.index()) else {
+                            let Some(f_ty) = substs.as_generator().prefix_tys().nth(f.index())
+                            else {
                                 fail_out_of_bounds(self, location);
                                 return;
                             };
