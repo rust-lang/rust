@@ -1,5 +1,5 @@
 error[E0382]: borrow of moved value: `helpers`
-  --> $DIR/copy-suggestion-region-vid.rs:12:43
+  --> $DIR/copy-suggestion-region-vid.rs:13:43
    |
 LL |         let helpers = [vec![], vec![]];
    |             ------- move occurs because `helpers` has type `[Vec<&i64>; 2]`, which does not implement the `Copy` trait
@@ -11,8 +11,8 @@ LL |         HelperStruct { helpers, is_empty: helpers[0].is_empty() }
    |
 help: consider cloning the value if the performance cost is acceptable
    |
-LL |         HelperStruct { helpers.clone(), is_empty: helpers[0].is_empty() }
-   |                               ++++++++
+LL |         HelperStruct { helpers: helpers.clone(), is_empty: helpers[0].is_empty() }
+   |                               +++++++++++++++++
 
 error: aborting due to previous error
 

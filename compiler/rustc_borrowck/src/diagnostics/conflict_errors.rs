@@ -452,7 +452,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     } = move_spans {
                         // We already suggest cloning for these cases in `explain_captures`.
                     } else {
-                        self.suggest_cloning(err, ty, move_span);
+                        self.suggest_cloning(err, ty, expr, move_span);
                     }
                 }
             }
@@ -727,9 +727,21 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         true
     }
 
-    fn suggest_cloning(&self, err: &mut Diagnostic, ty: Ty<'tcx>, span: Span) {
+    fn suggest_cloning(
+        &self,
+        err: &mut Diagnostic,
+        ty: Ty<'tcx>,
+        expr: &hir::Expr<'_>,
+        span: Span,
+    ) {
         let tcx = self.infcx.tcx;
         // Try to find predicates on *generic params* that would allow copying `ty`
+        let suggestion =
+            if let Some(symbol) = tcx.hir().maybe_get_struct_pattern_shorthand_field(expr) {
+                format!(": {}.clone()", symbol)
+            } else {
+                ".clone()".to_owned()
+            };
         if let Some(clone_trait_def) = tcx.lang_items().clone_trait()
             && self.infcx
                 .type_implements_trait(
@@ -742,7 +754,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             err.span_suggestion_verbose(
                 span.shrink_to_hi(),
                 "consider cloning the value if the performance cost is acceptable",
-                ".clone()",
+                suggestion,
                 Applicability::MachineApplicable,
             );
         }

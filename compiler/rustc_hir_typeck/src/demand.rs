@@ -15,7 +15,7 @@ use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, Article, AssocItem, Ty, TypeAndMut, TypeFoldable};
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::symbol::sym;
 use rustc_span::{BytePos, Span, DUMMY_SP};
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::ObligationCause;
@@ -997,7 +997,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .collect();
 
             let suggestions_for = |variant: &_, ctor_kind, field_name| {
-                let prefix = match self.maybe_get_struct_pattern_shorthand_field(expr) {
+                let prefix = match self.tcx.hir().maybe_get_struct_pattern_shorthand_field(expr) {
                     Some(ident) => format!("{ident}: "),
                     None => String::new(),
                 };
@@ -1240,39 +1240,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub(crate) fn maybe_get_struct_pattern_shorthand_field(
-        &self,
-        expr: &hir::Expr<'_>,
-    ) -> Option<Symbol> {
-        let hir = self.tcx.hir();
-        let local = match expr {
-            hir::Expr {
-                kind:
-                    hir::ExprKind::Path(hir::QPath::Resolved(
-                        None,
-                        hir::Path {
-                            res: hir::def::Res::Local(_),
-                            segments: [hir::PathSegment { ident, .. }],
-                            ..
-                        },
-                    )),
-                ..
-            } => Some(ident),
-            _ => None,
-        }?;
-
-        match hir.find_parent(expr.hir_id)? {
-            Node::ExprField(field) => {
-                if field.ident.name == local.name && field.is_shorthand {
-                    return Some(local.name);
-                }
-            }
-            _ => {}
-        }
-
-        None
-    }
-
     /// If the given `HirId` corresponds to a block with a trailing expression, return that expression
     pub(crate) fn maybe_get_block_expr(
         &self,
@@ -1467,7 +1434,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ));
                     }
 
-                    let prefix = match self.maybe_get_struct_pattern_shorthand_field(expr) {
+                    let prefix = match self.tcx.hir().maybe_get_struct_pattern_shorthand_field(expr) {
                         Some(ident) => format!("{ident}: "),
                         None => String::new(),
                     };
@@ -1661,7 +1628,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             )
                         };
 
-                        let prefix = match self.maybe_get_struct_pattern_shorthand_field(expr) {
+                        let prefix = match self.tcx.hir().maybe_get_struct_pattern_shorthand_field(expr) {
                             Some(ident) => format!("{ident}: "),
                             None => String::new(),
                         };
