@@ -5,7 +5,7 @@
 #![allow(
     clippy::unnecessary_wraps,
     clippy::needless_question_mark,
-    clippy::needless_return_with_try
+    clippy::needless_return_with_question_mark
 )]
 
 extern crate proc_macros;

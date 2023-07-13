@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then, span_lint_hir_and_then};
 use clippy_utils::source::{snippet_opt, snippet_with_context};
 use clippy_utils::visitors::{for_each_expr_with_closures, Descend};
-use clippy_utils::{fn_def_id, path_to_local_id, span_find_starting_semi};
+use clippy_utils::{fn_def_id, is_from_proc_macro, path_to_local_id, span_find_starting_semi};
 use core::ops::ControlFlow;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
@@ -113,8 +113,8 @@ declare_clippy_lint! {
     ///     Ok(())
     /// }
     /// ```
-    #[clippy::version = "1.72.0"]
-    pub NEEDLESS_RETURN_WITH_TRY,
+    #[clippy::version = "1.73.0"]
+    pub NEEDLESS_RETURN_WITH_QUESTION_MARK,
     style,
     "using a return statement like `return Err(expr)?;` where removing it would suffice"
 }
@@ -158,7 +158,7 @@ impl<'tcx> ToString for RetReplacement<'tcx> {
     }
 }
 
-declare_lint_pass!(Return => [LET_AND_RETURN, NEEDLESS_RETURN, NEEDLESS_RETURN_WITH_TRY]);
+declare_lint_pass!(Return => [LET_AND_RETURN, NEEDLESS_RETURN, NEEDLESS_RETURN_WITH_QUESTION_MARK]);
 
 impl<'tcx> LateLintPass<'tcx> for Return {
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
@@ -177,7 +177,7 @@ impl<'tcx> LateLintPass<'tcx> for Return {
         {
             span_lint_and_sugg(
                 cx,
-                NEEDLESS_RETURN_WITH_TRY,
+                NEEDLESS_RETURN_WITH_QUESTION_MARK,
                 expr.span.until(ret.span),
                 "unneeded `return` statement with `?` operator",
                 "remove it",
