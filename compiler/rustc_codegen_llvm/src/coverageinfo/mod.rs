@@ -378,7 +378,7 @@ pub(crate) fn hash_str(strval: &str) -> u64 {
     unsafe { llvm::LLVMRustCoverageHashCString(strval.as_ptr()) }
 }
 
-pub(crate) fn hash_bytes(bytes: Vec<u8>) -> u64 {
+pub(crate) fn hash_bytes(bytes: &[u8]) -> u64 {
     unsafe { llvm::LLVMRustCoverageHashByteArray(bytes.as_ptr().cast(), bytes.len()) }
 }
 

@@ -95,7 +95,7 @@ pub fn finalize(cx: &CodegenCx<'_, '_>) {
 
     let filenames_size = filenames_buffer.len();
     let filenames_val = cx.const_bytes(&filenames_buffer);
-    let filenames_ref = coverageinfo::hash_bytes(filenames_buffer);
+    let filenames_ref = coverageinfo::hash_bytes(&filenames_buffer);
 
     // Generate the LLVM IR representation of the coverage map and store it in a well-known global
     let cov_data_val = mapgen.generate_coverage_map(cx, version, filenames_size, filenames_val);
