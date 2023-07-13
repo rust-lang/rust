@@ -46,6 +46,7 @@ const KNOWN_ARCH: [&str; 19] = [
     "aarch64",
     "arm",
     "avr",
+    "csky",
     "hexagon",
     "mips",
     "mips64",
