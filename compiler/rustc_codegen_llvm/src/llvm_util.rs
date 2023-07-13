@@ -17,8 +17,8 @@ use rustc_session::config::PrintRequest;
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::{MergeFunctions, PanicStrategy};
-use std::ffi::{CStr, CString};
 
+use std::ffi::{c_char, c_void, CStr, CString};
 use std::path::Path;
 use std::ptr;
 use std::slice;
@@ -401,7 +401,7 @@ fn print_target_features(out: &mut dyn PrintBackendInfo, sess: &Session, tm: &ll
     writeln!(out, "and may be renamed or removed in a future version of LLVM or rustc.\n");
 }
 
-pub(crate) fn print(req: PrintRequest, out: &mut dyn PrintBackendInfo, sess: &Session) {
+pub(crate) fn print(req: PrintRequest, mut out: &mut dyn PrintBackendInfo, sess: &Session) {
     require_inited();
     let tm = create_informational_target_machine(sess);
     match req {
@@ -411,7 +411,19 @@ pub(crate) fn print(req: PrintRequest, out: &mut dyn PrintBackendInfo, sess: &Se
             // at least as long as the C function
             let cpu_cstring = CString::new(handle_native(sess.target.cpu.as_ref()))
                 .unwrap_or_else(|e| bug!("failed to convert to cstring: {}", e));
-            unsafe { llvm::LLVMRustPrintTargetCPUs(tm, cpu_cstring.as_ptr()) };
+            unsafe extern "C" fn callback(out: *mut c_void, string: *const c_char, len: usize) {
+                let out = &mut *(out as *mut &mut dyn PrintBackendInfo);
+                let bytes = slice::from_raw_parts(string as *const u8, len);
+                write!(out, "{}", String::from_utf8_lossy(bytes));
+            }
+            unsafe {
+                llvm::LLVMRustPrintTargetCPUs(
+                    tm,
+                    cpu_cstring.as_ptr(),
+                    callback,
+                    &mut out as *mut &mut dyn PrintBackendInfo as *mut c_void,
+                );
+            }
         }
         PrintRequest::TargetFeatures => print_target_features(out, sess, tm),
         _ => bug!("rustc_codegen_llvm can't handle print request: {:?}", req),
