@@ -421,13 +421,17 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
     /// Called on places used for in-place function argument and return value handling.
     ///
     /// These places need to be protected to make sure the program cannot tell whether the
-    /// argument/return value was actually copied or passed in-place..
+    /// argument/return value was actually copied or passed in-place.
     fn protect_in_place_function_argument(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         place: &PlaceTy<'tcx, Self::Provenance>,
     ) -> InterpResult<'tcx> {
         // Without an aliasing model, all we can do is put `Uninit` into the place.
-        ecx.write_uninit(place)
+        // This can only be violated with custom MIR though so we avoid the perf hit.
+        if ecx.tcx.sess.opts.unstable_opts.extra_const_ub_checks {
+            ecx.write_uninit(place)?;
+        }
+        Ok(())
     }
 
     /// Called immediately before a new stack frame gets pushed.
