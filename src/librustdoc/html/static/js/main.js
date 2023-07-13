@@ -354,13 +354,13 @@ function preLoadCss(cssUrl) {
                 expandSection(pageId);
             }
         }
-        if (savedHash.startsWith("#impl-")) {
+        if (savedHash.startsWith("impl-")) {
             // impl-disambiguated links, used by the search engine
             // format: impl-X[-for-Y]/method.WHATEVER
             // turn this into method.WHATEVER[-NUMBER]
             const splitAt = savedHash.indexOf("/");
             if (splitAt !== -1) {
-                const implId = savedHash.slice(1, splitAt);
+                const implId = savedHash.slice(0, splitAt);
                 const assocId = savedHash.slice(splitAt + 1);
                 const implElem = document.getElementById(implId);
                 if (implElem && implElem.parentElement.tagName === "SUMMARY" &&

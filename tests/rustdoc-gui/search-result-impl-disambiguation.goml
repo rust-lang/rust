@@ -2,7 +2,7 @@
 
 // Checks that, if a type has two methods with the same name, they both get
 // linked correctly.
-goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 
 // This should link to the inherent impl
 write: (".search-input", "ZyxwvutMethodDisambiguation -> bool")
@@ -22,7 +22,7 @@ assert-document-property: ({
 }, ENDS_WITH)
 assert: "section:target"
 
-goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 
 // This should link to the trait impl
 write: (".search-input", "ZyxwvutMethodDisambiguation, usize -> usize")
