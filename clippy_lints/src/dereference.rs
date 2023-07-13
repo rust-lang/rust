@@ -77,6 +77,11 @@ declare_clippy_lint! {
     /// Suggests that the receiver of the expression borrows
     /// the expression.
     ///
+    /// ### Known problems
+    /// The lint cannot tell when the implementation of a trait
+    /// for `&T` and `T` do different things. Removing a borrow
+    /// in such a case can change the semantics of the code.
+    ///
     /// ### Example
     /// ```rust
     /// fn fun(_a: &i32) {}
