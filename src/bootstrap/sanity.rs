@@ -104,7 +104,7 @@ You should install cmake, or set `download-ci-llvm = true` in the
 than building it.
 "
             );
-            crate::detail_exit_macro!(1);
+            crate::exit!(1);
         }
     }
 

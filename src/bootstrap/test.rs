@@ -798,7 +798,7 @@ impl Step for Clippy {
         }
 
         if !builder.config.cmd.bless() {
-            crate::detail_exit_macro!(1);
+            crate::exit!(1);
         }
     }
 }
@@ -1097,7 +1097,7 @@ help: to skip test's attempt to check tidiness, pass `--exclude src/tools/tidy` 
                     PATH = inferred_rustfmt_dir.display(),
                     CHAN = builder.config.channel,
                 );
-                crate::detail_exit_macro!(1);
+                crate::exit!(1);
             }
             crate::format::format(&builder, !builder.config.cmd.bless(), &[]);
         }
@@ -1120,7 +1120,7 @@ help: to skip test's attempt to check tidiness, pass `--exclude src/tools/tidy` 
                 eprintln!(
                     "x.py completions were changed; run `x.py run generate-completions` to update them"
                 );
-                crate::detail_exit_macro!(1);
+                crate::exit!(1);
             }
         }
     }
@@ -1431,7 +1431,7 @@ help: to test the compiler, use `--stage 1` instead
 help: to test the standard library, use `--stage 0 library/std` instead
 note: if you're sure you want to do this, please open an issue as to why. In the meantime, you can override this with `COMPILETEST_FORCE_STAGE0=1`."
             );
-            crate::detail_exit_macro!(1);
+            crate::exit!(1);
         }
 
         let mut compiler = self.compiler;

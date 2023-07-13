@@ -203,7 +203,7 @@ fn setup_config_toml(path: &PathBuf, profile: Profile, config: &Config) {
             "note: this will use the configuration in {}",
             profile.include_path(&config.src).display()
         );
-        crate::detail_exit_macro!(1);
+        crate::exit!(1);
     }
 
     let settings = format!(
@@ -389,7 +389,7 @@ pub fn interactive_path() -> io::Result<Profile> {
         io::stdin().read_line(&mut input)?;
         if input.is_empty() {
             eprintln!("EOF on stdin, when expecting answer to question.  Giving up.");
-            crate::detail_exit_macro!(1);
+            crate::exit!(1);
         }
         break match parse_with_abbrev(&input) {
             Ok(profile) => profile,
