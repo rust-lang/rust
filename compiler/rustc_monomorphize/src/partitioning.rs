@@ -318,25 +318,58 @@ fn merge_codegen_units<'tcx>(
     let mut cgu_contents: FxHashMap<Symbol, Vec<Symbol>> =
         codegen_units.iter().map(|cgu| (cgu.name(), vec![cgu.name()])).collect();
 
-    // Repeatedly merge the two smallest codegen units as long as we have more
-    // CGUs than the upper limit.
-    while codegen_units.len() > cx.tcx.sess.codegen_units().as_usize() {
-        // Sort small cgus to the back.
+    // If N is the maximum number of CGUs, and the CGUs are sorted from largest
+    // to smallest, we repeatedly find which CGU in codegen_units[N..] has the
+    // greatest overlap of inlined items with codegen_units[N-1], merge that
+    // CGU into codegen_units[N-1], then re-sort by size and repeat.
+    //
+    // We use inlined item overlap to guide this merging because it minimizes
+    // duplication of inlined items, which makes LLVM be faster and generate
+    // better and smaller machine code.
+    //
+    // Why merge into codegen_units[N-1]? We want CGUs to have similar sizes,
+    // which means we don't want codegen_units[0..N] (the already big ones)
+    // getting any bigger, if we can avoid it. When we have more than N CGUs
+    // then at least one of the biggest N will have to grow. codegen_units[N-1]
+    // is the smallest of those, and so has the most room to grow.
+    let max_codegen_units = cx.tcx.sess.codegen_units().as_usize();
+    while codegen_units.len() > max_codegen_units {
+        // Sort small CGUs to the back.
         codegen_units.sort_by_key(|cgu| cmp::Reverse(cgu.size_estimate()));
 
-        let mut smallest = codegen_units.pop().unwrap();
-        let second_smallest = codegen_units.last_mut().unwrap();
+        let cgu_dst = &codegen_units[max_codegen_units - 1];
 
-        // Move the items from `smallest` to `second_smallest`. Some of them
-        // may be duplicate inlined items, in which case the destination CGU is
+        // Find the CGU that overlaps the most with `cgu_dst`. In the case of a
+        // tie, favour the earlier (bigger) CGU.
+        let mut max_overlap = 0;
+        let mut max_overlap_i = max_codegen_units;
+        for (i, cgu_src) in codegen_units.iter().enumerate().skip(max_codegen_units) {
+            if cgu_src.size_estimate() <= max_overlap {
+                // None of the remaining overlaps can exceed `max_overlap`, so
+                // stop looking.
+                break;
+            }
+
+            let overlap = compute_inlined_overlap(cgu_dst, cgu_src);
+            if overlap > max_overlap {
+                max_overlap = overlap;
+                max_overlap_i = i;
+            }
+        }
+
+        let mut cgu_src = codegen_units.swap_remove(max_overlap_i);
+        let cgu_dst = &mut codegen_units[max_codegen_units - 1];
+
+        // Move the items from `cgu_src` to `cgu_dst`. Some of them may be
+        // duplicate inlined items, in which case the destination CGU is
         // unaffected. Recalculate size estimates afterwards.
-        second_smallest.items_mut().extend(smallest.items_mut().drain());
-        second_smallest.compute_size_estimate();
+        cgu_dst.items_mut().extend(cgu_src.items_mut().drain());
+        cgu_dst.compute_size_estimate();
 
-        // Record that `second_smallest` now contains all the stuff that was
-        // in `smallest` before.
-        let mut consumed_cgu_names = cgu_contents.remove(&smallest.name()).unwrap();
-        cgu_contents.get_mut(&second_smallest.name()).unwrap().append(&mut consumed_cgu_names);
+        // Record that `cgu_dst` now contains all the stuff that was in
+        // `cgu_src` before.
+        let mut consumed_cgu_names = cgu_contents.remove(&cgu_src.name()).unwrap();
+        cgu_contents.get_mut(&cgu_dst.name()).unwrap().append(&mut consumed_cgu_names);
     }
 
     // Having multiple CGUs can drastically speed up compilation. But for
@@ -449,6 +482,25 @@ fn merge_codegen_units<'tcx>(
             cgu.set_name(numbered_codegen_unit_name);
         }
     }
+}
+
+/// Compute the combined size of all inlined items that appear in both `cgu1`
+/// and `cgu2`.
+fn compute_inlined_overlap<'tcx>(cgu1: &CodegenUnit<'tcx>, cgu2: &CodegenUnit<'tcx>) -> usize {
+    // Either order works. We pick the one that involves iterating over fewer
+    // items.
+    let (src_cgu, dst_cgu) =
+        if cgu1.items().len() <= cgu2.items().len() { (cgu1, cgu2) } else { (cgu2, cgu1) };
+
+    let mut overlap = 0;
+    for (item, data) in src_cgu.items().iter() {
+        if data.inlined {
+            if dst_cgu.items().contains_key(item) {
+                overlap += data.size_estimate;
+            }
+        }
+    }
+    overlap
 }
 
 fn internalize_symbols<'tcx>(
