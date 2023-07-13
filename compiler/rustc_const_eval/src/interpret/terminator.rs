@@ -40,13 +40,13 @@ impl<'tcx, Prov: Provenance> FnArg<'tcx, Prov> {
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Make a copy of the given fn_arg. Any `InPlace` are degenerated to copies, no protection of the
     /// original memory occurs.
-    pub fn copy_fn_arg(
+    pub fn copy_fn_arg<'a>(
         &self,
-        arg: &FnArg<'tcx, M::Provenance>,
-    ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
+        arg: &'a FnArg<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx, Cow<'a, OpTy<'tcx, M::Provenance>>> {
         match arg {
-            FnArg::Copy(op) => Ok(op.clone()),
-            FnArg::InPlace(place) => self.place_to_op(&place),
+            FnArg::Copy(op) => Ok(Cow::Borrowed(op)),
+            FnArg::InPlace(place) => Ok(Cow::Owned(self.place_to_op(&place)?)),
         }
     }
 
@@ -56,7 +56,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &self,
         args: &[FnArg<'tcx, M::Provenance>],
     ) -> InterpResult<'tcx, Vec<OpTy<'tcx, M::Provenance>>> {
-        args.iter().map(|fn_arg| self.copy_fn_arg(fn_arg)).collect()
+        args.iter().map(|fn_arg| self.copy_fn_arg(fn_arg).map(|x| x.into_owned())).collect()
     }
 
     pub fn fn_arg_field(
@@ -637,7 +637,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // An `InPlace` does nothing here, we keep the original receiver intact. We can't
                 // really pass the argument in-place anyway, and we are constructing a new
                 // `Immediate` receiver.
-                let mut receiver = self.copy_fn_arg(&args[0])?;
+                let mut receiver = self.copy_fn_arg(&args[0])?.into_owned();
                 let receiver_place = loop {
                     match receiver.layout.ty.kind() {
                         ty::Ref(..) | ty::RawPtr(..) => {
