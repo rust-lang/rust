@@ -698,7 +698,7 @@ impl Module {
 
 fn emit_macro_def_diagnostics(db: &dyn HirDatabase, acc: &mut Vec<AnyDiagnostic>, m: Macro) {
     let id = macro_id_to_def_id(db.upcast(), m.id);
-    if let hir_expand::db::TokenExpander::DeclarativeMacro(expander) = db.macro_def(id) {
+    if let hir_expand::db::TokenExpander::DeclarativeMacro(expander) = db.macro_expander(id) {
         if let Some(e) = expander.mac.err() {
             let Some(ast) = id.ast_id().left() else {
                 never!("declarative expander for non decl-macro: {:?}", e);
