@@ -70,7 +70,24 @@ where
             return false;
         }
 
-        self.iter().zip(other.iter()).all(|(x, y)| x == y)
+        let mut i = self.len();
+        let mut ptr_self = self.as_ptr();
+        let mut ptr_other = other.as_ptr();
+        // SAFETY:
+        // This is sound because:
+        // - self.len == other.len
+        // - self.len <= isize::MAX
+        // so the two pointers will not overflow,
+        // will remain in bounds of the slice,
+        // and dereferencing them is sound.
+        unsafe {
+            while (i > 0) && (*ptr_self == *ptr_other) {
+                i -= 1;
+                ptr_self = ptr_self.add(1);
+                ptr_other = ptr_other.add(1);
+            }
+        }
+        i == 0
     }
 }
 
