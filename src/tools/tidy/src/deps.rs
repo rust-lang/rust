@@ -56,6 +56,9 @@ const EXCEPTIONS_CARGO: &[(&str, &str)] = &[
     // tidy-alphabetical-start
     ("bitmaps", "MPL-2.0+"),
     ("bytesize", "Apache-2.0"),
+    ("ciborium", "Apache-2.0"),
+    ("ciborium-io", "Apache-2.0"),
+    ("ciborium-ll", "Apache-2.0"),
     ("dunce", "CC0-1.0 OR MIT-0 OR Apache-2.0"),
     ("fiat-crypto", "MIT OR Apache-2.0 OR BSD-1-Clause"),
     ("im-rc", "MPL-2.0+"),
