@@ -1,6 +1,8 @@
 use super::{with, DefId};
 use crate::rustc_internal::Opaque;
 
+type Const = Opaque;
+
 #[derive(Copy, Clone, Debug)]
 pub struct Ty(pub usize);
 
