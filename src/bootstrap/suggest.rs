@@ -8,13 +8,7 @@ use clap::Parser;
 
 use crate::{builder::Builder, tool::Tool};
 
-#[cfg(feature = "build-metrics")]
-pub fn suggest(builder: &Builder<'_>, run: bool) {
-    panic!("`x suggest` is not supported with `build-metrics`")
-}
-
 /// Suggests a list of possible `x.py` commands to run based on modified files in branch.
-#[cfg(not(feature = "build-metrics"))]
 pub fn suggest(builder: &Builder<'_>, run: bool) {
     let suggestions =
         builder.tool_cmd(Tool::SuggestTests).output().expect("failed to run `suggest-tests` tool");
@@ -66,7 +60,7 @@ pub fn suggest(builder: &Builder<'_>, run: bool) {
 
     if run {
         for sug in suggestions {
-            let mut build = builder.build.clone();
+            let mut build: crate::Build = builder.build.clone();
             build.config.paths = sug.2;
             build.config.cmd = crate::flags::Flags::parse_from([sug.0]).cmd;
             if let Some(stage) = sug.1 {

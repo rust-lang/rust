@@ -191,7 +191,7 @@ pub enum GitRepo {
 /// although most functions are implemented as free functions rather than
 /// methods specifically on this structure itself (to make it easier to
 /// organize).
-#[cfg_attr(not(feature = "build-metrics"), derive(Clone))]
+#[derive(Clone)]
 pub struct Build {
     /// User-specified configuration from `config.toml`.
     config: Config,
