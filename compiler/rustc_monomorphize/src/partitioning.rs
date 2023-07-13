@@ -318,29 +318,9 @@ fn merge_codegen_units<'tcx>(
     let mut cgu_contents: FxHashMap<Symbol, Vec<Symbol>> =
         codegen_units.iter().map(|cgu| (cgu.name(), vec![cgu.name()])).collect();
 
-    // Having multiple CGUs can drastically speed up compilation. But for
-    // non-incremental builds, tiny CGUs slow down compilation *and* result in
-    // worse generated code. So we don't allow CGUs smaller than this (unless
-    // there is just one CGU, of course). Note that CGU sizes of 100,000+ are
-    // common in larger programs, so this isn't all that large.
-    const NON_INCR_MIN_CGU_SIZE: usize = 1800;
-
-    // Repeatedly merge the two smallest codegen units as long as:
-    // - we have more CGUs than the upper limit, or
-    // - (Non-incremental builds only) the user didn't specify a CGU count, and
-    //   there are multiple CGUs, and some are below the minimum size.
-    //
-    // The "didn't specify a CGU count" condition is because when an explicit
-    // count is requested we observe it as closely as possible. For example,
-    // the `compiler_builtins` crate sets `codegen-units = 10000` and it's
-    // critical they aren't merged. Also, some tests use explicit small values
-    // and likewise won't work if small CGUs are merged.
-    while codegen_units.len() > cx.tcx.sess.codegen_units().as_usize()
-        || (cx.tcx.sess.opts.incremental.is_none()
-            && matches!(cx.tcx.sess.codegen_units(), CodegenUnits::Default(_))
-            && codegen_units.len() > 1
-            && codegen_units.iter().any(|cgu| cgu.size_estimate() < NON_INCR_MIN_CGU_SIZE))
-    {
+    // Repeatedly merge the two smallest codegen units as long as we have more
+    // CGUs than the upper limit.
+    while codegen_units.len() > cx.tcx.sess.codegen_units().as_usize() {
         // Sort small cgus to the back.
         codegen_units.sort_by_key(|cgu| cmp::Reverse(cgu.size_estimate()));
 
@@ -357,12 +337,42 @@ fn merge_codegen_units<'tcx>(
         // in `smallest` before.
         let mut consumed_cgu_names = cgu_contents.remove(&smallest.name()).unwrap();
         cgu_contents.get_mut(&second_smallest.name()).unwrap().append(&mut consumed_cgu_names);
+    }
 
-        debug!(
-            "CodegenUnit {} merged into CodegenUnit {}",
-            smallest.name(),
-            second_smallest.name()
-        );
+    // Having multiple CGUs can drastically speed up compilation. But for
+    // non-incremental builds, tiny CGUs slow down compilation *and* result in
+    // worse generated code. So we don't allow CGUs smaller than this (unless
+    // there is just one CGU, of course). Note that CGU sizes of 100,000+ are
+    // common in larger programs, so this isn't all that large.
+    const NON_INCR_MIN_CGU_SIZE: usize = 1800;
+
+    // Repeatedly merge the two smallest codegen units as long as: it's a
+    // non-incremental build, and the user didn't specify a CGU count, and
+    // there are multiple CGUs, and some are below the minimum size.
+    //
+    // The "didn't specify a CGU count" condition is because when an explicit
+    // count is requested we observe it as closely as possible. For example,
+    // the `compiler_builtins` crate sets `codegen-units = 10000` and it's
+    // critical they aren't merged. Also, some tests use explicit small values
+    // and likewise won't work if small CGUs are merged.
+    while cx.tcx.sess.opts.incremental.is_none()
+        && matches!(cx.tcx.sess.codegen_units(), CodegenUnits::Default(_))
+        && codegen_units.len() > 1
+        && codegen_units.iter().any(|cgu| cgu.size_estimate() < NON_INCR_MIN_CGU_SIZE)
+    {
+        // Sort small cgus to the back.
+        codegen_units.sort_by_cached_key(|cgu| cmp::Reverse(cgu.size_estimate()));
+
+        let mut smallest = codegen_units.pop().unwrap();
+        let second_smallest = codegen_units.last_mut().unwrap();
+
+        // Move the items from `smallest` to `second_smallest`. Some of them
+        // may be duplicate inlined items, in which case the destination CGU is
+        // unaffected. Recalculate size estimates afterwards.
+        second_smallest.items_mut().extend(smallest.items_mut().drain());
+        second_smallest.compute_size_estimate();
+
+        // Don't update `cgu_contents`, that's only for incremental builds.
     }
 
     let cgu_name_builder = &mut CodegenUnitNameBuilder::new(cx.tcx);
