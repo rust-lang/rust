@@ -119,7 +119,9 @@ impl<'tcx> Tables<'tcx> {
                 TyKind::RigidTy(RigidTy::Array(self.intern_ty(*ty), opaque(constant)))
             }
             ty::Slice(ty) => TyKind::RigidTy(RigidTy::Slice(self.intern_ty(*ty))),
-            ty::RawPtr(_) => todo!(),
+            ty::RawPtr(ty::TypeAndMut { ty, mutbl }) => {
+                TyKind::RigidTy(RigidTy::RawPtr(self.intern_ty(*ty), mutbl.stable()))
+            }
             ty::Ref(_, _, _) => todo!(),
             ty::FnDef(_, _) => todo!(),
             ty::FnPtr(_) => todo!(),

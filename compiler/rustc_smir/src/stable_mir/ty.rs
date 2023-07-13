@@ -20,6 +20,8 @@ pub enum TyKind {
     RigidTy(RigidTy),
 }
 
+type Region = Opaque;
+
 #[derive(Clone, Debug)]
 pub enum RigidTy {
     Bool,
@@ -31,6 +33,7 @@ pub enum RigidTy {
     Str,
     Array(Ty, Const),
     Slice(Ty),
+    RawPtr(Ty, Mutability),
     Tuple(Vec<Ty>),
 }
 
