@@ -47,7 +47,8 @@ struct __attribute__((aligned(1))) LowerAlign
 #pragma pack(push, 1)
 struct Packed
 {
-    __uint128_t a;
+    uint64_t a;
+    uint64_t b;
 };
 #pragma pack(pop)
 
@@ -86,6 +87,7 @@ int32_t many_args(
     assert(l.b == 6);
     assert(!m);
     assert(n.a == 7);
+    assert(n.b == 8);
     assert(strcmp(o, "Hello world") == 0);
     return 0;
 }

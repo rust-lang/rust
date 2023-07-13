@@ -38,7 +38,8 @@ pub struct LowerAlign {
 #[repr(C)]
 #[repr(packed)]
 pub struct Packed {
-    pub a: u128
+    pub a: u64,
+    pub b: u64,
 }
 
 #[link(name = "test", kind = "static")]
@@ -69,7 +70,7 @@ fn main() {
     let two_u64s = TwoU64s { a: 1, b: 2 };
     let wrapped = WrappedU64s { a: TwoU64s { a: 3, b: 4 } };
     let lower = LowerAlign { a: 5, b: 6 };
-    let packed = Packed { a: 7 };
+    let packed = Packed { a: 7, b: 8 };
     let string = STRING;
     unsafe {
         many_args(
