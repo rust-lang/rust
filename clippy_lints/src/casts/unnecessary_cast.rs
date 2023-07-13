@@ -56,7 +56,7 @@ pub(super) fn check<'tcx>(
                 &format!("casting raw pointers to the same type and constness is unnecessary (`{cast_from}` -> `{cast_to}`)"),
                 "try",
                 cast_str.clone(),
-                Applicability::MachineApplicable,
+                Applicability::MaybeIncorrect,
             );
         }
     }
