@@ -189,19 +189,19 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
         statements: &mut Vec<Statement<'tcx>>,
     ) {
         let TerminatorKind::Call { func, args, destination, target, .. } = &mut terminator.kind
-        else { return };
+        else {
+            return;
+        };
 
         // It's definitely not a clone if there are multiple arguments
         if args.len() != 1 {
             return;
         }
 
-        let Some(destination_block) = *target
-        else { return };
+        let Some(destination_block) = *target else { return };
 
         // Only bother looking more if it's easy to know what we're calling
-        let Some((fn_def_id, fn_substs)) = func.const_fn_def()
-        else { return };
+        let Some((fn_def_id, fn_substs)) = func.const_fn_def() else { return };
 
         // Clone needs one subst, so we can cheaply rule out other stuff
         if fn_substs.len() != 1 {
@@ -212,8 +212,7 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
         // doing DefId lookups to figure out what we're actually calling.
         let arg_ty = args[0].ty(self.local_decls, self.tcx);
 
-        let ty::Ref(_region, inner_ty, Mutability::Not) = *arg_ty.kind()
-        else { return };
+        let ty::Ref(_region, inner_ty, Mutability::Not) = *arg_ty.kind() else { return };
 
         if !inner_ty.is_trivially_pure_clone_copy() {
             return;
@@ -234,8 +233,7 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
             return;
         }
 
-        let Some(arg_place) = args.pop().unwrap().place()
-        else { return };
+        let Some(arg_place) = args.pop().unwrap().place() else { return };
 
         statements.push(Statement {
             source_info: terminator.source_info,
@@ -254,8 +252,12 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
         terminator: &mut Terminator<'tcx>,
         _statements: &mut Vec<Statement<'tcx>>,
     ) {
-        let TerminatorKind::Call { func, target, .. } = &mut terminator.kind  else { return; };
-        let Some(target_block) = target else { return; };
+        let TerminatorKind::Call { func, target, .. } = &mut terminator.kind else {
+            return;
+        };
+        let Some(target_block) = target else {
+            return;
+        };
         let func_ty = func.ty(self.local_decls, self.tcx);
         let Some((intrinsic_name, substs)) = resolve_rust_intrinsic(self.tcx, func_ty) else {
             return;

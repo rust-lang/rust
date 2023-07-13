@@ -358,7 +358,8 @@ impl<'tcx> TyCtxt<'tcx> {
             }
 
             let Some(item_id) = self.associated_item_def_ids(impl_did).first() else {
-                self.sess.delay_span_bug(self.def_span(impl_did), "Drop impl without drop function");
+                self.sess
+                    .delay_span_bug(self.def_span(impl_did), "Drop impl without drop function");
                 return;
             };
 

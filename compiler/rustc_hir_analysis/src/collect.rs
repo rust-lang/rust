@@ -1282,7 +1282,9 @@ fn suggest_impl_trait<'tcx>(
          item_ty: Ty<'tcx>| {
             let trait_name = tcx.item_name(trait_def_id);
             let args_tuple = substs.type_at(1);
-            let ty::Tuple(types) = *args_tuple.kind() else { return None; };
+            let ty::Tuple(types) = *args_tuple.kind() else {
+                return None;
+            };
             let types = types.make_suggestable(tcx, false)?;
             let maybe_ret =
                 if item_ty.is_unit() { String::new() } else { format!(" -> {item_ty}") };
@@ -1315,8 +1317,12 @@ fn suggest_impl_trait<'tcx>(
             format_as_parenthesized,
         ),
     ] {
-        let Some(trait_def_id) = trait_def_id else { continue; };
-        let Some(assoc_item_def_id) = assoc_item_def_id else { continue; };
+        let Some(trait_def_id) = trait_def_id else {
+            continue;
+        };
+        let Some(assoc_item_def_id) = assoc_item_def_id else {
+            continue;
+        };
         if tcx.def_kind(assoc_item_def_id) != DefKind::AssocTy {
             continue;
         }

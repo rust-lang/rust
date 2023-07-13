@@ -188,11 +188,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let hir = self.tcx.hir();
 
         // First, check that we're actually in the tail of a function.
-        let Some(body_id) = hir.maybe_body_owned_by(self.body_id) else { return; };
+        let Some(body_id) = hir.maybe_body_owned_by(self.body_id) else {
+            return;
+        };
         let body = hir.body(body_id);
-        let hir::ExprKind::Block(block, _) = body.value.kind else { return; };
-        let Some(hir::Stmt { kind: hir::StmtKind::Semi(last_expr), .. })
-            = block.innermost_block().stmts.last() else {  return; };
+        let hir::ExprKind::Block(block, _) = body.value.kind else {
+            return;
+        };
+        let Some(hir::Stmt { kind: hir::StmtKind::Semi(last_expr), .. }) =
+            block.innermost_block().stmts.last()
+        else {
+            return;
+        };
         if last_expr.hir_id != expr.hir_id {
             return;
         }
@@ -201,7 +208,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let Some(ret) = hir
             .find_by_def_id(self.body_id)
             .and_then(|owner| owner.fn_decl())
-            .map(|decl| decl.output.span()) else { return; };
+            .map(|decl| decl.output.span())
+        else {
+            return;
+        };
         let Expectation::IsLast(stmt) = expectation else {
             return;
         };
@@ -508,9 +518,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     span,
                     kind: TypeVariableOriginKind::OpaqueTypeInference(rpit_def_id),
                     ..
-                } = self.type_var_origin(expected)? else { return None; };
+                } = self.type_var_origin(expected)?
+                else {
+                    return None;
+                };
 
-                let Some(rpit_local_def_id) = rpit_def_id.as_local() else { return None; };
+                let Some(rpit_local_def_id) = rpit_def_id.as_local() else {
+                    return None;
+                };
                 if !matches!(
                     self.tcx.hir().expect_item(rpit_local_def_id).expect_opaque_ty().origin,
                     hir::OpaqueTyOrigin::FnReturn(..)

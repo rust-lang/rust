@@ -2460,8 +2460,11 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         F: FnOnce(&mut Self),
     {
         debug!("with_generic_param_rib");
-        let LifetimeRibKind::Generics { binder, span: generics_span, kind: generics_kind, .. }
-            = lifetime_kind else { panic!() };
+        let LifetimeRibKind::Generics { binder, span: generics_span, kind: generics_kind, .. } =
+            lifetime_kind
+        else {
+            panic!()
+        };
 
         let mut function_type_rib = Rib::new(kind);
         let mut function_value_rib = Rib::new(kind);
@@ -2972,7 +2975,9 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         F: FnOnce(Ident, String, Option<Symbol>) -> ResolutionError<'a>,
     {
         // If there is a TraitRef in scope for an impl, then the method must be in the trait.
-        let Some((module, _)) = self.current_trait_ref else { return; };
+        let Some((module, _)) = self.current_trait_ref else {
+            return;
+        };
         ident.span.normalize_to_macros_2_0_and_adjust(module.expansion);
         let key = BindingKey::new(ident, ns);
         let mut binding = self.r.resolution(module, key).try_borrow().ok().and_then(|r| r.binding);

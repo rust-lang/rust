@@ -1267,9 +1267,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 "you might have meant to specify type parameters on enum \
                                  `{type_name}`"
                             );
-                            let Some(args) = assoc_segment.args else { return; };
+                            let Some(args) = assoc_segment.args else {
+                                return;
+                            };
                             // Get the span of the generics args *including* the leading `::`.
-                            let args_span = assoc_segment.ident.span.shrink_to_hi().to(args.span_ext);
+                            let args_span =
+                                assoc_segment.ident.span.shrink_to_hi().to(args.span_ext);
                             if tcx.generics_of(adt_def.did()).count() == 0 {
                                 // FIXME(estebank): we could also verify that the arguments being
                                 // work for the `enum`, instead of just looking if it takes *any*.
@@ -1281,49 +1284,56 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 );
                                 return;
                             }
-                            let Ok(snippet) = tcx.sess.source_map().span_to_snippet(args_span) else {
+                            let Ok(snippet) = tcx.sess.source_map().span_to_snippet(args_span)
+                            else {
                                 err.note(msg);
                                 return;
                             };
-                            let (qself_sugg_span, is_self) = if let hir::TyKind::Path(
-                                hir::QPath::Resolved(_, path)
-                            ) = &qself.kind {
-                                // If the path segment already has type params, we want to overwrite
-                                // them.
-                                match &path.segments {
-                                    // `segment` is the previous to last element on the path,
-                                    // which would normally be the `enum` itself, while the last
-                                    // `_` `PathSegment` corresponds to the variant.
-                                    [.., hir::PathSegment {
-                                        ident,
-                                        args,
-                                        res: Res::Def(DefKind::Enum, _),
-                                        ..
-                                    }, _] => (
-                                        // We need to include the `::` in `Type::Variant::<Args>`
-                                        // to point the span to `::<Args>`, not just `<Args>`.
-                                        ident.span.shrink_to_hi().to(args.map_or(
-                                            ident.span.shrink_to_hi(),
-                                            |a| a.span_ext)),
-                                        false,
-                                    ),
-                                    [segment] => (
-                                        // We need to include the `::` in `Type::Variant::<Args>`
-                                        // to point the span to `::<Args>`, not just `<Args>`.
-                                        segment.ident.span.shrink_to_hi().to(segment.args.map_or(
-                                            segment.ident.span.shrink_to_hi(),
-                                            |a| a.span_ext)),
-                                        kw::SelfUpper == segment.ident.name,
-                                    ),
-                                    _ => {
-                                        err.note(msg);
-                                        return;
+                            let (qself_sugg_span, is_self) =
+                                if let hir::TyKind::Path(hir::QPath::Resolved(_, path)) =
+                                    &qself.kind
+                                {
+                                    // If the path segment already has type params, we want to overwrite
+                                    // them.
+                                    match &path.segments {
+                                        // `segment` is the previous to last element on the path,
+                                        // which would normally be the `enum` itself, while the last
+                                        // `_` `PathSegment` corresponds to the variant.
+                                        [
+                                            ..,
+                                            hir::PathSegment {
+                                                ident,
+                                                args,
+                                                res: Res::Def(DefKind::Enum, _),
+                                                ..
+                                            },
+                                            _,
+                                        ] => (
+                                            // We need to include the `::` in `Type::Variant::<Args>`
+                                            // to point the span to `::<Args>`, not just `<Args>`.
+                                            ident.span.shrink_to_hi().to(args
+                                                .map_or(ident.span.shrink_to_hi(), |a| a.span_ext)),
+                                            false,
+                                        ),
+                                        [segment] => (
+                                            // We need to include the `::` in `Type::Variant::<Args>`
+                                            // to point the span to `::<Args>`, not just `<Args>`.
+                                            segment.ident.span.shrink_to_hi().to(segment
+                                                .args
+                                                .map_or(segment.ident.span.shrink_to_hi(), |a| {
+                                                    a.span_ext
+                                                })),
+                                            kw::SelfUpper == segment.ident.name,
+                                        ),
+                                        _ => {
+                                            err.note(msg);
+                                            return;
+                                        }
                                     }
-                                }
-                            } else {
-                                err.note(msg);
-                                return;
-                            };
+                                } else {
+                                    err.note(msg);
+                                    return;
+                                };
                             let suggestion = vec![
                                 if is_self {
                                     // Account for people writing `Self::Variant::<Args>`, where
@@ -1455,7 +1465,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         };
 
         let trait_did = bound.def_id();
-        let Some(assoc_ty_did) = self.lookup_assoc_ty(assoc_ident, hir_ref_id, span, trait_did) else {
+        let Some(assoc_ty_did) = self.lookup_assoc_ty(assoc_ident, hir_ref_id, span, trait_did)
+        else {
             // Assume that if it's not matched, there must be a const defined with the same name
             // but it was used in a type position.
             let msg = format!("found associated const `{assoc_ident}` when type was expected");
@@ -1814,7 +1825,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
             debug!("qpath_to_ty: self.item_def_id()={:?}", def_id);
 
-            let parent_def_id = def_id.as_local().map(|def_id| tcx.hir().local_def_id_to_hir_id(def_id))
+            let parent_def_id = def_id
+                .as_local()
+                .map(|def_id| tcx.hir().local_def_id_to_hir_id(def_id))
                 .map(|hir_id| tcx.hir().get_parent_item(hir_id).to_def_id());
 
             debug!("qpath_to_ty: parent_def_id={:?}", parent_def_id);
@@ -1850,7 +1863,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 &[path_str],
                 item_segment.ident.name,
             );
-            return Ty::new_error(tcx,reported)
+            return Ty::new_error(tcx, reported);
         };
 
         debug!("qpath_to_ty: self_type={:?}", self_ty);
@@ -2688,7 +2701,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let hir = tcx.hir();
 
         let hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Fn(..), ident, .. }) =
-            hir.get(fn_hir_id) else { return None };
+            hir.get(fn_hir_id)
+        else {
+            return None;
+        };
         let i = hir.get_parent(fn_hir_id).expect_item().expect_impl();
 
         let trait_ref = self.instantiate_mono_trait_ref(

@@ -653,8 +653,7 @@ pub(crate) fn make_test(
             (found_main, found_extern_crate, found_macro)
         })
     });
-    let Ok((already_has_main, already_has_extern_crate, found_macro)) = result
-    else {
+    let Ok((already_has_main, already_has_extern_crate, found_macro)) = result else {
         // If the parser panicked due to a fatal error, pass the test code through unchanged.
         // The error will be reported during compilation.
         return (s.to_owned(), 0, false);

@@ -2713,12 +2713,16 @@ impl<'tcx> TyCtxt<'tcx> {
             return false;
         }
 
-        let Some(item) = self.opt_associated_item(def_id) else { return false; };
+        let Some(item) = self.opt_associated_item(def_id) else {
+            return false;
+        };
         if item.container != ty::AssocItemContainer::ImplContainer {
             return false;
         }
 
-        let Some(trait_item_def_id) = item.trait_item_def_id else { return false; };
+        let Some(trait_item_def_id) = item.trait_item_def_id else {
+            return false;
+        };
 
         return !self
             .associated_types_for_impl_traits_in_associated_fn(trait_item_def_id)

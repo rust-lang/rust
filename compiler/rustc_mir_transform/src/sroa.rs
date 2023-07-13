@@ -161,7 +161,9 @@ struct ReplacementMap<'tcx> {
 
 impl<'tcx> ReplacementMap<'tcx> {
     fn replace_place(&self, tcx: TyCtxt<'tcx>, place: PlaceRef<'tcx>) -> Option<Place<'tcx>> {
-        let &[PlaceElem::Field(f, _), ref rest @ ..] = place.projection else { return None; };
+        let &[PlaceElem::Field(f, _), ref rest @ ..] = place.projection else {
+            return None;
+        };
         let fields = self.fragments[place.local].as_ref()?;
         let (_, new_local) = fields[f]?;
         Some(Place { local: new_local, projection: tcx.mk_place_elems(&rest) })

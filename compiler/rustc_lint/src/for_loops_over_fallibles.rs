@@ -119,7 +119,9 @@ fn suggest_question_mark<'tcx>(
     span: Span,
 ) -> bool {
     let Some(body_id) = cx.enclosing_body else { return false };
-    let Some(into_iterator_did) = cx.tcx.get_diagnostic_item(sym::IntoIterator) else { return false };
+    let Some(into_iterator_did) = cx.tcx.get_diagnostic_item(sym::IntoIterator) else {
+        return false;
+    };
 
     if !cx.tcx.is_diagnostic_item(sym::Result, adt.did()) {
         return false;

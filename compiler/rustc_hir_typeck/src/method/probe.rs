@@ -1938,13 +1938,21 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     /// Determine if the associated item withe the given DefId matches
     /// the desired name via a doc alias.
     fn matches_by_doc_alias(&self, def_id: DefId) -> bool {
-        let Some(name) = self.method_name else { return false; };
-        let Some(local_def_id) = def_id.as_local() else { return false; };
+        let Some(name) = self.method_name else {
+            return false;
+        };
+        let Some(local_def_id) = def_id.as_local() else {
+            return false;
+        };
         let hir_id = self.fcx.tcx.hir().local_def_id_to_hir_id(local_def_id);
         let attrs = self.fcx.tcx.hir().attrs(hir_id);
         for attr in attrs {
-            let sym::doc = attr.name_or_empty() else { continue; };
-            let Some(values) = attr.meta_item_list() else { continue; };
+            let sym::doc = attr.name_or_empty() else {
+                continue;
+            };
+            let Some(values) = attr.meta_item_list() else {
+                continue;
+            };
             for v in values {
                 if v.name_or_empty() != sym::alias {
                     continue;

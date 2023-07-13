@@ -545,14 +545,17 @@ where
         // wrong type.
 
         let tcx = *self.tcx;
-        let Some(mut alloc) = self.get_place_alloc_mut(&MPlaceTy { mplace: dest, layout, align })? else {
+        let Some(mut alloc) =
+            self.get_place_alloc_mut(&MPlaceTy { mplace: dest, layout, align })?
+        else {
             // zero-sized access
             return Ok(());
         };
 
         match value {
             Immediate::Scalar(scalar) => {
-                let Abi::Scalar(s) = layout.abi else { span_bug!(
+                let Abi::Scalar(s) = layout.abi else {
+                    span_bug!(
                         self.cur_span(),
                         "write_immediate_to_mplace: invalid Scalar layout: {layout:#?}",
                     )
@@ -565,7 +568,8 @@ where
                 // We checked `ptr_align` above, so all fields will have the alignment they need.
                 // We would anyway check against `ptr_align.restrict_for_offset(b_offset)`,
                 // which `ptr.offset(b_offset)` cannot possibly fail to satisfy.
-                let Abi::ScalarPair(a, b) = layout.abi else { span_bug!(
+                let Abi::ScalarPair(a, b) = layout.abi else {
+                    span_bug!(
                         self.cur_span(),
                         "write_immediate_to_mplace: invalid ScalarPair layout: {:#?}",
                         layout

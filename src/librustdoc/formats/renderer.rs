@@ -77,8 +77,11 @@ pub(crate) fn run_format<'tcx, T: FormatRenderer<'tcx>>(
                 prof.generic_activity_with_arg("render_mod_item", item.name.unwrap().to_string());
 
             cx.mod_item_in(&item)?;
-            let (clean::StrippedItem(box clean::ModuleItem(module)) | clean::ModuleItem(module)) = *item.kind
-            else { unreachable!() };
+            let (clean::StrippedItem(box clean::ModuleItem(module)) | clean::ModuleItem(module)) =
+                *item.kind
+            else {
+                unreachable!()
+            };
             for it in module.items {
                 debug!("Adding {:?} to worklist", it.name);
                 work.push((cx.make_child_renderer(), it));

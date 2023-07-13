@@ -218,9 +218,9 @@ impl<'tcx> MirPass<'tcx> for DestinationPropagation {
                 if merged_locals.contains(*src) {
                     continue;
                 }
-                let Some(dest) =
-                    candidates.iter().find(|dest| !merged_locals.contains(**dest)) else {
-                        continue;
+                let Some(dest) = candidates.iter().find(|dest| !merged_locals.contains(**dest))
+                else {
+                    continue;
                 };
                 if !tcx.consider_optimizing(|| {
                     format!("{} round {}", tcx.def_path_str(def_id), round_count)
@@ -601,9 +601,7 @@ impl WriteInfo {
         rhs: &Operand<'tcx>,
         body: &Body<'tcx>,
     ) {
-        let Some(rhs) = rhs.place() else {
-            return
-        };
+        let Some(rhs) = rhs.place() else { return };
         if let Some(pair) = places_to_candidate_pair(lhs, rhs, body) {
             self.skip_pair = Some(pair);
         }

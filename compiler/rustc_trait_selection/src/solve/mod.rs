@@ -266,12 +266,11 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             return Err(NoSolution);
         }
 
-        let Certainty::Maybe(maybe_cause) = responses.iter().fold(
-            Certainty::AMBIGUOUS,
-            |certainty, response| {
+        let Certainty::Maybe(maybe_cause) =
+            responses.iter().fold(Certainty::AMBIGUOUS, |certainty, response| {
                 certainty.unify_with(response.value.certainty)
-            },
-        ) else {
+            })
+        else {
             bug!("expected flounder response to be ambiguous")
         };
 

@@ -560,7 +560,10 @@ fn lint_nan<'tcx>(
         let expr = expr.peel_blocks().peel_borrows();
         match expr.kind {
             ExprKind::Path(qpath) => {
-                let Some(def_id) = cx.typeck_results().qpath_res(&qpath, expr.hir_id).opt_def_id() else { return false; };
+                let Some(def_id) = cx.typeck_results().qpath_res(&qpath, expr.hir_id).opt_def_id()
+                else {
+                    return false;
+                };
 
                 matches!(cx.tcx.get_diagnostic_name(def_id), Some(sym::f32_nan | sym::f64_nan))
             }
@@ -1584,10 +1587,10 @@ impl<'tcx> LateLintPass<'tcx> for VariantSizeDifferences {
             let t = cx.tcx.type_of(it.owner_id).subst_identity();
             let ty = cx.tcx.erase_regions(t);
             let Ok(layout) = cx.layout_of(ty) else { return };
-            let Variants::Multiple {
-                    tag_encoding: TagEncoding::Direct, tag, ref variants, ..
-                } = &layout.variants else {
-                return
+            let Variants::Multiple { tag_encoding: TagEncoding::Direct, tag, ref variants, .. } =
+                &layout.variants
+            else {
+                return;
             };
 
             let tag_size = tag.size(&cx.tcx).bytes();
@@ -1760,8 +1763,13 @@ impl InvalidAtomicOrdering {
     }
 
     fn check_atomic_compare_exchange(cx: &LateContext<'_>, expr: &Expr<'_>) {
-        let Some((method, args)) = Self::inherent_atomic_method_call(cx, expr, &[sym::fetch_update, sym::compare_exchange, sym::compare_exchange_weak])
-            else {return };
+        let Some((method, args)) = Self::inherent_atomic_method_call(
+            cx,
+            expr,
+            &[sym::fetch_update, sym::compare_exchange, sym::compare_exchange_weak],
+        ) else {
+            return;
+        };
 
         let fail_order_arg = match method {
             sym::fetch_update => &args[1],

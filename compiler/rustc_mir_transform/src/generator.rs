@@ -1763,7 +1763,9 @@ fn check_suspend_tys<'tcx>(tcx: TyCtxt<'tcx>, layout: &GeneratorLayout<'tcx>, bo
             debug!(?decl);
 
             if !decl.ignore_for_traits && linted_tys.insert(decl.ty) {
-                let Some(hir_id) = decl.source_info.scope.lint_root(&body.source_scopes) else { continue };
+                let Some(hir_id) = decl.source_info.scope.lint_root(&body.source_scopes) else {
+                    continue;
+                };
 
                 check_must_not_suspend_ty(
                     tcx,

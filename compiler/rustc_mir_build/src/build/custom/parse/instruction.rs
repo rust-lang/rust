@@ -78,7 +78,7 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
                 span,
                 item_description: "no arms".to_string(),
                 expected: "at least one arm".to_string(),
-            })
+            });
         };
 
         let otherwise = &self.thir[*otherwise];
@@ -87,7 +87,7 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
                 span: otherwise.span,
                 item_description: format!("{:?}", otherwise.pattern.kind),
                 expected: "wildcard pattern".to_string(),
-            })
+            });
         };
         let otherwise = self.parse_block(otherwise.body)?;
 
@@ -100,7 +100,7 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
                     span: arm.pattern.span,
                     item_description: format!("{:?}", arm.pattern.kind),
                     expected: "constant pattern".to_string(),
-                })
+                });
             };
             values.push(value.eval_bits(self.tcx, self.param_env, arm.pattern.ty));
             targets.push(self.parse_block(arm.body)?);

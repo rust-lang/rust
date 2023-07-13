@@ -1366,7 +1366,7 @@ pub fn parse_macro_name_and_helper_attrs(
         return None;
     }
     let Some(trait_attr) = list[0].meta_item() else {
-        diag.emit_err(errors::NotAMetaItem {span: list[0].span()});
+        diag.emit_err(errors::NotAMetaItem { span: list[0].span() });
         return None;
     };
     let trait_ident = match trait_attr.ident() {

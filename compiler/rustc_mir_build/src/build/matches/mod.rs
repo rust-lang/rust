@@ -607,9 +607,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // };
                     // ```
                     if let Some(place) = initializer.try_to_place(self) {
-                        let LocalInfo::User(BindingForm::Var(
-                            VarBindingForm { opt_match_place: Some((ref mut match_place, _)), .. },
-                        )) = **self.local_decls[local].local_info.as_mut().assert_crate_local() else {
+                        let LocalInfo::User(BindingForm::Var(VarBindingForm {
+                            opt_match_place: Some((ref mut match_place, _)),
+                            ..
+                        })) = **self.local_decls[local].local_info.as_mut().assert_crate_local()
+                        else {
                             bug!("Let binding to non-user variable.")
                         };
                         *match_place = Some(place);

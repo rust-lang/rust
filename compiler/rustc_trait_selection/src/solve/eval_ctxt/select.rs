@@ -221,10 +221,7 @@ fn rematch_object<'tcx>(
     mut nested: Vec<PredicateObligation<'tcx>>,
 ) -> SelectionResult<'tcx, Selection<'tcx>> {
     let self_ty = goal.predicate.self_ty();
-    let ty::Dynamic(data, _, source_kind) = *self_ty.kind()
-    else {
-        bug!()
-    };
+    let ty::Dynamic(data, _, source_kind) = *self_ty.kind() else { bug!() };
     let source_trait_ref = data.principal().unwrap().with_self_ty(infcx.tcx, self_ty);
 
     let (is_upcasting, target_trait_ref_unnormalized) = if Some(goal.predicate.def_id())

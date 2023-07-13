@@ -281,7 +281,7 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
 
             let FlatSet::Elem(choice) = discr_value else {
                 // Do nothing if we don't know which branch will be taken.
-                return
+                return;
             };
 
             if target.value.map(|n| n == choice).unwrap_or(!handled) {

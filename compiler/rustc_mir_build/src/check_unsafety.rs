@@ -712,9 +712,7 @@ pub fn thir_check_unsafety(tcx: TyCtxt<'_>, def: LocalDefId) {
         return;
     }
 
-    let Ok((thir, expr)) = tcx.thir_body(def) else {
-        return
-    };
+    let Ok((thir, expr)) = tcx.thir_body(def) else { return };
     let thir = &thir.borrow();
     // If `thir` is empty, a type error occurred, skip this body.
     if thir.exprs.is_empty() {

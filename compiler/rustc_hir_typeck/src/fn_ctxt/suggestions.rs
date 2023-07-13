@@ -97,8 +97,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         found: Ty<'tcx>,
         can_satisfy: impl FnOnce(Ty<'tcx>) -> bool,
     ) -> bool {
-        let Some((def_id_or_name, output, inputs)) = self.extract_callable_info(found)
-            else { return false; };
+        let Some((def_id_or_name, output, inputs)) = self.extract_callable_info(found) else {
+            return false;
+        };
         if can_satisfy(output) {
             let (sugg_call, mut applicability) = match inputs.len() {
                 0 => ("".to_string(), Applicability::MachineApplicable),
@@ -180,10 +181,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         rhs_ty: Ty<'tcx>,
         can_satisfy: impl FnOnce(Ty<'tcx>, Ty<'tcx>) -> bool,
     ) -> bool {
-        let Some((_, lhs_output_ty, lhs_inputs)) = self.extract_callable_info(lhs_ty)
-            else { return false; };
-        let Some((_, rhs_output_ty, rhs_inputs)) = self.extract_callable_info(rhs_ty)
-            else { return false; };
+        let Some((_, lhs_output_ty, lhs_inputs)) = self.extract_callable_info(lhs_ty) else {
+            return false;
+        };
+        let Some((_, rhs_output_ty, rhs_inputs)) = self.extract_callable_info(rhs_ty) else {
+            return false;
+        };
 
         if can_satisfy(lhs_output_ty, rhs_output_ty) {
             let mut sugg = vec![];
@@ -635,7 +638,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // is and we were expecting a Box, ergo Pin<Box<expected>>, we
                 // can suggest Box::pin.
                 let parent = self.tcx.hir().parent_id(expr.hir_id);
-                let Some(Node::Expr(Expr { kind: ExprKind::Call(fn_name, _), .. })) = self.tcx.hir().find(parent) else {
+                let Some(Node::Expr(Expr { kind: ExprKind::Call(fn_name, _), .. })) =
+                    self.tcx.hir().find(parent)
+                else {
                     return false;
                 };
                 match fn_name.kind {
@@ -850,12 +855,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let Some(hir::Node::Item(hir::Item {
             kind:
                 hir::ItemKind::Fn(
-                    hir::FnSig { decl: hir::FnDecl { inputs: fn_parameters, output: fn_return, .. }, .. },
+                    hir::FnSig {
+                        decl: hir::FnDecl { inputs: fn_parameters, output: fn_return, .. },
+                        ..
+                    },
                     hir::Generics { params, predicates, .. },
                     _body_id,
                 ),
             ..
-        })) = fn_node else { return };
+        })) = fn_node
+        else {
+            return;
+        };
 
         if params.get(expected_ty_as_param.index as usize).is_none() {
             return;
@@ -1081,8 +1092,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr_ty: Ty<'tcx>,
         expected_ty: Ty<'tcx>,
     ) -> bool {
-        let ty::Adt(adt_def, substs) = expr_ty.kind() else { return false; };
-        let ty::Adt(expected_adt_def, expected_substs) = expected_ty.kind() else { return false; };
+        let ty::Adt(adt_def, substs) = expr_ty.kind() else {
+            return false;
+        };
+        let ty::Adt(expected_adt_def, expected_substs) = expected_ty.kind() else {
+            return false;
+        };
         if adt_def != expected_adt_def {
             return false;
         }
@@ -1205,7 +1220,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return false;
         }
 
-        let ty::Adt(def, _) = expr_ty.peel_refs().kind() else { return false; };
+        let ty::Adt(def, _) = expr_ty.peel_refs().kind() else {
+            return false;
+        };
         if !self.tcx.is_diagnostic_item(sym::Option, def.did()) {
             return false;
         }
@@ -1327,7 +1344,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 node: rustc_ast::LitKind::Int(lit, rustc_ast::LitIntType::Unsuffixed),
                 span,
             }) => {
-                let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(*span) else { return false; };
+                let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(*span) else {
+                    return false;
+                };
                 if !(snippet.starts_with("0x") || snippet.starts_with("0X")) {
                     return false;
                 }
@@ -1367,10 +1386,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         // Provided expression needs to be a literal `0`.
-        let ExprKind::Lit(Spanned {
-            node: rustc_ast::LitKind::Int(0, _),
-            span,
-        }) = expr.kind else {
+        let ExprKind::Lit(Spanned { node: rustc_ast::LitKind::Int(0, _), span }) = expr.kind else {
             return false;
         };
 
@@ -1401,7 +1417,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &hir::Expr<'_>,
         expected_ty: Ty<'tcx>,
     ) -> bool {
-        let Some((DefKind::AssocFn, old_def_id)) = self.typeck_results.borrow().type_dependent_def(expr.hir_id) else {
+        let Some((DefKind::AssocFn, old_def_id)) =
+            self.typeck_results.borrow().type_dependent_def(expr.hir_id)
+        else {
             return false;
         };
         let old_item_name = self.tcx.item_name(old_def_id);
@@ -1494,8 +1512,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         found_ty: Ty<'tcx>,
         expr: &hir::Expr<'_>,
     ) {
-        let hir::ExprKind::MethodCall(segment, callee_expr, &[], _) = expr.kind else { return; };
-        let Some(clone_trait_did) = self.tcx.lang_items().clone_trait() else { return; };
+        let hir::ExprKind::MethodCall(segment, callee_expr, &[], _) = expr.kind else {
+            return;
+        };
+        let Some(clone_trait_did) = self.tcx.lang_items().clone_trait() else {
+            return;
+        };
         let ty::Ref(_, pointee_ty, _) = found_ty.kind() else { return };
         let results = self.typeck_results.borrow();
         // First, look for a `Clone::clone` call

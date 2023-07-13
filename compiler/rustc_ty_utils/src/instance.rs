@@ -230,7 +230,8 @@ fn resolve_associated_item<'tcx>(
                     })
                 }
             } else if Some(trait_ref.def_id) == lang_items.future_trait() {
-                let ty::Generator(generator_def_id, substs, _) = *rcvr_substs.type_at(0).kind() else {
+                let ty::Generator(generator_def_id, substs, _) = *rcvr_substs.type_at(0).kind()
+                else {
                     bug!()
                 };
                 if Some(trait_item_id) == tcx.lang_items().future_poll_fn() {
@@ -243,7 +244,8 @@ fn resolve_associated_item<'tcx>(
                     Some(Instance::new(trait_item_id, rcvr_substs))
                 }
             } else if Some(trait_ref.def_id) == lang_items.gen_trait() {
-                let ty::Generator(generator_def_id, substs, _) = *rcvr_substs.type_at(0).kind() else {
+                let ty::Generator(generator_def_id, substs, _) = *rcvr_substs.type_at(0).kind()
+                else {
                     bug!()
                 };
                 if cfg!(debug_assertions) && tcx.item_name(trait_item_id) != sym::resume {

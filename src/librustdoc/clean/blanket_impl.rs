@@ -47,9 +47,13 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
 
                 // Require the type the impl is implemented on to match
                 // our type, and ignore the impl if there was a mismatch.
-                let Ok(eq_result) = infcx.at(&traits::ObligationCause::dummy(), param_env).eq(DefineOpaqueTypes::No, impl_trait_ref.self_ty(), impl_ty) else {
-                        continue
-                    };
+                let Ok(eq_result) = infcx.at(&traits::ObligationCause::dummy(), param_env).eq(
+                    DefineOpaqueTypes::No,
+                    impl_trait_ref.self_ty(),
+                    impl_ty,
+                ) else {
+                    continue;
+                };
                 let InferOk { value: (), obligations } = eq_result;
                 // FIXME(eddyb) ignoring `obligations` might cause false positives.
                 drop(obligations);

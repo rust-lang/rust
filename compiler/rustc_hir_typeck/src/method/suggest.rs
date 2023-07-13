@@ -1699,10 +1699,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// we try to suggest `rect.area()`
     pub(crate) fn suggest_assoc_method_call(&self, segs: &[PathSegment<'_>]) {
         debug!("suggest_assoc_method_call segs: {:?}", segs);
-        let [seg1, seg2] = segs else { return; };
+        let [seg1, seg2] = segs else {
+            return;
+        };
         let Some(mut diag) =
-                self.tcx.sess.diagnostic().steal_diagnostic(seg1.ident.span, StashKey::CallAssocMethod)
-                else { return };
+            self.tcx.sess.diagnostic().steal_diagnostic(seg1.ident.span, StashKey::CallAssocMethod)
+        else {
+            return;
+        };
 
         let map = self.infcx.tcx.hir();
         let body_id = self.tcx.hir().body_owned_by(self.body_id);
@@ -1839,17 +1843,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         item_name: Ident,
     ) {
         let tcx = self.tcx;
-        let SelfSource::MethodCall(expr) = source else { return; };
+        let SelfSource::MethodCall(expr) = source else {
+            return;
+        };
         let call_expr = tcx.hir().expect_expr(tcx.hir().parent_id(expr.hir_id));
 
-        let ty::Adt(kind, substs) = actual.kind() else { return; };
+        let ty::Adt(kind, substs) = actual.kind() else {
+            return;
+        };
         match kind.adt_kind() {
             ty::AdtKind::Enum => {
                 let matching_variants: Vec<_> = kind
                     .variants()
                     .iter()
                     .flat_map(|variant| {
-                        let [field] = &variant.fields.raw[..] else { return None; };
+                        let [field] = &variant.fields.raw[..] else {
+                            return None;
+                        };
                         let field_ty = field.ty(tcx, substs);
 
                         // Skip `_`, since that'll just lead to ambiguity.
@@ -1927,15 +1937,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Target wrapper types - types that wrap or pretend to wrap another type,
             // perhaps this inner type is meant to be called?
             ty::AdtKind::Struct | ty::AdtKind::Union => {
-                let [first] = ***substs else { return; };
-                let ty::GenericArgKind::Type(ty) = first.unpack() else { return; };
+                let [first] = ***substs else {
+                    return;
+                };
+                let ty::GenericArgKind::Type(ty) = first.unpack() else {
+                    return;
+                };
                 let Ok(pick) = self.lookup_probe_for_diagnostic(
                     item_name,
                     ty,
                     call_expr,
                     ProbeScope::TraitsInScope,
                     None,
-                )  else { return; };
+                ) else {
+                    return;
+                };
 
                 let name = self.ty_to_value_string(actual);
                 let inner_id = kind.did();
@@ -2100,7 +2116,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let Some(ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_pred))) =
                 pred.kind().no_bound_vars()
             else {
-                continue
+                continue;
             };
             let adt = match trait_pred.self_ty().ty_adt_def() {
                 Some(adt) if adt.did().is_local() => adt,
@@ -2197,7 +2213,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         item_name: Ident,
         expected: Expectation<'tcx>,
     ) {
-        let SelfSource::QPath(ty) = self_source else { return; };
+        let SelfSource::QPath(ty) = self_source else {
+            return;
+        };
         for (deref_ty, _) in self.autoderef(rustc_span::DUMMY_SP, rcvr_ty).skip(1) {
             if let Ok(pick) = self.probe_for_name(
                 Mode::Path,
@@ -2834,9 +2852,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         found: Ty<'tcx>,
         expected: Ty<'tcx>,
     ) -> bool {
-        let Some((_def_id_or_name, output, _inputs)) =
-            self.extract_callable_info(found) else {
-                return false;
+        let Some((_def_id_or_name, output, _inputs)) = self.extract_callable_info(found) else {
+            return false;
         };
 
         if !self.can_coerce(output, expected) {

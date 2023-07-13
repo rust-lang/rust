@@ -1060,11 +1060,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let size = Size::from_bytes(len);
         let Some(alloc_ref) = self.get_ptr_alloc_mut(ptr, size, Align::ONE)? else {
             // zero-sized access
-            assert_matches!(
-                src.next(),
-                None,
-                "iterator said it was empty but returned an element"
-            );
+            assert_matches!(src.next(), None, "iterator said it was empty but returned an element");
             return Ok(());
         };
 

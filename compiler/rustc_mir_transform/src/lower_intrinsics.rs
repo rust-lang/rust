@@ -251,7 +251,9 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                         if let (Some(target), Some(arg)) = (*target, args[0].place()) {
                             let ty::RawPtr(ty::TypeAndMut { ty: dest_ty, .. }) =
                                 destination.ty(local_decls, tcx).ty.kind()
-                            else { bug!(); };
+                            else {
+                                bug!();
+                            };
 
                             block.statements.push(Statement {
                                 source_info: terminator.source_info,

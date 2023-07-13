@@ -1750,7 +1750,9 @@ fn simd_contains(needle: &str, haystack: &str) -> Option<bool> {
         1
     } else {
         // try a few bytes in case first and last byte of the needle are the same
-        let Some(second_probe_offset) = (needle.len().saturating_sub(4)..needle.len()).rfind(|&idx| needle[idx] != first_probe) else {
+        let Some(second_probe_offset) =
+            (needle.len().saturating_sub(4)..needle.len()).rfind(|&idx| needle[idx] != first_probe)
+        else {
             // fall back to other search methods if we can't find any different bytes
             // since we could otherwise hit some degenerate cases
             return None;

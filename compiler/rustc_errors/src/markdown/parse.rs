@@ -272,7 +272,7 @@ fn parse_ordered_li(buf: &[u8]) -> Parsed<'_> {
 fn get_indented_section(buf: &[u8]) -> (&[u8], &[u8]) {
     let mut end = buf.len();
     for (idx, window) in buf.windows(2).enumerate() {
-        let &[ch, next_ch] = window else {unreachable!("always 2 elements")};
+        let &[ch, next_ch] = window else { unreachable!("always 2 elements") };
         if idx >= buf.len().saturating_sub(2) && next_ch == b'\n' {
             // End of stream
             end = buf.len().saturating_sub(1);

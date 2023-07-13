@@ -184,7 +184,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             }
             // Error with the pattern
             LookupResult::Exact(_) => {
-                let LookupResult::Parent(Some(mpi)) = self.move_data.rev_lookup.find(move_from.as_ref()) else {
+                let LookupResult::Parent(Some(mpi)) =
+                    self.move_data.rev_lookup.find(move_from.as_ref())
+                else {
                     // move_from should be a projection from match_place.
                     unreachable!("Probably not unreachable...");
                 };
@@ -494,8 +496,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             if let LocalInfo::User(BindingForm::Var(VarBindingForm { pat_span, .. })) =
                 *bind_to.local_info()
             {
-                let Ok(pat_snippet) =
-                    self.infcx.tcx.sess.source_map().span_to_snippet(pat_span) else { continue; };
+                let Ok(pat_snippet) = self.infcx.tcx.sess.source_map().span_to_snippet(pat_span)
+                else {
+                    continue;
+                };
                 let Some(stripped) = pat_snippet.strip_prefix('&') else {
                     suggestions.push((
                         bind_to.source_info.span.shrink_to_lo(),

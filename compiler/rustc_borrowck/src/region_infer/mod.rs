@@ -2058,10 +2058,17 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let mut extra_info = vec![];
         for constraint in path.iter() {
             let outlived = constraint.sub;
-            let Some(origin) = self.var_infos.get(outlived) else { continue; };
-            let RegionVariableOrigin::Nll(NllRegionVariableOrigin::Placeholder(p)) = origin.origin else { continue; };
+            let Some(origin) = self.var_infos.get(outlived) else {
+                continue;
+            };
+            let RegionVariableOrigin::Nll(NllRegionVariableOrigin::Placeholder(p)) = origin.origin
+            else {
+                continue;
+            };
             debug!(?constraint, ?p);
-            let ConstraintCategory::Predicate(span) = constraint.category else { continue; };
+            let ConstraintCategory::Predicate(span) = constraint.category else {
+                continue;
+            };
             extra_info.push(ExtraConstraintInfo::PlaceholderFromPredicate(span));
             // We only want to point to one
             break;

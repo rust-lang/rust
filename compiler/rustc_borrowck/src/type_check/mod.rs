@@ -2039,28 +2039,16 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
 
                     CastKind::PointerCoercion(PointerCoercion::MutToConstPointer) => {
-                        let ty::RawPtr(ty::TypeAndMut {
-                            ty: ty_from,
-                            mutbl: hir::Mutability::Mut,
-                        }) = op.ty(body, tcx).kind() else {
-                            span_mirbug!(
-                                self,
-                                rvalue,
-                                "unexpected base type for cast {:?}",
-                                ty,
-                            );
+                        let ty::RawPtr(ty::TypeAndMut { ty: ty_from, mutbl: hir::Mutability::Mut }) =
+                            op.ty(body, tcx).kind()
+                        else {
+                            span_mirbug!(self, rvalue, "unexpected base type for cast {:?}", ty,);
                             return;
                         };
-                        let ty::RawPtr(ty::TypeAndMut {
-                            ty: ty_to,
-                            mutbl: hir::Mutability::Not,
-                        }) = ty.kind() else {
-                            span_mirbug!(
-                                self,
-                                rvalue,
-                                "unexpected target type for cast {:?}",
-                                ty,
-                            );
+                        let ty::RawPtr(ty::TypeAndMut { ty: ty_to, mutbl: hir::Mutability::Not }) =
+                            ty.kind()
+                        else {
+                            span_mirbug!(self, rvalue, "unexpected target type for cast {:?}", ty,);
                             return;
                         };
                         if let Err(terr) = self.sub_types(

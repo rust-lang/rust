@@ -66,7 +66,11 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
         Some(ImplTraitInTraitData::Trait { opaque_def_id, fn_def_id }) => {
             let opaque_ty_id = tcx.hir().local_def_id_to_hir_id(opaque_def_id.expect_local());
             let opaque_ty_node = tcx.hir().get(opaque_ty_id);
-            let Node::Item(&Item { kind: ItemKind::OpaqueTy(OpaqueTy { lifetime_mapping, .. }), .. }) = opaque_ty_node else {
+            let Node::Item(&Item {
+                kind: ItemKind::OpaqueTy(OpaqueTy { lifetime_mapping, .. }),
+                ..
+            }) = opaque_ty_node
+            else {
                 bug!("unexpected {opaque_ty_node:?}")
             };
 
@@ -397,7 +401,9 @@ fn compute_bidirectional_outlives_predicates<'tcx>(
             continue;
         }
 
-        let Some(dup_index) = generics.param_def_id_to_index(icx.tcx, dup_def.to_def_id()) else { bug!() };
+        let Some(dup_index) = generics.param_def_id_to_index(icx.tcx, dup_def.to_def_id()) else {
+            bug!()
+        };
 
         let dup_region = ty::Region::new_early_bound(
             tcx,

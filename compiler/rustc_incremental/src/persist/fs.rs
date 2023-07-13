@@ -730,13 +730,13 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
             debug!("garbage_collect_session_directories() - inspecting: {}", directory_name);
 
             let Ok(timestamp) = extract_timestamp_from_session_dir(directory_name) else {
-            debug!(
-                "found session-dir with malformed timestamp: {}",
-                crate_directory.join(directory_name).display()
-            );
-            // Ignore it
-            return None;
-        };
+                debug!(
+                    "found session-dir with malformed timestamp: {}",
+                    crate_directory.join(directory_name).display()
+                );
+                // Ignore it
+                return None;
+            };
 
             if is_finalized(directory_name) {
                 let lock_file_path = crate_directory.join(lock_file_name);

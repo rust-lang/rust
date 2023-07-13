@@ -215,7 +215,9 @@ fn associated_types_for_impl_traits_in_associated_fn(
         }
 
         DefKind::Impl { .. } => {
-            let Some(trait_fn_def_id) = tcx.associated_item(fn_def_id).trait_item_def_id else { return &[] };
+            let Some(trait_fn_def_id) = tcx.associated_item(fn_def_id).trait_item_def_id else {
+                return &[];
+            };
 
             tcx.arena.alloc_from_iter(
                 tcx.associated_types_for_impl_traits_in_associated_fn(trait_fn_def_id).iter().map(

@@ -648,8 +648,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             let def_id = self.body.source.def_id();
             let hir_id = hir_map.local_def_id_to_hir_id(def_id.as_local().unwrap());
             let node = hir_map.find(hir_id);
-            let Some(hir::Node::Item(item)) = node else { return; };
-            let hir::ItemKind::Fn(.., body_id) = item.kind else { return; };
+            let Some(hir::Node::Item(item)) = node else {
+                return;
+            };
+            let hir::ItemKind::Fn(.., body_id) = item.kind else {
+                return;
+            };
             let body = self.infcx.tcx.hir().body(body_id);
 
             let mut v = V { assign_span: span, err, ty, suggested: false };

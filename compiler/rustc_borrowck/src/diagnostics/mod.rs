@@ -847,14 +847,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             kind: TerminatorKind::Call { fn_span, call_source, .. }, ..
         }) = &self.body[location.block].terminator
         {
-            let Some((method_did, method_substs)) =
-            rustc_middle::util::find_self_call(
-                    self.infcx.tcx,
-                    &self.body,
-                    target_temp,
-                    location.block,
-                )
-            else {
+            let Some((method_did, method_substs)) = rustc_middle::util::find_self_call(
+                self.infcx.tcx,
+                &self.body,
+                target_temp,
+                location.block,
+            ) else {
                 return normal_ret;
             };
 

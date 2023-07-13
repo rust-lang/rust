@@ -150,8 +150,8 @@ where
                 tcx.sess.create_err(Spanned { span, node: layout_error.into_diagnostic() });
             err.code(rustc_errors::error_code!(E0080));
             let Some((mut err, handler)) = err.into_diagnostic() else {
-                    panic!("did not emit diag");
-                };
+                panic!("did not emit diag");
+            };
             for frame in frames {
                 err.eager_subdiagnostic(handler, frame);
             }

@@ -66,13 +66,17 @@ fn get_rustfmt_version(build: &Builder<'_>) -> Option<(String, PathBuf)> {
 
 /// Return whether the format cache can be reused.
 fn verify_rustfmt_version(build: &Builder<'_>) -> bool {
-    let Some((version, stamp_file)) = get_rustfmt_version(build) else {return false;};
+    let Some((version, stamp_file)) = get_rustfmt_version(build) else {
+        return false;
+    };
     !program_out_of_date(&stamp_file, &version)
 }
 
 /// Updates the last rustfmt version used
 fn update_rustfmt_version(build: &Builder<'_>) {
-    let Some((version, stamp_file)) = get_rustfmt_version(build) else {return;};
+    let Some((version, stamp_file)) = get_rustfmt_version(build) else {
+        return;
+    };
     t!(std::fs::write(stamp_file, version))
 }
 

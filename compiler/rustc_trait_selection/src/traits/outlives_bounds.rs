@@ -83,7 +83,8 @@ impl<'a, 'tcx: 'a> InferCtxtExt<'a, 'tcx> for InferCtxt<'tcx> {
                 &canonical_var_values,
                 canonical_result,
                 &mut constraints,
-            ) else {
+            )
+        else {
             return vec![];
         };
         assert_eq!(&obligations, &[]);

@@ -362,12 +362,9 @@ pub fn normalize_param_env_or_error<'tcx>(
         "normalize_param_env_or_error: predicates=(non-outlives={:?}, outlives={:?})",
         predicates, outlives_predicates
     );
-    let Ok(non_outlives_predicates) = do_normalize_predicates(
-        tcx,
-        cause.clone(),
-        elaborated_env,
-        predicates,
-    ) else {
+    let Ok(non_outlives_predicates) =
+        do_normalize_predicates(tcx, cause.clone(), elaborated_env, predicates)
+    else {
         // An unnormalized env is better than nothing.
         debug!("normalize_param_env_or_error: errored resolving non-outlives predicates");
         return elaborated_env;
@@ -384,12 +381,9 @@ pub fn normalize_param_env_or_error<'tcx>(
         unnormalized_env.reveal(),
         unnormalized_env.constness(),
     );
-    let Ok(outlives_predicates) = do_normalize_predicates(
-        tcx,
-        cause,
-        outlives_env,
-        outlives_predicates,
-    ) else {
+    let Ok(outlives_predicates) =
+        do_normalize_predicates(tcx, cause, outlives_env, outlives_predicates)
+    else {
         // An unnormalized env is better than nothing.
         debug!("normalize_param_env_or_error: errored resolving outlives predicates");
         return elaborated_env;

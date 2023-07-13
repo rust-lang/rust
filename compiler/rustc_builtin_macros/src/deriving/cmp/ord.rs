@@ -61,8 +61,8 @@ pub fn cs_cmp(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) -> Bl
         |cx, fold| match fold {
             CsFold::Single(field) => {
                 let [other_expr] = &field.other_selflike_exprs[..] else {
-                        cx.span_bug(field.span, "not exactly 2 arguments in `derive(Ord)`");
-                    };
+                    cx.span_bug(field.span, "not exactly 2 arguments in `derive(Ord)`");
+                };
                 let args = thin_vec![field.self_expr.clone(), other_expr.clone()];
                 cx.expr_call_global(field.span, cmp_path.clone(), args)
             }

@@ -149,7 +149,7 @@ fn write_wrapping<B: io::Write>(
             let Some((end_idx, _ch)) = iter.nth(ch_count) else {
                 // Write entire line
                 buf.write_all(to_write.as_bytes())?;
-                cur.set(cur.get()+to_write.chars().count());
+                cur.set(cur.get() + to_write.chars().count());
                 break;
             };
 

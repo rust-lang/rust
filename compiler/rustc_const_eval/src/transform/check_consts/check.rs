@@ -778,8 +778,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             if trait_ref.self_ty().is_closure()
                                 && tcx.fn_trait_kind_from_def_id(trait_id).is_some() =>
                         {
-                            let ty::Closure(closure_def_id, substs) =
-                                *trait_ref.self_ty().kind()
+                            let ty::Closure(closure_def_id, substs) = *trait_ref.self_ty().kind()
                             else {
                                 unreachable!()
                             };

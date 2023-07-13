@@ -94,7 +94,9 @@ declare_lint_pass!(UnusedResults => [UNUSED_MUST_USE, UNUSED_RESULTS]);
 
 impl<'tcx> LateLintPass<'tcx> for UnusedResults {
     fn check_stmt(&mut self, cx: &LateContext<'_>, s: &hir::Stmt<'_>) {
-        let hir::StmtKind::Semi(mut expr) = s.kind else { return; };
+        let hir::StmtKind::Semi(mut expr) = s.kind else {
+            return;
+        };
 
         let mut expr_is_from_block = false;
         while let hir::ExprKind::Block(blk, ..) = expr.kind

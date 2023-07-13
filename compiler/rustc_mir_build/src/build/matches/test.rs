@@ -88,7 +88,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         switch_ty: Ty<'tcx>,
         options: &mut FxIndexMap<ConstantKind<'tcx>, u128>,
     ) -> bool {
-        let Some(match_pair) = candidate.match_pairs.iter().find(|mp| mp.place == *test_place) else {
+        let Some(match_pair) = candidate.match_pairs.iter().find(|mp| mp.place == *test_place)
+        else {
             return false;
         };
 
@@ -126,7 +127,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         candidate: &Candidate<'pat, 'tcx>,
         variants: &mut BitSet<VariantIdx>,
     ) -> bool {
-        let Some(match_pair) = candidate.match_pairs.iter().find(|mp| mp.place == *test_place) else {
+        let Some(match_pair) = candidate.match_pairs.iter().find(|mp| mp.place == *test_place)
+        else {
             return false;
         };
 

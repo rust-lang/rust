@@ -369,13 +369,9 @@ pub fn from_target_feature(
         // We allow comma separation to enable multiple features.
         target_features.extend(value.as_str().split(',').filter_map(|feature| {
             let Some(feature_gate) = supported_target_features.get(feature) else {
-                let msg =
-                    format!("the feature named `{}` is not valid for this target", feature);
+                let msg = format!("the feature named `{}` is not valid for this target", feature);
                 let mut err = tcx.sess.struct_span_err(item.span(), msg);
-                err.span_label(
-                    item.span(),
-                    format!("`{}` is not valid for this target", feature),
-                );
+                err.span_label(item.span(), format!("`{}` is not valid for this target", feature));
                 if let Some(stripped) = feature.strip_prefix('+') {
                     let valid = supported_target_features.contains_key(stripped);
                     if valid {
