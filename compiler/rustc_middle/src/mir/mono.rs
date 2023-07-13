@@ -56,12 +56,13 @@ impl<'tcx> MonoItem<'tcx> {
         }
     }
 
-    pub fn size_estimate(&self, tcx: TyCtxt<'tcx>) -> usize {
+    pub fn size_estimate(&self, _tcx: TyCtxt<'tcx>) -> usize {
         match *self {
-            MonoItem::Fn(instance) => {
+            MonoItem::Fn(_instance) => {
                 // Estimate the size of a function based on how many statements
                 // it contains.
-                tcx.instance_def_size_estimate(instance.def)
+                //tcx.instance_def_size_estimate(instance.def)
+                1
             }
             // Conservatively estimate the size of a static declaration
             // or assembly to be 1.
@@ -321,8 +322,7 @@ impl<'tcx> CodegenUnit<'tcx> {
     }
 
     pub fn compute_size_estimate(&mut self, tcx: TyCtxt<'tcx>) {
-        // Estimate the size of a codegen unit as (approximately) the number of MIR
-        // statements it corresponds to.
+        // Estimate the size of a codegen unit as the number of items in it.
         self.size_estimate = self.items.keys().map(|mi| mi.size_estimate(tcx)).sum();
     }
 
