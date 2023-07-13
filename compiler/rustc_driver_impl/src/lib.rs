@@ -841,7 +841,7 @@ fn print_crate_info(
             | TargetCPUs
             | StackProtectorStrategies
             | TargetFeatures => {
-                codegen_backend.print(*req, sess);
+                codegen_backend.print(*req, &mut crate_info, sess);
             }
             // Any output here interferes with Cargo's parsing of other printed output
             NativeStaticLibs => {}
