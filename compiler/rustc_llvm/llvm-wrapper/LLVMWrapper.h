@@ -11,6 +11,16 @@
 
 #include "llvm/IR/DIBuilder.h"
 
+// in case if with version change this constants
+// will come from other include file
+#ifndef LLVM_VERSION_MAJOR
+#error "LLVM_VERSION_MAJOR no defined"
+#endif
+
+#ifndef LLVM_VERSION_MINOR
+#error "LLVM_VERSION_MINOR no defined"
+#endif
+
 #define LLVM_VERSION_GE(major, minor)                                          \
   (LLVM_VERSION_MAJOR > (major) ||                                             \
    LLVM_VERSION_MAJOR == (major) && LLVM_VERSION_MINOR >= (minor))
