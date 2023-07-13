@@ -4,10 +4,8 @@ use clippy_utils::source::snippet;
 use rustc_errors::Applicability;
 use rustc_hir::Expr;
 use rustc_lint::LateContext;
-use rustc_middle::ty::adjustment::Adjust;
-use rustc_middle::ty::adjustment::Adjustment;
-use rustc_middle::ty::Ty;
-use rustc_middle::ty::{self, ExistentialPredicate};
+use rustc_middle::ty::adjustment::{Adjust, Adjustment};
+use rustc_middle::ty::{self, ExistentialPredicate, Ty};
 use rustc_span::{sym, Span};
 
 fn is_dyn_any(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {

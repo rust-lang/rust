@@ -4,10 +4,9 @@ use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{is_type_diagnostic_item, make_normalized_projection, make_projection};
 use clippy_utils::{
-    can_move_expr_to_closure, get_enclosing_block, get_parent_node, is_trait_method, path_to_local, path_to_local_id,
-    CaptureKind,
+    can_move_expr_to_closure, fn_def_id, get_enclosing_block, get_parent_node, higher, is_trait_method, path_to_local,
+    path_to_local_id, CaptureKind,
 };
-use clippy_utils::{fn_def_id, higher};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, MultiSpan};
 use rustc_hir::intravisit::{walk_block, walk_expr, Visitor};

@@ -3,10 +3,8 @@ use clippy_utils::source::snippet_opt;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::LateContext;
-use rustc_middle::{
-    mir::Mutability,
-    ty::{self, Ty, TypeAndMut},
-};
+use rustc_middle::mir::Mutability;
+use rustc_middle::ty::{self, Ty, TypeAndMut};
 
 use super::AS_PTR_CAST_MUT;
 

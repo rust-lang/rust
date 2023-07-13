@@ -1,23 +1,17 @@
 use std::ops::ControlFlow;
 
-use clippy_utils::{
-    diagnostics::span_lint_and_then,
-    is_path_lang_item, paths,
-    ty::match_type,
-    visitors::{for_each_expr, Visitable},
-};
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::ty::match_type;
+use clippy_utils::visitors::{for_each_expr, Visitable};
+use clippy_utils::{is_path_lang_item, paths};
 use rustc_ast::LitKind;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_hir::Block;
+use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{
-    def::{DefKind, Res},
-    Expr, ImplItemKind, LangItem, Node,
+    Block, Expr, ExprKind, Impl, ImplItem, ImplItemKind, Item, ItemKind, LangItem, Node, QPath, TyKind, VariantData,
 };
-use rustc_hir::{ExprKind, Impl, ItemKind, QPath, TyKind};
-use rustc_hir::{ImplItem, Item, VariantData};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::Ty;
-use rustc_middle::ty::TypeckResults;
+use rustc_middle::ty::{Ty, TypeckResults};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{sym, Span, Symbol};
 

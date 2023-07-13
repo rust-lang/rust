@@ -1,5 +1,6 @@
 use ast::{AttrStyle, Attribute};
-use clippy_utils::{diagnostics::span_lint_and_sugg, is_from_proc_macro};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::is_from_proc_macro;
 use rustc_ast as ast;
 use rustc_errors::Applicability;
 use rustc_lint::{LateContext, LateLintPass, LintContext};

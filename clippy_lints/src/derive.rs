@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_note, span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::paths;
 use clippy_utils::ty::{implements_trait, implements_trait_with_env, is_copy};
-use clippy_utils::{is_lint_allowed, match_def_path};
+use clippy_utils::{is_lint_allowed, match_def_path, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;

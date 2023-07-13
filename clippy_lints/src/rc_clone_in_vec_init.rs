@@ -1,10 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::VecArgs;
-use clippy_utils::last_path_segment;
 use clippy_utils::macros::root_macro_call_first_node;
-use clippy_utils::paths;
 use clippy_utils::source::{indent_of, snippet};
 use clippy_utils::ty::match_type;
+use clippy_utils::{last_path_segment, paths};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, QPath, TyKind};
 use rustc_lint::{LateContext, LateLintPass};

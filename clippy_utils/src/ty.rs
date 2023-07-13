@@ -9,18 +9,16 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Expr, FnDecl, LangItem, TyKind, Unsafety};
-use rustc_infer::infer::{
-    type_variable::{TypeVariableOrigin, TypeVariableOriginKind},
-    TyCtxtInferExt,
-};
+use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
+use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::{
-    self, layout::ValidityRequirement, AdtDef, AliasTy, AssocKind, Binder, BoundRegion, FnSig, IntTy, List, ParamEnv,
+    self, AdtDef, AliasTy, AssocKind, Binder, BoundRegion, FnSig, GenericArg, GenericArgKind, IntTy, List, ParamEnv,
     Region, RegionKind, SubstsRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
     UintTy, VariantDef, VariantDiscr,
 };
-use rustc_middle::ty::{GenericArg, GenericArgKind};
 use rustc_span::symbol::Ident;
 use rustc_span::{sym, Span, Symbol, DUMMY_SP};
 use rustc_target::abi::{Size, VariantIdx};

@@ -14,10 +14,8 @@ use rustc_ast::{
     FormatArgPosition, FormatArgPositionKind, FormatArgsPiece, FormatArgumentKind, FormatCount, FormatOptions,
     FormatPlaceholder, FormatTrait,
 };
-use rustc_errors::{
-    Applicability,
-    SuggestionStyle::{CompletelyHidden, ShowCode},
-};
+use rustc_errors::Applicability;
+use rustc_errors::SuggestionStyle::{CompletelyHidden, ShowCode};
 use rustc_hir::{Expr, ExprKind, LangItem};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment};

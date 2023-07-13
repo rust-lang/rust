@@ -12,14 +12,14 @@
 use crate::ty::{all_predicates_of, is_copy};
 use crate::visitors::is_const_evaluatable;
 use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{walk_expr, Visitor};
-use rustc_hir::{def_id::DefId, Block, Expr, ExprKind, QPath, UnOp};
+use rustc_hir::{Block, Expr, ExprKind, QPath, UnOp};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_span::{sym, Symbol};
-use std::cmp;
-use std::ops;
+use std::{cmp, ops};
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 enum EagernessSuggestion {

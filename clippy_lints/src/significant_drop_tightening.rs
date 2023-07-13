@@ -1,20 +1,17 @@
-use clippy_utils::{
-    diagnostics::span_lint_and_then,
-    expr_or_init, get_attr, path_to_local,
-    source::{indent_of, snippet},
-};
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::source::{indent_of, snippet};
+use clippy_utils::{expr_or_init, get_attr, path_to_local};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_errors::Applicability;
-use rustc_hir::{
-    self as hir,
-    def::{DefKind, Res},
-    intravisit::{walk_expr, Visitor},
-};
+use rustc_hir::def::{DefKind, Res};
+use rustc_hir::intravisit::{walk_expr, Visitor};
+use rustc_hir::{self as hir};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::ty::{subst::GenericArgKind, Ty, TypeAndMut};
+use rustc_middle::ty::subst::GenericArgKind;
+use rustc_middle::ty::{Ty, TypeAndMut};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::sym;
-use rustc_span::{symbol::Ident, Span, DUMMY_SP};
+use rustc_span::symbol::Ident;
+use rustc_span::{sym, Span, DUMMY_SP};
 use std::borrow::Cow;
 
 declare_clippy_lint! {

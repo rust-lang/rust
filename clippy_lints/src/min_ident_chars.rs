@@ -1,10 +1,9 @@
-use clippy_utils::{diagnostics::span_lint, is_from_proc_macro};
+use clippy_utils::diagnostics::span_lint;
+use clippy_utils::is_from_proc_macro;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_hir::{
-    def::{DefKind, Res},
-    intravisit::{walk_item, Visitor},
-    GenericParamKind, HirId, Item, ItemKind, ItemLocalId, Node, Pat, PatKind,
-};
+use rustc_hir::def::{DefKind, Res};
+use rustc_hir::intravisit::{walk_item, Visitor};
+use rustc_hir::{GenericParamKind, HirId, Item, ItemKind, ItemLocalId, Node, Pat, PatKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_tool_lint, impl_lint_pass};

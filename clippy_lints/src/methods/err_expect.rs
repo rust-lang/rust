@@ -1,8 +1,7 @@
 use super::ERR_EXPECT;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::ty::has_debug_impl;
-use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::ty::{has_debug_impl, is_type_diagnostic_item};
 use rustc_errors::Applicability;
 use rustc_lint::LateContext;
 use rustc_middle::ty;

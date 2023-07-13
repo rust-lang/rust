@@ -15,16 +15,14 @@ use crate::config::LintcheckConfig;
 use crate::recursive::LintcheckServer;
 
 use std::collections::{HashMap, HashSet};
-use std::env;
 use std::env::consts::EXE_SUFFIX;
 use std::fmt::{self, Write as _};
-use std::fs;
 use std::io::{self, ErrorKind};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::thread;
 use std::time::Duration;
+use std::{env, fs, thread};
 
 use cargo_metadata::diagnostic::{Diagnostic, DiagnosticLevel};
 use cargo_metadata::Message;

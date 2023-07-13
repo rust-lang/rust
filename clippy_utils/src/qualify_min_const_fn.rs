@@ -15,9 +15,9 @@ use rustc_middle::mir::{
     Terminator, TerminatorKind,
 };
 use rustc_middle::traits::{ImplSource, ObligationCause};
+use rustc_middle::ty::adjustment::PointerCast;
 use rustc_middle::ty::subst::GenericArgKind;
-use rustc_middle::ty::{self, adjustment::PointerCast, Ty, TyCtxt};
-use rustc_middle::ty::{BoundConstness, TraitRef};
+use rustc_middle::ty::{self, BoundConstness, TraitRef, Ty, TyCtxt};
 use rustc_semver::RustcVersion;
 use rustc_span::symbol::sym;
 use rustc_span::Span;

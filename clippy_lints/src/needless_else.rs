@@ -1,5 +1,5 @@
-use clippy_utils::source::snippet_opt;
-use clippy_utils::{diagnostics::span_lint_and_sugg, source::trim_span};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::source::{snippet_opt, trim_span};
 use rustc_ast::ast::{Expr, ExprKind};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};

@@ -1,7 +1,9 @@
-use clippy_utils::{
-    diagnostics::span_lint_and_then, get_trait_def_id, higher::VecArgs, macros::root_macro_call_first_node,
-    source::snippet_opt, ty::implements_trait,
-};
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::get_trait_def_id;
+use clippy_utils::higher::VecArgs;
+use clippy_utils::macros::root_macro_call_first_node;
+use clippy_utils::source::snippet_opt;
+use clippy_utils::ty::implements_trait;
 use rustc_ast::{LitIntType, LitKind, UintTy};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, LangItem, QPath};

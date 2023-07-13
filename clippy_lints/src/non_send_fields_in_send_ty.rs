@@ -7,7 +7,8 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{FieldDef, Item, ItemKind, Node};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty::{self, subst::GenericArgKind, Ty};
+use rustc_middle::ty::subst::GenericArgKind;
+use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::sym;
 

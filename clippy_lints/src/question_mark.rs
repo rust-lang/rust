@@ -4,10 +4,9 @@ use clippy_utils::msrvs::Msrv;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{
-    eq_expr_value, get_parent_node, in_constant, is_else_clause, is_res_lang_ctor, pat_and_expr_can_be_question_mark,
-    path_to_local, path_to_local_id, peel_blocks, peel_blocks_with_stmt,
+    eq_expr_value, get_parent_node, higher, in_constant, is_else_clause, is_path_lang_item, is_res_lang_ctor,
+    pat_and_expr_can_be_question_mark, path_to_local, path_to_local_id, peel_blocks, peel_blocks_with_stmt,
 };
-use clippy_utils::{higher, is_path_lang_item};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
@@ -17,9 +16,9 @@ use rustc_hir::{
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::Ty;
-use rustc_session::declare_tool_lint;
-use rustc_session::impl_lint_pass;
-use rustc_span::{sym, symbol::Symbol};
+use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_span::sym;
+use rustc_span::symbol::Symbol;
 
 declare_clippy_lint! {
     /// ### What it does

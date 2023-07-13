@@ -1,15 +1,15 @@
-use clippy_utils::{
-    diagnostics::{span_lint_and_sugg, span_lint_and_then},
-    get_parent_node, is_res_lang_ctor, last_path_segment, path_res,
-    ty::implements_trait,
-};
+use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::ty::implements_trait;
+use clippy_utils::{get_parent_node, is_res_lang_ctor, last_path_segment, path_res};
 use rustc_errors::Applicability;
-use rustc_hir::{def::Res, Expr, ExprKind, ImplItem, ImplItemKind, ItemKind, LangItem, Node, UnOp};
+use rustc_hir::def::Res;
+use rustc_hir::{Expr, ExprKind, ImplItem, ImplItemKind, ItemKind, LangItem, Node, UnOp};
 use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::EarlyBinder;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::{sym, symbol::kw};
+use rustc_span::sym;
+use rustc_span::symbol::kw;
 
 declare_clippy_lint! {
     /// ### What it does

@@ -74,8 +74,7 @@ pub use self::hir_utils::{
 use core::ops::ControlFlow;
 use std::collections::hash_map::Entry;
 use std::hash::BuildHasherDefault;
-use std::sync::OnceLock;
-use std::sync::{Mutex, MutexGuard};
+use std::sync::{Mutex, MutexGuard, OnceLock};
 
 use if_chain::if_chain;
 use itertools::Itertools;
@@ -87,8 +86,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use rustc_hir::hir_id::{HirIdMap, HirIdSet};
 use rustc_hir::intravisit::{walk_expr, FnKind, Visitor};
-use rustc_hir::LangItem::OptionSome;
-use rustc_hir::LangItem::{OptionNone, ResultErr, ResultOk};
+use rustc_hir::LangItem::{OptionNone, OptionSome, ResultErr, ResultOk};
 use rustc_hir::{
     self as hir, def, Arm, ArrayLen, BindingAnnotation, Block, BlockCheckMode, Body, Closure, Destination, Expr,
     ExprKind, FnDecl, HirId, Impl, ImplItem, ImplItemKind, ImplItemRef, IsAsync, Item, ItemKind, LangItem, Local,
@@ -106,15 +104,14 @@ use rustc_middle::ty::fast_reject::SimplifiedType::{
     ArraySimplifiedType, BoolSimplifiedType, CharSimplifiedType, FloatSimplifiedType, IntSimplifiedType,
     PtrSimplifiedType, SliceSimplifiedType, StrSimplifiedType, UintSimplifiedType,
 };
+use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{
-    layout::IntegerExt, BorrowKind, ClosureKind, Ty, TyCtxt, TypeAndMut, TypeVisitableExt, UpvarCapture,
+    BorrowKind, ClosureKind, FloatTy, IntTy, Ty, TyCtxt, TypeAndMut, TypeVisitableExt, UintTy, UpvarCapture,
 };
-use rustc_middle::ty::{FloatTy, IntTy, UintTy};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::SourceMap;
-use rustc_span::sym;
 use rustc_span::symbol::{kw, Ident, Symbol};
-use rustc_span::Span;
+use rustc_span::{sym, Span};
 use rustc_target::abi::Integer;
 
 use crate::consts::{constant, miri_to_const, Constant};
