@@ -898,7 +898,10 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for BoundVarReplacer<'_, 'tcx> {
                 if debruijn.as_usize() + 1
                     > self.current_index.as_usize() + self.universe_indices.len() =>
             {
-                bug!("Bound vars outside of `self.universe_indices`");
+                bug!(
+                    "Bound vars {r:#?} outside of `self.universe_indices`: {:#?}",
+                    self.universe_indices
+                );
             }
             ty::ReLateBound(debruijn, br) if debruijn >= self.current_index => {
                 let universe = self.universe_for(debruijn);
@@ -916,7 +919,10 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for BoundVarReplacer<'_, 'tcx> {
                 if debruijn.as_usize() + 1
                     > self.current_index.as_usize() + self.universe_indices.len() =>
             {
-                bug!("Bound vars outside of `self.universe_indices`");
+                bug!(
+                    "Bound vars {t:#?} outside of `self.universe_indices`: {:#?}",
+                    self.universe_indices
+                );
             }
             ty::Bound(debruijn, bound_ty) if debruijn >= self.current_index => {
                 let universe = self.universe_for(debruijn);
@@ -935,7 +941,10 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for BoundVarReplacer<'_, 'tcx> {
                 if debruijn.as_usize() + 1
                     > self.current_index.as_usize() + self.universe_indices.len() =>
             {
-                bug!("Bound vars outside of `self.universe_indices`");
+                bug!(
+                    "Bound vars {ct:#?} outside of `self.universe_indices`: {:#?}",
+                    self.universe_indices
+                );
             }
             ty::ConstKind::Bound(debruijn, bound_const) if debruijn >= self.current_index => {
                 let universe = self.universe_for(debruijn);
