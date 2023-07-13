@@ -956,6 +956,14 @@ pub trait LintContext: Sized {
                     db.span_note(glob_reexport_span, format!("the name `{}` in the {} namespace is supposed to be publicly re-exported here", name, namespace));
                     db.span_note(private_item_span, "but the private item here shadows it".to_owned());
                 }
+                BuiltinLintDiagnostics::UnusedQualifications { path_span, unqualified_path } => {
+                    db.span_suggestion_verbose(
+                        path_span,
+                        "replace it with the unqualified path",
+                        unqualified_path,
+                        Applicability::MachineApplicable
+                    );
+                }
             }
             // Rewrap `db`, and pass control to the user.
             decorate(db)

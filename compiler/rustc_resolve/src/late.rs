@@ -3922,11 +3922,15 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             };
             if res == unqualified_result {
                 let lint = lint::builtin::UNUSED_QUALIFICATIONS;
-                self.r.lint_buffer.buffer_lint(
+                self.r.lint_buffer.buffer_lint_with_diagnostic(
                     lint,
                     finalize.node_id,
                     finalize.path_span,
                     "unnecessary qualification",
+                    lint::BuiltinLintDiagnostics::UnusedQualifications {
+                        path_span: finalize.path_span,
+                        unqualified_path: path.last().unwrap().ident
+                    }
                 )
             }
         }

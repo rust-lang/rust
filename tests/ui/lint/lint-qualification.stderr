@@ -9,6 +9,10 @@ note: the lint level is defined here
    |
 LL | #![deny(unused_qualifications)]
    |         ^^^^^^^^^^^^^^^^^^^^^
+help: replace it with the unqualified path
+   |
+LL |     bar();
+   |     ~~~
 
 error: aborting due to previous error
 
