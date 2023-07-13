@@ -26,7 +26,7 @@ pub(crate) struct SyntaxFixups {
 /// This is the information needed to reverse the fixups.
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct SyntaxFixupUndoInfo {
-    original: Vec<Subtree>,
+    original: Box<[Subtree]>,
 }
 
 const EMPTY_ID: SyntheticTokenId = SyntheticTokenId(!0);
@@ -272,7 +272,7 @@ pub(crate) fn fixup_syntax(node: &SyntaxNode) -> SyntaxFixups {
         replace,
         token_map,
         next_id,
-        undo_info: SyntaxFixupUndoInfo { original },
+        undo_info: SyntaxFixupUndoInfo { original: original.into_boxed_slice() },
     }
 }
 

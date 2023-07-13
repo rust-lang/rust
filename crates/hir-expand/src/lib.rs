@@ -127,7 +127,8 @@ impl_intern_key!(MacroCallId);
 pub struct MacroCallLoc {
     pub def: MacroDefId,
     pub(crate) krate: CrateId,
-    /// Some if `def` is a builtin eager macro.
+    /// Some if this is a macro call for an eager macro. Note that this is `None`
+    /// for the eager input macro file.
     eager: Option<Box<EagerCallInfo>>,
     pub kind: MacroCallKind,
 }
@@ -152,12 +153,10 @@ pub enum MacroDefKind {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct EagerCallInfo {
-    /// NOTE: This can be *either* the expansion result, *or* the argument to the eager macro!
+    /// The expanded argument of the eager macro.
     arg: Arc<(tt::Subtree, TokenMap)>,
     /// Call id of the eager macro's input file (this is the macro file for its fully expanded input).
-    /// If this is none, `arg` contains the pre-expanded input, otherwise arg contains the
-    /// post-expanded input.
-    arg_id: Option<MacroCallId>,
+    arg_id: MacroCallId,
     error: Option<ExpandError>,
 }
 
@@ -222,11 +221,7 @@ impl HirFileId {
                 HirFileIdRepr::FileId(id) => break id,
                 HirFileIdRepr::MacroFile(MacroFile { macro_call_id }) => {
                     let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_call_id);
-                    let is_include_expansion = loc.def.is_include()
-                        && matches!(
-                            loc.eager.as_deref(),
-                            Some(EagerCallInfo { arg_id: Some(_), .. })
-                        );
+                    let is_include_expansion = loc.def.is_include() && loc.eager.is_some();
                     file_id = match is_include_expansion.then(|| db.include_expand(macro_call_id)) {
                         Some(Ok((_, file))) => file.into(),
                         _ => loc.kind.file_id(),
@@ -325,7 +320,7 @@ impl HirFileId {
         match self.macro_file() {
             Some(macro_file) => {
                 let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_file.macro_call_id);
-                matches!(loc.eager.as_deref(), Some(EagerCallInfo { .. }))
+                matches!(loc.def.kind, MacroDefKind::BuiltInEager(..))
             }
             _ => false,
         }
@@ -709,9 +704,7 @@ impl ExpansionInfo {
         let loc = db.lookup_intern_macro_call(call_id);
 
         // Special case: map tokens from `include!` expansions to the included file
-        if loc.def.is_include()
-            && matches!(loc.eager.as_deref(), Some(EagerCallInfo { arg_id: Some(_), .. }))
-        {
+        if loc.def.is_include() {
             if let Ok((tt_and_map, file_id)) = db.include_expand(call_id) {
                 let range = tt_and_map.1.first_range_by_token(token_id, token.value.kind())?;
                 let source = db.parse(file_id);
@@ -761,22 +754,17 @@ impl ExpansionInfo {
 
         let arg_tt = loc.kind.arg(db)?;
 
-        let macro_def = db.macro_def(loc.def);
+        let macro_def = db.macro_expander(loc.def);
         let (parse, exp_map) = db.parse_macro_expansion(macro_file).value;
         let expanded = InMacroFile { file_id: macro_file, value: parse.syntax_node() };
 
-        let macro_arg = db
-            .macro_arg(match loc.eager.as_deref() {
-                Some(&EagerCallInfo { arg_id: Some(_), .. }) => return None,
-                _ => macro_file.macro_call_id,
-            })
-            .unwrap_or_else(|| {
-                Arc::new((
-                    tt::Subtree { delimiter: tt::Delimiter::UNSPECIFIED, token_trees: Vec::new() },
-                    Default::default(),
-                    Default::default(),
-                ))
-            });
+        let macro_arg = db.macro_arg(macro_file.macro_call_id).value.unwrap_or_else(|| {
+            Arc::new((
+                tt::Subtree { delimiter: tt::Delimiter::UNSPECIFIED, token_trees: Vec::new() },
+                Default::default(),
+                Default::default(),
+            ))
+        });
 
         let def = loc.def.ast_id().left().and_then(|id| {
             let def_tt = match id.to_node(db) {

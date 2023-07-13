@@ -235,10 +235,10 @@ macro_rules! format_args {
 
 fn main() {
     /* error: no rule matches input tokens */;
-    /* error: no rule matches input tokens */;
-    /* error: no rule matches input tokens */;
-    /* error: no rule matches input tokens */::core::fmt::Arguments::new_v1(&["", ], &[::core::fmt::ArgumentV1::new(&(), ::core::fmt::Display::fmt), ]);
-    /* error: no rule matches input tokens */;
+    /* error: expected expression */;
+    /* error: expected expression, expected COMMA */;
+    /* error: expected expression */::core::fmt::Arguments::new_v1(&["", ], &[::core::fmt::ArgumentV1::new(&(), ::core::fmt::Display::fmt), ]);
+    /* error: expected expression, expected R_PAREN */;
     ::core::fmt::Arguments::new_v1(&["", ], &[::core::fmt::ArgumentV1::new(&(5), ::core::fmt::Display::fmt), ]);
 }
 "##]],
@@ -364,7 +364,7 @@ macro_rules! format_args {
 
 fn main() {
     let _ =
-        /* error: no rule matches input tokens *//* parse error: expected field name or number */
+        /* error: expected field name or number *//* parse error: expected field name or number */
 ::core::fmt::Arguments::new_v1(&["", " ", ], &[::core::fmt::ArgumentV1::new(&(a.), ::core::fmt::Display::fmt), ::core::fmt::ArgumentV1::new(&(), ::core::fmt::Debug::fmt), ]);
 }
 "##]],

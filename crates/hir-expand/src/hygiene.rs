@@ -194,9 +194,9 @@ fn make_hygiene_info(
         _ => None,
     });
 
-    let macro_def = db.macro_def(loc.def);
+    let macro_def = db.macro_expander(loc.def);
     let (_, exp_map) = db.parse_macro_expansion(macro_file).value;
-    let macro_arg = db.macro_arg(macro_file.macro_call_id).unwrap_or_else(|| {
+    let macro_arg = db.macro_arg(macro_file.macro_call_id).value.unwrap_or_else(|| {
         Arc::new((
             tt::Subtree { delimiter: tt::Delimiter::UNSPECIFIED, token_trees: Vec::new() },
             Default::default(),

@@ -200,7 +200,7 @@ impl RootDatabase {
             hir_db::AstIdMapQuery
             // hir_db::ParseMacroExpansionQuery
             // hir_db::InternMacroCallQuery
-            hir_db::MacroArgTextQuery
+            hir_db::MacroArgNodeQuery
             hir_db::DeclMacroExpanderQuery
             // hir_db::MacroExpandQuery
             hir_db::ExpandProcMacroQuery
