@@ -1,4 +1,7 @@
 use super::with;
+use crate::rustc_internal::Opaque;
+
+type Const = Opaque;
 
 #[derive(Copy, Clone, Debug)]
 pub struct Ty(pub usize);
@@ -21,6 +24,9 @@ pub enum RigidTy {
     Int(IntTy),
     Uint(UintTy),
     Float(FloatTy),
+    Str,
+    Array(Ty, Const),
+    Slice(Ty),
     Tuple(Vec<Ty>),
 }
 
