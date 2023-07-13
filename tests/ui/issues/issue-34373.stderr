@@ -1,9 +1,14 @@
-error[E0391]: cycle detected when computing type of `Foo::T`. see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information.
+error[E0391]: cycle detected when computing type of `Foo::T`
   --> $DIR/issue-34373.rs:7:30
    |
 LL | pub struct Foo<T = Box<Trait<DefaultFoo>>>;
    |                              ^^^^^^^^^^
    |
+note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+  --> $DIR/issue-34373.rs:7:30
+   |
+LL | pub struct Foo<T = Box<Trait<DefaultFoo>>>;
+   |                              ^^^^^^^^^^
 note: ...which requires expanding type alias `DefaultFoo`...
   --> $DIR/issue-34373.rs:8:19
    |

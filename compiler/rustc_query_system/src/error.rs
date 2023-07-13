@@ -46,6 +46,7 @@ pub struct CycleUsage {
 #[derive(Diagnostic)]
 #[diag(query_system_cycle, code = "E0391")]
 pub struct Cycle {
+    #[note]
     #[primary_span]
     pub span: Span,
     pub stack_bottom: String,

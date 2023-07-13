@@ -1,9 +1,14 @@
-error[E0391]: cycle detected when computing type of `cycle1::{opaque#0}`. see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information.
+error[E0391]: cycle detected when computing type of `cycle1::{opaque#0}`
   --> $DIR/auto-trait-leak.rs:11:16
    |
 LL | fn cycle1() -> impl Clone {
    |                ^^^^^^^^^^
    |
+note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+  --> $DIR/auto-trait-leak.rs:11:16
+   |
+LL | fn cycle1() -> impl Clone {
+   |                ^^^^^^^^^^
 note: ...which requires type-checking `cycle1`...
   --> $DIR/auto-trait-leak.rs:14:5
    |
@@ -34,12 +39,17 @@ LL | |     Rc::new(String::from("foo"))
 LL | | }
    | |_^
 
-error[E0391]: cycle detected when computing type of `cycle1::{opaque#0}`. see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information.
+error[E0391]: cycle detected when computing type of `cycle1::{opaque#0}`
   --> $DIR/auto-trait-leak.rs:11:16
    |
 LL | fn cycle1() -> impl Clone {
    |                ^^^^^^^^^^
    |
+note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+  --> $DIR/auto-trait-leak.rs:11:16
+   |
+LL | fn cycle1() -> impl Clone {
+   |                ^^^^^^^^^^
 note: ...which requires type-checking `cycle1`...
   --> $DIR/auto-trait-leak.rs:14:5
    |

@@ -1,9 +1,14 @@
-error[E0391]: cycle detected when resolving instance `<LazyUpdim<'_, T, <T as TensorDimension>::DIM, DIM> as TensorDimension>::DIM`. see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information.
+error[E0391]: cycle detected when resolving instance `<LazyUpdim<'_, T, <T as TensorDimension>::DIM, DIM> as TensorDimension>::DIM`
   --> $DIR/issue-83765.rs:5:5
    |
 LL |     const DIM: usize;
    |     ^^^^^^^^^^^^^^^^
    |
+note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+  --> $DIR/issue-83765.rs:5:5
+   |
+LL |     const DIM: usize;
+   |     ^^^^^^^^^^^^^^^^
 note: ...which requires computing candidate for `<LazyUpdim<'_, T, <T as TensorDimension>::DIM, DIM> as TensorDimension>`...
   --> $DIR/issue-83765.rs:4:1
    |

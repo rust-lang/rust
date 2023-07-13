@@ -1,9 +1,14 @@
-error[E0391]: cycle detected when const-evaluating + checking `FOO`. see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information.
+error[E0391]: cycle detected when const-evaluating + checking `FOO`
   --> $DIR/issue-17252.rs:1:20
    |
 LL | const FOO: usize = FOO;
    |                    ^^^
    |
+note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+  --> $DIR/issue-17252.rs:1:20
+   |
+LL | const FOO: usize = FOO;
+   |                    ^^^
    = note: ...which immediately requires const-evaluating + checking `FOO` again
 note: cycle used when const-evaluating + checking `main::{constant#0}`
   --> $DIR/issue-17252.rs:4:18

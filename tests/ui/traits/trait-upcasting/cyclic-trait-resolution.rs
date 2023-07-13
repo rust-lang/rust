@@ -1,5 +1,5 @@
 trait A: B + A {}
-//~^ ERROR cycle detected when computing the super predicates of `A`. see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information. [E0391]
+//~^ ERROR cycle detected when computing the super predicates of `A` [E0391]
 
 trait B {}
 

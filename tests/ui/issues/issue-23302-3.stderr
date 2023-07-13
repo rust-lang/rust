@@ -1,9 +1,14 @@
-error[E0391]: cycle detected when const-evaluating + checking `A`. see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information.
+error[E0391]: cycle detected when const-evaluating + checking `A`
   --> $DIR/issue-23302-3.rs:1:16
    |
 LL | const A: i32 = B;
    |                ^
    |
+note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+  --> $DIR/issue-23302-3.rs:1:16
+   |
+LL | const A: i32 = B;
+   |                ^
 note: ...which requires const-evaluating + checking `B`...
   --> $DIR/issue-23302-3.rs:3:16
    |

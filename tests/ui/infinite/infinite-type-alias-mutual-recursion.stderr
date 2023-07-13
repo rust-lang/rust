@@ -1,9 +1,14 @@
-error[E0391]: cycle detected when expanding type alias `X1`. see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information.
+error[E0391]: cycle detected when expanding type alias `X1`
   --> $DIR/infinite-type-alias-mutual-recursion.rs:1:11
    |
 LL | type X1 = X2;
    |           ^^
    |
+note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+  --> $DIR/infinite-type-alias-mutual-recursion.rs:1:11
+   |
+LL | type X1 = X2;
+   |           ^^
 note: ...which requires expanding type alias `X2`...
   --> $DIR/infinite-type-alias-mutual-recursion.rs:3:11
    |

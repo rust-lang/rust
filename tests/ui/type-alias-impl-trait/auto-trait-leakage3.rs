@@ -5,8 +5,8 @@
 
 mod m {
     pub type Foo = impl std::fmt::Debug;
-    //~^ ERROR: cycle detected when computing type of `m::Foo::{opaque#0}`. see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information. [E0391]
-    //~| ERROR: cycle detected when computing type of `m::Foo::{opaque#0}`. see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information. [E0391]
+    //~^ ERROR: cycle detected when computing type of `m::Foo::{opaque#0}` [E0391]
+    //~| ERROR: cycle detected when computing type of `m::Foo::{opaque#0}` [E0391]
 
     pub fn foo() -> Foo {
         22_u32
