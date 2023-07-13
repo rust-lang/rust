@@ -1,4 +1,4 @@
-use crate::rustc_internal::Opaque;
+use crate::stable_mir::ty::Region;
 use crate::stable_mir::{self, ty::Ty};
 
 #[derive(Clone, Debug)]
@@ -136,8 +136,6 @@ pub enum Statement {
     Assign(Place, Rvalue),
     Nop,
 }
-
-type Region = Opaque;
 
 // FIXME this is incomplete
 #[derive(Clone, Debug)]

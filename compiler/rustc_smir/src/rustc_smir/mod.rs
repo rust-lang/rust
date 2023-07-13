@@ -122,7 +122,9 @@ impl<'tcx> Tables<'tcx> {
             ty::RawPtr(ty::TypeAndMut { ty, mutbl }) => {
                 TyKind::RigidTy(RigidTy::RawPtr(self.intern_ty(*ty), mutbl.stable()))
             }
-            ty::Ref(_, _, _) => todo!(),
+            ty::Ref(region, ty, mutbl) => {
+                TyKind::RigidTy(RigidTy::Ref(opaque(region), self.intern_ty(*ty), mutbl.stable()))
+            }
             ty::FnDef(_, _) => todo!(),
             ty::FnPtr(_) => todo!(),
             ty::Dynamic(_, _, _) => todo!(),

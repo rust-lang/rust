@@ -1,7 +1,5 @@
-use super::{with, DefId};
+use super::{mir::Mutability, with, DefId};
 use crate::rustc_internal::Opaque;
-
-type Const = Opaque;
 
 #[derive(Copy, Clone, Debug)]
 pub struct Ty(pub usize);
@@ -13,14 +11,12 @@ impl Ty {
 }
 
 type Const = Opaque;
-type Region = Opaque;
+pub(crate) type Region = Opaque;
 
 #[derive(Clone, Debug)]
 pub enum TyKind {
     RigidTy(RigidTy),
 }
-
-type Region = Opaque;
 
 #[derive(Clone, Debug)]
 pub enum RigidTy {
@@ -34,6 +30,7 @@ pub enum RigidTy {
     Array(Ty, Const),
     Slice(Ty),
     RawPtr(Ty, Mutability),
+    Ref(Region, Ty, Mutability),
     Tuple(Vec<Ty>),
 }
 
