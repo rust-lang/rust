@@ -130,7 +130,7 @@ of a checkout. It also looks up the appropriate version of `python` to use.
 You can install it with `cargo install --path src/tools/x`.
 
 To clarify that this is another global installed binary util, which is
-similar to the fromer `x` declared in section [What is `x.py`](#what-is-xpy) but
+similar to the former `x` declared in section [What is `x.py`](#what-is-xpy) but
 it works as an independent process to execute the `x.py` rather than calling the 
 shell to run the platform related scripts.
 
