@@ -110,7 +110,8 @@ mod c_char_definition {
                     target_arch = "powerpc64",
                     target_arch = "s390x",
                     target_arch = "riscv64",
-                    target_arch = "riscv32"
+                    target_arch = "riscv32",
+                    target_arch = "csky"
                 )
             ),
             all(target_os = "android", any(target_arch = "aarch64", target_arch = "arm")),

@@ -17,6 +17,7 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 - AVR
 - MSP430
 - M68k
+- CSKY
 - s390x
 
 ## Register classes
@@ -46,6 +47,8 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | M68k         | `reg`          | `d[0-7]`, `a[0-7]`                 | `r`                  |
 | M68k         | `reg_data`     | `d[0-7]`                           | `d`                  |
 | M68k         | `reg_addr`     | `a[0-3]`                           | `a`                  |
+| CSKY         | `reg`          | `r[0-31]`                          | `r`                  |
+| CSKY         | `freg`         | `f[0-31]`                          | `f`                  |
 | s390x        | `reg`          | `r[0-10]`, `r[12-14]`              | `r`                  |
 | s390x        | `freg`         | `f[0-15]`                          | `f`                  |
 
@@ -79,6 +82,8 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | MSP430       | `reg`                           | None           | `i8`, `i16`                             |
 | M68k         | `reg`, `reg_addr`               | None           | `i16`, `i32`                            |
 | M68k         | `reg_data`                      | None           | `i8`, `i16`, `i32`                      |
+| CSKY         | `reg`                           | None           | `i8`, `i16`, `i32`, `i64`               |
+| CSKY         | `freg`                          | None           | `f32`, `f64`                            |
 | s390x        | `reg`                           | None           | `i8`, `i16`, `i32`, `i64`               |
 | s390x        | `freg`                          | None           | `f32`, `f64`                            |
 
@@ -102,6 +107,10 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | M68k         | `a5`          | `bp`      |
 | M68k         | `a6`          | `fp`      |
 | M68k         | `a7`          | `sp`, `usp`, `ssp`, `isp` |
+| CSKY         | `r14`         | `sp`      |
+| CSKY         | `r15`         | `lr`      |
+| CSKY         | `r28`         | `gb`, `rgb`, `rdb` |
+| CSKY         | `r31`         | `tls`     |
 
 > **Notes**:
 > - TI does not mandate a frame pointer for MSP430, but toolchains are allowed

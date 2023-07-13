@@ -261,6 +261,7 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 InlineAsmArch::M68k => {
                     constraints.push("~{ccr}".to_string());
                 }
+                InlineAsmArch::CSKY => {} // https://github.com/llvm/llvm-project/blob/8b76aea8d8b1b71f6220bc2845abc749f18a19b7/clang/lib/Basic/Targets/CSKY.h getClobers()
             }
         }
         if !options.contains(InlineAsmOptions::NOMEM) {
@@ -693,6 +694,8 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'_>>) ->
             InlineAsmRegClass::M68k(M68kInlineAsmRegClass::reg) => "r",
             InlineAsmRegClass::M68k(M68kInlineAsmRegClass::reg_addr) => "a",
             InlineAsmRegClass::M68k(M68kInlineAsmRegClass::reg_data) => "d",
+            InlineAsmRegClass::CSKY(CSKYInlineAsmRegClass::reg) => "r",
+            InlineAsmRegClass::CSKY(CSKYInlineAsmRegClass::freg) => "f",
             InlineAsmRegClass::SpirV(SpirVInlineAsmRegClass::reg) => {
                 bug!("LLVM backend does not support SPIR-V")
             }
@@ -792,6 +795,7 @@ fn modifier_to_llvm(
             bug!("LLVM backend does not support SPIR-V")
         }
         InlineAsmRegClass::M68k(_) => None,
+        InlineAsmRegClass::CSKY(_) => None,
         InlineAsmRegClass::Err => unreachable!(),
     }
 }
@@ -868,6 +872,8 @@ fn dummy_output_type<'ll>(cx: &CodegenCx<'ll, '_>, reg: InlineAsmRegClass) -> &'
         InlineAsmRegClass::M68k(M68kInlineAsmRegClass::reg) => cx.type_i32(),
         InlineAsmRegClass::M68k(M68kInlineAsmRegClass::reg_addr) => cx.type_i32(),
         InlineAsmRegClass::M68k(M68kInlineAsmRegClass::reg_data) => cx.type_i32(),
+        InlineAsmRegClass::CSKY(CSKYInlineAsmRegClass::reg) => cx.type_i32(),
+        InlineAsmRegClass::CSKY(CSKYInlineAsmRegClass::freg) => cx.type_f32(),
         InlineAsmRegClass::SpirV(SpirVInlineAsmRegClass::reg) => {
             bug!("LLVM backend does not support SPIR-V")
         }
