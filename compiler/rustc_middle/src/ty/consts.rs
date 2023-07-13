@@ -294,6 +294,14 @@ impl<'tcx> Const<'tcx> {
         Self::from_bits(tcx, n as u128, ParamEnv::empty().and(tcx.types.usize))
     }
 
+    /// Attempts to convert to a `ValTree`
+    pub fn try_to_valtree(self) -> Option<ty::ValTree<'tcx>> {
+        match self.kind() {
+            ty::ConstKind::Value(valtree) => Some(valtree),
+            _ => None,
+        }
+    }
+
     #[inline]
     /// Attempts to evaluate the given constant to bits. Can fail to evaluate in the presence of
     /// generics (or erroneous code) or if the value can't be represented as bits (e.g. because it

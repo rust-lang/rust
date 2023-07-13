@@ -78,6 +78,7 @@ mod rustc {
     use rustc_middle::ty::ParamEnv;
     use rustc_middle::ty::Ty;
     use rustc_middle::ty::TyCtxt;
+    use rustc_middle::ty::ValTree;
 
     /// The source and destination types of a transmutation.
     #[derive(TypeVisitable, Debug, Clone, Copy)]
@@ -148,7 +149,17 @@ mod rustc {
             );
 
             let variant = adt_def.non_enum_variant();
-            let fields = c.to_valtree().unwrap_branch();
+            let fields = match c.try_to_valtree() {
+                Some(ValTree::Branch(branch)) => branch,
+                _ => {
+                    return Some(Self {
+                        alignment: true,
+                        lifetimes: true,
+                        safety: true,
+                        validity: true,
+                    });
+                }
+            };
 
             let get_field = |name| {
                 let (field_idx, _) = variant
