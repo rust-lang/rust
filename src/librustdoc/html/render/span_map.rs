@@ -1,11 +1,11 @@
-use crate::clean::{self, PrimitiveType};
+use crate::clean::{self, rustc_span, PrimitiveType};
 use crate::html::sources;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{ExprKind, HirId, Mod, Node};
+use rustc_hir::{ExprKind, HirId, Item, ItemKind, Mod, Node};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::hygiene::MacroKind;
@@ -25,6 +25,7 @@ pub(crate) enum LinkFromSrc {
     Local(clean::Span),
     External(DefId),
     Primitive(PrimitiveType),
+    Doc(DefId),
 }
 
 /// This function will do at most two things:
@@ -65,24 +66,43 @@ struct SpanMapVisitor<'tcx> {
 impl<'tcx> SpanMapVisitor<'tcx> {
     /// This function is where we handle `hir::Path` elements and add them into the "span map".
     fn handle_path(&mut self, path: &rustc_hir::Path<'_>) {
-        let info = match path.res {
+        match path.res {
             // FIXME: For now, we handle `DefKind` if it's not a `DefKind::TyParam`.
             // Would be nice to support them too alongside the other `DefKind`
             // (such as primitive types!).
-            Res::Def(kind, def_id) if kind != DefKind::TyParam => Some(def_id),
-            Res::Local(_) => None,
+            Res::Def(kind, def_id) if kind != DefKind::TyParam => {
+                let link = if def_id.as_local().is_some() {
+                    LinkFromSrc::Local(rustc_span(def_id, self.tcx))
+                } else {
+                    LinkFromSrc::External(def_id)
+                };
+                self.matches.insert(path.span, link);
+            }
+            Res::Local(_) => {
+                if let Some(span) = self.tcx.hir().res_span(path.res) {
+                    self.matches.insert(path.span, LinkFromSrc::Local(clean::Span::new(span)));
+                }
+            }
             Res::PrimTy(p) => {
                 // FIXME: Doesn't handle "path-like" primitives like arrays or tuples.
                 self.matches.insert(path.span, LinkFromSrc::Primitive(PrimitiveType::from(p)));
-                return;
             }
-            Res::Err => return,
-            _ => return,
-        };
-        if let Some(span) = self.tcx.hir().res_span(path.res) {
-            self.matches.insert(path.span, LinkFromSrc::Local(clean::Span::new(span)));
-        } else if let Some(def_id) = info {
-            self.matches.insert(path.span, LinkFromSrc::External(def_id));
+            Res::Err => {}
+            _ => {}
+        }
+    }
+
+    /// Used to generate links on items' definition to go to their documentation page.
+    pub(crate) fn extract_info_from_hir_id(&mut self, hir_id: HirId) {
+        if let Some(Node::Item(item)) = self.tcx.hir().find(hir_id) {
+            if let Some(span) = self.tcx.def_ident_span(item.owner_id) {
+                let cspan = clean::Span::new(span);
+                // If the span isn't from the current crate, we ignore it.
+                if cspan.inner().is_dummy() || cspan.cnum(self.tcx.sess) != LOCAL_CRATE {
+                    return;
+                }
+                self.matches.insert(span, LinkFromSrc::Doc(item.owner_id.to_def_id()));
+            }
         }
     }
 
@@ -117,10 +137,13 @@ impl<'tcx> SpanMapVisitor<'tcx> {
             _ => return true,
         };
         let link_from_src = match data.macro_def_id {
-            Some(macro_def_id) if macro_def_id.is_local() => {
-                LinkFromSrc::Local(clean::Span::new(data.def_site))
+            Some(macro_def_id) => {
+                if macro_def_id.is_local() {
+                    LinkFromSrc::Local(clean::Span::new(data.def_site))
+                } else {
+                    LinkFromSrc::External(macro_def_id)
+                }
             }
-            Some(macro_def_id) => LinkFromSrc::External(macro_def_id),
             None => return true,
         };
         let new_span = data.call_site;
@@ -160,6 +183,9 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
                     LinkFromSrc::Local(clean::Span::new(m.spans.inner_span)),
                 );
             }
+        } else {
+            // If it's a "mod foo {}", we want to look to its documentation page.
+            self.extract_info_from_hir_id(id);
         }
         intravisit::walk_mod(self, m, id);
     }
@@ -176,18 +202,41 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
                 .tcx
                 .typeck_body(hir.maybe_body_owned_by(body_id).expect("a body which isn't a body"));
             if let Some(def_id) = typeck_results.type_dependent_def_id(expr.hir_id) {
-                self.matches.insert(
-                    segment.ident.span,
-                    match hir.span_if_local(def_id) {
-                        Some(span) => LinkFromSrc::Local(clean::Span::new(span)),
-                        None => LinkFromSrc::External(def_id),
-                    },
-                );
+                let link = if def_id.as_local().is_some() {
+                    LinkFromSrc::Local(rustc_span(def_id, self.tcx))
+                } else {
+                    LinkFromSrc::External(def_id)
+                };
+                self.matches.insert(segment.ident.span, link);
             }
         } else if self.handle_macro(expr.span) {
             // We don't want to go deeper into the macro.
             return;
         }
         intravisit::walk_expr(self, expr);
+    }
+
+    fn visit_item(&mut self, item: &'tcx Item<'tcx>) {
+        match item.kind {
+            ItemKind::Static(_, _, _)
+            | ItemKind::Const(_, _)
+            | ItemKind::Fn(_, _, _)
+            | ItemKind::Macro(_, _)
+            | ItemKind::TyAlias(_, _)
+            | ItemKind::Enum(_, _)
+            | ItemKind::Struct(_, _)
+            | ItemKind::Union(_, _)
+            | ItemKind::Trait(_, _, _, _, _)
+            | ItemKind::TraitAlias(_, _) => self.extract_info_from_hir_id(item.hir_id()),
+            ItemKind::Impl(_)
+            | ItemKind::Use(_, _)
+            | ItemKind::ExternCrate(_)
+            | ItemKind::ForeignMod { .. }
+            | ItemKind::GlobalAsm(_)
+            | ItemKind::OpaqueTy(_)
+            // We already have "visit_mod" above so no need to check it here.
+            | ItemKind::Mod(_) => {}
+        }
+        intravisit::walk_item(self, item);
     }
 }
