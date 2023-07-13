@@ -1502,6 +1502,7 @@ impl Build {
                 }
             }
         }
+        ret.sort_unstable_by_key(|krate| krate.name); // reproducible order needed for tests
         ret
     }
 
