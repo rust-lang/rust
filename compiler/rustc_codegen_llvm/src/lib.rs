@@ -320,7 +320,7 @@ impl CodegenBackend for LlvmCodegenBackend {
 "#
                 );
             }
-            req => llvm_util::print(req, sess),
+            req => llvm_util::print(req, out, sess),
         }
     }
 
