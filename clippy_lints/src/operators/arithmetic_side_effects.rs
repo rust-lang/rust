@@ -19,8 +19,8 @@ use rustc_span::{
 const HARD_CODED_ALLOWED_BINARY: &[[&str; 2]] = &[
     ["f32", "f32"],
     ["f64", "f64"],
-    ["std::num::Saturating", "std::num::Saturating"],
-    ["std::num::Wrapping", "std::num::Wrapping"],
+    ["std::num::Saturating", "*"],
+    ["std::num::Wrapping", "*"],
     ["std::string::String", "str"],
 ];
 const HARD_CODED_ALLOWED_UNARY: &[&str] = &["f32", "f64", "std::num::Saturating", "std::num::Wrapping"];
