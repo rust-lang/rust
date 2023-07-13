@@ -1,5 +1,6 @@
 use std::ops::ControlFlow;
 
+use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, InferOk};
 use rustc_infer::traits::util::supertraits;
@@ -11,7 +12,7 @@ use rustc_middle::traits::{
     ImplSource, ImplSourceObjectData, ImplSourceTraitUpcastingData, ImplSourceUserDefinedData,
     ObligationCause, SelectionError,
 };
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::DUMMY_SP;
 
 use crate::solve::assembly::{BuiltinImplSource, Candidate, CandidateSource};
@@ -112,6 +113,12 @@ impl<'tcx> InferCtxtSelectExt<'tcx> for InferCtxt<'tcx> {
                     BuiltinImplSource::Object | BuiltinImplSource::TraitUpcasting,
                 ),
             ) => rematch_object(self, goal, nested_obligations),
+
+            (Certainty::Maybe(_), CandidateSource::BuiltinImpl(BuiltinImplSource::Misc))
+                if self.tcx.lang_items().unsize_trait() == Some(goal.predicate.def_id()) =>
+            {
+                rematch_unsize(self, goal, nested_obligations)
+            }
 
             // Technically some builtin impls have nested obligations, but if
             // `Certainty::Yes`, then they should've all been verified and don't
@@ -232,6 +239,9 @@ fn rematch_object<'tcx>(
     {
         assert_eq!(source_kind, ty::Dyn, "cannot upcast dyn*");
         if let ty::Dynamic(data, _, ty::Dyn) = goal.predicate.trait_ref.substs.type_at(1).kind() {
+            // FIXME: We also need to ensure that the source lifetime outlives the
+            // target lifetime. This doesn't matter for codegen, though, and only
+            // *really* matters if the goal's certainty is ambiguous.
             (true, data.principal().unwrap().with_self_ty(infcx.tcx, self_ty))
         } else {
             bug!()
@@ -304,4 +314,137 @@ fn rematch_object<'tcx>(
     } else {
         ImplSource::Object(ImplSourceObjectData { vtable_base, nested })
     }))
+}
+
+/// The `Unsize` trait is particularly important to coercion, so we try rematch it.
+/// NOTE: This must stay in sync with `consider_builtin_unsize_candidate` in trait
+/// goal assembly in the solver, both for soundness and in order to avoid ICEs.
+fn rematch_unsize<'tcx>(
+    infcx: &InferCtxt<'tcx>,
+    goal: Goal<'tcx, ty::TraitPredicate<'tcx>>,
+    mut nested: Vec<PredicateObligation<'tcx>>,
+) -> SelectionResult<'tcx, Selection<'tcx>> {
+    let tcx = infcx.tcx;
+    let a_ty = goal.predicate.self_ty();
+    let b_ty = goal.predicate.trait_ref.substs.type_at(1);
+
+    match (a_ty.kind(), b_ty.kind()) {
+        (_, &ty::Dynamic(data, region, ty::Dyn)) => {
+            // Check that the type implements all of the predicates of the def-id.
+            // (i.e. the principal, all of the associated types match, and any auto traits)
+            nested.extend(data.iter().map(|pred| {
+                Obligation::new(
+                    infcx.tcx,
+                    ObligationCause::dummy(),
+                    goal.param_env,
+                    pred.with_self_ty(tcx, a_ty),
+                )
+            }));
+            // The type must be Sized to be unsized.
+            let sized_def_id = tcx.require_lang_item(hir::LangItem::Sized, None);
+            nested.push(Obligation::new(
+                infcx.tcx,
+                ObligationCause::dummy(),
+                goal.param_env,
+                ty::TraitRef::new(tcx, sized_def_id, [a_ty]),
+            ));
+            // The type must outlive the lifetime of the `dyn` we're unsizing into.
+            nested.push(Obligation::new(
+                infcx.tcx,
+                ObligationCause::dummy(),
+                goal.param_env,
+                ty::Binder::dummy(ty::OutlivesPredicate(a_ty, region)),
+            ));
+        }
+        // `[T; n]` -> `[T]` unsizing
+        (&ty::Array(a_elem_ty, ..), &ty::Slice(b_elem_ty)) => {
+            nested.extend(
+                infcx
+                    .at(&ObligationCause::dummy(), goal.param_env)
+                    .eq(DefineOpaqueTypes::No, a_elem_ty, b_elem_ty)
+                    .expect("expected rematch to succeed")
+                    .into_obligations(),
+            );
+        }
+        // Struct unsizing `Struct<T>` -> `Struct<U>` where `T: Unsize<U>`
+        (&ty::Adt(a_def, a_substs), &ty::Adt(b_def, b_substs))
+            if a_def.is_struct() && a_def.did() == b_def.did() =>
+        {
+            let unsizing_params = tcx.unsizing_params_for_adt(a_def.did());
+            // We must be unsizing some type parameters. This also implies
+            // that the struct has a tail field.
+            if unsizing_params.is_empty() {
+                bug!("expected rematch to succeed")
+            }
+
+            let tail_field = a_def
+                .non_enum_variant()
+                .fields
+                .raw
+                .last()
+                .expect("expected unsized ADT to have a tail field");
+            let tail_field_ty = tcx.type_of(tail_field.did);
+
+            let a_tail_ty = tail_field_ty.subst(tcx, a_substs);
+            let b_tail_ty = tail_field_ty.subst(tcx, b_substs);
+
+            // Substitute just the unsizing params from B into A. The type after
+            // this substitution must be equal to B. This is so we don't unsize
+            // unrelated type parameters.
+            let new_a_substs =
+                tcx.mk_substs_from_iter(a_substs.iter().enumerate().map(|(i, a)| {
+                    if unsizing_params.contains(i as u32) { b_substs[i] } else { a }
+                }));
+            let unsized_a_ty = Ty::new_adt(tcx, a_def, new_a_substs);
+
+            nested.extend(
+                infcx
+                    .at(&ObligationCause::dummy(), goal.param_env)
+                    .eq(DefineOpaqueTypes::No, unsized_a_ty, b_ty)
+                    .expect("expected rematch to succeed")
+                    .into_obligations(),
+            );
+
+            // Finally, we require that `TailA: Unsize<TailB>` for the tail field
+            // types.
+            nested.push(Obligation::new(
+                tcx,
+                ObligationCause::dummy(),
+                goal.param_env,
+                ty::TraitRef::new(tcx, goal.predicate.def_id(), [a_tail_ty, b_tail_ty]),
+            ));
+        }
+        // Tuple unsizing `(.., T)` -> `(.., U)` where `T: Unsize<U>`
+        (&ty::Tuple(a_tys), &ty::Tuple(b_tys))
+            if a_tys.len() == b_tys.len() && !a_tys.is_empty() =>
+        {
+            let (a_last_ty, a_rest_tys) = a_tys.split_last().unwrap();
+            let b_last_ty = b_tys.last().unwrap();
+
+            // Substitute just the tail field of B., and require that they're equal.
+            let unsized_a_ty =
+                Ty::new_tup_from_iter(tcx, a_rest_tys.iter().chain([b_last_ty]).copied());
+            nested.extend(
+                infcx
+                    .at(&ObligationCause::dummy(), goal.param_env)
+                    .eq(DefineOpaqueTypes::No, unsized_a_ty, b_ty)
+                    .expect("expected rematch to succeed")
+                    .into_obligations(),
+            );
+
+            // Similar to ADTs, require that the rest of the fields are equal.
+            nested.push(Obligation::new(
+                tcx,
+                ObligationCause::dummy(),
+                goal.param_env,
+                ty::TraitRef::new(tcx, goal.predicate.def_id(), [*a_last_ty, *b_last_ty]),
+            ));
+        }
+        // FIXME: We *could* ICE here if either:
+        // 1. the certainty is `Certainty::Yes`,
+        // 2. we're in codegen (which should mean `Certainty::Yes`).
+        _ => return Ok(None),
+    }
+
+    Ok(Some(ImplSource::Builtin(nested)))
 }
