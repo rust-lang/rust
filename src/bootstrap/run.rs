@@ -27,8 +27,7 @@ impl Step for ExpandYamlAnchors {
         try_run(
             builder,
             &mut builder.tool_cmd(Tool::ExpandYamlAnchors).arg("generate").arg(&builder.src),
-        )
-        .unwrap();
+        );
     }
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -40,17 +39,17 @@ impl Step for ExpandYamlAnchors {
     }
 }
 
-fn try_run(builder: &Builder<'_>, cmd: &mut Command) -> Result<(), ()> {
+fn try_run(builder: &Builder<'_>, cmd: &mut Command) -> bool {
     if !builder.fail_fast {
-        if let Err(e) = builder.try_run(cmd) {
+        if builder.try_run(cmd).is_err() {
             let mut failures = builder.delayed_failures.borrow_mut();
             failures.push(format!("{:?}", cmd));
-            return Err(e);
+            return false;
         }
     } else {
         builder.run(cmd);
     }
-    Ok(())
+    true
 }
 
 #[derive(Debug, PartialOrd, Ord, Copy, Clone, Hash, PartialEq, Eq)]

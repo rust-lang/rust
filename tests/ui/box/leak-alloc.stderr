@@ -4,7 +4,7 @@ error[E0505]: cannot move out of `alloc` because it is borrowed
 LL |     let alloc = Alloc {};
    |         ----- binding `alloc` declared here
 LL |     let boxed = Box::new_in(10, alloc.by_ref());
-   |                                 -------------- borrow of `alloc` occurs here
+   |                                 ----- borrow of `alloc` occurs here
 LL |     let theref = Box::leak(boxed);
 LL |     drop(alloc);
    |          ^^^^^ move out of `alloc` occurs here

@@ -15,7 +15,7 @@ note: `into_iter` takes ownership of the receiver `self`, which moves `some_vec`
 help: you can `clone` the value and consume it, but this might not be your desired behavior
    |
 LL |     some_vec.clone().into_iter();
-   |              ++++++++
+   |             ++++++++
 
 error: aborting due to previous error
 

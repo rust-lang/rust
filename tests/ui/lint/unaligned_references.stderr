@@ -52,7 +52,7 @@ error[E0793]: reference to packed field is unaligned
   --> $DIR/unaligned_references.rs:40:17
    |
 LL |         let _ = good.data.clone();
-   |                 ^^^^^^^^^^^^^^^^^
+   |                 ^^^^^^^^^
    |
    = note: packed structs are only aligned by one byte, and many modern architectures penalize unaligned field accesses
    = note: creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)

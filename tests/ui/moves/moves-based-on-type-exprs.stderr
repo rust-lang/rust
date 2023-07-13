@@ -165,7 +165,7 @@ note: `into_iter` takes ownership of the receiver `self`, which moves `x`
 help: you can `clone` the value and consume it, but this might not be your desired behavior
    |
 LL |     let _y = x.clone().into_iter().next().unwrap();
-   |                ++++++++
+   |               ++++++++
 
 error[E0382]: borrow of moved value: `x`
   --> $DIR/moves-based-on-type-exprs.rs:83:11
@@ -182,7 +182,7 @@ note: `into_iter` takes ownership of the receiver `self`, which moves `x`
 help: you can `clone` the value and consume it, but this might not be your desired behavior
    |
 LL |     let _y = [x.clone().into_iter().next().unwrap(); 1];
-   |                 ++++++++
+   |                ++++++++
 
 error: aborting due to 11 previous errors
 
