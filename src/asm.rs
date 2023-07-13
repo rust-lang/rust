@@ -597,6 +597,8 @@ fn reg_to_gcc(reg: InlineAsmRegOrRegClass) -> ConstraintOrRegister {
             InlineAsmRegClass::M68k(M68kInlineAsmRegClass::reg) => "r",
             InlineAsmRegClass::M68k(M68kInlineAsmRegClass::reg_addr) => "a",
             InlineAsmRegClass::M68k(M68kInlineAsmRegClass::reg_data) => "d",
+            InlineAsmRegClass::CSKY(CSKYInlineAsmRegClass::reg) => "r",
+            InlineAsmRegClass::CSKY(CSKYInlineAsmRegClass::freg) => "f",
             InlineAsmRegClass::Mips(MipsInlineAsmRegClass::reg) => "d", // more specific than "r"
             InlineAsmRegClass::Mips(MipsInlineAsmRegClass::freg) => "f",
             InlineAsmRegClass::Msp430(Msp430InlineAsmRegClass::reg) => "r",
@@ -673,6 +675,8 @@ fn dummy_output_type<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, reg: InlineAsmRegCl
         InlineAsmRegClass::M68k(M68kInlineAsmRegClass::reg) => cx.type_i32(),
         InlineAsmRegClass::M68k(M68kInlineAsmRegClass::reg_addr) => cx.type_i32(),
         InlineAsmRegClass::M68k(M68kInlineAsmRegClass::reg_data) => cx.type_i32(),
+        InlineAsmRegClass::CSKY(CSKYInlineAsmRegClass::reg) => cx.type_i32(),
+        InlineAsmRegClass::CSKY(CSKYInlineAsmRegClass::freg) => cx.type_f32(),
         InlineAsmRegClass::Mips(MipsInlineAsmRegClass::reg) => cx.type_i32(),
         InlineAsmRegClass::Mips(MipsInlineAsmRegClass::freg) => cx.type_f32(),
         InlineAsmRegClass::Msp430(_) => unimplemented!(),
@@ -860,6 +864,7 @@ fn modifier_to_gcc(arch: InlineAsmArch, reg: InlineAsmRegClass, modifier: Option
         InlineAsmRegClass::S390x(_) => None,
         InlineAsmRegClass::Msp430(_) => None,
         InlineAsmRegClass::M68k(_) => None,
+        InlineAsmRegClass::CSKY(_) => None,
         InlineAsmRegClass::SpirV(SpirVInlineAsmRegClass::reg) => {
             bug!("LLVM backend does not support SPIR-V")
         }
