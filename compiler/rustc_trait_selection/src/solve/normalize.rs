@@ -20,11 +20,15 @@ pub(crate) fn deeply_normalize<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
     at: At<'_, 'tcx>,
     value: T,
 ) -> Result<T, Vec<FulfillmentError<'tcx>>> {
+    assert!(!value.has_escaping_bound_vars());
     deeply_normalize_with_skipped_universes(at, value, vec![])
 }
 
 /// Deeply normalize all aliases in `value`. This does not handle inference and expects
 /// its input to be already fully resolved.
+///
+/// Additionally takes a list of universes which represents the binders which have been
+/// entered before passing `value` to the function.
 pub(crate) fn deeply_normalize_with_skipped_universes<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
     at: At<'_, 'tcx>,
     value: T,
