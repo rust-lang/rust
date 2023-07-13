@@ -2203,17 +2203,6 @@ pub(crate) enum GenericArgs {
     Parenthesized { inputs: Box<[Type]>, output: Option<Box<Type>> },
 }
 
-impl GenericArgs {
-    pub(crate) fn is_empty(&self) -> bool {
-        match self {
-            GenericArgs::AngleBracketed { args, bindings } => {
-                args.is_empty() && bindings.is_empty()
-            }
-            GenericArgs::Parenthesized { inputs, output } => inputs.is_empty() && output.is_none(),
-        }
-    }
-}
-
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) struct PathSegment {
     pub(crate) name: Symbol,

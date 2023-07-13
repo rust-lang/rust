@@ -1500,11 +1500,13 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
 /// or `doc(hidden)`). If it's not possible, it'll return the "end type".
 ///
 /// If the path is not a re-export or is public, it'll return `None`.
-fn first_non_private<'tcx>(
-    cx: &mut DocContext<'tcx>,
+fn first_non_private(
+    cx: &mut DocContext<'_>,
     hir_id: hir::HirId,
-    path: &hir::Path<'tcx>,
+    path: &hir::Path<'_>,
 ) -> Option<Path> {
+    use std::mem::transmute;
+
     let (parent_def_id, mut ident) = match &path.segments[..] {
         [] => return None,
         // Relative paths are available in the same scope as the owner.
@@ -1575,25 +1577,26 @@ fn first_non_private<'tcx>(
                 // 1. We found a public reexport.
                 // 2. We didn't find a public reexport so it's the "end type" path.
                 if let Some((new_path, _)) = last_path_res {
-                    let new_hir_path = hir::Path {
-                        segments: new_path.segments,
-                        res: path.res,
-                        span: new_path.span,
-                    };
-                    let mut new_clean_path = clean_path(&new_hir_path, cx);
                     // In here we need to play with the path data one last time to provide it the
                     // missing `args` and `res` of the final `Path` we get, which, since it comes
                     // from a re-export, doesn't have the generics that were originally there, so
                     // we add them by hand.
-                    if let Some(path_last) = path.segments.last().as_ref()
-                        && let Some(new_path_last) = new_clean_path.segments[..].last_mut()
-                        && let Some(path_last_args) = path_last.args.as_ref()
-                        && path_last.args.is_some()
-                    {
-                        assert!(new_path_last.args.is_empty());
-                        new_path_last.args = clean_generic_args(path_last_args, cx);
+                    let mut segments = new_path.segments.to_vec();
+                    if let Some(last) = segments.last_mut() {
+                        // `transmute` is needed because we are using a wrong lifetime. Since
+                        // `segments` will be dropped at the end of this block, it's fine.
+                        last.args = unsafe {
+                            transmute(
+                                path.segments.last().as_ref().unwrap().args.clone(),
+                            )
+                        };
+                        last.res = path.res;
                     }
-                    return Some(new_clean_path);
+                    // `transmute` is needed because we are using a wrong lifetime. Since
+                    // `segments` will be dropped at the end of this block, it's fine.
+                    let segments = unsafe { transmute(segments.as_slice()) };
+                    let new_path = hir::Path { segments, res: path.res, span: new_path.span };
+                    return Some(clean_path(&new_path, cx));
                 }
                 // If `last_path_res` is `None`, it can mean two things:
                 //
