@@ -31,25 +31,45 @@ declare_lint! {
 
 declare_lint_pass!(PtrNullChecks => [USELESS_PTR_NULL_CHECKS]);
 
-fn incorrect_check<'a>(cx: &LateContext<'a>, expr: &Expr<'_>) -> Option<PtrNullChecksDiag<'a>> {
-    let mut expr = expr.peel_blocks();
+/// This function detects and returns the original expression from a series of consecutive casts,
+/// ie. `(my_fn as *const _ as *mut _).cast_mut()` would return the expression for `my_fn`.
+fn ptr_cast_chain<'a>(cx: &'a LateContext<'_>, mut e: &'a Expr<'a>) -> Option<&'a Expr<'a>> {
     let mut had_at_least_one_cast = false;
-    while let ExprKind::Cast(cast_expr, cast_ty) = expr.kind
-            && let TyKind::Ptr(_) = cast_ty.kind {
-        expr = cast_expr.peel_blocks();
-        had_at_least_one_cast = true;
-    }
-    if !had_at_least_one_cast {
-        None
-    } else {
-        let orig_ty = cx.typeck_results().expr_ty(expr);
-        if orig_ty.is_fn() {
-            Some(PtrNullChecksDiag::FnPtr)
-        } else if orig_ty.is_ref() {
-            Some(PtrNullChecksDiag::Ref { orig_ty, label: expr.span })
+    loop {
+        e = e.peel_blocks();
+        e = if let ExprKind::Cast(expr, t) = e.kind
+            && let TyKind::Ptr(_) = t.kind {
+            had_at_least_one_cast = true;
+            expr
+        } else if let ExprKind::MethodCall(_, expr, [], _) = e.kind
+            && let Some(def_id) = cx.typeck_results().type_dependent_def_id(e.hir_id)
+            && matches!(cx.tcx.get_diagnostic_name(def_id), Some(sym::ptr_cast | sym::ptr_cast_mut)) {
+            had_at_least_one_cast = true;
+            expr
+        } else if let ExprKind::Call(path, [arg]) = e.kind
+            && let ExprKind::Path(ref qpath) = path.kind
+            && let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id()
+            && matches!(cx.tcx.get_diagnostic_name(def_id), Some(sym::ptr_from_ref | sym::ptr_from_mut)) {
+            had_at_least_one_cast = true;
+            arg
+        } else if had_at_least_one_cast {
+            return Some(e);
         } else {
-            None
-        }
+            return None;
+        };
+    }
+}
+
+fn incorrect_check<'a>(cx: &LateContext<'a>, expr: &Expr<'_>) -> Option<PtrNullChecksDiag<'a>> {
+    let expr = ptr_cast_chain(cx, expr)?;
+
+    let orig_ty = cx.typeck_results().expr_ty(expr);
+    if orig_ty.is_fn() {
+        Some(PtrNullChecksDiag::FnPtr)
+    } else if orig_ty.is_ref() {
+        Some(PtrNullChecksDiag::Ref { orig_ty, label: expr.span })
+    } else {
+        None
     }
 }
 

@@ -1,5 +1,9 @@
 // check-pass
 
+#![feature(ptr_from_ref)]
+
+use std::ptr;
+
 extern "C" fn c_fn() {}
 fn static_i32() -> &'static i32 { &1 }
 
@@ -21,6 +25,10 @@ fn main() {
     //~^ WARN function pointers are not nullable
     if (fn_ptr as *mut fn() as *const fn() as *const ()).is_null() {}
     //~^ WARN function pointers are not nullable
+    if (fn_ptr as *mut fn() as *const fn()).cast_mut().is_null() {}
+    //~^ WARN function pointers are not nullable
+    if ((fn_ptr as *mut fn()).cast() as *const fn()).cast_mut().is_null() {}
+    //~^ WARN function pointers are not nullable
     if (fn_ptr as fn() as *const ()).is_null() {}
     //~^ WARN function pointers are not nullable
     if (c_fn as *const fn()).is_null() {}
@@ -29,7 +37,15 @@ fn main() {
     // ---------------- References ------------------
     if (&mut 8 as *mut i32).is_null() {}
     //~^ WARN references are not nullable
+    if ptr::from_mut(&mut 8).is_null() {}
+    //~^ WARN references are not nullable
     if (&8 as *const i32).is_null() {}
+    //~^ WARN references are not nullable
+    if ptr::from_ref(&8).is_null() {}
+    //~^ WARN references are not nullable
+    if ptr::from_ref(&8).cast_mut().is_null() {}
+    //~^ WARN references are not nullable
+    if (ptr::from_ref(&8).cast_mut() as *mut i32).is_null() {}
     //~^ WARN references are not nullable
     if (&8 as *const i32) == std::ptr::null() {}
     //~^ WARN references are not nullable
