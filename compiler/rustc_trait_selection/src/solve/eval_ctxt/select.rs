@@ -4,14 +4,14 @@ use rustc_hir::def_id::DefId;
 use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, InferOk};
 use rustc_infer::traits::util::supertraits;
 use rustc_infer::traits::{
-    Obligation, PolyTraitObligation, PredicateObligation, Selection, SelectionResult,
+    Obligation, PolyTraitObligation, PredicateObligation, Selection, SelectionResult, TraitEngine,
 };
 use rustc_middle::traits::solve::{CanonicalInput, Certainty, Goal};
 use rustc_middle::traits::{
     ImplSource, ImplSourceObjectData, ImplSourceTraitUpcastingData, ImplSourceUserDefinedData,
     ObligationCause, SelectionError,
 };
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::DUMMY_SP;
 
 use crate::solve::assembly::{BuiltinImplSource, Candidate, CandidateSource};
@@ -19,6 +19,8 @@ use crate::solve::eval_ctxt::{EvalCtxt, GenerateProofTree};
 use crate::solve::inspect::ProofTreeBuilder;
 use crate::solve::search_graph::OverflowHandler;
 use crate::traits::vtable::{count_own_vtable_entries, prepare_vtable_segments, VtblSegment};
+use crate::traits::StructurallyNormalizeExt;
+use crate::traits::TraitEngineExt;
 
 pub trait InferCtxtSelectExt<'tcx> {
     fn select_in_new_trait_solver(
@@ -220,25 +222,33 @@ fn rematch_object<'tcx>(
     goal: Goal<'tcx, ty::TraitPredicate<'tcx>>,
     mut nested: Vec<PredicateObligation<'tcx>>,
 ) -> SelectionResult<'tcx, Selection<'tcx>> {
-    let self_ty = goal.predicate.self_ty();
-    let ty::Dynamic(data, _, source_kind) = *self_ty.kind()
+    let a_ty = structurally_normalize(goal.predicate.self_ty(), infcx, goal.param_env, &mut nested);
+    let ty::Dynamic(data, _, source_kind) = *a_ty.kind()
     else {
         bug!()
     };
-    let source_trait_ref = data.principal().unwrap().with_self_ty(infcx.tcx, self_ty);
+    let source_trait_ref = data.principal().unwrap().with_self_ty(infcx.tcx, a_ty);
 
-    let (is_upcasting, target_trait_ref_unnormalized) = if Some(goal.predicate.def_id())
-        == infcx.tcx.lang_items().unsize_trait()
-    {
-        assert_eq!(source_kind, ty::Dyn, "cannot upcast dyn*");
-        if let ty::Dynamic(data, _, ty::Dyn) = goal.predicate.trait_ref.substs.type_at(1).kind() {
-            (true, data.principal().unwrap().with_self_ty(infcx.tcx, self_ty))
+    let (is_upcasting, target_trait_ref_unnormalized) =
+        if Some(goal.predicate.def_id()) == infcx.tcx.lang_items().unsize_trait() {
+            assert_eq!(source_kind, ty::Dyn, "cannot upcast dyn*");
+            let b_ty = structurally_normalize(
+                goal.predicate.trait_ref.substs.type_at(1),
+                infcx,
+                goal.param_env,
+                &mut nested,
+            );
+            if let ty::Dynamic(data, _, ty::Dyn) = *b_ty.kind() {
+                // FIXME: We also need to ensure that the source lifetime outlives the
+                // target lifetime. This doesn't matter for codegen, though, and only
+                // *really* matters if the goal's certainty is ambiguous.
+                (true, data.principal().unwrap().with_self_ty(infcx.tcx, a_ty))
+            } else {
+                bug!()
+            }
         } else {
-            bug!()
-        }
-    } else {
-        (false, ty::Binder::dummy(goal.predicate.trait_ref))
-    };
+            (false, ty::Binder::dummy(goal.predicate.trait_ref))
+        };
 
     let mut target_trait_ref = None;
     for candidate_trait_ref in supertraits(infcx.tcx, source_trait_ref) {
@@ -304,4 +314,23 @@ fn rematch_object<'tcx>(
     } else {
         ImplSource::Object(ImplSourceObjectData { vtable_base, nested })
     }))
+}
+
+fn structurally_normalize<'tcx>(
+    ty: Ty<'tcx>,
+    infcx: &InferCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    nested: &mut Vec<PredicateObligation<'tcx>>,
+) -> Ty<'tcx> {
+    if matches!(ty.kind(), ty::Alias(..)) {
+        let mut engine = <dyn TraitEngine<'tcx>>::new(infcx);
+        let normalized_ty = infcx
+            .at(&ObligationCause::dummy(), param_env)
+            .structurally_normalize(ty, &mut *engine)
+            .expect("normalization shouldn't fail if we got to here");
+        nested.extend(engine.pending_obligations());
+        normalized_ty
+    } else {
+        ty
+    }
 }
