@@ -20,8 +20,18 @@ pub(crate) fn deeply_normalize<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
     at: At<'_, 'tcx>,
     value: T,
 ) -> Result<T, Vec<FulfillmentError<'tcx>>> {
+    deeply_normalize_with_skipped_universes(at, value, vec![])
+}
+
+/// Deeply normalize all aliases in `value`. This does not handle inference and expects
+/// its input to be already fully resolved.
+pub(crate) fn deeply_normalize_with_skipped_universes<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
+    at: At<'_, 'tcx>,
+    value: T,
+    universes: Vec<Option<UniverseIndex>>,
+) -> Result<T, Vec<FulfillmentError<'tcx>>> {
     let fulfill_cx = FulfillmentCtxt::new(at.infcx);
-    let mut folder = NormalizationFolder { at, fulfill_cx, depth: 0, universes: Vec::new() };
+    let mut folder = NormalizationFolder { at, fulfill_cx, depth: 0, universes };
 
     value.try_fold_with(&mut folder)
 }

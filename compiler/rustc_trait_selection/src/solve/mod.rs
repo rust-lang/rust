@@ -37,7 +37,7 @@ pub use eval_ctxt::{
     EvalCtxt, GenerateProofTree, InferCtxtEvalExt, InferCtxtSelectExt, UseGlobalCache,
 };
 pub use fulfill::FulfillmentCtxt;
-pub(crate) use normalize::deeply_normalize;
+pub(crate) use normalize::{deeply_normalize, deeply_normalize_with_skipped_universes};
 
 #[derive(Debug, Clone, Copy)]
 enum SolverMode {
