@@ -2970,10 +2970,25 @@ fn add_lld_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
         return;
     }
 
+    let self_contained_linker = sess.opts.cg.link_self_contained.linker();
+
+    // FIXME: some targets default to using `lld`, but users can only override the linker on the CLI
+    // and cannot yet select the precise linker flavor to opt out of that. See for example issue
+    // #113597 for the `thumbv6m-none-eabi` target: a driver is used, and its default linker
+    // conflicts with the target's flavor, causing unexpected arguments being passed.
+    //
+    // Until the new `LinkerFlavor`-like CLI options are stabilized, we only adopt MCP510's behavior
+    // if its dedicated unstable CLI flags are used, to keep the current sub-optimal stable
+    // behavior.
+    let using_mcp510 =
+        self_contained_linker || sess.opts.cg.linker_flavor.is_some_and(|f| f.is_unstable());
+    if !using_mcp510 && !unstable_use_lld {
+        return;
+    }
+
     // 1. Implement the "self-contained" part of this feature by adding rustc distribution
     //    directories to the tool's search path.
-    let self_contained_linker = sess.opts.cg.link_self_contained.linker() || unstable_use_lld;
-    if self_contained_linker {
+    if self_contained_linker || unstable_use_lld {
         for path in sess.get_tools_search_paths(false) {
             cmd.arg({
                 let mut arg = OsString::from("-B");
