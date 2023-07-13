@@ -1,5 +1,6 @@
 #![allow(rustc::untranslatable_diagnostic)]
 #![allow(rustc::diagnostic_outside_of_impl)]
+use std::borrow::Cow;
 use std::num::NonZeroU32;
 
 use crate::fluent_generated as fluent;
@@ -613,11 +614,13 @@ pub struct ExpectationNote {
     pub rationale: Symbol,
 }
 
-// fn_null_check.rs
+// non_null_check.rs
 #[derive(LintDiagnostic)]
-#[diag(lint_fn_null_check)]
+#[diag(lint_non_null_check)]
 #[help]
-pub struct FnNullCheckDiag;
+pub struct NonNullCheckDiag {
+    pub ty_desc: Cow<'static, str>,
+}
 
 // for_loops_over_fallibles.rs
 #[derive(LintDiagnostic)]

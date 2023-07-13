@@ -1,12 +1,13 @@
-use crate::{lints::FnNullCheckDiag, LateContext, LateLintPass, LintContext};
+use crate::{lints::NonNullCheckDiag, LateContext, LateLintPass, LintContext};
 use rustc_ast::LitKind;
 use rustc_hir::{BinOpKind, Expr, ExprKind, TyKind};
+use rustc_middle::ty::Ty;
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::sym;
 
 declare_lint! {
-    /// The `incorrect_fn_null_checks` lint checks for expression that checks if a
-    /// function pointer is null.
+    /// The `incorrect_non_null_checks` lint checks for expressions that check if a
+    /// non-nullable type is null.
     ///
     /// ### Example
     ///
@@ -22,16 +23,19 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// Function pointers are assumed to be non-null, checking them for null will always
-    /// return false.
-    INCORRECT_FN_NULL_CHECKS,
+    /// A non-nullable type is assumed to never be null, and therefore having an actual
+    /// non-null pointer is ub.
+    INCORRECT_NON_NULL_CHECKS,
     Warn,
-    "incorrect checking of null function pointer"
+    "incorrect checking of non null pointers"
 }
 
-declare_lint_pass!(IncorrectFnNullChecks => [INCORRECT_FN_NULL_CHECKS]);
+declare_lint_pass!(IncorrectNonNullChecks => [INCORRECT_NON_NULL_CHECKS]);
 
-fn is_fn_ptr_cast(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+/// Is the cast to a nonnull type?
+/// If yes, return (ty, nullable_version) where former is the nonnull type while latter
+/// is a nullable version (e.g. (fn, Option<fn>) or (&u8, *const u8)).
+fn is_nonnull_cast<'a>(cx: &LateContext<'a>, expr: &Expr<'_>) -> Option<Ty<'a>> {
     let mut expr = expr.peel_blocks();
     let mut had_at_least_one_cast = false;
     while let ExprKind::Cast(cast_expr, cast_ty) = expr.kind
@@ -39,14 +43,27 @@ fn is_fn_ptr_cast(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
         expr = cast_expr.peel_blocks();
         had_at_least_one_cast = true;
     }
-    had_at_least_one_cast && cx.typeck_results().expr_ty_adjusted(expr).is_fn()
+    if !had_at_least_one_cast {
+        return None;
+    }
+    let ty = cx.typeck_results().expr_ty_adjusted(expr);
+    if ty.is_fn() || ty.is_ref() {
+        return Some(ty);
+    }
+    // Usually, references get coerced to pointers in a casting situation.
+    // Therefore, we give also give a look to the original type.
+    let ty_unadjusted = cx.typeck_results().expr_ty_opt(expr);
+    if let Some(ty_unadjusted) = ty_unadjusted && ty_unadjusted.is_ref() {
+        return Some(ty_unadjusted);
+    }
+    None
 }
 
-impl<'tcx> LateLintPass<'tcx> for IncorrectFnNullChecks {
+impl<'tcx> LateLintPass<'tcx> for IncorrectNonNullChecks {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         match expr.kind {
             // Catching:
-            // <*<const/mut> <ty>>::is_null(fn_ptr as *<const/mut> <ty>)
+            // <*<const/mut> <ty>>::is_null(test_ptr as *<const/mut> <ty>)
             ExprKind::Call(path, [arg])
                 if let ExprKind::Path(ref qpath) = path.kind
                     && let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id()
@@ -54,53 +71,60 @@ impl<'tcx> LateLintPass<'tcx> for IncorrectFnNullChecks {
                         cx.tcx.get_diagnostic_name(def_id),
                         Some(sym::ptr_const_is_null | sym::ptr_is_null)
                     )
-                    && is_fn_ptr_cast(cx, arg) =>
+                    && let Some(ty) = is_nonnull_cast(cx, arg) =>
             {
-                cx.emit_spanned_lint(INCORRECT_FN_NULL_CHECKS, expr.span, FnNullCheckDiag)
+                let diag = NonNullCheckDiag { ty_desc: ty.prefix_string(cx.tcx) };
+                cx.emit_spanned_lint(INCORRECT_NON_NULL_CHECKS, expr.span, diag)
             }
 
             // Catching:
-            // (fn_ptr as *<const/mut> <ty>).is_null()
+            // (test_ptr as *<const/mut> <ty>).is_null()
             ExprKind::MethodCall(_, receiver, _, _)
                 if let Some(def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
                     && matches!(
                         cx.tcx.get_diagnostic_name(def_id),
                         Some(sym::ptr_const_is_null | sym::ptr_is_null)
                     )
-                    && is_fn_ptr_cast(cx, receiver) =>
+                    && let Some(ty) = is_nonnull_cast(cx, receiver) =>
             {
-                cx.emit_spanned_lint(INCORRECT_FN_NULL_CHECKS, expr.span, FnNullCheckDiag)
+                let diag = NonNullCheckDiag { ty_desc: ty.prefix_string(cx.tcx) };
+                cx.emit_spanned_lint(INCORRECT_NON_NULL_CHECKS, expr.span, diag)
             }
 
             ExprKind::Binary(op, left, right) if matches!(op.node, BinOpKind::Eq) => {
                 let to_check: &Expr<'_>;
-                if is_fn_ptr_cast(cx, left) {
+                let ty: Ty<'_>;
+                if let Some(ty_) = is_nonnull_cast(cx, left) {
                     to_check = right;
-                } else if is_fn_ptr_cast(cx, right) {
+                    ty = ty_;
+                } else if let Some(ty_) = is_nonnull_cast(cx, right) {
                     to_check = left;
+                    ty = ty_;
                 } else {
                     return;
                 }
 
                 match to_check.kind {
                     // Catching:
-                    // (fn_ptr as *<const/mut> <ty>) == (0 as <ty>)
+                    // (test_ptr as *<const/mut> <ty>) == (0 as <ty>)
                     ExprKind::Cast(cast_expr, _)
                         if let ExprKind::Lit(spanned) = cast_expr.kind
                             && let LitKind::Int(v, _) = spanned.node && v == 0 =>
                     {
-                        cx.emit_spanned_lint(INCORRECT_FN_NULL_CHECKS, expr.span, FnNullCheckDiag)
+                        let diag = NonNullCheckDiag { ty_desc: ty.prefix_string(cx.tcx) };
+                        cx.emit_spanned_lint(INCORRECT_NON_NULL_CHECKS, expr.span, diag)
                     },
 
                     // Catching:
-                    // (fn_ptr as *<const/mut> <ty>) == std::ptr::null()
+                    // (test_ptr as *<const/mut> <ty>) == std::ptr::null()
                     ExprKind::Call(path, [])
                         if let ExprKind::Path(ref qpath) = path.kind
                             && let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id()
                             && let Some(diag_item) = cx.tcx.get_diagnostic_name(def_id)
                             && (diag_item == sym::ptr_null || diag_item == sym::ptr_null_mut) =>
                     {
-                        cx.emit_spanned_lint(INCORRECT_FN_NULL_CHECKS, expr.span, FnNullCheckDiag)
+                        let diag = NonNullCheckDiag { ty_desc: ty.prefix_string(cx.tcx) };
+                        cx.emit_spanned_lint(INCORRECT_NON_NULL_CHECKS, expr.span, diag)
                     },
 
                     _ => {},

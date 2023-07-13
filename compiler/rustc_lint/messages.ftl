@@ -215,9 +215,6 @@ lint_expectation = this lint expectation is unfulfilled
     .note = the `unfulfilled_lint_expectations` lint can't be expected and will always produce this message
     .rationale = {$rationale}
 
-lint_fn_null_check = function pointers are not nullable, so checking them for null will always return false
-    .help = wrap the function pointer inside an `Option` and use `Option::is_none` to check for null pointer value
-
 lint_for_loops_over_fallibles =
     for loop over {$article} `{$ty}`. This is more readably written as an `if let` statement
     .suggestion = consider using `if let` to clear intent
@@ -398,6 +395,9 @@ lint_non_fmt_panic_unused =
         *[other] arguments
     }
     .add_fmt_suggestion = or add a "{"{"}{"}"}" format string to use the message literally
+
+lint_non_null_check = {$ty_desc}s can never be null, so checking them for null will always return false
+    .help = wrap the {$ty_desc} inside an `Option` and use `Option::is_none` to check for null pointer values
 
 lint_non_snake_case = {$sort} `{$name}` should have a snake case name
     .rename_or_convert_suggestion = rename the identifier or convert it to a snake case raw identifier

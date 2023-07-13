@@ -58,7 +58,6 @@ mod early;
 mod enum_intrinsics_non_enums;
 mod errors;
 mod expect;
-mod fn_null_check;
 mod for_loops_over_fallibles;
 pub mod hidden_unicode_codepoints;
 mod internal;
@@ -72,6 +71,7 @@ mod methods;
 mod multiple_supertrait_upcastable;
 mod non_ascii_idents;
 mod non_fmt_panic;
+mod non_null_check;
 mod nonstandard_style;
 mod noop_method_call;
 mod opaque_hidden_inferred_bound;
@@ -103,7 +103,6 @@ use cast_ref_to_mut::*;
 use deref_into_dyn_supertrait::*;
 use drop_forget_useless::*;
 use enum_intrinsics_non_enums::EnumIntrinsicsNonEnums;
-use fn_null_check::*;
 use for_loops_over_fallibles::*;
 use hidden_unicode_codepoints::*;
 use internal::*;
@@ -114,6 +113,7 @@ use methods::*;
 use multiple_supertrait_upcastable::*;
 use non_ascii_idents::*;
 use non_fmt_panic::NonPanicFmt;
+use non_null_check::*;
 use nonstandard_style::*;
 use noop_method_call::*;
 use opaque_hidden_inferred_bound::*;
@@ -227,7 +227,7 @@ late_lint_methods!(
             // Depends on types used in type definitions
             MissingCopyImplementations: MissingCopyImplementations,
             // Depends on referenced function signatures in expressions
-            IncorrectFnNullChecks: IncorrectFnNullChecks,
+            IncorrectNonNullChecks: IncorrectNonNullChecks,
             MutableTransmutes: MutableTransmutes,
             TypeAliasBounds: TypeAliasBounds,
             TrivialConstraints: TrivialConstraints,
