@@ -48,7 +48,7 @@ class CargoTaskProvider implements vscode.TaskProvider {
                     `cargo ${def.command}`,
                     [def.command],
                     this.config.problemMatcher,
-                    this.config.cargoRunner
+                    this.config.cargoRunner,
                 );
                 vscodeTask.group = def.group;
                 tasks.push(vscodeTask);
@@ -73,7 +73,7 @@ class CargoTaskProvider implements vscode.TaskProvider {
                 task.name,
                 args,
                 this.config.problemMatcher,
-                this.config.cargoRunner
+                this.config.cargoRunner,
             );
         }
 
@@ -88,7 +88,7 @@ export async function buildCargoTask(
     args: string[],
     problemMatcher: string[],
     customRunner?: string,
-    throwOnError: boolean = false
+    throwOnError: boolean = false,
 ): Promise<vscode.Task> {
     let exec: vscode.ProcessExecution | vscode.ShellExecution | undefined = undefined;
 
@@ -133,7 +133,7 @@ export async function buildCargoTask(
         name,
         TASK_SOURCE,
         exec,
-        problemMatcher
+        problemMatcher,
     );
 }
 

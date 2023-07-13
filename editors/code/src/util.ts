@@ -114,7 +114,7 @@ export function setContextValue(key: string, value: any): Thenable<void> {
  * underlying async function.
  */
 export function memoizeAsync<Ret, TThis, Param extends string>(
-    func: (this: TThis, arg: Param) => Promise<Ret>
+    func: (this: TThis, arg: Param) => Promise<Ret>,
 ) {
     const cache = new Map<string, Ret>();
 

@@ -38,7 +38,7 @@ export class Config {
         vscode.workspace.onDidChangeConfiguration(
             this.onDidChangeConfiguration,
             this,
-            ctx.subscriptions
+            ctx.subscriptions,
         );
         this.refreshLogging();
         this.configureLanguage();
@@ -64,7 +64,7 @@ export class Config {
         this.configureLanguage();
 
         const requiresReloadOpt = this.requiresReloadOpts.find((opt) =>
-            event.affectsConfiguration(opt)
+            event.affectsConfiguration(opt),
         );
 
         if (!requiresReloadOpt) return;
@@ -210,8 +210,8 @@ export class Config {
                 Object.entries(extraEnv).map(([k, v]) => [
                     k,
                     typeof v !== "string" ? v.toString() : v,
-                ])
-            )
+                ]),
+            ),
         );
     }
     get traceExtension() {
@@ -306,7 +306,7 @@ export class Config {
 // to interact with.
 export function prepareVSCodeConfig<T>(
     resp: T,
-    cb?: (key: Extract<keyof T, string>, res: { [key: string]: any }) => void
+    cb?: (key: Extract<keyof T, string>, res: { [key: string]: any }) => void,
 ): T {
     if (Is.string(resp)) {
         return substituteVSCodeVariableInString(resp) as T;
@@ -349,7 +349,7 @@ export function substituteVariablesInEnv(env: Env): Env {
                 }
             }
             return [`env:${key}`, { deps: [...deps], value }];
-        })
+        }),
     );
 
     const resolved = new Set<string>();
@@ -457,7 +457,7 @@ function computeVscodeVar(varName: string): string | null {
     if (varName in supportedVariables) {
         const fn = expectNotUndefined(
             supportedVariables[varName],
-            `${varName} should not be undefined here`
+            `${varName} should not be undefined here`,
         );
         return fn();
     } else {
