@@ -1,5 +1,5 @@
 warning: function pointers are not nullable, so checking them for null will always return false
-  --> $DIR/ptr_null_checks.rs:7:8
+  --> $DIR/ptr_null_checks.rs:10:8
    |
 LL |     if (fn_ptr as *mut ()).is_null() {}
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL |     if (fn_ptr as *mut ()).is_null() {}
    = note: `#[warn(useless_ptr_null_checks)]` on by default
 
 warning: function pointers are not nullable, so checking them for null will always return false
-  --> $DIR/ptr_null_checks.rs:9:8
+  --> $DIR/ptr_null_checks.rs:12:8
    |
 LL |     if (fn_ptr as *const u8).is_null() {}
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -16,7 +16,7 @@ LL |     if (fn_ptr as *const u8).is_null() {}
    = help: wrap the function pointer inside an `Option` and use `Option::is_none` to check for null pointer value
 
 warning: function pointers are not nullable, so checking them for null will always return false
-  --> $DIR/ptr_null_checks.rs:11:8
+  --> $DIR/ptr_null_checks.rs:14:8
    |
 LL |     if (fn_ptr as *const ()) == std::ptr::null() {}
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -24,7 +24,7 @@ LL |     if (fn_ptr as *const ()) == std::ptr::null() {}
    = help: wrap the function pointer inside an `Option` and use `Option::is_none` to check for null pointer value
 
 warning: function pointers are not nullable, so checking them for null will always return false
-  --> $DIR/ptr_null_checks.rs:13:8
+  --> $DIR/ptr_null_checks.rs:16:8
    |
 LL |     if (fn_ptr as *mut ()) == std::ptr::null_mut() {}
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -32,7 +32,7 @@ LL |     if (fn_ptr as *mut ()) == std::ptr::null_mut() {}
    = help: wrap the function pointer inside an `Option` and use `Option::is_none` to check for null pointer value
 
 warning: function pointers are not nullable, so checking them for null will always return false
-  --> $DIR/ptr_null_checks.rs:15:8
+  --> $DIR/ptr_null_checks.rs:18:8
    |
 LL |     if (fn_ptr as *const ()) == (0 as *const ()) {}
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -40,7 +40,7 @@ LL |     if (fn_ptr as *const ()) == (0 as *const ()) {}
    = help: wrap the function pointer inside an `Option` and use `Option::is_none` to check for null pointer value
 
 warning: function pointers are not nullable, so checking them for null will always return false
-  --> $DIR/ptr_null_checks.rs:17:8
+  --> $DIR/ptr_null_checks.rs:20:8
    |
 LL |     if <*const _>::is_null(fn_ptr as *const ()) {}
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -48,7 +48,7 @@ LL |     if <*const _>::is_null(fn_ptr as *const ()) {}
    = help: wrap the function pointer inside an `Option` and use `Option::is_none` to check for null pointer value
 
 warning: function pointers are not nullable, so checking them for null will always return false
-  --> $DIR/ptr_null_checks.rs:19:8
+  --> $DIR/ptr_null_checks.rs:22:8
    |
 LL |     if (fn_ptr as *mut fn() as *const fn() as *const ()).is_null() {}
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -56,15 +56,23 @@ LL |     if (fn_ptr as *mut fn() as *const fn() as *const ()).is_null() {}
    = help: wrap the function pointer inside an `Option` and use `Option::is_none` to check for null pointer value
 
 warning: function pointers are not nullable, so checking them for null will always return false
-  --> $DIR/ptr_null_checks.rs:21:8
+  --> $DIR/ptr_null_checks.rs:24:8
    |
 LL |     if (fn_ptr as fn() as *const ()).is_null() {}
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: wrap the function pointer inside an `Option` and use `Option::is_none` to check for null pointer value
 
+warning: function pointers are not nullable, so checking them for null will always return false
+  --> $DIR/ptr_null_checks.rs:26:8
+   |
+LL |     if (c_fn as *const fn()).is_null() {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: wrap the function pointer inside an `Option` and use `Option::is_none` to check for null pointer value
+
 warning: references are not nullable, so checking them for null will always return false
-  --> $DIR/ptr_null_checks.rs:25:8
+  --> $DIR/ptr_null_checks.rs:30:8
    |
 LL |     if (&mut 8 as *mut i32).is_null() {}
    |        ^------^^^^^^^^^^^^^^^^^^^^^^^
@@ -72,7 +80,7 @@ LL |     if (&mut 8 as *mut i32).is_null() {}
    |         expression has type `&mut i32`
 
 warning: references are not nullable, so checking them for null will always return false
-  --> $DIR/ptr_null_checks.rs:27:8
+  --> $DIR/ptr_null_checks.rs:32:8
    |
 LL |     if (&8 as *const i32).is_null() {}
    |        ^--^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -80,7 +88,7 @@ LL |     if (&8 as *const i32).is_null() {}
    |         expression has type `&i32`
 
 warning: references are not nullable, so checking them for null will always return false
-  --> $DIR/ptr_null_checks.rs:29:8
+  --> $DIR/ptr_null_checks.rs:34:8
    |
 LL |     if (&8 as *const i32) == std::ptr::null() {}
    |        ^--^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -88,7 +96,7 @@ LL |     if (&8 as *const i32) == std::ptr::null() {}
    |         expression has type `&i32`
 
 warning: references are not nullable, so checking them for null will always return false
-  --> $DIR/ptr_null_checks.rs:32:8
+  --> $DIR/ptr_null_checks.rs:37:8
    |
 LL |     if (ref_num as *const i32) == std::ptr::null() {}
    |        ^-------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -96,7 +104,7 @@ LL |     if (ref_num as *const i32) == std::ptr::null() {}
    |         expression has type `&i32`
 
 warning: references are not nullable, so checking them for null will always return false
-  --> $DIR/ptr_null_checks.rs:34:8
+  --> $DIR/ptr_null_checks.rs:39:8
    |
 LL |     if (b"\0" as *const u8).is_null() {}
    |        ^-----^^^^^^^^^^^^^^^^^^^^^^^^
@@ -104,7 +112,7 @@ LL |     if (b"\0" as *const u8).is_null() {}
    |         expression has type `&[u8; 1]`
 
 warning: references are not nullable, so checking them for null will always return false
-  --> $DIR/ptr_null_checks.rs:36:8
+  --> $DIR/ptr_null_checks.rs:41:8
    |
 LL |     if ("aa" as *const str).is_null() {}
    |        ^----^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -112,7 +120,7 @@ LL |     if ("aa" as *const str).is_null() {}
    |         expression has type `&str`
 
 warning: references are not nullable, so checking them for null will always return false
-  --> $DIR/ptr_null_checks.rs:38:8
+  --> $DIR/ptr_null_checks.rs:43:8
    |
 LL |     if (&[1, 2] as *const i32).is_null() {}
    |        ^-------^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -120,12 +128,28 @@ LL |     if (&[1, 2] as *const i32).is_null() {}
    |         expression has type `&[i32; 2]`
 
 warning: references are not nullable, so checking them for null will always return false
-  --> $DIR/ptr_null_checks.rs:40:8
+  --> $DIR/ptr_null_checks.rs:45:8
    |
 LL |     if (&mut [1, 2] as *mut i32) == std::ptr::null_mut() {}
    |        ^-----------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |         |
    |         expression has type `&mut [i32; 2]`
 
-warning: 16 warnings emitted
+warning: references are not nullable, so checking them for null will always return false
+  --> $DIR/ptr_null_checks.rs:47:8
+   |
+LL |     if (static_i32() as *const i32).is_null() {}
+   |        ^------------^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         |
+   |         expression has type `&i32`
+
+warning: references are not nullable, so checking them for null will always return false
+  --> $DIR/ptr_null_checks.rs:49:8
+   |
+LL |     if (&*{ static_i32() } as *const i32).is_null() {}
+   |        ^------------------^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         |
+   |         expression has type `&i32`
+
+warning: 19 warnings emitted
 

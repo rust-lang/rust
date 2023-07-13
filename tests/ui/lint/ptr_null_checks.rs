@@ -1,5 +1,8 @@
 // check-pass
 
+extern "C" fn c_fn() {}
+fn static_i32() -> &'static i32 { &1 }
+
 fn main() {
     let fn_ptr = main;
 
@@ -20,6 +23,8 @@ fn main() {
     //~^ WARN function pointers are not nullable
     if (fn_ptr as fn() as *const ()).is_null() {}
     //~^ WARN function pointers are not nullable
+    if (c_fn as *const fn()).is_null() {}
+    //~^ WARN function pointers are not nullable
 
     // ---------------- References ------------------
     if (&mut 8 as *mut i32).is_null() {}
@@ -38,6 +43,10 @@ fn main() {
     if (&[1, 2] as *const i32).is_null() {}
     //~^ WARN references are not nullable
     if (&mut [1, 2] as *mut i32) == std::ptr::null_mut() {}
+    //~^ WARN references are not nullable
+    if (static_i32() as *const i32).is_null() {}
+    //~^ WARN references are not nullable
+    if (&*{ static_i32() } as *const i32).is_null() {}
     //~^ WARN references are not nullable
 
     // ----------------------------------------------
