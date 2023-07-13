@@ -1,4 +1,3 @@
-//// first line borked doc comment. doesn't combust!
 //@run-rustfix
 //@aux-build:proc_macros.rs:proc-macro
 #![feature(custom_inner_attributes)]
@@ -31,6 +30,11 @@ fn g() {}
 
 /// not very start of contents
 fn h() {}
+
+fn i() {
+    //// don't lint me bozo
+    todo!()
+}
 
 external! {
     //// don't lint me bozo

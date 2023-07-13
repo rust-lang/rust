@@ -1,9 +1,9 @@
-use clippy_utils::{diagnostics::span_lint_and_sugg, source::snippet_opt};
+use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_errors::Applicability;
 use rustc_hir::Item;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::{Span, SyntaxContext};
+use rustc_span::Span;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -40,43 +40,60 @@ impl<'tcx> LateLintPass<'tcx> for FourForwardSlashes {
         if item.span.from_expansion() {
             return;
         }
-        let src = cx.sess().source_map();
-        let item_and_attrs_span = cx
+        let sm = cx.sess().source_map();
+        let mut span = cx
             .tcx
             .hir()
             .attrs(item.hir_id())
             .iter()
             .fold(item.span.shrink_to_lo(), |span, attr| span.to(attr.span));
-        let (Some(file), _, _, end_line, _) = src.span_to_location_info(item_and_attrs_span) else {
+        let (Some(file), _, _, end_line, _) = sm.span_to_location_info(span) else {
             return;
         };
+        let mut bad_comments = vec![];
         for line in (0..end_line.saturating_sub(1)).rev() {
-            let Some(contents) = file.get_line(line) else {
-                continue;
+            let Some(contents) = file.get_line(line).map(|c| c.trim().to_owned()) else {
+                return;
             };
-            let contents = contents.trim();
-            if contents.is_empty() {
+            // Keep searching until we find the next item
+            if !contents.is_empty() && !contents.starts_with("//") && !contents.starts_with("#[") {
                 break;
             }
-            if contents.starts_with("////") {
-                let bounds = file.line_bounds(line);
-                let span = Span::new(bounds.start, bounds.end, SyntaxContext::root(), None);
 
-                if snippet_opt(cx, span).is_some_and(|s| s.trim().starts_with("////")) {
-                    span_lint_and_sugg(
-                        cx,
-                        FOUR_FORWARD_SLASHES,
-                        span,
-                        "comment with 4 forward slashes (`////`). This looks like a doc comment, but it isn't",
-                        "make this a doc comment by removing one `/`",
-                        // It's a little unfortunate but the span includes the `\n` yet the contents
-                        // do not, so we must add it back. If some codebase uses `\r\n` instead they
-                        // will need normalization but it should be fine
-                        contents.replacen("////", "///", 1) + "\n",
+            if contents.starts_with("////") && !matches!(contents.chars().nth(4), Some('/' | '!')) {
+                let bounds = file.line_bounds(line);
+                let line_span = Span::with_root_ctxt(bounds.start, bounds.end);
+                span = line_span.to(span);
+                bad_comments.push((line_span, contents));
+            }
+        }
+
+        if !bad_comments.is_empty() {
+            span_lint_and_then(
+                cx,
+                FOUR_FORWARD_SLASHES,
+                span,
+                "this item has comments with 4 forward slashes (`////`). These look like doc comments, but they aren't",
+                |diag| {
+                    let msg = if bad_comments.len() == 1 {
+                        "make this a doc comment by removing one `/`"
+                    } else {
+                        "turn these into doc comments by removing one `/`"
+                    };
+
+                    diag.multipart_suggestion(
+                        msg,
+                        bad_comments
+                            .into_iter()
+                            // It's a little unfortunate but the span includes the `\n` yet the contents
+                            // do not, so we must add it back. If some codebase uses `\r\n` instead they
+                            // will need normalization but it should be fine
+                            .map(|(span, c)| (span, c.replacen("////", "///", 1) + "\n"))
+                            .collect(),
                         Applicability::MachineApplicable,
                     );
-                }
-            }
+                },
+            );
         }
     }
 }

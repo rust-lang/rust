@@ -1,5 +1,5 @@
-error: comment with 4 forward slashes (`////`). This looks like a doc comment, but it isn't
-  --> $DIR/four_forward_slashes.rs:13:1
+error: this item has comments with 4 forward slashes (`////`). These look like doc comments, but they aren't
+  --> $DIR/four_forward_slashes.rs:12:1
    |
 LL | / //// whoops
 LL | | fn a() {}
@@ -11,11 +11,12 @@ help: make this a doc comment by removing one `/`
 LL + /// whoops
    |
 
-error: comment with 4 forward slashes (`////`). This looks like a doc comment, but it isn't
-  --> $DIR/four_forward_slashes.rs:16:1
+error: this item has comments with 4 forward slashes (`////`). These look like doc comments, but they aren't
+  --> $DIR/four_forward_slashes.rs:15:1
    |
 LL | / //// whoops
 LL | | #[allow(dead_code)]
+LL | | fn b() {}
    | |_
    |
 help: make this a doc comment by removing one `/`
@@ -23,35 +24,27 @@ help: make this a doc comment by removing one `/`
 LL + /// whoops
    |
 
-error: comment with 4 forward slashes (`////`). This looks like a doc comment, but it isn't
-  --> $DIR/four_forward_slashes.rs:21:1
-   |
-LL | / //// two borked comments!
-LL | | #[track_caller]
-   | |_
-   |
-help: make this a doc comment by removing one `/`
-   |
-LL + /// two borked comments!
-   |
-
-error: comment with 4 forward slashes (`////`). This looks like a doc comment, but it isn't
-  --> $DIR/four_forward_slashes.rs:20:1
+error: this item has comments with 4 forward slashes (`////`). These look like doc comments, but they aren't
+  --> $DIR/four_forward_slashes.rs:19:1
    |
 LL | / //// whoops
 LL | | //// two borked comments!
+LL | | #[track_caller]
+LL | | fn c() {}
    | |_
    |
-help: make this a doc comment by removing one `/`
+help: turn these into doc comments by removing one `/`
    |
 LL + /// whoops
+LL ~ /// two borked comments!
    |
 
-error: comment with 4 forward slashes (`////`). This looks like a doc comment, but it isn't
-  --> $DIR/four_forward_slashes.rs:28:1
+error: this item has comments with 4 forward slashes (`////`). These look like doc comments, but they aren't
+  --> $DIR/four_forward_slashes.rs:27:1
    |
 LL | / //// between attributes
 LL | | #[allow(dead_code)]
+LL | | fn g() {}
    | |_
    |
 help: make this a doc comment by removing one `/`
@@ -59,8 +52,8 @@ help: make this a doc comment by removing one `/`
 LL + /// between attributes
    |
 
-error: comment with 4 forward slashes (`////`). This looks like a doc comment, but it isn't
-  --> $DIR/four_forward_slashes.rs:32:1
+error: this item has comments with 4 forward slashes (`////`). These look like doc comments, but they aren't
+  --> $DIR/four_forward_slashes.rs:31:1
    |
 LL | /     //// not very start of contents
 LL | | fn h() {}
@@ -71,5 +64,5 @@ help: make this a doc comment by removing one `/`
 LL + /// not very start of contents
    |
 
-error: aborting due to 6 previous errors
+error: aborting due to 5 previous errors
 
