@@ -3569,7 +3569,7 @@ pub fn dump_proof_tree<'tcx>(o: &Obligation<'tcx, ty::Predicate<'tcx>>, infcx: &
             .1
             .expect("proof tree should have been generated");
         let mut lock = std::io::stdout().lock();
-        let _ = lock.write_fmt(format_args!("{tree:?}"));
+        let _ = lock.write_fmt(format_args!("{tree:?}\n"));
         let _ = lock.flush();
     });
 }
