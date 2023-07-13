@@ -123,7 +123,7 @@ impl SrcMgrDiagnostic {
 #[derive(Clone)]
 pub struct InlineAsmDiagnostic {
     pub level: super::DiagnosticLevel,
-    pub cookie: c_uint,
+    pub cookie: u64,
     pub message: String,
     pub source: Option<(String, Vec<InnerSpan>)>,
 }
@@ -149,7 +149,7 @@ impl InlineAsmDiagnostic {
         let smdiag = SrcMgrDiagnostic::unpack(super::LLVMRustGetSMDiagnostic(di, &mut cookie));
         InlineAsmDiagnostic {
             level: smdiag.level,
-            cookie,
+            cookie: cookie.into(),
             message: smdiag.message,
             source: smdiag.source,
         }
