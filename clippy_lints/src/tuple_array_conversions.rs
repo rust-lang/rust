@@ -16,8 +16,8 @@ declare_clippy_lint! {
     /// Checks for tuple<=>array conversions that are not done with `.into()`.
     ///
     /// ### Why is this bad?
-    /// It's unnecessary complexity. `.into()` works for tuples<=>arrays at or below 12 elements and
-    /// conveys the intent a lot better, while also leaving less room for hard to spot bugs!
+    /// It may be unnecessary complexity. `.into()` works for converting tuples
+    /// <=> arrays of up to 12 elements and may convey intent more clearly.
     ///
     /// ### Example
     /// ```rust,ignore
@@ -31,7 +31,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.72.0"]
     pub TUPLE_ARRAY_CONVERSIONS,
-    complexity,
+    pedantic,
     "checks for tuple<=>array conversions that are not done with `.into()`"
 }
 impl_lint_pass!(TupleArrayConversions => [TUPLE_ARRAY_CONVERSIONS]);
