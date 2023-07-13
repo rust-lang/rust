@@ -27,21 +27,33 @@ pub fn crate_item(did: DefId) -> stable_mir::CrateItem {
     with_tables(|t| t.crate_item(did))
 }
 
+pub fn adt_def(did: DefId) -> stable_mir::ty::AdtDef {
+    with_tables(|t| t.adt_def(did))
+}
+
 impl<'tcx> Tables<'tcx> {
     pub fn item_def_id(&self, item: &stable_mir::CrateItem) -> DefId {
         self.def_ids[item.0]
     }
 
     pub fn crate_item(&mut self, did: DefId) -> stable_mir::CrateItem {
+        stable_mir::CrateItem(self.create_def_id(did))
+    }
+
+    pub fn adt_def(&mut self, did: DefId) -> stable_mir::ty::AdtDef {
+        stable_mir::ty::AdtDef(self.create_def_id(did))
+    }
+
+    fn create_def_id(&mut self, did: DefId) -> stable_mir::DefId {
         // FIXME: this becomes inefficient when we have too many ids
         for (i, &d) in self.def_ids.iter().enumerate() {
             if d == did {
-                return stable_mir::CrateItem(i);
+                return i;
             }
         }
         let id = self.def_ids.len();
         self.def_ids.push(did);
-        stable_mir::CrateItem(id)
+        id
     }
 }
 
