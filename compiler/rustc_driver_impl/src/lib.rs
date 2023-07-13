@@ -51,8 +51,8 @@ use std::cmp::max;
 use std::collections::BTreeMap;
 use std::env;
 use std::ffi::OsString;
-use std::fmt;
-use std::fs::{self, File};
+use std::fmt::Write as _;
+use std::fs;
 use std::io::{self, IsTerminal, Read, Write};
 use std::panic::{self, catch_unwind};
 use std::path::PathBuf;
@@ -750,30 +750,12 @@ fn print_crate_info(
         None
     };
 
-    let mut output_io: Box<dyn Write> = match &sess.io.output_file {
-        Some(OutFileName::Real(output_file_path)) => match File::create(output_file_path) {
-            Ok(output_file) => Box::new(output_file),
-            Err(err) => handler.early_error(format!(
-                "failed to create {}: {}",
-                output_file_path.display(),
-                err,
-            )),
-        },
-        None | Some(OutFileName::Stdout) => Box::new(io::stdout()),
-    };
-
-    fn write_output(output_io: &mut dyn Write, args: fmt::Arguments<'_>) {
-        if let Err(_) = output_io.write_fmt(args) {
-            rustc_errors::FatalError.raise();
-        }
+    let mut crate_info = String::new();
+    macro println_info($($arg:tt)*) {
+        crate_info.write_fmt(format_args!("{}\n", format_args!($($arg)*))).unwrap()
     }
 
-    macro_rules! println_info {
-        ($($arg:tt)*) => {
-            write_output(&mut *output_io, format_args!("{}\n", format_args!($($arg)*)))
-        };
-    }
-
+    let mut how_to_proceed = Compilation::Stop;
     for req in &sess.opts.prints {
         match *req {
             TargetList => {
@@ -798,7 +780,8 @@ fn print_crate_info(
             FileNames | CrateName => {
                 let Some(attrs) = attrs.as_ref() else {
                     // no crate attributes, print out an error and exit
-                    return Compilation::Continue;
+                    how_to_proceed = Compilation::Continue;
+                    break;
                 };
                 let t_outputs = rustc_interface::util::build_output_filenames(attrs, sess);
                 let id = rustc_session::output::find_crate_name(sess, attrs);
@@ -888,7 +871,9 @@ fn print_crate_info(
             }
         }
     }
-    Compilation::Stop
+
+    pretty::write_or_print(&crate_info, sess);
+    how_to_proceed
 }
 
 /// Prints version information

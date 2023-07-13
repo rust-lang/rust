@@ -357,7 +357,7 @@ fn get_source(sess: &Session) -> (String, FileName) {
     (src, src_name)
 }
 
-fn write_or_print(out: &str, sess: &Session) {
+pub fn write_or_print(out: &str, sess: &Session) {
     match &sess.io.output_file {
         None | Some(OutFileName::Stdout) => print!("{out}"),
         Some(OutFileName::Real(p)) => {
