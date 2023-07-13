@@ -901,6 +901,7 @@ impl Step for RustdocJSStd {
             builder.ensure(crate::doc::Std::new(
                 builder.top_stage,
                 self.target,
+                builder,
                 DocumentationFormat::HTML,
             ));
             builder.run(&mut command);

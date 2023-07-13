@@ -115,6 +115,43 @@ impl RunConfig<'_> {
         }
         INTERNER.intern_list(crates)
     }
+
+    /// Given an `alias` selected by the `Step` and the paths passed on the command line,
+    /// return a list of the crates that should be built.
+    ///
+    /// Normally, people will pass *just* `library` if they pass it.
+    /// But it's possible (although strange) to pass something like `library std core`.
+    /// Build all crates anyway, as if they hadn't passed the other args.
+    pub fn make_run_crates(&self, alias: Alias) -> Interned<Vec<String>> {
+        let has_alias =
+            self.paths.iter().any(|set| set.assert_single_path().path.ends_with(alias.as_str()));
+        if !has_alias {
+            return self.cargo_crates_in_set();
+        }
+
+        let crates = match alias {
+            Alias::Library => self.builder.in_tree_crates("sysroot", Some(self.target)),
+            Alias::Compiler => self.builder.in_tree_crates("rustc-main", Some(self.target)),
+        };
+
+        let crate_names = crates.into_iter().map(|krate| krate.name.to_string()).collect();
+        INTERNER.intern_list(crate_names)
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum Alias {
+    Library,
+    Compiler,
+}
+
+impl Alias {
+    fn as_str(self) -> &'static str {
+        match self {
+            Alias::Library => "library",
+            Alias::Compiler => "compiler",
+        }
+    }
 }
 
 /// A description of the crates in this set, suitable for passing to `builder.info`.
