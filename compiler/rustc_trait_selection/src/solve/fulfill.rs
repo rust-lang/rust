@@ -57,7 +57,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
             .map(|obligation| {
                 let code = infcx.probe(|_| {
                     match infcx
-                        .evaluate_root_goal(obligation.clone().into(), GenerateProofTree::No)
+                        .evaluate_root_goal(obligation.clone().into(), GenerateProofTree::IfEnabled)
                         .0
                     {
                         Ok((_, Certainty::Maybe(MaybeCause::Ambiguity), _)) => {
@@ -96,7 +96,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
             for obligation in mem::take(&mut self.obligations) {
                 let goal = obligation.clone().into();
                 let (changed, certainty, nested_goals) =
-                    match infcx.evaluate_root_goal(goal, GenerateProofTree::No).0 {
+                    match infcx.evaluate_root_goal(goal, GenerateProofTree::IfEnabled).0 {
                         Ok(result) => result,
                         Err(NoSolution) => {
                             errors.push(FulfillmentError {

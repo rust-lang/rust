@@ -200,30 +200,23 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
         tcx: TyCtxt<'tcx>,
         generate_proof_tree: GenerateProofTree,
     ) -> ProofTreeBuilder<'tcx> {
-        let generate_proof_tree = match (
-            tcx.sess.opts.unstable_opts.dump_solver_proof_tree,
-            tcx.sess.opts.unstable_opts.dump_solver_proof_tree_use_cache,
-            generate_proof_tree,
-        ) {
-            (_, Some(use_cache), GenerateProofTree::Yes(_)) => {
-                GenerateProofTree::Yes(UseGlobalCache::from_bool(use_cache))
-            }
-
-            (DumpSolverProofTree::Always, use_cache, GenerateProofTree::No) => {
-                let use_cache = use_cache.unwrap_or(true);
-                GenerateProofTree::Yes(UseGlobalCache::from_bool(use_cache))
-            }
-
-            (_, None, GenerateProofTree::Yes(_)) => generate_proof_tree,
-            (DumpSolverProofTree::Never, _, _) => generate_proof_tree,
-            (DumpSolverProofTree::OnError, _, _) => generate_proof_tree,
-        };
-
         match generate_proof_tree {
-            GenerateProofTree::No => ProofTreeBuilder::new_noop(),
-            GenerateProofTree::Yes(global_cache_disabled) => {
-                ProofTreeBuilder::new_root(global_cache_disabled)
+            GenerateProofTree::Never => ProofTreeBuilder::new_noop(),
+            GenerateProofTree::IfEnabled => {
+                let opts = &tcx.sess.opts.unstable_opts;
+                match opts.dump_solver_proof_tree {
+                    DumpSolverProofTree::Always => {
+                        let use_cache = opts.dump_solver_proof_tree_use_cache.unwrap_or(true);
+                        ProofTreeBuilder::new_root(UseGlobalCache::from_bool(use_cache))
+                    }
+                    // `OnError` is handled by reevaluating goals in error
+                    // reporting with `GenerateProofTree::Yes`.
+                    DumpSolverProofTree::OnError | DumpSolverProofTree::Never => {
+                        ProofTreeBuilder::new_noop()
+                    }
+                }
             }
+            GenerateProofTree::Yes(use_cache) => ProofTreeBuilder::new_root(use_cache),
         }
     }
 
