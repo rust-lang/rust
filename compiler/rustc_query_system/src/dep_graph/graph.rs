@@ -1339,6 +1339,8 @@ impl<K: DepKind> CurrentDepGraph<K> {
         prev_graph: &SerializedDepGraph<K>,
         prev_index: SerializedDepNodeIndex,
     ) -> DepNodeIndex {
+        self.debug_assert_not_in_new_nodes(prev_graph, prev_index);
+
         let mut prev_index_to_index = self.prev_index_to_index.lock();
 
         match prev_index_to_index[prev_index] {
@@ -1358,6 +1360,22 @@ impl<K: DepKind> CurrentDepGraph<K> {
                 dep_node_index
             }
         }
+    }
+
+    #[inline]
+    fn debug_assert_not_in_new_nodes(
+        &self,
+        prev_graph: &SerializedDepGraph<K>,
+        prev_index: SerializedDepNodeIndex,
+    ) {
+        let node = &prev_graph.index_to_node(prev_index);
+        debug_assert!(
+            !self
+                .nodes_newly_allocated_in_current_session
+                .as_ref()
+                .map_or(false, |set| set.lock().contains(node)),
+            "node from previous graph present in new node collection"
+        );
     }
 }
 
