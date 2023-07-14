@@ -473,7 +473,7 @@ pub(crate) fn build_impl(
                                 associated_trait.def_id,
                             )
                             .unwrap(); // corresponding associated item has to exist
-                        !tcx.is_doc_hidden(trait_item.def_id)
+                        document_hidden || !tcx.is_doc_hidden(trait_item.def_id)
                     } else {
                         item.visibility(tcx).is_public()
                     }
@@ -496,7 +496,7 @@ pub(crate) fn build_impl(
     let mut stack: Vec<&Type> = vec![&for_];
 
     if let Some(did) = trait_.as_ref().map(|t| t.def_id()) {
-        if tcx.is_doc_hidden(did) {
+        if !document_hidden && tcx.is_doc_hidden(did) {
             return;
         }
     }
@@ -505,7 +505,7 @@ pub(crate) fn build_impl(
     }
 
     while let Some(ty) = stack.pop() {
-        if let Some(did) = ty.def_id(&cx.cache) && tcx.is_doc_hidden(did) {
+        if let Some(did) = ty.def_id(&cx.cache) && !document_hidden && tcx.is_doc_hidden(did) {
             return;
         }
         if let Some(generics) = ty.generics() {

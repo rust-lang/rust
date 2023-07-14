@@ -262,10 +262,11 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             return false;
         };
 
+        let document_hidden = self.cx.render_options.document_hidden;
         let use_attrs = tcx.hir().attrs(tcx.hir().local_def_id_to_hir_id(def_id));
         // Don't inline `doc(hidden)` imports so they can be stripped at a later stage.
         let is_no_inline = use_attrs.lists(sym::doc).has_word(sym::no_inline)
-            || use_attrs.lists(sym::doc).has_word(sym::hidden);
+            || (document_hidden && use_attrs.lists(sym::doc).has_word(sym::hidden));
 
         if is_no_inline {
             return false;
@@ -285,11 +286,11 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         };
 
         let is_private = !self.cx.cache.effective_visibilities.is_directly_public(tcx, ori_res_did);
-        let is_hidden = tcx.is_doc_hidden(ori_res_did);
+        let is_hidden = !document_hidden && tcx.is_doc_hidden(ori_res_did);
         let item = tcx.hir().get_by_def_id(res_did);
 
         if !please_inline {
-            let inherits_hidden = inherits_doc_hidden(tcx, res_did, None);
+            let inherits_hidden = !document_hidden && inherits_doc_hidden(tcx, res_did, None);
             // Only inline if requested or if the item would otherwise be stripped.
             if (!is_private && !inherits_hidden) || (
                 is_hidden &&
@@ -359,6 +360,9 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         import_def_id: LocalDefId,
         target_def_id: LocalDefId,
     ) -> bool {
+        if self.cx.render_options.document_hidden {
+            return true;
+        }
         let tcx = self.cx.tcx;
         let item_def_id = reexport_chain(tcx, import_def_id, target_def_id)
             .iter()
