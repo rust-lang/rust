@@ -497,7 +497,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
     /// Protect a place so that it cannot be used any more for the duration of the current function
     /// call.
-    /// 
+    ///
     /// This is used to ensure soundness of in-place function argument/return passing.
     fn tb_protect_place(&mut self, place: &MPlaceTy<'tcx, Provenance>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();

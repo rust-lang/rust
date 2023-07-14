@@ -1,6 +1,5 @@
 // This should fail even without validation
-// Some optimizations remove ZST accesses, thus masking this UB.
-//@compile-flags: -Zmir-opt-level=0 -Zmiri-disable-validation -Cdebug-assertions=no
+//@compile-flags: -Zmiri-disable-validation -Cdebug-assertions=no
 
 fn main() {
     // Try many times as this might work by chance.

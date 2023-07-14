@@ -74,7 +74,7 @@ pub struct FrameState {
 
 impl VisitTags for FrameState {
     fn visit_tags(&self, _visit: &mut dyn FnMut(BorTag)) {
-        // `protected_tags` are fine to GC.
+        // `protected_tags` are already recorded by `GlobalStateInner`.
     }
 }
 
@@ -108,9 +108,12 @@ pub struct GlobalStateInner {
 }
 
 impl VisitTags for GlobalStateInner {
-    fn visit_tags(&self, _visit: &mut dyn FnMut(BorTag)) {
-        // The only candidate is base_ptr_tags, and that does not need visiting since we don't ever
-        // GC the bottommost tag.
+    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
+        for &tag in self.protected_tags.keys() {
+            visit(tag);
+        }
+        // The only other candidate is base_ptr_tags, and that does not need visiting since we don't ever
+        // GC the bottommost/root tag.
     }
 }
 
