@@ -1532,10 +1532,10 @@ pub struct LayoutS {
     pub align: AbiAndPrefAlign,
     pub size: Size,
 
-    /// The alignment explicitly requested with `repr(align)`.
+    /// The largest alignment explicitly requested with `repr(align)` on this type or any field.
     /// Only used on i686-windows, where the argument passing ABI is different when alignment is
     /// requested, even if the requested alignment is equal to the natural alignment.
-    pub repr_align: Option<Align>,
+    pub max_repr_align: Option<Align>,
 
     /// The alignment the type would have, ignoring any `repr(align)` but including `repr(packed)`.
     /// Only used on aarch64-linux, where the argument passing ABI ignores the requested alignment
@@ -1555,7 +1555,7 @@ impl LayoutS {
             largest_niche,
             size,
             align,
-            repr_align: None,
+            max_repr_align: None,
             unadjusted_abi_align: align.abi,
         }
     }
@@ -1573,7 +1573,7 @@ impl fmt::Debug for LayoutS {
             fields,
             largest_niche,
             variants,
-            repr_align,
+            max_repr_align,
             unadjusted_abi_align,
         } = self;
         f.debug_struct("Layout")
@@ -1583,7 +1583,7 @@ impl fmt::Debug for LayoutS {
             .field("fields", fields)
             .field("largest_niche", largest_niche)
             .field("variants", variants)
-            .field("repr_align", repr_align)
+            .field("max_repr_align", max_repr_align)
             .field("unadjusted_abi_align", unadjusted_abi_align)
             .finish()
     }
@@ -1625,8 +1625,8 @@ impl<'a> Layout<'a> {
         self.0.0.size
     }
 
-    pub fn repr_align(self) -> Option<Align> {
-        self.0.0.repr_align
+    pub fn max_repr_align(self) -> Option<Align> {
+        self.0.0.max_repr_align
     }
 
     pub fn unadjusted_abi_align(self) -> Align {

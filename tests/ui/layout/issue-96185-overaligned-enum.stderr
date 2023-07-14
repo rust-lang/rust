@@ -53,7 +53,7 @@ error: layout_of(Aligned1) = Layout {
                        variants: Single {
                            index: 0,
                        },
-                       repr_align: Some(
+                       max_repr_align: Some(
                            Align(8 bytes),
                        ),
                        unadjusted_abi_align: Align(1 bytes),
@@ -75,14 +75,14 @@ error: layout_of(Aligned1) = Layout {
                        variants: Single {
                            index: 1,
                        },
-                       repr_align: Some(
+                       max_repr_align: Some(
                            Align(8 bytes),
                        ),
                        unadjusted_abi_align: Align(1 bytes),
                    },
                ],
            },
-           repr_align: Some(
+           max_repr_align: Some(
                Align(8 bytes),
            ),
            unadjusted_abi_align: Align(1 bytes),
@@ -153,7 +153,7 @@ error: layout_of(Aligned2) = Layout {
                        variants: Single {
                            index: 0,
                        },
-                       repr_align: Some(
+                       max_repr_align: Some(
                            Align(1 bytes),
                        ),
                        unadjusted_abi_align: Align(1 bytes),
@@ -175,14 +175,14 @@ error: layout_of(Aligned2) = Layout {
                        variants: Single {
                            index: 1,
                        },
-                       repr_align: Some(
+                       max_repr_align: Some(
                            Align(1 bytes),
                        ),
                        unadjusted_abi_align: Align(1 bytes),
                    },
                ],
            },
-           repr_align: Some(
+           max_repr_align: Some(
                Align(1 bytes),
            ),
            unadjusted_abi_align: Align(1 bytes),

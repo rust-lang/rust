@@ -258,7 +258,7 @@ fn layout_of_uncached<'tcx>(
                 largest_niche,
                 align: element.align,
                 size,
-                repr_align: None,
+                max_repr_align: None,
                 unadjusted_abi_align: element.align.abi,
             })
         }
@@ -271,7 +271,7 @@ fn layout_of_uncached<'tcx>(
                 largest_niche: None,
                 align: element.align,
                 size: Size::ZERO,
-                repr_align: None,
+                max_repr_align: None,
                 unadjusted_abi_align: element.align.abi,
             })
         }
@@ -282,7 +282,7 @@ fn layout_of_uncached<'tcx>(
             largest_niche: None,
             align: dl.i8_align,
             size: Size::ZERO,
-            repr_align: None,
+            max_repr_align: None,
             unadjusted_abi_align: dl.i8_align.abi,
         }),
 
@@ -437,7 +437,7 @@ fn layout_of_uncached<'tcx>(
                 largest_niche: e_ly.largest_niche,
                 size,
                 align,
-                repr_align: None,
+                max_repr_align: None,
                 unadjusted_abi_align: align.abi,
             })
         }
@@ -887,7 +887,7 @@ fn generator_layout<'tcx>(
         largest_niche: prefix.largest_niche,
         size,
         align,
-        repr_align: None,
+        max_repr_align: None,
         unadjusted_abi_align: align.abi,
     });
     debug!("generator layout ({:?}): {:#?}", ty, layout);

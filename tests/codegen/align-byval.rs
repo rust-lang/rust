@@ -80,7 +80,7 @@ pub struct LowerFA8 {
     c: i64
 }
 
-// On i686-windows, this is passed on stack, because the wrapper struct does not have
+// On i686-windows, this is passed by reference, because it contains a field with
 // requested/forced alignment.
 #[repr(C)]
 pub struct WrappedFA8 {
@@ -301,7 +301,9 @@ extern "C" {
 
     // i686-linux: declare void @wrapped_fa8({{.*}}byval(%WrappedFA8) align 4{{.*}})
 
-    // i686-windows: declare void @wrapped_fa8({{.*}}byval(%WrappedFA8) align 4{{.*}})
+    // i686-windows: declare void @wrapped_fa8(
+    // i686-windows-NOT: byval
+    // i686-windows-SAME: align 8{{.*}})
     fn wrapped_fa8(x: WrappedFA8);
 
     // m68k: declare void @transparent_fa8({{.*}}byval(%TransparentFA8) align 8{{.*}})
