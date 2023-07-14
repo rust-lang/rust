@@ -60,9 +60,37 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
         // FIXME: keep track of these
         Arc::new(rust_ir::AdtRepr { c: false, packed: false, int: None })
     }
-    fn discriminant_type(&self, _ty: chalk_ir::Ty<Interner>) -> chalk_ir::Ty<Interner> {
-        // FIXME: keep track of this
-        chalk_ir::TyKind::Scalar(chalk_ir::Scalar::Uint(chalk_ir::UintTy::U32)).intern(Interner)
+    fn discriminant_type(&self, ty: chalk_ir::Ty<Interner>) -> chalk_ir::Ty<Interner> {
+        if let chalk_ir::TyKind::Adt(id, _) = ty.kind(Interner) {
+            if let hir_def::AdtId::EnumId(e) = id.0 {
+                let enum_data = self.db.enum_data(e);
+                let ty = enum_data.repr.unwrap_or_default().discr_type();
+                return chalk_ir::TyKind::Scalar(match ty {
+                    hir_def::layout::IntegerType::Pointer(is_signed) => match is_signed {
+                        true => chalk_ir::Scalar::Int(chalk_ir::IntTy::Isize),
+                        false => chalk_ir::Scalar::Uint(chalk_ir::UintTy::Usize),
+                    },
+                    hir_def::layout::IntegerType::Fixed(size, is_signed) => match is_signed {
+                        true => chalk_ir::Scalar::Int(match size {
+                            hir_def::layout::Integer::I8 => chalk_ir::IntTy::I8,
+                            hir_def::layout::Integer::I16 => chalk_ir::IntTy::I16,
+                            hir_def::layout::Integer::I32 => chalk_ir::IntTy::I32,
+                            hir_def::layout::Integer::I64 => chalk_ir::IntTy::I64,
+                            hir_def::layout::Integer::I128 => chalk_ir::IntTy::I128,
+                        }),
+                        false => chalk_ir::Scalar::Uint(match size {
+                            hir_def::layout::Integer::I8 => chalk_ir::UintTy::U8,
+                            hir_def::layout::Integer::I16 => chalk_ir::UintTy::U16,
+                            hir_def::layout::Integer::I32 => chalk_ir::UintTy::U32,
+                            hir_def::layout::Integer::I64 => chalk_ir::UintTy::U64,
+                            hir_def::layout::Integer::I128 => chalk_ir::UintTy::U128,
+                        }),
+                    },
+                })
+                .intern(Interner);
+            }
+        }
+        chalk_ir::TyKind::Scalar(chalk_ir::Scalar::Uint(chalk_ir::UintTy::U8)).intern(Interner)
     }
     fn impl_datum(&self, impl_id: ImplId) -> Arc<ImplDatum> {
         self.db.impl_datum(self.krate, impl_id)

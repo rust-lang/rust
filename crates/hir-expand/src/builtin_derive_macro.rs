@@ -624,9 +624,14 @@ fn hash_expand(
                 }
             },
         );
+        let check_discriminant = if matches!(&adt.shape, AdtShape::Enum { .. }) {
+            quote! { #krate::mem::discriminant(self).hash(ra_expand_state); }
+        } else {
+            quote! {}
+        };
         quote! {
             fn hash<H: #krate::hash::Hasher>(&self, ra_expand_state: &mut H) {
-                #krate::mem::discriminant(self).hash(ra_expand_state);
+                #check_discriminant
                 match self {
                     ##arms
                 }
@@ -742,9 +747,6 @@ fn ord_expand(
             // FIXME: Return expand error here
             return quote!();
         }
-        let left = quote!(#krate::intrinsics::discriminant_value(self));
-        let right = quote!(#krate::intrinsics::discriminant_value(other));
-
         let (self_patterns, other_patterns) = self_and_other_patterns(adt, &adt.name);
         let arms = izip!(self_patterns, other_patterns, adt.shape.field_names()).map(
             |(pat1, pat2, fields)| {
@@ -759,17 +761,17 @@ fn ord_expand(
             },
         );
         let fat_arrow = fat_arrow();
-        let body = compare(
-            krate,
-            left,
-            right,
-            quote! {
-                match (self, other) {
-                    ##arms
-                    _unused #fat_arrow #krate::cmp::Ordering::Equal
-                }
-            },
-        );
+        let mut body = quote! {
+            match (self, other) {
+                ##arms
+                _unused #fat_arrow #krate::cmp::Ordering::Equal
+            }
+        };
+        if matches!(&adt.shape, AdtShape::Enum { .. }) {
+            let left = quote!(#krate::intrinsics::discriminant_value(self));
+            let right = quote!(#krate::intrinsics::discriminant_value(other));
+            body = compare(krate, left, right, body);
+        }
         quote! {
             fn cmp(&self, other: &Self) -> #krate::cmp::Ordering {
                 #body

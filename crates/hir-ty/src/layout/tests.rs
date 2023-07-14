@@ -464,3 +464,41 @@ fn enums_with_discriminants() {
         }
     }
 }
+
+#[test]
+fn core_mem_discriminant() {
+    size_and_align! {
+        minicore: discriminant;
+        struct S(i32, u64);
+        struct Goal(core::mem::Discriminant<S>);
+    }
+    size_and_align! {
+        minicore: discriminant;
+        #[repr(u32)]
+        enum S {
+            A,
+            B,
+            C,
+        }
+        struct Goal(core::mem::Discriminant<S>);
+    }
+    size_and_align! {
+        minicore: discriminant;
+        enum S {
+            A(i32),
+            B(i64),
+            C(u8),
+        }
+        struct Goal(core::mem::Discriminant<S>);
+    }
+    size_and_align! {
+        minicore: discriminant;
+        #[repr(C, u16)]
+        enum S {
+            A(i32),
+            B(i64) = 200,
+            C = 1000,
+        }
+        struct Goal(core::mem::Discriminant<S>);
+    }
+}
