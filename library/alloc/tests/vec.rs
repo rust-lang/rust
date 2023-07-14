@@ -2498,3 +2498,68 @@ fn test_into_flattened_size_overflow() {
     let v = vec![[(); usize::MAX]; 2];
     let _ = v.into_flattened();
 }
+
+#[cfg(not(bootstrap))]
+#[test]
+fn test_box_zero_allocator() {
+    use core::{alloc::AllocError, cell::RefCell};
+    use std::collections::HashSet;
+
+    // Track ZST allocations and ensure that they all have a matching free.
+    struct ZstTracker {
+        state: RefCell<(HashSet<usize>, usize)>,
+    }
+    unsafe impl Allocator for ZstTracker {
+        fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+            let ptr = if layout.size() == 0 {
+                let mut state = self.state.borrow_mut();
+                let addr = state.1;
+                assert!(state.0.insert(addr));
+                state.1 += 1;
+                std::println!("allocating {addr}");
+                std::ptr::invalid_mut(addr)
+            } else {
+                unsafe { std::alloc::alloc(layout) }
+            };
+            Ok(NonNull::slice_from_raw_parts(NonNull::new(ptr).ok_or(AllocError)?, layout.size()))
+        }
+
+        unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
+            if layout.size() == 0 {
+                let addr = ptr.as_ptr() as usize;
+                let mut state = self.state.borrow_mut();
+                std::println!("freeing {addr}");
+                assert!(state.0.remove(&addr), "ZST free that wasn't allocated");
+            } else {
+                unsafe { std::alloc::dealloc(ptr.as_ptr(), layout) }
+            }
+        }
+    }
+
+    // Start the state at 100 to avoid returning null pointers.
+    let alloc = ZstTracker { state: RefCell::new((HashSet::new(), 100)) };
+
+    // Ensure that unsizing retains the same behavior.
+    {
+        let b1: Box<[u8; 0], &ZstTracker> = Box::new_in([], &alloc);
+        let b2: Box<[u8], &ZstTracker> = b1.clone();
+        let _b3: Box<[u8], &ZstTracker> = b2.clone();
+    }
+
+    // Ensure that shrinking doesn't leak a ZST allocation.
+    {
+        let mut v1: Vec<u8, &ZstTracker> = Vec::with_capacity_in(100, &alloc);
+        v1.shrink_to_fit();
+    }
+
+    // Ensure that conversion to/from vec works.
+    {
+        let v1: Vec<(), &ZstTracker> = Vec::with_capacity_in(100, &alloc);
+        let _b1: Box<[()], &ZstTracker> = v1.into_boxed_slice();
+        let b2: Box<[()], &ZstTracker> = Box::new_in([(), (), ()], &alloc);
+        let _v2: Vec<(), &ZstTracker> = b2.into();
+    }
+
+    // Ensure all ZSTs have been freed.
+    assert!(alloc.state.borrow().0.is_empty());
+}
