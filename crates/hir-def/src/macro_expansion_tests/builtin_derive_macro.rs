@@ -417,6 +417,44 @@ fn test_hash_expand() {
 use core::hash::Hash;
 
 #[derive(Hash)]
+struct Foo {
+    x: i32,
+    y: u64,
+    z: (i32, u64),
+}
+"#,
+        expect![[r#"
+use core::hash::Hash;
+
+#[derive(Hash)]
+struct Foo {
+    x: i32,
+    y: u64,
+    z: (i32, u64),
+}
+
+impl < > core::hash::Hash for Foo< > where {
+    fn hash<H: core::hash::Hasher>(&self , ra_expand_state: &mut H) {
+        match self {
+            Foo {
+                x: x, y: y, z: z,
+            }
+            => {
+                x.hash(ra_expand_state);
+                y.hash(ra_expand_state);
+                z.hash(ra_expand_state);
+            }
+            ,
+        }
+    }
+}"#]],
+    );
+    check(
+        r#"
+//- minicore: derive, hash
+use core::hash::Hash;
+
+#[derive(Hash)]
 enum Command {
     Move { x: i32, y: i32 },
     Do(&'static str),

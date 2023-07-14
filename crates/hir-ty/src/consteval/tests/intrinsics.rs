@@ -150,6 +150,36 @@ fn min_align_of_val() {
 }
 
 #[test]
+fn type_name() {
+    check_str(
+        r#"
+        extern "rust-intrinsic" {
+            pub fn type_name<T: ?Sized>() -> &'static str;
+        }
+
+        const GOAL: &str = type_name::<i32>();
+        "#,
+        "i32",
+    );
+    check_str(
+        r#"
+        extern "rust-intrinsic" {
+            pub fn type_name<T: ?Sized>() -> &'static str;
+        }
+
+        mod mod1 {
+            pub mod mod2 {
+                pub struct Ty;
+            }
+        }
+
+        const GOAL: &str = type_name::<mod1::mod2::Ty>();
+        "#,
+        "mod1::mod2::Ty",
+    );
+}
+
+#[test]
 fn transmute() {
     check_number(
         r#"

@@ -26,7 +26,7 @@ pub trait WithFixture: Default + SourceDatabaseExt + 'static {
         let fixture = ChangeFixture::parse(ra_fixture);
         let mut db = Self::default();
         fixture.change.apply(&mut db);
-        assert_eq!(fixture.files.len(), 1);
+        assert_eq!(fixture.files.len(), 1, "Multiple file found in the fixture");
         (db, fixture.files[0])
     }
 

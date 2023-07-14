@@ -364,6 +364,11 @@ pub mod mem {
         pub fn size_of<T>() -> usize;
     }
     // endregion:size_of
+
+    // region:discriminant
+    use crate::marker::DiscriminantKind;
+    pub struct Discriminant<T>(<T as DiscriminantKind>::Discriminant);
+    // endregion:discriminant
 }
 
 pub mod ptr {

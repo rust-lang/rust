@@ -5,7 +5,7 @@ use test_utils::skip_slow_tests;
 
 use crate::{
     consteval::try_const_usize, db::HirDatabase, mir::pad16, test_db::TestDB, Const, ConstScalar,
-    Interner,
+    Interner, MemoryMap,
 };
 
 use super::{
@@ -37,7 +37,7 @@ fn check_fail(ra_fixture: &str, error: impl FnOnce(ConstEvalError) -> bool) {
 
 #[track_caller]
 fn check_number(ra_fixture: &str, answer: i128) {
-    check_answer(ra_fixture, |b| {
+    check_answer(ra_fixture, |b, _| {
         assert_eq!(
             b,
             &answer.to_le_bytes()[0..b.len()],
@@ -48,8 +48,26 @@ fn check_number(ra_fixture: &str, answer: i128) {
 }
 
 #[track_caller]
-fn check_answer(ra_fixture: &str, check: impl FnOnce(&[u8])) {
-    let (db, file_id) = TestDB::with_single_file(ra_fixture);
+fn check_str(ra_fixture: &str, answer: &str) {
+    check_answer(ra_fixture, |b, mm| {
+        let addr = usize::from_le_bytes(b[0..b.len() / 2].try_into().unwrap());
+        let size = usize::from_le_bytes(b[b.len() / 2..].try_into().unwrap());
+        let Some(bytes) = mm.get(addr, size) else {
+            panic!("string data missed in the memory map");
+        };
+        assert_eq!(
+            bytes,
+            answer.as_bytes(),
+            "Bytes differ. In string form: actual = {}, expected = {answer}",
+            String::from_utf8_lossy(bytes)
+        );
+    });
+}
+
+#[track_caller]
+fn check_answer(ra_fixture: &str, check: impl FnOnce(&[u8], &MemoryMap)) {
+    let (db, file_ids) = TestDB::with_many_files(ra_fixture);
+    let file_id = *file_ids.last().unwrap();
     let r = match eval_goal(&db, file_id) {
         Ok(t) => t,
         Err(e) => {
@@ -59,8 +77,8 @@ fn check_answer(ra_fixture: &str, check: impl FnOnce(&[u8])) {
     };
     match &r.data(Interner).value {
         chalk_ir::ConstValue::Concrete(c) => match &c.interned {
-            ConstScalar::Bytes(b, _) => {
-                check(b);
+            ConstScalar::Bytes(b, mm) => {
+                check(b, mm);
             }
             x => panic!("Expected number but found {:?}", x),
         },
@@ -225,7 +243,7 @@ const GOAL: usize = {
     transmute(&x)
 }
         "#,
-        |b| assert_eq!(b[0] % 8, 0),
+        |b, _| assert_eq!(b[0] % 8, 0),
     );
     check_answer(
         r#"
@@ -234,7 +252,7 @@ use core::mem::transmute;
 static X: i64 = 12;
 const GOAL: usize = transmute(&X);
         "#,
-        |b| assert_eq!(b[0] % 8, 0),
+        |b, _| assert_eq!(b[0] % 8, 0),
     );
 }
 
@@ -2069,6 +2087,17 @@ fn array_and_index() {
 }
 
 #[test]
+fn string() {
+    check_str(
+        r#"
+    //- minicore: coerce_unsized, index, slice
+    const GOAL: &str = "hello";
+        "#,
+        "hello",
+    );
+}
+
+#[test]
 fn byte_string() {
     check_number(
         r#"
@@ -2443,6 +2472,25 @@ fn const_trait_assoc() {
     const GOAL: usize = U0::VAL + i32::VAL;
     "#,
         32,
+    );
+    check_number(
+        r#"
+    //- /a/lib.rs crate:a
+    pub trait ToConst {
+        const VAL: usize;
+    }
+    pub const fn to_const<T: ToConst>() -> usize {
+        T::VAL
+    }
+    //- /main.rs crate:main deps:a
+    use a::{ToConst, to_const};
+    struct U0;
+    impl ToConst for U0 {
+        const VAL: usize = 5;
+    }
+    const GOAL: usize = to_const::<U0>();
+    "#,
+        5,
     );
     check_number(
         r#"

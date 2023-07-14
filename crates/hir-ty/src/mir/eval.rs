@@ -29,7 +29,7 @@ use crate::{
     infer::PointerCast,
     layout::{Layout, LayoutError, RustcEnumVariantIdx},
     mapping::from_chalk,
-    method_resolution::is_dyn_method,
+    method_resolution::{is_dyn_method, lookup_impl_const},
     name, static_lifetime,
     traits::FnTrait,
     utils::{detect_variant_from_bytes, ClosureSubst},
@@ -1571,35 +1571,51 @@ impl Evaluator<'_> {
         let chalk_ir::ConstValue::Concrete(c) = &konst.data(Interner).value else {
             not_supported!("evaluating non concrete constant");
         };
-        Ok(match &c.interned {
-            ConstScalar::Bytes(v, memory_map) => {
-                let mut v: Cow<'_, [u8]> = Cow::Borrowed(v);
-                let patch_map = memory_map.transform_addresses(|b, align| {
-                    let addr = self.heap_allocate(b.len(), align)?;
-                    self.write_memory(addr, b)?;
-                    Ok(addr.to_usize())
+        let result_owner;
+        let (v, memory_map) = match &c.interned {
+            ConstScalar::Bytes(v, mm) => (v, mm),
+            ConstScalar::UnevaluatedConst(const_id, subst) => 'b: {
+                let mut const_id = *const_id;
+                let mut subst = subst.clone();
+                if let hir_def::GeneralConstId::ConstId(c) = const_id {
+                    let (c, s) = lookup_impl_const(self.db, self.trait_env.clone(), c, subst);
+                    const_id = hir_def::GeneralConstId::ConstId(c);
+                    subst = s;
+                }
+                result_owner = self.db.const_eval(const_id.into(), subst).map_err(|e| {
+                    let name = const_id.name(self.db.upcast());
+                    MirEvalError::ConstEvalError(name, Box::new(e))
                 })?;
-                let (size, align) = self.size_align_of(ty, locals)?.unwrap_or((v.len(), 1));
-                if size != v.len() {
-                    // Handle self enum
-                    if size == 16 && v.len() < 16 {
-                        v = Cow::Owned(pad16(&v, false).to_vec());
-                    } else if size < 16 && v.len() == 16 {
-                        v = Cow::Owned(v[0..size].to_vec());
-                    } else {
-                        return Err(MirEvalError::InvalidConst(konst.clone()));
+                if let chalk_ir::ConstValue::Concrete(c) = &result_owner.data(Interner).value {
+                    if let ConstScalar::Bytes(v, mm) = &c.interned {
+                        break 'b (v, mm);
                     }
                 }
-                let addr = self.heap_allocate(size, align)?;
-                self.write_memory(addr, &v)?;
-                self.patch_addresses(&patch_map, &memory_map.vtable, addr, ty, locals)?;
-                Interval::new(addr, size)
-            }
-            ConstScalar::UnevaluatedConst(..) => {
-                not_supported!("unevaluated const present in monomorphized mir");
+                not_supported!("unevaluatable constant");
             }
             ConstScalar::Unknown => not_supported!("evaluating unknown const"),
-        })
+        };
+        let mut v: Cow<'_, [u8]> = Cow::Borrowed(v);
+        let patch_map = memory_map.transform_addresses(|b, align| {
+            let addr = self.heap_allocate(b.len(), align)?;
+            self.write_memory(addr, b)?;
+            Ok(addr.to_usize())
+        })?;
+        let (size, align) = self.size_align_of(ty, locals)?.unwrap_or((v.len(), 1));
+        if size != v.len() {
+            // Handle self enum
+            if size == 16 && v.len() < 16 {
+                v = Cow::Owned(pad16(&v, false).to_vec());
+            } else if size < 16 && v.len() == 16 {
+                v = Cow::Owned(v[0..size].to_vec());
+            } else {
+                return Err(MirEvalError::InvalidConst(konst.clone()));
+            }
+        }
+        let addr = self.heap_allocate(size, align)?;
+        self.write_memory(addr, &v)?;
+        self.patch_addresses(&patch_map, &memory_map.vtable, addr, ty, locals)?;
+        Ok(Interval::new(addr, size))
     }
 
     fn eval_place(&mut self, p: &Place, locals: &Locals) -> Result<Interval> {
