@@ -68,3 +68,4 @@ inline-more = []
 
 [package.metadata.docs.rs]
 features = ["nightly", "rayon", "serde", "raw"]
+rustdoc-args = ["--generate-link-to-definition"]
