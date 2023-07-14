@@ -43,8 +43,8 @@
     {% if page.css_class.contains("crate") %}
     <script defer src="{{page.root_path|safe}}crates{{page.resource_suffix}}.js"></script> {# #}
     {% else if page.css_class == "src" %}
-    <script defer src="{{static_root_path|safe}}{{files.source_script_js}}"></script> {# #}
-    <script defer src="{{page.root_path|safe}}source-files{{page.resource_suffix}}.js"></script> {# #}
+    <script defer src="{{static_root_path|safe}}{{files.src_script_js}}"></script> {# #}
+    <script defer src="{{page.root_path|safe}}src-files{{page.resource_suffix}}.js"></script> {# #}
     {% else if !page.css_class.contains("mod") %}
     <script defer src="sidebar-items{{page.resource_suffix}}.js"></script> {# #}
     {% endif %}
