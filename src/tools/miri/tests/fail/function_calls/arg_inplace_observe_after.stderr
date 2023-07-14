@@ -1,20 +1,13 @@
 error: Undefined Behavior: using uninitialized data, but this operation requires initialized memory
   --> $DIR/arg_inplace_observe_after.rs:LL:CC
    |
-LL | /     mir! {
-LL | |         let unit: ();
-LL | |         {
-LL | |             let non_copy = S(42);
-...  |
-LL | |
-LL | |     }
-   | |_____^ using uninitialized data, but this operation requires initialized memory
+LL |             _observe = non_copy.0;
+   |             ^^^^^^^^^^^^^^^^^^^^^ using uninitialized data, but this operation requires initialized memory
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
-   = note: inside `main` at RUSTLIB/core/src/intrinsics/mir.rs:LL:CC
-   = note: this error originates in the macro `::core::intrinsics::mir::__internal_remove_let` which comes from the expansion of the macro `mir` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: inside `main` at $DIR/arg_inplace_observe_after.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 
