@@ -783,7 +783,7 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
     tcx.hir().par_body_owners(|def_id| tcx.ensure().mir_borrowck(def_id));
 
     // MIR effect checking
-    for def_id in tcx.hir().body_owners() {
+    tcx.hir().par_body_owners(|def_id| {
         tcx.ensure().thir_check_unsafety(def_id);
         if !tcx.sess.opts.unstable_opts.thir_unsafeck {
             rustc_mir_transform::check_unsafety::check_unsafety(tcx, def_id);
@@ -799,16 +799,14 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
             tcx.ensure().mir_drops_elaborated_and_const_checked(def_id);
             tcx.ensure().unused_generic_params(ty::InstanceDef::Item(def_id.to_def_id()));
         }
-    }
 
-    if tcx.sess.opts.unstable_opts.drop_tracking_mir {
-        tcx.hir().par_body_owners(|def_id| {
-            if let rustc_hir::def::DefKind::Generator = tcx.def_kind(def_id) {
-                tcx.ensure().mir_generator_witnesses(def_id);
-                tcx.ensure().check_generator_obligations(def_id);
-            }
-        });
-    }
+        if tcx.sess.opts.unstable_opts.drop_tracking_mir
+            && let rustc_hir::def::DefKind::Generator = tcx.def_kind(def_id)
+        {
+            tcx.ensure().mir_generator_witnesses(def_id);
+            tcx.ensure().check_generator_obligations(def_id);
+        }
+    });
 
     layout_test::test_layout(tcx);
 
