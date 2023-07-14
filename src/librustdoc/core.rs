@@ -327,6 +327,7 @@ pub(crate) fn run_global_ctxt(
     tcx.sess.time("missing_docs", || {
         rustc_lint::check_crate(tcx, rustc_lint::builtin::MissingDoc::new);
     });
+    tcx.hir().par_for_each_module(|module| tcx.ensure().lint_mod(module));
     tcx.sess.time("check_mod_attrs", || {
         tcx.hir().for_each_module(|module| tcx.ensure().check_mod_attrs(module))
     });

@@ -17,7 +17,6 @@
 use crate::{passes::LateLintPassObject, LateContext, LateLintPass, LintStore};
 use rustc_ast as ast;
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_data_structures::sync::{join, DynSend};
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit as hir_visit;
@@ -434,15 +433,9 @@ fn late_lint_crate_inner<'tcx, T: LateLintPass<'tcx>>(
 /// Performs lint checking on a crate.
 pub fn check_crate<'tcx, T: LateLintPass<'tcx> + 'tcx>(
     tcx: TyCtxt<'tcx>,
-    builtin_lints: impl FnOnce() -> T + Send + DynSend,
+    builtin_lints: impl FnOnce() -> T,
 ) {
-    let _timer = tcx.sess.timer("lint_checking");
-    join(
-        || {
-            // Run whole crate non-incremental lints
-            let _timer = tcx.sess.timer("crate_lints");
-            late_lint_crate(tcx, builtin_lints());
-        },
-        || tcx.hir().par_for_each_module(|module| tcx.ensure().lint_mod(module)),
-    );
+    // Run whole crate non-incremental lints
+    let _timer = tcx.sess.timer("crate_lints");
+    late_lint_crate(tcx, builtin_lints());
 }

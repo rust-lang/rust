@@ -833,6 +833,9 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
             rustc_lint::check_crate(tcx, rustc_lint::BuiltinCombinedLateLintPass::new);
         },
         {
+            tcx.hir().par_for_each_module(|module| tcx.ensure().lint_mod(module));
+        },
+        {
             tcx.hir().par_for_each_module(|module| tcx.ensure().check_mod_privacy(module));
         }
     );
