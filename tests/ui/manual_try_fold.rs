@@ -3,9 +3,7 @@
 #![warn(clippy::manual_try_fold)]
 #![feature(try_trait_v2)]
 
-use std::ops::ControlFlow;
-use std::ops::FromResidual;
-use std::ops::Try;
+use std::ops::{ControlFlow, FromResidual, Try};
 
 #[macro_use]
 extern crate proc_macros;

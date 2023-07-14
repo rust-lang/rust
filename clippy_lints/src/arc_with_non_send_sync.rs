@@ -1,12 +1,11 @@
-use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::last_path_segment;
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
-use if_chain::if_chain;
-
 use rustc_hir::{Expr, ExprKind};
-use rustc_lint::LateContext;
-use rustc_lint::LateLintPass;
+use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
+use rustc_middle::ty::print::with_forced_trimmed_paths;
+use rustc_middle::ty::GenericArgKind;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::symbol::sym;
 
@@ -15,8 +14,8 @@ declare_clippy_lint! {
     /// This lint warns when you use `Arc` with a type that does not implement `Send` or `Sync`.
     ///
     /// ### Why is this bad?
-    /// Wrapping a type in Arc doesn't add thread safety to the underlying data, so data races
-    /// could occur when touching the underlying data.
+    /// `Arc<T>` is only `Send`/`Sync` when `T` is [both `Send` and `Sync`](https://doc.rust-lang.org/std/sync/struct.Arc.html#impl-Send-for-Arc%3CT%3E),
+    /// either `T` should be made `Send + Sync` or an `Rc` should be used instead of an `Arc`
     ///
     /// ### Example
     /// ```rust
@@ -24,16 +23,17 @@ declare_clippy_lint! {
     /// # use std::sync::Arc;
     ///
     /// fn main() {
-    ///     // This is safe, as `i32` implements `Send` and `Sync`.
+    ///     // This is fine, as `i32` implements `Send` and `Sync`.
     ///     let a = Arc::new(42);
     ///
-    ///     // This is not safe, as `RefCell` does not implement `Sync`.
+    ///     // `RefCell` is `!Sync`, so either the `Arc` should be replaced with an `Rc`
+    ///     // or the `RefCell` replaced with something like a `RwLock`
     ///     let b = Arc::new(RefCell::new(42));
     /// }
     /// ```
     #[clippy::version = "1.72.0"]
     pub ARC_WITH_NON_SEND_SYNC,
-    correctness,
+    suspicious,
     "using `Arc` with a type that does not implement `Send` or `Sync`"
 }
 declare_lint_pass!(ArcWithNonSendSync => [ARC_WITH_NON_SEND_SYNC]);
@@ -41,32 +41,38 @@ declare_lint_pass!(ArcWithNonSendSync => [ARC_WITH_NON_SEND_SYNC]);
 impl LateLintPass<'_> for ArcWithNonSendSync {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         let ty = cx.typeck_results().expr_ty(expr);
-        if_chain! {
-            if is_type_diagnostic_item(cx, ty, sym::Arc);
-            if let ExprKind::Call(func, [arg]) = expr.kind;
-            if let ExprKind::Path(func_path) = func.kind;
-            if last_path_segment(&func_path).ident.name == sym::new;
-            if let arg_ty = cx.typeck_results().expr_ty(arg);
-            if !matches!(arg_ty.kind(), ty::Param(_));
-            if !cx.tcx
-                .lang_items()
-                .sync_trait()
-                .map_or(false, |id| implements_trait(cx, arg_ty, id, &[])) ||
-                !cx.tcx
-                .get_diagnostic_item(sym::Send)
-                .map_or(false, |id| implements_trait(cx, arg_ty, id, &[]));
+        if is_type_diagnostic_item(cx, ty, sym::Arc)
+            && let ExprKind::Call(func, [arg]) = expr.kind
+            && let ExprKind::Path(func_path) = func.kind
+            && last_path_segment(&func_path).ident.name == sym::new
+            && let arg_ty = cx.typeck_results().expr_ty(arg)
+            // make sure that the type is not and does not contain any type parameters
+            && arg_ty.walk().all(|arg| {
+                !matches!(arg.unpack(), GenericArgKind::Type(ty) if matches!(ty.kind(), ty::Param(_)))
+            })
+            && let Some(send) = cx.tcx.get_diagnostic_item(sym::Send)
+            && let Some(sync) = cx.tcx.lang_items().sync_trait()
+            && let [is_send, is_sync] = [send, sync].map(|id| implements_trait(cx, arg_ty, id, &[]))
+            && !(is_send && is_sync)
+        {
+            span_lint_and_then(
+                cx,
+                ARC_WITH_NON_SEND_SYNC,
+                expr.span,
+                "usage of an `Arc` that is not `Send` or `Sync`",
+                |diag| with_forced_trimmed_paths!({
+                    if !is_send {
+                        diag.note(format!("the trait `Send` is not implemented for `{arg_ty}`"));
+                    }
+                    if !is_sync {
+                        diag.note(format!("the trait `Sync` is not implemented for `{arg_ty}`"));
+                    }
 
-            then {
-                span_lint_and_help(
-                    cx,
-                    ARC_WITH_NON_SEND_SYNC,
-                    expr.span,
-                    "usage of `Arc<T>` where `T` is not `Send` or `Sync`",
-                    None,
-                    "consider using `Rc<T>` instead or wrapping `T` in a std::sync type like \
-                    `Mutex<T>`",
-                );
-            }
+                    diag.note(format!("required for `{ty}` to implement `Send` and `Sync`"));
+
+                    diag.help("consider using an `Rc` instead or wrapping the inner type with a `Mutex`");
+                }
+            ));
         }
     }
 }

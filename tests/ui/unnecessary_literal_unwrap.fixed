@@ -68,6 +68,26 @@ fn unwrap_methods_result() {
     1;
 }
 
+fn unwrap_from_binding() {
+    macro_rules! from_macro {
+        () => {
+            Some("")
+        };
+    }
+    let val = from_macro!();
+    let _ = val.unwrap_or("");
+}
+
+fn unwrap_unchecked() {
+    let _ = 1;
+    let _ = unsafe { 1 + *(&1 as *const i32) }; // needs to keep the unsafe block
+    let _ = 1 + 1;
+    let _ = 1;
+    let _ = unsafe { 1 + *(&1 as *const i32) };
+    let _ = 1 + 1;
+    let _ = 123;
+}
+
 fn main() {
     unwrap_option_some();
     unwrap_option_none();
@@ -75,4 +95,5 @@ fn main() {
     unwrap_result_err();
     unwrap_methods_option();
     unwrap_methods_result();
+    unwrap_unchecked();
 }

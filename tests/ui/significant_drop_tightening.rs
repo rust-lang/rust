@@ -27,6 +27,29 @@ pub fn issue_10413() {
     }
 }
 
+pub fn issue_11128() {
+    use std::mem::drop as unlock;
+
+    struct Foo {
+        droppable: Option<Vec<i32>>,
+        mutex: Mutex<Vec<i32>>,
+    }
+
+    impl Drop for Foo {
+        fn drop(&mut self) {
+            if let Some(droppable) = self.droppable.take() {
+                let lock = self.mutex.lock().unwrap();
+                let idx_opt = lock.iter().copied().find(|el| Some(el) == droppable.first());
+                if let Some(idx) = idx_opt {
+                    let local_droppable = vec![lock.first().copied().unwrap_or_default()];
+                    unlock(lock);
+                    drop(local_droppable);
+                }
+            }
+        }
+    }
+}
+
 pub fn path_return_can_be_ignored() -> i32 {
     let mutex = Mutex::new(1);
     let lock = mutex.lock().unwrap();

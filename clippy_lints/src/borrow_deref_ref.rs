@@ -1,9 +1,8 @@
 use crate::reference::DEREF_ADDROF;
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::is_from_proc_macro;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::implements_trait;
-use clippy_utils::{get_parent_expr, is_lint_allowed};
+use clippy_utils::{get_parent_expr, is_from_proc_macro, is_lint_allowed};
 use rustc_errors::Applicability;
 use rustc_hir::{ExprKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};

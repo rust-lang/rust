@@ -21,13 +21,13 @@ pub fn check(
         return;
     }
 
-    let Some(mm) = is_min_or_max(cx, unwrap_arg) else { return };
+    let Some(mm) = is_min_or_max(cx, unwrap_arg) else {
+        return;
+    };
 
     if ty.is_signed() {
-        use self::{
-            MinMax::{Max, Min},
-            Sign::{Neg, Pos},
-        };
+        use self::MinMax::{Max, Min};
+        use self::Sign::{Neg, Pos};
 
         let Some(sign) = lit_sign(arith_rhs) else {
             return;

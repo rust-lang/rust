@@ -4,7 +4,9 @@ use clippy_utils::source::snippet;
 use clippy_utils::ty::{implements_trait, is_copy};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::{def::Res, def_id::DefId, BinOpKind, BorrowKind, Expr, ExprKind, GenericArg, ItemKind, QPath, TyKind};
+use rustc_hir::def::Res;
+use rustc_hir::def_id::DefId;
+use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, GenericArg, ItemKind, QPath, TyKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, Ty};
 

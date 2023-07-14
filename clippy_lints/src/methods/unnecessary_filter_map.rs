@@ -11,8 +11,7 @@ use rustc_lint::LateContext;
 use rustc_middle::ty;
 use rustc_span::sym;
 
-use super::UNNECESSARY_FILTER_MAP;
-use super::UNNECESSARY_FIND_MAP;
+use super::{UNNECESSARY_FILTER_MAP, UNNECESSARY_FIND_MAP};
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>, arg: &'tcx hir::Expr<'tcx>, name: &str) {
     if !is_trait_method(cx, expr, sym::Iterator) {

@@ -1,13 +1,11 @@
-use clippy_utils::{
-    diagnostics::span_lint_and_help,
-    is_from_proc_macro,
-    msrvs::{self, Msrv},
-    path_to_local,
-};
+use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::{is_from_proc_macro, path_to_local};
 use rustc_ast::LitKind;
 use rustc_hir::{Expr, ExprKind, HirId, Node, Pat};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::{lint::in_external_macro, ty};
+use rustc_middle::lint::in_external_macro;
+use rustc_middle::ty;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use std::iter::once;
 
@@ -16,8 +14,8 @@ declare_clippy_lint! {
     /// Checks for tuple<=>array conversions that are not done with `.into()`.
     ///
     /// ### Why is this bad?
-    /// It's unnecessary complexity. `.into()` works for tuples<=>arrays at or below 12 elements and
-    /// conveys the intent a lot better, while also leaving less room for hard to spot bugs!
+    /// It may be unnecessary complexity. `.into()` works for converting tuples
+    /// <=> arrays of up to 12 elements and may convey intent more clearly.
     ///
     /// ### Example
     /// ```rust,ignore
@@ -31,7 +29,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.72.0"]
     pub TUPLE_ARRAY_CONVERSIONS,
-    complexity,
+    pedantic,
     "checks for tuple<=>array conversions that are not done with `.into()`"
 }
 impl_lint_pass!(TupleArrayConversions => [TUPLE_ARRAY_CONVERSIONS]);

@@ -158,11 +158,12 @@ impl<'tcx> LateLintPass<'tcx> for UndocumentedUnsafeBlocks {
     }
 
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &hir::Stmt<'tcx>) {
-        let (
-            hir::StmtKind::Local(&hir::Local { init: Some(expr), .. })
-            | hir::StmtKind::Expr(expr)
-            | hir::StmtKind::Semi(expr)
-        ) = stmt.kind else { return };
+        let (hir::StmtKind::Local(&hir::Local { init: Some(expr), .. })
+        | hir::StmtKind::Expr(expr)
+        | hir::StmtKind::Semi(expr)) = stmt.kind
+        else {
+            return;
+        };
         if !is_lint_allowed(cx, UNNECESSARY_SAFETY_COMMENT, stmt.hir_id)
             && !in_external_macro(cx.tcx.sess, stmt.span)
             && let HasSafetyComment::Yes(pos) = stmt_has_safety_comment(cx, stmt.span, stmt.hir_id)

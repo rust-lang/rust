@@ -37,7 +37,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, call_name: &str,
                 USELESS_ASREF,
                 expr.span,
                 &format!("this call to `{call_name}` does nothing"),
-                "try this",
+                "try",
                 snippet_with_applicability(cx, recvr.span, "..", &mut applicability).to_string(),
                 applicability,
             );

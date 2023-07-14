@@ -15,8 +15,7 @@ pub mod inner {
 
     // RE-EXPORT
     // this will stick in `inner` module
-    pub use macro_rules::mut_mut;
-    pub use macro_rules::try_err;
+    pub use macro_rules::{mut_mut, try_err};
 
     pub mod nested {
         pub use macro_rules::string_add;

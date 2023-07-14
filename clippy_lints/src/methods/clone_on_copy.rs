@@ -5,7 +5,9 @@ use clippy_utils::ty::is_copy;
 use rustc_errors::Applicability;
 use rustc_hir::{BindingAnnotation, ByRef, Expr, ExprKind, MatchSource, Node, PatKind, QPath};
 use rustc_lint::LateContext;
-use rustc_middle::ty::{self, adjustment::Adjust, print::with_forced_trimmed_paths};
+use rustc_middle::ty::adjustment::Adjust;
+use rustc_middle::ty::print::with_forced_trimmed_paths;
+use rustc_middle::ty::{self};
 use rustc_span::symbol::{sym, Symbol};
 
 use super::CLONE_ON_COPY;

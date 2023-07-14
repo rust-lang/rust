@@ -8,7 +8,8 @@ use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::{edition::Edition, sym, Span};
+use rustc_span::edition::Edition;
+use rustc_span::{sym, Span};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -35,7 +36,8 @@ struct PathAndSpan {
     span: Span,
 }
 
-/// `MacroRefData` includes the name of the macro.
+/// `MacroRefData` includes the name of the macro
+/// and the path from `SourceMap::span_to_filename`.
 #[derive(Debug, Clone)]
 pub struct MacroRefData {
     name: String,

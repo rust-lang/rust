@@ -1,11 +1,11 @@
-//! Utility functions about comparison operators.
+//! Utility functions for comparison operators.
 
 #![deny(clippy::missing_docs_in_private_items)]
 
 use rustc_hir::{BinOpKind, Expr};
 
 #[derive(PartialEq, Eq, Debug, Copy, Clone)]
-/// Represent a normalized comparison operator.
+/// Represents a normalized comparison operator.
 pub enum Rel {
     /// `<`
     Lt,

@@ -162,7 +162,7 @@ error: called `map(<f>).unwrap_or_else(<g>)` on a `Result` value. This can be do
   --> $DIR/map_unwrap_or.rs:99:13
    |
 LL |     let _ = res.map(|x| x + 1).unwrap_or_else(|_e| 0);
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `res.map_or_else(|_e| 0, |x| x + 1)`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `res.map_or_else(|_e| 0, |x| x + 1)`
 
 error: called `map(<f>).unwrap_or(<a>)` on an `Option` value. This can be done more directly by calling `map_or(<a>, <f>)` instead
   --> $DIR/map_unwrap_or.rs:106:13
