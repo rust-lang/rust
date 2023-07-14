@@ -867,7 +867,8 @@ impl Step for RustdocJSStd {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.suite_path("tests/rustdoc-js-std")
+        let default = run.builder.config.nodejs.is_some();
+        run.suite_path("tests/rustdoc-js-std").default_condition(default)
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -875,38 +876,34 @@ impl Step for RustdocJSStd {
     }
 
     fn run(self, builder: &Builder<'_>) {
-        if let Some(ref nodejs) = builder.config.nodejs {
-            let mut command = Command::new(nodejs);
-            command
-                .arg(builder.src.join("src/tools/rustdoc-js/tester.js"))
-                .arg("--crate-name")
-                .arg("std")
-                .arg("--resource-suffix")
-                .arg(&builder.version)
-                .arg("--doc-folder")
-                .arg(builder.doc_out(self.target))
-                .arg("--test-folder")
-                .arg(builder.src.join("tests/rustdoc-js-std"));
-            for path in &builder.paths {
-                if let Some(p) =
-                    util::is_valid_test_suite_arg(path, "tests/rustdoc-js-std", builder)
-                {
-                    if !p.ends_with(".js") {
-                        eprintln!("A non-js file was given: `{}`", path.display());
-                        panic!("Cannot run rustdoc-js-std tests");
-                    }
-                    command.arg("--test-file").arg(path);
+        let nodejs =
+            builder.config.nodejs.as_ref().expect("need nodejs to run rustdoc-js-std tests");
+        let mut command = Command::new(nodejs);
+        command
+            .arg(builder.src.join("src/tools/rustdoc-js/tester.js"))
+            .arg("--crate-name")
+            .arg("std")
+            .arg("--resource-suffix")
+            .arg(&builder.version)
+            .arg("--doc-folder")
+            .arg(builder.doc_out(self.target))
+            .arg("--test-folder")
+            .arg(builder.src.join("tests/rustdoc-js-std"));
+        for path in &builder.paths {
+            if let Some(p) = util::is_valid_test_suite_arg(path, "tests/rustdoc-js-std", builder) {
+                if !p.ends_with(".js") {
+                    eprintln!("A non-js file was given: `{}`", path.display());
+                    panic!("Cannot run rustdoc-js-std tests");
                 }
+                command.arg("--test-file").arg(path);
             }
-            builder.ensure(crate::doc::Std::new(
-                builder.top_stage,
-                self.target,
-                DocumentationFormat::HTML,
-            ));
-            builder.run(&mut command);
-        } else {
-            builder.info("No nodejs found, skipping \"tests/rustdoc-js-std\" tests");
         }
+        builder.ensure(crate::doc::Std::new(
+            builder.top_stage,
+            self.target,
+            DocumentationFormat::HTML,
+        ));
+        builder.run(&mut command);
     }
 }
 
@@ -922,7 +919,8 @@ impl Step for RustdocJSNotStd {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.suite_path("tests/rustdoc-js")
+        let default = run.builder.config.nodejs.is_some();
+        run.suite_path("tests/rustdoc-js").default_condition(default)
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -931,18 +929,14 @@ impl Step for RustdocJSNotStd {
     }
 
     fn run(self, builder: &Builder<'_>) {
-        if builder.config.nodejs.is_some() {
-            builder.ensure(Compiletest {
-                compiler: self.compiler,
-                target: self.target,
-                mode: "js-doc-test",
-                suite: "rustdoc-js",
-                path: "tests/rustdoc-js",
-                compare_mode: None,
-            });
-        } else {
-            builder.info("No nodejs found, skipping \"tests/rustdoc-js\" tests");
-        }
+        builder.ensure(Compiletest {
+            compiler: self.compiler,
+            target: self.target,
+            mode: "js-doc-test",
+            suite: "rustdoc-js",
+            path: "tests/rustdoc-js",
+            compare_mode: None,
+        });
     }
 }
 
@@ -1568,6 +1562,8 @@ note: if you're sure you want to do this, please open an issue as to why. In the
 
         if let Some(ref nodejs) = builder.config.nodejs {
             cmd.arg("--nodejs").arg(nodejs);
+        } else if mode == "js-doc-test" {
+            panic!("need nodejs to run js-doc-test suite");
         }
         if let Some(ref npm) = builder.config.npm {
             cmd.arg("--npm").arg(npm);
