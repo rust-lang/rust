@@ -795,6 +795,11 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         rustc_doc_primitive, Normal, template!(NameValueStr: "primitive name"), ErrorFollowing,
         r#"`rustc_doc_primitive` is a rustc internal attribute"#,
     ),
+    rustc_attr!(
+        rustc_filter_proof_tree_dump, Normal, template!(List: "filter1, filter2, ..."), DuplicatesOk,
+        "the `#[rustc_filter_proof_tree_dump(...)]` attribute is used to filter out proof trees \
+        from `-Zdump-solver-proof-tree` output.",
+    ),
 
     // ==========================================================================
     // Internal attributes, Testing:
