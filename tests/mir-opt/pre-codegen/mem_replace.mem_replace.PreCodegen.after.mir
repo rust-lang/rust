@@ -10,22 +10,16 @@ fn mem_replace(_1: &mut u32, _2: u32) -> u32 {
         scope 2 {
             scope 3 {
                 debug result => _0;
-                scope 7 (inlined std::ptr::write::<u32>) {
+                scope 6 (inlined std::ptr::write::<u32>) {
                     debug dst => _1;
                     debug src => _2;
-                    scope 8 {
-                        scope 9 (inlined std::ptr::write::runtime::<u32>) {
-                            debug dst => _1;
-                        }
+                    scope 7 {
                     }
                 }
             }
             scope 4 (inlined std::ptr::read::<u32>) {
                 debug src => _1;
                 scope 5 {
-                    scope 6 (inlined std::ptr::read::runtime::<u32>) {
-                        debug src => _1;
-                    }
                 }
             }
         }
