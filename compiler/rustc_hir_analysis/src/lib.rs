@@ -116,6 +116,7 @@ use std::ops::Not;
 
 use astconv::{AstConv, OnlySelfBounds};
 use bounds::Bounds;
+use rustc_hir::def::DefKind;
 
 fluent_messages! { "../messages.ftl" }
 
@@ -498,6 +499,17 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
     // NOTE: This is copy/pasted in librustdoc/core.rs and should be kept in sync.
     tcx.sess.time("item_types_checking", || {
         tcx.hir().for_each_module(|module| tcx.ensure().check_mod_item_types(module))
+    });
+
+    // FIXME: Remove this when we implement creating `DefId`s
+    // for anon constants during their parents' typeck.
+    // Typeck all body owners in parallel will produce queries
+    // cycle errors because it may typeck on anon constants directly.
+    tcx.hir().par_body_owners(|item_def_id| {
+        let def_kind = tcx.def_kind(item_def_id);
+        if !matches!(def_kind, DefKind::AnonConst) {
+            tcx.ensure().typeck(item_def_id);
+        }
     });
 
     check_unused::check_crate(tcx);
