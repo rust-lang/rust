@@ -56,7 +56,20 @@ impl<'tcx> LateLintPass<'tcx> for InvalidReferenceCasting {
     }
 
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
-        let ExprKind::Unary(UnOp::Deref, e) = &expr.kind else {
+        // &mut <expr>
+        let inner = if let ExprKind::AddrOf(_, Mutability::Mut, expr) = expr.kind {
+            expr
+        // <expr> = ...
+        } else if let ExprKind::Assign(expr, _, _) = expr.kind {
+            expr
+        // <expr> += ...
+        } else if let ExprKind::AssignOp(_, expr, _) = expr.kind {
+            expr
+        } else {
+            return;
+        };
+
+        let ExprKind::Unary(UnOp::Deref, e) = &inner.kind else {
             return;
         };
 
@@ -103,5 +116,5 @@ fn is_cast_from_const_to_mut<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) 
     };
 
     let e = e.peel_blocks();
-    matches!(cx.typeck_results().node_type(e.hir_id).kind(), ty::Ref(..))
+    matches!(cx.typeck_results().node_type(e.hir_id).kind(), ty::Ref(_, _, Mutability::Not))
 }

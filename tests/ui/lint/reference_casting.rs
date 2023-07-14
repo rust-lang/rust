@@ -16,8 +16,6 @@ fn main() {
         let num = &3i32;
         let mut_num = &mut 3i32;
 
-        (*(a as *const _ as *mut String)).push_str(" world");
-        //~^ ERROR casting `&T` to `&mut T` is undefined behavior
         *(a as *const _ as *mut _) = String::from("Replaced");
         //~^ ERROR casting `&T` to `&mut T` is undefined behavior
         *(a as *const _ as *mut String) += " world";
@@ -25,8 +23,6 @@ fn main() {
         let _num = &mut *(num as *const i32 as *mut i32);
         //~^ ERROR casting `&T` to `&mut T` is undefined behavior
         let _num = &mut *(num as *const i32).cast_mut();
-        //~^ ERROR casting `&T` to `&mut T` is undefined behavior
-        let _num = *{ num as *const i32 }.cast_mut();
         //~^ ERROR casting `&T` to `&mut T` is undefined behavior
         *std::ptr::from_ref(num).cast_mut() += 1;
         //~^ ERROR casting `&T` to `&mut T` is undefined behavior
@@ -41,6 +37,7 @@ fn main() {
         //~^ ERROR casting `&T` to `&mut T` is undefined behavior
 
         // Shouldn't be warned against
+        *(num as *const i32 as *mut i32);
         println!("{}", *(num as *const _ as *const i16));
         println!("{}", *(mut_num as *mut _ as *mut i16));
         ffi(a.as_ptr() as *mut _);
