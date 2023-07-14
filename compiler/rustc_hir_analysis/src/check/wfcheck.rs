@@ -284,6 +284,17 @@ fn check_trait_item(tcx: TyCtxt<'_>, trait_item: &hir::TraitItem<'_>) {
     };
     check_object_unsafe_self_trait_by_name(tcx, trait_item);
     check_associated_item(tcx, def_id, span, method_sig);
+
+    if matches!(trait_item.kind, hir::TraitItemKind::Fn(..)) {
+        for &assoc_ty_def_id in tcx.associated_types_for_impl_traits_in_associated_fn(def_id) {
+            check_associated_item(
+                tcx,
+                assoc_ty_def_id.expect_local(),
+                tcx.def_span(assoc_ty_def_id),
+                None,
+            );
+        }
+    }
 }
 
 /// Require that the user writes where clauses on GATs for the implicit
@@ -1466,13 +1477,6 @@ fn check_fn_or_method<'tcx>(
 
     check_where_clauses(wfcx, span, def_id);
 
-    check_return_position_impl_trait_in_trait_bounds(
-        wfcx,
-        def_id,
-        sig.output(),
-        hir_decl.output.span(),
-    );
-
     if sig.abi == Abi::RustCall {
         let span = tcx.def_span(def_id);
         let has_implicit_self = hir_decl.implicit_self != hir::ImplicitSelfKind::None;
@@ -1504,87 +1508,6 @@ fn check_fn_or_method<'tcx>(
                 "functions with the \"rust-call\" ABI must take a single non-self tuple argument",
             );
         }
-    }
-}
-
-/// Basically `check_associated_type_bounds`, but separated for now and should be
-/// deduplicated when RPITITs get lowered into real associated items.
-#[tracing::instrument(level = "trace", skip(wfcx))]
-fn check_return_position_impl_trait_in_trait_bounds<'tcx>(
-    wfcx: &WfCheckingCtxt<'_, 'tcx>,
-    fn_def_id: LocalDefId,
-    fn_output: Ty<'tcx>,
-    span: Span,
-) {
-    let tcx = wfcx.tcx();
-    let Some(assoc_item) = tcx.opt_associated_item(fn_def_id.to_def_id()) else {
-        return;
-    };
-    if assoc_item.container != ty::AssocItemContainer::TraitContainer {
-        return;
-    }
-    fn_output.visit_with(&mut ImplTraitInTraitFinder {
-        wfcx,
-        fn_def_id,
-        depth: ty::INNERMOST,
-        seen: FxHashSet::default(),
-    });
-}
-
-// FIXME(-Zlower-impl-trait-in-trait-to-assoc-ty): Even with the new lowering
-// strategy, we can't just call `check_associated_item` on the new RPITITs,
-// because tests like `tests/ui/async-await/in-trait/implied-bounds.rs` will fail.
-// That's because we need to check that the bounds of the RPITIT hold using
-// the special args that we create during opaque type lowering, otherwise we're
-// getting a bunch of early bound and free regions mixed up... Haven't looked too
-// deep into this, though.
-struct ImplTraitInTraitFinder<'a, 'tcx> {
-    wfcx: &'a WfCheckingCtxt<'a, 'tcx>,
-    fn_def_id: LocalDefId,
-    depth: ty::DebruijnIndex,
-    seen: FxHashSet<DefId>,
-}
-impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
-    type BreakTy = !;
-
-    fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<!> {
-        let tcx = self.wfcx.tcx();
-        if let ty::Alias(ty::Opaque, unshifted_opaque_ty) = *ty.kind()
-            && self.seen.insert(unshifted_opaque_ty.def_id)
-            && let Some(opaque_def_id) = unshifted_opaque_ty.def_id.as_local()
-            && let origin = tcx.opaque_type_origin(opaque_def_id)
-            && let hir::OpaqueTyOrigin::FnReturn(source) | hir::OpaqueTyOrigin::AsyncFn(source) = origin
-            && source == self.fn_def_id
-        {
-            let opaque_ty = tcx.fold_regions(unshifted_opaque_ty, |re, _depth| {
-                match re.kind() {
-                    ty::ReEarlyBound(_) | ty::ReFree(_) | ty::ReError(_) | ty::ReStatic => re,
-                    r => bug!("unexpected region: {r:?}"),
-                }
-            });
-            for (bound, bound_span) in tcx
-                .explicit_item_bounds(opaque_ty.def_id)
-                .iter_instantiated_copied(tcx, opaque_ty.args)
-            {
-                let bound = self.wfcx.normalize(bound_span, None, bound);
-                self.wfcx.register_obligations(traits::wf::predicate_obligations(
-                    self.wfcx.infcx,
-                    self.wfcx.param_env,
-                    self.wfcx.body_def_id,
-                    bound.as_predicate(),
-                    bound_span,
-                ));
-                // Set the debruijn index back to innermost here, since we already eagerly
-                // shifted the args that we use to generate these bounds. This is unfortunately
-                // subtly different behavior than the `ImplTraitInTraitFinder` we use in `param_env`,
-                // but that function doesn't actually need to normalize the bound it's visiting
-                // (whereas we have to do so here)...
-                let old_depth = std::mem::replace(&mut self.depth, ty::INNERMOST);
-                bound.visit_with(self);
-                self.depth = old_depth;
-            }
-        }
-        ty.super_visit_with(self)
     }
 }
 

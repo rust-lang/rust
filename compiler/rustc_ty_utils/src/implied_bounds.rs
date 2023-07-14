@@ -1,6 +1,8 @@
+use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
+use rustc_middle::middle::resolve_bound_vars as rbv;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
@@ -41,6 +43,41 @@ fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'
 
             let mut impl_spans = impl_spans(tcx, def_id);
             tcx.arena.alloc_from_iter(tys.into_iter().map(|ty| (ty, impl_spans.next().unwrap())))
+        }
+        DefKind::AssocTy  if let Some(ty::ImplTraitInTraitData::Trait { fn_def_id, opaque_def_id }) = tcx.opt_rpitit_info(def_id.to_def_id()) => {
+            let hir::OpaqueTy { lifetime_mapping, .. } =
+                *tcx.hir().expect_item(opaque_def_id.expect_local()).expect_opaque_ty();
+            let mut mapping = FxHashMap::default();
+            let generics = tcx.generics_of(def_id);
+            for &(lifetime, new_early_bound_def_id) in lifetime_mapping {
+                if let Some(rbv::ResolvedArg::LateBound(_, _, def_id)) =
+                    tcx.named_bound_var(lifetime.hir_id)
+                {
+                    let name = tcx.hir().name(lifetime.hir_id);
+                    let index = generics
+                        .param_def_id_to_index(tcx, new_early_bound_def_id.to_def_id())
+                        .unwrap();
+                    mapping.insert(
+                        ty::Region::new_free(
+                            tcx,
+                            fn_def_id,
+                            ty::BoundRegionKind::BrNamed(def_id, name),
+                        ),
+                        ty::Region::new_early_bound(
+                            tcx,
+                            ty::EarlyBoundRegion {
+                                def_id: new_early_bound_def_id.to_def_id(),
+                                index,
+                                name,
+                            },
+                        ),
+                    );
+                }
+            }
+            let a = tcx.fold_regions(tcx.assumed_wf_types(fn_def_id.expect_local()).to_vec(), |re, _| {
+                if let Some(re) = mapping.get(&re) { *re } else { re }
+            });
+            tcx.arena.alloc_from_iter(a)
         }
         DefKind::AssocConst | DefKind::AssocTy => tcx.assumed_wf_types(tcx.local_parent(def_id)),
         DefKind::OpaqueTy => match tcx.def_kind(tcx.local_parent(def_id)) {
