@@ -2080,12 +2080,6 @@ rustc_queries! {
         desc { "looking up supported target features" }
     }
 
-    /// Get an estimate of the size of an InstanceDef based on its MIR for CGU partitioning.
-    query instance_def_size_estimate(def: ty::InstanceDef<'tcx>)
-        -> usize {
-        desc { |tcx| "estimating size for `{}`", tcx.def_path_str(def.def_id()) }
-    }
-
     query features_query(_: ()) -> &'tcx rustc_feature::Features {
         feedable
         desc { "looking up enabled feature gates" }
