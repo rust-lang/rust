@@ -114,9 +114,11 @@ impl<'tcx> Tables<'tcx> {
                 ),
             )),
             ty::Foreign(_) => todo!(),
-            ty::Str => todo!(),
-            ty::Array(_, _) => todo!(),
-            ty::Slice(_) => todo!(),
+            ty::Str => TyKind::RigidTy(RigidTy::Str),
+            ty::Array(ty, constant) => {
+                TyKind::RigidTy(RigidTy::Array(self.intern_ty(*ty), opaque(constant)))
+            }
+            ty::Slice(ty) => TyKind::RigidTy(RigidTy::Slice(self.intern_ty(*ty))),
             ty::RawPtr(_) => todo!(),
             ty::Ref(_, _, _) => todo!(),
             ty::FnDef(_, _) => todo!(),

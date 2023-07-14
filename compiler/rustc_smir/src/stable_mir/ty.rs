@@ -26,6 +26,9 @@ pub enum RigidTy {
     Uint(UintTy),
     Float(FloatTy),
     Adt(AdtDef, AdtSubsts),
+    Str,
+    Array(Ty, Const),
+    Slice(Ty),
     Tuple(Vec<Ty>),
 }
 
