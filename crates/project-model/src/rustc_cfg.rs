@@ -22,6 +22,9 @@ pub(crate) fn get(
         }
     }
 
+    // Add miri cfg, which is useful for mir eval in stdlib
+    res.push(CfgFlag::Atom("miri".into()));
+
     match get_rust_cfgs(cargo_toml, target, extra_env) {
         Ok(rustc_cfgs) => {
             tracing::debug!(

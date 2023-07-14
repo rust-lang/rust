@@ -380,6 +380,17 @@ impl Evaluator<'_> {
                 let id = from_bytes!(i64, id.get(self)?);
                 self.exec_syscall(id, rest, destination, locals, span)
             }
+            "sched_getaffinity" => {
+                let [_pid, _set_size, set] = args else {
+                    return Err(MirEvalError::TypeError("libc::write args are not provided"));
+                };
+                let set = Address::from_bytes(set.get(self)?)?;
+                // Only enable core 0 (we are single threaded anyway), which is bitset 0x0000001
+                self.write_memory(set, &[1])?;
+                // return 0 as success
+                self.write_memory_using_ref(destination.addr, destination.size)?.fill(0);
+                Ok(())
+            }
             _ => not_supported!("unknown external function {as_str}"),
         }
     }
