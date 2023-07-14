@@ -5,9 +5,9 @@ pub struct S(i32);
 
 #[custom_mir(dialect = "runtime", phase = "optimized")]
 fn main() {
-    // FIXME: the span is not great (probably caused by custom MIR)
-    mir! { //~ERROR: uninitialized
+    mir! {
         let unit: ();
+        let _observe: i32;
         {
             let non_copy = S(42);
             // This could change `non_copy` in-place
@@ -15,7 +15,7 @@ fn main() {
         }
         after_call = {
             // So now we must not be allowed to observe non-copy again.
-            let _observe = non_copy.0;
+            _observe = non_copy.0; //~ERROR: uninitialized
             Return()
         }
 
