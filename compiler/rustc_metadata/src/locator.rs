@@ -511,7 +511,7 @@ impl<'a> CrateLocator<'a> {
             rlib: self.extract_one(rlibs, CrateFlavor::Rlib, &mut slot)?,
             dylib: self.extract_one(dylibs, CrateFlavor::Dylib, &mut slot)?,
         };
-        Ok(slot.map(|(svh, metadata)| (svh, Library { source, metadata })))
+        Ok(slot.map(|(_, svh, metadata)| (svh, Library { source, metadata })))
     }
 
     fn needs_crate_flavor(&self, flavor: CrateFlavor) -> bool {
@@ -539,7 +539,7 @@ impl<'a> CrateLocator<'a> {
         &mut self,
         m: FxHashMap<PathBuf, PathKind>,
         flavor: CrateFlavor,
-        slot: &mut Option<(Svh, MetadataBlob)>,
+        slot: &mut Option<(PathBuf, Svh, MetadataBlob)>,
     ) -> Result<Option<(PathBuf, PathKind)>, CrateError> {
         // If we are producing an rlib, and we've already loaded metadata, then
         // we should not attempt to discover further crate sources (unless we're
@@ -550,16 +550,9 @@ impl<'a> CrateLocator<'a> {
         //
         // See also #68149 which provides more detail on why emitting the
         // dependency on the rlib is a bad thing.
-        //
-        // We currently do not verify that these other sources are even in sync,
-        // and this is arguably a bug (see #10786), but because reading metadata
-        // is quite slow (especially from dylibs) we currently do not read it
-        // from the other crate sources.
         if slot.is_some() {
             if m.is_empty() || !self.needs_crate_flavor(flavor) {
                 return Ok(None);
-            } else if m.len() == 1 {
-                return Ok(Some(m.into_iter().next().unwrap()));
             }
         }
 
@@ -602,7 +595,7 @@ impl<'a> CrateLocator<'a> {
                     }
                 };
             // If we see multiple hashes, emit an error about duplicate candidates.
-            if slot.as_ref().is_some_and(|s| s.0 != hash) {
+            if slot.as_ref().is_some_and(|s| s.1 != hash) {
                 if let Some(candidates) = err_data {
                     return Err(CrateError::MultipleCandidates(
                         self.crate_name,
@@ -610,8 +603,7 @@ impl<'a> CrateLocator<'a> {
                         candidates,
                     ));
                 }
-                err_data = Some(vec![ret.as_ref().unwrap().0.clone()]);
-                *slot = None;
+                err_data = Some(vec![slot.take().unwrap().0]);
             }
             if let Some(candidates) = &mut err_data {
                 candidates.push(lib);
@@ -644,7 +636,7 @@ impl<'a> CrateLocator<'a> {
                     continue;
                 }
             }
-            *slot = Some((hash, metadata));
+            *slot = Some((lib.clone(), hash, metadata));
             ret = Some((lib, kind));
         }
 
