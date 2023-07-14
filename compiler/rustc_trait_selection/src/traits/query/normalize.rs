@@ -61,8 +61,27 @@ impl<'cx, 'tcx> QueryNormalizeExt<'tcx> for At<'cx, 'tcx> {
             self.cause,
         );
 
+        // This is actually a consequence by the way `normalize_erasing_regions` works currently.
+        // Because it needs to call the `normalize_generic_arg_after_erasing_regions`, it folds
+        // through tys and consts in a `TypeFoldable`. Importantly, it skips binders, leaving us
+        // with trying to normalize with escaping bound vars.
+        //
+        // Here, we just add the universes that we *would* have created had we passed through the binders.
+        //
+        // We *could* replace escaping bound vars eagerly here, but it doesn't seem really necessary.
+        // The rest of the code is already set up to be lazy about replacing bound vars,
+        // and only when we actually have to normalize.
+        let universes = if value.has_escaping_bound_vars() {
+            let mut max_visitor =
+                MaxEscapingBoundVarVisitor { outer_index: ty::INNERMOST, escaping: 0 };
+            value.visit_with(&mut max_visitor);
+            vec![None; max_visitor.escaping]
+        } else {
+            vec![]
+        };
+
         if self.infcx.next_trait_solver() {
-            match crate::solve::deeply_normalize(self, value) {
+            match crate::solve::deeply_normalize_with_skipped_universes(self, value, universes) {
                 Ok(value) => return Ok(Normalized { value, obligations: vec![] }),
                 Err(_errors) => {
                     return Err(NoSolution);
@@ -81,27 +100,9 @@ impl<'cx, 'tcx> QueryNormalizeExt<'tcx> for At<'cx, 'tcx> {
             obligations: vec![],
             cache: SsoHashMap::new(),
             anon_depth: 0,
-            universes: vec![],
+            universes,
         };
 
-        // This is actually a consequence by the way `normalize_erasing_regions` works currently.
-        // Because it needs to call the `normalize_generic_arg_after_erasing_regions`, it folds
-        // through tys and consts in a `TypeFoldable`. Importantly, it skips binders, leaving us
-        // with trying to normalize with escaping bound vars.
-        //
-        // Here, we just add the universes that we *would* have created had we passed through the binders.
-        //
-        // We *could* replace escaping bound vars eagerly here, but it doesn't seem really necessary.
-        // The rest of the code is already set up to be lazy about replacing bound vars,
-        // and only when we actually have to normalize.
-        if value.has_escaping_bound_vars() {
-            let mut max_visitor =
-                MaxEscapingBoundVarVisitor { outer_index: ty::INNERMOST, escaping: 0 };
-            value.visit_with(&mut max_visitor);
-            if max_visitor.escaping > 0 {
-                normalizer.universes.extend((0..max_visitor.escaping).map(|_| None));
-            }
-        }
         let result = value.try_fold_with(&mut normalizer);
         info!(
             "normalize::<{}>: result={:?} with {} obligations",
