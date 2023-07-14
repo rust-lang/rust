@@ -2,7 +2,7 @@
 
 **Tier: 3**
 
-This target supports [C-SKY](https://github.com/c-sky) v2 CPUs with `glibc`.
+This target supports [C-SKY](https://github.com/c-sky) CPUs with `abi` v2 and `glibc`.
 
 https://c-sky.github.io/
 ## Target maintainers

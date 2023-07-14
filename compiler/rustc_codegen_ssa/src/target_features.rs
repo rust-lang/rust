@@ -296,6 +296,16 @@ const WASM_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
 
 const BPF_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[("alu32", Some(sym::bpf_target_feature))];
 
+const CSKY_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
+    ("hard-float", Some(sym::csky_target_feature)),
+    ("hard-float-abi", Some(sym::csky_target_feature)),
+    ("fpuv2_sf", Some(sym::csky_target_feature)),
+    ("fpuv2_df", Some(sym::csky_target_feature)),
+    ("fpuv3_sf", Some(sym::csky_target_feature)),
+    ("fpuv3_df", Some(sym::csky_target_feature)),
+    ("vdspv2", Some(sym::csky_target_feature)),
+    ("dspv2", Some(sym::csky_target_feature)),
+];
 /// When rustdoc is running, provide a list of all known features so that all their respective
 /// primitives may be documented.
 ///
@@ -311,6 +321,7 @@ pub fn all_known_features() -> impl Iterator<Item = (&'static str, Option<Symbol
         .chain(RISCV_ALLOWED_FEATURES.iter())
         .chain(WASM_ALLOWED_FEATURES.iter())
         .chain(BPF_ALLOWED_FEATURES.iter())
+        .chain(CSKY_ALLOWED_FEATURES)
         .cloned()
 }
 
@@ -325,6 +336,7 @@ pub fn supported_target_features(sess: &Session) -> &'static [(&'static str, Opt
         "riscv32" | "riscv64" => RISCV_ALLOWED_FEATURES,
         "wasm32" | "wasm64" => WASM_ALLOWED_FEATURES,
         "bpf" => BPF_ALLOWED_FEATURES,
+        "csky" => CSKY_ALLOWED_FEATURES,
         _ => &[],
     }
 }
@@ -396,6 +408,7 @@ pub fn from_target_feature(
                 Some(sym::ermsb_target_feature) => rust_features.ermsb_target_feature,
                 Some(sym::bpf_target_feature) => rust_features.bpf_target_feature,
                 Some(sym::aarch64_ver_target_feature) => rust_features.aarch64_ver_target_feature,
+                Some(sym::csky_target_feature) => rust_features.csky_target_feature,
                 Some(name) => bug!("unknown target feature gate {}", name),
                 None => true,
             };
