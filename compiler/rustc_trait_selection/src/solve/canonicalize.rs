@@ -6,8 +6,10 @@ use rustc_middle::infer::canonical::CanonicalTyVarKind;
 use rustc_middle::infer::canonical::CanonicalVarInfo;
 use rustc_middle::infer::canonical::CanonicalVarInfos;
 use rustc_middle::infer::canonical::CanonicalVarKind;
+use rustc_middle::ty::BoundRegionKind;
 use rustc_middle::ty::BoundRegionKind::BrAnon;
 use rustc_middle::ty::BoundTyKind;
+use rustc_middle::ty::BoundVariableKind;
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::{self, Ty};
@@ -202,8 +204,18 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'_, 'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
+        let vars = t.bound_vars().into_iter().map(|var| match var {
+            BoundVariableKind::Ty(_) => BoundVariableKind::Ty(BoundTyKind::Anon),
+            BoundVariableKind::Region(_) => {
+                // FIXME(-Ztrait-solver=next): is it fine to canonicalize away BrEnv
+                BoundVariableKind::Region(BoundRegionKind::BrAnon(None))
+            }
+            BoundVariableKind::Const => BoundVariableKind::Const,
+        });
+        let vars = self.infcx.tcx.mk_bound_variable_kinds_from_iter(vars);
+
         self.binder_index.shift_in(1);
-        let t = t.super_fold_with(self);
+        let t = ty::Binder::bind_with_vars(t.skip_binder().fold_with(self), vars);
         self.binder_index.shift_out(1);
         t
     }
@@ -228,7 +240,10 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'_, 'tcx> {
         }
 
         let kind = match *r {
-            ty::ReLateBound(..) => return r,
+            ty::ReLateBound(d, br) => {
+                let br = ty::BoundRegion { var: br.var, kind: BrAnon(None) };
+                return ty::Region::new_late_bound(self.interner(), d, br);
+            }
 
             ty::ReStatic => match self.canonicalize_mode {
                 CanonicalizeMode::Input => CanonicalVarKind::Region(ty::UniverseIndex::ROOT),
@@ -249,6 +264,13 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'_, 'tcx> {
                     if max_input_universe.can_name(placeholder.universe) {
                         bug!("new placeholder in universe {max_input_universe:?}: {r:?}");
                     }
+                    let placeholder = ty::Placeholder {
+                        universe: placeholder.universe,
+                        bound: ty::BoundRegion {
+                            var: placeholder.bound.var,
+                            kind: BoundRegionKind::BrAnon(None),
+                        },
+                    };
                     CanonicalVarKind::PlaceholderRegion(placeholder)
                 }
             },
@@ -331,6 +353,10 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'_, 'tcx> {
                 }),
                 CanonicalizeMode::Response { .. } => bug!("param ty in response: {t:?}"),
             },
+            ty::Bound(d, bt) => {
+                let bt = ty::BoundTy { var: bt.var, kind: BoundTyKind::Anon };
+                return Ty::new_bound(self.interner(), d, bt);
+            }
             ty::Bool
             | ty::Char
             | ty::Int(_)
@@ -353,7 +379,6 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'_, 'tcx> {
             | ty::Never
             | ty::Tuple(_)
             | ty::Alias(_, _)
-            | ty::Bound(_, _)
             | ty::Error(_) => return t.super_fold_with(self),
         };
 
@@ -411,6 +436,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'_, 'tcx> {
                 ),
                 CanonicalizeMode::Response { .. } => bug!("param ty in response: {c:?}"),
             },
+            // bound consts have no `BoundConstKind` so we dont need to handle it specially
             ty::ConstKind::Bound(_, _)
             | ty::ConstKind::Unevaluated(_)
             | ty::ConstKind::Value(_)
