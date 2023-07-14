@@ -436,18 +436,13 @@ pub fn check_crate<'tcx, T: LateLintPass<'tcx> + 'tcx>(
     tcx: TyCtxt<'tcx>,
     builtin_lints: impl FnOnce() -> T + Send + DynSend,
 ) {
+    let _timer = tcx.sess.timer("lint_checking");
     join(
         || {
-            tcx.sess.time("crate_lints", || {
-                // Run whole crate non-incremental lints
-                late_lint_crate(tcx, builtin_lints());
-            });
+            // Run whole crate non-incremental lints
+            let _timer = tcx.sess.timer("crate_lints");
+            late_lint_crate(tcx, builtin_lints());
         },
-        || {
-            tcx.sess.time("module_lints", || {
-                // Run per-module lints
-                tcx.hir().par_for_each_module(|module| tcx.ensure().lint_mod(module));
-            });
-        },
+        || tcx.hir().par_for_each_module(|module| tcx.ensure().lint_mod(module)),
     );
 }

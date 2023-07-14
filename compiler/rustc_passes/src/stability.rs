@@ -931,6 +931,8 @@ impl<'tcx> Visitor<'tcx> for CheckTraitImplStable<'tcx> {
 /// were expected to be library features), and the list of features used from
 /// libraries, identify activated features that don't exist and error about them.
 pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
+    let _prof_timer = tcx.sess.timer("unused_lib_feature_checking");
+
     let is_staged_api =
         tcx.sess.opts.unstable_opts.force_unstable_if_unmarked || tcx.features().staged_api;
     if is_staged_api {

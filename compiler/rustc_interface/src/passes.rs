@@ -748,68 +748,59 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
     let sess = tcx.sess;
     let mut entry_point = None;
 
-    sess.time("misc_checking_1", || {
-        parallel!(
-            {
-                entry_point = sess.time("looking_for_entry_point", || tcx.entry_fn(()));
+    parallel!(
+        {
+            entry_point = tcx.entry_fn(());
 
-                sess.time("looking_for_derive_registrar", || {
-                    tcx.ensure().proc_macro_decls_static(())
-                });
+            tcx.ensure().proc_macro_decls_static(());
 
-                CStore::from_tcx(tcx).report_unused_deps(tcx);
-            },
-            {
-                tcx.hir().par_for_each_module(|module| {
-                    tcx.ensure().check_mod_loops(module);
-                    tcx.ensure().check_mod_attrs(module);
-                    tcx.ensure().check_mod_naked_functions(module);
-                    tcx.ensure().check_mod_unstable_api_usage(module);
-                    tcx.ensure().check_mod_const_bodies(module);
-                });
-            },
-            {
-                sess.time("unused_lib_feature_checking", || {
-                    rustc_passes::stability::check_unused_or_stable_features(tcx)
-                });
-            },
-            {
-                // We force these queries to run,
-                // since they might not otherwise get called.
-                // This marks the corresponding crate-level attributes
-                // as used, and ensures that their values are valid.
-                tcx.ensure().limits(());
-                tcx.ensure().stability_index(());
-            }
-        );
-    });
+            CStore::from_tcx(tcx).report_unused_deps(tcx);
+        },
+        {
+            tcx.hir().par_for_each_module(|module| {
+                tcx.ensure().check_mod_loops(module);
+                tcx.ensure().check_mod_attrs(module);
+                tcx.ensure().check_mod_naked_functions(module);
+                tcx.ensure().check_mod_unstable_api_usage(module);
+                tcx.ensure().check_mod_const_bodies(module);
+            });
+        },
+        {
+            rustc_passes::stability::check_unused_or_stable_features(tcx);
+        },
+        {
+            // We force these queries to run,
+            // since they might not otherwise get called.
+            // This marks the corresponding crate-level attributes
+            // as used, and ensures that their values are valid.
+            tcx.ensure().limits(());
+            tcx.ensure().stability_index(());
+        }
+    );
 
     // passes are timed inside typeck
     rustc_hir_analysis::check_crate(tcx)?;
 
-    sess.time("MIR_borrow_checking", || {
-        tcx.hir().par_body_owners(|def_id| tcx.ensure().mir_borrowck(def_id));
-    });
+    tcx.hir().par_body_owners(|def_id| tcx.ensure().mir_borrowck(def_id));
 
-    sess.time("MIR_effect_checking", || {
-        for def_id in tcx.hir().body_owners() {
-            tcx.ensure().thir_check_unsafety(def_id);
-            if !tcx.sess.opts.unstable_opts.thir_unsafeck {
-                rustc_mir_transform::check_unsafety::check_unsafety(tcx, def_id);
-            }
-            tcx.ensure().has_ffi_unwind_calls(def_id);
-
-            // If we need to codegen, ensure that we emit all errors from
-            // `mir_drops_elaborated_and_const_checked` now, to avoid discovering
-            // them later during codegen.
-            if tcx.sess.opts.output_types.should_codegen()
-                || tcx.hir().body_const_context(def_id).is_some()
-            {
-                tcx.ensure().mir_drops_elaborated_and_const_checked(def_id);
-                tcx.ensure().unused_generic_params(ty::InstanceDef::Item(def_id.to_def_id()));
-            }
+    // MIR effect checking
+    for def_id in tcx.hir().body_owners() {
+        tcx.ensure().thir_check_unsafety(def_id);
+        if !tcx.sess.opts.unstable_opts.thir_unsafeck {
+            rustc_mir_transform::check_unsafety::check_unsafety(tcx, def_id);
         }
-    });
+        tcx.ensure().has_ffi_unwind_calls(def_id);
+
+        // If we need to codegen, ensure that we emit all errors from
+        // `mir_drops_elaborated_and_const_checked` now, to avoid discovering
+        // them later during codegen.
+        if tcx.sess.opts.output_types.should_codegen()
+            || tcx.hir().body_const_context(def_id).is_some()
+        {
+            tcx.ensure().mir_drops_elaborated_and_const_checked(def_id);
+            tcx.ensure().unused_generic_params(ty::InstanceDef::Item(def_id.to_def_id()));
+        }
+    }
 
     if tcx.sess.opts.unstable_opts.drop_tracking_mir {
         tcx.hir().par_body_owners(|def_id| {
@@ -820,7 +811,7 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
         });
     }
 
-    sess.time("layout_testing", || layout_test::test_layout(tcx));
+    layout_test::test_layout(tcx);
 
     // Avoid overwhelming user with errors if borrow checking failed.
     // I'm not sure how helpful this is, to be honest, but it avoids a
@@ -831,41 +822,31 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
         return Err(reported);
     }
 
-    sess.time("misc_checking_3", || {
-        parallel!(
-            {
-                tcx.ensure().effective_visibilities(());
+    parallel!(
+        {
+            tcx.ensure().effective_visibilities(());
 
-                parallel!(
-                    {
-                        tcx.ensure().check_private_in_public(());
-                    },
-                    {
-                        tcx.hir()
-                            .par_for_each_module(|module| tcx.ensure().check_mod_deathness(module));
-                    },
-                    {
-                        sess.time("lint_checking", || {
-                            rustc_lint::check_crate(tcx, || {
-                                rustc_lint::BuiltinCombinedLateLintPass::new()
-                            });
-                        });
-                    }
-                );
-            },
-            {
-                sess.time("privacy_checking_modules", || {
-                    tcx.hir().par_for_each_module(|module| {
-                        tcx.ensure().check_mod_privacy(module);
-                    });
-                });
-            }
-        );
+            parallel!(
+                {
+                    tcx.ensure().check_private_in_public(());
+                },
+                {
+                    tcx.hir()
+                        .par_for_each_module(|module| tcx.ensure().check_mod_deathness(module));
+                },
+                {
+                    rustc_lint::check_crate(tcx, rustc_lint::BuiltinCombinedLateLintPass::new);
+                }
+            );
+        },
+        {
+            tcx.hir().par_for_each_module(|module| tcx.ensure().check_mod_privacy(module));
+        }
+    );
 
-        // This check has to be run after all lints are done processing. We don't
-        // define a lint filter, as all lint checks should have finished at this point.
-        sess.time("check_lint_expectations", || tcx.check_expectations(None));
-    });
+    // This check has to be run after all lints are done processing. We don't
+    // define a lint filter, as all lint checks should have finished at this point.
+    let _ = tcx.check_expectations(None);
 
     if sess.opts.unstable_opts.print_vtable_sizes {
         let traits = tcx.traits(LOCAL_CRATE);

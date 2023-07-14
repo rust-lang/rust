@@ -11,6 +11,8 @@ use rustc_target::abi::{HasDataLayout, TargetDataLayout};
 use crate::errors::{Abi, Align, HomogeneousAggregate, LayoutOf, Size, UnrecognizedField};
 
 pub fn test_layout(tcx: TyCtxt<'_>) {
+    let _prof_timer = tcx.sess.timer("layout_testing");
+
     if tcx.features().rustc_attrs {
         // if the `rustc_attrs` feature is not enabled, don't bother testing layout
         for id in tcx.hir().items() {
