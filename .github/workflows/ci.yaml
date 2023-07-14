@@ -161,7 +161,18 @@ jobs:
       #      if: runner.os == 'Linux'
       #      working-directory: ./editors/code
 
+      # If this steps fails, your code's type integrity might be wrong at some places at TypeScript level.
+      - run: npm run typecheck
+        working-directory: ./editors/code
+        if: needs.changes.outputs.typescript == 'true'
+
+      # You may fix the code automatically by running `npm run lint:fix` if this steps fails.
       - run: npm run lint
+        working-directory: ./editors/code
+        if: needs.changes.outputs.typescript == 'true'
+
+      # To fix this steps, please run `npm run format`.
+      - run: npm run format:check
         working-directory: ./editors/code
         if: needs.changes.outputs.typescript == 'true'
 
@@ -178,10 +189,6 @@ jobs:
           VSCODE_CLI: 1
         run: npm test
         working-directory: ./editors/code
-
-      - run: npm run pretest
-        working-directory: ./editors/code
-        if: needs.changes.outputs.typescript == 'true'
 
       - run: npm run package --scripts-prepend-node-path
         working-directory: ./editors/code
