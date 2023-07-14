@@ -602,6 +602,26 @@ impl Evaluator<'_> {
                     destination.write_from_bytes(self, &align.to_le_bytes())
                 }
             }
+            "type_name" => {
+                let Some(ty) = generic_args.as_slice(Interner).get(0).and_then(|it| it.ty(Interner))
+                else {
+                    return Err(MirEvalError::TypeError("type_name generic arg is not provided"));
+                };
+                let Ok(ty_name) = ty.display_source_code(
+                    self.db,
+                    locals.body.owner.module(self.db.upcast()),
+                    true,
+                ) else {
+                    not_supported!("fail in generating type_name using source code display");
+                };
+                let len = ty_name.len();
+                let addr = self.heap_allocate(len, 1)?;
+                self.write_memory(addr, ty_name.as_bytes())?;
+                destination.slice(0..self.ptr_size()).write_from_bytes(self, &addr.to_bytes())?;
+                destination
+                    .slice(self.ptr_size()..2 * self.ptr_size())
+                    .write_from_bytes(self, &len.to_le_bytes())
+            }
             "needs_drop" => {
                 let Some(ty) = generic_args.as_slice(Interner).get(0).and_then(|it| it.ty(Interner))
                 else {

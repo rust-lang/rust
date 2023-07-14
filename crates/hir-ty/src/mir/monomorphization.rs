@@ -13,15 +13,14 @@ use chalk_ir::{
     fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable},
     ConstData, DebruijnIndex,
 };
-use hir_def::{DefWithBodyId, GeneralConstId};
+use hir_def::DefWithBodyId;
 use triomphe::Arc;
 
 use crate::{
-    consteval::unknown_const,
+    consteval::{intern_const_scalar, unknown_const},
     db::HirDatabase,
     from_placeholder_idx,
     infer::normalize,
-    method_resolution::lookup_impl_const,
     utils::{generics, Generics},
     ClosureId, Const, Interner, ProjectionTy, Substitution, TraitEnvironment, Ty, TyKind,
 };
@@ -193,25 +192,12 @@ impl Filler<'_> {
                     | chalk_ir::ConstValue::Placeholder(_) => {}
                     chalk_ir::ConstValue::Concrete(cc) => match &cc.interned {
                         crate::ConstScalar::UnevaluatedConst(const_id, subst) => {
-                            let mut const_id = *const_id;
                             let mut subst = subst.clone();
                             self.fill_subst(&mut subst)?;
-                            if let GeneralConstId::ConstId(c) = const_id {
-                                let (c, s) = lookup_impl_const(
-                                    self.db,
-                                    self.db.trait_environment_for_body(self.owner),
-                                    c,
-                                    subst,
-                                );
-                                const_id = GeneralConstId::ConstId(c);
-                                subst = s;
-                            }
-                            let result =
-                                self.db.const_eval(const_id.into(), subst).map_err(|e| {
-                                    let name = const_id.name(self.db.upcast());
-                                    MirLowerError::ConstEvalError(name, Box::new(e))
-                                })?;
-                            *c = result;
+                            *c = intern_const_scalar(
+                                crate::ConstScalar::UnevaluatedConst(*const_id, subst),
+                                c.data(Interner).ty.clone(),
+                            );
                         }
                         crate::ConstScalar::Bytes(_, _) | crate::ConstScalar::Unknown => (),
                     },
