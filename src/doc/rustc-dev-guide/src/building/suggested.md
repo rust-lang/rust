@@ -36,9 +36,6 @@ If you have enough free disk space and you would like to be able to run `x` comm
 rust-analyzer runs in the background, you can also add `--build-dir build-rust-analyzer` to the
 `overrideCommand` to avoid x locking.
 
-If you're running `coc.nvim`, you can use `:CocLocalConfig` to create a
-`.vim/coc-settings.json` and copy the settings from [`src/etc/rust_analyzer_settings.json`].
-
 [`src/etc/rust_analyzer_settings.json`]: https://github.com/rust-lang/rust/blob/master/src/etc/rust_analyzer_settings.json
 
 If running `./x check` on save is inconvenient, in VS Code you can use a [Build
