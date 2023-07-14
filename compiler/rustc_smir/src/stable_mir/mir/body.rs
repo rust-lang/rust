@@ -185,9 +185,9 @@ pub enum Rvalue {
     /// [#91095]. Note too that the value of the discriminant is not the same thing as the
     /// variant index; use [`discriminant_for_variant`] to convert.
     ///
-    /// [`discriminant_ty`]: crate::ty::Ty::discriminant_ty
+    /// [`discriminant_ty`]: rustc_middle::ty::Ty::discriminant_ty
     /// [#91095]: https://github.com/rust-lang/rust/issues/91095
-    /// [`discriminant_for_variant`]: crate::ty::Ty::discriminant_for_variant
+    /// [`discriminant_for_variant`]: rustc_middle::ty::Ty::discriminant_for_variant
     Discriminant(Place),
 
     /// Yields the length of the place, as a `usize`.

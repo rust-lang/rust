@@ -68,13 +68,17 @@ macro_rules! std {
 }
 
 macro_rules! doc_std {
-    ($host:ident => $target:ident, stage = $stage:literal) => {
+    ($host:ident => $target:ident, stage = $stage:literal) => {{
+        let config = configure("doc", &["A"], &["A"]);
+        let build = Build::new(config);
+        let builder = Builder::new(&build);
         doc::Std::new(
             $stage,
             TargetSelection::from_user(stringify!($target)),
+            &builder,
             DocumentationFormat::HTML,
         )
-    };
+    }};
 }
 
 macro_rules! rustc {
