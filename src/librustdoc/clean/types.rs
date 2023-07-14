@@ -370,10 +370,7 @@ impl Item {
     }
 
     pub(crate) fn inner_docs(&self, tcx: TyCtxt<'_>) -> bool {
-        self.item_id
-            .as_def_id()
-            .map(|did| inner_docs(tcx.get_attrs_unchecked(did)))
-            .unwrap_or(false)
+        self.item_id.as_def_id().map(|did| inner_docs(tcx.item_attrs(did))).unwrap_or(false)
     }
 
     pub(crate) fn span(&self, tcx: TyCtxt<'_>) -> Option<Span> {
@@ -418,7 +415,7 @@ impl Item {
         kind: ItemKind,
         cx: &mut DocContext<'_>,
     ) -> Item {
-        let ast_attrs = cx.tcx.get_attrs_unchecked(def_id);
+        let ast_attrs = cx.tcx.item_attrs(def_id);
 
         Self::from_def_id_and_attrs_and_parts(
             def_id,

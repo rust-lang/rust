@@ -175,7 +175,7 @@ pub(crate) fn try_inline_glob(
 }
 
 pub(crate) fn load_attrs<'hir>(cx: &DocContext<'hir>, did: DefId) -> &'hir [ast::Attribute] {
-    cx.tcx.get_attrs_unchecked(did)
+    cx.tcx.item_attrs(did)
 }
 
 /// Record an external fully qualified name in the external_paths cache.

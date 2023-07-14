@@ -153,6 +153,7 @@ pub fn provide(providers: &mut Providers) {
     providers.hir_attrs = |tcx, id| {
         tcx.hir_crate(()).owners[id.def_id].as_owner().map_or(AttributeMap::EMPTY, |o| &o.attrs)
     };
+    providers.item_attrs = |tcx, def_id| tcx.hir().attrs(tcx.hir().local_def_id_to_hir_id(def_id));
     providers.def_span = |tcx, def_id| {
         let def_id = def_id;
         let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);

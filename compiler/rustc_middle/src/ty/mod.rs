@@ -2491,15 +2491,6 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    // FIXME(@lcnr): Remove this function.
-    pub fn get_attrs_unchecked(self, did: DefId) -> &'tcx [ast::Attribute] {
-        if let Some(did) = did.as_local() {
-            self.hir().attrs(self.hir().local_def_id_to_hir_id(did))
-        } else {
-            self.item_attrs(did)
-        }
-    }
-
     /// Gets all attributes with the given name.
     pub fn get_attrs(
         self,

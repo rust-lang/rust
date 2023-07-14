@@ -176,7 +176,7 @@ impl<'cx, 'others, 'tcx> AttrChecker<'cx, 'others, 'tcx> {
         if let Some(adt) = ty.ty_adt_def() {
             let mut iter = get_attr(
                 self.cx.sess(),
-                self.cx.tcx.get_attrs_unchecked(adt.did()),
+                self.cx.tcx.item_attrs(adt.did()),
                 "has_significant_drop",
             );
             if iter.next().is_some() {
