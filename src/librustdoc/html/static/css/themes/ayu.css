@@ -89,8 +89,8 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--crate-search-div-hover-filter: invert(98%) sepia(12%) saturate(81%) hue-rotate(343deg)
 		brightness(113%) contrast(76%);
 	--crate-search-hover-border: #e0e0e0;
-	--source-sidebar-background-selected: #14191f;
-	--source-sidebar-background-hover: #14191f;
+	--src-sidebar-background-selected: #14191f;
+	--src-sidebar-background-hover: #14191f;
 	--table-alt-row-background-color: #191f26;
 	--codeblock-link-background: #333;
 	--scrape-example-toggle-line-background: #999;
@@ -107,7 +107,7 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 
 h1, h2, h3, h4,
 h1 a, .sidebar h2 a, .sidebar h3 a,
-#source-sidebar > .title {
+#src-sidebar > .title {
 	color: #fff;
 }
 h4 {
@@ -124,15 +124,15 @@ h4 {
 .docblock pre > code,
 pre, pre > code,
 .item-info code,
-.rustdoc.source .example-wrap {
+.rustdoc.src .example-wrap {
 	color: #e6e1cf;
 }
 
 .sidebar .current,
 .sidebar a:hover,
-#source-sidebar div.files > a:hover, details.dir-entry summary:hover,
-#source-sidebar div.files > a:focus, details.dir-entry summary:focus,
-#source-sidebar div.files > a.selected {
+#src-sidebar div.files > a:hover, details.dir-entry summary:hover,
+#src-sidebar div.files > a:focus, details.dir-entry summary:focus,
+#src-sidebar div.files > a.selected {
 	color: #ffb44c;
 }
 

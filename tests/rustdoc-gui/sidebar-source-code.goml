@@ -14,7 +14,7 @@ define-function: (
         }
         reload:
         // Checking results colors.
-        assert-css: (".source .sidebar", {
+        assert-css: (".src .sidebar", {
             "color": |color|,
             "background-color": |background_color|
         }, ALL)
@@ -53,8 +53,8 @@ assert-css: ("nav.sidebar", {"width": "50px"})
 // We now click on the button to expand the sidebar.
 click: (10, 10)
 // We wait for the sidebar to be expanded.
-wait-for-css: (".source-sidebar-expanded nav.sidebar", {"width": "300px"})
-assert-css: (".source-sidebar-expanded nav.sidebar a", {"font-size": "14px"})
+wait-for-css: (".src-sidebar-expanded nav.sidebar", {"width": "300px"})
+assert-css: (".src-sidebar-expanded nav.sidebar a", {"font-size": "14px"})
 // We collapse the sidebar.
 click: (10, 10)
 // We ensure that the class has been removed.
@@ -66,24 +66,24 @@ go-to: "file://" + |DOC_PATH| + "/src/lib2/another_folder/sub_mod/mod.rs.html"
 // First we expand the sidebar again.
 click: (10, 10)
 // We wait for the sidebar to be expanded.
-wait-for-css: (".source-sidebar-expanded nav.sidebar", {"width": "300px"})
+wait-for-css: (".src-sidebar-expanded nav.sidebar", {"width": "300px"})
 assert: "//*[@class='dir-entry' and @open]/*[text()='lib2']"
 assert: "//*[@class='dir-entry' and @open]/*[text()='another_folder']"
 assert: "//*[@class='dir-entry' and @open]/*[text()='sub_mod']"
 // Only "another_folder" should be "open" in "lib2".
 assert: "//*[@class='dir-entry' and not(@open)]/*[text()='another_mod']"
 // All other trees should be collapsed.
-assert-count: ("//*[@id='source-sidebar']/details[not(text()='lib2') and not(@open)]", 9)
+assert-count: ("//*[@id='src-sidebar']/details[not(text()='lib2') and not(@open)]", 9)
 
 // We now switch to mobile mode.
 set-window-size: (600, 600)
-wait-for-css: (".source-sidebar-expanded nav.sidebar", {"left": "0px"})
+wait-for-css: (".src-sidebar-expanded nav.sidebar", {"left": "0px"})
 // We collapse the sidebar.
 click: (10, 10)
 // We check that the sidebar has been moved off-screen.
 assert-css: ("nav.sidebar", {"left": "-1000px"})
 // We ensure that the class has been removed.
-assert-false: ".source-sidebar-expanded"
+assert-false: ".src-sidebar-expanded"
 assert: "nav.sidebar"
 
 // Check that the topbar is not visible

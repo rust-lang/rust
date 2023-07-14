@@ -98,26 +98,26 @@ assert-document-property: ({"URL": "/lib.rs.html"}, ENDS_WITH)
 
 // First we "open" it.
 click: "#src-sidebar-toggle"
-assert: ".source-sidebar-expanded"
+assert: ".src-sidebar-expanded"
 
 // We check that the first entry of the sidebar is collapsed
-assert-property: ("#source-sidebar details:first-of-type", {"open": "false"})
-assert-text: ("#source-sidebar details:first-of-type > summary", "extend_css")
+assert-property: ("#src-sidebar details:first-of-type", {"open": "false"})
+assert-text: ("#src-sidebar details:first-of-type > summary", "extend_css")
 // We now click on it.
-click: "#source-sidebar details:first-of-type > summary"
-assert-property: ("#source-sidebar details:first-of-type", {"open": "true"})
+click: "#src-sidebar details:first-of-type > summary"
+assert-property: ("#src-sidebar details:first-of-type", {"open": "true"})
 
 // And now we collapse it again.
-click: "#source-sidebar details:first-of-type > summary"
-assert-property: ("#source-sidebar details:first-of-type", {"open": "false"})
+click: "#src-sidebar details:first-of-type > summary"
+assert-property: ("#src-sidebar details:first-of-type", {"open": "false"})
 
 // And open it again, since it'll be the reference we use to check positions.
-click: "#source-sidebar details:first-of-type > summary"
-assert-property: ("#source-sidebar details:first-of-type", {"open": "true"})
+click: "#src-sidebar details:first-of-type > summary"
+assert-property: ("#src-sidebar details:first-of-type", {"open": "true"})
 
 // Check the sidebar directory entries have a marker and spacing (desktop).
 store-property: (
-    "#source-sidebar > details:first-of-type.dir-entry[open] > .files > a",
+    "#src-sidebar > details:first-of-type.dir-entry[open] > .files > a",
     {"offsetHeight": link_height},
 )
 define-function: (
@@ -125,28 +125,28 @@ define-function: (
     (x, y),
     block {
         assert: "details:first-of-type.dir-entry[open] > summary::marker"
-        assert-css: ("#source-sidebar > details:first-of-type.dir-entry", {"padding-left": "4px"})
+        assert-css: ("#src-sidebar > details:first-of-type.dir-entry", {"padding-left": "4px"})
         // This check ensures that the summary is only one line.
         assert-property: (
-            "#source-sidebar > details:first-of-type.dir-entry[open] > summary",
+            "#src-sidebar > details:first-of-type.dir-entry[open] > summary",
             {"offsetHeight": |link_height|}
         )
         assert-position: (
-            "#source-sidebar > details:first-of-type.dir-entry[open] > summary",
+            "#src-sidebar > details:first-of-type.dir-entry[open] > summary",
             {"x": |x|, "y": |y|}
         )
         assert-property: (
-            "#source-sidebar > details:first-of-type.dir-entry[open] > .files > a",
+            "#src-sidebar > details:first-of-type.dir-entry[open] > .files > a",
             {"offsetHeight": |link_height|}
         )
         assert-position: (
-            "#source-sidebar > details:first-of-type.dir-entry[open] > .files > a",
+            "#src-sidebar > details:first-of-type.dir-entry[open] > .files > a",
             // left margin
             {"x": |x| + 27, "y": |y| + |link_height|}
         )
     }
 )
-store-property: ("#source-sidebar > .title", {
+store-property: ("#src-sidebar > .title", {
     "offsetHeight": source_sidebar_title_height,
     "offsetTop": source_sidebar_title_y,
 })
@@ -175,7 +175,7 @@ assert-property: ("#main-content", {"offsetTop": 76})
 // 21 = 76 - 34 - 21
 
 // Check the sidebar directory entries have a marker and spacing (tablet).
-store-property: ("#source-sidebar > .title", {
+store-property: ("#src-sidebar > .title", {
     "offsetHeight": source_sidebar_title_height,
     "offsetTop": source_sidebar_title_y,
 })
@@ -189,7 +189,7 @@ set-window-size: (450, 700)
 assert-css: ("nav.sub", {"flex-direction": "column"})
 
 // Check the sidebar directory entries have a marker and spacing (phone).
-store-property: ("#source-sidebar > .title", {
+store-property: ("#src-sidebar > .title", {
     "offsetHeight": source_sidebar_title_height,
     "offsetTop": source_sidebar_title_y,
 })

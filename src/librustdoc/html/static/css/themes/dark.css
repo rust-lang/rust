@@ -84,8 +84,8 @@
 	--crate-search-div-hover-filter: invert(69%) sepia(60%) saturate(6613%) hue-rotate(184deg)
 		brightness(100%) contrast(91%);
 	--crate-search-hover-border: #2196f3;
-	--source-sidebar-background-selected: #333;
-	--source-sidebar-background-hover: #444;
+	--src-sidebar-background-selected: #333;
+	--src-sidebar-background-hover: #444;
 	--table-alt-row-background-color: #2A2A2A;
 	--codeblock-link-background: #333;
 	--scrape-example-toggle-line-background: #999;

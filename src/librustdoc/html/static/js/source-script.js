@@ -74,11 +74,11 @@ function createDirEntry(elem, parent, fullPath, hasFoundFile) {
 function toggleSidebar() {
     const child = this.parentNode.children[0];
     if (child.innerText === ">") {
-        addClass(document.documentElement, "source-sidebar-expanded");
+        addClass(document.documentElement, "src-sidebar-expanded");
         child.innerText = "<";
         updateLocalStorage("source-sidebar-show", "true");
     } else {
-        removeClass(document.documentElement, "source-sidebar-expanded");
+        removeClass(document.documentElement, "src-sidebar-expanded");
         child.innerText = ">";
         updateLocalStorage("source-sidebar-show", "false");
     }
@@ -110,7 +110,7 @@ function createSourceSidebar() {
     container.insertBefore(sidebarToggle, container.firstChild);
 
     const sidebar = document.createElement("div");
-    sidebar.id = "source-sidebar";
+    sidebar.id = "src-sidebar";
 
     let hasFoundFile = false;
 
