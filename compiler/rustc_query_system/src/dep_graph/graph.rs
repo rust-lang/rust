@@ -649,18 +649,17 @@ impl<K: DepKind> DepGraph<K> {
 impl<K: DepKind> DepGraphData<K> {
     fn assert_dep_node_not_yet_allocated_in_current_session<S: std::fmt::Display>(
         &self,
-        _dep_node: &DepNode<K>,
-        _msg: impl FnOnce() -> S,
+        dep_node: &DepNode<K>,
+        msg: impl FnOnce() -> S,
     ) {
-        #[cfg(debug_assertions)]
-        if let Some(prev_index) = self.previous.node_to_index_opt(_dep_node) {
+        if let Some(prev_index) = self.previous.node_to_index_opt(dep_node) {
             let current = self.current.prev_index_to_index.lock()[prev_index];
-            assert!(current.is_none(), "{}", _msg())
+            assert!(current.is_none(), "{}", msg())
         } else if let Some(nodes_newly_allocated_in_current_session) =
             &self.current.nodes_newly_allocated_in_current_session
         {
-            let seen = nodes_newly_allocated_in_current_session.lock().contains(_dep_node);
-            assert!(!seen, "{}", _msg());
+            let seen = nodes_newly_allocated_in_current_session.lock().contains(dep_node);
+            assert!(!seen, "{}", msg());
         }
     }
 
@@ -980,9 +979,7 @@ impl<K: DepKind> DepGraph<K> {
         dep_node: &DepNode<K>,
         msg: impl FnOnce() -> S,
     ) {
-        if cfg!(debug_assertions)
-            && let Some(data) = &self.data
-        {
+        if let Some(data) = &self.data {
             data.assert_dep_node_not_yet_allocated_in_current_session(dep_node, msg)
         }
     }
@@ -1128,7 +1125,6 @@ pub(super) struct CurrentDepGraph<K: DepKind> {
     ///
     /// The map contains all DepNodes that have been allocated in the current session so far and
     /// for which there is no equivalent in the previous session.
-    #[cfg(debug_assertions)]
     nodes_newly_allocated_in_current_session: Option<Lock<FxHashSet<DepNode<K>>>>,
 
     /// Anonymous `DepNode`s are nodes whose IDs we compute from the list of
@@ -1212,7 +1208,6 @@ impl<K: DepKind> CurrentDepGraph<K> {
             forbidden_edge,
             #[cfg(debug_assertions)]
             fingerprints: Lock::new(IndexVec::from_elem_n(None, new_node_count_estimate)),
-            #[cfg(debug_assertions)]
             nodes_newly_allocated_in_current_session: session
                 .opts
                 .unstable_opts
@@ -1253,7 +1248,6 @@ impl<K: DepKind> CurrentDepGraph<K> {
         #[cfg(debug_assertions)]
         self.record_edge(dep_node_index, key, current_fingerprint);
 
-        #[cfg(debug_assertions)]
         if let Some(ref nodes_newly_allocated_in_current_session) =
             self.nodes_newly_allocated_in_current_session
         {
