@@ -349,7 +349,7 @@ impl<K: DepKind> DepGraphData<K> {
         //    in `DepGraph::try_mark_green()`.
         // 2. Two distinct query keys get mapped to the same `DepNode`
         //    (see for example #48923).
-        self.assert_nonexistent_node(&key, || {
+        self.assert_dep_node_not_yet_allocated_in_current_session(&key, || {
             format!(
                 "forcing query with already existing `DepNode`\n\
             - query-key: {arg:?}\n\
@@ -647,14 +647,19 @@ impl<K: DepKind> DepGraph<K> {
 }
 
 impl<K: DepKind> DepGraphData<K> {
-    fn assert_nonexistent_node<S: std::fmt::Display>(
+    fn assert_dep_node_not_yet_allocated_in_current_session<S: std::fmt::Display>(
         &self,
         _dep_node: &DepNode<K>,
         _msg: impl FnOnce() -> S,
     ) {
         #[cfg(debug_assertions)]
-        if let Some(seen_dep_nodes) = &self.current.seen_dep_nodes {
-            let seen = seen_dep_nodes.lock().contains(_dep_node);
+        if let Some(prev_index) = self.previous.node_to_index_opt(_dep_node) {
+            let current = self.current.prev_index_to_index.lock()[prev_index];
+            assert!(current.is_none(), "{}", _msg())
+        } else if let Some(nodes_newly_allocated_in_current_session) =
+            &self.current.nodes_newly_allocated_in_current_session
+        {
+            let seen = nodes_newly_allocated_in_current_session.lock().contains(_dep_node);
             assert!(!seen, "{}", _msg());
         }
     }
@@ -871,7 +876,7 @@ impl<K: DepKind> DepGraphData<K> {
         let frame = MarkFrame { index: prev_dep_node_index, parent: frame };
 
         #[cfg(not(parallel_compiler))]
-        self.assert_nonexistent_node(dep_node, || {
+        self.assert_dep_node_not_yet_allocated_in_current_session(dep_node, || {
             format!("trying to mark existing {dep_node:?} as green")
         });
         #[cfg(not(parallel_compiler))]
@@ -970,7 +975,7 @@ impl<K: DepKind> DepGraph<K> {
         self.node_color(dep_node).is_some_and(|c| c.is_green())
     }
 
-    pub fn assert_nonexistent_node<S: std::fmt::Display>(
+    pub fn assert_dep_node_not_yet_allocated_in_current_session<S: std::fmt::Display>(
         &self,
         dep_node: &DepNode<K>,
         msg: impl FnOnce() -> S,
@@ -978,7 +983,7 @@ impl<K: DepKind> DepGraph<K> {
         if cfg!(debug_assertions)
             && let Some(data) = &self.data
         {
-            data.assert_nonexistent_node(dep_node, msg)
+            data.assert_dep_node_not_yet_allocated_in_current_session(dep_node, msg)
         }
     }
 
@@ -1120,8 +1125,11 @@ pub(super) struct CurrentDepGraph<K: DepKind> {
 
     /// Used to verify the absence of hash collisions among DepNodes.
     /// This field is only `Some` if the `-Z incremental_verify_ich` option is present.
+    ///
+    /// The map contains all DepNodes that have been allocated in the current session so far and
+    /// for which there is no equivalent in the previous session.
     #[cfg(debug_assertions)]
-    seen_dep_nodes: Option<Lock<FxHashSet<DepNode<K>>>>,
+    nodes_newly_allocated_in_current_session: Option<Lock<FxHashSet<DepNode<K>>>>,
 
     /// Anonymous `DepNode`s are nodes whose IDs we compute from the list of
     /// their edges. This has the beneficial side-effect that multiple anonymous
@@ -1205,12 +1213,16 @@ impl<K: DepKind> CurrentDepGraph<K> {
             #[cfg(debug_assertions)]
             fingerprints: Lock::new(IndexVec::from_elem_n(None, new_node_count_estimate)),
             #[cfg(debug_assertions)]
-            seen_dep_nodes: session.opts.unstable_opts.incremental_verify_ich.then(|| {
-                Lock::new(FxHashSet::with_capacity_and_hasher(
-                    new_node_count_estimate,
-                    Default::default(),
-                ))
-            }),
+            nodes_newly_allocated_in_current_session: session
+                .opts
+                .unstable_opts
+                .incremental_verify_ich
+                .then(|| {
+                    Lock::new(FxHashSet::with_capacity_and_hasher(
+                        new_node_count_estimate,
+                        Default::default(),
+                    ))
+                }),
             total_read_count: AtomicU64::new(0),
             total_duplicate_read_count: AtomicU64::new(0),
             node_intern_event_id,
@@ -1242,8 +1254,10 @@ impl<K: DepKind> CurrentDepGraph<K> {
         self.record_edge(dep_node_index, key, current_fingerprint);
 
         #[cfg(debug_assertions)]
-        if let Some(ref seen_dep_nodes) = self.seen_dep_nodes {
-            if !seen_dep_nodes.lock().insert(key) {
+        if let Some(ref nodes_newly_allocated_in_current_session) =
+            self.nodes_newly_allocated_in_current_session
+        {
+            if !nodes_newly_allocated_in_current_session.lock().insert(key) {
                 panic!("Found duplicate dep-node {key:?}");
             }
         }
