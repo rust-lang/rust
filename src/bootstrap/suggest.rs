@@ -62,12 +62,11 @@ pub fn suggest(builder: &Builder<'_>, run: bool) {
         for sug in suggestions {
             let mut build: crate::Build = builder.build.clone();
             build.config.paths = sug.2;
-            build.config.cmd = crate::flags::Flags::parse_from([sug.0]).cmd;
+            build.config.cmd = crate::flags::Flags::parse_from(["x.py", sug.0]).cmd;
             if let Some(stage) = sug.1 {
                 build.config.stage = stage;
             }
-
-            Builder::new(&build).execute_cli()
+            build.build();
         }
     } else {
         println!("help: consider using the `--run` flag to automatically run suggested tests");
