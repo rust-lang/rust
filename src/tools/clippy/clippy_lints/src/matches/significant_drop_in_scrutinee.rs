@@ -6,7 +6,7 @@ use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_hir::{Arm, Expr, ExprKind, MatchSource};
 use rustc_lint::{LateContext, LintContext};
-use rustc_middle::ty::subst::GenericArgKind;
+use rustc_middle::ty::GenericArgKind;
 use rustc_middle::ty::{Ty, TypeAndMut};
 use rustc_span::Span;
 

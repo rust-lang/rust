@@ -190,14 +190,14 @@ impl PeekCall {
         if let mir::TerminatorKind::Call { func: Operand::Constant(func), args, .. } =
             &terminator.kind
         {
-            if let ty::FnDef(def_id, substs) = *func.literal.ty().kind() {
+            if let ty::FnDef(def_id, fn_args) = *func.literal.ty().kind() {
                 let name = tcx.item_name(def_id);
                 if !tcx.is_intrinsic(def_id) || name != sym::rustc_peek {
                     return None;
                 }
 
-                assert_eq!(args.len(), 1);
-                let kind = PeekCallKind::from_arg_ty(substs.type_at(0));
+                assert_eq!(fn_args.len(), 1);
+                let kind = PeekCallKind::from_arg_ty(fn_args.type_at(0));
                 let arg = match &args[0] {
                     Operand::Copy(place) | Operand::Move(place) => {
                         if let Some(local) = place.as_local() {

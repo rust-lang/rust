@@ -47,7 +47,7 @@ fn get_size_of_ty<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, inverted: 
                 if let Some(def_id) = cx.qpath_res(count_func_qpath, count_func.hir_id).opt_def_id();
                 if matches!(cx.tcx.get_diagnostic_name(def_id), Some(sym::mem_size_of | sym::mem_size_of_val));
                 then {
-                    cx.typeck_results().node_substs(count_func.hir_id).types().next()
+                    cx.typeck_results().node_args(count_func.hir_id).types().next()
                 } else {
                     None
                 }
@@ -101,7 +101,7 @@ fn get_pointee_ty_and_count_expr<'tcx>(
         if FUNCTIONS.iter().any(|func_path| match_def_path(cx, def_id, func_path));
 
         // Get the pointee type
-        if let Some(pointee_ty) = cx.typeck_results().node_substs(func.hir_id).types().next();
+        if let Some(pointee_ty) = cx.typeck_results().node_args(func.hir_id).types().next();
         then {
             return Some((pointee_ty, count));
         }

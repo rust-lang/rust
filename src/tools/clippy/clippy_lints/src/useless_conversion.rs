@@ -227,8 +227,8 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                     let a = cx.typeck_results().expr_ty(e);
                     let b = cx.typeck_results().expr_ty(recv);
                     if is_type_diagnostic_item(cx, a, sym::Result);
-                    if let ty::Adt(_, substs) = a.kind();
-                    if let Some(a_type) = substs.types().next();
+                    if let ty::Adt(_, args) = a.kind();
+                    if let Some(a_type) = args.types().next();
                     if same_type_and_consts(a_type, b);
 
                     then {
@@ -255,8 +255,8 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                         if_chain! {
                             if match_def_path(cx, def_id, &paths::TRY_FROM);
                             if is_type_diagnostic_item(cx, a, sym::Result);
-                            if let ty::Adt(_, substs) = a.kind();
-                            if let Some(a_type) = substs.types().next();
+                            if let ty::Adt(_, args) = a.kind();
+                            if let Some(a_type) = args.types().next();
                             if same_type_and_consts(a_type, b);
 
                             then {

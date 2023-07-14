@@ -5,7 +5,7 @@ use super::combine::{CombineFields, ObligationEmittingRelation};
 use super::Subtype;
 
 use rustc_middle::ty::relate::{self, Relate, RelateResult, TypeRelation};
-use rustc_middle::ty::subst::SubstsRef;
+use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::TyVar;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 
@@ -43,12 +43,12 @@ impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
         self.a_is_expected
     }
 
-    fn relate_item_substs(
+    fn relate_item_args(
         &mut self,
         _item_def_id: DefId,
-        a_subst: SubstsRef<'tcx>,
-        b_subst: SubstsRef<'tcx>,
-    ) -> RelateResult<'tcx, SubstsRef<'tcx>> {
+        a_arg: GenericArgsRef<'tcx>,
+        b_arg: GenericArgsRef<'tcx>,
+    ) -> RelateResult<'tcx, GenericArgsRef<'tcx>> {
         // N.B., once we are equating types, we don't care about
         // variance, so don't try to lookup the variance here. This
         // also avoids some cycles (e.g., #41849) since looking up
@@ -56,7 +56,7 @@ impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
         // performing trait matching (which then performs equality
         // unification).
 
-        relate::relate_substs(self, a_subst, b_subst)
+        relate::relate_args(self, a_arg, b_arg)
     }
 
     fn relate_with_variance<T: Relate<'tcx>>(

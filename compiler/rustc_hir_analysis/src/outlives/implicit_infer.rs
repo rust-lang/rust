@@ -46,7 +46,7 @@ pub(super) fn infer_predicates(
                         // For field of type &'a T (reference) or Adt
                         // (struct/enum/union) there will be outlive
                         // requirements for adt_def.
-                        let field_ty = tcx.type_of(field_def.did).subst_identity();
+                        let field_ty = tcx.type_of(field_def.did).instantiate_identity();
                         let field_span = tcx.def_span(field_def.did);
                         insert_required_predicates_to_be_wf(
                             tcx,
@@ -117,7 +117,7 @@ fn insert_required_predicates_to_be_wf<'tcx>(
             // can load the current set of inferred and explicit
             // predicates from `global_inferred_outlives` and filter the
             // ones that are TypeOutlives.
-            ty::Adt(def, substs) => {
+            ty::Adt(def, args) => {
                 // First check the inferred predicates
                 //
                 // Example 1:
@@ -146,7 +146,7 @@ fn insert_required_predicates_to_be_wf<'tcx>(
                         // get `T: 'a` (or `predicate`):
                         let predicate = unsubstituted_predicates
                             .rebind(*unsubstituted_predicate)
-                            .subst(tcx, substs);
+                            .instantiate(tcx, args);
                         insert_outlives_predicate(
                             tcx,
                             predicate.0,
@@ -159,11 +159,11 @@ fn insert_required_predicates_to_be_wf<'tcx>(
 
                 // Check if the type has any explicit predicates that need
                 // to be added to `required_predicates`
-                // let _: () = substs.region_at(0);
+                // let _: () = args.region_at(0);
                 check_explicit_predicates(
                     tcx,
                     def.did(),
-                    substs,
+                    args,
                     required_predicates,
                     explicit_map,
                     None,
@@ -186,12 +186,11 @@ fn insert_required_predicates_to_be_wf<'tcx>(
                     // predicates in `check_explicit_predicates` we
                     // need to ignore checking the explicit_map for
                     // Self type.
-                    let substs =
-                        ex_trait_ref.with_self_ty(tcx, tcx.types.usize).skip_binder().substs;
+                    let args = ex_trait_ref.with_self_ty(tcx, tcx.types.usize).skip_binder().args;
                     check_explicit_predicates(
                         tcx,
                         ex_trait_ref.skip_binder().def_id,
-                        substs,
+                        args,
                         required_predicates,
                         explicit_map,
                         Some(tcx.types.self_param),
@@ -206,7 +205,7 @@ fn insert_required_predicates_to_be_wf<'tcx>(
                 check_explicit_predicates(
                     tcx,
                     tcx.parent(obj.def_id),
-                    obj.substs,
+                    obj.args,
                     required_predicates,
                     explicit_map,
                     None,
@@ -239,18 +238,18 @@ fn insert_required_predicates_to_be_wf<'tcx>(
 fn check_explicit_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
-    substs: &[GenericArg<'tcx>],
+    args: &[GenericArg<'tcx>],
     required_predicates: &mut RequiredPredicates<'tcx>,
     explicit_map: &mut ExplicitPredicatesMap<'tcx>,
     ignored_self_ty: Option<Ty<'tcx>>,
 ) {
     debug!(
         "check_explicit_predicates(def_id={:?}, \
-         substs={:?}, \
+         args={:?}, \
          explicit_map={:?}, \
          required_predicates={:?}, \
          ignored_self_ty={:?})",
-        def_id, substs, explicit_map, required_predicates, ignored_self_ty,
+        def_id, args, explicit_map, required_predicates, ignored_self_ty,
     );
     let explicit_predicates = explicit_map.explicit_predicates_of(tcx, def_id);
 
@@ -278,10 +277,10 @@ fn check_explicit_predicates<'tcx>(
         // that is represented by the `dyn Trait`, not to the `X` type parameter
         // (or any other generic parameter) declared on `MyStruct`.
         //
-        // Note that we do this check for self **before** applying `substs`. In the
-        // case that `substs` come from a `dyn Trait` type, our caller will have
+        // Note that we do this check for self **before** applying `args`. In the
+        // case that `args` come from a `dyn Trait` type, our caller will have
         // included `Self = usize` as the value for `Self`. If we were
-        // to apply the substs, and not filter this predicate, we might then falsely
+        // to apply the args, and not filter this predicate, we might then falsely
         // conclude that e.g., `X: 'x` was a reasonable inferred requirement.
         //
         // Another similar case is where we have an inferred
@@ -299,7 +298,7 @@ fn check_explicit_predicates<'tcx>(
             continue;
         }
 
-        let predicate = explicit_predicates.rebind(*outlives_predicate).subst(tcx, substs);
+        let predicate = explicit_predicates.rebind(*outlives_predicate).instantiate(tcx, args);
         debug!("predicate = {:?}", &predicate);
         insert_outlives_predicate(tcx, predicate.0, predicate.1, span, required_predicates);
     }

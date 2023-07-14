@@ -4,7 +4,7 @@ note: external requirements
 LL |     establish_relationships(value, |value| {
    |                                    ^^^^^^^
    |
-   = note: defining type: supply::<'?1, T>::{closure#0} with closure substs [
+   = note: defining type: supply::<'?1, T>::{closure#0} with closure args [
                i32,
                extern "rust-call" fn((T,)),
                (),

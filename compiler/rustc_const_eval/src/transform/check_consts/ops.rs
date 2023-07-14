@@ -9,9 +9,9 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{ImplSource, Obligation, ObligationCause};
 use rustc_middle::mir::{self, CallSource};
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
 use rustc_middle::ty::TraitRef;
 use rustc_middle::ty::{suggest_constraining_type_param, Adt, Closure, FnDef, FnPtr, Param, Ty};
+use rustc_middle::ty::{GenericArgKind, GenericArgsRef};
 use rustc_middle::util::{call_kind, CallDesugaringKind, CallKind};
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::sym;
@@ -98,7 +98,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallIndirect {
 pub struct FnCallNonConst<'tcx> {
     pub caller: LocalDefId,
     pub callee: DefId,
-    pub substs: SubstsRef<'tcx>,
+    pub args: GenericArgsRef<'tcx>,
     pub span: Span,
     pub call_source: CallSource,
     pub feature: Option<Symbol>,
@@ -110,11 +110,11 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
         ccx: &ConstCx<'_, 'tcx>,
         _: Span,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        let FnCallNonConst { caller, callee, substs, span, call_source, feature } = *self;
+        let FnCallNonConst { caller, callee, args, span, call_source, feature } = *self;
         let ConstCx { tcx, param_env, .. } = *ccx;
 
         let diag_trait = |err, self_ty: Ty<'_>, trait_id| {
-            let trait_ref = TraitRef::from_method(tcx, trait_id, substs);
+            let trait_ref = TraitRef::from_method(tcx, trait_id, args);
 
             match self_ty.kind() {
                 Param(param_ty) => {
@@ -154,7 +154,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
         };
 
         let call_kind =
-            call_kind(tcx, ccx.param_env, callee, substs, span, call_source.from_hir_call(), None);
+            call_kind(tcx, ccx.param_env, callee, args, span, call_source.from_hir_call(), None);
 
         debug!(?call_kind);
 
@@ -226,7 +226,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                     let mut sugg = None;
 
                     if Some(trait_id) == ccx.tcx.lang_items().eq_trait() {
-                        match (substs[0].unpack(), substs[1].unpack()) {
+                        match (args[0].unpack(), args[1].unpack()) {
                             (GenericArgKind::Type(self_ty), GenericArgKind::Type(rhs_ty))
                                 if self_ty == rhs_ty
                                     && self_ty.is_ref()
@@ -297,7 +297,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                 .create_err(errors::NonConstFmtMacroCall { span, kind: ccx.const_kind() }),
             _ => ccx.tcx.sess.create_err(errors::NonConstFnCall {
                 span,
-                def_path_str: ccx.tcx.def_path_str_with_substs(callee, substs),
+                def_path_str: ccx.tcx.def_path_str_with_args(callee, args),
                 kind: ccx.const_kind(),
             }),
         };

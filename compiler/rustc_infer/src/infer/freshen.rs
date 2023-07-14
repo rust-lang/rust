@@ -11,7 +11,7 @@
 //!
 //! To handle closures, freshened types also have to contain the signature and kind of any
 //! closure in the local inference context, as otherwise the cache key might be invalidated.
-//! The way this is done is somewhat hacky - the closure signature is appended to the substs,
+//! The way this is done is somewhat hacky - the closure signature is appended to the args,
 //! as well as the closure kind "encoded" as a type. Also, special handling is needed when
 //! the closure signature contains a reference to the original closure.
 //!

@@ -211,7 +211,7 @@ impl<'tcx> LateLintPass<'tcx> for Derive {
             ..
         }) = item.kind
         {
-            let ty = cx.tcx.type_of(item.owner_id).subst_identity();
+            let ty = cx.tcx.type_of(item.owner_id).instantiate_identity();
             let is_automatically_derived = cx.tcx.has_attr(item.owner_id, sym::automatically_derived);
 
             check_hash_peq(cx, item.span, trait_ref, ty, is_automatically_derived);
@@ -252,7 +252,7 @@ fn check_hash_peq<'tcx>(
 
                 // Only care about `impl PartialEq<Foo> for Foo`
                 // For `impl PartialEq<B> for A, input_types is [A, B]
-                if trait_ref.subst_identity().substs.type_at(1) == ty {
+                if trait_ref.instantiate_identity().args.type_at(1) == ty {
                     span_lint_and_then(
                         cx,
                         DERIVED_HASH_WITH_MANUAL_EQ,
@@ -300,7 +300,7 @@ fn check_ord_partial_ord<'tcx>(
 
                 // Only care about `impl PartialOrd<Foo> for Foo`
                 // For `impl PartialOrd<B> for A, input_types is [A, B]
-                if trait_ref.subst_identity().substs.type_at(1) == ty {
+                if trait_ref.instantiate_identity().args.type_at(1) == ty {
                     let mess = if partial_ord_is_automatically_derived {
                         "you are implementing `Ord` explicitly but have derived `PartialOrd`"
                     } else {
@@ -347,7 +347,7 @@ fn check_copy_clone<'tcx>(cx: &LateContext<'tcx>, item: &Item<'_>, trait_ref: &h
             let has_copy_impl = cx.tcx.all_local_trait_impls(()).get(&copy_id).map_or(false, |impls| {
                 impls
                     .iter()
-                    .any(|&id| matches!(cx.tcx.type_of(id).subst_identity().kind(), ty::Adt(adt, _) if ty_adt.did() == adt.did()))
+                    .any(|&id| matches!(cx.tcx.type_of(id).instantiate_identity().kind(), ty::Adt(adt, _) if ty_adt.did() == adt.did()))
             });
             if !has_copy_impl {
                 return;
@@ -464,7 +464,7 @@ impl<'tcx> Visitor<'tcx> for UnsafeVisitor<'_, 'tcx> {
 /// Implementation of the `DERIVE_PARTIAL_EQ_WITHOUT_EQ` lint.
 fn check_partial_eq_without_eq<'tcx>(cx: &LateContext<'tcx>, span: Span, trait_ref: &hir::TraitRef<'_>, ty: Ty<'tcx>) {
     if_chain! {
-        if let ty::Adt(adt, substs) = ty.kind();
+        if let ty::Adt(adt, args) = ty.kind();
         if cx.tcx.visibility(adt.did()).is_public();
         if let Some(eq_trait_def_id) = cx.tcx.get_diagnostic_item(sym::Eq);
         if let Some(def_id) = trait_ref.trait_def_id();
@@ -474,7 +474,7 @@ fn check_partial_eq_without_eq<'tcx>(cx: &LateContext<'tcx>, span: Span, trait_r
         // If all of our fields implement `Eq`, we can implement `Eq` too
         if adt
             .all_fields()
-            .map(|f| f.ty(cx.tcx, substs))
+            .map(|f| f.ty(cx.tcx, args))
             .all(|ty| implements_trait_with_env(cx.tcx, param_env, ty, eq_trait_def_id, []));
         then {
             span_lint_and_sugg(

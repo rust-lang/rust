@@ -42,19 +42,19 @@ pub trait Printer<'tcx>: Sized {
     fn print_def_path(
         self,
         def_id: DefId,
-        substs: &'tcx [GenericArg<'tcx>],
+        args: &'tcx [GenericArg<'tcx>],
     ) -> Result<Self::Path, Self::Error> {
-        self.default_print_def_path(def_id, substs)
+        self.default_print_def_path(def_id, args)
     }
 
     fn print_impl_path(
         self,
         impl_def_id: DefId,
-        substs: &'tcx [GenericArg<'tcx>],
+        args: &'tcx [GenericArg<'tcx>],
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
     ) -> Result<Self::Path, Self::Error> {
-        self.default_print_impl_path(impl_def_id, substs, self_ty, trait_ref)
+        self.default_print_impl_path(impl_def_id, args, self_ty, trait_ref)
     }
 
     fn print_region(self, region: ty::Region<'tcx>) -> Result<Self::Region, Self::Error>;
@@ -102,7 +102,7 @@ pub trait Printer<'tcx>: Sized {
     fn default_print_def_path(
         self,
         def_id: DefId,
-        substs: &'tcx [GenericArg<'tcx>],
+        args: &'tcx [GenericArg<'tcx>],
     ) -> Result<Self::Path, Self::Error> {
         let key = self.tcx().def_key(def_id);
         debug!(?key);
@@ -117,25 +117,28 @@ pub trait Printer<'tcx>: Sized {
                 let generics = self.tcx().generics_of(def_id);
                 let self_ty = self.tcx().type_of(def_id);
                 let impl_trait_ref = self.tcx().impl_trait_ref(def_id);
-                let (self_ty, impl_trait_ref) = if substs.len() >= generics.count() {
+                let (self_ty, impl_trait_ref) = if args.len() >= generics.count() {
                     (
-                        self_ty.subst(self.tcx(), substs),
-                        impl_trait_ref.map(|i| i.subst(self.tcx(), substs)),
+                        self_ty.instantiate(self.tcx(), args),
+                        impl_trait_ref.map(|i| i.instantiate(self.tcx(), args)),
                     )
                 } else {
-                    (self_ty.subst_identity(), impl_trait_ref.map(|i| i.subst_identity()))
+                    (
+                        self_ty.instantiate_identity(),
+                        impl_trait_ref.map(|i| i.instantiate_identity()),
+                    )
                 };
-                self.print_impl_path(def_id, substs, self_ty, impl_trait_ref)
+                self.print_impl_path(def_id, args, self_ty, impl_trait_ref)
             }
 
             _ => {
                 let parent_def_id = DefId { index: key.parent.unwrap(), ..def_id };
 
-                let mut parent_substs = substs;
+                let mut parent_args = args;
                 let mut trait_qualify_parent = false;
-                if !substs.is_empty() {
+                if !args.is_empty() {
                     let generics = self.tcx().generics_of(def_id);
-                    parent_substs = &substs[..generics.parent_count.min(substs.len())];
+                    parent_args = &args[..generics.parent_count.min(args.len())];
 
                     match key.disambiguated_data.data {
                         // Closures' own generics are only captures, don't print them.
@@ -148,10 +151,10 @@ pub trait Printer<'tcx>: Sized {
                         // If we have any generic arguments to print, we do that
                         // on top of the same path, but without its own generics.
                         _ => {
-                            if !generics.params.is_empty() && substs.len() >= generics.count() {
-                                let args = generics.own_substs_no_defaults(self.tcx(), substs);
+                            if !generics.params.is_empty() && args.len() >= generics.count() {
+                                let args = generics.own_args_no_defaults(self.tcx(), args);
                                 return self.path_generic_args(
-                                    |cx| cx.print_def_path(def_id, parent_substs),
+                                    |cx| cx.print_def_path(def_id, parent_args),
                                     args,
                                 );
                             }
@@ -162,7 +165,7 @@ pub trait Printer<'tcx>: Sized {
                     // logic, instead of doing it when printing the child.
                     trait_qualify_parent = generics.has_self
                         && generics.parent == Some(parent_def_id)
-                        && parent_substs.len() == generics.parent_count
+                        && parent_args.len() == generics.parent_count
                         && self.tcx().generics_of(parent_def_id).parent_count == 0;
                 }
 
@@ -172,11 +175,11 @@ pub trait Printer<'tcx>: Sized {
                             let trait_ref = ty::TraitRef::new(
                                 cx.tcx(),
                                 parent_def_id,
-                                parent_substs.iter().copied(),
+                                parent_args.iter().copied(),
                             );
                             cx.path_qualified(trait_ref.self_ty(), Some(trait_ref))
                         } else {
-                            cx.print_def_path(parent_def_id, parent_substs)
+                            cx.print_def_path(parent_def_id, parent_args)
                         }
                     },
                     &key.disambiguated_data,
@@ -188,7 +191,7 @@ pub trait Printer<'tcx>: Sized {
     fn default_print_impl_path(
         self,
         impl_def_id: DefId,
-        _substs: &'tcx [GenericArg<'tcx>],
+        _args: &'tcx [GenericArg<'tcx>],
         self_ty: Ty<'tcx>,
         impl_trait_ref: Option<ty::TraitRef<'tcx>>,
     ) -> Result<Self::Path, Self::Error> {

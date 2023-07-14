@@ -42,10 +42,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     }
 
     /// Add sufficient constraints to ensure `a == b`. See also [Self::relate_types].
-    pub(super) fn eq_substs(
+    pub(super) fn eq_args(
         &mut self,
-        a: ty::SubstsRef<'tcx>,
-        b: ty::SubstsRef<'tcx>,
+        a: ty::GenericArgsRef<'tcx>,
+        b: ty::GenericArgsRef<'tcx>,
         locations: Locations,
         category: ConstraintCategory<'tcx>,
     ) -> Result<(), NoSolution> {

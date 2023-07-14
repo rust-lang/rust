@@ -173,21 +173,21 @@ where
         true
     }
 
-    fn relate_item_substs(
+    fn relate_item_args(
         &mut self,
         item_def_id: DefId,
-        a_subst: ty::SubstsRef<'tcx>,
-        b_subst: ty::SubstsRef<'tcx>,
-    ) -> RelateResult<'tcx, ty::SubstsRef<'tcx>> {
+        a_subst: ty::GenericArgsRef<'tcx>,
+        b_subst: ty::GenericArgsRef<'tcx>,
+    ) -> RelateResult<'tcx, ty::GenericArgsRef<'tcx>> {
         if self.ambient_variance == ty::Variance::Invariant {
             // Avoid fetching the variance if we are in an invariant
             // context; no need, and it can induce dependency cycles
             // (e.g., #41849).
-            relate::relate_substs(self, a_subst, b_subst)
+            relate::relate_args(self, a_subst, b_subst)
         } else {
             let tcx = self.tcx();
             let opt_variances = tcx.variances_of(item_def_id);
-            relate::relate_substs_with_variances(
+            relate::relate_args_with_variances(
                 self,
                 item_def_id,
                 opt_variances,
@@ -405,16 +405,16 @@ where
             }
             // FIXME: remove this branch once `structurally_relate_consts` is fully
             // structural.
-            ty::ConstKind::Unevaluated(ty::UnevaluatedConst { def, substs }) => {
-                let substs = self.relate_with_variance(
+            ty::ConstKind::Unevaluated(ty::UnevaluatedConst { def, args }) => {
+                let args = self.relate_with_variance(
                     ty::Variance::Invariant,
                     ty::VarianceDiagInfo::default(),
-                    substs,
-                    substs,
+                    args,
+                    args,
                 )?;
                 Ok(ty::Const::new_unevaluated(
                     self.tcx(),
-                    ty::UnevaluatedConst { def, substs },
+                    ty::UnevaluatedConst { def, args },
                     c.ty(),
                 ))
             }

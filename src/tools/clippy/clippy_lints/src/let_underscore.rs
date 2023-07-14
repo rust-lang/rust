@@ -5,7 +5,7 @@ use clippy_utils::{is_must_use_func_call, paths};
 use rustc_hir::{Local, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty::subst::GenericArgKind;
+use rustc_middle::ty::GenericArgKind;
 use rustc_middle::ty::IsSuggestable;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{BytePos, Span};

@@ -16,7 +16,7 @@ use rustc_hir as hir;
 use rustc_middle::mir;
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
-use rustc_middle::ty::subst::InternalSubsts;
+use rustc_middle::ty::GenericArgs;
 use rustc_middle::ty::{self, List, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::Span;
 
@@ -841,8 +841,8 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             let mut promoted_operand = |ty, span| {
                 promoted.span = span;
                 promoted.local_decls[RETURN_PLACE] = LocalDecl::new(ty, span);
-                let substs = tcx.erase_regions(InternalSubsts::identity_for_item(tcx, def));
-                let uneval = mir::UnevaluatedConst { def, substs, promoted: Some(promoted_id) };
+                let args = tcx.erase_regions(GenericArgs::identity_for_item(tcx, def));
+                let uneval = mir::UnevaluatedConst { def, args, promoted: Some(promoted_id) };
 
                 Operand::Constant(Box::new(Constant {
                     span,

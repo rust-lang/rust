@@ -36,7 +36,7 @@
    35|       |            did: DefId(0:101 ~ autocfg[c44a]::version::{impl#2}::partial_cmp),
    36|       |            const_param_did: None
    37|       |        }),
-   38|       |        substs: []
+   38|       |        args: []
    39|       |    }'
    40|       |The `PartialOrd` derived by `Version` happened to generate a MIR that generated coverage
    41|       |without a code region associated with any `Counter`. Code regions were associated with at least

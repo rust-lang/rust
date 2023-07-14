@@ -230,7 +230,7 @@ impl<'mir, 'tcx: 'mir> CompileTimeEvalContext<'mir, 'tcx> {
                 *self.tcx,
                 ty::ParamEnv::reveal_all(),
                 const_def_id,
-                instance.substs,
+                instance.args,
             )
             .unwrap()
             .unwrap();

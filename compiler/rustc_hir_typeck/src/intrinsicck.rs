@@ -11,7 +11,7 @@ use super::FnCtxt;
 /// If the type is `Option<T>`, it will return `T`, otherwise
 /// the type itself. Works on most `Option`-like types.
 fn unpack_option_like<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
-    let ty::Adt(def, substs) = *ty.kind() else { return ty };
+    let ty::Adt(def, args) = *ty.kind() else { return ty };
 
     if def.variants().len() == 2 && !def.repr().c() && def.repr().int.is_none() {
         let data_idx;
@@ -28,7 +28,7 @@ fn unpack_option_like<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
         }
 
         if def.variant(data_idx).fields.len() == 1 {
-            return def.variant(data_idx).single_field().ty(tcx, substs);
+            return def.variant(data_idx).single_field().ty(tcx, args);
         }
     }
 

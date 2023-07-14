@@ -4,7 +4,7 @@ note: no external requirements
 LL |     foo(cell, |cell_a, cell_x| {
    |               ^^^^^^^^^^^^^^^^
    |
-   = note: defining type: case1::{closure#0} with closure substs [
+   = note: defining type: case1::{closure#0} with closure args [
                i32,
                for<Region(BrAnon(None))> extern "rust-call" fn((std::cell::Cell<&'?1 u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon(None) }) u32>)),
                (),
@@ -34,7 +34,7 @@ note: external requirements
 LL |     foo(cell, |cell_a, cell_x| {
    |               ^^^^^^^^^^^^^^^^
    |
-   = note: defining type: case2::{closure#0} with closure substs [
+   = note: defining type: case2::{closure#0} with closure args [
                i32,
                for<Region(BrAnon(None))> extern "rust-call" fn((std::cell::Cell<&'?1 u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon(None) }) u32>)),
                (),

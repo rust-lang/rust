@@ -481,23 +481,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         found_ty: Ty<'tcx>,
         expected_ty: Ty<'tcx>,
     ) -> Option<(Ty<'tcx>, Ty<'tcx>, Option<(Ty<'tcx>, Ty<'tcx>)>)> {
-        let ty::Adt(found_adt, found_substs) = found_ty.peel_refs().kind() else {
+        let ty::Adt(found_adt, found_args) = found_ty.peel_refs().kind() else {
             return None;
         };
-        let ty::Adt(expected_adt, expected_substs) = expected_ty.kind() else {
+        let ty::Adt(expected_adt, expected_args) = expected_ty.kind() else {
             return None;
         };
         if self.tcx.is_diagnostic_item(sym::Option, found_adt.did())
             && self.tcx.is_diagnostic_item(sym::Option, expected_adt.did())
         {
-            Some((found_substs.type_at(0), expected_substs.type_at(0), None))
+            Some((found_args.type_at(0), expected_args.type_at(0), None))
         } else if self.tcx.is_diagnostic_item(sym::Result, found_adt.did())
             && self.tcx.is_diagnostic_item(sym::Result, expected_adt.did())
         {
             Some((
-                found_substs.type_at(0),
-                expected_substs.type_at(0),
-                Some((found_substs.type_at(1), expected_substs.type_at(1))),
+                found_args.type_at(0),
+                expected_args.type_at(0),
+                Some((found_args.type_at(1), expected_args.type_at(1))),
             ))
         } else {
             None
@@ -763,9 +763,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let Some(found) = found.make_suggestable(self.tcx, false) {
                     err.subdiagnostic(AddReturnTypeSuggestion::Add { span, found: found.to_string() });
                     return true;
-                } else if let ty::Closure(_, substs) = found.kind()
+                } else if let ty::Closure(_, args) = found.kind()
                     // FIXME(compiler-errors): Get better at printing binders...
-                    && let closure = substs.as_closure()
+                    && let closure = args.as_closure()
                     && closure.sig().is_suggestable(self.tcx, false)
                 {
                     err.subdiagnostic(AddReturnTypeSuggestion::Add { span, found: closure.print_as_impl_trait().to_string() });
@@ -1092,10 +1092,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr_ty: Ty<'tcx>,
         expected_ty: Ty<'tcx>,
     ) -> bool {
-        let ty::Adt(adt_def, substs) = expr_ty.kind() else {
+        let ty::Adt(adt_def, args) = expr_ty.kind() else {
             return false;
         };
-        let ty::Adt(expected_adt_def, expected_substs) = expected_ty.kind() else {
+        let ty::Adt(expected_adt_def, expected_args) = expected_ty.kind() else {
             return false;
         };
         if adt_def != expected_adt_def {
@@ -1103,8 +1103,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let mut suggest_copied_or_cloned = || {
-            let expr_inner_ty = substs.type_at(0);
-            let expected_inner_ty = expected_substs.type_at(0);
+            let expr_inner_ty = args.type_at(0);
+            let expected_inner_ty = expected_args.type_at(0);
             if let &ty::Ref(_, ty, hir::Mutability::Not) = expr_inner_ty.kind()
                 && self.can_eq(self.param_env, ty, expected_inner_ty)
             {
@@ -1144,7 +1144,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let Some(result_did) = self.tcx.get_diagnostic_item(sym::Result)
             && adt_def.did() == result_did
             // Check that the error types are equal
-            && self.can_eq(self.param_env, substs.type_at(1), expected_substs.type_at(1))
+            && self.can_eq(self.param_env, args.type_at(1), expected_args.type_at(1))
         {
             return suggest_copied_or_cloned();
         } else if let Some(option_did) = self.tcx.get_diagnostic_item(sym::Option)
@@ -1475,7 +1475,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Same item
             return false;
         }
-        let item_ty = self.tcx.type_of(item.def_id).subst_identity();
+        let item_ty = self.tcx.type_of(item.def_id).instantiate_identity();
         // FIXME(compiler-errors): This check is *so* rudimentary
         if item_ty.has_param() {
             return false;

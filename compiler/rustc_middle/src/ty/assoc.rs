@@ -84,11 +84,15 @@ impl AssocItem {
                 // late-bound regions, and we don't want method signatures to show up
                 // `as for<'r> fn(&'r MyType)`. Pretty-printing handles late-bound
                 // regions just fine, showing `fn(&MyType)`.
-                tcx.fn_sig(self.def_id).subst_identity().skip_binder().to_string()
+                tcx.fn_sig(self.def_id).instantiate_identity().skip_binder().to_string()
             }
             ty::AssocKind::Type => format!("type {};", self.name),
             ty::AssocKind::Const => {
-                format!("const {}: {:?};", self.name, tcx.type_of(self.def_id).subst_identity())
+                format!(
+                    "const {}: {:?};",
+                    self.name,
+                    tcx.type_of(self.def_id).instantiate_identity()
+                )
             }
         }
     }

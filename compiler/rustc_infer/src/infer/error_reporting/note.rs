@@ -302,18 +302,18 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         let Some(trait_ref) = self.tcx.impl_trait_ref(impl_def_id) else {
             return;
         };
-        let trait_substs = trait_ref
-            .subst_identity()
+        let trait_args = trait_ref
+            .instantiate_identity()
             // Replace the explicit self type with `Self` for better suggestion rendering
             .with_self_ty(self.tcx, Ty::new_param(self.tcx, 0, kw::SelfUpper))
-            .substs;
-        let trait_item_substs = ty::InternalSubsts::identity_for_item(self.tcx, impl_item_def_id)
-            .rebase_onto(self.tcx, impl_def_id, trait_substs);
+            .args;
+        let trait_item_args = ty::GenericArgs::identity_for_item(self.tcx, impl_item_def_id)
+            .rebase_onto(self.tcx, impl_def_id, trait_args);
 
         let Ok(trait_predicates) =
             self.tcx
                 .explicit_predicates_of(trait_item_def_id)
-                .instantiate_own(self.tcx, trait_item_substs)
+                .instantiate_own(self.tcx, trait_item_args)
                 .map(|(pred, _)| {
                     if pred.is_suggestable(self.tcx, false) {
                         Ok(pred.to_string())

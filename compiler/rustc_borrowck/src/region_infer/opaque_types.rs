@@ -6,9 +6,9 @@ use rustc_infer::infer::InferCtxt;
 use rustc_infer::infer::TyCtxtInferExt as _;
 use rustc_infer::traits::{Obligation, ObligationCause};
 use rustc_middle::traits::DefiningAnchor;
-use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts};
 use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{self, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{GenericArgKind, GenericArgs};
 use rustc_span::Span;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
 use rustc_trait_selection::traits::ObligationCtxt;
@@ -38,15 +38,15 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// back to concrete lifetimes: `'static`, `ReEarlyBound` or `ReFree`.
     ///
     /// First we map all the lifetimes in the concrete type to an equal
-    /// universal region that occurs in the concrete type's substs, in this case
-    /// this would result in `&'1 i32`. We only consider regions in the substs
+    /// universal region that occurs in the concrete type's args, in this case
+    /// this would result in `&'1 i32`. We only consider regions in the args
     /// in case there is an equal region that does not. For example, this should
     /// be allowed:
     /// `fn f<'a: 'b, 'b: 'a>(x: *mut &'b i32) -> impl Sized + 'a { x }`
     ///
     /// Then we map the regions in both the type and the subst to their
     /// `external_name` giving `concrete_type = &'a i32`,
-    /// `substs = ['static, 'a]`. This will then allow
+    /// `args = ['static, 'a]`. This will then allow
     /// `infer_opaque_definition_from_instantiation` to determine that
     /// `_Return<'_a> = &'_a i32`.
     ///
@@ -73,8 +73,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         debug!(?member_constraints);
 
         for (opaque_type_key, concrete_type) in opaque_ty_decls {
-            let substs = opaque_type_key.substs;
-            debug!(?concrete_type, ?substs);
+            let args = opaque_type_key.args;
+            debug!(?concrete_type, ?args);
 
             let mut subst_regions = vec![self.universal_regions.fr_static];
 
@@ -95,7 +95,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                         ty::Region::new_error_with_message(
                             infcx.tcx,
                             concrete_type.span,
-                            "opaque type with non-universal region substs",
+                            "opaque type with non-universal region args",
                         )
                     }
                 }
@@ -110,17 +110,17 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             }
             debug!(?subst_regions);
 
-            // Next, insert universal regions from substs, so we can translate regions that appear
-            // in them but are not subject to member constraints, for instance closure substs.
-            let universal_substs = infcx.tcx.fold_regions(substs, |region, _| {
+            // Next, insert universal regions from args, so we can translate regions that appear
+            // in them but are not subject to member constraints, for instance closure args.
+            let universal_args = infcx.tcx.fold_regions(args, |region, _| {
                 if let ty::RePlaceholder(..) = region.kind() {
-                    // Higher kinded regions don't need remapping, they don't refer to anything outside of this the substs.
+                    // Higher kinded regions don't need remapping, they don't refer to anything outside of this the args.
                     return region;
                 }
                 let vid = self.to_region_vid(region);
                 to_universal_region(vid, &mut subst_regions)
             });
-            debug!(?universal_substs);
+            debug!(?universal_args);
             debug!(?subst_regions);
 
             // Deduplicate the set of regions while keeping the chosen order.
@@ -139,7 +139,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             debug!(?universal_concrete_type);
 
             let opaque_type_key =
-                OpaqueTypeKey { def_id: opaque_type_key.def_id, substs: universal_substs };
+                OpaqueTypeKey { def_id: opaque_type_key.def_id, args: universal_args };
             let ty = infcx.infer_opaque_definition_from_instantiation(
                 opaque_type_key,
                 universal_concrete_type,
@@ -175,7 +175,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
     /// Map the regions in the type to named regions. This is similar to what
     /// `infer_opaque_types` does, but can infer any universal region, not only
-    /// ones from the substs for the opaque type. It also doesn't double check
+    /// ones from the args for the opaque type. It also doesn't double check
     /// that the regions produced are in fact equal to the named region they are
     /// replaced with. This is fine because this function is only to improve the
     /// region names in error messages.
@@ -238,7 +238,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
     /// # Parameters
     ///
     /// - `def_id`, the `impl Trait` type
-    /// - `substs`, the substs used to instantiate this opaque type
+    /// - `args`, the args used to instantiate this opaque type
     /// - `instantiated_ty`, the inferred type C1 -- fully resolved, lifted version of
     ///   `opaque_defn.concrete_ty`
     #[instrument(level = "debug", skip(self))]
@@ -309,11 +309,11 @@ fn check_opaque_type_well_formed<'tcx>(
         })
         .build();
     let ocx = ObligationCtxt::new(&infcx);
-    let identity_substs = InternalSubsts::identity_for_item(tcx, def_id);
+    let identity_args = GenericArgs::identity_for_item(tcx, def_id);
 
     // Require that the hidden type actually fulfills all the bounds of the opaque type, even without
     // the bounds that the function supplies.
-    let opaque_ty = Ty::new_opaque(tcx, def_id.to_def_id(), identity_substs);
+    let opaque_ty = Ty::new_opaque(tcx, def_id.to_def_id(), identity_args);
     ocx.eq(&ObligationCause::misc(definition_span, def_id), param_env, opaque_ty, definition_ty)
         .map_err(|err| {
             infcx
@@ -384,7 +384,7 @@ fn check_opaque_type_parameter_valid(
     }
     let opaque_generics = tcx.generics_of(opaque_type_key.def_id);
     let mut seen_params: FxIndexMap<_, Vec<_>> = FxIndexMap::default();
-    for (i, arg) in opaque_type_key.substs.iter().enumerate() {
+    for (i, arg) in opaque_type_key.args.iter().enumerate() {
         let arg_is_param = match arg.unpack() {
             GenericArgKind::Type(ty) => matches!(ty.kind(), ty::Param(_)),
             GenericArgKind::Lifetime(lt) => {

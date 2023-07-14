@@ -20,7 +20,7 @@ impl<'tcx> MirPass<'tcx> for ScalarReplacementOfAggregates {
         debug!(def_id = ?body.source.def_id());
 
         // Avoid query cycles (generators require optimized MIR for layout).
-        if tcx.type_of(body.source.def_id()).subst_identity().is_generator() {
+        if tcx.type_of(body.source.def_id()).instantiate_identity().is_generator() {
             return;
         }
 
@@ -64,7 +64,7 @@ fn escaping_locals<'tcx>(
         if ty.is_union() || ty.is_enum() {
             return true;
         }
-        if let ty::Adt(def, _substs) = ty.kind() {
+        if let ty::Adt(def, _args) = ty.kind() {
             if def.repr().flags.contains(ReprFlags::IS_SIMD) {
                 // Exclude #[repr(simd)] types so that they are not de-optimized into an array
                 return true;

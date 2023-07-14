@@ -254,7 +254,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// in `ct` with `ct` itself.
     ///
     /// This is especially important as unevaluated consts use their parents generics.
-    /// They therefore often contain unused substs, making these errors far more likely.
+    /// They therefore often contain unused args, making these errors far more likely.
     ///
     /// A good example of this is the following:
     ///
@@ -272,12 +272,12 @@ impl<'tcx> InferCtxt<'tcx> {
     /// ```
     ///
     /// Here `3 + 4` ends up as `ConstKind::Unevaluated` which uses the generics
-    /// of `fn bind` (meaning that its substs contain `N`).
+    /// of `fn bind` (meaning that its args contain `N`).
     ///
     /// `bind(arr)` now infers that the type of `arr` must be `[u8; N]`.
     /// The assignment `arr = bind(arr)` now tries to equate `N` with `3 + 4`.
     ///
-    /// As `3 + 4` contains `N` in its substs, this must not succeed.
+    /// As `3 + 4` contains `N` in its args, this must not succeed.
     ///
     /// See `tests/ui/const-generics/occurs-check/` for more examples where this is relevant.
     #[instrument(level = "debug", skip(self))]

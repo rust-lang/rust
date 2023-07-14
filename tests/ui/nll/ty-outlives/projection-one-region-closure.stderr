@@ -4,7 +4,7 @@ note: external requirements
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^
    |
-   = note: defining type: no_relationships_late::<'?1, T>::{closure#0} with closure substs [
+   = note: defining type: no_relationships_late::<'?1, T>::{closure#0} with closure args [
                i32,
                extern "rust-call" fn((std::cell::Cell<&'?2 ()>, T)),
                (),
@@ -54,7 +54,7 @@ note: external requirements
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^
    |
-   = note: defining type: no_relationships_early::<'?1, '?2, T>::{closure#0} with closure substs [
+   = note: defining type: no_relationships_early::<'?1, '?2, T>::{closure#0} with closure args [
                i32,
                extern "rust-call" fn((std::cell::Cell<&'?3 ()>, T)),
                (),
@@ -104,7 +104,7 @@ note: external requirements
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^
    |
-   = note: defining type: projection_outlives::<'?1, '?2, T>::{closure#0} with closure substs [
+   = note: defining type: projection_outlives::<'?1, '?2, T>::{closure#0} with closure args [
                i32,
                extern "rust-call" fn((std::cell::Cell<&'?3 ()>, T)),
                (),
@@ -129,7 +129,7 @@ note: external requirements
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^
    |
-   = note: defining type: elements_outlive::<'?1, '?2, T>::{closure#0} with closure substs [
+   = note: defining type: elements_outlive::<'?1, '?2, T>::{closure#0} with closure args [
                i32,
                extern "rust-call" fn((std::cell::Cell<&'?3 ()>, T)),
                (),

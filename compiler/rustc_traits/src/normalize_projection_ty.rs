@@ -58,7 +58,7 @@ fn normalize_weak_ty<'tcx>(
     tcx.infer_ctxt().enter_canonical_trait_query(
         &goal,
         |ocx, ParamEnvAnd { param_env, value: goal }| {
-            let obligations = tcx.predicates_of(goal.def_id).instantiate_own(tcx, goal.substs).map(
+            let obligations = tcx.predicates_of(goal.def_id).instantiate_own(tcx, goal.args).map(
                 |(predicate, span)| {
                     traits::Obligation::new(
                         tcx,
@@ -69,7 +69,7 @@ fn normalize_weak_ty<'tcx>(
                 },
             );
             ocx.register_obligations(obligations);
-            let normalized_ty = tcx.type_of(goal.def_id).subst(tcx, goal.substs);
+            let normalized_ty = tcx.type_of(goal.def_id).instantiate(tcx, goal.args);
             Ok(NormalizationResult { normalized_ty })
         },
     )

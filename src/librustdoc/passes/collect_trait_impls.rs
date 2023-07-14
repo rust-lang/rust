@@ -103,11 +103,11 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
                     // nothing to do with the inherent impl.
                     //
                     // Rustdoc currently uses these `impl` block as a source of
-                    // the `Ty`, as well as the `ParamEnv`, `SubstsRef`, and
+                    // the `Ty`, as well as the `ParamEnv`, `GenericArgsRef`, and
                     // `Generics`. To avoid relying on the `impl` block, these
                     // things would need to be created from wholecloth, in a
                     // form that is valid for use in type inference.
-                    let ty = tcx.type_of(def_id).subst_identity();
+                    let ty = tcx.type_of(def_id).instantiate_identity();
                     match ty.kind() {
                         ty::Slice(ty)
                         | ty::Ref(_, ty, _)

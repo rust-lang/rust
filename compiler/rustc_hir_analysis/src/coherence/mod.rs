@@ -122,7 +122,7 @@ fn coherent_trait(tcx: TyCtxt<'_>, def_id: DefId) {
 
     let impls = tcx.hir().trait_impls(def_id);
     for &impl_def_id in impls {
-        let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap().subst_identity();
+        let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap().instantiate_identity();
 
         check_impl(tcx, impl_def_id, trait_ref);
         check_object_overlap(tcx, impl_def_id, trait_ref);

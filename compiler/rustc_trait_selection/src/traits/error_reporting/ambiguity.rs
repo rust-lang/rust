@@ -26,8 +26,8 @@ pub fn recompute_applicable_impls<'tcx>(
         let obligation_trait_ref =
             ocx.normalize(&ObligationCause::dummy(), param_env, placeholder_obligation.trait_ref);
 
-        let impl_substs = infcx.fresh_substs_for_item(DUMMY_SP, impl_def_id);
-        let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap().subst(tcx, impl_substs);
+        let impl_args = infcx.fresh_args_for_item(DUMMY_SP, impl_def_id);
+        let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap().instantiate(tcx, impl_args);
         let impl_trait_ref = ocx.normalize(&ObligationCause::dummy(), param_env, impl_trait_ref);
 
         if let Err(_) =
@@ -36,7 +36,7 @@ pub fn recompute_applicable_impls<'tcx>(
             return false;
         }
 
-        let impl_predicates = tcx.predicates_of(impl_def_id).instantiate(tcx, impl_substs);
+        let impl_predicates = tcx.predicates_of(impl_def_id).instantiate(tcx, impl_args);
         ocx.register_obligations(impl_predicates.predicates.iter().map(|&predicate| {
             Obligation::new(tcx, ObligationCause::dummy(), param_env, predicate)
         }));

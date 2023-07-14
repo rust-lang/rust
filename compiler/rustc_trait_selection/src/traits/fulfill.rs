@@ -8,7 +8,7 @@ use rustc_infer::traits::{PolyTraitObligation, SelectionError, TraitEngine};
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::subst::SubstsRef;
+use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{self, Binder, Const, TypeVisitableExt};
 use std::marker::PhantomData;
 
@@ -410,8 +410,8 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                     }
                 }
 
-                ty::PredicateKind::ClosureKind(_, closure_substs, kind) => {
-                    match self.selcx.infcx.closure_kind(closure_substs) {
+                ty::PredicateKind::ClosureKind(_, closure_args, kind) => {
+                    match self.selcx.infcx.closure_kind(closure_args) {
                         Some(closure_kind) => {
                             if closure_kind.extends(kind) {
                                 ProcessResult::Changed(vec![])
@@ -536,7 +536,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                                 if let Ok(new_obligations) = infcx
                                     .at(&obligation.cause, obligation.param_env)
                                     .trace(c1, c2)
-                                    .eq(DefineOpaqueTypes::No, a.substs, b.substs)
+                                    .eq(DefineOpaqueTypes::No, a.args, b.args)
                                 {
                                     return ProcessResult::Changed(mk_pending(
                                         new_obligations.into_obligations(),
@@ -559,31 +559,30 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
 
                     let stalled_on = &mut pending_obligation.stalled_on;
 
-                    let mut evaluate = |c: Const<'tcx>| {
-                        if let ty::ConstKind::Unevaluated(unevaluated) = c.kind() {
-                            match self.selcx.infcx.try_const_eval_resolve(
-                                obligation.param_env,
-                                unevaluated,
-                                c.ty(),
-                                Some(obligation.cause.span),
-                            ) {
-                                Ok(val) => Ok(val),
-                                Err(e) => match e {
-                                    ErrorHandled::TooGeneric => {
-                                        stalled_on.extend(
-                                            unevaluated.substs.iter().filter_map(
+                    let mut evaluate =
+                        |c: Const<'tcx>| {
+                            if let ty::ConstKind::Unevaluated(unevaluated) = c.kind() {
+                                match self.selcx.infcx.try_const_eval_resolve(
+                                    obligation.param_env,
+                                    unevaluated,
+                                    c.ty(),
+                                    Some(obligation.cause.span),
+                                ) {
+                                    Ok(val) => Ok(val),
+                                    Err(e) => match e {
+                                        ErrorHandled::TooGeneric => {
+                                            stalled_on.extend(unevaluated.args.iter().filter_map(
                                                 TyOrConstInferVar::maybe_from_generic_arg,
-                                            ),
-                                        );
-                                        Err(ErrorHandled::TooGeneric)
-                                    }
-                                    _ => Err(e),
-                                },
+                                            ));
+                                            Err(ErrorHandled::TooGeneric)
+                                        }
+                                        _ => Err(e),
+                                    },
+                                }
+                            } else {
+                                Ok(c)
                             }
-                        } else {
-                            Ok(c)
-                        }
-                    };
+                        };
 
                     match (evaluate(c1), evaluate(c2)) {
                         (Ok(c1), Ok(c2)) => {
@@ -696,9 +695,9 @@ impl<'a, 'tcx> FulfillProcessor<'a, 'tcx> {
                 // trait selection is because we don't have enough
                 // information about the types in the trait.
                 stalled_on.clear();
-                stalled_on.extend(substs_infer_vars(
+                stalled_on.extend(args_infer_vars(
                     &self.selcx,
-                    trait_obligation.predicate.map_bound(|pred| pred.trait_ref.substs),
+                    trait_obligation.predicate.map_bound(|pred| pred.trait_ref.args),
                 ));
 
                 debug!(
@@ -753,9 +752,9 @@ impl<'a, 'tcx> FulfillProcessor<'a, 'tcx> {
             ProjectAndUnifyResult::Holds(os) => ProcessResult::Changed(mk_pending(os)),
             ProjectAndUnifyResult::FailedNormalization => {
                 stalled_on.clear();
-                stalled_on.extend(substs_infer_vars(
+                stalled_on.extend(args_infer_vars(
                     &self.selcx,
-                    project_obligation.predicate.map_bound(|pred| pred.projection_ty.substs),
+                    project_obligation.predicate.map_bound(|pred| pred.projection_ty.args),
                 ));
                 ProcessResult::Unchanged
             }
@@ -770,14 +769,14 @@ impl<'a, 'tcx> FulfillProcessor<'a, 'tcx> {
     }
 }
 
-/// Returns the set of inference variables contained in `substs`.
-fn substs_infer_vars<'a, 'tcx>(
+/// Returns the set of inference variables contained in `args`.
+fn args_infer_vars<'a, 'tcx>(
     selcx: &SelectionContext<'a, 'tcx>,
-    substs: ty::Binder<'tcx, SubstsRef<'tcx>>,
+    args: ty::Binder<'tcx, GenericArgsRef<'tcx>>,
 ) -> impl Iterator<Item = TyOrConstInferVar<'tcx>> {
     selcx
         .infcx
-        .resolve_vars_if_possible(substs)
+        .resolve_vars_if_possible(args)
         .skip_binder() // ok because this check doesn't care about regions
         .iter()
         .filter(|arg| arg.has_non_region_infer())

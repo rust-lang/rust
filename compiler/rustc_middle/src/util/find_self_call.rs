@@ -1,5 +1,5 @@
 use crate::mir::*;
-use crate::ty::subst::SubstsRef;
+use crate::ty::GenericArgsRef;
 use crate::ty::{self, TyCtxt};
 use rustc_span::def_id::DefId;
 
@@ -11,21 +11,21 @@ pub fn find_self_call<'tcx>(
     body: &Body<'tcx>,
     local: Local,
     block: BasicBlock,
-) -> Option<(DefId, SubstsRef<'tcx>)> {
+) -> Option<(DefId, GenericArgsRef<'tcx>)> {
     debug!("find_self_call(local={:?}): terminator={:?}", local, &body[block].terminator);
     if let Some(Terminator { kind: TerminatorKind::Call { func, args, .. }, .. }) =
         &body[block].terminator
     {
         debug!("find_self_call: func={:?}", func);
         if let Operand::Constant(box Constant { literal, .. }) = func {
-            if let ty::FnDef(def_id, substs) = *literal.ty().kind() {
+            if let ty::FnDef(def_id, fn_args) = *literal.ty().kind() {
                 if let Some(ty::AssocItem { fn_has_self_parameter: true, .. }) =
                     tcx.opt_associated_item(def_id)
                 {
-                    debug!("find_self_call: args={:?}", args);
+                    debug!("find_self_call: args={:?}", fn_args);
                     if let [Operand::Move(self_place) | Operand::Copy(self_place), ..] = **args {
                         if self_place.as_local() == Some(local) {
-                            return Some((def_id, substs));
+                            return Some((def_id, fn_args));
                         }
                     }
                 }

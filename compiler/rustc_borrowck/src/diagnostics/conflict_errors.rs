@@ -702,11 +702,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 .iter()
                 .copied()
                 .find_map(find_fn_kind_from_did),
-            ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => tcx
+            ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => tcx
                 .explicit_item_bounds(def_id)
-                .subst_iter_copied(tcx, substs)
+                .arg_iter_copied(tcx, args)
                 .find_map(|(clause, span)| find_fn_kind_from_did((clause, span))),
-            ty::Closure(_, substs) => match substs.as_closure().kind() {
+            ty::Closure(_, args) => match args.as_closure().kind() {
                 ty::ClosureKind::Fn => Some(hir::Mutability::Not),
                 ty::ClosureKind::FnMut => Some(hir::Mutability::Mut),
                 _ => None,
@@ -1448,11 +1448,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         }
 
         // Get closure's arguments
-        let ty::Closure(_, substs) = typeck_results.expr_ty(closure_expr).kind() else {
+        let ty::Closure(_, args) = typeck_results.expr_ty(closure_expr).kind() else {
             /* hir::Closure can be a generator too */
             return;
         };
-        let sig = substs.as_closure().sig();
+        let sig = args.as_closure().sig();
         let tupled_params =
             tcx.erase_late_bound_regions(sig.inputs().iter().next().unwrap().map_bound(|&b| b));
         let ty::Tuple(params) = tupled_params.kind() else { return };
@@ -2676,7 +2676,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 kind: TerminatorKind::Call { call_source: CallSource::OverloadedOperator, .. },
                 ..
             }),
-            Some((method_did, method_substs)),
+            Some((method_did, method_args)),
         ) = (
             &self.body[loan.reserve_location.block].terminator,
             rustc_middle::util::find_self_call(
@@ -2689,7 +2689,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             if tcx.is_diagnostic_item(sym::deref_method, method_did) {
                 let deref_target =
                     tcx.get_diagnostic_item(sym::deref_target).and_then(|deref_target| {
-                        Instance::resolve(tcx, self.param_env, deref_target, method_substs)
+                        Instance::resolve(tcx, self.param_env, deref_target, method_args)
                             .transpose()
                     });
                 if let Some(Ok(instance)) = deref_target {
@@ -2856,11 +2856,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             if is_closure {
                 None
             } else {
-                let ty = self.infcx.tcx.type_of(self.mir_def_id()).subst_identity();
+                let ty = self.infcx.tcx.type_of(self.mir_def_id()).instantiate_identity();
                 match ty.kind() {
                     ty::FnDef(_, _) | ty::FnPtr(_) => self.annotate_fn_sig(
                         self.mir_def_id(),
-                        self.infcx.tcx.fn_sig(self.mir_def_id()).subst_identity(),
+                        self.infcx.tcx.fn_sig(self.mir_def_id()).instantiate_identity(),
                     ),
                     _ => None,
                 }
@@ -2902,7 +2902,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         );
                         // Check if our `target` was captured by a closure.
                         if let Rvalue::Aggregate(
-                            box AggregateKind::Closure(def_id, substs),
+                            box AggregateKind::Closure(def_id, args),
                             operands,
                         ) = rvalue
                         {
@@ -2933,7 +2933,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                 // into a place then we should annotate the closure in
                                 // case it ends up being assigned into the return place.
                                 annotated_closure =
-                                    self.annotate_fn_sig(def_id, substs.as_closure().sig());
+                                    self.annotate_fn_sig(def_id, args.as_closure().sig());
                                 debug!(
                                     "annotate_argument_and_return_for_borrow: \
                                      annotated_closure={:?} assigned_from_local={:?} \

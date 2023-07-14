@@ -572,7 +572,7 @@ fn characteristic_def_id_of_mono_item<'tcx>(
             // DefId, we use the location of the impl after all.
 
             if tcx.trait_of_item(def_id).is_some() {
-                let self_ty = instance.substs.type_at(0);
+                let self_ty = instance.args.type_at(0);
                 // This is a default implementation of a trait method.
                 return characteristic_def_id_of_type(self_ty).or(Some(def_id));
             }
@@ -592,7 +592,7 @@ fn characteristic_def_id_of_mono_item<'tcx>(
                 if !tcx.sess.opts.unstable_opts.polymorphize || !instance.has_param() {
                     // This is a method within an impl, find out what the self-type is:
                     let impl_self_ty = tcx.subst_and_normalize_erasing_regions(
-                        instance.substs,
+                        instance.args,
                         ty::ParamEnv::reveal_all(),
                         tcx.type_of(impl_def_id),
                     );
@@ -745,7 +745,7 @@ fn mono_item_visibility<'tcx>(
         return Visibility::Hidden;
     }
 
-    let is_generic = instance.substs.non_erasable_generics().next().is_some();
+    let is_generic = instance.args.non_erasable_generics().next().is_some();
 
     // Upstream `DefId` instances get different handling than local ones.
     let Some(def_id) = def_id.as_local() else {

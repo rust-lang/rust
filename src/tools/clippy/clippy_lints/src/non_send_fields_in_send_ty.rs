@@ -7,7 +7,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{FieldDef, Item, ItemKind, Node};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty::{self, subst::GenericArgKind, Ty};
+use rustc_middle::ty::{self, GenericArgKind, Ty};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::sym;
 
@@ -90,8 +90,8 @@ impl<'tcx> LateLintPass<'tcx> for NonSendFieldInSendTy {
             if send_trait == trait_id;
             if hir_impl.polarity == ImplPolarity::Positive;
             if let Some(ty_trait_ref) = cx.tcx.impl_trait_ref(item.owner_id);
-            if let self_ty = ty_trait_ref.subst_identity().self_ty();
-            if let ty::Adt(adt_def, impl_trait_substs) = self_ty.kind();
+            if let self_ty = ty_trait_ref.instantiate_identity().self_ty();
+            if let ty::Adt(adt_def, impl_trait_args) = self_ty.kind();
             then {
                 let mut non_send_fields = Vec::new();
 
@@ -104,7 +104,7 @@ impl<'tcx> LateLintPass<'tcx> for NonSendFieldInSendTy {
                                 .as_local()
                                 .map(|local_def_id| hir_map.local_def_id_to_hir_id(local_def_id));
                             if !is_lint_allowed(cx, NON_SEND_FIELDS_IN_SEND_TY, field_hir_id);
-                            if let field_ty = field.ty(cx.tcx, impl_trait_substs);
+                            if let field_ty = field.ty(cx.tcx, impl_trait_args);
                             if !ty_allowed_in_send(cx, field_ty, send_trait);
                             if let Node::Field(field_def) = hir_map.get(field_hir_id);
                             then {
@@ -206,10 +206,10 @@ fn ty_allowed_with_raw_pointer_heuristic<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'t
             .iter()
             .all(|ty| ty_allowed_with_raw_pointer_heuristic(cx, ty, send_trait)),
         ty::Array(ty, _) | ty::Slice(ty) => ty_allowed_with_raw_pointer_heuristic(cx, *ty, send_trait),
-        ty::Adt(_, substs) => {
+        ty::Adt(_, args) => {
             if contains_pointer_like(cx, ty) {
                 // descends only if ADT contains any raw pointers
-                substs.iter().all(|generic_arg| match generic_arg.unpack() {
+                args.iter().all(|generic_arg| match generic_arg.unpack() {
                     GenericArgKind::Type(ty) => ty_allowed_with_raw_pointer_heuristic(cx, ty, send_trait),
                     // Lifetimes and const generics are not solid part of ADT and ignored
                     GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => true,
@@ -224,7 +224,7 @@ fn ty_allowed_with_raw_pointer_heuristic<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'t
     }
 }
 
-/// Checks if the type contains any pointer-like types in substs (including nested ones)
+/// Checks if the type contains any pointer-like types in args (including nested ones)
 fn contains_pointer_like<'tcx>(cx: &LateContext<'tcx>, target_ty: Ty<'tcx>) -> bool {
     for ty_node in target_ty.walk() {
         if let GenericArgKind::Type(inner_ty) = ty_node.unpack() {

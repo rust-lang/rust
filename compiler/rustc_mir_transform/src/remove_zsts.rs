@@ -15,7 +15,7 @@ impl<'tcx> MirPass<'tcx> for RemoveZsts {
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // Avoid query cycles (generators require optimized MIR for layout).
-        if tcx.type_of(body.source.def_id()).subst_identity().is_generator() {
+        if tcx.type_of(body.source.def_id()).instantiate_identity().is_generator() {
             return;
         }
         let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());

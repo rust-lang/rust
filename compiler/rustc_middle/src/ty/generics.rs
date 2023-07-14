@@ -1,5 +1,5 @@
 use crate::ty;
-use crate::ty::{EarlyBinder, SubstsRef};
+use crate::ty::{EarlyBinder, GenericArgsRef};
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
@@ -97,14 +97,14 @@ impl GenericParamDef {
     pub fn to_error<'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,
-        preceding_substs: &[ty::GenericArg<'tcx>],
+        preceding_args: &[ty::GenericArg<'tcx>],
     ) -> ty::GenericArg<'tcx> {
         match &self.kind {
             ty::GenericParamDefKind::Lifetime => ty::Region::new_error_misc(tcx).into(),
             ty::GenericParamDefKind::Type { .. } => Ty::new_misc_error(tcx).into(),
             ty::GenericParamDefKind::Const { .. } => ty::Const::new_misc_error(
                 tcx,
-                tcx.type_of(self.def_id).subst(tcx, preceding_substs),
+                tcx.type_of(self.def_id).instantiate(tcx, preceding_args),
             )
             .into(),
         }
@@ -136,7 +136,7 @@ pub struct Generics {
     pub has_self: bool,
     pub has_late_bound_regions: Option<Span>,
 
-    // The index of the host effect when substituted. (i.e. might be index to parent substs)
+    // The index of the host effect when substituted. (i.e. might be index to parent args)
     pub host_effect_index: Option<usize>,
 }
 
@@ -278,14 +278,14 @@ impl<'tcx> Generics {
         })
     }
 
-    /// Returns the substs corresponding to the generic parameters
+    /// Returns the args corresponding to the generic parameters
     /// of this item, excluding `Self`.
     ///
     /// **This should only be used for diagnostics purposes.**
-    pub fn own_substs_no_defaults(
+    pub fn own_args_no_defaults(
         &'tcx self,
         tcx: TyCtxt<'tcx>,
-        substs: &'tcx [ty::GenericArg<'tcx>],
+        args: &'tcx [ty::GenericArg<'tcx>],
     ) -> &'tcx [ty::GenericArg<'tcx>] {
         let mut own_params = self.parent_count..self.count();
         if self.has_self && self.parent.is_none() {
@@ -304,22 +304,22 @@ impl<'tcx> Generics {
             .rev()
             .take_while(|param| {
                 param.default_value(tcx).is_some_and(|default| {
-                    default.subst(tcx, substs) == substs[param.index as usize]
+                    default.instantiate(tcx, args) == args[param.index as usize]
                 })
             })
             .count();
 
-        &substs[own_params]
+        &args[own_params]
     }
 
-    /// Returns the substs corresponding to the generic parameters of this item, excluding `Self`.
+    /// Returns the args corresponding to the generic parameters of this item, excluding `Self`.
     ///
     /// **This should only be used for diagnostics purposes.**
-    pub fn own_substs(
+    pub fn own_args(
         &'tcx self,
-        substs: &'tcx [ty::GenericArg<'tcx>],
+        args: &'tcx [ty::GenericArg<'tcx>],
     ) -> &'tcx [ty::GenericArg<'tcx>] {
-        let own = &substs[self.parent_count..][..self.params.len()];
+        let own = &args[self.parent_count..][..self.params.len()];
         if self.has_self && self.parent.is_none() { &own[1..] } else { &own }
     }
 }
@@ -335,19 +335,19 @@ impl<'tcx> GenericPredicates<'tcx> {
     pub fn instantiate(
         &self,
         tcx: TyCtxt<'tcx>,
-        substs: SubstsRef<'tcx>,
+        args: GenericArgsRef<'tcx>,
     ) -> InstantiatedPredicates<'tcx> {
         let mut instantiated = InstantiatedPredicates::empty();
-        self.instantiate_into(tcx, &mut instantiated, substs);
+        self.instantiate_into(tcx, &mut instantiated, args);
         instantiated
     }
 
     pub fn instantiate_own(
         &self,
         tcx: TyCtxt<'tcx>,
-        substs: SubstsRef<'tcx>,
+        args: GenericArgsRef<'tcx>,
     ) -> impl Iterator<Item = (Clause<'tcx>, Span)> + DoubleEndedIterator + ExactSizeIterator {
-        EarlyBinder::bind(self.predicates).subst_iter_copied(tcx, substs)
+        EarlyBinder::bind(self.predicates).arg_iter_copied(tcx, args)
     }
 
     #[instrument(level = "debug", skip(self, tcx))]
@@ -355,14 +355,14 @@ impl<'tcx> GenericPredicates<'tcx> {
         &self,
         tcx: TyCtxt<'tcx>,
         instantiated: &mut InstantiatedPredicates<'tcx>,
-        substs: SubstsRef<'tcx>,
+        args: GenericArgsRef<'tcx>,
     ) {
         if let Some(def_id) = self.parent {
-            tcx.predicates_of(def_id).instantiate_into(tcx, instantiated, substs);
+            tcx.predicates_of(def_id).instantiate_into(tcx, instantiated, args);
         }
-        instantiated
-            .predicates
-            .extend(self.predicates.iter().map(|(p, _)| EarlyBinder::bind(*p).subst(tcx, substs)));
+        instantiated.predicates.extend(
+            self.predicates.iter().map(|(p, _)| EarlyBinder::bind(*p).instantiate(tcx, args)),
+        );
         instantiated.spans.extend(self.predicates.iter().map(|(_, sp)| *sp));
     }
 

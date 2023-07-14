@@ -28,7 +28,7 @@ pub(crate) fn codegen_fn<'tcx>(
     module: &mut dyn Module,
     instance: Instance<'tcx>,
 ) -> CodegenedFunction {
-    debug_assert!(!instance.substs.has_infer());
+    debug_assert!(!instance.args.has_infer());
 
     let symbol_name = tcx.symbol_name(instance).name.to_string();
     let _timer = tcx.prof.generic_activity_with_arg("codegen fn", &*symbol_name);
@@ -578,13 +578,13 @@ fn codegen_stmt<'tcx>(
                     let from_ty = fx.monomorphize(operand.ty(&fx.mir.local_decls, fx.tcx));
                     let to_layout = fx.layout_of(fx.monomorphize(to_ty));
                     match *from_ty.kind() {
-                        ty::FnDef(def_id, substs) => {
+                        ty::FnDef(def_id, args) => {
                             let func_ref = fx.get_function_ref(
                                 Instance::resolve_for_fn_ptr(
                                     fx.tcx,
                                     ParamEnv::reveal_all(),
                                     def_id,
-                                    substs,
+                                    args,
                                 )
                                 .unwrap()
                                 .polymorphize(fx.tcx),
@@ -668,11 +668,11 @@ fn codegen_stmt<'tcx>(
                 ) => {
                     let operand = codegen_operand(fx, operand);
                     match *operand.layout().ty.kind() {
-                        ty::Closure(def_id, substs) => {
+                        ty::Closure(def_id, args) => {
                             let instance = Instance::resolve_closure(
                                 fx.tcx,
                                 def_id,
-                                substs,
+                                args,
                                 ty::ClosureKind::FnOnce,
                             )
                             .expect("failed to normalize and resolve closure during codegen")
