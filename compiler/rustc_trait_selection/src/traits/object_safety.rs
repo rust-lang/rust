@@ -393,7 +393,7 @@ fn object_safety_violation_for_assoc_item(
         ty::AssocKind::Type => {
             if !tcx.features().generic_associated_types_extended
                 && !tcx.generics_of(item.def_id).params.is_empty()
-                && item.opt_rpitit_info.is_none()
+                && !item.is_impl_trait_in_trait()
             {
                 Some(ObjectSafetyViolation::GAT(item.name, item.ident(tcx).span))
             } else {

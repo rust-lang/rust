@@ -1136,7 +1136,7 @@ fn should_encode_type(tcx: TyCtxt<'_>, def_id: LocalDefId, def_kind: DefKind) ->
                 // the default projection predicates in default trait methods
                 // with RPITITs.
                 ty::AssocItemContainer::TraitContainer => {
-                    assoc_item.defaultness(tcx).has_value() || assoc_item.opt_rpitit_info.is_some()
+                    assoc_item.defaultness(tcx).has_value() || assoc_item.is_impl_trait_in_trait()
                 }
             }
         }
