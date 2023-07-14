@@ -12,7 +12,6 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust,compile_fail
-    /// # #![deny(invalid_reference_casting)]
     /// fn x(r: &i32) {
     ///     unsafe {
     ///         *(r as *const i32 as *mut i32) += 1;
@@ -30,7 +29,7 @@ declare_lint! {
     /// `UnsafeCell` is the only way to obtain aliasable data that is considered
     /// mutable.
     INVALID_REFERENCE_CASTING,
-    Allow,
+    Deny,
     "casts of `&T` to `&mut T` without interior mutability"
 }
 
