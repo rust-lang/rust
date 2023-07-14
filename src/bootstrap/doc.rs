@@ -566,10 +566,6 @@ fn doc_std(
 
     let compiler = builder.compiler(stage, builder.config.build);
 
-    let description =
-        format!("library{} in {} format", crate_description(&requested_crates), format.as_str());
-    let _guard = builder.msg_doc(compiler, &description, target);
-
     let target_doc_dir_name = if format == DocumentationFormat::JSON { "json-doc" } else { "doc" };
     let target_dir =
         builder.stage_out(compiler, Mode::Std).join(target.triple).join(target_doc_dir_name);
@@ -605,6 +601,10 @@ fn doc_std(
         }
         cargo.arg("-p").arg(krate);
     }
+
+    let description =
+        format!("library{} in {} format", crate_description(&requested_crates), format.as_str());
+    let _guard = builder.msg_doc(compiler, &description, target);
 
     builder.run(&mut cargo.into());
     builder.cp_r(&out_dir, &out);
