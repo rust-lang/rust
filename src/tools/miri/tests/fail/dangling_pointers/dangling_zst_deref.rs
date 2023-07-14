@@ -1,6 +1,5 @@
 // Make sure we find these even with many checks disabled.
-// Some optimizations remove ZST accesses, thus masking this UB.
-//@compile-flags: -Zmir-opt-level=0 -Zmiri-disable-alignment-check -Zmiri-disable-stacked-borrows -Zmiri-disable-validation
+//@compile-flags: -Zmiri-disable-alignment-check -Zmiri-disable-stacked-borrows -Zmiri-disable-validation
 
 fn main() {
     let p = {

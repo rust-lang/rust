@@ -363,21 +363,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
         }
         let hir = self.infcx.tcx.hir();
-        if let Some(hir::Node::Item(hir::Item {
-            kind: hir::ItemKind::Fn(_, _, body_id),
-            ..
-        })) = hir.find(self.mir_hir_id())
-            && let Some(hir::Node::Expr(expr)) = hir.find(body_id.hir_id)
-        {
+        if let Some(body_id) = hir.maybe_body_owned_by(self.mir_def_id()) {
+            let expr = hir.body(body_id).value;
             let place = &self.move_data.move_paths[mpi].place;
-            let span = place.as_local()
-                .map(|local| self.body.local_decls[local].source_info.span);
-            let mut finder = ExpressionFinder {
-                expr_span: move_span,
-                expr: None,
-                pat: None,
-                parent_pat: None,
-            };
+            let span = place.as_local().map(|local| self.body.local_decls[local].source_info.span);
+            let mut finder =
+                ExpressionFinder { expr_span: move_span, expr: None, pat: None, parent_pat: None };
             finder.visit_expr(expr);
             if let Some(span) = span && let Some(expr) = finder.expr {
                 for (_, expr) in hir.parent_iter(expr.hir_id) {
@@ -461,7 +452,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     } = move_spans {
                         // We already suggest cloning for these cases in `explain_captures`.
                     } else {
-                        self.suggest_cloning(err, ty, move_span);
+                        self.suggest_cloning(err, ty, expr, move_span);
                     }
                 }
             }
@@ -736,9 +727,21 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         true
     }
 
-    fn suggest_cloning(&self, err: &mut Diagnostic, ty: Ty<'tcx>, span: Span) {
+    fn suggest_cloning(
+        &self,
+        err: &mut Diagnostic,
+        ty: Ty<'tcx>,
+        expr: &hir::Expr<'_>,
+        span: Span,
+    ) {
         let tcx = self.infcx.tcx;
         // Try to find predicates on *generic params* that would allow copying `ty`
+        let suggestion =
+            if let Some(symbol) = tcx.hir().maybe_get_struct_pattern_shorthand_field(expr) {
+                format!(": {}.clone()", symbol)
+            } else {
+                ".clone()".to_owned()
+            };
         if let Some(clone_trait_def) = tcx.lang_items().clone_trait()
             && self.infcx
                 .type_implements_trait(
@@ -751,7 +754,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             err.span_suggestion_verbose(
                 span.shrink_to_hi(),
                 "consider cloning the value if the performance cost is acceptable",
-                ".clone()",
+                suggestion,
                 Applicability::MachineApplicable,
             );
         }

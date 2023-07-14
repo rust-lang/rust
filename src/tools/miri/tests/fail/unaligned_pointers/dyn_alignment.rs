@@ -1,5 +1,5 @@
 // should find the bug even without, but gets masked by optimizations
-//@compile-flags: -Zmiri-disable-stacked-borrows -Zmir-opt-level=0 -Cdebug-assertions=no
+//@compile-flags: -Zmiri-disable-stacked-borrows -Cdebug-assertions=no
 //@normalize-stderr-test: "but found [0-9]+" -> "but found $$ALIGN"
 
 #[repr(align(256))]

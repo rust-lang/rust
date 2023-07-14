@@ -264,7 +264,7 @@ exclude_labels = [
 [autolabel."WG-trait-system-refactor"]
 trigger_files = [
     "compiler/rustc_trait_selection/src/solve",
-    "compiler/rustc_middle/src/traits/solve.rs"
+    "compiler/rustc_middle/src/traits/solve"
 ]
 
 [notify-zulip."I-prioritize"]

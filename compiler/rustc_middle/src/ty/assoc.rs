@@ -96,6 +96,10 @@ impl AssocItem {
             }
         }
     }
+
+    pub fn is_impl_trait_in_trait(&self) -> bool {
+        self.opt_rpitit_info.is_some()
+    }
 }
 
 #[derive(Copy, Clone, PartialEq, Debug, HashStable, Eq, Hash, Encodable, Decodable)]

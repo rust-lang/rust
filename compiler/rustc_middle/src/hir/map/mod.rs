@@ -1103,6 +1103,33 @@ impl<'hir> Map<'hir> {
             _ => None,
         }
     }
+
+    pub fn maybe_get_struct_pattern_shorthand_field(&self, expr: &Expr<'_>) -> Option<Symbol> {
+        let local = match expr {
+            Expr {
+                kind:
+                    ExprKind::Path(QPath::Resolved(
+                        None,
+                        Path {
+                            res: def::Res::Local(_), segments: [PathSegment { ident, .. }], ..
+                        },
+                    )),
+                ..
+            } => Some(ident),
+            _ => None,
+        }?;
+
+        match self.find_parent(expr.hir_id)? {
+            Node::ExprField(field) => {
+                if field.ident.name == local.name && field.is_shorthand {
+                    return Some(local.name);
+                }
+            }
+            _ => {}
+        }
+
+        None
+    }
 }
 
 impl<'hir> intravisit::Map<'hir> for Map<'hir> {

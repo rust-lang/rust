@@ -395,7 +395,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         vec![(expr.span.shrink_to_hi(), format!(".{}()", conversion_method.name))]
                     };
                     let struct_pat_shorthand_field =
-                        self.maybe_get_struct_pattern_shorthand_field(expr);
+                        self.tcx.hir().maybe_get_struct_pattern_shorthand_field(expr);
                     if let Some(name) = struct_pat_shorthand_field {
                         sugg.insert(0, (expr.span.shrink_to_lo(), format!("{}: ", name)));
                     }
@@ -1069,7 +1069,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 )
                 .must_apply_modulo_regions()
           {
-            let suggestion = match self.maybe_get_struct_pattern_shorthand_field(expr) {
+            let suggestion = match self.tcx.hir().maybe_get_struct_pattern_shorthand_field(expr) {
                 Some(ident) => format!(": {}.clone()", ident),
                 None => ".clone()".to_string()
             };
@@ -1247,7 +1247,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return false;
         }
 
-        let suggestion = match self.maybe_get_struct_pattern_shorthand_field(expr) {
+        let suggestion = match self.tcx.hir().maybe_get_struct_pattern_shorthand_field(expr) {
             Some(ident) => format!(": {}.is_some()", ident),
             None => ".is_some()".to_string(),
         };
