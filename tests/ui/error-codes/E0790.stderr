@@ -63,7 +63,7 @@ LL |     fn my_fn();
 LL |     MyTrait2::my_fn();
    |     ^^^^^^^^^^^^^^^ cannot call associated function of trait
    |
-help: use a fully-qualified path to a specific available implementation (2 found)
+help: use a fully-qualified path to a specific available implementation
    |
 LL |     </* self type */ as MyTrait2>::my_fn();
    |     +++++++++++++++++++         +
