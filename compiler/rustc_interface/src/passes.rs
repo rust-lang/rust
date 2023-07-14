@@ -746,11 +746,10 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
     rustc_passes::hir_id_validator::check_crate(tcx);
 
     let sess = tcx.sess;
-    let mut entry_point = None;
 
     parallel!(
         {
-            entry_point = tcx.entry_fn(());
+            tcx.ensure().entry_fn(());
 
             tcx.ensure().proc_macro_decls_static(());
 
@@ -846,7 +845,7 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
 
     // This check has to be run after all lints are done processing. We don't
     // define a lint filter, as all lint checks should have finished at this point.
-    let _ = tcx.check_expectations(None);
+    tcx.ensure().check_expectations(None);
 
     if sess.opts.unstable_opts.print_vtable_sizes {
         let traits = tcx.traits(LOCAL_CRATE);
