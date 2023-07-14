@@ -22,7 +22,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, scrutinee: &'tcx Expr<'_>) {
                 MATCH_ON_VEC_ITEMS,
                 scrutinee.span,
                 "indexing into a vector may panic",
-                "try this",
+                "try",
                 format!(
                     "{}.get({})",
                     snippet(cx, vec.span, ".."),

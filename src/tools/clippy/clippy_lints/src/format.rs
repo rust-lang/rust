@@ -43,7 +43,9 @@ declare_lint_pass!(UselessFormat => [USELESS_FORMAT]);
 
 impl<'tcx> LateLintPass<'tcx> for UselessFormat {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        let Some(macro_call) = root_macro_call_first_node(cx, expr) else { return };
+        let Some(macro_call) = root_macro_call_first_node(cx, expr) else {
+            return;
+        };
         if !cx.tcx.is_diagnostic_item(sym::format_macro, macro_call.def_id) {
             return;
         }

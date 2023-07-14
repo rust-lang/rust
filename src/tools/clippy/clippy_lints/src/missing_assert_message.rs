@@ -46,7 +46,9 @@ declare_lint_pass!(MissingAssertMessage => [MISSING_ASSERT_MESSAGE]);
 
 impl<'tcx> LateLintPass<'tcx> for MissingAssertMessage {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        let Some(macro_call) = root_macro_call_first_node(cx, expr) else { return };
+        let Some(macro_call) = root_macro_call_first_node(cx, expr) else {
+            return;
+        };
         let single_argument = match cx.tcx.get_diagnostic_name(macro_call.def_id) {
             Some(sym::assert_macro | sym::debug_assert_macro) => true,
             Some(
@@ -61,10 +63,14 @@ impl<'tcx> LateLintPass<'tcx> for MissingAssertMessage {
         }
 
         let panic_expn = if single_argument {
-            let Some((_, panic_expn)) = find_assert_args(cx, expr, macro_call.expn) else { return };
+            let Some((_, panic_expn)) = find_assert_args(cx, expr, macro_call.expn) else {
+                return;
+            };
             panic_expn
         } else {
-            let Some((_, _, panic_expn)) = find_assert_eq_args(cx, expr, macro_call.expn) else { return };
+            let Some((_, _, panic_expn)) = find_assert_eq_args(cx, expr, macro_call.expn) else {
+                return;
+            };
             panic_expn
         };
 

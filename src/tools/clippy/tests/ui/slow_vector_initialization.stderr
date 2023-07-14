@@ -72,5 +72,13 @@ LL |     vec1 = Vec::with_capacity(10);
 LL |     vec1.resize(10, 0);
    |     ^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 9 previous errors
+error: this argument is a mutable reference, but not used mutably
+  --> $DIR/slow_vector_initialization.rs:62:18
+   |
+LL | fn do_stuff(vec: &mut [u8]) {}
+   |                  ^^^^^^^^^ help: consider changing to: `&[u8]`
+   |
+   = note: `-D clippy::needless-pass-by-ref-mut` implied by `-D warnings`
+
+error: aborting due to 10 previous errors
 

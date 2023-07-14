@@ -7,9 +7,8 @@
 extern crate proc_macros;
 
 use proc_macros::with_span;
-use std::default;
 use std::default::Default as D2;
-use std::string;
+use std::{default, string};
 
 fn main() {
     let s1: String = Default::default();

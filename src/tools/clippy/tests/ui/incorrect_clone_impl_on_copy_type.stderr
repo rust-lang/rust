@@ -16,7 +16,7 @@ LL | /     fn clone_from(&mut self, source: &Self) {
 LL | |         source.clone();
 LL | |         *self = source.clone();
 LL | |     }
-   | |_____^ help: remove this
+   | |_____^ help: remove it
 
 error: incorrect implementation of `clone` on a `Copy` type
   --> $DIR/incorrect_clone_impl_on_copy_type.rs:81:29
@@ -34,7 +34,7 @@ LL | /     fn clone_from(&mut self, source: &Self) {
 LL | |         source.clone();
 LL | |         *self = source.clone();
 LL | |     }
-   | |_____^ help: remove this
+   | |_____^ help: remove it
 
 error: aborting due to 4 previous errors
 

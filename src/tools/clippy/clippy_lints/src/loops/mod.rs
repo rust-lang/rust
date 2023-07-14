@@ -601,7 +601,7 @@ declare_clippy_lint! {
     ///     // use `number`
     /// }
     /// ```
-    #[clippy::version = "1.70.0"]
+    #[clippy::version = "1.71.0"]
     pub MANUAL_WHILE_LET_SOME,
     style,
     "checking for emptiness of a `Vec` in the loop condition and popping an element in the body"

@@ -74,7 +74,7 @@ impl VecPushSearcher {
         let mut needs_mut = false;
         let res = for_each_local_use_after_expr(cx, self.local_id, self.last_push_expr, |e| {
             let Some(parent) = get_parent_expr(cx, e) else {
-                return ControlFlow::Continue(())
+                return ControlFlow::Continue(());
             };
             let adjusted_ty = cx.typeck_results().expr_ty_adjusted(e);
             let adjusted_mut = adjusted_ty.ref_mutability().unwrap_or(Mutability::Not);

@@ -9,18 +9,16 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Expr, FnDecl, LangItem, TyKind, Unsafety};
-use rustc_infer::infer::{
-    type_variable::{TypeVariableOrigin, TypeVariableOriginKind},
-    TyCtxtInferExt,
-};
+use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
+use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::{
-    self, layout::ValidityRequirement, AdtDef, AliasTy, AssocKind, Binder, BoundRegion, FnSig, IntTy, List, ParamEnv,
+    self, AdtDef, AliasTy, AssocKind, Binder, BoundRegion, FnSig, GenericArg, GenericArgKind, IntTy, List, ParamEnv,
     Region, RegionKind, SubstsRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
     UintTy, VariantDef, VariantDiscr,
 };
-use rustc_middle::ty::{GenericArg, GenericArgKind};
 use rustc_span::symbol::Ident;
 use rustc_span::{sym, Span, Symbol, DUMMY_SP};
 use rustc_target::abi::{Size, VariantIdx};
@@ -940,8 +938,7 @@ pub fn ty_is_fn_once_param<'tcx>(tcx: TyCtxt<'_>, ty: Ty<'tcx>, predicates: &'tc
         return false;
     };
     let lang = tcx.lang_items();
-    let (Some(fn_once_id), Some(fn_mut_id), Some(fn_id))
-        = (lang.fn_once_trait(), lang.fn_mut_trait(), lang.fn_trait())
+    let (Some(fn_once_id), Some(fn_mut_id), Some(fn_id)) = (lang.fn_once_trait(), lang.fn_mut_trait(), lang.fn_trait())
     else {
         return false;
     };
@@ -1033,10 +1030,12 @@ pub fn make_projection<'tcx>(
         assoc_ty: Symbol,
         substs: SubstsRef<'tcx>,
     ) -> Option<AliasTy<'tcx>> {
-        let Some(assoc_item) = tcx
-            .associated_items(container_id)
-            .find_by_name_and_kind(tcx, Ident::with_dummy_span(assoc_ty), AssocKind::Type, container_id)
-        else {
+        let Some(assoc_item) = tcx.associated_items(container_id).find_by_name_and_kind(
+            tcx,
+            Ident::with_dummy_span(assoc_ty),
+            AssocKind::Type,
+            container_id,
+        ) else {
             debug_assert!(false, "type `{assoc_ty}` not found in `{container_id:?}`");
             return None;
         };
@@ -1124,7 +1123,7 @@ pub fn make_normalized_projection<'tcx>(
             );
             return None;
         }
-        match tcx.try_normalize_erasing_regions(param_env, Ty::new_projection(tcx,ty.def_id, ty.substs)) {
+        match tcx.try_normalize_erasing_regions(param_env, Ty::new_projection(tcx, ty.def_id, ty.substs)) {
             Ok(ty) => Some(ty),
             Err(e) => {
                 debug_assert!(false, "failed to normalize type `{ty}`: {e:#?}");
@@ -1207,7 +1206,7 @@ pub fn make_normalized_projection_with_regions<'tcx>(
             .infer_ctxt()
             .build()
             .at(&cause, param_env)
-            .query_normalize(Ty::new_projection(tcx,ty.def_id, ty.substs))
+            .query_normalize(Ty::new_projection(tcx, ty.def_id, ty.substs))
         {
             Ok(ty) => Some(ty.value),
             Err(e) => {

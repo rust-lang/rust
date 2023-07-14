@@ -1,4 +1,5 @@
-use clippy_utils::{diagnostics::span_lint_and_then, is_res_lang_ctor, last_path_segment, path_res, MaybePath};
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::{is_res_lang_ctor, last_path_segment, path_res, MaybePath};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
@@ -29,6 +30,11 @@ pub(super) fn check(
     args: &[hir::Expr<'_>],
 ) {
     let init = clippy_utils::expr_or_init(cx, recv);
+    if init.span.from_expansion() {
+        // don't lint if the receiver or binding initializer comes from a macro
+        // (e.g. `let x = option_env!(..); x.unwrap()`)
+        return;
+    }
 
     let (constructor, call_args, ty) = if let hir::ExprKind::Call(call, call_args) = init.kind {
         let Some(qpath) = call.qpath_opt() else { return };
@@ -62,6 +68,22 @@ pub(super) fn check(
                 (expr.span.with_hi(args[0].span.lo()), "panic!(".to_string()),
                 (expr.span.with_lo(args[0].span.hi()), ")".to_string()),
             ]),
+            ("Some" | "Ok", "unwrap_unchecked", _) | ("Err", "unwrap_err_unchecked", _) => {
+                let mut suggs = vec![
+                    (recv.span.with_hi(call_args[0].span.lo()), String::new()),
+                    (expr.span.with_lo(call_args[0].span.hi()), String::new()),
+                ];
+                // try to also remove the unsafe block if present
+                if let hir::Node::Block(block) = cx.tcx.hir().get_parent(expr.hir_id)
+                    && let hir::BlockCheckMode::UnsafeBlock(hir::UnsafeSource::UserProvided) = block.rules
+                {
+                    suggs.extend([
+                        (block.span.shrink_to_lo().to(expr.span.shrink_to_lo()), String::new()),
+                        (expr.span.shrink_to_hi().to(block.span.shrink_to_hi()), String::new())
+                    ]);
+                }
+                Some(suggs)
+            },
             (_, _, Some(_)) => None,
             ("Ok", "unwrap_err", None) | ("Err", "unwrap", None) => Some(vec![
                 (

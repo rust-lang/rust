@@ -1,11 +1,15 @@
-use super::{possible_origin::PossibleOriginVisitor, transitive_relation::TransitiveRelation};
+use super::possible_origin::PossibleOriginVisitor;
+use super::transitive_relation::TransitiveRelation;
 use crate::ty::is_copy;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::bit_set::{BitSet, HybridBitSet};
 use rustc_lint::LateContext;
-use rustc_middle::mir::{self, visit::Visitor as _, Mutability};
-use rustc_middle::ty::{self, visit::TypeVisitor, TyCtxt};
-use rustc_mir_dataflow::{impls::MaybeStorageLive, Analysis, ResultsCursor};
+use rustc_middle::mir::visit::Visitor as _;
+use rustc_middle::mir::{self, Mutability};
+use rustc_middle::ty::visit::TypeVisitor;
+use rustc_middle::ty::{self, TyCtxt};
+use rustc_mir_dataflow::impls::MaybeStorageLive;
+use rustc_mir_dataflow::{Analysis, ResultsCursor};
 use std::borrow::Cow;
 use std::ops::ControlFlow;
 

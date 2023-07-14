@@ -2,7 +2,7 @@ error: redundant pattern matching, consider using `is_ok()`
   --> $DIR/ice-7169.rs:10:12
    |
 LL |     if let Ok(_) = Ok::<_, ()>(A::<String>::default()) {}
-   |     -------^^^^^-------------------------------------- help: try this: `if Ok::<_, ()>(A::<String>::default()).is_ok()`
+   |     -------^^^^^-------------------------------------- help: try: `if Ok::<_, ()>(A::<String>::default()).is_ok()`
    |
    = note: `-D clippy::redundant-pattern-matching` implied by `-D warnings`
 

@@ -14,10 +14,8 @@ use rustc_ast::{
     FormatArgPosition, FormatArgPositionKind, FormatArgsPiece, FormatArgumentKind, FormatCount, FormatOptions,
     FormatPlaceholder, FormatTrait,
 };
-use rustc_errors::{
-    Applicability,
-    SuggestionStyle::{CompletelyHidden, ShowCode},
-};
+use rustc_errors::Applicability;
+use rustc_errors::SuggestionStyle::{CompletelyHidden, ShowCode};
 use rustc_hir::{Expr, ExprKind, LangItem};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment};
@@ -188,7 +186,9 @@ impl FormatArgs {
 
 impl<'tcx> LateLintPass<'tcx> for FormatArgs {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
-        let Some(macro_call) = root_macro_call_first_node(cx, expr) else { return };
+        let Some(macro_call) = root_macro_call_first_node(cx, expr) else {
+            return;
+        };
         if !is_format_macro(cx, macro_call.def_id) {
             return;
         }

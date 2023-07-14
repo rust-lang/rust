@@ -8,11 +8,11 @@ extern crate syn;
 
 use proc_macro::TokenStream;
 use quote::{quote, quote_spanned};
-use syn::parse_macro_input;
 use syn::spanned::Spanned;
 use syn::token::Star;
 use syn::{
-    parse_quote, FnArg, ImplItem, ItemImpl, ItemTrait, Lifetime, Pat, PatIdent, PatType, Signature, TraitItem, Type,
+    parse_macro_input, parse_quote, FnArg, ImplItem, ItemImpl, ItemTrait, Lifetime, Pat, PatIdent, PatType, Signature,
+    TraitItem, Type,
 };
 
 #[proc_macro_attribute]

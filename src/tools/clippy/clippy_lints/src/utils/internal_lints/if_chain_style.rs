@@ -46,7 +46,9 @@ impl<'tcx> LateLintPass<'tcx> for IfChainStyle {
         } else {
             return;
         };
-        let ExprKind::Block(then_block, _) = then.kind else { return };
+        let ExprKind::Block(then_block, _) = then.kind else {
+            return;
+        };
         let if_chain_span = is_expn_of(expr.span, "if_chain");
         if !els {
             check_nested_if_chains(cx, expr, then_block, if_chain_span);

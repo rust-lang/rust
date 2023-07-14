@@ -2,7 +2,7 @@ error: explicit `deref` method call
   --> $DIR/explicit_deref_methods.rs:54:19
    |
 LL |     let b: &str = a.deref();
-   |                   ^^^^^^^^^ help: try this: `&*a`
+   |                   ^^^^^^^^^ help: try: `&*a`
    |
    = note: `-D clippy::explicit-deref-methods` implied by `-D warnings`
 
@@ -10,67 +10,67 @@ error: explicit `deref_mut` method call
   --> $DIR/explicit_deref_methods.rs:56:23
    |
 LL |     let b: &mut str = a.deref_mut();
-   |                       ^^^^^^^^^^^^^ help: try this: `&mut **a`
+   |                       ^^^^^^^^^^^^^ help: try: `&mut **a`
 
 error: explicit `deref` method call
   --> $DIR/explicit_deref_methods.rs:59:39
    |
 LL |     let b: String = format!("{}, {}", a.deref(), a.deref());
-   |                                       ^^^^^^^^^ help: try this: `&*a`
+   |                                       ^^^^^^^^^ help: try: `&*a`
 
 error: explicit `deref` method call
   --> $DIR/explicit_deref_methods.rs:59:50
    |
 LL |     let b: String = format!("{}, {}", a.deref(), a.deref());
-   |                                                  ^^^^^^^^^ help: try this: `&*a`
+   |                                                  ^^^^^^^^^ help: try: `&*a`
 
 error: explicit `deref` method call
   --> $DIR/explicit_deref_methods.rs:61:20
    |
 LL |     println!("{}", a.deref());
-   |                    ^^^^^^^^^ help: try this: `&*a`
+   |                    ^^^^^^^^^ help: try: `&*a`
 
 error: explicit `deref` method call
   --> $DIR/explicit_deref_methods.rs:64:11
    |
 LL |     match a.deref() {
-   |           ^^^^^^^^^ help: try this: `&*a`
+   |           ^^^^^^^^^ help: try: `&*a`
 
 error: explicit `deref` method call
   --> $DIR/explicit_deref_methods.rs:68:28
    |
 LL |     let b: String = concat(a.deref());
-   |                            ^^^^^^^^^ help: try this: `&*a`
+   |                            ^^^^^^^^^ help: try: `&*a`
 
 error: explicit `deref` method call
   --> $DIR/explicit_deref_methods.rs:70:13
    |
 LL |     let b = just_return(a).deref();
-   |             ^^^^^^^^^^^^^^^^^^^^^^ help: try this: `just_return(a)`
+   |             ^^^^^^^^^^^^^^^^^^^^^^ help: try: `just_return(a)`
 
 error: explicit `deref` method call
   --> $DIR/explicit_deref_methods.rs:72:28
    |
 LL |     let b: String = concat(just_return(a).deref());
-   |                            ^^^^^^^^^^^^^^^^^^^^^^ help: try this: `just_return(a)`
+   |                            ^^^^^^^^^^^^^^^^^^^^^^ help: try: `just_return(a)`
 
 error: explicit `deref` method call
   --> $DIR/explicit_deref_methods.rs:74:19
    |
 LL |     let b: &str = a.deref().deref();
-   |                   ^^^^^^^^^^^^^^^^^ help: try this: `&**a`
+   |                   ^^^^^^^^^^^^^^^^^ help: try: `&**a`
 
 error: explicit `deref` method call
   --> $DIR/explicit_deref_methods.rs:77:13
    |
 LL |     let b = opt_a.unwrap().deref();
-   |             ^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&*opt_a.unwrap()`
+   |             ^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*opt_a.unwrap()`
 
 error: explicit `deref` method call
   --> $DIR/explicit_deref_methods.rs:114:31
    |
 LL |     let b: &str = expr_deref!(a.deref());
-   |                               ^^^^^^^^^ help: try this: `&*a`
+   |                               ^^^^^^^^^ help: try: `&*a`
 
 error: aborting due to 12 previous errors
 

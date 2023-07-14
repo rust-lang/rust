@@ -1,6 +1,6 @@
 [package]
 name = "clippy"
-version = "0.1.72"
+version = "0.1.73"
 description = "A bunch of helpful lints to avoid common pitfalls in Rust"
 repository = "https://github.com/rust-lang/rust-clippy"
 readme = "README.md"
@@ -35,6 +35,17 @@ walkdir = "2.3"
 # This is used by the `collect-metadata` alias.
 filetime = "0.2"
 itertools = "0.10.1"
+
+# UI test dependencies
+clippy_utils = { path = "clippy_utils" }
+derive-new = "0.5"
+if_chain = "1.0"
+quote = "1.0"
+serde = { version = "1.0.125", features = ["derive"] }
+syn = { version = "2.0", features = ["full"] }
+futures = "0.3"
+parking_lot = "0.12"
+tokio = { version = "1", features = ["io-util"] }
 
 [build-dependencies]
 rustc_tools_util = "0.3.0"

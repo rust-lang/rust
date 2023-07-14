@@ -154,6 +154,10 @@ impl UselessVec {
         span: Span,
         suggest_slice: SuggestedType,
     ) {
+        if span.from_expansion() {
+            return;
+        }
+
         let mut applicability = Applicability::MachineApplicable;
 
         let snippet = match *vec_args {
@@ -181,7 +185,7 @@ impl UselessVec {
                     if args.len() as u64 * size_of(cx, last) > self.too_large_for_stack {
                         return;
                     }
-                    let span = args[0].span.to(last.span);
+                    let span = args[0].span.source_callsite().to(last.span.source_callsite());
                     let args = snippet_with_applicability(cx, span, "..", &mut applicability);
 
                     match suggest_slice {
