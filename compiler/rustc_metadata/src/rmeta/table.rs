@@ -480,7 +480,6 @@ where
     for<'tcx> T::Value<'tcx>: FixedSizeEncoding<ByteArray = [u8; N]>,
 {
     /// Given the metadata, extract out the value at a particular index (if any).
-    #[inline(never)]
     pub(super) fn get<'a, 'tcx, M: Metadata<'a, 'tcx>>(&self, metadata: M, i: I) -> T::Value<'tcx> {
         trace!("LazyTable::lookup: index={:?} len={:?}", i, self.len);
 
@@ -494,9 +493,13 @@ where
         let end = start + width;
         let bytes = &metadata.blob()[start..end];
 
-        let mut fixed = [0u8; N];
-        fixed[..width].copy_from_slice(bytes);
-        FixedSizeEncoding::from_bytes(&fixed)
+        if let Ok(fixed) = bytes.try_into() {
+            FixedSizeEncoding::from_bytes(fixed)
+        } else {
+            let mut fixed = [0u8; N];
+            fixed[..width].copy_from_slice(bytes);
+            FixedSizeEncoding::from_bytes(&fixed)
+        }
     }
 
     /// Size of the table in entries, including possible gaps.
