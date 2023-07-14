@@ -319,6 +319,7 @@ lint_invalid_nan_comparisons_eq_ne = incorrect NaN comparison, NaN cannot be dir
 lint_invalid_nan_comparisons_lt_le_gt_ge = incorrect NaN comparison, NaN is not orderable
 
 lint_invalid_reference_casting = casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
+    .label = casting happend here
 
 lint_lintpass_by_hand = implementing `LintPass` by hand
     .help = try using `declare_lint_pass!` or `impl_lint_pass!` instead

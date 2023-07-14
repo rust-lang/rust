@@ -746,7 +746,10 @@ pub enum InvalidFromUtf8Diag {
 // reference_casting.rs
 #[derive(LintDiagnostic)]
 #[diag(lint_invalid_reference_casting)]
-pub struct InvalidReferenceCastingDiag;
+pub struct InvalidReferenceCastingDiag {
+    #[label]
+    pub orig_cast: Option<Span>,
+}
 
 // hidden_unicode_codepoints.rs
 #[derive(LintDiagnostic)]

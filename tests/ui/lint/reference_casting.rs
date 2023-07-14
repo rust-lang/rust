@@ -36,6 +36,9 @@ fn main() {
         //~^ ERROR casting `&T` to `&mut T` is undefined behavior
         *(std::ptr::from_ref({ num }) as *mut i32) += 1;
         //~^ ERROR casting `&T` to `&mut T` is undefined behavior
+        let value = num as *const i32 as *mut i32;
+        *value = 1;
+        //~^ ERROR casting `&T` to `&mut T` is undefined behavior
 
         // Shouldn't be warned against
         println!("{}", *(num as *const _ as *const i16));
