@@ -1,5 +1,5 @@
 use anyhow::Context;
-use camino::Utf8Path;
+use camino::{Utf8Path, Utf8PathBuf};
 use fs_extra::dir::CopyOptions;
 use std::fs::File;
 
@@ -45,4 +45,18 @@ pub fn unpack_archive(path: &Utf8Path, dest_dir: &Utf8Path) -> anyhow::Result<()
     let mut archive = tar::Archive::new(file);
     archive.unpack(dest_dir.as_std_path())?;
     Ok(())
+}
+
+/// Returns paths in the given `dir` (non-recursively), optionally with the given `suffix`.
+/// The `suffix` should contain the leading dot.
+pub fn get_files_from_dir(
+    dir: &Utf8Path,
+    suffix: Option<&str>,
+) -> anyhow::Result<Vec<Utf8PathBuf>> {
+    let path = format!("{dir}/*{}", suffix.unwrap_or(""));
+
+    Ok(glob::glob(&path)?
+        .into_iter()
+        .map(|p| p.map(|p| Utf8PathBuf::from_path_buf(p).unwrap()))
+        .collect::<Result<Vec<_>, _>>()?)
 }
