@@ -294,7 +294,9 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
 
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
         let attrs = cx.tcx.hir().attrs(item.hir_id());
-        let Some(headers) = check_attrs(cx, &self.valid_idents, attrs) else { return };
+        let Some(headers) = check_attrs(cx, &self.valid_idents, attrs) else {
+            return;
+        };
         match item.kind {
             hir::ItemKind::Fn(ref sig, _, body_id) => {
                 if !(is_entrypoint_fn(cx, item.owner_id.to_def_id()) || in_external_macro(cx.tcx.sess, item.span)) {
@@ -338,7 +340,9 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::TraitItem<'_>) {
         let attrs = cx.tcx.hir().attrs(item.hir_id());
-        let Some(headers) = check_attrs(cx, &self.valid_idents, attrs) else { return };
+        let Some(headers) = check_attrs(cx, &self.valid_idents, attrs) else {
+            return;
+        };
         if let hir::TraitItemKind::Fn(ref sig, ..) = item.kind {
             if !in_external_macro(cx.tcx.sess, item.span) {
                 lint_for_missing_headers(cx, item.owner_id, sig, headers, None, None);
@@ -348,7 +352,9 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::ImplItem<'_>) {
         let attrs = cx.tcx.hir().attrs(item.hir_id());
-        let Some(headers) = check_attrs(cx, &self.valid_idents, attrs) else { return };
+        let Some(headers) = check_attrs(cx, &self.valid_idents, attrs) else {
+            return;
+        };
         if self.in_trait_impl || in_external_macro(cx.tcx.sess, item.span) {
             return;
         }

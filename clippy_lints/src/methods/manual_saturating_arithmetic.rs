@@ -21,7 +21,9 @@ pub fn check(
         return;
     }
 
-    let Some(mm) = is_min_or_max(cx, unwrap_arg) else { return };
+    let Some(mm) = is_min_or_max(cx, unwrap_arg) else {
+        return;
+    };
 
     if ty.is_signed() {
         use self::MinMax::{Max, Min};

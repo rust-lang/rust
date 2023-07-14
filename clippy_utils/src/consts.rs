@@ -153,7 +153,7 @@ impl<'tcx> Constant<'tcx> {
             },
             (Self::Vec(l), Self::Vec(r)) => {
                 let (ty::Array(cmp_type, _) | ty::Slice(cmp_type)) = *cmp_type.kind() else {
-                    return None
+                    return None;
                 };
                 iter::zip(l, r)
                     .map(|(li, ri)| Self::partial_cmp(tcx, cmp_type, li, ri))
@@ -687,7 +687,7 @@ pub fn miri_to_const<'tcx>(lcx: &LateContext<'tcx>, result: mir::ConstantKind<'t
         mir::ConstantKind::Val(ConstValue::ByRef { alloc, offset: _ }, _) => match result.ty().kind() {
             ty::Adt(adt_def, _) if adt_def.is_struct() => Some(Constant::Adt(result)),
             ty::Array(sub_type, len) => match sub_type.kind() {
-                ty::Float(FloatTy::F32) => match len.kind().try_to_target_usize(lcx.tcx) {
+                ty::Float(FloatTy::F32) => match len.try_to_target_usize(lcx.tcx) {
                     Some(len) => alloc
                         .inner()
                         .inspect_with_uninit_and_ptr_outside_interpreter(0..(4 * usize::try_from(len).unwrap()))
@@ -698,7 +698,7 @@ pub fn miri_to_const<'tcx>(lcx: &LateContext<'tcx>, result: mir::ConstantKind<'t
                         .map(Constant::Vec),
                     _ => None,
                 },
-                ty::Float(FloatTy::F64) => match len.kind().try_to_target_usize(lcx.tcx) {
+                ty::Float(FloatTy::F64) => match len.try_to_target_usize(lcx.tcx) {
                     Some(len) => alloc
                         .inner()
                         .inspect_with_uninit_and_ptr_outside_interpreter(0..(8 * usize::try_from(len).unwrap()))
@@ -723,13 +723,14 @@ fn field_of_struct<'tcx>(
     result: mir::ConstantKind<'tcx>,
     field: &Ident,
 ) -> Option<mir::ConstantKind<'tcx>> {
-    let dc = lcx.tcx.destructure_mir_constant(lcx.param_env, result);
-    if let Some(dc_variant) = dc.variant
+    if let mir::ConstantKind::Val(result, ty) = result
+        && let Some(dc) = lcx.tcx.try_destructure_mir_constant_for_diagnostics((result, ty))
+        && let Some(dc_variant) = dc.variant
         && let Some(variant) = adt_def.variants().get(dc_variant)
         && let Some(field_idx) = variant.fields.iter().position(|el| el.name == field.name)
-        && let Some(dc_field) = dc.fields.get(field_idx)
+        && let Some(&(val, ty)) = dc.fields.get(field_idx)
     {
-        Some(*dc_field)
+        Some(mir::ConstantKind::Val(val, ty))
     }
     else {
         None

@@ -1129,7 +1129,9 @@ fn needless_borrow_impl_arg_position<'tcx>(
     let destruct_trait_def_id = cx.tcx.lang_items().destruct_trait();
     let sized_trait_def_id = cx.tcx.lang_items().sized_trait();
 
-    let Some(callee_def_id) = fn_def_id(cx, parent) else { return Position::Other(precedence) };
+    let Some(callee_def_id) = fn_def_id(cx, parent) else {
+        return Position::Other(precedence);
+    };
     let fn_sig = cx.tcx.fn_sig(callee_def_id).subst_identity().skip_binder();
     let substs_with_expr_ty = cx
         .typeck_results()

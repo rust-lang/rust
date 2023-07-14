@@ -121,7 +121,7 @@ fn base_config(test_dir: &str) -> compiletest::Config {
             compiletest::OutputConflictHandling::Error("cargo test -- -- --bless".into())
         },
         target: None,
-        out_dir: "target/ui_test".into(),
+        out_dir: PathBuf::from(std::env::var_os("CARGO_TARGET_DIR").unwrap_or("target".into())).join("ui_test"),
         ..compiletest::Config::rustc(Path::new("tests").join(test_dir))
     };
 
@@ -217,10 +217,7 @@ fn run_ui_toml() {
 
     config.stderr_filter(
         &regex::escape(
-            &std::path::Path::new(file!())
-                .parent()
-                .unwrap()
-                .canonicalize()
+            &fs::canonicalize("tests")
                 .unwrap()
                 .parent()
                 .unwrap()
@@ -266,6 +263,7 @@ fn run_ui_cargo() {
         .push(("RUSTFLAGS".into(), Some("-Dwarnings".into())));
     // We need to do this while we still have a rustc in the `program` field.
     config.fill_host_and_target().unwrap();
+    config.dependencies_crate_manifest_path = None;
     config.program.program.set_file_name(if cfg!(windows) {
         "cargo-clippy.exe"
     } else {
@@ -275,10 +273,7 @@ fn run_ui_cargo() {
 
     config.stderr_filter(
         &regex::escape(
-            &std::path::Path::new(file!())
-                .parent()
-                .unwrap()
-                .canonicalize()
+            &fs::canonicalize("tests")
                 .unwrap()
                 .parent()
                 .unwrap()

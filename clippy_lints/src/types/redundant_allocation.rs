@@ -40,7 +40,9 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
         return true;
     }
 
-    let Some(ty) = qpath_generic_tys(qpath).next() else { return false };
+    let Some(ty) = qpath_generic_tys(qpath).next() else {
+        return false;
+    };
     let Some(id) = path_def_id(cx, ty) else { return false };
     let (inner_sym, ty) = match cx.tcx.get_diagnostic_name(id) {
         Some(sym::Arc) => ("Arc", ty),
@@ -50,7 +52,7 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
     };
 
     let TyKind::Path(inner_qpath) = &ty.kind else {
-        return false
+        return false;
     };
     let inner_span = match qpath_generic_tys(inner_qpath).next() {
         Some(hir_ty) => {

@@ -239,7 +239,7 @@ impl<'a> NormalizedPat<'a> {
             },
             PatKind::TupleStruct(ref path, pats, wild_idx) => {
                 let Some(adt) = cx.typeck_results().pat_ty(pat).ty_adt_def() else {
-                    return Self::Wild
+                    return Self::Wild;
                 };
                 let (var_id, variant) = if adt.is_enum() {
                     match cx.qpath_res(path, pat.hir_id).opt_def_id() {

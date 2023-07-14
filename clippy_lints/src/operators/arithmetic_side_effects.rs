@@ -194,7 +194,9 @@ impl ArithmeticSideEffects {
         ps: &hir::PathSegment<'tcx>,
         receiver: &hir::Expr<'tcx>,
     ) {
-        let Some(arg) = args.first() else { return; };
+        let Some(arg) = args.first() else {
+            return;
+        };
         if constant_simple(cx, cx.typeck_results(), receiver).is_some() {
             return;
         }
@@ -219,7 +221,9 @@ impl ArithmeticSideEffects {
         un_expr: &hir::Expr<'tcx>,
         un_op: hir::UnOp,
     ) {
-        let hir::UnOp::Neg = un_op else { return; };
+        let hir::UnOp::Neg = un_op else {
+            return;
+        };
         if constant(cx, cx.typeck_results(), un_expr).is_some() {
             return;
         }

@@ -37,7 +37,7 @@ impl ClippyProjectInfo {
 
 pub fn setup_rustc_src(rustc_path: &str) {
     let Ok(rustc_source_dir) = check_and_get_rustc_dir(rustc_path) else {
-        return
+        return;
     };
 
     for project in CLIPPY_PROJECTS {

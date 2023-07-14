@@ -49,9 +49,15 @@ declare_lint_pass!(RcCloneInVecInit => [RC_CLONE_IN_VEC_INIT]);
 
 impl LateLintPass<'_> for RcCloneInVecInit {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
-        let Some(macro_call) = root_macro_call_first_node(cx, expr) else { return; };
-        let Some(VecArgs::Repeat(elem, len)) = VecArgs::hir(cx, expr) else { return; };
-        let Some((symbol, func_span)) = ref_init(cx, elem) else { return; };
+        let Some(macro_call) = root_macro_call_first_node(cx, expr) else {
+            return;
+        };
+        let Some(VecArgs::Repeat(elem, len)) = VecArgs::hir(cx, expr) else {
+            return;
+        };
+        let Some((symbol, func_span)) = ref_init(cx, elem) else {
+            return;
+        };
 
         emit_lint(cx, symbol, macro_call.span, elem, len, func_span);
     }

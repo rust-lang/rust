@@ -49,7 +49,7 @@ declare_lint_pass!(NeedlessForEach => [NEEDLESS_FOR_EACH]);
 impl<'tcx> LateLintPass<'tcx> for NeedlessForEach {
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
         let (StmtKind::Expr(expr) | StmtKind::Semi(expr)) = stmt.kind else {
-             return
+            return;
         };
 
         if_chain! {

@@ -191,7 +191,9 @@ fn replace_in_pattern(
 
         match pat.kind {
             PatKind::Binding(_ann, _id, binding_name, opt_subpt) => {
-                let Some(pat_to_put) = ident_map.get(&binding_name.name) else { break 'a };
+                let Some(pat_to_put) = ident_map.get(&binding_name.name) else {
+                    break 'a;
+                };
                 let (sn_ptp, _) = snippet_with_context(cx, pat_to_put.span, span.ctxt(), "", app);
                 if let Some(subpt) = opt_subpt {
                     let subpt = replace_in_pattern(cx, span, ident_map, subpt, app, false);

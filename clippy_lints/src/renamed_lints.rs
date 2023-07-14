@@ -42,6 +42,7 @@ pub static RENAMED_LINTS: &[(&str, &str)] = &[
     ("clippy::for_loops_over_fallibles", "for_loops_over_fallibles"),
     ("clippy::forget_copy", "forgetting_copy_types"),
     ("clippy::forget_ref", "forgetting_references"),
+    ("clippy::fn_null_check", "incorrect_fn_null_checks"),
     ("clippy::into_iter_on_array", "array_into_iter"),
     ("clippy::invalid_atomic_ordering", "invalid_atomic_ordering"),
     ("clippy::invalid_ref", "invalid_value"),

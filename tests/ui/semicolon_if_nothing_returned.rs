@@ -116,5 +116,7 @@ fn function_returning_option() -> Option<i32> {
 
 // No warning
 fn let_else_stmts() {
-    let Some(x) = function_returning_option() else { return; };
+    let Some(x) = function_returning_option() else {
+        return;
+    };
 }

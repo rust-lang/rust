@@ -80,7 +80,9 @@ impl EarlyLintPass for ModStyle {
 
         let files = cx.sess().source_map().files();
 
-        let Some(trim_to_src) = cx.sess().opts.working_dir.local_path() else { return };
+        let Some(trim_to_src) = cx.sess().opts.working_dir.local_path() else {
+            return;
+        };
 
         // `folder_segments` is all unique folder path segments `path/to/foo.rs` gives
         // `[path, to]` but not foo

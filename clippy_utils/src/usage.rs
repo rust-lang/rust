@@ -154,7 +154,9 @@ pub fn contains_return_break_continue_macro(expression: &Expr<'_>) -> bool {
 }
 
 pub fn local_used_after_expr(cx: &LateContext<'_>, local_id: HirId, after: &Expr<'_>) -> bool {
-    let Some(block) = utils::get_enclosing_block(cx, local_id) else { return false };
+    let Some(block) = utils::get_enclosing_block(cx, local_id) else {
+        return false;
+    };
 
     // for _ in 1..3 {
     //    local

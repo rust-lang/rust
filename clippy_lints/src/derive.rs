@@ -333,7 +333,9 @@ fn check_copy_clone<'tcx>(cx: &LateContext<'tcx>, item: &Item<'_>, trait_ref: &h
         Some(id) if trait_ref.trait_def_id() == Some(id) => id,
         _ => return,
     };
-    let Some(copy_id) = cx.tcx.lang_items().copy_trait() else { return };
+    let Some(copy_id) = cx.tcx.lang_items().copy_trait() else {
+        return;
+    };
     let (ty_adt, ty_subs) = match *ty.kind() {
         // Unions can't derive clone.
         ty::Adt(adt, subs) if !adt.is_union() => (adt, subs),
@@ -344,9 +346,9 @@ fn check_copy_clone<'tcx>(cx: &LateContext<'tcx>, item: &Item<'_>, trait_ref: &h
     if !is_copy(cx, ty) {
         if ty_subs.non_erasable_generics().next().is_some() {
             let has_copy_impl = cx.tcx.all_local_trait_impls(()).get(&copy_id).map_or(false, |impls| {
-                impls
-                    .iter()
-                    .any(|&id| matches!(cx.tcx.type_of(id).subst_identity().kind(), ty::Adt(adt, _) if ty_adt.did() == adt.did()))
+                impls.iter().any(|&id| {
+                    matches!(cx.tcx.type_of(id).subst_identity().kind(), ty::Adt(adt, _) if ty_adt.did() == adt.did())
+                })
             });
             if !has_copy_impl {
                 return;

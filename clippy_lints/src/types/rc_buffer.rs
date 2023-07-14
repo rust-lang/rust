@@ -23,7 +23,9 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
                 app,
             );
         } else {
-            let Some(ty) = qpath_generic_tys(qpath).next() else { return false };
+            let Some(ty) = qpath_generic_tys(qpath).next() else {
+                return false;
+            };
             let Some(id) = path_def_id(cx, ty) else { return false };
             if !cx.tcx.is_diagnostic_item(sym::Vec, id) {
                 return false;

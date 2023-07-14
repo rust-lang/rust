@@ -65,16 +65,21 @@ impl<'tcx> LateLintPass<'tcx> for HashMapPass {
             return;
         }
 
-        let Some(higher::If { cond: cond_expr, then: then_expr, r#else: else_expr }) = higher::If::hir(expr) else {
-            return
+        let Some(higher::If {
+            cond: cond_expr,
+            then: then_expr,
+            r#else: else_expr,
+        }) = higher::If::hir(expr)
+        else {
+            return;
         };
 
         let Some((map_ty, contains_expr)) = try_parse_contains(cx, cond_expr) else {
-            return
+            return;
         };
 
         let Some(then_search) = find_insert_calls(cx, &contains_expr, then_expr) else {
-            return
+            return;
         };
 
         let mut app = Applicability::MachineApplicable;

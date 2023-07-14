@@ -4204,7 +4204,7 @@ impl SelfKind {
             };
 
             let Some(trait_def_id) = cx.tcx.get_diagnostic_item(trait_sym) else {
-                return false
+                return false;
             };
             implements_trait(cx, ty, trait_def_id, &[parent_ty.into()])
         }

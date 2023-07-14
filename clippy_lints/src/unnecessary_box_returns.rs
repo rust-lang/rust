@@ -65,7 +65,9 @@ impl UnnecessaryBoxReturns {
             return;
         }
 
-        let FnRetTy::Return(return_ty_hir) = &decl.output else { return };
+        let FnRetTy::Return(return_ty_hir) = &decl.output else {
+            return;
+        };
 
         let return_ty = cx
             .tcx
@@ -105,25 +107,33 @@ impl UnnecessaryBoxReturns {
 
 impl LateLintPass<'_> for UnnecessaryBoxReturns {
     fn check_trait_item(&mut self, cx: &LateContext<'_>, item: &TraitItem<'_>) {
-        let TraitItemKind::Fn(signature, _) = &item.kind else { return };
+        let TraitItemKind::Fn(signature, _) = &item.kind else {
+            return;
+        };
         self.check_fn_item(cx, signature.decl, item.owner_id.def_id, item.ident.name);
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'_>, item: &rustc_hir::ImplItem<'_>) {
         // Ignore implementations of traits, because the lint should be on the
         // trait, not on the implementation of it.
-        let Node::Item(parent) = cx.tcx.hir().get_parent(item.hir_id()) else { return };
+        let Node::Item(parent) = cx.tcx.hir().get_parent(item.hir_id()) else {
+            return;
+        };
         let ItemKind::Impl(parent) = parent.kind else { return };
         if parent.of_trait.is_some() {
             return;
         }
 
-        let ImplItemKind::Fn(signature, ..) = &item.kind else { return };
+        let ImplItemKind::Fn(signature, ..) = &item.kind else {
+            return;
+        };
         self.check_fn_item(cx, signature.decl, item.owner_id.def_id, item.ident.name);
     }
 
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
-        let ItemKind::Fn(signature, ..) = &item.kind else { return };
+        let ItemKind::Fn(signature, ..) = &item.kind else {
+            return;
+        };
         self.check_fn_item(cx, signature.decl, item.owner_id.def_id, item.ident.name);
     }
 }

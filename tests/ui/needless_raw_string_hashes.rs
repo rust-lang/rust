@@ -12,12 +12,9 @@ fn main() {
     br##"Hello "world"!"##;
     br######" "### "## "# "######;
     br######" "aa" "# "## "######;
-    cr#"aaa"#;
-    cr##"Hello "world"!"##;
-    cr######" "### "## "# "######;
-    cr######" "aa" "# "## "######;
-    // Issue #11068, do not lint
-    r##"a"#"a"##;
-    br##"a"#"a"##;
-    cr##"a"#"a"##;
+    // currently disabled: https://github.com/rust-lang/rust/issues/113333
+    // cr#"aaa"#;
+    // cr##"Hello "world"!"##;
+    // cr######" "### "## "# "######;
+    // cr######" "aa" "# "## "######;
 }

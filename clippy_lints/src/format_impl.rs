@@ -127,7 +127,9 @@ impl<'tcx> LateLintPass<'tcx> for FormatImpl {
     }
 
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        let Some(format_trait_impl) = self.format_trait_impl else { return };
+        let Some(format_trait_impl) = self.format_trait_impl else {
+            return;
+        };
 
         if format_trait_impl.name == sym::Display {
             check_to_string_in_display(cx, expr);
