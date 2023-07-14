@@ -73,13 +73,25 @@ impl<'tcx> LateLintPass<'tcx> for InvalidReferenceCasting {
             return;
         };
 
-        if is_cast_from_const_to_mut(cx, e) {
-            cx.emit_spanned_lint(INVALID_REFERENCE_CASTING, expr.span, InvalidReferenceCastingDiag { orig_cast: None });
+        let orig_cast = if is_cast_from_const_to_mut(cx, e) {
+            None
         } else if let ExprKind::Path(QPath::Resolved(_, path)) = e.kind
             && let Res::Local(hir_id) = &path.res
             && let Some(orig_cast) = self.casted.get(hir_id) {
-            cx.emit_spanned_lint(INVALID_REFERENCE_CASTING, expr.span, InvalidReferenceCastingDiag { orig_cast: Some(*orig_cast) });
-        }
+            Some(*orig_cast)
+        } else {
+            return;
+        };
+
+        cx.emit_spanned_lint(
+            INVALID_REFERENCE_CASTING,
+            expr.span,
+            if matches!(expr.kind, ExprKind::AddrOf(..)) {
+                InvalidReferenceCastingDiag::BorrowAsMut { orig_cast }
+            } else {
+                InvalidReferenceCastingDiag::AssignToRef { orig_cast }
+            },
+        );
     }
 }
 
