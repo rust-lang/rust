@@ -7,21 +7,20 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
     let mut _13: std::slice::Iter<'_, T>;
     let mut _14: std::iter::Rev<std::slice::Iter<'_, T>>;
     let mut _15: std::iter::Rev<std::slice::Iter<'_, T>>;
-    let mut _16: &mut std::iter::Rev<std::slice::Iter<'_, T>>;
-    let mut _18: std::option::Option<&T>;
-    let mut _19: isize;
-    let mut _21: &impl Fn(&T);
-    let mut _22: (&T,);
-    let _23: ();
+    let mut _17: std::option::Option<&T>;
+    let mut _18: isize;
+    let mut _20: &impl Fn(&T);
+    let mut _21: (&T,);
+    let _22: ();
     scope 1 {
         debug iter => _15;
-        let _20: &T;
+        let _19: &T;
         scope 2 {
-            debug x => _20;
+            debug x => _19;
         }
         scope 25 (inlined <Rev<std::slice::Iter<'_, T>> as Iterator>::next) {
-            debug self => _16;
-            let mut _17: &mut std::slice::Iter<'_, T>;
+            debug self => &_15;
+            let mut _16: &mut std::slice::Iter<'_, T>;
         }
     }
     scope 3 (inlined core::slice::<impl [T]>::iter) {
@@ -49,15 +48,15 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
                                     debug ptr => _9;
                                     scope 16 (inlined ptr::mut_ptr::<impl *mut T>::is_null) {
                                         debug self => _9;
-                                        let mut _24: *mut u8;
+                                        let mut _23: *mut u8;
                                         scope 17 {
                                             scope 18 (inlined ptr::mut_ptr::<impl *mut T>::is_null::runtime_impl) {
-                                                debug ptr => _24;
+                                                debug ptr => _23;
                                                 scope 19 (inlined ptr::mut_ptr::<impl *mut u8>::addr) {
-                                                    debug self => _24;
+                                                    debug self => _23;
                                                     scope 20 {
                                                         scope 21 (inlined ptr::mut_ptr::<impl *mut u8>::cast::<()>) {
-                                                            debug self => _24;
+                                                            debug self => _23;
                                                         }
                                                     }
                                                 }
@@ -132,10 +131,10 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
         StorageLive(_9);
         _9 = _4 as *mut T (PtrToPtr);
         StorageLive(_10);
-        StorageLive(_24);
+        StorageLive(_23);
         _10 = _9 as *const T (PointerCoercion(MutToConstPointer));
         _11 = NonNull::<T> { pointer: _10 };
-        StorageDead(_24);
+        StorageDead(_23);
         StorageDead(_10);
         StorageDead(_9);
         StorageLive(_12);
@@ -153,21 +152,20 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
     }
 
     bb4: {
-        StorageLive(_18);
-        _16 = &mut _15;
         StorageLive(_17);
-        _17 = &mut ((*_16).0: std::slice::Iter<'_, T>);
-        _18 = <std::slice::Iter<'_, T> as DoubleEndedIterator>::next_back(move _17) -> [return: bb5, unwind: bb11];
+        StorageLive(_16);
+        _16 = &mut (_15.0: std::slice::Iter<'_, T>);
+        _17 = <std::slice::Iter<'_, T> as DoubleEndedIterator>::next_back(move _16) -> [return: bb5, unwind: bb11];
     }
 
     bb5: {
-        StorageDead(_17);
-        _19 = discriminant(_18);
-        switchInt(move _19) -> [0: bb6, 1: bb8, otherwise: bb10];
+        StorageDead(_16);
+        _18 = discriminant(_17);
+        switchInt(move _18) -> [0: bb6, 1: bb8, otherwise: bb10];
     }
 
     bb6: {
-        StorageDead(_18);
+        StorageDead(_17);
         StorageDead(_15);
         drop(_2) -> [return: bb7, unwind continue];
     }
@@ -177,18 +175,18 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
     }
 
     bb8: {
-        _20 = ((_18 as Some).0: &T);
+        _19 = ((_17 as Some).0: &T);
+        StorageLive(_20);
+        _20 = &_2;
         StorageLive(_21);
-        _21 = &_2;
-        StorageLive(_22);
-        _22 = (_20,);
-        _23 = <impl Fn(&T) as Fn<(&T,)>>::call(move _21, move _22) -> [return: bb9, unwind: bb11];
+        _21 = (_19,);
+        _22 = <impl Fn(&T) as Fn<(&T,)>>::call(move _20, move _21) -> [return: bb9, unwind: bb11];
     }
 
     bb9: {
-        StorageDead(_22);
         StorageDead(_21);
-        StorageDead(_18);
+        StorageDead(_20);
+        StorageDead(_17);
         goto -> bb4;
     }
 

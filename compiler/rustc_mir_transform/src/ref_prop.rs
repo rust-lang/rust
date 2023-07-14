@@ -71,7 +71,7 @@ pub struct ReferencePropagation;
 
 impl<'tcx> MirPass<'tcx> for ReferencePropagation {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() >= 4
+        sess.mir_opt_level() >= 2
     }
 
     #[instrument(level = "trace", skip(self, tcx, body))]
@@ -355,7 +355,10 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'tcx> {
     }
 
     fn visit_var_debug_info(&mut self, debuginfo: &mut VarDebugInfo<'tcx>) {
-        if let VarDebugInfoContents::Place(ref mut place) = debuginfo.value
+        // If the debuginfo is a pointer to another place:
+        // - if it's a reborrow, see through it;
+        // - if it's a direct borrow, increase `debuginfo.references`.
+        while let VarDebugInfoContents::Place(ref mut place) = debuginfo.value
             && place.projection.is_empty()
             && let Value::Pointer(target, _) = self.targets[place.local]
             && target.projection.iter().all(|p| p.can_use_in_debuginfo())
@@ -369,28 +372,37 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'tcx> {
                 debuginfo.references = references;
                 *place = target;
                 self.any_replacement = true;
+            } else {
+                break
             }
         }
+
+        // Simplify eventual projections left inside `debuginfo`.
+        self.super_var_debug_info(debuginfo);
     }
 
     fn visit_place(&mut self, place: &mut Place<'tcx>, ctxt: PlaceContext, loc: Location) {
-        if place.projection.first() != Some(&PlaceElem::Deref) {
-            return;
-        }
-
         loop {
-            if let Value::Pointer(target, _) = self.targets[place.local] {
-                let perform_opt = matches!(ctxt, PlaceContext::NonUse(_))
-                    || self.allowed_replacements.contains(&(target.local, loc));
-
-                if perform_opt {
-                    *place = target.project_deeper(&place.projection[1..], self.tcx);
-                    self.any_replacement = true;
-                    continue;
-                }
+            if place.projection.first() != Some(&PlaceElem::Deref) {
+                return;
             }
 
-            break;
+            let Value::Pointer(target, _) = self.targets[place.local] else { return };
+
+            let perform_opt = match ctxt {
+                PlaceContext::NonUse(NonUseContext::VarDebugInfo) => {
+                    target.projection.iter().all(|p| p.can_use_in_debuginfo())
+                }
+                PlaceContext::NonUse(_) => true,
+                _ => self.allowed_replacements.contains(&(target.local, loc)),
+            };
+
+            if !perform_opt {
+                return;
+            }
+
+            *place = target.project_deeper(&place.projection[1..], self.tcx);
+            self.any_replacement = true;
         }
     }
 
