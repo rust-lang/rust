@@ -1284,13 +1284,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             is_exported: tcx.effective_visibilities(()).is_exported(def_id),
             is_doc_hidden: false,
         };
-        let attr_iter = tcx
-            .opt_local_def_id_to_hir_id(def_id)
-            .map_or(Default::default(), |hir_id| tcx.hir().attrs(hir_id))
-            .iter()
-            .filter(|attr| analyze_attr(attr, &mut state));
 
-        record_array!(self.tables.attributes[def_id.to_def_id()] <- attr_iter);
+        let item_attrs = tcx.item_attrs(def_id);
+        if !item_attrs.is_empty() {
+            let attr_iter = item_attrs.iter().filter(|attr| analyze_attr(attr, &mut state));
+            record_array!(self.tables.attributes[def_id.to_def_id()] <- attr_iter);
+        }
 
         let mut attr_flags = AttrFlags::empty();
         if state.is_doc_hidden {

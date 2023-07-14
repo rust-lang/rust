@@ -1214,6 +1214,7 @@ rustc_queries! {
     query item_attrs(def_id: DefId) -> &'tcx [ast::Attribute] {
         desc { |tcx| "collecting attributes of `{}`", tcx.def_path_str(def_id) }
         separate_provide_extern
+        feedable
     }
 
     query codegen_fn_attrs(def_id: DefId) -> &'tcx CodegenFnAttrs {

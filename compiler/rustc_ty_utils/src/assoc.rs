@@ -256,6 +256,8 @@ fn associated_type_for_impl_trait_in_trait(
     let local_def_id = trait_assoc_ty.def_id();
     let def_id = local_def_id.to_def_id();
 
+    trait_assoc_ty.item_attrs(&[]);
+
     trait_assoc_ty.opt_def_kind(Some(DefKind::AssocTy));
 
     // There's no HIR associated with this new synthesized `def_id`, so feed
@@ -350,6 +352,8 @@ fn associated_type_for_impl_trait_in_impl(
 
     let local_def_id = impl_assoc_ty.def_id();
     let def_id = local_def_id.to_def_id();
+
+    impl_assoc_ty.item_attrs(&[]);
 
     impl_assoc_ty.opt_def_kind(Some(DefKind::AssocTy));
 
