@@ -823,7 +823,7 @@ fn check_impl_items_against_trait<'tcx>(
         };
         match ty_impl_item.kind {
             ty::AssocKind::Const => {
-                let _ = tcx.compare_impl_const((
+                tcx.ensure().compare_impl_const((
                     impl_item.expect_local(),
                     ty_impl_item.trait_item_def_id.unwrap(),
                 ));
