@@ -1,4 +1,4 @@
-use rustc_data_structures::unord::UnordSet;
+use rustc_data_structures::unord::{ExtendUnord, UnordSet};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::TyCtxt;

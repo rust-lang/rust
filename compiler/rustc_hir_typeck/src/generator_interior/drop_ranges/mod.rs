@@ -17,7 +17,7 @@ use self::record_consumed_borrow::find_consumed_and_borrowed;
 use crate::FnCtxt;
 use hir::def_id::DefId;
 use hir::{Body, HirId, HirIdMap, Node};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_hir as hir;
 use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
@@ -63,7 +63,7 @@ pub fn compute_drop_ranges<'a, 'tcx>(
         // If drop range tracking is not enabled, skip all the analysis and produce an
         // empty set of DropRanges.
         DropRanges {
-            tracked_value_map: FxHashMap::default(),
+            tracked_value_map: UnordMap::default(),
             nodes: IndexVec::new(),
             borrowed_temporaries: None,
         }
@@ -182,9 +182,9 @@ impl TryFrom<&PlaceWithHirId<'_>> for TrackedValue {
 }
 
 pub struct DropRanges {
-    tracked_value_map: FxHashMap<TrackedValue, TrackedValueIndex>,
+    tracked_value_map: UnordMap<TrackedValue, TrackedValueIndex>,
     nodes: IndexVec<PostOrderId, NodeInfo>,
-    borrowed_temporaries: Option<FxHashSet<HirId>>,
+    borrowed_temporaries: Option<UnordSet<HirId>>,
 }
 
 impl DropRanges {
@@ -227,7 +227,7 @@ struct DropRangesBuilder {
     /// (see NodeInfo::drop_state). The hir_id_map field stores the mapping
     /// from HirIds to the HirIdIndex that is used to represent that value in
     /// bitvector.
-    tracked_value_map: FxHashMap<TrackedValue, TrackedValueIndex>,
+    tracked_value_map: UnordMap<TrackedValue, TrackedValueIndex>,
 
     /// When building the control flow graph, we don't always know the
     /// post-order index of the target node at the point we encounter it.

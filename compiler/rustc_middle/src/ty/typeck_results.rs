@@ -7,8 +7,10 @@ use crate::{
         GenericArgKind, InternalSubsts, SubstsRef, Ty, UserSubsts,
     },
 };
-use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
-use rustc_data_structures::unord::{UnordItems, UnordSet};
+use rustc_data_structures::{
+    fx::FxIndexMap,
+    unord::{ExtendUnord, UnordItems, UnordSet},
+};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::{
@@ -180,7 +182,7 @@ pub struct TypeckResults<'tcx> {
     /// we never capture `t`. This becomes an issue when we build MIR as we require
     /// information on `t` in order to create place `t.0` and `t.1`. We can solve this
     /// issue by fake reading `t`.
-    pub closure_fake_reads: FxHashMap<LocalDefId, Vec<(HirPlace<'tcx>, FakeReadCause, hir::HirId)>>,
+    pub closure_fake_reads: LocalDefIdMap<Vec<(HirPlace<'tcx>, FakeReadCause, hir::HirId)>>,
 
     /// Tracks the rvalue scoping rules which defines finer scoping for rvalue expressions
     /// by applying extended parameter rules.
@@ -194,7 +196,7 @@ pub struct TypeckResults<'tcx> {
     /// Stores the predicates that apply on generator witness types.
     /// formatting modified file tests/ui/generator/retain-resume-ref.rs
     pub generator_interior_predicates:
-        FxHashMap<LocalDefId, Vec<(ty::Predicate<'tcx>, ObligationCause<'tcx>)>>,
+        LocalDefIdMap<Vec<(ty::Predicate<'tcx>, ObligationCause<'tcx>)>>,
 
     /// We sometimes treat byte string literals (which are of type `&[u8; N]`)
     /// as `&[u8]`, depending on the pattern in which they are used.
@@ -204,7 +206,7 @@ pub struct TypeckResults<'tcx> {
 
     /// Contains the data for evaluating the effect of feature `capture_disjoint_fields`
     /// on closure size.
-    pub closure_size_eval: FxHashMap<LocalDefId, ClosureSizeProfileData<'tcx>>,
+    pub closure_size_eval: LocalDefIdMap<ClosureSizeProfileData<'tcx>>,
 
     /// Container types and field indices of `offset_of!` expressions
     offset_of_data: ItemLocalMap<(Ty<'tcx>, Vec<FieldIdx>)>,
@@ -633,7 +635,7 @@ impl<'a, V> LocalTableInContextMut<'a, V> {
         &mut self,
         items: UnordItems<(hir::HirId, V), impl Iterator<Item = (hir::HirId, V)>>,
     ) {
-        self.data.extend(items.map(|(id, value)| {
+        self.data.extend_unord(items.map(|(id, value)| {
             validate_hir_id_for_typeck_results(self.hir_owner, id);
             (id.local_id, value)
         }))

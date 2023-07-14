@@ -6,7 +6,7 @@ use hir::{
     intravisit::{self, Visitor},
     Body, Expr, ExprKind, Guard, HirId, LoopIdError,
 };
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_hir as hir;
 use rustc_index::IndexVec;
 use rustc_infer::infer::InferCtxt;
@@ -28,7 +28,7 @@ pub(super) fn build_control_flow_graph<'tcx>(
     consumed_borrowed_places: ConsumedAndBorrowedPlaces,
     body: &'tcx Body<'tcx>,
     num_exprs: usize,
-) -> (DropRangesBuilder, FxHashSet<HirId>) {
+) -> (DropRangesBuilder, UnordSet<HirId>) {
     let mut drop_range_visitor = DropRangeVisitor::new(
         infcx,
         typeck_results,
@@ -528,7 +528,7 @@ impl DropRangesBuilder {
         hir: Map<'_>,
         num_exprs: usize,
     ) -> Self {
-        let mut tracked_value_map = FxHashMap::<_, TrackedValueIndex>::default();
+        let mut tracked_value_map = UnordMap::<_, TrackedValueIndex>::default();
         let mut next = <_>::from(0u32);
         for value in tracked_values {
             for_each_consumable(hir, value, |value| {
