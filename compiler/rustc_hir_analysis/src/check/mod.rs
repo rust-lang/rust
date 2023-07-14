@@ -188,7 +188,7 @@ fn missing_items_err(
     full_impl_span: Span,
 ) {
     let missing_items =
-        missing_items.iter().filter(|trait_item| trait_item.opt_rpitit_info.is_none());
+        missing_items.iter().filter(|trait_item| !trait_item.is_impl_trait_in_trait());
 
     let missing_items_msg = missing_items
         .clone()

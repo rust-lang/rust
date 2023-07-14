@@ -435,7 +435,7 @@ fn suggest_restriction<'tcx>(
 ) {
     if hir_generics.where_clause_span.from_expansion()
         || hir_generics.where_clause_span.desugaring_kind().is_some()
-        || projection.is_some_and(|projection| tcx.opt_rpitit_info(projection.def_id).is_some())
+        || projection.is_some_and(|projection| tcx.is_impl_trait_in_trait(projection.def_id))
     {
         return;
     }

@@ -123,7 +123,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let all_candidate_names: Vec<_> = all_candidates()
             .flat_map(|r| self.tcx().associated_items(r.def_id()).in_definition_order())
             .filter_map(|item| {
-                if item.opt_rpitit_info.is_none() && item.kind == ty::AssocKind::Type {
+                if !item.is_impl_trait_in_trait() && item.kind == ty::AssocKind::Type {
                     Some(item.name)
                 } else {
                     None
@@ -164,7 +164,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 self.tcx().associated_items(*trait_def_id).in_definition_order()
             })
             .filter_map(|item| {
-                if item.opt_rpitit_info.is_none() && item.kind == ty::AssocKind::Type {
+                if !item.is_impl_trait_in_trait() && item.kind == ty::AssocKind::Type {
                     Some(item.name)
                 } else {
                     None

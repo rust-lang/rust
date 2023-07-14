@@ -1319,7 +1319,7 @@ fn compare_number_of_generics<'tcx>(
     // has mismatched type or const generic arguments, then the method that it's
     // inheriting the generics from will also have mismatched arguments, and
     // we'll report an error for that instead. Delay a bug for safety, though.
-    if trait_.opt_rpitit_info.is_some() {
+    if trait_.is_impl_trait_in_trait() {
         return Err(tcx.sess.delay_span_bug(
             rustc_span::DUMMY_SP,
             "errors comparing numbers of generics of trait/impl functions were not emitted",
@@ -2111,7 +2111,7 @@ pub(super) fn check_type_bounds<'tcx>(
     // A synthetic impl Trait for RPITIT desugaring has no HIR, which we currently use to get the
     // span for an impl's associated type. Instead, for these, use the def_span for the synthesized
     // associated type.
-    let impl_ty_span = if impl_ty.opt_rpitit_info.is_some() {
+    let impl_ty_span = if impl_ty.is_impl_trait_in_trait() {
         tcx.def_span(impl_ty_def_id)
     } else {
         match tcx.hir().get_by_def_id(impl_ty_def_id) {
