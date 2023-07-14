@@ -136,7 +136,7 @@ fn report_single_pattern(
         }
     };
 
-    span_lint_and_sugg(cx, lint, expr.span, msg, "try this", sugg, app);
+    span_lint_and_sugg(cx, lint, expr.span, msg, "try", sugg, app);
 }
 
 fn check_opt_like<'a>(

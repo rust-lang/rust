@@ -4,17 +4,12 @@ use clippy_utils::is_range_full;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::is_type_lang_item;
 use rustc_errors::Applicability;
-use rustc_hir::Expr;
-use rustc_hir::ExprKind;
-use rustc_hir::LangItem;
-use rustc_hir::Path;
-use rustc_hir::QPath;
+use rustc_hir::{Expr, ExprKind, LangItem, Path, QPath};
 use rustc_lint::LateContext;
 use rustc_middle::query::Key;
 use rustc_middle::ty;
 use rustc_middle::ty::Ty;
-use rustc_span::sym;
-use rustc_span::Symbol;
+use rustc_span::{sym, Symbol};
 
 /// Checks if both types match the given diagnostic item, e.g.:
 ///

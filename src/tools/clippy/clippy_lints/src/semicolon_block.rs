@@ -148,12 +148,18 @@ impl LateLintPass<'_> for SemicolonBlock {
                     expr: None,
                     stmts: [.., stmt],
                     ..
-                } = block else { return };
+                } = block
+                else {
+                    return;
+                };
                 let &Stmt {
                     kind: StmtKind::Semi(expr),
                     span,
                     ..
-                } = stmt else { return };
+                } = stmt
+                else {
+                    return;
+                };
                 self.semicolon_outside_block(cx, block, expr, span);
             },
             StmtKind::Semi(Expr {

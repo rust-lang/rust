@@ -28,8 +28,7 @@ use rustc_span::sym;
 use rustc_span::symbol::Symbol;
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
-use std::fmt;
-use std::iter;
+use std::{fmt, iter};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -389,11 +388,12 @@ impl<'tcx> DerefTy<'tcx> {
     fn ty(&self, cx: &LateContext<'tcx>) -> Ty<'tcx> {
         match *self {
             Self::Str => cx.tcx.types.str_,
-            Self::Path => Ty::new_adt(cx.tcx,
+            Self::Path => Ty::new_adt(
+                cx.tcx,
                 cx.tcx.adt_def(cx.tcx.get_diagnostic_item(sym::Path).unwrap()),
                 List::empty(),
             ),
-            Self::Slice(_, ty) => Ty::new_slice(cx.tcx,ty),
+            Self::Slice(_, ty) => Ty::new_slice(cx.tcx, ty),
         }
     }
 

@@ -96,10 +96,8 @@ mod internal_impl {
 }
 /// dox
 pub mod public_interface {
-    pub use crate::internal_impl::documented as foo;
     pub use crate::internal_impl::globbed::*;
-    pub use crate::internal_impl::undocumented1 as bar;
-    pub use crate::internal_impl::{documented, undocumented2};
+    pub use crate::internal_impl::{documented as foo, documented, undocumented1 as bar, undocumented2};
 }
 
 fn main() {}

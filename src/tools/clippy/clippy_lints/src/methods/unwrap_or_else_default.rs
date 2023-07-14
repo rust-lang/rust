@@ -1,10 +1,10 @@
 //! Lint for `some_result_or_option.unwrap_or_else(Default::default)`
 
 use super::UNWRAP_OR_ELSE_DEFAULT;
-use clippy_utils::{
-    diagnostics::span_lint_and_sugg, is_default_equivalent_call, source::snippet_with_applicability,
-    ty::is_type_diagnostic_item,
-};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::is_default_equivalent_call;
+use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::ty::is_type_diagnostic_item;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir as hir;

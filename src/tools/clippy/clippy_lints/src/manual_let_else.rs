@@ -1,18 +1,17 @@
+use crate::question_mark::{QuestionMark, QUESTION_MARK};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::IfLetOrMatch;
-use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::peel_blocks;
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::visitors::{Descend, Visitable};
-use if_chain::if_chain;
+use clippy_utils::{is_lint_allowed, msrvs, pat_and_expr_can_be_question_mark, peel_blocks};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_hir::{Expr, ExprKind, HirId, ItemId, Local, MatchSource, Pat, PatKind, QPath, Stmt, StmtKind, Ty};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_lint::{LateContext, LintContext};
 use rustc_middle::lint::in_external_macro;
-use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_session::declare_tool_lint;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use serde::Deserialize;
@@ -50,25 +49,8 @@ declare_clippy_lint! {
     "manual implementation of a let...else statement"
 }
 
-pub struct ManualLetElse {
-    msrv: Msrv,
-    matches_behaviour: MatchLintBehaviour,
-}
-
-impl ManualLetElse {
-    #[must_use]
-    pub fn new(msrv: Msrv, matches_behaviour: MatchLintBehaviour) -> Self {
-        Self {
-            msrv,
-            matches_behaviour,
-        }
-    }
-}
-
-impl_lint_pass!(ManualLetElse => [MANUAL_LET_ELSE]);
-
-impl<'tcx> LateLintPass<'tcx> for ManualLetElse {
-    fn check_stmt(&mut self, cx: &LateContext<'_>, stmt: &'tcx Stmt<'tcx>) {
+impl<'tcx> QuestionMark {
+    pub(crate) fn check_manual_let_else(&mut self, cx: &LateContext<'_>, stmt: &'tcx Stmt<'tcx>) {
         if !self.msrv.meets(msrvs::LET_ELSE) || in_external_macro(cx.sess(), stmt.span) {
             return;
         }
@@ -81,11 +63,14 @@ impl<'tcx> LateLintPass<'tcx> for ManualLetElse {
             let Some(if_let_or_match) = IfLetOrMatch::parse(cx, init)
         {
             match if_let_or_match {
-                IfLetOrMatch::IfLet(if_let_expr, let_pat, if_then, if_else) => if_chain! {
-                    if let Some(ident_map) = expr_simple_identity_map(local.pat, let_pat, if_then);
-                    if let Some(if_else) = if_else;
-                    if expr_diverges(cx, if_else);
-                    then {
+                IfLetOrMatch::IfLet(if_let_expr, let_pat, if_then, if_else) => {
+                    if
+                        let Some(ident_map) = expr_simple_identity_map(local.pat, let_pat, if_then) &&
+                        let Some(if_else) = if_else &&
+                        expr_diverges(cx, if_else) &&
+                        let qm_allowed = is_lint_allowed(cx, QUESTION_MARK, stmt.hir_id) &&
+                        (qm_allowed || pat_and_expr_can_be_question_mark(cx, let_pat, if_else).is_none())
+                    {
                         emit_manual_let_else(cx, stmt.span, if_let_expr, &ident_map, let_pat, if_else);
                     }
                 },
@@ -128,8 +113,6 @@ impl<'tcx> LateLintPass<'tcx> for ManualLetElse {
             }
         };
     }
-
-    extract_msrv_attr!(LateContext);
 }
 
 fn emit_manual_let_else(
@@ -208,7 +191,9 @@ fn replace_in_pattern(
 
         match pat.kind {
             PatKind::Binding(_ann, _id, binding_name, opt_subpt) => {
-                let Some(pat_to_put) = ident_map.get(&binding_name.name) else { break 'a };
+                let Some(pat_to_put) = ident_map.get(&binding_name.name) else {
+                    break 'a;
+                };
                 let (sn_ptp, _) = snippet_with_context(cx, pat_to_put.span, span.ctxt(), "", app);
                 if let Some(subpt) = opt_subpt {
                     let subpt = replace_in_pattern(cx, span, ident_map, subpt, app, false);

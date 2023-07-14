@@ -1,10 +1,8 @@
 //! lint when there is a large size difference between variants on an enum
 
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::{
-    diagnostics::span_lint_and_then,
-    ty::{approx_ty_size, is_copy, AdtVariantInfo},
-};
+use clippy_utils::ty::{approx_ty_size, is_copy, AdtVariantInfo};
 use rustc_errors::Applicability;
 use rustc_hir::{Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};

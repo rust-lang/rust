@@ -1,14 +1,13 @@
 use hir::FnSig;
 use rustc_ast::ast::Attribute;
 use rustc_errors::Applicability;
+use rustc_hir::def::Res;
 use rustc_hir::def_id::DefIdSet;
-use rustc_hir::{self as hir, def::Res, QPath};
+use rustc_hir::{self as hir, QPath};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LintContext};
-use rustc_middle::{
-    lint::in_external_macro,
-    ty::{self, Ty},
-};
+use rustc_middle::lint::in_external_macro;
+use rustc_middle::ty::{self, Ty};
 use rustc_span::{sym, Span, Symbol};
 
 use clippy_utils::attrs::is_proc_macro;

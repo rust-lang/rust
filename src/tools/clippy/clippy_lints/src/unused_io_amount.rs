@@ -48,7 +48,7 @@ declare_lint_pass!(UnusedIoAmount => [UNUSED_IO_AMOUNT]);
 impl<'tcx> LateLintPass<'tcx> for UnusedIoAmount {
     fn check_stmt(&mut self, cx: &LateContext<'_>, s: &hir::Stmt<'_>) {
         let (hir::StmtKind::Semi(expr) | hir::StmtKind::Expr(expr)) = s.kind else {
-            return
+            return;
         };
 
         match expr.kind {

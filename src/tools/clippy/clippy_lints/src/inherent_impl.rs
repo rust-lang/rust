@@ -3,7 +3,8 @@
 use clippy_utils::diagnostics::span_lint_and_note;
 use clippy_utils::is_lint_allowed;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::{def_id::LocalDefId, Item, ItemKind, Node};
+use rustc_hir::def_id::LocalDefId;
+use rustc_hir::{Item, ItemKind, Node};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::Span;

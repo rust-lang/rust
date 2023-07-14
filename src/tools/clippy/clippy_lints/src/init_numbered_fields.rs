@@ -71,7 +71,7 @@ impl<'tcx> LateLintPass<'tcx> for NumberedFields {
                     INIT_NUMBERED_FIELDS,
                     e.span,
                     "used a field initializer for a tuple struct",
-                    "try this instead",
+                    "try",
                     snippet,
                     appl,
                 );

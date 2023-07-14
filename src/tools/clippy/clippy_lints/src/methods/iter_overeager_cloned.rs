@@ -51,7 +51,7 @@ pub(super) fn check<'tcx>(
                 if let Some(mut snip) = snippet_opt(cx, method_span) {
                     snip.push_str(trailing_clone);
                     let replace_span = expr.span.with_lo(cloned_recv.span.hi());
-                    diag.span_suggestion(replace_span, "try this", snip, Applicability::MachineApplicable);
+                    diag.span_suggestion(replace_span, "try", snip, Applicability::MachineApplicable);
                 }
             }
         );

@@ -3,8 +3,7 @@
 #![warn(clippy::min_ident_chars)]
 
 extern crate proc_macros;
-use proc_macros::external;
-use proc_macros::with_span;
+use proc_macros::{external, with_span};
 
 struct A {
     a: u32,

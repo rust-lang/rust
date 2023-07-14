@@ -492,3 +492,15 @@ mod issue_9782_method_variant {
         S.foo::<&[u8; 100]>(&a);
     }
 }
+
+mod issue_10535 {
+    static SOME_STATIC: String = String::new();
+
+    static UNIT: () = compute(&SOME_STATIC);
+
+    pub const fn compute<T>(_: T)
+    where
+        T: Copy,
+    {
+    }
+}

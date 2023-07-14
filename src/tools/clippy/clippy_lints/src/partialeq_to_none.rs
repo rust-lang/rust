@@ -1,7 +1,6 @@
-use clippy_utils::{
-    diagnostics::span_lint_and_sugg, is_res_lang_ctor, path_res, peel_hir_expr_refs, peel_ref_operators, sugg,
-    ty::is_type_diagnostic_item,
-};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::{is_res_lang_ctor, path_res, peel_hir_expr_refs, peel_ref_operators, sugg};
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, LangItem};
 use rustc_lint::{LateContext, LateLintPass};

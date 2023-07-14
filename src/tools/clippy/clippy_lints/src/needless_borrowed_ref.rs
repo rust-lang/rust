@@ -52,7 +52,9 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBorrowedRef {
         }
 
         // Only lint immutable refs, because `&mut ref T` may be useful.
-        let PatKind::Ref(pat, Mutability::Not) = ref_pat.kind else { return };
+        let PatKind::Ref(pat, Mutability::Not) = ref_pat.kind else {
+            return;
+        };
 
         match pat.kind {
             // Check sub_pat got a `ref` keyword (excluding `ref mut`).
