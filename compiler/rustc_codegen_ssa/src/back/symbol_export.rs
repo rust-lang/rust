@@ -328,14 +328,14 @@ fn exported_symbols_provider_local(
 
         let (_, cgus) = tcx.collect_and_partition_mono_items(());
 
-        for (mono_item, &(linkage, visibility)) in cgus.iter().flat_map(|cgu| cgu.items().iter()) {
-            if linkage != Linkage::External {
+        for (mono_item, data) in cgus.iter().flat_map(|cgu| cgu.items().iter()) {
+            if data.linkage != Linkage::External {
                 // We can only re-use things with external linkage, otherwise
                 // we'll get a linker error
                 continue;
             }
 
-            if need_visibility && visibility == Visibility::Hidden {
+            if need_visibility && data.visibility == Visibility::Hidden {
                 // If we potentially share things from Rust dylibs, they must
                 // not be hidden
                 continue;
