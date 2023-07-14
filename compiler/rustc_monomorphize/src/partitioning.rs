@@ -107,7 +107,8 @@ use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::exported_symbols::{SymbolExportInfo, SymbolExportLevel};
 use rustc_middle::mir;
 use rustc_middle::mir::mono::{
-    CodegenUnit, CodegenUnitNameBuilder, InstantiationMode, Linkage, MonoItem, Visibility,
+    CodegenUnit, CodegenUnitNameBuilder, InstantiationMode, Linkage, MonoItem, MonoItemData,
+    Visibility,
 };
 use rustc_middle::query::Providers;
 use rustc_middle::ty::print::{characteristic_def_id_of_type, with_no_trimmed_paths};
@@ -257,7 +258,7 @@ where
             internalization_candidates.insert(mono_item);
         }
 
-        cgu.items_mut().insert(mono_item, (linkage, visibility));
+        cgu.items_mut().insert(mono_item, MonoItemData { linkage, visibility });
 
         // Get all inlined items that are reachable from `mono_item` without
         // going via another root item. This includes drop-glue, functions from
@@ -271,7 +272,9 @@ where
         // the `insert` will be a no-op.
         for inlined_item in reachable_inlined_items {
             // This is a CGU-private copy.
-            cgu.items_mut().insert(inlined_item, (Linkage::Internal, Visibility::Default));
+            let linkage = Linkage::Internal;
+            let visibility = Visibility::Default;
+            cgu.items_mut().insert(inlined_item, MonoItemData { linkage, visibility });
         }
     }
 
@@ -492,7 +495,7 @@ fn internalize_symbols<'tcx>(
     for cgu in codegen_units {
         let home_cgu = MonoItemPlacement::SingleCgu(cgu.name());
 
-        for (item, linkage_and_visibility) in cgu.items_mut() {
+        for (item, data) in cgu.items_mut() {
             if !internalization_candidates.contains(item) {
                 // This item is no candidate for internalizing, so skip it.
                 continue;
@@ -520,7 +523,8 @@ fn internalize_symbols<'tcx>(
 
             // If we got here, we did not find any uses from other CGUs, so
             // it's fine to make this monomorphization internal.
-            *linkage_and_visibility = (Linkage::Internal, Visibility::Default);
+            data.linkage = Linkage::Internal;
+            data.visibility = Visibility::Default;
         }
     }
 }
@@ -537,7 +541,7 @@ fn mark_code_coverage_dead_code_cgu<'tcx>(codegen_units: &mut [CodegenUnit<'tcx>
     // function symbols to be included via `-u` or `/include` linker args.
     let dead_code_cgu = codegen_units
         .iter_mut()
-        .filter(|cgu| cgu.items().iter().any(|(_, (linkage, _))| *linkage == Linkage::External))
+        .filter(|cgu| cgu.items().iter().any(|(_, data)| data.linkage == Linkage::External))
         .min_by_key(|cgu| cgu.size_estimate());
 
     // If there are no CGUs that have externally linked items, then we just
@@ -937,7 +941,8 @@ fn debug_dump<'a, 'tcx: 'a>(
             let _ =
                 writeln!(s, "  - items: {num_items}, mean size: {mean_size:.1}, sizes: {sizes}",);
 
-            for (item, linkage) in cgu.items_in_deterministic_order(tcx) {
+            for (item, data) in cgu.items_in_deterministic_order(tcx) {
+                let linkage = data.linkage;
                 let symbol_name = item.symbol_name(tcx).name;
                 let symbol_hash_start = symbol_name.rfind('h');
                 let symbol_hash = symbol_hash_start.map_or("<no hash>", |i| &symbol_name[i..]);
@@ -1100,8 +1105,8 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> (&DefIdSet, &[Co
         let mut item_to_cgus: FxHashMap<_, Vec<_>> = Default::default();
 
         for cgu in codegen_units {
-            for (&mono_item, &linkage) in cgu.items() {
-                item_to_cgus.entry(mono_item).or_default().push((cgu.name(), linkage));
+            for (&mono_item, &data) in cgu.items() {
+                item_to_cgus.entry(mono_item).or_default().push((cgu.name(), data.linkage));
             }
         }
 
@@ -1114,7 +1119,7 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> (&DefIdSet, &[Co
                 let cgus = item_to_cgus.get_mut(i).unwrap_or(&mut empty);
                 cgus.sort_by_key(|(name, _)| *name);
                 cgus.dedup();
-                for &(ref cgu_name, (linkage, _)) in cgus.iter() {
+                for &(ref cgu_name, linkage) in cgus.iter() {
                     output.push(' ');
                     output.push_str(cgu_name.as_str());
 

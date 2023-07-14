@@ -230,12 +230,19 @@ pub struct CodegenUnit<'tcx> {
     /// contain something unique to this crate (e.g., a module path)
     /// as well as the crate name and disambiguator.
     name: Symbol,
-    items: FxHashMap<MonoItem<'tcx>, (Linkage, Visibility)>,
+    items: FxHashMap<MonoItem<'tcx>, MonoItemData>,
     size_estimate: usize,
     primary: bool,
     /// True if this is CGU is used to hold code coverage information for dead code,
     /// false otherwise.
     is_code_coverage_dead_code_cgu: bool,
+}
+
+/// Auxiliary info about a `MonoItem`.
+#[derive(Copy, Clone, PartialEq, Debug, HashStable)]
+pub struct MonoItemData {
+    pub linkage: Linkage,
+    pub visibility: Visibility,
 }
 
 /// Specifies the linkage type for a `MonoItem`.
@@ -292,12 +299,12 @@ impl<'tcx> CodegenUnit<'tcx> {
     }
 
     /// The order of these items is non-determinstic.
-    pub fn items(&self) -> &FxHashMap<MonoItem<'tcx>, (Linkage, Visibility)> {
+    pub fn items(&self) -> &FxHashMap<MonoItem<'tcx>, MonoItemData> {
         &self.items
     }
 
     /// The order of these items is non-determinstic.
-    pub fn items_mut(&mut self) -> &mut FxHashMap<MonoItem<'tcx>, (Linkage, Visibility)> {
+    pub fn items_mut(&mut self) -> &mut FxHashMap<MonoItem<'tcx>, MonoItemData> {
         &mut self.items
     }
 
@@ -355,7 +362,7 @@ impl<'tcx> CodegenUnit<'tcx> {
     pub fn items_in_deterministic_order(
         &self,
         tcx: TyCtxt<'tcx>,
-    ) -> Vec<(MonoItem<'tcx>, (Linkage, Visibility))> {
+    ) -> Vec<(MonoItem<'tcx>, MonoItemData)> {
         // The codegen tests rely on items being process in the same order as
         // they appear in the file, so for local items, we sort by node_id first
         #[derive(PartialEq, Eq, PartialOrd, Ord)]
@@ -390,7 +397,7 @@ impl<'tcx> CodegenUnit<'tcx> {
             )
         }
 
-        let mut items: Vec<_> = self.items().iter().map(|(&i, &l)| (i, l)).collect();
+        let mut items: Vec<_> = self.items().iter().map(|(&i, &data)| (i, data)).collect();
         items.sort_by_cached_key(|&(i, _)| item_sort_key(tcx, i));
         items
     }
