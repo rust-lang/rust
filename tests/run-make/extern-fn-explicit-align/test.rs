@@ -3,14 +3,12 @@
 use std::ffi::{CStr, c_char};
 use std::ptr::null_mut;
 
-#[derive(Copy, Clone)]
 #[repr(C)]
 pub struct BoolAndU32 {
     pub a: bool,
     pub b: u32,
 }
 
-#[derive(Copy, Clone)]
 #[repr(C)]
 #[repr(align(16))]
 pub struct TwoU64s {
@@ -18,13 +16,11 @@ pub struct TwoU64s {
     pub b: u64,
 }
 
-#[derive(Copy, Clone)]
 #[repr(C)]
 pub struct WrappedU64s {
     pub a: TwoU64s
 }
 
-#[derive(Copy, Clone)]
 #[repr(C)]
 // Even though requesting align 1 can never change the alignment, it still affects the ABI
 // on some platforms like i686-windows.
@@ -34,7 +30,6 @@ pub struct LowerAlign {
     pub b: u64,
 }
 
-#[derive(Copy, Clone)]
 #[repr(C)]
 #[repr(packed)]
 pub struct Packed {
