@@ -43,6 +43,7 @@ pub mod gha {
     /// All github actions log messages from this call to the Drop of the return value
     /// will be grouped and hidden by default in logs. Note that nesting these does
     /// not really work.
+    #[track_caller]
     pub fn group(name: impl std::fmt::Display) -> Group {
         if std::env::var_os("GITHUB_ACTIONS").is_some() {
             eprintln!("::group::{name}");
