@@ -243,6 +243,7 @@ pub struct CodegenUnit<'tcx> {
 pub struct MonoItemData {
     pub linkage: Linkage,
     pub visibility: Visibility,
+    pub size_estimate: usize,
 }
 
 /// Specifies the linkage type for a `MonoItem`.
@@ -327,16 +328,16 @@ impl<'tcx> CodegenUnit<'tcx> {
         base_n::encode(hash, base_n::CASE_INSENSITIVE)
     }
 
-    pub fn compute_size_estimate(&mut self, tcx: TyCtxt<'tcx>) {
-        // Estimate the size of a codegen unit as (approximately) the number of MIR
-        // statements it corresponds to.
-        self.size_estimate = self.items.keys().map(|mi| mi.size_estimate(tcx)).sum();
+    pub fn compute_size_estimate(&mut self) {
+        // The size of a codegen unit as the sum of the sizes of the items
+        // within it.
+        self.size_estimate = self.items.values().map(|data| data.size_estimate).sum();
     }
 
-    #[inline]
     /// Should only be called if [`compute_size_estimate`] has previously been called.
     ///
     /// [`compute_size_estimate`]: Self::compute_size_estimate
+    #[inline]
     pub fn size_estimate(&self) -> usize {
         // Items are never zero-sized, so if we have items the estimate must be
         // non-zero, unless we forgot to call `compute_size_estimate` first.

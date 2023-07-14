@@ -222,11 +222,12 @@ where
     for mono_item in mono_items {
         // Handle only root items directly here. Inlined items are handled at
         // the bottom of the loop based on reachability.
+        let size_estimate = mono_item.size_estimate(cx.tcx);
         match mono_item.instantiation_mode(cx.tcx) {
             InstantiationMode::GloballyShared { .. } => {}
             InstantiationMode::LocalCopy => {
                 num_unique_inlined_items += 1;
-                unique_inlined_items_size += mono_item.size_estimate(cx.tcx);
+                unique_inlined_items_size += size_estimate;
                 continue;
             }
         }
@@ -258,7 +259,7 @@ where
             internalization_candidates.insert(mono_item);
         }
 
-        cgu.items_mut().insert(mono_item, MonoItemData { linkage, visibility });
+        cgu.items_mut().insert(mono_item, MonoItemData { linkage, visibility, size_estimate });
 
         // Get all inlined items that are reachable from `mono_item` without
         // going via another root item. This includes drop-glue, functions from
@@ -272,9 +273,11 @@ where
         // the `insert` will be a no-op.
         for inlined_item in reachable_inlined_items {
             // This is a CGU-private copy.
-            let linkage = Linkage::Internal;
-            let visibility = Visibility::Default;
-            cgu.items_mut().insert(inlined_item, MonoItemData { linkage, visibility });
+            cgu.items_mut().entry(inlined_item).or_insert_with(|| MonoItemData {
+                linkage: Linkage::Internal,
+                visibility: Visibility::Default,
+                size_estimate: inlined_item.size_estimate(cx.tcx),
+            });
         }
     }
 
@@ -289,7 +292,7 @@ where
     codegen_units.sort_by(|a, b| a.name().as_str().cmp(b.name().as_str()));
 
     for cgu in codegen_units.iter_mut() {
-        cgu.compute_size_estimate(cx.tcx);
+        cgu.compute_size_estimate();
     }
 
     return PlacedMonoItems {
@@ -352,7 +355,7 @@ fn merge_codegen_units<'tcx>(
             && codegen_units.iter().any(|cgu| cgu.size_estimate() < NON_INCR_MIN_CGU_SIZE))
     {
         // Sort small cgus to the back.
-        codegen_units.sort_by_cached_key(|cgu| cmp::Reverse(cgu.size_estimate()));
+        codegen_units.sort_by_key(|cgu| cmp::Reverse(cgu.size_estimate()));
 
         let mut smallest = codegen_units.pop().unwrap();
         let second_smallest = codegen_units.last_mut().unwrap();
@@ -361,7 +364,7 @@ fn merge_codegen_units<'tcx>(
         // may be duplicate inlined items, in which case the destination CGU is
         // unaffected. Recalculate size estimates afterwards.
         second_smallest.items_mut().extend(smallest.items_mut().drain());
-        second_smallest.compute_size_estimate(cx.tcx);
+        second_smallest.compute_size_estimate();
 
         // Record that `second_smallest` now contains all the stuff that was
         // in `smallest` before.
@@ -882,15 +885,15 @@ fn debug_dump<'a, 'tcx: 'a>(
             num_cgus += 1;
             all_cgu_sizes.push(cgu.size_estimate());
 
-            for (item, _) in cgu.items() {
+            for (item, data) in cgu.items() {
                 match item.instantiation_mode(tcx) {
                     InstantiationMode::GloballyShared { .. } => {
                         root_items += 1;
-                        root_size += item.size_estimate(tcx);
+                        root_size += data.size_estimate;
                     }
                     InstantiationMode::LocalCopy => {
                         placed_inlined_items += 1;
-                        placed_inlined_size += item.size_estimate(tcx);
+                        placed_inlined_size += data.size_estimate;
                     }
                 }
             }
@@ -932,7 +935,7 @@ fn debug_dump<'a, 'tcx: 'a>(
             let mean_size = size as f64 / num_items as f64;
 
             let mut placed_item_sizes: Vec<_> =
-                cgu.items().iter().map(|(item, _)| item.size_estimate(tcx)).collect();
+                cgu.items().values().map(|data| data.size_estimate).collect();
             placed_item_sizes.sort_unstable_by_key(|&n| cmp::Reverse(n));
             let sizes = list(&placed_item_sizes);
 
@@ -946,11 +949,11 @@ fn debug_dump<'a, 'tcx: 'a>(
                 let symbol_name = item.symbol_name(tcx).name;
                 let symbol_hash_start = symbol_name.rfind('h');
                 let symbol_hash = symbol_hash_start.map_or("<no hash>", |i| &symbol_name[i..]);
-                let size = item.size_estimate(tcx);
                 let kind = match item.instantiation_mode(tcx) {
                     InstantiationMode::GloballyShared { .. } => "root",
                     InstantiationMode::LocalCopy => "inlined",
                 };
+                let size = data.size_estimate;
                 let _ = with_no_trimmed_paths!(writeln!(
                     s,
                     "  - {item} [{linkage:?}] [{symbol_hash}] ({kind}, size: {size})"
