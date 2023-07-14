@@ -344,6 +344,11 @@ impl<K: DepKind> DepGraphData<K> {
         task: fn(Ctxt, A) -> R,
         hash_result: Option<fn(&mut StableHashingContext<'_>, &R) -> Fingerprint>,
     ) -> (R, DepNodeIndex) {
+        // If the following assertion triggers, it can have two reasons:
+        // 1. Something is wrong with DepNode creation, either here or
+        //    in `DepGraph::try_mark_green()`.
+        // 2. Two distinct query keys get mapped to the same `DepNode`
+        //    (see for example #48923).
         self.assert_nonexistent_node(&key, || {
             format!(
                 "forcing query with already existing `DepNode`\n\
