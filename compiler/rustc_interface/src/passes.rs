@@ -822,19 +822,15 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
     parallel!(
         {
             tcx.ensure().effective_visibilities(());
-
-            parallel!(
-                {
-                    tcx.ensure().check_private_in_public(());
-                },
-                {
-                    tcx.hir()
-                        .par_for_each_module(|module| tcx.ensure().check_mod_deathness(module));
-                },
-                {
-                    rustc_lint::check_crate(tcx, rustc_lint::BuiltinCombinedLateLintPass::new);
-                }
-            );
+        },
+        {
+            tcx.ensure().check_private_in_public(());
+        },
+        {
+            tcx.hir().par_for_each_module(|module| tcx.ensure().check_mod_deathness(module));
+        },
+        {
+            rustc_lint::check_crate(tcx, rustc_lint::BuiltinCombinedLateLintPass::new);
         },
         {
             tcx.hir().par_for_each_module(|module| tcx.ensure().check_mod_privacy(module));
