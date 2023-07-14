@@ -131,11 +131,6 @@ struct PlacedMonoItems<'tcx> {
     codegen_units: Vec<CodegenUnit<'tcx>>,
 
     internalization_candidates: FxHashSet<MonoItem<'tcx>>,
-
-    /// These must be obtained when the iterator in `partition` runs. They
-    /// can't be obtained later because some inlined functions might not be
-    /// reachable.
-    unique_inlined_stats: (usize, usize),
 }
 
 // The output CGUs are sorted by name.
@@ -153,11 +148,11 @@ where
 
     // Place all mono items into a codegen unit. `place_mono_items` is
     // responsible for initializing the CGU size estimates.
-    let PlacedMonoItems { mut codegen_units, internalization_candidates, unique_inlined_stats } = {
+    let PlacedMonoItems { mut codegen_units, internalization_candidates } = {
         let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_place_items");
         let placed = place_mono_items(cx, mono_items);
 
-        debug_dump(tcx, "PLACE", &placed.codegen_units, placed.unique_inlined_stats);
+        debug_dump(tcx, "PLACE", &placed.codegen_units);
 
         placed
     };
@@ -168,7 +163,7 @@ where
     {
         let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_merge_cgus");
         merge_codegen_units(cx, &mut codegen_units);
-        debug_dump(tcx, "MERGE", &codegen_units, unique_inlined_stats);
+        debug_dump(tcx, "MERGE", &codegen_units);
     }
 
     // Make as many symbols "internal" as possible, so LLVM has more freedom to
@@ -177,7 +172,7 @@ where
         let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_internalize_symbols");
         internalize_symbols(cx, &mut codegen_units, internalization_candidates);
 
-        debug_dump(tcx, "INTERNALIZE", &codegen_units, unique_inlined_stats);
+        debug_dump(tcx, "INTERNALIZE", &codegen_units);
     }
 
     // Mark one CGU for dead code, if necessary.
@@ -217,19 +212,12 @@ where
     let cgu_name_builder = &mut CodegenUnitNameBuilder::new(cx.tcx);
     let cgu_name_cache = &mut FxHashMap::default();
 
-    let mut num_unique_inlined_items = 0;
-    let mut unique_inlined_items_size = 0;
     for mono_item in mono_items {
         // Handle only root items directly here. Inlined items are handled at
         // the bottom of the loop based on reachability.
-        let size_estimate = mono_item.size_estimate(cx.tcx);
         match mono_item.instantiation_mode(cx.tcx) {
             InstantiationMode::GloballyShared { .. } => {}
-            InstantiationMode::LocalCopy => {
-                num_unique_inlined_items += 1;
-                unique_inlined_items_size += size_estimate;
-                continue;
-            }
+            InstantiationMode::LocalCopy => continue,
         }
 
         let characteristic_def_id = characteristic_def_id_of_mono_item(cx.tcx, mono_item);
@@ -258,6 +246,7 @@ where
         if visibility == Visibility::Hidden && can_be_internalized {
             internalization_candidates.insert(mono_item);
         }
+        let size_estimate = mono_item.size_estimate(cx.tcx);
 
         cgu.items_mut().insert(mono_item, MonoItemData { linkage, visibility, size_estimate });
 
@@ -295,11 +284,7 @@ where
         cgu.compute_size_estimate();
     }
 
-    return PlacedMonoItems {
-        codegen_units,
-        internalization_candidates,
-        unique_inlined_stats: (num_unique_inlined_items, unique_inlined_items_size),
-    };
+    return PlacedMonoItems { codegen_units, internalization_candidates };
 
     fn get_reachable_inlined_items<'tcx>(
         tcx: TyCtxt<'tcx>,
@@ -858,12 +843,7 @@ fn default_visibility(tcx: TyCtxt<'_>, id: DefId, is_generic: bool) -> Visibilit
     }
 }
 
-fn debug_dump<'a, 'tcx: 'a>(
-    tcx: TyCtxt<'tcx>,
-    label: &str,
-    cgus: &[CodegenUnit<'tcx>],
-    (unique_inlined_items, unique_inlined_size): (usize, usize),
-) {
+fn debug_dump<'a, 'tcx: 'a>(tcx: TyCtxt<'tcx>, label: &str, cgus: &[CodegenUnit<'tcx>]) {
     let dump = move || {
         use std::fmt::Write;
 
@@ -872,13 +852,17 @@ fn debug_dump<'a, 'tcx: 'a>(
 
         // Note: every unique root item is placed exactly once, so the number
         // of unique root items always equals the number of placed root items.
+        //
+        // Also, unreached inlined items won't be counted here. This is fine.
+
+        let mut inlined_items = FxHashSet::default();
 
         let mut root_items = 0;
-        // unique_inlined_items is passed in above.
+        let mut unique_inlined_items = 0;
         let mut placed_inlined_items = 0;
 
         let mut root_size = 0;
-        // unique_inlined_size is passed in above.
+        let mut unique_inlined_size = 0;
         let mut placed_inlined_size = 0;
 
         for cgu in cgus.iter() {
@@ -892,6 +876,10 @@ fn debug_dump<'a, 'tcx: 'a>(
                         root_size += data.size_estimate;
                     }
                     InstantiationMode::LocalCopy => {
+                        if inlined_items.insert(item) {
+                            unique_inlined_items += 1;
+                            unique_inlined_size += data.size_estimate;
+                        }
                         placed_inlined_items += 1;
                         placed_inlined_size += data.size_estimate;
                     }
