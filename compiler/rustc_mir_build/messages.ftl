@@ -312,6 +312,8 @@ mir_build_unreachable_pattern = unreachable pattern
     .label = unreachable pattern
     .catchall_label = matches any value
 
+mir_build_unsafe_not_inherited = items do not inherit unsafety from separate enclosing items
+
 mir_build_unsafe_op_in_unsafe_fn_borrow_of_layout_constrained_field_requires_unsafe =
     borrow of layout constrained field with interior mutability is unsafe and requires unsafe block (error E0133)
     .note = references to fields of layout constrained fields lose the constraints. Coupled with interior mutability, the field can be changed to invalid values

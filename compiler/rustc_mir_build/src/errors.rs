@@ -119,6 +119,8 @@ pub struct CallToUnsafeFunctionRequiresUnsafe<'a> {
     #[label]
     pub span: Span,
     pub function: &'a str,
+    #[subdiagnostic]
+    pub unsafe_not_inherited_note: Option<UnsafeNotInheritedNote>,
 }
 
 #[derive(Diagnostic)]
@@ -128,6 +130,8 @@ pub struct CallToUnsafeFunctionRequiresUnsafeNameless {
     #[primary_span]
     #[label]
     pub span: Span,
+    #[subdiagnostic]
+    pub unsafe_not_inherited_note: Option<UnsafeNotInheritedNote>,
 }
 
 #[derive(Diagnostic)]
@@ -138,6 +142,8 @@ pub struct CallToUnsafeFunctionRequiresUnsafeUnsafeOpInUnsafeFnAllowed<'a> {
     #[label]
     pub span: Span,
     pub function: &'a str,
+    #[subdiagnostic]
+    pub unsafe_not_inherited_note: Option<UnsafeNotInheritedNote>,
 }
 
 #[derive(Diagnostic)]
@@ -150,6 +156,8 @@ pub struct CallToUnsafeFunctionRequiresUnsafeNamelessUnsafeOpInUnsafeFnAllowed {
     #[primary_span]
     #[label]
     pub span: Span,
+    #[subdiagnostic]
+    pub unsafe_not_inherited_note: Option<UnsafeNotInheritedNote>,
 }
 
 #[derive(Diagnostic)]
@@ -159,6 +167,8 @@ pub struct UseOfInlineAssemblyRequiresUnsafe {
     #[primary_span]
     #[label]
     pub span: Span,
+    #[subdiagnostic]
+    pub unsafe_not_inherited_note: Option<UnsafeNotInheritedNote>,
 }
 
 #[derive(Diagnostic)]
@@ -168,6 +178,8 @@ pub struct UseOfInlineAssemblyRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
     #[primary_span]
     #[label]
     pub span: Span,
+    #[subdiagnostic]
+    pub unsafe_not_inherited_note: Option<UnsafeNotInheritedNote>,
 }
 
 #[derive(Diagnostic)]
@@ -177,6 +189,8 @@ pub struct InitializingTypeWithRequiresUnsafe {
     #[primary_span]
     #[label]
     pub span: Span,
+    #[subdiagnostic]
+    pub unsafe_not_inherited_note: Option<UnsafeNotInheritedNote>,
 }
 
 #[derive(Diagnostic)]
@@ -189,6 +203,8 @@ pub struct InitializingTypeWithRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
     #[primary_span]
     #[label]
     pub span: Span,
+    #[subdiagnostic]
+    pub unsafe_not_inherited_note: Option<UnsafeNotInheritedNote>,
 }
 
 #[derive(Diagnostic)]
@@ -198,6 +214,8 @@ pub struct UseOfMutableStaticRequiresUnsafe {
     #[primary_span]
     #[label]
     pub span: Span,
+    #[subdiagnostic]
+    pub unsafe_not_inherited_note: Option<UnsafeNotInheritedNote>,
 }
 
 #[derive(Diagnostic)]
@@ -207,6 +225,8 @@ pub struct UseOfMutableStaticRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
     #[primary_span]
     #[label]
     pub span: Span,
+    #[subdiagnostic]
+    pub unsafe_not_inherited_note: Option<UnsafeNotInheritedNote>,
 }
 
 #[derive(Diagnostic)]
@@ -216,6 +236,8 @@ pub struct UseOfExternStaticRequiresUnsafe {
     #[primary_span]
     #[label]
     pub span: Span,
+    #[subdiagnostic]
+    pub unsafe_not_inherited_note: Option<UnsafeNotInheritedNote>,
 }
 
 #[derive(Diagnostic)]
@@ -225,6 +247,8 @@ pub struct UseOfExternStaticRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
     #[primary_span]
     #[label]
     pub span: Span,
+    #[subdiagnostic]
+    pub unsafe_not_inherited_note: Option<UnsafeNotInheritedNote>,
 }
 
 #[derive(Diagnostic)]
@@ -234,6 +258,8 @@ pub struct DerefOfRawPointerRequiresUnsafe {
     #[primary_span]
     #[label]
     pub span: Span,
+    #[subdiagnostic]
+    pub unsafe_not_inherited_note: Option<UnsafeNotInheritedNote>,
 }
 
 #[derive(Diagnostic)]
@@ -243,6 +269,8 @@ pub struct DerefOfRawPointerRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
     #[primary_span]
     #[label]
     pub span: Span,
+    #[subdiagnostic]
+    pub unsafe_not_inherited_note: Option<UnsafeNotInheritedNote>,
 }
 
 #[derive(Diagnostic)]
@@ -252,6 +280,8 @@ pub struct AccessToUnionFieldRequiresUnsafe {
     #[primary_span]
     #[label]
     pub span: Span,
+    #[subdiagnostic]
+    pub unsafe_not_inherited_note: Option<UnsafeNotInheritedNote>,
 }
 
 #[derive(Diagnostic)]
@@ -261,6 +291,8 @@ pub struct AccessToUnionFieldRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
     #[primary_span]
     #[label]
     pub span: Span,
+    #[subdiagnostic]
+    pub unsafe_not_inherited_note: Option<UnsafeNotInheritedNote>,
 }
 
 #[derive(Diagnostic)]
@@ -270,6 +302,8 @@ pub struct MutationOfLayoutConstrainedFieldRequiresUnsafe {
     #[primary_span]
     #[label]
     pub span: Span,
+    #[subdiagnostic]
+    pub unsafe_not_inherited_note: Option<UnsafeNotInheritedNote>,
 }
 
 #[derive(Diagnostic)]
@@ -282,6 +316,8 @@ pub struct MutationOfLayoutConstrainedFieldRequiresUnsafeUnsafeOpInUnsafeFnAllow
     #[primary_span]
     #[label]
     pub span: Span,
+    #[subdiagnostic]
+    pub unsafe_not_inherited_note: Option<UnsafeNotInheritedNote>,
 }
 
 #[derive(Diagnostic)]
@@ -291,6 +327,8 @@ pub struct BorrowOfLayoutConstrainedFieldRequiresUnsafe {
     #[primary_span]
     #[label]
     pub span: Span,
+    #[subdiagnostic]
+    pub unsafe_not_inherited_note: Option<UnsafeNotInheritedNote>,
 }
 
 #[derive(Diagnostic)]
@@ -303,6 +341,8 @@ pub struct BorrowOfLayoutConstrainedFieldRequiresUnsafeUnsafeOpInUnsafeFnAllowed
     #[primary_span]
     #[label]
     pub span: Span,
+    #[subdiagnostic]
+    pub unsafe_not_inherited_note: Option<UnsafeNotInheritedNote>,
 }
 
 #[derive(Diagnostic)]
@@ -313,6 +353,8 @@ pub struct CallToFunctionWithRequiresUnsafe<'a> {
     #[label]
     pub span: Span,
     pub function: &'a str,
+    #[subdiagnostic]
+    pub unsafe_not_inherited_note: Option<UnsafeNotInheritedNote>,
 }
 
 #[derive(Diagnostic)]
@@ -323,6 +365,15 @@ pub struct CallToFunctionWithRequiresUnsafeUnsafeOpInUnsafeFnAllowed<'a> {
     #[label]
     pub span: Span,
     pub function: &'a str,
+    #[subdiagnostic]
+    pub unsafe_not_inherited_note: Option<UnsafeNotInheritedNote>,
+}
+
+#[derive(Subdiagnostic)]
+#[label(mir_build_unsafe_not_inherited)]
+pub struct UnsafeNotInheritedNote {
+    #[primary_span]
+    pub span: Span,
 }
 
 #[derive(LintDiagnostic)]
