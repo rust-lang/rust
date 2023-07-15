@@ -126,11 +126,11 @@ use types::*;
 use unused::*;
 
 /// Useful for other parts of the compiler / Clippy.
-pub use builtin::SoftLints;
+pub use builtin::{MissingDoc, SoftLints};
 pub use context::{CheckLintNameResult, FindLintError, LintStore};
 pub use context::{EarlyContext, LateContext, LintContext};
 pub use early::{check_ast_node, EarlyCheckNode};
-pub use late::{check_crate, unerased_lint_store};
+pub use late::{check_crate, late_lint_mod, unerased_lint_store};
 pub use passes::{EarlyLintPass, LateLintPass};
 pub use rustc_session::lint::Level::{self, *};
 pub use rustc_session::lint::{BufferedEarlyLint, FutureIncompatibleInfo, Lint, LintId};
@@ -146,7 +146,7 @@ pub fn provide(providers: &mut Providers) {
 }
 
 fn lint_mod(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
-    late::late_lint_mod(tcx, module_def_id, BuiltinCombinedModuleLateLintPass::new());
+    late_lint_mod(tcx, module_def_id, BuiltinCombinedModuleLateLintPass::new());
 }
 
 early_lint_methods!(
@@ -180,19 +180,6 @@ early_lint_methods!(
             RedundantSemicolons: RedundantSemicolons,
             UnusedDocComment: UnusedDocComment,
             UnexpectedCfgs: UnexpectedCfgs,
-        ]
-    ]
-);
-
-// FIXME: Make a separate lint type which does not require typeck tables.
-
-late_lint_methods!(
-    declare_combined_late_lint_pass,
-    [
-        pub BuiltinCombinedLateLintPass,
-        [
-            // Tracks attributes of parents
-            MissingDoc: MissingDoc::new(),
         ]
     ]
 );
@@ -250,6 +237,7 @@ late_lint_methods!(
             MultipleSupertraitUpcastable: MultipleSupertraitUpcastable,
             MapUnitFn: MapUnitFn,
             MissingDebugImplementations: MissingDebugImplementations,
+            MissingDoc: MissingDoc,
         ]
     ]
 );
@@ -278,7 +266,6 @@ fn register_builtins(store: &mut LintStore) {
     store.register_lints(&BuiltinCombinedPreExpansionLintPass::get_lints());
     store.register_lints(&BuiltinCombinedEarlyLintPass::get_lints());
     store.register_lints(&BuiltinCombinedModuleLateLintPass::get_lints());
-    store.register_lints(&BuiltinCombinedLateLintPass::get_lints());
     store.register_lints(&foreign_modules::get_lints());
 
     add_lint_group!(

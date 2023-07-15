@@ -1,4 +1,5 @@
 use crate::{
+    builtin::MISSING_DOCS,
     context::{CheckLintNameResult, LintStore},
     fluent_generated as fluent,
     late::unerased_lint_store,
@@ -664,6 +665,16 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                     LintId::of(SINGLE_USE_LIFETIMES),
                     (Level::Allow, LintLevelSource::Default),
                 );
+                continue;
+            }
+
+            // `#[doc(hidden)]` disables missing_docs check.
+            if attr.has_name(sym::doc)
+                && attr
+                    .meta_item_list()
+                    .map_or(false, |l| ast::attr::list_contains_name(&l, sym::hidden))
+            {
+                self.insert(LintId::of(MISSING_DOCS), (Level::Allow, LintLevelSource::Default));
                 continue;
             }
 

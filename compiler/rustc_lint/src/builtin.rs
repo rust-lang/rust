@@ -457,10 +457,7 @@ declare_lint! {
     report_in_external_macro
 }
 
-pub struct MissingDoc {
-    /// Stack of whether `#[doc(hidden)]` is set at each level which has lint attributes.
-    doc_hidden_stack: Vec<bool>,
-}
+pub struct MissingDoc;
 
 impl_lint_pass!(MissingDoc => [MISSING_DOCS]);
 
@@ -489,14 +486,6 @@ fn has_doc(attr: &ast::Attribute) -> bool {
 }
 
 impl MissingDoc {
-    pub fn new() -> MissingDoc {
-        MissingDoc { doc_hidden_stack: vec![false] }
-    }
-
-    fn doc_hidden(&self) -> bool {
-        *self.doc_hidden_stack.last().expect("empty doc_hidden_stack")
-    }
-
     fn check_missing_docs_attrs(
         &self,
         cx: &LateContext<'_>,
@@ -507,11 +496,6 @@ impl MissingDoc {
         // If we're building a test harness, then warning about
         // documentation is probably not really relevant right now.
         if cx.sess().opts.test {
-            return;
-        }
-
-        // `#[doc(hidden)]` disables missing_docs check.
-        if self.doc_hidden() {
             return;
         }
 
@@ -537,23 +521,6 @@ impl MissingDoc {
 }
 
 impl<'tcx> LateLintPass<'tcx> for MissingDoc {
-    #[inline]
-    fn enter_lint_attrs(&mut self, _cx: &LateContext<'_>, attrs: &[ast::Attribute]) {
-        let doc_hidden = self.doc_hidden()
-            || attrs.iter().any(|attr| {
-                attr.has_name(sym::doc)
-                    && match attr.meta_item_list() {
-                        None => false,
-                        Some(l) => attr::list_contains_name(&l, sym::hidden),
-                    }
-            });
-        self.doc_hidden_stack.push(doc_hidden);
-    }
-
-    fn exit_lint_attrs(&mut self, _: &LateContext<'_>, _attrs: &[ast::Attribute]) {
-        self.doc_hidden_stack.pop().expect("empty doc_hidden_stack");
-    }
-
     fn check_crate(&mut self, cx: &LateContext<'_>) {
         self.check_missing_docs_attrs(cx, CRATE_DEF_ID, "the", "crate");
     }
