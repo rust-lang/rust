@@ -12,6 +12,7 @@
 #![feature(associated_type_bounds)]
 #![feature(exhaustive_patterns)]
 #![feature(iter_intersperse)]
+#![feature(let_chains)]
 #![feature(min_specialization)]
 #![feature(never_type)]
 #![feature(rustc_attrs)]

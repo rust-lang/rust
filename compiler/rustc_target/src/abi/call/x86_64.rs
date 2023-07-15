@@ -213,7 +213,7 @@ where
         match cls_or_mem {
             Err(Memory) => {
                 if is_arg {
-                    arg.make_indirect_byval();
+                    arg.make_indirect_byval(None);
                 } else {
                     // `sret` parameter thus one less integer register available
                     arg.make_indirect();
