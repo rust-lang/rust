@@ -30,7 +30,7 @@ pub(crate) fn try_run_tests(builder: &Builder<'_>, cmd: &mut Command, stream: bo
 
     if !run_tests(builder, cmd, stream) {
         if builder.fail_fast {
-            crate::detail_exit_macro!(1);
+            crate::exit!(1);
         } else {
             let mut failures = builder.delayed_failures.borrow_mut();
             failures.push(format!("{cmd:?}"));

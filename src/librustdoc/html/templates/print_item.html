@@ -18,7 +18,7 @@
         {% endif %}
         {% match src_href %}
             {% when Some with (href) %}
-                <a class="srclink" href="{{href|safe}}">source</a> · {#+ #}
+                <a class="src" href="{{href|safe}}">source</a> · {#+ #}
             {% else %}
         {% endmatch %}
         <button id="toggle-all-docs" title="collapse all docs"> {# #}

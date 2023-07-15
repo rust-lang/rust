@@ -253,7 +253,7 @@ impl Config {
             if !help_on_error.is_empty() {
                 eprintln!("{}", help_on_error);
             }
-            crate::detail_exit_macro!(1);
+            crate::exit!(1);
         }
     }
 

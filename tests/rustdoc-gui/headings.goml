@@ -194,27 +194,27 @@ call-function: (
     "check-colors",
     {
         "theme": "ayu",
-        "heading_color": "rgb(255, 255, 255)",
-        "small_heading_color": "rgb(197, 197, 197)",
-        "heading_border_color": "rgb(92, 103, 115)",
+        "heading_color": "#fff",
+        "small_heading_color": "#c5c5c5",
+        "heading_border_color": "#5c6773",
     },
 )
 call-function: (
     "check-colors",
     {
         "theme": "dark",
-        "heading_color": "rgb(221, 221, 221)",
-        "small_heading_color": "rgb(221, 221, 221)",
-        "heading_border_color": "rgb(210, 210, 210)",
+        "heading_color": "#ddd",
+        "small_heading_color": "#ddd",
+        "heading_border_color": "#d2d2d2",
     },
 )
 call-function: (
     "check-colors",
     {
         "theme": "light",
-        "heading_color": "rgb(0, 0, 0)",
-        "small_heading_color": "rgb(0, 0, 0)",
-        "heading_border_color": "rgb(221, 221, 221)",
+        "heading_color": "black",
+        "small_heading_color": "black",
+        "heading_border_color": "#ddd",
     },
 )
 
@@ -224,7 +224,7 @@ define-function: (
     block {
         set-local-storage: {"rustdoc-theme": |theme|}
         reload:
-        assert-css: (".since", {"color": "rgb(128, 128, 128)"}, ALL)
+        assert-css: (".since", {"color": "#808080"}, ALL)
     },
 )
 

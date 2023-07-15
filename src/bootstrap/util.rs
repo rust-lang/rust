@@ -229,7 +229,7 @@ pub fn is_valid_test_suite_arg<'a, P: AsRef<Path>>(
 
 pub fn run(cmd: &mut Command, print_cmd_on_fail: bool) {
     if try_run(cmd, print_cmd_on_fail).is_err() {
-        crate::detail_exit_macro!(1);
+        crate::exit!(1);
     }
 }
 
@@ -253,7 +253,7 @@ pub fn check_run(cmd: &mut Command, print_cmd_on_fail: bool) -> bool {
 
 pub fn run_suppressed(cmd: &mut Command) {
     if !try_run_suppressed(cmd) {
-        crate::detail_exit_macro!(1);
+        crate::exit!(1);
     }
 }
 

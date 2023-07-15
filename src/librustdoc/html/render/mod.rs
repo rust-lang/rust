@@ -1821,9 +1821,9 @@ fn render_rightside(
     );
     if let Some(l) = src_href {
         if has_stability {
-            write!(rightside, " · <a class=\"srclink\" href=\"{}\">source</a>", l)
+            write!(rightside, " · <a class=\"src\" href=\"{}\">source</a>", l)
         } else {
-            write!(rightside, "<a class=\"srclink rightside\" href=\"{}\">source</a>", l)
+            write!(rightside, "<a class=\"src rightside\" href=\"{}\">source</a>", l)
         }
     }
     if has_stability && has_src_ref {

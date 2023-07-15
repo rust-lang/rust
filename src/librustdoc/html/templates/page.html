@@ -42,9 +42,9 @@
     <script src="{{static_root_path|safe}}{{files.storage_js}}"></script> {# #}
     {% if page.css_class.contains("crate") %}
     <script defer src="{{page.root_path|safe}}crates{{page.resource_suffix}}.js"></script> {# #}
-    {% else if page.css_class == "source" %}
-    <script defer src="{{static_root_path|safe}}{{files.source_script_js}}"></script> {# #}
-    <script defer src="{{page.root_path|safe}}source-files{{page.resource_suffix}}.js"></script> {# #}
+    {% else if page.css_class == "src" %}
+    <script defer src="{{static_root_path|safe}}{{files.src_script_js}}"></script> {# #}
+    <script defer src="{{page.root_path|safe}}src-files{{page.resource_suffix}}.js"></script> {# #}
     {% else if !page.css_class.contains("mod") %}
     <script defer src="sidebar-items{{page.resource_suffix}}.js"></script> {# #}
     {% endif %}
@@ -85,7 +85,7 @@
     </div> {# #}
     <![endif]--> {# #}
     {{ layout.external_html.before_content|safe }}
-    {% if page.css_class != "source" %}
+    {% if page.css_class != "src" %}
     <nav class="mobile-topbar"> {# #}
         <button class="sidebar-menu-toggle">&#9776;</button> {# #}
         <a class="logo-container" href="{{page.root_path|safe}}{{krate_with_trailing_slash|safe}}index.html"> {# #}
@@ -99,7 +99,7 @@
     </nav> {# #}
     {% endif %}
     <nav class="sidebar"> {# #}
-        {% if page.css_class != "source" %}
+        {% if page.css_class != "src" %}
         <a class="logo-container" href="{{page.root_path|safe}}{{krate_with_trailing_slash|safe}}index.html"> {# #}
             {% if !layout.logo.is_empty() %}
                 <img src="{{layout.logo}}" alt="logo"> {# #}
@@ -111,9 +111,9 @@
         {{ sidebar|safe }}
     </nav> {# #}
     <main> {# #}
-        {% if page.css_class != "source" %}<div class="width-limiter">{% endif %}
+        {% if page.css_class != "src" %}<div class="width-limiter">{% endif %}
             <nav class="sub"> {# #}
-                {% if page.css_class == "source" %}
+                {% if page.css_class == "src" %}
                 <a class="sub-logo-container" href="{{page.root_path|safe}}{{krate_with_trailing_slash|safe}}index.html"> {# #}
                     {% if !layout.logo.is_empty() %}
                         <img src="{{layout.logo}}" alt="logo"> {# #}
@@ -144,7 +144,7 @@
                 </form> {# #}
             </nav> {# #}
             <section id="main-content" class="content">{{ content|safe }}</section> {# #}
-        {% if page.css_class != "source" %}</div>{% endif %}
+        {% if page.css_class != "src" %}</div>{% endif %}
     </main> {# #}
     {{ layout.external_html.after_content|safe }}
 </body> {# #}

@@ -185,7 +185,7 @@ updateTheme();
 if (getSettingValue("source-sidebar-show") === "true") {
     // At this point in page load, `document.body` is not available yet.
     // Set a class on the `<html>` element instead.
-    addClass(document.documentElement, "source-sidebar-expanded");
+    addClass(document.documentElement, "src-sidebar-expanded");
 }
 
 // If we navigate away (for example to a settings page), and then use the back or

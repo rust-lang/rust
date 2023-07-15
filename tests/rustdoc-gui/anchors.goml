@@ -17,34 +17,34 @@ define-function: (
         assert-css: (".main-heading h1 a:nth-of-type(1)", {"color": |main_heading_color|})
         assert-css: (".main-heading a:nth-of-type(2)", {"color": |main_heading_type_color|})
         assert-css: (
-             ".rightside .srclink",
+             ".rightside a.src",
              {"color": |src_link_color|, "text-decoration": "none solid " + |src_link_color|},
              ALL,
         )
         compare-elements-css: (
-            ".rightside .srclink",
-            ".rightside.srclink",
+            ".rightside a.src",
+            "a.rightside.src",
             ["color", "text-decoration"],
         )
         compare-elements-css: (
-            ".main-heading .srclink",
-            ".rightside.srclink",
+            ".main-heading a.src",
+            "a.rightside.src",
             ["color", "text-decoration"],
         )
 
-        move-cursor-to: ".main-heading .srclink"
+        move-cursor-to: ".main-heading a.src"
         assert-css: (
-             ".main-heading .srclink",
+             ".main-heading a.src",
              {"color": |src_link_color|, "text-decoration": "underline solid " + |src_link_color|},
         )
-        move-cursor-to: ".impl-items .rightside .srclink"
+        move-cursor-to: ".impl-items .rightside a.src"
         assert-css: (
-             ".impl-items .rightside .srclink",
+             ".impl-items .rightside a.src",
              {"color": |src_link_color|, "text-decoration": "none solid " + |src_link_color|},
         )
-        move-cursor-to: ".impl-items .rightside.srclink"
+        move-cursor-to: ".impl-items a.rightside.src"
         assert-css: (
-             ".impl-items .rightside.srclink",
+             ".impl-items a.rightside.src",
              {"color": |src_link_color|, "text-decoration": "none solid " + |src_link_color|},
         )
 
