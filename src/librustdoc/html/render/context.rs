@@ -349,12 +349,7 @@ impl<'tcx> Context<'tcx> {
                     let e = ExternalCrate { crate_num: cnum };
                     (e.name(self.tcx()), e.src_root(self.tcx()))
                 }
-                ExternalLocation::Unknown => {
-                    let e = ExternalCrate { crate_num: cnum };
-                    let name = e.name(self.tcx());
-                    root = name.to_string();
-                    (name, e.src_root(self.tcx()))
-                }
+                ExternalLocation::Unknown => return None,
             };
 
             let href = RefCell::new(PathBuf::new());
