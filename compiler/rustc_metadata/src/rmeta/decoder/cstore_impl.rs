@@ -403,7 +403,7 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
                         .contains(&id)
                 })
         },
-        native_libraries: |tcx, LocalCrate| native_libs::collect(tcx),
+        native_libraries: native_libs::collect,
         foreign_modules: foreign_modules::collect,
 
         // Returns a map from a sufficiently visible external item (i.e., an
