@@ -135,6 +135,7 @@ impl Step for Std {
             let hostdir = builder.sysroot_libdir(compiler, compiler.host);
             add_to_sysroot(&builder, &libdir, &hostdir, &libstd_stamp(builder, compiler, target));
         }
+        drop(_guard);
 
         // don't run on std twice with x.py clippy
         // don't check test dependencies if we haven't built libtest

@@ -999,6 +999,8 @@ impl Build {
         }
     }
 
+    #[must_use = "Groups should not be dropped until the Step finishes running"]
+    #[track_caller]
     fn msg_check(
         &self,
         what: impl Display,
@@ -1007,6 +1009,8 @@ impl Build {
         self.msg(Kind::Check, self.config.stage, what, self.config.build, target)
     }
 
+    #[must_use = "Groups should not be dropped until the Step finishes running"]
+    #[track_caller]
     fn msg_doc(
         &self,
         compiler: Compiler,
@@ -1016,6 +1020,8 @@ impl Build {
         self.msg(Kind::Doc, compiler.stage, what, compiler.host, target.into())
     }
 
+    #[must_use = "Groups should not be dropped until the Step finishes running"]
+    #[track_caller]
     fn msg_build(
         &self,
         compiler: Compiler,
@@ -1028,6 +1034,8 @@ impl Build {
     /// Return a `Group` guard for a [`Step`] that is built for each `--stage`.
     ///
     /// [`Step`]: crate::builder::Step
+    #[must_use = "Groups should not be dropped until the Step finishes running"]
+    #[track_caller]
     fn msg(
         &self,
         action: impl Into<Kind>,
@@ -1054,6 +1062,8 @@ impl Build {
     /// Return a `Group` guard for a [`Step`] that is only built once and isn't affected by `--stage`.
     ///
     /// [`Step`]: crate::builder::Step
+    #[must_use = "Groups should not be dropped until the Step finishes running"]
+    #[track_caller]
     fn msg_unstaged(
         &self,
         action: impl Into<Kind>,
@@ -1065,6 +1075,8 @@ impl Build {
         self.group(&msg)
     }
 
+    #[must_use = "Groups should not be dropped until the Step finishes running"]
+    #[track_caller]
     fn msg_sysroot_tool(
         &self,
         action: impl Into<Kind>,
@@ -1083,6 +1095,7 @@ impl Build {
         self.group(&msg)
     }
 
+    #[track_caller]
     fn group(&self, msg: &str) -> Option<gha::Group> {
         match self.config.dry_run {
             DryRun::SelfCheck => None,

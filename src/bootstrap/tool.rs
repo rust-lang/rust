@@ -34,6 +34,7 @@ struct ToolBuild {
 }
 
 impl Builder<'_> {
+    #[track_caller]
     fn msg_tool(
         &self,
         mode: Mode,
