@@ -806,19 +806,26 @@ fn get_metadata_section<'p>(
             let compressed_len = u32::from_be_bytes(len_bytes) as usize;
 
             // Header is okay -> inflate the actual metadata
-            let compressed_bytes = &buf[data_start..(data_start + compressed_len)];
-            debug!("inflating {} bytes of compressed metadata", compressed_bytes.len());
-            // Assume the decompressed data will be at least the size of the compressed data, so we
-            // don't have to grow the buffer as much.
-            let mut inflated = Vec::with_capacity(compressed_bytes.len());
-            FrameDecoder::new(compressed_bytes).read_to_end(&mut inflated).map_err(|_| {
-                MetadataError::LoadFailure(format!(
-                    "failed to decompress metadata: {}",
-                    filename.display()
-                ))
-            })?;
+            let compressed_bytes = buf.slice(|buf| &buf[data_start..(data_start + compressed_len)]);
+            if &compressed_bytes[..cmp::min(METADATA_HEADER.len(), compressed_bytes.len())]
+                == METADATA_HEADER
+            {
+                // The metadata was not actually compressed.
+                compressed_bytes
+            } else {
+                debug!("inflating {} bytes of compressed metadata", compressed_bytes.len());
+                // Assume the decompressed data will be at least the size of the compressed data, so we
+                // don't have to grow the buffer as much.
+                let mut inflated = Vec::with_capacity(compressed_bytes.len());
+                FrameDecoder::new(&*compressed_bytes).read_to_end(&mut inflated).map_err(|_| {
+                    MetadataError::LoadFailure(format!(
+                        "failed to decompress metadata: {}",
+                        filename.display()
+                    ))
+                })?;
 
-            slice_owned(inflated, Deref::deref)
+                slice_owned(inflated, Deref::deref)
+            }
         }
         CrateFlavor::Rmeta => {
             // mmap the file, because only a small fraction of it is read.
