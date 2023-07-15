@@ -506,20 +506,20 @@ fn register_internals(store: &mut LintStore) {
     store.register_lints(&LintPassImpl::get_lints());
     store.register_early_pass(|| Box::new(LintPassImpl));
     store.register_lints(&DefaultHashTypes::get_lints());
-    store.register_late_pass(|_| Box::new(DefaultHashTypes));
+    store.register_late_mod_pass(|_| Box::new(DefaultHashTypes));
     store.register_lints(&QueryStability::get_lints());
-    store.register_late_pass(|_| Box::new(QueryStability));
+    store.register_late_mod_pass(|_| Box::new(QueryStability));
     store.register_lints(&ExistingDocKeyword::get_lints());
-    store.register_late_pass(|_| Box::new(ExistingDocKeyword));
+    store.register_late_mod_pass(|_| Box::new(ExistingDocKeyword));
     store.register_lints(&TyTyKind::get_lints());
-    store.register_late_pass(|_| Box::new(TyTyKind));
+    store.register_late_mod_pass(|_| Box::new(TyTyKind));
     store.register_lints(&Diagnostics::get_lints());
     store.register_early_pass(|| Box::new(Diagnostics));
-    store.register_late_pass(|_| Box::new(Diagnostics));
+    store.register_late_mod_pass(|_| Box::new(Diagnostics));
     store.register_lints(&BadOptAccess::get_lints());
-    store.register_late_pass(|_| Box::new(BadOptAccess));
+    store.register_late_mod_pass(|_| Box::new(BadOptAccess));
     store.register_lints(&PassByValue::get_lints());
-    store.register_late_pass(|_| Box::new(PassByValue));
+    store.register_late_mod_pass(|_| Box::new(PassByValue));
     // FIXME(davidtwco): deliberately do not include `UNTRANSLATABLE_DIAGNOSTIC` and
     // `DIAGNOSTIC_OUTSIDE_OF_IMPL` here because `-Wrustc::internal` is provided to every crate and
     // these lints will trigger all of the time - change this once migration to diagnostic structs
