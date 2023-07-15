@@ -117,7 +117,7 @@ impl Step for ToolBuild {
 
         if !is_expected {
             if !is_optional_tool {
-                crate::detail_exit_macro!(1);
+                crate::exit!(1);
             } else {
                 None
             }

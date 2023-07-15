@@ -1820,7 +1820,7 @@ pub fn run_cargo(
     });
 
     if !ok {
-        crate::detail_exit_macro!(1);
+        crate::exit!(1);
     }
 
     // Ok now we need to actually find all the files listed in `toplevel`. We've

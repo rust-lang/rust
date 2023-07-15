@@ -27,7 +27,7 @@ use std::process::{Command, Stdio};
 use std::str;
 
 use build_helper::ci::{gha, CiEnv};
-use build_helper::detail_exit_macro;
+use build_helper::exit;
 use channel::GitInfo;
 use config::{DryRun, Target};
 use filetime::FileTime;
@@ -191,7 +191,7 @@ pub enum GitRepo {
 /// although most functions are implemented as free functions rather than
 /// methods specifically on this structure itself (to make it easier to
 /// organize).
-#[cfg_attr(not(feature = "build-metrics"), derive(Clone))]
+#[derive(Clone)]
 pub struct Build {
     /// User-specified configuration from `config.toml`.
     config: Config,
@@ -711,7 +711,7 @@ impl Build {
             for failure in failures.iter() {
                 eprintln!("  - {}\n", failure);
             }
-            detail_exit_macro!(1);
+            exit!(1);
         }
 
         #[cfg(feature = "build-metrics")]
@@ -1529,7 +1529,7 @@ impl Build {
                 "Error: Unable to find the stamp file {}, did you try to keep a nonexistent build stage?",
                 stamp.display()
             );
-            crate::detail_exit_macro!(1);
+            crate::exit!(1);
         }
 
         let mut paths = Vec::new();
@@ -1721,7 +1721,7 @@ Alternatively, set `download-ci-llvm = true` in that `[llvm]` section
 to download LLVM rather than building it.
 "
                 );
-                detail_exit_macro!(1);
+                exit!(1);
             }
         }
 
