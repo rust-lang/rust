@@ -709,7 +709,7 @@ impl<B: WriteBackendMethods> WorkItem<B> {
         fn desc(short: &str, _long: &str, name: &str) -> String {
             // The short label is three bytes, and is followed by a space. That
             // leaves 11 bytes for the CGU name. How we obtain those 11 bytes
-            // depends on the the CGU name form.
+            // depends on the CGU name form.
             //
             // - Non-incremental, e.g. `regex.f10ba03eb5ec7975-cgu.0`: the part
             //   before the `-cgu.0` is the same for every CGU, so use the
