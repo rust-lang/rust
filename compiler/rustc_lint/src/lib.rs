@@ -193,10 +193,6 @@ late_lint_methods!(
         [
             // Tracks attributes of parents
             MissingDoc: MissingDoc::new(),
-            // Builds a global list of all impls of `Debug`.
-            // FIXME: Turn the computation of types which implement Debug into a query
-            // and change this to a module lint pass
-            MissingDebugImplementations: MissingDebugImplementations::default(),
         ]
     ]
 );
@@ -253,6 +249,7 @@ late_lint_methods!(
             OpaqueHiddenInferredBound: OpaqueHiddenInferredBound,
             MultipleSupertraitUpcastable: MultipleSupertraitUpcastable,
             MapUnitFn: MapUnitFn,
+            MissingDebugImplementations: MissingDebugImplementations,
         ]
     ]
 );

@@ -39,7 +39,7 @@ use crate::{
         BuiltinUnstableFeatures, BuiltinUnusedDocComment, BuiltinUnusedDocCommentSub,
         BuiltinWhileTrue, SuggestChangingAssocTypes,
     },
-    EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext,
+    EarlyContext, EarlyLintPass, LateContext, LateLintPass, Level, LintContext,
 };
 use hir::IsAsync;
 use rustc_ast::attr;
@@ -51,7 +51,7 @@ use rustc_errors::{Applicability, DecorateLint, MultiSpan};
 use rustc_feature::{deprecated_attributes, AttributeGate, BuiltinAttribute, GateIssue, Stability};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdSet, CRATE_DEF_ID};
+use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
 use rustc_hir::intravisit::FnKind as HirFnKind;
 use rustc_hir::{Body, FnDecl, GenericParamKind, Node, PatKind, PredicateOrigin};
 use rustc_middle::lint::in_external_macro;
@@ -774,9 +774,7 @@ declare_lint! {
 }
 
 #[derive(Default)]
-pub struct MissingDebugImplementations {
-    impling_types: Option<LocalDefIdSet>,
-}
+pub(crate) struct MissingDebugImplementations;
 
 impl_lint_pass!(MissingDebugImplementations => [MISSING_DEBUG_IMPLEMENTATIONS]);
 
@@ -793,21 +791,18 @@ impl<'tcx> LateLintPass<'tcx> for MissingDebugImplementations {
 
         let Some(debug) = cx.tcx.get_diagnostic_item(sym::Debug) else { return };
 
-        if self.impling_types.is_none() {
-            let mut impls = LocalDefIdSet::default();
-            cx.tcx.for_each_impl(debug, |d| {
-                if let Some(ty_def) = cx.tcx.type_of(d).instantiate_identity().ty_adt_def() {
-                    if let Some(def_id) = ty_def.did().as_local() {
-                        impls.insert(def_id);
-                    }
-                }
-            });
-
-            self.impling_types = Some(impls);
-            debug!("{:?}", self.impling_types);
+        // Avoid listing trait impls if the trait is allowed.
+        let (level, _) = cx.tcx.lint_level_at_node(MISSING_DEBUG_IMPLEMENTATIONS, item.hir_id());
+        if level == Level::Allow {
+            return;
         }
 
-        if !self.impling_types.as_ref().unwrap().contains(&item.owner_id.def_id) {
+        let has_impl = cx
+            .tcx
+            .non_blanket_impls_for_ty(debug, cx.tcx.type_of(item.owner_id).instantiate_identity())
+            .next()
+            .is_some();
+        if !has_impl {
             cx.emit_spanned_lint(
                 MISSING_DEBUG_IMPLEMENTATIONS,
                 item.span,

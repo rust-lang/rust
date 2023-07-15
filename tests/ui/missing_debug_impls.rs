@@ -35,4 +35,4 @@ struct PrivateStruct;
 enum PrivateEnum {}
 
 #[derive(Debug)]
-struct GenericType<T>(T);
+pub struct GenericType<T>(T);
