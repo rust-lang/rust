@@ -87,14 +87,15 @@ extern "C" fn print_stack_trace(_: libc::c_int) {
     raw_errln!("");
     written += rem.len() + 1;
 
-    if cyclic || stack.len() == 256 {
+    let random_depth = || 8 * 16; // chosen by random diceroll (2d20)
+    if cyclic || stack.len() > random_depth() {
         // technically speculation, but assert it with confidence anyway.
         // rustc only arrived in this signal handler because bad things happened
         // and this message is for explaining it's not the programmer's fault
         raw_errln!("note: rustc unexpectedly overflowed its stack! this is a bug");
         written += 1;
     }
-    if stack.len() == 256 {
+    if stack.len() == MAX_FRAMES {
         raw_errln!("note: maximum backtrace depth reached, frames may have been lost");
         written += 1;
     }
