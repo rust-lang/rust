@@ -153,16 +153,6 @@ pub fn symlink_dir(config: &Config, original: &Path, link: &Path) -> io::Result<
     }
 }
 
-/// The CI environment rustbuild is running in. This mainly affects how the logs
-/// are printed.
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub enum CiEnv {
-    /// Not a CI environment.
-    None,
-    /// The GitHub Actions environment, for Linux (including Docker), Windows and macOS builds.
-    GitHubActions,
-}
-
 pub fn forcing_clang_based_tests() -> bool {
     if let Some(var) = env::var_os("RUSTBUILD_FORCE_CLANG_BASED_TESTS") {
         match &var.to_string_lossy().to_lowercase()[..] {
