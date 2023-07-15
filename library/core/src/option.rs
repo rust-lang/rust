@@ -2465,6 +2465,53 @@ impl<T> ops::FromResidual<ops::Yeet<()>> for Option<T> {
     }
 }
 
+impl<T: ops::Add> ops::Add for Option<T> {
+    type Output = Option<T>;
+
+    fn add(self, rhs: Output<T>) -> Self::Output {
+        match self {
+            Some(a) => match rhs {
+                Some(b) => Some(a + b),
+                None => Some(a),
+            },
+            None => rhs,
+        }
+    }
+}
+
+impl<T: ops::Sub> ops::Sub for Option<T> {
+    type Output = Option<T>;
+
+    fn sub(self, rhs: Output<T>) -> Self::Output {
+        match self {
+            Some(a) => match rhs {
+                Some(b) => Some(a - b),
+                None => Some(a),
+            },
+            None => match rhs {
+                Some(b) => Some(-b),
+                None => None,
+            }
+        }
+    }
+}
+
+impl<T: ops::AddAssign> ops::AddAssign for Option<T> {
+    type Output = Option<T>;
+
+    fn add_assign(&mut self, rhs: Output<T>) -> Self::Output {
+        self = self + rhs
+    }
+}
+
+impl<T: ops::SubAssign> ops::SubAssign for Option<T> {
+    type Output = Option<T>;
+
+    fn sub_assign(&mut self, rhs: Output<T>) -> Self::Output {
+        self = self - rhs
+    }
+}
+
 #[unstable(feature = "try_trait_v2_residual", issue = "91285")]
 impl<T> ops::Residual<T> for Option<convert::Infallible> {
     type TryType = Option<T>;
