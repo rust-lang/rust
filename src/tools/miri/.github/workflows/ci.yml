@@ -115,7 +115,12 @@ jobs:
         run: cargo install -f rustup-toolchain-install-master
 
       - name: Install "master" toolchain
-        run: ./miri toolchain
+        run: |
+          if [[ ${{ github.event_name }} == 'schedule' ]]; then
+            echo "Building against latest rustc git version"
+            git ls-remote https://github.com/rust-lang/rust/ HEAD | cut -f 1 > rust-version
+          fi
+          ./miri toolchain
 
       - name: Show Rust version
         run: |
@@ -203,7 +208,7 @@ jobs:
           ./miri fmt --check || (./miri fmt && git commit -am "fmt")
       - name: Push changes to a branch
         run: |
-          BRANCH="rustup$(date -u +%Y-%m-%d)"
+          BRANCH="rustup-$(date -u +%Y-%m-%d)"
           git switch -c $BRANCH
           git push -u origin $BRANCH
       - name: Create Pull Request
