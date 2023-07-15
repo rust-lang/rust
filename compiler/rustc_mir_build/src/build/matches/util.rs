@@ -35,7 +35,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let tcx = self.tcx;
         let (min_length, exact_size) = if let Some(place_resolved) = place.try_to_place(self) {
             match place_resolved.ty(&self.local_decls, tcx).ty.kind() {
-                ty::Array(_, length) => (length.eval_target_usize(tcx, self.param_env), true),
+                ty::Array(_, length) => {
+                    let evaluated_const = length.eval(tcx, self.param_env);
+                    let min_length = match evaluated_const.kind() {
+                        ty::ConstKind::Error(_) => return,
+                        ty::ConstKind::Value(value) => value.try_to_target_usize(tcx).unwrap(),
+                        _ => unreachable!(),
+                    };
+                    (min_length, true)
+                }
                 _ => ((prefix.len() + suffix.len()).try_into().unwrap(), false),
             }
         } else {

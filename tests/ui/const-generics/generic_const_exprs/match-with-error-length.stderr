@@ -1,0 +1,27 @@
+error[E0425]: cannot find value `Abc` in this scope
+  --> $DIR/match-with-error-length.rs:7:28
+   |
+LL | pub async fn a(path: &[(); Abc]) {
+   |                            ^^^ not found in this scope
+
+error[E0425]: cannot find value `Abc` in this scope
+  --> $DIR/match-with-error-length.rs:14:28
+   |
+LL | pub async fn b(path: &[(); Abc]) {
+   |                            ^^^ not found in this scope
+
+error[E0425]: cannot find value `N_ISLANDS` in this scope
+  --> $DIR/match-with-error-length.rs:21:32
+   |
+LL | pub async fn c(path: &[[usize; N_ISLANDS]; PrivateStruct]) -> usize {
+   |                                ^^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find value `PrivateStruct` in this scope
+  --> $DIR/match-with-error-length.rs:21:44
+   |
+LL | pub async fn c(path: &[[usize; N_ISLANDS]; PrivateStruct]) -> usize {
+   |                                            ^^^^^^^^^^^^^ not found in this scope
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0425`.
