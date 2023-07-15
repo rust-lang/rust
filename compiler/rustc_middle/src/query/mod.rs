@@ -1596,6 +1596,11 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    /// Lint against `extern fn` declarations having incompatible types.
+    query clashing_extern_declarations(_: ()) {
+        desc { "checking `extern fn` declarations are compatible" }
+    }
+
     /// Identifies the entry-point (e.g., the `main` function) for a given
     /// crate, returning `None` if there is no entry point (such as for library crates).
     query entry_fn(_: ()) -> Option<(DefId, EntryFnType)> {

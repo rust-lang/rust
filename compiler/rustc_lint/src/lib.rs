@@ -59,6 +59,7 @@ mod enum_intrinsics_non_enums;
 mod errors;
 mod expect;
 mod for_loops_over_fallibles;
+mod foreign_modules;
 pub mod hidden_unicode_codepoints;
 mod internal;
 mod invalid_from_utf8;
@@ -140,6 +141,7 @@ fluent_messages! { "../messages.ftl" }
 pub fn provide(providers: &mut Providers) {
     levels::provide(providers);
     expect::provide(providers);
+    foreign_modules::provide(providers);
     *providers = Providers { lint_mod, ..*providers };
 }
 
@@ -195,8 +197,6 @@ late_lint_methods!(
             // FIXME: Turn the computation of types which implement Debug into a query
             // and change this to a module lint pass
             MissingDebugImplementations: MissingDebugImplementations::default(),
-            // Keeps a global list of foreign declarations.
-            ClashingExternDeclarations: ClashingExternDeclarations::new(),
         ]
     ]
 );
@@ -282,6 +282,7 @@ fn register_builtins(store: &mut LintStore) {
     store.register_lints(&BuiltinCombinedEarlyLintPass::get_lints());
     store.register_lints(&BuiltinCombinedModuleLateLintPass::get_lints());
     store.register_lints(&BuiltinCombinedLateLintPass::get_lints());
+    store.register_lints(&foreign_modules::get_lints());
 
     add_lint_group!(
         "nonstandard_style",
