@@ -744,9 +744,6 @@ fn main_args(handler: &mut EarlyErrorHandler, at_args: &[String]) -> MainResult 
         }
     };
 
-    // Set parallel mode before error handler creation, which will create `Lock`s.
-    interface::set_thread_safe_mode(&options.unstable_opts);
-
     let diag = core::new_handler(
         options.error_format,
         None,

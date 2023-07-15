@@ -68,6 +68,6 @@ fn compile(code: String, output: PathBuf, sysroot: PathBuf) {
             let ongoing_codegen = queries.ongoing_codegen()?;
             queries.linker(ongoing_codegen)
         });
-        linker.unwrap().link();
+        linker.unwrap().link().unwrap();
     });
 }
