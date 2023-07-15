@@ -503,6 +503,25 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     }
                 }
 
+                let attrs = self.tcx.codegen_fn_attrs(instance.def_id());
+                let missing_features: Vec<_> = attrs
+                    .target_features
+                    .iter()
+                    .copied()
+                    .filter(|feature| !self.tcx.sess.target_features.contains(feature))
+                    .collect();
+                if !missing_features.is_empty() {
+                    let mut missing_features_str = String::from(missing_features[0].as_str());
+                    for missing_feature in missing_features[1..].iter() {
+                        missing_features_str.push(',');
+                        missing_features_str.push_str(missing_feature.as_str());
+                    }
+                    throw_ub_custom!(
+                        fluent::const_eval_unavailable_target_features_for_fn,
+                        unavailable_feats = missing_features_str,
+                    );
+                }
+
                 if !callee_fn_abi.can_unwind {
                     // The callee cannot unwind, so force the `Unreachable` unwind handling.
                     unwind = mir::UnwindAction::Unreachable;
