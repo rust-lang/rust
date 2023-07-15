@@ -154,40 +154,6 @@ note: the lint level is defined here
 LL |     #[deny(missing_docs)]
    |            ^^^^^^^^^^^^
 
-error: `clashing1` redeclared with a different signature
-  --> $DIR/lint-attr-everywhere-late.rs:123:5
-   |
-LL |         fn clashing1();
-   |         --------------- `clashing1` previously declared here
-...
-LL |     fn clashing1(_: i32);
-   |     ^^^^^^^^^^^^^^^^^^^^^ this signature doesn't match the previous declaration
-   |
-   = note: expected `unsafe extern "C" fn()`
-              found `unsafe extern "C" fn(i32)`
-note: the lint level is defined here
-  --> $DIR/lint-attr-everywhere-late.rs:122:13
-   |
-LL |     #![deny(clashing_extern_declarations)]
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: `clashing2` redeclared with a different signature
-  --> $DIR/lint-attr-everywhere-late.rs:128:5
-   |
-LL |         fn clashing2();
-   |         --------------- `clashing2` previously declared here
-...
-LL |     fn clashing2(_: i32);
-   |     ^^^^^^^^^^^^^^^^^^^^^ this signature doesn't match the previous declaration
-   |
-   = note: expected `unsafe extern "C" fn()`
-              found `unsafe extern "C" fn(i32)`
-note: the lint level is defined here
-  --> $DIR/lint-attr-everywhere-late.rs:127:12
-   |
-LL |     #[deny(clashing_extern_declarations)]
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
 error: types that do not implement `Drop` can still have drop glue, consider instead using `std::mem::needs_drop` to detect whether a type is trivially dropped
   --> $DIR/lint-attr-everywhere-late.rs:93:38
    |
@@ -435,6 +401,40 @@ note: the lint level is defined here
    |
 LL |     TupleStruct(#[deny(enum_intrinsics_non_enums)] discriminant::<i32>(&123));
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `clashing1` redeclared with a different signature
+  --> $DIR/lint-attr-everywhere-late.rs:123:5
+   |
+LL |         fn clashing1();
+   |         -------------- `clashing1` previously declared here
+...
+LL |     fn clashing1(_: i32);
+   |     ^^^^^^^^^^^^^^^^^^^^ this signature doesn't match the previous declaration
+   |
+   = note: expected `unsafe extern "C" fn()`
+              found `unsafe extern "C" fn(i32)`
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-late.rs:122:13
+   |
+LL |     #![deny(clashing_extern_declarations)]
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `clashing2` redeclared with a different signature
+  --> $DIR/lint-attr-everywhere-late.rs:128:5
+   |
+LL |         fn clashing2();
+   |         -------------- `clashing2` previously declared here
+...
+LL |     fn clashing2(_: i32);
+   |     ^^^^^^^^^^^^^^^^^^^^ this signature doesn't match the previous declaration
+   |
+   = note: expected `unsafe extern "C" fn()`
+              found `unsafe extern "C" fn(i32)`
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-late.rs:127:12
+   |
+LL |     #[deny(clashing_extern_declarations)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 32 previous errors
 
