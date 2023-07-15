@@ -914,12 +914,7 @@ class RustBuild(object):
 
         # preserve existing RUSTFLAGS
         env.setdefault("RUSTFLAGS", "")
-        # we need to explicitly add +xgot here so that we can successfully bootstrap
-        # a usable stage1 compiler
-        # FIXME: remove this if condition on the next bootstrap bump
-        # cfg(bootstrap)
-        if self.build_triple().startswith('mips'):
-            env["RUSTFLAGS"] += " -Ctarget-feature=+xgot"
+
         target_features = []
         if self.get_toml("crt-static", build_section) == "true":
             target_features += ["+crt-static"]

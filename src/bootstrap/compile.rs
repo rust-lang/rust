@@ -222,13 +222,6 @@ fn copy_third_party_objects(
 ) -> Vec<(PathBuf, DependencyType)> {
     let mut target_deps = vec![];
 
-    // FIXME: remove this in 2021
-    if target == "x86_64-fortanix-unknown-sgx" {
-        if env::var_os("X86_FORTANIX_SGX_LIBS").is_some() {
-            builder.info("Warning: X86_FORTANIX_SGX_LIBS environment variable is ignored, libunwind is now compiled as part of rustbuild");
-        }
-    }
-
     if builder.config.sanitizers_enabled(target) && compiler.stage != 0 {
         // The sanitizers are only copied in stage1 or above,
         // to avoid creating dependency on LLVM.
