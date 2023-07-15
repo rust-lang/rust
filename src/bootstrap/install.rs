@@ -55,7 +55,12 @@ fn install_sh(
     let _guard = builder.msg(Kind::Install, stage, package, host, host);
 
     let prefix = default_path(&builder.config.prefix, "/usr/local");
-    let sysconfdir = prefix.join(default_path(&builder.config.sysconfdir, "/etc"));
+    // if prefix isn't specified, we want this to be an absolute path, outside `/usr/local`. but if it is specified, make sysconfdir relative.
+    let sysconfdir = if builder.config.prefix.is_some() {
+        prefix.join(default_path(&builder.config.sysconfdir, "etc"))
+    } else {
+        "/etc/".into()
+    };
     let datadir = prefix.join(default_path(&builder.config.datadir, "share"));
     let docdir = prefix.join(default_path(&builder.config.docdir, "share/doc/rust"));
     let mandir = prefix.join(default_path(&builder.config.mandir, "share/man"));
