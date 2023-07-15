@@ -13,6 +13,7 @@ RUN apt-get update -y && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-
       git \
       libc6-dev \
       libc6-dev-armhf-cross \
+      libssl-dev \
       make \
       ninja-build \
       python3 \
@@ -74,6 +75,9 @@ RUN arm-linux-gnueabihf-gcc addentropy.c -o rootfs/addentropy -static
 # TODO: What is this?!
 # Source of the file: https://github.com/vfdev-5/qemu-rpi2-vexpress/raw/master/vexpress-v2p-ca15-tc1.dtb
 RUN curl -O https://ci-mirrors.rust-lang.org/rustc/vexpress-v2p-ca15-tc1.dtb
+
+COPY scripts/cmake.sh /scripts/
+RUN /scripts/cmake.sh
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh

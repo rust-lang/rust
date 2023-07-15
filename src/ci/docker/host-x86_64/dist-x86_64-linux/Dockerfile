@@ -48,6 +48,10 @@ COPY host-x86_64/dist-x86_64-linux/shared.sh /tmp/
 COPY host-x86_64/dist-x86_64-linux/build-gcc.sh /tmp/
 RUN ./build-gcc.sh && yum remove -y gcc gcc-c++
 
+# LLVM 17 needs cmake 3.20 or higher.
+COPY scripts/cmake.sh /tmp/
+RUN ./cmake.sh
+
 # Now build LLVM+Clang, afterwards configuring further compilations to use the
 # clang/clang++ compilers.
 COPY host-x86_64/dist-x86_64-linux/build-clang.sh /tmp/
