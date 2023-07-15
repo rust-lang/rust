@@ -8,10 +8,10 @@
 pub struct SomeStruct;
 
 // @has src/static_root_path/static-root-path.rs.html
-// @matchesraw - '"/cache/source-script-'
-// @!matchesraw - '"\.\./\.\./source-script'
-// @matchesraw - '"\.\./\.\./source-files.js"'
-// @!matchesraw - '"/cache/source-files\.js"'
+// @matchesraw - '"/cache/src-script-'
+// @!matchesraw - '"\.\./\.\./src-script'
+// @matchesraw - '"\.\./\.\./src-files.js"'
+// @!matchesraw - '"/cache/src-files\.js"'
 
 // @has settings.html
 // @matchesraw - '/cache/settings-'

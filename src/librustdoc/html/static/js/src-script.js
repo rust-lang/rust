@@ -1,5 +1,5 @@
 // From rust:
-/* global sourcesIndex */
+/* global srcIndex */
 
 // Local js definitions:
 /* global addClass, getCurrentValue, onEachLazy, removeClass, browserSupportsHistoryApi */
@@ -74,11 +74,11 @@ function createDirEntry(elem, parent, fullPath, hasFoundFile) {
 function toggleSidebar() {
     const child = this.parentNode.children[0];
     if (child.innerText === ">") {
-        addClass(document.documentElement, "source-sidebar-expanded");
+        addClass(document.documentElement, "src-sidebar-expanded");
         child.innerText = "<";
         updateLocalStorage("source-sidebar-show", "true");
     } else {
-        removeClass(document.documentElement, "source-sidebar-expanded");
+        removeClass(document.documentElement, "src-sidebar-expanded");
         child.innerText = ">";
         updateLocalStorage("source-sidebar-show", "false");
     }
@@ -101,16 +101,16 @@ function createSidebarToggle() {
     return sidebarToggle;
 }
 
-// This function is called from "source-files.js", generated in `html/render/write_shared.rs`.
+// This function is called from "src-files.js", generated in `html/render/write_shared.rs`.
 // eslint-disable-next-line no-unused-vars
-function createSourceSidebar() {
+function createSrcSidebar() {
     const container = document.querySelector("nav.sidebar");
 
     const sidebarToggle = createSidebarToggle();
     container.insertBefore(sidebarToggle, container.firstChild);
 
     const sidebar = document.createElement("div");
-    sidebar.id = "source-sidebar";
+    sidebar.id = "src-sidebar";
 
     let hasFoundFile = false;
 
@@ -118,9 +118,9 @@ function createSourceSidebar() {
     title.className = "title";
     title.innerText = "Files";
     sidebar.appendChild(title);
-    Object.keys(sourcesIndex).forEach(key => {
-        sourcesIndex[key][NAME_OFFSET] = key;
-        hasFoundFile = createDirEntry(sourcesIndex[key], sidebar, "", hasFoundFile);
+    Object.keys(srcIndex).forEach(key => {
+        srcIndex[key][NAME_OFFSET] = key;
+        hasFoundFile = createDirEntry(srcIndex[key], sidebar, "", hasFoundFile);
     });
 
     container.appendChild(sidebar);
@@ -133,7 +133,7 @@ function createSourceSidebar() {
 
 const lineNumbersRegex = /^#?(\d+)(?:-(\d+))?$/;
 
-function highlightSourceLines(match) {
+function highlightSrcLines(match) {
     if (typeof match === "undefined") {
         match = window.location.hash.match(lineNumbersRegex);
     }
@@ -172,7 +172,7 @@ function highlightSourceLines(match) {
     }
 }
 
-const handleSourceHighlight = (function() {
+const handleSrcHighlight = (function() {
     let prev_line_id = 0;
 
     const set_fragment = name => {
@@ -180,7 +180,7 @@ const handleSourceHighlight = (function() {
             y = window.scrollY;
         if (browserSupportsHistoryApi()) {
             history.replaceState(null, null, "#" + name);
-            highlightSourceLines();
+            highlightSrcLines();
         } else {
             location.replace("#" + name);
         }
@@ -221,15 +221,15 @@ const handleSourceHighlight = (function() {
 window.addEventListener("hashchange", () => {
     const match = window.location.hash.match(lineNumbersRegex);
     if (match) {
-        return highlightSourceLines(match);
+        return highlightSrcLines(match);
     }
 });
 
 onEachLazy(document.getElementsByClassName("src-line-numbers"), el => {
-    el.addEventListener("click", handleSourceHighlight);
+    el.addEventListener("click", handleSrcHighlight);
 });
 
-highlightSourceLines();
+highlightSrcLines();
 
-window.createSourceSidebar = createSourceSidebar;
+window.createSrcSidebar = createSrcSidebar;
 })();
