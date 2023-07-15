@@ -6,7 +6,6 @@ fn vis() {
     check(PrefixEntryPoint::Vis, "fn foo() {}", "");
     check(PrefixEntryPoint::Vis, "pub(fn foo() {}", "pub");
     check(PrefixEntryPoint::Vis, "pub(crate fn foo() {}", "pub(crate");
-    check(PrefixEntryPoint::Vis, "crate fn foo() {}", "crate");
 }
 
 #[test]
