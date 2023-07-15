@@ -1,0 +1,6 @@
+warning: failed to connect to jobserver from environment variable `MAKEFLAGS="--jobserver-auth=3,3"`: cannot open file descriptor 3 from the jobserver environment variable value: Bad file descriptor (os error 9)
+  |
+  = note: the build environment is likely misconfigured
+
+error: no input filename given
+
