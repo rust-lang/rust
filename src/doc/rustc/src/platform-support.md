@@ -277,10 +277,10 @@ target | std | host | notes
 [`mipsel-sony-psx`](platform-support/mipsel-sony-psx.md) | * |  | MIPS (LE) Sony PlayStation 1 (PSX)
 `mipsel-unknown-linux-uclibc` | ✓ |  | MIPS (LE) Linux with uClibc
 `mipsel-unknown-none` | * |  | Bare MIPS (LE) softfloat
-`mipsisa32r6-unknown-linux-gnu` | ? |  |
-`mipsisa32r6el-unknown-linux-gnu` | ? |  |
-`mipsisa64r6-unknown-linux-gnuabi64` | ? |  |
-`mipsisa64r6el-unknown-linux-gnuabi64` | ? |  |
+[`mipsisa32r6-unknown-linux-gnu`](platform-support/mips-release-6.md) | ? |  | 32-bit MIPS Release 6 Big Endian
+[`mipsisa32r6el-unknown-linux-gnu`](platform-support/mips-release-6.md) | ? |  | 32-bit MIPS Release 6 Little Endian
+[`mipsisa64r6-unknown-linux-gnuabi64`](platform-support/mips-release-6.md) | ? |  | 64-bit MIPS Release 6 Big Endian
+[`mipsisa64r6el-unknown-linux-gnuabi64`](platform-support/mips-release-6.md) | ✓ | ✓ | 64-bit MIPS Release 6 Little Endian
 `msp430-none-elf` | * |  | 16-bit MSP430 microcontrollers
 `powerpc-unknown-linux-gnuspe` | ✓ |  | PowerPC SPE Linux
 `powerpc-unknown-linux-musl` | ? |  |
@@ -305,7 +305,7 @@ target | std | host | notes
 `riscv64gc-unknown-freebsd` |   |   | RISC-V FreeBSD
 `riscv64gc-unknown-fuchsia` |   |   | RISC-V Fuchsia
 `riscv64gc-unknown-linux-musl` |   |   | RISC-V Linux (kernel 4.20, musl 1.2.0)
-[`riscv64gc-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ? | RISC-V NetBSD
+[`riscv64gc-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | RISC-V NetBSD
 [`riscv64gc-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | OpenBSD/riscv64
 `s390x-unknown-linux-musl` |  |  | S390x Linux (kernel 3.2, MUSL)
 `sparc-unknown-linux-gnu` | ✓ |  | 32-bit SPARC Linux

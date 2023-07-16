@@ -174,7 +174,7 @@ fn recurse_build<'tcx>(
         }
         // `ExprKind::Use` happens when a `hir::ExprKind::Cast` is a
         // "coercion cast" i.e. using a coercion or is a no-op.
-        // This is important so that `N as usize as usize` doesnt unify with `N as usize`. (untested)
+        // This is important so that `N as usize as usize` doesn't unify with `N as usize`. (untested)
         &ExprKind::Use { source } => {
             let arg = recurse_build(tcx, body, source, root_span)?;
             ty::Const::new_expr(tcx, Expr::Cast(CastKind::Use, arg, node.ty), node.ty)
