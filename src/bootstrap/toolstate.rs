@@ -91,7 +91,7 @@ fn print_error(tool: &str, submodule: &str) {
     eprintln!("If you do NOT intend to update '{}', please ensure you did not accidentally", tool);
     eprintln!("change the submodule at '{}'. You may ask your reviewer for the", submodule);
     eprintln!("proper steps.");
-    crate::detail_exit_macro!(3);
+    crate::exit!(3);
 }
 
 fn check_changed_files(toolstates: &HashMap<Box<str>, ToolState>) {
@@ -106,7 +106,7 @@ fn check_changed_files(toolstates: &HashMap<Box<str>, ToolState>) {
         Ok(o) => o,
         Err(e) => {
             eprintln!("Failed to get changed files: {:?}", e);
-            crate::detail_exit_macro!(1);
+            crate::exit!(1);
         }
     };
 
@@ -177,7 +177,7 @@ impl Step for ToolStateCheck {
         }
 
         if did_error {
-            crate::detail_exit_macro!(1);
+            crate::exit!(1);
         }
 
         check_changed_files(&toolstates);
@@ -223,7 +223,7 @@ impl Step for ToolStateCheck {
         }
 
         if did_error {
-            crate::detail_exit_macro!(1);
+            crate::exit!(1);
         }
 
         if builder.config.channel == "nightly" && env::var_os("TOOLSTATE_PUBLISH").is_some() {
@@ -262,6 +262,8 @@ impl Builder<'_> {
     /// `rust.save-toolstates` in `config.toml`. If unspecified, nothing will be
     /// done. The file is updated immediately after this function completes.
     pub fn save_toolstate(&self, tool: &str, state: ToolState) {
+        use std::io::Write;
+
         // If we're in a dry run setting we don't want to save toolstates as
         // that means if we e.g. panic down the line it'll look like we tested
         // everything (but we actually haven't).
@@ -286,7 +288,8 @@ impl Builder<'_> {
             current_toolstates.insert(tool.into(), state);
             t!(file.seek(SeekFrom::Start(0)));
             t!(file.set_len(0));
-            t!(serde_json::to_writer(file, &current_toolstates));
+            t!(serde_json::to_writer(&file, &current_toolstates));
+            t!(writeln!(file)); // make sure this ends in a newline
         }
     }
 }

@@ -2,8 +2,8 @@ use super::{ErrorHandled, EvalToConstValueResult, EvalToValTreeResult, GlobalId}
 
 use crate::mir;
 use crate::query::{TyCtxtAt, TyCtxtEnsure};
-use crate::ty::subst::InternalSubsts;
 use crate::ty::visit::TypeVisitableExt;
+use crate::ty::GenericArgs;
 use crate::ty::{self, TyCtxt};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
@@ -20,8 +20,8 @@ impl<'tcx> TyCtxt<'tcx> {
         // to be used. So we can't use `Instance::mono`, instead we feed unresolved substitutions
         // into `const_eval` which will return `ErrorHandled::ToGeneric` if any of them are
         // encountered.
-        let substs = InternalSubsts::identity_for_item(self, def_id);
-        let instance = ty::Instance::new(def_id, substs);
+        let args = GenericArgs::identity_for_item(self, def_id);
+        let instance = ty::Instance::new(def_id, args);
         let cid = GlobalId { instance, promoted: None };
         let param_env = self.param_env(def_id).with_reveal_all_normalized(self);
         self.const_eval_global_id(param_env, cid, None)
@@ -48,14 +48,14 @@ impl<'tcx> TyCtxt<'tcx> {
         //
         // When trying to evaluate constants containing inference variables,
         // use `Infcx::const_eval_resolve` instead.
-        if ct.substs.has_non_region_infer() {
+        if ct.args.has_non_region_infer() {
             bug!("did not expect inference variables here");
         }
 
         match ty::Instance::resolve(
             self, param_env,
             // FIXME: maybe have a separate version for resolving mir::UnevaluatedConst?
-            ct.def, ct.substs,
+            ct.def, ct.args,
         ) {
             Ok(Some(instance)) => {
                 let cid = GlobalId { instance, promoted: ct.promoted };
@@ -79,11 +79,11 @@ impl<'tcx> TyCtxt<'tcx> {
         //
         // When trying to evaluate constants containing inference variables,
         // use `Infcx::const_eval_resolve` instead.
-        if ct.substs.has_non_region_infer() {
+        if ct.args.has_non_region_infer() {
             bug!("did not expect inference variables here");
         }
 
-        match ty::Instance::resolve(self, param_env, ct.def, ct.substs) {
+        match ty::Instance::resolve(self, param_env, ct.def, ct.args) {
             Ok(Some(instance)) => {
                 let cid = GlobalId { instance, promoted: None };
                 self.const_eval_global_id_for_typeck(param_env, cid, span).inspect(|_| {
@@ -94,7 +94,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     // @lcnr believes that successfully evaluating even though there are
                     // used generic parameters is a bug of evaluation, so checking for it
                     // here does feel somewhat sensible.
-                    if !self.features().generic_const_exprs && ct.substs.has_non_region_param() {
+                    if !self.features().generic_const_exprs && ct.args.has_non_region_param() {
                         let def_kind = self.def_kind(instance.def_id());
                         assert!(
                             matches!(
@@ -221,8 +221,8 @@ impl<'tcx> TyCtxtEnsure<'tcx> {
         // to be used. So we can't use `Instance::mono`, instead we feed unresolved substitutions
         // into `const_eval` which will return `ErrorHandled::ToGeneric` if any of them are
         // encountered.
-        let substs = InternalSubsts::identity_for_item(self.tcx, def_id);
-        let instance = ty::Instance::new(def_id, substs);
+        let args = GenericArgs::identity_for_item(self.tcx, def_id);
+        let instance = ty::Instance::new(def_id, args);
         let cid = GlobalId { instance, promoted: None };
         let param_env =
             self.tcx.param_env(def_id).with_reveal_all_normalized(self.tcx).with_const();

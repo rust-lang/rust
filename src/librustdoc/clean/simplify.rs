@@ -47,7 +47,9 @@ pub(crate) fn where_clauses(cx: &DocContext<'_>, clauses: Vec<WP>) -> ThinVec<WP
     // Look for equality predicates on associated types that can be merged into
     // general bound predicates.
     equalities.retain(|(lhs, rhs, bound_params)| {
-        let Some((ty, trait_did, name)) = lhs.projection() else { return true; };
+        let Some((ty, trait_did, name)) = lhs.projection() else {
+            return true;
+        };
         let Some((bounds, _)) = tybounds.get_mut(ty) else { return true };
         merge_bounds(cx, bounds, bound_params.clone(), trait_did, name, rhs)
     });

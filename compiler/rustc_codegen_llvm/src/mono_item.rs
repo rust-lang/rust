@@ -48,7 +48,7 @@ impl<'tcx> PreDefineMethods<'tcx> for CodegenCx<'_, 'tcx> {
         visibility: Visibility,
         symbol_name: &str,
     ) {
-        assert!(!instance.substs.has_infer());
+        assert!(!instance.args.has_infer());
 
         let fn_abi = self.fn_abi_of_instance(instance, ty::List::empty());
         let lldecl = self.declare_fn(symbol_name, fn_abi, Some(instance));

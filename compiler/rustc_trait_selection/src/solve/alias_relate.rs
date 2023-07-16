@@ -65,7 +65,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                     direction,
                     Invert::Yes,
                 ));
-                // Relate via substs
+                // Relate via args
                 let subst_relate_response = self
                     .assemble_subst_relate_candidate(param_env, alias_lhs, alias_rhs, direction);
                 candidates.extend(subst_relate_response);
@@ -153,7 +153,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         alias_rhs: ty::AliasTy<'tcx>,
         direction: ty::AliasRelationDirection,
     ) -> QueryResult<'tcx> {
-        self.probe_candidate("substs relate").enter(|ecx| {
+        self.probe_candidate("args relate").enter(|ecx| {
             match direction {
                 ty::AliasRelationDirection::Equate => {
                     ecx.eq(param_env, alias_lhs, alias_rhs)?;

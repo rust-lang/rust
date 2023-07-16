@@ -92,7 +92,7 @@ impl<'tcx> LateLintPass<'tcx> for DropTraitConstraints {
         let predicates = cx.tcx.explicit_predicates_of(item.owner_id);
         for &(predicate, span) in predicates.predicates {
             let ClauseKind::Trait(trait_predicate) = predicate.kind().skip_binder() else {
-                continue
+                continue;
             };
             let def_id = trait_predicate.trait_ref.def_id;
             if cx.tcx.lang_items().drop_trait() == Some(def_id) {
@@ -100,9 +100,7 @@ impl<'tcx> LateLintPass<'tcx> for DropTraitConstraints {
                 if trait_predicate.trait_ref.self_ty().is_impl_trait() {
                     continue;
                 }
-                let Some(def_id) = cx.tcx.get_diagnostic_item(sym::needs_drop) else {
-                    return
-                };
+                let Some(def_id) = cx.tcx.get_diagnostic_item(sym::needs_drop) else { return };
                 cx.emit_spanned_lint(
                     DROP_BOUNDS,
                     span,
@@ -113,15 +111,11 @@ impl<'tcx> LateLintPass<'tcx> for DropTraitConstraints {
     }
 
     fn check_ty(&mut self, cx: &LateContext<'_>, ty: &'tcx hir::Ty<'tcx>) {
-        let hir::TyKind::TraitObject(bounds, _lifetime, _syntax) = &ty.kind else {
-            return
-        };
+        let hir::TyKind::TraitObject(bounds, _lifetime, _syntax) = &ty.kind else { return };
         for bound in &bounds[..] {
             let def_id = bound.trait_ref.trait_def_id();
             if cx.tcx.lang_items().drop_trait() == def_id {
-                let Some(def_id) = cx.tcx.get_diagnostic_item(sym::needs_drop) else {
-                    return
-                };
+                let Some(def_id) = cx.tcx.get_diagnostic_item(sym::needs_drop) else { return };
                 cx.emit_spanned_lint(DYN_DROP, bound.span, DropGlue { tcx: cx.tcx, def_id });
             }
         }

@@ -541,16 +541,15 @@ impl TestProps {
     }
 
     fn update_pass_mode(&mut self, ln: &str, revision: Option<&str>, config: &Config) {
-        let check_no_run = |s| {
-            if config.mode != Mode::Ui && config.mode != Mode::Incremental {
-                panic!("`{}` header is only supported in UI and incremental tests", s);
+        let check_no_run = |s| match (config.mode, s) {
+            (Mode::Ui, _) => (),
+            (Mode::Codegen, "build-pass") => (),
+            (Mode::Incremental, _) => {
+                if revision.is_some() && !self.revisions.iter().all(|r| r.starts_with("cfail")) {
+                    panic!("`{s}` header is only supported in `cfail` incremental tests")
+                }
             }
-            if config.mode == Mode::Incremental
-                && !revision.map_or(false, |r| r.starts_with("cfail"))
-                && !self.revisions.iter().all(|r| r.starts_with("cfail"))
-            {
-                panic!("`{}` header is only supported in `cfail` incremental tests", s);
-            }
+            (mode, _) => panic!("`{s}` header is not supported in `{mode}` tests"),
         };
         let pass_mode = if config.parse_name_directive(ln, "check-pass") {
             check_no_run("check-pass");
@@ -559,9 +558,7 @@ impl TestProps {
             check_no_run("build-pass");
             Some(PassMode::Build)
         } else if config.parse_name_directive(ln, "run-pass") {
-            if config.mode != Mode::Ui {
-                panic!("`run-pass` header is only supported in UI tests")
-            }
+            check_no_run("run-pass");
             Some(PassMode::Run)
         } else {
             None
@@ -599,7 +596,10 @@ pub fn line_directive<'line>(
         if ln.starts_with('[') {
             // A comment like `//[foo]` is specific to revision `foo`
             let Some(close_brace) = ln.find(']') else {
-                panic!("malformed condition directive: expected `{}[foo]`, found `{}`", comment, ln);
+                panic!(
+                    "malformed condition directive: expected `{}[foo]`, found `{}`",
+                    comment, ln
+                );
             };
 
             let lncfg = &ln[1..close_brace];

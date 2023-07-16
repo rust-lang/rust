@@ -105,7 +105,7 @@ pub(crate) fn try_destructure_mir_constant_for_diagnostics<'tcx>(
             let down = ecx.operand_downcast(&op, variant).ok()?;
             (def.variants()[variant].fields.len(), Some(variant), down)
         }
-        ty::Tuple(substs) => (substs.len(), None, op),
+        ty::Tuple(args) => (args.len(), None, op),
         _ => bug!("cannot destructure mir constant {:?}", val),
     };
 

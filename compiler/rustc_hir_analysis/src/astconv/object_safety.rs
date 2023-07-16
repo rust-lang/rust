@@ -173,7 +173,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             tcx.associated_items(pred.def_id())
                                 .in_definition_order()
                                 .filter(|item| item.kind == ty::AssocKind::Type)
-                                .filter(|item| item.opt_rpitit_info.is_none())
+                                .filter(|item| !item.is_impl_trait_in_trait())
                                 .map(|item| item.def_id),
                         );
                     }
@@ -262,8 +262,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let mut missing_type_params = vec![];
                 let mut references_self = false;
                 let generics = tcx.generics_of(trait_ref.def_id);
-                let substs: Vec<_> = trait_ref
-                    .substs
+                let args: Vec<_> = trait_ref
+                    .args
                     .iter()
                     .enumerate()
                     .skip(1) // Remove `Self` for `ExistentialPredicate`.
@@ -279,7 +279,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         arg
                     })
                     .collect();
-                let substs = tcx.mk_substs(&substs);
+                let args = tcx.mk_args(&args);
 
                 let span = i.bottom().1;
                 let empty_generic_args = hir_trait_bounds.iter().any(|hir_bound| {
@@ -310,7 +310,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     err.emit();
                 }
 
-                ty::ExistentialTraitRef { def_id: trait_ref.def_id, substs }
+                ty::ExistentialTraitRef { def_id: trait_ref.def_id, args }
             })
         });
 
@@ -325,7 +325,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
                     // Like for trait refs, verify that `dummy_self` did not leak inside default type
                     // parameters.
-                    let references_self = b.projection_ty.substs.iter().skip(1).any(|arg| {
+                    let references_self = b.projection_ty.args.iter().skip(1).any(|arg| {
                         if arg.walk().any(|arg| arg == dummy_self.into()) {
                             return true;
                         }
@@ -336,9 +336,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             span,
                             "trait object projection bounds reference `Self`",
                         );
-                        let substs: Vec<_> = b
+                        let args: Vec<_> = b
                             .projection_ty
-                            .substs
+                            .args
                             .iter()
                             .map(|arg| {
                                 if arg.walk().any(|arg| arg == dummy_self.into()) {
@@ -347,7 +347,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 arg
                             })
                             .collect();
-                        b.projection_ty.substs = tcx.mk_substs(&substs);
+                        b.projection_ty.args = tcx.mk_args(&args);
                     }
 
                     ty::ExistentialProjection::erase_self_ty(tcx, b)

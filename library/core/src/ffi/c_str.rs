@@ -377,7 +377,7 @@ impl CStr {
     /// assert!(cstr.is_err());
     /// ```
     #[stable(feature = "cstr_from_bytes", since = "1.10.0")]
-    #[rustc_const_stable(feature = "const_cstr_methods", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_cstr_methods", since = "1.72.0")]
     pub const fn from_bytes_with_nul(bytes: &[u8]) -> Result<&Self, FromBytesWithNulError> {
         let nul_pos = memchr::memchr(0, bytes);
         match nul_pos {
@@ -561,7 +561,7 @@ impl CStr {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_cstr_methods", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_cstr_methods", since = "1.72.0")]
     pub const fn to_bytes(&self) -> &[u8] {
         let bytes = self.to_bytes_with_nul();
         // FIXME(const-hack) replace with range index
@@ -590,7 +590,7 @@ impl CStr {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_cstr_methods", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_cstr_methods", since = "1.72.0")]
     pub const fn to_bytes_with_nul(&self) -> &[u8] {
         // SAFETY: Transmuting a slice of `c_char`s to a slice of `u8`s
         // is safe on all supported targets.
@@ -614,7 +614,7 @@ impl CStr {
     /// assert_eq!(cstr.to_str(), Ok("foo"));
     /// ```
     #[stable(feature = "cstr_to_str", since = "1.4.0")]
-    #[rustc_const_stable(feature = "const_cstr_methods", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_cstr_methods", since = "1.72.0")]
     pub const fn to_str(&self) -> Result<&str, str::Utf8Error> {
         // N.B., when `CStr` is changed to perform the length check in `.to_bytes()`
         // instead of in `from_ptr()`, it may be worth considering if this should

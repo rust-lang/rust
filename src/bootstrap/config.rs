@@ -23,7 +23,7 @@ use crate::channel::{self, GitInfo};
 pub use crate::flags::Subcommand;
 use crate::flags::{Color, Flags, Warnings};
 use crate::util::{exe, output, t};
-use build_helper::detail_exit_macro;
+use build_helper::exit;
 use once_cell::sync::OnceCell;
 use semver::Version;
 use serde::{Deserialize, Deserializer};
@@ -646,7 +646,7 @@ macro_rules! define_config {
                                         panic!("overriding existing option")
                                     } else {
                                         eprintln!("overriding existing option: `{}`", stringify!($field));
-                                        detail_exit_macro!(2);
+                                        exit!(2);
                                     }
                                 } else {
                                     self.$field = other.$field;
@@ -745,7 +745,7 @@ impl<T> Merge for Option<T> {
                             panic!("overriding existing option")
                         } else {
                             eprintln!("overriding existing option");
-                            detail_exit_macro!(2);
+                            exit!(2);
                         }
                     } else {
                         *self = other;
@@ -1101,7 +1101,7 @@ impl Config {
                 .and_then(|table: toml::Value| TomlConfig::deserialize(table))
                 .unwrap_or_else(|err| {
                     eprintln!("failed to parse TOML configuration '{}': {err}", file.display());
-                    detail_exit_macro!(2);
+                    exit!(2);
                 })
         }
         Self::parse_inner(args, get_toml)
@@ -1135,7 +1135,7 @@ impl Config {
             eprintln!(
                 "Cannot use both `llvm_bolt_profile_generate` and `llvm_bolt_profile_use` at the same time"
             );
-            detail_exit_macro!(1);
+            exit!(1);
         }
 
         // Infer the rest of the configuration.
@@ -1259,7 +1259,7 @@ impl Config {
                 }
             }
             eprintln!("failed to parse override `{option}`: `{err}");
-            detail_exit_macro!(2)
+            exit!(2)
         }
         toml.merge(override_toml, ReplaceOpt::Override);
 
@@ -1742,6 +1742,18 @@ impl Config {
         }
     }
 
+    /// Runs a command, printing out nice contextual information if it fails.
+    /// Exits if the command failed to execute at all, otherwise returns its
+    /// `status.success()`.
+    #[deprecated = "use `Builder::try_run` instead where possible"]
+    pub(crate) fn try_run(&self, cmd: &mut Command) -> Result<(), ()> {
+        if self.dry_run() {
+            return Ok(());
+        }
+        self.verbose(&format!("running: {:?}", cmd));
+        build_helper::util::try_run(cmd, self.is_verbose())
+    }
+
     /// A git invocation which runs inside the source directory.
     ///
     /// Use this rather than `Command::new("git")` in order to support out-of-tree builds.
@@ -2007,7 +2019,7 @@ impl Config {
                 "Unexpected rustc version: {}, we should use {}/{} to build source with {}",
                 rustc_version, prev_version, source_version, source_version
             );
-            detail_exit_macro!(1);
+            exit!(1);
         }
     }
 
@@ -2043,7 +2055,7 @@ impl Config {
             println!("help: maybe your repository history is too shallow?");
             println!("help: consider disabling `download-rustc`");
             println!("help: or fetch enough history to include one upstream commit");
-            crate::detail_exit_macro!(1);
+            crate::exit!(1);
         }
 
         // Warn if there were changes to the compiler or standard library since the ancestor commit.

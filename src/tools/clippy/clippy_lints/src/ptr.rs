@@ -166,7 +166,7 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
             check_mut_from_ref(cx, sig, None);
             for arg in check_fn_args(
                 cx,
-                cx.tcx.fn_sig(item.owner_id).subst_identity().skip_binder().inputs(),
+                cx.tcx.fn_sig(item.owner_id).instantiate_identity().skip_binder().inputs(),
                 sig.decl.inputs,
                 &sig.decl.output,
                 &[],
@@ -220,7 +220,7 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
 
         check_mut_from_ref(cx, sig, Some(body));
         let decl = sig.decl;
-        let sig = cx.tcx.fn_sig(item_id).subst_identity().skip_binder();
+        let sig = cx.tcx.fn_sig(item_id).instantiate_identity().skip_binder();
         let lint_args: Vec<_> = check_fn_args(cx, sig.inputs(), decl.inputs, &decl.output, body.params)
             .filter(|arg| !is_trait_item || arg.mutability() == Mutability::Not)
             .collect();
@@ -423,7 +423,7 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
         .enumerate()
         .filter_map(move |(i, (ty, hir_ty))| {
             if let ty::Ref(_, ty, mutability) = *ty.kind()
-                && let  ty::Adt(adt, substs) = *ty.kind()
+                && let  ty::Adt(adt, args) = *ty.kind()
                 && let TyKind::Ref(lt, ref ty) = hir_ty.kind
                 && let TyKind::Path(QPath::Resolved(None, path)) = ty.ty.kind
                 // Check that the name as typed matches the actual name of the type.
@@ -443,7 +443,7 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
                                     } else {
                                         None
                                     }),
-                                substs.type_at(0),
+                                args.type_at(0),
                             ),
                         ),
                         _ if Some(adt.did()) == cx.tcx.lang_items().string() => (
@@ -496,7 +496,7 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
                                 }
 
                                 let ty_name =
-                                    snippet_opt(cx, ty.span()).unwrap_or_else(|| substs.type_at(1).to_string());
+                                    snippet_opt(cx, ty.span()).unwrap_or_else(|| args.type_at(1).to_string());
 
                                 span_lint_hir_and_then(
                                     cx,
@@ -659,7 +659,7 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'_>, args:
                             return;
                         };
 
-                        match *self.cx.tcx.fn_sig(id).subst_identity().skip_binder().inputs()[i]
+                        match *self.cx.tcx.fn_sig(id).instantiate_identity().skip_binder().inputs()[i]
                             .peel_refs()
                             .kind()
                         {
@@ -725,7 +725,7 @@ fn matches_preds<'tcx>(
     let infcx = cx.tcx.infer_ctxt().build();
     preds.iter().all(|&p| match cx.tcx.erase_late_bound_regions(p) {
         ExistentialPredicate::Trait(p) => infcx
-            .type_implements_trait(p.def_id, [ty.into()].into_iter().chain(p.substs.iter()), cx.param_env)
+            .type_implements_trait(p.def_id, [ty.into()].into_iter().chain(p.args.iter()), cx.param_env)
             .must_apply_modulo_regions(),
         ExistentialPredicate::Projection(p) => infcx.predicate_must_hold_modulo_regions(&Obligation::new(
             cx.tcx,

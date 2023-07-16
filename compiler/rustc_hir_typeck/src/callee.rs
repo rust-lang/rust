@@ -21,7 +21,7 @@ use rustc_infer::{
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
 };
-use rustc_middle::ty::SubstsRef;
+use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::{sym, Ident};
@@ -149,14 +149,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return Some(CallStep::Builtin(adjusted_ty));
             }
 
-            ty::Closure(def_id, substs) => {
+            ty::Closure(def_id, args) => {
                 let def_id = def_id.expect_local();
 
                 // Check whether this is a call to a closure where we
                 // haven't yet decided on whether the closure is fn vs
                 // fnmut vs fnonce. If so, we have to defer further processing.
-                if self.closure_kind(substs).is_none() {
-                    let closure_sig = substs.as_closure().sig();
+                if self.closure_kind(args).is_none() {
+                    let closure_sig = args.as_closure().sig();
                     let closure_sig = self.instantiate_binder_with_fresh_vars(
                         call_expr.span,
                         infer::FnCall,
@@ -171,7 +171,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             adjusted_ty,
                             adjustments,
                             fn_sig: closure_sig,
-                            closure_substs: substs,
+                            closure_args: args,
                         },
                     );
                     return Some(CallStep::DeferredClosure(def_id, closure_sig));
@@ -380,16 +380,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
         let (fn_sig, def_id) = match *callee_ty.kind() {
-            ty::FnDef(def_id, substs) => {
-                self.enforce_context_effects(call_expr.hir_id, call_expr.span, def_id, substs);
-                let fn_sig = self.tcx.fn_sig(def_id).subst(self.tcx, substs);
+            ty::FnDef(def_id, args) => {
+                self.enforce_context_effects(call_expr.hir_id, call_expr.span, def_id, args);
+                let fn_sig = self.tcx.fn_sig(def_id).instantiate(self.tcx, args);
 
                 // Unit testing: function items annotated with
                 // `#[rustc_evaluate_where_clauses]` trigger special output
                 // to let us test the trait evaluation system.
                 if self.tcx.has_attr(def_id, sym::rustc_evaluate_where_clauses) {
                     let predicates = self.tcx.predicates_of(def_id);
-                    let predicates = predicates.instantiate(self.tcx, substs);
+                    let predicates = predicates.instantiate(self.tcx, args);
                     for (predicate, predicate_span) in predicates {
                         let obligation = Obligation::new(
                             self.tcx,
@@ -499,15 +499,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Expectation<'tcx>,
     ) {
         if let [callee_expr, rest @ ..] = arg_exprs {
-            let Some(callee_ty) = self.typeck_results.borrow().expr_ty_adjusted_opt(callee_expr) else {
+            let Some(callee_ty) = self.typeck_results.borrow().expr_ty_adjusted_opt(callee_expr)
+            else {
                 return;
             };
 
             // First, do a probe with `IsSuggestion(true)` to avoid emitting
             // any strange errors. If it's successful, then we'll do a true
             // method lookup.
-            let Ok(pick) = self
-            .lookup_probe_for_diagnostic(
+            let Ok(pick) = self.lookup_probe_for_diagnostic(
                 segment.ident,
                 callee_ty,
                 call_expr,
@@ -751,7 +751,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         call_expr_hir: HirId,
         span: Span,
         callee_did: DefId,
-        callee_substs: SubstsRef<'tcx>,
+        callee_args: GenericArgsRef<'tcx>,
     ) {
         let tcx = self.tcx;
 
@@ -774,18 +774,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let effect = match const_context {
             Some(hir::ConstContext::Static(_) | hir::ConstContext::Const) => tcx.consts.false_,
             Some(hir::ConstContext::ConstFn) => {
-                let substs = ty::InternalSubsts::identity_for_item(tcx, context);
-                substs.host_effect_param().expect("ConstContext::Maybe must have host effect param")
+                let args = ty::GenericArgs::identity_for_item(tcx, context);
+                args.host_effect_param().expect("ConstContext::Maybe must have host effect param")
             }
             None => tcx.consts.true_,
         };
 
         let generics = tcx.generics_of(callee_did);
 
-        trace!(?effect, ?generics, ?callee_substs);
+        trace!(?effect, ?generics, ?callee_args);
 
         if let Some(idx) = generics.host_effect_index {
-            let param = callee_substs.const_at(idx);
+            let param = callee_args.const_at(idx);
             let cause = self.misc(span);
             match self.at(&cause, self.param_env).eq(infer::DefineOpaqueTypes::No, effect, param) {
                 Ok(infer::InferOk { obligations, value: () }) => {
@@ -827,7 +827,7 @@ pub struct DeferredCallResolution<'tcx> {
     adjusted_ty: Ty<'tcx>,
     adjustments: Vec<Adjustment<'tcx>>,
     fn_sig: ty::FnSig<'tcx>,
-    closure_substs: SubstsRef<'tcx>,
+    closure_args: GenericArgsRef<'tcx>,
 }
 
 impl<'a, 'tcx> DeferredCallResolution<'tcx> {
@@ -836,7 +836,7 @@ impl<'a, 'tcx> DeferredCallResolution<'tcx> {
 
         // we should not be invoked until the closure kind has been
         // determined by upvar inference
-        assert!(fcx.closure_kind(self.closure_substs).is_some());
+        assert!(fcx.closure_kind(self.closure_args).is_some());
 
         // We may now know enough to figure out fn vs fnmut etc.
         match fcx.try_overloaded_call_traits(self.call_expr, self.adjusted_ty, None) {

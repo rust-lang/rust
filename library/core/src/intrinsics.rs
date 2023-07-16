@@ -1057,23 +1057,6 @@ extern "rust-intrinsic" {
     #[rustc_const_unstable(feature = "const_type_id", issue = "77125")]
     #[rustc_safe_intrinsic]
     #[rustc_nounwind]
-    #[cfg(bootstrap)]
-    pub fn type_id<T: ?Sized + 'static>() -> u64;
-
-    /// Gets an identifier which is globally unique to the specified type. This
-    /// function will return the same value for a type regardless of whichever
-    /// crate it is invoked in.
-    ///
-    /// Note that, unlike most intrinsics, this is safe to call;
-    /// it does not require an `unsafe` block.
-    /// Therefore, implementations must not require the user to uphold
-    /// any safety invariants.
-    ///
-    /// The stabilized version of this intrinsic is [`core::any::TypeId::of`].
-    #[rustc_const_unstable(feature = "const_type_id", issue = "77125")]
-    #[rustc_safe_intrinsic]
-    #[rustc_nounwind]
-    #[cfg(not(bootstrap))]
     pub fn type_id<T: ?Sized + 'static>() -> u128;
 
     /// A guard for unsafe functions that cannot ever be executed if `T` is uninhabited:

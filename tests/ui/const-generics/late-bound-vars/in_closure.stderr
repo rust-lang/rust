@@ -6,8 +6,7 @@ error: query stack during panic:
 #4 [eval_to_allocation_raw] const-evaluating + checking `test::{closure#0}::{constant#1}`
 #5 [eval_to_valtree] evaluating type-level constant
 #6 [typeck] type-checking `test`
-#7 [used_trait_imports] finding used_trait_imports `test`
-#8 [analysis] running analysis passes on this crate
+#7 [analysis] running analysis passes on this crate
 end of query stack
 error: aborting due to previous error
 

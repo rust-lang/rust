@@ -81,9 +81,9 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
             ty::RawPtr(ty::TypeAndMut { ty, mutbl: _ }) if self.is_thin_ptr_ty(ty) => {
                 Some(asm_ty_isize)
             }
-            ty::Adt(adt, substs) if adt.repr().simd() => {
+            ty::Adt(adt, args) if adt.repr().simd() => {
                 let fields = &adt.non_enum_variant().fields;
-                let elem_ty = fields[FieldIdx::from_u32(0)].ty(self.tcx, substs);
+                let elem_ty = fields[FieldIdx::from_u32(0)].ty(self.tcx, args);
 
                 let (size, ty) = match elem_ty.kind() {
                     ty::Array(ty, len) => {
@@ -186,18 +186,14 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
         let Some((_, feature)) = supported_tys.iter().find(|&&(t, _)| t == asm_ty) else {
             let msg = format!("type `{ty}` cannot be used with this register class");
             let mut err = self.tcx.sess.struct_span_err(expr.span, msg);
-            let supported_tys: Vec<_> =
-                supported_tys.iter().map(|(t, _)| t.to_string()).collect();
+            let supported_tys: Vec<_> = supported_tys.iter().map(|(t, _)| t.to_string()).collect();
             err.note(format!(
                 "register class `{}` supports these types: {}",
                 reg_class.name(),
                 supported_tys.join(", "),
             ));
             if let Some(suggest) = reg_class.suggest_class(asm_arch, asm_ty) {
-                err.help(format!(
-                    "consider using the `{}` register class instead",
-                    suggest.name()
-                ));
+                err.help(format!("consider using the `{}` register class instead", suggest.name()));
             }
             err.emit();
             return Some(asm_ty);
@@ -427,7 +423,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                 // Check that sym actually points to a function. Later passes
                 // depend on this.
                 hir::InlineAsmOperand::SymFn { anon_const } => {
-                    let ty = self.tcx.type_of(anon_const.def_id).subst_identity();
+                    let ty = self.tcx.type_of(anon_const.def_id).instantiate_identity();
                     match ty.kind() {
                         ty::Never | ty::Error(_) => {}
                         ty::FnDef(..) => {}

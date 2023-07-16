@@ -116,6 +116,7 @@ use std::ops::Not;
 
 use astconv::{AstConv, OnlySelfBounds};
 use bounds::Bounds;
+use rustc_hir::def::DefKind;
 
 fluent_messages! { "../messages.ftl" }
 
@@ -177,12 +178,12 @@ fn require_same_types<'tcx>(
 }
 
 fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
-    let main_fnsig = tcx.fn_sig(main_def_id).subst_identity();
+    let main_fnsig = tcx.fn_sig(main_def_id).instantiate_identity();
     let main_span = tcx.def_span(main_def_id);
 
     fn main_fn_diagnostics_def_id(tcx: TyCtxt<'_>, def_id: DefId, sp: Span) -> LocalDefId {
         if let Some(local_def_id) = def_id.as_local() {
-            let hir_type = tcx.type_of(local_def_id).subst_identity();
+            let hir_type = tcx.type_of(local_def_id).instantiate_identity();
             if !matches!(hir_type.kind(), ty::FnDef(..)) {
                 span_bug!(sp, "main has a non-function type: found `{}`", hir_type);
             }
@@ -349,7 +350,7 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
     let start_def_id = start_def_id.expect_local();
     let start_id = tcx.hir().local_def_id_to_hir_id(start_def_id);
     let start_span = tcx.def_span(start_def_id);
-    let start_t = tcx.type_of(start_def_id).subst_identity();
+    let start_t = tcx.type_of(start_def_id).instantiate_identity();
     match start_t.kind() {
         ty::FnDef(..) => {
             if let Some(Node::Item(it)) = tcx.hir().find(start_id) {
@@ -420,7 +421,7 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
                 ),
                 ty::ParamEnv::empty(), // start should not have any where bounds.
                 se_ty,
-                Ty::new_fn_ptr(tcx, tcx.fn_sig(start_def_id).subst_identity()),
+                Ty::new_fn_ptr(tcx, tcx.fn_sig(start_def_id).instantiate_identity()),
             );
         }
         _ => {
@@ -498,6 +499,17 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
     // NOTE: This is copy/pasted in librustdoc/core.rs and should be kept in sync.
     tcx.sess.time("item_types_checking", || {
         tcx.hir().for_each_module(|module| tcx.ensure().check_mod_item_types(module))
+    });
+
+    // FIXME: Remove this when we implement creating `DefId`s
+    // for anon constants during their parents' typeck.
+    // Typeck all body owners in parallel will produce queries
+    // cycle errors because it may typeck on anon constants directly.
+    tcx.hir().par_body_owners(|item_def_id| {
+        let def_kind = tcx.def_kind(item_def_id);
+        if !matches!(def_kind, DefKind::AnonConst) {
+            tcx.ensure().typeck(item_def_id);
+        }
     });
 
     check_unused::check_crate(tcx);

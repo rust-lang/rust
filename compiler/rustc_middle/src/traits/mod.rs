@@ -12,7 +12,7 @@ pub mod util;
 use crate::infer::canonical::Canonical;
 use crate::mir::ConstraintCategory;
 use crate::ty::abstract_const::NotConstEvaluatable;
-use crate::ty::subst::SubstsRef;
+use crate::ty::GenericArgsRef;
 use crate::ty::{self, AdtKind, Ty, TyCtxt};
 
 use rustc_data_structures::sync::Lrc;
@@ -199,7 +199,7 @@ impl<'tcx> ObligationCause<'tcx> {
 pub struct UnifyReceiverContext<'tcx> {
     pub assoc_item: ty::AssocItem,
     pub param_env: ty::ParamEnv<'tcx>,
-    pub substs: SubstsRef<'tcx>,
+    pub args: GenericArgsRef<'tcx>,
 }
 
 #[derive(Clone, PartialEq, Eq, Lift, Default, HashStable)]
@@ -696,7 +696,7 @@ impl<'tcx, N> ImplSource<'tcx, N> {
         match self {
             ImplSource::UserDefined(i) => ImplSource::UserDefined(ImplSourceUserDefinedData {
                 impl_def_id: i.impl_def_id,
-                substs: i.substs,
+                args: i.args,
                 nested: i.nested.into_iter().map(f).collect(),
             }),
             ImplSource::Param(n, ct) => ImplSource::Param(n.into_iter().map(f).collect(), ct),
@@ -729,7 +729,7 @@ impl<'tcx, N> ImplSource<'tcx, N> {
 #[derive(TypeFoldable, TypeVisitable)]
 pub struct ImplSourceUserDefinedData<'tcx, N> {
     pub impl_def_id: DefId,
-    pub substs: SubstsRef<'tcx>,
+    pub args: GenericArgsRef<'tcx>,
     pub nested: Vec<N>,
 }
 

@@ -30,11 +30,13 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
 
     bb2: {
         StorageLive(_5);
+        StorageLive(_4);
         _4 = &mut _3;
-        _5 = <std::vec::IntoIter<impl Sized> as Iterator>::next(_4) -> [return: bb3, unwind: bb9];
+        _5 = <std::vec::IntoIter<impl Sized> as Iterator>::next(move _4) -> [return: bb3, unwind: bb9];
     }
 
     bb3: {
+        StorageDead(_4);
         _6 = discriminant(_5);
         switchInt(move _6) -> [0: bb4, 1: bb6, otherwise: bb8];
     }

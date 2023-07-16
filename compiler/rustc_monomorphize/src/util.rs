@@ -27,12 +27,12 @@ pub(crate) fn dump_closure_profile<'tcx>(tcx: TyCtxt<'tcx>, closure_instance: In
             typeck_results.closure_size_eval[&closure_def_id];
 
         let before_feature_tys = tcx.subst_and_normalize_erasing_regions(
-            closure_instance.substs,
+            closure_instance.args,
             param_env,
             ty::EarlyBinder::bind(before_feature_tys),
         );
         let after_feature_tys = tcx.subst_and_normalize_erasing_regions(
-            closure_instance.substs,
+            closure_instance.args,
             param_env,
             ty::EarlyBinder::bind(after_feature_tys),
         );

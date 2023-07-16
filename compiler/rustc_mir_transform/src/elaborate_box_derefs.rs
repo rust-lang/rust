@@ -18,9 +18,9 @@ pub fn build_ptr_tys<'tcx>(
     unique_did: DefId,
     nonnull_did: DefId,
 ) -> (Ty<'tcx>, Ty<'tcx>, Ty<'tcx>) {
-    let substs = tcx.mk_substs(&[pointee.into()]);
-    let unique_ty = tcx.type_of(unique_did).subst(tcx, substs);
-    let nonnull_ty = tcx.type_of(nonnull_did).subst(tcx, substs);
+    let args = tcx.mk_args(&[pointee.into()]);
+    let unique_ty = tcx.type_of(unique_did).instantiate(tcx, args);
+    let nonnull_ty = tcx.type_of(nonnull_did).instantiate(tcx, args);
     let ptr_ty = Ty::new_imm_ptr(tcx, pointee);
 
     (unique_ty, nonnull_ty, ptr_ty)
@@ -95,7 +95,8 @@ impl<'tcx> MirPass<'tcx> for ElaborateBoxDerefs {
             let unique_did =
                 tcx.adt_def(def_id).non_enum_variant().fields[FieldIdx::from_u32(0)].did;
 
-            let Some(nonnull_def) = tcx.type_of(unique_did).subst_identity().ty_adt_def() else {
+            let Some(nonnull_def) = tcx.type_of(unique_did).instantiate_identity().ty_adt_def()
+            else {
                 span_bug!(tcx.def_span(unique_did), "expected Box to contain Unique")
             };
 

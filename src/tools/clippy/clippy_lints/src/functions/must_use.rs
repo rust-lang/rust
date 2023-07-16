@@ -198,14 +198,14 @@ fn is_mutable_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, tys: &mut DefIdSet)
     match *ty.kind() {
         // primitive types are never mutable
         ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Str => false,
-        ty::Adt(adt, substs) => {
+        ty::Adt(adt, args) => {
             tys.insert(adt.did()) && !ty.is_freeze(cx.tcx, cx.param_env)
                 || KNOWN_WRAPPER_TYS
                     .iter()
                     .any(|&sym| cx.tcx.is_diagnostic_item(sym, adt.did()))
-                    && substs.types().any(|ty| is_mutable_ty(cx, ty, tys))
+                    && args.types().any(|ty| is_mutable_ty(cx, ty, tys))
         },
-        ty::Tuple(substs) => substs.iter().any(|ty| is_mutable_ty(cx, ty, tys)),
+        ty::Tuple(args) => args.iter().any(|ty| is_mutable_ty(cx, ty, tys)),
         ty::Array(ty, _) | ty::Slice(ty) => is_mutable_ty(cx, ty, tys),
         ty::RawPtr(ty::TypeAndMut { ty, mutbl }) | ty::Ref(_, ty, mutbl) => {
             mutbl == hir::Mutability::Mut || is_mutable_ty(cx, ty, tys)

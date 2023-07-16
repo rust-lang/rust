@@ -7,26 +7,24 @@ fn mem_replace(_1: &mut u32, _2: u32) -> u32 {
     scope 1 (inlined std::mem::replace::<u32>) {
         debug dest => _1;
         debug src => _2;
-        let mut _3: *const u32;
-        let mut _4: *mut u32;
         scope 2 {
             scope 3 {
                 debug result => _0;
                 scope 7 (inlined std::ptr::write::<u32>) {
-                    debug dst => _4;
+                    debug dst => _1;
                     debug src => _2;
                     scope 8 {
                         scope 9 (inlined std::ptr::write::runtime::<u32>) {
-                            debug dst => _4;
+                            debug dst => _1;
                         }
                     }
                 }
             }
             scope 4 (inlined std::ptr::read::<u32>) {
-                debug src => _3;
+                debug src => _1;
                 scope 5 {
                     scope 6 (inlined std::ptr::read::runtime::<u32>) {
-                        debug src => _3;
+                        debug src => _1;
                     }
                 }
             }
@@ -34,14 +32,8 @@ fn mem_replace(_1: &mut u32, _2: u32) -> u32 {
     }
 
     bb0: {
-        StorageLive(_3);
-        _3 = &raw const (*_1);
-        _0 = (*_3);
-        StorageDead(_3);
-        StorageLive(_4);
-        _4 = &raw mut (*_1);
-        (*_4) = _2;
-        StorageDead(_4);
+        _0 = (*_1);
+        (*_1) = _2;
         return;
     }
 }

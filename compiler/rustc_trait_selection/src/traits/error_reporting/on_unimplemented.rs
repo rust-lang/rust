@@ -6,7 +6,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{struct_span_err, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::SubstsRef;
+use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{self, GenericParamDefKind, TyCtxt};
 use rustc_parse_format::{ParseMode, Parser, Piece, Position};
 use rustc_span::symbol::{kw, sym, Symbol};
@@ -25,7 +25,7 @@ pub trait TypeErrCtxtExt<'tcx> {
         &self,
         trait_ref: ty::PolyTraitRef<'tcx>,
         obligation: &PredicateObligation<'tcx>,
-    ) -> Option<(DefId, SubstsRef<'tcx>)>;
+    ) -> Option<(DefId, GenericArgsRef<'tcx>)>;
 
     /*private*/
     fn describe_enclosure(&self, hir_id: hir::HirId) -> Option<&'static str>;
@@ -56,7 +56,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         &self,
         trait_ref: ty::PolyTraitRef<'tcx>,
         obligation: &PredicateObligation<'tcx>,
-    ) -> Option<(DefId, SubstsRef<'tcx>)> {
+    ) -> Option<(DefId, GenericArgsRef<'tcx>)> {
         let tcx = self.tcx;
         let param_env = obligation.param_env;
         let trait_ref = self.instantiate_binder_with_placeholders(trait_ref);
@@ -66,26 +66,23 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         let mut fuzzy_match_impls = vec![];
 
         self.tcx.for_each_relevant_impl(trait_ref.def_id, trait_self_ty, |def_id| {
-            let impl_substs = self.fresh_substs_for_item(obligation.cause.span, def_id);
-            let impl_trait_ref = tcx.impl_trait_ref(def_id).unwrap().subst(tcx, impl_substs);
+            let impl_args = self.fresh_args_for_item(obligation.cause.span, def_id);
+            let impl_trait_ref = tcx.impl_trait_ref(def_id).unwrap().instantiate(tcx, impl_args);
 
             let impl_self_ty = impl_trait_ref.self_ty();
 
             if self.can_eq(param_env, trait_self_ty, impl_self_ty) {
-                self_match_impls.push((def_id, impl_substs));
+                self_match_impls.push((def_id, impl_args));
 
-                if iter::zip(
-                    trait_ref.substs.types().skip(1),
-                    impl_trait_ref.substs.types().skip(1),
-                )
-                .all(|(u, v)| self.fuzzy_match_tys(u, v, false).is_some())
+                if iter::zip(trait_ref.args.types().skip(1), impl_trait_ref.args.types().skip(1))
+                    .all(|(u, v)| self.fuzzy_match_tys(u, v, false).is_some())
                 {
-                    fuzzy_match_impls.push((def_id, impl_substs));
+                    fuzzy_match_impls.push((def_id, impl_args));
                 }
             }
         });
 
-        let impl_def_id_and_substs = if self_match_impls.len() == 1 {
+        let impl_def_id_and_args = if self_match_impls.len() == 1 {
             self_match_impls[0]
         } else if fuzzy_match_impls.len() == 1 {
             fuzzy_match_impls[0]
@@ -93,8 +90,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             return None;
         };
 
-        tcx.has_attr(impl_def_id_and_substs.0, sym::rustc_on_unimplemented)
-            .then_some(impl_def_id_and_substs)
+        tcx.has_attr(impl_def_id_and_args.0, sym::rustc_on_unimplemented)
+            .then_some(impl_def_id_and_args)
     }
 
     /// Used to set on_unimplemented's `ItemContext`
@@ -143,9 +140,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         trait_ref: ty::PolyTraitRef<'tcx>,
         obligation: &PredicateObligation<'tcx>,
     ) -> OnUnimplementedNote {
-        let (def_id, substs) = self
+        let (def_id, args) = self
             .impl_similar_to(trait_ref, obligation)
-            .unwrap_or_else(|| (trait_ref.def_id(), trait_ref.skip_binder().substs));
+            .unwrap_or_else(|| (trait_ref.def_id(), trait_ref.skip_binder().args));
         let trait_ref = trait_ref.skip_binder();
 
         let mut flags = vec![];
@@ -192,14 +189,14 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 // signature with no type arguments resolved
                 flags.push((
                     sym::_Self,
-                    Some(self.tcx.type_of(def.did()).subst_identity().to_string()),
+                    Some(self.tcx.type_of(def.did()).instantiate_identity().to_string()),
                 ));
             }
 
             for param in generics.params.iter() {
                 let value = match param.kind {
                     GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
-                        substs[param.index as usize].to_string()
+                        args[param.index as usize].to_string()
                     }
                     GenericParamDefKind::Lifetime => continue,
                 };
@@ -207,13 +204,13 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 flags.push((name, Some(value)));
 
                 if let GenericParamDefKind::Type { .. } = param.kind {
-                    let param_ty = substs[param.index as usize].expect_ty();
+                    let param_ty = args[param.index as usize].expect_ty();
                     if let Some(def) = param_ty.ty_adt_def() {
                         // We also want to be able to select the parameter's
                         // original signature with no type arguments resolved
                         flags.push((
                             name,
-                            Some(self.tcx.type_of(def.did()).subst_identity().to_string()),
+                            Some(self.tcx.type_of(def.did()).instantiate_identity().to_string()),
                         ));
                     }
                 }
@@ -249,7 +246,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     // signature with no type arguments resolved
                     flags.push((
                         sym::_Self,
-                        Some(format!("[{}]", self.tcx.type_of(def.did()).subst_identity())),
+                        Some(format!("[{}]", self.tcx.type_of(def.did()).instantiate_identity())),
                     ));
                 }
                 if aty.is_integral() {
@@ -268,7 +265,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 if let Some(def) = aty.ty_adt_def() {
                     // We also want to be able to select the array's type's original
                     // signature with no type arguments resolved
-                    let def_ty = self.tcx.type_of(def.did()).subst_identity();
+                    let def_ty = self.tcx.type_of(def.did()).instantiate_identity();
                     flags.push((sym::_Self, Some(format!("[{def_ty}; _]"))));
                     if let Some(n) = len {
                         flags.push((sym::_Self, Some(format!("[{def_ty}; {n}]"))));
@@ -629,7 +626,7 @@ impl<'tcx> OnUnimplementedFormatString {
             .filter_map(|param| {
                 let value = match param.kind {
                     GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
-                        trait_ref.substs[param.index as usize].to_string()
+                        trait_ref.args[param.index as usize].to_string()
                     }
                     GenericParamDefKind::Lifetime => return None,
                 };

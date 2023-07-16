@@ -93,7 +93,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
         let has_error = match method {
-            Ok(method) => method.substs.references_error() || method.sig.references_error(),
+            Ok(method) => method.args.references_error() || method.sig.references_error(),
             Err(_) => true,
         };
         if has_error {
@@ -753,11 +753,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         errors.retain(|error| {
-            let Error::Invalid(
-                provided_idx,
-                expected_idx,
-                Compatibility::Incompatible(Some(e)),
-            ) = error else { return true };
+            let Error::Invalid(provided_idx, expected_idx, Compatibility::Incompatible(Some(e))) =
+                error
+            else {
+                return true;
+            };
             let (provided_ty, provided_span) = provided_arg_tys[*provided_idx];
             let trace =
                 mk_trace(provided_span, formal_and_expected_inputs[*expected_idx], provided_ty);
@@ -1366,7 +1366,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             Res::Def(DefKind::Variant, _) => match ty.normalized.ty_adt_def() {
                 Some(adt) => {
-                    Some((adt.variant_of_res(def), adt.did(), Self::user_substs_for_adt(ty)))
+                    Some((adt.variant_of_res(def), adt.did(), Self::user_args_for_adt(ty)))
                 }
                 _ => bug!("unexpected type: {:?}", ty.normalized),
             },
@@ -1374,21 +1374,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | Res::SelfTyParam { .. }
             | Res::SelfTyAlias { .. } => match ty.normalized.ty_adt_def() {
                 Some(adt) if !adt.is_enum() => {
-                    Some((adt.non_enum_variant(), adt.did(), Self::user_substs_for_adt(ty)))
+                    Some((adt.non_enum_variant(), adt.did(), Self::user_args_for_adt(ty)))
                 }
                 _ => None,
             },
             _ => bug!("unexpected definition: {:?}", def),
         };
 
-        if let Some((variant, did, ty::UserSubsts { substs, user_self_ty })) = variant {
-            debug!("check_struct_path: did={:?} substs={:?}", did, substs);
+        if let Some((variant, did, ty::UserArgs { args, user_self_ty })) = variant {
+            debug!("check_struct_path: did={:?} args={:?}", did, args);
 
             // Register type annotation.
-            self.write_user_type_annotation_from_substs(hir_id, did, substs, user_self_ty);
+            self.write_user_type_annotation_from_args(hir_id, did, args, user_self_ty);
 
             // Check bounds on type arguments used in the path.
-            self.add_required_obligations_for_hir(path_span, did, substs, hir_id);
+            self.add_required_obligations_for_hir(path_span, did, args, hir_id);
 
             Ok((variant, ty.normalized))
         } else {

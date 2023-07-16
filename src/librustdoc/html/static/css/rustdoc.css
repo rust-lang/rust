@@ -194,7 +194,7 @@ h1, h2, h3, h4, h5, h6,
 .item-name > a,
 .out-of-band,
 span.since,
-a.srclink,
+a.src,
 #help-button > a,
 summary.hideme,
 .scraped-example-list,
@@ -206,7 +206,7 @@ ul.all-items {
 #toggle-all-docs,
 a.anchor,
 .small-section-header a,
-#source-sidebar a,
+#src-sidebar a,
 .rust a,
 .sidebar h2 a,
 .sidebar h3 a,
@@ -315,7 +315,7 @@ main {
 	min-width: 0; /* avoid growing beyond the size limit */
 }
 
-.source main {
+.src main {
 	padding: 15px;
 }
 
@@ -350,10 +350,10 @@ pre.item-decl {
 	contain: initial;
 }
 
-.source .content pre {
+.src .content pre {
 	padding: 20px;
 }
-.rustdoc.source .example-wrap pre.src-line-numbers  {
+.rustdoc.src .example-wrap pre.src-line-numbers  {
 	padding: 20px 0 20px 4px;
 }
 
@@ -392,7 +392,7 @@ img {
 	left: 0;
 }
 
-.rustdoc.source .sidebar {
+.rustdoc.src .sidebar {
 	flex-basis: 50px;
 	border-right: 1px solid;
 	overflow-x: hidden;
@@ -402,7 +402,7 @@ img {
 }
 
 .sidebar, .mobile-topbar, .sidebar-menu-toggle,
-#src-sidebar-toggle, #source-sidebar {
+#src-sidebar-toggle, #src-sidebar {
 	background-color: var(--sidebar-background-color);
 }
 
@@ -410,16 +410,16 @@ img {
 	background-color: var(--sidebar-background-color-hover);
 }
 
-.source .sidebar > *:not(#src-sidebar-toggle) {
+.src .sidebar > *:not(#src-sidebar-toggle) {
 	visibility: hidden;
 }
 
-.source-sidebar-expanded .source .sidebar {
+.src-sidebar-expanded .src .sidebar {
 	overflow-y: auto;
 	flex-basis: 300px;
 }
 
-.source-sidebar-expanded .source .sidebar > *:not(#src-sidebar-toggle) {
+.src-sidebar-expanded .src .sidebar > *:not(#src-sidebar-toggle) {
 	visibility: visible;
 }
 
@@ -544,7 +544,7 @@ ul.block, .block li {
 	flex-grow: 1;
 }
 
-.rustdoc:not(.source) .example-wrap pre {
+.rustdoc:not(.src) .example-wrap pre {
 	overflow: auto hidden;
 }
 
@@ -619,7 +619,7 @@ ul.block, .block li {
 }
 
 .docblock code, .docblock-short code,
-pre, .rustdoc.source .example-wrap {
+pre, .rustdoc.src .example-wrap {
 	background-color: var(--code-block-background-color);
 }
 
@@ -676,7 +676,7 @@ nav.sub {
 	height: 34px;
 	flex-grow: 1;
 }
-.source nav.sub {
+.src nav.sub {
 	margin: 0 0 15px 0;
 }
 
@@ -1074,7 +1074,7 @@ pre.rust .doccomment {
 	color: var(--code-highlight-doc-comment-color);
 }
 
-.rustdoc.source .example-wrap pre.rust a {
+.rustdoc.src .example-wrap pre.rust a {
 	background: var(--codeblock-link-background);
 }
 
@@ -1301,22 +1301,22 @@ a.tooltip:hover::after {
 	align-items: stretch;
 	z-index: 10;
 }
-#source-sidebar {
+#src-sidebar {
 	width: 100%;
 	overflow: auto;
 }
-#source-sidebar > .title {
+#src-sidebar > .title {
 	font-size: 1.5rem;
 	text-align: center;
 	border-bottom: 1px solid var(--border-color);
 	margin-bottom: 6px;
 }
-#source-sidebar div.files > a:hover, details.dir-entry summary:hover,
-#source-sidebar div.files > a:focus, details.dir-entry summary:focus {
-	background-color: var(--source-sidebar-background-hover);
+#src-sidebar div.files > a:hover, details.dir-entry summary:hover,
+#src-sidebar div.files > a:focus, details.dir-entry summary:focus {
+	background-color: var(--src-sidebar-background-hover);
 }
-#source-sidebar div.files > a.selected {
-	background-color: var(--source-sidebar-background-selected);
+#src-sidebar div.files > a.selected {
+	background-color: var(--src-sidebar-background-selected);
 }
 #src-sidebar-toggle > button {
 	font-size: inherit;
@@ -1562,7 +1562,7 @@ However, it's not needed with smaller screen width because the doc/code block is
 /*
 WARNING: RUSTDOC_MOBILE_BREAKPOINT MEDIA QUERY
 If you update this line, then you also need to update the line with the same warning
-in source-script.js
+in src-script.js
 */
 @media (max-width: 700px) {
 	/* When linking to an item with an `id` (for instance, by clicking a link in the sidebar,
@@ -1619,8 +1619,8 @@ in source-script.js
 
 	/* The source view uses a different design for the sidebar toggle, and doesn't have a topbar,
 	   so don't bump down the main content or the sidebar. */
-	.source main,
-	.rustdoc.source .sidebar {
+	.src main,
+	.rustdoc.src .sidebar {
 		top: 0;
 		padding: 0;
 		height: 100vh;
@@ -1628,8 +1628,8 @@ in source-script.js
 	}
 
 	.sidebar.shown,
-	.source-sidebar-expanded .source .sidebar,
-	.rustdoc:not(.source) .sidebar:focus-within {
+	.src-sidebar-expanded .src .sidebar,
+	.rustdoc:not(.src) .sidebar:focus-within {
 		left: 0;
 	}
 
@@ -1709,7 +1709,7 @@ in source-script.js
 		border-left: 0;
 	}
 
-	.source-sidebar-expanded #src-sidebar-toggle {
+	.src-sidebar-expanded #src-sidebar-toggle {
 		left: unset;
 		top: unset;
 		width: unset;
@@ -1749,7 +1749,7 @@ in source-script.js
 		display: inline;
 	}
 
-	.source-sidebar-expanded .source .sidebar {
+	.src-sidebar-expanded .src .sidebar {
 		max-width: 100vw;
 		width: 100vw;
 	}
@@ -1769,7 +1769,7 @@ in source-script.js
 		margin-left: 34px;
 	}
 
-	.source nav.sub {
+	.src nav.sub {
 		margin: 0;
 		padding: var(--nav-sub-mobile-padding);
 	}
@@ -1792,7 +1792,7 @@ in source-script.js
 }
 
 @media print {
-	nav.sidebar, nav.sub, .out-of-band, a.srclink, #copy-path,
+	nav.sidebar, nav.sub, .out-of-band, a.src, #copy-path,
 	details.toggle[open] > summary::before, details.toggle > summary::before,
 	details.toggle.top-doc > summary {
 		display: none;

@@ -11,10 +11,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::builder::crate_description;
-use crate::builder::{Builder, Compiler, Kind, RunConfig, ShouldRun, Step};
+use crate::builder::{Alias, Builder, Compiler, Kind, RunConfig, ShouldRun, Step};
 use crate::cache::{Interned, INTERNER};
 use crate::compile;
-use crate::compile::make_run_crates;
 use crate::config::{Config, TargetSelection};
 use crate::tool::{self, prepare_tool_cargo, SourceType, Tool};
 use crate::util::{symlink_dir, t, up_to_date};
@@ -221,8 +220,11 @@ impl Step for TheBook {
         // build the version info page and CSS
         let shared_assets = builder.ensure(SharedAssets { target });
 
+        // build the command first so we don't nest GHA groups
+        builder.rustdoc_cmd(compiler);
+
         // build the redirect pages
-        builder.msg_doc(compiler, "book redirect pages", target);
+        let _guard = builder.msg_doc(compiler, "book redirect pages", target);
         for file in t!(fs::read_dir(builder.src.join(&relative_path).join("redirects"))) {
             let file = t!(file);
             let path = file.path();
@@ -306,7 +308,7 @@ impl Step for Standalone {
     fn run(self, builder: &Builder<'_>) {
         let target = self.target;
         let compiler = self.compiler;
-        builder.msg_doc(compiler, "standalone", target);
+        let _guard = builder.msg_doc(compiler, "standalone", target);
         let out = builder.doc_out(target);
         t!(fs::create_dir_all(&out));
 
@@ -424,8 +426,18 @@ pub struct Std {
 }
 
 impl Std {
-    pub(crate) fn new(stage: u32, target: TargetSelection, format: DocumentationFormat) -> Self {
-        Std { stage, target, format, crates: INTERNER.intern_list(vec![]) }
+    pub(crate) fn new(
+        stage: u32,
+        target: TargetSelection,
+        builder: &Builder<'_>,
+        format: DocumentationFormat,
+    ) -> Self {
+        let crates = builder
+            .in_tree_crates("sysroot", Some(target))
+            .into_iter()
+            .map(|krate| krate.name.to_string())
+            .collect();
+        Std { stage, target, format, crates: INTERNER.intern_list(crates) }
     }
 }
 
@@ -447,7 +459,7 @@ impl Step for Std {
             } else {
                 DocumentationFormat::HTML
             },
-            crates: make_run_crates(&run, "library"),
+            crates: run.make_run_crates(Alias::Library),
         });
     }
 
@@ -455,7 +467,7 @@ impl Step for Std {
     ///
     /// This will generate all documentation for the standard library and its
     /// dependencies. This is largely just a wrapper around `cargo doc`.
-    fn run(mut self, builder: &Builder<'_>) {
+    fn run(self, builder: &Builder<'_>) {
         let stage = self.stage;
         let target = self.target;
         let out = match self.format {
@@ -493,20 +505,17 @@ impl Step for Std {
             return;
         }
 
-        // Look for library/std, library/core etc in the `x.py doc` arguments and
-        // open the corresponding rendered docs.
-        if self.crates.is_empty() {
-            self.crates = INTERNER.intern_list(vec!["library".to_owned()]);
-        };
-
-        for requested_crate in &*self.crates {
-            if requested_crate == "library" {
-                // For `x.py doc library --open`, open `std` by default.
-                let index = out.join("std").join("index.html");
-                builder.open_in_browser(index);
-            } else if STD_PUBLIC_CRATES.iter().any(|&k| k == requested_crate) {
-                let index = out.join(requested_crate).join("index.html");
-                builder.open_in_browser(index);
+        if builder.paths.iter().any(|path| path.ends_with("library")) {
+            // For `x.py doc library --open`, open `std` by default.
+            let index = out.join("std").join("index.html");
+            builder.open_in_browser(index);
+        } else {
+            for requested_crate in &*self.crates {
+                if STD_PUBLIC_CRATES.iter().any(|&k| k == requested_crate) {
+                    let index = out.join(requested_crate).join("index.html");
+                    builder.open_in_browser(index);
+                    break;
+                }
             }
         }
     }
@@ -539,9 +548,6 @@ impl DocumentationFormat {
 }
 
 /// Build the documentation for public standard library crates.
-///
-/// `requested_crates` can be used to build only a subset of the crates. If empty, all crates will
-/// be built.
 fn doc_std(
     builder: &Builder<'_>,
     format: DocumentationFormat,
@@ -559,10 +565,6 @@ fn doc_std(
     }
 
     let compiler = builder.compiler(stage, builder.config.build);
-
-    let description =
-        format!("library{} in {} format", crate_description(&requested_crates), format.as_str());
-    let _guard = builder.msg_doc(compiler, &description, target);
 
     let target_doc_dir_name = if format == DocumentationFormat::JSON { "json-doc" } else { "doc" };
     let target_dir =
@@ -592,21 +594,17 @@ fn doc_std(
         cargo.rustdocflag("--document-private-items").rustdocflag("--document-hidden-items");
     }
 
-    // HACK: because we use `--manifest-path library/sysroot/Cargo.toml`, cargo thinks we only want to document that specific crate, not its dependencies.
-    // Override its default.
-    let built_crates = if requested_crates.is_empty() {
-        builder
-            .in_tree_crates("sysroot", None)
-            .into_iter()
-            .map(|krate| krate.name.to_string())
-            .collect()
-    } else {
-        requested_crates.to_vec()
-    };
-
-    for krate in built_crates {
+    for krate in requested_crates {
+        if krate == "sysroot" {
+            // The sysroot crate is an implementation detail, don't include it in public docs.
+            continue;
+        }
         cargo.arg("-p").arg(krate);
     }
+
+    let description =
+        format!("library{} in {} format", crate_description(&requested_crates), format.as_str());
+    let _guard = builder.msg_doc(compiler, &description, target);
 
     builder.run(&mut cargo.into());
     builder.cp_r(&out_dir, &out);
@@ -621,20 +619,10 @@ pub struct Rustc {
 
 impl Rustc {
     pub(crate) fn new(stage: u32, target: TargetSelection, builder: &Builder<'_>) -> Self {
-        // Find dependencies for top level crates.
-        let root_crates = vec![
-            INTERNER.intern_str("rustc_driver"),
-            INTERNER.intern_str("rustc_codegen_llvm"),
-            INTERNER.intern_str("rustc_codegen_ssa"),
-        ];
-        let crates: Vec<_> = root_crates
-            .iter()
-            .flat_map(|krate| {
-                builder
-                    .in_tree_crates(krate, Some(target))
-                    .into_iter()
-                    .map(|krate| krate.name.to_string())
-            })
+        let crates = builder
+            .in_tree_crates("rustc-main", Some(target))
+            .into_iter()
+            .map(|krate| krate.name.to_string())
             .collect();
         Self { stage, target, crates: INTERNER.intern_list(crates) }
     }
@@ -656,7 +644,7 @@ impl Step for Rustc {
         run.builder.ensure(Rustc {
             stage: run.builder.top_stage,
             target: run.target,
-            crates: make_run_crates(&run, "compiler"),
+            crates: run.make_run_crates(Alias::Compiler),
         });
     }
 
@@ -666,7 +654,7 @@ impl Step for Rustc {
     /// Compiler documentation is distributed separately, so we make sure
     /// we do not merge it with the other documentation from std, test and
     /// proc_macros. This is largely just a wrapper around `cargo doc`.
-    fn run(mut self, builder: &Builder<'_>) {
+    fn run(self, builder: &Builder<'_>) {
         let stage = self.stage;
         let target = self.target;
 
@@ -726,24 +714,26 @@ impl Step for Rustc {
 
         let mut to_open = None;
 
-        if self.crates.is_empty() {
-            self.crates = INTERNER.intern_list(vec!["rustc_driver".to_owned()]);
-        };
-
         for krate in &*self.crates {
             // Create all crate output directories first to make sure rustdoc uses
             // relative links.
             // FIXME: Cargo should probably do this itself.
-            t!(fs::create_dir_all(out_dir.join(krate)));
+            let dir_name = krate.replace("-", "_");
+            t!(fs::create_dir_all(out_dir.join(&*dir_name)));
             cargo.arg("-p").arg(krate);
             if to_open.is_none() {
-                to_open = Some(krate);
+                to_open = Some(dir_name);
             }
         }
 
         builder.run(&mut cargo.into());
-        // Let's open the first crate documentation page:
-        if let Some(krate) = to_open {
+
+        if builder.paths.iter().any(|path| path.ends_with("compiler")) {
+            // For `x.py doc compiler --open`, open `rustc_middle` by default.
+            let index = out.join("rustc_middle").join("index.html");
+            builder.open_in_browser(index);
+        } else if let Some(krate) = to_open {
+            // Let's open the first crate documentation page:
             let index = out.join(krate).join("index.html");
             builder.open_in_browser(index);
         }
@@ -812,8 +802,6 @@ macro_rules! tool_doc {
                     SourceType::Submodule
                 };
 
-                builder.msg_doc(compiler, stringify!($tool).to_lowercase(), target);
-
                 // Symlink compiler docs to the output directory of rustdoc documentation.
                 let out_dirs = [
                     builder.stage_out(compiler, Mode::ToolRustc).join(target.triple).join("doc"),
@@ -852,6 +840,8 @@ macro_rules! tool_doc {
                 cargo.rustdocflag("--show-type-layout");
                 cargo.rustdocflag("--generate-link-to-definition");
                 cargo.rustdocflag("-Zunstable-options");
+
+                let _guard = builder.msg_doc(compiler, stringify!($tool).to_lowercase(), target);
                 builder.run(&mut cargo.into());
             }
         }
@@ -1073,7 +1063,16 @@ impl Step for RustcBook {
         // config.toml), then this needs to explicitly update the dylib search
         // path.
         builder.add_rustc_lib_path(self.compiler, &mut cmd);
+        let doc_generator_guard = builder.msg(
+            Kind::Run,
+            self.compiler.stage,
+            "lint-docs",
+            self.compiler.host,
+            self.target,
+        );
         builder.run(&mut cmd);
+        drop(doc_generator_guard);
+
         // Run rustbook/mdbook to generate the HTML pages.
         builder.ensure(RustbookSrc {
             target: self.target,

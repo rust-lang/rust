@@ -11,7 +11,7 @@ use crate::infer::canonical::{
 use crate::infer::InferCtxt;
 use rustc_middle::ty::flags::FlagComputation;
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
-use rustc_middle::ty::subst::GenericArg;
+use rustc_middle::ty::GenericArg;
 use rustc_middle::ty::{self, BoundVar, InferConst, List, Ty, TyCtxt, TypeFlags, TypeVisitableExt};
 use std::sync::atomic::Ordering;
 

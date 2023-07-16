@@ -1,6 +1,6 @@
 use crate::middle::resolve_bound_vars as rbv;
 use crate::mir::interpret::{AllocId, ConstValue, LitToConstInput, Scalar};
-use crate::ty::{self, InternalSubsts, ParamEnv, ParamEnvAnd, Ty, TyCtxt, TypeVisitableExt};
+use crate::ty::{self, GenericArgs, ParamEnv, ParamEnvAnd, Ty, TyCtxt, TypeVisitableExt};
 use rustc_data_structures::intern::Interned;
 use rustc_error_messages::MultiSpan;
 use rustc_hir as hir;
@@ -171,7 +171,7 @@ impl<'tcx> Const<'tcx> {
                 tcx,
                 ty::UnevaluatedConst {
                     def: def.to_def_id(),
-                    substs: InternalSubsts::identity_for_item(tcx, def.to_def_id()),
+                    args: GenericArgs::identity_for_item(tcx, def.to_def_id()),
                 },
                 ty,
             ),
@@ -225,7 +225,7 @@ impl<'tcx> Const<'tcx> {
             )) => {
                 // Use the type from the param's definition, since we can resolve it,
                 // not the expected parameter type from WithOptConstParam.
-                let param_ty = tcx.type_of(def_id).subst_identity();
+                let param_ty = tcx.type_of(def_id).instantiate_identity();
                 match tcx.named_bound_var(expr.hir_id) {
                     Some(rbv::ResolvedArg::EarlyBound(_)) => {
                         // Find the name and index of the const parameter by indexing the generics of
@@ -406,14 +406,14 @@ impl<'tcx> Const<'tcx> {
             // any region variables.
 
             // HACK(eddyb) when the query key would contain inference variables,
-            // attempt using identity substs and `ParamEnv` instead, that will succeed
+            // attempt using identity args and `ParamEnv` instead, that will succeed
             // when the expression doesn't depend on any parameters.
             // FIXME(eddyb, skinny121) pass `InferCtxt` into here when it's available, so that
             // we can call `infcx.const_eval_resolve` which handles inference variables.
             let param_env_and = if (param_env, unevaluated).has_non_region_infer() {
                 tcx.param_env(unevaluated.def).and(ty::UnevaluatedConst {
                     def: unevaluated.def,
-                    substs: InternalSubsts::identity_for_item(tcx, unevaluated.def),
+                    args: GenericArgs::identity_for_item(tcx, unevaluated.def),
                 })
             } else {
                 tcx.erase_regions(param_env)
@@ -430,8 +430,8 @@ impl<'tcx> Const<'tcx> {
                 EvalMode::Typeck => {
                     match tcx.const_eval_resolve_for_typeck(param_env, unevaluated, None) {
                         // NOTE(eddyb) `val` contains no lifetimes/types/consts,
-                        // and we use the original type, so nothing from `substs`
-                        // (which may be identity substs, see above),
+                        // and we use the original type, so nothing from `args`
+                        // (which may be identity args, see above),
                         // can leak through `val` into the const we return.
                         Ok(val) => Some(Ok(EvalResult::ValTree(val?))),
                         Err(ErrorHandled::TooGeneric) => None,
@@ -441,8 +441,8 @@ impl<'tcx> Const<'tcx> {
                 EvalMode::Mir => {
                     match tcx.const_eval_resolve(param_env, unevaluated.expand(), None) {
                         // NOTE(eddyb) `val` contains no lifetimes/types/consts,
-                        // and we use the original type, so nothing from `substs`
-                        // (which may be identity substs, see above),
+                        // and we use the original type, so nothing from `args`
+                        // (which may be identity args, see above),
                         // can leak through `val` into the const we return.
                         Ok(val) => Some(Ok(EvalResult::ConstVal(val))),
                         Err(ErrorHandled::TooGeneric) => None,

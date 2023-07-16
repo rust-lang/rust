@@ -226,7 +226,7 @@ pub(crate) fn build_external_trait(cx: &mut DocContext<'_>, did: DefId) -> clean
 }
 
 fn build_external_function<'tcx>(cx: &mut DocContext<'tcx>, did: DefId) -> Box<clean::Function> {
-    let sig = cx.tcx.fn_sig(did).subst_identity();
+    let sig = cx.tcx.fn_sig(did).instantiate_identity();
 
     let late_bound_regions = sig.bound_vars().into_iter().filter_map(|var| match var {
         ty::BoundVariableKind::Region(ty::BrNamed(_, name)) if name != kw::UnderscoreLifetime => {
@@ -279,7 +279,7 @@ fn build_union(cx: &mut DocContext<'_>, did: DefId) -> clean::Union {
 fn build_type_alias(cx: &mut DocContext<'_>, did: DefId) -> Box<clean::Typedef> {
     let predicates = cx.tcx.explicit_predicates_of(did);
     let type_ = clean_middle_ty(
-        ty::Binder::dummy(cx.tcx.type_of(did).subst_identity()),
+        ty::Binder::dummy(cx.tcx.type_of(did).instantiate_identity()),
         cx,
         Some(did),
         None,
@@ -391,7 +391,7 @@ pub(crate) fn build_impl(
     let for_ = match &impl_item {
         Some(impl_) => clean_ty(impl_.self_ty, cx),
         None => clean_middle_ty(
-            ty::Binder::dummy(tcx.type_of(did).subst_identity()),
+            ty::Binder::dummy(tcx.type_of(did).instantiate_identity()),
             cx,
             Some(did),
             None,
@@ -634,7 +634,7 @@ pub(crate) fn print_inlined_const(tcx: TyCtxt<'_>, did: DefId) -> String {
 fn build_const(cx: &mut DocContext<'_>, def_id: DefId) -> clean::Constant {
     clean::Constant {
         type_: clean_middle_ty(
-            ty::Binder::dummy(cx.tcx.type_of(def_id).subst_identity()),
+            ty::Binder::dummy(cx.tcx.type_of(def_id).instantiate_identity()),
             cx,
             Some(def_id),
             None,
@@ -646,7 +646,7 @@ fn build_const(cx: &mut DocContext<'_>, def_id: DefId) -> clean::Constant {
 fn build_static(cx: &mut DocContext<'_>, did: DefId, mutable: bool) -> clean::Static {
     clean::Static {
         type_: clean_middle_ty(
-            ty::Binder::dummy(cx.tcx.type_of(did).subst_identity()),
+            ty::Binder::dummy(cx.tcx.type_of(did).instantiate_identity()),
             cx,
             Some(did),
             None,

@@ -3,7 +3,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::ty::is_c_void;
 use rustc_hir::Expr;
 use rustc_lint::LateContext;
-use rustc_middle::ty::SubstsRef;
+use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{self, IntTy, Ty, TypeAndMut, UintTy};
 
 #[expect(clippy::too_many_lines)]
@@ -268,12 +268,12 @@ fn reduce_ty<'tcx>(cx: &LateContext<'tcx>, mut ty: Ty<'tcx>) -> ReducedTy<'tcx> 
                 }
                 ReducedTy::UnorderedFields(ty)
             },
-            ty::Adt(def, substs) if def.is_struct() => {
+            ty::Adt(def, args) if def.is_struct() => {
                 let mut iter = def
                     .non_enum_variant()
                     .fields
                     .iter()
-                    .map(|f| cx.tcx.type_of(f.did).subst(cx.tcx, substs));
+                    .map(|f| cx.tcx.type_of(f.did).instantiate(cx.tcx, args));
                 let Some(sized_ty) = iter.find(|&ty| !is_zero_sized_ty(cx, ty)) else {
                     return ReducedTy::TypeErasure { raw_ptr_only: false };
                 };
@@ -322,7 +322,7 @@ fn is_size_pair(ty: Ty<'_>) -> bool {
     }
 }
 
-fn same_except_params<'tcx>(subs1: SubstsRef<'tcx>, subs2: SubstsRef<'tcx>) -> bool {
+fn same_except_params<'tcx>(subs1: GenericArgsRef<'tcx>, subs2: GenericArgsRef<'tcx>) -> bool {
     // TODO: check const parameters as well. Currently this will consider `Array<5>` the same as
     // `Array<6>`
     for (ty1, ty2) in subs1.types().zip(subs2.types()).filter(|(ty1, ty2)| ty1 != ty2) {

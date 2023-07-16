@@ -105,7 +105,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         // Heavily inspired by `FnCtxt::suggest_compatible_variants`, with
         // some modifications due to that being in typeck and this being in infer.
         if let ObligationCauseCode::Pattern { .. } = cause.code() {
-            if let ty::Adt(expected_adt, substs) = exp_found.expected.kind() {
+            if let ty::Adt(expected_adt, args) = exp_found.expected.kind() {
                 let compatible_variants: Vec<_> = expected_adt
                     .variants()
                     .iter()
@@ -114,7 +114,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     })
                     .filter_map(|variant| {
                         let sole_field = &variant.single_field();
-                        let sole_field_ty = sole_field.ty(self.tcx, substs);
+                        let sole_field_ty = sole_field.ty(self.tcx, args);
                         if self.same_type_modulo_infer(sole_field_ty, exp_found.found) {
                             let variant_path =
                                 with_no_trimmed_paths!(self.tcx.def_path_str(variant.def_id));
@@ -260,7 +260,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             "suggest_accessing_field_where_appropriate(cause={:?}, exp_found={:?})",
             cause, exp_found
         );
-        if let ty::Adt(expected_def, expected_substs) = exp_found.expected.kind() {
+        if let ty::Adt(expected_def, expected_args) = exp_found.expected.kind() {
             if expected_def.is_enum() {
                 return;
             }
@@ -270,7 +270,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 .fields
                 .iter()
                 .filter(|field| field.vis.is_accessible_from(field.did, self.tcx))
-                .map(|field| (field.name, field.ty(self.tcx, expected_substs)))
+                .map(|field| (field.name, field.ty(self.tcx, expected_args)))
                 .find(|(_, ty)| self.same_type_modulo_infer(*ty, exp_found.found))
             {
                 if let ObligationCauseCode::Pattern { span: Some(span), .. } = *cause.code() {
@@ -304,12 +304,12 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             return;
         }
         match (&expected_inner.kind(), &found_inner.kind()) {
-            (ty::FnPtr(sig), ty::FnDef(did, substs)) => {
+            (ty::FnPtr(sig), ty::FnDef(did, args)) => {
                 let expected_sig = &(self.normalize_fn_sig)(*sig);
                 let found_sig =
-                    &(self.normalize_fn_sig)(self.tcx.fn_sig(*did).subst(self.tcx, substs));
+                    &(self.normalize_fn_sig)(self.tcx.fn_sig(*did).instantiate(self.tcx, args));
 
-                let fn_name = self.tcx.def_path_str_with_substs(*did, substs);
+                let fn_name = self.tcx.def_path_str_with_args(*did, args);
 
                 if !self.same_type_modulo_infer(*found_sig, *expected_sig)
                     || !sig.is_suggestable(self.tcx, true)
@@ -332,11 +332,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 };
                 diag.subdiagnostic(sugg);
             }
-            (ty::FnDef(did1, substs1), ty::FnDef(did2, substs2)) => {
+            (ty::FnDef(did1, args1), ty::FnDef(did2, args2)) => {
                 let expected_sig =
-                    &(self.normalize_fn_sig)(self.tcx.fn_sig(*did1).subst(self.tcx, substs1));
+                    &(self.normalize_fn_sig)(self.tcx.fn_sig(*did1).instantiate(self.tcx, args1));
                 let found_sig =
-                    &(self.normalize_fn_sig)(self.tcx.fn_sig(*did2).subst(self.tcx, substs2));
+                    &(self.normalize_fn_sig)(self.tcx.fn_sig(*did2).instantiate(self.tcx, args2));
 
                 if self.same_type_modulo_infer(*expected_sig, *found_sig) {
                     diag.subdiagnostic(FnUniqTypes);
@@ -351,7 +351,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     return;
                 }
 
-                let fn_name = self.tcx.def_path_str_with_substs(*did2, substs2);
+                let fn_name = self.tcx.def_path_str_with_args(*did2, args2);
                 let sug = if found.is_ref() {
                     FunctionPointerSuggestion::CastBothRef {
                         span,
@@ -370,16 +370,16 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
                 diag.subdiagnostic(sug);
             }
-            (ty::FnDef(did, substs), ty::FnPtr(sig)) => {
+            (ty::FnDef(did, args), ty::FnPtr(sig)) => {
                 let expected_sig =
-                    &(self.normalize_fn_sig)(self.tcx.fn_sig(*did).subst(self.tcx, substs));
+                    &(self.normalize_fn_sig)(self.tcx.fn_sig(*did).instantiate(self.tcx, args));
                 let found_sig = &(self.normalize_fn_sig)(*sig);
 
                 if !self.same_type_modulo_infer(*found_sig, *expected_sig) {
                     return;
                 }
 
-                let fn_name = self.tcx.def_path_str_with_substs(*did, substs);
+                let fn_name = self.tcx.def_path_str_with_args(*did, args);
 
                 let casting = if expected.is_ref() {
                     format!("&({fn_name} as {found_sig})")
@@ -400,10 +400,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
     ) -> Option<SuggestAsRefKind> {
-        if let (ty::Adt(exp_def, exp_substs), ty::Ref(_, found_ty, _)) =
+        if let (ty::Adt(exp_def, exp_args), ty::Ref(_, found_ty, _)) =
             (expected.kind(), found.kind())
         {
-            if let ty::Adt(found_def, found_substs) = *found_ty.kind() {
+            if let ty::Adt(found_def, found_args) = *found_ty.kind() {
                 if exp_def == &found_def {
                     let have_as_ref = &[
                         (sym::Option, SuggestAsRefKind::Option),
@@ -414,7 +414,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     }) {
                         let mut show_suggestion = true;
                         for (exp_ty, found_ty) in
-                            std::iter::zip(exp_substs.types(), found_substs.types())
+                            std::iter::zip(exp_args.types(), found_args.types())
                         {
                             match *exp_ty.kind() {
                                 ty::Ref(_, exp_ty, _) => {
@@ -526,13 +526,23 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         diag: &mut Diagnostic,
     ) {
         // 0. Extract fn_decl from hir
-        let hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Closure(hir::Closure { body, fn_decl, .. }), .. }) = hir else { return; };
+        let hir::Node::Expr(hir::Expr {
+            kind: hir::ExprKind::Closure(hir::Closure { body, fn_decl, .. }),
+            ..
+        }) = hir
+        else {
+            return;
+        };
         let hir::Body { params, .. } = self.tcx.hir().body(*body);
 
-        // 1. Get the substs of the closure.
+        // 1. Get the args of the closure.
         // 2. Assume exp_found is FnOnce / FnMut / Fn, we can extract function parameters from [1].
-        let Some(expected) = exp_found.expected.skip_binder().substs.get(1) else { return; };
-        let Some(found) = exp_found.found.skip_binder().substs.get(1) else { return; };
+        let Some(expected) = exp_found.expected.skip_binder().args.get(1) else {
+            return;
+        };
+        let Some(found) = exp_found.found.skip_binder().args.get(1) else {
+            return;
+        };
         let expected = expected.unpack();
         let found = found.unpack();
         // 3. Extract the tuple type from Fn trait and suggest the change.
@@ -621,8 +631,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 ty::Alias(ty::Opaque, ty::AliasTy { def_id: exp_def_id, .. }),
             ) if last_def_id == exp_def_id => StatementAsExpression::CorrectType,
             (
-                ty::Alias(ty::Opaque, ty::AliasTy { def_id: last_def_id, substs: last_bounds, .. }),
-                ty::Alias(ty::Opaque, ty::AliasTy { def_id: exp_def_id, substs: exp_bounds, .. }),
+                ty::Alias(ty::Opaque, ty::AliasTy { def_id: last_def_id, args: last_bounds, .. }),
+                ty::Alias(ty::Opaque, ty::AliasTy { def_id: exp_def_id, args: exp_bounds, .. }),
             ) => {
                 debug!(
                     "both opaque, likely future {:?} {:?} {:?} {:?}",
@@ -711,7 +721,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
         let hir = self.tcx.hir();
         for stmt in blk.stmts.iter().rev() {
-            let hir::StmtKind::Local(local) = &stmt.kind else { continue; };
+            let hir::StmtKind::Local(local) = &stmt.kind else {
+                continue;
+            };
             local.pat.walk(&mut find_compatible_candidates);
         }
         match hir.find_parent(blk.hir_id) {

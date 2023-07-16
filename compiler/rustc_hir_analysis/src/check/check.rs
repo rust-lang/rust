@@ -20,8 +20,8 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::traits::DefiningAnchor;
 use rustc_middle::ty::layout::{LayoutError, MAX_SIMD_LANES};
-use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
+use rustc_middle::ty::GenericArgKind;
 use rustc_middle::ty::{
     self, AdtDef, ParamEnv, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
 };
@@ -96,8 +96,8 @@ fn check_union(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 
 /// Check that the fields of the `union` do not need dropping.
 fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: LocalDefId) -> bool {
-    let item_type = tcx.type_of(item_def_id).subst_identity();
-    if let ty::Adt(def, substs) = item_type.kind() {
+    let item_type = tcx.type_of(item_def_id).instantiate_identity();
+    if let ty::Adt(def, args) = item_type.kind() {
         assert!(def.is_union());
 
         fn allowed_union_field<'tcx>(
@@ -128,7 +128,7 @@ fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: LocalDefId) -> b
 
         let param_env = tcx.param_env(item_def_id);
         for field in &def.non_enum_variant().fields {
-            let field_ty = tcx.normalize_erasing_regions(param_env, field.ty(tcx, substs));
+            let field_ty = tcx.normalize_erasing_regions(param_env, field.ty(tcx, args));
 
             if !allowed_union_field(field_ty, tcx, param_env) {
                 let (field_span, ty_span) = match tcx.hir().get_if_local(field.did) {
@@ -163,7 +163,7 @@ fn check_static_inhabited(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     // would be enough to check this for `extern` statics, as statics with an initializer will
     // have UB during initialization if they are uninhabited, but there also seems to be no good
     // reason to allow any statics to be uninhabited.
-    let ty = tcx.type_of(def_id).subst_identity();
+    let ty = tcx.type_of(def_id).instantiate_identity();
     let span = tcx.def_span(def_id);
     let layout = match tcx.layout_of(ParamEnv::reveal_all().and(ty)) {
         Ok(l) => l,
@@ -212,16 +212,16 @@ fn check_opaque(tcx: TyCtxt<'_>, id: hir::ItemId) {
         return;
     }
 
-    let substs = InternalSubsts::identity_for_item(tcx, item.owner_id);
+    let args = GenericArgs::identity_for_item(tcx, item.owner_id);
     let span = tcx.def_span(item.owner_id.def_id);
 
     if !tcx.features().impl_trait_projections {
         check_opaque_for_inheriting_lifetimes(tcx, item.owner_id.def_id, span);
     }
-    if tcx.type_of(item.owner_id.def_id).subst_identity().references_error() {
+    if tcx.type_of(item.owner_id.def_id).instantiate_identity().references_error() {
         return;
     }
-    if check_opaque_for_cycles(tcx, item.owner_id.def_id, substs, span, &origin).is_err() {
+    if check_opaque_for_cycles(tcx, item.owner_id.def_id, args, span, &origin).is_err() {
         return;
     }
 
@@ -305,8 +305,8 @@ pub(super) fn check_opaque_for_inheriting_lifetimes(
         ..
     }) = item.kind
     {
-        let substs = InternalSubsts::identity_for_item(tcx, def_id);
-        let opaque_identity_ty = Ty::new_opaque(tcx, def_id.to_def_id(), substs);
+        let args = GenericArgs::identity_for_item(tcx, def_id);
+        let opaque_identity_ty = Ty::new_opaque(tcx, def_id.to_def_id(), args);
         let mut visitor = ProhibitOpaqueVisitor {
             opaque_identity_ty,
             parent_count: tcx.generics_of(def_id).parent_count as u32,
@@ -316,7 +316,7 @@ pub(super) fn check_opaque_for_inheriting_lifetimes(
         };
         let prohibit_opaque = tcx
             .explicit_item_bounds(def_id)
-            .subst_identity_iter_copied()
+            .instantiate_identity_iter_copied()
             .try_for_each(|(predicate, _)| predicate.visit_with(&mut visitor));
 
         if let Some(ty) = prohibit_opaque.break_value() {
@@ -355,11 +355,11 @@ pub(super) fn check_opaque_for_inheriting_lifetimes(
 pub(super) fn check_opaque_for_cycles<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
-    substs: SubstsRef<'tcx>,
+    args: GenericArgsRef<'tcx>,
     span: Span,
     origin: &hir::OpaqueTyOrigin,
 ) -> Result<(), ErrorGuaranteed> {
-    if tcx.try_expand_impl_trait_type(def_id.to_def_id(), substs).is_err() {
+    if tcx.try_expand_impl_trait_type(def_id.to_def_id(), args).is_err() {
         let reported = match origin {
             hir::OpaqueTyOrigin::AsyncFn(..) => async_opaque_type_cycle_error(tcx, span),
             _ => opaque_type_cycle_error(tcx, def_id, span),
@@ -404,16 +404,16 @@ fn check_opaque_meets_bounds<'tcx>(
         .build();
     let ocx = ObligationCtxt::new(&infcx);
 
-    let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
-    let opaque_ty = Ty::new_opaque(tcx, def_id.to_def_id(), substs);
+    let args = GenericArgs::identity_for_item(tcx, def_id.to_def_id());
+    let opaque_ty = Ty::new_opaque(tcx, def_id.to_def_id(), args);
 
-    // `ReErased` regions appear in the "parent_substs" of closures/generators.
+    // `ReErased` regions appear in the "parent_args" of closures/generators.
     // We're ignoring them here and replacing them with fresh region variables.
-    // See tests in ui/type-alias-impl-trait/closure_{parent_substs,wf_outlives}.rs.
+    // See tests in ui/type-alias-impl-trait/closure_{parent_args,wf_outlives}.rs.
     //
     // FIXME: Consider wrapping the hidden type in an existential `Binder` and instantiating it
     // here rather than using ReErased.
-    let hidden_ty = tcx.type_of(def_id.to_def_id()).subst(tcx, substs);
+    let hidden_ty = tcx.type_of(def_id.to_def_id()).instantiate(tcx, args);
     let hidden_ty = tcx.fold_regions(hidden_ty, |re, _dbi| match re.kind() {
         ty::ReErased => infcx.next_region_var(RegionVariableOrigin::MiscVariable(span)),
         _ => re,
@@ -472,7 +472,7 @@ fn check_opaque_meets_bounds<'tcx>(
 fn is_enum_of_nonnullable_ptr<'tcx>(
     tcx: TyCtxt<'tcx>,
     adt_def: AdtDef<'tcx>,
-    substs: SubstsRef<'tcx>,
+    args: GenericArgsRef<'tcx>,
 ) -> bool {
     if adt_def.repr().inhibit_enum_layout_opt() {
         return false;
@@ -484,14 +484,14 @@ fn is_enum_of_nonnullable_ptr<'tcx>(
     let (([], [field]) | ([field], [])) = (&var_one.fields.raw[..], &var_two.fields.raw[..]) else {
         return false;
     };
-    matches!(field.ty(tcx, substs).kind(), ty::FnPtr(..) | ty::Ref(..))
+    matches!(field.ty(tcx, args).kind(), ty::FnPtr(..) | ty::Ref(..))
 }
 
 fn check_static_linkage(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     if tcx.codegen_fn_attrs(def_id).import_linkage.is_some() {
-        if match tcx.type_of(def_id).subst_identity().kind() {
+        if match tcx.type_of(def_id).instantiate_identity().kind() {
             ty::RawPtr(_) => false,
-            ty::Adt(adt_def, substs) => !is_enum_of_nonnullable_ptr(tcx, *adt_def, *substs),
+            ty::Adt(adt_def, args) => !is_enum_of_nonnullable_ptr(tcx, *adt_def, *args),
             _ => true,
         } {
             tcx.sess.emit_err(LinkageType { span: tcx.def_span(def_id) });
@@ -525,7 +525,7 @@ fn check_item_type(tcx: TyCtxt<'_>, id: hir::ItemId) {
                 check_impl_items_against_trait(
                     tcx,
                     id.owner_id.def_id,
-                    impl_trait_ref.subst_identity(),
+                    impl_trait_ref.instantiate_identity(),
                 );
                 check_on_unimplemented(tcx, id);
             }
@@ -541,13 +541,13 @@ fn check_item_type(tcx: TyCtxt<'_>, id: hir::ItemId) {
                         fn_maybe_err(tcx, assoc_item.ident(tcx).span, abi);
                     }
                     ty::AssocKind::Type if assoc_item.defaultness(tcx).has_value() => {
-                        let trait_substs =
-                            InternalSubsts::identity_for_item(tcx, id.owner_id);
+                        let trait_args =
+                            GenericArgs::identity_for_item(tcx, id.owner_id);
                         let _: Result<_, rustc_errors::ErrorGuaranteed> = check_type_bounds(
                             tcx,
                             assoc_item,
                             assoc_item,
-                            ty::TraitRef::new(tcx, id.owner_id.to_def_id(), trait_substs),
+                            ty::TraitRef::new(tcx, id.owner_id.to_def_id(), trait_args),
                         );
                     }
                     _ => {}
@@ -572,7 +572,7 @@ fn check_item_type(tcx: TyCtxt<'_>, id: hir::ItemId) {
             }
         }
         DefKind::TyAlias => {
-            let pty_ty = tcx.type_of(id.owner_id).subst_identity();
+            let pty_ty = tcx.type_of(id.owner_id).instantiate_identity();
             let generics = tcx.generics_of(id.owner_id);
             check_type_params_are_used(tcx, &generics, pty_ty);
         }
@@ -886,8 +886,8 @@ fn check_impl_items_against_trait<'tcx>(
 }
 
 pub fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
-    let t = tcx.type_of(def_id).subst_identity();
-    if let ty::Adt(def, substs) = t.kind()
+    let t = tcx.type_of(def_id).instantiate_identity();
+    if let ty::Adt(def, args) = t.kind()
         && def.is_struct()
     {
         let fields = &def.non_enum_variant().fields;
@@ -895,8 +895,8 @@ pub fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
             struct_span_err!(tcx.sess, sp, E0075, "SIMD vector cannot be empty").emit();
             return;
         }
-        let e = fields[FieldIdx::from_u32(0)].ty(tcx, substs);
-        if !fields.iter().all(|f| f.ty(tcx, substs) == e) {
+        let e = fields[FieldIdx::from_u32(0)].ty(tcx, args);
+        if !fields.iter().all(|f| f.ty(tcx, args) == e) {
             struct_span_err!(tcx.sess, sp, E0076, "SIMD vector should be homogeneous")
                 .span_label(sp, "SIMD elements must have the same type")
                 .emit();
@@ -1003,7 +1003,7 @@ pub(super) fn check_packed(tcx: TyCtxt<'_>, sp: Span, def: ty::AdtDef<'_>) {
                             if first {
                                 format!(
                                     "`{}` contains a field of type `{}`",
-                                    tcx.type_of(def.did()).subst_identity(),
+                                    tcx.type_of(def.did()).instantiate_identity(),
                                     ident
                                 )
                             } else {
@@ -1025,7 +1025,7 @@ pub(super) fn check_packed_inner(
     def_id: DefId,
     stack: &mut Vec<DefId>,
 ) -> Option<Vec<(DefId, Span)>> {
-    if let ty::Adt(def, substs) = tcx.type_of(def_id).subst_identity().kind() {
+    if let ty::Adt(def, args) = tcx.type_of(def_id).instantiate_identity().kind() {
         if def.is_struct() || def.is_union() {
             if def.repr().align.is_some() {
                 return Some(vec![(def.did(), DUMMY_SP)]);
@@ -1033,7 +1033,7 @@ pub(super) fn check_packed_inner(
 
             stack.push(def_id);
             for field in &def.non_enum_variant().fields {
-                if let ty::Adt(def, _) = field.ty(tcx, substs).kind()
+                if let ty::Adt(def, _) = field.ty(tcx, args).kind()
                     && !stack.contains(&def.did())
                     && let Some(mut defs) = check_packed_inner(tcx, def.did(), stack)
                 {
@@ -1072,7 +1072,7 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
     // For each field, figure out if it's known to be a ZST and align(1), with "known"
     // respecting #[non_exhaustive] attributes.
     let field_infos = adt.all_fields().map(|field| {
-        let ty = field.ty(tcx, InternalSubsts::identity_for_item(tcx, field.did));
+        let ty = field.ty(tcx, GenericArgs::identity_for_item(tcx, field.did));
         let param_env = tcx.param_env(field.did);
         let layout = tcx.layout_of(param_env.and(ty));
         // We are currently checking the type this field came from, so it must be local
@@ -1086,7 +1086,7 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
         fn check_non_exhaustive<'tcx>(
             tcx: TyCtxt<'tcx>,
             t: Ty<'tcx>,
-        ) -> ControlFlow<(&'static str, DefId, SubstsRef<'tcx>, bool)> {
+        ) -> ControlFlow<(&'static str, DefId, GenericArgsRef<'tcx>, bool)> {
             match t.kind() {
                 ty::Tuple(list) => list.iter().try_for_each(|t| check_non_exhaustive(tcx, t)),
                 ty::Array(ty, _) => check_non_exhaustive(tcx, *ty),
@@ -1140,7 +1140,7 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
             .span_label(span, "has alignment larger than 1")
             .emit();
         }
-        if incompat && let Some((descr, def_id, substs, non_exhaustive)) = non_exhaustive {
+        if incompat && let Some((descr, def_id, args, non_exhaustive)) = non_exhaustive {
             tcx.struct_span_lint_hir(
                 REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS,
                 tcx.hir().local_def_id_to_hir_id(adt.did().expect_local()),
@@ -1152,7 +1152,7 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
                     } else {
                         "contains private fields"
                     };
-                    let field_ty = tcx.def_path_str_with_substs(def_id, substs);
+                    let field_ty = tcx.def_path_str_with_args(def_id, args);
                     lint
                         .note(format!("this {descr} contains `{field_ty}`, which {note}, \
                             and makes it not a breaking change to become non-zero-sized in the future."))

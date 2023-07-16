@@ -4,7 +4,7 @@ use rustc_infer::infer::canonical::{Canonical, QueryResponse};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::query::{DropckConstraint, DropckOutlivesResult};
-use rustc_middle::ty::InternalSubsts;
+use rustc_middle::ty::GenericArgs;
 use rustc_middle::ty::TyCtxt;
 use rustc_trait_selection::infer::InferCtxtBuilderExt;
 use rustc_trait_selection::traits::query::dropck_outlives::{
@@ -41,11 +41,11 @@ pub(crate) fn adt_dtorck_constraint(
     } else if def.is_phantom_data() {
         // The first generic parameter here is guaranteed to be a type because it's
         // `PhantomData`.
-        let substs = InternalSubsts::identity_for_item(tcx, def_id);
-        assert_eq!(substs.len(), 1);
+        let args = GenericArgs::identity_for_item(tcx, def_id);
+        assert_eq!(args.len(), 1);
         let result = DropckConstraint {
             outlives: vec![],
-            dtorck_types: vec![substs.type_at(0)],
+            dtorck_types: vec![args.type_at(0)],
             overflows: vec![],
         };
         debug!("dtorck_constraint: {:?} => {:?}", def, result);
@@ -54,7 +54,7 @@ pub(crate) fn adt_dtorck_constraint(
 
     let mut result = DropckConstraint::empty();
     for field in def.all_fields() {
-        let fty = tcx.type_of(field.did).subst_identity();
+        let fty = tcx.type_of(field.did).instantiate_identity();
         dtorck_constraint_for_ty_inner(tcx, span, fty, 0, fty, &mut result)?;
     }
     result.outlives.extend(tcx.destructor_constraints(def));

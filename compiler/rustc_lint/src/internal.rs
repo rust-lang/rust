@@ -52,20 +52,20 @@ impl LateLintPass<'_> for DefaultHashTypes {
 }
 
 /// Helper function for lints that check for expressions with calls and use typeck results to
-/// get the `DefId` and `SubstsRef` of the function.
+/// get the `DefId` and `GenericArgsRef` of the function.
 fn typeck_results_of_method_fn<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &Expr<'_>,
-) -> Option<(Span, DefId, ty::subst::SubstsRef<'tcx>)> {
+) -> Option<(Span, DefId, ty::GenericArgsRef<'tcx>)> {
     match expr.kind {
         ExprKind::MethodCall(segment, ..)
             if let Some(def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id) =>
         {
-            Some((segment.ident.span, def_id, cx.typeck_results().node_substs(expr.hir_id)))
+            Some((segment.ident.span, def_id, cx.typeck_results().node_args(expr.hir_id)))
         },
         _ => {
             match cx.typeck_results().node_type(expr.hir_id).kind() {
-                &ty::FnDef(def_id, substs) => Some((expr.span, def_id, substs)),
+                &ty::FnDef(def_id, args) => Some((expr.span, def_id, args)),
                 _ => None,
             }
         }
@@ -89,8 +89,8 @@ declare_lint_pass!(QueryStability => [POTENTIAL_QUERY_INSTABILITY]);
 
 impl LateLintPass<'_> for QueryStability {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
-        let Some((span, def_id, substs)) = typeck_results_of_method_fn(cx, expr) else { return };
-        if let Ok(Some(instance)) = ty::Instance::resolve(cx.tcx, cx.param_env, def_id, substs) {
+        let Some((span, def_id, args)) = typeck_results_of_method_fn(cx, expr) else { return };
+        if let Ok(Some(instance)) = ty::Instance::resolve(cx.tcx, cx.param_env, def_id, args) {
             let def_id = instance.def_id();
             if cx.tcx.has_attr(def_id, sym::rustc_lint_query_instability) {
                 cx.emit_spanned_lint(
@@ -232,7 +232,7 @@ fn is_ty_or_ty_ctxt(cx: &LateContext<'_>, path: &Path<'_>) -> Option<String> {
         }
         // Only lint on `&Ty` and `&TyCtxt` if it is used outside of a trait.
         Res::SelfTyAlias { alias_to: did, is_trait_impl: false, .. } => {
-            if let ty::Adt(adt, substs) = cx.tcx.type_of(did).subst_identity().kind() {
+            if let ty::Adt(adt, args) = cx.tcx.type_of(did).instantiate_identity().kind() {
                 if let Some(name @ (sym::Ty | sym::TyCtxt)) = cx.tcx.get_diagnostic_name(adt.did())
                 {
                     // NOTE: This path is currently unreachable as `Ty<'tcx>` is
@@ -241,7 +241,7 @@ fn is_ty_or_ty_ctxt(cx: &LateContext<'_>, path: &Path<'_>) -> Option<String> {
                     //
                     // I(@lcnr) still kept this branch in so we don't miss this
                     // if we ever change it in the future.
-                    return Some(format!("{}<{}>", name, substs[0]));
+                    return Some(format!("{}<{}>", name, args[0]));
                 }
             }
         }
@@ -379,9 +379,9 @@ declare_lint_pass!(Diagnostics => [ UNTRANSLATABLE_DIAGNOSTIC, DIAGNOSTIC_OUTSID
 
 impl LateLintPass<'_> for Diagnostics {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
-        let Some((span, def_id, substs)) = typeck_results_of_method_fn(cx, expr) else { return };
-        debug!(?span, ?def_id, ?substs);
-        let has_attr = ty::Instance::resolve(cx.tcx, cx.param_env, def_id, substs)
+        let Some((span, def_id, args)) = typeck_results_of_method_fn(cx, expr) else { return };
+        debug!(?span, ?def_id, ?args);
+        let has_attr = ty::Instance::resolve(cx.tcx, cx.param_env, def_id, args)
             .ok()
             .flatten()
             .is_some_and(|inst| cx.tcx.has_attr(inst.def_id(), sym::rustc_lint_diagnostics));
@@ -414,7 +414,7 @@ impl LateLintPass<'_> for Diagnostics {
         }
 
         let mut found_diagnostic_message = false;
-        for ty in substs.types() {
+        for ty in args.types() {
             debug!(?ty);
             if let Some(adt_def) = ty.ty_adt_def() &&
                 let Some(name) =  cx.tcx.get_diagnostic_name(adt_def.did()) &&

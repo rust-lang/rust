@@ -138,7 +138,7 @@ use rustc_target::abi::{AddressSpace, Endian, HasDataLayout};
 
 use crate::mir;
 use crate::ty::codec::{TyDecoder, TyEncoder};
-use crate::ty::subst::GenericArgKind;
+use crate::ty::GenericArgKind;
 use crate::ty::{self, Instance, Ty, TyCtxt};
 
 pub use self::error::{
@@ -559,7 +559,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // However, formatting code relies on function identity (see #58320), so we only do
         // this for generic functions. Lifetime parameters are ignored.
         let is_generic = instance
-            .substs
+            .args
             .into_iter()
             .any(|kind| !matches!(kind.unpack(), GenericArgKind::Lifetime(_)));
         if is_generic {

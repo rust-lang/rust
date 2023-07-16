@@ -501,12 +501,12 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
         let witness_1_is_privately_uninhabited =
             if cx.tcx.features().exhaustive_patterns
                 && let Some(witness_1) = witnesses.get(0)
-                && let ty::Adt(adt, substs) = witness_1.ty().kind()
+                && let ty::Adt(adt, args) = witness_1.ty().kind()
                 && adt.is_enum()
                 && let Constructor::Variant(variant_index) = witness_1.ctor()
             {
                 let variant = adt.variant(*variant_index);
-                let inhabited = variant.inhabited_predicate(cx.tcx, *adt).subst(cx.tcx, substs);
+                let inhabited = variant.inhabited_predicate(cx.tcx, *adt).instantiate(cx.tcx, args);
                 assert!(inhabited.apply(cx.tcx, cx.param_env, cx.module));
                 !inhabited.apply_ignore_module(cx.tcx, cx.param_env)
             } else {
@@ -942,7 +942,9 @@ fn maybe_point_at_variant<'a, 'p: 'a, 'tcx: 'a>(
 /// This analysis is *not* subsumed by NLL.
 fn check_borrow_conflicts_in_at_patterns<'tcx>(cx: &MatchVisitor<'_, '_, 'tcx>, pat: &Pat<'tcx>) {
     // Extract `sub` in `binding @ sub`.
-    let PatKind::Binding { name, mode, ty, subpattern: Some(box ref sub), .. } = pat.kind else { return };
+    let PatKind::Binding { name, mode, ty, subpattern: Some(box ref sub), .. } = pat.kind else {
+        return;
+    };
 
     let is_binding_by_move = |ty: Ty<'tcx>| !ty.is_copy_modulo_regions(cx.tcx, cx.param_env);
 

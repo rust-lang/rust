@@ -1,6 +1,6 @@
 //! The WIP stable interface to rustc internals.
 //!
-//! For more information see https://github.com/rust-lang/project-stable-mir
+//! For more information see <https://github.com/rust-lang/project-stable-mir>
 //!
 //! # Note
 //!
@@ -14,6 +14,7 @@
 #![feature(local_key_cell_methods)]
 #![feature(ptr_metadata)]
 #![feature(type_alias_impl_trait)] // Used to define opaque types.
+#![feature(intra_doc_pointers)]
 
 // Declare extern rustc_* crates to enable building this crate separately from the compiler.
 #[cfg(not(feature = "default"))]

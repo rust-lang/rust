@@ -23,7 +23,7 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{error_code, DelayDm, Diagnostic};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::ty::{self, ImplSubject, Ty, TyCtxt, TypeVisitableExt};
-use rustc_middle::ty::{InternalSubsts, SubstsRef};
+use rustc_middle::ty::{GenericArgs, GenericArgsRef};
 use rustc_session::lint::builtin::COHERENCE_LEAK_CHECK;
 use rustc_session::lint::builtin::ORDER_DEPENDENT_TRAIT_OBJECTS;
 use rustc_span::{Span, DUMMY_SP};
@@ -48,7 +48,7 @@ pub struct OverlapError<'tcx> {
 /// When we have selected one impl, but are actually using item definitions from
 /// a parent impl providing a default, we need a way to translate between the
 /// type parameters of the two impls. Here the `source_impl` is the one we've
-/// selected, and `source_substs` is a substitution of its generics.
+/// selected, and `source_args` is a substitution of its generics.
 /// And `target_node` is the impl/trait we're actually going to get the
 /// definition from. The resulting substitution will map from `target_node`'s
 /// generics to `source_impl`'s generics as instantiated by `source_subst`.
@@ -76,51 +76,46 @@ pub struct OverlapError<'tcx> {
 /// through associated type projection. We deal with such cases by using
 /// *fulfillment* to relate the two impls, requiring that all projections are
 /// resolved.
-pub fn translate_substs<'tcx>(
+pub fn translate_args<'tcx>(
     infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     source_impl: DefId,
-    source_substs: SubstsRef<'tcx>,
+    source_args: GenericArgsRef<'tcx>,
     target_node: specialization_graph::Node,
-) -> SubstsRef<'tcx> {
-    translate_substs_with_cause(
-        infcx,
-        param_env,
-        source_impl,
-        source_substs,
-        target_node,
-        |_, _| ObligationCause::dummy(),
-    )
+) -> GenericArgsRef<'tcx> {
+    translate_args_with_cause(infcx, param_env, source_impl, source_args, target_node, |_, _| {
+        ObligationCause::dummy()
+    })
 }
 
-/// Like [translate_substs], but obligations from the parent implementation
+/// Like [translate_args], but obligations from the parent implementation
 /// are registered with the provided `ObligationCause`.
 ///
 /// This is for reporting *region* errors from those bounds. Type errors should
 /// not happen because the specialization graph already checks for those, and
 /// will result in an ICE.
-pub fn translate_substs_with_cause<'tcx>(
+pub fn translate_args_with_cause<'tcx>(
     infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     source_impl: DefId,
-    source_substs: SubstsRef<'tcx>,
+    source_args: GenericArgsRef<'tcx>,
     target_node: specialization_graph::Node,
     cause: impl Fn(usize, Span) -> ObligationCause<'tcx>,
-) -> SubstsRef<'tcx> {
+) -> GenericArgsRef<'tcx> {
     debug!(
-        "translate_substs({:?}, {:?}, {:?}, {:?})",
-        param_env, source_impl, source_substs, target_node
+        "translate_args({:?}, {:?}, {:?}, {:?})",
+        param_env, source_impl, source_args, target_node
     );
     let source_trait_ref =
-        infcx.tcx.impl_trait_ref(source_impl).unwrap().subst(infcx.tcx, &source_substs);
+        infcx.tcx.impl_trait_ref(source_impl).unwrap().instantiate(infcx.tcx, &source_args);
 
     // translate the Self and Param parts of the substitution, since those
     // vary across impls
-    let target_substs = match target_node {
+    let target_args = match target_node {
         specialization_graph::Node::Impl(target_impl) => {
             // no need to translate if we're targeting the impl we started with
             if source_impl == target_impl {
-                return source_substs;
+                return source_args;
             }
 
             fulfill_implication(infcx, param_env, source_trait_ref, source_impl, target_impl, cause)
@@ -131,11 +126,11 @@ pub fn translate_substs_with_cause<'tcx>(
                     )
                 })
         }
-        specialization_graph::Node::Trait(..) => source_trait_ref.substs,
+        specialization_graph::Node::Trait(..) => source_trait_ref.args,
     };
 
     // directly inherent the method generics, since those do not vary across impls
-    source_substs.rebase_onto(infcx.tcx, source_impl, target_substs)
+    source_args.rebase_onto(infcx.tcx, source_impl, target_args)
 }
 
 /// Is `impl1` a specialization of `impl2`?
@@ -172,7 +167,7 @@ pub(super) fn specializes(tcx: TyCtxt<'_>, (impl1_def_id, impl2_def_id): (DefId,
 
     // create a parameter environment corresponding to a (placeholder) instantiation of impl1
     let penv = tcx.param_env(impl1_def_id);
-    let impl1_trait_ref = tcx.impl_trait_ref(impl1_def_id).unwrap().subst_identity();
+    let impl1_trait_ref = tcx.impl_trait_ref(impl1_def_id).unwrap().instantiate_identity();
 
     // Create an infcx, taking the predicates of impl1 as assumptions:
     let infcx = tcx.infer_ctxt().build();
@@ -196,7 +191,7 @@ fn fulfill_implication<'tcx>(
     source_impl: DefId,
     target_impl: DefId,
     error_cause: impl Fn(usize, Span) -> ObligationCause<'tcx>,
-) -> Result<SubstsRef<'tcx>, ()> {
+) -> Result<GenericArgsRef<'tcx>, ()> {
     debug!(
         "fulfill_implication({:?}, trait_ref={:?} |- {:?} applies)",
         param_env, source_trait_ref, target_impl
@@ -221,18 +216,16 @@ fn fulfill_implication<'tcx>(
     let source_trait = ImplSubject::Trait(source_trait_ref);
 
     let selcx = &mut SelectionContext::new(&infcx);
-    let target_substs = infcx.fresh_substs_for_item(DUMMY_SP, target_impl);
+    let target_args = infcx.fresh_args_for_item(DUMMY_SP, target_impl);
     let (target_trait, obligations) =
-        util::impl_subject_and_oblig(selcx, param_env, target_impl, target_substs, error_cause);
+        util::impl_subject_and_oblig(selcx, param_env, target_impl, target_args, error_cause);
 
     // do the impls unify? If not, no specialization.
-    let Ok(InferOk { obligations: more_obligations, .. }) =
-        infcx.at(&ObligationCause::dummy(), param_env).eq(DefineOpaqueTypes::No, source_trait, target_trait)
+    let Ok(InferOk { obligations: more_obligations, .. }) = infcx
+        .at(&ObligationCause::dummy(), param_env)
+        .eq(DefineOpaqueTypes::No, source_trait, target_trait)
     else {
-        debug!(
-            "fulfill_implication: {:?} does not unify with {:?}",
-            source_trait, target_trait
-        );
+        debug!("fulfill_implication: {:?} does not unify with {:?}", source_trait, target_trait);
         return Err(());
     };
 
@@ -261,7 +254,7 @@ fn fulfill_implication<'tcx>(
 
     // Now resolve the *substitution* we built for the target earlier, replacing
     // the inference variables inside with whatever we got from fulfillment.
-    Ok(infcx.resolve_vars_if_possible(target_substs))
+    Ok(infcx.resolve_vars_if_possible(target_args))
 }
 
 /// Query provider for `specialization_graph_of`.
@@ -469,21 +462,21 @@ fn report_conflicting_impls<'tcx>(
 pub(crate) fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Option<String> {
     use std::fmt::Write;
 
-    let trait_ref = tcx.impl_trait_ref(impl_def_id)?.subst_identity();
+    let trait_ref = tcx.impl_trait_ref(impl_def_id)?.instantiate_identity();
     let mut w = "impl".to_owned();
 
-    let substs = InternalSubsts::identity_for_item(tcx, impl_def_id);
+    let args = GenericArgs::identity_for_item(tcx, impl_def_id);
 
     // FIXME: Currently only handles ?Sized.
     //        Needs to support ?Move and ?DynSized when they are implemented.
     let mut types_without_default_bounds = FxIndexSet::default();
     let sized_trait = tcx.lang_items().sized_trait();
 
-    if !substs.is_empty() {
-        types_without_default_bounds.extend(substs.types());
+    if !args.is_empty() {
+        types_without_default_bounds.extend(args.types());
         w.push('<');
         w.push_str(
-            &substs
+            &args
                 .iter()
                 .map(|k| k.to_string())
                 .filter(|k| k != "'_")
@@ -497,7 +490,7 @@ pub(crate) fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Opti
         w,
         " {} for {}",
         trait_ref.print_only_trait_path(),
-        tcx.type_of(impl_def_id).subst_identity()
+        tcx.type_of(impl_def_id).instantiate_identity()
     )
     .unwrap();
 

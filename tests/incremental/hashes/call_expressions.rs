@@ -162,7 +162,7 @@ pub fn change_to_ufcs() {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes,optimized_mir,typeck")]
+#[rustc_clean(cfg="cfail2", except="hir_owner_nodes,typeck")]
 #[rustc_clean(cfg="cfail3")]
 #[rustc_clean(cfg="cfail5", except="hir_owner_nodes,optimized_mir,typeck")]
 #[rustc_clean(cfg="cfail6")]

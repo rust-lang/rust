@@ -4,11 +4,13 @@ use crate::{
     traits::ObligationCause,
     ty::{
         self, tls, BindingMode, BoundVar, CanonicalPolyFnSig, ClosureSizeProfileData,
-        GenericArgKind, InternalSubsts, SubstsRef, Ty, UserSubsts,
+        GenericArgKind, GenericArgs, GenericArgsRef, Ty, UserArgs,
     },
 };
-use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
-use rustc_data_structures::unord::{UnordItems, UnordSet};
+use rustc_data_structures::{
+    fx::FxIndexMap,
+    unord::{ExtendUnord, UnordItems, UnordSet},
+};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::{
@@ -51,7 +53,7 @@ pub struct TypeckResults<'tcx> {
     /// of this node. This only applies to nodes that refer to entities
     /// parameterized by type parameters, such as generic fns, types, or
     /// other items.
-    node_substs: ItemLocalMap<SubstsRef<'tcx>>,
+    node_args: ItemLocalMap<GenericArgsRef<'tcx>>,
 
     /// This will either store the canonicalized types provided by the user
     /// or the substitutions that the user explicitly gave (if any) attached
@@ -180,7 +182,7 @@ pub struct TypeckResults<'tcx> {
     /// we never capture `t`. This becomes an issue when we build MIR as we require
     /// information on `t` in order to create place `t.0` and `t.1`. We can solve this
     /// issue by fake reading `t`.
-    pub closure_fake_reads: FxHashMap<LocalDefId, Vec<(HirPlace<'tcx>, FakeReadCause, hir::HirId)>>,
+    pub closure_fake_reads: LocalDefIdMap<Vec<(HirPlace<'tcx>, FakeReadCause, hir::HirId)>>,
 
     /// Tracks the rvalue scoping rules which defines finer scoping for rvalue expressions
     /// by applying extended parameter rules.
@@ -194,7 +196,7 @@ pub struct TypeckResults<'tcx> {
     /// Stores the predicates that apply on generator witness types.
     /// formatting modified file tests/ui/generator/retain-resume-ref.rs
     pub generator_interior_predicates:
-        FxHashMap<LocalDefId, Vec<(ty::Predicate<'tcx>, ObligationCause<'tcx>)>>,
+        LocalDefIdMap<Vec<(ty::Predicate<'tcx>, ObligationCause<'tcx>)>>,
 
     /// We sometimes treat byte string literals (which are of type `&[u8; N]`)
     /// as `&[u8]`, depending on the pattern in which they are used.
@@ -204,7 +206,7 @@ pub struct TypeckResults<'tcx> {
 
     /// Contains the data for evaluating the effect of feature `capture_disjoint_fields`
     /// on closure size.
-    pub closure_size_eval: FxHashMap<LocalDefId, ClosureSizeProfileData<'tcx>>,
+    pub closure_size_eval: LocalDefIdMap<ClosureSizeProfileData<'tcx>>,
 
     /// Container types and field indices of `offset_of!` expressions
     offset_of_data: ItemLocalMap<(Ty<'tcx>, Vec<FieldIdx>)>,
@@ -262,7 +264,7 @@ impl<'tcx> TypeckResults<'tcx> {
             user_provided_types: Default::default(),
             user_provided_sigs: Default::default(),
             node_types: Default::default(),
-            node_substs: Default::default(),
+            node_args: Default::default(),
             adjustments: Default::default(),
             pat_binding_modes: Default::default(),
             pat_adjustments: Default::default(),
@@ -382,18 +384,18 @@ impl<'tcx> TypeckResults<'tcx> {
         self.node_types.get(&id.local_id).cloned()
     }
 
-    pub fn node_substs_mut(&mut self) -> LocalTableInContextMut<'_, SubstsRef<'tcx>> {
-        LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.node_substs }
+    pub fn node_args_mut(&mut self) -> LocalTableInContextMut<'_, GenericArgsRef<'tcx>> {
+        LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.node_args }
     }
 
-    pub fn node_substs(&self, id: hir::HirId) -> SubstsRef<'tcx> {
+    pub fn node_args(&self, id: hir::HirId) -> GenericArgsRef<'tcx> {
         validate_hir_id_for_typeck_results(self.hir_owner, id);
-        self.node_substs.get(&id.local_id).cloned().unwrap_or_else(|| InternalSubsts::empty())
+        self.node_args.get(&id.local_id).cloned().unwrap_or_else(|| GenericArgs::empty())
     }
 
-    pub fn node_substs_opt(&self, id: hir::HirId) -> Option<SubstsRef<'tcx>> {
+    pub fn node_args_opt(&self, id: hir::HirId) -> Option<GenericArgsRef<'tcx>> {
         validate_hir_id_for_typeck_results(self.hir_owner, id);
-        self.node_substs.get(&id.local_id).cloned()
+        self.node_args.get(&id.local_id).cloned()
     }
 
     /// Returns the type of a pattern as a monotype. Like [`expr_ty`], this function
@@ -633,7 +635,7 @@ impl<'a, V> LocalTableInContextMut<'a, V> {
         &mut self,
         items: UnordItems<(hir::HirId, V), impl Iterator<Item = (hir::HirId, V)>>,
     ) {
-        self.data.extend(items.map(|(id, value)| {
+        self.data.extend_unord(items.map(|(id, value)| {
             validate_hir_id_for_typeck_results(self.hir_owner, id);
             (id.local_id, value)
         }))
@@ -668,12 +670,12 @@ impl<'tcx> CanonicalUserType<'tcx> {
     pub fn is_identity(&self) -> bool {
         match self.value {
             UserType::Ty(_) => false,
-            UserType::TypeOf(_, user_substs) => {
-                if user_substs.user_self_ty.is_some() {
+            UserType::TypeOf(_, user_args) => {
+                if user_args.user_self_ty.is_some() {
                     return false;
                 }
 
-                iter::zip(user_substs.substs, BoundVar::new(0)..).all(|(kind, cvar)| {
+                iter::zip(user_args.args, BoundVar::new(0)..).all(|(kind, cvar)| {
                     match kind.unpack() {
                         GenericArgKind::Type(ty) => match ty.kind() {
                             ty::Bound(debruijn, b) => {
@@ -718,5 +720,5 @@ pub enum UserType<'tcx> {
 
     /// The canonical type is the result of `type_of(def_id)` with the
     /// given substitutions applied.
-    TypeOf(DefId, UserSubsts<'tcx>),
+    TypeOf(DefId, UserArgs<'tcx>),
 }

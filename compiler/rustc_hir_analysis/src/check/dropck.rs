@@ -5,8 +5,8 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{struct_span_err, ErrorGuaranteed};
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{RegionResolutionError, TyCtxtInferExt};
-use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::util::CheckRegions;
+use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_trait_selection::traits::{self, ObligationCtxt};
 
@@ -44,21 +44,21 @@ pub fn check_drop_impl(tcx: TyCtxt<'_>, drop_impl_did: DefId) -> Result<(), Erro
             }));
         }
     }
-    let dtor_self_type = tcx.type_of(drop_impl_did).subst_identity();
+    let dtor_self_type = tcx.type_of(drop_impl_did).instantiate_identity();
     match dtor_self_type.kind() {
-        ty::Adt(adt_def, adt_to_impl_substs) => {
+        ty::Adt(adt_def, adt_to_impl_args) => {
             ensure_drop_params_and_item_params_correspond(
                 tcx,
                 drop_impl_did.expect_local(),
                 adt_def.did(),
-                adt_to_impl_substs,
+                adt_to_impl_args,
             )?;
 
             ensure_drop_predicates_are_implied_by_item_defn(
                 tcx,
                 drop_impl_did.expect_local(),
                 adt_def.did().expect_local(),
-                adt_to_impl_substs,
+                adt_to_impl_args,
             )
         }
         _ => {
@@ -79,10 +79,11 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
     tcx: TyCtxt<'tcx>,
     drop_impl_did: LocalDefId,
     self_type_did: DefId,
-    adt_to_impl_substs: SubstsRef<'tcx>,
+    adt_to_impl_args: GenericArgsRef<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
-    let Err(arg) = tcx.uses_unique_generic_params(adt_to_impl_substs, CheckRegions::OnlyEarlyBound) else {
-        return Ok(())
+    let Err(arg) = tcx.uses_unique_generic_params(adt_to_impl_args, CheckRegions::OnlyEarlyBound)
+    else {
+        return Ok(());
     };
 
     let drop_impl_span = tcx.def_span(drop_impl_did);
@@ -114,12 +115,12 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
     tcx: TyCtxt<'tcx>,
     drop_impl_def_id: LocalDefId,
     adt_def_id: LocalDefId,
-    adt_to_impl_substs: SubstsRef<'tcx>,
+    adt_to_impl_args: GenericArgsRef<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
     let infcx = tcx.infer_ctxt().build();
     let ocx = ObligationCtxt::new(&infcx);
 
-    // Take the param-env of the adt and substitute the substs that show up in
+    // Take the param-env of the adt and substitute the args that show up in
     // the implementation's self type. This gives us the assumptions that the
     // self ty of the implementation is allowed to know just from it being a
     // well-formed adt, since that's all we're allowed to assume while proving
@@ -129,7 +130,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
     // substituting it with free params, so no additional param-env normalization
     // can occur on top of what has been done in the param_env query itself.
     let param_env = ty::EarlyBinder::bind(tcx.param_env(adt_def_id))
-        .subst(tcx, adt_to_impl_substs)
+        .instantiate(tcx, adt_to_impl_args)
         .with_constness(tcx.constness(drop_impl_def_id));
 
     for (pred, span) in tcx.predicates_of(drop_impl_def_id).instantiate_identity(tcx) {

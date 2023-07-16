@@ -288,7 +288,7 @@ pub fn suggest_new_region_bound(
 
                 // Get the identity type for this RPIT
                 let did = item_id.owner_id.to_def_id();
-                let ty = Ty::new_opaque(tcx, did, ty::InternalSubsts::identity_for_item(tcx, did));
+                let ty = Ty::new_opaque(tcx, did, ty::GenericArgs::identity_for_item(tcx, did));
 
                 if let Some(span) = opaque.bounds.iter().find_map(|arg| match arg {
                     GenericBound::Outlives(Lifetime {
@@ -493,7 +493,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             tcx,
             ctxt.param_env,
             ctxt.assoc_item.def_id,
-            self.cx.resolve_vars_if_possible(ctxt.substs),
+            self.cx.resolve_vars_if_possible(ctxt.args),
         ) else {
             return false;
         };
@@ -503,7 +503,9 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
 
         // Get the `Ident` of the method being called and the corresponding `impl` (to point at
         // `Bar` in `impl Foo for dyn Bar {}` and the definition of the method being called).
-        let Some((ident, self_ty)) = NiceRegionError::get_impl_ident_and_self_ty_from_trait(tcx, instance.def_id(), &v.0) else {
+        let Some((ident, self_ty)) =
+            NiceRegionError::get_impl_ident_and_self_ty_from_trait(tcx, instance.def_id(), &v.0)
+        else {
             return false;
         };
 

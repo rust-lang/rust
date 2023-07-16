@@ -140,7 +140,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
             ctx
         };
 
-        let fn_sig = cx.tcx.fn_sig(fn_def_id).subst_identity();
+        let fn_sig = cx.tcx.fn_sig(fn_def_id).instantiate_identity();
         let fn_sig = cx.tcx.liberate_late_bound_regions(fn_def_id.to_def_id(), fn_sig);
 
         for (idx, ((input, &ty), arg)) in decl.inputs.iter().zip(fn_sig.inputs()).zip(body.params).enumerate() {
@@ -170,7 +170,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                     !preds.is_empty() && {
                         let ty_empty_region = Ty::new_imm_ref(cx.tcx,cx.tcx.lifetimes.re_erased, ty);
                         preds.iter().all(|t| {
-                            let ty_params = t.trait_ref.substs.iter().skip(1).collect::<Vec<_>>();
+                            let ty_params = t.trait_ref.args.iter().skip(1).collect::<Vec<_>>();
                             implements_trait(cx, ty_empty_region, t.def_id(), &ty_params)
                         })
                     },

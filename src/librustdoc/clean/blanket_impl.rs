@@ -38,18 +38,22 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                     continue;
                 }
                 let infcx = cx.tcx.infer_ctxt().build();
-                let substs = infcx.fresh_substs_for_item(DUMMY_SP, item_def_id);
-                let impl_ty = ty.subst(infcx.tcx, substs);
-                let param_env = EarlyBinder::bind(param_env).subst(infcx.tcx, substs);
+                let args = infcx.fresh_args_for_item(DUMMY_SP, item_def_id);
+                let impl_ty = ty.instantiate(infcx.tcx, args);
+                let param_env = EarlyBinder::bind(param_env).instantiate(infcx.tcx, args);
 
-                let impl_substs = infcx.fresh_substs_for_item(DUMMY_SP, impl_def_id);
-                let impl_trait_ref = trait_ref.subst(infcx.tcx, impl_substs);
+                let impl_args = infcx.fresh_args_for_item(DUMMY_SP, impl_def_id);
+                let impl_trait_ref = trait_ref.instantiate(infcx.tcx, impl_args);
 
                 // Require the type the impl is implemented on to match
                 // our type, and ignore the impl if there was a mismatch.
-                let Ok(eq_result) = infcx.at(&traits::ObligationCause::dummy(), param_env).eq(DefineOpaqueTypes::No, impl_trait_ref.self_ty(), impl_ty) else {
-                        continue
-                    };
+                let Ok(eq_result) = infcx.at(&traits::ObligationCause::dummy(), param_env).eq(
+                    DefineOpaqueTypes::No,
+                    impl_trait_ref.self_ty(),
+                    impl_ty,
+                ) else {
+                    continue;
+                };
                 let InferOk { value: (), obligations } = eq_result;
                 // FIXME(eddyb) ignoring `obligations` might cause false positives.
                 drop(obligations);
@@ -63,7 +67,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                 let predicates = cx
                     .tcx
                     .predicates_of(impl_def_id)
-                    .instantiate(cx.tcx, impl_substs)
+                    .instantiate(cx.tcx, impl_args)
                     .predicates
                     .into_iter()
                     .chain(Some(ty::Binder::dummy(impl_trait_ref).to_predicate(infcx.tcx)));
@@ -104,11 +108,11 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                         // the post-inference `trait_ref`, as it's more accurate.
                         trait_: Some(clean_trait_ref_with_bindings(
                             cx,
-                            ty::Binder::dummy(trait_ref.subst_identity()),
+                            ty::Binder::dummy(trait_ref.instantiate_identity()),
                             ThinVec::new(),
                         )),
                         for_: clean_middle_ty(
-                            ty::Binder::dummy(ty.subst_identity()),
+                            ty::Binder::dummy(ty.instantiate_identity()),
                             cx,
                             None,
                             None,
@@ -121,7 +125,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                             .collect::<Vec<_>>(),
                         polarity: ty::ImplPolarity::Positive,
                         kind: ImplKind::Blanket(Box::new(clean_middle_ty(
-                            ty::Binder::dummy(trait_ref.subst_identity().self_ty()),
+                            ty::Binder::dummy(trait_ref.instantiate_identity().self_ty()),
                             cx,
                             None,
                             None,

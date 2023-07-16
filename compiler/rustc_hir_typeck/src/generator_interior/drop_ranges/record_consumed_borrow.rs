@@ -4,7 +4,7 @@ use crate::{
     FnCtxt,
 };
 use hir::{def_id::DefId, Body, HirId, HirIdMap};
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::{fx::FxIndexSet, unord::UnordSet};
 use rustc_hir as hir;
 use rustc_middle::ty::{ParamEnv, TyCtxt};
 use rustc_middle::{
@@ -30,13 +30,13 @@ pub(super) struct ConsumedAndBorrowedPlaces {
     ///
     /// Note that this set excludes "partial drops" -- for example, a statement like `drop(x.y)` is
     /// not considered a drop of `x`, although it would be a drop of `x.y`.
-    pub(super) consumed: HirIdMap<FxHashSet<TrackedValue>>,
+    pub(super) consumed: HirIdMap<FxIndexSet<TrackedValue>>,
 
     /// A set of hir-ids of values or variables that are borrowed at some point within the body.
-    pub(super) borrowed: FxHashSet<TrackedValue>,
+    pub(super) borrowed: UnordSet<TrackedValue>,
 
     /// A set of hir-ids of values or variables that are borrowed at some point within the body.
-    pub(super) borrowed_temporaries: FxHashSet<HirId>,
+    pub(super) borrowed_temporaries: UnordSet<HirId>,
 }
 
 /// Works with ExprUseVisitor to find interesting values for the drop range analysis.

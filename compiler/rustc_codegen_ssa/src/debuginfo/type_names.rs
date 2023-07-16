@@ -17,8 +17,8 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::definitions::{DefPathData, DefPathDataName, DisambiguatedDefPathData};
 use rustc_hir::{AsyncGeneratorKind, GeneratorKind, Mutability};
 use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
-use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
 use rustc_middle::ty::{self, ExistentialProjection, ParamEnv, Ty, TyCtxt};
+use rustc_middle::ty::{GenericArgKind, GenericArgsRef};
 use rustc_target::abi::Integer;
 use smallvec::SmallVec;
 
@@ -77,7 +77,7 @@ fn push_debuginfo_type_name<'tcx>(
         ty::Uint(uint_ty) => output.push_str(uint_ty.name_str()),
         ty::Float(float_ty) => output.push_str(float_ty.name_str()),
         ty::Foreign(def_id) => push_item_name(tcx, def_id, qualified, output),
-        ty::Adt(def, substs) => {
+        ty::Adt(def, args) => {
             // `layout_for_cpp_like_fallback` will be `Some` if we want to use the fallback encoding.
             let layout_for_cpp_like_fallback = if cpp_like_debuginfo && def.is_enum() {
                 match tcx.layout_of(ParamEnv::reveal_all().and(t)) {
@@ -106,14 +106,14 @@ fn push_debuginfo_type_name<'tcx>(
                     ty_and_layout,
                     &|output, visited| {
                         push_item_name(tcx, def.did(), true, output);
-                        push_generic_params_internal(tcx, substs, output, visited);
+                        push_generic_params_internal(tcx, args, output, visited);
                     },
                     output,
                     visited,
                 );
             } else {
                 push_item_name(tcx, def.did(), qualified, output);
-                push_generic_params_internal(tcx, substs, output, visited);
+                push_generic_params_internal(tcx, args, output, visited);
             }
         }
         ty::Tuple(component_types) => {
@@ -238,7 +238,7 @@ fn push_debuginfo_type_name<'tcx>(
                     tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), principal);
                 push_item_name(tcx, principal.def_id, qualified, output);
                 let principal_has_generic_params =
-                    push_generic_params_internal(tcx, principal.substs, output, visited);
+                    push_generic_params_internal(tcx, principal.args, output, visited);
 
                 let projection_bounds: SmallVec<[_; 4]> = trait_data
                     .projection_bounds()
@@ -393,7 +393,7 @@ fn push_debuginfo_type_name<'tcx>(
             // processing
             visited.remove(&t);
         }
-        ty::Closure(def_id, substs) | ty::Generator(def_id, substs, ..) => {
+        ty::Closure(def_id, args) | ty::Generator(def_id, args, ..) => {
             // Name will be "{closure_env#0}<T1, T2, ...>", "{generator_env#0}<T1, T2, ...>", or
             // "{async_fn_env#0}<T1, T2, ...>", etc.
             // In the case of cpp-like debuginfo, the name additionally gets wrapped inside of
@@ -403,13 +403,13 @@ fn push_debuginfo_type_name<'tcx>(
                 msvc_enum_fallback(
                     ty_and_layout,
                     &|output, visited| {
-                        push_closure_or_generator_name(tcx, def_id, substs, true, output, visited);
+                        push_closure_or_generator_name(tcx, def_id, args, true, output, visited);
                     },
                     output,
                     visited,
                 );
             } else {
-                push_closure_or_generator_name(tcx, def_id, substs, qualified, output, visited);
+                push_closure_or_generator_name(tcx, def_id, args, qualified, output, visited);
             }
         }
         // Type parameters from polymorphized functions.
@@ -516,7 +516,7 @@ pub fn compute_debuginfo_vtable_name<'tcx>(
             tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), trait_ref);
         push_item_name(tcx, trait_ref.def_id, true, &mut vtable_name);
         visited.clear();
-        push_generic_params_internal(tcx, trait_ref.substs, &mut vtable_name, &mut visited);
+        push_generic_params_internal(tcx, trait_ref.args, &mut vtable_name, &mut visited);
     } else {
         vtable_name.push('_');
     }
@@ -609,21 +609,21 @@ fn push_unqualified_item_name(
 
 fn push_generic_params_internal<'tcx>(
     tcx: TyCtxt<'tcx>,
-    substs: SubstsRef<'tcx>,
+    args: GenericArgsRef<'tcx>,
     output: &mut String,
     visited: &mut FxHashSet<Ty<'tcx>>,
 ) -> bool {
-    if substs.non_erasable_generics().next().is_none() {
+    if args.non_erasable_generics().next().is_none() {
         return false;
     }
 
-    debug_assert_eq!(substs, tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), substs));
+    debug_assert_eq!(args, tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), args));
 
     let cpp_like_debuginfo = cpp_like_debuginfo(tcx);
 
     output.push('<');
 
-    for type_parameter in substs.non_erasable_generics() {
+    for type_parameter in args.non_erasable_generics() {
         match type_parameter {
             GenericArgKind::Type(type_parameter) => {
                 push_debuginfo_type_name(tcx, type_parameter, true, output, visited);
@@ -688,16 +688,20 @@ fn push_const_param<'tcx>(tcx: TyCtxt<'tcx>, ct: ty::Const<'tcx>, output: &mut S
     .unwrap();
 }
 
-pub fn push_generic_params<'tcx>(tcx: TyCtxt<'tcx>, substs: SubstsRef<'tcx>, output: &mut String) {
+pub fn push_generic_params<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    args: GenericArgsRef<'tcx>,
+    output: &mut String,
+) {
     let _prof = tcx.prof.generic_activity("compute_debuginfo_type_name");
     let mut visited = FxHashSet::default();
-    push_generic_params_internal(tcx, substs, output, &mut visited);
+    push_generic_params_internal(tcx, args, output, &mut visited);
 }
 
 fn push_closure_or_generator_name<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
-    substs: SubstsRef<'tcx>,
+    args: GenericArgsRef<'tcx>,
     qualified: bool,
     output: &mut String,
     visited: &mut FxHashSet<Ty<'tcx>>,
@@ -731,10 +735,10 @@ fn push_closure_or_generator_name<'tcx>(
     let enclosing_fn_def_id = tcx.typeck_root_def_id(def_id);
     let generics = tcx.generics_of(enclosing_fn_def_id);
 
-    // Truncate the substs to the length of the above generics. This will cut off
+    // Truncate the args to the length of the above generics. This will cut off
     // anything closure- or generator-specific.
-    let substs = substs.truncate_to(tcx, generics);
-    push_generic_params_internal(tcx, substs, output, visited);
+    let args = args.truncate_to(tcx, generics);
+    push_generic_params_internal(tcx, args, output, visited);
 }
 
 fn push_close_angle_bracket(cpp_like_debuginfo: bool, output: &mut String) {

@@ -63,7 +63,7 @@
 //! `is_cleanup` above.
 
 use crate::mir::*;
-use crate::ty::subst::SubstsRef;
+use crate::ty::GenericArgsRef;
 use crate::ty::{self, CanonicalUserTypeAnnotation, Ty};
 use rustc_span::Span;
 
@@ -245,12 +245,12 @@ macro_rules! make_mir_visitor {
                 self.super_region(region);
             }
 
-            fn visit_substs(
+            fn visit_args(
                 &mut self,
-                substs: & $($mutability)? SubstsRef<'tcx>,
+                args: & $($mutability)? GenericArgsRef<'tcx>,
                 _: Location,
             ) {
-                self.super_substs(substs);
+                self.super_args(args);
             }
 
             fn visit_local_decl(
@@ -335,7 +335,7 @@ macro_rules! make_mir_visitor {
 
                     self.visit_span($(& $mutability)? *callsite_span);
 
-                    let ty::Instance { def: callee_def, substs: callee_substs } = callee;
+                    let ty::Instance { def: callee_def, args: callee_args } = callee;
                     match callee_def {
                         ty::InstanceDef::Item(_def_id) => {}
 
@@ -355,7 +355,7 @@ macro_rules! make_mir_visitor {
                             self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
                         }
                     }
-                    self.visit_substs(callee_substs, location);
+                    self.visit_args(callee_args, location);
                 }
                 if let Some(inlined_parent_scope) = inlined_parent_scope {
                     self.visit_source_scope($(& $mutability)? *inlined_parent_scope);
@@ -721,24 +721,24 @@ macro_rules! make_mir_visitor {
                             AggregateKind::Adt(
                                 _adt_def,
                                 _variant_index,
-                                substs,
-                                _user_substs,
+                                args,
+                                _user_args,
                                 _active_field_index
                             ) => {
-                                self.visit_substs(substs, location);
+                                self.visit_args(args, location);
                             }
                             AggregateKind::Closure(
                                 _,
-                                closure_substs
+                                closure_args
                             ) => {
-                                self.visit_substs(closure_substs, location);
+                                self.visit_args(closure_args, location);
                             }
                             AggregateKind::Generator(
                                 _,
-                                generator_substs,
+                                generator_args,
                                 _movability,
                             ) => {
-                                self.visit_substs(generator_substs, location);
+                                self.visit_args(generator_args, location);
                             }
                         }
 
@@ -933,7 +933,7 @@ macro_rules! make_mir_visitor {
             fn super_region(&mut self, _region: $(& $mutability)? ty::Region<'tcx>) {
             }
 
-            fn super_substs(&mut self, _substs: & $($mutability)? SubstsRef<'tcx>) {
+            fn super_args(&mut self, _args: & $($mutability)? GenericArgsRef<'tcx>) {
             }
 
             // Convenience methods

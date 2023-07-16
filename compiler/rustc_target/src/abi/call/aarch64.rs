@@ -1,25 +1,15 @@
 use crate::abi::call::{ArgAbi, FnAbi, Reg, RegKind, Uniform};
 use crate::abi::{HasDataLayout, TyAbiInterface};
 
-/// Given integer-types M and register width N (e.g. M=u16 and N=32 bits), the
-/// `ParamExtension` policy specifies how a uM value should be treated when
-/// passed via register or stack-slot of width N. See also rust-lang/rust#97463.
+/// Indicates the variant of the AArch64 ABI we are compiling for.
+/// Used to accommodate Apple and Microsoft's deviations from the usual AAPCS ABI.
+///
+/// Corresponds to Clang's `AArch64ABIInfo::ABIKind`.
 #[derive(Copy, Clone, PartialEq)]
-pub enum ParamExtension {
-    /// Indicates that when passing an i8/i16, either as a function argument or
-    /// as a return value, it must be sign-extended to 32 bits, and likewise a
-    /// u8/u16 must be zero-extended to 32-bits. (This variant is here to
-    /// accommodate Apple's deviation from the usual AArch64 ABI as defined by
-    /// ARM.)
-    ///
-    /// See also: <https://developer.apple.com/documentation/xcode/writing-arm64-code-for-apple-platforms#Pass-Arguments-to-Functions-Correctly>
-    ExtendTo32Bits,
-
-    /// Indicates that no sign- nor zero-extension is performed: if a value of
-    /// type with bitwidth M is passed as function argument or return value,
-    /// then M bits are copied into the least significant M bits, and the
-    /// remaining bits of the register (or word of memory) are untouched.
-    NoExtension,
+pub enum AbiKind {
+    AAPCS,
+    DarwinPCS,
+    Win64,
 }
 
 fn is_homogeneous_aggregate<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>) -> Option<Uniform>
@@ -45,15 +35,17 @@ where
     })
 }
 
-fn classify_ret<'a, Ty, C>(cx: &C, ret: &mut ArgAbi<'a, Ty>, param_policy: ParamExtension)
+fn classify_ret<'a, Ty, C>(cx: &C, ret: &mut ArgAbi<'a, Ty>, kind: AbiKind)
 where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout,
 {
     if !ret.layout.is_aggregate() {
-        match param_policy {
-            ParamExtension::ExtendTo32Bits => ret.extend_integer_width_to(32),
-            ParamExtension::NoExtension => {}
+        if kind == AbiKind::DarwinPCS {
+            // On Darwin, when returning an i8/i16, it must be sign-extended to 32 bits,
+            // and likewise a u8/u16 must be zero-extended to 32-bits.
+            // See also: <https://developer.apple.com/documentation/xcode/writing-arm64-code-for-apple-platforms#Pass-Arguments-to-Functions-Correctly>
+            ret.extend_integer_width_to(32)
         }
         return;
     }
@@ -70,15 +62,17 @@ where
     ret.make_indirect();
 }
 
-fn classify_arg<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>, param_policy: ParamExtension)
+fn classify_arg<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>, kind: AbiKind)
 where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout,
 {
     if !arg.layout.is_aggregate() {
-        match param_policy {
-            ParamExtension::ExtendTo32Bits => arg.extend_integer_width_to(32),
-            ParamExtension::NoExtension => {}
+        if kind == AbiKind::DarwinPCS {
+            // On Darwin, when passing an i8/i16, it must be sign-extended to 32 bits,
+            // and likewise a u8/u16 must be zero-extended to 32-bits.
+            // See also: <https://developer.apple.com/documentation/xcode/writing-arm64-code-for-apple-platforms#Pass-Arguments-to-Functions-Correctly>
+            arg.extend_integer_width_to(32);
         }
         return;
     }
@@ -87,27 +81,39 @@ where
         return;
     }
     let size = arg.layout.size;
-    let bits = size.bits();
-    if bits <= 128 {
-        arg.cast_to(Uniform { unit: Reg::i64(), total: size });
+    let align = if kind == AbiKind::AAPCS {
+        // When passing small aggregates by value, the AAPCS ABI mandates using the unadjusted
+        // alignment of the type (not including `repr(align)`).
+        // This matches behavior of `AArch64ABIInfo::classifyArgumentType` in Clang.
+        // See: <https://github.com/llvm/llvm-project/blob/5e691a1c9b0ad22689d4a434ddf4fed940e58dec/clang/lib/CodeGen/TargetInfo.cpp#L5816-L5823>
+        arg.layout.unadjusted_abi_align
+    } else {
+        arg.layout.align.abi
+    };
+    if size.bits() <= 128 {
+        if align.bits() == 128 {
+            arg.cast_to(Uniform { unit: Reg::i128(), total: size });
+        } else {
+            arg.cast_to(Uniform { unit: Reg::i64(), total: size });
+        }
         return;
     }
     arg.make_indirect();
 }
 
-pub fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>, param_policy: ParamExtension)
+pub fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>, kind: AbiKind)
 where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout,
 {
     if !fn_abi.ret.is_ignore() {
-        classify_ret(cx, &mut fn_abi.ret, param_policy);
+        classify_ret(cx, &mut fn_abi.ret, kind);
     }
 
     for arg in fn_abi.args.iter_mut() {
         if arg.is_ignore() {
             continue;
         }
-        classify_arg(cx, arg, param_policy);
+        classify_arg(cx, arg, kind);
     }
 }

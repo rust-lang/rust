@@ -812,7 +812,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         TEST, rustc_error, Normal,
         template!(Word, List: "delay_span_bug_from_inside_query"), WarnFollowingWordOnly
     ),
-    rustc_attr!(TEST, rustc_dump_user_substs, Normal, template!(Word), WarnFollowing),
+    rustc_attr!(TEST, rustc_dump_user_args, Normal, template!(Word), WarnFollowing),
     rustc_attr!(TEST, rustc_evaluate_where_clauses, Normal, template!(Word), WarnFollowing),
     rustc_attr!(
         TEST, rustc_if_this_changed, Normal, template!(Word, List: "DepNode"), DuplicatesOk

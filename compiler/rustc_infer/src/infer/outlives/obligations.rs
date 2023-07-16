@@ -68,8 +68,8 @@ use crate::infer::{
 use crate::traits::{ObligationCause, ObligationCauseCode};
 use rustc_data_structures::undo_log::UndoLogs;
 use rustc_middle::mir::ConstraintCategory;
-use rustc_middle::ty::subst::GenericArgKind;
-use rustc_middle::ty::{self, Region, SubstsRef, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::GenericArgKind;
+use rustc_middle::ty::{self, GenericArgsRef, Region, Ty, TyCtxt, TypeVisitableExt};
 use smallvec::smallvec;
 
 use super::env::OutlivesEnvironment;
@@ -279,7 +279,7 @@ where
         alias_ty: ty::AliasTy<'tcx>,
     ) {
         // An optimization for a common case with opaque types.
-        if alias_ty.substs.is_empty() {
+        if alias_ty.args.is_empty() {
             return;
         }
 
@@ -348,7 +348,7 @@ where
         {
             debug!("no declared bounds");
             let opt_variances = is_opaque.then(|| self.tcx.variances_of(alias_ty.def_id));
-            self.substs_must_outlive(alias_ty.substs, origin, region, opt_variances);
+            self.args_must_outlive(alias_ty.args, origin, region, opt_variances);
             return;
         }
 
@@ -395,15 +395,15 @@ where
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn substs_must_outlive(
+    fn args_must_outlive(
         &mut self,
-        substs: SubstsRef<'tcx>,
+        args: GenericArgsRef<'tcx>,
         origin: infer::SubregionOrigin<'tcx>,
         region: ty::Region<'tcx>,
         opt_variances: Option<&[ty::Variance]>,
     ) {
         let constraint = origin.to_constraint_category();
-        for (index, k) in substs.iter().enumerate() {
+        for (index, k) in args.iter().enumerate() {
             match k.unpack() {
                 GenericArgKind::Lifetime(lt) => {
                     let variance = if let Some(variances) = opt_variances {

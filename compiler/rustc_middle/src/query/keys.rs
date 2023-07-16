@@ -6,8 +6,8 @@ use crate::mir::interpret::ConstValue;
 use crate::traits;
 use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::layout::{TyAndLayout, ValidityRequirement};
-use crate::ty::subst::{GenericArg, SubstsRef};
 use crate::ty::{self, Ty, TyCtxt};
+use crate::ty::{GenericArg, GenericArgsRef};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use rustc_hir::hir_id::{HirId, OwnerId};
 use rustc_query_system::query::{DefaultCacheSelector, SingleCacheSelector, VecCacheSelector};
@@ -286,7 +286,7 @@ impl Key for (DefId, SimplifiedType) {
     }
 }
 
-impl<'tcx> Key for SubstsRef<'tcx> {
+impl<'tcx> Key for GenericArgsRef<'tcx> {
     type CacheSelector = DefaultCacheSelector<Self>;
 
     fn default_span(&self, _: TyCtxt<'_>) -> Span {
@@ -294,7 +294,7 @@ impl<'tcx> Key for SubstsRef<'tcx> {
     }
 }
 
-impl<'tcx> Key for (DefId, SubstsRef<'tcx>) {
+impl<'tcx> Key for (DefId, GenericArgsRef<'tcx>) {
     type CacheSelector = DefaultCacheSelector<Self>;
 
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
@@ -310,7 +310,7 @@ impl<'tcx> Key for (ty::UnevaluatedConst<'tcx>, ty::UnevaluatedConst<'tcx>) {
     }
 }
 
-impl<'tcx> Key for (LocalDefId, DefId, SubstsRef<'tcx>) {
+impl<'tcx> Key for (LocalDefId, DefId, GenericArgsRef<'tcx>) {
     type CacheSelector = DefaultCacheSelector<Self>;
 
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
@@ -487,7 +487,7 @@ impl Key for (Symbol, u32, u32) {
     }
 }
 
-impl<'tcx> Key for (DefId, Ty<'tcx>, SubstsRef<'tcx>, ty::ParamEnv<'tcx>) {
+impl<'tcx> Key for (DefId, Ty<'tcx>, GenericArgsRef<'tcx>, ty::ParamEnv<'tcx>) {
     type CacheSelector = DefaultCacheSelector<Self>;
 
     fn default_span(&self, _tcx: TyCtxt<'_>) -> Span {

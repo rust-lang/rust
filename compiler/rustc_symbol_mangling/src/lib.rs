@@ -108,7 +108,7 @@ use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::mir::mono::{InstantiationMode, MonoItem};
 use rustc_middle::query::Providers;
-use rustc_middle::ty::subst::SubstsRef;
+use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{self, Instance, TyCtxt};
 use rustc_session::config::SymbolManglingVersion;
 
@@ -144,7 +144,7 @@ fn symbol_name_provider<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> ty
         // This closure determines the instantiating crate for instances that
         // need an instantiating-crate-suffix for their symbol name, in order
         // to differentiate between local copies.
-        if is_generic(instance.substs) {
+        if is_generic(instance.args) {
             // For generics we might find re-usable upstream instances. If there
             // is one, we rely on the symbol being instantiated locally.
             instance.upstream_monomorphization(tcx).unwrap_or(LOCAL_CRATE)
@@ -174,9 +174,9 @@ fn compute_symbol_name<'tcx>(
     compute_instantiating_crate: impl FnOnce() -> CrateNum,
 ) -> String {
     let def_id = instance.def_id();
-    let substs = instance.substs;
+    let args = instance.args;
 
-    debug!("symbol_name(def_id={:?}, substs={:?})", def_id, substs);
+    debug!("symbol_name(def_id={:?}, args={:?})", def_id, args);
 
     if let Some(def_id) = def_id.as_local() {
         if tcx.proc_macro_decls_static(()) == Some(def_id) {
@@ -246,7 +246,7 @@ fn compute_symbol_name<'tcx>(
     // the ID of the instantiating crate. This avoids symbol conflicts
     // in case the same instances is emitted in two crates of the same
     // project.
-    let avoid_cross_crate_conflicts = is_generic(substs) || is_globally_shared_function;
+    let avoid_cross_crate_conflicts = is_generic(args) || is_globally_shared_function;
 
     let instantiating_crate = avoid_cross_crate_conflicts.then(compute_instantiating_crate);
 
@@ -278,6 +278,6 @@ fn compute_symbol_name<'tcx>(
     symbol
 }
 
-fn is_generic(substs: SubstsRef<'_>) -> bool {
-    substs.non_erasable_generics().next().is_some()
+fn is_generic(args: GenericArgsRef<'_>) -> bool {
+    args.non_erasable_generics().next().is_some()
 }

@@ -40,7 +40,7 @@ define-function: (
         reload:
         wait-for-css: ("#src-sidebar-toggle", {"visibility": "visible"})
         assert-css: (
-            "#source-sidebar details[open] > .files a.selected",
+            "#src-sidebar details[open] > .files a.selected",
             {"color": |color_hover|, "background-color": |background|},
         )
 
@@ -62,58 +62,58 @@ define-function: (
 
         // Without hover or focus.
         assert-css: (
-            "#source-sidebar details[open] > .files a:not(.selected)",
+            "#src-sidebar details[open] > .files a:not(.selected)",
             {"color": |color|, "background-color": |background_toggle|},
         )
         // With focus.
-        focus: "#source-sidebar details[open] > .files a:not(.selected)"
+        focus: "#src-sidebar details[open] > .files a:not(.selected)"
         wait-for-css: (
-            "#source-sidebar details[open] > .files a:not(.selected):focus",
+            "#src-sidebar details[open] > .files a:not(.selected):focus",
             {"color": |color_hover|, "background-color": |background_hover|},
         )
         focus: ".search-input"
         // With hover.
-        move-cursor-to: "#source-sidebar details[open] > .files a:not(.selected)"
+        move-cursor-to: "#src-sidebar details[open] > .files a:not(.selected)"
         assert-css: (
-            "#source-sidebar details[open] > .files a:not(.selected):hover",
+            "#src-sidebar details[open] > .files a:not(.selected):hover",
             {"color": |color_hover|, "background-color": |background_hover|},
         )
 
         // Without hover or focus.
         assert-css: (
-            "#source-sidebar .dir-entry summary",
+            "#src-sidebar .dir-entry summary",
             {"color": |color|, "background-color": |background_toggle|},
         )
         // With focus.
-        focus: "#source-sidebar .dir-entry summary"
+        focus: "#src-sidebar .dir-entry summary"
         wait-for-css: (
-            "#source-sidebar .dir-entry summary:focus",
+            "#src-sidebar .dir-entry summary:focus",
             {"color": |color_hover|, "background-color": |background_hover|},
         )
         focus: ".search-input"
         // With hover.
-        move-cursor-to: "#source-sidebar .dir-entry summary"
+        move-cursor-to: "#src-sidebar .dir-entry summary"
         assert-css: (
-            "#source-sidebar .dir-entry summary:hover",
+            "#src-sidebar .dir-entry summary:hover",
             {"color": |color_hover|, "background-color": |background_hover|},
         )
 
         // Without hover or focus.
         assert-css: (
-            "#source-sidebar details[open] > .folders > details > summary",
+            "#src-sidebar details[open] > .folders > details > summary",
             {"color": |color|, "background-color": |background_toggle|},
         )
         // With focus.
-        focus: "#source-sidebar details[open] > .folders > details > summary"
+        focus: "#src-sidebar details[open] > .folders > details > summary"
         wait-for-css: (
-            "#source-sidebar details[open] > .folders > details > summary:focus",
+            "#src-sidebar details[open] > .folders > details > summary:focus",
             {"color": |color_hover|, "background-color": |background_hover|},
         )
         focus: ".search-input"
         // With hover.
-        move-cursor-to: "#source-sidebar details[open] > .folders > details > summary"
+        move-cursor-to: "#src-sidebar details[open] > .folders > details > summary"
         assert-css: (
-            "#source-sidebar details[open] > .folders > details > summary:hover",
+            "#src-sidebar details[open] > .folders > details > summary:hover",
             {"color": |color_hover|, "background-color": |background_hover|},
         )
     },
@@ -190,16 +190,16 @@ assert-window-property: {"pageYOffset": "2542"}
 // make it the current selection.
 set-window-size: (500, 700)
 click: "#src-sidebar-toggle"
-wait-for-css: ("#source-sidebar", {"visibility": "visible"})
+wait-for-css: ("#src-sidebar", {"visibility": "visible"})
 assert-local-storage: {"rustdoc-source-sidebar-show": "true"}
 click: ".sidebar a.selected"
 go-to: "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html"
-wait-for-css: ("#source-sidebar", {"visibility": "hidden"})
+wait-for-css: ("#src-sidebar", {"visibility": "hidden"})
 assert-local-storage: {"rustdoc-source-sidebar-show": "false"}
 // Resize back to desktop size, to check that the sidebar doesn't spontaneously open.
 set-window-size: (1000, 1000)
-wait-for-css: ("#source-sidebar", {"visibility": "hidden"})
+wait-for-css: ("#src-sidebar", {"visibility": "hidden"})
 assert-local-storage: {"rustdoc-source-sidebar-show": "false"}
 click: "#src-sidebar-toggle"
-wait-for-css: ("#source-sidebar", {"visibility": "visible"})
+wait-for-css: ("#src-sidebar", {"visibility": "visible"})
 assert-local-storage: {"rustdoc-source-sidebar-show": "true"}

@@ -1050,8 +1050,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         report_object_safety_error(self.tcx, span, trait_def_id, violations)
                     }
 
-                    ty::PredicateKind::ClosureKind(closure_def_id, closure_substs, kind) => {
-                        let found_kind = self.closure_kind(closure_substs).unwrap();
+                    ty::PredicateKind::ClosureKind(closure_def_id, closure_args, kind) => {
+                        let found_kind = self.closure_kind(closure_args).unwrap();
                         self.report_closure_error(&obligation, closure_def_id, found_kind, kind)
                     }
 
@@ -1627,14 +1627,14 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     ty::TermKind::Ty(_) => Ty::new_projection(
                         self.tcx,
                         data.projection_ty.def_id,
-                        data.projection_ty.substs,
+                        data.projection_ty.args,
                     )
                     .into(),
                     ty::TermKind::Const(ct) => ty::Const::new_unevaluated(
                         self.tcx,
                         ty::UnevaluatedConst {
                             def: data.projection_ty.def_id,
-                            substs: data.projection_ty.substs,
+                            args: data.projection_ty.args,
                         },
                         ct.ty(),
                     )
@@ -1972,7 +1972,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             traits.sort();
             traits.dedup();
             // FIXME: this could use a better heuristic, like just checking
-            // that substs[1..] is the same.
+            // that args[1..] is the same.
             let all_traits_equal = traits.len() == 1;
 
             let candidates: Vec<String> = candidates
@@ -2018,7 +2018,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         || self.tcx.is_automatically_derived(def_id)
                 })
                 .filter_map(|def_id| self.tcx.impl_trait_ref(def_id))
-                .map(ty::EarlyBinder::subst_identity)
+                .map(ty::EarlyBinder::instantiate_identity)
                 .filter(|trait_ref| {
                     let self_ty = trait_ref.self_ty();
                     // Avoid mentioning type parameters.
@@ -2267,7 +2267,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 // Pick the first substitution that still contains inference variables as the one
                 // we're going to emit an error for. If there are none (see above), fall back to
                 // a more general error.
-                let subst = data.trait_ref.substs.iter().find(|s| s.has_non_region_infer());
+                let subst = data.trait_ref.args.iter().find(|s| s.has_non_region_infer());
 
                 let mut err = if let Some(subst) = subst {
                     self.emit_inference_failure_err(
@@ -2292,7 +2292,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     &obligation.with(self.tcx, trait_ref),
                 );
                 let has_non_region_infer =
-                    trait_ref.skip_binder().substs.types().any(|t| !t.is_ty_or_numeric_infer());
+                    trait_ref.skip_binder().args.types().any(|t| !t.is_ty_or_numeric_infer());
                 // It doesn't make sense to talk about applicable impls if there are more
                 // than a handful of them.
                 if ambiguities.len() > 1 && ambiguities.len() < 10 && has_non_region_infer {
@@ -2330,7 +2330,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     self.suggest_fully_qualified_path(&mut err, def_id, span, trait_ref.def_id());
                 }
 
-                if let Some(ty::subst::GenericArgKind::Type(_)) = subst.map(|subst| subst.unpack())
+                if let Some(ty::GenericArgKind::Type(_)) = subst.map(|subst| subst.unpack())
                     && let Some(body_id) = self.tcx.hir().maybe_body_owned_by(obligation.cause.body_id)
                 {
                     let mut expr_finder = FindExprBySpan::new(span);
@@ -2389,7 +2389,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             // Otherwise, use a placeholder comment for the implementation.
                             let (message, impl_suggestion) = if non_blanket_impl_count == 1 {(
                                 "use the fully-qualified path to the only available implementation".to_string(),
-                                format!("<{} as ", self.tcx.type_of(impl_def_id).subst_identity())
+                                format!("<{} as ", self.tcx.type_of(impl_def_id).instantiate_identity())
                             )} else {(
                                 format!(
                                     "use a fully-qualified path to a specific available implementation ({} found)",
@@ -2466,7 +2466,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 }
                 let subst = data
                     .projection_ty
-                    .substs
+                    .args
                     .iter()
                     .chain(Some(data.term.into_arg()))
                     .find(|g| g.has_non_region_infer());
@@ -2708,10 +2708,17 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         err: &mut Diagnostic,
         obligation: &PredicateObligation<'tcx>,
     ) {
-        let ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) = obligation.predicate.kind().skip_binder() else { return; };
+        let ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) =
+            obligation.predicate.kind().skip_binder()
+        else {
+            return;
+        };
         let (ObligationCauseCode::BindingObligation(item_def_id, span)
-        | ObligationCauseCode::ExprBindingObligation(item_def_id, span, ..))
-            = *obligation.cause.code().peel_derives() else { return; };
+        | ObligationCauseCode::ExprBindingObligation(item_def_id, span, ..)) =
+            *obligation.cause.code().peel_derives()
+        else {
+            return;
+        };
         debug!(?pred, ?item_def_id, ?span);
 
         let (Some(node), true) = (
@@ -2822,9 +2829,9 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             if obligated_types.iter().any(|ot| ot == &self_ty) {
                 return true;
             }
-            if let ty::Adt(def, substs) = self_ty.kind()
-                && let [arg] = &substs[..]
-                && let ty::subst::GenericArgKind::Type(ty) = arg.unpack()
+            if let ty::Adt(def, args) = self_ty.kind()
+                && let [arg] = &args[..]
+                && let ty::GenericArgKind::Type(ty) = arg.unpack()
                 && let ty::Adt(inner_def, _) = ty.kind()
                 && inner_def == def
             {
@@ -2876,14 +2883,20 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         let trait_ref = self.tcx.erase_regions(self.tcx.erase_late_bound_regions(trait_ref));
 
         let src_and_dst = rustc_transmute::Types {
-            dst: trait_ref.substs.type_at(0),
-            src: trait_ref.substs.type_at(1),
+            dst: trait_ref.args.type_at(0),
+            src: trait_ref.args.type_at(1),
         };
-        let scope = trait_ref.substs.type_at(2);
-        let Some(assume) =
-            rustc_transmute::Assume::from_const(self.infcx.tcx, obligation.param_env, trait_ref.substs.const_at(3)) else {
-                span_bug!(span, "Unable to construct rustc_transmute::Assume where it was previously possible");
-            };
+        let scope = trait_ref.args.type_at(2);
+        let Some(assume) = rustc_transmute::Assume::from_const(
+            self.infcx.tcx,
+            obligation.param_env,
+            trait_ref.args.const_at(3),
+        ) else {
+            span_bug!(
+                span,
+                "Unable to construct rustc_transmute::Assume where it was previously possible"
+            );
+        };
 
         match rustc_transmute::TransmuteTypeEnv::new(self.infcx).is_transmutable(
             obligation.cause,
@@ -2892,8 +2905,8 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             assume,
         ) {
             Answer::No(reason) => {
-                let dst = trait_ref.substs.type_at(0);
-                let src = trait_ref.substs.type_at(1);
+                let dst = trait_ref.args.type_at(0);
+                let src = trait_ref.args.type_at(1);
                 let err_msg = format!(
                     "`{src}` cannot be safely transmuted into `{dst}` in the defining scope of `{scope}`"
                 );
@@ -3060,7 +3073,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
         // Note any argument mismatches
         let given_ty = params.skip_binder();
-        let expected_ty = trait_ref.skip_binder().substs.type_at(1);
+        let expected_ty = trait_ref.skip_binder().args.type_at(1);
         if let ty::Tuple(given) = given_ty.kind()
             && let ty::Tuple(expected) = expected_ty.kind()
         {
@@ -3275,7 +3288,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
         let mut not_tupled = false;
 
-        let found = match found_trait_ref.skip_binder().substs.type_at(1).kind() {
+        let found = match found_trait_ref.skip_binder().args.type_at(1).kind() {
             ty::Tuple(ref tys) => vec![ArgKind::empty(); tys.len()],
             _ => {
                 not_tupled = true;
@@ -3283,7 +3296,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
         };
 
-        let expected_ty = expected_trait_ref.skip_binder().substs.type_at(1);
+        let expected_ty = expected_trait_ref.skip_binder().args.type_at(1);
         let expected = match expected_ty.kind() {
             ty::Tuple(ref tys) => {
                 tys.iter().map(|t| ArgKind::from_expected_ty(t, Some(span))).collect()
@@ -3556,7 +3569,7 @@ pub fn dump_proof_tree<'tcx>(o: &Obligation<'tcx, ty::Predicate<'tcx>>, infcx: &
             .1
             .expect("proof tree should have been generated");
         let mut lock = std::io::stdout().lock();
-        let _ = lock.write_fmt(format_args!("{tree:?}"));
+        let _ = lock.write_fmt(format_args!("{tree:?}\n"));
         let _ = lock.flush();
     });
 }

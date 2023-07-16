@@ -222,8 +222,8 @@ impl<'tcx> fmt::Debug for ty::PredicateKind<'tcx> {
             ty::PredicateKind::ObjectSafe(trait_def_id) => {
                 write!(f, "ObjectSafe({:?})", trait_def_id)
             }
-            ty::PredicateKind::ClosureKind(closure_def_id, closure_substs, kind) => {
-                write!(f, "ClosureKind({:?}, {:?}, {:?})", closure_def_id, closure_substs, kind)
+            ty::PredicateKind::ClosureKind(closure_def_id, closure_args, kind) => {
+                write!(f, "ClosureKind({:?}, {:?}, {:?})", closure_def_id, closure_args, kind)
             }
             ty::PredicateKind::ConstEquate(c1, c2) => write!(f, "ConstEquate({:?}, {:?})", c1, c2),
             ty::PredicateKind::Ambiguous => write!(f, "Ambiguous"),
@@ -245,7 +245,7 @@ impl<'tcx> DebugWithInfcx<TyCtxt<'tcx>> for AliasTy<'tcx> {
         f: &mut core::fmt::Formatter<'_>,
     ) -> core::fmt::Result {
         f.debug_struct("AliasTy")
-            .field("substs", &this.map(|data| data.substs))
+            .field("args", &this.map(|data| data.args))
             .field("def_id", &this.data.def_id)
             .finish()
     }
@@ -322,7 +322,7 @@ impl<'tcx> DebugWithInfcx<TyCtxt<'tcx>> for ty::UnevaluatedConst<'tcx> {
     ) -> core::fmt::Result {
         f.debug_struct("UnevaluatedConst")
             .field("def", &this.data.def)
-            .field("substs", &this.wrap(this.data.substs))
+            .field("args", &this.wrap(this.data.args))
             .finish()
     }
 }
@@ -695,26 +695,26 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for Ty<'tcx> {
             ty::RawPtr(tm) => ty::RawPtr(tm.try_fold_with(folder)?),
             ty::Array(typ, sz) => ty::Array(typ.try_fold_with(folder)?, sz.try_fold_with(folder)?),
             ty::Slice(typ) => ty::Slice(typ.try_fold_with(folder)?),
-            ty::Adt(tid, substs) => ty::Adt(tid, substs.try_fold_with(folder)?),
+            ty::Adt(tid, args) => ty::Adt(tid, args.try_fold_with(folder)?),
             ty::Dynamic(trait_ty, region, representation) => ty::Dynamic(
                 trait_ty.try_fold_with(folder)?,
                 region.try_fold_with(folder)?,
                 representation,
             ),
             ty::Tuple(ts) => ty::Tuple(ts.try_fold_with(folder)?),
-            ty::FnDef(def_id, substs) => ty::FnDef(def_id, substs.try_fold_with(folder)?),
+            ty::FnDef(def_id, args) => ty::FnDef(def_id, args.try_fold_with(folder)?),
             ty::FnPtr(f) => ty::FnPtr(f.try_fold_with(folder)?),
             ty::Ref(r, ty, mutbl) => {
                 ty::Ref(r.try_fold_with(folder)?, ty.try_fold_with(folder)?, mutbl)
             }
-            ty::Generator(did, substs, movability) => {
-                ty::Generator(did, substs.try_fold_with(folder)?, movability)
+            ty::Generator(did, args, movability) => {
+                ty::Generator(did, args.try_fold_with(folder)?, movability)
             }
             ty::GeneratorWitness(types) => ty::GeneratorWitness(types.try_fold_with(folder)?),
-            ty::GeneratorWitnessMIR(did, substs) => {
-                ty::GeneratorWitnessMIR(did, substs.try_fold_with(folder)?)
+            ty::GeneratorWitnessMIR(did, args) => {
+                ty::GeneratorWitnessMIR(did, args.try_fold_with(folder)?)
             }
-            ty::Closure(did, substs) => ty::Closure(did, substs.try_fold_with(folder)?),
+            ty::Closure(did, args) => ty::Closure(did, args.try_fold_with(folder)?),
             ty::Alias(kind, data) => ty::Alias(kind, data.try_fold_with(folder)?),
 
             ty::Bool
@@ -748,22 +748,22 @@ impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for Ty<'tcx> {
                 sz.visit_with(visitor)
             }
             ty::Slice(typ) => typ.visit_with(visitor),
-            ty::Adt(_, substs) => substs.visit_with(visitor),
+            ty::Adt(_, args) => args.visit_with(visitor),
             ty::Dynamic(ref trait_ty, ref reg, _) => {
                 trait_ty.visit_with(visitor)?;
                 reg.visit_with(visitor)
             }
             ty::Tuple(ts) => ts.visit_with(visitor),
-            ty::FnDef(_, substs) => substs.visit_with(visitor),
+            ty::FnDef(_, args) => args.visit_with(visitor),
             ty::FnPtr(ref f) => f.visit_with(visitor),
             ty::Ref(r, ty, _) => {
                 r.visit_with(visitor)?;
                 ty.visit_with(visitor)
             }
-            ty::Generator(_did, ref substs, _) => substs.visit_with(visitor),
+            ty::Generator(_did, ref args, _) => args.visit_with(visitor),
             ty::GeneratorWitness(ref types) => types.visit_with(visitor),
-            ty::GeneratorWitnessMIR(_did, ref substs) => substs.visit_with(visitor),
-            ty::Closure(_did, ref substs) => substs.visit_with(visitor),
+            ty::GeneratorWitnessMIR(_did, ref args) => args.visit_with(visitor),
+            ty::Closure(_did, ref args) => args.visit_with(visitor),
             ty::Alias(_, ref data) => data.visit_with(visitor),
 
             ty::Bool
@@ -943,7 +943,7 @@ impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for ty::UnevaluatedConst<'tcx> {
         &self,
         visitor: &mut V,
     ) -> ControlFlow<V::BreakTy> {
-        self.substs.visit_with(visitor)
+        self.args.visit_with(visitor)
     }
 }
 

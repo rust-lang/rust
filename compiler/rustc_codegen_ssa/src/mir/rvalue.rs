@@ -417,12 +417,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                     mir::CastKind::PointerCoercion(PointerCoercion::ReifyFnPointer) => {
                         match *operand.layout.ty.kind() {
-                            ty::FnDef(def_id, substs) => {
+                            ty::FnDef(def_id, args) => {
                                 let instance = ty::Instance::resolve_for_fn_ptr(
                                     bx.tcx(),
                                     ty::ParamEnv::reveal_all(),
                                     def_id,
-                                    substs,
+                                    args,
                                 )
                                 .unwrap()
                                 .polymorphize(bx.cx().tcx());
@@ -433,11 +433,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                     mir::CastKind::PointerCoercion(PointerCoercion::ClosureFnPointer(_)) => {
                         match *operand.layout.ty.kind() {
-                            ty::Closure(def_id, substs) => {
+                            ty::Closure(def_id, args) => {
                                 let instance = Instance::resolve_closure(
                                     bx.cx().tcx(),
                                     def_id,
-                                    substs,
+                                    args,
                                     ty::ClosureKind::FnOnce,
                                 )
                                 .expect("failed to normalize and resolve closure during codegen")
@@ -711,7 +711,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 {
                     let instance = ty::Instance {
                         def: ty::InstanceDef::ThreadLocalShim(def_id),
-                        substs: ty::InternalSubsts::empty(),
+                        args: ty::GenericArgs::empty(),
                     };
                     let fn_ptr = bx.get_fn_addr(instance);
                     let fn_abi = bx.fn_abi_of_instance(instance, ty::List::empty());

@@ -7,11 +7,11 @@ set-window-size: (600, 800)
 // We check that the scroll is at the top first.
 assert-property: ("html", {"scrollTop": "0"})
 
-click: '//a[text() = "barbar"]'
+click: '//a[text() = "barbar" and @href="#5-7"]'
 assert-property: ("html", {"scrollTop": "149"})
-click: '//a[text() = "bar"]'
+click: '//a[text() = "bar" and @href="#28-36"]'
 assert-property: ("html", {"scrollTop": "180"})
-click: '//a[text() = "sub_fn"]'
+click: '//a[text() = "sub_fn" and @href="#2-4"]'
 assert-property: ("html", {"scrollTop": "77"})
 
 // We now check that clicking on lines doesn't change the scroll

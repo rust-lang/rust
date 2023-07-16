@@ -26,7 +26,9 @@ impl Step for CleanAll {
     }
 
     fn run(self, builder: &Builder<'_>) -> Self::Output {
-        let Subcommand::Clean { all, .. } = builder.config.cmd else { unreachable!("wrong subcommand?") };
+        let Subcommand::Clean { all, .. } = builder.config.cmd else {
+            unreachable!("wrong subcommand?")
+        };
         clean_default(builder.build, all)
     }
 

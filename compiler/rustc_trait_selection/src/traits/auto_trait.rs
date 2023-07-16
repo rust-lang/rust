@@ -152,14 +152,9 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         // traits::project will see that 'T: SomeTrait' is in our ParamEnv, allowing
         // SelectionContext to return it back to us.
 
-        let Some((new_env, user_env)) = self.evaluate_predicates(
-            &infcx,
-            trait_did,
-            ty,
-            orig_env,
-            orig_env,
-            &mut fresh_preds,
-        ) else {
+        let Some((new_env, user_env)) =
+            self.evaluate_predicates(&infcx, trait_did, ty, orig_env, orig_env, &mut fresh_preds)
+        else {
             return AutoTraitResult::NegativeImpl;
         };
 
@@ -329,7 +324,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 }
                 Ok(None) => {}
                 Err(SelectionError::Unimplemented) => {
-                    if self.is_param_no_infer(pred.skip_binder().trait_ref.substs) {
+                    if self.is_param_no_infer(pred.skip_binder().trait_ref.args) {
                         already_visited.remove(&pred);
                         self.add_user_pred(&mut user_computed_preds, pred.to_predicate(self.tcx));
                         predicates.push_back(pred);
@@ -339,7 +334,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                              {:?} {:?} {:?}",
                             ty,
                             pred,
-                            pred.skip_binder().trait_ref.substs
+                            pred.skip_binder().trait_ref.args
                         );
                         return None;
                     }
@@ -406,17 +401,17 @@ impl<'tcx> AutoTraitFinder<'tcx> {
             ) = (new_pred.kind().skip_binder(), old_pred.kind().skip_binder())
             {
                 if new_trait.def_id() == old_trait.def_id() {
-                    let new_substs = new_trait.trait_ref.substs;
-                    let old_substs = old_trait.trait_ref.substs;
+                    let new_args = new_trait.trait_ref.args;
+                    let old_args = old_trait.trait_ref.args;
 
-                    if !new_substs.types().eq(old_substs.types()) {
+                    if !new_args.types().eq(old_args.types()) {
                         // We can't compare lifetimes if the types are different,
                         // so skip checking `old_pred`.
                         return true;
                     }
 
                     for (new_region, old_region) in
-                        iter::zip(new_substs.regions(), old_substs.regions())
+                        iter::zip(new_args.regions(), old_args.regions())
                     {
                         match (*new_region, *old_region) {
                             // If both predicates have an `ReLateBound` (a HRTB) in the
@@ -569,8 +564,8 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         finished_map
     }
 
-    fn is_param_no_infer(&self, substs: SubstsRef<'_>) -> bool {
-        self.is_of_param(substs.type_at(0)) && !substs.types().any(|t| t.has_infer_types())
+    fn is_param_no_infer(&self, args: GenericArgsRef<'_>) -> bool {
+        self.is_of_param(args.type_at(0)) && !args.types().any(|t| t.has_infer_types())
     }
 
     pub fn is_of_param(&self, ty: Ty<'_>) -> bool {
@@ -641,7 +636,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                     // an inference variable.
                     // Additionally, we check if we've seen this predicate before,
                     // to avoid rendering duplicate bounds to the user.
-                    if self.is_param_no_infer(p.skip_binder().projection_ty.substs)
+                    if self.is_param_no_infer(p.skip_binder().projection_ty.args)
                         && !p.term().skip_binder().has_infer_types()
                         && is_new_pred
                     {

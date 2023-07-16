@@ -282,7 +282,7 @@ impl<T: Display, U: Debug> SomeType<T, U> { ...
 
 If the generics clause must be formatted across multiple lines, each parameter
 should have its own block-indented line, there should be newlines after the
-opening bracket and before the closing bracket, and the should be a trailing
+opening bracket and before the closing bracket, and there should be a trailing
 comma.
 
 ```rust

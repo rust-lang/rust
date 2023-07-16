@@ -74,11 +74,11 @@ pub enum TyKind<I: Interner> {
     /// Algebraic data types (ADT). For example: structures, enumerations and unions.
     ///
     /// For example, the type `List<i32>` would be represented using the `AdtDef`
-    /// for `struct List<T>` and the substs `[i32]`.
+    /// for `struct List<T>` and the args `[i32]`.
     ///
     /// Note that generic parameters in fields only get lazily substituted
-    /// by using something like `adt_def.all_fields().map(|field| field.ty(tcx, substs))`.
-    Adt(I::AdtDef, I::SubstsRef),
+    /// by using something like `adt_def.all_fields().map(|field| field.ty(tcx, args))`.
+    Adt(I::AdtDef, I::GenericArgsRef),
 
     /// An unsized FFI type that is opaque to Rust. Written as `extern type T`.
     Foreign(I::DefId),
@@ -110,7 +110,7 @@ pub enum TyKind<I: Interner> {
     /// fn foo() -> i32 { 1 }
     /// let bar = foo; // bar: fn() -> i32 {foo}
     /// ```
-    FnDef(I::DefId, I::SubstsRef),
+    FnDef(I::DefId, I::GenericArgsRef),
 
     /// A pointer to a function. Written as `fn() -> i32`.
     ///
@@ -130,20 +130,20 @@ pub enum TyKind<I: Interner> {
 
     /// The anonymous type of a closure. Used to represent the type of `|a| a`.
     ///
-    /// Closure substs contain both the - potentially substituted - generic parameters
+    /// Closure args contain both the - potentially substituted - generic parameters
     /// of its parent and some synthetic parameters. See the documentation for
-    /// `ClosureSubsts` for more details.
-    Closure(I::DefId, I::SubstsRef),
+    /// `ClosureArgs` for more details.
+    Closure(I::DefId, I::GenericArgsRef),
 
     /// The anonymous type of a generator. Used to represent the type of
     /// `|a| yield a`.
     ///
-    /// For more info about generator substs, visit the documentation for
-    /// `GeneratorSubsts`.
-    Generator(I::DefId, I::SubstsRef, I::Movability),
+    /// For more info about generator args, visit the documentation for
+    /// `GeneratorArgs`.
+    Generator(I::DefId, I::GenericArgsRef, I::Movability),
 
     /// A type representing the types stored inside a generator.
-    /// This should only appear as part of the `GeneratorSubsts`.
+    /// This should only appear as part of the `GeneratorArgs`.
     ///
     /// Note that the captured variables for generators are stored separately
     /// using a tuple in the same way as for closures.
@@ -168,7 +168,7 @@ pub enum TyKind<I: Interner> {
     GeneratorWitness(I::BinderListTy),
 
     /// A type representing the types stored inside a generator.
-    /// This should only appear as part of the `GeneratorSubsts`.
+    /// This should only appear as part of the `GeneratorArgs`.
     ///
     /// Unlike upvars, the witness can reference lifetimes from
     /// inside of the generator itself. To deal with them in
@@ -176,7 +176,7 @@ pub enum TyKind<I: Interner> {
     /// lifetimes bound by the witness itself.
     ///
     /// This variant is only using when `drop_tracking_mir` is set.
-    /// This contains the `DefId` and the `SubstsRef` of the generator.
+    /// This contains the `DefId` and the `GenericArgsRef` of the generator.
     /// The actual witness types are computed on MIR by the `mir_generator_witnesses` query.
     ///
     /// Looking at the following example, the witness for this generator
@@ -191,7 +191,7 @@ pub enum TyKind<I: Interner> {
     /// }
     /// # ;
     /// ```
-    GeneratorWitnessMIR(I::DefId, I::SubstsRef),
+    GeneratorWitnessMIR(I::DefId, I::GenericArgsRef),
 
     /// The never type `!`.
     Never,
@@ -587,7 +587,7 @@ impl<I: Interner, E: TyEncoder> Encodable<E> for TyKind<I>
 where
     I::ErrorGuaranteed: Encodable<E>,
     I::AdtDef: Encodable<E>,
-    I::SubstsRef: Encodable<E>,
+    I::GenericArgsRef: Encodable<E>,
     I::DefId: Encodable<E>,
     I::Ty: Encodable<E>,
     I::Const: Encodable<E>,
@@ -621,9 +621,9 @@ where
             Float(f) => e.emit_enum_variant(disc, |e| {
                 f.encode(e);
             }),
-            Adt(adt, substs) => e.emit_enum_variant(disc, |e| {
+            Adt(adt, args) => e.emit_enum_variant(disc, |e| {
                 adt.encode(e);
-                substs.encode(e);
+                args.encode(e);
             }),
             Foreign(def_id) => e.emit_enum_variant(disc, |e| {
                 def_id.encode(e);
@@ -644,9 +644,9 @@ where
                 t.encode(e);
                 m.encode(e);
             }),
-            FnDef(def_id, substs) => e.emit_enum_variant(disc, |e| {
+            FnDef(def_id, args) => e.emit_enum_variant(disc, |e| {
                 def_id.encode(e);
-                substs.encode(e);
+                args.encode(e);
             }),
             FnPtr(polyfnsig) => e.emit_enum_variant(disc, |e| {
                 polyfnsig.encode(e);
@@ -656,25 +656,25 @@ where
                 r.encode(e);
                 repr.encode(e);
             }),
-            Closure(def_id, substs) => e.emit_enum_variant(disc, |e| {
+            Closure(def_id, args) => e.emit_enum_variant(disc, |e| {
                 def_id.encode(e);
-                substs.encode(e);
+                args.encode(e);
             }),
-            Generator(def_id, substs, m) => e.emit_enum_variant(disc, |e| {
+            Generator(def_id, args, m) => e.emit_enum_variant(disc, |e| {
                 def_id.encode(e);
-                substs.encode(e);
+                args.encode(e);
                 m.encode(e);
             }),
             GeneratorWitness(b) => e.emit_enum_variant(disc, |e| {
                 b.encode(e);
             }),
-            GeneratorWitnessMIR(def_id, substs) => e.emit_enum_variant(disc, |e| {
+            GeneratorWitnessMIR(def_id, args) => e.emit_enum_variant(disc, |e| {
                 def_id.encode(e);
-                substs.encode(e);
+                args.encode(e);
             }),
             Never => e.emit_enum_variant(disc, |_| {}),
-            Tuple(substs) => e.emit_enum_variant(disc, |e| {
-                substs.encode(e);
+            Tuple(args) => e.emit_enum_variant(disc, |e| {
+                args.encode(e);
             }),
             Alias(k, p) => e.emit_enum_variant(disc, |e| {
                 k.encode(e);
@@ -705,7 +705,7 @@ impl<I: Interner, D: TyDecoder<I = I>> Decodable<D> for TyKind<I>
 where
     I::ErrorGuaranteed: Decodable<D>,
     I::AdtDef: Decodable<D>,
-    I::SubstsRef: Decodable<D>,
+    I::GenericArgsRef: Decodable<D>,
     I::DefId: Decodable<D>,
     I::Ty: Decodable<D>,
     I::Const: Decodable<D>,
@@ -772,7 +772,7 @@ impl<CTX: HashStableContext, I: Interner> HashStable<CTX> for TyKind<I>
 where
     I::AdtDef: HashStable<CTX>,
     I::DefId: HashStable<CTX>,
-    I::SubstsRef: HashStable<CTX>,
+    I::GenericArgsRef: HashStable<CTX>,
     I::Ty: HashStable<CTX>,
     I::Const: HashStable<CTX>,
     I::TypeAndMut: HashStable<CTX>,
@@ -809,9 +809,9 @@ where
             Float(f) => {
                 f.hash_stable(__hcx, __hasher);
             }
-            Adt(adt, substs) => {
+            Adt(adt, args) => {
                 adt.hash_stable(__hcx, __hasher);
-                substs.hash_stable(__hcx, __hasher);
+                args.hash_stable(__hcx, __hasher);
             }
             Foreign(def_id) => {
                 def_id.hash_stable(__hcx, __hasher);
@@ -832,9 +832,9 @@ where
                 t.hash_stable(__hcx, __hasher);
                 m.hash_stable(__hcx, __hasher);
             }
-            FnDef(def_id, substs) => {
+            FnDef(def_id, args) => {
                 def_id.hash_stable(__hcx, __hasher);
-                substs.hash_stable(__hcx, __hasher);
+                args.hash_stable(__hcx, __hasher);
             }
             FnPtr(polyfnsig) => {
                 polyfnsig.hash_stable(__hcx, __hasher);
@@ -844,25 +844,25 @@ where
                 r.hash_stable(__hcx, __hasher);
                 repr.hash_stable(__hcx, __hasher);
             }
-            Closure(def_id, substs) => {
+            Closure(def_id, args) => {
                 def_id.hash_stable(__hcx, __hasher);
-                substs.hash_stable(__hcx, __hasher);
+                args.hash_stable(__hcx, __hasher);
             }
-            Generator(def_id, substs, m) => {
+            Generator(def_id, args, m) => {
                 def_id.hash_stable(__hcx, __hasher);
-                substs.hash_stable(__hcx, __hasher);
+                args.hash_stable(__hcx, __hasher);
                 m.hash_stable(__hcx, __hasher);
             }
             GeneratorWitness(b) => {
                 b.hash_stable(__hcx, __hasher);
             }
-            GeneratorWitnessMIR(def_id, substs) => {
+            GeneratorWitnessMIR(def_id, args) => {
                 def_id.hash_stable(__hcx, __hasher);
-                substs.hash_stable(__hcx, __hasher);
+                args.hash_stable(__hcx, __hasher);
             }
             Never => {}
-            Tuple(substs) => {
-                substs.hash_stable(__hcx, __hasher);
+            Tuple(args) => {
+                args.hash_stable(__hcx, __hasher);
             }
             Alias(k, p) => {
                 k.hash_stable(__hcx, __hasher);
@@ -1167,7 +1167,7 @@ impl<I: Interner> Clone for ConstKind<I> {
 /// These are regions that are stored behind a binder and must be substituted
 /// with some concrete region before being used. There are two kind of
 /// bound regions: early-bound, which are bound in an item's `Generics`,
-/// and are substituted by an `InternalSubsts`, and late-bound, which are part of
+/// and are substituted by an `GenericArgs`, and late-bound, which are part of
 /// higher-ranked types (e.g., `for<'a> fn(&'a ())`), and are substituted by
 /// the likes of `liberate_late_bound_regions`. The distinction exists
 /// because higher-ranked lifetimes aren't supported in all places. See [1][2].

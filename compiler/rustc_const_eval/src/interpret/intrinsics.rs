@@ -12,7 +12,7 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty;
 use rustc_middle::ty::layout::{LayoutOf as _, ValidityRequirement};
-use rustc_middle::ty::subst::SubstsRef;
+use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_target::abi::{Abi, Align, Primitive, Size};
@@ -56,9 +56,9 @@ pub(crate) fn eval_nullary_intrinsic<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     def_id: DefId,
-    substs: SubstsRef<'tcx>,
+    args: GenericArgsRef<'tcx>,
 ) -> InterpResult<'tcx, ConstValue<'tcx>> {
-    let tp_ty = substs.type_at(0);
+    let tp_ty = args.type_at(0);
     let name = tcx.item_name(def_id);
     Ok(match name {
         sym::type_name => {
@@ -123,7 +123,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         dest: &PlaceTy<'tcx, M::Provenance>,
         ret: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx, bool> {
-        let substs = instance.substs;
+        let instance_args = instance.args;
         let intrinsic_name = self.tcx.item_name(instance.def_id());
 
         // First handle intrinsics without return place.
@@ -187,7 +187,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             | sym::ctlz_nonzero
             | sym::bswap
             | sym::bitreverse => {
-                let ty = substs.type_at(0);
+                let ty = instance_args.type_at(0);
                 let layout_of = self.layout_of(ty)?;
                 let val = self.read_scalar(&args[0])?;
                 let bits = val.to_bits(layout_of.size)?;
@@ -237,7 +237,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             sym::rotate_left | sym::rotate_right => {
                 // rotate_left: (X << (S % BW)) | (X >> ((BW - S) % BW))
                 // rotate_right: (X << ((BW - S) % BW)) | (X >> (S % BW))
-                let layout = self.layout_of(substs.type_at(0))?;
+                let layout = self.layout_of(instance_args.type_at(0))?;
                 let val = self.read_scalar(&args[0])?;
                 let val_bits = val.to_bits(layout.size)?;
                 let raw_shift = self.read_scalar(&args[1])?;
@@ -263,7 +263,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             sym::arith_offset => {
                 let ptr = self.read_pointer(&args[0])?;
                 let offset_count = self.read_target_isize(&args[1])?;
-                let pointee_ty = substs.type_at(0);
+                let pointee_ty = instance_args.type_at(0);
 
                 let pointee_size = i64::try_from(self.layout_of(pointee_ty)?.size.bytes()).unwrap();
                 let offset_bytes = offset_count.wrapping_mul(pointee_size);
@@ -368,7 +368,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     assert!(self.target_isize_min() <= dist && dist <= self.target_isize_max());
                     isize_layout
                 };
-                let pointee_layout = self.layout_of(substs.type_at(0))?;
+                let pointee_layout = self.layout_of(instance_args.type_at(0))?;
                 // If ret_layout is unsigned, we checked that so is the distance, so we are good.
                 let val = ImmTy::from_int(dist, ret_layout);
                 let size = ImmTy::from_int(pointee_layout.size.bytes(), ret_layout);
@@ -378,7 +378,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             sym::assert_inhabited
             | sym::assert_zero_valid
             | sym::assert_mem_uninitialized_valid => {
-                let ty = instance.substs.type_at(0);
+                let ty = instance.args.type_at(0);
                 let requirement = ValidityRequirement::from_intrinsic(intrinsic_name).unwrap();
 
                 let should_panic = !self

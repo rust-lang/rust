@@ -1115,7 +1115,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ) -> Option<ClosureOutlivesSubject<'tcx>> {
         let tcx = infcx.tcx;
 
-        // Opaque types' substs may include useless lifetimes.
+        // Opaque types' args may include useless lifetimes.
         // We will replace them with ReStatic.
         struct OpaqueFolder<'tcx> {
             tcx: TyCtxt<'tcx>,
@@ -1127,19 +1127,18 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
                 use ty::TypeSuperFoldable as _;
                 let tcx = self.tcx;
-                let &ty::Alias(ty::Opaque, ty::AliasTy { substs, def_id, .. }) = t.kind() else {
+                let &ty::Alias(ty::Opaque, ty::AliasTy { args, def_id, .. }) = t.kind() else {
                     return t.super_fold_with(self);
                 };
-                let substs =
-                    std::iter::zip(substs, tcx.variances_of(def_id)).map(|(arg, v)| {
-                        match (arg.unpack(), v) {
-                            (ty::GenericArgKind::Lifetime(_), ty::Bivariant) => {
-                                tcx.lifetimes.re_static.into()
-                            }
-                            _ => arg.fold_with(self),
+                let args = std::iter::zip(args, tcx.variances_of(def_id)).map(|(arg, v)| {
+                    match (arg.unpack(), v) {
+                        (ty::GenericArgKind::Lifetime(_), ty::Bivariant) => {
+                            tcx.lifetimes.re_static.into()
                         }
-                    });
-                Ty::new_opaque(tcx, def_id, tcx.mk_substs_from_iter(substs))
+                        _ => arg.fold_with(self),
+                    }
+                });
+                Ty::new_opaque(tcx, def_id, tcx.mk_args_from_iter(args))
             }
         }
 
@@ -2058,10 +2057,17 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let mut extra_info = vec![];
         for constraint in path.iter() {
             let outlived = constraint.sub;
-            let Some(origin) = self.var_infos.get(outlived) else { continue; };
-            let RegionVariableOrigin::Nll(NllRegionVariableOrigin::Placeholder(p)) = origin.origin else { continue; };
+            let Some(origin) = self.var_infos.get(outlived) else {
+                continue;
+            };
+            let RegionVariableOrigin::Nll(NllRegionVariableOrigin::Placeholder(p)) = origin.origin
+            else {
+                continue;
+            };
             debug!(?constraint, ?p);
-            let ConstraintCategory::Predicate(span) = constraint.category else { continue; };
+            let ConstraintCategory::Predicate(span) = constraint.category else {
+                continue;
+            };
             extra_info.push(ExtraConstraintInfo::PlaceholderFromPredicate(span));
             // We only want to point to one
             break;

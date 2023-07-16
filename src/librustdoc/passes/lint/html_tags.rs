@@ -14,7 +14,9 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item) {
     let tcx = cx.tcx;
     let Some(hir_id) = DocContext::as_local_hir_id(tcx, item.item_id)
     // If non-local, no need to check anything.
-    else { return };
+    else {
+        return;
+    };
     let dox = item.doc_value();
     if !dox.is_empty() {
         let report_diag = |msg: String, range: &Range<usize>, is_open_tag: bool| {

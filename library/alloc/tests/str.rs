@@ -1,4 +1,4 @@
-#![cfg_attr(not(bootstrap), allow(invalid_from_utf8))]
+#![allow(invalid_from_utf8)]
 
 use std::assert_matches::assert_matches;
 use std::borrow::Cow;

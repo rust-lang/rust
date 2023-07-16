@@ -10,8 +10,8 @@ use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKi
 use rustc_infer::infer::{DefineOpaqueTypes, LateBoundRegionConversionTime};
 use rustc_infer::infer::{InferOk, InferResult};
 use rustc_macros::{TypeFoldable, TypeVisitable};
-use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::visit::{TypeVisitable, TypeVisitableExt};
+use rustc_middle::ty::GenericArgs;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map::Span;
@@ -93,7 +93,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             false,
         );
 
-        let parent_substs = InternalSubsts::identity_for_item(
+        let parent_args = GenericArgs::identity_for_item(
             self.tcx,
             self.tcx.typeck_root_def_id(expr_def_id.to_def_id()),
         );
@@ -105,10 +105,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         if let Some(GeneratorTypes { resume_ty, yield_ty, interior, movability }) = generator_types
         {
-            let generator_substs = ty::GeneratorSubsts::new(
+            let generator_args = ty::GeneratorArgs::new(
                 self.tcx,
-                ty::GeneratorSubstsParts {
-                    parent_substs,
+                ty::GeneratorArgsParts {
+                    parent_args,
                     resume_ty,
                     yield_ty,
                     return_ty: liberated_sig.output(),
@@ -120,7 +120,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return Ty::new_generator(
                 self.tcx,
                 expr_def_id.to_def_id(),
-                generator_substs.substs,
+                generator_args.args,
                 movability,
             );
         }
@@ -151,17 +151,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }),
         };
 
-        let closure_substs = ty::ClosureSubsts::new(
+        let closure_args = ty::ClosureArgs::new(
             self.tcx,
-            ty::ClosureSubstsParts {
-                parent_substs,
+            ty::ClosureArgsParts {
+                parent_args,
                 closure_kind_ty,
                 closure_sig_as_fn_ptr_ty: Ty::new_fn_ptr(self.tcx, sig),
                 tupled_upvars_ty,
             },
         );
 
-        Ty::new_closure(self.tcx, expr_def_id.to_def_id(), closure_substs.substs)
+        Ty::new_closure(self.tcx, expr_def_id.to_def_id(), closure_args.args)
     }
 
     /// Given the expected type, figures out what it can about this closure we
@@ -172,12 +172,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected_ty: Ty<'tcx>,
     ) -> (Option<ExpectedSig<'tcx>>, Option<ty::ClosureKind>) {
         match *expected_ty.kind() {
-            ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => self
+            ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => self
                 .deduce_closure_signature_from_predicates(
                     expected_ty,
                     self.tcx
                         .explicit_item_bounds(def_id)
-                        .subst_iter_copied(self.tcx, substs)
+                        .arg_iter_copied(self.tcx, args)
                         .map(|(c, s)| (c.as_predicate(), s)),
                 ),
             ty::Dynamic(ref object_type, ..) => {
@@ -315,7 +315,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let input_tys = if is_fn {
-            let arg_param_ty = projection.skip_binder().projection_ty.substs.type_at(1);
+            let arg_param_ty = projection.skip_binder().projection_ty.args.type_at(1);
             let arg_param_ty = self.resolve_vars_if_possible(arg_param_ty);
             debug!(?arg_param_ty);
 
@@ -717,16 +717,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     get_future_output(obligation.predicate, obligation.cause.span)
                 })?
             }
-            ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => self
+            ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => self
                 .tcx
                 .explicit_item_bounds(def_id)
-                .subst_iter_copied(self.tcx, substs)
+                .arg_iter_copied(self.tcx, args)
                 .find_map(|(p, s)| get_future_output(p.as_predicate(), s))?,
             ty::Error(_) => return None,
             ty::Alias(ty::Projection, proj) if self.tcx.is_impl_trait_in_trait(proj.def_id) => self
                 .tcx
                 .explicit_item_bounds(proj.def_id)
-                .subst_iter_copied(self.tcx, proj.substs)
+                .arg_iter_copied(self.tcx, proj.args)
                 .find_map(|(p, s)| get_future_output(p.as_predicate(), s))?,
             _ => span_bug!(
                 self.tcx.def_span(expr_def_id),

@@ -1434,8 +1434,9 @@ impl<'a> Parser<'a> {
                 self.inc_dec_standalone_suggest(kind, spans).emit_verbose(&mut err)
             }
             IsStandalone::Subexpr => {
-                let Ok(base_src) = self.span_to_snippet(base.span)
-                else { return help_base_case(err, base) };
+                let Ok(base_src) = self.span_to_snippet(base.span) else {
+                    return help_base_case(err, base);
+                };
                 match kind.fixity {
                     UnaryFixity::Pre => {
                         self.prefix_inc_dec_suggest(base_src, kind, spans).emit(&mut err)

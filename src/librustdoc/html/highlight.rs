@@ -928,13 +928,11 @@ fn string_without_closing_tag<T: Display>(
     href_context: &Option<HrefContext<'_, '_>>,
     open_tag: bool,
 ) -> Option<&'static str> {
-    let Some(klass) = klass
-    else {
+    let Some(klass) = klass else {
         write!(out, "{}", text).unwrap();
         return None;
     };
-    let Some(def_span) = klass.get_span()
-    else {
+    let Some(def_span) = klass.get_span() else {
         if !open_tag {
             write!(out, "{}", text).unwrap();
             return None;
@@ -988,6 +986,11 @@ fn string_without_closing_tag<T: Display>(
                     )
                     .ok()
                     .map(|(url, _, _)| url),
+                    LinkFromSrc::Doc(def_id) => {
+                        format::href_with_root_path(*def_id, context, Some(&href_context.root_path))
+                            .ok()
+                            .map(|(doc_link, _, _)| doc_link)
+                    }
                 }
             })
         {

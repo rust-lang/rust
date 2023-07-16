@@ -38,11 +38,13 @@ fn mapped(_1: impl Iterator<Item = T>, _2: impl Fn(T) -> U) -> () {
 
     bb2: {
         StorageLive(_7);
+        StorageLive(_6);
         _6 = &mut _5;
-        _7 = <Map<impl Iterator<Item = T>, impl Fn(T) -> U> as Iterator>::next(_6) -> [return: bb3, unwind: bb9];
+        _7 = <Map<impl Iterator<Item = T>, impl Fn(T) -> U> as Iterator>::next(move _6) -> [return: bb3, unwind: bb9];
     }
 
     bb3: {
+        StorageDead(_6);
         _8 = discriminant(_7);
         switchInt(move _8) -> [0: bb4, 1: bb6, otherwise: bb8];
     }

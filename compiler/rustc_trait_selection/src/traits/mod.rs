@@ -13,12 +13,12 @@ mod object_safety;
 pub mod outlives_bounds;
 pub mod project;
 pub mod query;
-#[cfg_attr(not(bootstrap), allow(hidden_glob_reexports))]
+#[allow(hidden_glob_reexports)]
 mod select;
 mod specialize;
 mod structural_match;
 mod structural_normalize;
-#[cfg_attr(not(bootstrap), allow(hidden_glob_reexports))]
+#[allow(hidden_glob_reexports)]
 mod util;
 pub mod vtable;
 pub mod wf;
@@ -32,7 +32,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::visit::{TypeVisitable, TypeVisitableExt};
 use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt, TypeFolder, TypeSuperVisitable};
-use rustc_middle::ty::{InternalSubsts, SubstsRef};
+use rustc_middle::ty::{GenericArgs, GenericArgsRef};
 use rustc_span::def_id::DefId;
 use rustc_span::Span;
 
@@ -61,13 +61,13 @@ pub use self::select::{EvaluationResult, IntercrateAmbiguityCause, OverflowError
 pub use self::specialize::specialization_graph::FutureCompatOverlapError;
 pub use self::specialize::specialization_graph::FutureCompatOverlapErrorKind;
 pub use self::specialize::{
-    specialization_graph, translate_substs, translate_substs_with_cause, OverlapError,
+    specialization_graph, translate_args, translate_args_with_cause, OverlapError,
 };
 pub use self::structural_match::search_for_structural_match_violation;
 pub use self::structural_normalize::StructurallyNormalizeExt;
 pub use self::util::elaborate;
 pub use self::util::{
-    check_substs_compatible, supertrait_def_ids, supertraits, transitive_bounds,
+    check_args_compatible, supertrait_def_ids, supertraits, transitive_bounds,
     transitive_bounds_that_define_assoc_item, SupertraitDefIds,
 };
 pub use self::util::{expand_trait_aliases, TraitAliasExpander};
@@ -362,12 +362,9 @@ pub fn normalize_param_env_or_error<'tcx>(
         "normalize_param_env_or_error: predicates=(non-outlives={:?}, outlives={:?})",
         predicates, outlives_predicates
     );
-    let Ok(non_outlives_predicates) = do_normalize_predicates(
-        tcx,
-        cause.clone(),
-        elaborated_env,
-        predicates,
-    ) else {
+    let Ok(non_outlives_predicates) =
+        do_normalize_predicates(tcx, cause.clone(), elaborated_env, predicates)
+    else {
         // An unnormalized env is better than nothing.
         debug!("normalize_param_env_or_error: errored resolving non-outlives predicates");
         return elaborated_env;
@@ -384,12 +381,9 @@ pub fn normalize_param_env_or_error<'tcx>(
         unnormalized_env.reveal(),
         unnormalized_env.constness(),
     );
-    let Ok(outlives_predicates) = do_normalize_predicates(
-        tcx,
-        cause,
-        outlives_env,
-        outlives_predicates,
-    ) else {
+    let Ok(outlives_predicates) =
+        do_normalize_predicates(tcx, cause, outlives_env, outlives_predicates)
+    else {
         // An unnormalized env is better than nothing.
         debug!("normalize_param_env_or_error: errored resolving outlives predicates");
         return elaborated_env;
@@ -460,7 +454,7 @@ pub fn impossible_predicates<'tcx>(tcx: TyCtxt<'tcx>, predicates: Vec<ty::Clause
 
 fn subst_and_check_impossible_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
-    key: (DefId, SubstsRef<'tcx>),
+    key: (DefId, GenericArgsRef<'tcx>),
 ) -> bool {
     debug!("subst_and_check_impossible_predicates(key={:?})", key);
 
@@ -527,7 +521,7 @@ fn is_impossible_method(tcx: TyCtxt<'_>, (impl_def_id, trait_item_def_id): (DefI
     let impl_trait_ref = tcx
         .impl_trait_ref(impl_def_id)
         .expect("expected impl to correspond to trait")
-        .subst_identity();
+        .instantiate_identity();
     let param_env = tcx.param_env(impl_def_id);
 
     let mut visitor = ReferencesOnlyParentGenerics { tcx, generics, trait_item_def_id };
@@ -537,7 +531,7 @@ fn is_impossible_method(tcx: TyCtxt<'_>, (impl_def_id, trait_item_def_id): (DefI
                 tcx,
                 ObligationCause::dummy_with_span(*span),
                 param_env,
-                ty::EarlyBinder::bind(*pred).subst(tcx, impl_trait_ref.substs),
+                ty::EarlyBinder::bind(*pred).instantiate(tcx, impl_trait_ref.args),
             )
         })
     });

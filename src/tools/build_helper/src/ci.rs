@@ -36,15 +36,25 @@ impl CiEnv {
 }
 
 pub mod gha {
+    use std::sync::atomic::{AtomicBool, Ordering};
+
+    static GROUP_ACTIVE: AtomicBool = AtomicBool::new(false);
+
     /// All github actions log messages from this call to the Drop of the return value
     /// will be grouped and hidden by default in logs. Note that nesting these does
     /// not really work.
+    #[track_caller]
     pub fn group(name: impl std::fmt::Display) -> Group {
         if std::env::var_os("GITHUB_ACTIONS").is_some() {
             eprintln!("::group::{name}");
         } else {
             eprintln!("{name}")
         }
+        // https://github.com/actions/toolkit/issues/1001
+        assert!(
+            !GROUP_ACTIVE.swap(true, Ordering::Relaxed),
+            "nested groups are not supported by GHA!"
+        );
         Group(())
     }
 
@@ -57,6 +67,10 @@ pub mod gha {
             if std::env::var_os("GITHUB_ACTIONS").is_some() {
                 eprintln!("::endgroup::");
             }
+            assert!(
+                GROUP_ACTIVE.swap(false, Ordering::Relaxed),
+                "group dropped but no group active!"
+            );
         }
     }
 }

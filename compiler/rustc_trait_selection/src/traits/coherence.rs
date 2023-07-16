@@ -96,9 +96,7 @@ pub fn overlapping_impls(
     let impl1_ref = tcx.impl_trait_ref(impl1_def_id);
     let impl2_ref = tcx.impl_trait_ref(impl2_def_id);
     let may_overlap = match (impl1_ref, impl2_ref) {
-        (Some(a), Some(b)) => {
-            drcx.substs_refs_may_unify(a.skip_binder().substs, b.skip_binder().substs)
-        }
+        (Some(a), Some(b)) => drcx.args_refs_may_unify(a.skip_binder().args, b.skip_binder().args),
         (None, None) => {
             let self_ty1 = tcx.type_of(impl1_def_id).skip_binder();
             let self_ty2 = tcx.type_of(impl2_def_id).skip_binder();
@@ -143,15 +141,15 @@ fn with_fresh_ty_vars<'cx, 'tcx>(
     impl_def_id: DefId,
 ) -> ty::ImplHeader<'tcx> {
     let tcx = selcx.tcx();
-    let impl_substs = selcx.infcx.fresh_substs_for_item(DUMMY_SP, impl_def_id);
+    let impl_args = selcx.infcx.fresh_args_for_item(DUMMY_SP, impl_def_id);
 
     let header = ty::ImplHeader {
         impl_def_id,
-        self_ty: tcx.type_of(impl_def_id).subst(tcx, impl_substs),
-        trait_ref: tcx.impl_trait_ref(impl_def_id).map(|i| i.subst(tcx, impl_substs)),
+        self_ty: tcx.type_of(impl_def_id).instantiate(tcx, impl_args),
+        trait_ref: tcx.impl_trait_ref(impl_def_id).map(|i| i.instantiate(tcx, impl_args)),
         predicates: tcx
             .predicates_of(impl_def_id)
-            .instantiate(tcx, impl_substs)
+            .instantiate(tcx, impl_args)
             .iter()
             .map(|(c, _)| c.as_predicate())
             .collect(),
@@ -353,7 +351,7 @@ fn impl_intersection_has_negative_obligation(
         &infcx,
         ObligationCause::dummy(),
         impl_env,
-        tcx.impl_subject(impl1_def_id).subst_identity(),
+        tcx.impl_subject(impl1_def_id).instantiate_identity(),
     ) {
         Ok(s) => s,
         Err(err) => {
@@ -367,16 +365,16 @@ fn impl_intersection_has_negative_obligation(
 
     // Attempt to prove that impl2 applies, given all of the above.
     let selcx = &mut SelectionContext::new(&infcx);
-    let impl2_substs = infcx.fresh_substs_for_item(DUMMY_SP, impl2_def_id);
+    let impl2_args = infcx.fresh_args_for_item(DUMMY_SP, impl2_def_id);
     let (subject2, normalization_obligations) =
-        impl_subject_and_oblig(selcx, impl_env, impl2_def_id, impl2_substs, |_, _| {
+        impl_subject_and_oblig(selcx, impl_env, impl2_def_id, impl2_args, |_, _| {
             ObligationCause::dummy()
         });
 
     // do the impls unify? If not, then it's not currently possible to prove any
     // obligations about their intersection.
     let Ok(InferOk { obligations: equate_obligations, .. }) =
-        infcx.at(&ObligationCause::dummy(), impl_env).eq(DefineOpaqueTypes::No,subject1, subject2)
+        infcx.at(&ObligationCause::dummy(), impl_env).eq(DefineOpaqueTypes::No, subject1, subject2)
     else {
         debug!("explicit_disjoint: {:?} does not unify with {:?}", subject1, subject2);
         return false;
@@ -437,8 +435,7 @@ fn prove_negated_obligation<'tcx>(
     let body_def_id = body_def_id.as_local().unwrap_or(CRATE_DEF_ID);
 
     let ocx = ObligationCtxt::new(&infcx);
-    let Ok(wf_tys) = ocx.assumed_wf_types(param_env, body_def_id)
-    else {
+    let Ok(wf_tys) = ocx.assumed_wf_types(param_env, body_def_id) else {
         return false;
     };
 
@@ -520,7 +517,7 @@ pub enum OrphanCheckErr<'tcx> {
 pub fn orphan_check(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Result<(), OrphanCheckErr<'_>> {
     // We only except this routine to be invoked on implementations
     // of a trait, not inherent implementations.
-    let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap().subst_identity();
+    let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap().instantiate_identity();
     debug!(?trait_ref);
 
     // If the *trait* is local to the crate, ok.
@@ -729,11 +726,11 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OrphanChecker<'tcx> {
 
             // For fundamental types, we just look inside of them.
             ty::Ref(_, ty, _) => ty.visit_with(self),
-            ty::Adt(def, substs) => {
+            ty::Adt(def, args) => {
                 if self.def_id_is_local(def.did()) {
                     ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(ty))
                 } else if def.is_fundamental() {
-                    substs.visit_with(self)
+                    args.visit_with(self)
                 } else {
                     self.found_non_local_ty(ty)
                 }

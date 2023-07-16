@@ -61,7 +61,7 @@ use rustc_hir::{Body, FnDecl, ForeignItemKind, GenericParamKind, Node, PatKind, 
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::layout::{LayoutError, LayoutOf};
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::subst::GenericArgKind;
+use rustc_middle::ty::GenericArgKind;
 use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt, VariantDef};
 use rustc_session::config::ExpectedValues;
@@ -181,9 +181,11 @@ impl<'tcx> LateLintPass<'tcx> for BoxPointers {
             | hir::ItemKind::TyAlias(..)
             | hir::ItemKind::Enum(..)
             | hir::ItemKind::Struct(..)
-            | hir::ItemKind::Union(..) => {
-                self.check_heap_type(cx, it.span, cx.tcx.type_of(it.owner_id).subst_identity())
-            }
+            | hir::ItemKind::Union(..) => self.check_heap_type(
+                cx,
+                it.span,
+                cx.tcx.type_of(it.owner_id).instantiate_identity(),
+            ),
             _ => (),
         }
 
@@ -194,7 +196,7 @@ impl<'tcx> LateLintPass<'tcx> for BoxPointers {
                     self.check_heap_type(
                         cx,
                         field.span,
-                        cx.tcx.type_of(field.def_id).subst_identity(),
+                        cx.tcx.type_of(field.def_id).instantiate_identity(),
                     );
                 }
             }
@@ -591,7 +593,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
             // If the method is an impl for an item with docs_hidden, don't doc.
             MethodLateContext::PlainImpl => {
                 let parent = cx.tcx.hir().get_parent_item(impl_item.hir_id());
-                let impl_ty = cx.tcx.type_of(parent).subst_identity();
+                let impl_ty = cx.tcx.type_of(parent).instantiate_identity();
                 let outerdef = match impl_ty.kind() {
                     ty::Adt(def, _) => Some(def.did()),
                     ty::Foreign(def_id) => Some(*def_id),
@@ -700,7 +702,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
         // and recommending Copy might be a bad idea.
         for field in def.all_fields() {
             let did = field.did;
-            if cx.tcx.type_of(did).subst_identity().is_unsafe_ptr() {
+            if cx.tcx.type_of(did).instantiate_identity().is_unsafe_ptr() {
                 return;
             }
         }
@@ -793,14 +795,12 @@ impl<'tcx> LateLintPass<'tcx> for MissingDebugImplementations {
             _ => return,
         }
 
-        let Some(debug) = cx.tcx.get_diagnostic_item(sym::Debug) else {
-            return
-        };
+        let Some(debug) = cx.tcx.get_diagnostic_item(sym::Debug) else { return };
 
         if self.impling_types.is_none() {
             let mut impls = LocalDefIdSet::default();
             cx.tcx.for_each_impl(debug, |d| {
-                if let Some(ty_def) = cx.tcx.type_of(d).subst_identity().ty_adt_def() {
+                if let Some(ty_def) = cx.tcx.type_of(d).instantiate_identity().ty_adt_def() {
                     if let Some(def_id) = ty_def.did().as_local() {
                         impls.insert(def_id);
                     }
@@ -1458,9 +1458,7 @@ impl TypeAliasBounds {
 
 impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &hir::Item<'_>) {
-        let hir::ItemKind::TyAlias(ty, type_alias_generics) = &item.kind else {
-            return
-        };
+        let hir::ItemKind::TyAlias(ty, type_alias_generics) = &item.kind else { return };
         if cx.tcx.type_of(item.owner_id.def_id).skip_binder().has_opaque_types() {
             // Bounds are respected for `type X = impl Trait` and `type X = (impl Trait, Y);`
             return;
@@ -2147,8 +2145,8 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                             match predicate.bounded_ty.kind {
                                 hir::TyKind::Path(hir::QPath::Resolved(None, path)) => {
                                     let Res::Def(DefKind::TyParam, def_id) = path.res else {
-                                    continue;
-                                };
+                                        continue;
+                                    };
                                     let index = ty_generics.param_def_id_to_index[&def_id];
                                     (
                                         Self::lifetimes_outliving_type(inferred_outlives, index),
@@ -2459,12 +2457,12 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
             cx: &LateContext<'tcx>,
             ty: Ty<'tcx>,
             variant: &VariantDef,
-            substs: ty::SubstsRef<'tcx>,
+            args: ty::GenericArgsRef<'tcx>,
             descr: &str,
             init: InitKind,
         ) -> Option<InitError> {
             let mut field_err = variant.fields.iter().find_map(|field| {
-                ty_find_init_error(cx, field.ty(cx.tcx, substs), init).map(|mut err| {
+                ty_find_init_error(cx, field.ty(cx.tcx, args), init).map(|mut err| {
                     if !field.did.is_local() {
                         err
                     } else if err.span.is_none() {
@@ -2541,14 +2539,14 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                     Some("raw pointers must be initialized".into())
                 }
                 // Recurse and checks for some compound types. (but not unions)
-                Adt(adt_def, substs) if !adt_def.is_union() => {
+                Adt(adt_def, args) if !adt_def.is_union() => {
                     // Handle structs.
                     if adt_def.is_struct() {
                         return variant_find_init_error(
                             cx,
                             ty,
                             adt_def.non_enum_variant(),
-                            substs,
+                            args,
                             "struct field",
                             init,
                         );
@@ -2558,7 +2556,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                     let mut potential_variants = adt_def.variants().iter().filter_map(|variant| {
                         let definitely_inhabited = match variant
                             .inhabited_predicate(cx.tcx, *adt_def)
-                            .subst(cx.tcx, substs)
+                            .instantiate(cx.tcx, args)
                             .apply_any_module(cx.tcx, cx.param_env)
                         {
                             // Entirely skip uninhabited variants.
@@ -2570,7 +2568,10 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                         Some((variant, definitely_inhabited))
                     });
                     let Some(first_variant) = potential_variants.next() else {
-                        return Some(InitError::from("enums with no inhabited variants have no valid value").spanned(span));
+                        return Some(
+                            InitError::from("enums with no inhabited variants have no valid value")
+                                .spanned(span),
+                        );
                     };
                     // So we have at least one potentially inhabited variant. Might we have two?
                     let Some(second_variant) = potential_variants.next() else {
@@ -2579,7 +2580,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                             cx,
                             ty,
                             &first_variant.0,
-                            substs,
+                            args,
                             "field of the only potentially inhabited enum variant",
                             init,
                         );
@@ -2779,7 +2780,7 @@ impl ClashingExternDeclarations {
             // type unless the newtype makes the type non-null.
             let non_transparent_ty = |mut ty: Ty<'tcx>| -> Ty<'tcx> {
                 loop {
-                    if let ty::Adt(def, substs) = *ty.kind() {
+                    if let ty::Adt(def, args) = *ty.kind() {
                         let is_transparent = def.repr().transparent();
                         let is_non_null = crate::types::nonnull_optimization_guaranteed(tcx, def);
                         debug!(
@@ -2792,7 +2793,7 @@ impl ClashingExternDeclarations {
                             // continue with `ty`'s non-ZST field,
                             // otherwise `ty` is a ZST and we can return
                             if let Some(field) = transparent_newtype_field(tcx, v) {
-                                ty = field.ty(tcx, substs);
+                                ty = field.ty(tcx, args);
                                 continue;
                             }
                         }
@@ -2858,8 +2859,8 @@ impl ClashingExternDeclarations {
                                     structurally_same_type_impl(
                                         seen_types,
                                         cx,
-                                        tcx.type_of(a_did).subst_identity(),
-                                        tcx.type_of(b_did).subst_identity(),
+                                        tcx.type_of(a_did).instantiate_identity(),
+                                        tcx.type_of(b_did).instantiate_identity(),
                                         ckind,
                                     )
                                 },
@@ -2906,8 +2907,8 @@ impl ClashingExternDeclarations {
                                     ckind,
                                 )
                         }
-                        (Tuple(a_substs), Tuple(b_substs)) => {
-                            a_substs.iter().eq_by(b_substs.iter(), |a_ty, b_ty| {
+                        (Tuple(a_args), Tuple(b_args)) => {
+                            a_args.iter().eq_by(b_args.iter(), |a_ty, b_ty| {
                                 structurally_same_type_impl(seen_types, cx, a_ty, b_ty, ckind)
                             })
                         }
@@ -2961,7 +2962,7 @@ impl<'tcx> LateLintPass<'tcx> for ClashingExternDeclarations {
             let tcx = cx.tcx;
             if let Some(existing_did) = self.insert(tcx, this_fi) {
                 let existing_decl_ty = tcx.type_of(existing_did).skip_binder();
-                let this_decl_ty = tcx.type_of(this_fi.owner_id).subst_identity();
+                let this_decl_ty = tcx.type_of(this_fi.owner_id).instantiate_identity();
                 debug!(
                     "ClashingExternDeclarations: Comparing existing {:?}: {:?} to this {:?}: {:?}",
                     existing_did, existing_decl_ty, this_fi.owner_id, this_decl_ty
@@ -3181,7 +3182,7 @@ impl<'tcx> LateLintPass<'tcx> for NamedAsmLabels {
                         let mut chars = possible_label.chars();
                         let Some(c) = chars.next() else {
                             // Empty string means a leading ':' in this section, which is not a label
-                            break
+                            break;
                         };
                         // A label starts with an alphabetic character or . or _ and continues with alphanumeric characters, _, or $
                         if (c.is_alphabetic() || matches!(c, '.' | '_'))

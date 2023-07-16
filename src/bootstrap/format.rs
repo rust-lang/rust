@@ -40,7 +40,7 @@ fn rustfmt(src: &Path, rustfmt: &Path, paths: &[PathBuf], check: bool) -> impl F
                         code, run `./x.py fmt` instead.",
                 cmd_debug,
             );
-            crate::detail_exit_macro!(1);
+            crate::exit!(1);
         }
         true
     }
@@ -66,13 +66,17 @@ fn get_rustfmt_version(build: &Builder<'_>) -> Option<(String, PathBuf)> {
 
 /// Return whether the format cache can be reused.
 fn verify_rustfmt_version(build: &Builder<'_>) -> bool {
-    let Some((version, stamp_file)) = get_rustfmt_version(build) else {return false;};
+    let Some((version, stamp_file)) = get_rustfmt_version(build) else {
+        return false;
+    };
     !program_out_of_date(&stamp_file, &version)
 }
 
 /// Updates the last rustfmt version used
 fn update_rustfmt_version(build: &Builder<'_>) {
-    let Some((version, stamp_file)) = get_rustfmt_version(build) else {return;};
+    let Some((version, stamp_file)) = get_rustfmt_version(build) else {
+        return;
+    };
     t!(std::fs::write(stamp_file, version))
 }
 
@@ -196,7 +200,7 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
 
     let rustfmt_path = build.initial_rustfmt().unwrap_or_else(|| {
         eprintln!("./x.py fmt is not supported on this channel");
-        crate::detail_exit_macro!(1);
+        crate::exit!(1);
     });
     assert!(rustfmt_path.exists(), "{}", rustfmt_path.display());
     let src = build.src.clone();

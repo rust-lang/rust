@@ -494,9 +494,7 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
             .set(ArgAttribute::NonNull)
             .set(ArgAttribute::NoUndef);
         attrs.pointee_size = layout.size;
-        // FIXME(eddyb) We should be doing this, but at least on
-        // i686-pc-windows-msvc, it results in wrong stack offsets.
-        // attrs.pointee_align = Some(layout.align.abi);
+        attrs.pointee_align = Some(layout.align.abi);
 
         let extra_attrs = layout.is_unsized().then_some(ArgAttributes::new());
 
@@ -513,11 +511,19 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
         self.mode = Self::indirect_pass_mode(&self.layout);
     }
 
-    pub fn make_indirect_byval(&mut self) {
+    pub fn make_indirect_byval(&mut self, byval_align: Option<Align>) {
         self.make_indirect();
         match self.mode {
-            PassMode::Indirect { attrs: _, extra_attrs: _, ref mut on_stack } => {
+            PassMode::Indirect { ref mut attrs, extra_attrs: _, ref mut on_stack } => {
                 *on_stack = true;
+
+                // Some platforms, like 32-bit x86, change the alignment of the type when passing
+                // `byval`. Account for that.
+                if let Some(byval_align) = byval_align {
+                    // On all targets with byval align this is currently true, so let's assert it.
+                    debug_assert!(byval_align >= Align::from_bytes(4).unwrap());
+                    attrs.pointee_align = Some(byval_align);
+                }
             }
             _ => unreachable!(),
         }
@@ -644,7 +650,8 @@ impl<'a, Ty> FnAbi<'a, Ty> {
     {
         if abi == spec::abi::Abi::X86Interrupt {
             if let Some(arg) = self.args.first_mut() {
-                arg.make_indirect_byval();
+                // FIXME(pcwalton): This probably should use the x86 `byval` ABI...
+                arg.make_indirect_byval(None);
             }
             return Ok(());
         }
@@ -672,12 +679,14 @@ impl<'a, Ty> FnAbi<'a, Ty> {
                 }
             },
             "aarch64" => {
-                let param_policy = if cx.target_spec().is_like_osx {
-                    aarch64::ParamExtension::ExtendTo32Bits
+                let kind = if cx.target_spec().is_like_osx {
+                    aarch64::AbiKind::DarwinPCS
+                } else if cx.target_spec().is_like_windows {
+                    aarch64::AbiKind::Win64
                 } else {
-                    aarch64::ParamExtension::NoExtension
+                    aarch64::AbiKind::AAPCS
                 };
-                aarch64::compute_abi_info(cx, self, param_policy)
+                aarch64::compute_abi_info(cx, self, kind)
             }
             "amdgpu" => amdgpu::compute_abi_info(cx, self),
             "arm" => arm::compute_abi_info(cx, self),

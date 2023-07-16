@@ -160,8 +160,8 @@ pub(super) trait GoalKind<'tcx>:
         Self::probe_and_match_goal_against_assumption(ecx, goal, assumption, |ecx| {
             let tcx = ecx.tcx();
             let ty::Dynamic(bounds, _, _) = *goal.predicate.self_ty().kind() else {
-                    bug!("expected object type in `consider_object_bound_candidate`");
-                };
+                bug!("expected object type in `consider_object_bound_candidate`");
+            };
             ecx.add_goals(
                 structural_traits::predicates_for_object_candidate(
                     &ecx,
@@ -352,9 +352,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         candidates: &mut Vec<Candidate<'tcx>>,
     ) {
         let tcx = self.tcx();
-        let &ty::Alias(_, projection_ty) = goal.predicate.self_ty().kind() else {
-            return
-        };
+        let &ty::Alias(_, projection_ty) = goal.predicate.self_ty().kind() else { return };
 
         let normalized_self_candidates: Result<_, NoSolution> =
             self.probe(|_| CandidateKind::NormalizedSelfTyAssembly).enter(|ecx| {
@@ -544,7 +542,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             ty::Alias(ty::Projection | ty::Opaque, alias_ty) => alias_ty,
         };
 
-        for assumption in self.tcx().item_bounds(alias_ty.def_id).subst(self.tcx(), alias_ty.substs)
+        for assumption in
+            self.tcx().item_bounds(alias_ty.def_id).instantiate(self.tcx(), alias_ty.args)
         {
             match G::consider_alias_bound_candidate(self, goal, assumption) {
                 Ok(result) => {

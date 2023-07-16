@@ -137,7 +137,7 @@ where
     pub(crate) fn get_auto_trait_impls(&mut self, item_def_id: DefId) -> Vec<Item> {
         let tcx = self.cx.tcx;
         let param_env = tcx.param_env(item_def_id);
-        let ty = tcx.type_of(item_def_id).subst_identity();
+        let ty = tcx.type_of(item_def_id).instantiate_identity();
         let f = auto_trait::AutoTraitFinder::new(tcx);
 
         debug!("get_auto_trait_impls({:?})", ty);

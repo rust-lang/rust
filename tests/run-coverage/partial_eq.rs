@@ -35,7 +35,7 @@ thread 'rustc' panicked at 'No counters provided the source_hash for function:
             did: DefId(0:101 ~ autocfg[c44a]::version::{impl#2}::partial_cmp),
             const_param_did: None
         }),
-        substs: []
+        args: []
     }'
 The `PartialOrd` derived by `Version` happened to generate a MIR that generated coverage
 without a code region associated with any `Counter`. Code regions were associated with at least

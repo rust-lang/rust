@@ -34,6 +34,7 @@ struct ToolBuild {
 }
 
 impl Builder<'_> {
+    #[track_caller]
     fn msg_tool(
         &self,
         mode: Mode,
@@ -107,7 +108,8 @@ impl Step for ToolBuild {
         );
 
         let mut cargo = Command::from(cargo);
-        let is_expected = builder.try_run(&mut cargo).is_ok();
+        #[allow(deprecated)] // we check this in `is_optional_tool` in a second
+        let is_expected = builder.config.try_run(&mut cargo).is_ok();
 
         builder.save_toolstate(
             tool,
@@ -116,7 +118,7 @@ impl Step for ToolBuild {
 
         if !is_expected {
             if !is_optional_tool {
-                crate::detail_exit_macro!(1);
+                crate::exit!(1);
             } else {
                 None
             }

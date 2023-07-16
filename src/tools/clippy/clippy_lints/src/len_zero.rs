@@ -145,7 +145,7 @@ impl<'tcx> LateLintPass<'tcx> for LenZero {
             if let Some(local_id) = ty_id.as_local();
             let ty_hir_id = cx.tcx.hir().local_def_id_to_hir_id(local_id);
             if !is_lint_allowed(cx, LEN_WITHOUT_IS_EMPTY, ty_hir_id);
-            if let Some(output) = parse_len_output(cx, cx.tcx.fn_sig(item.owner_id).subst_identity().skip_binder());
+            if let Some(output) = parse_len_output(cx, cx.tcx.fn_sig(item.owner_id).instantiate_identity().skip_binder());
             then {
                 let (name, kind) = match cx.tcx.hir().find(ty_hir_id) {
                     Some(Node::ForeignItem(x)) => (x.ident.name, "extern type"),
@@ -425,7 +425,7 @@ fn check_for_is_empty(
             if !(is_empty.fn_has_self_parameter
                 && check_is_empty_sig(
                     cx,
-                    cx.tcx.fn_sig(is_empty.def_id).subst_identity().skip_binder(),
+                    cx.tcx.fn_sig(is_empty.def_id).instantiate_identity().skip_binder(),
                     self_kind,
                     output,
                 )) =>

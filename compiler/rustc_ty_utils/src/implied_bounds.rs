@@ -13,7 +13,7 @@ pub fn provide(providers: &mut Providers) {
 fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'tcx>, Span)] {
     match tcx.def_kind(def_id) {
         DefKind::Fn => {
-            let sig = tcx.fn_sig(def_id).subst_identity();
+            let sig = tcx.fn_sig(def_id).instantiate_identity();
             let liberated_sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), sig);
             tcx.arena.alloc_from_iter(itertools::zip_eq(
                 liberated_sig.inputs_and_output,
@@ -21,7 +21,7 @@ fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'
             ))
         }
         DefKind::AssocFn => {
-            let sig = tcx.fn_sig(def_id).subst_identity();
+            let sig = tcx.fn_sig(def_id).instantiate_identity();
             let liberated_sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), sig);
             let mut assumed_wf_types: Vec<_> =
                 tcx.assumed_wf_types(tcx.local_parent(def_id)).into();
@@ -35,8 +35,8 @@ fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'
             // Trait arguments and the self type for trait impls or only the self type for
             // inherent impls.
             let tys = match tcx.impl_trait_ref(def_id) {
-                Some(trait_ref) => trait_ref.skip_binder().substs.types().collect(),
-                None => vec![tcx.type_of(def_id).subst_identity()],
+                Some(trait_ref) => trait_ref.skip_binder().args.types().collect(),
+                None => vec![tcx.type_of(def_id).instantiate_identity()],
             };
 
             let mut impl_spans = impl_spans(tcx, def_id);

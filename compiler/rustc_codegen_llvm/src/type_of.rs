@@ -57,7 +57,7 @@ fn uncached_llvm_type<'a, 'tcx>(
             if let (&ty::Generator(_, _, _), &Variants::Single { index }) =
                 (layout.ty.kind(), &layout.variants)
             {
-                write!(&mut name, "::{}", ty::GeneratorSubsts::variant_name(index)).unwrap();
+                write!(&mut name, "::{}", ty::GeneratorArgs::variant_name(index)).unwrap();
             }
             Some(name)
         }
@@ -336,7 +336,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
             }
             // only wide pointer boxes are handled as pointers
             // thin pointer boxes with scalar allocators are handled by the general logic below
-            ty::Adt(def, substs) if def.is_box() && cx.layout_of(substs.type_at(1)).is_zst() => {
+            ty::Adt(def, args) if def.is_box() && cx.layout_of(args.type_at(1)).is_zst() => {
                 let ptr_ty = Ty::new_mut_ptr(cx.tcx, self.ty.boxed_ty());
                 return cx.layout_of(ptr_ty).scalar_pair_element_llvm_type(cx, index, immediate);
             }

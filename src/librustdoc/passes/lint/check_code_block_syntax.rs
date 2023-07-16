@@ -67,12 +67,11 @@ fn check_rust_syntax(
         return;
     }
 
-    let Some(local_id) = item.item_id.as_def_id().and_then(|x| x.as_local())
-        else {
-            // We don't need to check the syntax for other crates so returning
-            // without doing anything should not be a problem.
-            return;
-        };
+    let Some(local_id) = item.item_id.as_def_id().and_then(|x| x.as_local()) else {
+        // We don't need to check the syntax for other crates so returning
+        // without doing anything should not be a problem.
+        return;
+    };
 
     let empty_block = code_block.lang_string == Default::default() && code_block.is_fenced;
     let is_ignore = code_block.lang_string.ignore != markdown::Ignore::None;

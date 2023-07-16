@@ -771,9 +771,10 @@ pub(crate) fn href_relative_parts<'fqp>(
 
 pub(crate) fn link_tooltip(did: DefId, fragment: &Option<UrlFragment>, cx: &Context<'_>) -> String {
     let cache = cx.cache();
-    let Some((fqp, shortty)) = cache.paths.get(&did)
-        .or_else(|| cache.external_paths.get(&did))
-        else { return String::new() };
+    let Some((fqp, shortty)) = cache.paths.get(&did).or_else(|| cache.external_paths.get(&did))
+    else {
+        return String::new();
+    };
     let mut buf = Buffer::new();
     let fqp = if *shortty == ItemType::Primitive {
         // primitives are documented in a crate, but not actually part of it

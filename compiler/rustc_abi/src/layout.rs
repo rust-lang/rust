@@ -40,6 +40,8 @@ pub trait LayoutCalculator {
             largest_niche,
             align,
             size,
+            max_repr_align: None,
+            unadjusted_abi_align: align.abi,
         }
     }
 
@@ -122,6 +124,8 @@ pub trait LayoutCalculator {
             largest_niche: None,
             align: dl.i8_align,
             size: Size::ZERO,
+            max_repr_align: None,
+            unadjusted_abi_align: dl.i8_align.abi,
         }
     }
 
@@ -289,6 +293,9 @@ pub trait LayoutCalculator {
             }
 
             let mut align = dl.aggregate_align;
+            let mut max_repr_align = repr.align;
+            let mut unadjusted_abi_align = align.abi;
+
             let mut variant_layouts = variants
                 .iter_enumerated()
                 .map(|(j, v)| {
@@ -296,6 +303,8 @@ pub trait LayoutCalculator {
                     st.variants = Variants::Single { index: j };
 
                     align = align.max(st.align);
+                    max_repr_align = max_repr_align.max(st.max_repr_align);
+                    unadjusted_abi_align = unadjusted_abi_align.max(st.unadjusted_abi_align);
 
                     Some(st)
                 })
@@ -422,6 +431,8 @@ pub trait LayoutCalculator {
                 largest_niche,
                 size,
                 align,
+                max_repr_align,
+                unadjusted_abi_align,
             };
 
             Some(TmpLayout { layout, variants: variant_layouts })
@@ -456,6 +467,9 @@ pub trait LayoutCalculator {
         let (min_ity, signed) = discr_range_of_repr(min, max); //Integer::repr_discr(tcx, ty, &repr, min, max);
 
         let mut align = dl.aggregate_align;
+        let mut max_repr_align = repr.align;
+        let mut unadjusted_abi_align = align.abi;
+
         let mut size = Size::ZERO;
 
         // We're interested in the smallest alignment, so start large.
@@ -498,6 +512,8 @@ pub trait LayoutCalculator {
                 }
                 size = cmp::max(size, st.size);
                 align = align.max(st.align);
+                max_repr_align = max_repr_align.max(st.max_repr_align);
+                unadjusted_abi_align = unadjusted_abi_align.max(st.unadjusted_abi_align);
                 Some(st)
             })
             .collect::<Option<IndexVec<VariantIdx, _>>>()?;
@@ -691,6 +707,8 @@ pub trait LayoutCalculator {
             abi,
             align,
             size,
+            max_repr_align,
+            unadjusted_abi_align,
         };
 
         let tagged_layout = TmpLayout { layout: tagged_layout, variants: layout_variants };
@@ -730,10 +748,7 @@ pub trait LayoutCalculator {
         let dl = self.current_data_layout();
         let dl = dl.borrow();
         let mut align = if repr.pack.is_some() { dl.i8_align } else { dl.aggregate_align };
-
-        if let Some(repr_align) = repr.align {
-            align = align.max(AbiAndPrefAlign::new(repr_align));
-        }
+        let mut max_repr_align = repr.align;
 
         // If all the non-ZST fields have the same ABI and union ABI optimizations aren't
         // disabled, we can use that common ABI for the union as a whole.
@@ -751,6 +766,7 @@ pub trait LayoutCalculator {
             assert!(field.0.is_sized());
 
             align = align.max(field.align());
+            max_repr_align = max_repr_align.max(field.max_repr_align());
             size = cmp::max(size, field.size());
 
             if field.0.is_zst() {
@@ -787,6 +803,14 @@ pub trait LayoutCalculator {
         if let Some(pack) = repr.pack {
             align = align.min(AbiAndPrefAlign::new(pack));
         }
+        // The unadjusted ABI alignment does not include repr(align), but does include repr(pack).
+        // See documentation on `LayoutS::unadjusted_abi_align`.
+        let unadjusted_abi_align = align.abi;
+        if let Some(repr_align) = repr.align {
+            align = align.max(AbiAndPrefAlign::new(repr_align));
+        }
+        // `align` must not be modified after this, or `unadjusted_abi_align` could be inaccurate.
+        let align = align;
 
         // If all non-ZST fields have the same ABI, we may forward that ABI
         // for the union as a whole, unless otherwise inhibited.
@@ -809,6 +833,8 @@ pub trait LayoutCalculator {
             largest_niche: None,
             align,
             size: size.align_to(align.abi),
+            max_repr_align,
+            unadjusted_abi_align,
         })
     }
 }
@@ -829,6 +855,7 @@ fn univariant(
 ) -> Option<LayoutS> {
     let pack = repr.pack;
     let mut align = if pack.is_some() { dl.i8_align } else { dl.aggregate_align };
+    let mut max_repr_align = repr.align;
     let mut inverse_memory_index: IndexVec<u32, FieldIdx> = fields.indices().collect();
     let optimize = !repr.inhibit_struct_field_reordering_opt();
     if optimize && fields.len() > 1 {
@@ -997,6 +1024,7 @@ fn univariant(
         };
         offset = offset.align_to(field_align.abi);
         align = align.max(field_align);
+        max_repr_align = max_repr_align.max(field.max_repr_align());
 
         debug!("univariant offset: {:?} field: {:#?}", offset, field);
         offsets[i] = offset;
@@ -1018,9 +1046,16 @@ fn univariant(
 
         offset = offset.checked_add(field.size(), dl)?;
     }
+
+    // The unadjusted ABI alignment does not include repr(align), but does include repr(pack).
+    // See documentation on `LayoutS::unadjusted_abi_align`.
+    let unadjusted_abi_align = align.abi;
     if let Some(repr_align) = repr.align {
         align = align.max(AbiAndPrefAlign::new(repr_align));
     }
+    // `align` must not be modified after this point, or `unadjusted_abi_align` could be inaccurate.
+    let align = align;
+
     debug!("univariant min_size: {:?}", offset);
     let min_size = offset;
     // As stated above, inverse_memory_index holds field indices by increasing offset.
@@ -1036,6 +1071,7 @@ fn univariant(
         inverse_memory_index.into_iter().map(FieldIdx::as_u32).collect()
     };
     let size = min_size.align_to(align.abi);
+    let mut layout_of_single_non_zst_field = None;
     let mut abi = Abi::Aggregate { sized };
     // Unpack newtype ABIs and find scalar pairs.
     if sized && size.bytes() > 0 {
@@ -1045,6 +1081,8 @@ fn univariant(
         match (non_zst_fields.next(), non_zst_fields.next(), non_zst_fields.next()) {
             // We have exactly one non-ZST field.
             (Some((i, field)), None, None) => {
+                layout_of_single_non_zst_field = Some(field);
+
                 // Field fills the struct and it has a scalar or scalar pair ABI.
                 if offsets[i].bytes() == 0 && align.abi == field.align().abi && size == field.size()
                 {
@@ -1102,6 +1140,19 @@ fn univariant(
     if fields.iter().any(|f| f.abi().is_uninhabited()) {
         abi = Abi::Uninhabited;
     }
+
+    let unadjusted_abi_align = if repr.transparent() {
+        match layout_of_single_non_zst_field {
+            Some(l) => l.unadjusted_abi_align(),
+            None => {
+                // `repr(transparent)` with all ZST fields.
+                align.abi
+            }
+        }
+    } else {
+        unadjusted_abi_align
+    };
+
     Some(LayoutS {
         variants: Variants::Single { index: FIRST_VARIANT },
         fields: FieldsShape::Arbitrary { offsets, memory_index },
@@ -1109,6 +1160,8 @@ fn univariant(
         largest_niche,
         align,
         size,
+        max_repr_align,
+        unadjusted_abi_align,
     })
 }
 

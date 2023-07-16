@@ -27,8 +27,8 @@ pub fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'tcx>) ->
 
     debug!("get_fn(instance={:?})", instance);
 
-    assert!(!instance.substs.has_infer());
-    assert!(!instance.substs.has_escaping_bound_vars());
+    assert!(!instance.args.has_infer());
+    assert!(!instance.args.has_escaping_bound_vars());
 
     if let Some(&llfn) = cx.instances.borrow().get(&instance) {
         return llfn;
@@ -129,7 +129,7 @@ pub fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'tcx>) ->
         unsafe {
             llvm::LLVMRustSetLinkage(llfn, llvm::Linkage::ExternalLinkage);
 
-            let is_generic = instance.substs.non_erasable_generics().next().is_some();
+            let is_generic = instance.args.non_erasable_generics().next().is_some();
 
             if is_generic {
                 // This is a monomorphization. Its expected visibility depends

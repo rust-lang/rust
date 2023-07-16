@@ -17,10 +17,10 @@ use rustc_errors::{DelayDm, FatalError, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::subst::{GenericArg, InternalSubsts};
 use rustc_middle::ty::{
     self, EarlyBinder, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor,
 };
+use rustc_middle::ty::{GenericArg, GenericArgs};
 use rustc_middle::ty::{ToPredicate, TypeVisitableExt};
 use rustc_session::lint::builtin::WHERE_CLAUSES_OBJECT_SAFETY;
 use rustc_span::symbol::Symbol;
@@ -270,7 +270,7 @@ fn bounds_reference_self(tcx: TyCtxt<'_>, trait_def_id: DefId) -> SmallVec<[Span
     tcx.associated_items(trait_def_id)
         .in_definition_order()
         .filter(|item| item.kind == ty::AssocKind::Type)
-        .flat_map(|item| tcx.explicit_item_bounds(item.def_id).subst_identity_iter_copied())
+        .flat_map(|item| tcx.explicit_item_bounds(item.def_id).instantiate_identity_iter_copied())
         .filter_map(|c| predicate_references_self(tcx, c))
         .collect()
 }
@@ -284,7 +284,7 @@ fn predicate_references_self<'tcx>(
     match predicate.kind().skip_binder() {
         ty::ClauseKind::Trait(ref data) => {
             // In the case of a trait predicate, we can skip the "self" type.
-            data.trait_ref.substs[1..].iter().any(has_self_ty).then_some(sp)
+            data.trait_ref.args[1..].iter().any(has_self_ty).then_some(sp)
         }
         ty::ClauseKind::Projection(ref data) => {
             // And similarly for projections. This should be redundant with
@@ -302,7 +302,7 @@ fn predicate_references_self<'tcx>(
             //
             // This is ALT2 in issue #56288, see that for discussion of the
             // possible alternatives.
-            data.projection_ty.substs[1..].iter().any(has_self_ty).then_some(sp)
+            data.projection_ty.args[1..].iter().any(has_self_ty).then_some(sp)
         }
         ty::ClauseKind::ConstArgHasType(_ct, ty) => has_self_ty(&ty.into()).then_some(sp),
 
@@ -393,7 +393,7 @@ fn object_safety_violation_for_assoc_item(
         ty::AssocKind::Type => {
             if !tcx.features().generic_associated_types_extended
                 && !tcx.generics_of(item.def_id).params.is_empty()
-                && item.opt_rpitit_info.is_none()
+                && !item.is_impl_trait_in_trait()
             {
                 Some(ObjectSafetyViolation::GAT(item.name, item.ident(tcx).span))
             } else {
@@ -414,7 +414,7 @@ fn virtual_call_violation_for_method<'tcx>(
     trait_def_id: DefId,
     method: ty::AssocItem,
 ) -> Option<MethodViolationCode> {
-    let sig = tcx.fn_sig(method.def_id).subst_identity();
+    let sig = tcx.fn_sig(method.def_id).instantiate_identity();
 
     // The method's first parameter must be named `self`
     if !method.fn_has_self_parameter {
@@ -586,7 +586,7 @@ fn virtual_call_violation_for_method<'tcx>(
             // allowed to have generic parameters so `auto trait Bound<T> {}`
             // would already have reported an error at the definition of the
             // auto trait.
-            if pred_trait_ref.substs.len() != 1 {
+            if pred_trait_ref.args.len() != 1 {
                 tcx.sess.diagnostic().delay_span_bug(
                     span,
                     "auto traits cannot have generic parameters",
@@ -612,11 +612,11 @@ fn receiver_for_self_ty<'tcx>(
     method_def_id: DefId,
 ) -> Ty<'tcx> {
     debug!("receiver_for_self_ty({:?}, {:?}, {:?})", receiver_ty, self_ty, method_def_id);
-    let substs = InternalSubsts::for_item(tcx, method_def_id, |param, _| {
+    let args = GenericArgs::for_item(tcx, method_def_id, |param, _| {
         if param.index == 0 { self_ty.into() } else { tcx.mk_param_from_def(param) }
     });
 
-    let result = EarlyBinder::bind(receiver_ty).subst(tcx, substs);
+    let result = EarlyBinder::bind(receiver_ty).instantiate(tcx, args);
     debug!(
         "receiver_for_self_ty({:?}, {:?}, {:?}) = {:?}",
         receiver_ty, self_ty, method_def_id, result
@@ -751,11 +751,11 @@ fn receiver_is_dispatchable<'tcx>(
         // U: Trait<Arg1, ..., ArgN>
         let trait_predicate = {
             let trait_def_id = method.trait_container(tcx).unwrap();
-            let substs = InternalSubsts::for_item(tcx, trait_def_id, |param, _| {
+            let args = GenericArgs::for_item(tcx, trait_def_id, |param, _| {
                 if param.index == 0 { unsized_self_ty.into() } else { tcx.mk_param_from_def(param) }
             });
 
-            ty::TraitRef::new(tcx, trait_def_id, substs).to_predicate(tcx)
+            ty::TraitRef::new(tcx, trait_def_id, args).to_predicate(tcx)
         };
 
         let caller_bounds =

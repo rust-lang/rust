@@ -7,7 +7,7 @@
       let mut _2: *const &u8;
       let mut _3: *const &u8;
       scope 1 (inlined generic_cast::<&u8, &u8>) {
-          debug x => _3;
+          debug x => _1;
       }
   
       bb0: {

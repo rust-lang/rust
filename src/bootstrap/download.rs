@@ -7,7 +7,7 @@ use std::{
     process::{Command, Stdio},
 };
 
-use build_helper::util::try_run;
+use build_helper::ci::CiEnv;
 use once_cell::sync::OnceCell;
 use xz2::bufread::XzDecoder;
 
@@ -20,6 +20,12 @@ use crate::{
 };
 
 static SHOULD_FIX_BINS_AND_DYLIBS: OnceCell<bool> = OnceCell::new();
+
+/// `Config::try_run` wrapper for this module to avoid warnings on `try_run`, since we don't have access to a `builder` yet.
+fn try_run(config: &Config, cmd: &mut Command) -> Result<(), ()> {
+    #[allow(deprecated)]
+    config.try_run(cmd)
+}
 
 /// Generic helpers that are useful anywhere in bootstrap.
 impl Config {
@@ -49,17 +55,6 @@ impl Config {
         let tmp = self.out.join("tmp");
         t!(fs::create_dir_all(&tmp));
         tmp
-    }
-
-    /// Runs a command, printing out nice contextual information if it fails.
-    /// Exits if the command failed to execute at all, otherwise returns its
-    /// `status.success()`.
-    pub(crate) fn try_run(&self, cmd: &mut Command) -> Result<(), ()> {
-        if self.dry_run() {
-            return Ok(());
-        }
-        self.verbose(&format!("running: {:?}", cmd));
-        try_run(cmd, self.is_verbose())
     }
 
     /// Runs a command, printing out nice contextual information if it fails.
@@ -156,14 +151,16 @@ impl Config {
                 ];
             }
             ";
-            nix_build_succeeded = self
-                .try_run(Command::new("nix-build").args(&[
+            nix_build_succeeded = try_run(
+                self,
+                Command::new("nix-build").args(&[
                     Path::new("-E"),
                     Path::new(NIX_EXPR),
                     Path::new("-o"),
                     &nix_deps_dir,
-                ]))
-                .is_ok();
+                ]),
+            )
+            .is_ok();
             nix_deps_dir
         });
         if !nix_build_succeeded {
@@ -188,7 +185,7 @@ impl Config {
             patchelf.args(&["--set-interpreter", dynamic_linker.trim_end()]);
         }
 
-        let _ = self.try_run(patchelf.arg(fname));
+        let _ = try_run(self, patchelf.arg(fname));
     }
 
     fn download_file(&self, url: &str, dest_path: &Path, help_on_error: &str) {
@@ -213,7 +210,6 @@ impl Config {
         // Try curl. If that fails and we are on windows, fallback to PowerShell.
         let mut curl = Command::new("curl");
         curl.args(&[
-            "-#",
             "-y",
             "30",
             "-Y",
@@ -224,6 +220,12 @@ impl Config {
             "3",
             "-SRf",
         ]);
+        // Don't print progress in CI; the \r wrapping looks bad and downloads don't take long enough for progress to be useful.
+        if CiEnv::is_ci() {
+            curl.arg("-s");
+        } else {
+            curl.arg("--progress-bar");
+        }
         curl.arg(url);
         let f = File::create(tempfile).unwrap();
         curl.stdout(Stdio::from(f));
@@ -231,7 +233,7 @@ impl Config {
             if self.build.contains("windows-msvc") {
                 eprintln!("Fallback to PowerShell");
                 for _ in 0..3 {
-                    if self.try_run(Command::new("PowerShell.exe").args(&[
+                    if try_run(self, Command::new("PowerShell.exe").args(&[
                         "/nologo",
                         "-Command",
                         "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;",
@@ -248,7 +250,7 @@ impl Config {
             if !help_on_error.is_empty() {
                 eprintln!("{}", help_on_error);
             }
-            crate::detail_exit_macro!(1);
+            crate::exit!(1);
         }
     }
 

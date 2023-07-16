@@ -1280,7 +1280,7 @@ symbols! {
         rustc_dummy,
         rustc_dump_env_program_clauses,
         rustc_dump_program_clauses,
-        rustc_dump_user_substs,
+        rustc_dump_user_args,
         rustc_dump_vtable,
         rustc_effective_visibility,
         rustc_error,

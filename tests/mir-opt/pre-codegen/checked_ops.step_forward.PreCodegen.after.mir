@@ -8,42 +8,38 @@ fn step_forward(_1: u32, _2: usize) -> u32 {
         debug start => _1;
         debug n => _2;
         let _3: std::option::Option<u32>;
-        let mut _4: &std::option::Option<u32>;
-        let mut _7: bool;
-        let mut _8: u32;
+        let mut _6: bool;
+        let mut _7: u32;
         scope 2 {
         }
         scope 3 (inlined Option::<u32>::is_none) {
-            debug self => _4;
-            let mut _6: bool;
+            debug self => &_3;
+            let mut _5: bool;
             scope 4 (inlined Option::<u32>::is_some) {
-                debug self => _4;
-                let mut _5: isize;
+                debug self => &_3;
+                let mut _4: isize;
             }
         }
         scope 5 (inlined core::num::<impl u32>::wrapping_add) {
             debug self => _1;
-            debug rhs => _8;
+            debug rhs => _7;
         }
     }
 
     bb0: {
-        StorageLive(_7);
-        StorageLive(_4);
+        StorageLive(_6);
         StorageLive(_3);
         _3 = <u32 as Step>::forward_checked(_1, _2) -> [return: bb1, unwind continue];
     }
 
     bb1: {
-        _4 = &_3;
-        StorageLive(_6);
-        _5 = discriminant((*_4));
-        _6 = Eq(_5, const 1_isize);
-        _7 = Not(move _6);
-        StorageDead(_6);
+        StorageLive(_5);
+        _4 = discriminant(_3);
+        _5 = Eq(_4, const 1_isize);
+        _6 = Not(move _5);
+        StorageDead(_5);
         StorageDead(_3);
-        StorageDead(_4);
-        switchInt(move _7) -> [0: bb3, otherwise: bb2];
+        switchInt(move _6) -> [0: bb3, otherwise: bb2];
     }
 
     bb2: {
@@ -51,11 +47,11 @@ fn step_forward(_1: u32, _2: usize) -> u32 {
     }
 
     bb3: {
+        StorageDead(_6);
+        StorageLive(_7);
+        _7 = _2 as u32 (IntToInt);
+        _0 = Add(_1, _7);
         StorageDead(_7);
-        StorageLive(_8);
-        _8 = _2 as u32 (IntToInt);
-        _0 = Add(_1, _8);
-        StorageDead(_8);
         return;
     }
 }

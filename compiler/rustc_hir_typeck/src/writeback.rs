@@ -4,17 +4,15 @@
 
 use crate::FnCtxt;
 use hir::def_id::LocalDefId;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::unord::ExtendUnord;
 use rustc_errors::{ErrorGuaranteed, StashKey};
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_infer::infer::error_reporting::TypeAnnotationNeeded::E0282;
-use rustc_middle::hir::place::Place as HirPlace;
-use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCoercion};
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt};
-use rustc_middle::ty::{self, ClosureSizeProfileData, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 
@@ -42,9 +40,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // This attribute causes us to dump some writeback information
         // in the form of errors, which is used for unit tests.
-        let rustc_dump_user_substs = self.tcx.has_attr(item_def_id, sym::rustc_dump_user_substs);
+        let rustc_dump_user_args = self.tcx.has_attr(item_def_id, sym::rustc_dump_user_args);
 
-        let mut wbcx = WritebackCx::new(self, body, rustc_dump_user_substs);
+        let mut wbcx = WritebackCx::new(self, body, rustc_dump_user_args);
         for param in body.params {
             wbcx.visit_node_id(param.pat.span, param.hir_id);
         }
@@ -102,14 +100,14 @@ struct WritebackCx<'cx, 'tcx> {
 
     body: &'tcx hir::Body<'tcx>,
 
-    rustc_dump_user_substs: bool,
+    rustc_dump_user_args: bool,
 }
 
 impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     fn new(
         fcx: &'cx FnCtxt<'cx, 'tcx>,
         body: &'tcx hir::Body<'tcx>,
-        rustc_dump_user_substs: bool,
+        rustc_dump_user_args: bool,
     ) -> WritebackCx<'cx, 'tcx> {
         let owner = body.id().hir_id.owner;
 
@@ -117,7 +115,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             fcx,
             typeck_results: ty::TypeckResults::new(owner),
             body,
-            rustc_dump_user_substs,
+            rustc_dump_user_args,
         };
 
         // HACK: We specifically don't want the (opaque) error from tainting our
@@ -154,7 +152,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
                 if inner_ty.is_scalar() {
                     self.typeck_results.type_dependent_defs_mut().remove(e.hir_id);
-                    self.typeck_results.node_substs_mut().remove(e.hir_id);
+                    self.typeck_results.node_args_mut().remove(e.hir_id);
                 }
             }
             hir::ExprKind::Binary(ref op, lhs, rhs) | hir::ExprKind::AssignOp(ref op, lhs, rhs) => {
@@ -163,7 +161,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
                 if lhs_ty.is_scalar() && rhs_ty.is_scalar() {
                     self.typeck_results.type_dependent_defs_mut().remove(e.hir_id);
-                    self.typeck_results.node_substs_mut().remove(e.hir_id);
+                    self.typeck_results.node_args_mut().remove(e.hir_id);
 
                     match e.kind {
                         hir::ExprKind::Binary(..) => {
@@ -241,7 +239,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 if self.is_builtin_index(e, base_ty_inner, index_ty) {
                     // Remove the method call record
                     self.typeck_results.type_dependent_defs_mut().remove(e.hir_id);
-                    self.typeck_results.node_substs_mut().remove(e.hir_id);
+                    self.typeck_results.node_args_mut().remove(e.hir_id);
 
                     if let Some(a) = self.typeck_results.adjustments_mut().get_mut(base.hir_id) {
                         // Discard the need for a mutable borrow
@@ -376,66 +374,75 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
 
 impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     fn eval_closure_size(&mut self) {
-        let mut res: FxHashMap<LocalDefId, ClosureSizeProfileData<'tcx>> = Default::default();
-        for (&closure_def_id, data) in self.fcx.typeck_results.borrow().closure_size_eval.iter() {
-            let closure_hir_id = self.tcx().hir().local_def_id_to_hir_id(closure_def_id);
+        self.tcx().with_stable_hashing_context(|ref hcx| {
+            let fcx_typeck_results = self.fcx.typeck_results.borrow();
 
-            let data = self.resolve(*data, &closure_hir_id);
-
-            res.insert(closure_def_id, data);
-        }
-
-        self.typeck_results.closure_size_eval = res;
+            self.typeck_results.closure_size_eval = fcx_typeck_results
+                .closure_size_eval
+                .to_sorted(hcx, false)
+                .into_iter()
+                .map(|(&closure_def_id, data)| {
+                    let closure_hir_id = self.tcx().hir().local_def_id_to_hir_id(closure_def_id);
+                    let data = self.resolve(*data, &closure_hir_id);
+                    (closure_def_id, data)
+                })
+                .collect();
+        })
     }
+
     fn visit_min_capture_map(&mut self) {
-        let mut min_captures_wb = ty::MinCaptureInformationMap::with_capacity_and_hasher(
-            self.fcx.typeck_results.borrow().closure_min_captures.len(),
-            Default::default(),
-        );
-        for (&closure_def_id, root_min_captures) in
-            self.fcx.typeck_results.borrow().closure_min_captures.iter()
-        {
-            let mut root_var_map_wb = ty::RootVariableMinCaptureList::with_capacity_and_hasher(
-                root_min_captures.len(),
-                Default::default(),
-            );
-            for (var_hir_id, min_list) in root_min_captures.iter() {
-                let min_list_wb = min_list
-                    .iter()
-                    .map(|captured_place| {
-                        let locatable = captured_place.info.path_expr_id.unwrap_or_else(|| {
-                            self.tcx().hir().local_def_id_to_hir_id(closure_def_id)
-                        });
+        self.tcx().with_stable_hashing_context(|ref hcx| {
+            let fcx_typeck_results = self.fcx.typeck_results.borrow();
 
-                        self.resolve(captured_place.clone(), &locatable)
-                    })
-                    .collect();
-                root_var_map_wb.insert(*var_hir_id, min_list_wb);
-            }
-            min_captures_wb.insert(closure_def_id, root_var_map_wb);
-        }
-
-        self.typeck_results.closure_min_captures = min_captures_wb;
+            self.typeck_results.closure_min_captures = fcx_typeck_results
+                .closure_min_captures
+                .to_sorted(hcx, false)
+                .into_iter()
+                .map(|(&closure_def_id, root_min_captures)| {
+                    let root_var_map_wb = root_min_captures
+                        .iter()
+                        .map(|(var_hir_id, min_list)| {
+                            let min_list_wb = min_list
+                                .iter()
+                                .map(|captured_place| {
+                                    let locatable =
+                                        captured_place.info.path_expr_id.unwrap_or_else(|| {
+                                            self.tcx().hir().local_def_id_to_hir_id(closure_def_id)
+                                        });
+                                    self.resolve(captured_place.clone(), &locatable)
+                                })
+                                .collect();
+                            (*var_hir_id, min_list_wb)
+                        })
+                        .collect();
+                    (closure_def_id, root_var_map_wb)
+                })
+                .collect();
+        })
     }
 
     fn visit_fake_reads_map(&mut self) {
-        let mut resolved_closure_fake_reads: FxHashMap<
-            LocalDefId,
-            Vec<(HirPlace<'tcx>, FakeReadCause, hir::HirId)>,
-        > = Default::default();
-        for (&closure_def_id, fake_reads) in
-            self.fcx.typeck_results.borrow().closure_fake_reads.iter()
-        {
-            let mut resolved_fake_reads = Vec::<(HirPlace<'tcx>, FakeReadCause, hir::HirId)>::new();
-            for (place, cause, hir_id) in fake_reads.iter() {
-                let locatable = self.tcx().hir().local_def_id_to_hir_id(closure_def_id);
+        self.tcx().with_stable_hashing_context(move |ref hcx| {
+            let fcx_typeck_results = self.fcx.typeck_results.borrow();
 
-                let resolved_fake_read = self.resolve(place.clone(), &locatable);
-                resolved_fake_reads.push((resolved_fake_read, *cause, *hir_id));
-            }
-            resolved_closure_fake_reads.insert(closure_def_id, resolved_fake_reads);
-        }
-        self.typeck_results.closure_fake_reads = resolved_closure_fake_reads;
+            self.typeck_results.closure_fake_reads = fcx_typeck_results
+                .closure_fake_reads
+                .to_sorted(hcx, true)
+                .into_iter()
+                .map(|(&closure_def_id, fake_reads)| {
+                    let resolved_fake_reads = fake_reads
+                        .iter()
+                        .map(|(place, cause, hir_id)| {
+                            let locatable = self.tcx().hir().local_def_id_to_hir_id(closure_def_id);
+                            let resolved_fake_read = self.resolve(place.clone(), &locatable);
+                            (resolved_fake_read, *cause, *hir_id)
+                        })
+                        .collect();
+
+                    (closure_def_id, resolved_fake_reads)
+                })
+                .collect();
+        });
     }
 
     fn visit_closures(&mut self) {
@@ -470,7 +477,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         assert_eq!(fcx_typeck_results.hir_owner, self.typeck_results.hir_owner);
         let common_hir_owner = fcx_typeck_results.hir_owner;
 
-        if self.rustc_dump_user_substs {
+        if self.rustc_dump_user_args {
             let sorted_user_provided_types =
                 fcx_typeck_results.user_provided_types().items_in_stable_order();
 
@@ -478,7 +485,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             for (local_id, c_ty) in sorted_user_provided_types {
                 let hir_id = hir::HirId { owner: common_hir_owner, local_id };
 
-                if let ty::UserType::TypeOf(_, user_substs) = c_ty.value {
+                if let ty::UserType::TypeOf(_, user_args) = c_ty.value {
                     // This is a unit-testing mechanism.
                     let span = self.tcx().hir().span(hir_id);
                     // We need to buffer the errors in order to guarantee a consistent
@@ -486,7 +493,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                     let err = self
                         .tcx()
                         .sess
-                        .struct_span_err(span, format!("user substs: {:?}", user_substs));
+                        .struct_span_err(span, format!("user args: {:?}", user_args));
                     err.buffer(&mut errors_buffer);
                 }
             }
@@ -520,7 +527,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         let fcx_typeck_results = self.fcx.typeck_results.borrow();
         assert_eq!(fcx_typeck_results.hir_owner, self.typeck_results.hir_owner);
 
-        self.typeck_results.user_provided_sigs.extend(
+        self.typeck_results.user_provided_sigs.extend_unord(
             fcx_typeck_results.user_provided_sigs.items().map(|(&def_id, c_sig)| {
                 if cfg!(debug_assertions) && c_sig.has_infer() {
                     span_bug!(
@@ -540,10 +547,15 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         assert_eq!(fcx_typeck_results.hir_owner, self.typeck_results.hir_owner);
         self.typeck_results.generator_interior_types =
             fcx_typeck_results.generator_interior_types.clone();
-        for (&expr_def_id, predicates) in fcx_typeck_results.generator_interior_predicates.iter() {
-            let predicates = self.resolve(predicates.clone(), &self.fcx.tcx.def_span(expr_def_id));
-            self.typeck_results.generator_interior_predicates.insert(expr_def_id, predicates);
-        }
+        self.tcx().with_stable_hashing_context(move |ref hcx| {
+            for (&expr_def_id, predicates) in
+                fcx_typeck_results.generator_interior_predicates.to_sorted(hcx, false).into_iter()
+            {
+                let predicates =
+                    self.resolve(predicates.clone(), &self.fcx.tcx.def_span(expr_def_id));
+                self.typeck_results.generator_interior_predicates.insert(expr_def_id, predicates);
+            }
+        })
     }
 
     #[instrument(skip(self), level = "debug")]
@@ -619,11 +631,11 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         debug!(?n_ty);
 
         // Resolve any substitutions
-        if let Some(substs) = self.fcx.typeck_results.borrow().node_substs_opt(hir_id) {
-            let substs = self.resolve(substs, &span);
-            debug!("write_substs_to_tcx({:?}, {:?})", hir_id, substs);
-            assert!(!substs.has_infer() && !substs.has_placeholders());
-            self.typeck_results.node_substs_mut().insert(hir_id, substs);
+        if let Some(args) = self.fcx.typeck_results.borrow().node_args_opt(hir_id) {
+            let args = self.resolve(args, &span);
+            debug!("write_args_to_tcx({:?}, {:?})", hir_id, args);
+            assert!(!args.has_infer() && !args.has_placeholders());
+            self.typeck_results.node_args_mut().insert(hir_id, args);
         }
     }
 

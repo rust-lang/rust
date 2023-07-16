@@ -13,7 +13,7 @@ use rustc_middle::ty::layout::{
     self, FnAbiError, FnAbiOfHelpers, FnAbiRequest, LayoutError, LayoutOf, LayoutOfHelpers,
     TyAndLayout,
 };
-use rustc_middle::ty::{self, subst::SubstsRef, ParamEnv, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, GenericArgsRef, ParamEnv, Ty, TyCtxt, TypeFoldable};
 use rustc_mir_dataflow::storage::always_storage_live_locals;
 use rustc_session::Limit;
 use rustc_span::Span;
@@ -91,7 +91,7 @@ pub struct Frame<'mir, 'tcx, Prov: Provenance = AllocId, Extra = ()> {
     /// The MIR for the function called on this frame.
     pub body: &'mir mir::Body<'tcx>,
 
-    /// The def_id and substs of the current function.
+    /// The def_id and args of the current function.
     pub instance: ty::Instance<'tcx>,
 
     /// Extra data for the machine.
@@ -529,16 +529,16 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             .map_err(|_| err_inval!(TooGeneric))
     }
 
-    /// The `substs` are assumed to already be in our interpreter "universe" (param_env).
+    /// The `args` are assumed to already be in our interpreter "universe" (param_env).
     pub(super) fn resolve(
         &self,
         def: DefId,
-        substs: SubstsRef<'tcx>,
+        args: GenericArgsRef<'tcx>,
     ) -> InterpResult<'tcx, ty::Instance<'tcx>> {
-        trace!("resolve: {:?}, {:#?}", def, substs);
+        trace!("resolve: {:?}, {:#?}", def, args);
         trace!("param_env: {:#?}", self.param_env);
-        trace!("substs: {:#?}", substs);
-        match ty::Instance::resolve(*self.tcx, self.param_env, def, substs) {
+        trace!("args: {:#?}", args);
+        match ty::Instance::resolve(*self.tcx, self.param_env, def, args) {
             Ok(Some(instance)) => Ok(instance),
             Ok(None) => throw_inval!(TooGeneric),
 
@@ -604,7 +604,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // the last field). Can't have foreign types here, how would we
                 // adjust alignment and size for them?
                 let field = layout.field(self, layout.fields.count() - 1);
-                let Some((unsized_size, mut unsized_align)) = self.size_and_align_of(metadata, &field)? else {
+                let Some((unsized_size, mut unsized_align)) =
+                    self.size_and_align_of(metadata, &field)?
+                else {
                     // A field with an extern type. We don't know the actual dynamic size
                     // or the alignment.
                     return Ok(None);
@@ -682,7 +684,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         return_to_block: StackPopCleanup,
     ) -> InterpResult<'tcx> {
         trace!("body: {:#?}", body);
-        // First push a stack frame so we have access to the local substs
+        // First push a stack frame so we have access to the local args
         let pre_frame = Frame {
             body,
             loc: Right(body.span), // Span used for errors caused during preamble.

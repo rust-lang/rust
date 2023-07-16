@@ -71,7 +71,7 @@ impl<'tcx> Ty<'tcx> {
     /// ADTs with no type arguments.
     pub fn is_simple_text(self) -> bool {
         match self.kind() {
-            Adt(_, substs) => substs.non_erasable_generics().next().is_none(),
+            Adt(_, args) => args.non_erasable_generics().next().is_none(),
             Ref(_, ty, _) => ty.is_simple_text(),
             _ => self.is_simple_ty(),
         }
@@ -491,7 +491,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IsSuggestableVisitor<'tcx> {
 
             Alias(Opaque, AliasTy { def_id, .. }) => {
                 let parent = self.tcx.parent(def_id);
-                let parent_ty = self.tcx.type_of(parent).subst_identity();
+                let parent_ty = self.tcx.type_of(parent).instantiate_identity();
                 if let DefKind::TyAlias | DefKind::AssocTy = self.tcx.def_kind(parent)
                     && let Alias(Opaque, AliasTy { def_id: parent_opaque_def_id, .. }) = *parent_ty.kind()
                     && parent_opaque_def_id == def_id
@@ -558,8 +558,8 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for MakeSuggestableFolder<'tcx> {
         let t = match *t.kind() {
             Infer(InferTy::TyVar(_)) if self.infer_suggestable => t,
 
-            FnDef(def_id, substs) => {
-                Ty::new_fn_ptr(self.tcx, self.tcx.fn_sig(def_id).subst(self.tcx, substs))
+            FnDef(def_id, args) => {
+                Ty::new_fn_ptr(self.tcx, self.tcx.fn_sig(def_id).instantiate(self.tcx, args))
             }
 
             // FIXME(compiler-errors): We could replace these with infer, I guess.
@@ -575,7 +575,7 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for MakeSuggestableFolder<'tcx> {
 
             Alias(Opaque, AliasTy { def_id, .. }) => {
                 let parent = self.tcx.parent(def_id);
-                let parent_ty = self.tcx.type_of(parent).subst_identity();
+                let parent_ty = self.tcx.type_of(parent).instantiate_identity();
                 if let hir::def::DefKind::TyAlias | hir::def::DefKind::AssocTy = self.tcx.def_kind(parent)
                     && let Alias(Opaque, AliasTy { def_id: parent_opaque_def_id, .. }) = *parent_ty.kind()
                     && parent_opaque_def_id == def_id

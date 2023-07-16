@@ -188,11 +188,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let hir = self.tcx.hir();
 
         // First, check that we're actually in the tail of a function.
-        let Some(body_id) = hir.maybe_body_owned_by(self.body_id) else { return; };
+        let Some(body_id) = hir.maybe_body_owned_by(self.body_id) else {
+            return;
+        };
         let body = hir.body(body_id);
-        let hir::ExprKind::Block(block, _) = body.value.kind else { return; };
-        let Some(hir::Stmt { kind: hir::StmtKind::Semi(last_expr), .. })
-            = block.innermost_block().stmts.last() else {  return; };
+        let hir::ExprKind::Block(block, _) = body.value.kind else {
+            return;
+        };
+        let Some(hir::Stmt { kind: hir::StmtKind::Semi(last_expr), .. }) =
+            block.innermost_block().stmts.last()
+        else {
+            return;
+        };
         if last_expr.hir_id != expr.hir_id {
             return;
         }
@@ -201,7 +208,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let Some(ret) = hir
             .find_by_def_id(self.body_id)
             .and_then(|owner| owner.fn_decl())
-            .map(|decl| decl.output.span()) else { return; };
+            .map(|decl| decl.output.span())
+        else {
+            return;
+        };
         let Expectation::IsLast(stmt) = expectation else {
             return;
         };
@@ -508,9 +518,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     span,
                     kind: TypeVariableOriginKind::OpaqueTypeInference(rpit_def_id),
                     ..
-                } = self.type_var_origin(expected)? else { return None; };
+                } = self.type_var_origin(expected)?
+                else {
+                    return None;
+                };
 
-                let Some(rpit_local_def_id) = rpit_def_id.as_local() else { return None; };
+                let Some(rpit_local_def_id) = rpit_def_id.as_local() else {
+                    return None;
+                };
                 if !matches!(
                     self.tcx.hir().expect_item(rpit_local_def_id).expect_opaque_ty().origin,
                     hir::OpaqueTyOrigin::FnReturn(..)
@@ -520,12 +535,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 let sig = self.body_fn_sig()?;
 
-                let substs = sig.output().walk().find_map(|arg| {
+                let args = sig.output().walk().find_map(|arg| {
                     if let ty::GenericArgKind::Type(ty) = arg.unpack()
-                        && let ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) = *ty.kind()
+                        && let ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) = *ty.kind()
                         && def_id == rpit_def_id
                     {
-                        Some(substs)
+                        Some(args)
                     } else {
                         None
                     }
@@ -536,26 +551,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
 
                 for ty in [first_ty, second_ty] {
-                    for (clause, _) in self
-                        .tcx
-                        .explicit_item_bounds(rpit_def_id)
-                        .subst_iter_copied(self.tcx, substs)
+                    for (clause, _) in
+                        self.tcx.explicit_item_bounds(rpit_def_id).arg_iter_copied(self.tcx, args)
                     {
                         let pred = clause.kind().rebind(match clause.kind().skip_binder() {
                             ty::ClauseKind::Trait(trait_pred) => {
                                 // FIXME(rpitit): This will need to be fixed when we move to associated types
                                 assert!(matches!(
                                     *trait_pred.trait_ref.self_ty().kind(),
-                                    ty::Alias(_, ty::AliasTy { def_id, substs: alias_substs, .. })
-                                    if def_id == rpit_def_id && substs == alias_substs
+                                    ty::Alias(_, ty::AliasTy { def_id, args: alias_args, .. })
+                                    if def_id == rpit_def_id && args == alias_args
                                 ));
                                 ty::ClauseKind::Trait(trait_pred.with_self_ty(self.tcx, ty))
                             }
                             ty::ClauseKind::Projection(mut proj_pred) => {
                                 assert!(matches!(
                                     *proj_pred.projection_ty.self_ty().kind(),
-                                    ty::Alias(_, ty::AliasTy { def_id, substs: alias_substs, .. })
-                                    if def_id == rpit_def_id && substs == alias_substs
+                                    ty::Alias(_, ty::AliasTy { def_id, args: alias_args, .. })
+                                    if def_id == rpit_def_id && args == alias_args
                                 ));
                                 proj_pred = proj_pred.with_self_ty(self.tcx, ty);
                                 ty::ClauseKind::Projection(proj_pred)

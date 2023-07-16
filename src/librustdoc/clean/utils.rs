@@ -16,8 +16,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::ConstValue;
-use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, TyCtxt};
 use rustc_span::symbol::{kw, sym, Symbol};
 use std::fmt::Write as _;
 use std::mem;
@@ -54,8 +53,7 @@ pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
     let primitives = local_crate.primitives(cx.tcx);
     let keywords = local_crate.keywords(cx.tcx);
     {
-        let ItemKind::ModuleItem(ref mut m) = *module.kind
-        else { unreachable!() };
+        let ItemKind::ModuleItem(ref mut m) = *module.kind else { unreachable!() };
         m.items.extend(primitives.iter().map(|&(def_id, prim)| {
             Item::from_def_id_and_parts(
                 def_id,
@@ -72,20 +70,16 @@ pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
     Crate { module, external_traits: cx.external_traits.clone() }
 }
 
-pub(crate) fn substs_to_args<'tcx>(
+pub(crate) fn ty_args_to_args<'tcx>(
     cx: &mut DocContext<'tcx>,
-    substs: ty::Binder<'tcx, &'tcx [ty::subst::GenericArg<'tcx>]>,
+    args: ty::Binder<'tcx, &'tcx [ty::GenericArg<'tcx>]>,
     mut skip_first: bool,
     container: Option<DefId>,
 ) -> Vec<GenericArg> {
     let mut ret_val =
-        Vec::with_capacity(substs.skip_binder().len().saturating_sub(if skip_first {
-            1
-        } else {
-            0
-        }));
+        Vec::with_capacity(args.skip_binder().len().saturating_sub(if skip_first { 1 } else { 0 }));
 
-    ret_val.extend(substs.iter().enumerate().filter_map(|(index, kind)| {
+    ret_val.extend(args.iter().enumerate().filter_map(|(index, kind)| {
         match kind.skip_binder().unpack() {
             GenericArgKind::Lifetime(lt) => {
                 Some(GenericArg::Lifetime(clean_middle_region(lt).unwrap_or(Lifetime::elided())))
@@ -100,7 +94,7 @@ pub(crate) fn substs_to_args<'tcx>(
                 None,
                 container.map(|container| crate::clean::ContainerTy::Regular {
                     ty: container,
-                    substs,
+                    args,
                     arg: index,
                 }),
             ))),
@@ -117,12 +111,12 @@ fn external_generic_args<'tcx>(
     did: DefId,
     has_self: bool,
     bindings: ThinVec<TypeBinding>,
-    substs: ty::Binder<'tcx, SubstsRef<'tcx>>,
+    ty_args: ty::Binder<'tcx, GenericArgsRef<'tcx>>,
 ) -> GenericArgs {
-    let args = substs_to_args(cx, substs.map_bound(|substs| &substs[..]), has_self, Some(did));
+    let args = ty_args_to_args(cx, ty_args.map_bound(|args| &args[..]), has_self, Some(did));
 
     if cx.tcx.fn_trait_kind_from_def_id(did).is_some() {
-        let ty = substs
+        let ty = ty_args
             .iter()
             .nth(if has_self { 1 } else { 0 })
             .unwrap()
@@ -150,7 +144,7 @@ pub(super) fn external_path<'tcx>(
     did: DefId,
     has_self: bool,
     bindings: ThinVec<TypeBinding>,
-    substs: ty::Binder<'tcx, SubstsRef<'tcx>>,
+    args: ty::Binder<'tcx, GenericArgsRef<'tcx>>,
 ) -> Path {
     let def_kind = cx.tcx.def_kind(did);
     let name = cx.tcx.item_name(did);
@@ -158,7 +152,7 @@ pub(super) fn external_path<'tcx>(
         res: Res::Def(def_kind, did),
         segments: thin_vec![PathSegment {
             name,
-            args: external_generic_args(cx, did, has_self, bindings, substs),
+            args: external_generic_args(cx, did, has_self, bindings, args),
         }],
     }
 }
@@ -253,7 +247,7 @@ pub(crate) fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
 
 pub(crate) fn print_const(cx: &DocContext<'_>, n: ty::Const<'_>) -> String {
     match n.kind() {
-        ty::ConstKind::Unevaluated(ty::UnevaluatedConst { def, substs: _ }) => {
+        ty::ConstKind::Unevaluated(ty::UnevaluatedConst { def, args: _ }) => {
             let s = if let Some(def) = def.as_local() {
                 print_const_expr(cx.tcx, cx.tcx.hir().body_owned_by(def))
             } else {
@@ -278,7 +272,7 @@ pub(crate) fn print_evaluated_const(
     underscores_and_type: bool,
 ) -> Option<String> {
     tcx.const_eval_poly(def_id).ok().and_then(|val| {
-        let ty = tcx.type_of(def_id).subst_identity();
+        let ty = tcx.type_of(def_id).instantiate_identity();
         match (val, ty.kind()) {
             (_, &ty::Ref(..)) => None,
             (ConstValue::Scalar(_), &ty::Adt(_, _)) => None,

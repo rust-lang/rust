@@ -51,12 +51,12 @@ fn fn_sig_for_fn_abi<'tcx>(
             //
             // We normalize the `fn_sig` again after substituting at a later point.
             let mut sig = match *ty.kind() {
-                ty::FnDef(def_id, substs) => tcx
+                ty::FnDef(def_id, args) => tcx
                     .fn_sig(def_id)
                     .map_bound(|fn_sig| {
                         tcx.normalize_erasing_regions(tcx.param_env(def_id), fn_sig)
                     })
-                    .subst(tcx, substs),
+                    .instantiate(tcx, args),
                 _ => unreachable!(),
             };
 
@@ -71,8 +71,8 @@ fn fn_sig_for_fn_abi<'tcx>(
             }
             sig
         }
-        ty::Closure(def_id, substs) => {
-            let sig = substs.as_closure().sig();
+        ty::Closure(def_id, args) => {
+            let sig = args.as_closure().sig();
 
             let bound_vars = tcx.mk_bound_variable_kinds_from_iter(
                 sig.bound_vars().iter().chain(iter::once(ty::BoundVariableKind::Region(ty::BrEnv))),
@@ -82,7 +82,7 @@ fn fn_sig_for_fn_abi<'tcx>(
                 kind: ty::BoundRegionKind::BrEnv,
             };
             let env_region = ty::Region::new_late_bound(tcx, ty::INNERMOST, br);
-            let env_ty = tcx.closure_env_ty(def_id, substs, env_region).unwrap();
+            let env_ty = tcx.closure_env_ty(def_id, args, env_region).unwrap();
 
             let sig = sig.skip_binder();
             ty::Binder::bind_with_vars(
@@ -96,8 +96,8 @@ fn fn_sig_for_fn_abi<'tcx>(
                 bound_vars,
             )
         }
-        ty::Generator(did, substs, _) => {
-            let sig = substs.as_generator().poly_sig();
+        ty::Generator(did, args, _) => {
+            let sig = args.as_generator().poly_sig();
 
             let bound_vars = tcx.mk_bound_variable_kinds_from_iter(
                 sig.bound_vars().iter().chain(iter::once(ty::BoundVariableKind::Region(ty::BrEnv))),
@@ -111,8 +111,8 @@ fn fn_sig_for_fn_abi<'tcx>(
 
             let pin_did = tcx.require_lang_item(LangItem::Pin, None);
             let pin_adt_ref = tcx.adt_def(pin_did);
-            let pin_substs = tcx.mk_substs(&[env_ty.into()]);
-            let env_ty = Ty::new_adt(tcx, pin_adt_ref, pin_substs);
+            let pin_args = tcx.mk_args(&[env_ty.into()]);
+            let env_ty = Ty::new_adt(tcx, pin_adt_ref, pin_args);
 
             let sig = sig.skip_binder();
             // The `FnSig` and the `ret_ty` here is for a generators main
@@ -123,8 +123,8 @@ fn fn_sig_for_fn_abi<'tcx>(
                 // The signature should be `Future::poll(_, &mut Context<'_>) -> Poll<Output>`
                 let poll_did = tcx.require_lang_item(LangItem::Poll, None);
                 let poll_adt_ref = tcx.adt_def(poll_did);
-                let poll_substs = tcx.mk_substs(&[sig.return_ty.into()]);
-                let ret_ty = Ty::new_adt(tcx, poll_adt_ref, poll_substs);
+                let poll_args = tcx.mk_args(&[sig.return_ty.into()]);
+                let ret_ty = Ty::new_adt(tcx, poll_adt_ref, poll_args);
 
                 // We have to replace the `ResumeTy` that is used for type and borrow checking
                 // with `&mut Context<'_>` which is used in codegen.
@@ -145,8 +145,8 @@ fn fn_sig_for_fn_abi<'tcx>(
                 // The signature should be `Generator::resume(_, Resume) -> GeneratorState<Yield, Return>`
                 let state_did = tcx.require_lang_item(LangItem::GeneratorState, None);
                 let state_adt_ref = tcx.adt_def(state_did);
-                let state_substs = tcx.mk_substs(&[sig.yield_ty.into(), sig.return_ty.into()]);
-                let ret_ty = Ty::new_adt(tcx, state_adt_ref, state_substs);
+                let state_args = tcx.mk_args(&[sig.yield_ty.into(), sig.return_ty.into()]);
+                let ret_ty = Ty::new_adt(tcx, state_adt_ref, state_args);
 
                 (sig.resume_ty, ret_ty)
             };

@@ -13,7 +13,7 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
 use rustc_middle::mir::Mutability;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, OverloadedDeref};
-use rustc_middle::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
+use rustc_middle::ty::{GenericArg, GenericArgKind, GenericArgsRef};
 use rustc_middle::ty::{self, ClauseKind, EarlyBinder, ParamTy, ProjectionPredicate, TraitPredicate, Ty};
 use rustc_span::{sym, Symbol};
 use rustc_trait_selection::traits::{query::evaluate_obligation::InferCtxtExt as _, Obligation, ObligationCause};
@@ -250,8 +250,8 @@ fn check_other_call_arg<'tcx>(
 ) -> bool {
     if_chain! {
         if let Some((maybe_call, maybe_arg)) = skip_addr_of_ancestors(cx, expr);
-        if let Some((callee_def_id, _, recv, call_args)) = get_callee_substs_and_args(cx, maybe_call);
-        let fn_sig = cx.tcx.fn_sig(callee_def_id).subst_identity().skip_binder();
+        if let Some((callee_def_id, _, recv, call_args)) = get_callee_generic_args_and_args(cx, maybe_call);
+        let fn_sig = cx.tcx.fn_sig(callee_def_id).instantiate_identity().skip_binder();
         if let Some(i) = recv.into_iter().chain(call_args).position(|arg| arg.hir_id == maybe_arg.hir_id);
         if let Some(input) = fn_sig.inputs().get(i);
         let (input, n_refs) = peel_mid_ty_refs(*input);
@@ -315,26 +315,26 @@ fn skip_addr_of_ancestors<'tcx>(
 }
 
 /// Checks whether an expression is a function or method call and, if so, returns its `DefId`,
-/// `Substs`, and arguments.
-fn get_callee_substs_and_args<'tcx>(
+/// `GenericArgs`, and arguments.
+fn get_callee_generic_args_and_args<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx Expr<'tcx>,
-) -> Option<(DefId, SubstsRef<'tcx>, Option<&'tcx Expr<'tcx>>, &'tcx [Expr<'tcx>])> {
+) -> Option<(DefId, GenericArgsRef<'tcx>, Option<&'tcx Expr<'tcx>>, &'tcx [Expr<'tcx>])> {
     if_chain! {
         if let ExprKind::Call(callee, args) = expr.kind;
         let callee_ty = cx.typeck_results().expr_ty(callee);
         if let ty::FnDef(callee_def_id, _) = callee_ty.kind();
         then {
-            let substs = cx.typeck_results().node_substs(callee.hir_id);
-            return Some((*callee_def_id, substs, None, args));
+            let generic_args = cx.typeck_results().node_args(callee.hir_id);
+            return Some((*callee_def_id, generic_args, None, args));
         }
     }
     if_chain! {
         if let ExprKind::MethodCall(_, recv, args, _) = expr.kind;
         if let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id);
         then {
-            let substs = cx.typeck_results().node_substs(expr.hir_id);
-            return Some((method_def_id, substs, Some(recv), args));
+            let generic_args = cx.typeck_results().node_args(expr.hir_id);
+            return Some((method_def_id, generic_args, Some(recv), args));
         }
     }
     None
@@ -388,17 +388,17 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
                 }
             }
             Node::Expr(parent_expr) => {
-                if let Some((callee_def_id, call_substs, recv, call_args)) = get_callee_substs_and_args(cx, parent_expr)
+                if let Some((callee_def_id, call_generic_args, recv, call_args)) = get_callee_generic_args_and_args(cx, parent_expr)
                 {
-                    // FIXME: the `subst_identity()` below seems incorrect, since we eventually
+                    // FIXME: the `instantiate_identity()` below seems incorrect, since we eventually
                     // call `tcx.try_subst_and_normalize_erasing_regions` further down
                     // (i.e., we are explicitly not in the identity context).
-                    let fn_sig = cx.tcx.fn_sig(callee_def_id).subst_identity().skip_binder();
+                    let fn_sig = cx.tcx.fn_sig(callee_def_id).instantiate_identity().skip_binder();
                     if let Some(arg_index) = recv.into_iter().chain(call_args).position(|arg| arg.hir_id == expr.hir_id)
                         && let Some(param_ty) = fn_sig.inputs().get(arg_index)
                         && let ty::Param(ParamTy { index: param_index , ..}) = param_ty.kind()
                         // https://github.com/rust-lang/rust-clippy/issues/9504 and https://github.com/rust-lang/rust-clippy/issues/10021
-                        && (*param_index as usize) < call_substs.len()
+                        && (*param_index as usize) < call_generic_args.len()
                     {
                         if fn_sig
                             .inputs()
@@ -422,8 +422,8 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
                             }
                         });
 
-                        let new_subst = cx.tcx.mk_substs_from_iter(
-                            call_substs.iter()
+                        let new_subst = cx.tcx.mk_args_from_iter(
+                            call_generic_args.iter()
                                 .enumerate()
                                 .map(|(i, t)|
                                      if i == (*param_index as usize) {
@@ -433,7 +433,7 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
                                      }));
 
                         if trait_predicates.any(|predicate| {
-                            let predicate = EarlyBinder::bind(predicate).subst(cx.tcx, new_subst);
+                            let predicate = EarlyBinder::bind(predicate).instantiate(cx.tcx, new_subst);
                             let obligation = Obligation::new(cx.tcx, ObligationCause::dummy(), cx.param_env, predicate);
                             !cx.tcx.infer_ctxt().build().predicate_must_hold_modulo_regions(&obligation)
                         }) {
@@ -500,8 +500,8 @@ fn is_to_string_on_string_like<'a>(
         return false;
     }
 
-    if let Some(substs) = cx.typeck_results().node_substs_opt(call_expr.hir_id)
-        && let [generic_arg] = substs.as_slice()
+    if let Some(args) = cx.typeck_results().node_args_opt(call_expr.hir_id)
+        && let [generic_arg] = args.as_slice()
         && let GenericArgKind::Type(ty) = generic_arg.unpack()
         && let Some(deref_trait_id) = cx.tcx.get_diagnostic_item(sym::Deref)
         && let Some(as_ref_trait_id) = cx.tcx.get_diagnostic_item(sym::AsRef)

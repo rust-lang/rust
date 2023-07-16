@@ -81,6 +81,8 @@ error: layout_of(MissingPayloadField) = Layout {
                        variants: Single {
                            index: 0,
                        },
+                       max_repr_align: None,
+                       unadjusted_abi_align: Align(1 bytes),
                    },
                    Layout {
                        size: Size(1 bytes),
@@ -99,9 +101,13 @@ error: layout_of(MissingPayloadField) = Layout {
                        variants: Single {
                            index: 1,
                        },
+                       max_repr_align: None,
+                       unadjusted_abi_align: Align(1 bytes),
                    },
                ],
            },
+           max_repr_align: None,
+           unadjusted_abi_align: Align(1 bytes),
        }
   --> $DIR/issue-96158-scalarpair-payload-might-be-uninit.rs:16:1
    |
@@ -193,6 +199,8 @@ error: layout_of(CommonPayloadField) = Layout {
                        variants: Single {
                            index: 0,
                        },
+                       max_repr_align: None,
+                       unadjusted_abi_align: Align(1 bytes),
                    },
                    Layout {
                        size: Size(2 bytes),
@@ -228,9 +236,13 @@ error: layout_of(CommonPayloadField) = Layout {
                        variants: Single {
                            index: 1,
                        },
+                       max_repr_align: None,
+                       unadjusted_abi_align: Align(1 bytes),
                    },
                ],
            },
+           max_repr_align: None,
+           unadjusted_abi_align: Align(1 bytes),
        }
   --> $DIR/issue-96158-scalarpair-payload-might-be-uninit.rs:25:1
    |
@@ -320,6 +332,8 @@ error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
                        variants: Single {
                            index: 0,
                        },
+                       max_repr_align: None,
+                       unadjusted_abi_align: Align(1 bytes),
                    },
                    Layout {
                        size: Size(2 bytes),
@@ -354,9 +368,13 @@ error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
                        variants: Single {
                            index: 1,
                        },
+                       max_repr_align: None,
+                       unadjusted_abi_align: Align(1 bytes),
                    },
                ],
            },
+           max_repr_align: None,
+           unadjusted_abi_align: Align(1 bytes),
        }
   --> $DIR/issue-96158-scalarpair-payload-might-be-uninit.rs:33:1
    |
@@ -462,6 +480,8 @@ error: layout_of(NicheFirst) = Layout {
                        variants: Single {
                            index: 0,
                        },
+                       max_repr_align: None,
+                       unadjusted_abi_align: Align(1 bytes),
                    },
                    Layout {
                        size: Size(0 bytes),
@@ -480,6 +500,8 @@ error: layout_of(NicheFirst) = Layout {
                        variants: Single {
                            index: 1,
                        },
+                       max_repr_align: None,
+                       unadjusted_abi_align: Align(1 bytes),
                    },
                    Layout {
                        size: Size(0 bytes),
@@ -498,9 +520,13 @@ error: layout_of(NicheFirst) = Layout {
                        variants: Single {
                            index: 2,
                        },
+                       max_repr_align: None,
+                       unadjusted_abi_align: Align(1 bytes),
                    },
                ],
            },
+           max_repr_align: None,
+           unadjusted_abi_align: Align(1 bytes),
        }
   --> $DIR/issue-96158-scalarpair-payload-might-be-uninit.rs:41:1
    |
@@ -606,6 +632,8 @@ error: layout_of(NicheSecond) = Layout {
                        variants: Single {
                            index: 0,
                        },
+                       max_repr_align: None,
+                       unadjusted_abi_align: Align(1 bytes),
                    },
                    Layout {
                        size: Size(0 bytes),
@@ -624,6 +652,8 @@ error: layout_of(NicheSecond) = Layout {
                        variants: Single {
                            index: 1,
                        },
+                       max_repr_align: None,
+                       unadjusted_abi_align: Align(1 bytes),
                    },
                    Layout {
                        size: Size(0 bytes),
@@ -642,9 +672,13 @@ error: layout_of(NicheSecond) = Layout {
                        variants: Single {
                            index: 2,
                        },
+                       max_repr_align: None,
+                       unadjusted_abi_align: Align(1 bytes),
                    },
                ],
            },
+           max_repr_align: None,
+           unadjusted_abi_align: Align(1 bytes),
        }
   --> $DIR/issue-96158-scalarpair-payload-might-be-uninit.rs:50:1
    |

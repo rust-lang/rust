@@ -25,7 +25,7 @@ use crate::infer::{ConstVariableOrigin, ConstVariableOriginKind};
 use crate::infer::{InferCtxt, RegionVariableOrigin, TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_index::IndexVec;
 use rustc_middle::ty::fold::TypeFoldable;
-use rustc_middle::ty::subst::GenericArg;
+use rustc_middle::ty::GenericArg;
 use rustc_middle::ty::{self, List, Ty, TyCtxt};
 use rustc_span::source_map::Span;
 
@@ -88,7 +88,7 @@ impl<'tcx> InferCtxt<'tcx> {
         universe_map: impl Fn(ty::UniverseIndex) -> ty::UniverseIndex,
     ) -> CanonicalVarValues<'tcx> {
         CanonicalVarValues {
-            var_values: self.tcx.mk_substs_from_iter(
+            var_values: self.tcx.mk_args_from_iter(
                 variables
                     .iter()
                     .map(|info| self.instantiate_canonical_var(span, info, &universe_map)),

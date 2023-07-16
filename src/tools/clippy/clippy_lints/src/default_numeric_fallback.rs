@@ -141,7 +141,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NumericFallbackVisitor<'a, 'tcx> {
 
             ExprKind::MethodCall(_, receiver, args, _) => {
                 if let Some(def_id) = self.cx.typeck_results().type_dependent_def_id(expr.hir_id) {
-                    let fn_sig = self.cx.tcx.fn_sig(def_id).subst_identity().skip_binder();
+                    let fn_sig = self.cx.tcx.fn_sig(def_id).instantiate_identity().skip_binder();
                     for (expr, bound) in iter::zip(std::iter::once(*receiver).chain(args.iter()), fn_sig.inputs()) {
                         self.ty_bounds.push((*bound).into());
                         self.visit_expr(expr);
@@ -167,7 +167,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NumericFallbackVisitor<'a, 'tcx> {
                                     .iter()
                                     .find_map(|f_def| {
                                         if f_def.ident(self.cx.tcx) == field.ident
-                                            { Some(self.cx.tcx.type_of(f_def.did).subst_identity()) }
+                                            { Some(self.cx.tcx.type_of(f_def.did).instantiate_identity()) }
                                         else { None }
                                     });
                             self.ty_bounds.push(bound.into());
@@ -213,9 +213,9 @@ impl<'a, 'tcx> Visitor<'tcx> for NumericFallbackVisitor<'a, 'tcx> {
 
 fn fn_sig_opt<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Option<PolyFnSig<'tcx>> {
     let node_ty = cx.typeck_results().node_type_opt(hir_id)?;
-    // We can't use `Ty::fn_sig` because it automatically performs substs, this may result in FNs.
+    // We can't use `Ty::fn_sig` because it automatically performs args, this may result in FNs.
     match node_ty.kind() {
-        ty::FnDef(def_id, _) => Some(cx.tcx.fn_sig(*def_id).subst_identity()),
+        ty::FnDef(def_id, _) => Some(cx.tcx.fn_sig(*def_id).instantiate_identity()),
         ty::FnPtr(fn_sig) => Some(*fn_sig),
         _ => None,
     }

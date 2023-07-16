@@ -227,7 +227,7 @@ impl SourceCollector<'_, '_> {
         let desc = format!("Source of the Rust file `{}`.", filename.prefer_remapped());
         let page = layout::Page {
             title: &title,
-            css_class: "source",
+            css_class: "src",
             root_path: &root_path,
             static_root_path: shared.static_root_path.as_deref(),
             description: &desc,

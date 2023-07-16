@@ -33,7 +33,7 @@ use crate::ptr::NonNull;
 #[doc(hidden)]
 #[repr(transparent)]
 // Lang item used experimentally by Miri to define the semantics of `Unique`.
-#[cfg_attr(not(bootstrap), lang = "ptr_unique")]
+#[lang = "ptr_unique"]
 pub struct Unique<T: ?Sized> {
     pointer: NonNull<T>,
     // NOTE: this marker has no consequences for variance, but is necessary

@@ -1821,9 +1821,9 @@ fn render_rightside(
     );
     if let Some(l) = src_href {
         if has_stability {
-            write!(rightside, " · <a class=\"srclink\" href=\"{}\">source</a>", l)
+            write!(rightside, " · <a class=\"src\" href=\"{}\">source</a>", l)
         } else {
-            write!(rightside, "<a class=\"srclink rightside\" href=\"{}\">source</a>", l)
+            write!(rightside, "<a class=\"src rightside\" href=\"{}\">source</a>", l)
         }
     }
     if has_stability && has_src_ref {
@@ -1988,7 +1988,9 @@ pub(crate) fn get_filtered_impls_for_reference<'a>(
 ) -> (Vec<&'a Impl>, Vec<&'a Impl>, Vec<&'a Impl>) {
     let def_id = it.item_id.expect_def_id();
     // If the reference primitive is somehow not defined, exit early.
-    let Some(v) = shared.cache.impls.get(&def_id) else { return (Vec::new(), Vec::new(), Vec::new()) };
+    let Some(v) = shared.cache.impls.get(&def_id) else {
+        return (Vec::new(), Vec::new(), Vec::new());
+    };
     // Since there is no "direct implementation" on the reference primitive type, we filter out
     // every implementation which isn't a trait implementation.
     let traits = v.iter().filter(|i| i.inner_impl().trait_.is_some());

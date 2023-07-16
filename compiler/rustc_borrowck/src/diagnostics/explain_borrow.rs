@@ -168,17 +168,17 @@ impl<'tcx> BorrowExplanation<'tcx> {
                 let local_decl = &body.local_decls[dropped_local];
                 let mut ty = local_decl.ty;
                 if local_decl.source_info.span.desugaring_kind() == Some(DesugaringKind::ForLoop) {
-                    if let ty::Adt(adt, substs) = local_decl.ty.kind() {
+                    if let ty::Adt(adt, args) = local_decl.ty.kind() {
                         if tcx.is_diagnostic_item(sym::Option, adt.did()) {
                             // in for loop desugaring, only look at the `Some(..)` inner type
-                            ty = substs.type_at(0);
+                            ty = args.type_at(0);
                         }
                     }
                 }
                 let (dtor_desc, type_desc) = match ty.kind() {
                     // If type is an ADT that implements Drop, then
                     // simplify output by reporting just the ADT name.
-                    ty::Adt(adt, _substs) if adt.has_dtor(tcx) && !adt.is_box() => {
+                    ty::Adt(adt, _args) if adt.has_dtor(tcx) && !adt.is_box() => {
                         ("`Drop` code", format!("type `{}`", tcx.def_path_str(adt.did())))
                     }
 

@@ -3508,11 +3508,11 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
         let name = impl_item.ident.name.as_str();
         let parent = cx.tcx.hir().get_parent_item(impl_item.hir_id()).def_id;
         let item = cx.tcx.hir().expect_item(parent);
-        let self_ty = cx.tcx.type_of(item.owner_id).subst_identity();
+        let self_ty = cx.tcx.type_of(item.owner_id).instantiate_identity();
 
         let implements_trait = matches!(item.kind, hir::ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }));
         if let hir::ImplItemKind::Fn(ref sig, id) = impl_item.kind {
-            let method_sig = cx.tcx.fn_sig(impl_item.owner_id).subst_identity();
+            let method_sig = cx.tcx.fn_sig(impl_item.owner_id).instantiate_identity();
             let method_sig = cx.tcx.erase_late_bound_regions(method_sig);
             let first_arg_ty_opt = method_sig.inputs().iter().next().copied();
             // if this impl block implements a trait, lint in trait definition instead
@@ -4113,8 +4113,8 @@ impl SelfKind {
             } else if ty.is_box() {
                 ty.boxed_ty() == parent_ty
             } else if is_type_diagnostic_item(cx, ty, sym::Rc) || is_type_diagnostic_item(cx, ty, sym::Arc) {
-                if let ty::Adt(_, substs) = ty.kind() {
-                    substs.types().next().map_or(false, |t| t == parent_ty)
+                if let ty::Adt(_, args) = ty.kind() {
+                    args.types().next().map_or(false, |t| t == parent_ty)
                 } else {
                     false
                 }
