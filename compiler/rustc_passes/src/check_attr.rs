@@ -183,6 +183,7 @@ impl CheckAttrVisitor<'_> {
                 | sym::rustc_allowed_through_unstable_modules
                 | sym::rustc_promotable => self.check_stability_promotable(&attr, span, target),
                 sym::link_ordinal => self.check_link_ordinal(&attr, span, target),
+                sym::rustc_confusables => self.check_confusables(&attr, target),
                 _ => true,
             };
 
@@ -1980,6 +1981,46 @@ impl CheckAttrVisitor<'_> {
             Target::ForeignFn | Target::ForeignStatic => true,
             _ => {
                 self.tcx.sess.emit_err(errors::LinkOrdinal { attr_span: attr.span });
+                false
+            }
+        }
+    }
+
+    fn check_confusables(&self, attr: &Attribute, target: Target) -> bool {
+        match target {
+            Target::Method(MethodKind::Inherent) => {
+                let Some(meta) = attr.meta() else {
+                    return false;
+                };
+                let ast::MetaItem { kind: MetaItemKind::List(ref metas), .. } = meta else {
+                    return false;
+                };
+
+                let mut candidates = Vec::new();
+
+                for meta in metas {
+                    let NestedMetaItem::Lit(meta_lit) = meta else {
+                        self.tcx.sess.emit_err(errors::IncorrectMetaItem {
+                            span: meta.span(),
+                            suggestion: errors::IncorrectMetaItemSuggestion {
+                                lo: meta.span().shrink_to_lo(),
+                                hi: meta.span().shrink_to_hi(),
+                            },
+                        });
+                        return false;
+                    };
+                    candidates.push(meta_lit.symbol);
+                }
+
+                if candidates.is_empty() {
+                    self.tcx.sess.emit_err(errors::EmptyConfusables { span: attr.span });
+                    return false;
+                }
+
+                true
+            }
+            _ => {
+                self.tcx.sess.emit_err(errors::Confusables { attr_span: attr.span });
                 false
             }
         }
