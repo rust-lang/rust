@@ -1,6 +1,6 @@
-Def site: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#5)
-Input: TokenStream [Ident { ident: "$crate", span: $DIR/meta-macro-hygiene.rs:24:37: 24:43 (#4) }, Punct { ch: ':', spacing: Joint, span: $DIR/meta-macro-hygiene.rs:24:43: 24:44 (#4) }, Punct { ch: ':', spacing: Alone, span: $DIR/meta-macro-hygiene.rs:24:44: 24:45 (#4) }, Ident { ident: "dummy", span: $DIR/meta-macro-hygiene.rs:24:45: 24:50 (#4) }, Punct { ch: '!', spacing: Alone, span: $DIR/meta-macro-hygiene.rs:24:50: 24:51 (#4) }, Group { delimiter: Parenthesis, stream: TokenStream [], span: $DIR/meta-macro-hygiene.rs:24:51: 24:53 (#4) }]
-Respanned: TokenStream [Ident { ident: "$crate", span: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#5) }, Punct { ch: ':', spacing: Joint, span: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#5) }, Punct { ch: ':', spacing: Alone, span: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#5) }, Ident { ident: "dummy", span: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#5) }, Punct { ch: '!', spacing: Alone, span: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#5) }, Group { delimiter: Parenthesis, stream: TokenStream [], span: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#5) }]
+Def site: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#4)
+Input: TokenStream [Ident { ident: "$crate", span: $DIR/meta-macro-hygiene.rs:24:37: 24:43 (#3) }, Punct { ch: ':', spacing: Joint, span: $DIR/meta-macro-hygiene.rs:24:43: 24:44 (#3) }, Punct { ch: ':', spacing: Alone, span: $DIR/meta-macro-hygiene.rs:24:44: 24:45 (#3) }, Ident { ident: "dummy", span: $DIR/meta-macro-hygiene.rs:24:45: 24:50 (#3) }, Punct { ch: '!', spacing: Alone, span: $DIR/meta-macro-hygiene.rs:24:50: 24:51 (#3) }, Group { delimiter: Parenthesis, stream: TokenStream [], span: $DIR/meta-macro-hygiene.rs:24:51: 24:53 (#3) }]
+Respanned: TokenStream [Ident { ident: "$crate", span: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#4) }, Punct { ch: ':', spacing: Joint, span: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#4) }, Punct { ch: ':', spacing: Alone, span: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#4) }, Ident { ident: "dummy", span: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#4) }, Punct { ch: '!', spacing: Alone, span: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#4) }, Group { delimiter: Parenthesis, stream: TokenStream [], span: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#4) }]
 #![feature /* 0#0 */(prelude_import)]
 // aux-build:make-macro.rs
 // aux-build:meta-macro.rs
@@ -18,8 +18,7 @@ Respanned: TokenStream [Ident { ident: "$crate", span: $DIR/auxiliary/make-macro
 use core /* 0#1 */::prelude /* 0#1 */::rust_2018 /* 0#1 */::*;
 #[macro_use /* 0#1 */]
 extern crate core /* 0#1 */;
-#[macro_use /* 0#1 */]
-extern crate compiler_builtins /* 0#1 */;
+extern crate compiler_builtins /* 442 */ as _ /* 0#1 */;
 // Don't load unnecessary hygiene information from std
 extern crate std /* 0#0 */;
 
@@ -47,23 +46,21 @@ Expansions:
 crate0::{{expn0}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: Root
 crate0::{{expn1}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: AstPass(StdImports)
 crate0::{{expn2}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: Macro(Bang, "produce_it")
-crate0::{{expn3}}: parent: crate0::{{expn2}}, call_site_ctxt: #4, def_site_ctxt: #0, kind: Macro(Bang, "meta_macro::print_def_site")
-crate0::{{expn4}}: parent: crate0::{{expn3}}, call_site_ctxt: #5, def_site_ctxt: #0, kind: Macro(Bang, "$crate::dummy")
+crate0::{{expn3}}: parent: crate0::{{expn2}}, call_site_ctxt: #3, def_site_ctxt: #0, kind: Macro(Bang, "meta_macro::print_def_site")
+crate0::{{expn4}}: parent: crate0::{{expn3}}, call_site_ctxt: #4, def_site_ctxt: #0, kind: Macro(Bang, "$crate::dummy")
 crate1::{{expnNNN}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: Macro(Attr, "derive")
 crate1::{{expnNNN}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: Macro(Attr, "derive")
 crate1::{{expnNNN}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: Macro(Bang, "include")
-crate2::{{expn1}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: AstPass(StdImports)
 
 SyntaxContexts:
 #0: parent: #0, outer_mark: (crate0::{{expn0}}, Opaque)
 #1: parent: #0, outer_mark: (crate0::{{expn1}}, Opaque)
 #2: parent: #0, outer_mark: (crate0::{{expn1}}, Transparent)
-#3: parent: #0, outer_mark: (crate2::{{expn1}}, Opaque)
-#4: parent: #0, outer_mark: (crate0::{{expn2}}, SemiTransparent)
-#5: parent: #0, outer_mark: (crate0::{{expn3}}, Opaque)
-#6: parent: #4, outer_mark: (crate0::{{expn3}}, Transparent)
-#7: parent: #0, outer_mark: (crate0::{{expn3}}, SemiTransparent)
-#8: parent: #0, outer_mark: (crate0::{{expn4}}, Opaque)
-#9: parent: #5, outer_mark: (crate0::{{expn4}}, Transparent)
-#10: parent: #5, outer_mark: (crate0::{{expn4}}, SemiTransparent)
+#3: parent: #0, outer_mark: (crate0::{{expn2}}, SemiTransparent)
+#4: parent: #0, outer_mark: (crate0::{{expn3}}, Opaque)
+#5: parent: #3, outer_mark: (crate0::{{expn3}}, Transparent)
+#6: parent: #0, outer_mark: (crate0::{{expn3}}, SemiTransparent)
+#7: parent: #0, outer_mark: (crate0::{{expn4}}, Opaque)
+#8: parent: #4, outer_mark: (crate0::{{expn4}}, Transparent)
+#9: parent: #4, outer_mark: (crate0::{{expn4}}, SemiTransparent)
 */
