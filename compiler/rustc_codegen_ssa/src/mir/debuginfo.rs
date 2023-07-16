@@ -15,8 +15,6 @@ use super::operand::{OperandRef, OperandValue};
 use super::place::PlaceRef;
 use super::{FunctionCx, LocalRef};
 
-use std::ops::Range;
-
 pub struct FunctionDebugContext<S, L> {
     pub scopes: IndexVec<mir::SourceScope, DebugScope<S, L>>,
 }
@@ -35,10 +33,6 @@ pub struct PerLocalVarDebugInfo<'tcx, D> {
 
     /// `DIVariable` returned by `create_dbg_var`.
     pub dbg_var: Option<D>,
-
-    /// Byte range in the `dbg_var` covered by this fragment,
-    /// if this is a fragment of a composite `VarDebugInfo`.
-    pub fragment: Option<Range<Size>>,
 
     /// `.place.projection` from `mir::VarDebugInfo`.
     pub projection: &'tcx ty::List<mir::PlaceElem<'tcx>>,
@@ -321,7 +315,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     name,
                     source_info: decl.source_info,
                     dbg_var,
-                    fragment: None,
                     projection: ty::List::empty(),
                     references: 0,
                 })
@@ -545,7 +538,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         name: var.name,
                         source_info: var.source_info,
                         dbg_var,
-                        fragment: None,
                         projection: place.projection,
                         references: var.references,
                     });
@@ -593,13 +585,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             name: var.name,
                             source_info: var.source_info,
                             dbg_var,
-                            fragment: if fragment_layout.size == var_layout.size {
-                                // Fragment covers entire variable, so as far as
-                                // DWARF is concerned, it's not really a fragment.
-                                None
-                            } else {
-                                Some(fragment_start..fragment_start + fragment_layout.size)
-                            },
                             projection: place.projection,
                             references: var.references,
                         });
