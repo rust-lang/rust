@@ -203,7 +203,7 @@ Stabilized APIs
 - [`Default for std::collections::binary_heap::IntoIter`](https://doc.rust-lang.org/stable/std/collections/binary_heap/struct.IntoIter.html)
 - [`Default for std::collections::btree_map::{IntoIter, Iter, IterMut}`](https://doc.rust-lang.org/stable/std/collections/btree_map/struct.IntoIter.html)
 - [`Default for std::collections::btree_map::{IntoKeys, Keys}`](https://doc.rust-lang.org/stable/std/collections/btree_map/struct.IntoKeys.html)
-- [`Default for std::collections::btree_map::{IntoValues, Values}`](https://doc.rust-lang.org/stable/std/collections/btree_map/struct.IntoKeys.html)
+- [`Default for std::collections::btree_map::{IntoValues, Values}`](https://doc.rust-lang.org/stable/std/collections/btree_map/struct.IntoValues.html)
 - [`Default for std::collections::btree_map::Range`](https://doc.rust-lang.org/stable/std/collections/btree_map/struct.Range.html)
 - [`Default for std::collections::btree_set::{IntoIter, Iter}`](https://doc.rust-lang.org/stable/std/collections/btree_set/struct.IntoIter.html)
 - [`Default for std::collections::btree_set::Range`](https://doc.rust-lang.org/stable/std/collections/btree_set/struct.Range.html)
@@ -2618,7 +2618,7 @@ related tools.
 [`OsStr::to_ascii_lowercase`]: https://doc.rust-lang.org/std/ffi/struct.OsStr.html#method.to_ascii_lowercase
 [`OsStr::to_ascii_uppercase`]: https://doc.rust-lang.org/std/ffi/struct.OsStr.html#method.to_ascii_uppercase
 [`Peekable::peek_mut`]: https://doc.rust-lang.org/std/iter/struct.Peekable.html#method.peek_mut
-[`Rc::decrement_strong_count`]: https://doc.rust-lang.org/std/rc/struct.Rc.html#method.increment_strong_count
+[`Rc::decrement_strong_count`]: https://doc.rust-lang.org/std/rc/struct.Rc.html#method.decrement_strong_count
 [`Rc::increment_strong_count`]: https://doc.rust-lang.org/std/rc/struct.Rc.html#method.increment_strong_count
 [`Vec::extend_from_within`]: https://doc.rust-lang.org/beta/std/vec/struct.Vec.html#method.extend_from_within
 [`array::from_mut`]: https://doc.rust-lang.org/beta/std/array/fn.from_mut.html
@@ -2627,7 +2627,7 @@ related tools.
 [`cmp::max_by`]: https://doc.rust-lang.org/beta/std/cmp/fn.max_by.html
 [`cmp::min_by_key`]: https://doc.rust-lang.org/beta/std/cmp/fn.min_by_key.html
 [`cmp::min_by`]: https://doc.rust-lang.org/beta/std/cmp/fn.min_by.html
-[`f32::is_subnormal`]: https://doc.rust-lang.org/std/primitive.f64.html#method.is_subnormal
+[`f32::is_subnormal`]: https://doc.rust-lang.org/std/primitive.f32.html#method.is_subnormal
 [`f64::is_subnormal`]: https://doc.rust-lang.org/std/primitive.f64.html#method.is_subnormal
 [ietf6943]: https://datatracker.ietf.org/doc/html/rfc6943#section-3.1.1
 
@@ -2963,7 +2963,7 @@ Internal Only
 [`sync::OnceState`]: https://doc.rust-lang.org/stable/std/sync/struct.OnceState.html
 [`panic::panic_any`]: https://doc.rust-lang.org/stable/std/panic/fn.panic_any.html
 [`slice::strip_prefix`]: https://doc.rust-lang.org/stable/std/primitive.slice.html#method.strip_prefix
-[`slice::strip_suffix`]: https://doc.rust-lang.org/stable/std/primitive.slice.html#method.strip_prefix
+[`slice::strip_suffix`]: https://doc.rust-lang.org/stable/std/primitive.slice.html#method.strip_suffix
 [`Arc::increment_strong_count`]: https://doc.rust-lang.org/nightly/std/sync/struct.Arc.html#method.increment_strong_count
 [`Arc::decrement_strong_count`]: https://doc.rust-lang.org/nightly/std/sync/struct.Arc.html#method.decrement_strong_count
 [`slice::fill_with`]: https://doc.rust-lang.org/nightly/std/primitive.slice.html#method.fill_with
@@ -8033,7 +8033,7 @@ Compatibility Notes
 [39379]: https://github.com/rust-lang/rust/pull/39379
 [41105]: https://github.com/rust-lang/rust/issues/41105
 [`<*const T>::wrapping_offset`]: https://doc.rust-lang.org/std/primitive.pointer.html#method.wrapping_offset
-[`<*mut T>::wrapping_offset`]: https://doc.rust-lang.org/std/primitive.pointer.html#method.wrapping_offset
+[`<*mut T>::wrapping_offset`]: https://doc.rust-lang.org/std/primitive.pointer.html#method.wrapping_offset-1
 [`Duration::checked_add`]: https://doc.rust-lang.org/std/time/struct.Duration.html#method.checked_add
 [`Duration::checked_div`]: https://doc.rust-lang.org/std/time/struct.Duration.html#method.checked_div
 [`Duration::checked_mul`]: https://doc.rust-lang.org/std/time/struct.Duration.html#method.checked_mul
@@ -9011,7 +9011,7 @@ Stabilized APIs
 * [`f64::to_radians`](https://doc.rust-lang.org/std/primitive.f64.html#method.to_radians)
   (in libcore - previously stabilized in libstd)
 * [`Iterator::sum`](https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.sum)
-* [`Iterator::product`](https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.sum)
+* [`Iterator::product`](https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.product)
 * [`Cell::get_mut`](https://doc.rust-lang.org/std/cell/struct.Cell.html#method.get_mut)
 * [`RefCell::get_mut`](https://doc.rust-lang.org/std/cell/struct.RefCell.html#method.get_mut)
 
