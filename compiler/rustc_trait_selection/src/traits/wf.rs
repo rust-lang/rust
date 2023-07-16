@@ -570,7 +570,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                             ));
                         }
                         ty::ConstKind::Expr(_) => {
-                            // FIXME(generic_const_exprs): this doesnt verify that given `Expr(N + 1)` the
+                            // FIXME(generic_const_exprs): this doesn't verify that given `Expr(N + 1)` the
                             // trait bound `typeof(N): Add<typeof(1)>` holds. This is currently unnecessary
                             // as `ConstKind::Expr` is only produced via normalization of `ConstKind::Unevaluated`
                             // which means that the `DefId` would have been typeck'd elsewhere. However in
