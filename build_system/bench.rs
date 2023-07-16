@@ -73,14 +73,18 @@ fn benchmark_simple_raytracer(dirs: &Dirs, bootstrap_host_compiler: &Compiler) {
         1,
         bench_runs,
         Some(&clean_cmd),
-        &[&llvm_build_cmd, &clif_build_cmd, &clif_build_opt_cmd],
+        &[
+            ("cargo build", &llvm_build_cmd),
+            ("cargo-clif build", &clif_build_cmd),
+            ("cargo-clif build --release", &clif_build_opt_cmd),
+        ],
         &bench_compile_markdown,
     );
 
     spawn_and_wait(bench_compile);
 
     if let Some(gha_step_summary) = gha_step_summary.as_mut() {
-        gha_step_summary.write_all(b"# Compilation\n\n").unwrap();
+        gha_step_summary.write_all(b"## Compile ebobby/simple-raytracer\n\n").unwrap();
         gha_step_summary.write_all(&std::fs::read(bench_compile_markdown).unwrap()).unwrap();
         gha_step_summary.write_all(b"\n").unwrap();
     }
@@ -89,23 +93,29 @@ fn benchmark_simple_raytracer(dirs: &Dirs, bootstrap_host_compiler: &Compiler) {
 
     let bench_run_markdown = RelPath::DIST.to_path(dirs).join("bench_run.md");
 
+    let raytracer_cg_llvm = Path::new(".").join(get_file_name(
+        &bootstrap_host_compiler.rustc,
+        "raytracer_cg_llvm",
+        "bin",
+    ));
+    let raytracer_cg_clif = Path::new(".").join(get_file_name(
+        &bootstrap_host_compiler.rustc,
+        "raytracer_cg_clif",
+        "bin",
+    ));
+    let raytracer_cg_clif_opt = Path::new(".").join(get_file_name(
+        &bootstrap_host_compiler.rustc,
+        "raytracer_cg_clif_opt",
+        "bin",
+    ));
     let mut bench_run = hyperfine_command(
         0,
         bench_runs,
         None,
         &[
-            Path::new(".")
-                .join(get_file_name(&bootstrap_host_compiler.rustc, "raytracer_cg_llvm", "bin"))
-                .to_str()
-                .unwrap(),
-            Path::new(".")
-                .join(get_file_name(&bootstrap_host_compiler.rustc, "raytracer_cg_clif", "bin"))
-                .to_str()
-                .unwrap(),
-            Path::new(".")
-                .join(get_file_name(&bootstrap_host_compiler.rustc, "raytracer_cg_clif_opt", "bin"))
-                .to_str()
-                .unwrap(),
+            ("", raytracer_cg_llvm.to_str().unwrap()),
+            ("", raytracer_cg_clif.to_str().unwrap()),
+            ("", raytracer_cg_clif_opt.to_str().unwrap()),
         ],
         &bench_run_markdown,
     );
@@ -113,7 +123,7 @@ fn benchmark_simple_raytracer(dirs: &Dirs, bootstrap_host_compiler: &Compiler) {
     spawn_and_wait(bench_run);
 
     if let Some(gha_step_summary) = gha_step_summary.as_mut() {
-        gha_step_summary.write_all(b"# Execution\n\n").unwrap();
+        gha_step_summary.write_all(b"## Run ebobby/simple-raytracer\n\n").unwrap();
         gha_step_summary.write_all(&std::fs::read(bench_run_markdown).unwrap()).unwrap();
         gha_step_summary.write_all(b"\n").unwrap();
     }

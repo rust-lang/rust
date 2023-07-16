@@ -137,7 +137,7 @@ pub(crate) fn hyperfine_command(
     warmup: u64,
     runs: u64,
     prepare: Option<&str>,
-    cmds: &[&str],
+    cmds: &[(&str, &str)],
     markdown_export: &Path,
 ) -> Command {
     let mut bench = Command::new("hyperfine");
@@ -156,7 +156,12 @@ pub(crate) fn hyperfine_command(
         bench.arg("--prepare").arg(prepare);
     }
 
-    bench.args(cmds);
+    for &(name, cmd) in cmds {
+        if name != "" {
+            bench.arg("-n").arg(name);
+        }
+        bench.arg(cmd);
+    }
 
     bench
 }
