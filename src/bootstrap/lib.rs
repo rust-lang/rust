@@ -333,7 +333,6 @@ forward! {
     create(path: &Path, s: &str),
     remove(f: &Path),
     tempdir() -> PathBuf,
-    try_run(cmd: &mut Command) -> Result<(), ()>,
     llvm_link_shared() -> bool,
     download_rustc() -> bool,
     initial_rustfmt() -> Option<PathBuf>,
@@ -617,7 +616,9 @@ impl Build {
         }
 
         // Save any local changes, but avoid running `git stash pop` if there are none (since it will exit with an error).
+        #[allow(deprecated)] // diff-index reports the modifications through the exit status
         let has_local_modifications = self
+            .config
             .try_run(
                 Command::new("git")
                     .args(&["diff-index", "--quiet", "HEAD"])
@@ -971,12 +972,36 @@ impl Build {
     /// Runs a command, printing out nice contextual information if it fails.
     /// Exits if the command failed to execute at all, otherwise returns its
     /// `status.success()`.
-    fn try_run_quiet(&self, cmd: &mut Command) -> bool {
+    fn run_quiet_delaying_failure(&self, cmd: &mut Command) -> bool {
         if self.config.dry_run() {
             return true;
         }
-        self.verbose(&format!("running: {:?}", cmd));
-        try_run_suppressed(cmd)
+        if !self.fail_fast {
+            self.verbose(&format!("running: {:?}", cmd));
+            if !try_run_suppressed(cmd) {
+                let mut failures = self.delayed_failures.borrow_mut();
+                failures.push(format!("{:?}", cmd));
+                return false;
+            }
+        } else {
+            self.run_quiet(cmd);
+        }
+        true
+    }
+
+    /// Runs a command, printing out contextual info if it fails, and delaying errors until the build finishes.
+    pub(crate) fn run_delaying_failure(&self, cmd: &mut Command) -> bool {
+        if !self.fail_fast {
+            #[allow(deprecated)] // can't use Build::try_run, that's us
+            if self.config.try_run(cmd).is_err() {
+                let mut failures = self.delayed_failures.borrow_mut();
+                failures.push(format!("{:?}", cmd));
+                return false;
+            }
+        } else {
+            self.run(cmd);
+        }
+        true
     }
 
     pub fn is_verbose_than(&self, level: usize) -> bool {
