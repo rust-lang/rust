@@ -1677,6 +1677,16 @@ fn check_method_receiver<'tcx>(
     };
     let generics = tcx.generics_of(method.def_id);
 
+    // yet to do: determine whether self_ty is Sized. If not (most commonly
+    // if it's a trait) determine whether receiver_ty::Target is Sized.
+    // If so, arrange to emit the extra help in _HELP_FOR_SIZED_SELF_TYPE.
+    // Then adjust tests/ui/self/arbitrary_self_types_sizedness_trait.rs
+    // to match.
+    // yet to do: determine whether self_ty is NonNull or Weak, and use
+    // _HELP_FOR_NONNULL and _HELP_FOR_WEAK as appropriate. No tests yet
+    // exist for this.
+    let raw_pointer = is_raw_pointer(receiver_ty);
+
     let receiver_validity =
         receiver_is_valid(wfcx, span, receiver_ty, self_ty, arbitrary_self_types_level, generics);
     if let Err(receiver_validity_err) = receiver_validity {
@@ -1735,9 +1745,9 @@ fn check_method_receiver<'tcx>(
             // Report error; would not have worked with `arbitrary_self_types[_pointers]`.
             {
                 match receiver_validity_err {
-                    ReceiverValidityError::DoesNotDeref => {
-                        tcx.dcx().emit_err(errors::InvalidReceiverTy { span, receiver_ty })
-                    }
+                    ReceiverValidityError::DoesNotDeref => tcx
+                        .dcx()
+                        .emit_err(errors::InvalidReceiverTy { span, receiver_ty, raw_pointer }),
                     ReceiverValidityError::MethodGenericParamUsed => {
                         tcx.dcx().emit_err(errors::InvalidGenericReceiverTy { span, receiver_ty })
                     }
@@ -1771,6 +1781,10 @@ fn confirm_type_is_not_a_method_generic_param(
         }
     }
     Ok(())
+}
+
+fn is_raw_pointer<'tcx>(ty: Ty<'tcx>) -> bool {
+    matches!(ty.kind(), ty::RawPtr(..))
 }
 
 /// Returns whether `receiver_ty` would be considered a valid receiver type for `self_ty`. If

@@ -1653,6 +1653,8 @@ pub(crate) struct InvalidReceiverTy<'tcx> {
     #[primary_span]
     pub span: Span,
     pub receiver_ty: Ty<'tcx>,
+    #[note(hir_analysis_invalid_receiver_ty_help_pointer_note)]
+    pub raw_pointer: bool,
 }
 
 #[derive(Diagnostic)]

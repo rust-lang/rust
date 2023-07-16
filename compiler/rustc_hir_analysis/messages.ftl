@@ -246,6 +246,10 @@ hir_analysis_invalid_receiver_ty = invalid `self` parameter type: `{$receiver_ty
 hir_analysis_invalid_receiver_ty_help =
     consider changing to `self`, `&self`, `&mut self`, or a type implementing `Receiver` such as `self: Box<Self>`, `self: Rc<Self>`, or `self: Arc<Self>`
 
+hir_analysis_invalid_receiver_ty_help_pointer_note =
+    Raw pointers do not implement Receiver. Consider wrapping your pointer in
+    a newtype wrapper for which you implement Receiver
+
 hir_analysis_invalid_union_field =
     field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union
     .note = union fields must not have drop side-effects, which is currently enforced via either `Copy` or `ManuallyDrop<...>`
