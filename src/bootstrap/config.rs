@@ -101,6 +101,43 @@ impl Display for DebuginfoLevel {
     }
 }
 
+#[derive(Default, Clone)]
+pub struct LLVMConfig {
+    pub assertions: bool,
+    pub tests: bool,
+    pub plugins: bool,
+    pub optimize: bool,
+    pub thin_lto: bool,
+    pub release_debuginfo: bool,
+    pub static_stdcpp: bool,
+    /// `None` if `llvm_from_ci` is true and we haven't yet downloaded llvm.
+    #[cfg(not(test))]
+    link_shared: Cell<Option<bool>>,
+    #[cfg(test)]
+    pub link_shared: Cell<Option<bool>>,
+    pub clang_cl: Option<String>,
+    pub targets: Option<String>,
+    pub experimental_targets: Option<String>,
+    pub link_jobs: Option<u32>,
+    pub version_suffix: Option<String>,
+    pub use_linker: Option<String>,
+    pub allow_old_toolchain: bool,
+    pub polly: bool,
+    pub clang: bool,
+    pub enable_warnings: bool,
+    pub from_ci: bool,
+    pub build_config: HashMap<String, String>,
+
+    pub use_lld: bool,
+    pub lld_enabled: bool,
+    pub tools_enabled: bool,
+
+    pub cflags: Option<String>,
+    pub cxxflags: Option<String>,
+    pub ldflags: Option<String>,
+    pub use_libcxx: bool,
+}
+
 /// Global configuration for the entire build and/or bootstrap.
 ///
 /// This structure is parsed from `config.toml`, and some of the fields are inferred from `git` or build-time parameters.
@@ -167,39 +204,7 @@ pub struct Config {
     pub backtrace_on_ice: bool,
 
     // llvm codegen options
-    pub llvm_assertions: bool,
-    pub llvm_tests: bool,
-    pub llvm_plugins: bool,
-    pub llvm_optimize: bool,
-    pub llvm_thin_lto: bool,
-    pub llvm_release_debuginfo: bool,
-    pub llvm_static_stdcpp: bool,
-    /// `None` if `llvm_from_ci` is true and we haven't yet downloaded llvm.
-    #[cfg(not(test))]
-    llvm_link_shared: Cell<Option<bool>>,
-    #[cfg(test)]
-    pub llvm_link_shared: Cell<Option<bool>>,
-    pub llvm_clang_cl: Option<String>,
-    pub llvm_targets: Option<String>,
-    pub llvm_experimental_targets: Option<String>,
-    pub llvm_link_jobs: Option<u32>,
-    pub llvm_version_suffix: Option<String>,
-    pub llvm_use_linker: Option<String>,
-    pub llvm_allow_old_toolchain: bool,
-    pub llvm_polly: bool,
-    pub llvm_clang: bool,
-    pub llvm_enable_warnings: bool,
-    pub llvm_from_ci: bool,
-    pub llvm_build_config: HashMap<String, String>,
-
-    pub use_lld: bool,
-    pub lld_enabled: bool,
-    pub llvm_tools_enabled: bool,
-
-    pub llvm_cflags: Option<String>,
-    pub llvm_cxxflags: Option<String>,
-    pub llvm_ldflags: Option<String>,
-    pub llvm_use_libcxx: bool,
+    pub llvm: LLVMConfig,
 
     // rust codegen options
     pub rust_optimize: RustOptimize,
@@ -1052,9 +1057,9 @@ define_config! {
 impl Config {
     pub fn default_opts() -> Config {
         let mut config = Config::default();
-        config.llvm_optimize = true;
+        config.llvm.optimize = true;
         config.ninja_in_file = true;
-        config.llvm_static_stdcpp = false;
+        config.llvm.static_stdcpp = false;
         config.backtrace = true;
         config.rust_optimize = RustOptimize::Bool(true);
         config.rust_optimize_tests = true;
@@ -1428,9 +1433,9 @@ impl Config {
             if let Some(true) = rust.incremental {
                 config.incremental = true;
             }
-            set(&mut config.use_lld, rust.use_lld);
-            set(&mut config.lld_enabled, rust.lld);
-            set(&mut config.llvm_tools_enabled, rust.llvm_tools);
+            set(&mut config.llvm.use_lld, rust.use_lld);
+            set(&mut config.llvm.lld_enabled, rust.lld);
+            set(&mut config.llvm.tools_enabled, rust.llvm_tools);
             config.rustc_parallel = rust.parallel_compiler.unwrap_or(false);
             config.rustc_default_linker = rust.default_linker;
             config.musl_root = rust.musl_root.map(PathBuf::from);
@@ -1489,32 +1494,32 @@ impl Config {
             llvm_assertions = llvm.assertions;
             llvm_tests = llvm.tests;
             llvm_plugins = llvm.plugins;
-            set(&mut config.llvm_optimize, llvm.optimize);
-            set(&mut config.llvm_thin_lto, llvm.thin_lto);
-            set(&mut config.llvm_release_debuginfo, llvm.release_debuginfo);
-            set(&mut config.llvm_static_stdcpp, llvm.static_libstdcpp);
+            set(&mut config.llvm.optimize, llvm.optimize);
+            set(&mut config.llvm.thin_lto, llvm.thin_lto);
+            set(&mut config.llvm.release_debuginfo, llvm.release_debuginfo);
+            set(&mut config.llvm.static_stdcpp, llvm.static_libstdcpp);
             if let Some(v) = llvm.link_shared {
-                config.llvm_link_shared.set(Some(v));
+                config.llvm.link_shared.set(Some(v));
             }
-            config.llvm_targets = llvm.targets.clone();
-            config.llvm_experimental_targets = llvm.experimental_targets.clone();
-            config.llvm_link_jobs = llvm.link_jobs;
-            config.llvm_version_suffix = llvm.version_suffix.clone();
-            config.llvm_clang_cl = llvm.clang_cl.clone();
+            config.llvm.targets = llvm.targets.clone();
+            config.llvm.experimental_targets = llvm.experimental_targets.clone();
+            config.llvm.link_jobs = llvm.link_jobs;
+            config.llvm.version_suffix = llvm.version_suffix.clone();
+            config.llvm.clang_cl = llvm.clang_cl.clone();
 
-            config.llvm_cflags = llvm.cflags.clone();
-            config.llvm_cxxflags = llvm.cxxflags.clone();
-            config.llvm_ldflags = llvm.ldflags.clone();
-            set(&mut config.llvm_use_libcxx, llvm.use_libcxx);
-            config.llvm_use_linker = llvm.use_linker.clone();
-            config.llvm_allow_old_toolchain = llvm.allow_old_toolchain.unwrap_or(false);
-            config.llvm_polly = llvm.polly.unwrap_or(false);
-            config.llvm_clang = llvm.clang.unwrap_or(false);
-            config.llvm_enable_warnings = llvm.enable_warnings.unwrap_or(false);
-            config.llvm_build_config = llvm.build_config.clone().unwrap_or(Default::default());
+            config.llvm.cflags = llvm.cflags.clone();
+            config.llvm.cxxflags = llvm.cxxflags.clone();
+            config.llvm.ldflags = llvm.ldflags.clone();
+            set(&mut config.llvm.use_libcxx, llvm.use_libcxx);
+            config.llvm.use_linker = llvm.use_linker.clone();
+            config.llvm.allow_old_toolchain = llvm.allow_old_toolchain.unwrap_or(false);
+            config.llvm.polly = llvm.polly.unwrap_or(false);
+            config.llvm.clang = llvm.clang.unwrap_or(false);
+            config.llvm.enable_warnings = llvm.enable_warnings.unwrap_or(false);
+            config.llvm.build_config = llvm.build_config.clone().unwrap_or(Default::default());
 
             let asserts = llvm_assertions.unwrap_or(false);
-            config.llvm_from_ci = match llvm.download_ci_llvm {
+            config.llvm.from_ci = match llvm.download_ci_llvm {
                 Some(StringOrBool::String(s)) => {
                     assert!(s == "if-available", "unknown option `{}` for download-ci-llvm", s);
                     crate::llvm::is_ci_llvm_available(&config, asserts)
@@ -1525,7 +1530,7 @@ impl Config {
                 }
             };
 
-            if config.llvm_from_ci {
+            if config.llvm.from_ci {
                 // None of the LLVM options, except assertions, are supported
                 // when using downloaded LLVM. We could just ignore these but
                 // that's potentially confusing, so force them to not be
@@ -1556,14 +1561,14 @@ impl Config {
             }
 
             // NOTE: can never be hit when downloading from CI, since we call `check_ci_llvm!(thin_lto)` above.
-            if config.llvm_thin_lto && llvm.link_shared.is_none() {
+            if config.llvm.thin_lto && llvm.link_shared.is_none() {
                 // If we're building with ThinLTO on, by default we want to link
                 // to LLVM shared, to avoid re-doing ThinLTO (which happens in
                 // the link step) with each stage.
-                config.llvm_link_shared.set(Some(true));
+                config.llvm.link_shared.set(Some(true));
             }
         } else {
-            config.llvm_from_ci =
+            config.llvm.from_ci =
                 config.channel == "dev" && crate::llvm::is_ci_llvm_available(&config, false);
         }
 
@@ -1615,7 +1620,7 @@ impl Config {
             }
         }
 
-        if config.llvm_from_ci {
+        if config.llvm.from_ci {
             let triple = &config.build.triple;
             let ci_llvm_bin = config.ci_llvm_root().join("bin");
             let build_target = config
@@ -1650,9 +1655,9 @@ impl Config {
         // Now that we've reached the end of our configuration, infer the
         // default values for all options that we haven't otherwise stored yet.
 
-        config.llvm_assertions = llvm_assertions.unwrap_or(false);
-        config.llvm_tests = llvm_tests.unwrap_or(false);
-        config.llvm_plugins = llvm_plugins.unwrap_or(false);
+        config.llvm.assertions = llvm_assertions.unwrap_or(false);
+        config.llvm.tests = llvm_tests.unwrap_or(false);
+        config.llvm.plugins = llvm_plugins.unwrap_or(false);
         config.rust_optimize = optimize.unwrap_or(RustOptimize::Bool(true));
 
         let default = debug == Some(true);
@@ -1855,7 +1860,7 @@ impl Config {
 
     /// The absolute path to the downloaded LLVM artifacts.
     pub(crate) fn ci_llvm_root(&self) -> PathBuf {
-        assert!(self.llvm_from_ci);
+        assert!(self.llvm.from_ci);
         self.out.join(&*self.build.triple).join("ci-llvm")
     }
 
@@ -1870,14 +1875,14 @@ impl Config {
     /// If `false`, llvm should be linked statically.
     /// This is computed on demand since LLVM might have to first be downloaded from CI.
     pub(crate) fn llvm_link_shared(&self) -> bool {
-        let mut opt = self.llvm_link_shared.get();
+        let mut opt = self.llvm.link_shared.get();
         if opt.is_none() && self.dry_run() {
             // just assume static for now - dynamic linking isn't supported on all platforms
             return false;
         }
 
         let llvm_link_shared = *opt.get_or_insert_with(|| {
-            if self.llvm_from_ci {
+            if self.llvm.from_ci {
                 self.maybe_download_ci_llvm();
                 let ci_llvm = self.ci_llvm_root();
                 let link_type = t!(
@@ -1891,7 +1896,7 @@ impl Config {
                 false
             }
         });
-        self.llvm_link_shared.set(opt);
+        self.llvm.link_shared.set(opt);
         llvm_link_shared
     }
 

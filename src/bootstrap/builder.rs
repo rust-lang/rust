@@ -1104,7 +1104,7 @@ impl<'a> Builder<'a> {
         let mut dylib_dirs = vec![self.rustc_libdir(compiler)];
 
         // Ensure that the downloaded LLVM libraries can be found.
-        if self.config.llvm_from_ci {
+        if self.config.llvm.from_ci {
             let ci_llvm_lib = self.out.join(&*compiler.host.triple).join("ci-llvm").join("lib");
             dylib_dirs.push(ci_llvm_lib);
         }
@@ -1872,7 +1872,7 @@ impl<'a> Builder<'a> {
         //
         // FIXME: the guard against msvc shouldn't need to be here
         if target.contains("msvc") {
-            if let Some(ref cl) = self.config.llvm_clang_cl {
+            if let Some(ref cl) = self.config.llvm.clang_cl {
                 cargo.env("CC", cl).env("CXX", cl);
             }
         } else {

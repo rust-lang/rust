@@ -809,7 +809,7 @@ impl Step for Rustc {
         // is already on by default in MSVC optimized builds, which is interpreted as --icf=all:
         // https://github.com/llvm/llvm-project/blob/3329cec2f79185bafd678f310fafadba2a8c76d2/lld/COFF/Driver.cpp#L1746
         // https://github.com/rust-lang/rust/blob/f22819bcce4abaff7d1246a56eec493418f9f4ee/compiler/rustc_codegen_ssa/src/back/linker.rs#L827
-        if builder.config.use_lld && !compiler.host.contains("msvc") {
+        if builder.config.llvm.use_lld && !compiler.host.contains("msvc") {
             cargo.rustflag("-Clink-args=-Wl,--icf=all");
         }
 
@@ -1002,7 +1002,7 @@ fn rustc_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelect
     // `__llvm_profile_instrument_memop` when linking `rustc_driver`.
     let mut llvm_linker_flags = String::new();
     if builder.config.llvm_profile_generate && target.contains("msvc") {
-        if let Some(ref clang_cl_path) = builder.config.llvm_clang_cl {
+        if let Some(ref clang_cl_path) = builder.config.llvm.clang_cl {
             // Add clang's runtime library directory to the search path
             let clang_rt_dir = get_clang_cl_resource_dir(clang_cl_path);
             llvm_linker_flags.push_str(&format!("-L{}", clang_rt_dir.display()));
@@ -1010,7 +1010,7 @@ fn rustc_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelect
     }
 
     // The config can also specify its own llvm linker flags.
-    if let Some(ref s) = builder.config.llvm_ldflags {
+    if let Some(ref s) = builder.config.llvm.ldflags {
         if !llvm_linker_flags.is_empty() {
             llvm_linker_flags.push_str(" ");
         }
@@ -1024,7 +1024,7 @@ fn rustc_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelect
 
     // Building with a static libstdc++ is only supported on linux right now,
     // not for MSVC or macOS
-    if builder.config.llvm_static_stdcpp
+    if builder.config.llvm.static_stdcpp
         && !target.contains("freebsd")
         && !target.contains("msvc")
         && !target.contains("apple")
@@ -1042,10 +1042,10 @@ fn rustc_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelect
     if builder.llvm_link_shared() {
         cargo.env("LLVM_LINK_SHARED", "1");
     }
-    if builder.config.llvm_use_libcxx {
+    if builder.config.llvm.use_libcxx {
         cargo.env("LLVM_USE_LIBCXX", "1");
     }
-    if builder.config.llvm_optimize && !builder.config.llvm_release_debuginfo {
+    if builder.config.llvm.optimize && !builder.config.llvm.release_debuginfo {
         cargo.env("LLVM_NDEBUG", "1");
     }
 }
@@ -1564,7 +1564,7 @@ impl Step for Assemble {
             });
         }
 
-        let lld_install = if builder.config.lld_enabled {
+        let lld_install = if builder.config.llvm.lld_enabled {
             Some(builder.ensure(llvm::Lld { target: target_compiler.host }))
         } else {
             None

@@ -868,7 +868,7 @@ impl Build {
             Some(Target { llvm_config, .. }) => {
                 // If the user set llvm-config we assume Rust is not patched,
                 // but first check to see if it was configured by llvm-from-ci.
-                (self.config.llvm_from_ci && target == self.config.build) || llvm_config.is_none()
+                (self.config.llvm.from_ci && target == self.config.build) || llvm_config.is_none()
             }
             None => true,
         }
@@ -902,8 +902,8 @@ impl Build {
         } else {
             let base = self.llvm_out(target).join("build");
             let base = if !self.ninja() && target.contains("msvc") {
-                if self.config.llvm_optimize {
-                    if self.config.llvm_release_debuginfo {
+                if self.config.llvm.optimize {
+                    if self.config.llvm.release_debuginfo {
                         base.join("RelWithDebInfo")
                     } else {
                         base.join("Release")
@@ -1252,7 +1252,7 @@ impl Build {
             && !target.contains("msvc")
         {
             Some(self.cc(target))
-        } else if self.config.use_lld && !self.is_fuse_ld_lld(target) && self.build == target {
+        } else if self.config.llvm.use_lld && !self.is_fuse_ld_lld(target) && self.build == target {
             Some(self.initial_lld.clone())
         } else {
             None
@@ -1262,13 +1262,13 @@ impl Build {
     // LLD is used through `-fuse-ld=lld` rather than directly.
     // Only MSVC targets use LLD directly at the moment.
     fn is_fuse_ld_lld(&self, target: TargetSelection) -> bool {
-        self.config.use_lld && !target.contains("msvc")
+        self.config.llvm.use_lld && !target.contains("msvc")
     }
 
     fn lld_flags(&self, target: TargetSelection) -> impl Iterator<Item = String> {
         let mut options = [None, None];
 
-        if self.config.use_lld {
+        if self.config.llvm.use_lld {
             if self.is_fuse_ld_lld(target) {
                 options[0] = Some("-Clink-arg=-fuse-ld=lld".to_string());
             }

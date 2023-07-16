@@ -425,7 +425,7 @@ impl Config {
         self.download_toolchain(
             &version,
             "ci-rustc",
-            &format!("{commit}-{}", self.llvm_assertions),
+            &format!("{commit}-{}", self.llvm.assertions),
             &extra_components,
             Self::download_ci_component,
         );
@@ -530,14 +530,14 @@ impl Config {
         let tarball = cache_dir.join(&filename);
         let (base_url, url, should_verify) = match mode {
             DownloadSource::CI => {
-                let dist_server = if self.llvm_assertions {
+                let dist_server = if self.llvm.assertions {
                     self.stage0_metadata.config.artifacts_with_llvm_assertions_server.clone()
                 } else {
                     self.stage0_metadata.config.artifacts_server.clone()
                 };
                 let url = format!(
                     "{}/{filename}",
-                    key.strip_suffix(&format!("-{}", self.llvm_assertions)).unwrap()
+                    key.strip_suffix(&format!("-{}", self.llvm.assertions)).unwrap()
                 );
                 (dist_server, url, false)
             }
@@ -602,13 +602,13 @@ download-rustc = false
     }
 
     pub(crate) fn maybe_download_ci_llvm(&self) {
-        if !self.llvm_from_ci {
+        if !self.llvm.from_ci {
             return;
         }
         let llvm_root = self.ci_llvm_root();
         let llvm_stamp = llvm_root.join(".llvm-stamp");
         let llvm_sha = detect_llvm_sha(&self, self.rust_info.is_managed_git_subrepository());
-        let key = format!("{}{}", llvm_sha, self.llvm_assertions);
+        let key = format!("{}{}", llvm_sha, self.llvm.assertions);
         if program_out_of_date(&llvm_stamp, &key) && !self.dry_run() {
             self.download_ci_llvm(&llvm_sha);
             if self.should_fix_bins_and_dylibs() {
@@ -644,7 +644,7 @@ download-rustc = false
     }
 
     fn download_ci_llvm(&self, llvm_sha: &str) {
-        let llvm_assertions = self.llvm_assertions;
+        let llvm_assertions = self.llvm.assertions;
 
         let cache_prefix = format!("llvm-{}-{}", llvm_sha, llvm_assertions);
         let cache_dst = self.out.join("cache");

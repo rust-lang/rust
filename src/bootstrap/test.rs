@@ -1738,7 +1738,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
 
             if !builder.config.dry_run() && matches!(suite, "run-make" | "run-make-fulldeps") {
                 // If LLD is available, add it to the PATH
-                if builder.config.lld_enabled {
+                if builder.config.llvm.lld_enabled {
                     let lld_install_root =
                         builder.ensure(llvm::Lld { target: builder.config.build });
 

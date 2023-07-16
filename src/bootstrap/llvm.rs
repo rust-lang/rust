@@ -281,7 +281,7 @@ impl Step for Llvm {
         let mut cfg = cmake::Config::new(builder.src.join(root));
         let mut ldflags = LdFlags::default();
 
-        let profile = match (builder.config.llvm_optimize, builder.config.llvm_release_debuginfo) {
+        let profile = match (builder.config.llvm.optimize, builder.config.llvm.release_debuginfo) {
             (false, _) => "Debug",
             (true, false) => "Release",
             (true, true) => "RelWithDebInfo",
@@ -289,7 +289,7 @@ impl Step for Llvm {
 
         // NOTE: remember to also update `config.example.toml` when changing the
         // defaults!
-        let llvm_targets = match &builder.config.llvm_targets {
+        let llvm_targets = match &builder.config.llvm.targets {
             Some(s) => s,
             None => {
                 "AArch64;ARM;BPF;Hexagon;LoongArch;MSP430;Mips;NVPTX;PowerPC;RISCV;\
@@ -297,15 +297,15 @@ impl Step for Llvm {
             }
         };
 
-        let llvm_exp_targets = match builder.config.llvm_experimental_targets {
+        let llvm_exp_targets = match builder.config.llvm.experimental_targets {
             Some(ref s) => s,
             None => "AVR;M68k",
         };
 
-        let assertions = if builder.config.llvm_assertions { "ON" } else { "OFF" };
-        let plugins = if builder.config.llvm_plugins { "ON" } else { "OFF" };
-        let enable_tests = if builder.config.llvm_tests { "ON" } else { "OFF" };
-        let enable_warnings = if builder.config.llvm_enable_warnings { "ON" } else { "OFF" };
+        let assertions = if builder.config.llvm.assertions { "ON" } else { "OFF" };
+        let plugins = if builder.config.llvm.plugins { "ON" } else { "OFF" };
+        let enable_tests = if builder.config.llvm.tests { "ON" } else { "OFF" };
+        let enable_warnings = if builder.config.llvm.enable_warnings { "ON" } else { "OFF" };
 
         cfg.out_dir(&out_dir)
             .profile(profile)
@@ -414,11 +414,11 @@ impl Step for Llvm {
             enabled_llvm_projects.push("compiler-rt");
         }
 
-        if builder.config.llvm_polly {
+        if builder.config.llvm.polly {
             enabled_llvm_projects.push("polly");
         }
 
-        if builder.config.llvm_clang {
+        if builder.config.llvm.clang {
             enabled_llvm_projects.push("clang");
         }
 
@@ -432,7 +432,7 @@ impl Step for Llvm {
             cfg.define("LLVM_ENABLE_PROJECTS", enabled_llvm_projects.join(";"));
         }
 
-        if let Some(num_linkers) = builder.config.llvm_link_jobs {
+        if let Some(num_linkers) = builder.config.llvm.link_jobs {
             if num_linkers > 0 {
                 cfg.define("LLVM_PARALLEL_LINK_JOBS", num_linkers.to_string());
             }
@@ -453,7 +453,7 @@ impl Step for Llvm {
                 cfg.define("LLVM_NM", host_bin.join("llvm-nm").with_extension(EXE_EXTENSION));
             }
             cfg.define("LLVM_CONFIG_PATH", llvm_config);
-            if builder.config.llvm_clang {
+            if builder.config.llvm.clang {
                 let build_bin = builder.llvm_out(builder.config.build).join("build").join("bin");
                 let clang_tblgen = build_bin.join("clang-tblgen").with_extension(EXE_EXTENSION);
                 if !builder.config.dry_run() && !clang_tblgen.exists() {
@@ -463,7 +463,7 @@ impl Step for Llvm {
             }
         }
 
-        let llvm_version_suffix = if let Some(ref suffix) = builder.config.llvm_version_suffix {
+        let llvm_version_suffix = if let Some(ref suffix) = builder.config.llvm.version_suffix {
             // Allow version-suffix="" to not define a version suffix at all.
             if !suffix.is_empty() { Some(suffix.to_string()) } else { None }
         } else if builder.config.channel == "dev" {
@@ -481,7 +481,7 @@ impl Step for Llvm {
         configure_cmake(builder, target, &mut cfg, true, ldflags, &[]);
         configure_llvm(builder, target, &mut cfg);
 
-        for (key, val) in &builder.config.llvm_build_config {
+        for (key, val) in &builder.config.llvm.build_config {
             cfg.define(key, val);
         }
 
@@ -607,7 +607,7 @@ fn configure_cmake(
         return;
     }
 
-    let (cc, cxx) = match builder.config.llvm_clang_cl {
+    let (cc, cxx) = match builder.config.llvm.clang_cl {
         Some(ref cl) => (cl.into(), cl.into()),
         None => (builder.cc(target), builder.cxx(target).unwrap()),
     };
@@ -647,7 +647,7 @@ fn configure_cmake(
         // unconditionally passed in the sccache shim. This'll get CMake to
         // correctly diagnose it's doing a 32-bit compilation and LLVM will
         // internally configure itself appropriately.
-        if builder.config.llvm_clang_cl.is_some() && target.contains("i686") {
+        if builder.config.llvm.clang_cl.is_some() && target.contains("i686") {
             cfg.env("SCCACHE_EXTRA_ARGS", "-m32");
         }
     } else {
@@ -666,7 +666,7 @@ fn configure_cmake(
 
     cfg.build_arg("-j").build_arg(builder.jobs().to_string());
     let mut cflags: OsString = builder.cflags(target, GitRepo::Llvm, CLang::C).join(" ").into();
-    if let Some(ref s) = builder.config.llvm_cflags {
+    if let Some(ref s) = builder.config.llvm.cflags {
         cflags.push(" ");
         cflags.push(s);
     }
@@ -678,7 +678,7 @@ fn configure_cmake(
             cflags.push(" -miphoneos-version-min=10.0");
         }
     }
-    if builder.config.llvm_clang_cl.is_some() {
+    if builder.config.llvm.clang_cl.is_some() {
         cflags.push(&format!(" --target={}", target));
     }
     for flag in extra_compiler_flags {
@@ -686,11 +686,11 @@ fn configure_cmake(
     }
     cfg.define("CMAKE_C_FLAGS", cflags);
     let mut cxxflags: OsString = builder.cflags(target, GitRepo::Llvm, CLang::Cxx).join(" ").into();
-    if let Some(ref s) = builder.config.llvm_cxxflags {
+    if let Some(ref s) = builder.config.llvm.cxxflags {
         cxxflags.push(" ");
         cxxflags.push(s);
     }
-    if builder.config.llvm_clang_cl.is_some() {
+    if builder.config.llvm.clang_cl.is_some() {
         cxxflags.push(&format!(" --target={}", target));
     }
     for flag in extra_compiler_flags {
@@ -713,7 +713,7 @@ fn configure_cmake(
         }
     }
 
-    if let Some(ref flags) = builder.config.llvm_ldflags {
+    if let Some(ref flags) = builder.config.llvm.ldflags {
         ldflags.push_all(flags);
     }
 
@@ -723,7 +723,7 @@ fn configure_cmake(
 
     // For distribution we want the LLVM tools to be *statically* linked to libstdc++.
     // We also do this if the user explicitly requested static libstdc++.
-    if builder.config.llvm_static_stdcpp {
+    if builder.config.llvm.static_stdcpp {
         if !target.contains("msvc") && !target.contains("netbsd") && !target.contains("solaris") {
             if target.contains("apple") || target.contains("windows") {
                 ldflags.push_all("-static-libstdc++");
@@ -745,18 +745,18 @@ fn configure_cmake(
 fn configure_llvm(builder: &Builder<'_>, target: TargetSelection, cfg: &mut cmake::Config) {
     // ThinLTO is only available when building with LLVM, enabling LLD is required.
     // Apple's linker ld64 supports ThinLTO out of the box though, so don't use LLD on Darwin.
-    if builder.config.llvm_thin_lto {
+    if builder.config.llvm.thin_lto {
         cfg.define("LLVM_ENABLE_LTO", "Thin");
         if !target.contains("apple") {
             cfg.define("LLVM_ENABLE_LLD", "ON");
         }
     }
 
-    if let Some(ref linker) = builder.config.llvm_use_linker {
+    if let Some(ref linker) = builder.config.llvm.use_linker {
         cfg.define("LLVM_USE_LINKER", linker);
     }
 
-    if builder.config.llvm_allow_old_toolchain {
+    if builder.config.llvm.allow_old_toolchain {
         cfg.define("LLVM_TEMPORARILY_ALLOW_OLD_TOOLCHAIN", "YES");
     }
 }
@@ -829,7 +829,7 @@ impl Step for Lld {
         // profiler runtime in. In that case, we need to manually ask cmake to do it, to avoid
         // linking errors, much like LLVM's cmake setup does in that situation.
         if builder.config.llvm_profile_generate && target.contains("msvc") {
-            if let Some(clang_cl_path) = builder.config.llvm_clang_cl.as_ref() {
+            if let Some(clang_cl_path) = builder.config.llvm.clang_cl.as_ref() {
                 // Find clang's runtime library directory and push that as a search path to the
                 // cmake linker flags.
                 let clang_rt_dir = get_clang_cl_resource_dir(clang_cl_path);
@@ -867,7 +867,7 @@ impl Step for Lld {
 
         // Re-use the same flags as llvm to control the level of debug information
         // generated for lld.
-        let profile = match (builder.config.llvm_optimize, builder.config.llvm_release_debuginfo) {
+        let profile = match (builder.config.llvm.optimize, builder.config.llvm.release_debuginfo) {
             (false, _) => "Debug",
             (true, false) => "Release",
             (true, true) => "RelWithDebInfo",
