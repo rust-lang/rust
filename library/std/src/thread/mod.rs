@@ -893,6 +893,9 @@ pub fn sleep(dur: Duration) {
 /// # use std::time::{Duration, Instant};
 /// # use std::thread;
 /// #
+/// # fn update() {}
+/// # fn render() {}
+/// #
 /// let max_fps = 60.0;
 /// let frame_time = Duration::from_secs_f32(1.0/max_fps);
 /// let mut next_frame = Instant::now();
@@ -912,6 +915,8 @@ pub fn sleep(dur: Duration) {
 /// # use std::time::{Duration, Instant};
 /// # use std::thread;
 /// #
+/// # fn slow_web_api_call() {}
+/// #
 /// # const MAX_DURATION: Duration = Duration::from_secs(10);
 /// #
 /// let deadline = Instant::now() + MAX_DURATION;
@@ -919,10 +924,10 @@ pub fn sleep(dur: Duration) {
 /// let mut next_attempt = Instant::now();
 /// loop {
 ///     if Instant::now() > deadline {
-///         break Err(()),
+///         break Err(());
 ///     }
 ///     if let Ready(data) = slow_web_api_call() {
-///         break Ok(data),
+///         break Ok(data);
 ///     }
 ///
 ///     next_attempt = deadline.min(next_attempt + delay);
