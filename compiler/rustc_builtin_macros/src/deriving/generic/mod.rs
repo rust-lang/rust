@@ -1149,8 +1149,9 @@ impl<'a> MethodDef<'a> {
         let unify_fieldless_variants =
             self.fieldless_variants_strategy == FieldlessVariantsStrategy::Unify;
 
-        // For zero-variant enum, this function body is unreachable.
-        // Generate `match *self {}`.
+        // For zero-variant enum, this function body is unreachable. Generate
+        // `match *self {}`. This produces machine code identical to `unsafe {
+        // core::intrinsics::unreachable() }` while being safe and stable.
         if variants.is_empty() {
             selflike_args.truncate(1);
             let match_arg = cx.expr_deref(span, selflike_args.pop().unwrap());
