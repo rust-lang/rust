@@ -301,7 +301,7 @@ fn do_mir_borrowck<'tcx>(
     let movable_generator =
         // The first argument is the generator type passed by value
         if let Some(local) = body.local_decls.raw.get(1)
-        // Get the interior types and substs which typeck computed
+        // Get the interior types and args which typeck computed
         && let ty::Generator(_, _, hir::Movability::Static) = local.ty.kind()
     {
         false

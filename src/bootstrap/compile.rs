@@ -55,17 +55,6 @@ impl Std {
     }
 }
 
-/// Given an `alias` selected by the `Step` and the paths passed on the command line,
-/// return a list of the crates that should be built.
-///
-/// Normally, people will pass *just* `library` if they pass it.
-/// But it's possible (although strange) to pass something like `library std core`.
-/// Build all crates anyway, as if they hadn't passed the other args.
-pub(crate) fn make_run_crates(run: &RunConfig<'_>, alias: &str) -> Interned<Vec<String>> {
-    let has_alias = run.paths.iter().any(|set| set.assert_single_path().path.ends_with(alias));
-    if has_alias { Default::default() } else { run.cargo_crates_in_set() }
-}
-
 impl Step for Std {
     type Output = ();
     const DEFAULT: bool = true;
@@ -80,10 +69,15 @@ impl Step for Std {
     }
 
     fn make_run(run: RunConfig<'_>) {
+        // If the paths include "library", build the entire standard library.
+        let has_alias =
+            run.paths.iter().any(|set| set.assert_single_path().path.ends_with("library"));
+        let crates = if has_alias { Default::default() } else { run.cargo_crates_in_set() };
+
         run.builder.ensure(Std {
             compiler: run.builder.compiler(run.builder.top_stage, run.build_triple()),
             target: run.target,
-            crates: make_run_crates(&run, "library"),
+            crates,
             force_recompile: false,
         });
     }
@@ -227,13 +221,6 @@ fn copy_third_party_objects(
     target: TargetSelection,
 ) -> Vec<(PathBuf, DependencyType)> {
     let mut target_deps = vec![];
-
-    // FIXME: remove this in 2021
-    if target == "x86_64-fortanix-unknown-sgx" {
-        if env::var_os("X86_FORTANIX_SGX_LIBS").is_some() {
-            builder.info("Warning: X86_FORTANIX_SGX_LIBS environment variable is ignored, libunwind is now compiled as part of rustbuild");
-        }
-    }
 
     if builder.config.sanitizers_enabled(target) && compiler.stage != 0 {
         // The sanitizers are only copied in stage1 or above,
@@ -1826,7 +1813,7 @@ pub fn run_cargo(
     });
 
     if !ok {
-        crate::detail_exit_macro!(1);
+        crate::exit!(1);
     }
 
     // Ok now we need to actually find all the files listed in `toplevel`. We've

@@ -332,20 +332,20 @@ impl<'tcx> ConstToPat<'tcx> {
                 tcx.sess.emit_err(err);
                 PatKind::Wild
             }
-            ty::Adt(adt_def, substs) if adt_def.is_enum() => {
+            ty::Adt(adt_def, args) if adt_def.is_enum() => {
                 let (&variant_index, fields) = cv.unwrap_branch().split_first().unwrap();
                 let variant_index =
                     VariantIdx::from_u32(variant_index.unwrap_leaf().try_to_u32().ok().unwrap());
                 PatKind::Variant {
                     adt_def: *adt_def,
-                    substs,
+                    args,
                     variant_index,
                     subpatterns: self.field_pats(
                         fields.iter().copied().zip(
                             adt_def.variants()[variant_index]
                                 .fields
                                 .iter()
-                                .map(|field| field.ty(self.tcx(), substs)),
+                                .map(|field| field.ty(self.tcx(), args)),
                         ),
                     )?,
                 }
@@ -354,9 +354,9 @@ impl<'tcx> ConstToPat<'tcx> {
                 subpatterns: self
                     .field_pats(cv.unwrap_branch().iter().copied().zip(fields.iter()))?,
             },
-            ty::Adt(def, substs) => PatKind::Leaf {
+            ty::Adt(def, args) => PatKind::Leaf {
                 subpatterns: self.field_pats(cv.unwrap_branch().iter().copied().zip(
-                    def.non_enum_variant().fields.iter().map(|field| field.ty(self.tcx(), substs)),
+                    def.non_enum_variant().fields.iter().map(|field| field.ty(self.tcx(), args)),
                 ))?,
             },
             ty::Slice(elem_ty) => PatKind::Slice {

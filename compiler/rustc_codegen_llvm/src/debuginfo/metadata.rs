@@ -449,7 +449,7 @@ pub fn type_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'ll D
         }
         // Box<T, A> may have a non-ZST allocator A. In that case, we
         // cannot treat Box<T, A> as just an owned alias of `*mut T`.
-        ty::Adt(def, substs) if def.is_box() && cx.layout_of(substs.type_at(1)).is_zst() => {
+        ty::Adt(def, args) if def.is_box() && cx.layout_of(args.type_at(1)).is_zst() => {
             build_pointer_or_reference_di_node(cx, t, t.boxed_ty(), unique_type_id)
         }
         ty::FnDef(..) | ty::FnPtr(_) => build_subroutine_type_di_node(cx, unique_type_id),
@@ -739,7 +739,10 @@ fn build_foreign_type_di_node<'ll, 'tcx>(
     debug!("build_foreign_type_di_node: {:?}", t);
 
     let &ty::Foreign(def_id) = unique_type_id.expect_ty().kind() else {
-        bug!("build_foreign_type_di_node() called with unexpected type: {:?}", unique_type_id.expect_ty());
+        bug!(
+            "build_foreign_type_di_node() called with unexpected type: {:?}",
+            unique_type_id.expect_ty()
+        );
     };
 
     build_type_with_children(
@@ -1004,12 +1007,12 @@ fn build_upvar_field_di_nodes<'ll, 'tcx>(
     closure_or_generator_di_node: &'ll DIType,
 ) -> SmallVec<&'ll DIType> {
     let (&def_id, up_var_tys) = match closure_or_generator_ty.kind() {
-        ty::Generator(def_id, substs, _) => {
-            let upvar_tys: SmallVec<_> = substs.as_generator().prefix_tys().collect();
+        ty::Generator(def_id, args, _) => {
+            let upvar_tys: SmallVec<_> = args.as_generator().prefix_tys().collect();
             (def_id, upvar_tys)
         }
-        ty::Closure(def_id, substs) => {
-            let upvar_tys: SmallVec<_> = substs.as_closure().upvar_tys().collect();
+        ty::Closure(def_id, args) => {
+            let upvar_tys: SmallVec<_> = args.as_closure().upvar_tys().collect();
             (def_id, upvar_tys)
         }
         _ => {
@@ -1099,7 +1102,7 @@ fn build_closure_env_di_node<'ll, 'tcx>(
     unique_type_id: UniqueTypeId<'tcx>,
 ) -> DINodeCreationResult<'ll> {
     let closure_env_type = unique_type_id.expect_ty();
-    let &ty::Closure(def_id, _substs) = closure_env_type.kind() else {
+    let &ty::Closure(def_id, _args) = closure_env_type.kind() else {
         bug!("build_closure_env_di_node() called with non-closure-type: {:?}", closure_env_type)
     };
     let containing_scope = get_namespace_for_item(cx, def_id);
@@ -1177,11 +1180,11 @@ fn build_generic_type_param_di_nodes<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     ty: Ty<'tcx>,
 ) -> SmallVec<&'ll DIType> {
-    if let ty::Adt(def, substs) = *ty.kind() {
-        if substs.types().next().is_some() {
+    if let ty::Adt(def, args) = *ty.kind() {
+        if args.types().next().is_some() {
             let generics = cx.tcx.generics_of(def.did());
             let names = get_parameter_names(cx, generics);
-            let template_params: SmallVec<_> = iter::zip(substs, names)
+            let template_params: SmallVec<_> = iter::zip(args, names)
                 .filter_map(|(kind, name)| {
                     kind.as_type().map(|ty| {
                         let actual_type =

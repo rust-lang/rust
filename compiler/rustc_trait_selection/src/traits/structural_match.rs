@@ -62,8 +62,8 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for Search<'tcx> {
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
         debug!("Search visiting ty: {:?}", ty);
 
-        let (adt_def, substs) = match *ty.kind() {
-            ty::Adt(adt_def, substs) => (adt_def, substs),
+        let (adt_def, args) = match *ty.kind() {
+            ty::Adt(adt_def, args) => (adt_def, args),
             ty::Param(_) => {
                 return ControlFlow::Break(ty);
             }
@@ -157,15 +157,15 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for Search<'tcx> {
         // instead looks directly at its fields outside
         // this match), so we skip super_visit_with.
         //
-        // (Must not recur on substs for `PhantomData<T>` cf
+        // (Must not recur on args for `PhantomData<T>` cf
         // rust-lang/rust#55028 and rust-lang/rust#55837; but also
-        // want to skip substs when only uses of generic are
+        // want to skip args when only uses of generic are
         // behind unsafe pointers `*const T`/`*mut T`.)
 
         // even though we skip super_visit_with, we must recur on
         // fields of ADT.
         let tcx = self.tcx;
-        adt_def.all_fields().map(|field| field.ty(tcx, substs)).try_for_each(|field_ty| {
+        adt_def.all_fields().map(|field| field.ty(tcx, args)).try_for_each(|field_ty| {
             let ty = self.tcx.normalize_erasing_regions(ty::ParamEnv::empty(), field_ty);
             debug!("structural-match ADT: field_ty={:?}, ty={:?}", field_ty, ty);
             ty.visit_with(self)

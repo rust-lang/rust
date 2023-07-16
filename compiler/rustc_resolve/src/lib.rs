@@ -1871,7 +1871,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             } else {
                 let crate_id = if finalize {
                     let Some(crate_id) =
-                        self.crate_loader(|c| c.process_path_extern(ident.name, ident.span)) else { return Some(self.dummy_binding); };
+                        self.crate_loader(|c| c.process_path_extern(ident.name, ident.span))
+                    else {
+                        return Some(self.dummy_binding);
+                    };
                     crate_id
                 } else {
                     self.crate_loader(|c| c.maybe_process_path_extern(ident.name))?

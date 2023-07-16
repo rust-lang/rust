@@ -1,4 +1,5 @@
-use super::with;
+use super::{with, DefId};
+use crate::rustc_internal::Opaque;
 
 #[derive(Copy, Clone, Debug)]
 pub struct Ty(pub usize);
@@ -8,6 +9,9 @@ impl Ty {
         with(|context| context.ty_kind(*self))
     }
 }
+
+type Const = Opaque;
+type Region = Opaque;
 
 #[derive(Clone, Debug)]
 pub enum TyKind {
@@ -21,6 +25,10 @@ pub enum RigidTy {
     Int(IntTy),
     Uint(UintTy),
     Float(FloatTy),
+    Adt(AdtDef, AdtSubsts),
+    Str,
+    Array(Ty, Const),
+    Slice(Ty),
     Tuple(Vec<Ty>),
 }
 
@@ -48,4 +56,19 @@ pub enum UintTy {
 pub enum FloatTy {
     F32,
     F64,
+}
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct AdtDef(pub(crate) DefId);
+
+#[derive(Clone, Debug)]
+pub struct AdtSubsts(pub Vec<GenericArgKind>);
+
+#[derive(Clone, Debug)]
+pub enum GenericArgKind {
+    // FIXME add proper region
+    Lifetime(Region),
+    Type(Ty),
+    // FIXME add proper const
+    Const(Const),
 }

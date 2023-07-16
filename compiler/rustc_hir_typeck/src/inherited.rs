@@ -1,6 +1,6 @@
 use super::callee::DeferredCallResolution;
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::HirIdMap;
@@ -61,9 +61,9 @@ pub struct Inherited<'tcx> {
     /// Whenever we introduce an adjustment from `!` into a type variable,
     /// we record that type variable here. This is later used to inform
     /// fallback. See the `fallback` module for details.
-    pub(super) diverging_type_vars: RefCell<FxHashSet<Ty<'tcx>>>,
+    pub(super) diverging_type_vars: RefCell<UnordSet<Ty<'tcx>>>,
 
-    pub(super) infer_var_info: RefCell<FxHashMap<ty::TyVid, ty::InferVarInfo>>,
+    pub(super) infer_var_info: RefCell<UnordMap<ty::TyVid, ty::InferVarInfo>>,
 }
 
 impl<'tcx> Deref for Inherited<'tcx> {

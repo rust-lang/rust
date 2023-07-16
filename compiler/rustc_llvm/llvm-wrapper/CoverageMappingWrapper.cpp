@@ -158,14 +158,9 @@ extern "C" LLVMValueRef LLVMRustCoverageCreatePGOFuncNameVar(LLVMValueRef F, con
   return wrap(createPGOFuncNameVar(*cast<Function>(unwrap(F)), FuncNameRef));
 }
 
-extern "C" uint64_t LLVMRustCoverageHashCString(const char *StrVal) {
-  StringRef StrRef(StrVal);
-  return IndexedInstrProf::ComputeHash(StrRef);
-}
-
 extern "C" uint64_t LLVMRustCoverageHashByteArray(
     const char *Bytes,
-    unsigned NumBytes) {
+    size_t NumBytes) {
   StringRef StrRef(Bytes, NumBytes);
   return IndexedInstrProf::ComputeHash(StrRef);
 }

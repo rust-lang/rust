@@ -123,7 +123,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let all_candidate_names: Vec<_> = all_candidates()
             .flat_map(|r| self.tcx().associated_items(r.def_id()).in_definition_order())
             .filter_map(|item| {
-                if item.opt_rpitit_info.is_none() && item.kind == ty::AssocKind::Type {
+                if !item.is_impl_trait_in_trait() && item.kind == ty::AssocKind::Type {
                     Some(item.name)
                 } else {
                     None
@@ -164,7 +164,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 self.tcx().associated_items(*trait_def_id).in_definition_order()
             })
             .filter_map(|item| {
-                if item.opt_rpitit_info.is_none() && item.kind == ty::AssocKind::Type {
+                if !item.is_impl_trait_in_trait() && item.kind == ty::AssocKind::Type {
                     Some(item.name)
                 } else {
                     None
@@ -247,7 +247,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 "the candidate".into()
             };
 
-            let impl_ty = tcx.at(span).type_of(impl_).subst_identity();
+            let impl_ty = tcx.at(span).type_of(impl_).instantiate_identity();
             let note = format!("{title} is defined in an impl for the type `{impl_ty}`");
 
             if let Some(span) = note_span {
@@ -295,7 +295,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             let type_candidates = candidates
                 .iter()
                 .take(limit)
-                .map(|&(impl_, _)| format!("- `{}`", tcx.at(span).type_of(impl_).subst_identity()))
+                .map(|&(impl_, _)| {
+                    format!("- `{}`", tcx.at(span).type_of(impl_).instantiate_identity())
+                })
                 .collect::<Vec<_>>()
                 .join("\n");
             let additional_types = if candidates.len() > limit {
@@ -356,13 +358,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     // `<Foo as Iterator>::Item = String`.
                     let projection_ty = pred.skip_binder().projection_ty;
 
-                    let substs_with_infer_self = tcx.mk_substs_from_iter(
+                    let args_with_infer_self = tcx.mk_args_from_iter(
                         std::iter::once(Ty::new_var(tcx, ty::TyVid::from_u32(0)).into())
-                            .chain(projection_ty.substs.iter().skip(1)),
+                            .chain(projection_ty.args.iter().skip(1)),
                     );
 
                     let quiet_projection_ty =
-                        tcx.mk_alias_ty(projection_ty.def_id, substs_with_infer_self);
+                        tcx.mk_alias_ty(projection_ty.def_id, args_with_infer_self);
 
                     let term = pred.skip_binder().term;
 

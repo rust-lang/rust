@@ -59,11 +59,6 @@ impl Compiler {
     }
 }
 
-#[allow(rustc::bad_opt_access)]
-pub fn set_thread_safe_mode(sopts: &config::UnstableOptions) {
-    rustc_data_structures::sync::set_dyn_thread_safe_mode(sopts.threads > 1);
-}
-
 /// Converts strings provided as `--cfg [cfgspec]` into a `crate_cfg`.
 pub fn parse_cfgspecs(
     handler: &EarlyErrorHandler,
@@ -190,7 +185,8 @@ pub fn parse_check_cfg(handler: &EarlyErrorHandler, specs: Vec<String>) -> Check
                                                 ExpectedValues::Some(FxHashSet::default())
                                             });
 
-                                        let ExpectedValues::Some(expected_values) = expected_values else {
+                                        let ExpectedValues::Some(expected_values) = expected_values
+                                        else {
                                             bug!("`expected_values` should be a list a values")
                                         };
 
@@ -288,6 +284,10 @@ pub struct Config {
 #[allow(rustc::bad_opt_access)]
 pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Send) -> R {
     trace!("run_compiler");
+
+    // Set parallel mode before thread pool creation, which will create `Lock`s.
+    rustc_data_structures::sync::set_dyn_thread_safe_mode(config.opts.unstable_opts.threads > 1);
+
     util::run_in_thread_pool_with_globals(
         config.opts.edition,
         config.opts.unstable_opts.threads,

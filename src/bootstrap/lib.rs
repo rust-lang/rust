@@ -27,7 +27,7 @@ use std::process::{Command, Stdio};
 use std::str;
 
 use build_helper::ci::{gha, CiEnv};
-use build_helper::detail_exit_macro;
+use build_helper::exit;
 use channel::GitInfo;
 use config::{DryRun, Target};
 use filetime::FileTime;
@@ -191,7 +191,7 @@ pub enum GitRepo {
 /// although most functions are implemented as free functions rather than
 /// methods specifically on this structure itself (to make it easier to
 /// organize).
-#[cfg_attr(not(feature = "build-metrics"), derive(Clone))]
+#[derive(Clone)]
 pub struct Build {
     /// User-specified configuration from `config.toml`.
     config: Config,
@@ -333,7 +333,6 @@ forward! {
     create(path: &Path, s: &str),
     remove(f: &Path),
     tempdir() -> PathBuf,
-    try_run(cmd: &mut Command) -> Result<(), ()>,
     llvm_link_shared() -> bool,
     download_rustc() -> bool,
     initial_rustfmt() -> Option<PathBuf>,
@@ -617,7 +616,9 @@ impl Build {
         }
 
         // Save any local changes, but avoid running `git stash pop` if there are none (since it will exit with an error).
+        #[allow(deprecated)] // diff-index reports the modifications through the exit status
         let has_local_modifications = self
+            .config
             .try_run(
                 Command::new("git")
                     .args(&["diff-index", "--quiet", "HEAD"])
@@ -711,7 +712,7 @@ impl Build {
             for failure in failures.iter() {
                 eprintln!("  - {}\n", failure);
             }
-            detail_exit_macro!(1);
+            exit!(1);
         }
 
         #[cfg(feature = "build-metrics")]
@@ -971,12 +972,36 @@ impl Build {
     /// Runs a command, printing out nice contextual information if it fails.
     /// Exits if the command failed to execute at all, otherwise returns its
     /// `status.success()`.
-    fn try_run_quiet(&self, cmd: &mut Command) -> bool {
+    fn run_quiet_delaying_failure(&self, cmd: &mut Command) -> bool {
         if self.config.dry_run() {
             return true;
         }
-        self.verbose(&format!("running: {:?}", cmd));
-        try_run_suppressed(cmd)
+        if !self.fail_fast {
+            self.verbose(&format!("running: {:?}", cmd));
+            if !try_run_suppressed(cmd) {
+                let mut failures = self.delayed_failures.borrow_mut();
+                failures.push(format!("{:?}", cmd));
+                return false;
+            }
+        } else {
+            self.run_quiet(cmd);
+        }
+        true
+    }
+
+    /// Runs a command, printing out contextual info if it fails, and delaying errors until the build finishes.
+    pub(crate) fn run_delaying_failure(&self, cmd: &mut Command) -> bool {
+        if !self.fail_fast {
+            #[allow(deprecated)] // can't use Build::try_run, that's us
+            if self.config.try_run(cmd).is_err() {
+                let mut failures = self.delayed_failures.borrow_mut();
+                failures.push(format!("{:?}", cmd));
+                return false;
+            }
+        } else {
+            self.run(cmd);
+        }
+        true
     }
 
     pub fn is_verbose_than(&self, level: usize) -> bool {
@@ -999,6 +1024,8 @@ impl Build {
         }
     }
 
+    #[must_use = "Groups should not be dropped until the Step finishes running"]
+    #[track_caller]
     fn msg_check(
         &self,
         what: impl Display,
@@ -1007,6 +1034,8 @@ impl Build {
         self.msg(Kind::Check, self.config.stage, what, self.config.build, target)
     }
 
+    #[must_use = "Groups should not be dropped until the Step finishes running"]
+    #[track_caller]
     fn msg_doc(
         &self,
         compiler: Compiler,
@@ -1016,6 +1045,8 @@ impl Build {
         self.msg(Kind::Doc, compiler.stage, what, compiler.host, target.into())
     }
 
+    #[must_use = "Groups should not be dropped until the Step finishes running"]
+    #[track_caller]
     fn msg_build(
         &self,
         compiler: Compiler,
@@ -1028,6 +1059,8 @@ impl Build {
     /// Return a `Group` guard for a [`Step`] that is built for each `--stage`.
     ///
     /// [`Step`]: crate::builder::Step
+    #[must_use = "Groups should not be dropped until the Step finishes running"]
+    #[track_caller]
     fn msg(
         &self,
         action: impl Into<Kind>,
@@ -1054,6 +1087,8 @@ impl Build {
     /// Return a `Group` guard for a [`Step`] that is only built once and isn't affected by `--stage`.
     ///
     /// [`Step`]: crate::builder::Step
+    #[must_use = "Groups should not be dropped until the Step finishes running"]
+    #[track_caller]
     fn msg_unstaged(
         &self,
         action: impl Into<Kind>,
@@ -1065,6 +1100,8 @@ impl Build {
         self.group(&msg)
     }
 
+    #[must_use = "Groups should not be dropped until the Step finishes running"]
+    #[track_caller]
     fn msg_sysroot_tool(
         &self,
         action: impl Into<Kind>,
@@ -1083,6 +1120,7 @@ impl Build {
         self.group(&msg)
     }
 
+    #[track_caller]
     fn group(&self, msg: &str) -> Option<gha::Group> {
         match self.config.dry_run {
             DryRun::SelfCheck => None,
@@ -1502,6 +1540,7 @@ impl Build {
                 }
             }
         }
+        ret.sort_unstable_by_key(|krate| krate.name); // reproducible order needed for tests
         ret
     }
 
@@ -1515,7 +1554,7 @@ impl Build {
                 "Error: Unable to find the stamp file {}, did you try to keep a nonexistent build stage?",
                 stamp.display()
             );
-            crate::detail_exit_macro!(1);
+            crate::exit!(1);
         }
 
         let mut paths = Vec::new();
@@ -1707,7 +1746,7 @@ Alternatively, set `download-ci-llvm = true` in that `[llvm]` section
 to download LLVM rather than building it.
 "
                 );
-                detail_exit_macro!(1);
+                exit!(1);
             }
         }
 

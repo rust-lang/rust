@@ -4,7 +4,7 @@ use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
 use rustc_infer::traits::Obligation;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
-use rustc_middle::ty::{self, ParamEnvAnd, Ty, TyCtxt, UserSelfTy, UserSubsts, UserType};
+use rustc_middle::ty::{self, ParamEnvAnd, Ty, TyCtxt, UserArgs, UserSelfTy, UserType};
 
 pub use rustc_middle::traits::query::type_op::AscribeUserType;
 use rustc_span::{Span, DUMMY_SP};
@@ -47,8 +47,8 @@ pub fn type_op_ascribe_user_type_with_span<'tcx>(
     let span = span.unwrap_or(DUMMY_SP);
     match user_ty {
         UserType::Ty(user_ty) => relate_mir_and_user_ty(ocx, param_env, span, mir_ty, user_ty)?,
-        UserType::TypeOf(def_id, user_substs) => {
-            relate_mir_and_user_substs(ocx, param_env, span, mir_ty, def_id, user_substs)?
+        UserType::TypeOf(def_id, user_args) => {
+            relate_mir_and_user_args(ocx, param_env, span, mir_ty, def_id, user_args)?
         }
     };
     Ok(())
@@ -74,20 +74,20 @@ fn relate_mir_and_user_ty<'tcx>(
 }
 
 #[instrument(level = "debug", skip(ocx, param_env, span))]
-fn relate_mir_and_user_substs<'tcx>(
+fn relate_mir_and_user_args<'tcx>(
     ocx: &ObligationCtxt<'_, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     span: Span,
     mir_ty: Ty<'tcx>,
     def_id: DefId,
-    user_substs: UserSubsts<'tcx>,
+    user_args: UserArgs<'tcx>,
 ) -> Result<(), NoSolution> {
     let param_env = param_env.without_const();
-    let UserSubsts { user_self_ty, substs } = user_substs;
+    let UserArgs { user_self_ty, args } = user_args;
     let tcx = ocx.infcx.tcx;
     let cause = ObligationCause::dummy_with_span(span);
 
-    let ty = tcx.type_of(def_id).subst(tcx, substs);
+    let ty = tcx.type_of(def_id).instantiate(tcx, args);
     let ty = ocx.normalize(&cause, param_env, ty);
     debug!("relate_type_and_user_type: ty of def-id is {:?}", ty);
 
@@ -98,7 +98,7 @@ fn relate_mir_and_user_substs<'tcx>(
     // Also, normalize the `instantiated_predicates`
     // because otherwise we wind up with duplicate "type
     // outlives" error messages.
-    let instantiated_predicates = tcx.predicates_of(def_id).instantiate(tcx, substs);
+    let instantiated_predicates = tcx.predicates_of(def_id).instantiate(tcx, args);
 
     debug!(?instantiated_predicates);
     for (instantiated_predicate, predicate_span) in instantiated_predicates {
@@ -116,7 +116,7 @@ fn relate_mir_and_user_substs<'tcx>(
 
     if let Some(UserSelfTy { impl_def_id, self_ty }) = user_self_ty {
         let self_ty = ocx.normalize(&cause, param_env, self_ty);
-        let impl_self_ty = tcx.type_of(impl_def_id).subst(tcx, substs);
+        let impl_self_ty = tcx.type_of(impl_def_id).instantiate(tcx, args);
         let impl_self_ty = ocx.normalize(&cause, param_env, impl_self_ty);
 
         ocx.eq(&cause, param_env, self_ty, impl_self_ty)?;
@@ -128,9 +128,9 @@ fn relate_mir_and_user_substs<'tcx>(
 
     // In addition to proving the predicates, we have to
     // prove that `ty` is well-formed -- this is because
-    // the WF of `ty` is predicated on the substs being
+    // the WF of `ty` is predicated on the args being
     // well-formed, and we haven't proven *that*. We don't
-    // want to prove the WF of types from  `substs` directly because they
+    // want to prove the WF of types from  `args` directly because they
     // haven't been normalized.
     //
     // FIXME(nmatsakis): Well, perhaps we should normalize

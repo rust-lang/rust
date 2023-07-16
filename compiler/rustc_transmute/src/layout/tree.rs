@@ -175,8 +175,8 @@ pub(crate) mod rustc {
     use rustc_middle::ty::layout::LayoutError;
     use rustc_middle::ty::util::Discr;
     use rustc_middle::ty::AdtDef;
+    use rustc_middle::ty::GenericArgsRef;
     use rustc_middle::ty::ParamEnv;
-    use rustc_middle::ty::SubstsRef;
     use rustc_middle::ty::VariantDef;
     use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
     use rustc_span::ErrorGuaranteed;
@@ -297,7 +297,7 @@ pub(crate) mod rustc {
                         .fold(Tree::unit(), |tree, elt| tree.then(elt)))
                 }
 
-                ty::Adt(adt_def, substs_ref) => {
+                ty::Adt(adt_def, args_ref) => {
                     use rustc_middle::ty::AdtKind;
 
                     // If the layout is ill-specified, halt.
@@ -316,7 +316,7 @@ pub(crate) mod rustc {
                         AdtKind::Struct => Self::from_repr_c_variant(
                             ty,
                             *adt_def,
-                            substs_ref,
+                            args_ref,
                             &layout_summary,
                             None,
                             adt_def.non_enum_variant(),
@@ -330,7 +330,7 @@ pub(crate) mod rustc {
                                 tree = tree.or(Self::from_repr_c_variant(
                                     ty,
                                     *adt_def,
-                                    substs_ref,
+                                    args_ref,
                                     &layout_summary,
                                     Some(discr),
                                     adt_def.variant(idx),
@@ -351,7 +351,7 @@ pub(crate) mod rustc {
                             let mut tree = Tree::uninhabited();
 
                             for field in adt_def.all_fields() {
-                                let variant_ty = field.ty(tcx, substs_ref);
+                                let variant_ty = field.ty(tcx, args_ref);
                                 let variant_layout = layout_of(tcx, variant_ty)?;
                                 let padding_needed = ty_layout.size() - variant_layout.size();
                                 let variant = Self::def(Def::Field(field))
@@ -383,7 +383,7 @@ pub(crate) mod rustc {
         fn from_repr_c_variant(
             ty: Ty<'tcx>,
             adt_def: AdtDef<'tcx>,
-            substs_ref: SubstsRef<'tcx>,
+            args_ref: GenericArgsRef<'tcx>,
             layout_summary: &LayoutSummary,
             discr: Option<Discr<'tcx>>,
             variant_def: &'tcx VariantDef,
@@ -427,7 +427,7 @@ pub(crate) mod rustc {
             // Next come fields.
             let fields_span = trace_span!("treeifying fields").entered();
             for field_def in variant_def.fields.iter() {
-                let field_ty = field_def.ty(tcx, substs_ref);
+                let field_ty = field_def.ty(tcx, args_ref);
                 let _span = trace_span!("treeifying field", field = ?field_ty).entered();
 
                 // begin with the field's visibility

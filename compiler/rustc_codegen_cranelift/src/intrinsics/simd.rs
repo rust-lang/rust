@@ -1,6 +1,6 @@
 //! Codegen `extern "platform-intrinsic"` intrinsics.
 
-use rustc_middle::ty::subst::SubstsRef;
+use rustc_middle::ty::GenericArgsRef;
 use rustc_span::Symbol;
 use rustc_target::abi::Endian;
 
@@ -21,7 +21,7 @@ fn report_simd_type_validation_error(
 pub(super) fn codegen_simd_intrinsic_call<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     intrinsic: Symbol,
-    _substs: SubstsRef<'tcx>,
+    _args: GenericArgsRef<'tcx>,
     args: &[mir::Operand<'tcx>],
     ret: CPlace<'tcx>,
     target: BasicBlock,

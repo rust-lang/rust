@@ -311,8 +311,10 @@ impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
     #[inline]
     fn tcx(&self) -> TyCtxt<'tcx> {
         let Some(tcx) = self.tcx else {
-            bug!("No TyCtxt found for decoding. \
-                You need to explicitly pass `(crate_metadata_ref, tcx)` to `decode` instead of just `crate_metadata_ref`.");
+            bug!(
+                "No TyCtxt found for decoding. \
+                You need to explicitly pass `(crate_metadata_ref, tcx)` to `decode` instead of just `crate_metadata_ref`."
+            );
         };
         tcx
     }
@@ -448,8 +450,10 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for SyntaxContext {
         let cdata = decoder.cdata();
 
         let Some(sess) = decoder.sess else {
-            bug!("Cannot decode SyntaxContext without Session.\
-                You need to explicitly pass `(crate_metadata_ref, tcx)` to `decode` instead of just `crate_metadata_ref`.");
+            bug!(
+                "Cannot decode SyntaxContext without Session.\
+                You need to explicitly pass `(crate_metadata_ref, tcx)` to `decode` instead of just `crate_metadata_ref`."
+            );
         };
 
         let cname = cdata.root.name();
@@ -470,8 +474,10 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for ExpnId {
         let local_cdata = decoder.cdata();
 
         let Some(sess) = decoder.sess else {
-            bug!("Cannot decode ExpnId without Session. \
-                You need to explicitly pass `(crate_metadata_ref, tcx)` to `decode` instead of just `crate_metadata_ref`.");
+            bug!(
+                "Cannot decode ExpnId without Session. \
+                You need to explicitly pass `(crate_metadata_ref, tcx)` to `decode` instead of just `crate_metadata_ref`."
+            );
         };
 
         let cnum = CrateNum::decode(decoder);
@@ -521,8 +527,10 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for Span {
         let hi = lo + len;
 
         let Some(sess) = decoder.sess else {
-            bug!("Cannot decode Span without Session. \
-                You need to explicitly pass `(crate_metadata_ref, tcx)` to `decode` instead of just `crate_metadata_ref`.")
+            bug!(
+                "Cannot decode Span without Session. \
+                You need to explicitly pass `(crate_metadata_ref, tcx)` to `decode` instead of just `crate_metadata_ref`."
+            )
         };
 
         // Index of the file in the corresponding crate's list of encoded files.

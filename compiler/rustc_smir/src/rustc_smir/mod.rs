@@ -8,7 +8,7 @@
 //! For now, we are developing everything inside `rustc`, thus, we keep this module private.
 
 use crate::rustc_internal::{self, opaque};
-use crate::stable_mir::ty::{FloatTy, IntTy, RigidTy, TyKind, UintTy};
+use crate::stable_mir::ty::{AdtSubsts, FloatTy, GenericArgKind, IntTy, RigidTy, TyKind, UintTy};
 use crate::stable_mir::{self, Context};
 use rustc_middle::mir;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -94,21 +94,38 @@ impl<'tcx> Tables<'tcx> {
                 ty::FloatTy::F32 => TyKind::RigidTy(RigidTy::Float(FloatTy::F32)),
                 ty::FloatTy::F64 => TyKind::RigidTy(RigidTy::Float(FloatTy::F64)),
             },
-            ty::Adt(_, _) => todo!(),
+            ty::Adt(adt_def, substs) => TyKind::RigidTy(RigidTy::Adt(
+                rustc_internal::adt_def(adt_def.did()),
+                AdtSubsts(
+                    substs
+                        .iter()
+                        .map(|arg| match arg.unpack() {
+                            ty::GenericArgKind::Lifetime(region) => {
+                                GenericArgKind::Lifetime(opaque(&region))
+                            }
+                            ty::GenericArgKind::Type(ty) => {
+                                GenericArgKind::Type(self.intern_ty(ty))
+                            }
+                            ty::GenericArgKind::Const(const_) => {
+                                GenericArgKind::Const(opaque(&const_))
+                            }
+                        })
+                        .collect(),
+                ),
+            )),
             ty::Foreign(_) => todo!(),
-            ty::Str => todo!(),
-            ty::Array(_, _) => todo!(),
-            ty::Slice(_) => todo!(),
+            ty::Str => TyKind::RigidTy(RigidTy::Str),
+            ty::Array(ty, constant) => {
+                TyKind::RigidTy(RigidTy::Array(self.intern_ty(*ty), opaque(constant)))
+            }
+            ty::Slice(ty) => TyKind::RigidTy(RigidTy::Slice(self.intern_ty(*ty))),
             ty::RawPtr(_) => todo!(),
             ty::Ref(_, _, _) => todo!(),
             ty::FnDef(_, _) => todo!(),
             ty::FnPtr(_) => todo!(),
-            ty::Placeholder(..) => todo!(),
             ty::Dynamic(_, _, _) => todo!(),
             ty::Closure(_, _) => todo!(),
             ty::Generator(_, _, _) => todo!(),
-            ty::GeneratorWitness(_) => todo!(),
-            ty::GeneratorWitnessMIR(_, _) => todo!(),
             ty::Never => todo!(),
             ty::Tuple(fields) => TyKind::RigidTy(RigidTy::Tuple(
                 fields.iter().map(|ty| self.intern_ty(ty)).collect(),
@@ -116,8 +133,13 @@ impl<'tcx> Tables<'tcx> {
             ty::Alias(_, _) => todo!(),
             ty::Param(_) => todo!(),
             ty::Bound(_, _) => todo!(),
-            ty::Infer(_) => todo!(),
-            ty::Error(_) => todo!(),
+            ty::Placeholder(..)
+            | ty::GeneratorWitness(_)
+            | ty::GeneratorWitnessMIR(_, _)
+            | ty::Infer(_)
+            | ty::Error(_) => {
+                unreachable!();
+            }
         }
     }
 
@@ -145,13 +167,6 @@ pub(crate) trait Stable {
     type T;
     /// Converts an object to the equivalent Stable MIR representation.
     fn stable(&self) -> Self::T;
-}
-
-impl Stable for DefId {
-    type T = stable_mir::CrateItem;
-    fn stable(&self) -> Self::T {
-        rustc_internal::crate_item(*self)
-    }
 }
 
 impl<'tcx> Stable for mir::Statement<'tcx> {
@@ -188,7 +203,9 @@ impl<'tcx> Stable for mir::Rvalue<'tcx> {
             Ref(region, kind, place) => {
                 stable_mir::mir::Rvalue::Ref(opaque(region), kind.stable(), place.stable())
             }
-            ThreadLocalRef(def_id) => stable_mir::mir::Rvalue::ThreadLocalRef(def_id.stable()),
+            ThreadLocalRef(def_id) => {
+                stable_mir::mir::Rvalue::ThreadLocalRef(rustc_internal::crate_item(*def_id))
+            }
             AddressOf(mutability, place) => {
                 stable_mir::mir::Rvalue::AddressOf(mutability.stable(), place.stable())
             }

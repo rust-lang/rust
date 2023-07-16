@@ -78,7 +78,7 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
                 span,
                 item_description: "no arms".to_string(),
                 expected: "at least one arm".to_string(),
-            })
+            });
         };
 
         let otherwise = &self.thir[*otherwise];
@@ -87,7 +87,7 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
                 span: otherwise.span,
                 item_description: format!("{:?}", otherwise.pattern.kind),
                 expected: "wildcard pattern".to_string(),
-            })
+            });
         };
         let otherwise = self.parse_block(otherwise.body)?;
 
@@ -100,7 +100,7 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
                     span: arm.pattern.span,
                     item_description: format!("{:?}", arm.pattern.kind),
                     expected: "constant pattern".to_string(),
-                })
+                });
             };
             values.push(value.eval_bits(self.tcx, self.param_env, arm.pattern.ty));
             targets.push(self.parse_block(arm.body)?);
@@ -192,12 +192,12 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
                     fields.iter().map(|e| self.parse_operand(*e)).collect::<Result<_, _>>()?
                 ))
             },
-            ExprKind::Adt(box AdtExpr{ adt_def, variant_index, substs, fields, .. }) => {
+            ExprKind::Adt(box AdtExpr{ adt_def, variant_index, args, fields, .. }) => {
                 let is_union = adt_def.is_union();
                 let active_field_index = is_union.then(|| fields[0].name);
 
                 Ok(Rvalue::Aggregate(
-                    Box::new(AggregateKind::Adt(adt_def.did(), *variant_index, substs, None, active_field_index)),
+                    Box::new(AggregateKind::Adt(adt_def.did(), *variant_index, args, None, active_field_index)),
                     fields.iter().map(|f| self.parse_operand(f.expr)).collect::<Result<_, _>>()?
                 ))
             },

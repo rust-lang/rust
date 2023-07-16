@@ -49,8 +49,8 @@ pub fn trivial_dropck_outlives<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
         // (T1..Tn) and closures have same properties as T1..Tn --
         // check if *all* of them are trivial.
         ty::Tuple(tys) => tys.iter().all(|t| trivial_dropck_outlives(tcx, t)),
-        ty::Closure(_, ref substs) => {
-            trivial_dropck_outlives(tcx, substs.as_closure().tupled_upvars_ty())
+        ty::Closure(_, ref args) => {
+            trivial_dropck_outlives(tcx, args.as_closure().tupled_upvars_ty())
         }
 
         ty::Adt(def, _) => {
@@ -237,8 +237,8 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
             Ok::<_, NoSolution>(())
         })?,
 
-        ty::Closure(_, substs) => {
-            if !substs.as_closure().is_valid() {
+        ty::Closure(_, args) => {
+            if !args.as_closure().is_valid() {
                 // By the time this code runs, all type variables ought to
                 // be fully resolved.
 
@@ -250,14 +250,14 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
             }
 
             rustc_data_structures::stack::ensure_sufficient_stack(|| {
-                for ty in substs.as_closure().upvar_tys() {
+                for ty in args.as_closure().upvar_tys() {
                     dtorck_constraint_for_ty_inner(tcx, span, for_ty, depth + 1, ty, constraints)?;
                 }
                 Ok::<_, NoSolution>(())
             })?
         }
 
-        ty::Generator(_, substs, _movability) => {
+        ty::Generator(_, args, _movability) => {
             // rust-lang/rust#49918: types can be constructed, stored
             // in the interior, and sit idle when generator yields
             // (and is subsequently dropped).
@@ -281,7 +281,7 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
             // derived from lifetimes attached to the upvars and resume
             // argument, and we *do* incorporate those here.
 
-            if !substs.as_generator().is_valid() {
+            if !args.as_generator().is_valid() {
                 // By the time this code runs, all type variables ought to
                 // be fully resolved.
                 tcx.sess.delay_span_bug(
@@ -292,28 +292,25 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
             }
 
             constraints.outlives.extend(
-                substs
-                    .as_generator()
-                    .upvar_tys()
-                    .map(|t| -> ty::subst::GenericArg<'tcx> { t.into() }),
+                args.as_generator().upvar_tys().map(|t| -> ty::GenericArg<'tcx> { t.into() }),
             );
-            constraints.outlives.push(substs.as_generator().resume_ty().into());
+            constraints.outlives.push(args.as_generator().resume_ty().into());
         }
 
-        ty::Adt(def, substs) => {
+        ty::Adt(def, args) => {
             let DropckConstraint { dtorck_types, outlives, overflows } =
                 tcx.at(span).adt_dtorck_constraint(def.did())?;
             // FIXME: we can try to recursively `dtorck_constraint_on_ty`
             // there, but that needs some way to handle cycles.
             constraints
                 .dtorck_types
-                .extend(dtorck_types.iter().map(|t| EarlyBinder::bind(*t).subst(tcx, substs)));
+                .extend(dtorck_types.iter().map(|t| EarlyBinder::bind(*t).instantiate(tcx, args)));
             constraints
                 .outlives
-                .extend(outlives.iter().map(|t| EarlyBinder::bind(*t).subst(tcx, substs)));
+                .extend(outlives.iter().map(|t| EarlyBinder::bind(*t).instantiate(tcx, args)));
             constraints
                 .overflows
-                .extend(overflows.iter().map(|t| EarlyBinder::bind(*t).subst(tcx, substs)));
+                .extend(overflows.iter().map(|t| EarlyBinder::bind(*t).instantiate(tcx, args)));
         }
 
         // Objects must be alive in order for their destructor

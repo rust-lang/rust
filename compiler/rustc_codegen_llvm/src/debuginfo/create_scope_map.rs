@@ -91,7 +91,7 @@ fn make_mir_scope<'ll, 'tcx>(
             // FIXME(eddyb) this would be `self.monomorphize(&callee)`
             // if this is moved to `rustc_codegen_ssa::mir::debuginfo`.
             let callee = cx.tcx.subst_and_normalize_erasing_regions(
-                instance.substs,
+                instance.args,
                 ty::ParamEnv::reveal_all(),
                 ty::EarlyBinder::bind(callee),
             );

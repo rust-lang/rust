@@ -12,7 +12,7 @@ use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::visit::TypeVisitableExt;
 use crate::ty::{self, List, Ty, TyCtxt};
 use crate::ty::{AdtDef, InstanceDef, ScalarInt, UserTypeAnnotationIndex};
-use crate::ty::{GenericArg, InternalSubsts, SubstsRef};
+use crate::ty::{GenericArg, GenericArgs, GenericArgsRef};
 
 use rustc_data_structures::captures::Captures;
 use rustc_errors::{DiagnosticArgValue, DiagnosticMessage, ErrorGuaranteed, IntoDiagnosticArg};
@@ -1905,15 +1905,15 @@ impl<'tcx> Debug for Operand<'tcx> {
 
 impl<'tcx> Operand<'tcx> {
     /// Convenience helper to make a constant that refers to the fn
-    /// with given `DefId` and substs. Since this is used to synthesize
+    /// with given `DefId` and args. Since this is used to synthesize
     /// MIR, assumes `user_ty` is None.
     pub fn function_handle(
         tcx: TyCtxt<'tcx>,
         def_id: DefId,
-        substs: impl IntoIterator<Item = GenericArg<'tcx>>,
+        args: impl IntoIterator<Item = GenericArg<'tcx>>,
         span: Span,
     ) -> Self {
-        let ty = Ty::new_fn_def(tcx, def_id, substs);
+        let ty = Ty::new_fn_def(tcx, def_id, args);
         Operand::Constant(Box::new(Constant {
             span,
             user_ty: None,
@@ -1981,9 +1981,9 @@ impl<'tcx> Operand<'tcx> {
     ///
     /// While this is unlikely in general, it's the normal case of what you'll
     /// find as the `func` in a [`TerminatorKind::Call`].
-    pub fn const_fn_def(&self) -> Option<(DefId, SubstsRef<'tcx>)> {
+    pub fn const_fn_def(&self) -> Option<(DefId, GenericArgsRef<'tcx>)> {
         let const_ty = self.constant()?.literal.ty();
-        if let ty::FnDef(def_id, substs) = *const_ty.kind() { Some((def_id, substs)) } else { None }
+        if let ty::FnDef(def_id, args) = *const_ty.kind() { Some((def_id, args)) } else { None }
     }
 }
 
@@ -2137,12 +2137,12 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                         }
                     }
 
-                    AggregateKind::Adt(adt_did, variant, substs, _user_ty, _) => {
+                    AggregateKind::Adt(adt_did, variant, args, _user_ty, _) => {
                         ty::tls::with(|tcx| {
                             let variant_def = &tcx.adt_def(adt_did).variant(variant);
-                            let substs = tcx.lift(substs).expect("could not lift for printing");
+                            let args = tcx.lift(args).expect("could not lift for printing");
                             let name = FmtPrinter::new(tcx, Namespace::ValueNS)
-                                .print_def_path(variant_def.def_id, substs)?
+                                .print_def_path(variant_def.def_id, args)?
                                 .into_buffer();
 
                             match variant_def.ctor_kind() {
@@ -2159,10 +2159,10 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                         })
                     }
 
-                    AggregateKind::Closure(def_id, substs) => ty::tls::with(|tcx| {
+                    AggregateKind::Closure(def_id, args) => ty::tls::with(|tcx| {
                         let name = if tcx.sess.opts.unstable_opts.span_free_formats {
-                            let substs = tcx.lift(substs).unwrap();
-                            format!("[closure@{}]", tcx.def_path_str_with_substs(def_id, substs),)
+                            let args = tcx.lift(args).unwrap();
+                            format!("[closure@{}]", tcx.def_path_str_with_args(def_id, args),)
                         } else {
                             let span = tcx.def_span(def_id);
                             format!(
@@ -2493,7 +2493,7 @@ impl<'tcx> ConstantKind<'tcx> {
         };
         debug!("expr.kind: {:?}", expr.kind);
 
-        let ty = tcx.type_of(def).subst_identity();
+        let ty = tcx.type_of(def).instantiate_identity();
         debug!(?ty);
 
         // FIXME(const_generics): We currently have to special case parameters because `min_const_generics`
@@ -2521,23 +2521,22 @@ impl<'tcx> ConstantKind<'tcx> {
         }
 
         let hir_id = tcx.hir().local_def_id_to_hir_id(def);
-        let parent_substs = if let Some(parent_hir_id) = tcx.hir().opt_parent_id(hir_id)
+        let parent_args = if let Some(parent_hir_id) = tcx.hir().opt_parent_id(hir_id)
             && let Some(parent_did) = parent_hir_id.as_owner()
         {
-            InternalSubsts::identity_for_item(tcx, parent_did)
+            GenericArgs::identity_for_item(tcx, parent_did)
         } else {
             List::empty()
         };
-        debug!(?parent_substs);
+        debug!(?parent_args);
 
         let did = def.to_def_id();
-        let child_substs = InternalSubsts::identity_for_item(tcx, did);
-        let substs =
-            tcx.mk_substs_from_iter(parent_substs.into_iter().chain(child_substs.into_iter()));
-        debug!(?substs);
+        let child_args = GenericArgs::identity_for_item(tcx, did);
+        let args = tcx.mk_args_from_iter(parent_args.into_iter().chain(child_args.into_iter()));
+        debug!(?args);
 
         let span = tcx.def_span(def);
-        let uneval = UnevaluatedConst::new(did, substs);
+        let uneval = UnevaluatedConst::new(did, args);
         debug!(?span, ?param_env);
 
         match tcx.const_eval_resolve(param_env, uneval, Some(span)) {
@@ -2552,7 +2551,7 @@ impl<'tcx> ConstantKind<'tcx> {
                 Self::Unevaluated(
                     UnevaluatedConst {
                         def: did,
-                        substs: InternalSubsts::identity_for_item(tcx, did),
+                        args: GenericArgs::identity_for_item(tcx, did),
                         promoted: None,
                     },
                     ty,
@@ -2578,7 +2577,7 @@ impl<'tcx> ConstantKind<'tcx> {
 #[derive(Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub struct UnevaluatedConst<'tcx> {
     pub def: DefId,
-    pub substs: SubstsRef<'tcx>,
+    pub args: GenericArgsRef<'tcx>,
     pub promoted: Option<Promoted>,
 }
 
@@ -2586,14 +2585,14 @@ impl<'tcx> UnevaluatedConst<'tcx> {
     #[inline]
     pub fn shrink(self) -> ty::UnevaluatedConst<'tcx> {
         assert_eq!(self.promoted, None);
-        ty::UnevaluatedConst { def: self.def, substs: self.substs }
+        ty::UnevaluatedConst { def: self.def, args: self.args }
     }
 }
 
 impl<'tcx> UnevaluatedConst<'tcx> {
     #[inline]
-    pub fn new(def: DefId, substs: SubstsRef<'tcx>) -> UnevaluatedConst<'tcx> {
-        UnevaluatedConst { def, substs, promoted: Default::default() }
+    pub fn new(def: DefId, args: GenericArgsRef<'tcx>) -> UnevaluatedConst<'tcx> {
+        UnevaluatedConst { def, args, promoted: Default::default() }
     }
 }
 
@@ -2906,15 +2905,15 @@ fn pretty_print_const_value<'tcx>(
                         ty::Adt(def, _) if def.variants().is_empty() => {
                             fmt.write_str(&format!("{{unreachable(): {}}}", ty))?;
                         }
-                        ty::Adt(def, substs) => {
+                        ty::Adt(def, args) => {
                             let variant_idx = contents
                                 .variant
                                 .expect("destructed mir constant of adt without variant idx");
                             let variant_def = &def.variant(variant_idx);
-                            let substs = tcx.lift(substs).unwrap();
+                            let args = tcx.lift(args).unwrap();
                             let mut cx = FmtPrinter::new(tcx, Namespace::ValueNS);
                             cx.print_alloc_ids = true;
-                            let cx = cx.print_value_path(variant_def.def_id, substs)?;
+                            let cx = cx.print_value_path(variant_def.def_id, args)?;
                             fmt.write_str(&cx.into_buffer())?;
 
                             match variant_def.ctor_kind() {

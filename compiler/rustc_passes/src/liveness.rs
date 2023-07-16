@@ -747,7 +747,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
         let ty = self.typeck_results.node_type(hir_id);
         match ty.kind() {
-            ty::Closure(_def_id, substs) => match substs.as_closure().kind() {
+            ty::Closure(_def_id, args) => match args.as_closure().kind() {
                 ty::ClosureKind::Fn => {}
                 ty::ClosureKind::FnMut => {}
                 ty::ClosureKind::FnOnce => return succ,
@@ -1683,12 +1683,16 @@ impl<'tcx> Liveness<'_, 'tcx> {
         opt_body: Option<&hir::Body<'_>>,
     ) -> Vec<errors::UnusedVariableStringInterp> {
         let mut suggs = Vec::new();
-        let Some(opt_body) = opt_body else { return suggs; };
+        let Some(opt_body) = opt_body else {
+            return suggs;
+        };
         let mut visitor = CollectLitsVisitor { lit_exprs: vec![] };
         intravisit::walk_body(&mut visitor, opt_body);
         for lit_expr in visitor.lit_exprs {
             let hir::ExprKind::Lit(litx) = &lit_expr.kind else { continue };
-            let rustc_ast::LitKind::Str(syb, _) = litx.node else{ continue; };
+            let rustc_ast::LitKind::Str(syb, _) = litx.node else {
+                continue;
+            };
             let name_str: &str = syb.as_str();
             let name_pa = format!("{{{name}}}");
             if name_str.contains(&name_pa) {

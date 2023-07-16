@@ -651,7 +651,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         ExpandResult::Ready(match invoc.kind {
             InvocationKind::Bang { mac, .. } => match ext {
                 SyntaxExtensionKind::Bang(expander) => {
-                    let Ok(tok_result) = expander.expand(self.cx, span, mac.args.tokens.clone()) else {
+                    let Ok(tok_result) = expander.expand(self.cx, span, mac.args.tokens.clone())
+                    else {
                         return ExpandResult::Ready(fragment_kind.dummy(span));
                     };
                     self.parse_ast_fragment(tok_result, fragment_kind, &mac.path, span)
@@ -704,7 +705,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         self.cx.emit_err(UnsupportedKeyValue { span });
                     }
                     let inner_tokens = attr_item.args.inner_tokens();
-                    let Ok(tok_result) = expander.expand(self.cx, span, inner_tokens, tokens) else {
+                    let Ok(tok_result) = expander.expand(self.cx, span, inner_tokens, tokens)
+                    else {
                         return ExpandResult::Ready(fragment_kind.dummy(span));
                     };
                     self.parse_ast_fragment(tok_result, fragment_kind, &attr_item.path, span)
@@ -1087,9 +1089,7 @@ impl InvocationCollectorNode for P<ast::Item> {
 
         // Work around borrow checker not seeing through `P`'s deref.
         let (ident, span, mut attrs) = (node.ident, node.span, mem::take(&mut node.attrs));
-        let ItemKind::Mod(_, mod_kind) = &mut node.kind else {
-            unreachable!()
-        };
+        let ItemKind::Mod(_, mod_kind) = &mut node.kind else { unreachable!() };
 
         let ecx = &mut collector.cx;
         let (file_path, dir_path, dir_ownership) = match mod_kind {

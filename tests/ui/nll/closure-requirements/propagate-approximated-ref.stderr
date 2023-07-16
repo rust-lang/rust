@@ -4,7 +4,7 @@ note: external requirements
 LL |     establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
    |                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: defining type: supply::{closure#0} with closure substs [
+   = note: defining type: supply::{closure#0} with closure args [
                i16,
                for<Region(BrAnon(None)), Region(BrAnon(None)), Region(BrAnon(None)), Region(BrAnon(None)), Region(BrAnon(None)), Region(BrAnon(None))> extern "rust-call" fn((&ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon(None) }) std::cell::Cell<&'?1 &ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrAnon(None) }) u32>, &ReLateBound(DebruijnIndex(0), BoundRegion { var: 2, kind: BrAnon(None) }) std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 3, kind: BrAnon(None) }) &'?2 u32>, &ReLateBound(DebruijnIndex(0), BoundRegion { var: 4, kind: BrAnon(None) }) std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrAnon(None) }) u32>, &ReLateBound(DebruijnIndex(0), BoundRegion { var: 5, kind: BrAnon(None) }) std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 3, kind: BrAnon(None) }) u32>)),
                (),

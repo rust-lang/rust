@@ -1361,7 +1361,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
 
     fn visit_generic_params(&mut self, params: &'ast [GenericParam], add_self_upper: bool) {
         // For type parameter defaults, we have to ban access
-        // to following type parameters, as the InternalSubsts can only
+        // to following type parameters, as the GenericArgs can only
         // provide previous type parameters as they're built. We
         // put all the parameters on the ban list and then remove
         // them one by one as they are processed and become available.
@@ -2460,8 +2460,11 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         F: FnOnce(&mut Self),
     {
         debug!("with_generic_param_rib");
-        let LifetimeRibKind::Generics { binder, span: generics_span, kind: generics_kind, .. }
-            = lifetime_kind else { panic!() };
+        let LifetimeRibKind::Generics { binder, span: generics_span, kind: generics_kind, .. } =
+            lifetime_kind
+        else {
+            panic!()
+        };
 
         let mut function_type_rib = Rib::new(kind);
         let mut function_value_rib = Rib::new(kind);
@@ -2972,7 +2975,9 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         F: FnOnce(Ident, String, Option<Symbol>) -> ResolutionError<'a>,
     {
         // If there is a TraitRef in scope for an impl, then the method must be in the trait.
-        let Some((module, _)) = self.current_trait_ref else { return; };
+        let Some((module, _)) = self.current_trait_ref else {
+            return;
+        };
         ident.span.normalize_to_macros_2_0_and_adjust(module.expansion);
         let key = BindingKey::new(ident, ns);
         let mut binding = self.r.resolution(module, key).try_borrow().ok().and_then(|r| r.binding);
@@ -3917,11 +3922,15 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             };
             if res == unqualified_result {
                 let lint = lint::builtin::UNUSED_QUALIFICATIONS;
-                self.r.lint_buffer.buffer_lint(
+                self.r.lint_buffer.buffer_lint_with_diagnostic(
                     lint,
                     finalize.node_id,
                     finalize.path_span,
                     "unnecessary qualification",
+                    lint::BuiltinLintDiagnostics::UnusedQualifications {
+                        path_span: finalize.path_span,
+                        unqualified_path: path.last().unwrap().ident
+                    }
                 )
             }
         }

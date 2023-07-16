@@ -153,16 +153,6 @@ pub fn symlink_dir(config: &Config, original: &Path, link: &Path) -> io::Result<
     }
 }
 
-/// The CI environment rustbuild is running in. This mainly affects how the logs
-/// are printed.
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub enum CiEnv {
-    /// Not a CI environment.
-    None,
-    /// The GitHub Actions environment, for Linux (including Docker), Windows and macOS builds.
-    GitHubActions,
-}
-
 pub fn forcing_clang_based_tests() -> bool {
     if let Some(var) = env::var_os("RUSTBUILD_FORCE_CLANG_BASED_TESTS") {
         match &var.to_string_lossy().to_lowercase()[..] {
@@ -229,7 +219,7 @@ pub fn is_valid_test_suite_arg<'a, P: AsRef<Path>>(
 
 pub fn run(cmd: &mut Command, print_cmd_on_fail: bool) {
     if try_run(cmd, print_cmd_on_fail).is_err() {
-        crate::detail_exit_macro!(1);
+        crate::exit!(1);
     }
 }
 
@@ -253,7 +243,7 @@ pub fn check_run(cmd: &mut Command, print_cmd_on_fail: bool) -> bool {
 
 pub fn run_suppressed(cmd: &mut Command) {
     if !try_run_suppressed(cmd) {
-        crate::detail_exit_macro!(1);
+        crate::exit!(1);
     }
 }
 

@@ -91,7 +91,12 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
                 kind.emit_unsafe_op_in_unsafe_fn_lint(self.tcx, self.hir_context, span);
             }
             SafetyContext::Safe => {
-                kind.emit_requires_unsafe_err(self.tcx, span, unsafe_op_in_unsafe_fn_allowed);
+                kind.emit_requires_unsafe_err(
+                    self.tcx,
+                    span,
+                    self.hir_context,
+                    unsafe_op_in_unsafe_fn_allowed,
+                );
             }
         }
     }
@@ -383,7 +388,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             ExprKind::Adt(box AdtExpr {
                 adt_def,
                 variant_index: _,
-                substs: _,
+                args: _,
                 user_ty: _,
                 fields: _,
                 base: _,
@@ -393,14 +398,14 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             },
             ExprKind::Closure(box ClosureExpr {
                 closure_id,
-                substs: _,
+                args: _,
                 upvars: _,
                 movability: _,
                 fake_reads: _,
             }) => {
                 self.visit_inner_body(closure_id);
             }
-            ExprKind::ConstBlock { did, substs: _ } => {
+            ExprKind::ConstBlock { did, args: _ } => {
                 let def_id = did.expect_local();
                 self.visit_inner_body(def_id);
             }
@@ -602,98 +607,164 @@ impl UnsafeOpKind {
         &self,
         tcx: TyCtxt<'_>,
         span: Span,
+        hir_context: hir::HirId,
         unsafe_op_in_unsafe_fn_allowed: bool,
     ) {
+        let note_non_inherited = tcx.hir().parent_iter(hir_context).find(|(id, node)| {
+            if let hir::Node::Expr(block) = node
+                && let hir::ExprKind::Block(block, _) = block.kind
+                && let hir::BlockCheckMode::UnsafeBlock(_) = block.rules
+            {
+                true
+            }
+            else if let Some(sig) = tcx.hir().fn_sig_by_hir_id(*id)
+                && sig.header.is_unsafe()
+            {
+                true
+            } else {
+                false
+            }
+        });
+        let unsafe_not_inherited_note = if let Some((id, _)) = note_non_inherited {
+            let span = tcx.hir().span(id);
+            let span = tcx.sess.source_map().guess_head_span(span);
+            Some(UnsafeNotInheritedNote { span })
+        } else {
+            None
+        };
+
         match self {
             CallToUnsafeFunction(Some(did)) if unsafe_op_in_unsafe_fn_allowed => {
                 tcx.sess.emit_err(CallToUnsafeFunctionRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
                     span,
+                    unsafe_not_inherited_note,
                     function: &tcx.def_path_str(*did),
                 });
             }
             CallToUnsafeFunction(Some(did)) => {
                 tcx.sess.emit_err(CallToUnsafeFunctionRequiresUnsafe {
                     span,
+                    unsafe_not_inherited_note,
                     function: &tcx.def_path_str(*did),
                 });
             }
             CallToUnsafeFunction(None) if unsafe_op_in_unsafe_fn_allowed => {
                 tcx.sess.emit_err(
-                    CallToUnsafeFunctionRequiresUnsafeNamelessUnsafeOpInUnsafeFnAllowed { span },
+                    CallToUnsafeFunctionRequiresUnsafeNamelessUnsafeOpInUnsafeFnAllowed {
+                        span,
+                        unsafe_not_inherited_note,
+                    },
                 );
             }
             CallToUnsafeFunction(None) => {
-                tcx.sess.emit_err(CallToUnsafeFunctionRequiresUnsafeNameless { span });
+                tcx.sess.emit_err(CallToUnsafeFunctionRequiresUnsafeNameless {
+                    span,
+                    unsafe_not_inherited_note,
+                });
             }
             UseOfInlineAssembly if unsafe_op_in_unsafe_fn_allowed => {
-                tcx.sess
-                    .emit_err(UseOfInlineAssemblyRequiresUnsafeUnsafeOpInUnsafeFnAllowed { span });
+                tcx.sess.emit_err(UseOfInlineAssemblyRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
+                    span,
+                    unsafe_not_inherited_note,
+                });
             }
             UseOfInlineAssembly => {
-                tcx.sess.emit_err(UseOfInlineAssemblyRequiresUnsafe { span });
+                tcx.sess.emit_err(UseOfInlineAssemblyRequiresUnsafe {
+                    span,
+                    unsafe_not_inherited_note,
+                });
             }
             InitializingTypeWith if unsafe_op_in_unsafe_fn_allowed => {
-                tcx.sess
-                    .emit_err(InitializingTypeWithRequiresUnsafeUnsafeOpInUnsafeFnAllowed { span });
+                tcx.sess.emit_err(InitializingTypeWithRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
+                    span,
+                    unsafe_not_inherited_note,
+                });
             }
             InitializingTypeWith => {
-                tcx.sess.emit_err(InitializingTypeWithRequiresUnsafe { span });
+                tcx.sess.emit_err(InitializingTypeWithRequiresUnsafe {
+                    span,
+                    unsafe_not_inherited_note,
+                });
             }
             UseOfMutableStatic if unsafe_op_in_unsafe_fn_allowed => {
-                tcx.sess
-                    .emit_err(UseOfMutableStaticRequiresUnsafeUnsafeOpInUnsafeFnAllowed { span });
+                tcx.sess.emit_err(UseOfMutableStaticRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
+                    span,
+                    unsafe_not_inherited_note,
+                });
             }
             UseOfMutableStatic => {
-                tcx.sess.emit_err(UseOfMutableStaticRequiresUnsafe { span });
+                tcx.sess
+                    .emit_err(UseOfMutableStaticRequiresUnsafe { span, unsafe_not_inherited_note });
             }
             UseOfExternStatic if unsafe_op_in_unsafe_fn_allowed => {
-                tcx.sess
-                    .emit_err(UseOfExternStaticRequiresUnsafeUnsafeOpInUnsafeFnAllowed { span });
+                tcx.sess.emit_err(UseOfExternStaticRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
+                    span,
+                    unsafe_not_inherited_note,
+                });
             }
             UseOfExternStatic => {
-                tcx.sess.emit_err(UseOfExternStaticRequiresUnsafe { span });
+                tcx.sess
+                    .emit_err(UseOfExternStaticRequiresUnsafe { span, unsafe_not_inherited_note });
             }
             DerefOfRawPointer if unsafe_op_in_unsafe_fn_allowed => {
-                tcx.sess
-                    .emit_err(DerefOfRawPointerRequiresUnsafeUnsafeOpInUnsafeFnAllowed { span });
+                tcx.sess.emit_err(DerefOfRawPointerRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
+                    span,
+                    unsafe_not_inherited_note,
+                });
             }
             DerefOfRawPointer => {
-                tcx.sess.emit_err(DerefOfRawPointerRequiresUnsafe { span });
+                tcx.sess
+                    .emit_err(DerefOfRawPointerRequiresUnsafe { span, unsafe_not_inherited_note });
             }
             AccessToUnionField if unsafe_op_in_unsafe_fn_allowed => {
-                tcx.sess
-                    .emit_err(AccessToUnionFieldRequiresUnsafeUnsafeOpInUnsafeFnAllowed { span });
+                tcx.sess.emit_err(AccessToUnionFieldRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
+                    span,
+                    unsafe_not_inherited_note,
+                });
             }
             AccessToUnionField => {
-                tcx.sess.emit_err(AccessToUnionFieldRequiresUnsafe { span });
+                tcx.sess
+                    .emit_err(AccessToUnionFieldRequiresUnsafe { span, unsafe_not_inherited_note });
             }
             MutationOfLayoutConstrainedField if unsafe_op_in_unsafe_fn_allowed => {
                 tcx.sess.emit_err(
                     MutationOfLayoutConstrainedFieldRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
                         span,
+                        unsafe_not_inherited_note,
                     },
                 );
             }
             MutationOfLayoutConstrainedField => {
-                tcx.sess.emit_err(MutationOfLayoutConstrainedFieldRequiresUnsafe { span });
+                tcx.sess.emit_err(MutationOfLayoutConstrainedFieldRequiresUnsafe {
+                    span,
+                    unsafe_not_inherited_note,
+                });
             }
             BorrowOfLayoutConstrainedField if unsafe_op_in_unsafe_fn_allowed => {
                 tcx.sess.emit_err(
-                    BorrowOfLayoutConstrainedFieldRequiresUnsafeUnsafeOpInUnsafeFnAllowed { span },
+                    BorrowOfLayoutConstrainedFieldRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
+                        span,
+                        unsafe_not_inherited_note,
+                    },
                 );
             }
             BorrowOfLayoutConstrainedField => {
-                tcx.sess.emit_err(BorrowOfLayoutConstrainedFieldRequiresUnsafe { span });
+                tcx.sess.emit_err(BorrowOfLayoutConstrainedFieldRequiresUnsafe {
+                    span,
+                    unsafe_not_inherited_note,
+                });
             }
             CallToFunctionWith(did) if unsafe_op_in_unsafe_fn_allowed => {
                 tcx.sess.emit_err(CallToFunctionWithRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
                     span,
+                    unsafe_not_inherited_note,
                     function: &tcx.def_path_str(*did),
                 });
             }
             CallToFunctionWith(did) => {
                 tcx.sess.emit_err(CallToFunctionWithRequiresUnsafe {
                     span,
+                    unsafe_not_inherited_note,
                     function: &tcx.def_path_str(*did),
                 });
             }
@@ -712,9 +783,7 @@ pub fn thir_check_unsafety(tcx: TyCtxt<'_>, def: LocalDefId) {
         return;
     }
 
-    let Ok((thir, expr)) = tcx.thir_body(def) else {
-        return
-    };
+    let Ok((thir, expr)) = tcx.thir_body(def) else { return };
     let thir = &thir.borrow();
     // If `thir` is empty, a type error occurred, skip this body.
     if thir.exprs.is_empty() {

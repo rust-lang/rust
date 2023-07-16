@@ -135,8 +135,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         let fn_val = self.get_ptr_fn(fn_ptr)?;
                         (fn_val, self.fn_abi_of_fn_ptr(fn_sig_binder, extra_args)?, false)
                     }
-                    ty::FnDef(def_id, substs) => {
-                        let instance = self.resolve(def_id, substs)?;
+                    ty::FnDef(def_id, args) => {
+                        let instance = self.resolve(def_id, args)?;
                         (
                             FnVal::Instance(instance),
                             self.fn_abi_of_instance(instance, extra_args)?,
@@ -390,7 +390,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             ));
             // Allocate enough memory to hold `src`.
             let Some((size, align)) = self.size_and_align_of_mplace(&src)? else {
-                span_bug!(self.cur_span(), "unsized fn arg with `extern` type tail should not be allowed")
+                span_bug!(
+                    self.cur_span(),
+                    "unsized fn arg with `extern` type tail should not be allowed"
+                )
             };
             let ptr = self.allocate_ptr(size, align, MemoryKind::Stack)?;
             let dest_place =
@@ -468,10 +471,18 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             | ty::InstanceDef::ThreadLocalShim(..)
             | ty::InstanceDef::Item(_) => {
                 // We need MIR for this fn
-                let Some((body, instance)) =
-                    M::find_mir_or_eval_fn(self, instance, caller_abi, args, destination, target, unwind)? else {
-                        return Ok(());
-                    };
+                let Some((body, instance)) = M::find_mir_or_eval_fn(
+                    self,
+                    instance,
+                    caller_abi,
+                    args,
+                    destination,
+                    target,
+                    unwind,
+                )?
+                else {
+                    return Ok(());
+                };
 
                 // Compute callee information using the `instance` returned by
                 // `find_mir_or_eval_fn`.
@@ -702,8 +713,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         .tcx
                         .struct_tail_erasing_lifetimes(receiver_place.layout.ty, self.param_env);
                     let ty::Dynamic(data, _, ty::Dyn) = receiver_tail.kind() else {
-                            span_bug!(self.cur_span(), "dynamic call on non-`dyn` type {}", receiver_tail)
-                        };
+                        span_bug!(
+                            self.cur_span(),
+                            "dynamic call on non-`dyn` type {}",
+                            receiver_tail
+                        )
+                    };
                     assert!(receiver_place.layout.is_unsized());
 
                     // Get the required information from the vtable.
@@ -721,7 +736,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
                 // Now determine the actual method to call. We can do that in two different ways and
                 // compare them to ensure everything fits.
-                let Some(ty::VtblEntry::Method(fn_inst)) = self.get_vtable_entries(vptr)?.get(idx).copied() else {
+                let Some(ty::VtblEntry::Method(fn_inst)) =
+                    self.get_vtable_entries(vptr)?.get(idx).copied()
+                else {
                     // FIXME(fee1-dead) these could be variants of the UB info enum instead of this
                     throw_ub_custom!(fluent::const_eval_dyn_call_not_a_method);
                 };
@@ -731,7 +748,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
                     let trait_def_id = tcx.trait_of_item(def_id).unwrap();
                     let virtual_trait_ref =
-                        ty::TraitRef::from_method(tcx, trait_def_id, instance.substs);
+                        ty::TraitRef::from_method(tcx, trait_def_id, instance.args);
                     let existential_trait_ref =
                         ty::ExistentialTraitRef::erase_self_ty(tcx, virtual_trait_ref);
                     let concrete_trait_ref = existential_trait_ref.with_self_ty(tcx, dyn_ty);
@@ -740,7 +757,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         tcx,
                         self.param_env,
                         def_id,
-                        instance.substs.rebase_onto(tcx, trait_def_id, concrete_trait_ref.substs),
+                        instance.args.rebase_onto(tcx, trait_def_id, concrete_trait_ref.args),
                     )
                     .unwrap();
                     assert_eq!(fn_inst, concrete_method);

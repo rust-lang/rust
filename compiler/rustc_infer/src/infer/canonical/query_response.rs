@@ -25,8 +25,8 @@ use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::relate::TypeRelation;
-use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
 use rustc_middle::ty::{self, BoundVar, ToPredicate, Ty, TyCtxt};
+use rustc_middle::ty::{GenericArg, GenericArgKind};
 use rustc_span::{Span, Symbol};
 use std::fmt::Debug;
 use std::iter;
@@ -484,7 +484,7 @@ impl<'tcx> InferCtxt<'tcx> {
         // given variable in the loop above, use that. Otherwise, use
         // a fresh inference variable.
         let result_subst = CanonicalVarValues {
-            var_values: self.tcx.mk_substs_from_iter(
+            var_values: self.tcx.mk_args_from_iter(
                 query_response.variables.iter().enumerate().map(|(index, info)| {
                     if info.is_existential() {
                         match opt_values[BoundVar::new(index)] {
@@ -520,7 +520,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 self.at(cause, param_env)
                     .eq(
                         DefineOpaqueTypes::Yes,
-                        Ty::new_opaque(self.tcx, a.def_id.to_def_id(), a.substs),
+                        Ty::new_opaque(self.tcx, a.def_id.to_def_id(), a.args),
                         b,
                     )?
                     .obligations,

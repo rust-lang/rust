@@ -11,11 +11,11 @@ use core::fmt::Display;
 use rustc_data_structures::base_n;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
-use rustc_middle::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
 use rustc_middle::ty::{
     self, Const, ExistentialPredicate, FloatTy, FnSig, Instance, IntTy, List, Region, RegionKind,
     TermKind, Ty, TyCtxt, UintTy,
 };
+use rustc_middle::ty::{GenericArg, GenericArgKind, GenericArgsRef};
 use rustc_span::def_id::DefId;
 use rustc_span::sym;
 use rustc_target::abi::call::{Conv, FnAbi};
@@ -212,12 +212,12 @@ fn encode_predicate<'tcx>(
         ty::ExistentialPredicate::Trait(trait_ref) => {
             let name = encode_ty_name(tcx, trait_ref.def_id);
             let _ = write!(s, "u{}{}", name.len(), &name);
-            s.push_str(&encode_substs(tcx, trait_ref.substs, dict, options));
+            s.push_str(&encode_args(tcx, trait_ref.args, dict, options));
         }
         ty::ExistentialPredicate::Projection(projection) => {
             let name = encode_ty_name(tcx, projection.def_id);
             let _ = write!(s, "u{}{}", name.len(), &name);
-            s.push_str(&encode_substs(tcx, projection.substs, dict, options));
+            s.push_str(&encode_args(tcx, projection.args, dict, options));
             match projection.term.unpack() {
                 TermKind::Ty(ty) => s.push_str(&encode_ty(tcx, ty, dict, options)),
                 TermKind::Const(c) => s.push_str(&encode_const(tcx, c, dict, options)),
@@ -286,21 +286,21 @@ fn encode_region<'tcx>(
     s
 }
 
-/// Encodes substs using the Itanium C++ ABI with vendor extended type qualifiers and types for Rust
+/// Encodes args using the Itanium C++ ABI with vendor extended type qualifiers and types for Rust
 /// types that are not used at the FFI boundary.
-fn encode_substs<'tcx>(
+fn encode_args<'tcx>(
     tcx: TyCtxt<'tcx>,
-    substs: SubstsRef<'tcx>,
+    args: GenericArgsRef<'tcx>,
     dict: &mut FxHashMap<DictKey<'tcx>, usize>,
     options: EncodeTyOptions,
 ) -> String {
     // [I<subst1..substN>E] as part of vendor extended type
     let mut s = String::new();
-    let substs: Vec<GenericArg<'_>> = substs.iter().collect();
-    if !substs.is_empty() {
+    let args: Vec<GenericArg<'_>> = args.iter().collect();
+    if !args.is_empty() {
         s.push('I');
-        for subst in substs {
-            match subst.unpack() {
+        for arg in args {
+            match arg.unpack() {
                 GenericArgKind::Lifetime(region) => {
                     s.push_str(&encode_region(tcx, region, dict, options));
                 }
@@ -524,7 +524,7 @@ fn encode_ty<'tcx>(
         }
 
         // User-defined types
-        ty::Adt(adt_def, substs) => {
+        ty::Adt(adt_def, args) => {
             let mut s = String::new();
             let def_id = adt_def.did();
             if let Some(cfi_encoding) = tcx.get_attr(def_id, sym::cfi_encoding) {
@@ -570,7 +570,7 @@ fn encode_ty<'tcx>(
                 // <subst>, as vendor extended type.
                 let name = encode_ty_name(tcx, def_id);
                 let _ = write!(s, "u{}{}", name.len(), &name);
-                s.push_str(&encode_substs(tcx, substs, dict, options));
+                s.push_str(&encode_args(tcx, args, dict, options));
                 compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
             }
             typeid.push_str(&s);
@@ -608,27 +608,27 @@ fn encode_ty<'tcx>(
         }
 
         // Function types
-        ty::FnDef(def_id, substs) | ty::Closure(def_id, substs) => {
+        ty::FnDef(def_id, args) | ty::Closure(def_id, args) => {
             // u<length><name>[I<element-type1..element-typeN>E], where <element-type> is <subst>,
             // as vendor extended type.
             let mut s = String::new();
             let name = encode_ty_name(tcx, *def_id);
             let _ = write!(s, "u{}{}", name.len(), &name);
-            s.push_str(&encode_substs(tcx, substs, dict, options));
+            s.push_str(&encode_args(tcx, args, dict, options));
             compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
             typeid.push_str(&s);
         }
 
-        ty::Generator(def_id, substs, ..) => {
+        ty::Generator(def_id, args, ..) => {
             // u<length><name>[I<element-type1..element-typeN>E], where <element-type> is <subst>,
             // as vendor extended type.
             let mut s = String::new();
             let name = encode_ty_name(tcx, *def_id);
             let _ = write!(s, "u{}{}", name.len(), &name);
-            // Encode parent substs only
-            s.push_str(&encode_substs(
+            // Encode parent args only
+            s.push_str(&encode_args(
                 tcx,
-                tcx.mk_substs(substs.as_generator().parent_substs()),
+                tcx.mk_args(args.as_generator().parent_args()),
                 dict,
                 options,
             ));
@@ -732,18 +732,18 @@ fn transform_predicates<'tcx>(
     tcx.mk_poly_existential_predicates(&predicates)
 }
 
-/// Transforms substs for being encoded and used in the substitution dictionary.
-fn transform_substs<'tcx>(
+/// Transforms args for being encoded and used in the substitution dictionary.
+fn transform_args<'tcx>(
     tcx: TyCtxt<'tcx>,
-    substs: SubstsRef<'tcx>,
+    args: GenericArgsRef<'tcx>,
     options: TransformTyOptions,
-) -> SubstsRef<'tcx> {
-    let substs = substs.iter().map(|subst| match subst.unpack() {
+) -> GenericArgsRef<'tcx> {
+    let args = args.iter().map(|arg| match arg.unpack() {
         GenericArgKind::Type(ty) if ty.is_c_void(tcx) => Ty::new_unit(tcx).into(),
         GenericArgKind::Type(ty) => transform_ty(tcx, ty, options).into(),
-        _ => subst,
+        _ => arg,
     });
-    tcx.mk_substs_from_iter(substs)
+    tcx.mk_args_from_iter(args)
 }
 
 // Transforms a ty:Ty for being encoded and used in the substitution dictionary. It transforms all
@@ -825,7 +825,7 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
             ty = Ty::new_slice(tcx, transform_ty(tcx, *ty0, options));
         }
 
-        ty::Adt(adt_def, substs) => {
+        ty::Adt(adt_def, args) => {
             if ty.is_c_void(tcx) {
                 ty = Ty::new_unit(tcx);
             } else if options.contains(TransformTyOptions::GENERALIZE_REPR_C) && adt_def.repr().c()
@@ -840,13 +840,13 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
                 let variant = adt_def.non_enum_variant();
                 let param_env = tcx.param_env(variant.def_id);
                 let field = variant.fields.iter().find(|field| {
-                    let ty = tcx.type_of(field.did).subst_identity();
+                    let ty = tcx.type_of(field.did).instantiate_identity();
                     let is_zst =
                         tcx.layout_of(param_env.and(ty)).is_ok_and(|layout| layout.is_zst());
                     !is_zst
                 });
                 if let Some(field) = field {
-                    let ty0 = tcx.type_of(field.did).subst(tcx, substs);
+                    let ty0 = tcx.type_of(field.did).instantiate(tcx, args);
                     // Generalize any repr(transparent) user-defined type that is either a pointer
                     // or reference, and either references itself or any other type that contains or
                     // references itself, to avoid a reference cycle.
@@ -864,25 +864,20 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
                     ty = Ty::new_unit(tcx);
                 }
             } else {
-                ty = Ty::new_adt(tcx, *adt_def, transform_substs(tcx, substs, options));
+                ty = Ty::new_adt(tcx, *adt_def, transform_args(tcx, args, options));
             }
         }
 
-        ty::FnDef(def_id, substs) => {
-            ty = Ty::new_fn_def(tcx, *def_id, transform_substs(tcx, substs, options));
+        ty::FnDef(def_id, args) => {
+            ty = Ty::new_fn_def(tcx, *def_id, transform_args(tcx, args, options));
         }
 
-        ty::Closure(def_id, substs) => {
-            ty = Ty::new_closure(tcx, *def_id, transform_substs(tcx, substs, options));
+        ty::Closure(def_id, args) => {
+            ty = Ty::new_closure(tcx, *def_id, transform_args(tcx, args, options));
         }
 
-        ty::Generator(def_id, substs, movability) => {
-            ty = Ty::new_generator(
-                tcx,
-                *def_id,
-                transform_substs(tcx, substs, options),
-                *movability,
-            );
+        ty::Generator(def_id, args, movability) => {
+            ty = Ty::new_generator(tcx, *def_id, transform_args(tcx, args, options), *movability);
         }
 
         ty::Ref(region, ty0, ..) => {

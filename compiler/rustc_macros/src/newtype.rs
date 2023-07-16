@@ -36,7 +36,8 @@ impl Parse for Newtype {
                     false
                 }
                 "max" => {
-                    let Meta::NameValue(MetaNameValue { value: Expr::Lit(lit), .. }) = &attr.meta else {
+                    let Meta::NameValue(MetaNameValue { value: Expr::Lit(lit), .. }) = &attr.meta
+                    else {
                         panic!("#[max = NUMBER] attribute requires max value");
                     };
 
@@ -47,7 +48,8 @@ impl Parse for Newtype {
                     false
                 }
                 "debug_format" => {
-                    let Meta::NameValue(MetaNameValue { value: Expr::Lit(lit), .. }) = &attr.meta else {
+                    let Meta::NameValue(MetaNameValue { value: Expr::Lit(lit), .. }) = &attr.meta
+                    else {
                         panic!("#[debug_format = FMT] attribute requires a format");
                     };
 

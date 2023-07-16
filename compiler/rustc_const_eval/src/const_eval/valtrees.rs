@@ -416,9 +416,9 @@ fn valtree_into_mplace<'tcx>(
                         debug!(?unsized_inner_ty);
 
                         let inner_ty = match ty.kind() {
-                            ty::Adt(def, substs) => {
+                            ty::Adt(def, args) => {
                                 let i = FieldIdx::from_usize(i);
-                                def.variant(FIRST_VARIANT).fields[i].ty(tcx, substs)
+                                def.variant(FIRST_VARIANT).fields[i].ty(tcx, args)
                             }
                             ty::Tuple(inner_tys) => inner_tys[i],
                             _ => bug!("unexpected unsized type {:?}", ty),

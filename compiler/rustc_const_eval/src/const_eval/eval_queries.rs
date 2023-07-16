@@ -45,7 +45,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
         "Unexpected DefKind: {:?}",
         ecx.tcx.def_kind(cid.instance.def_id())
     );
-    let layout = ecx.layout_of(body.bound_return_ty().subst(tcx, cid.instance.substs))?;
+    let layout = ecx.layout_of(body.bound_return_ty().instantiate(tcx, cid.instance.args))?;
     assert!(layout.is_sized());
     let ret = ecx.allocate(layout, MemoryKind::Stack)?;
 
@@ -245,10 +245,10 @@ pub fn eval_to_const_value_raw_provider<'tcx>(
     // Catch such calls and evaluate them instead of trying to load a constant's MIR.
     if let ty::InstanceDef::Intrinsic(def_id) = key.value.instance.def {
         let ty = key.value.instance.ty(tcx, key.param_env);
-        let ty::FnDef(_, substs) = ty.kind() else {
+        let ty::FnDef(_, args) = ty.kind() else {
             bug!("intrinsic with type {:?}", ty);
         };
-        return eval_nullary_intrinsic(tcx, key.param_env, def_id, substs).map_err(|error| {
+        return eval_nullary_intrinsic(tcx, key.param_env, def_id, args).map_err(|error| {
             let span = tcx.def_span(def_id);
 
             super::report(
@@ -328,10 +328,10 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
                 ("static", String::new())
             } else {
                 // If the current item has generics, we'd like to enrich the message with the
-                // instance and its substs: to show the actual compile-time values, in addition to
+                // instance and its args: to show the actual compile-time values, in addition to
                 // the expression, leading to the const eval error.
                 let instance = &key.value.instance;
-                if !instance.substs.is_empty() {
+                if !instance.args.is_empty() {
                     let instance = with_no_trimmed_paths!(instance.to_string());
                     ("const_with_path", instance)
                 } else {

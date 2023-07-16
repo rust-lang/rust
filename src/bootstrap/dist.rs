@@ -106,7 +106,12 @@ impl Step for JsonDocs {
     /// Builds the `rust-docs-json` installer component.
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let host = self.host;
-        builder.ensure(crate::doc::Std::new(builder.top_stage, host, DocumentationFormat::JSON));
+        builder.ensure(crate::doc::Std::new(
+            builder.top_stage,
+            host,
+            builder,
+            DocumentationFormat::JSON,
+        ));
 
         let dest = "share/doc/rust/json";
 
@@ -897,7 +902,9 @@ impl Step for Src {
 
     /// Creates the `rust-src` installer component
     fn run(self, builder: &Builder<'_>) -> GeneratedTarball {
-        builder.update_submodule(&Path::new("src/llvm-project"));
+        if !builder.config.dry_run() {
+            builder.update_submodule(&Path::new("src/llvm-project"));
+        }
 
         let tarball = Tarball::new_targetless(builder, "rust-src");
 

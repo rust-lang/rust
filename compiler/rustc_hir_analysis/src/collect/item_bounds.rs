@@ -2,7 +2,7 @@ use super::ItemCtxt;
 use crate::astconv::{AstConv, PredicateFilter};
 use rustc_hir as hir;
 use rustc_infer::traits::util;
-use rustc_middle::ty::subst::InternalSubsts;
+use rustc_middle::ty::GenericArgs;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::Span;
@@ -10,7 +10,7 @@ use rustc_span::Span;
 /// For associated types we include both bounds written on the type
 /// (`type X: Trait`) and predicates from the trait: `where Self::X: Trait`.
 ///
-/// Note that this filtering is done with the items identity substs to
+/// Note that this filtering is done with the items identity args to
 /// simplify checking that these bounds are met in impls. This means that
 /// a bound such as `for<'b> <Self as X<'b>>::U: Clone` can't be used, as in
 /// `hr-associated-type-bound-1.rs`.
@@ -23,7 +23,7 @@ fn associated_type_bounds<'tcx>(
     let item_ty = Ty::new_projection(
         tcx,
         assoc_item_def_id.to_def_id(),
-        InternalSubsts::identity_for_item(tcx, assoc_item_def_id),
+        GenericArgs::identity_for_item(tcx, assoc_item_def_id),
     );
 
     let icx = ItemCtxt::new(tcx, assoc_item_def_id);
@@ -95,7 +95,7 @@ pub(super) fn explicit_item_bounds(
                 Ty::new_projection(
                     tcx,
                     def_id.to_def_id(),
-                    ty::InternalSubsts::identity_for_item(tcx, def_id),
+                    ty::GenericArgs::identity_for_item(tcx, def_id),
                 ),
                 item.span,
             ));
@@ -117,8 +117,8 @@ pub(super) fn explicit_item_bounds(
             span,
             ..
         }) => {
-            let substs = InternalSubsts::identity_for_item(tcx, def_id);
-            let item_ty = Ty::new_opaque(tcx, def_id.to_def_id(), substs);
+            let args = GenericArgs::identity_for_item(tcx, def_id);
+            let item_ty = Ty::new_opaque(tcx, def_id.to_def_id(), args);
             opaque_type_bounds(tcx, def_id, bounds, item_ty, *span)
         }
         hir::Node::Item(hir::Item { kind: hir::ItemKind::TyAlias(..), .. }) => &[],

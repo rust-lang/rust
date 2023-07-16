@@ -10,7 +10,7 @@ use rustc_middle::{
     ty::{
         self,
         layout::{IntegerExt, LayoutOf, PrimitiveExt, TyAndLayout},
-        AdtDef, GeneratorSubsts, Ty, VariantDef,
+        AdtDef, GeneratorArgs, Ty, VariantDef,
     },
 };
 use rustc_span::Symbol;
@@ -51,7 +51,7 @@ pub(super) fn build_enum_type_di_node<'ll, 'tcx>(
     let enum_type = unique_type_id.expect_ty();
     let &ty::Adt(enum_adt_def, _) = enum_type.kind() else {
         bug!("build_enum_type_di_node() called with non-enum type: `{:?}`", enum_type)
-        };
+    };
 
     let enum_type_and_layout = cx.layout_of(enum_type);
 
@@ -325,7 +325,7 @@ pub fn build_generator_variant_struct_type_di_node<'ll, 'tcx>(
     generator_layout: &GeneratorLayout<'tcx>,
     common_upvar_names: &IndexSlice<FieldIdx, Symbol>,
 ) -> &'ll DIType {
-    let variant_name = GeneratorSubsts::variant_name(variant_index);
+    let variant_name = GeneratorArgs::variant_name(variant_index);
     let unique_type_id = UniqueTypeId::for_enum_variant_struct_type(
         cx.tcx,
         generator_type_and_layout.ty,
@@ -334,8 +334,8 @@ pub fn build_generator_variant_struct_type_di_node<'ll, 'tcx>(
 
     let variant_layout = generator_type_and_layout.for_variant(cx, variant_index);
 
-    let generator_substs = match generator_type_and_layout.ty.kind() {
-        ty::Generator(_, substs, _) => substs.as_generator(),
+    let generator_args = match generator_type_and_layout.ty.kind() {
+        ty::Generator(_, args, _) => args.as_generator(),
         _ => unreachable!(),
     };
 
@@ -377,7 +377,7 @@ pub fn build_generator_variant_struct_type_di_node<'ll, 'tcx>(
                 .collect();
 
             // Fields that are common to all states
-            let common_fields: SmallVec<_> = generator_substs
+            let common_fields: SmallVec<_> = generator_args
                 .prefix_tys()
                 .zip(common_upvar_names)
                 .enumerate()

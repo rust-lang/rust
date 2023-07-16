@@ -60,7 +60,7 @@ fn equate_intrinsic_type<'tcx>(
             tcx,
             &cause,
             ty::ParamEnv::empty(), // FIXME: do all intrinsics have an empty param env?
-            Ty::new_fn_ptr(tcx, tcx.fn_sig(it.owner_id).subst_identity()),
+            Ty::new_fn_ptr(tcx, tcx.fn_sig(it.owner_id).instantiate_identity()),
             fty,
         );
     }
@@ -155,7 +155,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
                 ty::INNERMOST,
                 ty::BoundRegion { var: ty::BoundVar::from_u32(1), kind: ty::BrEnv },
             );
-            let va_list_ty = tcx.type_of(did).subst(tcx, &[region.into()]);
+            let va_list_ty = tcx.type_of(did).instantiate(tcx, &[region.into()]);
             (Ty::new_ref(tcx, env_region, ty::TypeAndMut { ty: va_list_ty, mutbl }), va_list_ty)
         })
     };
@@ -238,7 +238,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
                             ty: Ty::new_adt(
                                 tcx,
                                 tcx.adt_def(option_def_id),
-                                tcx.mk_substs_from_iter([ty::GenericArg::from(p0)].into_iter()),
+                                tcx.mk_args_from_iter([ty::GenericArg::from(p0)].into_iter()),
                             ),
                             mutbl: hir::Mutability::Not,
                         },
@@ -412,7 +412,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
                         ty::Region::new_late_bound(tcx, ty::INNERMOST, br),
                         param(0),
                     )],
-                    Ty::new_projection(tcx, discriminant_def_id, tcx.mk_substs(&[param(0).into()])),
+                    Ty::new_projection(tcx, discriminant_def_id, tcx.mk_args(&[param(0).into()])),
                 )
             }
 

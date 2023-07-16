@@ -188,7 +188,9 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
         let mut kind_slugs = vec![];
 
         for attr in self.variant.ast().attrs {
-            let Some(SubdiagnosticVariant { kind, slug, no_span }) = SubdiagnosticVariant::from_attr(attr, self)? else {
+            let Some(SubdiagnosticVariant { kind, slug, no_span }) =
+                SubdiagnosticVariant::from_attr(attr, self)?
+            else {
                 // Some attributes aren't errors - like documentation comments - but also aren't
                 // subdiagnostics.
                 continue;

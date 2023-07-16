@@ -203,14 +203,18 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
                 if first && (nested.input.is_empty() || nested.input.peek(Token![,])) {
                     self.slug.set_once(path.clone(), path.span().unwrap());
                     first = false;
-                    return Ok(())
+                    return Ok(());
                 }
 
                 first = false;
 
                 let Ok(nested) = nested.value() else {
-                    span_err(nested.input.span().unwrap(), "diagnostic slug must be the first argument").emit();
-                    return Ok(())
+                    span_err(
+                        nested.input.span().unwrap(),
+                        "diagnostic slug must be the first argument",
+                    )
+                    .emit();
+                    return Ok(());
                 };
 
                 if path.is_ident("code") {
@@ -221,7 +225,9 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
                         #diag.code(rustc_errors::DiagnosticId::Error(#code.to_string()));
                     });
                 } else {
-                    span_err(path.span().unwrap(), "unknown argument").note("only the `code` parameter is valid after the slug").emit();
+                    span_err(path.span().unwrap(), "unknown argument")
+                        .note("only the `code` parameter is valid after the slug")
+                        .emit();
 
                     // consume the buffer so we don't have syntax errors from syn
                     let _ = nested.parse::<TokenStream>();

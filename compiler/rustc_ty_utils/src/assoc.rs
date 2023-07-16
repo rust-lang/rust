@@ -5,7 +5,7 @@ use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId};
 use rustc_hir::definitions::DefPathData;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self, ImplTraitInTraitData, InternalSubsts, Ty, TyCtxt};
+use rustc_middle::ty::{self, GenericArgs, ImplTraitInTraitData, Ty, TyCtxt};
 use rustc_span::symbol::kw;
 
 pub fn provide(providers: &mut Providers) {
@@ -215,7 +215,9 @@ fn associated_types_for_impl_traits_in_associated_fn(
         }
 
         DefKind::Impl { .. } => {
-            let Some(trait_fn_def_id) = tcx.associated_item(fn_def_id).trait_item_def_id else { return &[] };
+            let Some(trait_fn_def_id) = tcx.associated_item(fn_def_id).trait_item_def_id else {
+                return &[];
+            };
 
             tcx.arena.alloc_from_iter(
                 tcx.associated_types_for_impl_traits_in_associated_fn(trait_fn_def_id).iter().map(
@@ -288,7 +290,7 @@ fn associated_type_for_impl_trait_in_trait(
     trait_assoc_ty.type_of(ty::EarlyBinder::bind(Ty::new_opaque(
         tcx,
         opaque_ty_def_id.to_def_id(),
-        InternalSubsts::identity_for_item(tcx, opaque_ty_def_id),
+        GenericArgs::identity_for_item(tcx, opaque_ty_def_id),
     )));
 
     trait_assoc_ty.is_type_alias_impl_trait(false);

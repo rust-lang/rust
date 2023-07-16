@@ -276,7 +276,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             }
 
             // Avoid accessing the HIR for the synthesized associated type generated for RPITITs.
-            if self.tcx.opt_rpitit_info(id.to_def_id()).is_some() {
+            if self.tcx.is_impl_trait_in_trait(id.to_def_id()) {
                 self.live_symbols.insert(id);
                 continue;
             }
@@ -304,7 +304,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             if let Some(trait_of) = self.tcx.trait_id_of_impl(impl_of)
                 && self.tcx.has_attr(trait_of, sym::rustc_trivial_field_reads)
             {
-                let trait_ref = self.tcx.impl_trait_ref(impl_of).unwrap().subst_identity();
+                let trait_ref = self.tcx.impl_trait_ref(impl_of).unwrap().instantiate_identity();
                 if let ty::Adt(adt_def, _) = trait_ref.self_ty().kind()
                     && let Some(adt_def_id) = adt_def.did().as_local()
                 {
@@ -353,7 +353,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                     //// This is done to handle the case where, for example, the static
                     //// method of a private type is used, but the type itself is never
                     //// called directly.
-                    let self_ty = self.tcx.type_of(item).subst_identity();
+                    let self_ty = self.tcx.type_of(item).instantiate_identity();
                     match *self_ty.kind() {
                         ty::Adt(def, _) => self.check_def_id(def.did()),
                         ty::Foreign(did) => self.check_def_id(did),
@@ -707,7 +707,7 @@ impl<'tcx> DeadVisitor<'tcx> {
         if self.live_symbols.contains(&field.did.expect_local()) {
             return ShouldWarnAboutField::No;
         }
-        let field_type = self.tcx.type_of(field.did).subst_identity();
+        let field_type = self.tcx.type_of(field.did).instantiate_identity();
         if field_type.is_phantom_data() {
             return ShouldWarnAboutField::No;
         }

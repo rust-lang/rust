@@ -7,7 +7,7 @@ use rustc_hir::LangItem;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, subst::SubstsRef, AdtDef, Ty};
+use rustc_middle::ty::{self, AdtDef, GenericArgsRef, Ty};
 use rustc_trait_selection::traits::{
     self, ImplSource, Obligation, ObligationCause, ObligationCtxt, SelectionContext,
 };
@@ -72,7 +72,7 @@ pub trait Qualif {
     fn in_adt_inherently<'tcx>(
         cx: &ConstCx<'_, 'tcx>,
         adt: AdtDef<'tcx>,
-        substs: SubstsRef<'tcx>,
+        args: GenericArgsRef<'tcx>,
     ) -> bool;
 }
 
@@ -97,7 +97,7 @@ impl Qualif for HasMutInterior {
     fn in_adt_inherently<'tcx>(
         _cx: &ConstCx<'_, 'tcx>,
         adt: AdtDef<'tcx>,
-        _: SubstsRef<'tcx>,
+        _: GenericArgsRef<'tcx>,
     ) -> bool {
         // Exactly one type, `UnsafeCell`, has the `HasMutInterior` qualif inherently.
         // It arises structurally for all other types.
@@ -127,7 +127,7 @@ impl Qualif for NeedsDrop {
     fn in_adt_inherently<'tcx>(
         cx: &ConstCx<'_, 'tcx>,
         adt: AdtDef<'tcx>,
-        _: SubstsRef<'tcx>,
+        _: GenericArgsRef<'tcx>,
     ) -> bool {
         adt.has_dtor(cx.tcx)
     }
@@ -193,7 +193,7 @@ impl Qualif for NeedsNonConstDrop {
     fn in_adt_inherently<'tcx>(
         cx: &ConstCx<'_, 'tcx>,
         adt: AdtDef<'tcx>,
-        _: SubstsRef<'tcx>,
+        _: GenericArgsRef<'tcx>,
     ) -> bool {
         adt.has_non_const_dtor(cx.tcx)
     }
@@ -221,9 +221,9 @@ impl Qualif for CustomEq {
     fn in_adt_inherently<'tcx>(
         cx: &ConstCx<'_, 'tcx>,
         def: AdtDef<'tcx>,
-        substs: SubstsRef<'tcx>,
+        args: GenericArgsRef<'tcx>,
     ) -> bool {
-        let ty = Ty::new_adt(cx.tcx, def, substs);
+        let ty = Ty::new_adt(cx.tcx, def, args);
         !ty.is_structural_eq_shallow(cx.tcx)
     }
 }
@@ -276,9 +276,9 @@ where
         Rvalue::Aggregate(kind, operands) => {
             // Return early if we know that the struct or enum being constructed is always
             // qualified.
-            if let AggregateKind::Adt(adt_did, _, substs, ..) = **kind {
+            if let AggregateKind::Adt(adt_did, _, args, ..) = **kind {
                 let def = cx.tcx.adt_def(adt_did);
-                if Q::in_adt_inherently(cx, def, substs) {
+                if Q::in_adt_inherently(cx, def, args) {
                     return true;
                 }
                 if def.is_union() && Q::in_any_value_of_ty(cx, rvalue.ty(cx.body, cx.tcx)) {
@@ -360,7 +360,7 @@ where
         ConstantKind::Val(..) => None,
     };
 
-    if let Some(mir::UnevaluatedConst { def, substs: _, promoted }) = uneval {
+    if let Some(mir::UnevaluatedConst { def, args: _, promoted }) = uneval {
         // Use qualifs of the type for the promoted. Promoteds in MIR body should be possible
         // only for `NeedsNonConstDrop` with precise drop checking. This is the only const
         // check performed after the promotion. Verify that with an assertion.

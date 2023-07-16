@@ -7,8 +7,8 @@ use rustc_middle::mir::{
     Body, Local, Location, Place, PlaceRef, ProjectionElem, Rvalue, SourceInfo, Statement,
     StatementKind, Terminator, TerminatorKind, UserTypeProjection,
 };
-use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::visit::TypeVisitable;
+use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{self, RegionVid, Ty, TyCtxt};
 
 use crate::{
@@ -49,11 +49,11 @@ struct ConstraintGeneration<'cg, 'tcx> {
 }
 
 impl<'cg, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'tcx> {
-    /// We sometimes have `substs` within an rvalue, or within a
+    /// We sometimes have `args` within an rvalue, or within a
     /// call. Make them live at the location where they appear.
-    fn visit_substs(&mut self, substs: &SubstsRef<'tcx>, location: Location) {
-        self.add_regular_live_constraint(*substs, location);
-        self.super_substs(substs);
+    fn visit_args(&mut self, args: &GenericArgsRef<'tcx>, location: Location) {
+        self.add_regular_live_constraint(*args, location);
+        self.super_args(args);
     }
 
     /// We sometimes have `region` within an rvalue, or within a

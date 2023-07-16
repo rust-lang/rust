@@ -209,7 +209,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &PolyTraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
-        // Okay to skip binder because the substs on generator types never
+        // Okay to skip binder because the args on generator types never
         // touch bound regions, they just capture the in-scope
         // type/region parameters.
         let self_ty = obligation.self_ty().skip_binder();
@@ -261,14 +261,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return;
         };
 
-        // Okay to skip binder because the substs on closure types never
+        // Okay to skip binder because the args on closure types never
         // touch bound regions, they just capture the in-scope
         // type/region parameters
         match *obligation.self_ty().skip_binder().kind() {
-            ty::Closure(def_id, closure_substs) => {
+            ty::Closure(def_id, closure_args) => {
                 let is_const = self.tcx().is_const_fn_raw(def_id);
                 debug!(?kind, ?obligation, "assemble_unboxed_candidates");
-                match self.infcx.closure_kind(closure_substs) {
+                match self.infcx.closure_kind(closure_args) {
                     Some(closure_kind) => {
                         debug!(?closure_kind, "assemble_unboxed_candidates");
                         if closure_kind.extends(kind) {
@@ -351,7 +351,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         let drcx = DeepRejectCtxt { treat_obligation_params: TreatParams::ForLookup };
-        let obligation_substs = obligation.predicate.skip_binder().trait_ref.substs;
+        let obligation_args = obligation.predicate.skip_binder().trait_ref.args;
         self.tcx().for_each_relevant_impl(
             obligation.predicate.def_id(),
             obligation.predicate.skip_binder().trait_ref.self_ty(),
@@ -360,9 +360,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // consider a "quick reject". This avoids creating more types
                 // and so forth that we need to.
                 let impl_trait_ref = self.tcx().impl_trait_ref(impl_def_id).unwrap();
-                if !drcx
-                    .substs_refs_may_unify(obligation_substs, impl_trait_ref.skip_binder().substs)
-                {
+                if !drcx.args_refs_may_unify(obligation_args, impl_trait_ref.skip_binder().args) {
                     return;
                 }
                 if self.reject_fn_ptr_impls(
@@ -374,7 +372,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
 
                 self.infcx.probe(|_| {
-                    if let Ok(_substs) = self.match_impl(impl_def_id, impl_trait_ref, obligation) {
+                    if let Ok(_args) = self.match_impl(impl_def_id, impl_trait_ref, obligation) {
                         candidates.vec.push(ImplCandidate(impl_def_id));
                     }
                 });
@@ -402,8 +400,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         };
 
         for &(predicate, _) in self.tcx().predicates_of(impl_def_id).predicates {
-            let ty::ClauseKind::Trait(pred)
-                = predicate.kind().skip_binder() else { continue };
+            let ty::ClauseKind::Trait(pred) = predicate.kind().skip_binder() else { continue };
             if fn_ptr_trait != pred.trait_ref.def_id {
                 continue;
             }
@@ -651,7 +648,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             let ty = traits::normalize_projection_type(
                 self,
                 param_env,
-                tcx.mk_alias_ty(tcx.lang_items().deref_target()?, trait_ref.substs),
+                tcx.mk_alias_ty(tcx.lang_items().deref_target()?, trait_ref.args),
                 cause.clone(),
                 0,
                 // We're *intentionally* throwing these away,
@@ -689,7 +686,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // Don't add any candidates if there are bound regions.
             return;
         };
-        let target = obligation.predicate.skip_binder().trait_ref.substs.type_at(1);
+        let target = obligation.predicate.skip_binder().trait_ref.args.type_at(1);
 
         debug!(?source, ?target, "assemble_candidates_for_unsizing");
 

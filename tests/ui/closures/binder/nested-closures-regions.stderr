@@ -4,7 +4,7 @@ note: external requirements
 LL |     for<'a> || -> () { for<'c> |_: &'a ()| -> () {}; };
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: defining type: main::{closure#0}::{closure#0} with closure substs [
+   = note: defining type: main::{closure#0}::{closure#0} with closure args [
                i8,
                extern "rust-call" fn((&(),)),
                (),
@@ -21,7 +21,7 @@ note: no external requirements
 LL |     for<'a> || -> () { for<'c> |_: &'a ()| -> () {}; };
    |     ^^^^^^^^^^^^^^^^
    |
-   = note: defining type: main::{closure#0} with closure substs [
+   = note: defining type: main::{closure#0} with closure args [
                i8,
                extern "rust-call" fn(()),
                (),

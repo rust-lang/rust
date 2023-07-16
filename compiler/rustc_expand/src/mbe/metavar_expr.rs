@@ -104,13 +104,10 @@ fn parse_depth<'sess>(
     span: Span,
 ) -> PResult<'sess, usize> {
     let Some(tt) = iter.next() else { return Ok(0) };
-    let TokenTree::Token(token::Token {
-        kind: token::TokenKind::Literal(lit), ..
-    }, _) = tt else {
-        return Err(sess.span_diagnostic.struct_span_err(
-            span,
-            "meta-variable expression depth must be a literal"
-        ));
+    let TokenTree::Token(token::Token { kind: token::TokenKind::Literal(lit), .. }, _) = tt else {
+        return Err(sess
+            .span_diagnostic
+            .struct_span_err(span, "meta-variable expression depth must be a literal"));
     };
     if let Ok(lit_kind) = LitKind::from_token_lit(*lit)
         && let LitKind::Int(n_u128, LitIntType::Unsuffixed) = lit_kind

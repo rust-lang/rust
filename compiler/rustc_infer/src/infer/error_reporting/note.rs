@@ -295,34 +295,40 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         // but right now it's not really very smart when it comes to implicit `Sized`
         // predicates and bounds on the trait itself.
 
-        let Some(impl_def_id) =
-            self.tcx.associated_item(impl_item_def_id).impl_container(self.tcx) else { return; };
-        let Some(trait_ref) = self
-            .tcx
-            .impl_trait_ref(impl_def_id)
-            else { return; };
-        let trait_substs = trait_ref
-            .subst_identity()
+        let Some(impl_def_id) = self.tcx.associated_item(impl_item_def_id).impl_container(self.tcx)
+        else {
+            return;
+        };
+        let Some(trait_ref) = self.tcx.impl_trait_ref(impl_def_id) else {
+            return;
+        };
+        let trait_args = trait_ref
+            .instantiate_identity()
             // Replace the explicit self type with `Self` for better suggestion rendering
             .with_self_ty(self.tcx, Ty::new_param(self.tcx, 0, kw::SelfUpper))
-            .substs;
-        let trait_item_substs = ty::InternalSubsts::identity_for_item(self.tcx, impl_item_def_id)
-            .rebase_onto(self.tcx, impl_def_id, trait_substs);
+            .args;
+        let trait_item_args = ty::GenericArgs::identity_for_item(self.tcx, impl_item_def_id)
+            .rebase_onto(self.tcx, impl_def_id, trait_args);
 
-        let Ok(trait_predicates) = self
-            .tcx
-            .explicit_predicates_of(trait_item_def_id)
-            .instantiate_own(self.tcx, trait_item_substs)
-            .map(|(pred, _)| {
-                if pred.is_suggestable(self.tcx, false) {
-                    Ok(pred.to_string())
-                } else {
-                    Err(())
-                }
-            })
-            .collect::<Result<Vec<_>, ()>>() else { return; };
+        let Ok(trait_predicates) =
+            self.tcx
+                .explicit_predicates_of(trait_item_def_id)
+                .instantiate_own(self.tcx, trait_item_args)
+                .map(|(pred, _)| {
+                    if pred.is_suggestable(self.tcx, false) {
+                        Ok(pred.to_string())
+                    } else {
+                        Err(())
+                    }
+                })
+                .collect::<Result<Vec<_>, ()>>()
+        else {
+            return;
+        };
 
-        let Some(generics) = self.tcx.hir().get_generics(impl_item_def_id) else { return; };
+        let Some(generics) = self.tcx.hir().get_generics(impl_item_def_id) else {
+            return;
+        };
 
         let suggestion = if trait_predicates.is_empty() {
             WhereClauseSuggestions::Remove { span: generics.where_clause_span }

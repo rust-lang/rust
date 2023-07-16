@@ -43,7 +43,7 @@ pub fn type_allowed_to_implement_copy<'tcx>(
     self_type: Ty<'tcx>,
     parent_cause: ObligationCause<'tcx>,
 ) -> Result<(), CopyImplementationError<'tcx>> {
-    let (adt, substs) = match self_type.kind() {
+    let (adt, args) = match self_type.kind() {
         // These types used to have a builtin impl.
         // Now libcore provides that impl.
         ty::Uint(_)
@@ -56,7 +56,7 @@ pub fn type_allowed_to_implement_copy<'tcx>(
         | ty::Ref(_, _, hir::Mutability::Not)
         | ty::Array(..) => return Ok(()),
 
-        &ty::Adt(adt, substs) => (adt, substs),
+        &ty::Adt(adt, args) => (adt, args),
 
         _ => return Err(CopyImplementationError::NotAnAdt),
     };
@@ -66,7 +66,7 @@ pub fn type_allowed_to_implement_copy<'tcx>(
         param_env,
         self_type,
         adt,
-        substs,
+        args,
         parent_cause,
         hir::LangItem::Copy,
     )
@@ -91,7 +91,7 @@ pub fn type_allowed_to_implement_const_param_ty<'tcx>(
     self_type: Ty<'tcx>,
     parent_cause: ObligationCause<'tcx>,
 ) -> Result<(), ConstParamTyImplementationError<'tcx>> {
-    let (adt, substs) = match self_type.kind() {
+    let (adt, args) = match self_type.kind() {
         // `core` provides these impls.
         ty::Uint(_)
         | ty::Int(_)
@@ -103,7 +103,7 @@ pub fn type_allowed_to_implement_const_param_ty<'tcx>(
         | ty::Ref(.., hir::Mutability::Not)
         | ty::Tuple(_) => return Ok(()),
 
-        &ty::Adt(adt, substs) => (adt, substs),
+        &ty::Adt(adt, args) => (adt, args),
 
         _ => return Err(ConstParamTyImplementationError::NotAnAdtOrBuiltinAllowed),
     };
@@ -113,7 +113,7 @@ pub fn type_allowed_to_implement_const_param_ty<'tcx>(
         param_env,
         self_type,
         adt,
-        substs,
+        args,
         parent_cause,
         hir::LangItem::ConstParamTy,
     )
@@ -128,7 +128,7 @@ pub fn all_fields_implement_trait<'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     self_type: Ty<'tcx>,
     adt: AdtDef<'tcx>,
-    substs: &'tcx List<GenericArg<'tcx>>,
+    args: &'tcx List<GenericArg<'tcx>>,
     parent_cause: ObligationCause<'tcx>,
     lang_item: LangItem,
 ) -> Result<(), Vec<(&'tcx ty::FieldDef, Ty<'tcx>, InfringingFieldsReason<'tcx>)>> {
@@ -141,7 +141,7 @@ pub fn all_fields_implement_trait<'tcx>(
             let infcx = tcx.infer_ctxt().build();
             let ocx = traits::ObligationCtxt::new(&infcx);
 
-            let unnormalized_ty = field.ty(tcx, substs);
+            let unnormalized_ty = field.ty(tcx, args);
             if unnormalized_ty.references_error() {
                 continue;
             }
@@ -154,11 +154,11 @@ pub fn all_fields_implement_trait<'tcx>(
 
             // FIXME(compiler-errors): This gives us better spans for bad
             // projection types like in issue-50480.
-            // If the ADT has substs, point to the cause we are given.
+            // If the ADT has args, point to the cause we are given.
             // If it does not, then this field probably doesn't normalize
             // to begin with, and point to the bad field's span instead.
             let normalization_cause = if field
-                .ty(tcx, traits::InternalSubsts::identity_for_item(tcx, adt.did()))
+                .ty(tcx, traits::GenericArgs::identity_for_item(tcx, adt.did()))
                 .has_non_region_param()
             {
                 parent_cause.clone()

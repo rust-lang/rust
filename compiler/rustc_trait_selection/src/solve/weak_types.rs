@@ -12,7 +12,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         let weak_ty = goal.predicate.projection_ty;
         let expected = goal.predicate.term.ty().expect("no such thing as a const alias");
 
-        let actual = tcx.type_of(weak_ty.def_id).subst(tcx, weak_ty.substs);
+        let actual = tcx.type_of(weak_ty.def_id).instantiate(tcx, weak_ty.args);
         self.eq(goal.param_env, expected, actual)?;
         self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }

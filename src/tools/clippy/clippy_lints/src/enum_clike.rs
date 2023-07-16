@@ -45,7 +45,7 @@ impl<'tcx> LateLintPass<'tcx> for UnportableVariant {
             for var in def.variants {
                 if let Some(anon_const) = &var.disr_expr {
                     let def_id = cx.tcx.hir().body_owner_def_id(anon_const.body);
-                    let mut ty = cx.tcx.type_of(def_id.to_def_id()).subst_identity();
+                    let mut ty = cx.tcx.type_of(def_id.to_def_id()).instantiate_identity();
                     let constant = cx
                         .tcx
                         .const_eval_poly(def_id.to_def_id())

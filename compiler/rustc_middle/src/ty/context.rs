@@ -30,7 +30,7 @@ use crate::ty::{
     Predicate, PredicateKind, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind,
     TyVid, TypeAndMut, Visibility,
 };
-use crate::ty::{GenericArg, InternalSubsts, SubstsRef};
+use crate::ty::{GenericArg, GenericArgs, GenericArgsRef};
 use rustc_ast::{self as ast, attr};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -84,7 +84,7 @@ use std::ops::{Bound, Deref};
 #[allow(rustc::usage_of_ty_tykind)]
 impl<'tcx> Interner for TyCtxt<'tcx> {
     type AdtDef = ty::AdtDef<'tcx>;
-    type SubstsRef = ty::SubstsRef<'tcx>;
+    type GenericArgsRef = ty::GenericArgsRef<'tcx>;
     type DefId = DefId;
     type Binder<T> = Binder<'tcx, T>;
     type Ty = Ty<'tcx>;
@@ -142,7 +142,7 @@ pub struct CtxtInterners<'tcx> {
     // they're accessed quite often.
     type_: InternedSet<'tcx, WithCachedTypeInfo<TyKind<'tcx>>>,
     const_lists: InternedSet<'tcx, List<ty::Const<'tcx>>>,
-    substs: InternedSet<'tcx, InternalSubsts<'tcx>>,
+    args: InternedSet<'tcx, GenericArgs<'tcx>>,
     type_lists: InternedSet<'tcx, List<Ty<'tcx>>>,
     canonical_var_infos: InternedSet<'tcx, List<CanonicalVarInfo<'tcx>>>,
     region: InternedSet<'tcx, RegionKind<'tcx>>,
@@ -167,7 +167,7 @@ impl<'tcx> CtxtInterners<'tcx> {
             arena,
             type_: Default::default(),
             const_lists: Default::default(),
-            substs: Default::default(),
+            args: Default::default(),
             type_lists: Default::default(),
             region: Default::default(),
             poly_existential_predicates: Default::default(),
@@ -682,7 +682,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Creates a type context and call the closure with a `TyCtxt` reference
     /// to the context. The closure enforces that the type context and any interned
-    /// value (types, substs, etc.) can only be used while `ty::tls` has a valid
+    /// value (types, args, etc.) can only be used while `ty::tls` has a valid
     /// reference to the context, to allow formatting values that need it.
     pub fn create_global_ctxt(
         s: &'tcx Session,
@@ -1083,7 +1083,7 @@ impl<'tcx> TyCtxt<'tcx> {
             _ => return None,
         }
 
-        let ret_ty = self.type_of(scope_def_id).subst_identity();
+        let ret_ty = self.type_of(scope_def_id).instantiate_identity();
         match ret_ty.kind() {
             ty::FnDef(_, _) => {
                 let sig = ret_ty.fn_sig(self);
@@ -1125,7 +1125,7 @@ impl<'tcx> TyCtxt<'tcx> {
             self,
             self.lifetimes.re_static,
             self.type_of(self.require_lang_item(LangItem::PanicLocation, None))
-                .subst(self, self.mk_substs(&[self.lifetimes.re_static.into()])),
+                .instantiate(self, self.mk_args(&[self.lifetimes.re_static.into()])),
         )
     }
 
@@ -1168,7 +1168,7 @@ impl<'tcx> TyCtxt<'tcx> {
 /// A trait implemented for all `X<'a>` types that can be safely and
 /// efficiently converted to `X<'tcx>` as long as they are part of the
 /// provided `TyCtxt<'tcx>`.
-/// This can be done, for example, for `Ty<'tcx>` or `SubstsRef<'tcx>`
+/// This can be done, for example, for `Ty<'tcx>` or `GenericArgsRef<'tcx>`
 /// by looking them up in their respective interners.
 ///
 /// However, this is still not the best implementation as it does
@@ -1234,8 +1234,8 @@ nop_list_lift! {canonical_var_infos; CanonicalVarInfo<'a> => CanonicalVarInfo<'t
 nop_list_lift! {projs; ProjectionKind => ProjectionKind}
 nop_list_lift! {bound_variable_kinds; ty::BoundVariableKind => ty::BoundVariableKind}
 
-// This is the impl for `&'a InternalSubsts<'a>`.
-nop_list_lift! {substs; GenericArg<'a> => GenericArg<'tcx>}
+// This is the impl for `&'a GenericArgs<'a>`.
+nop_list_lift! {args; GenericArg<'a> => GenericArg<'tcx>}
 
 CloneLiftImpls! {
     Constness,
@@ -1347,7 +1347,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     Foreign
                 )?;
 
-                writeln!(fmt, "InternalSubsts interner: #{}", self.0.interners.substs.len())?;
+                writeln!(fmt, "GenericArgs interner: #{}", self.0.interners.args.len())?;
                 writeln!(fmt, "Region interner: #{}", self.0.interners.region.len())?;
                 writeln!(
                     fmt,
@@ -1503,7 +1503,7 @@ macro_rules! slice_interners {
 // should be used when possible, because it's faster.
 slice_interners!(
     const_lists: pub mk_const_list(Const<'tcx>),
-    substs: pub mk_substs(GenericArg<'tcx>),
+    args: pub mk_args(GenericArg<'tcx>),
     type_lists: pub mk_type_list(Ty<'tcx>),
     canonical_var_infos: pub mk_canonical_var_infos(CanonicalVarInfo<'tcx>),
     poly_existential_predicates: intern_poly_existential_predicates(PolyExistentialPredicate<'tcx>),
@@ -1617,12 +1617,12 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline(always)]
-    pub(crate) fn check_and_mk_substs(
+    pub(crate) fn check_and_mk_args(
         self,
         _def_id: DefId,
-        substs: impl IntoIterator<Item: Into<GenericArg<'tcx>>>,
-    ) -> SubstsRef<'tcx> {
-        let substs = substs.into_iter().map(Into::into);
+        args: impl IntoIterator<Item: Into<GenericArg<'tcx>>>,
+    ) -> GenericArgsRef<'tcx> {
+        let args = args.into_iter().map(Into::into);
         #[cfg(debug_assertions)]
         {
             let generics = self.generics_of(_def_id);
@@ -1638,12 +1638,12 @@ impl<'tcx> TyCtxt<'tcx> {
             };
             assert_eq!(
                 (n, Some(n)),
-                substs.size_hint(),
+                args.size_hint(),
                 "wrong number of generic parameters for {_def_id:?}: {:?}",
-                substs.collect::<Vec<_>>(),
+                args.collect::<Vec<_>>(),
             );
         }
-        self.mk_substs_from_iter(substs)
+        self.mk_args_from_iter(args)
     }
 
     #[inline]
@@ -1801,12 +1801,12 @@ impl<'tcx> TyCtxt<'tcx> {
         T::collect_and_apply(iter, |xs| self.mk_type_list(xs))
     }
 
-    pub fn mk_substs_from_iter<I, T>(self, iter: I) -> T::Output
+    pub fn mk_args_from_iter<I, T>(self, iter: I) -> T::Output
     where
         I: Iterator<Item = T>,
         T: CollectAndApply<GenericArg<'tcx>, &'tcx List<GenericArg<'tcx>>>,
     {
-        T::collect_and_apply(iter, |xs| self.mk_substs(xs))
+        T::collect_and_apply(iter, |xs| self.mk_args(xs))
     }
 
     pub fn mk_canonical_var_infos_from_iter<I, T>(self, iter: I) -> T::Output
@@ -1833,21 +1833,21 @@ impl<'tcx> TyCtxt<'tcx> {
         T::collect_and_apply(iter, |xs| self.mk_fields(xs))
     }
 
-    pub fn mk_substs_trait(
+    pub fn mk_args_trait(
         self,
         self_ty: Ty<'tcx>,
         rest: impl IntoIterator<Item = GenericArg<'tcx>>,
-    ) -> SubstsRef<'tcx> {
-        self.mk_substs_from_iter(iter::once(self_ty.into()).chain(rest))
+    ) -> GenericArgsRef<'tcx> {
+        self.mk_args_from_iter(iter::once(self_ty.into()).chain(rest))
     }
 
     pub fn mk_alias_ty(
         self,
         def_id: DefId,
-        substs: impl IntoIterator<Item: Into<GenericArg<'tcx>>>,
+        args: impl IntoIterator<Item: Into<GenericArg<'tcx>>>,
     ) -> ty::AliasTy<'tcx> {
-        let substs = self.check_and_mk_substs(def_id, substs);
-        ty::AliasTy { def_id, substs, _use_mk_alias_ty_instead: () }
+        let args = self.check_and_mk_args(def_id, args);
+        ty::AliasTy { def_id, args, _use_mk_alias_ty_instead: () }
     }
 
     pub fn mk_bound_variable_kinds_from_iter<I, T>(self, iter: I) -> T::Output

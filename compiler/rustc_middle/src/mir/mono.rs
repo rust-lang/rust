@@ -1,5 +1,5 @@
 use crate::dep_graph::{DepNode, WorkProduct, WorkProductId};
-use crate::ty::{subst::InternalSubsts, Instance, InstanceDef, SymbolName, TyCtxt};
+use crate::ty::{GenericArgs, Instance, InstanceDef, SymbolName, TyCtxt};
 use rustc_attr::InlineAttr;
 use rustc_data_structures::base_n;
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -71,7 +71,7 @@ impl<'tcx> MonoItem<'tcx> {
 
     pub fn is_generic_fn(&self) -> bool {
         match *self {
-            MonoItem::Fn(ref instance) => instance.substs.non_erasable_generics().next().is_some(),
+            MonoItem::Fn(ref instance) => instance.args.non_erasable_generics().next().is_some(),
             MonoItem::Static(..) | MonoItem::GlobalAsm(..) => false,
         }
     }
@@ -168,14 +168,14 @@ impl<'tcx> MonoItem<'tcx> {
     /// which will never be accessed) in its place.
     pub fn is_instantiable(&self, tcx: TyCtxt<'tcx>) -> bool {
         debug!("is_instantiable({:?})", self);
-        let (def_id, substs) = match *self {
-            MonoItem::Fn(ref instance) => (instance.def_id(), instance.substs),
-            MonoItem::Static(def_id) => (def_id, InternalSubsts::empty()),
+        let (def_id, args) = match *self {
+            MonoItem::Fn(ref instance) => (instance.def_id(), instance.args),
+            MonoItem::Static(def_id) => (def_id, GenericArgs::empty()),
             // global asm never has predicates
             MonoItem::GlobalAsm(..) => return true,
         };
 
-        !tcx.subst_and_check_impossible_predicates((def_id, &substs))
+        !tcx.subst_and_check_impossible_predicates((def_id, &args))
     }
 
     pub fn local_span(&self, tcx: TyCtxt<'tcx>) -> Option<Span> {
@@ -216,7 +216,7 @@ impl<'tcx> fmt::Display for MonoItem<'tcx> {
         match *self {
             MonoItem::Fn(instance) => write!(f, "fn {}", instance),
             MonoItem::Static(def_id) => {
-                write!(f, "static {}", Instance::new(def_id, InternalSubsts::empty()))
+                write!(f, "static {}", Instance::new(def_id, GenericArgs::empty()))
             }
             MonoItem::GlobalAsm(..) => write!(f, "global_asm"),
         }

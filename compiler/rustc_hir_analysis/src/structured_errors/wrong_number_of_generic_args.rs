@@ -360,9 +360,11 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                 &[]
             };
             ret.extend(params.iter().filter_map(|p| {
-                let hir::GenericParamKind::Lifetime { kind: hir::LifetimeParamKind::Explicit }
-                    = p.kind
-                else { return None };
+                let hir::GenericParamKind::Lifetime { kind: hir::LifetimeParamKind::Explicit } =
+                    p.kind
+                else {
+                    return None;
+                };
                 let hir::ParamName::Plain(name) = p.name else { return None };
                 Some(name.to_string())
             }));
@@ -793,29 +795,36 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         num_trait_generics_except_self: usize,
     ) {
         let sm = self.tcx.sess.source_map();
-        let hir::ExprKind::MethodCall(_, rcvr, args, _) = expr.kind else { return; };
+        let hir::ExprKind::MethodCall(_, rcvr, args, _) = expr.kind else {
+            return;
+        };
         if num_assoc_fn_excess_args != num_trait_generics_except_self {
             return;
         }
-        let Some(gen_args) = self.gen_args.span_ext() else { return; };
-        let Ok(generics) = sm.span_to_snippet(gen_args) else { return; };
-        let Ok(rcvr) = sm.span_to_snippet(
-            rcvr.span.find_ancestor_inside(expr.span).unwrap_or(rcvr.span)
-        ) else { return; };
-        let Ok(rest) =
-            (match args {
-                [] => Ok(String::new()),
-                [arg] => sm.span_to_snippet(
-                    arg.span.find_ancestor_inside(expr.span).unwrap_or(arg.span),
-                ),
-                [first, .., last] => {
-                    let first_span =
-                        first.span.find_ancestor_inside(expr.span).unwrap_or(first.span);
-                    let last_span =
-                        last.span.find_ancestor_inside(expr.span).unwrap_or(last.span);
-                    sm.span_to_snippet(first_span.to(last_span))
-                }
-            }) else { return; };
+        let Some(gen_args) = self.gen_args.span_ext() else {
+            return;
+        };
+        let Ok(generics) = sm.span_to_snippet(gen_args) else {
+            return;
+        };
+        let Ok(rcvr) =
+            sm.span_to_snippet(rcvr.span.find_ancestor_inside(expr.span).unwrap_or(rcvr.span))
+        else {
+            return;
+        };
+        let Ok(rest) = (match args {
+            [] => Ok(String::new()),
+            [arg] => {
+                sm.span_to_snippet(arg.span.find_ancestor_inside(expr.span).unwrap_or(arg.span))
+            }
+            [first, .., last] => {
+                let first_span = first.span.find_ancestor_inside(expr.span).unwrap_or(first.span);
+                let last_span = last.span.find_ancestor_inside(expr.span).unwrap_or(last.span);
+                sm.span_to_snippet(first_span.to(last_span))
+            }
+        }) else {
+            return;
+        };
         let comma = if args.len() > 0 { ", " } else { "" };
         let trait_path = self.tcx.def_path_str(trait_def_id);
         let method_name = self.tcx.item_name(self.def_id);

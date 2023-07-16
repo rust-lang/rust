@@ -28,8 +28,8 @@ echo "rustc_query_count_full: $rustc_query_count_full"
 ## and marks are in pairs.
 if [ $short -lt $full ] &&
     [ $begin_count -eq $end_count ] &&
-    [ $(($rustc_query_count + 10)) -lt $rustc_query_count_full ] &&
-    [ $rustc_query_count_full -gt 10 ]; then
+    [ $(($rustc_query_count + 5)) -lt $rustc_query_count_full ] &&
+    [ $rustc_query_count_full -gt 5 ]; then
     exit 0
 else
     exit 1

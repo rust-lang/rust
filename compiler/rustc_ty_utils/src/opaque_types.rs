@@ -7,7 +7,7 @@ use rustc_middle::ty::util::{CheckRegions, NotUniqueParam};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
 use rustc_span::Span;
-use rustc_trait_selection::traits::check_substs_compatible;
+use rustc_trait_selection::traits::check_args_compatible;
 use std::ops::ControlFlow;
 
 use crate::errors::{DuplicateArg, NotParam};
@@ -45,7 +45,7 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
     fn parent_trait_ref(&self) -> Option<ty::TraitRef<'tcx>> {
         let parent = self.parent()?;
         if matches!(self.tcx.def_kind(parent), DefKind::Impl { .. }) {
-            Some(self.tcx.impl_trait_ref(parent)?.subst_identity())
+            Some(self.tcx.impl_trait_ref(parent)?.instantiate_identity())
         } else {
             None
         }
@@ -159,19 +159,19 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
 
                 self.opaques.push(alias_ty.def_id.expect_local());
 
-                match self.tcx.uses_unique_generic_params(alias_ty.substs, CheckRegions::Bound) {
+                match self.tcx.uses_unique_generic_params(alias_ty.args, CheckRegions::Bound) {
                     Ok(()) => {
                         // FIXME: implement higher kinded lifetime bounds on nested opaque types. They are not
                         // supported at all, so this is sound to do, but once we want to support them, you'll
                         // start seeing the error below.
 
                         // Collect opaque types nested within the associated type bounds of this opaque type.
-                        // We use identity substs here, because we already know that the opaque type uses
+                        // We use identity args here, because we already know that the opaque type uses
                         // only generic parameters, and thus substituting would not give us more information.
                         for (pred, span) in self
                             .tcx
                             .explicit_item_bounds(alias_ty.def_id)
-                            .subst_identity_iter_copied()
+                            .instantiate_identity_iter_copied()
                         {
                             trace!(?pred);
                             self.visit_spanned(span, pred);
@@ -196,7 +196,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
             ty::Alias(ty::Weak, alias_ty) if alias_ty.def_id.is_local() => {
                 self.tcx
                     .type_of(alias_ty.def_id)
-                    .subst(self.tcx, alias_ty.substs)
+                    .instantiate(self.tcx, alias_ty.args)
                     .visit_with(self)?;
             }
             ty::Alias(ty::Projection, alias_ty) => {
@@ -222,22 +222,22 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                                 continue;
                             }
 
-                            let impl_substs = alias_ty.substs.rebase_onto(
+                            let impl_args = alias_ty.args.rebase_onto(
                                 self.tcx,
                                 parent_trait_ref.def_id,
-                                ty::InternalSubsts::identity_for_item(self.tcx, parent),
+                                ty::GenericArgs::identity_for_item(self.tcx, parent),
                             );
 
-                            if check_substs_compatible(self.tcx, assoc, impl_substs) {
+                            if check_args_compatible(self.tcx, assoc, impl_args) {
                                 return self
                                     .tcx
                                     .type_of(assoc.def_id)
-                                    .subst(self.tcx, impl_substs)
+                                    .instantiate(self.tcx, impl_args)
                                     .visit_with(self);
                             } else {
                                 self.tcx.sess.delay_span_bug(
                                     self.tcx.def_span(assoc.def_id),
-                                    "item had incorrect substs",
+                                    "item had incorrect args",
                                 );
                             }
                         }
@@ -250,15 +250,15 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                 }
                 for variant in def.variants().iter() {
                     for field in variant.fields.iter() {
-                        // Don't use the `ty::Adt` substs, we either
-                        // * found the opaque in the substs
+                        // Don't use the `ty::Adt` args, we either
+                        // * found the opaque in the args
                         // * will find the opaque in the unsubstituted fields
                         // The only other situation that can occur is that after substituting,
                         // some projection resolves to an opaque that we would have otherwise
                         // not found. While we could substitute and walk those, that would mean we
                         // would have to walk all substitutions of an Adt, which can quickly
                         // degenerate into looking at an exponential number of types.
-                        let ty = self.tcx.type_of(field.did).subst_identity();
+                        let ty = self.tcx.type_of(field.did).instantiate_identity();
                         self.visit_spanned(self.tcx.def_span(field.did), ty);
                     }
                 }
@@ -276,7 +276,7 @@ fn opaque_types_defined_by<'tcx>(tcx: TyCtxt<'tcx>, item: LocalDefId) -> &'tcx [
     match kind {
         // Walk over the signature of the function-like to find the opaques.
         DefKind::AssocFn | DefKind::Fn => {
-            let ty_sig = tcx.fn_sig(item).subst_identity();
+            let ty_sig = tcx.fn_sig(item).instantiate_identity();
             let hir_sig = tcx.hir().get_by_def_id(item).fn_sig().unwrap();
             // Walk over the inputs and outputs manually in order to get good spans for them.
             collector.visit_spanned(hir_sig.decl.output.span(), ty_sig.output());
@@ -291,15 +291,15 @@ fn opaque_types_defined_by<'tcx>(tcx: TyCtxt<'tcx>, item: LocalDefId) -> &'tcx [
                 Some(ty) => ty.span,
                 _ => tcx.def_span(item),
             };
-            collector.visit_spanned(span, tcx.type_of(item).subst_identity());
+            collector.visit_spanned(span, tcx.type_of(item).instantiate_identity());
             collector.collect_body_and_predicate_taits();
         }
         // We're also doing this for `AssocTy` for the wf checks in `check_opaque_meets_bounds`
         DefKind::TyAlias | DefKind::AssocTy => {
-            tcx.type_of(item).subst_identity().visit_with(&mut collector);
+            tcx.type_of(item).instantiate_identity().visit_with(&mut collector);
         }
         DefKind::OpaqueTy => {
-            for (pred, span) in tcx.explicit_item_bounds(item).subst_identity_iter_copied() {
+            for (pred, span) in tcx.explicit_item_bounds(item).instantiate_identity_iter_copied() {
                 collector.visit_spanned(span, pred);
             }
         }

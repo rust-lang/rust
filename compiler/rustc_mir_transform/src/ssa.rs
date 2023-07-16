@@ -266,9 +266,11 @@ fn compute_copy_classes(ssa: &mut SsaLocals, body: &Body<'_>) {
     let mut copies = IndexVec::from_fn_n(|l| l, body.local_decls.len());
 
     for (local, rvalue, _) in ssa.assignments(body) {
-        let (Rvalue::Use(Operand::Copy(place) | Operand::Move(place)) | Rvalue::CopyForDeref(place))
-            = rvalue
-        else { continue };
+        let (Rvalue::Use(Operand::Copy(place) | Operand::Move(place))
+        | Rvalue::CopyForDeref(place)) = rvalue
+        else {
+            continue;
+        };
 
         let Some(rhs) = place.as_local() else { continue };
         let local_ty = body.local_decls()[local].ty;

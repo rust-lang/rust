@@ -313,9 +313,10 @@ impl<'a> StripUnconfigured<'a> {
     /// the attribute is incorrect.
     pub(crate) fn expand_cfg_attr(&self, attr: &Attribute, recursive: bool) -> Vec<Attribute> {
         let Some((cfg_predicate, expanded_attrs)) =
-            rustc_parse::parse_cfg_attr(attr, &self.sess.parse_sess) else {
-                return vec![];
-            };
+            rustc_parse::parse_cfg_attr(attr, &self.sess.parse_sess)
+        else {
+            return vec![];
+        };
 
         // Lint on zero attributes in source.
         if expanded_attrs.is_empty() {
@@ -365,7 +366,9 @@ impl<'a> StripUnconfigured<'a> {
         // Use the `#` in `#[cfg_attr(pred, attr)]` as the `#` token
         // for `attr` when we expand it to `#[attr]`
         let mut orig_trees = orig_tokens.into_trees();
-        let TokenTree::Token(pound_token @ Token { kind: TokenKind::Pound, .. }, _) = orig_trees.next().unwrap() else {
+        let TokenTree::Token(pound_token @ Token { kind: TokenKind::Pound, .. }, _) =
+            orig_trees.next().unwrap()
+        else {
             panic!("Bad tokens for attribute {:?}", attr);
         };
         let pound_span = pound_token.span;
@@ -373,7 +376,9 @@ impl<'a> StripUnconfigured<'a> {
         let mut trees = vec![AttrTokenTree::Token(pound_token, Spacing::Alone)];
         if attr.style == AttrStyle::Inner {
             // For inner attributes, we do the same thing for the `!` in `#![some_attr]`
-            let TokenTree::Token(bang_token @ Token { kind: TokenKind::Not, .. }, _) = orig_trees.next().unwrap() else {
+            let TokenTree::Token(bang_token @ Token { kind: TokenKind::Not, .. }, _) =
+                orig_trees.next().unwrap()
+            else {
                 panic!("Bad tokens for attribute {:?}", attr);
             };
             trees.push(AttrTokenTree::Token(bang_token, Spacing::Alone));

@@ -74,9 +74,7 @@ pub fn resolve_rvalue_scopes<'a, 'tcx>(
     debug!("start resolving rvalue scopes, def_id={def_id:?}");
     debug!("rvalue_scope: rvalue_candidates={:?}", scope_tree.rvalue_candidates);
     for (&hir_id, candidate) in &scope_tree.rvalue_candidates {
-        let Some(Node::Expr(expr)) = hir_map.find(hir_id) else {
-            bug!("hir node does not exist")
-        };
+        let Some(Node::Expr(expr)) = hir_map.find(hir_id) else { bug!("hir node does not exist") };
         record_rvalue_scope(&mut rvalue_scopes, expr, candidate);
     }
     rvalue_scopes

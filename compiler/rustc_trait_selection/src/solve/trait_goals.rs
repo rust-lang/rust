@@ -39,10 +39,9 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
 
         let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
         let drcx = DeepRejectCtxt { treat_obligation_params: TreatParams::ForLookup };
-        if !drcx.substs_refs_may_unify(
-            goal.predicate.trait_ref.substs,
-            impl_trait_ref.skip_binder().substs,
-        ) {
+        if !drcx
+            .args_refs_may_unify(goal.predicate.trait_ref.args, impl_trait_ref.skip_binder().args)
+        {
             return Err(NoSolution);
         }
 
@@ -63,13 +62,13 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         };
 
         ecx.probe_candidate("impl").enter(|ecx| {
-            let impl_substs = ecx.fresh_substs_for_item(impl_def_id);
-            let impl_trait_ref = impl_trait_ref.subst(tcx, impl_substs);
+            let impl_args = ecx.fresh_args_for_item(impl_def_id);
+            let impl_trait_ref = impl_trait_ref.instantiate(tcx, impl_args);
 
             ecx.eq(goal.param_env, goal.predicate.trait_ref, impl_trait_ref)?;
             let where_clause_bounds = tcx
                 .predicates_of(impl_def_id)
-                .instantiate(tcx, impl_substs)
+                .instantiate(tcx, impl_args)
                 .predicates
                 .into_iter()
                 .map(|pred| goal.with(tcx, pred));
@@ -164,7 +163,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         ecx.probe_candidate("trait alias").enter(|ecx| {
             let nested_obligations = tcx
                 .predicates_of(goal.predicate.def_id())
-                .instantiate(tcx, goal.predicate.trait_ref.substs);
+                .instantiate(tcx, goal.predicate.trait_ref.args);
             ecx.add_goals(nested_obligations.predicates.into_iter().map(|p| goal.with(tcx, p)));
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
@@ -337,7 +336,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         }
 
         let self_ty = goal.predicate.self_ty();
-        let ty::Generator(def_id, substs, _) = *self_ty.kind() else {
+        let ty::Generator(def_id, args, _) = *self_ty.kind() else {
             return Err(NoSolution);
         };
 
@@ -347,7 +346,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             return Err(NoSolution);
         }
 
-        let generator = substs.as_generator();
+        let generator = args.as_generator();
         Self::consider_implied_clause(
             ecx,
             goal,
@@ -369,7 +368,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
 
         let tcx = ecx.tcx();
         let a_ty = goal.predicate.self_ty();
-        let b_ty = goal.predicate.trait_ref.substs.type_at(1);
+        let b_ty = goal.predicate.trait_ref.args.type_at(1);
         if b_ty.is_ty_var() {
             return ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS);
         }
@@ -378,7 +377,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                 // Trait upcasting, or `dyn Trait + Auto + 'a` -> `dyn Trait + 'b`
                 (&ty::Dynamic(_, _, ty::Dyn), &ty::Dynamic(_, _, ty::Dyn)) => {
                     // Dyn upcasting is handled separately, since due to upcasting,
-                    // when there are two supertraits that differ by substs, we
+                    // when there are two supertraits that differ by args, we
                     // may return more than one query response.
                     Err(NoSolution)
                 }
@@ -415,7 +414,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                     ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                 }
                 // Struct unsizing `Struct<T>` -> `Struct<U>` where `T: Unsize<U>`
-                (&ty::Adt(a_def, a_substs), &ty::Adt(b_def, b_substs))
+                (&ty::Adt(a_def, a_args), &ty::Adt(b_def, b_args))
                     if a_def.is_struct() && a_def.did() == b_def.did() =>
                 {
                     let unsizing_params = tcx.unsizing_params_for_adt(a_def.did());
@@ -428,17 +427,17 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                     let tail_field = a_def.non_enum_variant().tail();
                     let tail_field_ty = tcx.type_of(tail_field.did);
 
-                    let a_tail_ty = tail_field_ty.subst(tcx, a_substs);
-                    let b_tail_ty = tail_field_ty.subst(tcx, b_substs);
+                    let a_tail_ty = tail_field_ty.instantiate(tcx, a_args);
+                    let b_tail_ty = tail_field_ty.instantiate(tcx, b_args);
 
                     // Substitute just the unsizing params from B into A. The type after
                     // this substitution must be equal to B. This is so we don't unsize
                     // unrelated type parameters.
-                    let new_a_substs =
-                        tcx.mk_substs_from_iter(a_substs.iter().enumerate().map(|(i, a)| {
-                            if unsizing_params.contains(i as u32) { b_substs[i] } else { a }
+                    let new_a_args =
+                        tcx.mk_args_from_iter(a_args.iter().enumerate().map(|(i, a)| {
+                            if unsizing_params.contains(i as u32) { b_args[i] } else { a }
                         }));
-                    let unsized_a_ty = Ty::new_adt(tcx, a_def, new_a_substs);
+                    let unsized_a_ty = Ty::new_adt(tcx, a_def, new_a_args);
 
                     // Finally, we require that `TailA: Unsize<TailB>` for the tail field
                     // types.
@@ -484,7 +483,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         let tcx = ecx.tcx();
 
         let a_ty = goal.predicate.self_ty();
-        let b_ty = goal.predicate.trait_ref.substs.type_at(1);
+        let b_ty = goal.predicate.trait_ref.args.type_at(1);
         let ty::Dynamic(a_data, a_region, ty::Dyn) = *a_ty.kind() else {
             return vec![];
         };
@@ -598,19 +597,17 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
 
         // Erase regions because we compute layouts in `rustc_transmute`,
         // which will ICE for region vars.
-        let substs = ecx.tcx().erase_regions(goal.predicate.trait_ref.substs);
+        let args = ecx.tcx().erase_regions(goal.predicate.trait_ref.args);
 
-        let Some(assume) = rustc_transmute::Assume::from_const(
-            ecx.tcx(),
-            goal.param_env,
-            substs.const_at(3),
-        ) else {
+        let Some(assume) =
+            rustc_transmute::Assume::from_const(ecx.tcx(), goal.param_env, args.const_at(3))
+        else {
             return Err(NoSolution);
         };
 
         let certainty = ecx.is_transmutable(
-            rustc_transmute::Types { dst: substs.type_at(0), src: substs.type_at(1) },
-            substs.type_at(2),
+            rustc_transmute::Types { dst: args.type_at(0), src: args.type_at(1) },
+            args.type_at(2),
             assume,
         )?;
         ecx.evaluate_added_goals_and_make_canonical_response(certainty)

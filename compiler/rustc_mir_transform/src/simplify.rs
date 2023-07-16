@@ -199,7 +199,8 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
         let last = current;
         *start = last;
         while let Some((current, mut terminator)) = terminators.pop() {
-            let Terminator { kind: TerminatorKind::Goto { ref mut target }, .. } = terminator else {
+            let Terminator { kind: TerminatorKind::Goto { ref mut target }, .. } = terminator
+            else {
                 unreachable!();
             };
             *changed |= *target != last;

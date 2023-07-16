@@ -37,7 +37,7 @@ pub use eval_ctxt::{
     EvalCtxt, GenerateProofTree, InferCtxtEvalExt, InferCtxtSelectExt, UseGlobalCache,
 };
 pub use fulfill::FulfillmentCtxt;
-pub(crate) use normalize::deeply_normalize;
+pub(crate) use normalize::{deeply_normalize, deeply_normalize_with_skipped_universes};
 
 #[derive(Debug, Clone, Copy)]
 enum SolverMode {
@@ -123,10 +123,10 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
     #[instrument(level = "debug", skip(self))]
     fn compute_closure_kind_goal(
         &mut self,
-        goal: Goal<'tcx, (DefId, ty::SubstsRef<'tcx>, ty::ClosureKind)>,
+        goal: Goal<'tcx, (DefId, ty::GenericArgsRef<'tcx>, ty::ClosureKind)>,
     ) -> QueryResult<'tcx> {
-        let (_, substs, expected_kind) = goal.predicate;
-        let found_kind = substs.as_closure().kind_ty().to_opt_closure_kind();
+        let (_, args, expected_kind) = goal.predicate;
+        let found_kind = args.as_closure().kind_ty().to_opt_closure_kind();
 
         let Some(found_kind) = found_kind else {
             return self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS);
@@ -266,12 +266,11 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             return Err(NoSolution);
         }
 
-        let Certainty::Maybe(maybe_cause) = responses.iter().fold(
-            Certainty::AMBIGUOUS,
-            |certainty, response| {
+        let Certainty::Maybe(maybe_cause) =
+            responses.iter().fold(Certainty::AMBIGUOUS, |certainty, response| {
                 certainty.unify_with(response.value.certainty)
-            },
-        ) else {
+            })
+        else {
             bug!("expected flounder response to be ambiguous")
         };
 

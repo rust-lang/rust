@@ -26,8 +26,8 @@ impl<'tcx, N: fmt::Debug> fmt::Debug for traits::ImplSourceUserDefinedData<'tcx,
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "ImplSourceUserDefinedData(impl_def_id={:?}, substs={:?}, nested={:?})",
-            self.impl_def_id, self.substs, self.nested
+            "ImplSourceUserDefinedData(impl_def_id={:?}, args={:?}, nested={:?})",
+            self.impl_def_id, self.args, self.nested
         )
     }
 }

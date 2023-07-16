@@ -30,12 +30,12 @@ use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::cast::CastTy;
-use rustc_middle::ty::subst::{SubstsRef, UserSubsts};
 use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{
     self, Binder, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, Dynamic,
     OpaqueHiddenType, OpaqueTypeKey, RegionVid, Ty, TyCtxt, UserType, UserTypeAnnotationIndex,
 };
+use rustc_middle::ty::{GenericArgsRef, UserArgs};
 use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, DUMMY_SP};
@@ -389,15 +389,12 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                 } else {
                     self.cx.ascribe_user_type(
                         constant.literal.ty(),
-                        UserType::TypeOf(
-                            uv.def,
-                            UserSubsts { substs: uv.substs, user_self_ty: None },
-                        ),
+                        UserType::TypeOf(uv.def, UserArgs { args: uv.args, user_self_ty: None }),
                         locations.span(&self.cx.body),
                     );
                 }
             } else if let Some(static_def_id) = constant.check_static_ptr(tcx) {
-                let unnormalized_ty = tcx.type_of(static_def_id).subst_identity();
+                let unnormalized_ty = tcx.type_of(static_def_id).instantiate_identity();
                 let normalized_ty = self.cx.normalize(unnormalized_ty, locations);
                 let literal_ty = constant.literal.ty().builtin_deref(true).unwrap().ty;
 
@@ -411,11 +408,11 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                 }
             }
 
-            if let ty::FnDef(def_id, substs) = *constant.literal.ty().kind() {
+            if let ty::FnDef(def_id, args) = *constant.literal.ty().kind() {
                 // const_trait_impl: use a non-const param env when checking that a FnDef type is well formed.
                 // this is because the well-formedness of the function does not need to be proved to have `const`
                 // impls for trait bounds.
-                let instantiated_predicates = tcx.predicates_of(def_id).instantiate(tcx, substs);
+                let instantiated_predicates = tcx.predicates_of(def_id).instantiate(tcx, args);
                 let prev = self.cx.param_env;
                 self.cx.param_env = prev.without_const();
                 self.cx.normalize_and_prove_instantiated_predicates(
@@ -666,7 +663,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                 })
             }
             ProjectionElem::Downcast(maybe_name, index) => match base_ty.kind() {
-                ty::Adt(adt_def, _substs) if adt_def.is_enum() => {
+                ty::Adt(adt_def, _args) if adt_def.is_enum() => {
                     if index.as_usize() >= adt_def.variants().len() {
                         PlaceTy::from_ty(span_mirbug_and_err!(
                             self,
@@ -776,16 +773,16 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
     ) -> Result<Ty<'tcx>, FieldAccessError> {
         let tcx = self.tcx();
 
-        let (variant, substs) = match base_ty {
+        let (variant, args) = match base_ty {
             PlaceTy { ty, variant_index: Some(variant_index) } => match *ty.kind() {
-                ty::Adt(adt_def, substs) => (adt_def.variant(variant_index), substs),
-                ty::Generator(def_id, substs, _) => {
-                    let mut variants = substs.as_generator().state_tys(def_id, tcx);
+                ty::Adt(adt_def, args) => (adt_def.variant(variant_index), args),
+                ty::Generator(def_id, args, _) => {
+                    let mut variants = args.as_generator().state_tys(def_id, tcx);
                     let Some(mut variant) = variants.nth(variant_index.into()) else {
                         bug!(
                             "variant_index of generator out of range: {:?}/{:?}",
                             variant_index,
-                            substs.as_generator().state_tys(def_id, tcx).count()
+                            args.as_generator().state_tys(def_id, tcx).count()
                         );
                     };
                     return match variant.nth(field.index()) {
@@ -796,11 +793,11 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                 _ => bug!("can't have downcast of non-adt non-generator type"),
             },
             PlaceTy { ty, variant_index: None } => match *ty.kind() {
-                ty::Adt(adt_def, substs) if !adt_def.is_enum() => {
-                    (adt_def.variant(FIRST_VARIANT), substs)
+                ty::Adt(adt_def, args) if !adt_def.is_enum() => {
+                    (adt_def.variant(FIRST_VARIANT), args)
                 }
-                ty::Closure(_, substs) => {
-                    return match substs
+                ty::Closure(_, args) => {
+                    return match args
                         .as_closure()
                         .tupled_upvars_ty()
                         .tuple_fields()
@@ -808,17 +805,17 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                     {
                         Some(&ty) => Ok(ty),
                         None => Err(FieldAccessError::OutOfRange {
-                            field_count: substs.as_closure().upvar_tys().count(),
+                            field_count: args.as_closure().upvar_tys().count(),
                         }),
                     };
                 }
-                ty::Generator(_, substs, _) => {
+                ty::Generator(_, args, _) => {
                     // Only prefix fields (upvars and current state) are
                     // accessible without a variant index.
-                    return match substs.as_generator().prefix_tys().nth(field.index()) {
+                    return match args.as_generator().prefix_tys().nth(field.index()) {
                         Some(ty) => Ok(ty),
                         None => Err(FieldAccessError::OutOfRange {
-                            field_count: substs.as_generator().prefix_tys().count(),
+                            field_count: args.as_generator().prefix_tys().count(),
                         }),
                     };
                 }
@@ -840,7 +837,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
         };
 
         if let Some(field) = variant.fields.get(field) {
-            Ok(self.cx.normalize(field.ty(tcx, substs), location))
+            Ok(self.cx.normalize(field.ty(tcx, args), location))
         } else {
             Err(FieldAccessError::OutOfRange { field_count: variant.fields.len() })
         }
@@ -1065,7 +1062,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
                         ocx.infcx.add_item_bounds_for_hidden_type(
                             opaque_type_key.def_id.to_def_id(),
-                            opaque_type_key.substs,
+                            opaque_type_key.args,
                             cause,
                             param_env,
                             hidden_ty.ty,
@@ -1770,32 +1767,32 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         let tcx = self.tcx();
 
         match *ak {
-            AggregateKind::Adt(adt_did, variant_index, substs, _, active_field_index) => {
+            AggregateKind::Adt(adt_did, variant_index, args, _, active_field_index) => {
                 let def = tcx.adt_def(adt_did);
                 let variant = &def.variant(variant_index);
                 let adj_field_index = active_field_index.unwrap_or(field_index);
                 if let Some(field) = variant.fields.get(adj_field_index) {
-                    Ok(self.normalize(field.ty(tcx, substs), location))
+                    Ok(self.normalize(field.ty(tcx, args), location))
                 } else {
                     Err(FieldAccessError::OutOfRange { field_count: variant.fields.len() })
                 }
             }
-            AggregateKind::Closure(_, substs) => {
-                match substs.as_closure().upvar_tys().nth(field_index.as_usize()) {
+            AggregateKind::Closure(_, args) => {
+                match args.as_closure().upvar_tys().nth(field_index.as_usize()) {
                     Some(ty) => Ok(ty),
                     None => Err(FieldAccessError::OutOfRange {
-                        field_count: substs.as_closure().upvar_tys().count(),
+                        field_count: args.as_closure().upvar_tys().count(),
                     }),
                 }
             }
-            AggregateKind::Generator(_, substs, _) => {
+            AggregateKind::Generator(_, args, _) => {
                 // It doesn't make sense to look at a field beyond the prefix;
                 // these require a variant index, and are not initialized in
                 // aggregate rvalues.
-                match substs.as_generator().prefix_tys().nth(field_index.as_usize()) {
+                match args.as_generator().prefix_tys().nth(field_index.as_usize()) {
                     Some(ty) => Ok(ty),
                     None => Err(FieldAccessError::OutOfRange {
-                        field_count: substs.as_generator().prefix_tys().count(),
+                        field_count: args.as_generator().prefix_tys().count(),
                     }),
                 }
             }
@@ -1821,8 +1818,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     let def_id = uv.def;
                     if tcx.def_kind(def_id) == DefKind::InlineConst {
                         let def_id = def_id.expect_local();
-                        let predicates =
-                            self.prove_closure_bounds(tcx, def_id, uv.substs, location);
+                        let predicates = self.prove_closure_bounds(tcx, def_id, uv.args, location);
                         self.normalize_and_prove_instantiated_predicates(
                             def_id.to_def_id(),
                             predicates,
@@ -1939,7 +1935,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
                     CastKind::PointerCoercion(PointerCoercion::ClosureFnPointer(unsafety)) => {
                         let sig = match op.ty(body, tcx).kind() {
-                            ty::Closure(_, substs) => substs.as_closure().sig(),
+                            ty::Closure(_, args) => args.as_closure().sig(),
                             _ => bug!(),
                         };
                         let ty_fn_ptr_from =
@@ -2039,28 +2035,16 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
 
                     CastKind::PointerCoercion(PointerCoercion::MutToConstPointer) => {
-                        let ty::RawPtr(ty::TypeAndMut {
-                            ty: ty_from,
-                            mutbl: hir::Mutability::Mut,
-                        }) = op.ty(body, tcx).kind() else {
-                            span_mirbug!(
-                                self,
-                                rvalue,
-                                "unexpected base type for cast {:?}",
-                                ty,
-                            );
+                        let ty::RawPtr(ty::TypeAndMut { ty: ty_from, mutbl: hir::Mutability::Mut }) =
+                            op.ty(body, tcx).kind()
+                        else {
+                            span_mirbug!(self, rvalue, "unexpected base type for cast {:?}", ty,);
                             return;
                         };
-                        let ty::RawPtr(ty::TypeAndMut {
-                            ty: ty_to,
-                            mutbl: hir::Mutability::Not,
-                        }) = ty.kind() else {
-                            span_mirbug!(
-                                self,
-                                rvalue,
-                                "unexpected target type for cast {:?}",
-                                ty,
-                            );
+                        let ty::RawPtr(ty::TypeAndMut { ty: ty_to, mutbl: hir::Mutability::Not }) =
+                            ty.kind()
+                        else {
+                            span_mirbug!(self, rvalue, "unexpected target type for cast {:?}", ty,);
                             return;
                         };
                         if let Err(terr) = self.sub_types(
@@ -2603,8 +2587,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         );
 
         let (def_id, instantiated_predicates) = match *aggregate_kind {
-            AggregateKind::Adt(adt_did, _, substs, _, _) => {
-                (adt_did, tcx.predicates_of(adt_did).instantiate(tcx, substs))
+            AggregateKind::Adt(adt_did, _, args, _, _) => {
+                (adt_did, tcx.predicates_of(adt_did).instantiate(tcx, args))
             }
 
             // For closures, we have some **extra requirements** we
@@ -2626,9 +2610,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             // desugaring. A closure gets desugared to a struct, and
             // these extra requirements are basically like where
             // clauses on the struct.
-            AggregateKind::Closure(def_id, substs)
-            | AggregateKind::Generator(def_id, substs, _) => {
-                (def_id, self.prove_closure_bounds(tcx, def_id.expect_local(), substs, location))
+            AggregateKind::Closure(def_id, args) | AggregateKind::Generator(def_id, args, _) => {
+                (def_id, self.prove_closure_bounds(tcx, def_id.expect_local(), args, location))
             }
 
             AggregateKind::Array(_) | AggregateKind::Tuple => {
@@ -2647,7 +2630,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         &mut self,
         tcx: TyCtxt<'tcx>,
         def_id: LocalDefId,
-        substs: SubstsRef<'tcx>,
+        args: GenericArgsRef<'tcx>,
         location: Location,
     ) -> ty::InstantiatedPredicates<'tcx> {
         if let Some(closure_requirements) = &tcx.mir_borrowck(def_id).closure_requirements {
@@ -2665,26 +2648,26 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             .apply_closure_requirements(
                 &closure_requirements,
                 def_id.to_def_id(),
-                substs,
+                args,
             );
         }
 
-        // Now equate closure substs to regions inherited from `typeck_root_def_id`. Fixes #98589.
+        // Now equate closure args to regions inherited from `typeck_root_def_id`. Fixes #98589.
         let typeck_root_def_id = tcx.typeck_root_def_id(self.body.source.def_id());
-        let typeck_root_substs = ty::InternalSubsts::identity_for_item(tcx, typeck_root_def_id);
+        let typeck_root_args = ty::GenericArgs::identity_for_item(tcx, typeck_root_def_id);
 
-        let parent_substs = match tcx.def_kind(def_id) {
-            DefKind::Closure => substs.as_closure().parent_substs(),
-            DefKind::Generator => substs.as_generator().parent_substs(),
-            DefKind::InlineConst => substs.as_inline_const().parent_substs(),
+        let parent_args = match tcx.def_kind(def_id) {
+            DefKind::Closure => args.as_closure().parent_args(),
+            DefKind::Generator => args.as_generator().parent_args(),
+            DefKind::InlineConst => args.as_inline_const().parent_args(),
             other => bug!("unexpected item {:?}", other),
         };
-        let parent_substs = tcx.mk_substs(parent_substs);
+        let parent_args = tcx.mk_args(parent_args);
 
-        assert_eq!(typeck_root_substs.len(), parent_substs.len());
-        if let Err(_) = self.eq_substs(
-            typeck_root_substs,
-            parent_substs,
+        assert_eq!(typeck_root_args.len(), parent_args.len());
+        if let Err(_) = self.eq_args(
+            typeck_root_args,
+            parent_args,
             location.to_locations(),
             ConstraintCategory::BoringNoLocation,
         ) {
@@ -2692,12 +2675,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 self,
                 def_id,
                 "could not relate closure to parent {:?} != {:?}",
-                typeck_root_substs,
-                parent_substs
+                typeck_root_args,
+                parent_args
             );
         }
 
-        tcx.predicates_of(def_id).instantiate(tcx, substs)
+        tcx.predicates_of(def_id).instantiate(tcx, args)
     }
 
     #[instrument(skip(self, body), level = "debug")]

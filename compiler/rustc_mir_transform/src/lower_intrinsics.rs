@@ -2,7 +2,7 @@
 
 use crate::{errors, MirPass};
 use rustc_middle::mir::*;
-use rustc_middle::ty::subst::SubstsRef;
+use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
@@ -19,7 +19,8 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                 &mut terminator.kind
             {
                 let func_ty = func.ty(local_decls, tcx);
-                let Some((intrinsic_name, substs)) = resolve_rust_intrinsic(tcx, func_ty) else {
+                let Some((intrinsic_name, generic_args)) = resolve_rust_intrinsic(tcx, func_ty)
+                else {
                     continue;
                 };
                 match intrinsic_name {
@@ -149,7 +150,7 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                     }
                     sym::size_of | sym::min_align_of => {
                         if let Some(target) = *target {
-                            let tp_ty = substs.type_at(0);
+                            let tp_ty = generic_args.type_at(0);
                             let null_op = match intrinsic_name {
                                 sym::size_of => NullOp::SizeOf,
                                 sym::min_align_of => NullOp::AlignOf,
@@ -251,7 +252,9 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                         if let (Some(target), Some(arg)) = (*target, args[0].place()) {
                             let ty::RawPtr(ty::TypeAndMut { ty: dest_ty, .. }) =
                                 destination.ty(local_decls, tcx).ty.kind()
-                            else { bug!(); };
+                            else {
+                                bug!();
+                            };
 
                             block.statements.push(Statement {
                                 source_info: terminator.source_info,
@@ -315,10 +318,10 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
 fn resolve_rust_intrinsic<'tcx>(
     tcx: TyCtxt<'tcx>,
     func_ty: Ty<'tcx>,
-) -> Option<(Symbol, SubstsRef<'tcx>)> {
-    if let ty::FnDef(def_id, substs) = *func_ty.kind() {
+) -> Option<(Symbol, GenericArgsRef<'tcx>)> {
+    if let ty::FnDef(def_id, args) = *func_ty.kind() {
         if tcx.is_intrinsic(def_id) {
-            return Some((tcx.item_name(def_id), substs));
+            return Some((tcx.item_name(def_id), args));
         }
     }
     None

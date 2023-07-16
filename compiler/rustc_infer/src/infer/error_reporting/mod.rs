@@ -315,7 +315,7 @@ pub fn unexpected_hidden_region_diagnostic<'tcx>(
 ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
     let mut err = tcx.sess.create_err(errors::OpaqueCapturesLifetime {
         span,
-        opaque_ty: Ty::new_opaque(tcx, opaque_ty_key.def_id.to_def_id(), opaque_ty_key.substs),
+        opaque_ty: Ty::new_opaque(tcx, opaque_ty_key.def_id.to_def_id(), opaque_ty_key.args),
         opaque_ty_span: tcx.def_span(opaque_ty_key.def_id),
     });
 
@@ -386,16 +386,16 @@ pub fn unexpected_hidden_region_diagnostic<'tcx>(
 
 impl<'tcx> InferCtxt<'tcx> {
     pub fn get_impl_future_output_ty(&self, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
-        let (def_id, substs) = match *ty.kind() {
-            ty::Alias(_, ty::AliasTy { def_id, substs, .. })
+        let (def_id, args) = match *ty.kind() {
+            ty::Alias(_, ty::AliasTy { def_id, args, .. })
                 if matches!(self.tcx.def_kind(def_id), DefKind::OpaqueTy) =>
             {
-                (def_id, substs)
+                (def_id, args)
             }
-            ty::Alias(_, ty::AliasTy { def_id, substs, .. })
+            ty::Alias(_, ty::AliasTy { def_id, args, .. })
                 if self.tcx.is_impl_trait_in_trait(def_id) =>
             {
-                (def_id, substs)
+                (def_id, args)
             }
             _ => return None,
         };
@@ -403,7 +403,7 @@ impl<'tcx> InferCtxt<'tcx> {
         let future_trait = self.tcx.require_lang_item(LangItem::Future, None);
         let item_def_id = self.tcx.associated_item_def_ids(future_trait)[0];
 
-        self.tcx.explicit_item_bounds(def_id).subst_iter_copied(self.tcx, substs).find_map(
+        self.tcx.explicit_item_bounds(def_id).arg_iter_copied(self.tcx, args).find_map(
             |(predicate, _)| {
                 predicate
                     .kind()
@@ -573,7 +573,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         use hir::def_id::CrateNum;
         use rustc_hir::definitions::DisambiguatedDefPathData;
         use ty::print::Printer;
-        use ty::subst::GenericArg;
+        use ty::GenericArg;
 
         struct AbsolutePathPrinter<'tcx> {
             tcx: TyCtxt<'tcx>,
@@ -711,10 +711,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 {
                     // don't show type `_`
                     if span.desugaring_kind() == Some(DesugaringKind::ForLoop)
-                        && let ty::Adt(def, substs) = ty.kind()
+                        && let ty::Adt(def, args) = ty.kind()
                         && Some(def.did()) == self.tcx.get_diagnostic_item(sym::Option)
                     {
-                        err.span_label(span, format!("this is an iterator with items of type `{}`", substs.type_at(0)));
+                        err.span_label(span, format!("this is an iterator with items of type `{}`", args.type_at(0)));
                     } else {
                     err.span_label(span, format!("this expression has type `{}`", ty));
                 }
@@ -908,7 +908,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         value: &mut DiagnosticStyledString,
         other_value: &mut DiagnosticStyledString,
         name: String,
-        sub: ty::subst::SubstsRef<'tcx>,
+        sub: ty::GenericArgsRef<'tcx>,
         pos: usize,
         other_ty: Ty<'tcx>,
     ) {
@@ -986,9 +986,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         other_path: String,
         other_ty: Ty<'tcx>,
     ) -> Option<()> {
-        // FIXME/HACK: Go back to `SubstsRef` to use its inherent methods,
+        // FIXME/HACK: Go back to `GenericArgsRef` to use its inherent methods,
         // ideally that shouldn't be necessary.
-        let sub = self.tcx.mk_substs(sub);
+        let sub = self.tcx.mk_args(sub);
         for (i, ta) in sub.types().enumerate() {
             if ta == other_ty {
                 self.highlight_outer(&mut t1_out, &mut t2_out, path, sub, i, other_ty);
@@ -1180,9 +1180,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 let did1 = def1.did();
                 let did2 = def2.did();
                 let sub_no_defaults_1 =
-                    self.tcx.generics_of(did1).own_substs_no_defaults(self.tcx, sub1);
+                    self.tcx.generics_of(did1).own_args_no_defaults(self.tcx, sub1);
                 let sub_no_defaults_2 =
-                    self.tcx.generics_of(did2).own_substs_no_defaults(self.tcx, sub2);
+                    self.tcx.generics_of(did2).own_args_no_defaults(self.tcx, sub2);
                 let mut values = (DiagnosticStyledString::new(), DiagnosticStyledString::new());
                 let path1 = self.tcx.def_path_str(did1);
                 let path2 = self.tcx.def_path_str(did2);
@@ -1403,11 +1403,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
 
             // When encountering tuples of the same size, highlight only the differing types
-            (&ty::Tuple(substs1), &ty::Tuple(substs2)) if substs1.len() == substs2.len() => {
+            (&ty::Tuple(args1), &ty::Tuple(args2)) if args1.len() == args2.len() => {
                 let mut values =
                     (DiagnosticStyledString::normal("("), DiagnosticStyledString::normal("("));
-                let len = substs1.len();
-                for (i, (left, right)) in substs1.iter().zip(substs2).enumerate() {
+                let len = args1.len();
+                for (i, (left, right)) in args1.iter().zip(args2).enumerate() {
                     let (x1, x2) = self.cmp(left, right);
                     (values.0).0.extend(x1.0);
                     (values.1).0.extend(x2.0);
@@ -1423,35 +1423,34 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 values
             }
 
-            (ty::FnDef(did1, substs1), ty::FnDef(did2, substs2)) => {
-                let sig1 = self.tcx.fn_sig(*did1).subst(self.tcx, substs1);
-                let sig2 = self.tcx.fn_sig(*did2).subst(self.tcx, substs2);
+            (ty::FnDef(did1, args1), ty::FnDef(did2, args2)) => {
+                let sig1 = self.tcx.fn_sig(*did1).instantiate(self.tcx, args1);
+                let sig2 = self.tcx.fn_sig(*did2).instantiate(self.tcx, args2);
                 let mut values = self.cmp_fn_sig(&sig1, &sig2);
-                let path1 = format!(" {{{}}}", self.tcx.def_path_str_with_substs(*did1, substs1));
-                let path2 = format!(" {{{}}}", self.tcx.def_path_str_with_substs(*did2, substs2));
+                let path1 = format!(" {{{}}}", self.tcx.def_path_str_with_args(*did1, args1));
+                let path2 = format!(" {{{}}}", self.tcx.def_path_str_with_args(*did2, args2));
                 let same_path = path1 == path2;
                 values.0.push(path1, !same_path);
                 values.1.push(path2, !same_path);
                 values
             }
 
-            (ty::FnDef(did1, substs1), ty::FnPtr(sig2)) => {
-                let sig1 = self.tcx.fn_sig(*did1).subst(self.tcx, substs1);
+            (ty::FnDef(did1, args1), ty::FnPtr(sig2)) => {
+                let sig1 = self.tcx.fn_sig(*did1).instantiate(self.tcx, args1);
                 let mut values = self.cmp_fn_sig(&sig1, sig2);
                 values.0.push_highlighted(format!(
                     " {{{}}}",
-                    self.tcx.def_path_str_with_substs(*did1, substs1)
+                    self.tcx.def_path_str_with_args(*did1, args1)
                 ));
                 values
             }
 
-            (ty::FnPtr(sig1), ty::FnDef(did2, substs2)) => {
-                let sig2 = self.tcx.fn_sig(*did2).subst(self.tcx, substs2);
+            (ty::FnPtr(sig1), ty::FnDef(did2, args2)) => {
+                let sig2 = self.tcx.fn_sig(*did2).instantiate(self.tcx, args2);
                 let mut values = self.cmp_fn_sig(sig1, &sig2);
-                values.1.push_normal(format!(
-                    " {{{}}}",
-                    self.tcx.def_path_str_with_substs(*did2, substs2)
-                ));
+                values
+                    .1
+                    .push_normal(format!(" {{{}}}", self.tcx.def_path_str_with_args(*did2, args2)));
                 values
             }
 
@@ -2109,14 +2108,13 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         found: Ty<'tcx>,
         expected_fields: &List<Ty<'tcx>>,
     ) -> Option<TypeErrorAdditionalDiags> {
-        let [expected_tup_elem] = expected_fields[..] else { return None};
+        let [expected_tup_elem] = expected_fields[..] else { return None };
 
         if !self.same_type_modulo_infer(expected_tup_elem, found) {
             return None;
         }
 
-        let Ok(code) = self.tcx.sess().source_map().span_to_snippet(span)
-            else { return None };
+        let Ok(code) = self.tcx.sess().source_map().span_to_snippet(span) else { return None };
 
         let sugg = if code.starts_with('(') && code.ends_with(')') {
             let before_close = span.hi() - BytePos::from_u32(1);

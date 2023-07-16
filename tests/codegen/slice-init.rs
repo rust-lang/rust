@@ -8,7 +8,7 @@ pub fn zero_sized_elem() {
     // CHECK-NOT: br label %repeat_loop_header{{.*}}
     // CHECK-NOT: call void @llvm.memset.p0
     let x = [(); 4];
-    drop(&x);
+    opaque(&x);
 }
 
 // CHECK-LABEL: @zero_len_array
@@ -17,7 +17,7 @@ pub fn zero_len_array() {
     // CHECK-NOT: br label %repeat_loop_header{{.*}}
     // CHECK-NOT: call void @llvm.memset.p0
     let x = [4; 0];
-    drop(&x);
+    opaque(&x);
 }
 
 // CHECK-LABEL: @byte_array
@@ -26,7 +26,7 @@ pub fn byte_array() {
     // CHECK: call void @llvm.memset.{{.+}}({{i8\*|ptr}} {{.*}}, i8 7, i{{[0-9]+}} 4
     // CHECK-NOT: br label %repeat_loop_header{{.*}}
     let x = [7u8; 4];
-    drop(&x);
+    opaque(&x);
 }
 
 #[allow(dead_code)]
@@ -42,7 +42,7 @@ pub fn byte_enum_array() {
     // CHECK: call void @llvm.memset.{{.+}}({{i8\*|ptr}} {{.*}}, i8 {{.*}}, i{{[0-9]+}} 4
     // CHECK-NOT: br label %repeat_loop_header{{.*}}
     let x = [Init::Memset; 4];
-    drop(&x);
+    opaque(&x);
 }
 
 // CHECK-LABEL: @zeroed_integer_array
@@ -51,7 +51,7 @@ pub fn zeroed_integer_array() {
     // CHECK: call void @llvm.memset.{{.+}}({{i8\*|ptr}} {{.*}}, i8 0, i{{[0-9]+}} 16
     // CHECK-NOT: br label %repeat_loop_header{{.*}}
     let x = [0u32; 4];
-    drop(&x);
+    opaque(&x);
 }
 
 // CHECK-LABEL: @nonzero_integer_array
@@ -60,5 +60,9 @@ pub fn nonzero_integer_array() {
     // CHECK: br label %repeat_loop_header{{.*}}
     // CHECK-NOT: call void @llvm.memset.p0
     let x = [0x1a_2b_3c_4d_u32; 4];
-    drop(&x);
+    opaque(&x);
 }
+
+// Use an opaque function to prevent rustc from removing useless drops.
+#[inline(never)]
+pub fn opaque(_: impl Sized) {}

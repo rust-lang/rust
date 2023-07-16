@@ -732,18 +732,18 @@ impl<'tcx> BorrowedContentSource<'tcx> {
 
     fn from_call(func: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> Option<Self> {
         match *func.kind() {
-            ty::FnDef(def_id, substs) => {
+            ty::FnDef(def_id, args) => {
                 let trait_id = tcx.trait_of_item(def_id)?;
 
                 let lang_items = tcx.lang_items();
                 if Some(trait_id) == lang_items.deref_trait()
                     || Some(trait_id) == lang_items.deref_mut_trait()
                 {
-                    Some(BorrowedContentSource::OverloadedDeref(substs.type_at(0)))
+                    Some(BorrowedContentSource::OverloadedDeref(args.type_at(0)))
                 } else if Some(trait_id) == lang_items.index_trait()
                     || Some(trait_id) == lang_items.index_mut_trait()
                 {
-                    Some(BorrowedContentSource::OverloadedIndex(substs.type_at(0)))
+                    Some(BorrowedContentSource::OverloadedIndex(args.type_at(0)))
                 } else {
                     None
                 }
@@ -847,14 +847,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             kind: TerminatorKind::Call { fn_span, call_source, .. }, ..
         }) = &self.body[location.block].terminator
         {
-            let Some((method_did, method_substs)) =
-            rustc_middle::util::find_self_call(
-                    self.infcx.tcx,
-                    &self.body,
-                    target_temp,
-                    location.block,
-                )
-            else {
+            let Some((method_did, method_args)) = rustc_middle::util::find_self_call(
+                self.infcx.tcx,
+                &self.body,
+                target_temp,
+                location.block,
+            ) else {
                 return normal_ret;
             };
 
@@ -862,7 +860,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 self.infcx.tcx,
                 self.param_env,
                 method_did,
-                method_substs,
+                method_args,
                 *fn_span,
                 call_source.from_hir_call(),
                 Some(self.infcx.tcx.fn_arg_names(method_did)[0]),
@@ -1041,7 +1039,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         });
                     }
                 }
-                CallKind::Normal { self_arg, desugaring, method_did, method_substs } => {
+                CallKind::Normal { self_arg, desugaring, method_did, method_args } => {
                     let self_arg = self_arg.unwrap();
                     let tcx = self.infcx.tcx;
                     if let Some((CallDesugaringKind::ForLoopIntoIter, _)) = desugaring {
@@ -1108,13 +1106,13 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         // Erase and shadow everything that could be passed to the new infcx.
                         let ty = moved_place.ty(self.body, tcx).ty;
 
-                        if let ty::Adt(def, substs) = ty.kind()
+                        if let ty::Adt(def, args) = ty.kind()
                             && Some(def.did()) == tcx.lang_items().pin_type()
-                            && let ty::Ref(_, _, hir::Mutability::Mut) = substs.type_at(0).kind()
+                            && let ty::Ref(_, _, hir::Mutability::Mut) = args.type_at(0).kind()
                             && let self_ty = self.infcx.instantiate_binder_with_fresh_vars(
                                 fn_call_span,
                                 LateBoundRegionConversionTime::FnCall,
-                                tcx.fn_sig(method_did).subst(tcx, method_substs).input(0),
+                                tcx.fn_sig(method_did).instantiate(tcx, method_args).input(0),
                             )
                             && self.infcx.can_eq(self.param_env, ty, self_ty)
                         {
@@ -1163,7 +1161,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     let parent_self_ty =
                         matches!(tcx.def_kind(parent_did), rustc_hir::def::DefKind::Impl { .. })
                             .then_some(parent_did)
-                            .and_then(|did| match tcx.type_of(did).subst_identity().kind() {
+                            .and_then(|did| match tcx.type_of(did).instantiate_identity().kind() {
                                 ty::Adt(def, ..) => Some(def.did()),
                                 _ => None,
                             });

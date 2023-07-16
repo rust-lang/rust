@@ -749,9 +749,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                 // `fn foo<'a>() -> MyAnonTy<'a> { ... }`
                 //          ^                 ^this gets resolved in the current scope
                 for lifetime in lifetimes {
-                    let hir::GenericArg::Lifetime(lifetime) = lifetime else {
-                        continue
-                    };
+                    let hir::GenericArg::Lifetime(lifetime) = lifetime else { continue };
                     self.visit_lifetime(lifetime);
 
                     // Check for predicates like `impl for<'a> Trait<impl OtherTrait<'a>>`
@@ -759,12 +757,8 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     // well-supported at the moment, so this doesn't work.
                     // In the future, this should be fixed and this error should be removed.
                     let def = self.map.defs.get(&lifetime.hir_id).cloned();
-                    let Some(ResolvedArg::LateBound(_, _, def_id)) = def else {
-                        continue
-                    };
-                    let Some(def_id) = def_id.as_local() else {
-                        continue
-                    };
+                    let Some(ResolvedArg::LateBound(_, _, def_id)) = def else { continue };
+                    let Some(def_id) = def_id.as_local() else { continue };
                     let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
                     // Ensure that the parent of the def is an item, not HRTB
                     let parent_id = self.tcx.hir().parent_id(hir_id);
@@ -1727,7 +1721,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                         },
                     ));
                     bound_vars
-                        .extend(self.tcx.fn_sig(assoc_fn.def_id).subst_identity().bound_vars());
+                        .extend(self.tcx.fn_sig(assoc_fn.def_id).instantiate_identity().bound_vars());
                     bound_vars
                 } else {
                     self.tcx.sess.delay_span_bug(
@@ -2044,12 +2038,12 @@ fn is_late_bound_map(
                     hir::Path { res: Res::Def(DefKind::TyAlias, alias_def), segments, span },
                 )) => {
                     // See comments on `ConstrainedCollectorPostAstConv` for why this arm does not just consider
-                    // substs to be unconstrained.
+                    // args to be unconstrained.
                     let generics = self.tcx.generics_of(alias_def);
                     let mut walker = ConstrainedCollectorPostAstConv {
                         arg_is_constrained: vec![false; generics.params.len()].into_boxed_slice(),
                     };
-                    walker.visit_ty(self.tcx.type_of(alias_def).subst_identity());
+                    walker.visit_ty(self.tcx.type_of(alias_def).instantiate_identity());
 
                     match segments.last() {
                         Some(hir::PathSegment { args: Some(args), .. }) => {

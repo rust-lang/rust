@@ -65,7 +65,7 @@ use rustc_middle::mir::dump_mir;
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt};
-use rustc_middle::ty::{GeneratorSubsts, SubstsRef};
+use rustc_middle::ty::{GeneratorArgs, GenericArgsRef};
 use rustc_mir_dataflow::impls::{
     MaybeBorrowedLocals, MaybeLiveLocals, MaybeRequiresStorage, MaybeStorageLive,
 };
@@ -194,11 +194,11 @@ fn replace_base<'tcx>(place: &mut Place<'tcx>, new_base: Place<'tcx>, tcx: TyCtx
 const SELF_ARG: Local = Local::from_u32(1);
 
 /// Generator has not been resumed yet.
-const UNRESUMED: usize = GeneratorSubsts::UNRESUMED;
+const UNRESUMED: usize = GeneratorArgs::UNRESUMED;
 /// Generator has returned / is completed.
-const RETURNED: usize = GeneratorSubsts::RETURNED;
+const RETURNED: usize = GeneratorArgs::RETURNED;
 /// Generator has panicked and is poisoned.
-const POISONED: usize = GeneratorSubsts::POISONED;
+const POISONED: usize = GeneratorArgs::POISONED;
 
 /// Number of variants to reserve in generator state. Corresponds to
 /// `UNRESUMED` (beginning of a generator) and `RETURNED`/`POISONED`
@@ -223,7 +223,7 @@ struct TransformVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
     is_async_kind: bool,
     state_adt_ref: AdtDef<'tcx>,
-    state_substs: SubstsRef<'tcx>,
+    state_args: GenericArgsRef<'tcx>,
 
     // The type of the discriminant in the generator struct
     discr_ty: Ty<'tcx>,
@@ -265,7 +265,7 @@ impl<'tcx> TransformVisitor<'tcx> {
             (false, true) => 1,  // Poll::Pending
         });
 
-        let kind = AggregateKind::Adt(self.state_adt_ref.did(), idx, self.state_substs, None, None);
+        let kind = AggregateKind::Adt(self.state_adt_ref.did(), idx, self.state_args, None, None);
 
         // `Poll::Pending`
         if self.is_async_kind && idx == VariantIdx::new(1) {
@@ -431,8 +431,8 @@ fn make_generator_state_argument_pinned<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body
 
     let pin_did = tcx.require_lang_item(LangItem::Pin, Some(body.span));
     let pin_adt_ref = tcx.adt_def(pin_did);
-    let substs = tcx.mk_substs(&[ref_gen_ty.into()]);
-    let pin_ref_gen_ty = Ty::new_adt(tcx, pin_adt_ref, substs);
+    let args = tcx.mk_args(&[ref_gen_ty.into()]);
+    let pin_ref_gen_ty = Ty::new_adt(tcx, pin_adt_ref, args);
 
     // Replace the by ref generator argument
     body.local_decls.raw[1].ty = pin_ref_gen_ty;
@@ -1431,7 +1431,7 @@ pub(crate) fn mir_generator_witnesses<'tcx>(
     // The first argument is the generator type passed by value
     let gen_ty = body.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty;
 
-    // Get the interior types and substs which typeck computed
+    // Get the interior types and args which typeck computed
     let movable = match *gen_ty.kind() {
         ty::Generator(_, _, movability) => movability == hir::Movability::Movable,
         ty::Error(_) => return None,
@@ -1465,14 +1465,14 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
         // The first argument is the generator type passed by value
         let gen_ty = body.local_decls.raw[1].ty;
 
-        // Get the discriminant type and substs which typeck computed
+        // Get the discriminant type and args which typeck computed
         let (discr_ty, upvars, interior, movable) = match *gen_ty.kind() {
-            ty::Generator(_, substs, movability) => {
-                let substs = substs.as_generator();
+            ty::Generator(_, args, movability) => {
+                let args = args.as_generator();
                 (
-                    substs.discr_ty(tcx),
-                    substs.upvar_tys().collect::<Vec<_>>(),
-                    substs.witness(),
+                    args.discr_ty(tcx),
+                    args.upvar_tys().collect::<Vec<_>>(),
+                    args.witness(),
                     movability == hir::Movability::Movable,
                 )
             }
@@ -1483,20 +1483,20 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
         };
 
         let is_async_kind = matches!(body.generator_kind(), Some(GeneratorKind::Async(_)));
-        let (state_adt_ref, state_substs) = if is_async_kind {
+        let (state_adt_ref, state_args) = if is_async_kind {
             // Compute Poll<return_ty>
             let poll_did = tcx.require_lang_item(LangItem::Poll, None);
             let poll_adt_ref = tcx.adt_def(poll_did);
-            let poll_substs = tcx.mk_substs(&[body.return_ty().into()]);
-            (poll_adt_ref, poll_substs)
+            let poll_args = tcx.mk_args(&[body.return_ty().into()]);
+            (poll_adt_ref, poll_args)
         } else {
             // Compute GeneratorState<yield_ty, return_ty>
             let state_did = tcx.require_lang_item(LangItem::GeneratorState, None);
             let state_adt_ref = tcx.adt_def(state_did);
-            let state_substs = tcx.mk_substs(&[yield_ty.into(), body.return_ty().into()]);
-            (state_adt_ref, state_substs)
+            let state_args = tcx.mk_args(&[yield_ty.into(), body.return_ty().into()]);
+            (state_adt_ref, state_args)
         };
-        let ret_ty = Ty::new_adt(tcx, state_adt_ref, state_substs);
+        let ret_ty = Ty::new_adt(tcx, state_adt_ref, state_args);
 
         // We rename RETURN_PLACE which has type mir.return_ty to new_ret_local
         // RETURN_PLACE then is a fresh unused local with type ret_ty.
@@ -1570,7 +1570,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
             tcx,
             is_async_kind,
             state_adt_ref,
-            state_substs,
+            state_args,
             remap,
             storage_liveness,
             always_live_locals,
@@ -1763,7 +1763,9 @@ fn check_suspend_tys<'tcx>(tcx: TyCtxt<'tcx>, layout: &GeneratorLayout<'tcx>, bo
             debug!(?decl);
 
             if !decl.ignore_for_traits && linted_tys.insert(decl.ty) {
-                let Some(hir_id) = decl.source_info.scope.lint_root(&body.source_scopes) else { continue };
+                let Some(hir_id) = decl.source_info.scope.lint_root(&body.source_scopes) else {
+                    continue;
+                };
 
                 check_must_not_suspend_ty(
                     tcx,

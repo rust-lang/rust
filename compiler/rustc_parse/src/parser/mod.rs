@@ -1289,7 +1289,9 @@ impl<'a> Parser<'a> {
 
         delimited.then(|| {
             // We've confirmed above that there is a delimiter so unwrapping is OK.
-            let TokenTree::Delimited(dspan, delim, tokens) = self.parse_token_tree() else { unreachable!() };
+            let TokenTree::Delimited(dspan, delim, tokens) = self.parse_token_tree() else {
+                unreachable!()
+            };
 
             DelimArgs { dspan, delim: MacDelimiter::from_token(delim).unwrap(), tokens }
         })

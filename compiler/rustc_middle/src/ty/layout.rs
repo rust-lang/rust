@@ -374,7 +374,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
                 }
             }
 
-            ty::Adt(def, substs) => {
+            ty::Adt(def, args) => {
                 // Only newtypes and enums w/ nullable pointer optimization.
                 if def.is_union() || def.variants().is_empty() || def.variants().len() > 2 {
                     return Err(err);
@@ -385,7 +385,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
                     let i = VariantIdx::from_usize(i);
                     let fields =
                         def.variant(i).fields.iter().map(|field| {
-                            SizeSkeleton::compute(field.ty(tcx, substs), tcx, param_env)
+                            SizeSkeleton::compute(field.ty(tcx, args), tcx, param_env)
                         });
                     let mut ptr = None;
                     for field in fields {
@@ -755,6 +755,8 @@ where
                     largest_niche: None,
                     align: tcx.data_layout.i8_align,
                     size: Size::ZERO,
+                    max_repr_align: None,
+                    unadjusted_abi_align: tcx.data_layout.i8_align.abi,
                 })
             }
 
@@ -861,9 +863,9 @@ where
                         // offers better information than `std::ptr::metadata::VTable`,
                         // and we rely on this layout information to trigger a panic in
                         // `std::mem::uninitialized::<&dyn Trait>()`, for example.
-                        if let ty::Adt(def, substs) = metadata.kind()
+                        if let ty::Adt(def, args) = metadata.kind()
                             && Some(def.did()) == tcx.lang_items().dyn_metadata()
-                            && substs.type_at(0).is_trait()
+                            && args.type_at(0).is_trait()
                         {
                             mk_dyn_vtable()
                         } else {
@@ -885,16 +887,15 @@ where
                 ty::Str => TyMaybeWithLayout::Ty(tcx.types.u8),
 
                 // Tuples, generators and closures.
-                ty::Closure(_, ref substs) => field_ty_or_layout(
-                    TyAndLayout { ty: substs.as_closure().tupled_upvars_ty(), ..this },
+                ty::Closure(_, ref args) => field_ty_or_layout(
+                    TyAndLayout { ty: args.as_closure().tupled_upvars_ty(), ..this },
                     cx,
                     i,
                 ),
 
-                ty::Generator(def_id, ref substs, _) => match this.variants {
+                ty::Generator(def_id, ref args, _) => match this.variants {
                     Variants::Single { index } => TyMaybeWithLayout::Ty(
-                        substs
-                            .as_generator()
+                        args.as_generator()
                             .state_tys(def_id, tcx)
                             .nth(index.as_usize())
                             .unwrap()
@@ -905,18 +906,18 @@ where
                         if i == tag_field {
                             return TyMaybeWithLayout::TyAndLayout(tag_layout(tag));
                         }
-                        TyMaybeWithLayout::Ty(substs.as_generator().prefix_tys().nth(i).unwrap())
+                        TyMaybeWithLayout::Ty(args.as_generator().prefix_tys().nth(i).unwrap())
                     }
                 },
 
                 ty::Tuple(tys) => TyMaybeWithLayout::Ty(tys[i]),
 
                 // ADTs.
-                ty::Adt(def, substs) => {
+                ty::Adt(def, args) => {
                     match this.variants {
                         Variants::Single { index } => {
                             let field = &def.variant(index).fields[FieldIdx::from_usize(i)];
-                            TyMaybeWithLayout::Ty(field.ty(tcx, substs))
+                            TyMaybeWithLayout::Ty(field.ty(tcx, args))
                         }
 
                         // Discriminant field for enums (where applicable).

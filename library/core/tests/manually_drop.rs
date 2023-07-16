@@ -1,4 +1,4 @@
-#![cfg_attr(not(bootstrap), allow(undropped_manually_drops))]
+#![allow(undropped_manually_drops)]
 
 use core::mem::ManuallyDrop;
 

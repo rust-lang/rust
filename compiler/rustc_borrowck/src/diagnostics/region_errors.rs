@@ -22,7 +22,7 @@ use rustc_infer::infer::{
 };
 use rustc_middle::hir::place::PlaceBase;
 use rustc_middle::mir::{ConstraintCategory, ReturnConstraint};
-use rustc_middle::ty::subst::InternalSubsts;
+use rustc_middle::ty::GenericArgs;
 use rustc_middle::ty::TypeVisitor;
 use rustc_middle::ty::{self, RegionVid, Ty};
 use rustc_middle::ty::{Region, TyCtxt};
@@ -183,9 +183,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     fn is_closure_fn_mut(&self, fr: RegionVid) -> bool {
         if let Some(ty::ReFree(free_region)) = self.to_error_region(fr).as_deref()
             && let ty::BoundRegionKind::BrEnv = free_region.bound_region
-            && let DefiningTy::Closure(_, substs) = self.regioncx.universal_regions().defining_ty
+            && let DefiningTy::Closure(_, args) = self.regioncx.universal_regions().defining_ty
         {
-            return substs.as_closure().kind() == ty::ClosureKind::FnMut;
+            return args.as_closure().kind() == ty::ClosureKind::FnMut;
         }
 
         false
@@ -224,12 +224,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let mut hrtb_bounds = vec![];
         gat_id_and_generics.iter().flatten().for_each(|(gat_hir_id, generics)| {
             for pred in generics.predicates {
-                let BoundPredicate(
-                        WhereBoundPredicate {
-                            bound_generic_params,
-                            bounds,
-                            ..
-                        }) = pred else { continue; };
+                let BoundPredicate(WhereBoundPredicate { bound_generic_params, bounds, .. }) = pred
+                else {
+                    continue;
+                };
                 if bound_generic_params
                     .iter()
                     .rfind(|bgp| hir.local_def_id_to_hir_id(bgp.def_id) == *gat_hir_id)
@@ -504,12 +502,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                                 .to_string(),
                         )
                     }
-                    ty::Adt(adt, substs) => {
-                        let generic_arg = substs[param_index as usize];
-                        let identity_substs =
-                            InternalSubsts::identity_for_item(self.infcx.tcx, adt.did());
-                        let base_ty = Ty::new_adt(self.infcx.tcx, *adt, identity_substs);
-                        let base_generic_arg = identity_substs[param_index as usize];
+                    ty::Adt(adt, args) => {
+                        let generic_arg = args[param_index as usize];
+                        let identity_args =
+                            GenericArgs::identity_for_item(self.infcx.tcx, adt.did());
+                        let base_ty = Ty::new_adt(self.infcx.tcx, *adt, identity_args);
+                        let base_generic_arg = identity_args[param_index as usize];
                         let adt_desc = adt.descr();
 
                         let desc = format!(
@@ -522,12 +520,11 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     }
                     ty::FnDef(def_id, _) => {
                         let name = self.infcx.tcx.item_name(*def_id);
-                        let identity_substs =
-                            InternalSubsts::identity_for_item(self.infcx.tcx, *def_id);
+                        let identity_args = GenericArgs::identity_for_item(self.infcx.tcx, *def_id);
                         let desc = format!("a function pointer to `{name}`");
                         let note = format!(
                             "the function `{name}` is invariant over the parameter `{}`",
-                            identity_substs[param_index as usize]
+                            identity_args[param_index as usize]
                         );
                         (desc, note)
                     }
@@ -575,7 +572,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
         let mut output_ty = self.regioncx.universal_regions().unnormalized_output_ty;
         if let ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) = *output_ty.kind() {
-            output_ty = self.infcx.tcx.type_of(def_id).subst_identity()
+            output_ty = self.infcx.tcx.type_of(def_id).instantiate_identity()
         };
 
         debug!("report_fnmut_error: output_ty={:?}", output_ty);
@@ -813,7 +810,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 return;
             }
             let suitable_region = self.infcx.tcx.is_suitable_region(f);
-            let Some(suitable_region) = suitable_region else { return; };
+            let Some(suitable_region) = suitable_region else {
+                return;
+            };
 
             let fn_returns = self.infcx.tcx.return_type_impl_or_dyn_traits(suitable_region.def_id);
 
@@ -848,7 +847,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             let Some((alias_tys, alias_span, lt_addition_span)) = self
                 .infcx
                 .tcx
-                .return_type_impl_or_dyn_traits_with_type_alias(suitable_region.def_id) else { return; };
+                .return_type_impl_or_dyn_traits_with_type_alias(suitable_region.def_id)
+            else {
+                return;
+            };
 
             // in case the return type of the method is a type alias
             let mut spans_suggs: Vec<_> = Vec::new();
@@ -896,14 +898,14 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let tcx = self.infcx.tcx;
 
         let instance = if let ConstraintCategory::CallArgument(Some(func_ty)) = category {
-            let (fn_did, substs) = match func_ty.kind() {
-                ty::FnDef(fn_did, substs) => (fn_did, substs),
+            let (fn_did, args) = match func_ty.kind() {
+                ty::FnDef(fn_did, args) => (fn_did, args),
                 _ => return,
             };
-            debug!(?fn_did, ?substs);
+            debug!(?fn_did, ?args);
 
             // Only suggest this on function calls, not closures
-            let ty = tcx.type_of(fn_did).subst_identity();
+            let ty = tcx.type_of(fn_did).instantiate_identity();
             debug!("ty: {:?}, ty.kind: {:?}", ty, ty.kind());
             if let ty::Closure(_, _) = ty.kind() {
                 return;
@@ -913,7 +915,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 tcx,
                 self.param_env,
                 *fn_did,
-                self.infcx.resolve_vars_if_possible(substs),
+                self.infcx.resolve_vars_if_possible(args),
             ) {
                 instance
             } else {
@@ -932,8 +934,13 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let mut visitor = TraitObjectVisitor(FxIndexSet::default());
         visitor.visit_ty(param.param_ty);
 
-        let Some((ident, self_ty)) =
-            NiceRegionError::get_impl_ident_and_self_ty_from_trait(tcx, instance.def_id(), &visitor.0) else { return; };
+        let Some((ident, self_ty)) = NiceRegionError::get_impl_ident_and_self_ty_from_trait(
+            tcx,
+            instance.def_id(),
+            &visitor.0,
+        ) else {
+            return;
+        };
 
         self.suggest_constrain_dyn_trait_in_impl(diag, &visitor.0, ident, self_ty);
     }
@@ -981,23 +988,25 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         sup: RegionVid,
     ) {
         let (Some(sub), Some(sup)) = (self.to_error_region(sub), self.to_error_region(sup)) else {
-            return
+            return;
         };
 
         let Some((ty_sub, _)) = self
             .infcx
             .tcx
             .is_suitable_region(sub)
-            .and_then(|anon_reg| find_anon_type(self.infcx.tcx, sub, &anon_reg.boundregion)) else {
-            return
+            .and_then(|anon_reg| find_anon_type(self.infcx.tcx, sub, &anon_reg.boundregion))
+        else {
+            return;
         };
 
         let Some((ty_sup, _)) = self
             .infcx
             .tcx
             .is_suitable_region(sup)
-            .and_then(|anon_reg| find_anon_type(self.infcx.tcx, sup, &anon_reg.boundregion)) else {
-            return
+            .and_then(|anon_reg| find_anon_type(self.infcx.tcx, sup, &anon_reg.boundregion))
+        else {
+            return;
         };
 
         suggest_adding_lifetime_params(self.infcx.tcx, sub, ty_sup, ty_sub, diag);

@@ -6,20 +6,16 @@
       let mut _0: ();
       let _2: &[T];
       let mut _3: &[T; 3];
-      let _4: &[T; 3];
-      let _5: [T; 3];
+      let _4: [T; 3];
+      let mut _5: T;
       let mut _6: T;
       let mut _7: T;
-      let mut _8: T;
+      let mut _8: usize;
       let mut _9: usize;
-      let mut _10: usize;
-      let mut _11: bool;
-      let mut _15: !;
+      let mut _10: bool;
+      let mut _11: !;
       scope 1 {
           debug v => _2;
-          let _12: &T;
-          let _13: &T;
-          let _14: &T;
           scope 2 {
               debug v1 => &(*_2)[0 of 3];
               debug v2 => &(*_2)[1 of 3];
@@ -28,26 +24,26 @@
       }
   
       bb0: {
-          StorageLive(_2);
-          StorageLive(_5);
-          _5 = [_1, _1, _1];
-          _4 = &_5;
-          _2 = _4 as &[T] (PointerCoercion(Unsize));
-          _9 = Len((*_2));
-          _10 = const 3_usize;
--         _11 = Eq(move _9, const 3_usize);
--         switchInt(move _11) -> [0: bb1, otherwise: bb2];
+          StorageLive(_3);
+          StorageLive(_4);
+          _4 = [_1, _1, _1];
+          _3 = &_4;
+          _2 = move _3 as &[T] (PointerCoercion(Unsize));
+          StorageDead(_3);
+          _8 = Len((*_2));
+          _9 = const 3_usize;
+-         _10 = Eq(move _8, const 3_usize);
+-         switchInt(move _10) -> [0: bb1, otherwise: bb2];
 +         nop;
-+         switchInt(move _9) -> [3: bb2, otherwise: bb1];
++         switchInt(move _8) -> [3: bb2, otherwise: bb1];
       }
   
       bb1: {
-          _15 = core::panicking::panic(const "internal error: entered unreachable code") -> unwind continue;
+          _11 = core::panicking::panic(const "internal error: entered unreachable code") -> unwind continue;
       }
   
       bb2: {
-          StorageDead(_5);
-          StorageDead(_2);
+          StorageDead(_4);
           return;
       }
   }

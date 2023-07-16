@@ -122,7 +122,7 @@ impl<'tcx> Cx<'tcx> {
             DefKind::Closure => {
                 let closure_ty = self.typeck_results.node_type(owner_id);
 
-                let ty::Closure(closure_def_id, closure_substs) = *closure_ty.kind() else {
+                let ty::Closure(closure_def_id, closure_args) = *closure_ty.kind() else {
                     bug!("closure expr does not have closure type: {:?}", closure_ty);
                 };
 
@@ -134,7 +134,7 @@ impl<'tcx> Cx<'tcx> {
                 };
                 let env_region = ty::Region::new_late_bound(self.tcx, ty::INNERMOST, br);
                 let closure_env_ty =
-                    self.tcx.closure_env_ty(closure_def_id, closure_substs, env_region).unwrap();
+                    self.tcx.closure_env_ty(closure_def_id, closure_args, env_region).unwrap();
                 let liberated_closure_env_ty = self.tcx.erase_late_bound_regions(
                     ty::Binder::bind_with_vars(closure_env_ty, bound_vars),
                 );
@@ -186,7 +186,7 @@ impl<'tcx> Cx<'tcx> {
 
                 self.tcx
                     .type_of(va_list_did)
-                    .subst(self.tcx, &[self.tcx.lifetimes.re_erased.into()])
+                    .instantiate(self.tcx, &[self.tcx.lifetimes.re_erased.into()])
             } else {
                 fn_sig.inputs()[index]
             };

@@ -67,7 +67,7 @@ impl<'a> ToStableHashKey<StableHashingContext<'a>> for SimplifiedType {
     }
 }
 
-impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ty::subst::GenericArg<'tcx> {
+impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ty::GenericArg<'tcx> {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         self.unpack().hash_stable(hcx, hasher);
     }

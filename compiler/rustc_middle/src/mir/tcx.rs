@@ -35,7 +35,7 @@ impl<'tcx> PlaceTy<'tcx> {
     #[instrument(level = "debug", skip(tcx), ret)]
     pub fn field_ty(self, tcx: TyCtxt<'tcx>, f: FieldIdx) -> Ty<'tcx> {
         match self.ty.kind() {
-            ty::Adt(adt_def, substs) => {
+            ty::Adt(adt_def, args) => {
                 let variant_def = match self.variant_index {
                     None => adt_def.non_enum_variant(),
                     Some(variant_index) => {
@@ -44,7 +44,7 @@ impl<'tcx> PlaceTy<'tcx> {
                     }
                 };
                 let field_def = &variant_def.fields[f];
-                field_def.ty(tcx, substs)
+                field_def.ty(tcx, args)
             }
             ty::Tuple(tys) => tys[f.index()],
             _ => bug!("extracting field of non-tuple non-adt: {:?}", self),
@@ -198,10 +198,10 @@ impl<'tcx> Rvalue<'tcx> {
                 AggregateKind::Tuple => {
                     Ty::new_tup_from_iter(tcx, ops.iter().map(|op| op.ty(local_decls, tcx)))
                 }
-                AggregateKind::Adt(did, _, substs, _, _) => tcx.type_of(did).subst(tcx, substs),
-                AggregateKind::Closure(did, substs) => Ty::new_closure(tcx, did, substs),
-                AggregateKind::Generator(did, substs, movability) => {
-                    Ty::new_generator(tcx, did, substs, movability)
+                AggregateKind::Adt(did, _, args, _, _) => tcx.type_of(did).instantiate(tcx, args),
+                AggregateKind::Closure(did, args) => Ty::new_closure(tcx, did, args),
+                AggregateKind::Generator(did, args, movability) => {
+                    Ty::new_generator(tcx, did, args, movability)
                 }
             },
             Rvalue::ShallowInitBox(_, ty) => Ty::new_box(tcx, ty),

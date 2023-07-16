@@ -28,6 +28,7 @@ use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::util::Discr;
 pub use adt::*;
 pub use assoc::*;
+pub use generic_args::*;
 pub use generics::*;
 use rustc_ast as ast;
 use rustc_ast::node_id::NodeMap;
@@ -54,7 +55,6 @@ use rustc_span::{ExpnId, ExpnKind, Span};
 use rustc_target::abi::{Align, FieldIdx, Integer, IntegerType, VariantIdx};
 pub use rustc_target::abi::{ReprFlags, ReprOptions};
 pub use rustc_type_ir::{DebugWithInfcx, InferCtxtLike, OptWithInfcx};
-pub use subst::*;
 pub use vtable::*;
 
 use std::fmt::Debug;
@@ -82,8 +82,7 @@ pub use self::binding::BindingMode::*;
 pub use self::closure::{
     is_ancestor_or_same_capture, place_to_string_for_capture, BorrowKind, CaptureInfo,
     CapturedPlace, ClosureKind, ClosureTypeInfo, MinCaptureInformationMap, MinCaptureList,
-    RootVariableMinCaptureList, UpvarCapture, UpvarCaptureMap, UpvarId, UpvarListMap, UpvarPath,
-    CAPTURE_STRUCT_LOCAL,
+    RootVariableMinCaptureList, UpvarCapture, UpvarId, UpvarPath, CAPTURE_STRUCT_LOCAL,
 };
 pub use self::consts::{
     Const, ConstData, ConstInt, Expr, InferConst, ScalarInt, UnevaluatedConst, ValTree,
@@ -98,12 +97,12 @@ pub use self::rvalue_scopes::RvalueScopes;
 pub use self::sty::BoundRegionKind::*;
 pub use self::sty::{
     AliasTy, Article, Binder, BoundRegion, BoundRegionKind, BoundTy, BoundTyKind, BoundVar,
-    BoundVariableKind, CanonicalPolyFnSig, ClosureSubsts, ClosureSubstsParts, ConstKind, ConstVid,
+    BoundVariableKind, CanonicalPolyFnSig, ClosureArgs, ClosureArgsParts, ConstKind, ConstVid,
     EarlyBoundRegion, ExistentialPredicate, ExistentialProjection, ExistentialTraitRef, FnSig,
-    FreeRegion, GenSig, GeneratorSubsts, GeneratorSubstsParts, InlineConstSubsts,
-    InlineConstSubstsParts, ParamConst, ParamTy, PolyExistentialPredicate,
-    PolyExistentialProjection, PolyExistentialTraitRef, PolyFnSig, PolyGenSig, PolyTraitRef,
-    Region, RegionKind, RegionVid, TraitRef, TyKind, TypeAndMut, UpvarSubsts, VarianceDiagInfo,
+    FreeRegion, GenSig, GeneratorArgs, GeneratorArgsParts, InlineConstArgs, InlineConstArgsParts,
+    ParamConst, ParamTy, PolyExistentialPredicate, PolyExistentialProjection,
+    PolyExistentialTraitRef, PolyFnSig, PolyGenSig, PolyTraitRef, Region, RegionKind, RegionVid,
+    TraitRef, TyKind, TypeAndMut, UpvarArgs, VarianceDiagInfo,
 };
 pub use self::trait_def::TraitDef;
 pub use self::typeck_results::{
@@ -127,7 +126,6 @@ pub mod layout;
 pub mod normalize_erasing_regions;
 pub mod print;
 pub mod relate;
-pub mod subst;
 pub mod trait_def;
 pub mod util;
 pub mod visit;
@@ -141,6 +139,7 @@ mod consts;
 mod context;
 mod diagnostics;
 mod erase_regions;
+mod generic_args;
 mod generics;
 mod impls_ty;
 mod instance;
@@ -149,7 +148,7 @@ mod opaque_types;
 mod parameterized;
 mod rvalue_scopes;
 mod structural_impls;
-#[cfg_attr(not(bootstrap), allow(hidden_glob_reexports))]
+#[allow(hidden_glob_reexports)]
 mod sty;
 mod typeck_results;
 
@@ -677,9 +676,9 @@ pub enum PredicateKind<'tcx> {
     ObjectSafe(DefId),
 
     /// No direct syntax. May be thought of as `where T: FnFoo<...>`
-    /// for some substitutions `...` and `T` being a closure type.
+    /// for some generic args `...` and `T` being a closure type.
     /// Satisfied (or refuted) once we know the closure's kind.
-    ClosureKind(DefId, SubstsRef<'tcx>, ClosureKind),
+    ClosureKind(DefId, GenericArgsRef<'tcx>, ClosureKind),
 
     /// `T1 <: T2`
     ///
@@ -814,15 +813,15 @@ impl<'tcx> Clause<'tcx> {
         // this trick achieves that).
 
         // Working through the second example:
-        // trait_ref: for<'x> T: Foo1<'^0.0>; substs: [T, '^0.0]
-        // predicate: for<'b> Self: Bar1<'a, '^0.0>; substs: [Self, 'a, '^0.0]
+        // trait_ref: for<'x> T: Foo1<'^0.0>; args: [T, '^0.0]
+        // predicate: for<'b> Self: Bar1<'a, '^0.0>; args: [Self, 'a, '^0.0]
         // We want to end up with:
         //     for<'x, 'b> T: Bar1<'^0.0, '^0.1>
         // To do this:
         // 1) We must shift all bound vars in predicate by the length
         //    of trait ref's bound vars. So, we would end up with predicate like
         //    Self: Bar1<'a, '^0.1>
-        // 2) We can then apply the trait substs to this, ending up with
+        // 2) We can then apply the trait args to this, ending up with
         //    T: Bar1<'^0.0, '^0.1>
         // 3) Finally, to create the final bound vars, we concatenate the bound
         //    vars of the trait ref with those of the predicate:
@@ -834,7 +833,7 @@ impl<'tcx> Clause<'tcx> {
         let shifted_pred =
             tcx.shift_bound_var_indices(trait_bound_vars.len(), bound_pred.skip_binder());
         // 2) Self: Bar1<'a, '^0.1> -> T: Bar1<'^0.0, '^0.1>
-        let new = EarlyBinder::bind(shifted_pred).subst(tcx, trait_ref.skip_binder().substs);
+        let new = EarlyBinder::bind(shifted_pred).instantiate(tcx, trait_ref.skip_binder().args);
         // 3) ['x] + ['b] -> ['x, 'b]
         let bound_vars =
             tcx.mk_bound_variable_kinds_from_iter(trait_bound_vars.iter().chain(pred_bound_vars));
@@ -1080,7 +1079,7 @@ impl<'tcx> Term<'tcx> {
                 _ => None,
             },
             TermKind::Const(ct) => match ct.kind() {
-                ConstKind::Unevaluated(uv) => Some(tcx.mk_alias_ty(uv.def, uv.substs)),
+                ConstKind::Unevaluated(uv) => Some(tcx.mk_alias_ty(uv.def, uv.args)),
                 _ => None,
             },
         }
@@ -1559,7 +1558,7 @@ impl<'a, 'tcx> IntoIterator for &'a InstantiatedPredicates<'tcx> {
 #[derive(TypeFoldable, TypeVisitable)]
 pub struct OpaqueTypeKey<'tcx> {
     pub def_id: LocalDefId,
-    pub substs: SubstsRef<'tcx>,
+    pub args: GenericArgsRef<'tcx>,
 }
 
 #[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable, HashStable, TyEncodable, TyDecodable)]
@@ -1630,21 +1629,21 @@ impl<'tcx> OpaqueHiddenType<'tcx> {
         // typeck errors have subpar spans for opaque types, so delay error reporting until borrowck.
         ignore_errors: bool,
     ) -> Self {
-        let OpaqueTypeKey { def_id, substs } = opaque_type_key;
+        let OpaqueTypeKey { def_id, args } = opaque_type_key;
 
-        // Use substs to build up a reverse map from regions to their
+        // Use args to build up a reverse map from regions to their
         // identity mappings. This is necessary because of `impl
         // Trait` lifetimes are computed by replacing existing
         // lifetimes with 'static and remapping only those used in the
         // `impl Trait` return type, resulting in the parameters
         // shifting.
-        let id_substs = InternalSubsts::identity_for_item(tcx, def_id);
-        debug!(?id_substs);
+        let id_args = GenericArgs::identity_for_item(tcx, def_id);
+        debug!(?id_args);
 
-        // This zip may have several times the same lifetime in `substs` paired with a different
-        // lifetime from `id_substs`. Simply `collect`ing the iterator is the correct behaviour:
+        // This zip may have several times the same lifetime in `args` paired with a different
+        // lifetime from `id_args`. Simply `collect`ing the iterator is the correct behaviour:
         // it will pick the last one, which is the one we introduced in the impl-trait desugaring.
-        let map = substs.iter().zip(id_substs).collect();
+        let map = args.iter().zip(id_args).collect();
         debug!("map = {:#?}", map);
 
         // Convert the type from the function into a type valid outside
@@ -2165,10 +2164,10 @@ impl Hash for FieldDef {
 }
 
 impl<'tcx> FieldDef {
-    /// Returns the type of this field. The resulting type is not normalized. The `subst` is
+    /// Returns the type of this field. The resulting type is not normalized. The `arg` is
     /// typically obtained via the second field of [`TyKind::Adt`].
-    pub fn ty(&self, tcx: TyCtxt<'tcx>, subst: SubstsRef<'tcx>) -> Ty<'tcx> {
-        tcx.type_of(self.did).subst(tcx, subst)
+    pub fn ty(&self, tcx: TyCtxt<'tcx>, arg: GenericArgsRef<'tcx>) -> Ty<'tcx> {
+        tcx.type_of(self.did).instantiate(tcx, arg)
     }
 
     /// Computes the `Ident` of this variant by looking up the `Span`
@@ -2392,8 +2391,8 @@ impl<'tcx> TyCtxt<'tcx> {
         let impl_trait_ref2 = self.impl_trait_ref(def_id2);
         // If either trait impl references an error, they're allowed to overlap,
         // as one of them essentially doesn't exist.
-        if impl_trait_ref1.is_some_and(|tr| tr.subst_identity().references_error())
-            || impl_trait_ref2.is_some_and(|tr| tr.subst_identity().references_error())
+        if impl_trait_ref1.is_some_and(|tr| tr.instantiate_identity().references_error())
+            || impl_trait_ref2.is_some_and(|tr| tr.instantiate_identity().references_error())
         {
             return Some(ImplOverlapKind::Permitted { marker: false });
         }
@@ -2713,12 +2712,16 @@ impl<'tcx> TyCtxt<'tcx> {
             return false;
         }
 
-        let Some(item) = self.opt_associated_item(def_id) else { return false; };
+        let Some(item) = self.opt_associated_item(def_id) else {
+            return false;
+        };
         if item.container != ty::AssocItemContainer::ImplContainer {
             return false;
         }
 
-        let Some(trait_item_def_id) = item.trait_item_def_id else { return false; };
+        let Some(trait_item_def_id) = item.trait_item_def_id else {
+            return false;
+        };
 
         return !self
             .associated_types_for_impl_traits_in_associated_fn(trait_item_def_id)

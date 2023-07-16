@@ -75,12 +75,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
                 // The src operand does not matter, just its type
                 match *src.layout.ty.kind() {
-                    ty::FnDef(def_id, substs) => {
+                    ty::FnDef(def_id, args) => {
                         let instance = ty::Instance::resolve_for_fn_ptr(
                             *self.tcx,
                             self.param_env,
                             def_id,
-                            substs,
+                            args,
                         )
                         .ok_or_else(|| err_inval!(TooGeneric))?;
 
@@ -108,11 +108,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
                 // The src operand does not matter, just its type
                 match *src.layout.ty.kind() {
-                    ty::Closure(def_id, substs) => {
+                    ty::Closure(def_id, args) => {
                         let instance = ty::Instance::resolve_closure(
                             *self.tcx,
                             def_id,
-                            substs,
+                            args,
                             ty::ClosureKind::FnOnce,
                         )
                         .ok_or_else(|| err_inval!(TooGeneric))?;

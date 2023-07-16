@@ -4,8 +4,8 @@ use rustc_data_structures::graph::iterate::{
 };
 use rustc_hir::def::DefKind;
 use rustc_middle::mir::{self, BasicBlock, BasicBlocks, Body, Operand, TerminatorKind};
-use rustc_middle::ty::subst::{GenericArg, InternalSubsts};
 use rustc_middle::ty::{self, Instance, TyCtxt};
+use rustc_middle::ty::{GenericArg, GenericArgs};
 use rustc_session::lint::builtin::UNCONDITIONAL_RECURSION;
 use rustc_span::Span;
 use std::ops::ControlFlow;
@@ -14,16 +14,16 @@ pub(crate) fn check<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
     let def_id = body.source.def_id().expect_local();
 
     if let DefKind::Fn | DefKind::AssocFn = tcx.def_kind(def_id) {
-        // If this is trait/impl method, extract the trait's substs.
-        let trait_substs = match tcx.trait_of_item(def_id.to_def_id()) {
+        // If this is trait/impl method, extract the trait's args.
+        let trait_args = match tcx.trait_of_item(def_id.to_def_id()) {
             Some(trait_def_id) => {
-                let trait_substs_count = tcx.generics_of(trait_def_id).count();
-                &InternalSubsts::identity_for_item(tcx, def_id)[..trait_substs_count]
+                let trait_args_count = tcx.generics_of(trait_def_id).count();
+                &GenericArgs::identity_for_item(tcx, def_id)[..trait_args_count]
             }
             _ => &[],
         };
 
-        let mut vis = Search { tcx, body, reachable_recursive_calls: vec![], trait_substs };
+        let mut vis = Search { tcx, body, reachable_recursive_calls: vec![], trait_args };
         if let Some(NonRecursive) =
             TriColorDepthFirstSearch::new(&body.basic_blocks).run_from_start(&mut vis)
         {
@@ -51,7 +51,7 @@ struct NonRecursive;
 struct Search<'mir, 'tcx> {
     tcx: TyCtxt<'tcx>,
     body: &'mir Body<'tcx>,
-    trait_substs: &'tcx [GenericArg<'tcx>],
+    trait_args: &'tcx [GenericArg<'tcx>],
 
     reachable_recursive_calls: Vec<Span>,
 }
@@ -59,7 +59,7 @@ struct Search<'mir, 'tcx> {
 impl<'mir, 'tcx> Search<'mir, 'tcx> {
     /// Returns `true` if `func` refers to the function we are searching in.
     fn is_recursive_call(&self, func: &Operand<'tcx>, args: &[Operand<'tcx>]) -> bool {
-        let Search { tcx, body, trait_substs, .. } = *self;
+        let Search { tcx, body, trait_args, .. } = *self;
         // Resolving function type to a specific instance that is being called is expensive. To
         // avoid the cost we check the number of arguments first, which is sufficient to reject
         // most of calls as non-recursive.
@@ -70,23 +70,23 @@ impl<'mir, 'tcx> Search<'mir, 'tcx> {
         let param_env = tcx.param_env(caller);
 
         let func_ty = func.ty(body, tcx);
-        if let ty::FnDef(callee, substs) = *func_ty.kind() {
-            let normalized_substs = tcx.normalize_erasing_regions(param_env, substs);
-            let (callee, call_substs) = if let Ok(Some(instance)) =
-                Instance::resolve(tcx, param_env, callee, normalized_substs)
+        if let ty::FnDef(callee, args) = *func_ty.kind() {
+            let normalized_args = tcx.normalize_erasing_regions(param_env, args);
+            let (callee, call_args) = if let Ok(Some(instance)) =
+                Instance::resolve(tcx, param_env, callee, normalized_args)
             {
-                (instance.def_id(), instance.substs)
+                (instance.def_id(), instance.args)
             } else {
-                (callee, normalized_substs)
+                (callee, normalized_args)
             };
 
             // FIXME(#57965): Make this work across function boundaries
 
-            // If this is a trait fn, the substs on the trait have to match, or we might be
+            // If this is a trait fn, the args on the trait have to match, or we might be
             // calling into an entirely different method (for example, a call from the default
             // method in the trait to `<A as Trait<B>>::method`, where `A` and/or `B` are
             // specific types).
-            return callee == caller && &call_substs[..trait_substs.len()] == trait_substs;
+            return callee == caller && &call_args[..trait_args.len()] == trait_args;
         }
 
         false

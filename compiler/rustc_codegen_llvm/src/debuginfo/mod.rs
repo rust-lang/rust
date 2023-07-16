@@ -27,7 +27,7 @@ use rustc_hir::def_id::{DefId, DefIdMap};
 use rustc_index::IndexVec;
 use rustc_middle::mir;
 use rustc_middle::ty::layout::LayoutOf;
-use rustc_middle::ty::subst::SubstsRef;
+use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{self, Instance, ParamEnv, Ty, TypeVisitableExt};
 use rustc_session::config::{self, DebugInfo};
 use rustc_session::Session;
@@ -338,19 +338,19 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         // Find the enclosing function, in case this is a closure.
         let enclosing_fn_def_id = tcx.typeck_root_def_id(def_id);
 
-        // We look up the generics of the enclosing function and truncate the substs
+        // We look up the generics of the enclosing function and truncate the args
         // to their length in order to cut off extra stuff that might be in there for
         // closures or generators.
         let generics = tcx.generics_of(enclosing_fn_def_id);
-        let substs = instance.substs.truncate_to(tcx, generics);
+        let args = instance.args.truncate_to(tcx, generics);
 
         type_names::push_generic_params(
             tcx,
-            tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), substs),
+            tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), args),
             &mut name,
         );
 
-        let template_parameters = get_template_parameters(self, generics, substs);
+        let template_parameters = get_template_parameters(self, generics, args);
 
         let linkage_name = &mangled_name_of_instance(self, instance).name;
         // Omit the linkage_name if it is the same as subprogram name.
@@ -471,16 +471,16 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         fn get_template_parameters<'ll, 'tcx>(
             cx: &CodegenCx<'ll, 'tcx>,
             generics: &ty::Generics,
-            substs: SubstsRef<'tcx>,
+            args: GenericArgsRef<'tcx>,
         ) -> &'ll DIArray {
-            if substs.types().next().is_none() {
+            if args.types().next().is_none() {
                 return create_DIArray(DIB(cx), &[]);
             }
 
             // Again, only create type information if full debuginfo is enabled
             let template_params: Vec<_> = if cx.sess().opts.debuginfo == DebugInfo::Full {
                 let names = get_parameter_names(cx, generics);
-                iter::zip(substs, names)
+                iter::zip(args, names)
                     .filter_map(|(kind, name)| {
                         kind.as_type().map(|ty| {
                             let actual_type =
@@ -527,7 +527,7 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 // If the method does *not* belong to a trait, proceed
                 if cx.tcx.trait_id_of_impl(impl_def_id).is_none() {
                     let impl_self_ty = cx.tcx.subst_and_normalize_erasing_regions(
-                        instance.substs,
+                        instance.args,
                         ty::ParamEnv::reveal_all(),
                         cx.tcx.type_of(impl_def_id),
                     );

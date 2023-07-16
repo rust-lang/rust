@@ -23,9 +23,9 @@ pub fn check(
         if args.is_empty() && method_name == sym::to_string;
         if let Some(to_string_meth_did) = cx.typeck_results().type_dependent_def_id(expr.hir_id);
         if match_def_path(cx, to_string_meth_did, &paths::TO_STRING_METHOD);
-        if let Some(substs) = cx.typeck_results().node_substs_opt(expr.hir_id);
+        if let Some(args) = cx.typeck_results().node_args_opt(expr.hir_id);
         let arg_ty = cx.typeck_results().expr_ty_adjusted(receiver);
-        let self_ty = substs.type_at(0);
+        let self_ty = args.type_at(0);
         let (deref_self_ty, deref_count) = walk_ptrs_ty_depth(self_ty);
         if deref_count >= 1;
         if specializes_tostring(cx, deref_self_ty);
@@ -64,8 +64,8 @@ fn specializes_tostring(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
         return true;
     }
 
-    if let ty::Adt(adt, substs) = ty.kind() {
-        cx.tcx.is_diagnostic_item(sym::Cow, adt.did()) && substs.type_at(1).is_str()
+    if let ty::Adt(adt, args) = ty.kind() {
+        cx.tcx.is_diagnostic_item(sym::Cow, adt.did()) && args.type_at(1).is_str()
     } else {
         false
     }

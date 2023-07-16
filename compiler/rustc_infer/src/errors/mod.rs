@@ -363,7 +363,8 @@ impl AddToDiagnostic for AddLifetimeParamsSuggestion<'_> {
             let (
                 hir::Ty { kind: hir::TyKind::Ref(lifetime_sub, _), .. },
                 hir::Ty { kind: hir::TyKind::Ref(lifetime_sup, _), .. },
-            ) = (self.ty_sub, self.ty_sup) else {
+            ) = (self.ty_sub, self.ty_sup)
+            else {
                 return false;
             };
 

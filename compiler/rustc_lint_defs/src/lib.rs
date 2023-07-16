@@ -550,6 +550,12 @@ pub enum BuiltinLintDiagnostics {
         /// The local binding that shadows the glob reexport.
         private_item_span: Span,
     },
+    UnusedQualifications {
+        /// The span of the unnecessarily-qualified path.
+        path_span: Span,
+        /// The replacement unqualified path.
+        unqualified_path: Ident,
+    },
 }
 
 /// Lints that are buffered up early on in the `Session` before the

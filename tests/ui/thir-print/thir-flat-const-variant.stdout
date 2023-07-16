@@ -35,7 +35,7 @@ Thir {
                 AdtExpr {
                     adt_def: Foo,
                     variant_index: 0,
-                    substs: [],
+                    args: [],
                     user_ty: None,
                     fields: [
                         FieldExpr {
@@ -120,7 +120,7 @@ Thir {
                 AdtExpr {
                     adt_def: Foo,
                     variant_index: 0,
-                    substs: [],
+                    args: [],
                     user_ty: None,
                     fields: [
                         FieldExpr {
@@ -205,7 +205,7 @@ Thir {
                 AdtExpr {
                     adt_def: Foo,
                     variant_index: 0,
-                    substs: [],
+                    args: [],
                     user_ty: None,
                     fields: [
                         FieldExpr {
@@ -290,7 +290,7 @@ Thir {
                 AdtExpr {
                     adt_def: Foo,
                     variant_index: 0,
-                    substs: [],
+                    args: [],
                     user_ty: None,
                     fields: [
                         FieldExpr {

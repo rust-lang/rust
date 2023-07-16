@@ -116,7 +116,8 @@ impl NestedGoals<'_> {
 #[derive(PartialEq, Eq, Debug, Hash, HashStable, Clone, Copy)]
 pub enum GenerateProofTree {
     Yes(UseGlobalCache),
-    No,
+    IfEnabled,
+    Never,
 }
 
 #[derive(PartialEq, Eq, Debug, Hash, HashStable, Clone, Copy)]
@@ -202,7 +203,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
             (&tree, infcx.tcx.sess.opts.unstable_opts.dump_solver_proof_tree)
         {
             let mut lock = std::io::stdout().lock();
-            let _ = lock.write_fmt(format_args!("{tree:?}"));
+            let _ = lock.write_fmt(format_args!("{tree:?}\n"));
             let _ = lock.flush();
         }
 
@@ -430,11 +431,8 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                 ty::PredicateKind::Coerce(predicate) => {
                     self.compute_coerce_goal(Goal { param_env, predicate })
                 }
-                ty::PredicateKind::ClosureKind(def_id, substs, kind) => self
-                    .compute_closure_kind_goal(Goal {
-                        param_env,
-                        predicate: (def_id, substs, kind),
-                    }),
+                ty::PredicateKind::ClosureKind(def_id, args, kind) => self
+                    .compute_closure_kind_goal(Goal { param_env, predicate: (def_id, args, kind) }),
                 ty::PredicateKind::ObjectSafe(trait_def_id) => {
                     self.compute_object_safe_goal(trait_def_id)
                 }
@@ -774,24 +772,18 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         self.infcx.resolve_vars_if_possible(value)
     }
 
-    pub(super) fn fresh_substs_for_item(&self, def_id: DefId) -> ty::SubstsRef<'tcx> {
-        self.infcx.fresh_substs_for_item(DUMMY_SP, def_id)
+    pub(super) fn fresh_args_for_item(&self, def_id: DefId) -> ty::GenericArgsRef<'tcx> {
+        self.infcx.fresh_args_for_item(DUMMY_SP, def_id)
     }
 
-    pub(super) fn translate_substs(
+    pub(super) fn translate_args(
         &self,
         param_env: ty::ParamEnv<'tcx>,
         source_impl: DefId,
-        source_substs: ty::SubstsRef<'tcx>,
+        source_args: ty::GenericArgsRef<'tcx>,
         target_node: specialization_graph::Node,
-    ) -> ty::SubstsRef<'tcx> {
-        crate::traits::translate_substs(
-            self.infcx,
-            param_env,
-            source_impl,
-            source_substs,
-            target_node,
-        )
+    ) -> ty::GenericArgsRef<'tcx> {
+        crate::traits::translate_args(self.infcx, param_env, source_impl, source_args, target_node)
     }
 
     pub(super) fn register_ty_outlives(&self, ty: Ty<'tcx>, lt: ty::Region<'tcx>) {
@@ -863,14 +855,14 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     pub(super) fn add_item_bounds_for_hidden_type(
         &mut self,
         opaque_def_id: DefId,
-        opaque_substs: ty::SubstsRef<'tcx>,
+        opaque_args: ty::GenericArgsRef<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         hidden_ty: Ty<'tcx>,
     ) {
         let mut obligations = Vec::new();
         self.infcx.add_item_bounds_for_hidden_type(
             opaque_def_id,
-            opaque_substs,
+            opaque_args,
             ObligationCause::dummy(),
             param_env,
             hidden_ty,
@@ -896,13 +888,13 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 continue;
             }
             values.extend(self.probe_candidate("opaque type storage").enter(|ecx| {
-                for (a, b) in std::iter::zip(candidate_key.substs, key.substs) {
+                for (a, b) in std::iter::zip(candidate_key.args, key.args) {
                     ecx.eq(param_env, a, b)?;
                 }
                 ecx.eq(param_env, candidate_ty, ty)?;
                 ecx.add_item_bounds_for_hidden_type(
                     candidate_key.def_id.to_def_id(),
-                    candidate_key.substs,
+                    candidate_key.args,
                     param_env,
                     candidate_ty,
                 );

@@ -27,7 +27,7 @@ pub(super) fn mangle<'tcx>(
 ) -> String {
     let def_id = instance.def_id();
     // FIXME(eddyb) this should ideally not be needed.
-    let substs = tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), instance.substs);
+    let args = tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), instance.args);
 
     let prefix = "_R";
     let mut cx = &mut SymbolMangler {
@@ -50,9 +50,9 @@ pub(super) fn mangle<'tcx>(
     };
 
     cx = if let Some(shim_kind) = shim_kind {
-        cx.path_append_ns(|cx| cx.print_def_path(def_id, substs), 'S', 0, shim_kind).unwrap()
+        cx.path_append_ns(|cx| cx.print_def_path(def_id, args), 'S', 0, shim_kind).unwrap()
     } else {
-        cx.print_def_path(def_id, substs).unwrap()
+        cx.print_def_path(def_id, args).unwrap()
     };
     if let Some(instantiating_crate) = instantiating_crate {
         cx = cx.print_def_path(instantiating_crate.as_def_id(), &[]).unwrap();
@@ -245,19 +245,19 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
     fn print_def_path(
         mut self,
         def_id: DefId,
-        substs: &'tcx [GenericArg<'tcx>],
+        args: &'tcx [GenericArg<'tcx>],
     ) -> Result<Self::Path, Self::Error> {
-        if let Some(&i) = self.paths.get(&(def_id, substs)) {
+        if let Some(&i) = self.paths.get(&(def_id, args)) {
             return self.print_backref(i);
         }
         let start = self.out.len();
 
-        self = self.default_print_def_path(def_id, substs)?;
+        self = self.default_print_def_path(def_id, args)?;
 
         // Only cache paths that do not refer to an enclosing
         // binder (which would change depending on context).
-        if !substs.iter().any(|k| k.has_escaping_bound_vars()) {
-            self.paths.insert((def_id, substs), start);
+        if !args.iter().any(|k| k.has_escaping_bound_vars()) {
+            self.paths.insert((def_id, args), start);
         }
         Ok(self)
     }
@@ -265,7 +265,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
     fn print_impl_path(
         mut self,
         impl_def_id: DefId,
-        substs: &'tcx [GenericArg<'tcx>],
+        args: &'tcx [GenericArg<'tcx>],
         mut self_ty: Ty<'tcx>,
         mut impl_trait_ref: Option<ty::TraitRef<'tcx>>,
     ) -> Result<Self::Path, Self::Error> {
@@ -273,8 +273,8 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
         let parent_def_id = DefId { index: key.parent.unwrap(), ..impl_def_id };
 
         let mut param_env = self.tcx.param_env_reveal_all_normalized(impl_def_id);
-        if !substs.is_empty() {
-            param_env = EarlyBinder::bind(param_env).subst(self.tcx, substs);
+        if !args.is_empty() {
+            param_env = EarlyBinder::bind(param_env).instantiate(self.tcx, args);
         }
 
         match &mut impl_trait_ref {
@@ -295,7 +295,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
 
         // Encode impl generic params if the substitutions contain parameters (implying
         // polymorphization is enabled) and this isn't an inherent impl.
-        if impl_trait_ref.is_some() && substs.iter().any(|a| a.has_non_region_param()) {
+        if impl_trait_ref.is_some() && args.iter().any(|a| a.has_non_region_param()) {
             self = self.path_generic_args(
                 |this| {
                     this.path_append_ns(
@@ -305,7 +305,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
                         "",
                     )
                 },
-                substs,
+                args,
             )?;
         } else {
             self.push_disambiguator(key.disambiguated_data.disambiguator as u64);
@@ -315,7 +315,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
         self = self_ty.print(self)?;
 
         if let Some(trait_ref) = impl_trait_ref {
-            self = self.print_def_path(trait_ref.def_id, trait_ref.substs)?;
+            self = self.print_def_path(trait_ref.def_id, trait_ref.args)?;
         }
 
         Ok(self)
@@ -431,12 +431,12 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
             }
 
             // Mangle all nominal types as paths.
-            ty::Adt(ty::AdtDef(Interned(&ty::AdtDefData { did: def_id, .. }, _)), substs)
-            | ty::FnDef(def_id, substs)
-            | ty::Alias(ty::Projection | ty::Opaque, ty::AliasTy { def_id, substs, .. })
-            | ty::Closure(def_id, substs)
-            | ty::Generator(def_id, substs, _) => {
-                self = self.print_def_path(def_id, substs)?;
+            ty::Adt(ty::AdtDef(Interned(&ty::AdtDefData { did: def_id, .. }, _)), args)
+            | ty::FnDef(def_id, args)
+            | ty::Alias(ty::Projection | ty::Opaque, ty::AliasTy { def_id, args, .. })
+            | ty::Closure(def_id, args)
+            | ty::Generator(def_id, args, _) => {
+                self = self.print_def_path(def_id, args)?;
             }
             ty::Foreign(def_id) => {
                 self = self.print_def_path(def_id, &[])?;
@@ -537,7 +537,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
                         // Use a type that can't appear in defaults of type parameters.
                         let dummy_self = Ty::new_fresh(cx.tcx, 0);
                         let trait_ref = trait_ref.with_self_ty(cx.tcx, dummy_self);
-                        cx = cx.print_def_path(trait_ref.def_id, trait_ref.substs)?;
+                        cx = cx.print_def_path(trait_ref.def_id, trait_ref.args)?;
                     }
                     ty::ExistentialPredicate::Projection(projection) => {
                         let name = cx.tcx.associated_item(projection.def_id).name;
@@ -679,13 +679,13 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
                         self.push("T");
                         self = print_field_list(self)?;
                     }
-                    ty::Adt(def, substs) => {
+                    ty::Adt(def, args) => {
                         let variant_idx =
                             contents.variant.expect("destructed const of adt without variant idx");
                         let variant_def = &def.variant(variant_idx);
 
                         self.push("V");
-                        self = self.print_def_path(variant_def.def_id, substs)?;
+                        self = self.print_def_path(variant_def.def_id, args)?;
 
                         match variant_def.ctor_kind() {
                             Some(CtorKind::Const) => {
@@ -750,7 +750,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
 
         self.push("Y");
         self = self_ty.print(self)?;
-        self.print_def_path(trait_ref.def_id, trait_ref.substs)
+        self.print_def_path(trait_ref.def_id, trait_ref.args)
     }
 
     fn path_append_impl(

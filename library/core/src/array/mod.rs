@@ -925,7 +925,7 @@ fn iter_next_chunk_erased<T>(
             // so we need to defuse the guard instead of using `?`.
             let initialized = guard.initialized;
             mem::forget(guard);
-            return Err(initialized)
+            return Err(initialized);
         };
 
         // SAFETY: The loop condition ensures we have space to push the item

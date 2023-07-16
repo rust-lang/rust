@@ -8,8 +8,8 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{ImplSource, Obligation, ObligationCause};
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
-use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts};
 use rustc_middle::ty::{self, adjustment::PointerCoercion, Instance, InstanceDef, Ty, TyCtxt};
+use rustc_middle::ty::{GenericArgKind, GenericArgs};
 use rustc_middle::ty::{TraitRef, TypeVisitableExt};
 use rustc_mir_dataflow::{self, Analysis};
 use rustc_span::{sym, Span, Symbol};
@@ -701,8 +701,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
                 let fn_ty = func.ty(body, tcx);
 
-                let (mut callee, mut substs) = match *fn_ty.kind() {
-                    ty::FnDef(def_id, substs) => (def_id, substs),
+                let (mut callee, mut fn_args) = match *fn_ty.kind() {
+                    ty::FnDef(def_id, fn_args) => (def_id, fn_args),
 
                     ty::FnPtr(_) => {
                         self.check_op(ops::FnCallIndirect);
@@ -721,7 +721,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 let infcx = tcx.infer_ctxt().build();
                 let ocx = ObligationCtxt::new(&infcx);
 
-                let predicates = tcx.predicates_of(callee).instantiate(tcx, substs);
+                let predicates = tcx.predicates_of(callee).instantiate(tcx, fn_args);
                 let cause = ObligationCause::new(
                     terminator.source_info.span,
                     self.body.source.def_id().expect_local(),
@@ -746,7 +746,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                         self.check_op(ops::FnCallNonConst {
                             caller,
                             callee,
-                            substs,
+                            args: fn_args,
                             span: *fn_span,
                             call_source: *call_source,
                             feature: Some(sym::const_trait_impl),
@@ -754,7 +754,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                         return;
                     }
 
-                    let trait_ref = TraitRef::from_method(tcx, trait_id, substs);
+                    let trait_ref = TraitRef::from_method(tcx, trait_id, fn_args);
                     let trait_ref = trait_ref.with_constness(ty::BoundConstness::ConstIfConst);
                     let obligation =
                         Obligation::new(tcx, ObligationCause::dummy(), param_env, trait_ref);
@@ -778,8 +778,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             if trait_ref.self_ty().is_closure()
                                 && tcx.fn_trait_kind_from_def_id(trait_id).is_some() =>
                         {
-                            let ty::Closure(closure_def_id, substs) =
-                                *trait_ref.self_ty().kind()
+                            let ty::Closure(closure_def_id, fn_args) = *trait_ref.self_ty().kind()
                             else {
                                 unreachable!()
                             };
@@ -787,7 +786,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                                 self.check_op(ops::FnCallNonConst {
                                     caller,
                                     callee,
-                                    substs,
+                                    args: fn_args,
                                     span: *fn_span,
                                     call_source: *call_source,
                                     feature: None,
@@ -803,9 +802,9 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                                 .iter()
                                 .find(|did| tcx.item_name(**did) == callee_name)
                             {
-                                // using internal substs is ok here, since this is only
+                                // using internal args is ok here, since this is only
                                 // used for the `resolve` call below
-                                substs = InternalSubsts::identity_for_item(tcx, did);
+                                fn_args = GenericArgs::identity_for_item(tcx, did);
                                 callee = did;
                             }
 
@@ -813,7 +812,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                                 self.check_op(ops::FnCallNonConst {
                                     caller,
                                     callee,
-                                    substs,
+                                    args: fn_args,
                                     span: *fn_span,
                                     call_source: *call_source,
                                     feature: None,
@@ -829,7 +828,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                                 && tcx.has_attr(callee_trait, sym::const_trait)
                                 && Some(callee_trait) == tcx.trait_of_item(caller.to_def_id())
                                 // Can only call methods when it's `<Self as TheTrait>::f`.
-                                && tcx.types.self_param == substs.type_at(0)
+                                && tcx.types.self_param == fn_args.type_at(0)
                             {
                                 nonconst_call_permission = true;
                             }
@@ -856,7 +855,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                                 self.check_op(ops::FnCallNonConst {
                                     caller,
                                     callee,
-                                    substs,
+                                    args: fn_args,
                                     span: *fn_span,
                                     call_source: *call_source,
                                     feature: None,
@@ -869,7 +868,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
                     // Resolve a trait method call to its concrete implementation, which may be in a
                     // `const` trait impl.
-                    let instance = Instance::resolve(tcx, param_env, callee, substs);
+                    let instance = Instance::resolve(tcx, param_env, callee, fn_args);
                     debug!("Resolving ({:?}) -> {:?}", callee, instance);
                     if let Ok(Some(func)) = instance {
                         if let InstanceDef::Item(def) = func.def {
@@ -916,7 +915,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                         self.check_op(ops::FnCallNonConst {
                             caller,
                             callee,
-                            substs,
+                            args: fn_args,
                             span: *fn_span,
                             call_source: *call_source,
                             feature: None,

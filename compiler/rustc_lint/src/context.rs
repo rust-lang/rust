@@ -35,7 +35,7 @@ use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::middle::stability;
 use rustc_middle::ty::layout::{LayoutError, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{self, print::Printer, subst::GenericArg, RegisteredTools, Ty, TyCtxt};
+use rustc_middle::ty::{self, print::Printer, GenericArg, RegisteredTools, Ty, TyCtxt};
 use rustc_session::config::ExpectedValues;
 use rustc_session::lint::{BuiltinLintDiagnostics, LintExpectationId};
 use rustc_session::lint::{FutureIncompatibleInfo, Level, Lint, LintBuffer, LintId};
@@ -956,6 +956,14 @@ pub trait LintContext: Sized {
                     db.span_note(glob_reexport_span, format!("the name `{}` in the {} namespace is supposed to be publicly re-exported here", name, namespace));
                     db.span_note(private_item_span, "but the private item here shadows it".to_owned());
                 }
+                BuiltinLintDiagnostics::UnusedQualifications { path_span, unqualified_path } => {
+                    db.span_suggestion_verbose(
+                        path_span,
+                        "replace it with the unqualified path",
+                        unqualified_path,
+                        Applicability::MachineApplicable
+                    );
+                }
             }
             // Rewrap `db`, and pass control to the user.
             decorate(db)
@@ -1265,8 +1273,8 @@ impl<'tcx> LateContext<'tcx> {
                 trait_ref: Option<ty::TraitRef<'tcx>>,
             ) -> Result<Self::Path, Self::Error> {
                 if trait_ref.is_none() {
-                    if let ty::Adt(def, substs) = self_ty.kind() {
-                        return self.print_def_path(def.did(), substs);
+                    if let ty::Adt(def, args) = self_ty.kind() {
+                        return self.print_def_path(def.did(), args);
                     }
                 }
 

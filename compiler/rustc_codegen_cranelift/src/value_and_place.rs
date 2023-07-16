@@ -850,11 +850,11 @@ pub(crate) fn assert_assignable<'tcx>(
                 }
             }
         }
-        (&ty::Adt(adt_def_a, substs_a), &ty::Adt(adt_def_b, substs_b))
+        (&ty::Adt(adt_def_a, args_a), &ty::Adt(adt_def_b, args_b))
             if adt_def_a.did() == adt_def_b.did() =>
         {
-            let mut types_a = substs_a.types();
-            let mut types_b = substs_b.types();
+            let mut types_a = args_a.types();
+            let mut types_b = args_b.types();
             loop {
                 match (types_a.next(), types_b.next()) {
                     (Some(a), Some(b)) => assert_assignable(fx, a, b, limit - 1),
@@ -864,11 +864,11 @@ pub(crate) fn assert_assignable<'tcx>(
             }
         }
         (ty::Array(a, _), ty::Array(b, _)) => assert_assignable(fx, *a, *b, limit - 1),
-        (&ty::Closure(def_id_a, substs_a), &ty::Closure(def_id_b, substs_b))
+        (&ty::Closure(def_id_a, args_a), &ty::Closure(def_id_b, args_b))
             if def_id_a == def_id_b =>
         {
-            let mut types_a = substs_a.types();
-            let mut types_b = substs_b.types();
+            let mut types_a = args_a.types();
+            let mut types_b = args_b.types();
             loop {
                 match (types_a.next(), types_b.next()) {
                     (Some(a), Some(b)) => assert_assignable(fx, a, b, limit - 1),

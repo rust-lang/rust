@@ -270,7 +270,7 @@ pub(super) fn write_shared(
             hierarchy.add_path(source);
         }
         let hierarchy = Rc::try_unwrap(hierarchy).unwrap();
-        let dst = cx.dst.join(&format!("source-files{}.js", cx.shared.resource_suffix));
+        let dst = cx.dst.join(&format!("src-files{}.js", cx.shared.resource_suffix));
         let make_sources = || {
             let (mut all_sources, _krates) =
                 try_err!(collect_json(&dst, krate.name(cx.tcx()).as_str()), &dst);
@@ -286,12 +286,12 @@ pub(super) fn write_shared(
                     .replace("\\\"", "\\\\\"")
             ));
             all_sources.sort();
-            let mut v = String::from("var sourcesIndex = JSON.parse('{\\\n");
+            let mut v = String::from("var srcIndex = JSON.parse('{\\\n");
             v.push_str(&all_sources.join(",\\\n"));
-            v.push_str("\\\n}');\ncreateSourceSidebar();\n");
+            v.push_str("\\\n}');\ncreateSrcSidebar();\n");
             Ok(v.into_bytes())
         };
-        write_invocation_specific("source-files.js", &make_sources)?;
+        write_invocation_specific("src-files.js", &make_sources)?;
     }
 
     // Update the search index and crate list.

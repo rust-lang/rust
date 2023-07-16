@@ -100,9 +100,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         {
                             // Synthesize the associated type restriction `Add<Output = Expected>`.
                             // FIXME: extract this logic for use in other diagnostics.
-                            let (trait_ref, assoc_substs) = proj.trait_ref_and_own_substs(tcx);
+                            let (trait_ref, assoc_args) = proj.trait_ref_and_own_args(tcx);
                             let item_name = tcx.item_name(proj.def_id);
-                            let item_args = self.format_generic_args(assoc_substs);
+                            let item_args = self.format_generic_args(assoc_args);
 
                             // Here, we try to see if there's an existing
                             // trait implementation that matches the one that
@@ -316,7 +316,7 @@ impl<T> Trait<T> for X {
     ) -> bool {
         let tcx = self.tcx;
         let assoc = tcx.associated_item(proj_ty.def_id);
-        let (trait_ref, assoc_substs) = proj_ty.trait_ref_and_own_substs(tcx);
+        let (trait_ref, assoc_args) = proj_ty.trait_ref_and_own_args(tcx);
         if let Some(item) = tcx.hir().get_if_local(body_owner_def_id) {
             if let Some(hir_generics) = item.generics() {
                 // Get the `DefId` for the type parameter corresponding to `A` in `<A as T>::Foo`.
@@ -339,7 +339,7 @@ impl<T> Trait<T> for X {
                         &trait_ref,
                         pred.bounds,
                         assoc,
-                        assoc_substs,
+                        assoc_args,
                         ty,
                         &msg,
                         false,
@@ -488,14 +488,14 @@ fn foo(&self) -> Self::T { String::new() }
                 return false;
             };
 
-            let (trait_ref, assoc_substs) = proj_ty.trait_ref_and_own_substs(tcx);
+            let (trait_ref, assoc_args) = proj_ty.trait_ref_and_own_args(tcx);
 
             self.constrain_generic_bound_associated_type_structured_suggestion(
                 diag,
                 &trait_ref,
                 opaque_hir_ty.bounds,
                 assoc,
-                assoc_substs,
+                assoc_args,
                 ty,
                 msg,
                 true,
@@ -527,7 +527,7 @@ fn foo(&self) -> Self::T { String::new() }
                     && !tcx.is_doc_hidden(item.def_id)
             })
             .filter_map(|item| {
-                let method = tcx.fn_sig(item.def_id).subst_identity();
+                let method = tcx.fn_sig(item.def_id).instantiate_identity();
                 match *method.output().skip_binder().kind() {
                     ty::Alias(ty::Projection, ty::AliasTy { def_id: item_def_id, .. })
                         if item_def_id == proj_ty_item_def_id =>
@@ -597,7 +597,7 @@ fn foo(&self) -> Self::T { String::new() }
                             if let hir::Defaultness::Default { has_value: true } =
                                 tcx.defaultness(item.id.owner_id)
                             {
-                                let assoc_ty = tcx.type_of(item.id.owner_id).subst_identity();
+                                let assoc_ty = tcx.type_of(item.id.owner_id).instantiate_identity();
                                 if self.infcx.can_eq(param_env, assoc_ty, found) {
                                     diag.span_label(
                                         item.span,
@@ -618,7 +618,7 @@ fn foo(&self) -> Self::T { String::new() }
             })) => {
                 for item in &items[..] {
                     if let hir::AssocItemKind::Type = item.kind {
-                        let assoc_ty = tcx.type_of(item.id.owner_id).subst_identity();
+                        let assoc_ty = tcx.type_of(item.id.owner_id).instantiate_identity();
 
                         if self.infcx.can_eq(param_env, assoc_ty, found) {
                             diag.span_label(item.span, "expected this associated type");
@@ -645,7 +645,7 @@ fn foo(&self) -> Self::T { String::new() }
         trait_ref: &ty::TraitRef<'tcx>,
         bounds: hir::GenericBounds<'_>,
         assoc: ty::AssocItem,
-        assoc_substs: &[ty::GenericArg<'tcx>],
+        assoc_args: &[ty::GenericArg<'tcx>],
         ty: Ty<'tcx>,
         msg: impl Fn() -> String,
         is_bound_surely_present: bool,
@@ -671,14 +671,7 @@ fn foo(&self) -> Self::T { String::new() }
             _ => return false,
         };
 
-        self.constrain_associated_type_structured_suggestion(
-            diag,
-            span,
-            assoc,
-            assoc_substs,
-            ty,
-            msg,
-        )
+        self.constrain_associated_type_structured_suggestion(diag, span, assoc, assoc_args, ty, msg)
     }
 
     /// Given a span corresponding to a bound, provide a structured suggestion to set an
@@ -688,7 +681,7 @@ fn foo(&self) -> Self::T { String::new() }
         diag: &mut Diagnostic,
         span: Span,
         assoc: ty::AssocItem,
-        assoc_substs: &[ty::GenericArg<'tcx>],
+        assoc_args: &[ty::GenericArg<'tcx>],
         ty: Ty<'tcx>,
         msg: impl Fn() -> String,
     ) -> bool {
@@ -702,7 +695,7 @@ fn foo(&self) -> Self::T { String::new() }
                 let span = Span::new(pos, pos, span.ctxt(), span.parent());
                 (span, format!(", {} = {}", assoc.ident(tcx), ty))
             } else {
-                let item_args = self.format_generic_args(assoc_substs);
+                let item_args = self.format_generic_args(assoc_args);
                 (span.shrink_to_hi(), format!("<{}{} = {}>", assoc.ident(tcx), item_args, ty))
             };
             diag.span_suggestion_verbose(span, msg(), sugg, MaybeIncorrect);

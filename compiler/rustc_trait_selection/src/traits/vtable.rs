@@ -6,7 +6,7 @@ use rustc_infer::traits::util::PredicateSet;
 use rustc_infer::traits::ImplSource;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::visit::TypeVisitableExt;
-use rustc_middle::ty::InternalSubsts;
+use rustc_middle::ty::GenericArgs;
 use rustc_middle::ty::{self, GenericParamDefKind, ToPredicate, Ty, TyCtxt, VtblEntry};
 use rustc_span::{sym, Span};
 use smallvec::SmallVec;
@@ -241,12 +241,12 @@ fn vtable_entries<'tcx>(
                     debug!("vtable_entries: trait_method={:?}", def_id);
 
                     // The method may have some early-bound lifetimes; add regions for those.
-                    let substs = trait_ref.map_bound(|trait_ref| {
-                        InternalSubsts::for_item(tcx, def_id, |param, _| match param.kind {
+                    let args = trait_ref.map_bound(|trait_ref| {
+                        GenericArgs::for_item(tcx, def_id, |param, _| match param.kind {
                             GenericParamDefKind::Lifetime => tcx.lifetimes.re_erased.into(),
                             GenericParamDefKind::Type { .. }
                             | GenericParamDefKind::Const { .. } => {
-                                trait_ref.substs[param.index as usize]
+                                trait_ref.args[param.index as usize]
                             }
                         })
                     });
@@ -254,14 +254,14 @@ fn vtable_entries<'tcx>(
                     // The trait type may have higher-ranked lifetimes in it;
                     // erase them if they appear, so that we get the type
                     // at some particular call site.
-                    let substs = tcx
-                        .normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), substs);
+                    let args =
+                        tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), args);
 
                     // It's possible that the method relies on where-clauses that
                     // do not hold for this particular set of type parameters.
                     // Note that this method could then never be called, so we
                     // do not want to try and codegen it, in that case (see #23435).
-                    let predicates = tcx.predicates_of(def_id).instantiate_own(tcx, substs);
+                    let predicates = tcx.predicates_of(def_id).instantiate_own(tcx, args);
                     if impossible_predicates(
                         tcx,
                         predicates.map(|(predicate, _)| predicate).collect(),
@@ -274,7 +274,7 @@ fn vtable_entries<'tcx>(
                         tcx,
                         ty::ParamEnv::reveal_all(),
                         def_id,
-                        substs,
+                        args,
                     )
                     .expect("resolution failed during building vtable representation");
                     VtblEntry::Method(instance)

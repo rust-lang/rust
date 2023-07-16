@@ -92,8 +92,8 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
         let tcx = self.tcx;
         let callee_ty = instance.ty(tcx, ty::ParamEnv::reveal_all());
 
-        let (def_id, substs) = match *callee_ty.kind() {
-            ty::FnDef(def_id, substs) => (def_id, substs),
+        let (def_id, fn_args) = match *callee_ty.kind() {
+            ty::FnDef(def_id, fn_args) => (def_id, fn_args),
             _ => bug!("expected fn item type, found {}", callee_ty),
         };
 
@@ -142,7 +142,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                 }
 
                 sym::volatile_load | sym::unaligned_volatile_load => {
-                    let tp_ty = substs.type_at(0);
+                    let tp_ty = fn_args.type_at(0);
                     let mut ptr = args[0].immediate();
                     if let PassMode::Cast(ty, _) = &fn_abi.ret.mode {
                         ptr = self.pointercast(ptr, self.type_ptr_to(ty.gcc_type(self)));
@@ -264,7 +264,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
 
                 sym::raw_eq => {
                     use rustc_target::abi::Abi::*;
-                    let tp_ty = substs.type_at(0);
+                    let tp_ty = fn_args.type_at(0);
                     let layout = self.layout_of(tp_ty).layout;
                     let _use_integer_compare = match layout.abi() {
                         Scalar(_) | ScalarPair(_, _) => true,

@@ -1,10 +1,8 @@
 //! Implementation of compiling the compiler and standard library, in "check"-based modes.
 
-use crate::builder::{crate_description, Builder, Kind, RunConfig, ShouldRun, Step};
+use crate::builder::{crate_description, Alias, Builder, Kind, RunConfig, ShouldRun, Step};
 use crate::cache::Interned;
-use crate::compile::{
-    add_to_sysroot, make_run_crates, run_cargo, rustc_cargo, rustc_cargo_env, std_cargo,
-};
+use crate::compile::{add_to_sysroot, run_cargo, rustc_cargo, rustc_cargo_env, std_cargo};
 use crate::config::TargetSelection;
 use crate::tool::{prepare_tool_cargo, SourceType};
 use crate::INTERNER;
@@ -89,7 +87,7 @@ impl Step for Std {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        let crates = make_run_crates(&run, "library");
+        let crates = run.make_run_crates(Alias::Library);
         run.builder.ensure(Std { target: run.target, crates });
     }
 
@@ -137,10 +135,11 @@ impl Step for Std {
             let hostdir = builder.sysroot_libdir(compiler, compiler.host);
             add_to_sysroot(&builder, &libdir, &hostdir, &libstd_stamp(builder, compiler, target));
         }
+        drop(_guard);
 
         // don't run on std twice with x.py clippy
         // don't check test dependencies if we haven't built libtest
-        if builder.kind == Kind::Clippy || !self.crates.is_empty() {
+        if builder.kind == Kind::Clippy || !self.crates.iter().any(|krate| krate == "test") {
             return;
         }
 
@@ -200,10 +199,11 @@ pub struct Rustc {
 
 impl Rustc {
     pub fn new(target: TargetSelection, builder: &Builder<'_>) -> Self {
-        let mut crates = vec![];
-        for krate in builder.in_tree_crates("rustc-main", None) {
-            crates.push(krate.name.to_string());
-        }
+        let crates = builder
+            .in_tree_crates("rustc-main", Some(target))
+            .into_iter()
+            .map(|krate| krate.name.to_string())
+            .collect();
         Self { target, crates: INTERNER.intern_list(crates) }
     }
 }
@@ -218,7 +218,7 @@ impl Step for Rustc {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        let crates = make_run_crates(&run, "compiler");
+        let crates = run.make_run_crates(Alias::Compiler);
         run.builder.ensure(Rustc { target: run.target, crates });
     }
 

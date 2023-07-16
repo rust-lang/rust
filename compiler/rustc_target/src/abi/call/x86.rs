@@ -1,5 +1,5 @@
 use crate::abi::call::{ArgAttribute, FnAbi, PassMode, Reg, RegKind};
-use crate::abi::{HasDataLayout, TyAbiInterface};
+use crate::abi::{Abi, Align, HasDataLayout, TyAbiInterface, TyAndLayout};
 use crate::spec::HasTargetSpec;
 
 #[derive(PartialEq)]
@@ -53,8 +53,75 @@ where
         if arg.is_ignore() {
             continue;
         }
-        if arg.layout.is_aggregate() {
-            arg.make_indirect_byval();
+
+        // FIXME: MSVC 2015+ will pass the first 3 vector arguments in [XYZ]MM0-2
+        // See https://reviews.llvm.org/D72114 for Clang behavior
+
+        let t = cx.target_spec();
+        let align_4 = Align::from_bytes(4).unwrap();
+        let align_16 = Align::from_bytes(16).unwrap();
+
+        if t.is_like_msvc
+            && arg.layout.is_adt()
+            && let Some(max_repr_align) = arg.layout.max_repr_align
+            && max_repr_align > align_4
+        {
+            // MSVC has special rules for overaligned arguments: https://reviews.llvm.org/D72114.
+            // Summarized here:
+            // - Arguments with _requested_ alignment > 4 are passed indirectly.
+            // - For backwards compatibility, arguments with natural alignment > 4 are still passed
+            //   on stack (via `byval`). For example, this includes `double`, `int64_t`,
+            //   and structs containing them, provided they lack an explicit alignment attribute.
+            assert!(arg.layout.align.abi >= max_repr_align,
+                "abi alignment {:?} less than requested alignment {max_repr_align:?}",
+                arg.layout.align.abi,
+            );
+            arg.make_indirect();
+        } else if arg.layout.is_aggregate() {
+            // We need to compute the alignment of the `byval` argument. The rules can be found in
+            // `X86_32ABIInfo::getTypeStackAlignInBytes` in Clang's `TargetInfo.cpp`. Summarized
+            // here, they are:
+            //
+            // 1. If the natural alignment of the type is <= 4, the alignment is 4.
+            //
+            // 2. Otherwise, on Linux, the alignment of any vector type is the natural alignment.
+            // This doesn't matter here because we only pass aggregates via `byval`, not vectors.
+            //
+            // 3. Otherwise, on Apple platforms, the alignment of anything that contains a vector
+            // type is 16.
+            //
+            // 4. If none of these conditions are true, the alignment is 4.
+
+            fn contains_vector<'a, Ty, C>(cx: &C, layout: TyAndLayout<'a, Ty>) -> bool
+            where
+                Ty: TyAbiInterface<'a, C> + Copy,
+            {
+                match layout.abi {
+                    Abi::Uninhabited | Abi::Scalar(_) | Abi::ScalarPair(..) => false,
+                    Abi::Vector { .. } => true,
+                    Abi::Aggregate { .. } => {
+                        for i in 0..layout.fields.count() {
+                            if contains_vector(cx, layout.field(cx, i)) {
+                                return true;
+                            }
+                        }
+                        false
+                    }
+                }
+            }
+
+            let byval_align = if arg.layout.align.abi < align_4 {
+                // (1.)
+                align_4
+            } else if t.is_like_osx && contains_vector(cx, arg.layout) {
+                // (3.)
+                align_16
+            } else {
+                // (4.)
+                align_4
+            };
+
+            arg.make_indirect_byval(Some(byval_align));
         } else {
             arg.extend_integer_width_to(32);
         }

@@ -1094,12 +1094,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if subpats.len() == variant.fields.len()
             || subpats.len() < variant.fields.len() && ddpos.as_opt_usize().is_some()
         {
-            let ty::Adt(_, substs) = pat_ty.kind() else {
+            let ty::Adt(_, args) = pat_ty.kind() else {
                 bug!("unexpected pattern type {:?}", pat_ty);
             };
             for (i, subpat) in subpats.iter().enumerate_and_adjust(variant.fields.len(), ddpos) {
                 let field = &variant.fields[FieldIdx::from_usize(i)];
-                let field_ty = self.field_ty(subpat.span, field, substs);
+                let field_ty = self.field_ty(subpat.span, field, args);
                 self.check_pat(subpat, field_ty, def_bm, ti);
 
                 self.tcx.check_stability(
@@ -1182,10 +1182,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // with the subpatterns directly in the tuple variant pattern, e.g., `V_i(p_0, .., p_N)`.
         let missing_parentheses = match (&expected.kind(), fields, had_err) {
             // #67037: only do this if we could successfully type-check the expected type against
-            // the tuple struct pattern. Otherwise the substs could get out of range on e.g.,
+            // the tuple struct pattern. Otherwise the args could get out of range on e.g.,
             // `let P() = U;` where `P != U` with `struct P<T>(T);`.
-            (ty::Adt(_, substs), [field], false) => {
-                let field_ty = self.field_ty(pat_span, field, substs);
+            (ty::Adt(_, args), [field], false) => {
+                let field_ty = self.field_ty(pat_span, field, args);
                 match field_ty.kind() {
                     ty::Tuple(fields) => fields.len() == subpats.len(),
                     _ => false,
@@ -1335,7 +1335,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> bool {
         let tcx = self.tcx;
 
-        let ty::Adt(adt, substs) = adt_ty.kind() else {
+        let ty::Adt(adt, args) = adt_ty.kind() else {
             span_bug!(pat.span, "struct pattern is not an ADT");
         };
 
@@ -1368,7 +1368,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .map(|(i, f)| {
                             self.write_field_index(field.hir_id, *i);
                             self.tcx.check_stability(f.did, Some(pat.hir_id), span, None);
-                            self.field_ty(span, f, substs)
+                            self.field_ty(span, f, args)
                         })
                         .unwrap_or_else(|| {
                             inexistent_fields.push(field);
@@ -1396,7 +1396,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 &inexistent_fields,
                 &mut unmentioned_fields,
                 variant,
-                substs,
+                args,
             ))
         } else {
             None
@@ -1566,7 +1566,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         inexistent_fields: &[&hir::PatField<'tcx>],
         unmentioned_fields: &mut Vec<(&'tcx ty::FieldDef, Ident)>,
         variant: &ty::VariantDef,
-        substs: &'tcx ty::List<ty::subst::GenericArg<'tcx>>,
+        args: &'tcx ty::List<ty::GenericArg<'tcx>>,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let tcx = self.tcx;
         let (field_names, t, plural) = if inexistent_fields.len() == 1 {
@@ -1636,7 +1636,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 self.field_ty(
                                     unmentioned_fields[0].1.span,
                                     unmentioned_fields[0].0,
-                                    substs,
+                                    args,
                                 ),
                             ) => {}
                         _ => {

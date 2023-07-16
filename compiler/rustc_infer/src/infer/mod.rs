@@ -30,11 +30,11 @@ use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::BoundVarReplacerDelegate;
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::relate::RelateResult;
-use rustc_middle::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, SubstsRef};
 use rustc_middle::ty::visit::{TypeVisitable, TypeVisitableExt};
 pub use rustc_middle::ty::IntVarValue;
 use rustc_middle::ty::{self, GenericParamDefKind, InferConst, InferTy, Ty, TyCtxt};
 use rustc_middle::ty::{ConstVid, FloatVid, IntVid, TyVid};
+use rustc_middle::ty::{GenericArg, GenericArgKind, GenericArgs, GenericArgsRef};
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 
@@ -1184,8 +1184,8 @@ impl<'tcx> InferCtxt<'tcx> {
 
     /// Given a set of generics defined on a type or impl, returns a substitution mapping each
     /// type/region parameter to a fresh inference variable.
-    pub fn fresh_substs_for_item(&self, span: Span, def_id: DefId) -> SubstsRef<'tcx> {
-        InternalSubsts::for_item(self.tcx, def_id, |param, _| self.var_for_def(span, param))
+    pub fn fresh_args_for_item(&self, span: Span, def_id: DefId) -> GenericArgsRef<'tcx> {
+        GenericArgs::for_item(self.tcx, def_id, |param, _| self.var_for_def(span, param))
     }
 
     /// Returns `true` if errors have been reported since this infcx was
@@ -1474,8 +1474,8 @@ impl<'tcx> InferCtxt<'tcx> {
     /// Obtains the latest type of the given closure; this may be a
     /// closure in the current function, in which case its
     /// `ClosureKind` may not yet be known.
-    pub fn closure_kind(&self, closure_substs: SubstsRef<'tcx>) -> Option<ty::ClosureKind> {
-        let closure_kind_ty = closure_substs.as_closure().kind_ty();
+    pub fn closure_kind(&self, closure_args: GenericArgsRef<'tcx>) -> Option<ty::ClosureKind> {
+        let closure_kind_ty = closure_args.as_closure().kind_ty();
         let closure_kind_ty = self.shallow_resolve(closure_kind_ty);
         closure_kind_ty.to_opt_closure_kind()
     }
@@ -1534,7 +1534,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// too generic for the constant to be evaluated then `Err(ErrorHandled::TooGeneric)` is
     /// returned.
     ///
-    /// This handles inferences variables within both `param_env` and `substs` by
+    /// This handles inferences variables within both `param_env` and `args` by
     /// performing the operation on their respective canonical forms.
     #[instrument(skip(self), level = "debug")]
     pub fn const_eval_resolve(
@@ -1543,34 +1543,34 @@ impl<'tcx> InferCtxt<'tcx> {
         unevaluated: ty::UnevaluatedConst<'tcx>,
         span: Option<Span>,
     ) -> EvalToValTreeResult<'tcx> {
-        let mut substs = self.resolve_vars_if_possible(unevaluated.substs);
-        debug!(?substs);
+        let mut args = self.resolve_vars_if_possible(unevaluated.args);
+        debug!(?args);
 
-        // Postpone the evaluation of constants whose substs depend on inference
+        // Postpone the evaluation of constants whose args depend on inference
         // variables
         let tcx = self.tcx;
-        if substs.has_non_region_infer() {
+        if args.has_non_region_infer() {
             if let Some(ct) = tcx.thir_abstract_const(unevaluated.def)? {
-                let ct = tcx.expand_abstract_consts(ct.subst(tcx, substs));
+                let ct = tcx.expand_abstract_consts(ct.instantiate(tcx, args));
                 if let Err(e) = ct.error_reported() {
                     return Err(ErrorHandled::Reported(e.into()));
                 } else if ct.has_non_region_infer() || ct.has_non_region_param() {
                     return Err(ErrorHandled::TooGeneric);
                 } else {
-                    substs = replace_param_and_infer_substs_with_placeholder(tcx, substs);
+                    args = replace_param_and_infer_args_with_placeholder(tcx, args);
                 }
             } else {
-                substs = InternalSubsts::identity_for_item(tcx, unevaluated.def);
+                args = GenericArgs::identity_for_item(tcx, unevaluated.def);
                 param_env = tcx.param_env(unevaluated.def);
             }
         }
 
         let param_env_erased = tcx.erase_regions(param_env);
-        let substs_erased = tcx.erase_regions(substs);
+        let args_erased = tcx.erase_regions(args);
         debug!(?param_env_erased);
-        debug!(?substs_erased);
+        debug!(?args_erased);
 
-        let unevaluated = ty::UnevaluatedConst { def: unevaluated.def, substs: substs_erased };
+        let unevaluated = ty::UnevaluatedConst { def: unevaluated.def, args: args_erased };
 
         // The return value is the evaluated value which doesn't contain any reference to inference
         // variables, thus we don't need to substitute back the original values.
@@ -1959,13 +1959,13 @@ impl RegionVariableOrigin {
     }
 }
 
-/// Replaces substs that reference param or infer variables with suitable
+/// Replaces args that reference param or infer variables with suitable
 /// placeholders. This function is meant to remove these param and infer
-/// substs when they're not actually needed to evaluate a constant.
-fn replace_param_and_infer_substs_with_placeholder<'tcx>(
+/// args when they're not actually needed to evaluate a constant.
+fn replace_param_and_infer_args_with_placeholder<'tcx>(
     tcx: TyCtxt<'tcx>,
-    substs: SubstsRef<'tcx>,
-) -> SubstsRef<'tcx> {
+    args: GenericArgsRef<'tcx>,
+) -> GenericArgsRef<'tcx> {
     struct ReplaceParamAndInferWithPlaceholder<'tcx> {
         tcx: TyCtxt<'tcx>,
         idx: u32,
@@ -2023,5 +2023,5 @@ fn replace_param_and_infer_substs_with_placeholder<'tcx>(
         }
     }
 
-    substs.fold_with(&mut ReplaceParamAndInferWithPlaceholder { tcx, idx: 0 })
+    args.fold_with(&mut ReplaceParamAndInferWithPlaceholder { tcx, idx: 0 })
 }

@@ -8,7 +8,7 @@
 
 use crate::infer::canonical::{Canonical, CanonicalVarValues};
 use rustc_middle::ty::fold::{FnMutDelegate, TypeFoldable};
-use rustc_middle::ty::subst::GenericArgKind;
+use rustc_middle::ty::GenericArgKind;
 use rustc_middle::ty::{self, TyCtxt};
 
 /// FIXME(-Ztrait-solver=next): This or public because it is shared with the

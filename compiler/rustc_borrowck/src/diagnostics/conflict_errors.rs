@@ -363,21 +363,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
         }
         let hir = self.infcx.tcx.hir();
-        if let Some(hir::Node::Item(hir::Item {
-            kind: hir::ItemKind::Fn(_, _, body_id),
-            ..
-        })) = hir.find(self.mir_hir_id())
-            && let Some(hir::Node::Expr(expr)) = hir.find(body_id.hir_id)
-        {
+        if let Some(body_id) = hir.maybe_body_owned_by(self.mir_def_id()) {
+            let expr = hir.body(body_id).value;
             let place = &self.move_data.move_paths[mpi].place;
-            let span = place.as_local()
-                .map(|local| self.body.local_decls[local].source_info.span);
-            let mut finder = ExpressionFinder {
-                expr_span: move_span,
-                expr: None,
-                pat: None,
-                parent_pat: None,
-            };
+            let span = place.as_local().map(|local| self.body.local_decls[local].source_info.span);
+            let mut finder =
+                ExpressionFinder { expr_span: move_span, expr: None, pat: None, parent_pat: None };
             finder.visit_expr(expr);
             if let Some(span) = span && let Some(expr) = finder.expr {
                 for (_, expr) in hir.parent_iter(expr.hir_id) {
@@ -461,7 +452,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     } = move_spans {
                         // We already suggest cloning for these cases in `explain_captures`.
                     } else {
-                        self.suggest_cloning(err, ty, move_span);
+                        self.suggest_cloning(err, ty, expr, move_span);
                     }
                 }
             }
@@ -702,11 +693,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 .iter()
                 .copied()
                 .find_map(find_fn_kind_from_did),
-            ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => tcx
+            ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => tcx
                 .explicit_item_bounds(def_id)
-                .subst_iter_copied(tcx, substs)
+                .arg_iter_copied(tcx, args)
                 .find_map(|(clause, span)| find_fn_kind_from_did((clause, span))),
-            ty::Closure(_, substs) => match substs.as_closure().kind() {
+            ty::Closure(_, args) => match args.as_closure().kind() {
                 ty::ClosureKind::Fn => Some(hir::Mutability::Not),
                 ty::ClosureKind::FnMut => Some(hir::Mutability::Mut),
                 _ => None,
@@ -714,7 +705,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             _ => None,
         };
 
-        let Some(borrow_level) = borrow_level else { return false; };
+        let Some(borrow_level) = borrow_level else {
+            return false;
+        };
         let sugg = move_sites
             .iter()
             .map(|move_site| {
@@ -734,9 +727,21 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         true
     }
 
-    fn suggest_cloning(&self, err: &mut Diagnostic, ty: Ty<'tcx>, span: Span) {
+    fn suggest_cloning(
+        &self,
+        err: &mut Diagnostic,
+        ty: Ty<'tcx>,
+        expr: &hir::Expr<'_>,
+        span: Span,
+    ) {
         let tcx = self.infcx.tcx;
         // Try to find predicates on *generic params* that would allow copying `ty`
+        let suggestion =
+            if let Some(symbol) = tcx.hir().maybe_get_struct_pattern_shorthand_field(expr) {
+                format!(": {}.clone()", symbol)
+            } else {
+                ".clone()".to_owned()
+            };
         if let Some(clone_trait_def) = tcx.lang_items().clone_trait()
             && self.infcx
                 .type_implements_trait(
@@ -749,7 +754,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             err.span_suggestion_verbose(
                 span.shrink_to_hi(),
                 "consider cloning the value if the performance cost is acceptable",
-                ".clone()",
+                suggestion,
                 Applicability::MachineApplicable,
             );
         }
@@ -763,7 +768,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             .typeck_root_def_id(self.mir_def_id().to_def_id())
             .as_local()
             .and_then(|def_id| tcx.hir().get_generics(def_id))
-        else { return; };
+        else {
+            return;
+        };
         // Try to find predicates on *generic params* that would allow copying `ty`
         let ocx = ObligationCtxt::new(&self.infcx);
         let copy_did = tcx.require_lang_item(LangItem::Copy, Some(span));
@@ -1220,18 +1227,20 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             return;
         };
         let inner_param_uses = find_all_local_uses::find(self.body, inner_param.local);
-        let Some((inner_call_loc, inner_call_term)) = inner_param_uses.into_iter().find_map(|loc| {
-            let Either::Right(term) = self.body.stmt_at(loc) else {
-                debug!("{:?} is a statement, so it can't be a call", loc);
-                return None;
-            };
-            let TerminatorKind::Call { args, .. } = &term.kind else {
-                debug!("not a call: {:?}", term);
-                return None;
-            };
-            debug!("checking call args for uses of inner_param: {:?}", args);
-            args.contains(&Operand::Move(inner_param)).then_some((loc, term))
-        }) else {
+        let Some((inner_call_loc, inner_call_term)) =
+            inner_param_uses.into_iter().find_map(|loc| {
+                let Either::Right(term) = self.body.stmt_at(loc) else {
+                    debug!("{:?} is a statement, so it can't be a call", loc);
+                    return None;
+                };
+                let TerminatorKind::Call { args, .. } = &term.kind else {
+                    debug!("not a call: {:?}", term);
+                    return None;
+                };
+                debug!("checking call args for uses of inner_param: {:?}", args);
+                args.contains(&Operand::Move(inner_param)).then_some((loc, term))
+            })
+        else {
             debug!("no uses of inner_param found as a by-move call arg");
             return;
         };
@@ -1442,21 +1451,24 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         }
 
         // Get closure's arguments
-        let ty::Closure(_, substs) = typeck_results.expr_ty(closure_expr).kind() else { /* hir::Closure can be a generator too */ return };
-        let sig = substs.as_closure().sig();
+        let ty::Closure(_, args) = typeck_results.expr_ty(closure_expr).kind() else {
+            /* hir::Closure can be a generator too */
+            return;
+        };
+        let sig = args.as_closure().sig();
         let tupled_params =
             tcx.erase_late_bound_regions(sig.inputs().iter().next().unwrap().map_bound(|&b| b));
         let ty::Tuple(params) = tupled_params.kind() else { return };
 
         // Find the first argument with a matching type, get its name
-        let Some((_, this_name)) = params
-            .iter()
-            .zip(hir.body_param_names(closure.body))
-            .find(|(param_ty, name)|{
+        let Some((_, this_name)) =
+            params.iter().zip(hir.body_param_names(closure.body)).find(|(param_ty, name)| {
                 // FIXME: also support deref for stuff like `Rc` arguments
                 param_ty.peel_refs() == local_ty && name != &Ident::empty()
             })
-            else { return };
+        else {
+            return;
+        };
 
         let spans;
         if let Some((_path_expr, qpath)) = finder.error_path
@@ -2667,7 +2679,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 kind: TerminatorKind::Call { call_source: CallSource::OverloadedOperator, .. },
                 ..
             }),
-            Some((method_did, method_substs)),
+            Some((method_did, method_args)),
         ) = (
             &self.body[loan.reserve_location.block].terminator,
             rustc_middle::util::find_self_call(
@@ -2680,7 +2692,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             if tcx.is_diagnostic_item(sym::deref_method, method_did) {
                 let deref_target =
                     tcx.get_diagnostic_item(sym::deref_target).and_then(|deref_target| {
-                        Instance::resolve(tcx, self.param_env, deref_target, method_substs)
+                        Instance::resolve(tcx, self.param_env, deref_target, method_args)
                             .transpose()
                     });
                 if let Some(Ok(instance)) = deref_target {
@@ -2847,11 +2859,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             if is_closure {
                 None
             } else {
-                let ty = self.infcx.tcx.type_of(self.mir_def_id()).subst_identity();
+                let ty = self.infcx.tcx.type_of(self.mir_def_id()).instantiate_identity();
                 match ty.kind() {
                     ty::FnDef(_, _) | ty::FnPtr(_) => self.annotate_fn_sig(
                         self.mir_def_id(),
-                        self.infcx.tcx.fn_sig(self.mir_def_id()).subst_identity(),
+                        self.infcx.tcx.fn_sig(self.mir_def_id()).instantiate_identity(),
                     ),
                     _ => None,
                 }
@@ -2893,13 +2905,15 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         );
                         // Check if our `target` was captured by a closure.
                         if let Rvalue::Aggregate(
-                            box AggregateKind::Closure(def_id, substs),
+                            box AggregateKind::Closure(def_id, args),
                             operands,
                         ) = rvalue
                         {
                             let def_id = def_id.expect_local();
                             for operand in operands {
-                                let (Operand::Copy(assigned_from) | Operand::Move(assigned_from)) = operand else {
+                                let (Operand::Copy(assigned_from) | Operand::Move(assigned_from)) =
+                                    operand
+                                else {
                                     continue;
                                 };
                                 debug!(
@@ -2908,7 +2922,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                 );
 
                                 // Find the local from the operand.
-                                let Some(assigned_from_local) = assigned_from.local_or_deref_local() else {
+                                let Some(assigned_from_local) =
+                                    assigned_from.local_or_deref_local()
+                                else {
                                     continue;
                                 };
 
@@ -2920,7 +2936,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                 // into a place then we should annotate the closure in
                                 // case it ends up being assigned into the return place.
                                 annotated_closure =
-                                    self.annotate_fn_sig(def_id, substs.as_closure().sig());
+                                    self.annotate_fn_sig(def_id, args.as_closure().sig());
                                 debug!(
                                     "annotate_argument_and_return_for_borrow: \
                                      annotated_closure={:?} assigned_from_local={:?} \
@@ -2961,7 +2977,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         );
 
                         // Find the local from the rvalue.
-                        let Some(assigned_from_local) = assigned_from.local_or_deref_local() else { continue };
+                        let Some(assigned_from_local) = assigned_from.local_or_deref_local() else {
+                            continue;
+                        };
                         debug!(
                             "annotate_argument_and_return_for_borrow: \
                              assigned_from_local={:?}",
@@ -3009,7 +3027,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         assigned_to, args
                     );
                     for operand in args {
-                        let (Operand::Copy(assigned_from) | Operand::Move(assigned_from)) = operand else {
+                        let (Operand::Copy(assigned_from) | Operand::Move(assigned_from)) = operand
+                        else {
                             continue;
                         };
                         debug!(

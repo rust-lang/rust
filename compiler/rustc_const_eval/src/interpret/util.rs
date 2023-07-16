@@ -33,12 +33,12 @@ where
 
             match *ty.kind() {
                 ty::Param(_) => ControlFlow::Break(FoundParam),
-                ty::Closure(def_id, substs)
-                | ty::Generator(def_id, substs, ..)
-                | ty::FnDef(def_id, substs) => {
+                ty::Closure(def_id, args)
+                | ty::Generator(def_id, args, ..)
+                | ty::FnDef(def_id, args) => {
                     let instance = ty::InstanceDef::Item(def_id);
                     let unused_params = self.tcx.unused_generic_params(instance);
-                    for (index, subst) in substs.into_iter().enumerate() {
+                    for (index, subst) in args.into_iter().enumerate() {
                         let index = index
                             .try_into()
                             .expect("more generic parameters than can fit into a `u32`");

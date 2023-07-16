@@ -22,8 +22,8 @@ use rustc_hir::BodyOwnerKind;
 use rustc_index::IndexVec;
 use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_middle::ty::fold::TypeFoldable;
-use rustc_middle::ty::{self, InlineConstSubsts, InlineConstSubstsParts, RegionVid, Ty, TyCtxt};
-use rustc_middle::ty::{InternalSubsts, SubstsRef};
+use rustc_middle::ty::{self, InlineConstArgs, InlineConstArgsParts, RegionVid, Ty, TyCtxt};
+use rustc_middle::ty::{GenericArgs, GenericArgsRef};
 use rustc_span::symbol::{kw, sym};
 use rustc_span::Symbol;
 use std::iter;
@@ -88,26 +88,26 @@ pub struct UniversalRegions<'tcx> {
 #[derive(Copy, Clone, Debug)]
 pub enum DefiningTy<'tcx> {
     /// The MIR is a closure. The signature is found via
-    /// `ClosureSubsts::closure_sig_ty`.
-    Closure(DefId, SubstsRef<'tcx>),
+    /// `ClosureArgs::closure_sig_ty`.
+    Closure(DefId, GenericArgsRef<'tcx>),
 
     /// The MIR is a generator. The signature is that generators take
     /// no parameters and return the result of
-    /// `ClosureSubsts::generator_return_ty`.
-    Generator(DefId, SubstsRef<'tcx>, hir::Movability),
+    /// `ClosureArgs::generator_return_ty`.
+    Generator(DefId, GenericArgsRef<'tcx>, hir::Movability),
 
-    /// The MIR is a fn item with the given `DefId` and substs. The signature
+    /// The MIR is a fn item with the given `DefId` and args. The signature
     /// of the function can be bound then with the `fn_sig` query.
-    FnDef(DefId, SubstsRef<'tcx>),
+    FnDef(DefId, GenericArgsRef<'tcx>),
 
     /// The MIR represents some form of constant. The signature then
     /// is that it has no inputs and a single return value, which is
     /// the value of the constant.
-    Const(DefId, SubstsRef<'tcx>),
+    Const(DefId, GenericArgsRef<'tcx>),
 
     /// The MIR represents an inline const. The signature has no inputs and a
-    /// single return value found via `InlineConstSubsts::ty`.
-    InlineConst(DefId, SubstsRef<'tcx>),
+    /// single return value found via `InlineConstArgs::ty`.
+    InlineConst(DefId, GenericArgsRef<'tcx>),
 }
 
 impl<'tcx> DefiningTy<'tcx> {
@@ -117,9 +117,9 @@ impl<'tcx> DefiningTy<'tcx> {
     /// match up with the upvar order in the HIR, typesystem, and MIR.
     pub fn upvar_tys(self) -> impl Iterator<Item = Ty<'tcx>> + 'tcx {
         match self {
-            DefiningTy::Closure(_, substs) => Either::Left(substs.as_closure().upvar_tys()),
-            DefiningTy::Generator(_, substs, _) => {
-                Either::Right(Either::Left(substs.as_generator().upvar_tys()))
+            DefiningTy::Closure(_, args) => Either::Left(args.as_closure().upvar_tys()),
+            DefiningTy::Generator(_, args, _) => {
+                Either::Right(Either::Left(args.as_generator().upvar_tys()))
             }
             DefiningTy::FnDef(..) | DefiningTy::Const(..) | DefiningTy::InlineConst(..) => {
                 Either::Right(Either::Right(iter::empty()))
@@ -164,9 +164,9 @@ struct UniversalRegionIndices<'tcx> {
     /// used because trait matching and type-checking will feed us
     /// region constraints that reference those regions and we need to
     /// be able to map them to our internal `RegionVid`. This is
-    /// basically equivalent to an `InternalSubsts`, except that it also
+    /// basically equivalent to an `GenericArgs`, except that it also
     /// contains an entry for `ReStatic` -- it might be nice to just
-    /// use a substs, and then handle `ReStatic` another way.
+    /// use a args, and then handle `ReStatic` another way.
     indices: FxHashMap<ty::Region<'tcx>, RegionVid>,
 
     /// The vid assigned to `'static`. Used only for diagnostics.
@@ -243,13 +243,13 @@ impl<'tcx> UniversalRegions<'tcx> {
     /// `V[1]: V[2]`.
     pub fn closure_mapping(
         tcx: TyCtxt<'tcx>,
-        closure_substs: SubstsRef<'tcx>,
+        closure_args: GenericArgsRef<'tcx>,
         expected_num_vars: usize,
         closure_def_id: LocalDefId,
     ) -> IndexVec<RegionVid, ty::Region<'tcx>> {
         let mut region_mapping = IndexVec::with_capacity(expected_num_vars);
         region_mapping.push(tcx.lifetimes.re_static);
-        tcx.for_each_free_region(&closure_substs, |fr| {
+        tcx.for_each_free_region(&closure_args, |fr| {
             region_mapping.push(fr);
         });
 
@@ -334,11 +334,11 @@ impl<'tcx> UniversalRegions<'tcx> {
     /// state.
     pub(crate) fn annotate(&self, tcx: TyCtxt<'tcx>, err: &mut Diagnostic) {
         match self.defining_ty {
-            DefiningTy::Closure(def_id, substs) => {
+            DefiningTy::Closure(def_id, args) => {
                 err.note(format!(
-                    "defining type: {} with closure substs {:#?}",
-                    tcx.def_path_str_with_substs(def_id, substs),
-                    &substs[tcx.generics_of(def_id).parent_count..],
+                    "defining type: {} with closure args {:#?}",
+                    tcx.def_path_str_with_args(def_id, args),
+                    &args[tcx.generics_of(def_id).parent_count..],
                 ));
 
                 // FIXME: It'd be nice to print the late-bound regions
@@ -350,11 +350,11 @@ impl<'tcx> UniversalRegions<'tcx> {
                     err.note(format!("late-bound region is {:?}", self.to_region_vid(r)));
                 });
             }
-            DefiningTy::Generator(def_id, substs, _) => {
+            DefiningTy::Generator(def_id, args, _) => {
                 err.note(format!(
-                    "defining type: {} with generator substs {:#?}",
-                    tcx.def_path_str_with_substs(def_id, substs),
-                    &substs[tcx.generics_of(def_id).parent_count..],
+                    "defining type: {} with generator args {:#?}",
+                    tcx.def_path_str_with_args(def_id, args),
+                    &args[tcx.generics_of(def_id).parent_count..],
                 ));
 
                 // FIXME: As above, we'd like to print out the region
@@ -364,22 +364,19 @@ impl<'tcx> UniversalRegions<'tcx> {
                     err.note(format!("late-bound region is {:?}", self.to_region_vid(r)));
                 });
             }
-            DefiningTy::FnDef(def_id, substs) => {
-                err.note(format!(
-                    "defining type: {}",
-                    tcx.def_path_str_with_substs(def_id, substs),
-                ));
+            DefiningTy::FnDef(def_id, args) => {
+                err.note(format!("defining type: {}", tcx.def_path_str_with_args(def_id, args),));
             }
-            DefiningTy::Const(def_id, substs) => {
+            DefiningTy::Const(def_id, args) => {
                 err.note(format!(
                     "defining constant type: {}",
-                    tcx.def_path_str_with_substs(def_id, substs),
+                    tcx.def_path_str_with_args(def_id, args),
                 ));
             }
-            DefiningTy::InlineConst(def_id, substs) => {
+            DefiningTy::InlineConst(def_id, args) => {
                 err.note(format!(
                     "defining inline constant type: {}",
-                    tcx.def_path_str_with_substs(def_id, substs),
+                    tcx.def_path_str_with_args(def_id, args),
                 ));
             }
         }
@@ -501,8 +498,11 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                     .as_var();
 
                 let region = ty::Region::new_var(self.infcx.tcx, reg_vid);
-                let va_list_ty =
-                    self.infcx.tcx.type_of(va_list_did).subst(self.infcx.tcx, &[region.into()]);
+                let va_list_ty = self
+                    .infcx
+                    .tcx
+                    .type_of(va_list_did)
+                    .instantiate(self.infcx.tcx, &[region.into()]);
 
                 unnormalized_input_tys = self.infcx.tcx.mk_type_list_from_iter(
                     unnormalized_input_tys.iter().copied().chain(iter::once(va_list_ty)),
@@ -522,7 +522,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         debug!("build: local regions  = {}..{}", first_local_index, num_universals);
 
         let yield_ty = match defining_ty {
-            DefiningTy::Generator(_, substs, _) => Some(substs.as_generator().yield_ty()),
+            DefiningTy::Generator(_, args, _) => Some(args.as_generator().yield_ty()),
             _ => None,
         };
 
@@ -548,7 +548,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
 
         match tcx.hir().body_owner_kind(self.mir_def) {
             BodyOwnerKind::Closure | BodyOwnerKind::Fn => {
-                let defining_ty = tcx.type_of(self.mir_def).subst_identity();
+                let defining_ty = tcx.type_of(self.mir_def).instantiate_identity();
 
                 debug!("defining_ty (pre-replacement): {:?}", defining_ty);
 
@@ -556,11 +556,11 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                     self.infcx.replace_free_regions_with_nll_infer_vars(FR, defining_ty);
 
                 match *defining_ty.kind() {
-                    ty::Closure(def_id, substs) => DefiningTy::Closure(def_id, substs),
-                    ty::Generator(def_id, substs, movability) => {
-                        DefiningTy::Generator(def_id, substs, movability)
+                    ty::Closure(def_id, args) => DefiningTy::Closure(def_id, args),
+                    ty::Generator(def_id, args, movability) => {
+                        DefiningTy::Generator(def_id, args, movability)
                     }
-                    ty::FnDef(def_id, substs) => DefiningTy::FnDef(def_id, substs),
+                    ty::FnDef(def_id, args) => DefiningTy::FnDef(def_id, args),
                     _ => span_bug!(
                         tcx.def_span(self.mir_def),
                         "expected defining type for `{:?}`: `{:?}`",
@@ -571,11 +571,11 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
             }
 
             BodyOwnerKind::Const | BodyOwnerKind::Static(..) => {
-                let identity_substs = InternalSubsts::identity_for_item(tcx, typeck_root_def_id);
+                let identity_args = GenericArgs::identity_for_item(tcx, typeck_root_def_id);
                 if self.mir_def.to_def_id() == typeck_root_def_id {
-                    let substs =
-                        self.infcx.replace_free_regions_with_nll_infer_vars(FR, identity_substs);
-                    DefiningTy::Const(self.mir_def.to_def_id(), substs)
+                    let args =
+                        self.infcx.replace_free_regions_with_nll_infer_vars(FR, identity_args);
+                    DefiningTy::Const(self.mir_def.to_def_id(), args)
                 } else {
                     // FIXME this line creates a dependency between borrowck and typeck.
                     //
@@ -584,18 +584,18 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                     // into borrowck, which is ICE #78174.
                     //
                     // As a workaround, inline consts have an additional generic param (`ty`
-                    // below), so that `type_of(inline_const_def_id).substs(substs)` uses the
+                    // below), so that `type_of(inline_const_def_id).args(args)` uses the
                     // proper type with NLL infer vars.
                     let ty = tcx
                         .typeck(self.mir_def)
                         .node_type(tcx.local_def_id_to_hir_id(self.mir_def));
-                    let substs = InlineConstSubsts::new(
+                    let args = InlineConstArgs::new(
                         tcx,
-                        InlineConstSubstsParts { parent_substs: identity_substs, ty },
+                        InlineConstArgsParts { parent_args: identity_args, ty },
                     )
-                    .substs;
-                    let substs = self.infcx.replace_free_regions_with_nll_infer_vars(FR, substs);
-                    DefiningTy::InlineConst(self.mir_def.to_def_id(), substs)
+                    .args;
+                    let args = self.infcx.replace_free_regions_with_nll_infer_vars(FR, args);
+                    DefiningTy::InlineConst(self.mir_def.to_def_id(), args)
                 }
             }
         }
@@ -612,29 +612,29 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
     ) -> UniversalRegionIndices<'tcx> {
         let tcx = self.infcx.tcx;
         let typeck_root_def_id = tcx.typeck_root_def_id(self.mir_def.to_def_id());
-        let identity_substs = InternalSubsts::identity_for_item(tcx, typeck_root_def_id);
-        let fr_substs = match defining_ty {
-            DefiningTy::Closure(_, substs)
-            | DefiningTy::Generator(_, substs, _)
-            | DefiningTy::InlineConst(_, substs) => {
+        let identity_args = GenericArgs::identity_for_item(tcx, typeck_root_def_id);
+        let fr_args = match defining_ty {
+            DefiningTy::Closure(_, args)
+            | DefiningTy::Generator(_, args, _)
+            | DefiningTy::InlineConst(_, args) => {
                 // In the case of closures, we rely on the fact that
-                // the first N elements in the ClosureSubsts are
+                // the first N elements in the ClosureArgs are
                 // inherited from the `typeck_root_def_id`.
                 // Therefore, when we zip together (below) with
-                // `identity_substs`, we will get only those regions
+                // `identity_args`, we will get only those regions
                 // that correspond to early-bound regions declared on
                 // the `typeck_root_def_id`.
-                assert!(substs.len() >= identity_substs.len());
-                assert_eq!(substs.regions().count(), identity_substs.regions().count());
-                substs
+                assert!(args.len() >= identity_args.len());
+                assert_eq!(args.regions().count(), identity_args.regions().count());
+                args
             }
 
-            DefiningTy::FnDef(_, substs) | DefiningTy::Const(_, substs) => substs,
+            DefiningTy::FnDef(_, args) | DefiningTy::Const(_, args) => args,
         };
 
         let global_mapping = iter::once((tcx.lifetimes.re_static, fr_static));
         let subst_mapping =
-            iter::zip(identity_substs.regions(), fr_substs.regions().map(|r| r.as_var()));
+            iter::zip(identity_args.regions(), fr_args.regions().map(|r| r.as_var()));
 
         UniversalRegionIndices { indices: global_mapping.chain(subst_mapping).collect(), fr_static }
     }
@@ -646,9 +646,9 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
     ) -> ty::Binder<'tcx, &'tcx ty::List<Ty<'tcx>>> {
         let tcx = self.infcx.tcx;
         match defining_ty {
-            DefiningTy::Closure(def_id, substs) => {
+            DefiningTy::Closure(def_id, args) => {
                 assert_eq!(self.mir_def.to_def_id(), def_id);
-                let closure_sig = substs.as_closure().sig();
+                let closure_sig = args.as_closure().sig();
                 let inputs_and_output = closure_sig.inputs_and_output();
                 let bound_vars = tcx.mk_bound_variable_kinds_from_iter(
                     inputs_and_output
@@ -661,7 +661,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                     kind: ty::BrEnv,
                 };
                 let env_region = ty::Region::new_late_bound(tcx, ty::INNERMOST, br);
-                let closure_ty = tcx.closure_env_ty(def_id, substs, env_region).unwrap();
+                let closure_ty = tcx.closure_env_ty(def_id, args, env_region).unwrap();
 
                 // The "inputs" of the closure in the
                 // signature appear as a tuple. The MIR side
@@ -681,18 +681,18 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 )
             }
 
-            DefiningTy::Generator(def_id, substs, movability) => {
+            DefiningTy::Generator(def_id, args, movability) => {
                 assert_eq!(self.mir_def.to_def_id(), def_id);
-                let resume_ty = substs.as_generator().resume_ty();
-                let output = substs.as_generator().return_ty();
-                let generator_ty = Ty::new_generator(tcx, def_id, substs, movability);
+                let resume_ty = args.as_generator().resume_ty();
+                let output = args.as_generator().return_ty();
+                let generator_ty = Ty::new_generator(tcx, def_id, args, movability);
                 let inputs_and_output =
                     self.infcx.tcx.mk_type_list(&[generator_ty, resume_ty, output]);
                 ty::Binder::dummy(inputs_and_output)
             }
 
             DefiningTy::FnDef(def_id, _) => {
-                let sig = tcx.fn_sig(def_id).subst_identity();
+                let sig = tcx.fn_sig(def_id).instantiate_identity();
                 let sig = indices.fold_to_region_vids(tcx, sig);
                 sig.inputs_and_output()
             }
@@ -701,14 +701,14 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 // For a constant body, there are no inputs, and one
                 // "output" (the type of the constant).
                 assert_eq!(self.mir_def.to_def_id(), def_id);
-                let ty = tcx.type_of(self.mir_def).subst_identity();
+                let ty = tcx.type_of(self.mir_def).instantiate_identity();
                 let ty = indices.fold_to_region_vids(tcx, ty);
                 ty::Binder::dummy(tcx.mk_type_list(&[ty]))
             }
 
-            DefiningTy::InlineConst(def_id, substs) => {
+            DefiningTy::InlineConst(def_id, args) => {
                 assert_eq!(self.mir_def.to_def_id(), def_id);
-                let ty = substs.as_inline_const().ty();
+                let ty = args.as_inline_const().ty();
                 ty::Binder::dummy(tcx.mk_type_list(&[ty]))
             }
         }
@@ -929,7 +929,9 @@ fn for_each_late_bound_region_in_item<'tcx>(
     }
 
     for bound_var in tcx.late_bound_vars(tcx.hir().local_def_id_to_hir_id(mir_def_id)) {
-        let ty::BoundVariableKind::Region(bound_region) = bound_var else { continue; };
+        let ty::BoundVariableKind::Region(bound_region) = bound_var else {
+            continue;
+        };
         let liberated_region = ty::Region::new_free(tcx, mir_def_id.to_def_id(), bound_region);
         f(liberated_region);
     }

@@ -194,7 +194,7 @@ impl Debug for GeneratorLayout<'_> {
         }
         impl Debug for GenVariantPrinter {
             fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-                let variant_name = ty::GeneratorSubsts::variant_name(self.0);
+                let variant_name = ty::GeneratorArgs::variant_name(self.0);
                 if fmt.alternate() {
                     write!(fmt, "{:9}({:?})", variant_name, self.0)
                 } else {
@@ -265,10 +265,10 @@ pub struct ConstQualifs {
 /// `UniversalRegions::closure_mapping`.) Note the free regions in the
 /// closure's signature and captures are erased.
 ///
-/// Example: If type check produces a closure with the closure substs:
+/// Example: If type check produces a closure with the closure args:
 ///
 /// ```text
-/// ClosureSubsts = [
+/// ClosureArgs = [
 ///     'a,                                         // From the parent.
 ///     'b,
 ///     i8,                                         // the "closure kind"
@@ -280,7 +280,7 @@ pub struct ConstQualifs {
 /// We would "renumber" each free region to a unique vid, as follows:
 ///
 /// ```text
-/// ClosureSubsts = [
+/// ClosureArgs = [
 ///     '1,                                         // From the parent.
 ///     '2,
 ///     i8,                                         // the "closure kind"

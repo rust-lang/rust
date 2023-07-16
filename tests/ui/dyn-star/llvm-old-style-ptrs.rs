@@ -3,6 +3,8 @@
 
 // (opaque-pointers flag is called force-opaque-pointers in LLVM 13...)
 // min-llvm-version: 14.0
+// (the ability to disable opaque pointers has been removed in LLVM 17)
+// ignore-llvm-version: 17 - 99
 
 // This test can be removed once non-opaque pointers are gone from LLVM, maybe.
 

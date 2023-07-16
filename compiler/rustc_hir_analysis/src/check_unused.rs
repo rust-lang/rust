@@ -1,4 +1,4 @@
-use rustc_data_structures::unord::UnordSet;
+use rustc_data_structures::unord::{ExtendUnord, UnordSet};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::TyCtxt;
@@ -7,6 +7,10 @@ use rustc_session::lint;
 pub fn check_crate(tcx: TyCtxt<'_>) {
     let mut used_trait_imports: UnordSet<LocalDefId> = Default::default();
 
+    // FIXME: Use `tcx.hir().par_body_owners()` when we implement creating `DefId`s
+    // for anon constants during their parents' typeck.
+    // Doing so at current will produce queries cycle errors because it may typeck
+    // on anon constants directly.
     for item_def_id in tcx.hir().body_owners() {
         let imports = tcx.used_trait_imports(item_def_id);
         debug!("GatherVisitor: item_def_id={:?} with imports {:#?}", item_def_id, imports);

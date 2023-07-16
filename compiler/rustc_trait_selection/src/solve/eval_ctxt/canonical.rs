@@ -111,7 +111,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     ) -> CanonicalResponse<'tcx> {
         let unconstrained_response = Response {
             var_values: CanonicalVarValues {
-                var_values: self.tcx().mk_substs_from_iter(self.var_values.var_values.iter().map(
+                var_values: self.tcx().mk_args_from_iter(self.var_values.var_values.iter().map(
                     |arg| -> ty::GenericArg<'tcx> {
                         match arg.unpack() {
                             GenericArgKind::Lifetime(_) => self.next_region_infer().into(),
@@ -250,7 +250,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             }
         }
 
-        let var_values = self.tcx().mk_substs_from_iter(response.variables.iter().enumerate().map(
+        let var_values = self.tcx().mk_args_from_iter(response.variables.iter().enumerate().map(
             |(index, info)| {
                 if info.universe() != ty::UniverseIndex::ROOT {
                     // A variable from inside a binder of the query. While ideally these shouldn't

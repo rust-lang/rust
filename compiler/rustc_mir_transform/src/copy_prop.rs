@@ -76,9 +76,11 @@ fn fully_moved_locals(ssa: &SsaLocals, body: &Body<'_>) -> BitSet<Local> {
     let mut fully_moved = BitSet::new_filled(body.local_decls.len());
 
     for (_, rvalue, _) in ssa.assignments(body) {
-        let (Rvalue::Use(Operand::Copy(place) | Operand::Move(place)) | Rvalue::CopyForDeref(place))
-            = rvalue
-        else { continue };
+        let (Rvalue::Use(Operand::Copy(place) | Operand::Move(place))
+        | Rvalue::CopyForDeref(place)) = rvalue
+        else {
+            continue;
+        };
 
         let Some(rhs) = place.as_local() else { continue };
         if !ssa.is_ssa(rhs) {

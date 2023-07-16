@@ -45,7 +45,7 @@ pub(crate) struct DocContext<'tcx> {
     // The current set of parameter substitutions,
     // for expanding type aliases at the HIR level:
     /// Table `DefId` of type, lifetime, or const parameter -> substituted type, lifetime, or const
-    pub(crate) substs: DefIdMap<clean::SubstParam>,
+    pub(crate) args: DefIdMap<clean::SubstParam>,
     pub(crate) current_type_aliases: DefIdMap<usize>,
     /// Table synthetic type parameter for `impl Trait` in argument position -> bounds
     pub(crate) impl_trait_bounds: FxHashMap<ImplTraitParam, Vec<clean::GenericBound>>,
@@ -85,17 +85,17 @@ impl<'tcx> DocContext<'tcx> {
     /// the substitutions for a type alias' RHS.
     pub(crate) fn enter_alias<F, R>(
         &mut self,
-        substs: DefIdMap<clean::SubstParam>,
+        args: DefIdMap<clean::SubstParam>,
         def_id: DefId,
         f: F,
     ) -> R
     where
         F: FnOnce(&mut Self) -> R,
     {
-        let old_substs = mem::replace(&mut self.substs, substs);
+        let old_args = mem::replace(&mut self.args, args);
         *self.current_type_aliases.entry(def_id).or_insert(0) += 1;
         let r = f(self);
-        self.substs = old_substs;
+        self.args = old_args;
         if let Some(count) = self.current_type_aliases.get_mut(&def_id) {
             *count -= 1;
             if *count == 0 {
@@ -340,7 +340,7 @@ pub(crate) fn run_global_ctxt(
         param_env: ParamEnv::empty(),
         external_traits: Default::default(),
         active_extern_traits: Default::default(),
-        substs: Default::default(),
+        args: Default::default(),
         current_type_aliases: Default::default(),
         impl_trait_bounds: Default::default(),
         generated_synthetics: Default::default(),

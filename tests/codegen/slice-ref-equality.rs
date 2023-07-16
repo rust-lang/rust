@@ -44,48 +44,48 @@ pub fn is_zero_array(data: &[u8; 4]) -> bool {
 // equality for non-byte types also just emit a `bcmp`, not a loop.
 
 // CHECK-LABEL: @eq_slice_of_nested_u8(
-// CHECK-SAME: [[USIZE:i16|i32|i64]] noundef %1
-// CHECK-SAME: [[USIZE]] noundef %3
+// CHECK-SAME: [[USIZE:i16|i32|i64]] noundef %x.1
+// CHECK-SAME: [[USIZE]] noundef %y.1
 #[no_mangle]
 fn eq_slice_of_nested_u8(x: &[[u8; 3]], y: &[[u8; 3]]) -> bool {
-    // CHECK: icmp eq [[USIZE]] %1, %3
-    // CHECK: %[[BYTES:.+]] = mul nsw [[USIZE]] %1, 3
+    // CHECK: icmp eq [[USIZE]] %x.1, %y.1
+    // CHECK: %[[BYTES:.+]] = mul nsw [[USIZE]] %x.1, 3
     // CHECK: tail call{{( noundef)?}} i32 @{{bcmp|memcmp}}({{i8\*|ptr}}
     // CHECK-SAME: , [[USIZE]]{{( noundef)?}} %[[BYTES]])
     x == y
 }
 
 // CHECK-LABEL: @eq_slice_of_i32(
-// CHECK-SAME: [[USIZE:i16|i32|i64]] noundef %1
-// CHECK-SAME: [[USIZE]] noundef %3
+// CHECK-SAME: [[USIZE:i16|i32|i64]] noundef %x.1
+// CHECK-SAME: [[USIZE]] noundef %y.1
 #[no_mangle]
 fn eq_slice_of_i32(x: &[i32], y: &[i32]) -> bool {
-    // CHECK: icmp eq [[USIZE]] %1, %3
-    // CHECK: %[[BYTES:.+]] = shl nsw [[USIZE]] %1, 2
+    // CHECK: icmp eq [[USIZE]] %x.1, %y.1
+    // CHECK: %[[BYTES:.+]] = shl nsw [[USIZE]] %x.1, 2
     // CHECK: tail call{{( noundef)?}} i32 @{{bcmp|memcmp}}({{i32\*|ptr}}
     // CHECK-SAME: , [[USIZE]]{{( noundef)?}} %[[BYTES]])
     x == y
 }
 
 // CHECK-LABEL: @eq_slice_of_nonzero(
-// CHECK-SAME: [[USIZE:i16|i32|i64]] noundef %1
-// CHECK-SAME: [[USIZE]] noundef %3
+// CHECK-SAME: [[USIZE:i16|i32|i64]] noundef %x.1
+// CHECK-SAME: [[USIZE]] noundef %y.1
 #[no_mangle]
 fn eq_slice_of_nonzero(x: &[NonZeroU32], y: &[NonZeroU32]) -> bool {
-    // CHECK: icmp eq [[USIZE]] %1, %3
-    // CHECK: %[[BYTES:.+]] = shl nsw [[USIZE]] %1, 2
+    // CHECK: icmp eq [[USIZE]] %x.1, %y.1
+    // CHECK: %[[BYTES:.+]] = shl nsw [[USIZE]] %x.1, 2
     // CHECK: tail call{{( noundef)?}} i32 @{{bcmp|memcmp}}({{i32\*|ptr}}
     // CHECK-SAME: , [[USIZE]]{{( noundef)?}} %[[BYTES]])
     x == y
 }
 
 // CHECK-LABEL: @eq_slice_of_option_of_nonzero(
-// CHECK-SAME: [[USIZE:i16|i32|i64]] noundef %1
-// CHECK-SAME: [[USIZE]] noundef %3
+// CHECK-SAME: [[USIZE:i16|i32|i64]] noundef %x.1
+// CHECK-SAME: [[USIZE]] noundef %y.1
 #[no_mangle]
 fn eq_slice_of_option_of_nonzero(x: &[Option<NonZeroI16>], y: &[Option<NonZeroI16>]) -> bool {
-    // CHECK: icmp eq [[USIZE]] %1, %3
-    // CHECK: %[[BYTES:.+]] = shl nsw [[USIZE]] %1, 1
+    // CHECK: icmp eq [[USIZE]] %x.1, %y.1
+    // CHECK: %[[BYTES:.+]] = shl nsw [[USIZE]] %x.1, 1
     // CHECK: tail call{{( noundef)?}} i32 @{{bcmp|memcmp}}({{i16\*|ptr}}
     // CHECK-SAME: , [[USIZE]]{{( noundef)?}} %[[BYTES]])
     x == y

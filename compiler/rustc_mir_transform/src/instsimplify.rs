@@ -5,7 +5,7 @@ use crate::MirPass;
 use rustc_hir::Mutability;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::ValidityRequirement;
-use rustc_middle::ty::{self, ParamEnv, SubstsRef, Ty, TyCtxt};
+use rustc_middle::ty::{self, GenericArgsRef, ParamEnv, Ty, TyCtxt};
 use rustc_span::symbol::Symbol;
 use rustc_target::abi::FieldIdx;
 
@@ -163,14 +163,14 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
                 }
 
                 // Transmuting a transparent struct/union to a field's type is a projection
-                if let ty::Adt(adt_def, substs) = operand_ty.kind()
+                if let ty::Adt(adt_def, args) = operand_ty.kind()
                     && adt_def.repr().transparent()
                     && (adt_def.is_struct() || adt_def.is_union())
                     && let Some(place) = operand.place()
                 {
                     let variant = adt_def.non_enum_variant();
                     for (i, field) in variant.fields.iter().enumerate() {
-                        let field_ty = field.ty(self.tcx, substs);
+                        let field_ty = field.ty(self.tcx, args);
                         if field_ty == *cast_ty {
                             let place = place.project_deeper(&[ProjectionElem::Field(FieldIdx::from_usize(i), *cast_ty)], self.tcx);
                             let operand = if operand.is_move() { Operand::Move(place) } else { Operand::Copy(place) };
@@ -189,22 +189,22 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
         statements: &mut Vec<Statement<'tcx>>,
     ) {
         let TerminatorKind::Call { func, args, destination, target, .. } = &mut terminator.kind
-        else { return };
+        else {
+            return;
+        };
 
         // It's definitely not a clone if there are multiple arguments
         if args.len() != 1 {
             return;
         }
 
-        let Some(destination_block) = *target
-        else { return };
+        let Some(destination_block) = *target else { return };
 
         // Only bother looking more if it's easy to know what we're calling
-        let Some((fn_def_id, fn_substs)) = func.const_fn_def()
-        else { return };
+        let Some((fn_def_id, fn_args)) = func.const_fn_def() else { return };
 
         // Clone needs one subst, so we can cheaply rule out other stuff
-        if fn_substs.len() != 1 {
+        if fn_args.len() != 1 {
             return;
         }
 
@@ -212,8 +212,7 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
         // doing DefId lookups to figure out what we're actually calling.
         let arg_ty = args[0].ty(self.local_decls, self.tcx);
 
-        let ty::Ref(_region, inner_ty, Mutability::Not) = *arg_ty.kind()
-        else { return };
+        let ty::Ref(_region, inner_ty, Mutability::Not) = *arg_ty.kind() else { return };
 
         if !inner_ty.is_trivially_pure_clone_copy() {
             return;
@@ -227,15 +226,14 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
         if !self.tcx.consider_optimizing(|| {
             format!(
                 "InstSimplify - Call: {:?} SourceInfo: {:?}",
-                (fn_def_id, fn_substs),
+                (fn_def_id, fn_args),
                 terminator.source_info
             )
         }) {
             return;
         }
 
-        let Some(arg_place) = args.pop().unwrap().place()
-        else { return };
+        let Some(arg_place) = args.pop().unwrap().place() else { return };
 
         statements.push(Statement {
             source_info: terminator.source_info,
@@ -254,17 +252,21 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
         terminator: &mut Terminator<'tcx>,
         _statements: &mut Vec<Statement<'tcx>>,
     ) {
-        let TerminatorKind::Call { func, target, .. } = &mut terminator.kind  else { return; };
-        let Some(target_block) = target else { return; };
+        let TerminatorKind::Call { func, target, .. } = &mut terminator.kind else {
+            return;
+        };
+        let Some(target_block) = target else {
+            return;
+        };
         let func_ty = func.ty(self.local_decls, self.tcx);
-        let Some((intrinsic_name, substs)) = resolve_rust_intrinsic(self.tcx, func_ty) else {
+        let Some((intrinsic_name, args)) = resolve_rust_intrinsic(self.tcx, func_ty) else {
             return;
         };
         // The intrinsics we are interested in have one generic parameter
-        if substs.is_empty() {
+        if args.is_empty() {
             return;
         }
-        let ty = substs.type_at(0);
+        let ty = args.type_at(0);
 
         let known_is_valid = intrinsic_assert_panics(self.tcx, self.param_env, ty, intrinsic_name);
         match known_is_valid {
@@ -295,10 +297,10 @@ fn intrinsic_assert_panics<'tcx>(
 fn resolve_rust_intrinsic<'tcx>(
     tcx: TyCtxt<'tcx>,
     func_ty: Ty<'tcx>,
-) -> Option<(Symbol, SubstsRef<'tcx>)> {
-    if let ty::FnDef(def_id, substs) = *func_ty.kind() {
+) -> Option<(Symbol, GenericArgsRef<'tcx>)> {
+    if let ty::FnDef(def_id, args) = *func_ty.kind() {
         if tcx.is_intrinsic(def_id) {
-            return Some((tcx.item_name(def_id), substs));
+            return Some((tcx.item_name(def_id), args));
         }
     }
     None
