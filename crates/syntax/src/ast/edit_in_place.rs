@@ -646,6 +646,47 @@ impl ast::MatchArmList {
     }
 }
 
+impl ast::LetStmt {
+    pub fn set_ty(&self, ty: Option<ast::Type>) {
+        match ty {
+            None => {
+                if let Some(colon_token) = self.colon_token() {
+                    ted::remove(colon_token);
+                }
+
+                if let Some(existing_ty) = self.ty() {
+                    if let Some(sibling) = existing_ty.syntax().prev_sibling_or_token() {
+                        if sibling.kind() == SyntaxKind::WHITESPACE {
+                            ted::remove(sibling);
+                        }
+                    }
+
+                    ted::remove(existing_ty.syntax());
+                }
+            }
+            Some(new_ty) => {
+                if self.colon_token().is_none() {
+                    let mut to_insert: Vec<SyntaxElement> = vec![];
+
+                    let position = match self.pat() {
+                        Some(pat) => Position::after(pat.syntax()),
+                        None => {
+                            to_insert.push(make::tokens::single_space().into());
+                            Position::after(self.let_token().unwrap())
+                        }
+                    };
+
+                    to_insert.push(make::token(T![:]).into());
+
+                    ted::insert_all_raw(position, to_insert);
+                }
+
+                ted::insert(Position::after(self.colon_token().unwrap()), new_ty.syntax());
+            }
+        }
+    }
+}
+
 impl ast::RecordExprFieldList {
     pub fn add_field(&self, field: ast::RecordExprField) {
         let is_multiline = self.syntax().text().contains_char('\n');
