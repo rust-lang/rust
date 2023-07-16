@@ -12,7 +12,7 @@ xflags::xflags! {
     /// LSP server for the Rust programming language.
     ///
     /// Subcommands and their flags do not provide any stability guarantees and may be removed or
-    /// changed without notice. Top-level flags that are not are marked as [Unstable] provide
+    /// changed without notice. Top-level flags that are not marked as [Unstable] provide
     /// backwards-compatibility and may be relied on.
     cmd rust-analyzer {
         /// Verbosity level, can be repeated multiple times.
