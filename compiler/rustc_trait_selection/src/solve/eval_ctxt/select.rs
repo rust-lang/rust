@@ -315,7 +315,13 @@ fn rematch_object<'tcx>(
     // If we're upcasting, get the offset of the vtable pointer, otherwise get
     // the base of the vtable.
     Ok(Some(if is_upcasting {
-        ImplSource::TraitUpcasting(ImplSourceTraitUpcastingData { vtable_vptr_slot, nested })
+        // If source and target trait def ids are identical,
+        // then we are simply removing auto traits.
+        if source_trait_ref.def_id() == target_trait_ref.def_id() {
+            ImplSource::Builtin(nested)
+        } else {
+            ImplSource::TraitUpcasting(ImplSourceTraitUpcastingData { vtable_vptr_slot, nested })
+        }
     } else {
         ImplSource::Object(ImplSourceObjectData { vtable_base, nested })
     }))
