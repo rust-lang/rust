@@ -388,6 +388,7 @@ pub struct LocalDefId {
 impl !Ord for LocalDefId {}
 impl !PartialOrd for LocalDefId {}
 
+/// The [`DefId`] for the local crate root.
 pub const CRATE_DEF_ID: LocalDefId = LocalDefId { local_def_index: CRATE_DEF_INDEX };
 
 impl Idx for LocalDefId {

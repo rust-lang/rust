@@ -1287,6 +1287,7 @@ symbols! {
         rustc_error,
         rustc_evaluate_where_clauses,
         rustc_expected_cgu_reuse,
+        rustc_filter_proof_tree_dump,
         rustc_has_incoherent_inherent_impls,
         rustc_host,
         rustc_if_this_changed,

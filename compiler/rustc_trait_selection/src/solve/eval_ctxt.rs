@@ -159,9 +159,12 @@ impl<'tcx> InferCtxtEvalExt<'tcx> for InferCtxt<'tcx> {
         Result<(bool, Certainty, Vec<Goal<'tcx, ty::Predicate<'tcx>>>), NoSolution>,
         Option<inspect::GoalEvaluation<'tcx>>,
     ) {
-        EvalCtxt::enter_root(self, generate_proof_tree, |ecx| {
-            ecx.evaluate_goal(IsNormalizesToHack::No, goal)
-        })
+        EvalCtxt::enter_root(
+            self,
+            generate_proof_tree,
+            || format!("{:?}", goal.predicate),
+            |ecx| ecx.evaluate_goal(IsNormalizesToHack::No, goal),
+        )
     }
 }
 
@@ -176,6 +179,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
     fn enter_root<R>(
         infcx: &InferCtxt<'tcx>,
         generate_proof_tree: GenerateProofTree,
+        filter: impl FnOnce() -> String,
         f: impl FnOnce(&mut EvalCtxt<'_, 'tcx>) -> R,
     ) -> (R, Option<inspect::GoalEvaluation<'tcx>>) {
         let mode = if infcx.intercrate { SolverMode::Coherence } else { SolverMode::Normal };
@@ -194,7 +198,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
             var_values: CanonicalVarValues::dummy(),
             nested_goals: NestedGoals::new(),
             tainted: Ok(()),
-            inspect: ProofTreeBuilder::new_maybe_root(infcx.tcx, generate_proof_tree),
+            inspect: ProofTreeBuilder::new_maybe_root(infcx.tcx, generate_proof_tree, filter),
         };
         let result = f(&mut ecx);
 

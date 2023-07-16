@@ -5,6 +5,7 @@ use rustc_middle::traits::solve::{
 };
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::config::DumpSolverProofTree;
+use rustc_span::def_id::CRATE_DEF_ID;
 
 use super::eval_ctxt::UseGlobalCache;
 use super::GenerateProofTree;
@@ -199,6 +200,7 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
     pub fn new_maybe_root(
         tcx: TyCtxt<'tcx>,
         generate_proof_tree: GenerateProofTree,
+        filter: impl FnOnce() -> String,
     ) -> ProofTreeBuilder<'tcx> {
         match generate_proof_tree {
             GenerateProofTree::Never => ProofTreeBuilder::new_noop(),
@@ -206,8 +208,45 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
                 let opts = &tcx.sess.opts.unstable_opts;
                 match opts.dump_solver_proof_tree {
                     DumpSolverProofTree::Always => {
-                        let use_cache = opts.dump_solver_proof_tree_use_cache.unwrap_or(true);
-                        ProofTreeBuilder::new_root(UseGlobalCache::from_bool(use_cache))
+                        let should_generate = if tcx
+                            .get_attrs(CRATE_DEF_ID, rustc_span::sym::rustc_filter_proof_tree_dump)
+                            .next()
+                            .is_some()
+                        {
+                            // dont do the filtering behaviour if there are no attributes anywhere
+                            let goal = filter();
+                            tcx
+                            .get_attrs(CRATE_DEF_ID, rustc_span::sym::rustc_filter_proof_tree_dump)
+                            .flat_map(|attr| {
+                                let meta = attr.meta_kind().unwrap();
+                                match meta {
+                                    rustc_ast::MetaItemKind::Word
+                                    | rustc_ast::MetaItemKind::NameValue(_) => {
+                                        bug!("wrong attribute kind for `rustc_filter_proof_tree_dump`")
+                                    }
+                                    rustc_ast::MetaItemKind::List(nested_meta) => {
+                                        nested_meta.into_iter().map(|nested_meta| {
+                                            match nested_meta {
+                                                rustc_ast::NestedMetaItem::MetaItem(_) => unreachable!("only string literals are supported in `rustc_filter_proof_tree_dump`"),
+                                                rustc_ast::NestedMetaItem::Lit(lit) => match lit.kind {
+                                                    rustc_ast::LitKind::Str(sym, _) => sym,
+                                                    _ => unreachable!("only string literals are supported in `rustc_filter_proof_tree_dump`"),
+                                                },
+                                            }
+                                        })
+                                    }
+                                }
+                            }).any(|sym| goal.as_str() == sym.as_str())
+                        } else {
+                            true
+                        };
+
+                        if should_generate {
+                            let use_cache = opts.dump_solver_proof_tree_use_cache.unwrap_or(true);
+                            ProofTreeBuilder::new_root(UseGlobalCache::from_bool(use_cache))
+                        } else {
+                            ProofTreeBuilder::new_noop()
+                        }
                     }
                     // `OnError` is handled by reevaluating goals in error
                     // reporting with `GenerateProofTree::Yes`.

@@ -43,46 +43,51 @@ impl<'tcx> InferCtxtSelectExt<'tcx> for InferCtxt<'tcx> {
             self.instantiate_binder_with_placeholders(obligation.predicate),
         );
 
-        let (result, _) = EvalCtxt::enter_root(self, GenerateProofTree::Never, |ecx| {
-            let goal = Goal::new(ecx.tcx(), trait_goal.param_env, trait_goal.predicate);
-            let (orig_values, canonical_goal) = ecx.canonicalize_goal(goal);
-            let mut candidates = ecx.compute_canonical_trait_candidates(canonical_goal);
+        let (result, _) = EvalCtxt::enter_root(
+            self,
+            GenerateProofTree::Never,
+            || unreachable!("proof trees cannot be generated for selection"),
+            |ecx| {
+                let goal = Goal::new(ecx.tcx(), trait_goal.param_env, trait_goal.predicate);
+                let (orig_values, canonical_goal) = ecx.canonicalize_goal(goal);
+                let mut candidates = ecx.compute_canonical_trait_candidates(canonical_goal);
 
-            // pseudo-winnow
-            if candidates.len() == 0 {
-                return Err(SelectionError::Unimplemented);
-            } else if candidates.len() > 1 {
-                let mut i = 0;
-                while i < candidates.len() {
-                    let should_drop_i = (0..candidates.len()).filter(|&j| i != j).any(|j| {
-                        candidate_should_be_dropped_in_favor_of(
-                            ecx.tcx(),
-                            &candidates[i],
-                            &candidates[j],
-                        )
-                    });
-                    if should_drop_i {
-                        candidates.swap_remove(i);
-                    } else {
-                        i += 1;
-                        if i > 1 {
-                            return Ok(None);
+                // pseudo-winnow
+                if candidates.len() == 0 {
+                    return Err(SelectionError::Unimplemented);
+                } else if candidates.len() > 1 {
+                    let mut i = 0;
+                    while i < candidates.len() {
+                        let should_drop_i = (0..candidates.len()).filter(|&j| i != j).any(|j| {
+                            candidate_should_be_dropped_in_favor_of(
+                                ecx.tcx(),
+                                &candidates[i],
+                                &candidates[j],
+                            )
+                        });
+                        if should_drop_i {
+                            candidates.swap_remove(i);
+                        } else {
+                            i += 1;
+                            if i > 1 {
+                                return Ok(None);
+                            }
                         }
                     }
                 }
-            }
 
-            let candidate = candidates.pop().unwrap();
-            let (certainty, nested_goals) = ecx
-                .instantiate_and_apply_query_response(
-                    trait_goal.param_env,
-                    orig_values,
-                    candidate.result,
-                )
-                .map_err(|_| SelectionError::Unimplemented)?;
+                let candidate = candidates.pop().unwrap();
+                let (certainty, nested_goals) = ecx
+                    .instantiate_and_apply_query_response(
+                        trait_goal.param_env,
+                        orig_values,
+                        candidate.result,
+                    )
+                    .map_err(|_| SelectionError::Unimplemented)?;
 
-            Ok(Some((candidate, certainty, nested_goals)))
-        });
+                Ok(Some((candidate, certainty, nested_goals)))
+            },
+        );
 
         let (candidate, certainty, nested_goals) = match result {
             Ok(Some((candidate, certainty, nested_goals))) => (candidate, certainty, nested_goals),
