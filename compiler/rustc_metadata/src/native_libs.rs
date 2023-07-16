@@ -1,15 +1,17 @@
 use rustc_ast::{NestedMetaItem, CRATE_NODE_ID};
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_hir as hir;
-use rustc_hir::def::DefKind;
+use rustc_middle::query::LocalCrate;
 use rustc_middle::ty::{List, ParamEnv, ParamEnvAnd, Ty, TyCtxt};
 use rustc_session::config::CrateType;
-use rustc_session::cstore::{DllCallingConvention, DllImport, NativeLib, PeImportNameType};
+use rustc_session::cstore::{
+    DllCallingConvention, DllImport, ForeignModule, NativeLib, PeImportNameType,
+};
 use rustc_session::parse::feature_err;
 use rustc_session::search_paths::PathKind;
 use rustc_session::utils::NativeLibKind;
 use rustc_session::Session;
+use rustc_span::def_id::{DefId, LOCAL_CRATE};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_target::spec::abi::Abi;
 
@@ -66,10 +68,12 @@ fn find_bundled_library(
     None
 }
 
-pub(crate) fn collect(tcx: TyCtxt<'_>) -> Vec<NativeLib> {
+pub(crate) fn collect(tcx: TyCtxt<'_>, LocalCrate: LocalCrate) -> Vec<NativeLib> {
     let mut collector = Collector { tcx, libs: Vec::new() };
-    for id in tcx.hir().items() {
-        collector.process_item(id);
+    if tcx.sess.opts.unstable_opts.link_directives {
+        for module in tcx.foreign_modules(LOCAL_CRATE).values() {
+            collector.process_module(module);
+        }
     }
     collector.process_command_line();
     collector.libs
@@ -88,29 +92,20 @@ struct Collector<'tcx> {
 }
 
 impl<'tcx> Collector<'tcx> {
-    fn process_item(&mut self, id: rustc_hir::ItemId) {
-        if !matches!(self.tcx.def_kind(id.owner_id), DefKind::ForeignMod) {
-            return;
-        }
+    fn process_module(&mut self, module: &ForeignModule) {
+        let ForeignModule { def_id, abi, ref foreign_items } = *module;
+        let def_id = def_id.expect_local();
 
-        let it = self.tcx.hir().item(id);
-        let hir::ItemKind::ForeignMod { abi, items: foreign_mod_items } = it.kind else {
-            return;
-        };
+        let sess = self.tcx.sess;
 
         if matches!(abi, Abi::Rust | Abi::RustIntrinsic | Abi::PlatformIntrinsic) {
             return;
         }
 
         // Process all of the #[link(..)]-style arguments
-        let sess = self.tcx.sess;
         let features = self.tcx.features();
 
-        if !sess.opts.unstable_opts.link_directives {
-            return;
-        }
-
-        for m in self.tcx.hir().attrs(it.hir_id()).iter().filter(|a| a.has_name(sym::link)) {
+        for m in self.tcx.get_attrs(def_id, sym::link) {
             let Some(items) = m.meta_item_list() else {
                 continue;
             };
@@ -340,9 +335,9 @@ impl<'tcx> Collector<'tcx> {
                     if name.as_str().contains('\0') {
                         sess.emit_err(errors::RawDylibNoNul { span: name_span });
                     }
-                    foreign_mod_items
+                    foreign_items
                         .iter()
-                        .map(|child_item| {
+                        .map(|&child_item| {
                             self.build_dll_import(
                                 abi,
                                 import_name_type.map(|(import_name_type, _)| import_name_type),
@@ -352,21 +347,12 @@ impl<'tcx> Collector<'tcx> {
                         .collect()
                 }
                 _ => {
-                    for child_item in foreign_mod_items {
-                        if self.tcx.def_kind(child_item.id.owner_id).has_codegen_attrs()
-                            && self
-                                .tcx
-                                .codegen_fn_attrs(child_item.id.owner_id)
-                                .link_ordinal
-                                .is_some()
+                    for &child_item in foreign_items {
+                        if self.tcx.def_kind(child_item).has_codegen_attrs()
+                            && self.tcx.codegen_fn_attrs(child_item).link_ordinal.is_some()
                         {
-                            let link_ordinal_attr = self
-                                .tcx
-                                .hir()
-                                .attrs(child_item.id.owner_id.into())
-                                .iter()
-                                .find(|a| a.has_name(sym::link_ordinal))
-                                .unwrap();
+                            let link_ordinal_attr =
+                                self.tcx.get_attr(child_item, sym::link_ordinal).unwrap();
                             sess.emit_err(errors::LinkOrdinalRawDylib {
                                 span: link_ordinal_attr.span,
                             });
@@ -384,7 +370,7 @@ impl<'tcx> Collector<'tcx> {
                 filename,
                 kind,
                 cfg,
-                foreign_module: Some(it.owner_id.to_def_id()),
+                foreign_module: Some(def_id.to_def_id()),
                 verbatim,
                 dll_imports,
             });
@@ -476,10 +462,10 @@ impl<'tcx> Collector<'tcx> {
         }
     }
 
-    fn i686_arg_list_size(&self, item: &hir::ForeignItemRef) -> usize {
+    fn i686_arg_list_size(&self, item: DefId) -> usize {
         let argument_types: &List<Ty<'_>> = self.tcx.erase_late_bound_regions(
             self.tcx
-                .type_of(item.id.owner_id)
+                .type_of(item)
                 .instantiate_identity()
                 .fn_sig(self.tcx)
                 .inputs()
@@ -505,8 +491,10 @@ impl<'tcx> Collector<'tcx> {
         &self,
         abi: Abi,
         import_name_type: Option<PeImportNameType>,
-        item: &hir::ForeignItemRef,
+        item: DefId,
     ) -> DllImport {
+        let span = self.tcx.def_span(item);
+
         let calling_convention = if self.tcx.sess.target.arch == "x86" {
             match abi {
                 Abi::C { .. } | Abi::Cdecl { .. } => DllCallingConvention::C,
@@ -520,29 +508,29 @@ impl<'tcx> Collector<'tcx> {
                     DllCallingConvention::Vectorcall(self.i686_arg_list_size(item))
                 }
                 _ => {
-                    self.tcx.sess.emit_fatal(errors::UnsupportedAbiI686 { span: item.span });
+                    self.tcx.sess.emit_fatal(errors::UnsupportedAbiI686 { span });
                 }
             }
         } else {
             match abi {
                 Abi::C { .. } | Abi::Win64 { .. } | Abi::System { .. } => DllCallingConvention::C,
                 _ => {
-                    self.tcx.sess.emit_fatal(errors::UnsupportedAbi { span: item.span });
+                    self.tcx.sess.emit_fatal(errors::UnsupportedAbi { span });
                 }
             }
         };
 
-        let codegen_fn_attrs = self.tcx.codegen_fn_attrs(item.id.owner_id);
+        let codegen_fn_attrs = self.tcx.codegen_fn_attrs(item);
         let import_name_type = codegen_fn_attrs
             .link_ordinal
             .map_or(import_name_type, |ord| Some(PeImportNameType::Ordinal(ord)));
 
         DllImport {
-            name: codegen_fn_attrs.link_name.unwrap_or(item.ident.name),
+            name: codegen_fn_attrs.link_name.unwrap_or(self.tcx.item_name(item)),
             import_name_type,
             calling_convention,
-            span: item.span,
-            is_fn: self.tcx.def_kind(item.id.owner_id).is_fn_like(),
+            span,
+            is_fn: self.tcx.def_kind(item).is_fn_like(),
         }
     }
 }
