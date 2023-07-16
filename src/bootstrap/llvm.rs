@@ -18,7 +18,7 @@ use std::process::Command;
 
 use crate::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::channel;
-use crate::config::{Config, TargetSelection};
+use crate::config::{Config, LLVMConfig, TargetSelection};
 use crate::util::get_clang_cl_resource_dir;
 use crate::util::{self, exe, output, t, up_to_date};
 use crate::{CLang, GitRepo, Kind};
@@ -213,6 +213,23 @@ pub(crate) fn is_ci_llvm_available(config: &Config, asserts: bool) -> bool {
     }
 
     true
+}
+
+pub(crate) fn get_llvm_opts_from_ci(config: &Config) -> Option<LLVMConfig> {
+    if config.dry_run() || is_ci_llvm_modified(config) {
+        return None;
+    }
+
+    let llvm_sha = detect_llvm_sha(config, config.rust_info.is_managed_git_subrepository());
+    config.download_ci_llvm_opts(&llvm_sha);
+
+    let config_path = config.ci_llvm_root_opts().join("llvm-opts.json");
+    let Ok(config) = serde_json::from_slice::<LLVMConfig>(&t!(std::fs::read(config_path))) else {
+        // The LLVM config has changed its format or is corrupted in some way
+        eprintln!("Cannot deserialize LLVM config from llvm-opts.json");
+        return None;
+    };
+    Some(config)
 }
 
 /// Returns true if we're running in CI with modified LLVM (and thus can't download it)

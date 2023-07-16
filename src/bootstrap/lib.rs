@@ -868,7 +868,7 @@ impl Build {
             Some(Target { llvm_config, .. }) => {
                 // If the user set llvm-config we assume Rust is not patched,
                 // but first check to see if it was configured by llvm-from-ci.
-                (self.config.llvm.from_ci && target == self.config.build) || llvm_config.is_none()
+                (self.config.llvm_from_ci && target == self.config.build) || llvm_config.is_none()
             }
             None => true,
         }

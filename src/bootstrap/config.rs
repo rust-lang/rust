@@ -101,7 +101,7 @@ impl Display for DebuginfoLevel {
     }
 }
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, PartialEq, serde_derive::Serialize, serde_derive::Deserialize)]
 pub struct LLVMConfig {
     pub assertions: bool,
     pub tests: bool,
@@ -111,9 +111,6 @@ pub struct LLVMConfig {
     pub release_debuginfo: bool,
     pub static_stdcpp: bool,
     /// `None` if `llvm_from_ci` is true and we haven't yet downloaded llvm.
-    #[cfg(not(test))]
-    link_shared: Cell<Option<bool>>,
-    #[cfg(test)]
     pub link_shared: Cell<Option<bool>>,
     pub clang_cl: Option<String>,
     pub targets: Option<String>,
@@ -125,7 +122,6 @@ pub struct LLVMConfig {
     pub polly: bool,
     pub clang: bool,
     pub enable_warnings: bool,
-    pub from_ci: bool,
     pub build_config: HashMap<String, String>,
 
     pub use_lld: bool,
@@ -204,6 +200,7 @@ pub struct Config {
     pub backtrace_on_ice: bool,
 
     // llvm codegen options
+    pub llvm_from_ci: bool,
     pub llvm: LLVMConfig,
 
     // rust codegen options
@@ -1519,18 +1516,26 @@ impl Config {
             config.llvm.build_config = llvm.build_config.clone().unwrap_or(Default::default());
 
             let asserts = llvm_assertions.unwrap_or(false);
-            config.llvm.from_ci = match llvm.download_ci_llvm {
-                Some(StringOrBool::String(s)) => {
-                    assert!(s == "if-available", "unknown option `{}` for download-ci-llvm", s);
-                    crate::llvm::is_ci_llvm_available(&config, asserts)
-                }
+            let mut downloaded_config = false;
+            config.llvm_from_ci = match llvm.download_ci_llvm {
+                Some(StringOrBool::String(s)) => match s.as_str() {
+                    "if-available" => crate::llvm::is_ci_llvm_available(&config, asserts),
+                    "if-identical" => match crate::llvm::get_llvm_opts_from_ci(&config) {
+                        Some(config_ci) => {
+                            downloaded_config = true;
+                            is_llvm_config_identical(&config_ci, &config.llvm)
+                        }
+                        None => false,
+                    },
+                    _ => panic!("unknown option `{s}` for download-ci-llvm"),
+                },
                 Some(StringOrBool::Bool(b)) => b,
                 None => {
                     config.channel == "dev" && crate::llvm::is_ci_llvm_available(&config, asserts)
                 }
             };
 
-            if config.llvm.from_ci {
+            if config.llvm_from_ci && !downloaded_config {
                 // None of the LLVM options, except assertions, are supported
                 // when using downloaded LLVM. We could just ignore these but
                 // that's potentially confusing, so force them to not be
@@ -1561,14 +1566,14 @@ impl Config {
             }
 
             // NOTE: can never be hit when downloading from CI, since we call `check_ci_llvm!(thin_lto)` above.
-            if config.llvm.thin_lto && llvm.link_shared.is_none() {
+            if !downloaded_config && config.llvm.thin_lto && llvm.link_shared.is_none() {
                 // If we're building with ThinLTO on, by default we want to link
                 // to LLVM shared, to avoid re-doing ThinLTO (which happens in
                 // the link step) with each stage.
                 config.llvm.link_shared.set(Some(true));
             }
         } else {
-            config.llvm.from_ci =
+            config.llvm_from_ci =
                 config.channel == "dev" && crate::llvm::is_ci_llvm_available(&config, false);
         }
 
@@ -1620,7 +1625,7 @@ impl Config {
             }
         }
 
-        if config.llvm.from_ci {
+        if config.llvm_from_ci {
             let triple = &config.build.triple;
             let ci_llvm_bin = config.ci_llvm_root().join("bin");
             let build_target = config
@@ -1860,8 +1865,12 @@ impl Config {
 
     /// The absolute path to the downloaded LLVM artifacts.
     pub(crate) fn ci_llvm_root(&self) -> PathBuf {
-        assert!(self.llvm.from_ci);
+        assert!(self.llvm_from_ci);
         self.out.join(&*self.build.triple).join("ci-llvm")
+    }
+
+    pub(crate) fn ci_llvm_root_opts(&self) -> PathBuf {
+        self.out.join(&*self.build.triple).join("ci-llvm-opts")
     }
 
     /// Directory where the extracted `rustc-dev` component is stored.
@@ -1882,7 +1891,7 @@ impl Config {
         }
 
         let llvm_link_shared = *opt.get_or_insert_with(|| {
-            if self.llvm.from_ci {
+            if self.llvm_from_ci {
                 self.maybe_download_ci_llvm();
                 let ci_llvm = self.ci_llvm_root();
                 let link_type = t!(
@@ -2087,6 +2096,10 @@ impl Config {
 
         Some(commit.to_string())
     }
+}
+
+fn is_llvm_config_identical(from_ci: &LLVMConfig, current: &LLVMConfig) -> bool {
+    from_ci == current
 }
 
 fn set<T>(field: &mut T, val: Option<T>) {

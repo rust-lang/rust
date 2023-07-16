@@ -1968,7 +1968,7 @@ fn install_llvm_file(builder: &Builder<'_>, source: &Path, destination: &Path) {
 /// Returns whether the files were actually copied.
 fn maybe_install_llvm(builder: &Builder<'_>, target: TargetSelection, dst_libdir: &Path) -> bool {
     if let Some(config) = builder.config.target_config.get(&target) {
-        if config.llvm_config.is_some() && !builder.config.llvm.from_ci {
+        if config.llvm_config.is_some() && !builder.config.llvm_from_ci {
             // If the LLVM was externally provided, then we don't currently copy
             // artifacts into the sysroot. This is not necessarily the right
             // choice (in particular, it will require the LLVM dylib to be in
@@ -2090,7 +2090,7 @@ impl Step for BoltInstrument {
             return self.file.clone();
         }
 
-        if builder.build.config.llvm.from_ci {
+        if builder.build.config.llvm_from_ci {
             println!("warning: trying to use BOLT with LLVM from CI, this will probably not work");
         }
 
@@ -2142,7 +2142,7 @@ impl Step for BoltOptimize {
             return self.file.clone();
         }
 
-        if builder.build.config.llvm.from_ci {
+        if builder.build.config.llvm_from_ci {
             println!("warning: trying to use BOLT with LLVM from CI, this will probably not work");
         }
 

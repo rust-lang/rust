@@ -602,7 +602,7 @@ download-rustc = false
     }
 
     pub(crate) fn maybe_download_ci_llvm(&self) {
-        if !self.llvm.from_ci {
+        if !self.llvm_from_ci {
             return;
         }
         let llvm_root = self.ci_llvm_root();
@@ -673,5 +673,34 @@ download-rustc = false
         }
         let llvm_root = self.ci_llvm_root();
         self.unpack(&tarball, &llvm_root, "rust-dev");
+    }
+
+    pub(crate) fn download_ci_llvm_opts(&self, llvm_sha: &str) {
+        let cache_prefix = format!("llvm-opts-{llvm_sha}");
+        let cache_dst = self.out.join("cache");
+        let rustc_cache = cache_dst.join(cache_prefix);
+        t!(fs::create_dir_all(&rustc_cache));
+        let base = if self.llvm.assertions {
+            &self.stage0_metadata.config.artifacts_with_llvm_assertions_server
+        } else {
+            &self.stage0_metadata.config.artifacts_server
+        };
+        let version = self.artifact_version_part(llvm_sha);
+        let filename = format!("rust-dev-config-{}-{}.tar.xz", version, self.build.triple);
+        let tarball = rustc_cache.join(&filename);
+        if !tarball.exists() {
+            let help_on_error = "error: failed to download llvm config from ci
+
+    help: old builds get deleted after a certain time
+    help: if trying to compile an old commit of rustc, disable `download-ci-llvm` in config.toml:
+
+    [llvm]
+    download-ci-llvm = false
+    ";
+            self.download_file(&format!("{base}/{llvm_sha}/{filename}"), &tarball, help_on_error);
+        }
+
+        let llvm_root = self.ci_llvm_root_opts();
+        self.unpack(&tarball, &llvm_root, "rust-dev-config");
     }
 }
