@@ -1085,6 +1085,33 @@ fn f() {
     }
 
     #[test]
+    fn regression_15143() {
+        check_diagnostics(
+            r#"
+        trait Tr {
+            type Ty;
+        }
+
+        struct A;
+
+        impl Tr for A {
+            type Ty = (u32, i64);
+        }
+
+        struct B<T: Tr> {
+            f: <T as Tr>::Ty,
+        }
+
+        fn main(b: B<A>) {
+            let f = b.f.0;
+            f = 5;
+          //^^^^^ 💡 error: cannot mutate immutable variable `f`
+        }
+            "#,
+        );
+    }
+
+    #[test]
     fn allow_unused_mut_for_identifiers_starting_with_underline() {
         check_diagnostics(
             r#"
