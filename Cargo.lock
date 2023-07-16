@@ -3665,6 +3665,7 @@ name = "rustc_hir_typeck"
 version = "0.1.0"
 dependencies = [
  "rustc_ast",
+ "rustc_attr",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_fluent_macro",

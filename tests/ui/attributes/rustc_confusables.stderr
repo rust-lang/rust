@@ -1,0 +1,68 @@
+error: malformed `rustc_confusables` attribute input
+  --> $DIR/rustc_confusables.rs:34:5
+   |
+LL |     #[rustc_confusables]
+   |     ^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[rustc_confusables("name1", "name2", ...)]`
+
+error: attribute should be applied to an inherent method
+  --> $DIR/rustc_confusables.rs:45:1
+   |
+LL | #[rustc_confusables("blah")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: expected at least one confusable name
+  --> $DIR/rustc_confusables.rs:30:5
+   |
+LL |     #[rustc_confusables()]
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0539]: expected a quoted string literal
+  --> $DIR/rustc_confusables.rs:39:25
+   |
+LL |     #[rustc_confusables(invalid_meta_item)]
+   |                         ^^^^^^^^^^^^^^^^^
+   |
+help: consider surrounding this with quotes
+   |
+LL |     #[rustc_confusables("invalid_meta_item")]
+   |                         +                 +
+
+error[E0599]: no method named `inser` found for struct `rustc_confusables_across_crate::BTreeSet` in the current scope
+  --> $DIR/rustc_confusables.rs:12:7
+   |
+LL |     x.inser();
+   |       ^^^^^ help: there is a method with a similar name: `insert`
+
+error[E0599]: no method named `foo` found for struct `rustc_confusables_across_crate::BTreeSet` in the current scope
+  --> $DIR/rustc_confusables.rs:15:7
+   |
+LL |     x.foo();
+   |       ^^^ method not found in `BTreeSet`
+
+error[E0599]: no method named `push` found for struct `rustc_confusables_across_crate::BTreeSet` in the current scope
+  --> $DIR/rustc_confusables.rs:17:7
+   |
+LL |     x.push();
+   |       ^^^^ method not found in `BTreeSet`
+   |
+help: you might have meant to use `insert`
+   |
+LL |     x.insert();
+   |       ~~~~~~
+
+error[E0599]: no method named `test` found for struct `rustc_confusables_across_crate::BTreeSet` in the current scope
+  --> $DIR/rustc_confusables.rs:20:7
+   |
+LL |     x.test();
+   |       ^^^^ method not found in `BTreeSet`
+
+error[E0599]: no method named `pulled` found for struct `rustc_confusables_across_crate::BTreeSet` in the current scope
+  --> $DIR/rustc_confusables.rs:22:7
+   |
+LL |     x.pulled();
+   |       ^^^^^^ help: there is a method with a similar name: `pull`
+
+error: aborting due to 9 previous errors
+
+Some errors have detailed explanations: E0539, E0599.
+For more information about an error, try `rustc --explain E0539`.
