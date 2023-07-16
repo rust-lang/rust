@@ -827,6 +827,7 @@ impl<'a> Builder<'a> {
                 dist::Miri,
                 dist::LlvmTools,
                 dist::RustDev,
+                dist::RustDevConfig,
                 dist::Bootstrap,
                 dist::Extended,
                 // It seems that PlainSourceTarball somehow changes how some of the tools

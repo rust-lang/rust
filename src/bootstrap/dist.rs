@@ -2301,6 +2301,48 @@ impl Step for RustDev {
 //
 // Should not be considered stable by end users.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct RustDevConfig {
+    pub target: TargetSelection,
+}
+
+impl Step for RustDevConfig {
+    type Output = Option<GeneratedTarball>;
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.alias("rust-dev-config")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(RustDevConfig { target: run.target });
+    }
+
+    fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
+        let target = self.target;
+
+        /* run only if llvm-config isn't used */
+        if let Some(config) = builder.config.target_config.get(&target) {
+            if let Some(ref _s) = config.llvm_config {
+                builder.info(&format!("Skipping RustDevConfig ({}): external LLVM", target));
+                return None;
+            }
+        }
+
+        let mut tarball = Tarball::new(builder, "rust-dev-config", &target.triple);
+        tarball.set_overlay(OverlayKind::LLVM);
+
+        let config = t!(serde_json::to_string_pretty(&builder.build.config.llvm));
+        t!(std::fs::write(tarball.image_dir().join("llvm-opts.json"), config));
+
+        Some(tarball.generate())
+    }
+}
+
+// Tarball intended for internal consumption to ease rustc/std development.
+//
+// Should not be considered stable by end users.
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Bootstrap {
     pub target: TargetSelection,
 }
