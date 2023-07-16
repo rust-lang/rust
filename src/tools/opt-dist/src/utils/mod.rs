@@ -56,3 +56,20 @@ pub fn clear_llvm_files(env: &dyn Environment) -> anyhow::Result<()> {
     delete_directory(&env.build_artifacts().join("lld"))?;
     Ok(())
 }
+
+/// Wraps all output produced within the `func` closure in a CI output group, if we're running in
+/// CI.
+pub fn with_log_group<F: FnOnce() -> R, R>(group: &str, func: F) -> R {
+    if is_in_ci() {
+        println!("::group::{group}");
+        let result = func();
+        println!("::endgroup::");
+        result
+    } else {
+        func()
+    }
+}
+
+fn is_in_ci() -> bool {
+    std::env::var("GITHUB_ACTIONS").is_ok()
+}
