@@ -85,20 +85,23 @@ pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
 
     if let Some(let_stmt) = ctx.find_node_at_offset::<ast::LetStmt>() {
         if let_stmt.colon_token().is_none() {
-            let type_pos = let_stmt.pat()?.syntax().last_token()?.text_range().end();
-            let semi_pos = let_stmt.syntax().last_token()?.text_range().end();
-
             acc.add(
                 AssistId("add_type_ascription", AssistKind::RefactorRewrite),
                 "Add `: _` before assignment operator",
                 ident.text_range(),
-                |builder| {
+                |edit| {
+                    let let_stmt = edit.make_mut(let_stmt);
+
                     if let_stmt.semicolon_token().is_none() {
-                        builder.insert(semi_pos, ";");
+                        ted::append_child(let_stmt.syntax(), make::tokens::semicolon());
                     }
-                    match ctx.config.snippet_cap {
-                        Some(cap) => builder.insert_snippet(cap, type_pos, ": ${0:_}"),
-                        None => builder.insert(type_pos, ": _"),
+
+                    let placeholder_ty = make::ty_placeholder().clone_for_update();
+
+                    let_stmt.set_ty(Some(placeholder_ty.clone()));
+
+                    if let Some(cap) = ctx.config.snippet_cap {
+                        edit.add_placeholder_snippet(cap, placeholder_ty);
                     }
                 },
             )?
@@ -389,6 +392,26 @@ fn main() {
 fn make<T>() -> T {}
 fn main() {
     let x: ${0:_} = make();
+}
+"#,
+            "Add `: _` before assignment operator",
+        );
+    }
+
+    #[test]
+    fn add_type_ascription_missing_pattern() {
+        check_assist_by_label(
+            add_turbo_fish,
+            r#"
+fn make<T>() -> T {}
+fn main() {
+    let = make$0()
+}
+"#,
+            r#"
+fn make<T>() -> T {}
+fn main() {
+    let : ${0:_} = make();
 }
 "#,
             "Add `: _` before assignment operator",
