@@ -503,24 +503,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     }
                 }
 
-                let attrs = self.tcx.codegen_fn_attrs(instance.def_id());
-                let missing_features: Vec<_> = attrs
-                    .target_features
-                    .iter()
-                    .copied()
-                    .filter(|feature| !self.tcx.sess.target_features.contains(feature))
-                    .collect();
-                if !missing_features.is_empty() {
-                    let mut missing_features_str = String::from(missing_features[0].as_str());
-                    for missing_feature in missing_features[1..].iter() {
-                        missing_features_str.push(',');
-                        missing_features_str.push_str(missing_feature.as_str());
-                    }
-                    throw_ub_custom!(
-                        fluent::const_eval_unavailable_target_features_for_fn,
-                        unavailable_feats = missing_features_str,
-                    );
-                }
+                // Check that all target features required by the callee (i.e., from
+                // the attribute `#[target_feature(enable = ...)]`) are enabled at
+                // compile time.
+                self.check_fn_target_features(instance)?;
 
                 if !callee_fn_abi.can_unwind {
                     // The callee cannot unwind, so force the `Unreachable` unwind handling.
@@ -803,6 +789,31 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 )
             }
         }
+    }
+
+    fn check_fn_target_features(&self, instance: ty::Instance<'tcx>) -> InterpResult<'tcx, ()> {
+        let attrs = self.tcx.codegen_fn_attrs(instance.def_id());
+        if attrs
+            .target_features
+            .iter()
+            .any(|feature| !self.tcx.sess.target_features.contains(feature))
+        {
+            throw_ub_custom!(
+                fluent::const_eval_unavailable_target_features_for_fn,
+                unavailable_feats = attrs
+                    .target_features
+                    .iter()
+                    .filter(|&feature| !self.tcx.sess.target_features.contains(feature))
+                    .fold(String::new(), |mut s, feature| {
+                        if !s.is_empty() {
+                            s.push_str(", ");
+                        }
+                        s.push_str(feature.as_str());
+                        s
+                    }),
+            );
+        }
+        Ok(())
     }
 
     fn drop_in_place(
