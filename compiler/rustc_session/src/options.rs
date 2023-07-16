@@ -1668,13 +1668,13 @@ options! {
         "use a more precise version of drop elaboration for matches on enums (default: yes). \
         This results in better codegen, but has caused miscompilations on some tier 2 platforms. \
         See #77382 and #74551."),
+    #[rustc_lint_opt_deny_field_access("use `Session::print_codegen_stats` instead of this field")]
+    print_codegen_stats: bool = (false, parse_bool, [UNTRACKED],
+        "print codegen statistics (default: no)"),
     print_fuel: Option<String> = (None, parse_opt_string, [TRACKED],
         "make rustc print the total optimization fuel used by a crate"),
     print_llvm_passes: bool = (false, parse_bool, [UNTRACKED],
         "print the LLVM optimization passes being run (default: no)"),
-    #[rustc_lint_opt_deny_field_access("use `Session::print_llvm_stats` instead of this field")]
-    print_llvm_stats: bool = (false, parse_bool, [UNTRACKED],
-        "print LLVM statistics (default: no)"),
     print_mono_items: Option<String> = (None, parse_opt_string, [UNTRACKED],
         "print the result of the monomorphization collection pass"),
     print_type_sizes: bool = (false, parse_bool, [UNTRACKED],

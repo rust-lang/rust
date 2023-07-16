@@ -177,14 +177,32 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     type ThinData = back::lto::ThinData;
     type ThinBuffer = back::lto::ThinBuffer;
     fn print_pass_timings(&self) {
-        unsafe {
-            llvm::LLVMRustPrintPassTimings();
-        }
+        let msg = unsafe {
+            let cstr = llvm::LLVMRustPrintPassTimings();
+            if cstr.is_null() {
+                "failed to get pass timings".into()
+            } else {
+                let timings = CStr::from_ptr(cstr).to_bytes();
+                let timings = String::from_utf8_lossy(timings).to_string();
+                libc::free(cstr as *mut _);
+                timings
+            }
+        };
+        println!("{}", msg);
     }
     fn print_statistics(&self) {
-        unsafe {
-            llvm::LLVMRustPrintStatistics();
-        }
+        let msg = unsafe {
+            let cstr = llvm::LLVMRustPrintStatistics();
+            if cstr.is_null() {
+                "failed to get stats".into()
+            } else {
+                let stats = CStr::from_ptr(cstr).to_bytes();
+                let stats = String::from_utf8_lossy(stats).to_string();
+                libc::free(cstr as *mut _);
+                stats
+            }
+        };
+        println!("{}", msg);
     }
     fn run_link(
         cgcx: &CodegenContext<Self>,

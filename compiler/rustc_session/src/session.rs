@@ -1058,7 +1058,7 @@ impl Session {
     }
 
     pub fn print_llvm_stats(&self) -> bool {
-        self.opts.unstable_opts.print_llvm_stats
+        self.opts.unstable_opts.print_codegen_stats
     }
 
     pub fn verify_llvm_ir(&self) -> bool {

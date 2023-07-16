@@ -1868,10 +1868,10 @@ extern "C" {
     pub fn LLVMRustGetLastError() -> *const c_char;
 
     /// Print the pass timings since static dtors aren't picking them up.
-    pub fn LLVMRustPrintPassTimings();
+    pub fn LLVMRustPrintPassTimings() -> *const c_char;
 
     /// Print the statistics since static dtors aren't picking them up.
-    pub fn LLVMRustPrintStatistics();
+    pub fn LLVMRustPrintStatistics() -> *const c_char;
 
     pub fn LLVMStructCreateNamed(C: &Context, Name: *const c_char) -> &Type;
 

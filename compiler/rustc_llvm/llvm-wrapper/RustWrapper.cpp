@@ -112,14 +112,24 @@ extern "C" void LLVMRustSetNormalizedTarget(LLVMModuleRef M,
   unwrap(M)->setTargetTriple(Triple::normalize(Triple));
 }
 
-extern "C" void LLVMRustPrintPassTimings() {
-  raw_fd_ostream OS(2, false); // stderr.
-  TimerGroup::printAll(OS);
+extern "C" const char *LLVMRustPrintPassTimings(void) {
+  std::string buf;
+  raw_string_ostream SS(buf);
+  TimerGroup::printAll(SS);
+  SS.flush();
+  char* CStr = (char*) malloc((buf.length() + 1) * sizeof(char));
+  strcpy(CStr, buf.c_str());
+  return CStr;
 }
 
-extern "C" void LLVMRustPrintStatistics() {
-  raw_fd_ostream OS(2, false); // stderr.
-  llvm::PrintStatistics(OS);
+extern "C" const char *LLVMRustPrintStatistics(void) {
+  std::string buf;
+  raw_string_ostream SS(buf);
+  llvm::PrintStatistics(SS);
+  SS.flush();
+  char* CStr = (char*) malloc((buf.length() + 1) * sizeof(char));
+  strcpy(CStr, buf.c_str());
+  return CStr;
 }
 
 extern "C" LLVMValueRef LLVMRustGetNamedValue(LLVMModuleRef M, const char *Name,
