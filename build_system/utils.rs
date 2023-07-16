@@ -138,8 +138,11 @@ pub(crate) fn hyperfine_command(
     runs: u64,
     prepare: Option<&str>,
     cmds: &[&str],
+    markdown_export: &Path,
 ) -> Command {
     let mut bench = Command::new("hyperfine");
+
+    bench.arg("--export-markdown").arg(markdown_export);
 
     if warmup != 0 {
         bench.arg("--warmup").arg(warmup.to_string());
