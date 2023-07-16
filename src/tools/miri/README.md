@@ -74,6 +74,12 @@ behavior** in your program, and cannot run all programs:
   unobservable by compiled programs running on real hardware when `SeqCst` fences are used, and it
   cannot produce all behaviors possibly observable on real hardware.
 
+Moreover, Miri fundamentally cannot tell you whether your code is *sound*. Soundness is the property
+of never causing undefined behavior when invoked from arbitrary safe code, even in combination with
+other sound code. In contrast, Miri can just tell you if *a particular way of interacting with your
+code* (e.g., a test suite) causes any undefined behavior. It is up to you to ensure sufficient
+coverage.
+
 [rust]: https://www.rust-lang.org/
 [mir]: https://github.com/rust-lang/rfcs/blob/master/text/1211-mir.md
 [`unreachable_unchecked`]: https://doc.rust-lang.org/stable/std/hint/fn.unreachable_unchecked.html
