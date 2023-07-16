@@ -456,6 +456,9 @@ fn rematch_unsize<'tcx>(
                 goal.param_env,
                 ty::TraitRef::new(tcx, goal.predicate.def_id(), [*a_last_ty, *b_last_ty]),
             ));
+
+            // We need to be able to detect tuple unsizing to require its feature gate.
+            return Ok(Some(ImplSource::TupleUnsizing(nested)));
         }
         // FIXME: We *could* ICE here if either:
         // 1. the certainty is `Certainty::Yes`,

@@ -114,8 +114,20 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             BuiltinUnsizeCandidate => {
-                let data = self.confirm_builtin_unsize_candidate(obligation)?;
-                ImplSource::Builtin(data)
+                let source =
+                    self.infcx.shallow_resolve(obligation.self_ty().no_bound_vars().unwrap());
+                let target = obligation.predicate.skip_binder().trait_ref.args.type_at(1);
+                let target = self.infcx.shallow_resolve(target);
+                let data = self.confirm_builtin_unsize_candidate(obligation, source, target)?;
+                // If the source and target are both unsize goals, then we need to signify that
+                // this is tuple unsizing so that during unsized coercion we require the proper
+                // feature gate.
+                if matches!(source.kind(), ty::Tuple(..)) && matches!(target.kind(), ty::Tuple(..))
+                {
+                    ImplSource::TupleUnsizing(data)
+                } else {
+                    ImplSource::Builtin(data)
+                }
             }
 
             TraitUpcastingUnsizeCandidate(idx) => {
@@ -1000,15 +1012,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn confirm_builtin_unsize_candidate(
         &mut self,
         obligation: &PolyTraitObligation<'tcx>,
+        source: Ty<'tcx>,
+        target: Ty<'tcx>,
     ) -> Result<Vec<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
         let tcx = self.tcx();
-
-        // `assemble_candidates_for_unsizing` should ensure there are no late-bound
-        // regions here. See the comment there for more details.
-        let source = self.infcx.shallow_resolve(obligation.self_ty().no_bound_vars().unwrap());
-        let target = obligation.predicate.skip_binder().trait_ref.args.type_at(1);
-        let target = self.infcx.shallow_resolve(target);
-
         debug!(?source, ?target, "confirm_builtin_unsize_candidate");
 
         let mut nested = vec![];

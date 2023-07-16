@@ -17,6 +17,8 @@ impl<'tcx, N: fmt::Debug> fmt::Debug for traits::ImplSource<'tcx, N> {
                 write!(f, "ImplSourceParamData({:?}, {:?})", n, ct)
             }
 
+            super::ImplSource::TupleUnsizing(ref d) => write!(f, "{:?}", d),
+
             super::ImplSource::TraitUpcasting(ref d) => write!(f, "{:?}", d),
         }
     }

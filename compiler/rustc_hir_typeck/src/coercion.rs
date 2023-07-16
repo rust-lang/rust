@@ -622,6 +622,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             ty::TraitRef::new(self.tcx, coerce_unsized_did, [coerce_source, coerce_target])
         )];
 
+        let mut has_unsized_tuple_coercion = false;
         let mut has_trait_upcasting_coercion = None;
 
         // Keep resolving `CoerceUnsized` and `Unsize` predicates to avoid
@@ -686,11 +687,16 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 }
 
                 Ok(Some(impl_source)) => {
-                    if matches!(impl_source, traits::ImplSource::TraitUpcasting(..)) {
-                        has_trait_upcasting_coercion =
-                            Some((trait_pred.self_ty(), trait_pred.trait_ref.args.type_at(1)));
+                    match impl_source {
+                        traits::ImplSource::TraitUpcasting(..) => {
+                            has_trait_upcasting_coercion =
+                                Some((trait_pred.self_ty(), trait_pred.trait_ref.args.type_at(1)));
+                        }
+                        traits::ImplSource::TupleUnsizing(_) => {
+                            has_unsized_tuple_coercion = true;
+                        }
+                        _ => {}
                     }
-
                     queue.extend(impl_source.nested_obligations())
                 }
             }
@@ -709,6 +715,16 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             );
             err.note(format!("required when coercing `{source}` into `{target}`"));
             err.emit();
+        }
+
+        if has_unsized_tuple_coercion && !self.tcx.features().unsized_tuple_coercion {
+            feature_err(
+                &self.tcx.sess.parse_sess,
+                sym::unsized_tuple_coercion,
+                self.cause.span,
+                "unsized tuple coercion is not stable enough for use and is subject to change",
+            )
+            .emit();
         }
 
         Ok(coercion)

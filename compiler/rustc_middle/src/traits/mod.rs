@@ -657,6 +657,9 @@ pub enum ImplSource<'tcx, N> {
     /// Successful resolution for a builtin trait.
     Builtin(Vec<N>),
 
+    // Unsizing a tuple like `(A, B, ..., X)` to `(A, B, ..., Y)` if `X` unsizes to `Y`
+    TupleUnsizing(Vec<N>),
+
     /// ImplSource for trait upcasting coercion
     TraitUpcasting(ImplSourceTraitUpcastingData<N>),
 }
@@ -665,7 +668,7 @@ impl<'tcx, N> ImplSource<'tcx, N> {
     pub fn nested_obligations(self) -> Vec<N> {
         match self {
             ImplSource::UserDefined(i) => i.nested,
-            ImplSource::Param(n, _) | ImplSource::Builtin(n) => n,
+            ImplSource::Param(n, _) | ImplSource::Builtin(n) | ImplSource::TupleUnsizing(n) => n,
             ImplSource::Object(d) => d.nested,
             ImplSource::TraitUpcasting(d) => d.nested,
         }
@@ -674,7 +677,7 @@ impl<'tcx, N> ImplSource<'tcx, N> {
     pub fn borrow_nested_obligations(&self) -> &[N] {
         match self {
             ImplSource::UserDefined(i) => &i.nested,
-            ImplSource::Param(n, _) | ImplSource::Builtin(n) => &n,
+            ImplSource::Param(n, _) | ImplSource::Builtin(n) | ImplSource::TupleUnsizing(n) => &n,
             ImplSource::Object(d) => &d.nested,
             ImplSource::TraitUpcasting(d) => &d.nested,
         }
@@ -683,7 +686,7 @@ impl<'tcx, N> ImplSource<'tcx, N> {
     pub fn borrow_nested_obligations_mut(&mut self) -> &mut [N] {
         match self {
             ImplSource::UserDefined(i) => &mut i.nested,
-            ImplSource::Param(n, _) | ImplSource::Builtin(n) => n,
+            ImplSource::Param(n, _) | ImplSource::Builtin(n) | ImplSource::TupleUnsizing(n) => n,
             ImplSource::Object(d) => &mut d.nested,
             ImplSource::TraitUpcasting(d) => &mut d.nested,
         }
@@ -701,6 +704,9 @@ impl<'tcx, N> ImplSource<'tcx, N> {
             }),
             ImplSource::Param(n, ct) => ImplSource::Param(n.into_iter().map(f).collect(), ct),
             ImplSource::Builtin(n) => ImplSource::Builtin(n.into_iter().map(f).collect()),
+            ImplSource::TupleUnsizing(n) => {
+                ImplSource::TupleUnsizing(n.into_iter().map(f).collect())
+            }
             ImplSource::Object(o) => ImplSource::Object(ImplSourceObjectData {
                 vtable_base: o.vtable_base,
                 nested: o.nested.into_iter().map(f).collect(),
