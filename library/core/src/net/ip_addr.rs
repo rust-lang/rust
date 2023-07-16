@@ -1,6 +1,8 @@
 use crate::cmp::Ordering;
 use crate::fmt::{self, Write};
+use crate::iter;
 use crate::mem::transmute;
+use crate::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Not};
 
 use super::display_buffer::DisplayBuffer;
 
@@ -2121,4 +2123,156 @@ impl From<[u16; 8]> for IpAddr {
     fn from(segments: [u16; 8]) -> IpAddr {
         IpAddr::V6(Ipv6Addr::from(segments))
     }
+}
+
+#[stable(feature = "ip_bitops", since = "CURRENT_RUSTC_VERSION")]
+impl Not for Ipv4Addr {
+    type Output = Ipv4Addr;
+
+    #[inline]
+    fn not(mut self) -> Ipv4Addr {
+        for octet in &mut self.octets {
+            *octet = !*octet;
+        }
+        self
+    }
+}
+
+#[stable(feature = "ip_bitops", since = "CURRENT_RUSTC_VERSION")]
+impl Not for &'_ Ipv4Addr {
+    type Output = Ipv4Addr;
+
+    #[inline]
+    fn not(self) -> Ipv4Addr {
+        !*self
+    }
+}
+
+#[stable(feature = "ip_bitops", since = "CURRENT_RUSTC_VERSION")]
+impl Not for Ipv6Addr {
+    type Output = Ipv6Addr;
+
+    #[inline]
+    fn not(mut self) -> Ipv6Addr {
+        for octet in &mut self.octets {
+            *octet = !*octet;
+        }
+        self
+    }
+}
+
+#[stable(feature = "ip_bitops", since = "CURRENT_RUSTC_VERSION")]
+impl Not for &'_ Ipv6Addr {
+    type Output = Ipv6Addr;
+
+    #[inline]
+    fn not(self) -> Ipv6Addr {
+        !*self
+    }
+}
+
+#[stable(feature = "ip_bitops", since = "CURRENT_RUSTC_VERSION")]
+impl Not for IpAddr {
+    type Output = IpAddr;
+
+    #[inline]
+    fn not(self) -> IpAddr {
+        match self {
+            IpAddr::V4(v4) => IpAddr::V4(!v4),
+            IpAddr::V6(v6) => IpAddr::V6(!v6),
+        }
+    }
+}
+
+#[stable(feature = "ip_bitops", since = "CURRENT_RUSTC_VERSION")]
+impl Not for &'_ IpAddr {
+    type Output = IpAddr;
+
+    #[inline]
+    fn not(self) -> IpAddr {
+        !*self
+    }
+}
+
+macro_rules! bitop_impls {
+    ($(
+        $(#[$attr:meta])*
+        impl ($BitOp:ident, $BitOpAssign:ident) for $ty:ty = ($bitop:ident, $bitop_assign:ident);
+    )*) => {
+        $(
+            $(#[$attr])*
+            impl $BitOpAssign for $ty {
+                fn $bitop_assign(&mut self, rhs: $ty) {
+                    for (lhs, rhs) in iter::zip(&mut self.octets, rhs.octets) {
+                        lhs.$bitop_assign(rhs);
+                    }
+                }
+            }
+
+            $(#[$attr])*
+            impl $BitOpAssign<&'_ $ty> for $ty {
+                fn $bitop_assign(&mut self, rhs: &'_ $ty) {
+                    self.$bitop_assign(*rhs);
+                }
+            }
+
+            $(#[$attr])*
+            impl $BitOp for $ty {
+                type Output = $ty;
+
+                #[inline]
+                fn $bitop(mut self, rhs: $ty) -> $ty {
+                    self.$bitop_assign(rhs);
+                    self
+                }
+            }
+
+            $(#[$attr])*
+            impl $BitOp<&'_ $ty> for $ty {
+                type Output = $ty;
+
+                #[inline]
+                fn $bitop(mut self, rhs: &'_ $ty) -> $ty {
+                    self.$bitop_assign(*rhs);
+                    self
+                }
+            }
+
+            $(#[$attr])*
+            impl $BitOp<$ty> for &'_ $ty {
+                type Output = $ty;
+
+                #[inline]
+                fn $bitop(self, rhs: $ty) -> $ty {
+                    let mut lhs = *self;
+                    lhs.$bitop_assign(rhs);
+                    lhs
+                }
+            }
+
+            $(#[$attr])*
+            impl $BitOp<&'_ $ty> for &'_ $ty {
+                type Output = $ty;
+
+                #[inline]
+                fn $bitop(self, rhs: &'_ $ty) -> $ty {
+                    let mut lhs = *self;
+                    lhs.$bitop_assign(*rhs);
+                    lhs
+                }
+            }
+        )*
+    };
+}
+
+bitop_impls! {
+    #[stable(feature = "ip_bitops", since = "CURRENT_RUSTC_VERSION")]
+    impl (BitAnd, BitAndAssign) for Ipv4Addr = (bitand, bitand_assign);
+    #[stable(feature = "ip_bitops", since = "CURRENT_RUSTC_VERSION")]
+    impl (BitOr, BitOrAssign) for Ipv4Addr = (bitor, bitor_assign);
+
+    #[stable(feature = "ip_bitops", since = "CURRENT_RUSTC_VERSION")]
+    impl (BitAnd, BitAndAssign) for Ipv6Addr = (bitand, bitand_assign);
+    #[stable(feature = "ip_bitops", since = "CURRENT_RUSTC_VERSION")]
+    impl (BitOr, BitOrAssign) for Ipv6Addr = (bitor, bitor_assign);
 }
