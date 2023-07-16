@@ -113,7 +113,7 @@ xflags::xflags! {
         }
 
         cmd ssr {
-            /// A structured search replace rule (`$a.foo($b) ==> bar($a, $b)`)
+            /// A structured search replace rule (`$a.foo($b) ==>> bar($a, $b)`)
             repeated rule: SsrRule
         }
 
