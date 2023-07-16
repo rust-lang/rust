@@ -890,6 +890,7 @@ pub fn sleep(dur: Duration) {
 /// A simple game loop that limits the game to 60 frames per second.
 ///
 /// ```no_run
+/// #![feature(thread_sleep_until)]
 /// # use std::time::{Duration, Instant};
 /// # use std::thread;
 /// #
@@ -912,6 +913,7 @@ pub fn sleep(dur: Duration) {
 /// api call takes does not influence when we retry or when we give up
 ///
 /// ```no_run
+/// #![feature(thread_sleep_until)]
 /// # use std::time::{Duration, Instant};
 /// # use std::thread;
 /// #
