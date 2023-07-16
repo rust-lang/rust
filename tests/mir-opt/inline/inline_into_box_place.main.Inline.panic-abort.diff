@@ -134,7 +134,7 @@
 +         StorageDead(_14);
 +         StorageLive(_9);
 +         _13 = const _;
-+         _9 = std::alloc::Global::alloc_impl(_13, _8, const false) -> [return: bb5, unwind unreachable];
++         _9 = std::alloc::Global::alloc_impl(move _13, _8, const false) -> [return: bb5, unwind unreachable];
       }
   
       bb1: {
@@ -144,7 +144,7 @@
       }
   
       bb2: {
-+         _12 = handle_alloc_error(_8) -> unwind unreachable;
++         _12 = handle_alloc_error(move _8) -> unwind unreachable;
 +     }
 + 
 +     bb3: {

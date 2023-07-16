@@ -88,7 +88,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeLiveLocals {
     }
 }
 
-struct TransferFunction<'a, T>(&'a mut T);
+pub struct TransferFunction<'a, T>(pub &'a mut T);
 
 impl<'tcx, T> Visitor<'tcx> for TransferFunction<'_, T>
 where
