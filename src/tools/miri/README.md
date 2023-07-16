@@ -74,7 +74,7 @@ behavior** in your program, and cannot run all programs:
   unobservable by compiled programs running on real hardware when `SeqCst` fences are used, and it
   cannot produce all behaviors possibly observable on real hardware.
 
-Moreover, Miri fundamentally cannot tell you whether your code is *sound*. Soundness is the property
+Moreover, Miri fundamentally cannot tell you whether your code is *sound*. [Soundness] is the property
 of never causing undefined behavior when invoked from arbitrary safe code, even in combination with
 other sound code. In contrast, Miri can just tell you if *a particular way of interacting with your
 code* (e.g., a test suite) causes any undefined behavior. It is up to you to ensure sufficient
@@ -86,6 +86,7 @@ coverage.
 [`copy_nonoverlapping`]: https://doc.rust-lang.org/stable/std/ptr/fn.copy_nonoverlapping.html
 [Stacked Borrows]: https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md
 [Tree Borrows]: https://perso.crans.org/vanille/treebor/
+[Soundness]: https://rust-lang.github.io/unsafe-code-guidelines/glossary.html#soundness-of-code--of-a-library
 
 
 ## Using Miri
