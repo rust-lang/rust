@@ -151,7 +151,6 @@ impl<V, T> ProjectionElem<V, T> {
                 TyKind::Adt(_, subst) => {
                     db.field_types(f.parent)[f.local_id].clone().substitute(Interner, subst)
                 }
-                TyKind::Alias(inner) => inner.clone().intern(Interner),
                 _ => {
                     never!("Only adt has field");
                     return TyKind::Error.intern(Interner);
@@ -168,7 +167,6 @@ impl<V, T> ProjectionElem<V, T> {
                         TyKind::Error.intern(Interner)
                     }),
                 TyKind::Closure(id, subst) => closure_field(*id, subst, *f),
-                TyKind::Alias(inner) => inner.clone().intern(Interner),
                 _ => {
                     never!("Only tuple or closure has tuple or closure field");
                     return TyKind::Error.intern(Interner);
