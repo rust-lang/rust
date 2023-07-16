@@ -3,13 +3,12 @@
 use std::iter::{empty, successors};
 
 use parser::{SyntaxKind, T};
-use rowan::SyntaxElement;
 
 use crate::{
     algo::{self, neighbor},
     ast::{self, edit::IndentLevel, make, HasGenericParams},
     ted::{self, Position},
-    AstNode, AstToken, Direction,
+    AstNode, AstToken, Direction, SyntaxElement,
     SyntaxKind::{ATTR, COMMENT, WHITESPACE},
     SyntaxNode, SyntaxToken,
 };
@@ -577,7 +576,7 @@ impl ast::AssocItemList {
                 None => (IndentLevel::single(), Position::last_child_of(self.syntax()), "\n"),
             },
         };
-        let elements: Vec<SyntaxElement<_>> = vec![
+        let elements: Vec<SyntaxElement> = vec![
             make::tokens::whitespace(&format!("{whitespace}{indent}")).into(),
             item.syntax().clone().into(),
         ];
@@ -771,7 +770,7 @@ impl ast::VariantList {
                 None => (IndentLevel::single(), Position::last_child_of(self.syntax())),
             },
         };
-        let elements: Vec<SyntaxElement<_>> = vec![
+        let elements: Vec<SyntaxElement> = vec![
             make::tokens::whitespace(&format!("{}{indent}", "\n")).into(),
             variant.syntax().clone().into(),
             ast::make::token(T![,]).into(),
