@@ -608,7 +608,7 @@ impl<'a> Parser<'a> {
     /// Is a `dyn B0 + ... + Bn` type allowed here?
     fn is_explicit_dyn_type(&mut self) -> bool {
         self.check_keyword(kw::Dyn)
-            && (self.token.uninterpolated_span().rust_2018()
+            && (self.token.uninterpolated_span().at_least_rust_2018()
                 || self.look_ahead(1, |t| {
                     (t.can_begin_bound() || t.kind == TokenKind::BinOp(token::Star))
                         && !can_continue_type_after_non_fn_ident(t)

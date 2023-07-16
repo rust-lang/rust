@@ -86,7 +86,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 ));
             }
 
-            if self_ty.span.edition().rust_2021() {
+            if self_ty.span.edition().at_least_rust_2021() {
                 let msg = "trait objects must include the `dyn` keyword";
                 let label = "add `dyn` keyword before this trait";
                 let mut diag =

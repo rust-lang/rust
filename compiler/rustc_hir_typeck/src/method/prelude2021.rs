@@ -32,7 +32,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
 
         // Rust 2021 and later is already using the new prelude
-        if span.rust_2021() {
+        if span.at_least_rust_2021() {
             return;
         }
 
@@ -203,7 +203,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         pick: &Pick<'tcx>,
     ) {
         // Rust 2021 and later is already using the new prelude
-        if span.rust_2021() {
+        if span.at_least_rust_2021() {
             return;
         }
 
