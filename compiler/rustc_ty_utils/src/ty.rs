@@ -129,7 +129,9 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
     // sure that this will succeed without errors anyway.
 
     if tcx.def_kind(def_id) == DefKind::AssocFn
-        && tcx.associated_item(def_id).container == ty::AssocItemContainer::TraitContainer
+        && let assoc_item = tcx.associated_item(def_id)
+        && assoc_item.container == ty::AssocItemContainer::TraitContainer
+        && assoc_item.defaultness(tcx).has_value()
     {
         let sig = tcx.fn_sig(def_id).instantiate_identity();
         // We accounted for the binder of the fn sig, so skip the binder.
