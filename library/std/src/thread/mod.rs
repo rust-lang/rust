@@ -178,7 +178,7 @@ use crate::sys_common::thread;
 use crate::sys_common::thread_info;
 use crate::sys_common::thread_parking::Parker;
 use crate::sys_common::{AsInner, IntoInner};
-use crate::time::Duration;
+use crate::time::{Duration, Instant};
 
 #[stable(feature = "scoped_threads", since = "1.63.0")]
 mod scoped;
@@ -882,14 +882,14 @@ pub fn sleep(dur: Duration) {
 ///
 /// # Platform-specific behavior
 ///
-/// This function uses ['sleep'] internally, see its platform-specific behaviour.
+/// This function uses [`sleep`] internally, see its platform-specific behaviour.
 ///
 ///
 /// # Examples
 ///
 /// A simple game loop that limits the game to 60 frames per second.
 ///
-/// '''no_run
+/// ```no_run
 /// # use std::time::{Duration, Instant};
 /// # use std::thread;
 /// #
@@ -905,7 +905,7 @@ pub fn sleep(dur: Duration) {
 ///     update();
 ///     render();
 /// }
-/// '''
+/// ```
 ///
 /// A slow api we must not call too fast and which takes a few
 /// tries before succeeding. By using `sleep_until` the time the
@@ -915,10 +915,15 @@ pub fn sleep(dur: Duration) {
 /// # use std::time::{Duration, Instant};
 /// # use std::thread;
 /// #
-/// # fn slow_web_api_call() {}
+/// # enum Status {
+/// #     Ready(usize),
+/// #     Waiting,
+/// # }
+/// # fn slow_web_api_call() -> Status { Status::Ready(42) }
 /// #
 /// # const MAX_DURATION: Duration = Duration::from_secs(10);
 /// #
+/// # fn try_api_call() -> Result<usize, ()> {
 /// let deadline = Instant::now() + MAX_DURATION;
 /// let delay = Duration::from_millis(250);
 /// let mut next_attempt = Instant::now();
@@ -926,20 +931,22 @@ pub fn sleep(dur: Duration) {
 ///     if Instant::now() > deadline {
 ///         break Err(());
 ///     }
-///     if let Ready(data) = slow_web_api_call() {
+///     if let Status::Ready(data) = slow_web_api_call() {
 ///         break Ok(data);
 ///     }
 ///
 ///     next_attempt = deadline.min(next_attempt + delay);
 ///     thread::sleep_until(next_attempt);
 /// }
+/// # }
+/// # let _data = try_api_call();
 /// ```
-#[unstable(feature = "thread_sleep_until", issue = "todo")]
-pub fn sleep_untill(deadline: Instant) {
+#[unstable(feature = "thread_sleep_until", issue = "113752")]
+pub fn sleep_until(deadline: Instant) {
     let now = Instant::now();
 
     if let Some(delay) = deadline.checked_duration_since(now) {
-        thread::sleep(delay);
+        sleep(delay);
     }
 }
 
