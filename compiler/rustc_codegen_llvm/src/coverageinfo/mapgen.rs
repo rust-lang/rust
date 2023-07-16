@@ -63,7 +63,7 @@ pub fn finalize(cx: &CodegenCx<'_, '_>) {
     let mut function_data = Vec::new();
     for (instance, function_coverage) in function_coverage_map {
         debug!("Generate function coverage for {}, {:?}", cx.codegen_unit.name(), instance);
-        let mangled_function_name = tcx.symbol_name(instance).to_string();
+        let mangled_function_name = tcx.symbol_name(instance).name;
         let source_hash = function_coverage.source_hash();
         let is_used = function_coverage.is_used();
         let (expressions, counter_regions) =
@@ -95,7 +95,7 @@ pub fn finalize(cx: &CodegenCx<'_, '_>) {
 
     let filenames_size = filenames_buffer.len();
     let filenames_val = cx.const_bytes(&filenames_buffer);
-    let filenames_ref = coverageinfo::hash_bytes(filenames_buffer);
+    let filenames_ref = coverageinfo::hash_bytes(&filenames_buffer);
 
     // Generate the LLVM IR representation of the coverage map and store it in a well-known global
     let cov_data_val = mapgen.generate_coverage_map(cx, version, filenames_size, filenames_val);
@@ -228,7 +228,7 @@ impl CoverageMapGenerator {
 /// specific, well-known section and name.
 fn save_function_record(
     cx: &CodegenCx<'_, '_>,
-    mangled_function_name: String,
+    mangled_function_name: &str,
     source_hash: u64,
     filenames_ref: u64,
     coverage_mapping_buffer: Vec<u8>,
@@ -238,7 +238,7 @@ fn save_function_record(
     let coverage_mapping_size = coverage_mapping_buffer.len();
     let coverage_mapping_val = cx.const_bytes(&coverage_mapping_buffer);
 
-    let func_name_hash = coverageinfo::hash_str(&mangled_function_name);
+    let func_name_hash = coverageinfo::hash_bytes(mangled_function_name.as_bytes());
     let func_name_hash_val = cx.const_u64(func_name_hash);
     let coverage_mapping_size_val = cx.const_u32(coverage_mapping_size as u32);
     let source_hash_val = cx.const_u64(source_hash);
