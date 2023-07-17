@@ -399,6 +399,9 @@ const_eval_unallowed_mutable_refs_raw =
 const_eval_unallowed_op_in_const_context =
     {$msg}
 
+const_eval_unavailable_target_features_for_fn =
+    calling a function that requires unavailable target features: {$unavailable_feats}
+
 const_eval_undefined_behavior =
     it is undefined behavior to use this value
 
