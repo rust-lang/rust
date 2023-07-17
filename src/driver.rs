@@ -192,7 +192,7 @@ You can use tool lints to allow or deny lints from your code, eg.:
     );
 }
 
-const BUG_REPORT_URL: &str = "https://github.com/rust-lang/rust-clippy/issues/new";
+const BUG_REPORT_URL: &str = "https://github.com/rust-lang/rust-clippy/issues/new?template=ice.yml";
 
 #[allow(clippy::too_many_lines)]
 pub fn main() {
