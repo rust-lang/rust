@@ -703,7 +703,7 @@ Minimum chars an ident can have, anything below or equal to this will be linted.
 ## `accept-comment-above-statement`
 Whether to accept a safety comment to be placed above the statement containing the `unsafe` block
 
-**Default Value:** `false` (`bool`)
+**Default Value:** `true` (`bool`)
 
 ---
 **Affected lints:**
@@ -713,7 +713,7 @@ Whether to accept a safety comment to be placed above the statement containing t
 ## `accept-comment-above-attributes`
 Whether to accept a safety comment to be placed above the attributes for the `unsafe` block
 
-**Default Value:** `false` (`bool`)
+**Default Value:** `true` (`bool`)
 
 ---
 **Affected lints:**

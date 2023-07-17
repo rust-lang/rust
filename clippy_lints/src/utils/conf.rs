@@ -542,11 +542,11 @@ define_Conf! {
     /// Lint: UNDOCUMENTED_UNSAFE_BLOCKS.
     ///
     /// Whether to accept a safety comment to be placed above the statement containing the `unsafe` block
-    (accept_comment_above_statement: bool = false),
+    (accept_comment_above_statement: bool = true),
     /// Lint: UNDOCUMENTED_UNSAFE_BLOCKS.
     ///
     /// Whether to accept a safety comment to be placed above the attributes for the `unsafe` block
-    (accept_comment_above_attributes: bool = false),
+    (accept_comment_above_attributes: bool = true),
     /// Lint: UNNECESSARY_RAW_STRING_HASHES.
     ///
     /// Whether to allow `r#""#` when `r""` can be used
