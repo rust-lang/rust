@@ -2129,6 +2129,12 @@ fn collect_print_requests(
         ("deployment-target", PrintKind::DeploymentTarget),
     ];
 
+    // We disallow reusing the same path in multiple prints, such as `--print
+    // cfg=output.txt --print link-args=output.txt`, because outputs are printed
+    // by disparate pieces of the compiler, and keeping track of which files
+    // need to be overwritten vs appended to is annoying.
+    let mut printed_paths = FxHashSet::default();
+
     prints.extend(matches.opt_strs("print").into_iter().map(|req| {
         let (req, out) = split_out_file_name(&req);
 
@@ -2165,6 +2171,15 @@ fn collect_print_requests(
         };
 
         let out = out.unwrap_or(OutFileName::Stdout);
+        if let OutFileName::Real(path) = &out {
+            if !printed_paths.insert(path.clone()) {
+                handler.early_error(format!(
+                    "cannot print multiple outputs to the same path: {}",
+                    path.display(),
+                ));
+            }
+        }
+
         PrintRequest { kind, out }
     }));
 
