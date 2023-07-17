@@ -634,7 +634,7 @@ impl Evaluator<'_> {
                     addr = addr.offset(ty_size * offset);
                 }
                 &ProjectionElem::Subslice { from, to } => {
-                    let inner_ty = match &ty.data(Interner).kind {
+                    let inner_ty = match &ty.kind(Interner) {
                         TyKind::Array(inner, _) | TyKind::Slice(inner) => inner.clone(),
                         _ => TyKind::Error.intern(Interner),
                     };
@@ -793,7 +793,7 @@ impl Evaluator<'_> {
                                 .iter()
                                 .map(|it| self.operand_ty_and_eval(it, &mut locals))
                                 .collect::<Result<Vec<_>>>()?;
-                            let stack_frame = match &fn_ty.data(Interner).kind {
+                            let stack_frame = match &fn_ty.kind(Interner) {
                                 TyKind::Function(_) => {
                                     let bytes = self.eval_operand(func, &mut locals)?;
                                     self.exec_fn_pointer(
@@ -1255,7 +1255,7 @@ impl Evaluator<'_> {
                     PointerCast::ReifyFnPointer | PointerCast::ClosureFnPointer(_) => {
                         let current_ty = self.operand_ty(operand, locals)?;
                         if let TyKind::FnDef(_, _) | TyKind::Closure(_, _) =
-                            &current_ty.data(Interner).kind
+                            &current_ty.kind(Interner)
                         {
                             let id = self.vtable_map.id(current_ty);
                             let ptr_size = self.ptr_size();
@@ -1408,8 +1408,8 @@ impl Evaluator<'_> {
         addr: Interval,
     ) -> Result<IntervalOrOwned> {
         use IntervalOrOwned::*;
-        Ok(match &target_ty.data(Interner).kind {
-            TyKind::Slice(_) => match &current_ty.data(Interner).kind {
+        Ok(match &target_ty.kind(Interner) {
+            TyKind::Slice(_) => match &current_ty.kind(Interner) {
                 TyKind::Array(_, size) => {
                     let len = match try_const_usize(self.db, size) {
                         None => {
@@ -1435,7 +1435,7 @@ impl Evaluator<'_> {
                 r.extend(vtable.to_le_bytes().into_iter());
                 Owned(r)
             }
-            TyKind::Adt(id, target_subst) => match &current_ty.data(Interner).kind {
+            TyKind::Adt(id, target_subst) => match &current_ty.kind(Interner) {
                 TyKind::Adt(current_id, current_subst) => {
                     if id != current_id {
                         not_supported!("unsizing struct with different type");
@@ -1931,7 +1931,7 @@ impl Evaluator<'_> {
     ) -> Result<Option<StackFrame>> {
         let id = from_bytes!(usize, bytes.get(self)?);
         let next_ty = self.vtable_map.ty(id)?.clone();
-        match &next_ty.data(Interner).kind {
+        match &next_ty.kind(Interner) {
             TyKind::FnDef(def, generic_args) => {
                 self.exec_fn_def(*def, generic_args, destination, args, &locals, target_bb, span)
             }
@@ -2182,7 +2182,7 @@ impl Evaluator<'_> {
             let size = self.size_of_sized(&func_ty, locals, "self type of fn trait")?;
             func_data = Interval { addr: Address::from_bytes(func_data.get(self)?)?, size };
         }
-        match &func_ty.data(Interner).kind {
+        match &func_ty.kind(Interner) {
             TyKind::FnDef(def, subst) => {
                 return self.exec_fn_def(
                     *def,
