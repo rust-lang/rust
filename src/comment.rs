@@ -58,25 +58,23 @@ fn custom_opener(s: &str) -> &str {
 }
 
 impl<'a> CommentStyle<'a> {
-    /// Returns `true` if the commenting style covers a line only.
+    /// Returns `true` if the commenting style cannot span multiple lines.
     pub(crate) fn is_line_comment(&self) -> bool {
-        match *self {
+        matches!(
+            self,
             CommentStyle::DoubleSlash
-            | CommentStyle::TripleSlash
-            | CommentStyle::Doc
-            | CommentStyle::Custom(_) => true,
-            _ => false,
-        }
+                | CommentStyle::TripleSlash
+                | CommentStyle::Doc
+                | CommentStyle::Custom(_)
+        )
     }
 
-    /// Returns `true` if the commenting style can span over multiple lines.
+    /// Returns `true` if the commenting style can span multiple lines.
     pub(crate) fn is_block_comment(&self) -> bool {
-        match *self {
-            CommentStyle::SingleBullet | CommentStyle::DoubleBullet | CommentStyle::Exclamation => {
-                true
-            }
-            _ => false,
-        }
+        matches!(
+            self,
+            CommentStyle::SingleBullet | CommentStyle::DoubleBullet | CommentStyle::Exclamation
+        )
     }
 
     /// Returns `true` if the commenting style is for documentation.
