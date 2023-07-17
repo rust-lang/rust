@@ -174,6 +174,10 @@ impl<'tcx> LateLintPass<'tcx> for Return {
         sp: Span,
         _: LocalDefId,
     ) {
+        if sp.from_expansion() {
+            return;
+        }
+
         match kind {
             FnKind::Closure => {
                 // when returning without value in closure, replace this `return`
