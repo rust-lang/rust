@@ -248,7 +248,8 @@ where
         }
         let size_estimate = mono_item.size_estimate(cx.tcx);
 
-        cgu.items_mut().insert(mono_item, MonoItemData { linkage, visibility, size_estimate });
+        cgu.items_mut()
+            .insert(mono_item, MonoItemData { inlined: false, linkage, visibility, size_estimate });
 
         // Get all inlined items that are reachable from `mono_item` without
         // going via another root item. This includes drop-glue, functions from
@@ -263,6 +264,7 @@ where
         for inlined_item in reachable_inlined_items {
             // This is a CGU-private copy.
             cgu.items_mut().entry(inlined_item).or_insert_with(|| MonoItemData {
+                inlined: true,
                 linkage: Linkage::Internal,
                 visibility: Visibility::Default,
                 size_estimate: inlined_item.size_estimate(cx.tcx),
@@ -870,19 +872,16 @@ fn debug_dump<'a, 'tcx: 'a>(tcx: TyCtxt<'tcx>, label: &str, cgus: &[CodegenUnit<
             all_cgu_sizes.push(cgu.size_estimate());
 
             for (item, data) in cgu.items() {
-                match item.instantiation_mode(tcx) {
-                    InstantiationMode::GloballyShared { .. } => {
-                        root_items += 1;
-                        root_size += data.size_estimate;
+                if !data.inlined {
+                    root_items += 1;
+                    root_size += data.size_estimate;
+                } else {
+                    if inlined_items.insert(item) {
+                        unique_inlined_items += 1;
+                        unique_inlined_size += data.size_estimate;
                     }
-                    InstantiationMode::LocalCopy => {
-                        if inlined_items.insert(item) {
-                            unique_inlined_items += 1;
-                            unique_inlined_size += data.size_estimate;
-                        }
-                        placed_inlined_items += 1;
-                        placed_inlined_size += data.size_estimate;
-                    }
+                    placed_inlined_items += 1;
+                    placed_inlined_size += data.size_estimate;
                 }
             }
         }
@@ -937,10 +936,7 @@ fn debug_dump<'a, 'tcx: 'a>(tcx: TyCtxt<'tcx>, label: &str, cgus: &[CodegenUnit<
                 let symbol_name = item.symbol_name(tcx).name;
                 let symbol_hash_start = symbol_name.rfind('h');
                 let symbol_hash = symbol_hash_start.map_or("<no hash>", |i| &symbol_name[i..]);
-                let kind = match item.instantiation_mode(tcx) {
-                    InstantiationMode::GloballyShared { .. } => "root",
-                    InstantiationMode::LocalCopy => "inlined",
-                };
+                let kind = if !data.inlined { "root" } else { "inlined" };
                 let size = data.size_estimate;
                 let _ = with_no_trimmed_paths!(writeln!(
                     s,
