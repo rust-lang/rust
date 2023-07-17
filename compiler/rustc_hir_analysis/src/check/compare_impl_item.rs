@@ -867,7 +867,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ImplTraitInTraitCollector<'_, 'tcx> {
             });
             self.types.insert(proj.def_id, (infer_ty, proj.args));
             // Recurse into bounds
-            for (pred, pred_span) in self.interner().explicit_item_bounds(proj.def_id).arg_iter_copied(self.interner(), proj.args) {
+            for (pred, pred_span) in self.interner().explicit_item_bounds(proj.def_id).iter_instantiated_copied(self.interner(), proj.args) {
                 let pred = pred.fold_with(self);
                 let pred = self.ocx.normalize(
                     &ObligationCause::misc(self.span, self.body_id),
@@ -2149,7 +2149,7 @@ pub(super) fn check_type_bounds<'tcx>(
 
     let obligations: Vec<_> = tcx
         .explicit_item_bounds(trait_ty.def_id)
-        .arg_iter_copied(tcx, rebased_args)
+        .iter_instantiated_copied(tcx, rebased_args)
         .map(|(concrete_ty_bound, span)| {
             debug!("check_type_bounds: concrete_ty_bound = {:?}", concrete_ty_bound);
             traits::Obligation::new(tcx, mk_cause(span), param_env, concrete_ty_bound)

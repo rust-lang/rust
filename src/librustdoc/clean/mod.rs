@@ -441,7 +441,7 @@ fn clean_projection<'tcx>(
         let bounds = cx
             .tcx
             .explicit_item_bounds(ty.skip_binder().def_id)
-            .arg_iter_copied(cx.tcx, ty.skip_binder().args)
+            .iter_instantiated_copied(cx.tcx, ty.skip_binder().args)
             .map(|(pred, _)| pred)
             .collect::<Vec<_>>();
         return clean_middle_opaque_bounds(cx, bounds);
@@ -2071,7 +2071,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
                 let bounds = cx
                     .tcx
                     .explicit_item_bounds(def_id)
-                    .arg_iter_copied(cx.tcx, args)
+                    .iter_instantiated_copied(cx.tcx, args)
                     .map(|(bound, _)| bound)
                     .collect::<Vec<_>>();
                 let ty = clean_middle_opaque_bounds(cx, bounds);
