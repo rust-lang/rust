@@ -12,12 +12,11 @@ use rustc_ast::util::parser::{PREC_POSTFIX, PREC_PREFIX};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::graph::iterate::{CycleDetector, TriColorDepthFirstSearch};
 use rustc_errors::Applicability;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{walk_ty, Visitor};
 use rustc_hir::{
-    self as hir,
-    def_id::{DefId, LocalDefId},
-    BindingAnnotation, Body, BodyId, BorrowKind, Closure, Expr, ExprKind, FnRetTy, GenericArg, HirId, ImplItem,
-    ImplItemKind, Item, ItemKind, Local, MatchSource, Mutability, Node, Pat, PatKind, Path, QPath, TraitItem,
+    self as hir, BindingAnnotation, Body, BodyId, BorrowKind, Closure, Expr, ExprKind, FnRetTy, GenericArg, HirId,
+    ImplItem, ImplItemKind, Item, ItemKind, Local, MatchSource, Mutability, Node, Pat, PatKind, Path, QPath, TraitItem,
     TraitItemKind, TyKind, UnOp,
 };
 use rustc_index::bit_set::BitSet;
@@ -30,9 +29,11 @@ use rustc_middle::ty::{
     ProjectionPredicate, Ty, TyCtxt, TypeVisitableExt, TypeckResults,
 };
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::{symbol::sym, Span, Symbol};
+use rustc_span::symbol::sym;
+use rustc_span::{Span, Symbol};
 use rustc_trait_selection::infer::InferCtxtExt as _;
-use rustc_trait_selection::traits::{query::evaluate_obligation::InferCtxtExt as _, Obligation, ObligationCause};
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
+use rustc_trait_selection::traits::{Obligation, ObligationCause};
 use std::collections::VecDeque;
 
 declare_clippy_lint! {
@@ -76,6 +77,11 @@ declare_clippy_lint! {
     /// ### Why is this bad?
     /// Suggests that the receiver of the expression borrows
     /// the expression.
+    ///
+    /// ### Known problems
+    /// The lint cannot tell when the implementation of a trait
+    /// for `&T` and `T` do different things. Removing a borrow
+    /// in such a case can change the semantics of the code.
     ///
     /// ### Example
     /// ```rust
@@ -589,7 +595,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                     pat.spans,
                     "this pattern creates a reference to a reference",
                     |diag| {
-                        diag.multipart_suggestion("try this", replacements, app);
+                        diag.multipart_suggestion("try", replacements, app);
                     },
                 );
             }
@@ -1123,7 +1129,9 @@ fn needless_borrow_impl_arg_position<'tcx>(
     let destruct_trait_def_id = cx.tcx.lang_items().destruct_trait();
     let sized_trait_def_id = cx.tcx.lang_items().sized_trait();
 
-    let Some(callee_def_id) = fn_def_id(cx, parent) else { return Position::Other(precedence) };
+    let Some(callee_def_id) = fn_def_id(cx, parent) else {
+        return Position::Other(precedence);
+    };
     let fn_sig = cx.tcx.fn_sig(callee_def_id).instantiate_identity().skip_binder();
     let args_with_expr_ty = cx
         .typeck_results()
@@ -1252,7 +1260,12 @@ fn has_ref_mut_self_method(cx: &LateContext<'_>, trait_def_id: DefId) -> bool {
         .in_definition_order()
         .any(|assoc_item| {
             if assoc_item.fn_has_self_parameter {
-                let self_ty = cx.tcx.fn_sig(assoc_item.def_id).instantiate_identity().skip_binder().inputs()[0];
+                let self_ty = cx
+                    .tcx
+                    .fn_sig(assoc_item.def_id)
+                    .instantiate_identity()
+                    .skip_binder()
+                    .inputs()[0];
                 matches!(self_ty.kind(), ty::Ref(_, _, Mutability::Mut))
             } else {
                 false
@@ -1296,8 +1309,8 @@ fn referent_used_exactly_once<'tcx>(
     possible_borrowers: &mut Vec<(LocalDefId, PossibleBorrowerMap<'tcx, 'tcx>)>,
     reference: &Expr<'tcx>,
 ) -> bool {
-    let mir = enclosing_mir(cx.tcx, reference.hir_id);
-    if let Some(local) = expr_local(cx.tcx, reference)
+    if let Some(mir) = enclosing_mir(cx.tcx, reference.hir_id)
+        && let Some(local) = expr_local(cx.tcx, reference)
         && let [location] = *local_assignments(mir, local).as_slice()
         && let Some(statement) = mir.basic_blocks[location.block].statements.get(location.statement_index)
         && let StatementKind::Assign(box (_, Rvalue::Ref(_, _, place))) = statement.kind
@@ -1442,9 +1455,7 @@ fn ty_auto_deref_stability<'tcx>(
             ty::Adt(..) if ty.has_placeholders() || ty.has_opaque_types() => {
                 Position::ReborrowStable(precedence).into()
             },
-            ty::Adt(_, args) if args.has_non_region_param() => {
-                TyPosition::new_deref_stable_for_result(precedence, ty)
-            },
+            ty::Adt(_, args) if args.has_non_region_param() => TyPosition::new_deref_stable_for_result(precedence, ty),
             ty::Bool
             | ty::Char
             | ty::Int(_)
@@ -1531,7 +1542,7 @@ fn report<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, state: State, data
                     Mutability::Not => "explicit `deref` method call",
                     Mutability::Mut => "explicit `deref_mut` method call",
                 },
-                "try this",
+                "try",
                 format!("{addr_of_str}{deref_str}{expr_str}"),
                 app,
             );
@@ -1593,7 +1604,7 @@ fn report<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, state: State, data
                         } else {
                             format!("{prefix}{snip}")
                         };
-                    diag.span_suggestion(data.span, "try this", sugg, app);
+                    diag.span_suggestion(data.span, "try", sugg, app);
                 },
             );
         },
@@ -1620,7 +1631,7 @@ fn report<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, state: State, data
                 |diag| {
                     let mut app = Applicability::MachineApplicable;
                     let snip = snippet_with_context(cx, expr.span, data.span.ctxt(), "..", &mut app).0;
-                    diag.span_suggestion(data.span, "try this", snip.into_owned(), app);
+                    diag.span_suggestion(data.span, "try", snip.into_owned(), app);
                 },
             );
         },

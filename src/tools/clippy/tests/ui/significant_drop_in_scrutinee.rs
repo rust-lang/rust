@@ -7,8 +7,7 @@
 use std::num::ParseIntError;
 use std::ops::Deref;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::RwLock;
-use std::sync::{Mutex, MutexGuard};
+use std::sync::{Mutex, MutexGuard, RwLock};
 
 struct State {}
 

@@ -1,6 +1,8 @@
-use clippy_utils::{diagnostics::span_lint_and_then, is_in_test_function};
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::is_in_test_function;
 
-use rustc_hir::{intravisit::FnKind, Body, HirId};
+use rustc_hir::intravisit::FnKind;
+use rustc_hir::{Body, HirId};
 use rustc_lint::LateContext;
 use rustc_span::Span;
 

@@ -15,14 +15,12 @@ use rustc_hir::{
 };
 use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_lint::{LateContext, LateLintPass, Lint};
-use rustc_middle::mir::interpret::ErrorHandled;
+use rustc_middle::mir::interpret::{ErrorHandled, EvalToValTreeResult, GlobalId};
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{sym, InnerSpan, Span};
 use rustc_target::abi::VariantIdx;
-use rustc_middle::mir::interpret::EvalToValTreeResult;
-use rustc_middle::mir::interpret::GlobalId;
 
 // FIXME: this is a correctness problem but there's no suitable
 // warn-by-default category.
@@ -154,24 +152,37 @@ fn is_value_unfrozen_raw<'tcx>(
             // As of 2022-09-08 miri doesn't track which union field is active so there's no safe way to check the
             // contained value.
             ty::Adt(def, ..) if def.is_union() => false,
-            ty::Array(ty, _)  => {
-                val.unwrap_branch().iter().any(|field| inner(cx, *field, ty))
-            },
+            ty::Array(ty, _) => val.unwrap_branch().iter().any(|field| inner(cx, *field, ty)),
             ty::Adt(def, _) if def.is_union() => false,
-            ty::Adt(def, args) if def.is_enum() => {
+            ty::Adt(def, substs) if def.is_enum() => {
                 let (&variant_index, fields) = val.unwrap_branch().split_first().unwrap();
-                let variant_index =
-                    VariantIdx::from_u32(variant_index.unwrap_leaf().try_to_u32().ok().unwrap());
-                fields.iter().copied().zip(
-                    def.variants()[variant_index]
+                let variant_index = VariantIdx::from_u32(variant_index.unwrap_leaf().try_to_u32().ok().unwrap());
+                fields
+                    .iter()
+                    .copied()
+                    .zip(
+                        def.variants()[variant_index]
+                            .fields
+                            .iter()
+                            .map(|field| field.ty(cx.tcx, substs)),
+                    )
+                    .any(|(field, ty)| inner(cx, field, ty))
+            },
+            ty::Adt(def, substs) => val
+                .unwrap_branch()
+                .iter()
+                .zip(
+                    def.non_enum_variant()
                         .fields
                         .iter()
-                        .map(|field| field.ty(cx.tcx, args))).any(|(field, ty)| inner(cx, field, ty))
-            }
-            ty::Adt(def, args) => {
-                val.unwrap_branch().iter().zip(def.non_enum_variant().fields.iter().map(|field| field.ty(cx.tcx, args))).any(|(field, ty)| inner(cx, *field, ty))
-            }
-            ty::Tuple(tys) => val.unwrap_branch().iter().zip(tys).any(|(field, ty)| inner(cx, *field, ty)),
+                        .map(|field| field.ty(cx.tcx, substs)),
+                )
+                .any(|(field, ty)| inner(cx, *field, ty)),
+            ty::Tuple(tys) => val
+                .unwrap_branch()
+                .iter()
+                .zip(tys)
+                .any(|(field, ty)| inner(cx, *field, ty)),
             _ => false,
         }
     }
@@ -208,7 +219,10 @@ fn is_value_unfrozen_poly<'tcx>(cx: &LateContext<'tcx>, body_id: BodyId, ty: Ty<
     let def_id = body_id.hir_id.owner.to_def_id();
     let args = ty::GenericArgs::identity_for_item(cx.tcx, def_id);
     let instance = ty::Instance::new(def_id, args);
-    let cid = rustc_middle::mir::interpret::GlobalId { instance, promoted: None };
+    let cid = rustc_middle::mir::interpret::GlobalId {
+        instance,
+        promoted: None,
+    };
     let param_env = cx.tcx.param_env(def_id).with_reveal_all_normalized(cx.tcx);
     let result = cx.tcx.const_eval_global_id_for_typeck(param_env, cid, None);
     is_value_unfrozen_raw(cx, result, ty)
@@ -221,7 +235,6 @@ fn is_value_unfrozen_expr<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId, def_id: D
     is_value_unfrozen_raw(cx, result, ty)
 }
 
-
 pub fn const_eval_resolve<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
@@ -230,9 +243,12 @@ pub fn const_eval_resolve<'tcx>(
 ) -> EvalToValTreeResult<'tcx> {
     match ty::Instance::resolve(tcx, param_env, ct.def, ct.args) {
         Ok(Some(instance)) => {
-            let cid = GlobalId { instance, promoted: None };
+            let cid = GlobalId {
+                instance,
+                promoted: None,
+            };
             tcx.const_eval_global_id_for_typeck(param_env, cid, span)
-        }
+        },
         Ok(None) => Err(ErrorHandled::TooGeneric),
         Err(err) => Err(ErrorHandled::Reported(err.into())),
     }
@@ -392,7 +408,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst {
 
             // Make sure it is a const item.
             let Res::Def(DefKind::Const | DefKind::AssocConst, item_def_id) = cx.qpath_res(qpath, expr.hir_id) else {
-                return
+                return;
             };
 
             // Climb up to resolve any field access and explicit referencing.

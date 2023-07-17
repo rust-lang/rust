@@ -8,8 +8,7 @@ use rustc_hir::{BlockCheckMode, Expr, ExprKind, UnsafeSource};
 use rustc_lint::{LateContext, LintContext};
 use rustc_session::Session;
 use rustc_span::source_map::{original_sp, SourceMap};
-use rustc_span::{hygiene, SourceFile};
-use rustc_span::{BytePos, Pos, Span, SpanData, SyntaxContext, DUMMY_SP};
+use rustc_span::{hygiene, BytePos, Pos, SourceFile, Span, SpanData, SyntaxContext, DUMMY_SP};
 use std::borrow::Cow;
 use std::ops::Range;
 

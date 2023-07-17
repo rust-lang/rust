@@ -2,7 +2,7 @@ error: immediately dereferencing a reference
   --> $DIR/deref_addrof.rs:24:13
    |
 LL |     let b = *&a;
-   |             ^^^ help: try this: `a`
+   |             ^^^ help: try: `a`
    |
    = note: `-D clippy::deref-addrof` implied by `-D warnings`
 
@@ -10,49 +10,49 @@ error: immediately dereferencing a reference
   --> $DIR/deref_addrof.rs:26:13
    |
 LL |     let b = *&get_number();
-   |             ^^^^^^^^^^^^^^ help: try this: `get_number()`
+   |             ^^^^^^^^^^^^^^ help: try: `get_number()`
 
 error: immediately dereferencing a reference
   --> $DIR/deref_addrof.rs:31:13
    |
 LL |     let b = *&bytes[1..2][0];
-   |             ^^^^^^^^^^^^^^^^ help: try this: `bytes[1..2][0]`
+   |             ^^^^^^^^^^^^^^^^ help: try: `bytes[1..2][0]`
 
 error: immediately dereferencing a reference
   --> $DIR/deref_addrof.rs:35:13
    |
 LL |     let b = *&(a);
-   |             ^^^^^ help: try this: `(a)`
+   |             ^^^^^ help: try: `(a)`
 
 error: immediately dereferencing a reference
   --> $DIR/deref_addrof.rs:37:13
    |
 LL |     let b = *(&a);
-   |             ^^^^^ help: try this: `a`
+   |             ^^^^^ help: try: `a`
 
 error: immediately dereferencing a reference
   --> $DIR/deref_addrof.rs:40:13
    |
 LL |     let b = *((&a));
-   |             ^^^^^^^ help: try this: `a`
+   |             ^^^^^^^ help: try: `a`
 
 error: immediately dereferencing a reference
   --> $DIR/deref_addrof.rs:42:13
    |
 LL |     let b = *&&a;
-   |             ^^^^ help: try this: `&a`
+   |             ^^^^ help: try: `&a`
 
 error: immediately dereferencing a reference
   --> $DIR/deref_addrof.rs:44:14
    |
 LL |     let b = **&aref;
-   |              ^^^^^^ help: try this: `aref`
+   |              ^^^^^^ help: try: `aref`
 
 error: immediately dereferencing a reference
   --> $DIR/deref_addrof.rs:54:17
    |
 LL |         inline!(*& $(@expr self))
-   |                 ^^^^^^^^^^^^^^^^ help: try this: `$(@expr self)`
+   |                 ^^^^^^^^^^^^^^^^ help: try: `$(@expr self)`
    |
    = note: this error originates in the macro `__inline_mac_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -60,7 +60,7 @@ error: immediately dereferencing a reference
   --> $DIR/deref_addrof.rs:58:17
    |
 LL |         inline!(*&mut $(@expr self))
-   |                 ^^^^^^^^^^^^^^^^^^^ help: try this: `$(@expr self)`
+   |                 ^^^^^^^^^^^^^^^^^^^ help: try: `$(@expr self)`
    |
    = note: this error originates in the macro `__inline_mac_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 

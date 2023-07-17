@@ -71,7 +71,9 @@ impl DbgMacro {
 
 impl LateLintPass<'_> for DbgMacro {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
-        let Some(macro_call) = root_macro_call_first_node(cx, expr) else { return };
+        let Some(macro_call) = root_macro_call_first_node(cx, expr) else {
+            return;
+        };
         if cx.tcx.is_diagnostic_item(sym::dbg_macro, macro_call.def_id) {
             // allows `dbg!` in test code if allow-dbg-in-test is set to true in clippy.toml
             if self.allow_dbg_in_tests

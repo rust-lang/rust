@@ -409,5 +409,89 @@ LL -     Ok::<_, ()>(1).unwrap_or_else(|_| 2);
 LL +     1;
    |
 
-error: aborting due to 36 previous errors
+error: used `unwrap_unchecked()` on `Some` value
+  --> $DIR/unnecessary_literal_unwrap.rs:82:22
+   |
+LL |     let _ = unsafe { Some(1).unwrap_unchecked() };
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Some` and `unwrap_unchecked()`
+   |
+LL -     let _ = unsafe { Some(1).unwrap_unchecked() };
+LL +     let _ = 1;
+   |
+
+error: used `unwrap_unchecked()` on `Some` value
+  --> $DIR/unnecessary_literal_unwrap.rs:83:22
+   |
+LL |     let _ = unsafe { Some(1).unwrap_unchecked() + *(&1 as *const i32) }; // needs to keep the unsafe block
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Some` and `unwrap_unchecked()`
+   |
+LL -     let _ = unsafe { Some(1).unwrap_unchecked() + *(&1 as *const i32) }; // needs to keep the unsafe block
+LL +     let _ = unsafe { 1 + *(&1 as *const i32) }; // needs to keep the unsafe block
+   |
+
+error: used `unwrap_unchecked()` on `Some` value
+  --> $DIR/unnecessary_literal_unwrap.rs:84:22
+   |
+LL |     let _ = unsafe { Some(1).unwrap_unchecked() } + 1;
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Some` and `unwrap_unchecked()`
+   |
+LL -     let _ = unsafe { Some(1).unwrap_unchecked() } + 1;
+LL +     let _ = 1 + 1;
+   |
+
+error: used `unwrap_unchecked()` on `Ok` value
+  --> $DIR/unnecessary_literal_unwrap.rs:85:22
+   |
+LL |     let _ = unsafe { Ok::<_, ()>(1).unwrap_unchecked() };
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Ok` and `unwrap_unchecked()`
+   |
+LL -     let _ = unsafe { Ok::<_, ()>(1).unwrap_unchecked() };
+LL +     let _ = 1;
+   |
+
+error: used `unwrap_unchecked()` on `Ok` value
+  --> $DIR/unnecessary_literal_unwrap.rs:86:22
+   |
+LL |     let _ = unsafe { Ok::<_, ()>(1).unwrap_unchecked() + *(&1 as *const i32) };
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Ok` and `unwrap_unchecked()`
+   |
+LL -     let _ = unsafe { Ok::<_, ()>(1).unwrap_unchecked() + *(&1 as *const i32) };
+LL +     let _ = unsafe { 1 + *(&1 as *const i32) };
+   |
+
+error: used `unwrap_unchecked()` on `Ok` value
+  --> $DIR/unnecessary_literal_unwrap.rs:87:22
+   |
+LL |     let _ = unsafe { Ok::<_, ()>(1).unwrap_unchecked() } + 1;
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Ok` and `unwrap_unchecked()`
+   |
+LL -     let _ = unsafe { Ok::<_, ()>(1).unwrap_unchecked() } + 1;
+LL +     let _ = 1 + 1;
+   |
+
+error: used `unwrap_err_unchecked()` on `Err` value
+  --> $DIR/unnecessary_literal_unwrap.rs:88:22
+   |
+LL |     let _ = unsafe { Err::<(), i32>(123).unwrap_err_unchecked() };
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Err` and `unwrap_err_unchecked()`
+   |
+LL -     let _ = unsafe { Err::<(), i32>(123).unwrap_err_unchecked() };
+LL +     let _ = 123;
+   |
+
+error: aborting due to 43 previous errors
 

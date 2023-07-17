@@ -12,20 +12,20 @@
 //! code was written, and check if the span contains that text. Note this will only work correctly
 //! if the span is not from a `macro_rules` based macro.
 
-use rustc_ast::{
-    ast::{AttrKind, Attribute, IntTy, LitIntType, LitKind, StrStyle, UintTy},
-    token::CommentKind,
-    AttrStyle,
-};
+use rustc_ast::ast::{AttrKind, Attribute, IntTy, LitIntType, LitKind, StrStyle, UintTy};
+use rustc_ast::token::CommentKind;
+use rustc_ast::AttrStyle;
+use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
-    intravisit::FnKind, Block, BlockCheckMode, Body, Closure, Destination, Expr, ExprKind, FieldDef, FnHeader, HirId,
-    Impl, ImplItem, ImplItemKind, IsAuto, Item, ItemKind, LoopSource, MatchSource, MutTy, Node, QPath, TraitItem,
-    TraitItemKind, Ty, TyKind, UnOp, UnsafeSource, Unsafety, Variant, VariantData, YieldSource,
+    Block, BlockCheckMode, Body, Closure, Destination, Expr, ExprKind, FieldDef, FnHeader, HirId, Impl, ImplItem,
+    ImplItemKind, IsAuto, Item, ItemKind, LoopSource, MatchSource, MutTy, Node, QPath, TraitItem, TraitItemKind, Ty,
+    TyKind, UnOp, UnsafeSource, Unsafety, Variant, VariantData, YieldSource,
 };
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
-use rustc_span::{symbol::Ident, Span, Symbol};
+use rustc_span::symbol::Ident;
+use rustc_span::{Span, Symbol};
 use rustc_target::spec::abi::Abi;
 
 /// The search pattern to look for. Used by `span_matches_pat`
@@ -339,7 +339,7 @@ fn ty_search_pat(ty: &Ty<'_>) -> (Pat, Pat) {
         TyKind::Tup(..) => (Pat::Str("("), Pat::Str(")")),
         TyKind::OpaqueDef(..) => (Pat::Str("impl"), Pat::Str("")),
         TyKind::Path(qpath) => qpath_search_pat(&qpath),
-        // NOTE: This is missing `TraitObject`. It always return true then.
+        // NOTE: This is missing `TraitObject`. It will always return true then.
         _ => (Pat::Str(""), Pat::Str("")),
     }
 }

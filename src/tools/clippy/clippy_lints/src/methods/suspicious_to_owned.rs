@@ -5,7 +5,8 @@ use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
-use rustc_middle::ty::{self, print::with_forced_trimmed_paths};
+use rustc_middle::ty::print::with_forced_trimmed_paths;
+use rustc_middle::ty::{self};
 use rustc_span::sym;
 
 use super::SUSPICIOUS_TO_OWNED;

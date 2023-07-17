@@ -2,7 +2,7 @@ error: immediately dereferencing a reference
   --> $DIR/deref_addrof_double_trigger.rs:10:14
    |
 LL |     let b = **&&a;
-   |              ^^^^ help: try this: `&a`
+   |              ^^^^ help: try: `&a`
    |
    = note: `-D clippy::deref-addrof` implied by `-D warnings`
 
@@ -10,13 +10,13 @@ error: immediately dereferencing a reference
   --> $DIR/deref_addrof_double_trigger.rs:14:17
    |
 LL |         let y = *&mut x;
-   |                 ^^^^^^^ help: try this: `x`
+   |                 ^^^^^^^ help: try: `x`
 
 error: immediately dereferencing a reference
   --> $DIR/deref_addrof_double_trigger.rs:21:18
    |
 LL |         let y = **&mut &mut x;
-   |                  ^^^^^^^^^^^^ help: try this: `&mut x`
+   |                  ^^^^^^^^^^^^ help: try: `&mut x`
 
 error: aborting due to 3 previous errors
 

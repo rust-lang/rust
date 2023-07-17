@@ -119,7 +119,13 @@ impl<'tcx> LateLintPass<'tcx> for IfThenSomeElseNone {
 
 fn stmts_contains_early_return(stmts: &[Stmt<'_>]) -> bool {
     stmts.iter().any(|stmt| {
-        let Stmt { kind: StmtKind::Semi(e), .. } = stmt else { return false };
+        let Stmt {
+            kind: StmtKind::Semi(e),
+            ..
+        } = stmt
+        else {
+            return false;
+        };
 
         contains_return(e)
     })

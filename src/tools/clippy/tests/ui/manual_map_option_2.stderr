@@ -12,7 +12,7 @@ LL | |     };
    | |_____^
    |
    = note: `-D clippy::manual-map` implied by `-D warnings`
-help: try this
+help: try
    |
 LL ~     let _ = Some(0).map(|x| {
 LL +             let y = (String::new(), String::new());
@@ -32,7 +32,7 @@ LL | |         None => None,
 LL | |     };
    | |_____^
    |
-help: try this
+help: try
    |
 LL ~     let _ = s.as_ref().map(|x| {
 LL +             if let Some(ref s) = s { (x.clone(), s) } else { panic!() }
@@ -47,7 +47,7 @@ LL |           let _ = match Some(0) {
 LL | |             Some(x) => Some(f(x)),
 LL | |             None => None,
 LL | |         };
-   | |_________^ help: try this: `Some(0).map(|x| f(x))`
+   | |_________^ help: try: `Some(0).map(|x| f(x))`
 
 error: manual implementation of `Option::map`
   --> $DIR/manual_map_option_2.rs:67:13
@@ -57,7 +57,7 @@ LL |       let _ = match Some(0) {
 LL | |         Some(x) => unsafe { Some(f(x)) },
 LL | |         None => None,
 LL | |     };
-   | |_____^ help: try this: `Some(0).map(|x| unsafe { f(x) })`
+   | |_____^ help: try: `Some(0).map(|x| unsafe { f(x) })`
 
 error: manual implementation of `Option::map`
   --> $DIR/manual_map_option_2.rs:71:13
@@ -67,7 +67,7 @@ LL |       let _ = match Some(0) {
 LL | |         Some(x) => Some(unsafe { f(x) }),
 LL | |         None => None,
 LL | |     };
-   | |_____^ help: try this: `Some(0).map(|x| unsafe { f(x) })`
+   | |_____^ help: try: `Some(0).map(|x| unsafe { f(x) })`
 
 error: aborting due to 5 previous errors
 

@@ -1,18 +1,16 @@
-use clippy_utils::{
-    diagnostics::span_lint_and_then,
-    expr_or_init, get_attr, path_to_local,
-    source::{indent_of, snippet},
-};
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::source::{indent_of, snippet};
+use clippy_utils::{expr_or_init, get_attr, path_to_local};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_errors::Applicability;
-use rustc_hir::{
-    self as hir,
-    intravisit::{walk_expr, Visitor},
-};
+use rustc_hir::def::{DefKind, Res};
+use rustc_hir::intravisit::{walk_expr, Visitor};
+use rustc_hir::{self as hir};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty::{GenericArgKind, Ty, TypeAndMut};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::{symbol::Ident, Span, DUMMY_SP};
+use rustc_span::symbol::Ident;
+use rustc_span::{sym, Span, DUMMY_SP};
 use std::borrow::Cow;
 
 declare_clippy_lint! {
@@ -333,7 +331,7 @@ impl<'ap, 'lc, 'others, 'stmt, 'tcx> Visitor<'tcx> for StmtsChecker<'ap, 'lc, 'o
                         }
                     },
                     hir::StmtKind::Semi(expr) => {
-                        if has_drop(expr, &apa.first_bind_ident) {
+                        if has_drop(expr, &apa.first_bind_ident, self.cx) {
                             apa.has_expensive_expr_after_last_attr = false;
                             apa.last_stmt_span = DUMMY_SP;
                             return;
@@ -430,11 +428,11 @@ fn dummy_stmt_expr<'any>(expr: &'any hir::Expr<'any>) -> hir::Stmt<'any> {
     }
 }
 
-fn has_drop(expr: &hir::Expr<'_>, first_bind_ident: &Ident) -> bool {
+fn has_drop(expr: &hir::Expr<'_>, first_bind_ident: &Ident, lcx: &LateContext<'_>) -> bool {
     if let hir::ExprKind::Call(fun, args) = expr.kind
         && let hir::ExprKind::Path(hir::QPath::Resolved(_, fun_path)) = &fun.kind
-        && let [fun_ident, ..] = fun_path.segments
-        && fun_ident.ident.name == rustc_span::sym::drop
+        && let Res::Def(DefKind::Fn, did) = fun_path.res
+        && lcx.tcx.is_diagnostic_item(sym::mem_drop, did)
         && let [first_arg, ..] = args
         && let hir::ExprKind::Path(hir::QPath::Resolved(_, arg_path)) = &first_arg.kind
         && let [first_arg_ps, .. ] = arg_path.segments

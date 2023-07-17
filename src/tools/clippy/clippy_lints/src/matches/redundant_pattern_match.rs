@@ -45,6 +45,62 @@ fn try_get_generic_ty(ty: Ty<'_>, index: usize) -> Option<Ty<'_>> {
     }
 }
 
+fn find_method_and_type<'tcx>(
+    cx: &LateContext<'tcx>,
+    check_pat: &Pat<'_>,
+    op_ty: Ty<'tcx>,
+) -> Option<(&'static str, Ty<'tcx>)> {
+    match check_pat.kind {
+        PatKind::TupleStruct(ref qpath, args, rest) => {
+            let is_wildcard = matches!(args.first().map(|p| &p.kind), Some(PatKind::Wild));
+            let is_rest = matches!((args, rest.as_opt_usize()), ([], Some(_)));
+
+            if is_wildcard || is_rest {
+                let res = cx.typeck_results().qpath_res(qpath, check_pat.hir_id);
+                let Some(id) = res.opt_def_id().map(|ctor_id| cx.tcx.parent(ctor_id)) else {
+                    return None;
+                };
+                let lang_items = cx.tcx.lang_items();
+                if Some(id) == lang_items.result_ok_variant() {
+                    Some(("is_ok()", try_get_generic_ty(op_ty, 0).unwrap_or(op_ty)))
+                } else if Some(id) == lang_items.result_err_variant() {
+                    Some(("is_err()", try_get_generic_ty(op_ty, 1).unwrap_or(op_ty)))
+                } else if Some(id) == lang_items.option_some_variant() {
+                    Some(("is_some()", op_ty))
+                } else if Some(id) == lang_items.poll_ready_variant() {
+                    Some(("is_ready()", op_ty))
+                } else if is_pat_variant(cx, check_pat, qpath, Item::Diag(sym::IpAddr, sym!(V4))) {
+                    Some(("is_ipv4()", op_ty))
+                } else if is_pat_variant(cx, check_pat, qpath, Item::Diag(sym::IpAddr, sym!(V6))) {
+                    Some(("is_ipv6()", op_ty))
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        },
+        PatKind::Path(ref path) => {
+            if let Res::Def(DefKind::Ctor(..), ctor_id) = cx.qpath_res(path, check_pat.hir_id)
+                && let Some(variant_id) = cx.tcx.opt_parent(ctor_id)
+            {
+                let method = if cx.tcx.lang_items().option_none_variant() == Some(variant_id) {
+                    "is_none()"
+                } else if cx.tcx.lang_items().poll_pending_variant() == Some(variant_id) {
+                    "is_pending()"
+                } else {
+                    return None;
+                };
+                // `None` and `Pending` don't have an inner type.
+                Some((method, cx.tcx.types.unit))
+            } else {
+                None
+            }
+        },
+        _ => None,
+    }
+}
+
 fn find_sugg_for_if_let<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx Expr<'_>,
@@ -62,52 +118,8 @@ fn find_sugg_for_if_let<'tcx>(
     let op_ty = cx.typeck_results().expr_ty(let_expr);
     // Determine which function should be used, and the type contained by the corresponding
     // variant.
-    let (good_method, inner_ty) = match check_pat.kind {
-        PatKind::TupleStruct(ref qpath, args, rest) => {
-            let is_wildcard = matches!(args.first().map(|p| &p.kind), Some(PatKind::Wild));
-            let is_rest = matches!((args, rest.as_opt_usize()), ([], Some(_)));
-
-            if is_wildcard || is_rest {
-                let res = cx.typeck_results().qpath_res(qpath, check_pat.hir_id);
-                let Some(id) = res.opt_def_id().map(|ctor_id| cx.tcx.parent(ctor_id)) else { return };
-                let lang_items = cx.tcx.lang_items();
-                if Some(id) == lang_items.result_ok_variant() {
-                    ("is_ok()", try_get_generic_ty(op_ty, 0).unwrap_or(op_ty))
-                } else if Some(id) == lang_items.result_err_variant() {
-                    ("is_err()", try_get_generic_ty(op_ty, 1).unwrap_or(op_ty))
-                } else if Some(id) == lang_items.option_some_variant() {
-                    ("is_some()", op_ty)
-                } else if Some(id) == lang_items.poll_ready_variant() {
-                    ("is_ready()", op_ty)
-                } else if is_pat_variant(cx, check_pat, qpath, Item::Diag(sym::IpAddr, sym!(V4))) {
-                    ("is_ipv4()", op_ty)
-                } else if is_pat_variant(cx, check_pat, qpath, Item::Diag(sym::IpAddr, sym!(V6))) {
-                    ("is_ipv6()", op_ty)
-                } else {
-                    return;
-                }
-            } else {
-                return;
-            }
-        },
-        PatKind::Path(ref path) => {
-            if let Res::Def(DefKind::Ctor(..), ctor_id) = cx.qpath_res(path, check_pat.hir_id)
-                && let Some(variant_id) = cx.tcx.opt_parent(ctor_id)
-            {
-                let method = if cx.tcx.lang_items().option_none_variant() == Some(variant_id) {
-                    "is_none()"
-                } else if cx.tcx.lang_items().poll_pending_variant() == Some(variant_id) {
-                    "is_pending()"
-                } else {
-                    return;
-                };
-                // `None` and `Pending` don't have an inner type.
-                (method, cx.tcx.types.unit)
-            } else {
-                return;
-            }
-        },
-        _ => return,
+    let Some((good_method, inner_ty)) = find_method_and_type(cx, check_pat, op_ty) else {
+        return;
     };
 
     // If this is the last expression in a block or there is an else clause then the whole
@@ -175,7 +187,7 @@ fn find_sugg_for_if_let<'tcx>(
                 .maybe_par()
                 .to_string();
 
-            diag.span_suggestion(span, "try this", format!("{keyword} {sugg}.{good_method}"), app);
+            diag.span_suggestion(span, "try", format!("{keyword} {sugg}.{good_method}"), app);
 
             if needs_drop {
                 diag.note("this will change drop order of the result, as well as all temporaries");
@@ -200,7 +212,7 @@ pub(super) fn check_match<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, op
                 REDUNDANT_PATTERN_MATCHING,
                 span,
                 &format!("redundant pattern matching, consider using `{good_method}`"),
-                "try this",
+                "try",
                 format!("{}.{good_method}", snippet(cx, result_expr.span, "_")),
                 Applicability::MachineApplicable,
             );
@@ -336,7 +348,9 @@ enum Item {
 }
 
 fn is_pat_variant(cx: &LateContext<'_>, pat: &Pat<'_>, path: &QPath<'_>, expected_item: Item) -> bool {
-    let Some(id) = cx.typeck_results().qpath_res(path, pat.hir_id).opt_def_id() else { return false };
+    let Some(id) = cx.typeck_results().qpath_res(path, pat.hir_id).opt_def_id() else {
+        return false;
+    };
 
     match expected_item {
         Item::Lang(expected_lang_item) => cx

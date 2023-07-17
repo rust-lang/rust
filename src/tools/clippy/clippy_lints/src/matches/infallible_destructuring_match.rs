@@ -28,7 +28,7 @@ pub(crate) fn check(cx: &LateContext<'_>, local: &Local<'_>) -> bool {
                 local.span,
                 "you seem to be trying to use `match` to destructure a single infallible pattern. \
                 Consider using `let`",
-                "try this",
+                "try",
                 format!(
                     "let {}({}{}) = {};",
                     snippet_with_applicability(cx, variant_name.span, "..", &mut applicability),
