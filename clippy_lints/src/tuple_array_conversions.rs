@@ -29,7 +29,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.72.0"]
     pub TUPLE_ARRAY_CONVERSIONS,
-    pedantic,
+    nursery,
     "checks for tuple<=>array conversions that are not done with `.into()`"
 }
 impl_lint_pass!(TupleArrayConversions => [TUPLE_ARRAY_CONVERSIONS]);
