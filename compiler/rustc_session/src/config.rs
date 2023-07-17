@@ -3,6 +3,7 @@
 
 pub use crate::options::*;
 
+use crate::errors::FileWriteFail;
 use crate::search_paths::SearchPath;
 use crate::utils::{CanonicalizedPath, NativeLib, NativeLibKind};
 use crate::{lint, HashStableContext};
@@ -31,6 +32,7 @@ use std::collections::btree_map::{
 use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::OsStr;
 use std::fmt;
+use std::fs;
 use std::hash::Hash;
 use std::iter;
 use std::path::{Path, PathBuf};
@@ -859,6 +861,17 @@ impl OutFileName {
         match *self {
             OutFileName::Real(ref path) => path.clone(),
             OutFileName::Stdout => outputs.temp_path(flavor, codegen_unit_name),
+        }
+    }
+
+    pub fn overwrite(&self, content: &str, sess: &Session) {
+        match self {
+            OutFileName::Stdout => print!("{content}"),
+            OutFileName::Real(path) => {
+                if let Err(e) = fs::write(path, content) {
+                    sess.emit_fatal(FileWriteFail { path, err: e.to_string() });
+                }
+            }
         }
     }
 }
