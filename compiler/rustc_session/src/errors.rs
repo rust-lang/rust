@@ -164,6 +164,13 @@ pub struct FileIsNotWriteable<'a> {
 }
 
 #[derive(Diagnostic)]
+#[diag(session_file_write_fail)]
+pub(crate) struct FileWriteFail<'a> {
+    pub path: &'a std::path::Path,
+    pub err: String,
+}
+
+#[derive(Diagnostic)]
 #[diag(session_crate_name_does_not_match)]
 pub struct CrateNameDoesNotMatch {
     #[primary_span]
