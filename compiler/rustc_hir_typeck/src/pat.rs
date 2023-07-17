@@ -2114,6 +2114,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         pat_info: PatInfo<'tcx, '_>,
     ) -> Ty<'tcx> {
+        let expected = self.try_structurally_resolve_type(span, expected);
+
         // If the pattern is irrefutable and `expected` is an infer ty, we try to equate it
         // to an array if the given pattern allows it. See issue #76342
         if self.pat_is_irrefutable(pat_info.decl_origin) && expected.is_ty_var() {
