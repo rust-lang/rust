@@ -126,7 +126,7 @@ struct Display<'a> {
     path: &'a ModPath,
 }
 
-impl<'a> fmt::Display for Display<'a> {
+impl fmt::Display for Display<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         display_fmt_path(self.db, self.path, f, true)
     }
@@ -137,7 +137,7 @@ struct UnescapedDisplay<'a> {
     path: &'a UnescapedModPath<'a>,
 }
 
-impl<'a> fmt::Display for UnescapedDisplay<'a> {
+impl fmt::Display for UnescapedDisplay<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         display_fmt_path(self.db, self.path.0, f, false)
     }

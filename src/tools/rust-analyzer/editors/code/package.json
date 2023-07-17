@@ -26,7 +26,7 @@
         }
     },
     "engines": {
-        "vscode": "^1.66.0"
+        "vscode": "^1.78.0"
     },
     "enabledApiProposals": [],
     "scripts": {
@@ -38,37 +38,32 @@
         "lint": "prettier --check . && eslint -c .eslintrc.js --ext ts ./src ./tests",
         "fix": "prettier --write . && eslint -c .eslintrc.js --ext ts ./src ./tests --fix",
         "pretest": "tsc && npm run build",
-        "test": "cross-env TEST_VARIABLE=test node ./out/tests/runTests.js"
+        "test": "node ./out/tests/runTests.js"
     },
     "dependencies": {
+        "@hpcc-js/wasm": "^2.13.0",
         "anser": "^2.1.1",
-        "d3": "^7.6.1",
+        "d3": "^7.8.5",
         "d3-graphviz": "^5.0.2",
-        "vscode-languageclient": "^8.0.2",
-        "@hpcc-js/wasm": "2.5.0"
+        "vscode-languageclient": "^8.1.0"
     },
     "devDependencies": {
+        "@tsconfig/strictest": "^2.0.1",
         "@types/node": "~16.11.7",
-        "@types/vscode": "~1.66.0",
-        "@typescript-eslint/eslint-plugin": "^5.30.5",
-        "@typescript-eslint/parser": "^5.30.5",
-        "@vscode/test-electron": "^2.1.5",
-        "cross-env": "^7.0.3",
-        "esbuild": "^0.14.48",
-        "eslint": "^8.19.0",
-        "eslint-config-prettier": "^8.5.0",
-        "ovsx": "^0.5.2",
-        "prettier": "^2.7.1",
-        "tslib": "^2.4.0",
-        "typescript": "^4.7.4",
-        "vsce": "^2.9.2"
+        "@types/vscode": "~1.78.1",
+        "@typescript-eslint/eslint-plugin": "^6.0.0",
+        "@typescript-eslint/parser": "^6.0.0",
+        "@vscode/test-electron": "^2.3.3",
+        "@vscode/vsce": "^2.19.0",
+        "esbuild": "^0.18.12",
+        "eslint": "^8.44.0",
+        "eslint-config-prettier": "^8.8.0",
+        "ovsx": "^0.8.2",
+        "prettier": "^3.0.0",
+        "tslib": "^2.6.0",
+        "typescript": "^5.1.6"
     },
     "activationEvents": [
-        "onLanguage:rust",
-        "onCommand:rust-analyzer.analyzerStatus",
-        "onCommand:rust-analyzer.memoryUsage",
-        "onCommand:rust-analyzer.reloadWorkspace",
-        "onCommand:rust-analyzer.startServer",
         "workspaceContains:*/Cargo.toml",
         "workspaceContains:*/rust-project.json"
     ],
@@ -289,17 +284,17 @@
                 "command": "rust-analyzer.revealDependency",
                 "title": "Reveal File",
                 "category": "rust-analyzer"
+            },
+            {
+                "command": "rust-analyzer.viewMemoryLayout",
+                "title": "View Memory Layout",
+                "category": "rust-analyzer"
             }
         ],
         "keybindings": [
             {
                 "command": "rust-analyzer.parentModule",
                 "key": "ctrl+shift+u",
-                "when": "editorTextFocus && editorLangId == rust"
-            },
-            {
-                "command": "rust-analyzer.matchingBrace",
-                "key": "ctrl+shift+m",
                 "when": "editorTextFocus && editorLangId == rust"
             },
             {
@@ -320,7 +315,7 @@
                     "default": null,
                     "description": "Custom cargo runner extension ID."
                 },
-                "rust-analyzer.runnableEnv": {
+                "rust-analyzer.runnables.extraEnv": {
                     "anyOf": [
                         {
                             "type": "null"
@@ -348,6 +343,16 @@
                     ],
                     "default": null,
                     "markdownDescription": "Environment variables passed to the runnable launched using `Test` or `Debug` lens or `rust-analyzer.run` command."
+                },
+                "rust-analyzer.runnables.problemMatcher": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "default": [
+                        "$rustc"
+                    ],
+                    "markdownDescription": "Problem matchers to use for `rust-analyzer.run` command, eg `[\"$rustc\", \"$rust-panic\"]`."
                 },
                 "rust-analyzer.server.path": {
                     "type": [
@@ -1646,16 +1651,6 @@
                 "language": "ra_syntax_tree",
                 "scopeName": "source.ra_syntax_tree",
                 "path": "ra_syntax_tree.tmGrammar.json"
-            },
-            {
-                "scopeName": "rustdoc.markdown.injection",
-                "path": "rustdoc.markdown.injection.tmGrammar.json",
-                "injectTo": [
-                    "source.rust"
-                ],
-                "embeddedLanguages": {
-                    "meta.embedded.block.markdown": "text.html.markdown"
-                }
             }
         ],
         "problemMatchers": [
@@ -2076,6 +2071,10 @@
                 },
                 {
                     "command": "rust-analyzer.openCargoToml",
+                    "when": "inRustProject"
+                },
+                {
+                    "command": "rust-analyzer.viewMemoryLayout",
                     "when": "inRustProject"
                 }
             ],

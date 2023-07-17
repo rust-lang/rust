@@ -422,10 +422,10 @@ pub(super) fn definition(
             |&it| {
                 if !it.parent_enum(db).is_data_carrying(db) {
                     match it.eval(db) {
-                        Ok(x) => {
-                            Some(if x >= 10 { format!("{x} ({x:#X})") } else { format!("{x}") })
+                        Ok(it) => {
+                            Some(if it >= 10 { format!("{it} ({it:#X})") } else { format!("{it}") })
                         }
-                        Err(_) => it.value(db).map(|x| format!("{x:?}")),
+                        Err(_) => it.value(db).map(|it| format!("{it:?}")),
                     }
                 } else {
                     None
@@ -437,7 +437,7 @@ pub(super) fn definition(
         Definition::Const(it) => label_value_and_docs(db, it, |it| {
             let body = it.render_eval(db);
             match body {
-                Ok(x) => Some(x),
+                Ok(it) => Some(it),
                 Err(_) => {
                     let source = it.source(db)?;
                     let mut body = source.value.body()?.syntax().clone();

@@ -21,14 +21,14 @@ dashmap = { version = "=5.4.0", features = ["raw-api"] }
 drop_bomb = "0.1.5"
 either = "1.7.0"
 fst = { version = "0.4.7", default-features = false }
-hashbrown = { version = "0.12.1", default-features = false }
-indexmap = "1.9.1"
+indexmap = "2.0.0"
 itertools = "0.10.5"
-la-arena = { version = "0.3.0", path = "../../lib/la-arena" }
+la-arena.workspace = true
 once_cell = "1.17.0"
 rustc-hash = "1.1.0"
-smallvec.workspace = true
 tracing = "0.1.35"
+smallvec.workspace = true
+hashbrown.workspace = true
 triomphe.workspace = true
 
 rustc_abi = { version = "0.0.20221221", package = "hkalbasi-rustc-ap-rustc_abi", default-features = false }

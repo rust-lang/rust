@@ -343,7 +343,8 @@ impl TyExt for Ty {
 
     fn is_copy(self, db: &dyn HirDatabase, owner: DefWithBodyId) -> bool {
         let crate_id = owner.module(db.upcast()).krate();
-        let Some(copy_trait) = db.lang_item(crate_id, LangItem::Copy).and_then(|x| x.as_trait()) else {
+        let Some(copy_trait) = db.lang_item(crate_id, LangItem::Copy).and_then(|it| it.as_trait())
+        else {
             return false;
         };
         let trait_ref = TyBuilder::trait_ref(db, copy_trait).push(self).build();

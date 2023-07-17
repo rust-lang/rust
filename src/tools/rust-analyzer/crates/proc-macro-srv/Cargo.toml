@@ -12,14 +12,14 @@ rust-version.workspace = true
 doctest = false
 
 [dependencies]
-object = { version = "0.30.2", default-features = false, features = [
+object = { version = "0.31.0", default-features = false, features = [
     "std",
     "read_core",
     "elf",
     "macho",
     "pe",
 ] }
-libloading = "0.7.3"
+libloading = "0.8.0"
 memmap2 = "0.5.4"
 
 stdx.workspace = true

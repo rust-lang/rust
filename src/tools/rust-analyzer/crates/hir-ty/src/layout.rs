@@ -7,7 +7,7 @@ use hir_def::{
         Abi, FieldsShape, Integer, LayoutCalculator, LayoutS, Primitive, ReprOptions, Scalar, Size,
         StructKind, TargetDataLayout, WrappingRange,
     },
-    LocalEnumVariantId, LocalFieldId,
+    LocalEnumVariantId, LocalFieldId, StructId,
 };
 use la_arena::{Idx, RawIdx};
 use stdx::never;
@@ -24,8 +24,8 @@ pub use self::{
 };
 
 macro_rules! user_error {
-    ($x: expr) => {
-        return Err(LayoutError::UserError(format!($x)))
+    ($it: expr) => {
+        return Err(LayoutError::UserError(format!($it)))
     };
 }
 
@@ -77,18 +77,101 @@ impl<'a> LayoutCalculator for LayoutCx<'a> {
     }
 }
 
+// FIXME: move this to the `rustc_abi`.
+fn layout_of_simd_ty(
+    db: &dyn HirDatabase,
+    id: StructId,
+    subst: &Substitution,
+    krate: CrateId,
+    dl: &TargetDataLayout,
+) -> Result<Arc<Layout>, LayoutError> {
+    let fields = db.field_types(id.into());
+
+    // Supported SIMD vectors are homogeneous ADTs with at least one field:
+    //
+    // * #[repr(simd)] struct S(T, T, T, T);
+    // * #[repr(simd)] struct S { it: T, y: T, z: T, w: T }
+    // * #[repr(simd)] struct S([T; 4])
+    //
+    // where T is a primitive scalar (integer/float/pointer).
+
+    let f0_ty = match fields.iter().next() {
+        Some(it) => it.1.clone().substitute(Interner, subst),
+        None => {
+            user_error!("simd type with zero fields");
+        }
+    };
+
+    // The element type and number of elements of the SIMD vector
+    // are obtained from:
+    //
+    // * the element type and length of the single array field, if
+    // the first field is of array type, or
+    //
+    // * the homogeneous field type and the number of fields.
+    let (e_ty, e_len, is_array) = if let TyKind::Array(e_ty, _) = f0_ty.kind(Interner) {
+        // Extract the number of elements from the layout of the array field:
+        let FieldsShape::Array { count, .. } = db.layout_of_ty(f0_ty.clone(), krate)?.fields else {
+            user_error!("Array with non array layout");
+        };
+
+        (e_ty.clone(), count, true)
+    } else {
+        // First ADT field is not an array:
+        (f0_ty, fields.iter().count() as u64, false)
+    };
+
+    // Compute the ABI of the element type:
+    let e_ly = db.layout_of_ty(e_ty, krate)?;
+    let Abi::Scalar(e_abi) = e_ly.abi else {
+        user_error!("simd type with inner non scalar type");
+    };
+
+    // Compute the size and alignment of the vector:
+    let size = e_ly.size.checked_mul(e_len, dl).ok_or(LayoutError::SizeOverflow)?;
+    let align = dl.vector_align(size);
+    let size = size.align_to(align.abi);
+
+    // Compute the placement of the vector fields:
+    let fields = if is_array {
+        FieldsShape::Arbitrary { offsets: [Size::ZERO].into(), memory_index: [0].into() }
+    } else {
+        FieldsShape::Array { stride: e_ly.size, count: e_len }
+    };
+
+    Ok(Arc::new(Layout {
+        variants: Variants::Single { index: struct_variant_idx() },
+        fields,
+        abi: Abi::Vector { element: e_abi, count: e_len },
+        largest_niche: e_ly.largest_niche,
+        size,
+        align,
+    }))
+}
+
 pub fn layout_of_ty_query(
     db: &dyn HirDatabase,
     ty: Ty,
     krate: CrateId,
 ) -> Result<Arc<Layout>, LayoutError> {
-    let Some(target) = db.target_data_layout(krate) else { return Err(LayoutError::TargetLayoutNotAvailable) };
+    let Some(target) = db.target_data_layout(krate) else {
+        return Err(LayoutError::TargetLayoutNotAvailable);
+    };
     let cx = LayoutCx { krate, target: &target };
     let dl = &*cx.current_data_layout();
     let trait_env = Arc::new(TraitEnvironment::empty(krate));
     let ty = normalize(db, trait_env, ty.clone());
     let result = match ty.kind(Interner) {
-        TyKind::Adt(AdtId(def), subst) => return db.layout_of_adt(*def, subst.clone(), krate),
+        TyKind::Adt(AdtId(def), subst) => {
+            if let hir_def::AdtId::StructId(s) = def {
+                let data = db.struct_data(*s);
+                let repr = data.repr.unwrap_or_default();
+                if repr.simd() {
+                    return layout_of_simd_ty(db, *s, subst, krate, &target);
+                }
+            };
+            return db.layout_of_adt(*def, subst.clone(), krate);
+        }
         TyKind::Scalar(s) => match s {
             chalk_ir::Scalar::Bool => Layout::scalar(
                 dl,
@@ -147,7 +230,7 @@ pub fn layout_of_ty_query(
                 .iter(Interner)
                 .map(|k| db.layout_of_ty(k.assert_ty_ref(Interner).clone(), krate))
                 .collect::<Result<Vec<_>, _>>()?;
-            let fields = fields.iter().map(|x| &**x).collect::<Vec<_>>();
+            let fields = fields.iter().map(|it| &**it).collect::<Vec<_>>();
             let fields = fields.iter().collect::<Vec<_>>();
             cx.univariant(dl, &fields, &ReprOptions::default(), kind).ok_or(LayoutError::Unknown)?
         }
@@ -265,14 +348,14 @@ pub fn layout_of_ty_query(
             let (captures, _) = infer.closure_info(c);
             let fields = captures
                 .iter()
-                .map(|x| {
+                .map(|it| {
                     db.layout_of_ty(
-                        x.ty.clone().substitute(Interner, ClosureSubst(subst).parent_subst()),
+                        it.ty.clone().substitute(Interner, ClosureSubst(subst).parent_subst()),
                         krate,
                     )
                 })
                 .collect::<Result<Vec<_>, _>>()?;
-            let fields = fields.iter().map(|x| &**x).collect::<Vec<_>>();
+            let fields = fields.iter().map(|it| &**it).collect::<Vec<_>>();
             let fields = fields.iter().collect::<Vec<_>>();
             cx.univariant(dl, &fields, &ReprOptions::default(), StructKind::AlwaysSized)
                 .ok_or(LayoutError::Unknown)?
@@ -315,7 +398,10 @@ fn struct_tail_erasing_lifetimes(db: &dyn HirDatabase, pointee: Ty) -> Ty {
             let data = db.struct_data(*i);
             let mut it = data.variant_data.fields().iter().rev();
             match it.next() {
-                Some((f, _)) => field_ty(db, (*i).into(), f, subst),
+                Some((f, _)) => {
+                    let last_field_ty = field_ty(db, (*i).into(), f, subst);
+                    struct_tail_erasing_lifetimes(db, last_field_ty)
+                }
                 None => pointee,
             }
         }

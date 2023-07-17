@@ -45,7 +45,7 @@ pub enum Path {
         /// Invariant: the same len as `self.mod_path.segments` or `None` if all segments are `None`.
         generic_args: Option<Box<[Option<Interned<GenericArgs>>]>>,
     },
-    /// A link to a lang item. It is used in desugaring of things like `x?`. We can show these
+    /// A link to a lang item. It is used in desugaring of things like `it?`. We can show these
     /// links via a normal path since they might be private and not accessible in the usage place.
     LangItem(LangItemTarget),
 }
@@ -135,10 +135,7 @@ impl Path {
 
     pub fn segments(&self) -> PathSegments<'_> {
         let Path::Normal { mod_path, generic_args, .. } = self else {
-            return PathSegments {
-                segments: &[],
-                generic_args: None,
-            };
+            return PathSegments { segments: &[], generic_args: None };
         };
         let s =
             PathSegments { segments: mod_path.segments(), generic_args: generic_args.as_deref() };

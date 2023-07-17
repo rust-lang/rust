@@ -425,8 +425,8 @@ impl ConstRef {
         }
         match expr {
             ast::Expr::PathExpr(p) if is_path_ident(&p) => {
-                match p.path().and_then(|x| x.segment()).and_then(|x| x.name_ref()) {
-                    Some(x) => Self::Path(x.as_name()),
+                match p.path().and_then(|it| it.segment()).and_then(|it| it.name_ref()) {
+                    Some(it) => Self::Path(it.as_name()),
                     None => Self::Scalar(LiteralConstRef::Unknown),
                 }
             }

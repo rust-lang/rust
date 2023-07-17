@@ -1,7 +1,6 @@
 use syntax::{
-    ast::{self, edit::IndentLevel, AstNode, HasAttrs},
-    SyntaxKind::{COMMENT, WHITESPACE},
-    TextSize,
+    ast::{self, edit_in_place::AttrsOwnerEdit, make, AstNode, HasAttrs},
+    T,
 };
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
@@ -27,48 +26,37 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 pub(crate) fn generate_derive(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let cap = ctx.config.snippet_cap?;
     let nominal = ctx.find_node_at_offset::<ast::Adt>()?;
-    let node_start = derive_insertion_offset(&nominal)?;
     let target = nominal.syntax().text_range();
-    acc.add(
-        AssistId("generate_derive", AssistKind::Generate),
-        "Add `#[derive]`",
-        target,
-        |builder| {
-            let derive_attr = nominal
-                .attrs()
-                .filter_map(|x| x.as_simple_call())
-                .filter(|(name, _arg)| name == "derive")
-                .map(|(_name, arg)| arg)
-                .next();
-            match derive_attr {
-                None => {
-                    let indent_level = IndentLevel::from_node(nominal.syntax());
-                    builder.insert_snippet(
-                        cap,
-                        node_start,
-                        format!("#[derive($0)]\n{indent_level}"),
-                    );
-                }
-                Some(tt) => {
-                    // Just move the cursor.
-                    builder.insert_snippet(
-                        cap,
-                        tt.syntax().text_range().end() - TextSize::of(')'),
-                        "$0",
-                    )
-                }
-            };
-        },
-    )
-}
+    acc.add(AssistId("generate_derive", AssistKind::Generate), "Add `#[derive]`", target, |edit| {
+        let derive_attr = nominal
+            .attrs()
+            .filter_map(|x| x.as_simple_call())
+            .filter(|(name, _arg)| name == "derive")
+            .map(|(_name, arg)| arg)
+            .next();
+        match derive_attr {
+            None => {
+                let derive = make::attr_outer(make::meta_token_tree(
+                    make::ext::ident_path("derive"),
+                    make::token_tree(T!['('], vec![]).clone_for_update(),
+                ))
+                .clone_for_update();
 
-// Insert `derive` after doc comments.
-fn derive_insertion_offset(nominal: &ast::Adt) -> Option<TextSize> {
-    let non_ws_child = nominal
-        .syntax()
-        .children_with_tokens()
-        .find(|it| it.kind() != COMMENT && it.kind() != WHITESPACE)?;
-    Some(non_ws_child.text_range().start())
+                let nominal = edit.make_mut(nominal);
+                nominal.add_attr(derive.clone());
+
+                edit.add_tabstop_before_token(
+                    cap,
+                    derive.meta().unwrap().token_tree().unwrap().r_paren_token().unwrap(),
+                );
+            }
+            Some(tt) => {
+                // Just move the cursor.
+                let tt = edit.make_mut(tt);
+                edit.add_tabstop_before_token(cap, tt.right_delimiter_token().unwrap());
+            }
+        };
+    })
 }
 
 #[cfg(test)]
@@ -111,6 +99,38 @@ mod m {
             generate_derive,
             "#[derive(Clone)]\nstruct Foo { a: i32$0, }",
             "#[derive(Clone$0)]\nstruct Foo { a: i32, }",
+        );
+    }
+
+    #[test]
+    fn add_derive_existing_with_brackets() {
+        check_assist(
+            generate_derive,
+            "
+#[derive[Clone]]
+struct Foo { a: i32$0, }
+",
+            "
+#[derive[Clone$0]]
+struct Foo { a: i32, }
+",
+        );
+    }
+
+    #[test]
+    fn add_derive_existing_missing_delimiter() {
+        // since `#[derive]` isn't a simple attr call (i.e. `#[derive()]`)
+        // we don't consider it as a proper derive attr and generate a new
+        // one instead
+        check_assist(
+            generate_derive,
+            "
+#[derive]
+struct Foo { a: i32$0, }",
+            "
+#[derive]
+#[derive($0)]
+struct Foo { a: i32, }",
         );
     }
 

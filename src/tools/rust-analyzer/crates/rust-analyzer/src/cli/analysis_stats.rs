@@ -15,7 +15,7 @@ use hir_def::{
     hir::{ExprId, PatId},
 };
 use hir_ty::{Interner, Substitution, TyExt, TypeFlags};
-use ide::{LineCol, RootDatabase};
+use ide::{Analysis, AnnotationConfig, DiagnosticsConfig, InlayHintsConfig, LineCol, RootDatabase};
 use ide_db::{
     base_db::{
         salsa::{self, debug::DebugQueryTable, ParallelDatabase},
@@ -24,20 +24,20 @@ use ide_db::{
     LineIndexDatabase,
 };
 use itertools::Itertools;
+use load_cargo::{load_workspace, LoadCargoConfig, ProcMacroServerChoice};
 use oorandom::Rand32;
 use profile::{Bytes, StopWatch};
 use project_model::{CargoConfig, ProjectManifest, ProjectWorkspace, RustLibSource};
 use rayon::prelude::*;
 use rustc_hash::FxHashSet;
 use syntax::{AstNode, SyntaxNode};
-use vfs::{AbsPathBuf, Vfs, VfsPath};
+use vfs::{AbsPathBuf, FileId, Vfs, VfsPath};
 
 use crate::cli::{
     flags::{self, OutputFormat},
-    load_cargo::{load_workspace, LoadCargoConfig, ProcMacroServerChoice},
-    print_memory_usage,
+    full_name_of_item, print_memory_usage,
     progress_report::ProgressReport,
-    report_metric, Result, Verbosity,
+    report_metric, Verbosity,
 };
 
 /// Need to wrap Snapshot to provide `Clone` impl for `map_with`
@@ -49,7 +49,7 @@ impl<DB: ParallelDatabase> Clone for Snap<salsa::Snapshot<DB>> {
 }
 
 impl flags::AnalysisStats {
-    pub fn run(self, verbosity: Verbosity) -> Result<()> {
+    pub fn run(self, verbosity: Verbosity) -> anyhow::Result<()> {
         let mut rng = {
             let seed = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as u64;
             Rand32::new(seed)
@@ -95,17 +95,41 @@ impl flags::AnalysisStats {
         eprintln!(")");
 
         let mut analysis_sw = self.stop_watch();
-        let mut num_crates = 0;
-        let mut visited_modules = FxHashSet::default();
-        let mut visit_queue = Vec::new();
 
         let mut krates = Crate::all(db);
         if self.randomize {
             shuffle(&mut rng, &mut krates);
         }
+
+        let mut item_tree_sw = self.stop_watch();
+        let mut num_item_trees = 0;
+        let source_roots =
+            krates.iter().cloned().map(|krate| db.file_source_root(krate.root_file(db))).unique();
+        for source_root_id in source_roots {
+            let source_root = db.source_root(source_root_id);
+            if !source_root.is_library || self.with_deps {
+                for file_id in source_root.iter() {
+                    if let Some(p) = source_root.path_for_file(&file_id) {
+                        if let Some((_, Some("rs"))) = p.name_and_extension() {
+                            db.file_item_tree(file_id.into());
+                            num_item_trees += 1;
+                        }
+                    }
+                }
+            }
+        }
+        eprintln!("  item trees: {num_item_trees}");
+        let item_tree_time = item_tree_sw.elapsed();
+        eprintln!("{:<20} {}", "Item Tree Collection:", item_tree_time);
+        report_metric("item tree time", item_tree_time.time.as_millis() as u64, "ms");
+
+        let mut crate_def_map_sw = self.stop_watch();
+        let mut num_crates = 0;
+        let mut visited_modules = FxHashSet::default();
+        let mut visit_queue = Vec::new();
         for krate in krates {
             let module = krate.root_module(db);
-            let file_id = module.definition_source(db).file_id;
+            let file_id = module.definition_source_file_id(db);
             let file_id = file_id.original_file(db);
             let source_root = db.file_source_root(file_id);
             let source_root = db.source_root(source_root);
@@ -124,8 +148,10 @@ impl flags::AnalysisStats {
         let mut bodies = Vec::new();
         let mut adts = Vec::new();
         let mut consts = Vec::new();
+        let mut file_ids = Vec::new();
         while let Some(module) = visit_queue.pop() {
             if visited_modules.insert(module) {
+                file_ids.extend(module.as_source_file_id(db));
                 visit_queue.extend(module.children(db));
 
                 for decl in module.declarations(db) {
@@ -171,7 +197,9 @@ impl flags::AnalysisStats {
             adts.len(),
             consts.len(),
         );
-        eprintln!("{:<20} {}", "Item Collection:", analysis_sw.elapsed());
+        let crate_def_map_time = crate_def_map_sw.elapsed();
+        eprintln!("{:<20} {}", "Item Collection:", crate_def_map_time);
+        report_metric("crate def map time", crate_def_map_time.time.as_millis() as u64, "ms");
 
         if self.randomize {
             shuffle(&mut rng, &mut bodies);
@@ -195,6 +223,10 @@ impl flags::AnalysisStats {
 
         if !self.skip_const_eval {
             self.run_const_eval(db, &consts, verbosity);
+        }
+
+        if self.run_all_ide_things {
+            self.run_ide_things(host.analysis(), file_ids);
         }
 
         let total_span = analysis_sw.elapsed();
@@ -242,21 +274,15 @@ impl flags::AnalysisStats {
                 continue;
             }
             all += 1;
-            let Err(e)
-                = db.layout_of_adt(hir_def::AdtId::from(a).into(), Substitution::empty(Interner), a.krate(db).into())
-            else {
-                continue
+            let Err(e) = db.layout_of_adt(
+                hir_def::AdtId::from(a).into(),
+                Substitution::empty(Interner),
+                a.krate(db).into(),
+            ) else {
+                continue;
             };
             if verbosity.is_spammy() {
-                let full_name = a
-                    .module(db)
-                    .path_to_root(db)
-                    .into_iter()
-                    .rev()
-                    .filter_map(|it| it.name(db))
-                    .chain(Some(a.name(db)))
-                    .map(|it| it.display(db).to_string())
-                    .join("::");
+                let full_name = full_name_of_item(db, a.module(db), a.name(db));
                 println!("Data layout for {full_name} failed due {e:?}");
             }
             fail += 1;
@@ -278,15 +304,8 @@ impl flags::AnalysisStats {
                 continue;
             };
             if verbosity.is_spammy() {
-                let full_name = c
-                    .module(db)
-                    .path_to_root(db)
-                    .into_iter()
-                    .rev()
-                    .filter_map(|it| it.name(db))
-                    .chain(c.name(db))
-                    .map(|it| it.display(db).to_string())
-                    .join("::");
+                let full_name =
+                    full_name_of_item(db, c.module(db), c.name(db).unwrap_or(Name::missing()));
                 println!("Const eval for {full_name} failed due {e:?}");
             }
             fail += 1;
@@ -715,6 +734,83 @@ impl flags::AnalysisStats {
         let body_lowering_time = sw.elapsed();
         eprintln!("{:<20} {}", "Body lowering:", body_lowering_time);
         report_metric("body lowering time", body_lowering_time.time.as_millis() as u64, "ms");
+    }
+
+    fn run_ide_things(&self, analysis: Analysis, mut file_ids: Vec<FileId>) {
+        file_ids.sort();
+        file_ids.dedup();
+        let mut sw = self.stop_watch();
+
+        for &file_id in &file_ids {
+            _ = analysis.diagnostics(
+                &DiagnosticsConfig {
+                    enabled: true,
+                    proc_macros_enabled: true,
+                    proc_attr_macros_enabled: true,
+                    disable_experimental: false,
+                    disabled: Default::default(),
+                    expr_fill_default: Default::default(),
+                    insert_use: ide_db::imports::insert_use::InsertUseConfig {
+                        granularity: ide_db::imports::insert_use::ImportGranularity::Crate,
+                        enforce_granularity: true,
+                        prefix_kind: hir::PrefixKind::ByCrate,
+                        group: true,
+                        skip_glob_imports: true,
+                    },
+                    prefer_no_std: Default::default(),
+                },
+                ide::AssistResolveStrategy::All,
+                file_id,
+            );
+        }
+        for &file_id in &file_ids {
+            _ = analysis.inlay_hints(
+                &InlayHintsConfig {
+                    render_colons: false,
+                    type_hints: true,
+                    discriminant_hints: ide::DiscriminantHints::Always,
+                    parameter_hints: true,
+                    chaining_hints: true,
+                    adjustment_hints: ide::AdjustmentHints::Always,
+                    adjustment_hints_mode: ide::AdjustmentHintsMode::Postfix,
+                    adjustment_hints_hide_outside_unsafe: false,
+                    closure_return_type_hints: ide::ClosureReturnTypeHints::Always,
+                    closure_capture_hints: true,
+                    binding_mode_hints: true,
+                    lifetime_elision_hints: ide::LifetimeElisionHints::Always,
+                    param_names_for_lifetime_elision_hints: true,
+                    hide_named_constructor_hints: false,
+                    hide_closure_initialization_hints: false,
+                    closure_style: hir::ClosureStyle::ImplFn,
+                    max_length: Some(25),
+                    closing_brace_hints_min_lines: Some(20),
+                },
+                file_id,
+                None,
+            );
+        }
+        for &file_id in &file_ids {
+            analysis
+                .annotations(
+                    &AnnotationConfig {
+                        binary_target: true,
+                        annotate_runnables: true,
+                        annotate_impls: true,
+                        annotate_references: false,
+                        annotate_method_references: false,
+                        annotate_enum_variant_references: false,
+                        location: ide::AnnotationLocation::AboveName,
+                    },
+                    file_id,
+                )
+                .unwrap()
+                .into_iter()
+                .for_each(|annotation| {
+                    _ = analysis.resolve_annotation(annotation);
+                });
+        }
+        let ide_time = sw.elapsed();
+        eprintln!("{:<20} {} ({} files)", "IDE:", ide_time, file_ids.len());
     }
 
     fn stop_watch(&self) -> StopWatch {

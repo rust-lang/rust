@@ -102,7 +102,7 @@ struct AssignmentsCollector<'a> {
     assignments: Vec<(ast::BinExpr, ast::Expr)>,
 }
 
-impl<'a> AssignmentsCollector<'a> {
+impl AssignmentsCollector<'_> {
     fn collect_match(&mut self, match_expr: &ast::MatchExpr) -> Option<()> {
         for arm in match_expr.match_arm_list()?.arms() {
             match arm.expr()? {

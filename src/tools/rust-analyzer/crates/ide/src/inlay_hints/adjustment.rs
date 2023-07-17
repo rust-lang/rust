@@ -259,7 +259,7 @@ fn needs_parens_for_adjustment_hints(expr: &ast::Expr, postfix: bool) -> (bool, 
         }
     })() else {
         never!("broken syntax tree?\n{:?}\n{:?}", expr, dummy_expr);
-        return (true, true)
+        return (true, true);
     };
 
     // At this point

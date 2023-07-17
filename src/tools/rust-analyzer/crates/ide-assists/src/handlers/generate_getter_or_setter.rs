@@ -1,4 +1,4 @@
-use ide_db::famous_defs::FamousDefs;
+use ide_db::{famous_defs::FamousDefs, source_change::SourceChangeBuilder};
 use stdx::{format_to, to_lower_snake_case};
 use syntax::{
     ast::{self, AstNode, HasName, HasVisibility},
@@ -9,6 +9,66 @@ use crate::{
     utils::{convert_reference_type, find_impl_block_end, find_struct_impl, generate_impl_text},
     AssistContext, AssistId, AssistKind, Assists, GroupLabel,
 };
+
+// Assist: generate_setter
+//
+// Generate a setter method.
+//
+// ```
+// struct Person {
+//     nam$0e: String,
+// }
+// ```
+// ->
+// ```
+// struct Person {
+//     name: String,
+// }
+//
+// impl Person {
+//     fn $0set_name(&mut self, name: String) {
+//         self.name = name;
+//     }
+// }
+// ```
+pub(crate) fn generate_setter(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+    // This if condition denotes two modes this assist can work in:
+    // - First is acting upon selection of record fields
+    // - Next is acting upon a single record field
+    //
+    // This is the only part where implementation diverges a bit,
+    // subsequent code is generic for both of these modes
+
+    let (strukt, info_of_record_fields, mut fn_names) = extract_and_parse(ctx, AssistType::Set)?;
+
+    // No record fields to do work on :(
+    if info_of_record_fields.len() == 0 {
+        return None;
+    }
+
+    // Prepend set_ to fn names.
+    fn_names.iter_mut().for_each(|name| *name = format!("set_{}", name));
+
+    // Return early if we've found an existing fn
+    let impl_def = find_struct_impl(ctx, &ast::Adt::Struct(strukt.clone()), &fn_names)?;
+
+    // Computing collective text range of all record fields in selected region
+    let target: TextRange = info_of_record_fields
+        .iter()
+        .map(|record_field_info| record_field_info.target)
+        .reduce(|acc, target| acc.cover(target))?;
+
+    let setter_info = AssistInfo { impl_def, strukt, assist_type: AssistType::Set };
+
+    acc.add_group(
+        &GroupLabel("Generate getter/setter".to_owned()),
+        AssistId("generate_setter", AssistKind::Generate),
+        "Generate a setter method",
+        target,
+        |builder| build_source_change(builder, ctx, info_of_record_fields, setter_info),
+    );
+    Some(())
+}
 
 // Assist: generate_getter
 //
@@ -83,10 +143,16 @@ struct RecordFieldInfo {
     target: TextRange,
 }
 
-struct GetterInfo {
+struct AssistInfo {
     impl_def: Option<ast::Impl>,
     strukt: ast::Struct,
-    mutable: bool,
+    assist_type: AssistType,
+}
+
+enum AssistType {
+    Get,
+    MutGet,
+    Set,
 }
 
 pub(crate) fn generate_getter_impl(
@@ -94,40 +160,8 @@ pub(crate) fn generate_getter_impl(
     ctx: &AssistContext<'_>,
     mutable: bool,
 ) -> Option<()> {
-    // This if condition denotes two modes this assist can work in:
-    // - First is acting upon selection of record fields
-    // - Next is acting upon a single record field
-    //
-    // This is the only part where implementation diverges a bit,
-    // subsequent code is generic for both of these modes
-
-    let (strukt, info_of_record_fields, fn_names) = if !ctx.has_empty_selection() {
-        // Selection Mode
-        let node = ctx.covering_element();
-
-        let node = match node {
-            syntax::NodeOrToken::Node(n) => n,
-            syntax::NodeOrToken::Token(t) => t.parent()?,
-        };
-
-        let parent_struct = node.ancestors().find_map(ast::Struct::cast)?;
-
-        let (info_of_record_fields, field_names) =
-            extract_and_parse_record_fields(&parent_struct, ctx.selection_trimmed(), mutable)?;
-
-        (parent_struct, info_of_record_fields, field_names)
-    } else {
-        // Single Record Field mode
-        let strukt = ctx.find_node_at_offset::<ast::Struct>()?;
-        let field = ctx.find_node_at_offset::<ast::RecordField>()?;
-
-        let record_field_info = parse_record_field(field, mutable)?;
-
-        let fn_name = record_field_info.fn_name.clone();
-
-        (strukt, vec![record_field_info], vec![fn_name])
-    };
-
+    let (strukt, info_of_record_fields, fn_names) =
+        extract_and_parse(ctx, if mutable { AssistType::MutGet } else { AssistType::Get })?;
     // No record fields to do work on :(
     if info_of_record_fields.len() == 0 {
         return None;
@@ -147,98 +181,30 @@ pub(crate) fn generate_getter_impl(
         .map(|record_field_info| record_field_info.target)
         .reduce(|acc, target| acc.cover(target))?;
 
-    let getter_info = GetterInfo { impl_def, strukt, mutable };
+    let getter_info = AssistInfo {
+        impl_def,
+        strukt,
+        assist_type: if mutable { AssistType::MutGet } else { AssistType::Get },
+    };
 
     acc.add_group(
         &GroupLabel("Generate getter/setter".to_owned()),
         AssistId(id, AssistKind::Generate),
         label,
         target,
-        |builder| {
-            let record_fields_count = info_of_record_fields.len();
-
-            let mut buf = String::with_capacity(512);
-
-            // Check if an impl exists
-            if let Some(impl_def) = &getter_info.impl_def {
-                // Check if impl is empty
-                if let Some(assoc_item_list) = impl_def.assoc_item_list() {
-                    if assoc_item_list.assoc_items().next().is_some() {
-                        // If not empty then only insert a new line
-                        buf.push('\n');
-                    }
-                }
-            }
-
-            for (i, record_field_info) in info_of_record_fields.iter().enumerate() {
-                // this buf inserts a newline at the end of a getter
-                // automatically, if one wants to add one more newline
-                // for separating it from other assoc items, that needs
-                // to be handled separately
-                let mut getter_buf =
-                    generate_getter_from_info(ctx, &getter_info, record_field_info);
-
-                // Insert `$0` only for last getter we generate
-                if i == record_fields_count - 1 {
-                    if ctx.config.snippet_cap.is_some() {
-                        getter_buf = getter_buf.replacen("fn ", "fn $0", 1);
-                    }
-                }
-
-                // For first element we do not merge with '\n', as
-                // that can be inserted by impl_def check defined
-                // above, for other cases which are:
-                //
-                // - impl exists but it empty, here we would ideally
-                // not want to keep newline between impl <struct> {
-                // and fn <fn-name>() { line
-                //
-                // - next if impl itself does not exist, in this
-                // case we ourselves generate a new impl and that
-                // again ends up with the same reasoning as above
-                // for not keeping newline
-                if i == 0 {
-                    buf = buf + &getter_buf;
-                } else {
-                    buf = buf + "\n" + &getter_buf;
-                }
-
-                // We don't insert a new line at the end of
-                // last getter as it will end up in the end
-                // of an impl where we would not like to keep
-                // getter and end of impl ( i.e. `}` ) with an
-                // extra line for no reason
-                if i < record_fields_count - 1 {
-                    buf = buf + "\n";
-                }
-            }
-
-            let start_offset = getter_info
-                .impl_def
-                .as_ref()
-                .and_then(|impl_def| find_impl_block_end(impl_def.to_owned(), &mut buf))
-                .unwrap_or_else(|| {
-                    buf = generate_impl_text(&ast::Adt::Struct(getter_info.strukt.clone()), &buf);
-                    getter_info.strukt.syntax().text_range().end()
-                });
-
-            match ctx.config.snippet_cap {
-                Some(cap) => builder.insert_snippet(cap, start_offset, buf),
-                None => builder.insert(start_offset, buf),
-            }
-        },
+        |builder| build_source_change(builder, ctx, info_of_record_fields, getter_info),
     )
 }
 
 fn generate_getter_from_info(
     ctx: &AssistContext<'_>,
-    info: &GetterInfo,
+    info: &AssistInfo,
     record_field_info: &RecordFieldInfo,
 ) -> String {
     let mut buf = String::with_capacity(512);
 
     let vis = info.strukt.visibility().map_or(String::new(), |v| format!("{v} "));
-    let (ty, body) = if info.mutable {
+    let (ty, body) = if matches!(info.assist_type, AssistType::MutGet) {
         (
             format!("&mut {}", record_field_info.field_ty),
             format!("&mut self.{}", record_field_info.field_name),
@@ -273,7 +239,7 @@ fn generate_getter_from_info(
     }}",
         vis,
         record_field_info.fn_name,
-        info.mutable.then_some("mut ").unwrap_or_default(),
+        matches!(info.assist_type, AssistType::MutGet).then_some("mut ").unwrap_or_default(),
         ty,
         body,
     );
@@ -281,10 +247,58 @@ fn generate_getter_from_info(
     buf
 }
 
+fn generate_setter_from_info(info: &AssistInfo, record_field_info: &RecordFieldInfo) -> String {
+    let mut buf = String::with_capacity(512);
+    let strukt = &info.strukt;
+    let fn_name = &record_field_info.fn_name;
+    let field_ty = &record_field_info.field_ty;
+    let vis = strukt.visibility().map_or(String::new(), |v| format!("{v} "));
+    format_to!(
+        buf,
+        "    {vis}fn set_{fn_name}(&mut self, {fn_name}: {field_ty}) {{
+        self.{fn_name} = {fn_name};
+    }}"
+    );
+
+    buf
+}
+
+fn extract_and_parse(
+    ctx: &AssistContext<'_>,
+    assist_type: AssistType,
+) -> Option<(ast::Struct, Vec<RecordFieldInfo>, Vec<String>)> {
+    // This if condition denotes two modes assists can work in:
+    // - First is acting upon selection of record fields
+    // - Next is acting upon a single record field
+    if !ctx.has_empty_selection() {
+        // Selection Mode
+        let node = ctx.covering_element();
+
+        let node = match node {
+            syntax::NodeOrToken::Node(n) => n,
+            syntax::NodeOrToken::Token(t) => t.parent()?,
+        };
+
+        let parent_struct = node.ancestors().find_map(ast::Struct::cast)?;
+
+        let (info_of_record_fields, field_names) =
+            extract_and_parse_record_fields(&parent_struct, ctx.selection_trimmed(), &assist_type)?;
+
+        return Some((parent_struct, info_of_record_fields, field_names));
+    }
+
+    // Single Record Field mode
+    let strukt = ctx.find_node_at_offset::<ast::Struct>()?;
+    let field = ctx.find_node_at_offset::<ast::RecordField>()?;
+    let record_field_info = parse_record_field(field, &assist_type)?;
+    let fn_name = record_field_info.fn_name.clone();
+    Some((strukt, vec![record_field_info], vec![fn_name]))
+}
+
 fn extract_and_parse_record_fields(
     node: &ast::Struct,
     selection_range: TextRange,
-    mutable: bool,
+    assist_type: &AssistType,
 ) -> Option<(Vec<RecordFieldInfo>, Vec<String>)> {
     let mut field_names: Vec<String> = vec![];
     let field_list = node.field_list()?;
@@ -295,7 +309,7 @@ fn extract_and_parse_record_fields(
                 .fields()
                 .filter_map(|record_field| {
                     if selection_range.contains_range(record_field.syntax().text_range()) {
-                        let record_field_info = parse_record_field(record_field, mutable)?;
+                        let record_field_info = parse_record_field(record_field, assist_type)?;
                         field_names.push(record_field_info.fn_name.clone());
                         return Some(record_field_info);
                     }
@@ -316,12 +330,15 @@ fn extract_and_parse_record_fields(
     }
 }
 
-fn parse_record_field(record_field: ast::RecordField, mutable: bool) -> Option<RecordFieldInfo> {
+fn parse_record_field(
+    record_field: ast::RecordField,
+    assist_type: &AssistType,
+) -> Option<RecordFieldInfo> {
     let field_name = record_field.name()?;
     let field_ty = record_field.ty()?;
 
     let mut fn_name = to_lower_snake_case(&field_name.to_string());
-    if mutable {
+    if matches!(assist_type, AssistType::MutGet) {
         format_to!(fn_name, "_mut");
     }
 
@@ -330,8 +347,89 @@ fn parse_record_field(record_field: ast::RecordField, mutable: bool) -> Option<R
     Some(RecordFieldInfo { field_name, field_ty, fn_name, target })
 }
 
+fn build_source_change(
+    builder: &mut SourceChangeBuilder,
+    ctx: &AssistContext<'_>,
+    info_of_record_fields: Vec<RecordFieldInfo>,
+    assist_info: AssistInfo,
+) {
+    let record_fields_count = info_of_record_fields.len();
+
+    let mut buf = String::with_capacity(512);
+
+    // Check if an impl exists
+    if let Some(impl_def) = &assist_info.impl_def {
+        // Check if impl is empty
+        if let Some(assoc_item_list) = impl_def.assoc_item_list() {
+            if assoc_item_list.assoc_items().next().is_some() {
+                // If not empty then only insert a new line
+                buf.push('\n');
+            }
+        }
+    }
+
+    for (i, record_field_info) in info_of_record_fields.iter().enumerate() {
+        // this buf inserts a newline at the end of a getter
+        // automatically, if one wants to add one more newline
+        // for separating it from other assoc items, that needs
+        // to be handled separately
+        let mut getter_buf = match assist_info.assist_type {
+            AssistType::Set => generate_setter_from_info(&assist_info, record_field_info),
+            _ => generate_getter_from_info(ctx, &assist_info, record_field_info),
+        };
+
+        // Insert `$0` only for last getter we generate
+        if i == record_fields_count - 1 {
+            if ctx.config.snippet_cap.is_some() {
+                getter_buf = getter_buf.replacen("fn ", "fn $0", 1);
+            }
+        }
+
+        // For first element we do not merge with '\n', as
+        // that can be inserted by impl_def check defined
+        // above, for other cases which are:
+        //
+        // - impl exists but it empty, here we would ideally
+        // not want to keep newline between impl <struct> {
+        // and fn <fn-name>() { line
+        //
+        // - next if impl itself does not exist, in this
+        // case we ourselves generate a new impl and that
+        // again ends up with the same reasoning as above
+        // for not keeping newline
+        if i == 0 {
+            buf = buf + &getter_buf;
+        } else {
+            buf = buf + "\n" + &getter_buf;
+        }
+
+        // We don't insert a new line at the end of
+        // last getter as it will end up in the end
+        // of an impl where we would not like to keep
+        // getter and end of impl ( i.e. `}` ) with an
+        // extra line for no reason
+        if i < record_fields_count - 1 {
+            buf = buf + "\n";
+        }
+    }
+
+    let start_offset = assist_info
+        .impl_def
+        .as_ref()
+        .and_then(|impl_def| find_impl_block_end(impl_def.to_owned(), &mut buf))
+        .unwrap_or_else(|| {
+            buf = generate_impl_text(&ast::Adt::Struct(assist_info.strukt.clone()), &buf);
+            assist_info.strukt.syntax().text_range().end()
+        });
+
+    match ctx.config.snippet_cap {
+        Some(cap) => builder.insert_snippet(cap, start_offset, buf),
+        None => builder.insert(start_offset, buf),
+    }
+}
+
 #[cfg(test)]
-mod tests {
+mod tests_getter {
     use crate::tests::{check_assist, check_assist_no_snippet_cap, check_assist_not_applicable};
 
     use super::*;
@@ -809,6 +907,108 @@ impl Context {
     }
 }
     "#,
+        );
+    }
+}
+
+#[cfg(test)]
+mod tests_setter {
+    use crate::tests::{check_assist, check_assist_not_applicable};
+
+    use super::*;
+
+    fn check_not_applicable(ra_fixture: &str) {
+        check_assist_not_applicable(generate_setter, ra_fixture)
+    }
+
+    #[test]
+    fn test_generate_setter_from_field() {
+        check_assist(
+            generate_setter,
+            r#"
+struct Person<T: Clone> {
+    dat$0a: T,
+}"#,
+            r#"
+struct Person<T: Clone> {
+    data: T,
+}
+
+impl<T: Clone> Person<T> {
+    fn $0set_data(&mut self, data: T) {
+        self.data = data;
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_generate_setter_already_implemented() {
+        check_not_applicable(
+            r#"
+struct Person<T: Clone> {
+    dat$0a: T,
+}
+
+impl<T: Clone> Person<T> {
+    fn set_data(&mut self, data: T) {
+        self.data = data;
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_generate_setter_from_field_with_visibility_marker() {
+        check_assist(
+            generate_setter,
+            r#"
+pub(crate) struct Person<T: Clone> {
+    dat$0a: T,
+}"#,
+            r#"
+pub(crate) struct Person<T: Clone> {
+    data: T,
+}
+
+impl<T: Clone> Person<T> {
+    pub(crate) fn $0set_data(&mut self, data: T) {
+        self.data = data;
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_multiple_generate_setter() {
+        check_assist(
+            generate_setter,
+            r#"
+struct Context<T: Clone> {
+    data: T,
+    cou$0nt: usize,
+}
+
+impl<T: Clone> Context<T> {
+    fn set_data(&mut self, data: T) {
+        self.data = data;
+    }
+}"#,
+            r#"
+struct Context<T: Clone> {
+    data: T,
+    count: usize,
+}
+
+impl<T: Clone> Context<T> {
+    fn set_data(&mut self, data: T) {
+        self.data = data;
+    }
+
+    fn $0set_count(&mut self, count: usize) {
+        self.count = count;
+    }
+}"#,
         );
     }
 }

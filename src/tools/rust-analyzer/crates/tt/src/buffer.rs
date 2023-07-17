@@ -134,7 +134,7 @@ pub enum TokenTreeRef<'a, Span> {
     Leaf(&'a Leaf<Span>, &'a TokenTree<Span>),
 }
 
-impl<'a, Span: Clone> TokenTreeRef<'a, Span> {
+impl<Span: Clone> TokenTreeRef<'_, Span> {
     pub fn cloned(&self) -> TokenTree<Span> {
         match self {
             TokenTreeRef::Subtree(subtree, tt) => match tt {
@@ -153,13 +153,13 @@ pub struct Cursor<'a, Span> {
     ptr: EntryPtr,
 }
 
-impl<'a, Span> PartialEq for Cursor<'a, Span> {
+impl<Span> PartialEq for Cursor<'_, Span> {
     fn eq(&self, other: &Cursor<'_, Span>) -> bool {
         self.ptr == other.ptr && std::ptr::eq(self.buffer, other.buffer)
     }
 }
 
-impl<'a, Span> Eq for Cursor<'a, Span> {}
+impl<Span> Eq for Cursor<'_, Span> {}
 
 impl<'a, Span> Cursor<'a, Span> {
     /// Check whether it is eof

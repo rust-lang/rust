@@ -1,6 +1,6 @@
 use hir::db::DefDatabase;
 
-use crate::{Diagnostic, DiagnosticsContext, Severity};
+use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext, Severity};
 
 // Diagnostic: unresolved-proc-macro
 //
@@ -41,5 +41,5 @@ pub(crate) fn unresolved_proc_macro(
     };
     let message = format!("{not_expanded_message}: {message}");
 
-    Diagnostic::new("unresolved-proc-macro", message, display_range).severity(severity)
+    Diagnostic::new(DiagnosticCode::Ra("unresolved-proc-macro", severity), message, display_range)
 }

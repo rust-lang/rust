@@ -2,7 +2,7 @@ import * as vscode from "vscode";
 import * as lc from "vscode-languageclient/node";
 
 import * as commands from "./commands";
-import { CommandFactory, Ctx, fetchWorkspace } from "./ctx";
+import { type CommandFactory, Ctx, fetchWorkspace } from "./ctx";
 import * as diagnostics from "./diagnostics";
 import { activateTaskProvider } from "./tasks";
 import { setContextValue } from "./util";
@@ -18,7 +18,7 @@ export async function deactivate() {
 }
 
 export async function activate(
-    context: vscode.ExtensionContext
+    context: vscode.ExtensionContext,
 ): Promise<RustAnalyzerExtensionApi> {
     if (vscode.extensions.getExtension("rust-lang.rust")) {
         vscode.window
@@ -26,7 +26,7 @@ export async function activate(
                 `You have both the rust-analyzer (rust-lang.rust-analyzer) and Rust (rust-lang.rust) ` +
                     "plugins enabled. These are known to conflict and cause various functions of " +
                     "both plugins to not work correctly. You should disable one of them.",
-                "Got it"
+                "Got it",
             )
             .then(() => {}, console.error);
     }
@@ -36,7 +36,7 @@ export async function activate(
     // so we do it ourselves.
     const api = await activateServer(ctx).catch((err) => {
         void vscode.window.showErrorMessage(
-            `Cannot activate rust-analyzer extension: ${err.message}`
+            `Cannot activate rust-analyzer extension: ${err.message}`,
         );
         throw err;
     });
@@ -53,8 +53,8 @@ async function activateServer(ctx: Ctx): Promise<RustAnalyzerExtensionApi> {
     ctx.pushExtCleanup(
         vscode.workspace.registerTextDocumentContentProvider(
             diagnostics.URI_SCHEME,
-            diagnosticProvider
-        )
+            diagnosticProvider,
+        ),
     );
 
     const decorationProvider = new diagnostics.AnsiDecorationProvider(ctx);
@@ -71,7 +71,7 @@ async function activateServer(ctx: Ctx): Promise<RustAnalyzerExtensionApi> {
     vscode.workspace.onDidChangeTextDocument(
         async (event) => await decorateVisibleEditors(event.document),
         null,
-        ctx.subscriptions
+        ctx.subscriptions,
     );
     vscode.workspace.onDidOpenTextDocument(decorateVisibleEditors, null, ctx.subscriptions);
     vscode.window.onDidChangeActiveTextEditor(
@@ -82,7 +82,7 @@ async function activateServer(ctx: Ctx): Promise<RustAnalyzerExtensionApi> {
             }
         },
         null,
-        ctx.subscriptions
+        ctx.subscriptions,
     );
     vscode.window.onDidChangeVisibleTextEditors(
         async (visibleEditors) => {
@@ -92,13 +92,13 @@ async function activateServer(ctx: Ctx): Promise<RustAnalyzerExtensionApi> {
             }
         },
         null,
-        ctx.subscriptions
+        ctx.subscriptions,
     );
 
     vscode.workspace.onDidChangeWorkspaceFolders(
         async (_) => ctx.onWorkspaceFolderChanges(),
         null,
-        ctx.subscriptions
+        ctx.subscriptions,
     );
     vscode.workspace.onDidChangeConfiguration(
         async (_) => {
@@ -107,7 +107,7 @@ async function activateServer(ctx: Ctx): Promise<RustAnalyzerExtensionApi> {
             });
         },
         null,
-        ctx.subscriptions
+        ctx.subscriptions,
     );
 
     await ctx.start();
@@ -179,6 +179,7 @@ function createCommands(): Record<string, CommandFactory> {
         runFlycheck: { enabled: commands.runFlycheck },
         ssr: { enabled: commands.ssr },
         serverVersion: { enabled: commands.serverVersion },
+        viewMemoryLayout: { enabled: commands.viewMemoryLayout },
         // Internal commands which are invoked by the server.
         applyActionGroup: { enabled: commands.applyActionGroup },
         applySnippetWorkspaceEdit: { enabled: commands.applySnippetWorkspaceEditCommand },

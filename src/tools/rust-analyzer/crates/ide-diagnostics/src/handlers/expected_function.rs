@@ -1,6 +1,6 @@
 use hir::HirDisplay;
 
-use crate::{Diagnostic, DiagnosticsContext};
+use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext};
 
 // Diagnostic: expected-function
 //
@@ -9,10 +9,11 @@ pub(crate) fn expected_function(
     ctx: &DiagnosticsContext<'_>,
     d: &hir::ExpectedFunction,
 ) -> Diagnostic {
-    Diagnostic::new(
-        "expected-function",
+    Diagnostic::new_with_syntax_node_ptr(
+        ctx,
+        DiagnosticCode::RustcHardError("E0618"),
         format!("expected function, found {}", d.found.display(ctx.sema.db)),
-        ctx.sema.diagnostics_display_range(d.call.clone().map(|it| it.into())).range,
+        d.call.clone().map(|it| it.into()),
     )
     .experimental()
 }

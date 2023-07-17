@@ -35,7 +35,7 @@ macro_rules! register_builtin {
 
 impl BuiltinAttrExpander {
     pub fn is_derive(self) -> bool {
-        matches!(self, BuiltinAttrExpander::Derive)
+        matches!(self, BuiltinAttrExpander::Derive | BuiltinAttrExpander::DeriveConst)
     }
     pub fn is_test(self) -> bool {
         matches!(self, BuiltinAttrExpander::Test)
@@ -50,6 +50,8 @@ register_builtin! {
     (cfg_accessible, CfgAccessible) => dummy_attr_expand,
     (cfg_eval, CfgEval) => dummy_attr_expand,
     (derive, Derive) => derive_attr_expand,
+    // derive const is equivalent to derive for our proposes.
+    (derive_const, DeriveConst) => derive_attr_expand,
     (global_allocator, GlobalAllocator) => dummy_attr_expand,
     (test, Test) => dummy_attr_expand,
     (test_case, TestCase) => dummy_attr_expand

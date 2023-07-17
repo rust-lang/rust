@@ -14,10 +14,10 @@ use vfs::{AbsPathBuf, ChangeKind, VfsPath};
 
 use crate::{
     config::Config, from_proto, global_state::GlobalState, lsp_ext::RunFlycheckParams,
-    lsp_utils::apply_document_changes, mem_docs::DocumentData, reload, Result,
+    lsp_utils::apply_document_changes, mem_docs::DocumentData, reload,
 };
 
-pub(crate) fn handle_cancel(state: &mut GlobalState, params: CancelParams) -> Result<()> {
+pub(crate) fn handle_cancel(state: &mut GlobalState, params: CancelParams) -> anyhow::Result<()> {
     let id: lsp_server::RequestId = match params.id {
         lsp_types::NumberOrString::Number(id) => id.into(),
         lsp_types::NumberOrString::String(id) => id.into(),
@@ -29,7 +29,7 @@ pub(crate) fn handle_cancel(state: &mut GlobalState, params: CancelParams) -> Re
 pub(crate) fn handle_work_done_progress_cancel(
     state: &mut GlobalState,
     params: WorkDoneProgressCancelParams,
-) -> Result<()> {
+) -> anyhow::Result<()> {
     if let lsp_types::NumberOrString::String(s) = &params.token {
         if let Some(id) = s.strip_prefix("rust-analyzer/flycheck/") {
             if let Ok(id) = u32::from_str_radix(id, 10) {
@@ -49,7 +49,7 @@ pub(crate) fn handle_work_done_progress_cancel(
 pub(crate) fn handle_did_open_text_document(
     state: &mut GlobalState,
     params: DidOpenTextDocumentParams,
-) -> Result<()> {
+) -> anyhow::Result<()> {
     let _p = profile::span("handle_did_open_text_document");
 
     if let Ok(path) = from_proto::vfs_path(&params.text_document.uri) {
@@ -68,7 +68,7 @@ pub(crate) fn handle_did_open_text_document(
 pub(crate) fn handle_did_change_text_document(
     state: &mut GlobalState,
     params: DidChangeTextDocumentParams,
-) -> Result<()> {
+) -> anyhow::Result<()> {
     let _p = profile::span("handle_did_change_text_document");
 
     if let Ok(path) = from_proto::vfs_path(&params.text_document.uri) {
@@ -100,7 +100,7 @@ pub(crate) fn handle_did_change_text_document(
 pub(crate) fn handle_did_close_text_document(
     state: &mut GlobalState,
     params: DidCloseTextDocumentParams,
-) -> Result<()> {
+) -> anyhow::Result<()> {
     let _p = profile::span("handle_did_close_text_document");
 
     if let Ok(path) = from_proto::vfs_path(&params.text_document.uri) {
@@ -120,14 +120,14 @@ pub(crate) fn handle_did_close_text_document(
 pub(crate) fn handle_did_save_text_document(
     state: &mut GlobalState,
     params: DidSaveTextDocumentParams,
-) -> Result<()> {
+) -> anyhow::Result<()> {
     if let Ok(vfs_path) = from_proto::vfs_path(&params.text_document.uri) {
         // Re-fetch workspaces if a workspace related file has changed
         if let Some(abs_path) = vfs_path.as_path() {
             if reload::should_refresh_for_change(abs_path, ChangeKind::Modify) {
                 state
                     .fetch_workspaces_queue
-                    .request_op(format!("DidSaveTextDocument {}", abs_path.display()), false);
+                    .request_op(format!("DidSaveTextDocument {abs_path}"), false);
             }
         }
 
@@ -146,7 +146,7 @@ pub(crate) fn handle_did_save_text_document(
 pub(crate) fn handle_did_change_configuration(
     state: &mut GlobalState,
     _params: DidChangeConfigurationParams,
-) -> Result<()> {
+) -> anyhow::Result<()> {
     // As stated in https://github.com/microsoft/language-server-protocol/issues/676,
     // this notification's parameters should be ignored and the actual config queried separately.
     state.send_request::<lsp_types::request::WorkspaceConfiguration>(
@@ -186,7 +186,7 @@ pub(crate) fn handle_did_change_configuration(
 pub(crate) fn handle_did_change_workspace_folders(
     state: &mut GlobalState,
     params: DidChangeWorkspaceFoldersParams,
-) -> Result<()> {
+) -> anyhow::Result<()> {
     let config = Arc::make_mut(&mut state.config);
 
     for workspace in params.event.removed {
@@ -214,7 +214,7 @@ pub(crate) fn handle_did_change_workspace_folders(
 pub(crate) fn handle_did_change_watched_files(
     state: &mut GlobalState,
     params: DidChangeWatchedFilesParams,
-) -> Result<()> {
+) -> anyhow::Result<()> {
     for change in params.changes {
         if let Ok(path) = from_proto::abs_path(&change.uri) {
             state.loader.handle.invalidate(path);
@@ -302,13 +302,13 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
     }
 }
 
-pub(crate) fn handle_cancel_flycheck(state: &mut GlobalState, _: ()) -> Result<()> {
+pub(crate) fn handle_cancel_flycheck(state: &mut GlobalState, _: ()) -> anyhow::Result<()> {
     let _p = profile::span("handle_stop_flycheck");
     state.flycheck.iter().for_each(|flycheck| flycheck.cancel());
     Ok(())
 }
 
-pub(crate) fn handle_clear_flycheck(state: &mut GlobalState, _: ()) -> Result<()> {
+pub(crate) fn handle_clear_flycheck(state: &mut GlobalState, _: ()) -> anyhow::Result<()> {
     let _p = profile::span("handle_clear_flycheck");
     state.diagnostics.clear_check_all();
     Ok(())
@@ -317,7 +317,7 @@ pub(crate) fn handle_clear_flycheck(state: &mut GlobalState, _: ()) -> Result<()
 pub(crate) fn handle_run_flycheck(
     state: &mut GlobalState,
     params: RunFlycheckParams,
-) -> Result<()> {
+) -> anyhow::Result<()> {
     let _p = profile::span("handle_run_flycheck");
     if let Some(text_document) = params.text_document {
         if let Ok(vfs_path) = from_proto::vfs_path(&text_document.uri) {

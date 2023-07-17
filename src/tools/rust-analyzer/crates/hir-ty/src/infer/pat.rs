@@ -56,7 +56,7 @@ impl PatLike for PatId {
     }
 }
 
-impl<'a> InferenceContext<'a> {
+impl InferenceContext<'_> {
     /// Infers type for tuple struct pattern or its corresponding assignee expression.
     ///
     /// Ellipses found in the original pattern or expression must be filtered out.
@@ -306,7 +306,7 @@ impl<'a> InferenceContext<'a> {
         self.result
             .pat_adjustments
             .get(&pat)
-            .and_then(|x| x.first())
+            .and_then(|it| it.first())
             .unwrap_or(&self.result.type_of_pat[pat])
             .clone()
     }

@@ -54,7 +54,11 @@ pub(crate) fn move_const_to_impl(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
     // NOTE: We can technically provide this assist for default methods in trait definitions, but
     // it's somewhat complex to handle it correctly when the const's name conflicts with
     // supertrait's item. We may want to consider implementing it in the future.
-    let AssocItemContainer::Impl(impl_) = ctx.sema.to_def(&parent_fn)?.as_assoc_item(db)?.container(db) else { return None; };
+    let AssocItemContainer::Impl(impl_) =
+        ctx.sema.to_def(&parent_fn)?.as_assoc_item(db)?.container(db)
+    else {
+        return None;
+    };
     if impl_.trait_(db).is_some() {
         return None;
     }

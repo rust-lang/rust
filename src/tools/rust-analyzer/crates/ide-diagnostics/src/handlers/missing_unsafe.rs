@@ -4,16 +4,17 @@ use syntax::{ast, SyntaxNode};
 use syntax::{match_ast, AstNode};
 use text_edit::TextEdit;
 
-use crate::{fix, Diagnostic, DiagnosticsContext};
+use crate::{fix, Diagnostic, DiagnosticCode, DiagnosticsContext};
 
 // Diagnostic: missing-unsafe
 //
 // This diagnostic is triggered if an operation marked as `unsafe` is used outside of an `unsafe` function or block.
 pub(crate) fn missing_unsafe(ctx: &DiagnosticsContext<'_>, d: &hir::MissingUnsafe) -> Diagnostic {
-    Diagnostic::new(
-        "missing-unsafe",
+    Diagnostic::new_with_syntax_node_ptr(
+        ctx,
+        DiagnosticCode::RustcHardError("E0133"),
         "this operation is unsafe and requires an unsafe function or block",
-        ctx.sema.diagnostics_display_range(d.expr.clone().map(|it| it.into())).range,
+        d.expr.clone().map(|it| it.into()),
     )
     .with_fixes(fixes(ctx, d))
 }

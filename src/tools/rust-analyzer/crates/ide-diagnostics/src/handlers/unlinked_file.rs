@@ -14,7 +14,7 @@ use syntax::{
 };
 use text_edit::TextEdit;
 
-use crate::{fix, Assist, Diagnostic, DiagnosticsContext, Severity};
+use crate::{fix, Assist, Diagnostic, DiagnosticCode, DiagnosticsContext, Severity};
 
 // Diagnostic: unlinked-file
 //
@@ -46,8 +46,7 @@ pub(crate) fn unlinked_file(
         .unwrap_or(range);
 
     acc.push(
-        Diagnostic::new("unlinked-file", message, range)
-            .severity(Severity::WeakWarning)
+        Diagnostic::new(DiagnosticCode::Ra("unlinked-file", Severity::WeakWarning), message, range)
             .with_fixes(fixes),
     );
 }
@@ -119,10 +118,11 @@ fn fixes(ctx: &DiagnosticsContext<'_>, file_id: FileId) -> Option<Vec<Assist>> {
     stack.pop();
     'crates: for &krate in ctx.sema.db.relevant_crates(parent_id).iter() {
         let crate_def_map = ctx.sema.db.crate_def_map(krate);
-        let Some((_, module)) =
-            crate_def_map.modules()
-            .find(|(_, module)| module.origin.file_id() == Some(parent_id) && !module.origin.is_inline())
-        else { continue };
+        let Some((_, module)) = crate_def_map.modules().find(|(_, module)| {
+            module.origin.file_id() == Some(parent_id) && !module.origin.is_inline()
+        }) else {
+            continue;
+        };
 
         if stack.is_empty() {
             return make_fixes(
