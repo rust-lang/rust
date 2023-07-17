@@ -61,7 +61,7 @@ pub trait CodegenBackend {
     fn locale_resource(&self) -> &'static str;
 
     fn init(&self, _sess: &Session) {}
-    fn print(&self, _req: PrintRequest, _sess: &Session) {}
+    fn print(&self, _req: &PrintRequest, _sess: &Session) {}
     fn target_features(&self, _sess: &Session, _allow_unstable: bool) -> Vec<Symbol> {
         vec![]
     }

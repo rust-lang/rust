@@ -35,9 +35,7 @@ use rustc_interface::{interface, Queries};
 use rustc_lint::LintStore;
 use rustc_metadata::locator;
 use rustc_session::config::{nightly_options, CG_OPTIONS, Z_OPTIONS};
-use rustc_session::config::{
-    ErrorOutputType, Input, OutFileName, OutputType, PrintRequest, TrimmedDefPaths,
-};
+use rustc_session::config::{ErrorOutputType, Input, OutFileName, OutputType, TrimmedDefPaths};
 use rustc_session::cstore::MetadataLoader;
 use rustc_session::getopts::{self, Matches};
 use rustc_session::lint::{Lint, LintId};
@@ -714,10 +712,10 @@ fn print_crate_info(
     sess: &Session,
     parse_attrs: bool,
 ) -> Compilation {
-    use rustc_session::config::PrintRequest::*;
+    use rustc_session::config::PrintKind::*;
     // NativeStaticLibs and LinkArgs are special - printed during linking
     // (empty iterator returns true)
-    if sess.opts.prints.iter().all(|&p| p == NativeStaticLibs || p == LinkArgs) {
+    if sess.opts.prints.iter().all(|p| p.kind == NativeStaticLibs || p.kind == LinkArgs) {
         return Compilation::Continue;
     }
 
@@ -734,7 +732,7 @@ fn print_crate_info(
         None
     };
     for req in &sess.opts.prints {
-        match *req {
+        match req.kind {
             TargetList => {
                 let mut targets = rustc_target::spec::TARGETS.to_vec();
                 targets.sort_unstable();
@@ -761,7 +759,7 @@ fn print_crate_info(
                 };
                 let t_outputs = rustc_interface::util::build_output_filenames(attrs, sess);
                 let id = rustc_session::output::find_crate_name(sess, attrs);
-                if *req == PrintRequest::CrateName {
+                if req.kind == CrateName {
                     safe_println!("{id}");
                     continue;
                 }
@@ -817,7 +815,7 @@ fn print_crate_info(
             | TargetCPUs
             | StackProtectorStrategies
             | TargetFeatures => {
-                codegen_backend.print(*req, sess);
+                codegen_backend.print(req, sess);
             }
             // Any output here interferes with Cargo's parsing of other printed output
             NativeStaticLibs => {}

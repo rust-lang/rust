@@ -710,8 +710,14 @@ impl ExternEntry {
     }
 }
 
+#[derive(Clone, PartialEq, Debug)]
+pub struct PrintRequest {
+    pub kind: PrintKind,
+    pub out: OutFileName,
+}
+
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub enum PrintRequest {
+pub enum PrintKind {
     FileNames,
     Sysroot,
     TargetLibdir,
@@ -2091,41 +2097,41 @@ fn collect_print_requests(
 ) -> Vec<PrintRequest> {
     let mut prints = Vec::<PrintRequest>::new();
     if cg.target_cpu.as_ref().is_some_and(|s| s == "help") {
-        prints.push(PrintRequest::TargetCPUs);
+        prints.push(PrintRequest { kind: PrintKind::TargetCPUs, out: OutFileName::Stdout });
         cg.target_cpu = None;
     };
     if cg.target_feature == "help" {
-        prints.push(PrintRequest::TargetFeatures);
+        prints.push(PrintRequest { kind: PrintKind::TargetFeatures, out: OutFileName::Stdout });
         cg.target_feature = String::new();
     }
 
-    const PRINT_REQUESTS: &[(&str, PrintRequest)] = &[
-        ("crate-name", PrintRequest::CrateName),
-        ("file-names", PrintRequest::FileNames),
-        ("sysroot", PrintRequest::Sysroot),
-        ("target-libdir", PrintRequest::TargetLibdir),
-        ("cfg", PrintRequest::Cfg),
-        ("calling-conventions", PrintRequest::CallingConventions),
-        ("target-list", PrintRequest::TargetList),
-        ("target-cpus", PrintRequest::TargetCPUs),
-        ("target-features", PrintRequest::TargetFeatures),
-        ("relocation-models", PrintRequest::RelocationModels),
-        ("code-models", PrintRequest::CodeModels),
-        ("tls-models", PrintRequest::TlsModels),
-        ("native-static-libs", PrintRequest::NativeStaticLibs),
-        ("stack-protector-strategies", PrintRequest::StackProtectorStrategies),
-        ("target-spec-json", PrintRequest::TargetSpec),
-        ("all-target-specs-json", PrintRequest::AllTargetSpecs),
-        ("link-args", PrintRequest::LinkArgs),
-        ("split-debuginfo", PrintRequest::SplitDebuginfo),
-        ("deployment-target", PrintRequest::DeploymentTarget),
+    const PRINT_KINDS: &[(&str, PrintKind)] = &[
+        ("crate-name", PrintKind::CrateName),
+        ("file-names", PrintKind::FileNames),
+        ("sysroot", PrintKind::Sysroot),
+        ("target-libdir", PrintKind::TargetLibdir),
+        ("cfg", PrintKind::Cfg),
+        ("calling-conventions", PrintKind::CallingConventions),
+        ("target-list", PrintKind::TargetList),
+        ("target-cpus", PrintKind::TargetCPUs),
+        ("target-features", PrintKind::TargetFeatures),
+        ("relocation-models", PrintKind::RelocationModels),
+        ("code-models", PrintKind::CodeModels),
+        ("tls-models", PrintKind::TlsModels),
+        ("native-static-libs", PrintKind::NativeStaticLibs),
+        ("stack-protector-strategies", PrintKind::StackProtectorStrategies),
+        ("target-spec-json", PrintKind::TargetSpec),
+        ("all-target-specs-json", PrintKind::AllTargetSpecs),
+        ("link-args", PrintKind::LinkArgs),
+        ("split-debuginfo", PrintKind::SplitDebuginfo),
+        ("deployment-target", PrintKind::DeploymentTarget),
     ];
 
     prints.extend(matches.opt_strs("print").into_iter().map(|req| {
-        match PRINT_REQUESTS.iter().find(|&&(name, _)| name == req) {
-            Some((_, PrintRequest::TargetSpec)) => {
+        let kind = match PRINT_KINDS.iter().find(|&&(name, _)| name == req) {
+            Some((_, PrintKind::TargetSpec)) => {
                 if unstable_opts.unstable_options {
-                    PrintRequest::TargetSpec
+                    PrintKind::TargetSpec
                 } else {
                     handler.early_error(
                         "the `-Z unstable-options` flag must also be passed to \
@@ -2133,9 +2139,9 @@ fn collect_print_requests(
                     );
                 }
             }
-            Some((_, PrintRequest::AllTargetSpecs)) => {
+            Some((_, PrintKind::AllTargetSpecs)) => {
                 if unstable_opts.unstable_options {
-                    PrintRequest::AllTargetSpecs
+                    PrintKind::AllTargetSpecs
                 } else {
                     handler.early_error(
                         "the `-Z unstable-options` flag must also be passed to \
@@ -2143,16 +2149,17 @@ fn collect_print_requests(
                     );
                 }
             }
-            Some(&(_, print_request)) => print_request,
+            Some(&(_, print_kind)) => print_kind,
             None => {
                 let prints =
-                    PRINT_REQUESTS.iter().map(|(name, _)| format!("`{name}`")).collect::<Vec<_>>();
+                    PRINT_KINDS.iter().map(|(name, _)| format!("`{name}`")).collect::<Vec<_>>();
                 let prints = prints.join(", ");
                 handler.early_error(format!(
                     "unknown print request `{req}`. Valid print requests are: {prints}"
                 ));
             }
-        }
+        };
+        PrintRequest { kind, out: OutFileName::Stdout }
     }));
 
     prints
