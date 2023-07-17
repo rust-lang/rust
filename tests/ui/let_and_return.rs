@@ -169,4 +169,14 @@ mod issue_5729 {
     }
 }
 
+// https://github.com/rust-lang/rust-clippy/issues/11167
+macro_rules! fn_in_macro {
+    ($b:block) => {
+        fn f() -> usize $b
+    }
+}
+fn_in_macro!({
+    return 1;
+});
+
 fn main() {}
