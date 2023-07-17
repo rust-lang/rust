@@ -36,8 +36,7 @@ pub(crate) struct Module<'hir> {
         (&'hir hir::Item<'hir>, Option<Symbol>, Option<LocalDefId>),
     >,
     /// Same as for `items`.
-    pub(crate) inlined_foreigns:
-        FxIndexMap<(DefId, Option<Symbol>), (Res, Option<Symbol>, LocalDefId)>,
+    pub(crate) inlined_foreigns: FxIndexMap<(DefId, Option<Symbol>), (Res, LocalDefId)>,
     pub(crate) foreigns: Vec<(&'hir hir::ForeignItem<'hir>, Option<Symbol>)>,
 }
 
@@ -295,7 +294,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 .last_mut()
                 .unwrap()
                 .inlined_foreigns
-                .insert((ori_res_did, renamed), (res, renamed, def_id));
+                .insert((ori_res_did, renamed), (res, def_id));
             return true;
         };
 

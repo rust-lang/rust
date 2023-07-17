@@ -90,7 +90,7 @@ pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<
         }
         v
     }));
-    items.extend(doc.inlined_foreigns.values().flat_map(|(res, renamed, local_import_id)| {
+    items.extend(doc.inlined_foreigns.iter().flat_map(|((_, renamed), (res, local_import_id))| {
         let Some(def_id) = res.opt_def_id() else { return Vec::new() };
         let name = renamed.unwrap_or_else(|| cx.tcx.item_name(def_id));
         let import = cx.tcx.hir().expect_item(*local_import_id);
