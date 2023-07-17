@@ -460,7 +460,7 @@ impl<'a> Parser<'a> {
             } else {
                 let pos = self.to_span_index(pos);
                 let description = format!("expected `'}}'`, found `{maybe:?}`");
-                let label = "expected `}`".to_owned();
+                let label = "expected `'}'`".to_owned();
                 let (note, secondary_label) = if c == '}' {
                     (
                         Some(
