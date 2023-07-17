@@ -457,6 +457,7 @@ define_tables! {
     trait_impl_trait_tys: Table<DefIndex, LazyValue<FxHashMap<DefId, ty::EarlyBinder<Ty<'static>>>>>,
     doc_link_resolutions: Table<DefIndex, LazyValue<DocLinkResMap>>,
     doc_link_traits_in_scope: Table<DefIndex, LazyArray<DefId>>,
+    assumed_wf_types_for_rpitit: Table<DefIndex, LazyArray<(Ty<'static>, Span)>>,
 }
 
 #[derive(TyEncodable, TyDecodable)]

@@ -9,7 +9,11 @@ use rustc_span::Span;
 use std::iter;
 
 pub fn provide(providers: &mut Providers) {
-    *providers = Providers { assumed_wf_types, ..*providers };
+    *providers = Providers {
+        assumed_wf_types,
+        assumed_wf_types_for_rpitit: |tcx, def_id| tcx.assumed_wf_types(def_id),
+        ..*providers
+    };
 }
 
 fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'tcx>, Span)] {
@@ -44,41 +48,62 @@ fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'
             let mut impl_spans = impl_spans(tcx, def_id);
             tcx.arena.alloc_from_iter(tys.into_iter().map(|ty| (ty, impl_spans.next().unwrap())))
         }
-        DefKind::AssocTy  if let Some(ty::ImplTraitInTraitData::Trait { fn_def_id, opaque_def_id }) = tcx.opt_rpitit_info(def_id.to_def_id()) => {
-            let hir::OpaqueTy { lifetime_mapping, .. } =
-                *tcx.hir().expect_item(opaque_def_id.expect_local()).expect_opaque_ty();
-            let mut mapping = FxHashMap::default();
-            let generics = tcx.generics_of(def_id);
-            for &(lifetime, new_early_bound_def_id) in lifetime_mapping {
-                if let Some(rbv::ResolvedArg::LateBound(_, _, def_id)) =
-                    tcx.named_bound_var(lifetime.hir_id)
+        DefKind::AssocTy if let Some(data) = tcx.opt_rpitit_info(def_id.to_def_id()) => match data {
+            ty::ImplTraitInTraitData::Trait { fn_def_id, opaque_def_id } => {
+                let hir::OpaqueTy { lifetime_mapping, .. } =
+                    *tcx.hir().expect_item(opaque_def_id.expect_local()).expect_opaque_ty();
+                let mut mapping = FxHashMap::default();
+                let generics = tcx.generics_of(def_id);
+                for &(lifetime, new_early_bound_def_id) in
+                    lifetime_mapping.expect("expected lifetime mapping for RPITIT")
                 {
-                    let name = tcx.hir().name(lifetime.hir_id);
-                    let index = generics
-                        .param_def_id_to_index(tcx, new_early_bound_def_id.to_def_id())
-                        .unwrap();
-                    mapping.insert(
-                        ty::Region::new_free(
-                            tcx,
-                            fn_def_id,
-                            ty::BoundRegionKind::BrNamed(def_id, name),
-                        ),
-                        ty::Region::new_early_bound(
-                            tcx,
-                            ty::EarlyBoundRegion {
-                                def_id: new_early_bound_def_id.to_def_id(),
-                                index,
-                                name,
-                            },
-                        ),
-                    );
+                    if let Some(rbv::ResolvedArg::LateBound(_, _, def_id)) =
+                        tcx.named_bound_var(lifetime.hir_id)
+                    {
+                        let name = tcx.hir().name(lifetime.hir_id);
+                        let index = generics
+                            .param_def_id_to_index(tcx, new_early_bound_def_id.to_def_id())
+                            .unwrap();
+                        mapping.insert(
+                            ty::Region::new_free(
+                                tcx,
+                                fn_def_id,
+                                ty::BoundRegionKind::BrNamed(def_id, name),
+                            ),
+                            ty::Region::new_early_bound(
+                                tcx,
+                                ty::EarlyBoundRegion {
+                                    def_id: new_early_bound_def_id.to_def_id(),
+                                    index,
+                                    name,
+                                },
+                            ),
+                        );
+                    }
                 }
+                let a = tcx.fold_regions(
+                    tcx.assumed_wf_types(fn_def_id.expect_local()).to_vec(),
+                    |re, _| {
+                        if let Some(re) = mapping.get(&re) { *re } else { re }
+                    },
+                );
+                tcx.arena.alloc_from_iter(a)
             }
-            let a = tcx.fold_regions(tcx.assumed_wf_types(fn_def_id.expect_local()).to_vec(), |re, _| {
-                if let Some(re) = mapping.get(&re) { *re } else { re }
-            });
-            tcx.arena.alloc_from_iter(a)
-        }
+            ty::ImplTraitInTraitData::Impl { .. } => {
+                let impl_def_id = tcx.local_parent(def_id);
+                let rpitit_def_id = tcx.associated_item(def_id).trait_item_def_id.unwrap();
+                let args = ty::GenericArgs::identity_for_item(tcx, def_id).rebase_onto(
+                    tcx,
+                    impl_def_id.to_def_id(),
+                    tcx.impl_trait_ref(impl_def_id).unwrap().instantiate_identity().args,
+                );
+                tcx.arena.alloc_from_iter(
+                    ty::EarlyBinder::bind(tcx.assumed_wf_types_for_rpitit(rpitit_def_id))
+                        .iter_instantiated_copied(tcx, args)
+                        .chain(tcx.assumed_wf_types(impl_def_id).into_iter().copied()),
+                )
+            }
+        },
         DefKind::AssocConst | DefKind::AssocTy => tcx.assumed_wf_types(tcx.local_parent(def_id)),
         DefKind::OpaqueTy => match tcx.def_kind(tcx.local_parent(def_id)) {
             DefKind::TyAlias => ty::List::empty(),
