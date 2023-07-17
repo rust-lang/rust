@@ -1134,9 +1134,14 @@ impl<'a> MethodDef<'a> {
         trait_: &TraitDef<'b>,
         enum_def: &'b EnumDef,
         type_ident: Ident,
-        selflike_args: ThinVec<P<Expr>>,
+        mut selflike_args: ThinVec<P<Expr>>,
         nonselflike_args: &[P<Expr>],
     ) -> BlockOrExpr {
+        assert!(
+            !selflike_args.is_empty(),
+            "static methods must use `expand_static_enum_method_body`",
+        );
+
         let span = trait_.span;
         let variants = &enum_def.variants;
 
@@ -1144,10 +1149,15 @@ impl<'a> MethodDef<'a> {
         let unify_fieldless_variants =
             self.fieldless_variants_strategy == FieldlessVariantsStrategy::Unify;
 
-        // There is no sensible code to be generated for *any* deriving on a
-        // zero-variant enum. So we just generate a failing expression.
+        // For zero-variant enum, this function body is unreachable. Generate
+        // `match *self {}`. This produces machine code identical to `unsafe {
+        // core::intrinsics::unreachable() }` while being safe and stable.
         if variants.is_empty() {
-            return BlockOrExpr(ThinVec::new(), Some(deriving::call_unreachable(cx, span)));
+            selflike_args.truncate(1);
+            let match_arg = cx.expr_deref(span, selflike_args.pop().unwrap());
+            let match_arms = ThinVec::new();
+            let expr = cx.expr_match(span, match_arg, match_arms);
+            return BlockOrExpr(ThinVec::new(), Some(expr));
         }
 
         let prefixes = iter::once("__self".to_string())
