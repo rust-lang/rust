@@ -781,7 +781,9 @@ impl<T: ?Sized> *mut T {
     /// Calculates the distance between two pointers. The returned value is in
     /// units of T: the distance in bytes divided by `mem::size_of::<T>()`.
     ///
-    /// This function is the inverse of [`offset`].
+    /// This function is the inverse of [`offset`]: it is valid to call if and only if
+    /// `self` could have been computed as `origin.offset(n)` for some `n`, and it will
+    /// then return that `n`.
     ///
     /// [`offset`]: pointer#method.offset-1
     ///
@@ -819,6 +821,12 @@ impl<T: ?Sized> *mut T {
     /// mapped files *may* be too large to handle with this function.
     /// (Note that [`offset`] and [`add`] also have a similar limitation and hence cannot be used on
     /// such large allocations either.)
+    ///
+    /// The requirement for pointers to be derived from the same allocated object is primarily
+    /// needed for `const`-compatibility: at compile-time, pointers into *different* allocated
+    /// object do not have a known distance to each other. However, the requirement also exists at
+    /// runtime, and may be exploited by optimizations. You can use `(self as usize).sub(origin as
+    /// usize) / mem::size_of::<T>()` to avoid this requirement.
     ///
     /// [`add`]: #method.add
     /// [allocated object]: crate::ptr#allocated-object
@@ -875,7 +883,7 @@ impl<T: ?Sized> *mut T {
     /// units of **bytes**.
     ///
     /// This is purely a convenience for casting to a `u8` pointer and
-    /// using [offset_from][pointer::offset_from] on it. See that method for
+    /// using [`offset_from`][pointer::offset_from] on it. See that method for
     /// documentation and safety requirements.
     ///
     /// For non-`Sized` pointees this operation considers only the data pointers,
