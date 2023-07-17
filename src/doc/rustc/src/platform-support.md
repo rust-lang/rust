@@ -176,6 +176,7 @@ target | std | notes
 `thumbv8m.base-none-eabi` | * | Bare ARMv8-M Baseline
 `thumbv8m.main-none-eabi` | * | Bare ARMv8-M Mainline
 `thumbv8m.main-none-eabihf` | * | Bare ARMv8-M Mainline, hardfloat
+[`sparc-unknown-none-elf`](./platform-support/sparc-unknown-none-elf.md) | * | Bare 32-bit SPARC V7+
 `wasm32-unknown-emscripten` | ✓ | WebAssembly via Emscripten
 `wasm32-unknown-unknown` | ✓ | WebAssembly
 `wasm32-wasi` | ✓ | WebAssembly with WASI
