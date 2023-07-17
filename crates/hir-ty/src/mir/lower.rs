@@ -633,7 +633,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                     );
                 }
                 let callee_ty = self.expr_ty_after_adjustments(*callee);
-                match &callee_ty.data(Interner).kind {
+                match &callee_ty.kind(Interner) {
                     chalk_ir::TyKind::FnDef(..) => {
                         let func = Operand::from_bytes(vec![], callee_ty.clone());
                         self.lower_call_and_args(
@@ -1229,7 +1229,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
             }
             Expr::Array(l) => match l {
                 Array::ElementList { elements, .. } => {
-                    let elem_ty = match &self.expr_ty_without_adjust(expr_id).data(Interner).kind {
+                    let elem_ty = match &self.expr_ty_without_adjust(expr_id).kind(Interner) {
                         TyKind::Array(ty, _) => ty.clone(),
                         _ => {
                             return Err(MirLowerError::TypeError(
@@ -1260,7 +1260,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                     else {
                         return Ok(None);
                     };
-                    let len = match &self.expr_ty_without_adjust(expr_id).data(Interner).kind {
+                    let len = match &self.expr_ty_without_adjust(expr_id).kind(Interner) {
                         TyKind::Array(_, len) => len.clone(),
                         _ => {
                             return Err(MirLowerError::TypeError(
