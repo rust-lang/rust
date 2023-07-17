@@ -60,3 +60,22 @@ pub fn get_files_from_dir(
         .map(|p| p.map(|p| Utf8PathBuf::from_path_buf(p).unwrap()))
         .collect::<Result<Vec<_>, _>>()?)
 }
+
+/// Finds a single file in the specified `directory` with the given `prefix` and `suffix`.
+pub fn find_file_in_dir(
+    directory: &Utf8Path,
+    prefix: &str,
+    suffix: &str,
+) -> anyhow::Result<Utf8PathBuf> {
+    let files = glob::glob(&format!("{directory}/{prefix}*{suffix}"))?
+        .into_iter()
+        .collect::<Result<Vec<_>, _>>()?;
+    match files.len() {
+        0 => Err(anyhow::anyhow!("No file with prefix {prefix} found in {directory}")),
+        1 => Ok(Utf8PathBuf::from_path_buf(files[0].clone()).unwrap()),
+        _ => Err(anyhow::anyhow!(
+            "More than one file with prefix {prefix} found in {directory}: {:?}",
+            files
+        )),
+    }
+}
