@@ -274,7 +274,7 @@ pub struct AllocDecodingState {
     // For each `AllocId`, we keep track of which decoding state it's currently in.
     decoding_state: Vec<Lock<State>>,
     // The offsets of each allocation in the data stream.
-    data_offsets: Vec<u32>,
+    data_offsets: Vec<u64>,
 }
 
 impl AllocDecodingState {
@@ -289,7 +289,7 @@ impl AllocDecodingState {
         AllocDecodingSession { state: self, session_id }
     }
 
-    pub fn new(data_offsets: Vec<u32>) -> Self {
+    pub fn new(data_offsets: Vec<u64>) -> Self {
         let decoding_state =
             std::iter::repeat_with(|| Lock::new(State::Empty)).take(data_offsets.len()).collect();
 

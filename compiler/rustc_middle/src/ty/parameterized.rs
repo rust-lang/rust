@@ -52,6 +52,7 @@ trivially_parameterized_over_tcx! {
     usize,
     (),
     u32,
+    u64,
     bool,
     std::string::String,
     crate::metadata::ModChild,
