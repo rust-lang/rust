@@ -2011,13 +2011,7 @@ fn parse_output_types(
     if !unstable_opts.parse_only {
         for list in matches.opt_strs("emit") {
             for output_type in list.split(',') {
-                let (shorthand, path) = match output_type.split_once('=') {
-                    None => (output_type, None),
-                    Some((shorthand, "-")) => (shorthand, Some(OutFileName::Stdout)),
-                    Some((shorthand, path)) => {
-                        (shorthand, Some(OutFileName::Real(PathBuf::from(path))))
-                    }
-                };
+                let (shorthand, path) = split_out_file_name(output_type);
                 let output_type = OutputType::from_shorthand(shorthand).unwrap_or_else(|| {
                     handler.early_error(format!(
                         "unknown emission type: `{shorthand}` - expected one of: {display}",
@@ -2032,6 +2026,14 @@ fn parse_output_types(
         output_types.insert(OutputType::Exe, None);
     }
     OutputTypes(output_types)
+}
+
+fn split_out_file_name(arg: &str) -> (&str, Option<OutFileName>) {
+    match arg.split_once('=') {
+        None => (arg, None),
+        Some((kind, "-")) => (kind, Some(OutFileName::Stdout)),
+        Some((kind, path)) => (kind, Some(OutFileName::Real(PathBuf::from(path)))),
+    }
 }
 
 fn should_override_cgus_and_disable_thinlto(
@@ -2128,6 +2130,8 @@ fn collect_print_requests(
     ];
 
     prints.extend(matches.opt_strs("print").into_iter().map(|req| {
+        let (req, out) = split_out_file_name(&req);
+
         let kind = match PRINT_KINDS.iter().find(|&&(name, _)| name == req) {
             Some((_, PrintKind::TargetSpec)) => {
                 if unstable_opts.unstable_options {
@@ -2159,7 +2163,9 @@ fn collect_print_requests(
                 ));
             }
         };
-        PrintRequest { kind, out: OutFileName::Stdout }
+
+        let out = out.unwrap_or(OutFileName::Stdout);
+        PrintRequest { kind, out }
     }));
 
     prints
