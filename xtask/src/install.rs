@@ -2,13 +2,13 @@
 
 use std::{env, path::PathBuf, str};
 
-use anyhow::{bail, format_err, Context, Result};
+use anyhow::{bail, format_err, Context};
 use xshell::{cmd, Shell};
 
 use crate::flags;
 
 impl flags::Install {
-    pub(crate) fn run(self, sh: &Shell) -> Result<()> {
+    pub(crate) fn run(self, sh: &Shell) -> anyhow::Result<()> {
         if cfg!(target_os = "macos") {
             fix_path_for_mac(sh).context("Fix path for mac")?;
         }
@@ -39,7 +39,7 @@ pub(crate) enum Malloc {
     Jemalloc,
 }
 
-fn fix_path_for_mac(sh: &Shell) -> Result<()> {
+fn fix_path_for_mac(sh: &Shell) -> anyhow::Result<()> {
     let mut vscode_path: Vec<PathBuf> = {
         const COMMON_APP_PATH: &str =
             r"/Applications/Visual Studio Code.app/Contents/Resources/app/bin";
@@ -68,7 +68,7 @@ fn fix_path_for_mac(sh: &Shell) -> Result<()> {
     Ok(())
 }
 
-fn install_client(sh: &Shell, client_opt: ClientOpt) -> Result<()> {
+fn install_client(sh: &Shell, client_opt: ClientOpt) -> anyhow::Result<()> {
     let _dir = sh.push_dir("./editors/code");
 
     // Package extension.
@@ -129,7 +129,7 @@ fn install_client(sh: &Shell, client_opt: ClientOpt) -> Result<()> {
     Ok(())
 }
 
-fn install_server(sh: &Shell, opts: ServerOpt) -> Result<()> {
+fn install_server(sh: &Shell, opts: ServerOpt) -> anyhow::Result<()> {
     let features = match opts.malloc {
         Malloc::System => &[][..],
         Malloc::Mimalloc => &["--features", "mimalloc"],

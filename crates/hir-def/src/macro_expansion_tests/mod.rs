@@ -20,8 +20,8 @@ use ::mbe::TokenMap;
 use base_db::{fixture::WithFixture, ProcMacro, SourceDatabase};
 use expect_test::Expect;
 use hir_expand::{
-    db::{ExpandDatabase, TokenExpander},
-    AstId, InFile, MacroDefId, MacroDefKind, MacroFile,
+    db::{DeclarativeMacroExpander, ExpandDatabase},
+    AstId, InFile, MacroFile,
 };
 use stdx::format_to;
 use syntax::{
@@ -100,32 +100,29 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
         let call_offset = macro_.syntax().text_range().start().into();
         let file_ast_id = db.ast_id_map(source.file_id).ast_id(&macro_);
         let ast_id = AstId::new(source.file_id, file_ast_id.upcast());
-        let kind = MacroDefKind::Declarative(ast_id);
 
-        let macro_def = db
-            .macro_def(MacroDefId { krate, kind, local_inner: false, allow_internal_unsafe: false })
-            .unwrap();
-        if let TokenExpander::DeclarativeMacro { mac, def_site_token_map } = &*macro_def {
-            let tt = match &macro_ {
-                ast::Macro::MacroRules(mac) => mac.token_tree().unwrap(),
-                ast::Macro::MacroDef(_) => unimplemented!(""),
-            };
+        let DeclarativeMacroExpander { mac, def_site_token_map } =
+            &*db.decl_macro_expander(krate, ast_id);
+        assert_eq!(mac.err(), None);
+        let tt = match &macro_ {
+            ast::Macro::MacroRules(mac) => mac.token_tree().unwrap(),
+            ast::Macro::MacroDef(_) => unimplemented!(""),
+        };
 
-            let tt_start = tt.syntax().text_range().start();
-            tt.syntax().descendants_with_tokens().filter_map(SyntaxElement::into_token).for_each(
-                |token| {
-                    let range = token.text_range().checked_sub(tt_start).unwrap();
-                    if let Some(id) = def_site_token_map.token_by_range(range) {
-                        let offset = (range.end() + tt_start).into();
-                        text_edits.push((offset..offset, format!("#{}", id.0)));
-                    }
-                },
-            );
-            text_edits.push((
-                call_offset..call_offset,
-                format!("// call ids will be shifted by {:?}\n", mac.shift()),
-            ));
-        }
+        let tt_start = tt.syntax().text_range().start();
+        tt.syntax().descendants_with_tokens().filter_map(SyntaxElement::into_token).for_each(
+            |token| {
+                let range = token.text_range().checked_sub(tt_start).unwrap();
+                if let Some(id) = def_site_token_map.token_by_range(range) {
+                    let offset = (range.end() + tt_start).into();
+                    text_edits.push((offset..offset, format!("#{}", id.0)));
+                }
+            },
+        );
+        text_edits.push((
+            call_offset..call_offset,
+            format!("// call ids will be shifted by {:?}\n", mac.shift()),
+        ));
     }
 
     for macro_call in source_file.syntax().descendants().filter_map(ast::MacroCall::cast) {
@@ -190,7 +187,7 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
         let range: Range<usize> = range.into();
 
         if show_token_ids {
-            if let Some((tree, map, _)) = arg.as_deref() {
+            if let Some((tree, map, _)) = arg.value.as_deref() {
                 let tt_range = call.token_tree().unwrap().syntax().text_range();
                 let mut ranges = Vec::new();
                 extract_id_ranges(&mut ranges, map, tree);
@@ -239,7 +236,7 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
 
     for impl_id in def_map[local_id].scope.impls() {
         let src = impl_id.lookup(&db).source(&db);
-        if src.file_id.is_builtin_derive(&db).is_some() {
+        if src.file_id.is_builtin_derive(&db) {
             let pp = pretty_print_macro_expansion(src.value.syntax().clone(), None);
             format_to!(expanded_text, "\n{}", pp)
         }

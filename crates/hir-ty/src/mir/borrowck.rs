@@ -52,7 +52,7 @@ fn all_mir_bodies(
                 let closures = body.closures.clone();
                 Box::new(
                     iter::once(Ok(body))
-                        .chain(closures.into_iter().flat_map(|x| for_closure(db, x))),
+                        .chain(closures.into_iter().flat_map(|it| for_closure(db, it))),
                 )
             }
             Err(e) => Box::new(iter::once(Err(e))),
@@ -62,7 +62,7 @@ fn all_mir_bodies(
         Ok(body) => {
             let closures = body.closures.clone();
             Box::new(
-                iter::once(Ok(body)).chain(closures.into_iter().flat_map(|x| for_closure(db, x))),
+                iter::once(Ok(body)).chain(closures.into_iter().flat_map(|it| for_closure(db, it))),
             )
         }
         Err(e) => Box::new(iter::once(Err(e))),
@@ -171,7 +171,7 @@ fn moved_out_of_ref(db: &dyn HirDatabase, body: &MirBody) -> Vec<MovedOutOfRef> 
                 }
                 TerminatorKind::Call { func, args, .. } => {
                     for_operand(func, terminator.span);
-                    args.iter().for_each(|x| for_operand(x, terminator.span));
+                    args.iter().for_each(|it| for_operand(it, terminator.span));
                 }
                 TerminatorKind::Assert { cond, .. } => {
                     for_operand(cond, terminator.span);
@@ -245,7 +245,7 @@ fn ever_initialized_map(
     body: &MirBody,
 ) -> ArenaMap<BasicBlockId, ArenaMap<LocalId, bool>> {
     let mut result: ArenaMap<BasicBlockId, ArenaMap<LocalId, bool>> =
-        body.basic_blocks.iter().map(|x| (x.0, ArenaMap::default())).collect();
+        body.basic_blocks.iter().map(|it| (it.0, ArenaMap::default())).collect();
     fn dfs(
         db: &dyn HirDatabase,
         body: &MirBody,
@@ -271,7 +271,10 @@ fn ever_initialized_map(
             }
         }
         let Some(terminator) = &block.terminator else {
-            never!("Terminator should be none only in construction.\nThe body:\n{}", body.pretty_print(db));
+            never!(
+                "Terminator should be none only in construction.\nThe body:\n{}",
+                body.pretty_print(db)
+            );
             return;
         };
         let targets = match &terminator.kind {
@@ -311,7 +314,7 @@ fn ever_initialized_map(
         result[body.start_block].insert(l, true);
         dfs(db, body, body.start_block, l, &mut result);
     }
-    for l in body.locals.iter().map(|x| x.0) {
+    for l in body.locals.iter().map(|it| it.0) {
         if !result[body.start_block].contains_idx(l) {
             result[body.start_block].insert(l, false);
             dfs(db, body, body.start_block, l, &mut result);
@@ -325,10 +328,10 @@ fn mutability_of_locals(
     body: &MirBody,
 ) -> ArenaMap<LocalId, MutabilityReason> {
     let mut result: ArenaMap<LocalId, MutabilityReason> =
-        body.locals.iter().map(|x| (x.0, MutabilityReason::Not)).collect();
+        body.locals.iter().map(|it| (it.0, MutabilityReason::Not)).collect();
     let mut push_mut_span = |local, span| match &mut result[local] {
         MutabilityReason::Mut { spans } => spans.push(span),
-        x @ MutabilityReason::Not => *x = MutabilityReason::Mut { spans: vec![span] },
+        it @ MutabilityReason::Not => *it = MutabilityReason::Mut { spans: vec![span] },
     };
     let ever_init_maps = ever_initialized_map(db, body);
     for (block_id, mut ever_init_map) in ever_init_maps.into_iter() {

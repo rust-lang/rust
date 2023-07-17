@@ -23,7 +23,7 @@ use hir_def::{
     generics::{
         TypeOrConstParamData, TypeParamProvenance, WherePredicate, WherePredicateTypeTarget,
     },
-    lang_item::{lang_attr, LangItem},
+    lang_item::LangItem,
     nameres::MacroSubNs,
     path::{GenericArg, GenericArgs, ModPath, Path, PathKind, PathSegment, PathSegments},
     resolver::{HasResolver, Resolver, TypeNs},
@@ -959,10 +959,10 @@ impl<'a> TyLoweringContext<'a> {
     }
 
     pub(crate) fn lower_where_predicate(
-        &'a self,
-        where_predicate: &'a WherePredicate,
+        &self,
+        where_predicate: &WherePredicate,
         ignore_bindings: bool,
-    ) -> impl Iterator<Item = QuantifiedWhereClause> + 'a {
+    ) -> impl Iterator<Item = QuantifiedWhereClause> {
         match where_predicate {
             WherePredicate::ForLifetime { target, bound, .. }
             | WherePredicate::TypeBound { target, bound } => {
@@ -1012,7 +1012,7 @@ impl<'a> TyLoweringContext<'a> {
                         //   (So ideally, we'd only ignore `~const Drop` here)
                         // - `Destruct` impls are built-in in 1.62 (current nightly as of 08-04-2022), so until
                         //   the builtin impls are supported by Chalk, we ignore them here.
-                        if let Some(lang) = lang_attr(self.db.upcast(), tr.hir_trait_id()) {
+                        if let Some(lang) = self.db.lang_attr(tr.hir_trait_id().into()) {
                             if matches!(lang, LangItem::Drop | LangItem::Destruct) {
                                 return false;
                             }

@@ -1360,14 +1360,15 @@ fn make_call(ctx: &AssistContext<'_>, fun: &Function, indent: IndentLevel) -> St
     }
 
     format_to!(buf, "{expr}");
-    let insert_comma = fun
-        .body
-        .parent()
-        .and_then(ast::MatchArm::cast)
-        .map_or(false, |it| it.comma_token().is_none());
+    let parent_match_arm = fun.body.parent().and_then(ast::MatchArm::cast);
+    let insert_comma = parent_match_arm.as_ref().is_some_and(|it| it.comma_token().is_none());
+
     if insert_comma {
         buf.push(',');
-    } else if fun.ret_ty.is_unit() && (!fun.outliving_locals.is_empty() || !expr.is_block_like()) {
+    } else if parent_match_arm.is_none()
+        && fun.ret_ty.is_unit()
+        && (!fun.outliving_locals.is_empty() || !expr.is_block_like())
+    {
         buf.push(';');
     }
     buf
@@ -4611,6 +4612,29 @@ fn $0fun_name() -> i32 {
 }
 "#,
         );
+
+        // Makes sure no semicolon is added for unit-valued match arms
+        check_assist(
+            extract_function,
+            r#"
+fn main() {
+    match () {
+        _ => $0()$0,
+    }
+}
+"#,
+            r#"
+fn main() {
+    match () {
+        _ => fun_name(),
+    }
+}
+
+fn $0fun_name() {
+    ()
+}
+"#,
+        )
     }
 
     #[test]

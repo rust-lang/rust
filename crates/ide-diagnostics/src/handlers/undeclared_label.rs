@@ -1,4 +1,4 @@
-use crate::{Diagnostic, DiagnosticsContext};
+use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext};
 
 // Diagnostic: undeclared-label
 pub(crate) fn undeclared_label(
@@ -6,10 +6,11 @@ pub(crate) fn undeclared_label(
     d: &hir::UndeclaredLabel,
 ) -> Diagnostic {
     let name = &d.name;
-    Diagnostic::new(
-        "undeclared-label",
+    Diagnostic::new_with_syntax_node_ptr(
+        ctx,
+        DiagnosticCode::RustcHardError("undeclared-label"),
         format!("use of undeclared label `{}`", name.display(ctx.sema.db)),
-        ctx.sema.diagnostics_display_range(d.node.clone().map(|it| it.into())).range,
+        d.node.clone().map(|it| it.into()),
     )
 }
 

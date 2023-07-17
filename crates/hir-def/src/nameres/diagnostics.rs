@@ -2,12 +2,9 @@
 
 use base_db::CrateId;
 use cfg::{CfgExpr, CfgOptions};
-use hir_expand::{attrs::AttrId, MacroCallKind};
+use hir_expand::{attrs::AttrId, ErasedAstId, MacroCallKind};
 use la_arena::Idx;
-use syntax::{
-    ast::{self, AnyHasAttrs},
-    SyntaxError,
-};
+use syntax::{ast, SyntaxError};
 
 use crate::{
     item_tree::{self, ItemTreeId},
@@ -24,7 +21,7 @@ pub enum DefDiagnosticKind {
 
     UnresolvedImport { id: ItemTreeId<item_tree::Import>, index: Idx<ast::UseTree> },
 
-    UnconfiguredCode { ast: AstId<AnyHasAttrs>, cfg: CfgExpr, opts: CfgOptions },
+    UnconfiguredCode { ast: ErasedAstId, cfg: CfgExpr, opts: CfgOptions },
 
     UnresolvedProcMacro { ast: MacroCallKind, krate: CrateId },
 
@@ -81,7 +78,7 @@ impl DefDiagnostic {
 
     pub fn unconfigured_code(
         container: LocalModuleId,
-        ast: AstId<ast::AnyHasAttrs>,
+        ast: ErasedAstId,
         cfg: CfgExpr,
         opts: CfgOptions,
     ) -> Self {

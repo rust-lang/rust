@@ -24,11 +24,12 @@ use crate::{
         proc_macro::{parse_macro_name_and_helper_attrs, ProcMacroKind},
         DefMap, MacroSubNs,
     },
+    path::ImportAlias,
     type_ref::{TraitRef, TypeBound, TypeRef},
     visibility::RawVisibility,
-    AssocItemId, AstIdWithPath, ConstId, ConstLoc, FunctionId, FunctionLoc, HasModule, ImplId,
-    Intern, ItemContainerId, ItemLoc, Lookup, Macro2Id, MacroRulesId, ModuleId, ProcMacroId,
-    StaticId, TraitAliasId, TraitId, TypeAliasId, TypeAliasLoc,
+    AssocItemId, AstIdWithPath, ConstId, ConstLoc, ExternCrateId, FunctionId, FunctionLoc,
+    HasModule, ImplId, Intern, ItemContainerId, ItemLoc, Lookup, Macro2Id, MacroRulesId, ModuleId,
+    ProcMacroId, StaticId, TraitAliasId, TraitId, TypeAliasId, TypeAliasLoc,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -424,6 +425,7 @@ impl MacroRulesData {
         Arc::new(MacroRulesData { name: makro.name.clone(), macro_export })
     }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProcMacroData {
     pub name: Name,
@@ -457,6 +459,30 @@ impl ProcMacroData {
             (makro.name.clone(), None)
         };
         Arc::new(ProcMacroData { name, helpers })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ExternCrateDeclData {
+    pub name: Name,
+    pub alias: Option<ImportAlias>,
+    pub visibility: RawVisibility,
+}
+
+impl ExternCrateDeclData {
+    pub(crate) fn extern_crate_decl_data_query(
+        db: &dyn DefDatabase,
+        extern_crate: ExternCrateId,
+    ) -> Arc<ExternCrateDeclData> {
+        let loc = extern_crate.lookup(db);
+        let item_tree = loc.id.item_tree(db);
+        let extern_crate = &item_tree[loc.id.value];
+
+        Arc::new(Self {
+            name: extern_crate.name.clone(),
+            visibility: item_tree[extern_crate.visibility].clone(),
+            alias: extern_crate.alias.clone(),
+        })
     }
 }
 
@@ -573,7 +599,7 @@ impl<'a> AssocItemCollector<'a> {
             if !attrs.is_cfg_enabled(self.expander.cfg_options()) {
                 self.diagnostics.push(DefDiagnostic::unconfigured_code(
                     self.module_id.local_id,
-                    InFile::new(self.expander.current_file_id(), item.ast_id(item_tree).upcast()),
+                    InFile::new(self.expander.current_file_id(), item.ast_id(item_tree).erase()),
                     attrs.cfg().unwrap(),
                     self.expander.cfg_options().clone(),
                 ));

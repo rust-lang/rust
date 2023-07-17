@@ -182,6 +182,33 @@ pub struct ExpandedMacro {
     pub expansion: String,
 }
 
+pub enum ViewRecursiveMemoryLayout {}
+
+impl Request for ViewRecursiveMemoryLayout {
+    type Params = lsp_types::TextDocumentPositionParams;
+    type Result = Option<RecursiveMemoryLayout>;
+    const METHOD: &'static str = "rust-analyzer/viewRecursiveMemoryLayout";
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct RecursiveMemoryLayout {
+    pub nodes: Vec<MemoryLayoutNode>,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct MemoryLayoutNode {
+    pub item_name: String,
+    pub typename: String,
+    pub size: u64,
+    pub offset: u64,
+    pub alignment: u64,
+    pub parent_idx: i64,
+    pub children_start: i64,
+    pub children_len: u64,
+}
+
 pub enum CancelFlycheck {}
 
 impl Notification for CancelFlycheck {

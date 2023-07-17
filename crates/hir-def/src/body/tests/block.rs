@@ -134,6 +134,47 @@ struct Struct {}
 }
 
 #[test]
+fn super_imports_2() {
+    check_at(
+        r#"
+fn outer() {
+    mod m {
+        struct ResolveMe {}
+        fn middle() {
+            mod m2 {
+                fn inner() {
+                    use super::ResolveMe;
+                    $0
+                }
+            }
+        }
+    }
+}
+"#,
+        expect![[r#"
+            block scope
+            ResolveMe: t
+
+            block scope
+            m2: t
+
+            block scope::m2
+            inner: v
+
+            block scope
+            m: t
+
+            block scope::m
+            ResolveMe: t
+            middle: v
+
+            crate
+            outer: v
+        "#]],
+    );
+}
+
+#[test]
 fn nested_module_scoping() {
     check_block_scopes_at(
         r#"
@@ -151,6 +192,42 @@ fn f() {
             BlockId(1) in BlockRelativeModuleId { block: Some(BlockId(0)), local_id: Idx::<ModuleData>(1) }
             BlockId(0) in BlockRelativeModuleId { block: None, local_id: Idx::<ModuleData>(0) }
             crate scope
+        "#]],
+    );
+}
+
+#[test]
+fn self_imports() {
+    check_at(
+        r#"
+fn f() {
+    mod m {
+        struct ResolveMe {}
+        fn g() {
+            fn h() {
+                use self::ResolveMe;
+                $0
+            }
+        }
+    }
+}
+"#,
+        expect![[r#"
+            block scope
+            ResolveMe: t
+
+            block scope
+            h: v
+
+            block scope
+            m: t
+
+            block scope::m
+            ResolveMe: t
+            g: v
+
+            crate
+            f: v
         "#]],
     );
 }

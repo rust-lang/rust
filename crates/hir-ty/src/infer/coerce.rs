@@ -220,7 +220,7 @@ pub(crate) fn coerce(
     Ok((adjustments, table.resolve_with_fallback(ty, &fallback)))
 }
 
-impl<'a> InferenceContext<'a> {
+impl InferenceContext<'_> {
     /// Unify two types, but may coerce the first one to the second one
     /// using "implicit coercion rules" if needed.
     pub(super) fn coerce(
@@ -239,7 +239,7 @@ impl<'a> InferenceContext<'a> {
     }
 }
 
-impl<'a> InferenceTable<'a> {
+impl InferenceTable<'_> {
     /// Unify two types, but may coerce the first one to the second one
     /// using "implicit coercion rules" if needed.
     pub(crate) fn coerce(
@@ -377,7 +377,7 @@ impl<'a> InferenceTable<'a> {
 
         let snapshot = self.snapshot();
 
-        let mut autoderef = Autoderef::new(self, from_ty.clone());
+        let mut autoderef = Autoderef::new(self, from_ty.clone(), false);
         let mut first_error = None;
         let mut found = None;
 

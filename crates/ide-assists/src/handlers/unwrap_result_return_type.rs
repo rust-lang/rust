@@ -38,14 +38,18 @@ pub(crate) fn unwrap_result_return_type(acc: &mut Assists, ctx: &AssistContext<'
     };
 
     let type_ref = &ret_type.ty()?;
-    let Some(hir::Adt::Enum(ret_enum)) = ctx.sema.resolve_type(type_ref)?.as_adt() else { return None; };
+    let Some(hir::Adt::Enum(ret_enum)) = ctx.sema.resolve_type(type_ref)?.as_adt() else {
+        return None;
+    };
     let result_enum =
         FamousDefs(&ctx.sema, ctx.sema.scope(type_ref.syntax())?.krate()).core_result_Result()?;
     if ret_enum != result_enum {
         return None;
     }
 
-    let Some(ok_type) = unwrap_result_type(type_ref) else { return None; };
+    let Some(ok_type) = unwrap_result_type(type_ref) else {
+        return None;
+    };
 
     acc.add(
         AssistId("unwrap_result_return_type", AssistKind::RefactorRewrite),
@@ -130,12 +134,16 @@ fn tail_cb_impl(acc: &mut Vec<ast::Expr>, e: &ast::Expr) {
 
 // Tries to extract `T` from `Result<T, E>`.
 fn unwrap_result_type(ty: &ast::Type) -> Option<ast::Type> {
-    let ast::Type::PathType(path_ty) = ty else { return None; };
+    let ast::Type::PathType(path_ty) = ty else {
+        return None;
+    };
     let path = path_ty.path()?;
     let segment = path.first_segment()?;
     let generic_arg_list = segment.generic_arg_list()?;
     let generic_args: Vec<_> = generic_arg_list.generic_args().collect();
-    let ast::GenericArg::TypeArg(ok_type) = generic_args.first()? else { return None; };
+    let ast::GenericArg::TypeArg(ok_type) = generic_args.first()? else {
+        return None;
+    };
     ok_type.ty()
 }
 

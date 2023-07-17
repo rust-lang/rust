@@ -18,7 +18,6 @@ use triomphe::Arc;
 use crate::{
     builtin_type::{BuiltinInt, BuiltinUint},
     db::DefDatabase,
-    expander::CfgExpander,
     item_tree::{AttrOwner, Field, FieldAstId, Fields, ItemTree, ModItem, RawVisibilityId},
     lang_item::LangItem,
     lower::LowerCtx,
@@ -29,8 +28,8 @@ use crate::{
     tt::{Delimiter, DelimiterKind, Leaf, Subtree, TokenTree},
     type_ref::TypeRef,
     visibility::RawVisibility,
-    EnumId, LocalEnumVariantId, LocalFieldId, LocalModuleId, Lookup, ModuleId, StructId, UnionId,
-    VariantId,
+    EnumId, EnumLoc, LocalEnumVariantId, LocalFieldId, LocalModuleId, Lookup, ModuleId, StructId,
+    UnionId, VariantId,
 };
 
 /// Note that we use `StructData` for unions as well!
@@ -76,6 +75,7 @@ pub struct EnumData {
 pub struct EnumVariantData {
     pub name: Name,
     pub variant_data: Arc<VariantData>,
+    pub tree_id: la_arena::Idx<crate::item_tree::Variant>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -147,6 +147,7 @@ fn parse_repr_tt(tt: &Subtree) -> Option<ReprOptions> {
                 }
                 "C" => ReprFlags::IS_C,
                 "transparent" => ReprFlags::IS_TRANSPARENT,
+                "simd" => ReprFlags::IS_SIMD,
                 repr => {
                     if let Some(builtin) = BuiltinInt::from_suffix(repr)
                         .map(Either::Left)
@@ -325,11 +326,12 @@ impl EnumData {
                 variants.alloc(EnumVariantData {
                     name: var.name.clone(),
                     variant_data: Arc::new(var_data),
+                    tree_id,
                 });
             } else {
                 diagnostics.push(DefDiagnostic::unconfigured_code(
                     loc.container.local_id,
-                    InFile::new(loc.id.file_id(), var.ast_id.upcast()),
+                    InFile::new(loc.id.file_id(), var.ast_id.erase()),
                     attrs.cfg().unwrap(),
                     cfg_options.clone(),
                 ))
@@ -367,9 +369,10 @@ impl HasChildSource<LocalEnumVariantId> for EnumId {
         &self,
         db: &dyn DefDatabase,
     ) -> InFile<ArenaMap<LocalEnumVariantId, Self::Value>> {
-        let src = self.lookup(db).source(db);
+        let loc = &self.lookup(db);
+        let src = loc.source(db);
         let mut trace = Trace::new_for_map();
-        lower_enum(db, &mut trace, &src, self.lookup(db).container);
+        lower_enum(db, &mut trace, &src, loc);
         src.with_value(trace.into_map())
     }
 }
@@ -378,31 +381,58 @@ fn lower_enum(
     db: &dyn DefDatabase,
     trace: &mut Trace<EnumVariantData, ast::Variant>,
     ast: &InFile<ast::Enum>,
-    module_id: ModuleId,
+    loc: &EnumLoc,
 ) {
-    let expander = CfgExpander::new(db, ast.file_id, module_id.krate);
+    let item_tree = loc.id.item_tree(db);
+    let krate = loc.container.krate;
+
+    let item_tree_variants = item_tree[loc.id.value].variants.clone();
+
+    let cfg_options = &db.crate_graph()[krate].cfg_options;
     let variants = ast
         .value
         .variant_list()
         .into_iter()
         .flat_map(|it| it.variants())
-        .filter(|var| expander.is_cfg_enabled(db, var));
-    for var in variants {
+        .zip(item_tree_variants)
+        .filter(|&(_, item_tree_id)| {
+            item_tree.attrs(db, krate, item_tree_id.into()).is_cfg_enabled(cfg_options)
+        });
+    for (var, item_tree_id) in variants {
         trace.alloc(
             || var.clone(),
             || EnumVariantData {
                 name: var.name().map_or_else(Name::missing, |it| it.as_name()),
-                variant_data: Arc::new(VariantData::new(db, ast.with_value(var.kind()), module_id)),
+                variant_data: Arc::new(VariantData::new(
+                    db,
+                    ast.with_value(var.kind()),
+                    loc.container,
+                    &item_tree,
+                    item_tree_id,
+                )),
+                tree_id: item_tree_id,
             },
         );
     }
 }
 
 impl VariantData {
-    fn new(db: &dyn DefDatabase, flavor: InFile<ast::StructKind>, module_id: ModuleId) -> Self {
-        let mut expander = CfgExpander::new(db, flavor.file_id, module_id.krate);
+    fn new(
+        db: &dyn DefDatabase,
+        flavor: InFile<ast::StructKind>,
+        module_id: ModuleId,
+        item_tree: &ItemTree,
+        variant: la_arena::Idx<crate::item_tree::Variant>,
+    ) -> Self {
         let mut trace = Trace::new_for_arena();
-        match lower_struct(db, &mut expander, &mut trace, &flavor) {
+        match lower_struct(
+            db,
+            &mut trace,
+            &flavor,
+            module_id.krate,
+            item_tree,
+            &item_tree[variant].fields,
+        ) {
             StructKind::Tuple => VariantData::Tuple(trace.into_arena()),
             StructKind::Record => VariantData::Record(trace.into_arena()),
             StructKind::Unit => VariantData::Unit,
@@ -434,28 +464,43 @@ impl HasChildSource<LocalFieldId> for VariantId {
     type Value = Either<ast::TupleField, ast::RecordField>;
 
     fn child_source(&self, db: &dyn DefDatabase) -> InFile<ArenaMap<LocalFieldId, Self::Value>> {
-        let (src, module_id) = match self {
+        let item_tree;
+        let (src, fields, container) = match *self {
             VariantId::EnumVariantId(it) => {
                 // I don't really like the fact that we call into parent source
                 // here, this might add to more queries then necessary.
+                let lookup = it.parent.lookup(db);
+                item_tree = lookup.id.item_tree(db);
                 let src = it.parent.child_source(db);
-                (src.map(|map| map[it.local_id].kind()), it.parent.lookup(db).container)
+                let tree_id = db.enum_data(it.parent).variants[it.local_id].tree_id;
+                let fields = &item_tree[tree_id].fields;
+                (src.map(|map| map[it.local_id].kind()), fields, lookup.container)
             }
             VariantId::StructId(it) => {
-                (it.lookup(db).source(db).map(|it| it.kind()), it.lookup(db).container)
+                let lookup = it.lookup(db);
+                item_tree = lookup.id.item_tree(db);
+                (
+                    lookup.source(db).map(|it| it.kind()),
+                    &item_tree[lookup.id.value].fields,
+                    lookup.container,
+                )
             }
-            VariantId::UnionId(it) => (
-                it.lookup(db).source(db).map(|it| {
-                    it.record_field_list()
-                        .map(ast::StructKind::Record)
-                        .unwrap_or(ast::StructKind::Unit)
-                }),
-                it.lookup(db).container,
-            ),
+            VariantId::UnionId(it) => {
+                let lookup = it.lookup(db);
+                item_tree = lookup.id.item_tree(db);
+                (
+                    lookup.source(db).map(|it| {
+                        it.record_field_list()
+                            .map(ast::StructKind::Record)
+                            .unwrap_or(ast::StructKind::Unit)
+                    }),
+                    &item_tree[lookup.id.value].fields,
+                    lookup.container,
+                )
+            }
         };
-        let mut expander = CfgExpander::new(db, src.file_id, module_id.krate);
         let mut trace = Trace::new_for_map();
-        lower_struct(db, &mut expander, &mut trace, &src);
+        lower_struct(db, &mut trace, &src, container.krate, &item_tree, fields);
         src.with_value(trace.into_map())
     }
 }
@@ -469,16 +514,19 @@ pub enum StructKind {
 
 fn lower_struct(
     db: &dyn DefDatabase,
-    expander: &mut CfgExpander,
     trace: &mut Trace<FieldData, Either<ast::TupleField, ast::RecordField>>,
     ast: &InFile<ast::StructKind>,
+    krate: CrateId,
+    item_tree: &ItemTree,
+    fields: &Fields,
 ) -> StructKind {
-    let ctx = LowerCtx::new(db, &expander.hygiene(), ast.file_id);
+    let ctx = LowerCtx::with_file_id(db, ast.file_id);
 
-    match &ast.value {
-        ast::StructKind::Tuple(fl) => {
-            for (i, fd) in fl.fields().enumerate() {
-                if !expander.is_cfg_enabled(db, &fd) {
+    match (&ast.value, fields) {
+        (ast::StructKind::Tuple(fl), Fields::Tuple(fields)) => {
+            let cfg_options = &db.crate_graph()[krate].cfg_options;
+            for ((i, fd), item_tree_id) in fl.fields().enumerate().zip(fields.clone()) {
+                if !item_tree.attrs(db, krate, item_tree_id.into()).is_cfg_enabled(cfg_options) {
                     continue;
                 }
 
@@ -493,9 +541,10 @@ fn lower_struct(
             }
             StructKind::Tuple
         }
-        ast::StructKind::Record(fl) => {
-            for fd in fl.fields() {
-                if !expander.is_cfg_enabled(db, &fd) {
+        (ast::StructKind::Record(fl), Fields::Record(fields)) => {
+            let cfg_options = &db.crate_graph()[krate].cfg_options;
+            for (fd, item_tree_id) in fl.fields().zip(fields.clone()) {
+                if !item_tree.attrs(db, krate, item_tree_id.into()).is_cfg_enabled(cfg_options) {
                     continue;
                 }
 
@@ -510,7 +559,7 @@ fn lower_struct(
             }
             StructKind::Record
         }
-        ast::StructKind::Unit => StructKind::Unit,
+        _ => StructKind::Unit,
     }
 }
 
@@ -539,8 +588,8 @@ fn lower_fields(
                         InFile::new(
                             current_file_id,
                             match field.ast_id {
-                                FieldAstId::Record(it) => it.upcast(),
-                                FieldAstId::Tuple(it) => it.upcast(),
+                                FieldAstId::Record(it) => it.erase(),
+                                FieldAstId::Tuple(it) => it.erase(),
                             },
                         ),
                         attrs.cfg().unwrap(),
@@ -563,8 +612,8 @@ fn lower_fields(
                         InFile::new(
                             current_file_id,
                             match field.ast_id {
-                                FieldAstId::Record(it) => it.upcast(),
-                                FieldAstId::Tuple(it) => it.upcast(),
+                                FieldAstId::Record(it) => it.erase(),
+                                FieldAstId::Tuple(it) => it.erase(),
                             },
                         ),
                         attrs.cfg().unwrap(),

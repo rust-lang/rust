@@ -1,18 +1,18 @@
 {
+    "extends": "@tsconfig/strictest/tsconfig.json",
     "compilerOptions": {
+        "esModuleInterop": false,
         "module": "commonjs",
+        "moduleResolution": "node16",
         "target": "es2021",
         "outDir": "out",
         "lib": ["es2021"],
         "sourceMap": true,
         "rootDir": ".",
-        "strict": true,
-        "useUnknownInCatchVariables": false,
-        "noUnusedLocals": true,
-        "noUnusedParameters": true,
-        "noImplicitReturns": true,
-        "noFallthroughCasesInSwitch": true,
-        "newLine": "LF"
+        "newLine": "LF",
+
+        // FIXME: https://github.com/rust-lang/rust-analyzer/issues/15253
+        "exactOptionalPropertyTypes": false
     },
     "exclude": ["node_modules", ".vscode-test"],
     "include": ["src", "tests"]

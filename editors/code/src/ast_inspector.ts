@@ -1,7 +1,8 @@
 import * as vscode from "vscode";
 
-import { Ctx, Disposable } from "./ctx";
-import { RustEditor, isRustEditor } from "./util";
+import type { Ctx, Disposable } from "./ctx";
+import { type RustEditor, isRustEditor } from "./util";
+import { unwrapUndefinable } from "./undefinable";
 
 // FIXME: consider implementing this via the Tree View API?
 // https://code.visualstudio.com/api/extension-guides/tree-view
@@ -36,23 +37,23 @@ export class AstInspector implements vscode.HoverProvider, vscode.DefinitionProv
 
     constructor(ctx: Ctx) {
         ctx.pushExtCleanup(
-            vscode.languages.registerHoverProvider({ scheme: "rust-analyzer" }, this)
+            vscode.languages.registerHoverProvider({ scheme: "rust-analyzer" }, this),
         );
         ctx.pushExtCleanup(vscode.languages.registerDefinitionProvider({ language: "rust" }, this));
         vscode.workspace.onDidCloseTextDocument(
             this.onDidCloseTextDocument,
             this,
-            ctx.subscriptions
+            ctx.subscriptions,
         );
         vscode.workspace.onDidChangeTextDocument(
             this.onDidChangeTextDocument,
             this,
-            ctx.subscriptions
+            ctx.subscriptions,
         );
         vscode.window.onDidChangeVisibleTextEditors(
             this.onDidChangeVisibleTextEditors,
             this,
-            ctx.subscriptions
+            ctx.subscriptions,
         );
     }
     dispose() {
@@ -84,7 +85,7 @@ export class AstInspector implements vscode.HoverProvider, vscode.DefinitionProv
 
     private findAstTextEditor(): undefined | vscode.TextEditor {
         return vscode.window.visibleTextEditors.find(
-            (it) => it.document.uri.scheme === "rust-analyzer"
+            (it) => it.document.uri.scheme === "rust-analyzer",
         );
     }
 
@@ -99,7 +100,7 @@ export class AstInspector implements vscode.HoverProvider, vscode.DefinitionProv
     // additional positional params are omitted
     provideDefinition(
         doc: vscode.TextDocument,
-        pos: vscode.Position
+        pos: vscode.Position,
     ): vscode.ProviderResult<vscode.DefinitionLink[]> {
         if (!this.rustEditor || doc.uri.toString() !== this.rustEditor.document.uri.toString()) {
             return;
@@ -131,7 +132,7 @@ export class AstInspector implements vscode.HoverProvider, vscode.DefinitionProv
     // additional positional params are omitted
     provideHover(
         doc: vscode.TextDocument,
-        hoverPosition: vscode.Position
+        hoverPosition: vscode.Position,
     ): vscode.ProviderResult<vscode.Hover> {
         if (!this.rustEditor) return;
 
@@ -158,14 +159,15 @@ export class AstInspector implements vscode.HoverProvider, vscode.DefinitionProv
 
     private parseRustTextRange(
         doc: vscode.TextDocument,
-        astLine: string
+        astLine: string,
     ): undefined | vscode.Range {
         const parsedRange = /(\d+)\.\.(\d+)/.exec(astLine);
         if (!parsedRange) return;
 
         const [begin, end] = parsedRange.slice(1).map((off) => this.positionAt(doc, +off));
-
-        return new vscode.Range(begin, end);
+        const actualBegin = unwrapUndefinable(begin);
+        const actualEnd = unwrapUndefinable(end);
+        return new vscode.Range(actualBegin, actualEnd);
     }
 
     // Memoize the last value, otherwise the CPU is at 100% single core

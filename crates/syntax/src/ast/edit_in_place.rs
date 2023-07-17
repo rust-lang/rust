@@ -213,6 +213,28 @@ pub trait AttrsOwnerEdit: ast::HasAttrs {
             }
         }
     }
+
+    fn add_attr(&self, attr: ast::Attr) {
+        add_attr(self.syntax(), attr);
+
+        fn add_attr(node: &SyntaxNode, attr: ast::Attr) {
+            let indent = IndentLevel::from_node(node);
+            attr.reindent_to(indent);
+
+            let after_attrs_and_comments = node
+                .children_with_tokens()
+                .find(|it| !matches!(it.kind(), WHITESPACE | COMMENT | ATTR))
+                .map_or(Position::first_child_of(node), |it| Position::before(it));
+
+            ted::insert_all(
+                after_attrs_and_comments,
+                vec![
+                    attr.syntax().clone().into(),
+                    make::tokens::whitespace(&format!("\n{indent}")).into(),
+                ],
+            )
+        }
+    }
 }
 
 impl<T: ast::HasAttrs> AttrsOwnerEdit for T {}
@@ -676,12 +698,6 @@ fn get_or_insert_comma_after(syntax: &SyntaxNode) -> SyntaxToken {
     }
 }
 
-impl ast::StmtList {
-    pub fn push_front(&self, statement: ast::Stmt) {
-        ted::insert(Position::after(self.l_curly_token().unwrap()), statement.syntax());
-    }
-}
-
 impl ast::VariantList {
     pub fn add_variant(&self, variant: ast::Variant) {
         let (indent, position) = match self.variants().last() {
@@ -731,6 +747,27 @@ fn normalize_ws_between_braces(node: &SyntaxNode) -> Option<()> {
     }
     Some(())
 }
+
+pub trait HasVisibilityEdit: ast::HasVisibility {
+    fn set_visibility(&self, visbility: ast::Visibility) {
+        match self.visibility() {
+            Some(current_visibility) => {
+                ted::replace(current_visibility.syntax(), visbility.syntax())
+            }
+            None => {
+                let vis_before = self
+                    .syntax()
+                    .children_with_tokens()
+                    .find(|it| !matches!(it.kind(), WHITESPACE | COMMENT | ATTR))
+                    .unwrap_or_else(|| self.syntax().first_child_or_token().unwrap());
+
+                ted::insert(ted::Position::before(vis_before), visbility.syntax());
+            }
+        }
+    }
+}
+
+impl<T: ast::HasVisibility> HasVisibilityEdit for T {}
 
 pub trait Indent: AstNode + Clone + Sized {
     fn indent_level(&self) -> IndentLevel {

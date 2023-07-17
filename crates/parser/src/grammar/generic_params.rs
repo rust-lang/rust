@@ -79,10 +79,9 @@ fn const_param(p: &mut Parser<'_>, m: Marker) {
         p.error("missing type for const parameter");
     }
 
-    if p.at(T![=]) {
+    if p.eat(T![=]) {
         // test const_param_default_literal
         // struct A<const N: i32 = -1>;
-        p.bump(T![=]);
 
         // test const_param_default_expression
         // struct A<const N: i32 = { 1 }>;

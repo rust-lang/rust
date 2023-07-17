@@ -5,13 +5,13 @@ use std::{iter, sync::Arc};
 
 use tracing::debug;
 
-use chalk_ir::{cast::Cast, fold::shift::Shift, CanonicalVarKinds};
+use chalk_ir::{cast::Caster, fold::shift::Shift, CanonicalVarKinds};
 use chalk_solve::rust_ir::{self, OpaqueTyDatumBound, WellKnownTrait};
 
 use base_db::CrateId;
 use hir_def::{
     hir::Movability,
-    lang_item::{lang_attr, LangItem, LangItemTarget},
+    lang_item::{LangItem, LangItemTarget},
     AssocItemId, BlockId, GenericDefId, HasModule, ItemContainerId, Lookup, TypeAliasId,
 };
 use hir_expand::name::name;
@@ -46,7 +46,7 @@ pub(crate) type AssociatedTyValue = chalk_solve::rust_ir::AssociatedTyValue<Inte
 pub(crate) type FnDefDatum = chalk_solve::rust_ir::FnDefDatum<Interner>;
 pub(crate) type Variances = chalk_ir::Variances<Interner>;
 
-impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
+impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
     fn associated_ty_data(&self, id: AssocTypeId) -> Arc<AssociatedTyDatum> {
         self.db.associated_ty_data(id)
     }
@@ -60,9 +60,37 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
         // FIXME: keep track of these
         Arc::new(rust_ir::AdtRepr { c: false, packed: false, int: None })
     }
-    fn discriminant_type(&self, _ty: chalk_ir::Ty<Interner>) -> chalk_ir::Ty<Interner> {
-        // FIXME: keep track of this
-        chalk_ir::TyKind::Scalar(chalk_ir::Scalar::Uint(chalk_ir::UintTy::U32)).intern(Interner)
+    fn discriminant_type(&self, ty: chalk_ir::Ty<Interner>) -> chalk_ir::Ty<Interner> {
+        if let chalk_ir::TyKind::Adt(id, _) = ty.kind(Interner) {
+            if let hir_def::AdtId::EnumId(e) = id.0 {
+                let enum_data = self.db.enum_data(e);
+                let ty = enum_data.repr.unwrap_or_default().discr_type();
+                return chalk_ir::TyKind::Scalar(match ty {
+                    hir_def::layout::IntegerType::Pointer(is_signed) => match is_signed {
+                        true => chalk_ir::Scalar::Int(chalk_ir::IntTy::Isize),
+                        false => chalk_ir::Scalar::Uint(chalk_ir::UintTy::Usize),
+                    },
+                    hir_def::layout::IntegerType::Fixed(size, is_signed) => match is_signed {
+                        true => chalk_ir::Scalar::Int(match size {
+                            hir_def::layout::Integer::I8 => chalk_ir::IntTy::I8,
+                            hir_def::layout::Integer::I16 => chalk_ir::IntTy::I16,
+                            hir_def::layout::Integer::I32 => chalk_ir::IntTy::I32,
+                            hir_def::layout::Integer::I64 => chalk_ir::IntTy::I64,
+                            hir_def::layout::Integer::I128 => chalk_ir::IntTy::I128,
+                        }),
+                        false => chalk_ir::Scalar::Uint(match size {
+                            hir_def::layout::Integer::I8 => chalk_ir::UintTy::U8,
+                            hir_def::layout::Integer::I16 => chalk_ir::UintTy::U16,
+                            hir_def::layout::Integer::I32 => chalk_ir::UintTy::U32,
+                            hir_def::layout::Integer::I64 => chalk_ir::UintTy::U64,
+                            hir_def::layout::Integer::I128 => chalk_ir::UintTy::U128,
+                        }),
+                    },
+                })
+                .intern(Interner);
+            }
+        }
+        chalk_ir::TyKind::Scalar(chalk_ir::Scalar::Uint(chalk_ir::UintTy::U8)).intern(Interner)
     }
     fn impl_datum(&self, impl_id: ImplId) -> Arc<ImplDatum> {
         self.db.impl_datum(self.krate, impl_id)
@@ -565,7 +593,7 @@ pub(crate) fn trait_datum_query(
     let where_clauses = convert_where_clauses(db, trait_.into(), &bound_vars);
     let associated_ty_ids = trait_data.associated_types().map(to_assoc_type_id).collect();
     let trait_datum_bound = rust_ir::TraitDatumBound { where_clauses };
-    let well_known = lang_attr(db.upcast(), trait_).and_then(well_known_trait_from_lang_item);
+    let well_known = db.lang_attr(trait_.into()).and_then(well_known_trait_from_lang_item);
     let trait_datum = TraitDatum {
         id: trait_id,
         binders: make_binders(db, &generic_params, trait_datum_bound),
@@ -593,6 +621,7 @@ fn well_known_trait_from_lang_item(item: LangItem) -> Option<WellKnownTrait> {
         LangItem::Unsize => WellKnownTrait::Unsize,
         LangItem::Tuple => WellKnownTrait::Tuple,
         LangItem::PointeeTrait => WellKnownTrait::Pointee,
+        LangItem::FnPtrTrait => WellKnownTrait::FnPtr,
         _ => return None,
     })
 }
@@ -614,6 +643,7 @@ fn lang_item_from_well_known_trait(trait_: WellKnownTrait) -> LangItem {
         WellKnownTrait::Unpin => LangItem::Unpin,
         WellKnownTrait::Unsize => LangItem::Unsize,
         WellKnownTrait::Pointee => LangItem::PointeeTrait,
+        WellKnownTrait::FnPtr => LangItem::FnPtrTrait,
     }
 }
 
@@ -844,28 +874,34 @@ pub(super) fn generic_predicate_to_inline_bound(
             }
             let args_no_self = trait_ref.substitution.as_slice(Interner)[1..]
                 .iter()
-                .map(|ty| ty.clone().cast(Interner))
+                .cloned()
+                .casted(Interner)
                 .collect();
             let trait_bound = rust_ir::TraitBound { trait_id: trait_ref.trait_id, args_no_self };
             Some(chalk_ir::Binders::new(binders, rust_ir::InlineBound::TraitBound(trait_bound)))
         }
         WhereClause::AliasEq(AliasEq { alias: AliasTy::Projection(projection_ty), ty }) => {
-            let trait_ = projection_ty.trait_(db);
-            if projection_ty.self_type_parameter(db) != self_ty_shifted_in {
+            let generics =
+                generics(db.upcast(), from_assoc_type_id(projection_ty.associated_ty_id).into());
+            let (assoc_args, trait_args) =
+                projection_ty.substitution.as_slice(Interner).split_at(generics.len_self());
+            let (self_ty, args_no_self) =
+                trait_args.split_first().expect("projection without trait self type");
+            if self_ty.assert_ty_ref(Interner) != &self_ty_shifted_in {
                 return None;
             }
-            let args_no_self = projection_ty.substitution.as_slice(Interner)[1..]
-                .iter()
-                .map(|ty| ty.clone().cast(Interner))
-                .collect();
+
+            let args_no_self = args_no_self.iter().cloned().casted(Interner).collect();
+            let parameters = assoc_args.to_vec();
+
             let alias_eq_bound = rust_ir::AliasEqBound {
                 value: ty.clone(),
                 trait_bound: rust_ir::TraitBound {
-                    trait_id: to_chalk_trait_id(trait_),
+                    trait_id: to_chalk_trait_id(projection_ty.trait_(db)),
                     args_no_self,
                 },
                 associated_ty_id: projection_ty.associated_ty_id,
-                parameters: Vec::new(), // FIXME we don't support generic associated types yet
+                parameters,
             };
             Some(chalk_ir::Binders::new(
                 binders,

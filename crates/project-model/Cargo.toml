@@ -20,7 +20,7 @@ serde_json.workspace = true
 serde.workspace = true
 triomphe.workspace = true
 anyhow = "1.0.62"
-la-arena = { version = "0.3.0", path = "../../lib/la-arena" }
+la-arena.workspace = true
 itertools = "0.10.5"
 
 # local deps
