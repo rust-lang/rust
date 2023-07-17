@@ -26,6 +26,7 @@ mod filter_map_next;
 mod filter_next;
 mod flat_map_identity;
 mod flat_map_option;
+mod format_collect;
 mod from_iter_instead_of_collect;
 mod get_first;
 mod get_last_with_len;
@@ -3378,6 +3379,41 @@ declare_clippy_lint! {
     "calling `Stdin::read_line`, then trying to parse it without first trimming"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `.map(|_| format!(..)).collect::<String>()`.
+    ///
+    /// ### Why is this bad?
+    /// This allocates a new string for every element in the iterator.
+    /// This can be done more efficiently by creating the `String` once and appending to it in `Iterator::fold`,
+    /// using either the `write!` macro which supports exactly the same syntax as the `format!` macro,
+    /// or concatenating with `+` in case the iterator yields `&str`/`String`.
+    ///
+    /// Note also that `write!`-ing into a `String` can never fail, despite the return type of `write!` being `std::fmt::Result`,
+    /// so it can be safely ignored or unwrapped.
+    ///
+    /// ### Example
+    /// ```rust
+    /// fn hex_encode(bytes: &[u8]) -> String {
+    ///     bytes.iter().map(|b| format!("{b:02X}")).collect()
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// use std::fmt::Write;
+    /// fn hex_encode(bytes: &[u8]) -> String {
+    ///     bytes.iter().fold(String::new(), |mut output, b| {
+    ///         let _ = write!(output, "{b:02X}");
+    ///         output
+    ///     })
+    /// }
+    /// ```
+    #[clippy::version = "1.72.0"]
+    pub FORMAT_COLLECT,
+    perf,
+    "`format!`ing every element in a collection, then collecting the strings into a new `String`"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Msrv,
@@ -3512,6 +3548,7 @@ impl_lint_pass!(Methods => [
     UNNECESSARY_LITERAL_UNWRAP,
     DRAIN_COLLECT,
     MANUAL_TRY_FOLD,
+    FORMAT_COLLECT,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -3733,8 +3770,9 @@ impl Methods {
                         Some((name @ ("cloned" | "copied"), recv2, [], _, _)) => {
                             iter_cloned_collect::check(cx, name, expr, recv2);
                         },
-                        Some(("map", m_recv, [m_arg], _, _)) => {
+                        Some(("map", m_recv, [m_arg], m_ident_span, _)) => {
                             map_collect_result_unit::check(cx, expr, m_recv, m_arg);
+                            format_collect::check(cx, expr, m_arg, m_ident_span);
                         },
                         Some(("take", take_self_arg, [take_arg], _, _)) => {
                             if self.msrv.meets(msrvs::STR_REPEAT) {

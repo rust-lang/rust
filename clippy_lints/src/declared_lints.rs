@@ -338,6 +338,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::methods::FILTER_NEXT_INFO,
     crate::methods::FLAT_MAP_IDENTITY_INFO,
     crate::methods::FLAT_MAP_OPTION_INFO,
+    crate::methods::FORMAT_COLLECT_INFO,
     crate::methods::FROM_ITER_INSTEAD_OF_COLLECT_INFO,
     crate::methods::GET_FIRST_INFO,
     crate::methods::GET_LAST_WITH_LEN_INFO,
