@@ -199,8 +199,11 @@ fn find_sugg_for_if_let<'tcx>(
 }
 
 pub(super) fn check_match<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, op: &Expr<'_>, arms: &[Arm<'_>]) {
-    if arms.len() == 2 {
-        let node_pair = (&arms[0].pat.kind, &arms[1].pat.kind);
+    if let [arm1, arm2] = arms
+        && arm1.guard.is_none()
+        && arm2.guard.is_none()
+    {
+        let node_pair = (&arm1.pat.kind, &arm2.pat.kind);
 
         if let Some(good_method) = found_good_method(cx, arms, node_pair) {
             let span = is_expn_of(expr.span, "matches").unwrap_or(expr.span.to(op.span));
