@@ -91,7 +91,7 @@ fn main() {
         println!("cargo:rustc-cfg=kernel_user_helpers")
     }
 
-    if llvm_target[0] == "aarch64" {
+    if llvm_target[0].starts_with("aarch64") {
         generate_aarch64_outlined_atomics();
     }
 }
