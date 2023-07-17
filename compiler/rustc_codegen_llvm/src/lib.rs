@@ -262,10 +262,10 @@ impl CodegenBackend for LlvmCodegenBackend {
             |tcx, ()| llvm_util::global_llvm_features(tcx.sess, true)
     }
 
-    fn print(&self, req: &PrintRequest, sess: &Session) {
+    fn print(&self, req: &PrintRequest, out: &mut dyn PrintBackendInfo, sess: &Session) {
         match req.kind {
             PrintKind::RelocationModels => {
-                println!("Available relocation models:");
+                writeln!(out, "Available relocation models:");
                 for name in &[
                     "static",
                     "pic",
@@ -276,26 +276,27 @@ impl CodegenBackend for LlvmCodegenBackend {
                     "ropi-rwpi",
                     "default",
                 ] {
-                    println!("    {}", name);
+                    writeln!(out, "    {}", name);
                 }
-                println!();
+                writeln!(out);
             }
             PrintKind::CodeModels => {
-                println!("Available code models:");
+                writeln!(out, "Available code models:");
                 for name in &["tiny", "small", "kernel", "medium", "large"] {
-                    println!("    {}", name);
+                    writeln!(out, "    {}", name);
                 }
-                println!();
+                writeln!(out);
             }
             PrintKind::TlsModels => {
-                println!("Available TLS models:");
+                writeln!(out, "Available TLS models:");
                 for name in &["global-dynamic", "local-dynamic", "initial-exec", "local-exec"] {
-                    println!("    {}", name);
+                    writeln!(out, "    {}", name);
                 }
-                println!();
+                writeln!(out);
             }
             PrintKind::StackProtectorStrategies => {
-                println!(
+                writeln!(
+                    out,
                     r#"Available stack protector strategies:
     all
         Generate stack canaries in all functions.
