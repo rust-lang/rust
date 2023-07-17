@@ -4,7 +4,6 @@ use clippy_utils::{get_parent_node, is_res_lang_ctor, last_path_segment, path_re
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::{Expr, ExprKind, ImplItem, ImplItemKind, ItemKind, LangItem, Node, UnOp};
-use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::EarlyBinder;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -121,7 +120,7 @@ impl LateLintPass<'_> for IncorrectImpls {
         if cx.tcx.is_automatically_derived(item.owner_id.to_def_id()) {
             return;
         }
-        let ItemKind::Impl(imp) = item.kind else {
+        let ItemKind::Impl(_) = item.kind else {
             return;
         };
         let ImplItemKind::Fn(_, impl_item_id) = cx.tcx.hir().impl_item(impl_item.impl_item_id()).kind else {
@@ -186,9 +185,9 @@ impl LateLintPass<'_> for IncorrectImpls {
                 .get(&sym::Ord)
             && implements_trait(
                     cx,
-                    hir_ty_to_ty(cx.tcx, imp.self_ty),
+                    trait_impl.self_ty(),
                     *ord_def_id,
-                    trait_impl.args,
+                    &[],
                 )
         {
             if block.stmts.is_empty()
