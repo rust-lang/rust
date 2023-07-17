@@ -1,10 +1,9 @@
 use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::higher;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::{snippet, snippet_opt, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
-use clippy_utils::{get_parent_expr, in_constant, is_integer_const, path_to_local};
+use clippy_utils::{get_parent_expr, higher, in_constant, is_integer_const, path_to_local};
 use if_chain::if_chain;
 use rustc_ast::ast::RangeLimits;
 use rustc_errors::Applicability;

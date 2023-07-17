@@ -10,14 +10,14 @@ use rustc_ast::ast::Attribute;
 use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
-    BindingAnnotation, Body, FnDecl, GenericArg, HirId, Impl, ItemKind, Mutability, Node, PatKind, QPath, TyKind,
+    BindingAnnotation, Body, FnDecl, GenericArg, HirId, HirIdSet, Impl, ItemKind, LangItem, Mutability, Node, PatKind,
+    QPath, TyKind,
 };
-use rustc_hir::{HirIdSet, LangItem};
 use rustc_hir_typeck::expr_use_visitor as euv;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir::FakeReadCause;
-use rustc_middle::ty::{self, TypeVisitableExt, Ty};
+use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::kw;
@@ -168,7 +168,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                 (
                     preds.iter().any(|t| cx.tcx.is_diagnostic_item(sym::Borrow, t.def_id())),
                     !preds.is_empty() && {
-                        let ty_empty_region = Ty::new_imm_ref(cx.tcx,cx.tcx.lifetimes.re_erased, ty);
+                        let ty_empty_region = Ty::new_imm_ref(cx.tcx, cx.tcx.lifetimes.re_erased, ty);
                         preds.iter().all(|t| {
                             let ty_params = t.trait_ref.args.iter().skip(1).collect::<Vec<_>>();
                             implements_trait(cx, ty_empty_region, t.def_id(), &ty_params)
@@ -289,7 +289,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
 }
 
 /// Functions marked with these attributes must have the exact signature.
-fn requires_exact_signature(attrs: &[Attribute]) -> bool {
+pub(crate) fn requires_exact_signature(attrs: &[Attribute]) -> bool {
     attrs.iter().any(|attr| {
         [sym::proc_macro, sym::proc_macro_attribute, sym::proc_macro_derive]
             .iter()

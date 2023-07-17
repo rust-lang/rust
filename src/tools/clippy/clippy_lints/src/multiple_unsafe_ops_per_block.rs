@@ -1,12 +1,8 @@
-use clippy_utils::{
-    diagnostics::span_lint_and_then,
-    visitors::{for_each_expr_with_closures, Descend, Visitable},
-};
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::visitors::{for_each_expr_with_closures, Descend, Visitable};
 use core::ops::ControlFlow::Continue;
-use hir::{
-    def::{DefKind, Res},
-    BlockCheckMode, ExprKind, QPath, UnOp, Unsafety,
-};
+use hir::def::{DefKind, Res};
+use hir::{BlockCheckMode, ExprKind, QPath, UnOp, Unsafety};
 use rustc_ast::Mutability;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};

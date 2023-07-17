@@ -2,8 +2,9 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::{self as hir, GenericArg, GenericBounds, GenericParamKind};
-use rustc_hir::{HirId, Lifetime, MutTy, Mutability, Node, QPath, TyKind};
+use rustc_hir::{
+    self as hir, GenericArg, GenericBounds, GenericParamKind, HirId, Lifetime, MutTy, Mutability, Node, QPath, TyKind,
+};
 use rustc_lint::LateContext;
 use rustc_span::sym;
 

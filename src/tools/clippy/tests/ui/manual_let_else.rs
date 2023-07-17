@@ -279,7 +279,9 @@ fn not_fire() {
     create_binding_if_some_nf!(v, g());
 
     // Already a let-else
-    let Some(a) = (if let Some(b) = Some(Some(())) { b } else { return }) else { panic!() };
+    let Some(a) = (if let Some(b) = Some(Some(())) { b } else { return }) else {
+        panic!()
+    };
 
     // If a type annotation is present, don't lint as
     // expressing the type might be too hard
@@ -304,9 +306,7 @@ fn not_fire() {
     let _x = if let Some(x) = Some(1) {
         x
     } else {
-        let Some(_z) = Some(3) else {
-            return
-        };
+        let Some(_z) = Some(3) else { return };
         1
     };
 

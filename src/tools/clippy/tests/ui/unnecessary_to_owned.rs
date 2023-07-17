@@ -477,7 +477,8 @@ mod issue_10021 {
 
 mod issue_10033 {
     #![allow(dead_code)]
-    use std::{fmt::Display, ops::Deref};
+    use std::fmt::Display;
+    use std::ops::Deref;
 
     fn _main() {
         let f = Foo;

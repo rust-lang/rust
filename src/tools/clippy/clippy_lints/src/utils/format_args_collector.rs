@@ -71,7 +71,9 @@ fn has_span_from_proc_macro(cx: &EarlyContext<'_>, args: &FormatArgs) -> bool {
     for between_span in between_spans {
         let mut seen_comma = false;
 
-        let Some(snippet) = snippet_opt(cx, between_span) else { return true };
+        let Some(snippet) = snippet_opt(cx, between_span) else {
+            return true;
+        };
         for token in tokenize(&snippet) {
             match token.kind {
                 TokenKind::LineComment { .. } | TokenKind::BlockComment { .. } | TokenKind::Whitespace => {},

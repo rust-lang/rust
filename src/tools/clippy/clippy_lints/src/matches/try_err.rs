@@ -70,7 +70,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, scrutine
                 TRY_ERR,
                 expr.span,
                 "returning an `Err(_)` with the `?` operator",
-                "try this",
+                "try",
                 suggestion,
                 applicability,
             );

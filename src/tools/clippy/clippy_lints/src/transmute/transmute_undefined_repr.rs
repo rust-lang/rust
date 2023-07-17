@@ -3,8 +3,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::ty::is_c_void;
 use rustc_hir::Expr;
 use rustc_lint::LateContext;
-use rustc_middle::ty::GenericArgsRef;
-use rustc_middle::ty::{self, IntTy, Ty, TypeAndMut, UintTy};
+use rustc_middle::ty::{self, GenericArgsRef, IntTy, Ty, TypeAndMut, UintTy};
 
 #[expect(clippy::too_many_lines)]
 pub(super) fn check<'tcx>(

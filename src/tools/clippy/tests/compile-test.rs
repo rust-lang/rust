@@ -3,16 +3,107 @@
 #![feature(is_sorted)]
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
 #![warn(rust_2018_idioms, unused_lifetimes)]
+#![allow(unused_extern_crates)]
 
 use compiletest::{status_emitter, CommandBuilder};
 use ui_test as compiletest;
 use ui_test::Mode as TestMode;
 
+use std::collections::BTreeMap;
 use std::env::{self, remove_var, set_var, var_os};
 use std::ffi::{OsStr, OsString};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::LazyLock;
 use test_utils::IS_RUSTC_TEST_SUITE;
+
+// Test dependencies may need an `extern crate` here to ensure that they show up
+// in the depinfo file (otherwise cargo thinks they are unused)
+extern crate clippy_lints;
+extern crate clippy_utils;
+extern crate derive_new;
+extern crate futures;
+extern crate if_chain;
+extern crate itertools;
+extern crate parking_lot;
+extern crate quote;
+extern crate syn;
+extern crate tokio;
+
+/// All crates used in UI tests are listed here
+static TEST_DEPENDENCIES: &[&str] = &[
+    "clippy_lints",
+    "clippy_utils",
+    "derive_new",
+    "futures",
+    "if_chain",
+    "itertools",
+    "parking_lot",
+    "quote",
+    "regex",
+    "serde_derive",
+    "serde",
+    "syn",
+    "tokio",
+];
+
+/// Produces a string with an `--extern` flag for all UI test crate
+/// dependencies.
+///
+/// The dependency files are located by parsing the depinfo file for this test
+/// module. This assumes the `-Z binary-dep-depinfo` flag is enabled. All test
+/// dependencies must be added to Cargo.toml at the project root. Test
+/// dependencies that are not *directly* used by this test module require an
+/// `extern crate` declaration.
+static EXTERN_FLAGS: LazyLock<Vec<String>> = LazyLock::new(|| {
+    let current_exe_depinfo = {
+        let mut path = env::current_exe().unwrap();
+        path.set_extension("d");
+        fs::read_to_string(path).unwrap()
+    };
+    let mut crates = BTreeMap::<&str, &str>::new();
+    for line in current_exe_depinfo.lines() {
+        // each dependency is expected to have a Makefile rule like `/path/to/crate-hash.rlib:`
+        let parse_name_path = || {
+            if line.starts_with(char::is_whitespace) {
+                return None;
+            }
+            let path_str = line.strip_suffix(':')?;
+            let path = Path::new(path_str);
+            if !matches!(path.extension()?.to_str()?, "rlib" | "so" | "dylib" | "dll") {
+                return None;
+            }
+            let (name, _hash) = path.file_stem()?.to_str()?.rsplit_once('-')?;
+            // the "lib" prefix is not present for dll files
+            let name = name.strip_prefix("lib").unwrap_or(name);
+            Some((name, path_str))
+        };
+        if let Some((name, path)) = parse_name_path() {
+            if TEST_DEPENDENCIES.contains(&name) {
+                // A dependency may be listed twice if it is available in sysroot,
+                // and the sysroot dependencies are listed first. As of the writing,
+                // this only seems to apply to if_chain.
+                crates.insert(name, path);
+            }
+        }
+    }
+    let not_found: Vec<&str> = TEST_DEPENDENCIES
+        .iter()
+        .copied()
+        .filter(|n| !crates.contains_key(n))
+        .collect();
+    assert!(
+        not_found.is_empty(),
+        "dependencies not found in depinfo: {not_found:?}\n\
+        help: Make sure the `-Z binary-dep-depinfo` rust flag is enabled\n\
+        help: Try adding to dev-dependencies in Cargo.toml\n\
+        help: Be sure to also add `extern crate ...;` to tests/compile-test.rs",
+    );
+    crates
+        .into_iter()
+        .map(|(name, path)| format!("--extern={name}={path}"))
+        .collect()
+});
 
 mod test_utils;
 
@@ -29,7 +120,6 @@ fn base_config(test_dir: &str) -> compiletest::Config {
         } else {
             compiletest::OutputConflictHandling::Error("cargo test -- -- --bless".into())
         },
-        dependencies_crate_manifest_path: Some("clippy_test_deps/Cargo.toml".into()),
         target: None,
         out_dir: PathBuf::from(std::env::var_os("CARGO_TARGET_DIR").unwrap_or("target".into())).join("ui_test"),
         ..compiletest::Config::rustc(Path::new("tests").join(test_dir))
@@ -44,10 +134,23 @@ fn base_config(test_dir: &str) -> compiletest::Config {
     let deps_path = current_exe_path.parent().unwrap();
     let profile_path = deps_path.parent().unwrap();
 
-    config.program.args.push("--emit=metadata".into());
-    config.program.args.push("-Aunused".into());
-    config.program.args.push("-Zui-testing".into());
-    config.program.args.push("-Dwarnings".into());
+    config.program.args.extend(
+        [
+            "--emit=metadata",
+            "-Aunused",
+            "-Zui-testing",
+            "-Dwarnings",
+            &format!("-Ldependency={}", deps_path.display()),
+        ]
+        .map(OsString::from),
+    );
+
+    config.program.args.extend(EXTERN_FLAGS.iter().map(OsString::from));
+
+    if let Some(host_libs) = option_env!("HOST_LIBS") {
+        let dep = format!("-Ldependency={}", Path::new(host_libs).join("deps").display());
+        config.program.args.push(dep.into());
+    }
 
     // Normalize away slashes in windows paths.
     config.stderr_filter(r"\\", "/");
@@ -105,9 +208,7 @@ fn run_internal_tests() {
     if !RUN_INTERNAL_TESTS {
         return;
     }
-    let mut config = base_config("ui-internal");
-    config.dependency_builder.args.push("--features".into());
-    config.dependency_builder.args.push("internal".into());
+    let config = base_config("ui-internal");
     compiletest::run_tests(config).unwrap();
 }
 
@@ -211,12 +312,45 @@ fn main() {
     }
 
     set_var("CLIPPY_DISABLE_DOCS_LINKS", "true");
-    run_ui();
-    run_ui_toml();
-    run_ui_cargo();
-    run_internal_tests();
-    rustfix_coverage_known_exceptions_accuracy();
-    ui_cargo_toml_metadata();
+    // The SPEEDTEST_* env variables can be used to check Clippy's performance on your PR. It runs the
+    // affected test 1000 times and gets the average.
+    if let Ok(speedtest) = std::env::var("SPEEDTEST") {
+        println!("----------- STARTING SPEEDTEST -----------");
+        let f = match speedtest.as_str() {
+            "ui" => run_ui as fn(),
+            "cargo" => run_ui_cargo as fn(),
+            "toml" => run_ui_toml as fn(),
+            "internal" => run_internal_tests as fn(),
+            "rustfix-coverage-known-exceptions-accuracy" => rustfix_coverage_known_exceptions_accuracy as fn(),
+            "ui-cargo-toml-metadata" => ui_cargo_toml_metadata as fn(),
+
+            _ => panic!("unknown speedtest: {speedtest} || accepted speedtests are: [ui, cargo, toml, internal]"),
+        };
+
+        let iterations;
+        if let Ok(iterations_str) = std::env::var("SPEEDTEST_ITERATIONS") {
+            iterations = iterations_str
+                .parse::<u64>()
+                .unwrap_or_else(|_| panic!("Couldn't parse `{iterations_str}`, please use a valid u64"));
+        } else {
+            iterations = 1000;
+        }
+
+        let mut sum = 0;
+        for _ in 0..iterations {
+            let start = std::time::Instant::now();
+            f();
+            sum += start.elapsed().as_millis();
+        }
+        println!("average {} time: {} millis.", speedtest.to_uppercase(), sum / 1000);
+    } else {
+        run_ui();
+        run_ui_toml();
+        run_ui_cargo();
+        run_internal_tests();
+        rustfix_coverage_known_exceptions_accuracy();
+        ui_cargo_toml_metadata();
+    }
 }
 
 const RUSTFIX_COVERAGE_KNOWN_EXCEPTIONS: &[&str] = &[

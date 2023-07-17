@@ -2,7 +2,8 @@ use rustc_hir as hir;
 use rustc_hir::Expr;
 use rustc_hir_typeck::{cast, FnCtxt, Inherited};
 use rustc_lint::LateContext;
-use rustc_middle::ty::{cast::CastKind, Ty};
+use rustc_middle::ty::cast::CastKind;
+use rustc_middle::ty::Ty;
 use rustc_span::DUMMY_SP;
 
 // check if the component types of the transmuted collection and the result have different ABI,

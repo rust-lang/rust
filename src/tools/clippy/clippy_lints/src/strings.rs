@@ -1,8 +1,10 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_sugg};
 use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::ty::is_type_lang_item;
-use clippy_utils::{get_expr_use_or_unification_node, peel_blocks, SpanlessEq};
-use clippy_utils::{get_parent_expr, is_lint_allowed, is_path_diagnostic_item, method_calls};
+use clippy_utils::{
+    get_expr_use_or_unification_node, get_parent_expr, is_lint_allowed, is_path_diagnostic_item, method_calls,
+    peel_blocks, SpanlessEq,
+};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;

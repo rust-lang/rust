@@ -3,10 +3,8 @@ use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
 use clippy_utils::macros::root_macro_call_first_node;
 use clippy_utils::{is_lint_allowed, match_def_path, paths};
 use if_chain::if_chain;
-use rustc_ast as ast;
 use rustc_ast::ast::LitKind;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::hir_id::CRATE_HIR_ID;
 use rustc_hir::intravisit::Visitor;
@@ -18,6 +16,7 @@ use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::Symbol;
 use rustc_span::{sym, Span};
+use {rustc_ast as ast, rustc_hir as hir};
 
 declare_clippy_lint! {
     /// ### What it does

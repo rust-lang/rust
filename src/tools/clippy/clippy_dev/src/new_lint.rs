@@ -358,6 +358,10 @@ fn create_lint_for_ty(lint: &LintData<'_>, enable_msrv: bool, ty: &str) -> io::R
 
     let mod_file_path = ty_dir.join("mod.rs");
     let context_import = setup_mod_file(&mod_file_path, lint)?;
+    let pass_lifetimes = match context_import {
+        "LateContext" => "<'_>",
+        _ => "",
+    };
 
     let name_upper = lint.name.to_uppercase();
     let mut lint_file_contents = String::new();
@@ -372,7 +376,7 @@ fn create_lint_for_ty(lint: &LintData<'_>, enable_msrv: bool, ty: &str) -> io::R
                 use super::{name_upper};
 
                 // TODO: Adjust the parameters as necessary
-                pub(super) fn check(cx: &{context_import}, msrv: &Msrv) {{
+                pub(super) fn check(cx: &{context_import}{pass_lifetimes}, msrv: &Msrv) {{
                     if !msrv.meets(todo!("Add a new entry in `clippy_utils/src/msrvs`")) {{
                         return;
                     }}
@@ -389,7 +393,7 @@ fn create_lint_for_ty(lint: &LintData<'_>, enable_msrv: bool, ty: &str) -> io::R
                 use super::{name_upper};
 
                 // TODO: Adjust the parameters as necessary
-                pub(super) fn check(cx: &{context_import}) {{
+                pub(super) fn check(cx: &{context_import}{pass_lifetimes}) {{
                     todo!();
                 }}
            "#

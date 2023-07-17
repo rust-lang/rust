@@ -1,6 +1,6 @@
-use clippy_utils::msrvs::POINTER_CAST_CONSTNESS;
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::msrvs::{Msrv, POINTER_CAST_CONSTNESS};
 use clippy_utils::sugg::Sugg;
-use clippy_utils::{diagnostics::span_lint_and_sugg, msrvs::Msrv};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, Mutability};

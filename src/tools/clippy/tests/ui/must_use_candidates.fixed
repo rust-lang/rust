@@ -1,6 +1,11 @@
 //@run-rustfix
 #![feature(never_type)]
-#![allow(unused_mut, unused_tuple_struct_fields, clippy::redundant_allocation)]
+#![allow(
+    unused_mut,
+    unused_tuple_struct_fields,
+    clippy::redundant_allocation,
+    clippy::needless_pass_by_ref_mut
+)]
 #![warn(clippy::must_use_candidate)]
 use std::rc::Rc;
 use std::sync::atomic::{AtomicBool, Ordering};

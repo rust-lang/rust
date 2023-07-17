@@ -7,16 +7,20 @@ use clippy_utils::ty::{get_iterator_item_ty, implements_trait, is_copy, peel_mid
 use clippy_utils::visitors::find_all_ret_expressions;
 use clippy_utils::{fn_def_id, get_parent_expr, is_diag_item_method, is_diag_trait_item, return_ty};
 use rustc_errors::Applicability;
-use rustc_hir::{def_id::DefId, BorrowKind, Expr, ExprKind, ItemKind, Node};
+use rustc_hir::def_id::DefId;
+use rustc_hir::{BorrowKind, Expr, ExprKind, ItemKind, Node};
 use rustc_hir_typeck::{FnCtxt, Inherited};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
 use rustc_middle::mir::Mutability;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, OverloadedDeref};
-use rustc_middle::ty::{GenericArg, GenericArgKind, GenericArgsRef};
-use rustc_middle::ty::{self, ClauseKind, EarlyBinder, ParamTy, ProjectionPredicate, TraitPredicate, Ty};
+use rustc_middle::ty::{
+    self, ClauseKind, EarlyBinder, GenericArg, GenericArgKind, GenericArgsRef, ParamTy, ProjectionPredicate,
+    TraitPredicate, Ty,
+};
 use rustc_span::{sym, Symbol};
-use rustc_trait_selection::traits::{query::evaluate_obligation::InferCtxtExt as _, Obligation, ObligationCause};
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
+use rustc_trait_selection::traits::{Obligation, ObligationCause};
 
 use super::UNNECESSARY_TO_OWNED;
 
@@ -319,7 +323,12 @@ fn skip_addr_of_ancestors<'tcx>(
 fn get_callee_generic_args_and_args<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx Expr<'tcx>,
-) -> Option<(DefId, GenericArgsRef<'tcx>, Option<&'tcx Expr<'tcx>>, &'tcx [Expr<'tcx>])> {
+) -> Option<(
+    DefId,
+    GenericArgsRef<'tcx>,
+    Option<&'tcx Expr<'tcx>>,
+    &'tcx [Expr<'tcx>],
+)> {
     if_chain! {
         if let ExprKind::Call(callee, args) = expr.kind;
         let callee_ty = cx.typeck_results().expr_ty(callee);
@@ -388,7 +397,8 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
                 }
             }
             Node::Expr(parent_expr) => {
-                if let Some((callee_def_id, call_generic_args, recv, call_args)) = get_callee_generic_args_and_args(cx, parent_expr)
+                if let Some((callee_def_id, call_generic_args, recv, call_args))
+                    = get_callee_generic_args_and_args(cx, parent_expr)
                 {
                     // FIXME: the `instantiate_identity()` below seems incorrect, since we eventually
                     // call `tcx.try_subst_and_normalize_erasing_regions` further down

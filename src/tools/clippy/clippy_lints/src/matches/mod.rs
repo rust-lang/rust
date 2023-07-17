@@ -1125,8 +1125,8 @@ fn contains_cfg_arm(cx: &LateContext<'_>, e: &Expr<'_>, scrutinee: &Expr<'_>, ar
     //|^
     let found = arm_spans.try_fold(start, |start, range| {
         let Some((end, next_start)) = range else {
-            // Shouldn't happen as macros can't expand to match arms, but treat this as though a `cfg` attribute were
-            // found.
+            // Shouldn't happen as macros can't expand to match arms, but treat this as though a `cfg` attribute
+            // were found.
             return Err(());
         };
         let span = SpanData {

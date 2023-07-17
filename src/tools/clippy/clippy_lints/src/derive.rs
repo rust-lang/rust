@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_note, span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::paths;
 use clippy_utils::ty::{implements_trait, implements_trait_with_env, is_copy};
-use clippy_utils::{is_lint_allowed, match_def_path};
+use clippy_utils::{is_lint_allowed, match_def_path, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
@@ -334,7 +333,9 @@ fn check_copy_clone<'tcx>(cx: &LateContext<'tcx>, item: &Item<'_>, trait_ref: &h
         Some(id) if trait_ref.trait_def_id() == Some(id) => id,
         _ => return,
     };
-    let Some(copy_id) = cx.tcx.lang_items().copy_trait() else { return };
+    let Some(copy_id) = cx.tcx.lang_items().copy_trait() else {
+        return;
+    };
     let (ty_adt, ty_subs) = match *ty.kind() {
         // Unions can't derive clone.
         ty::Adt(adt, subs) if !adt.is_union() => (adt, subs),
