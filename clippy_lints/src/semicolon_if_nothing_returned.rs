@@ -43,7 +43,7 @@ impl<'tcx> LateLintPass<'tcx> for SemicolonIfNothingReturned {
             if let Some(expr) = block.expr;
             let t_expr = cx.typeck_results().expr_ty(expr);
             if t_expr.is_unit();
-            let mut app = Applicability::MaybeIncorrect;
+            let mut app = Applicability::MachineApplicable;
             if let snippet = snippet_with_context(cx, expr.span, block.span.ctxt(), "}", &mut app).0;
             if !snippet.ends_with('}') && !snippet.ends_with(';');
             if cx.sess().source_map().is_multiline(block.span);
