@@ -163,7 +163,7 @@ fn fmt_printer<'a, 'tcx>(infcx: &'a InferCtxt<'tcx>, ns: Namespace) -> FmtPrinte
         let ty_vars = infcx_inner.type_variables();
         let var_origin = ty_vars.var_origin(ty_vid);
         if let TypeVariableOriginKind::TypeParameterDefinition(name, def_id) = var_origin.kind
-            && !var_origin.span.from_expansion()
+            && name != kw::SelfUpper && !var_origin.span.from_expansion()
         {
             let generics = infcx.tcx.generics_of(infcx.tcx.parent(def_id));
             let idx = generics.param_def_id_to_index(infcx.tcx, def_id).unwrap();

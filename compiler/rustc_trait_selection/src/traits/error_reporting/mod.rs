@@ -2388,14 +2388,11 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             // If there is only one implementation of the trait, suggest using it.
                             // Otherwise, use a placeholder comment for the implementation.
                             let (message, impl_suggestion) = if non_blanket_impl_count == 1 {(
-                                "use the fully-qualified path to the only available implementation".to_string(),
+                                "use the fully-qualified path to the only available implementation",
                                 format!("<{} as ", self.tcx.type_of(impl_def_id).instantiate_identity())
-                            )} else {(
-                                format!(
-                                    "use a fully-qualified path to a specific available implementation ({} found)",
-                                    non_blanket_impl_count
-                                ),
-                                "</* self type */ as ".to_string()
+                            )} else {
+                                ("use a fully-qualified path to a specific available implementation",
+                                                                "</* self type */ as ".to_string()
                             )};
                             let mut suggestions = vec![(
                                 path.span.shrink_to_lo(),
