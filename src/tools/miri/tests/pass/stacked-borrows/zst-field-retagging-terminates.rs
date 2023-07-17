@@ -1,4 +1,3 @@
-//@compile-flags: -Zmiri-retag-fields
 // Checks that the test does not run forever (which relies on a fast path).
 
 #![allow(dropping_copy_types)]
