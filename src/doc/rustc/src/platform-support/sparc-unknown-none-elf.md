@@ -17,13 +17,6 @@ Rust for bare-metal 32-bit SPARC V7 and V8 systems, e.g. the Gaisler LEON3.
 This target is cross-compiled. There is no support for `std`. There is no
 default allocator, but it's possible to use `alloc` by supplying an allocator.
 
-This allows the generated code to run in environments, such as kernels, which
-may need to avoid the use of such registers or which may have special
-considerations about the use of such registers (e.g. saving and restoring them
-to avoid breaking userspace code using the same registers). You can change code
-generation to use additional CPU features via the `-C target-feature=` codegen
-options to rustc, or via the `#[target_feature]` mechanism within Rust code.
-
 By default, code generated with this target should run on any `SPARC` hardware;
 enabling additional target features may raise this baseline.
 
