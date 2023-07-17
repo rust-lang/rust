@@ -7,11 +7,9 @@ use rustc_hash::FxHashSet;
 use hir::{db::HirDatabase, Crate, Module};
 use ide::{AssistResolveStrategy, DiagnosticsConfig, Severity};
 use ide_db::base_db::SourceDatabaseExt;
+use load_cargo::{load_workspace_at, LoadCargoConfig, ProcMacroServerChoice};
 
-use crate::cli::{
-    flags,
-    load_cargo::{load_workspace_at, LoadCargoConfig, ProcMacroServerChoice},
-};
+use crate::cli::flags;
 
 impl flags::Diagnostics {
     pub fn run(self) -> anyhow::Result<()> {
@@ -37,14 +35,14 @@ impl flags::Diagnostics {
         let mut visited_files = FxHashSet::default();
 
         let work = all_modules(db).into_iter().filter(|module| {
-            let file_id = module.definition_source(db).file_id.original_file(db);
+            let file_id = module.definition_source_file_id(db).original_file(db);
             let source_root = db.file_source_root(file_id);
             let source_root = db.source_root(source_root);
             !source_root.is_library
         });
 
         for module in work {
-            let file_id = module.definition_source(db).file_id.original_file(db);
+            let file_id = module.definition_source_file_id(db).original_file(db);
             if !visited_files.contains(&file_id) {
                 let crate_name =
                     module.krate().display_name(db).as_deref().unwrap_or("unknown").to_string();

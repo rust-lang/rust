@@ -1,7 +1,8 @@
 import * as vscode from "vscode";
 import * as toolchain from "./toolchain";
-import { Config } from "./config";
+import type { Config } from "./config";
 import { log } from "./util";
+import { unwrapUndefinable } from "./undefinable";
 
 // This ends up as the `type` key in tasks.json. RLS also uses `cargo` and
 // our configuration should be compatible with it so use the same key.
@@ -46,7 +47,8 @@ class CargoTaskProvider implements vscode.TaskProvider {
                     { type: TASK_TYPE, command: def.command },
                     `cargo ${def.command}`,
                     [def.command],
-                    this.config.cargoRunner
+                    this.config.problemMatcher,
+                    this.config.cargoRunner,
                 );
                 vscodeTask.group = def.group;
                 tasks.push(vscodeTask);
@@ -70,7 +72,8 @@ class CargoTaskProvider implements vscode.TaskProvider {
                 definition,
                 task.name,
                 args,
-                this.config.cargoRunner
+                this.config.problemMatcher,
+                this.config.cargoRunner,
             );
         }
 
@@ -83,8 +86,9 @@ export async function buildCargoTask(
     definition: CargoTaskDefinition,
     name: string,
     args: string[],
+    problemMatcher: string[],
     customRunner?: string,
-    throwOnError: boolean = false
+    throwOnError: boolean = false,
 ): Promise<vscode.Task> {
     let exec: vscode.ProcessExecution | vscode.ShellExecution | undefined = undefined;
 
@@ -117,7 +121,8 @@ export async function buildCargoTask(
 
         const fullCommand = [...cargoCommand, ...args];
 
-        exec = new vscode.ProcessExecution(fullCommand[0], fullCommand.slice(1), definition);
+        const processName = unwrapUndefinable(fullCommand[0]);
+        exec = new vscode.ProcessExecution(processName, fullCommand.slice(1), definition);
     }
 
     return new vscode.Task(
@@ -128,7 +133,7 @@ export async function buildCargoTask(
         name,
         TASK_SOURCE,
         exec,
-        ["$rustc", "$rust-panic"]
+        problemMatcher,
     );
 }
 

@@ -1079,6 +1079,7 @@ impl Config {
 
     pub fn diagnostics(&self) -> DiagnosticsConfig {
         DiagnosticsConfig {
+            enabled: self.data.diagnostics_enable,
             proc_attr_macros_enabled: self.expand_proc_attr_macros(),
             proc_macros_enabled: self.data.procMacro_enable,
             disable_experimental: !self.data.diagnostics_experimental_enable,

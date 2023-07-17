@@ -474,7 +474,7 @@ fn main() {
                                         file_id: FileId(
                                             1,
                                         ),
-                                        range: 9287..9295,
+                                        range: 9289..9297,
                                     },
                                 ),
                                 tooltip: "",
@@ -487,7 +487,7 @@ fn main() {
                                         file_id: FileId(
                                             1,
                                         ),
-                                        range: 9319..9323,
+                                        range: 9321..9325,
                                     },
                                 ),
                                 tooltip: "",
@@ -511,7 +511,7 @@ fn main() {
                                         file_id: FileId(
                                             1,
                                         ),
-                                        range: 9287..9295,
+                                        range: 9289..9297,
                                     },
                                 ),
                                 tooltip: "",
@@ -524,7 +524,7 @@ fn main() {
                                         file_id: FileId(
                                             1,
                                         ),
-                                        range: 9319..9323,
+                                        range: 9321..9325,
                                     },
                                 ),
                                 tooltip: "",
@@ -548,7 +548,7 @@ fn main() {
                                         file_id: FileId(
                                             1,
                                         ),
-                                        range: 9287..9295,
+                                        range: 9289..9297,
                                     },
                                 ),
                                 tooltip: "",
@@ -561,7 +561,7 @@ fn main() {
                                         file_id: FileId(
                                             1,
                                         ),
-                                        range: 9319..9323,
+                                        range: 9321..9325,
                                     },
                                 ),
                                 tooltip: "",

@@ -36,7 +36,7 @@ pub fn autoderef(
 ) -> impl Iterator<Item = Ty> {
     let mut table = InferenceTable::new(db, env);
     let ty = table.instantiate_canonical(ty);
-    let mut autoderef = Autoderef::new(&mut table, ty);
+    let mut autoderef = Autoderef::new(&mut table, ty, false);
     let mut v = Vec::new();
     while let Some((ty, _steps)) = autoderef.next() {
         // `ty` may contain unresolved inference variables. Since there's no chance they would be
@@ -63,12 +63,13 @@ pub(crate) struct Autoderef<'a, 'db> {
     ty: Ty,
     at_start: bool,
     steps: Vec<(AutoderefKind, Ty)>,
+    explicit: bool,
 }
 
 impl<'a, 'db> Autoderef<'a, 'db> {
-    pub(crate) fn new(table: &'a mut InferenceTable<'db>, ty: Ty) -> Self {
+    pub(crate) fn new(table: &'a mut InferenceTable<'db>, ty: Ty, explicit: bool) -> Self {
         let ty = table.resolve_ty_shallow(&ty);
-        Autoderef { table, ty, at_start: true, steps: Vec::new() }
+        Autoderef { table, ty, at_start: true, steps: Vec::new(), explicit }
     }
 
     pub(crate) fn step_count(&self) -> usize {
@@ -97,7 +98,7 @@ impl Iterator for Autoderef<'_, '_> {
             return None;
         }
 
-        let (kind, new_ty) = autoderef_step(self.table, self.ty.clone())?;
+        let (kind, new_ty) = autoderef_step(self.table, self.ty.clone(), self.explicit)?;
 
         self.steps.push((kind, self.ty.clone()));
         self.ty = new_ty;
@@ -109,8 +110,9 @@ impl Iterator for Autoderef<'_, '_> {
 pub(crate) fn autoderef_step(
     table: &mut InferenceTable<'_>,
     ty: Ty,
+    explicit: bool,
 ) -> Option<(AutoderefKind, Ty)> {
-    if let Some(derefed) = builtin_deref(table, &ty, false) {
+    if let Some(derefed) = builtin_deref(table, &ty, explicit) {
         Some((AutoderefKind::Builtin, table.resolve_ty_shallow(derefed)))
     } else {
         Some((AutoderefKind::Overloaded, deref_by_trait(table, ty)?))
@@ -124,7 +126,6 @@ pub(crate) fn builtin_deref<'ty>(
 ) -> Option<&'ty Ty> {
     match ty.kind(Interner) {
         TyKind::Ref(.., ty) => Some(ty),
-        // FIXME: Maybe accept this but diagnose if its not explicit?
         TyKind::Raw(.., ty) if explicit => Some(ty),
         &TyKind::Adt(chalk_ir::AdtId(adt), ref substs) => {
             if crate::lang_items::is_box(table.db, adt) {

@@ -1,6 +1,6 @@
 [package]
 name = "la-arena"
-version = "0.3.0"
+version = "0.3.1"
 description = "Simple index-based arena without deletion."
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/rust-lang/rust-analyzer/tree/master/lib/la-arena"

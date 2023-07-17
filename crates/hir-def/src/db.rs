@@ -12,26 +12,30 @@ use crate::{
     body::{scope::ExprScopes, Body, BodySourceMap},
     data::{
         adt::{EnumData, StructData},
-        ConstData, FunctionData, ImplData, Macro2Data, MacroRulesData, ProcMacroData, StaticData,
-        TraitAliasData, TraitData, TypeAliasData,
+        ConstData, ExternCrateDeclData, FunctionData, ImplData, Macro2Data, MacroRulesData,
+        ProcMacroData, StaticData, TraitAliasData, TraitData, TypeAliasData,
     },
     generics::GenericParams,
     import_map::ImportMap,
     item_tree::{AttrOwner, ItemTree},
-    lang_item::{LangItem, LangItemTarget, LangItems},
+    lang_item::{self, LangItem, LangItemTarget, LangItems},
     nameres::{diagnostics::DefDiagnostic, DefMap},
     visibility::{self, Visibility},
     AttrDefId, BlockId, BlockLoc, ConstBlockId, ConstBlockLoc, ConstId, ConstLoc, DefWithBodyId,
-    EnumId, EnumLoc, ExternBlockId, ExternBlockLoc, FunctionId, FunctionLoc, GenericDefId, ImplId,
-    ImplLoc, InTypeConstId, InTypeConstLoc, LocalEnumVariantId, LocalFieldId, Macro2Id, Macro2Loc,
-    MacroRulesId, MacroRulesLoc, ProcMacroId, ProcMacroLoc, StaticId, StaticLoc, StructId,
-    StructLoc, TraitAliasId, TraitAliasLoc, TraitId, TraitLoc, TypeAliasId, TypeAliasLoc, UnionId,
-    UnionLoc, VariantId,
+    EnumId, EnumLoc, ExternBlockId, ExternBlockLoc, ExternCrateId, ExternCrateLoc, FunctionId,
+    FunctionLoc, GenericDefId, ImplId, ImplLoc, ImportId, ImportLoc, InTypeConstId, InTypeConstLoc,
+    LocalEnumVariantId, LocalFieldId, Macro2Id, Macro2Loc, MacroRulesId, MacroRulesLoc,
+    ProcMacroId, ProcMacroLoc, StaticId, StaticLoc, StructId, StructLoc, TraitAliasId,
+    TraitAliasLoc, TraitId, TraitLoc, TypeAliasId, TypeAliasLoc, UnionId, UnionLoc, VariantId,
 };
 
 #[salsa::query_group(InternDatabaseStorage)]
 pub trait InternDatabase: SourceDatabase {
     // region: items
+    #[salsa::interned]
+    fn intern_import(&self, loc: ImportLoc) -> ImportId;
+    #[salsa::interned]
+    fn intern_extern_crate(&self, loc: ExternCrateLoc) -> ExternCrateId;
     #[salsa::interned]
     fn intern_function(&self, loc: FunctionLoc) -> FunctionId;
     #[salsa::interned]
@@ -160,6 +164,9 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + Upcast<dyn ExpandDataba
     #[salsa::invoke(ProcMacroData::proc_macro_data_query)]
     fn proc_macro_data(&self, makro: ProcMacroId) -> Arc<ProcMacroData>;
 
+    #[salsa::invoke(ExternCrateDeclData::extern_crate_decl_data_query)]
+    fn extern_crate_decl_data(&self, extern_crate: ExternCrateId) -> Arc<ExternCrateDeclData>;
+
     // endregion:data
 
     #[salsa::invoke(Body::body_with_source_map_query)]
@@ -196,6 +203,9 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + Upcast<dyn ExpandDataba
 
     #[salsa::invoke(AttrsWithOwner::attrs_query)]
     fn attrs(&self, def: AttrDefId) -> Attrs;
+
+    #[salsa::invoke(lang_item::lang_attr_query)]
+    fn lang_attr(&self, def: AttrDefId) -> Option<LangItem>;
 
     #[salsa::transparent]
     #[salsa::invoke(AttrsWithOwner::attrs_with_owner)]

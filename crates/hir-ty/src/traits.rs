@@ -170,7 +170,7 @@ fn solve(
 
 struct LoggingRustIrDatabaseLoggingOnDrop<'a>(LoggingRustIrDatabase<Interner, ChalkContext<'a>>);
 
-impl<'a> Drop for LoggingRustIrDatabaseLoggingOnDrop<'a> {
+impl Drop for LoggingRustIrDatabaseLoggingOnDrop<'_> {
     fn drop(&mut self) {
         eprintln!("chalk program:\n{}", self.0);
     }

@@ -1,11 +1,11 @@
 use hir::{db::HirDatabase, HasSource, HasVisibility, ModuleDef, PathResolution, ScopeDef};
 use ide_db::base_db::FileId;
 use syntax::{
-    ast::{self, HasVisibility as _},
-    AstNode, TextRange, TextSize,
+    ast::{self, edit_in_place::HasVisibilityEdit, make, HasVisibility as _},
+    AstNode, TextRange,
 };
 
-use crate::{utils::vis_offset, AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, AssistKind, Assists};
 
 // FIXME: this really should be a fix for diagnostic, rather than an assist.
 
@@ -40,12 +40,16 @@ fn add_vis_to_referenced_module_def(acc: &mut Assists, ctx: &AssistContext<'_>) 
     let qualifier = path.qualifier()?;
     let name_ref = path.segment()?.name_ref()?;
     let qualifier_res = ctx.sema.resolve_path(&qualifier)?;
-    let PathResolution::Def(ModuleDef::Module(module)) = qualifier_res else { return None; };
+    let PathResolution::Def(ModuleDef::Module(module)) = qualifier_res else {
+        return None;
+    };
     let (_, def) = module
         .scope(ctx.db(), None)
         .into_iter()
         .find(|(name, _)| name.to_smol_str() == name_ref.text().as_str())?;
-    let ScopeDef::ModuleDef(def) = def else { return None; };
+    let ScopeDef::ModuleDef(def) = def else {
+        return None;
+    };
 
     let current_module = ctx.sema.scope(path.syntax())?.module();
     let target_module = def.module(ctx.db())?;
@@ -54,11 +58,13 @@ fn add_vis_to_referenced_module_def(acc: &mut Assists, ctx: &AssistContext<'_>) 
         return None;
     };
 
-    let (offset, current_visibility, target, target_file, target_name) =
-        target_data_for_def(ctx.db(), def)?;
+    let (vis_owner, target, target_file, target_name) = target_data_for_def(ctx.db(), def)?;
 
-    let missing_visibility =
-        if current_module.krate() == target_module.krate() { "pub(crate)" } else { "pub" };
+    let missing_visibility = if current_module.krate() == target_module.krate() {
+        make::visibility_pub_crate()
+    } else {
+        make::visibility_pub()
+    };
 
     let assist_label = match target_name {
         None => format!("Change visibility to {missing_visibility}"),
@@ -67,23 +73,14 @@ fn add_vis_to_referenced_module_def(acc: &mut Assists, ctx: &AssistContext<'_>) 
         }
     };
 
-    acc.add(AssistId("fix_visibility", AssistKind::QuickFix), assist_label, target, |builder| {
-        builder.edit_file(target_file);
-        match ctx.config.snippet_cap {
-            Some(cap) => match current_visibility {
-                Some(current_visibility) => builder.replace_snippet(
-                    cap,
-                    current_visibility.syntax().text_range(),
-                    format!("$0{missing_visibility}"),
-                ),
-                None => builder.insert_snippet(cap, offset, format!("$0{missing_visibility} ")),
-            },
-            None => match current_visibility {
-                Some(current_visibility) => {
-                    builder.replace(current_visibility.syntax().text_range(), missing_visibility)
-                }
-                None => builder.insert(offset, format!("{missing_visibility} ")),
-            },
+    acc.add(AssistId("fix_visibility", AssistKind::QuickFix), assist_label, target, |edit| {
+        edit.edit_file(target_file);
+
+        let vis_owner = edit.make_mut(vis_owner);
+        vis_owner.set_visibility(missing_visibility.clone_for_update());
+
+        if let Some((cap, vis)) = ctx.config.snippet_cap.zip(vis_owner.visibility()) {
+            edit.add_tabstop_before(cap, vis);
         }
     })
 }
@@ -103,19 +100,22 @@ fn add_vis_to_referenced_record_field(acc: &mut Assists, ctx: &AssistContext<'_>
     let target_module = parent.module(ctx.db());
 
     let in_file_source = record_field_def.source(ctx.db())?;
-    let (offset, current_visibility, target) = match in_file_source.value {
+    let (vis_owner, target) = match in_file_source.value {
         hir::FieldSource::Named(it) => {
-            let s = it.syntax();
-            (vis_offset(s), it.visibility(), s.text_range())
+            let range = it.syntax().text_range();
+            (ast::AnyHasVisibility::new(it), range)
         }
         hir::FieldSource::Pos(it) => {
-            let s = it.syntax();
-            (vis_offset(s), it.visibility(), s.text_range())
+            let range = it.syntax().text_range();
+            (ast::AnyHasVisibility::new(it), range)
         }
     };
 
-    let missing_visibility =
-        if current_module.krate() == target_module.krate() { "pub(crate)" } else { "pub" };
+    let missing_visibility = if current_module.krate() == target_module.krate() {
+        make::visibility_pub_crate()
+    } else {
+        make::visibility_pub()
+    };
     let target_file = in_file_source.file_id.original_file(ctx.db());
 
     let target_name = record_field_def.name(ctx.db());
@@ -125,23 +125,14 @@ fn add_vis_to_referenced_record_field(acc: &mut Assists, ctx: &AssistContext<'_>
         target_name.display(ctx.db())
     );
 
-    acc.add(AssistId("fix_visibility", AssistKind::QuickFix), assist_label, target, |builder| {
-        builder.edit_file(target_file);
-        match ctx.config.snippet_cap {
-            Some(cap) => match current_visibility {
-                Some(current_visibility) => builder.replace_snippet(
-                    cap,
-                    current_visibility.syntax().text_range(),
-                    format!("$0{missing_visibility}"),
-                ),
-                None => builder.insert_snippet(cap, offset, format!("$0{missing_visibility} ")),
-            },
-            None => match current_visibility {
-                Some(current_visibility) => {
-                    builder.replace(current_visibility.syntax().text_range(), missing_visibility)
-                }
-                None => builder.insert(offset, format!("{missing_visibility} ")),
-            },
+    acc.add(AssistId("fix_visibility", AssistKind::QuickFix), assist_label, target, |edit| {
+        edit.edit_file(target_file);
+
+        let vis_owner = edit.make_mut(vis_owner);
+        vis_owner.set_visibility(missing_visibility.clone_for_update());
+
+        if let Some((cap, vis)) = ctx.config.snippet_cap.zip(vis_owner.visibility()) {
+            edit.add_tabstop_before(cap, vis);
         }
     })
 }
@@ -149,11 +140,11 @@ fn add_vis_to_referenced_record_field(acc: &mut Assists, ctx: &AssistContext<'_>
 fn target_data_for_def(
     db: &dyn HirDatabase,
     def: hir::ModuleDef,
-) -> Option<(TextSize, Option<ast::Visibility>, TextRange, FileId, Option<hir::Name>)> {
+) -> Option<(ast::AnyHasVisibility, TextRange, FileId, Option<hir::Name>)> {
     fn offset_target_and_file_id<S, Ast>(
         db: &dyn HirDatabase,
         x: S,
-    ) -> Option<(TextSize, Option<ast::Visibility>, TextRange, FileId)>
+    ) -> Option<(ast::AnyHasVisibility, TextRange, FileId)>
     where
         S: HasSource<Ast = Ast>,
         Ast: AstNode + ast::HasVisibility,
@@ -161,18 +152,12 @@ fn target_data_for_def(
         let source = x.source(db)?;
         let in_file_syntax = source.syntax();
         let file_id = in_file_syntax.file_id;
-        let syntax = in_file_syntax.value;
-        let current_visibility = source.value.visibility();
-        Some((
-            vis_offset(syntax),
-            current_visibility,
-            syntax.text_range(),
-            file_id.original_file(db.upcast()),
-        ))
+        let range = in_file_syntax.value.text_range();
+        Some((ast::AnyHasVisibility::new(source.value), range, file_id.original_file(db.upcast())))
     }
 
     let target_name;
-    let (offset, current_visibility, target, target_file) = match def {
+    let (offset, target, target_file) = match def {
         hir::ModuleDef::Function(f) => {
             target_name = Some(f.name(db));
             offset_target_and_file_id(db, f)?
@@ -209,8 +194,8 @@ fn target_data_for_def(
             target_name = m.name(db);
             let in_file_source = m.declaration_source(db)?;
             let file_id = in_file_source.file_id.original_file(db.upcast());
-            let syntax = in_file_source.value.syntax();
-            (vis_offset(syntax), in_file_source.value.visibility(), syntax.text_range(), file_id)
+            let range = in_file_source.value.syntax().text_range();
+            (ast::AnyHasVisibility::new(in_file_source.value), range, file_id)
         }
         // FIXME
         hir::ModuleDef::Macro(_) => return None,
@@ -218,7 +203,7 @@ fn target_data_for_def(
         hir::ModuleDef::Variant(_) | hir::ModuleDef::BuiltinType(_) => return None,
     };
 
-    Some((offset, current_visibility, target, target_file, target_name))
+    Some((offset, target, target_file, target_name))
 }
 
 #[cfg(test)]

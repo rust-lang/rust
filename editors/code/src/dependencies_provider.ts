@@ -1,9 +1,10 @@
 import * as vscode from "vscode";
 import * as fspath from "path";
 import * as fs from "fs";
-import { CtxInit } from "./ctx";
+import type { CtxInit } from "./ctx";
 import * as ra from "./lsp_ext";
-import { FetchDependencyListResult } from "./lsp_ext";
+import type { FetchDependencyListResult } from "./lsp_ext";
+import { unwrapUndefinable } from "./undefinable";
 
 export class RustDependenciesProvider
     implements vscode.TreeDataProvider<Dependency | DependencyFile>
@@ -42,19 +43,24 @@ export class RustDependenciesProvider
     }
 
     getParent?(
-        element: Dependency | DependencyFile
+        element: Dependency | DependencyFile,
     ): vscode.ProviderResult<Dependency | DependencyFile> {
         if (element instanceof Dependency) return undefined;
         return element.parent;
     }
 
     getTreeItem(element: Dependency | DependencyFile): vscode.TreeItem | Thenable<vscode.TreeItem> {
-        if (element.id! in this.dependenciesMap) return this.dependenciesMap[element.id!];
+        const dependenciesMap = this.dependenciesMap;
+        const elementId = element.id!;
+        if (elementId in dependenciesMap) {
+            const dependency = unwrapUndefinable(dependenciesMap[elementId]);
+            return dependency;
+        }
         return element;
     }
 
     getChildren(
-        element?: Dependency | DependencyFile
+        element?: Dependency | DependencyFile,
     ): vscode.ProviderResult<Dependency[] | DependencyFile[]> {
         return new Promise((resolve, _reject) => {
             if (!vscode.workspace.workspaceFolders) {
@@ -81,7 +87,7 @@ export class RustDependenciesProvider
     private async getRootDependencies(): Promise<Dependency[]> {
         const dependenciesResult: FetchDependencyListResult = await this.ctx.client.sendRequest(
             ra.fetchDependencyList,
-            {}
+            {},
         );
         const crates = dependenciesResult.crates;
 
@@ -101,17 +107,17 @@ export class RustDependenciesProvider
             moduleName,
             version,
             vscode.Uri.parse(path).fsPath,
-            vscode.TreeItemCollapsibleState.Collapsed
+            vscode.TreeItemCollapsibleState.Collapsed,
         );
     }
 }
 
 export class Dependency extends vscode.TreeItem {
     constructor(
-        public readonly label: string,
+        public override readonly label: string,
         private version: string,
         readonly dependencyPath: string,
-        public readonly collapsibleState: vscode.TreeItemCollapsibleState
+        public override readonly collapsibleState: vscode.TreeItemCollapsibleState,
     ) {
         super(label, collapsibleState);
         this.resourceUri = vscode.Uri.file(dependencyPath);
@@ -127,10 +133,10 @@ export class Dependency extends vscode.TreeItem {
 
 export class DependencyFile extends vscode.TreeItem {
     constructor(
-        readonly label: string,
+        override readonly label: string,
         readonly dependencyPath: string,
         readonly parent: Dependency | DependencyFile,
-        public readonly collapsibleState: vscode.TreeItemCollapsibleState
+        public override readonly collapsibleState: vscode.TreeItemCollapsibleState,
     ) {
         super(vscode.Uri.file(dependencyPath), collapsibleState);
         this.id = this.resourceUri!.fsPath.toLowerCase();

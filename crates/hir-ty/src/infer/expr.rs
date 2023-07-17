@@ -50,7 +50,7 @@ use super::{
     InferenceContext, InferenceDiagnostic, TypeMismatch,
 };
 
-impl<'a> InferenceContext<'a> {
+impl InferenceContext<'_> {
     pub(crate) fn infer_expr(&mut self, tgt_expr: ExprId, expected: &Expectation) -> Ty {
         let ty = self.infer_expr_inner(tgt_expr, expected);
         if let Some(expected_ty) = expected.only_has_type(&mut self.table) {
@@ -316,7 +316,7 @@ impl<'a> InferenceContext<'a> {
             }
             Expr::Call { callee, args, .. } => {
                 let callee_ty = self.infer_expr(*callee, &Expectation::none());
-                let mut derefs = Autoderef::new(&mut self.table, callee_ty.clone());
+                let mut derefs = Autoderef::new(&mut self.table, callee_ty.clone(), false);
                 let (res, derefed_callee) = 'b: {
                     // manual loop to be able to access `derefs.table`
                     while let Some((callee_deref_ty, _)) = derefs.next() {
@@ -928,7 +928,7 @@ impl<'a> InferenceContext<'a> {
                 if let TyKind::Ref(Mutability::Mut, _, inner) = derefed_callee.kind(Interner) {
                     if adjustments
                         .last()
-                        .map(|x| matches!(x.kind, Adjust::Borrow(_)))
+                        .map(|it| matches!(it.kind, Adjust::Borrow(_)))
                         .unwrap_or(true)
                     {
                         // prefer reborrow to move
@@ -1385,7 +1385,7 @@ impl<'a> InferenceContext<'a> {
         receiver_ty: &Ty,
         name: &Name,
     ) -> Option<(Ty, Option<FieldId>, Vec<Adjustment>, bool)> {
-        let mut autoderef = Autoderef::new(&mut self.table, receiver_ty.clone());
+        let mut autoderef = Autoderef::new(&mut self.table, receiver_ty.clone(), false);
         let mut private_field = None;
         let res = autoderef.by_ref().find_map(|(derefed_ty, _)| {
             let (field_id, parameters) = match derefed_ty.kind(Interner) {
@@ -1449,6 +1449,13 @@ impl<'a> InferenceContext<'a> {
 
     fn infer_field_access(&mut self, tgt_expr: ExprId, receiver: ExprId, name: &Name) -> Ty {
         let receiver_ty = self.infer_expr_inner(receiver, &Expectation::none());
+
+        if name.is_missing() {
+            // Bail out early, don't even try to look up field. Also, we don't issue an unresolved
+            // field diagnostic because this is a syntax error rather than a semantic error.
+            return self.err_ty();
+        }
+
         match self.lookup_field(&receiver_ty, name) {
             Some((ty, field_id, adjustments, is_public)) => {
                 self.write_expr_adj(receiver, adjustments);

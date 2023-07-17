@@ -1,5 +1,5 @@
 <!---
-lsp_ext.rs hash: 2d60bbffe70ae198
+lsp_ext.rs hash: 149a5be3c5e469d1
 
 If you need to change the above hash to make the test pass, please check if you
 need to adjust this doc as well and ping this issue:
@@ -886,3 +886,48 @@ export interface FetchDependencyListResult {
 }
 ```
 Returns all crates from this workspace, so it can be used create a viewTree to help navigate the dependency tree.
+
+## View Recursive Memory Layout
+
+**Method:** `rust-analyzer/viewRecursiveMemoryLayout`
+
+**Request:** `TextDocumentPositionParams`
+
+**Response:**
+
+```typescript
+export interface RecursiveMemoryLayoutNode = {
+    /// Name of the item, or [ROOT], `.n` for tuples
+    item_name: string;
+    /// Full name of the type (type aliases are ignored)
+    typename: string;
+    /// Size of the type in bytes
+    size: number;
+    /// Alignment of the type in bytes
+    alignment: number;
+    /// Offset of the type relative to its parent (or 0 if its the root)
+    offset: number;
+    /// Index of the node's parent (or -1 if its the root)
+    parent_idx: number;
+    /// Index of the node's children (or -1 if it does not have children)
+    children_start: number;
+    /// Number of child nodes (unspecified it does not have children)
+    children_len: number;
+};
+
+export interface RecursiveMemoryLayout = {
+    nodes: RecursiveMemoryLayoutNode[];
+};
+```
+
+Returns a vector of nodes representing items in the datatype as a tree, `RecursiveMemoryLayout::nodes[0]` is the root node.
+
+If `RecursiveMemoryLayout::nodes::length == 0` we could not find a suitable type.
+
+Generic Types do not give anything because they are incomplete. Fully specified generic types do not give anything if they are selected directly but do work when a child of other types [this is consistent with other behavior](https://github.com/rust-lang/rust-analyzer/issues/15010).
+
+### Unresolved questions:
+
+- How should enums/unions be represented? currently they do not produce any children because they have multiple distinct sets of children.
+- Should niches be represented? currently they are not reported.
+- A visual representation of the memory layout is not specified, see the provided implementation for an example, however it may not translate well to terminal based editors or other such things.

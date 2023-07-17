@@ -4149,6 +4149,30 @@ where
 }
 
 #[test]
+fn gats_in_bounds_for_assoc() {
+    check_types(
+        r#"
+trait Trait {
+    type Assoc: Another<Gat<i32> = usize>;
+    type Assoc2<T>: Another<Gat<T> = T>;
+}
+trait Another {
+    type Gat<T>;
+    fn foo(&self) -> Self::Gat<i32>;
+    fn bar<T>(&self) -> Self::Gat<T>;
+}
+
+fn test<T: Trait>(a: T::Assoc, b: T::Assoc2<isize>) {
+    let v = a.foo();
+      //^ usize
+    let v = b.bar::<isize>();
+      //^ isize
+}
+"#,
+    );
+}
+
+#[test]
 fn bin_op_with_scalar_fallback() {
     // Extra impls are significant so that chalk doesn't give us definite guidances.
     check_types(

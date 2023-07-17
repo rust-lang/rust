@@ -12,7 +12,7 @@ rust-version.workspace = true
 doctest = false
 
 [dependencies]
-object = { version = "0.30.2", default-features = false, features = [
+object = { version = "0.31.0", default-features = false, features = [
     "std",
     "read_core",
     "elf",

@@ -8,7 +8,7 @@ use ide_db::{
 use syntax::{ast, AstNode, AstPtr};
 use text_edit::TextEdit;
 
-use crate::{Diagnostic, DiagnosticsContext};
+use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext};
 
 // Diagnostic: unresolved-field
 //
@@ -22,14 +22,15 @@ pub(crate) fn unresolved_field(
     } else {
         ""
     };
-    Diagnostic::new(
-        "unresolved-field",
+    Diagnostic::new_with_syntax_node_ptr(
+        ctx,
+        DiagnosticCode::RustcHardError("E0559"),
         format!(
             "no field `{}` on type `{}`{method_suffix}",
             d.name.display(ctx.sema.db),
             d.receiver.display(ctx.sema.db)
         ),
-        ctx.sema.diagnostics_display_range(d.expr.clone().map(|it| it.into())).range,
+        d.expr.clone().map(|it| it.into()),
     )
     .with_fixes(fixes(ctx, d))
     .experimental()
@@ -67,7 +68,10 @@ fn method_fix(
 }
 #[cfg(test)]
 mod tests {
-    use crate::tests::check_diagnostics;
+    use crate::{
+        tests::{check_diagnostics, check_diagnostics_with_config},
+        DiagnosticsConfig,
+    };
 
     #[test]
     fn smoke_test() {
@@ -144,5 +148,12 @@ fn foo() {
 }
 "#,
         );
+    }
+
+    #[test]
+    fn no_diagnostic_for_missing_name() {
+        let mut config = DiagnosticsConfig::test_sample();
+        config.disabled.insert("syntax-error".to_owned());
+        check_diagnostics_with_config(config, "fn foo() { (). }");
     }
 }

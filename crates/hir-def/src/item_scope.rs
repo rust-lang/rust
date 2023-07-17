@@ -14,8 +14,8 @@ use stdx::format_to;
 use syntax::ast;
 
 use crate::{
-    db::DefDatabase, per_ns::PerNs, visibility::Visibility, AdtId, BuiltinType, ConstId, HasModule,
-    ImplId, LocalModuleId, MacroId, ModuleDefId, ModuleId, TraitId,
+    db::DefDatabase, per_ns::PerNs, visibility::Visibility, AdtId, BuiltinType, ConstId,
+    ExternCrateId, HasModule, ImplId, LocalModuleId, MacroId, ModuleDefId, ModuleId, TraitId,
 };
 
 #[derive(Copy, Clone, Debug)]
@@ -50,6 +50,7 @@ pub struct ItemScope {
     unnamed_consts: Vec<ConstId>,
     /// Traits imported via `use Trait as _;`.
     unnamed_trait_imports: FxHashMap<TraitId, Visibility>,
+    extern_crate_decls: Vec<ExternCrateId>,
     /// Macros visible in current module in legacy textual scope
     ///
     /// For macros invoked by an unqualified identifier like `bar!()`, `legacy_macros` will be searched in first.
@@ -188,7 +189,11 @@ impl ItemScope {
     }
 
     pub(crate) fn define_impl(&mut self, imp: ImplId) {
-        self.impls.push(imp)
+        self.impls.push(imp);
+    }
+
+    pub(crate) fn define_extern_crate_decl(&mut self, extern_crate: ExternCrateId) {
+        self.extern_crate_decls.push(extern_crate);
     }
 
     pub(crate) fn define_unnamed_const(&mut self, konst: ConstId) {
@@ -397,6 +402,7 @@ impl ItemScope {
             legacy_macros,
             attr_macros,
             derive_macros,
+            extern_crate_decls,
         } = self;
         types.shrink_to_fit();
         values.shrink_to_fit();
@@ -409,6 +415,7 @@ impl ItemScope {
         legacy_macros.shrink_to_fit();
         attr_macros.shrink_to_fit();
         derive_macros.shrink_to_fit();
+        extern_crate_decls.shrink_to_fit();
     }
 }
 

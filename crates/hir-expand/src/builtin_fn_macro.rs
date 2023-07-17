@@ -339,7 +339,7 @@ fn format_args_expand_general(
                 parts.push(mem::take(&mut last_part));
                 let arg_tree = if argument.is_empty() {
                     match args.next() {
-                        Some(x) => x,
+                        Some(it) => it,
                         None => {
                             err = Some(mbe::ExpandError::NoMatchingRule.into());
                             tt::Subtree::empty()
@@ -361,7 +361,7 @@ fn format_args_expand_general(
                         quote!(::core::fmt::Display::fmt)
                     }
                 };
-                arg_tts.push(quote! { ::core::fmt::Argument::new(&(#arg_tree), #formatter), });
+                arg_tts.push(quote! { ::core::fmt::ArgumentV1::new(&(#arg_tree), #formatter), });
             }
             '}' => {
                 if format_iter.peek() == Some(&'}') {
@@ -378,11 +378,11 @@ fn format_args_expand_general(
     if !last_part.is_empty() {
         parts.push(last_part);
     }
-    let part_tts = parts.into_iter().map(|x| {
+    let part_tts = parts.into_iter().map(|it| {
         let text = if let Some(raw) = &raw_sharps {
-            format!("r{raw}\"{}\"{raw}", x).into()
+            format!("r{raw}\"{}\"{raw}", it).into()
         } else {
-            format!("\"{}\"", x).into()
+            format!("\"{}\"", it).into()
         };
         let l = tt::Literal { span: tt::TokenId::unspecified(), text };
         quote!(#l ,)
@@ -574,7 +574,7 @@ fn concat_bytes_expand(
                     syntax::SyntaxKind::BYTE => bytes.push(token.text().to_string()),
                     syntax::SyntaxKind::BYTE_STRING => {
                         let components = unquote_byte_string(lit).unwrap_or_default();
-                        components.into_iter().for_each(|x| bytes.push(x.to_string()));
+                        components.into_iter().for_each(|it| bytes.push(it.to_string()));
                     }
                     _ => {
                         err.get_or_insert(mbe::ExpandError::UnexpectedToken.into());
@@ -692,7 +692,7 @@ pub(crate) fn include_arg_to_tt(
     arg_id: MacroCallId,
 ) -> Result<(triomphe::Arc<(::tt::Subtree<::tt::TokenId>, TokenMap)>, FileId), ExpandError> {
     let loc = db.lookup_intern_macro_call(arg_id);
-    let Some(EagerCallInfo {arg, arg_id: Some(arg_id), .. }) = loc.eager.as_deref() else {
+    let Some(EagerCallInfo { arg,arg_id, .. }) = loc.eager.as_deref() else {
         panic!("include_arg_to_tt called on non include macro call: {:?}", &loc.eager);
     };
     let path = parse_string(&arg.0)?;

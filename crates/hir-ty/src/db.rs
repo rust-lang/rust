@@ -110,6 +110,14 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     #[salsa::invoke(crate::layout::target_data_layout_query)]
     fn target_data_layout(&self, krate: CrateId) -> Option<Arc<TargetDataLayout>>;
 
+    #[salsa::invoke(crate::method_resolution::lookup_impl_method_query)]
+    fn lookup_impl_method(
+        &self,
+        env: Arc<crate::TraitEnvironment>,
+        func: FunctionId,
+        fn_subst: Substitution,
+    ) -> (FunctionId, Substitution);
+
     #[salsa::invoke(crate::lower::callable_item_sig)]
     fn callable_item_signature(&self, def: CallableDefId) -> PolyFnSig;
 

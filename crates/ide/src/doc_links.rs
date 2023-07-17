@@ -330,7 +330,9 @@ fn get_doc_links(
         base_url.and_then(|url| url.join(path).ok())
     };
 
-    let Some((target, file, frag)) = filename_and_frag_for_def(db, def) else { return Default::default(); };
+    let Some((target, file, frag)) = filename_and_frag_for_def(db, def) else {
+        return Default::default();
+    };
 
     let (mut web_url, mut local_url) = get_doc_base_urls(db, target, target_dir, sysroot);
 

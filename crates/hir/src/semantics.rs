@@ -1494,7 +1494,11 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     fn is_inside_unsafe(&self, expr: &ast::Expr) -> bool {
-        let Some(enclosing_item) = expr.syntax().ancestors().find_map(Either::<ast::Item, ast::Variant>::cast) else { return false };
+        let Some(enclosing_item) =
+            expr.syntax().ancestors().find_map(Either::<ast::Item, ast::Variant>::cast)
+        else {
+            return false;
+        };
 
         let def = match &enclosing_item {
             Either::Left(ast::Item::Fn(it)) if it.unsafe_token().is_some() => return true,
@@ -1631,7 +1635,7 @@ pub struct SemanticsScope<'a> {
     resolver: Resolver,
 }
 
-impl<'a> SemanticsScope<'a> {
+impl SemanticsScope<'_> {
     pub fn module(&self) -> Module {
         Module { id: self.resolver.module() }
     }
