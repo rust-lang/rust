@@ -798,14 +798,14 @@ impl ::core::marker::Copy for Enum0 { }
 #[automatically_derived]
 impl ::core::fmt::Debug for Enum0 {
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-        unsafe { ::core::intrinsics::unreachable() }
+        match *self {}
     }
 }
 #[automatically_derived]
 impl ::core::hash::Hash for Enum0 {
     #[inline]
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
-        unsafe { ::core::intrinsics::unreachable() }
+        match *self {}
     }
 }
 #[automatically_derived]
@@ -813,9 +813,7 @@ impl ::core::marker::StructuralPartialEq for Enum0 { }
 #[automatically_derived]
 impl ::core::cmp::PartialEq for Enum0 {
     #[inline]
-    fn eq(&self, other: &Enum0) -> bool {
-        unsafe { ::core::intrinsics::unreachable() }
-    }
+    fn eq(&self, other: &Enum0) -> bool { match *self {} }
 }
 #[automatically_derived]
 impl ::core::marker::StructuralEq for Enum0 { }
@@ -831,15 +829,13 @@ impl ::core::cmp::PartialOrd for Enum0 {
     #[inline]
     fn partial_cmp(&self, other: &Enum0)
         -> ::core::option::Option<::core::cmp::Ordering> {
-        unsafe { ::core::intrinsics::unreachable() }
+        match *self {}
     }
 }
 #[automatically_derived]
 impl ::core::cmp::Ord for Enum0 {
     #[inline]
-    fn cmp(&self, other: &Enum0) -> ::core::cmp::Ordering {
-        unsafe { ::core::intrinsics::unreachable() }
-    }
+    fn cmp(&self, other: &Enum0) -> ::core::cmp::Ordering { match *self {} }
 }
 
 // A single-variant enum.
