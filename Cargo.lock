@@ -513,16 +513,25 @@ checksum = "2da6da31387c7e4ef160ffab6d5e7f00c42626fe39aea70a7b0f1773f7dd6c1b"
 
 [[package]]
 name = "clippy"
-version = "0.1.72"
+version = "0.1.73"
 dependencies = [
  "clippy_lints",
+ "clippy_utils",
+ "derive-new",
  "filetime",
+ "futures",
+ "if_chain",
  "itertools",
+ "parking_lot 0.12.1",
+ "quote",
  "regex",
  "rustc_tools_util",
+ "serde",
+ "syn 2.0.8",
  "tempfile",
  "termize",
  "tester",
+ "tokio",
  "toml 0.7.5",
  "ui_test",
  "walkdir",
@@ -543,7 +552,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_lints"
-version = "0.1.72"
+version = "0.1.73"
 dependencies = [
  "arrayvec",
  "cargo_metadata",
@@ -567,26 +576,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "clippy_test_deps"
-version = "0.1.0"
-dependencies = [
- "clippy_lints",
- "clippy_utils",
- "derive-new",
- "futures",
- "if_chain",
- "itertools",
- "parking_lot 0.12.1",
- "quote",
- "regex",
- "serde",
- "syn 2.0.8",
- "tokio",
-]
-
-[[package]]
 name = "clippy_utils"
-version = "0.1.72"
+version = "0.1.73"
 dependencies = [
  "arrayvec",
  "if_chain",
@@ -847,7 +838,7 @@ checksum = "a0afaad2b26fa326569eb264b1363e8ae3357618c43982b3f285f0774ce76b69"
 
 [[package]]
 name = "declare_clippy_lint"
-version = "0.1.72"
+version = "0.1.73"
 dependencies = [
  "itertools",
  "quote",
