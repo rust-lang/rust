@@ -48,7 +48,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                             self.merge_candidates(candidates)
                         }
                         ty::AssocItemContainer::ImplContainer => {
-                            bug!("IATs not supported here yet")
+                            self.normalize_inherent_associated_type(goal)
                         }
                     }
                 } else {
@@ -112,6 +112,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
     ) -> QueryResult<'tcx> {
         if let Some(projection_pred) = assumption.as_projection_clause() {
             if projection_pred.projection_def_id() == goal.predicate.def_id() {
+                let tcx = ecx.tcx();
                 ecx.probe_candidate("assumption").enter(|ecx| {
                     let assumption_projection_pred =
                         ecx.instantiate_binder_with_infer(projection_pred);
@@ -122,6 +123,14 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                     )?;
                     ecx.eq(goal.param_env, goal.predicate.term, assumption_projection_pred.term)
                         .expect("expected goal term to be fully unconstrained");
+
+                    // Add GAT where clauses from the trait's definition
+                    ecx.add_goals(
+                        tcx.predicates_of(goal.predicate.def_id())
+                            .instantiate_own(tcx, goal.predicate.projection_ty.args)
+                            .map(|(pred, _)| goal.with(tcx, pred)),
+                    );
+
                     then(ecx)
                 })
             } else {
@@ -159,6 +168,13 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                 .into_iter()
                 .map(|pred| goal.with(tcx, pred));
             ecx.add_goals(where_clause_bounds);
+
+            // Add GAT where clauses from the trait's definition
+            ecx.add_goals(
+                tcx.predicates_of(goal.predicate.def_id())
+                    .instantiate_own(tcx, goal.predicate.projection_ty.args)
+                    .map(|(pred, _)| goal.with(tcx, pred)),
+            );
 
             // In case the associated item is hidden due to specialization, we have to
             // return ambiguity this would otherwise be incomplete, resulting in

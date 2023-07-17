@@ -1,5 +1,7 @@
 // Testing inference capabilities.
 // check-pass
+// revisions: current next
+//[next] compile-flags: -Ztrait-solver=next
 
 #![feature(inherent_associated_types)]
 #![allow(incomplete_features)]
