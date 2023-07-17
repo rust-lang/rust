@@ -43,7 +43,7 @@ pub(super) fn check<'tcx>(
                             let sugg = if *ptr_ty == rty_and_mut {
                                 arg.as_ty(to_ty)
                             } else {
-                                arg.as_ty(Ty::new_ptr(cx.tcx,rty_and_mut)).as_ty(to_ty)
+                                arg.as_ty(Ty::new_ptr(cx.tcx, rty_and_mut)).as_ty(to_ty)
                             };
 
                             diag.span_suggestion(e.span, "try", sugg, Applicability::Unspecified);

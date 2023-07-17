@@ -1,10 +1,8 @@
-use clippy_utils::consts::{
-    constant, constant_simple, Constant,
-    Constant::{Int, F32, F64},
-};
+use clippy_utils::consts::Constant::{Int, F32, F64};
+use clippy_utils::consts::{constant, constant_simple, Constant};
+use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::{
-    diagnostics::span_lint_and_sugg, eq_expr_value, get_parent_expr, higher, in_constant, is_no_std_crate,
-    numeric_literal, peel_blocks, sugg,
+    eq_expr_value, get_parent_expr, higher, in_constant, is_no_std_crate, numeric_literal, peel_blocks, sugg,
 };
 use if_chain::if_chain;
 use rustc_errors::Applicability;

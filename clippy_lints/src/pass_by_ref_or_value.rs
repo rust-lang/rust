@@ -1,5 +1,4 @@
-use std::cmp;
-use std::iter;
+use std::{cmp, iter};
 
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;

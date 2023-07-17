@@ -1,10 +1,10 @@
-use std::{iter::once, ops::ControlFlow};
+use std::iter::once;
+use std::ops::ControlFlow;
 
-use clippy_utils::{diagnostics::span_lint_and_sugg, source::snippet};
-use rustc_ast::{
-    ast::{Expr, ExprKind},
-    token::LitKind,
-};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::source::snippet;
+use rustc_ast::ast::{Expr, ExprKind};
+use rustc_ast::token::LitKind;
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
@@ -95,7 +95,7 @@ impl EarlyLintPass for RawStrings {
                 // `once` so a raw string ending in hashes is still checked
                 let num = str.as_bytes().iter().chain(once(&0)).try_fold(0u8, |acc, &b| {
                     match b {
-                        b'"' => (following_quote, req) = (true, 1),
+                        b'"' if !following_quote => (following_quote, req) = (true, 1),
                         // I'm a bit surprised the compiler didn't optimize this out, there's no
                         // branch but it still ends up doing an unnecessary comparison, it's:
                         // - cmp r9b,1h

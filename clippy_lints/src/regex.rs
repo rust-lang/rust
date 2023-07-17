@@ -3,12 +3,12 @@ use std::fmt::Display;
 use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
 use clippy_utils::source::snippet_opt;
-use clippy_utils::{match_def_path, paths};
-use if_chain::if_chain;
+use clippy_utils::{def_path_def_ids, path_def_id, paths};
 use rustc_ast::ast::{LitKind, StrStyle};
+use rustc_hir::def_id::DefIdMap;
 use rustc_hir::{BorrowKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::{BytePos, Span};
 
 declare_clippy_lint! {
@@ -55,26 +55,52 @@ declare_clippy_lint! {
     "trivial regular expressions"
 }
 
-declare_lint_pass!(Regex => [INVALID_REGEX, TRIVIAL_REGEX]);
+#[derive(Copy, Clone)]
+enum RegexKind {
+    Unicode,
+    UnicodeSet,
+    Bytes,
+    BytesSet,
+}
+
+#[derive(Default)]
+pub struct Regex {
+    definitions: DefIdMap<RegexKind>,
+}
+
+impl_lint_pass!(Regex => [INVALID_REGEX, TRIVIAL_REGEX]);
 
 impl<'tcx> LateLintPass<'tcx> for Regex {
+    fn check_crate(&mut self, cx: &LateContext<'tcx>) {
+        // We don't use `match_def_path` here because that relies on matching the exact path, which changed
+        // between regex 1.8 and 1.9
+        //
+        // `def_path_def_ids` will resolve through re-exports but is relatively heavy, so we only perform
+        // the operation once and store the results
+        let mut resolve = |path, kind| {
+            for id in def_path_def_ids(cx, path) {
+                self.definitions.insert(id, kind);
+            }
+        };
+
+        resolve(&paths::REGEX_NEW, RegexKind::Unicode);
+        resolve(&paths::REGEX_BUILDER_NEW, RegexKind::Unicode);
+        resolve(&paths::REGEX_SET_NEW, RegexKind::UnicodeSet);
+        resolve(&paths::REGEX_BYTES_NEW, RegexKind::Bytes);
+        resolve(&paths::REGEX_BYTES_BUILDER_NEW, RegexKind::Bytes);
+        resolve(&paths::REGEX_BYTES_SET_NEW, RegexKind::BytesSet);
+    }
+
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if_chain! {
-            if let ExprKind::Call(fun, [arg]) = expr.kind;
-            if let ExprKind::Path(ref qpath) = fun.kind;
-            if let Some(def_id) = cx.qpath_res(qpath, fun.hir_id).opt_def_id();
-            then {
-                if match_def_path(cx, def_id, &paths::REGEX_NEW) ||
-                   match_def_path(cx, def_id, &paths::REGEX_BUILDER_NEW) {
-                    check_regex(cx, arg, true);
-                } else if match_def_path(cx, def_id, &paths::REGEX_BYTES_NEW) ||
-                   match_def_path(cx, def_id, &paths::REGEX_BYTES_BUILDER_NEW) {
-                    check_regex(cx, arg, false);
-                } else if match_def_path(cx, def_id, &paths::REGEX_SET_NEW) {
-                    check_set(cx, arg, true);
-                } else if match_def_path(cx, def_id, &paths::REGEX_BYTES_SET_NEW) {
-                    check_set(cx, arg, false);
-                }
+        if let ExprKind::Call(fun, [arg]) = expr.kind
+            && let Some(def_id) = path_def_id(cx, fun)
+            && let Some(regex_kind) = self.definitions.get(&def_id)
+        {
+            match regex_kind {
+                RegexKind::Unicode => check_regex(cx, arg, true),
+                RegexKind::UnicodeSet => check_set(cx, arg, true),
+                RegexKind::Bytes => check_regex(cx, arg, false),
+                RegexKind::BytesSet => check_set(cx, arg, false),
             }
         }
     }

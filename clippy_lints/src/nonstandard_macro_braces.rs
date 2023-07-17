@@ -1,7 +1,5 @@
-use std::{
-    fmt,
-    hash::{Hash, Hasher},
-};
+use std::fmt;
+use std::hash::{Hash, Hasher};
 
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_opt;

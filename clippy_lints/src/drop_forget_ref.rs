@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_note;
-use clippy_utils::get_parent_node;
-use clippy_utils::is_must_use_func_call;
 use clippy_utils::ty::{is_copy, is_must_use_ty, is_type_lang_item};
+use clippy_utils::{get_parent_node, is_must_use_func_call};
 use rustc_hir::{Arm, Expr, ExprKind, LangItem, Node};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};

@@ -39,6 +39,15 @@ LL | |     }
    |
    = help: consider implementing the trait `std::hash::Hash` or choosing a less ambiguous method name
 
+error: this argument is a mutable reference, but not used mutably
+  --> $DIR/method_list_2.rs:38:31
+   |
+LL |     pub fn hash(&self, state: &mut T) {
+   |                               ^^^^^^ help: consider changing to: `&T`
+   |
+   = warning: changing this function will impact semver compatibility
+   = note: `-D clippy::needless-pass-by-ref-mut` implied by `-D warnings`
+
 error: method `index` can be confused for the standard trait method `std::ops::Index::index`
   --> $DIR/method_list_2.rs:42:5
    |
@@ -149,5 +158,5 @@ LL | |     }
    |
    = help: consider implementing the trait `std::ops::Sub` or choosing a less ambiguous method name
 
-error: aborting due to 15 previous errors
+error: aborting due to 16 previous errors
 

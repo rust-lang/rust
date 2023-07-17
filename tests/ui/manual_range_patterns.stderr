@@ -37,7 +37,19 @@ LL |         1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 => true,
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `1..=10`
 
 error: this OR pattern can be rewritten using a range
-  --> $DIR/manual_range_patterns.rs:31:26
+  --> $DIR/manual_range_patterns.rs:28:25
+   |
+LL |     let _ = matches!(f, -1 | -5 | 3 | -2 | -4 | -3 | 0 | 1 | 2);
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `-5..=3`
+
+error: this OR pattern can be rewritten using a range
+  --> $DIR/manual_range_patterns.rs:30:25
+   |
+LL |     let _ = matches!(f, -1_000_000..=1_000_000 | -1_000_001 | 1_000_001);
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `-1000001..=1000001`
+
+error: this OR pattern can be rewritten using a range
+  --> $DIR/manual_range_patterns.rs:35:26
    |
 LL |             matches!($e, 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10)
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `1..=10`
@@ -47,5 +59,5 @@ LL |     mac!(f);
    |
    = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 7 previous errors
+error: aborting due to 9 previous errors
 

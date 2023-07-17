@@ -2,7 +2,7 @@ error: derefed type is same as origin
   --> $DIR/needless_option_as_deref.rs:9:29
    |
 LL |     let _: Option<&usize> = Some(&1).as_deref();
-   |                             ^^^^^^^^^^^^^^^^^^^ help: try this: `Some(&1)`
+   |                             ^^^^^^^^^^^^^^^^^^^ help: try: `Some(&1)`
    |
    = note: `-D clippy::needless-option-as-deref` implied by `-D warnings`
 
@@ -10,13 +10,13 @@ error: derefed type is same as origin
   --> $DIR/needless_option_as_deref.rs:10:33
    |
 LL |     let _: Option<&mut usize> = Some(&mut 1).as_deref_mut();
-   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `Some(&mut 1)`
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Some(&mut 1)`
 
 error: derefed type is same as origin
   --> $DIR/needless_option_as_deref.rs:14:13
    |
 LL |     let _ = x.as_deref_mut();
-   |             ^^^^^^^^^^^^^^^^ help: try this: `x`
+   |             ^^^^^^^^^^^^^^^^ help: try: `x`
 
 error: aborting due to 3 previous errors
 

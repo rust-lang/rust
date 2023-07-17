@@ -1,5 +1,7 @@
-use clippy_utils::{diagnostics::span_lint_and_sugg, is_ty_alias, match_def_path, paths};
-use hir::{def::Res, ExprKind};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::{is_ty_alias, match_def_path, paths};
+use hir::def::Res;
+use hir::ExprKind;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};

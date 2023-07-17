@@ -2,7 +2,7 @@ error: unnecessary use of `splitn`
   --> $DIR/needless_splitn.rs:14:13
    |
 LL |     let _ = str.splitn(2, '=').next();
-   |             ^^^^^^^^^^^^^^^^^^ help: try this: `str.split('=')`
+   |             ^^^^^^^^^^^^^^^^^^ help: try: `str.split('=')`
    |
    = note: `-D clippy::needless-splitn` implied by `-D warnings`
 
@@ -10,73 +10,73 @@ error: unnecessary use of `splitn`
   --> $DIR/needless_splitn.rs:15:13
    |
 LL |     let _ = str.splitn(2, '=').nth(0);
-   |             ^^^^^^^^^^^^^^^^^^ help: try this: `str.split('=')`
+   |             ^^^^^^^^^^^^^^^^^^ help: try: `str.split('=')`
 
 error: unnecessary use of `splitn`
   --> $DIR/needless_splitn.rs:18:18
    |
 LL |     let (_, _) = str.splitn(3, '=').next_tuple().unwrap();
-   |                  ^^^^^^^^^^^^^^^^^^ help: try this: `str.split('=')`
+   |                  ^^^^^^^^^^^^^^^^^^ help: try: `str.split('=')`
 
 error: unnecessary use of `rsplitn`
   --> $DIR/needless_splitn.rs:21:13
    |
 LL |     let _ = str.rsplitn(2, '=').next();
-   |             ^^^^^^^^^^^^^^^^^^^ help: try this: `str.rsplit('=')`
+   |             ^^^^^^^^^^^^^^^^^^^ help: try: `str.rsplit('=')`
 
 error: unnecessary use of `rsplitn`
   --> $DIR/needless_splitn.rs:22:13
    |
 LL |     let _ = str.rsplitn(2, '=').nth(0);
-   |             ^^^^^^^^^^^^^^^^^^^ help: try this: `str.rsplit('=')`
+   |             ^^^^^^^^^^^^^^^^^^^ help: try: `str.rsplit('=')`
 
 error: unnecessary use of `rsplitn`
   --> $DIR/needless_splitn.rs:25:18
    |
 LL |     let (_, _) = str.rsplitn(3, '=').next_tuple().unwrap();
-   |                  ^^^^^^^^^^^^^^^^^^^ help: try this: `str.rsplit('=')`
+   |                  ^^^^^^^^^^^^^^^^^^^ help: try: `str.rsplit('=')`
 
 error: unnecessary use of `splitn`
   --> $DIR/needless_splitn.rs:27:13
    |
 LL |     let _ = str.splitn(5, '=').next();
-   |             ^^^^^^^^^^^^^^^^^^ help: try this: `str.split('=')`
+   |             ^^^^^^^^^^^^^^^^^^ help: try: `str.split('=')`
 
 error: unnecessary use of `splitn`
   --> $DIR/needless_splitn.rs:28:13
    |
 LL |     let _ = str.splitn(5, '=').nth(3);
-   |             ^^^^^^^^^^^^^^^^^^ help: try this: `str.split('=')`
+   |             ^^^^^^^^^^^^^^^^^^ help: try: `str.split('=')`
 
 error: unnecessary use of `splitn`
   --> $DIR/needless_splitn.rs:34:13
    |
 LL |     let _ = s.splitn(2, '=').next()?;
-   |             ^^^^^^^^^^^^^^^^ help: try this: `s.split('=')`
+   |             ^^^^^^^^^^^^^^^^ help: try: `s.split('=')`
 
 error: unnecessary use of `splitn`
   --> $DIR/needless_splitn.rs:35:13
    |
 LL |     let _ = s.splitn(2, '=').nth(0)?;
-   |             ^^^^^^^^^^^^^^^^ help: try this: `s.split('=')`
+   |             ^^^^^^^^^^^^^^^^ help: try: `s.split('=')`
 
 error: unnecessary use of `rsplitn`
   --> $DIR/needless_splitn.rs:36:13
    |
 LL |     let _ = s.rsplitn(2, '=').next()?;
-   |             ^^^^^^^^^^^^^^^^^ help: try this: `s.rsplit('=')`
+   |             ^^^^^^^^^^^^^^^^^ help: try: `s.rsplit('=')`
 
 error: unnecessary use of `rsplitn`
   --> $DIR/needless_splitn.rs:37:13
    |
 LL |     let _ = s.rsplitn(2, '=').nth(0)?;
-   |             ^^^^^^^^^^^^^^^^^ help: try this: `s.rsplit('=')`
+   |             ^^^^^^^^^^^^^^^^^ help: try: `s.rsplit('=')`
 
 error: unnecessary use of `splitn`
   --> $DIR/needless_splitn.rs:45:13
    |
 LL |     let _ = "key=value".splitn(2, '=').nth(0).unwrap();
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `"key=value".split('=')`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `"key=value".split('=')`
 
 error: aborting due to 13 previous errors
 

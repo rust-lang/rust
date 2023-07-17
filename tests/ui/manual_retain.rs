@@ -1,12 +1,7 @@
 //@run-rustfix
 #![warn(clippy::manual_retain)]
 #![allow(unused, clippy::redundant_clone)]
-use std::collections::BTreeMap;
-use std::collections::BTreeSet;
-use std::collections::BinaryHeap;
-use std::collections::HashMap;
-use std::collections::HashSet;
-use std::collections::VecDeque;
+use std::collections::{BTreeMap, BTreeSet, BinaryHeap, HashMap, HashSet, VecDeque};
 
 fn main() {
     binary_heap_retain();

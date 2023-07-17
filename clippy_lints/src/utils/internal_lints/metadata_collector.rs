@@ -8,11 +8,8 @@
 //! a simple mistake)
 
 use crate::renamed_lints::RENAMED_LINTS;
-use crate::utils::{
-    collect_configs,
-    internal_lints::lint_without_lint_pass::{extract_clippy_version_value, is_lint_ref_type},
-    ClippyConfiguration,
-};
+use crate::utils::internal_lints::lint_without_lint_pass::{extract_clippy_version_value, is_lint_ref_type};
+use crate::utils::{collect_configs, ClippyConfiguration};
 
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::ty::{match_type, walk_ptrs_ty_depth};
@@ -21,22 +18,22 @@ use if_chain::if_chain;
 use itertools::Itertools;
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::{
-    self as hir, def::DefKind, intravisit, intravisit::Visitor, Closure, ExprKind, Item, ItemKind, Mutability, QPath,
-};
+use rustc_hir::def::DefKind;
+use rustc_hir::intravisit::Visitor;
+use rustc_hir::{self as hir, intravisit, Closure, ExprKind, Item, ItemKind, Mutability, QPath};
 use rustc_lint::{CheckLintNameResult, LateContext, LateLintPass, LintContext, LintId};
 use rustc_middle::hir::nested_filter;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::Ident;
 use rustc_span::{sym, Loc, Span, Symbol};
-use serde::{ser::SerializeStruct, Serialize, Serializer};
+use serde::ser::SerializeStruct;
+use serde::{Serialize, Serializer};
 use std::collections::{BTreeSet, BinaryHeap};
 use std::fmt;
 use std::fmt::Write as _;
 use std::fs::{self, OpenOptions};
 use std::io::prelude::*;
-use std::path::Path;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 /// This is the json output file of the lint collector.

@@ -1,0 +1,114 @@
+//@run-rustfix
+#![allow(unused)]
+#![no_main]
+
+use std::cmp::Ordering;
+
+// lint
+
+#[derive(Eq, PartialEq)]
+struct A(u32);
+
+impl Ord for A {
+    fn cmp(&self, other: &Self) -> Ordering {
+        todo!();
+    }
+}
+
+impl PartialOrd for A {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> { Some(self.cmp(other)) }
+}
+
+// do not lint
+
+#[derive(Eq, PartialEq)]
+struct B(u32);
+
+impl Ord for B {
+    fn cmp(&self, other: &Self) -> Ordering {
+        todo!();
+    }
+}
+
+impl PartialOrd for B {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+// lint, and give `_` a name
+
+#[derive(Eq, PartialEq)]
+struct C(u32);
+
+impl Ord for C {
+    fn cmp(&self, other: &Self) -> Ordering {
+        todo!();
+    }
+}
+
+impl PartialOrd for C {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> { Some(self.cmp(other)) }
+}
+
+// do not lint derived
+
+#[derive(Eq, Ord, PartialEq, PartialOrd)]
+struct D(u32);
+
+// do not lint if ord is not manually implemented
+
+#[derive(Eq, PartialEq)]
+struct E(u32);
+
+impl PartialOrd for E {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        todo!();
+    }
+}
+
+// do not lint since ord has more restrictive bounds
+
+#[derive(Eq, PartialEq)]
+struct Uwu<A>(A);
+
+impl<A: std::fmt::Debug + Ord + PartialOrd> Ord for Uwu<A> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        todo!();
+    }
+}
+
+impl<A: Ord + PartialOrd> PartialOrd for Uwu<A> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        todo!();
+    }
+}
+
+// do not lint since `Rhs` is not `Self`
+
+#[derive(Eq, PartialEq)]
+struct F(u32);
+
+impl Ord for F {
+    fn cmp(&self, other: &Self) -> Ordering {
+        todo!();
+    }
+}
+
+impl PartialOrd for F {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq<u32> for F {
+    fn eq(&self, other: &u32) -> bool {
+        todo!();
+    }
+}
+
+impl PartialOrd<u32> for F {
+    fn partial_cmp(&self, other: &u32) -> Option<Ordering> {
+        todo!();
+    }
+}

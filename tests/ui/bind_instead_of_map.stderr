@@ -14,7 +14,7 @@ error: using `Option.and_then(|x| Some(y))`, which is more succinctly expressed 
   --> $DIR/bind_instead_of_map.rs:10:13
    |
 LL |     let _ = x.and_then(|o| Some(o + 1));
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `x.map(|o| o + 1)`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `x.map(|o| o + 1)`
 
 error: using `Result.and_then(Ok)`, which is a no-op
   --> $DIR/bind_instead_of_map.rs:16:13

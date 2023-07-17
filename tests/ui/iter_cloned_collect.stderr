@@ -1,5 +1,5 @@
 error: called `iter().cloned().collect()` on a slice to create a `Vec`. Calling `to_vec()` is both faster and more readable
-  --> $DIR/iter_cloned_collect.rs:11:27
+  --> $DIR/iter_cloned_collect.rs:10:27
    |
 LL |     let v2: Vec<isize> = v.iter().cloned().collect();
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.to_vec()`
@@ -7,13 +7,13 @@ LL |     let v2: Vec<isize> = v.iter().cloned().collect();
    = note: `-D clippy::iter-cloned-collect` implied by `-D warnings`
 
 error: called `iter().cloned().collect()` on a slice to create a `Vec`. Calling `to_vec()` is both faster and more readable
-  --> $DIR/iter_cloned_collect.rs:16:38
+  --> $DIR/iter_cloned_collect.rs:15:38
    |
 LL |     let _: Vec<isize> = vec![1, 2, 3].iter().cloned().collect();
    |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.to_vec()`
 
 error: called `iter().cloned().collect()` on a slice to create a `Vec`. Calling `to_vec()` is both faster and more readable
-  --> $DIR/iter_cloned_collect.rs:21:24
+  --> $DIR/iter_cloned_collect.rs:20:24
    |
 LL |               .to_bytes()
    |  ________________________^
@@ -23,13 +23,13 @@ LL | |             .collect();
    | |______________________^ help: try: `.to_vec()`
 
 error: called `iter().cloned().collect()` on a slice to create a `Vec`. Calling `to_vec()` is both faster and more readable
-  --> $DIR/iter_cloned_collect.rs:29:24
+  --> $DIR/iter_cloned_collect.rs:28:24
    |
 LL |     let _: Vec<_> = arr.iter().cloned().collect();
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.to_vec()`
 
 error: called `iter().copied().collect()` on a slice to create a `Vec`. Calling `to_vec()` is both faster and more readable
-  --> $DIR/iter_cloned_collect.rs:32:26
+  --> $DIR/iter_cloned_collect.rs:31:26
    |
 LL |     let _: Vec<isize> = v.iter().copied().collect();
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.to_vec()`

@@ -1,6 +1,5 @@
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_then};
-use clippy_utils::is_from_proc_macro;
-use clippy_utils::trait_ref_of_method;
+use clippy_utils::{is_from_proc_macro, trait_ref_of_method};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_impl_item, walk_item, walk_param_bound, walk_ty, Visitor};
@@ -12,10 +11,8 @@ use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::{
-    def_id::{DefId, LocalDefId},
-    Span,
-};
+use rustc_span::def_id::{DefId, LocalDefId};
+use rustc_span::Span;
 
 declare_clippy_lint! {
     /// ### What it does

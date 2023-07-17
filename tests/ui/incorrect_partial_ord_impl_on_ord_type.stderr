@@ -1,0 +1,31 @@
+error: incorrect implementation of `partial_cmp` on an `Ord` type
+  --> $DIR/incorrect_partial_ord_impl_on_ord_type.rs:18:1
+   |
+LL | /  impl PartialOrd for A {
+LL | |      fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+   | | _____________________________________________________________-
+LL | ||         todo!();
+LL | ||     }
+   | ||_____- help: change this to: `{ Some(self.cmp(other)) }`
+LL | |  }
+   | |__^
+   |
+   = note: `#[deny(clippy::incorrect_partial_ord_impl_on_ord_type)]` on by default
+
+error: incorrect implementation of `partial_cmp` on an `Ord` type
+  --> $DIR/incorrect_partial_ord_impl_on_ord_type.rs:52:1
+   |
+LL | / impl PartialOrd for C {
+LL | |     fn partial_cmp(&self, _: &Self) -> Option<Ordering> {
+LL | |         todo!();
+LL | |     }
+LL | | }
+   | |_^
+   |
+help: change this to
+   |
+LL |     fn partial_cmp(&self, other: &Self) -> Option<Ordering> { Some(self.cmp(other)) }
+   |                           ~~~~~                             ~~~~~~~~~~~~~~~~~~~~~~~~~
+
+error: aborting due to 2 previous errors
+
