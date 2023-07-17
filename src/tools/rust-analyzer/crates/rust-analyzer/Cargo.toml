@@ -34,10 +34,9 @@ serde.workspace = true
 rayon = "1.6.1"
 num_cpus = "1.15.0"
 mimalloc = { version = "0.1.30", default-features = false, optional = true }
-lsp-server = { version = "0.7.0", path = "../../lib/lsp-server" }
+lsp-server.workspace = true
 tracing = "0.1.35"
 tracing-subscriber = { version = "0.3.16", default-features = false, features = [
-    "env-filter",
     "registry",
     "fmt",
     "tracing-log",
@@ -48,12 +47,8 @@ triomphe.workspace = true
 nohash-hasher.workspace = true
 always-assert = "0.1.2"
 
-# These dependencies are unused, but we pin them to a version here to restrict them for our transitive dependencies
-# so that we don't pull in duplicates of their dependencies like windows-sys and syn 1 vs 2
-# these would pull in serde 2
-thiserror = "=1.0.39"
-serde_repr = "=0.1.11"
-# these would pull in windows-sys 0.45.0
+# These 3 deps are not used by r-a directly, but we list them here to lock in their versions
+# in our transitive deps to prevent them from pulling in windows-sys 0.45.0
 mio = "=0.8.5"
 filetime = "=0.2.19"
 parking_lot_core = "=0.9.6"
@@ -67,13 +62,13 @@ ide-db.workspace = true
 # This should only be used in CLI
 ide-ssr.workspace = true
 ide.workspace = true
+load-cargo.workspace = true
 proc-macro-api.workspace = true
 profile.workspace = true
 project-model.workspace = true
 stdx.workspace = true
 syntax.workspace = true
 toolchain.workspace = true
-tt.workspace = true
 vfs-notify.workspace = true
 vfs.workspace = true
 

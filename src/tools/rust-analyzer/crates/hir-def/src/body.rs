@@ -273,10 +273,10 @@ impl Body {
 
     pub fn is_binding_upvar(&self, binding: BindingId, relative_to: ExprId) -> bool {
         match self.binding_owners.get(&binding) {
-            Some(x) => {
+            Some(it) => {
                 // We assign expression ids in a way that outer closures will receive
                 // a lower id
-                x.into_raw() < relative_to.into_raw()
+                it.into_raw() < relative_to.into_raw()
             }
             None => true,
         }

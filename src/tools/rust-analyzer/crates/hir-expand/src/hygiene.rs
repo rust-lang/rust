@@ -126,7 +126,7 @@ struct HygieneInfo {
     /// The start offset of the `macro_rules!` arguments or attribute input.
     attr_input_or_mac_def_start: Option<InFile<TextSize>>,
 
-    macro_def: Arc<TokenExpander>,
+    macro_def: TokenExpander,
     macro_arg: Arc<(crate::tt::Subtree, mbe::TokenMap, fixup::SyntaxFixupUndoInfo)>,
     macro_arg_shift: mbe::Shift,
     exp_map: Arc<mbe::TokenMap>,
@@ -149,19 +149,15 @@ impl HygieneInfo {
                     token_id = unshifted;
                     (&attr_args.1, self.attr_input_or_mac_def_start?)
                 }
-                None => (
-                    &self.macro_arg.1,
-                    InFile::new(loc.kind.file_id(), loc.kind.arg(db)?.text_range().start()),
-                ),
+                None => (&self.macro_arg.1, loc.kind.arg(db)?.map(|it| it.text_range().start())),
             },
             _ => match origin {
-                mbe::Origin::Call => (
-                    &self.macro_arg.1,
-                    InFile::new(loc.kind.file_id(), loc.kind.arg(db)?.text_range().start()),
-                ),
-                mbe::Origin::Def => match (&*self.macro_def, &self.attr_input_or_mac_def_start) {
-                    (TokenExpander::DeclarativeMacro { def_site_token_map, .. }, Some(tt)) => {
-                        (def_site_token_map, *tt)
+                mbe::Origin::Call => {
+                    (&self.macro_arg.1, loc.kind.arg(db)?.map(|it| it.text_range().start()))
+                }
+                mbe::Origin::Def => match (&self.macro_def, &self.attr_input_or_mac_def_start) {
+                    (TokenExpander::DeclarativeMacro(expander), Some(tt)) => {
+                        (&expander.def_site_token_map, *tt)
                     }
                     _ => panic!("`Origin::Def` used with non-`macro_rules!` macro"),
                 },
@@ -198,9 +194,9 @@ fn make_hygiene_info(
         _ => None,
     });
 
-    let macro_def = db.macro_def(loc.def).ok()?;
+    let macro_def = db.macro_expander(loc.def);
     let (_, exp_map) = db.parse_macro_expansion(macro_file).value;
-    let macro_arg = db.macro_arg(macro_file.macro_call_id).unwrap_or_else(|| {
+    let macro_arg = db.macro_arg(macro_file.macro_call_id).value.unwrap_or_else(|| {
         Arc::new((
             tt::Subtree { delimiter: tt::Delimiter::UNSPECIFIED, token_trees: Vec::new() },
             Default::default(),

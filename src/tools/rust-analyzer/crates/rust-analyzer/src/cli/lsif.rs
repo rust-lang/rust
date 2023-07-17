@@ -8,23 +8,22 @@ use ide::{
     Analysis, FileId, FileRange, MonikerKind, PackageInformation, RootDatabase, StaticIndex,
     StaticIndexedFile, TokenId, TokenStaticData,
 };
-use ide_db::LineIndexDatabase;
-
-use ide_db::base_db::salsa::{self, ParallelDatabase};
-use ide_db::line_index::WideEncoding;
+use ide_db::{
+    base_db::salsa::{self, ParallelDatabase},
+    line_index::WideEncoding,
+    LineIndexDatabase,
+};
+use load_cargo::{load_workspace, LoadCargoConfig, ProcMacroServerChoice};
 use lsp_types::{self, lsif};
 use project_model::{CargoConfig, ProjectManifest, ProjectWorkspace, RustLibSource};
 use vfs::{AbsPathBuf, Vfs};
 
-use crate::cli::load_cargo::ProcMacroServerChoice;
-use crate::cli::{
-    flags,
-    load_cargo::{load_workspace, LoadCargoConfig},
-    Result,
+use crate::{
+    cli::flags,
+    line_index::{LineEndings, LineIndex, PositionEncoding},
+    to_proto,
+    version::version,
 };
-use crate::line_index::{LineEndings, LineIndex, PositionEncoding};
-use crate::to_proto;
-use crate::version::version;
 
 /// Need to wrap Snapshot to provide `Clone` impl for `map_with`
 struct Snap<DB>(DB);
@@ -49,8 +48,8 @@ struct LsifManager<'a> {
 struct Id(i32);
 
 impl From<Id> for lsp_types::NumberOrString {
-    fn from(Id(x): Id) -> Self {
-        lsp_types::NumberOrString::Number(x)
+    fn from(Id(it): Id) -> Self {
+        lsp_types::NumberOrString::Number(it)
     }
 }
 
@@ -89,8 +88,8 @@ impl LsifManager<'_> {
     }
 
     fn get_token_id(&mut self, id: TokenId) -> Id {
-        if let Some(x) = self.token_map.get(&id) {
-            return *x;
+        if let Some(it) = self.token_map.get(&id) {
+            return *it;
         }
         let result_set_id = self.add_vertex(lsif::Vertex::ResultSet(lsif::ResultSet { key: None }));
         self.token_map.insert(id, result_set_id);
@@ -98,8 +97,8 @@ impl LsifManager<'_> {
     }
 
     fn get_package_id(&mut self, package_information: PackageInformation) -> Id {
-        if let Some(x) = self.package_map.get(&package_information) {
-            return *x;
+        if let Some(it) = self.package_map.get(&package_information) {
+            return *it;
         }
         let pi = package_information.clone();
         let result_set_id =
@@ -120,8 +119,8 @@ impl LsifManager<'_> {
     }
 
     fn get_range_id(&mut self, id: FileRange) -> Id {
-        if let Some(x) = self.range_map.get(&id) {
-            return *x;
+        if let Some(it) = self.range_map.get(&id) {
+            return *it;
         }
         let file_id = id.file_id;
         let doc_id = self.get_file_id(file_id);
@@ -143,8 +142,8 @@ impl LsifManager<'_> {
     }
 
     fn get_file_id(&mut self, id: FileId) -> Id {
-        if let Some(x) = self.file_map.get(&id) {
-            return *x;
+        if let Some(it) = self.file_map.get(&id) {
+            return *it;
         }
         let path = self.vfs.file_path(id);
         let path = path.as_path().unwrap();
@@ -217,18 +216,18 @@ impl LsifManager<'_> {
             }));
             let mut edges = token.references.iter().fold(
                 HashMap::<_, Vec<lsp_types::NumberOrString>>::new(),
-                |mut edges, x| {
+                |mut edges, it| {
                     let entry =
-                        edges.entry((x.range.file_id, x.is_definition)).or_insert_with(Vec::new);
-                    entry.push((*self.range_map.get(&x.range).unwrap()).into());
+                        edges.entry((it.range.file_id, it.is_definition)).or_insert_with(Vec::new);
+                    entry.push((*self.range_map.get(&it.range).unwrap()).into());
                     edges
                 },
             );
-            for x in token.references {
-                if let Some(vertices) = edges.remove(&(x.range.file_id, x.is_definition)) {
+            for it in token.references {
+                if let Some(vertices) = edges.remove(&(it.range.file_id, it.is_definition)) {
                     self.add_edge(lsif::Edge::Item(lsif::Item {
-                        document: (*self.file_map.get(&x.range.file_id).unwrap()).into(),
-                        property: Some(if x.is_definition {
+                        document: (*self.file_map.get(&it.range.file_id).unwrap()).into(),
+                        property: Some(if it.is_definition {
                             lsif::ItemKind::Definitions
                         } else {
                             lsif::ItemKind::References
@@ -286,7 +285,7 @@ impl LsifManager<'_> {
 }
 
 impl flags::Lsif {
-    pub fn run(self) -> Result<()> {
+    pub fn run(self) -> anyhow::Result<()> {
         eprintln!("Generating LSIF started...");
         let now = Instant::now();
         let mut cargo_config = CargoConfig::default();

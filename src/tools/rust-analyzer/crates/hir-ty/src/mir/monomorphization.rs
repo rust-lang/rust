@@ -13,15 +13,14 @@ use chalk_ir::{
     fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable},
     ConstData, DebruijnIndex,
 };
-use hir_def::{DefWithBodyId, GeneralConstId};
+use hir_def::DefWithBodyId;
 use triomphe::Arc;
 
 use crate::{
-    consteval::unknown_const,
+    consteval::{intern_const_scalar, unknown_const},
     db::HirDatabase,
     from_placeholder_idx,
     infer::normalize,
-    method_resolution::lookup_impl_const,
     utils::{generics, Generics},
     ClosureId, Const, Interner, ProjectionTy, Substitution, TraitEnvironment, Ty, TyKind,
 };
@@ -29,8 +28,8 @@ use crate::{
 use super::{MirBody, MirLowerError, Operand, Rvalue, StatementKind, TerminatorKind};
 
 macro_rules! not_supported {
-    ($x: expr) => {
-        return Err(MirLowerError::NotSupported(format!($x)))
+    ($it: expr) => {
+        return Err(MirLowerError::NotSupported(format!($it)))
     };
 }
 
@@ -97,16 +96,16 @@ impl FallibleTypeFolder<Interner> for Filler<'_> {
         idx: chalk_ir::PlaceholderIndex,
         _outer_binder: DebruijnIndex,
     ) -> std::result::Result<chalk_ir::Const<Interner>, Self::Error> {
-        let x = from_placeholder_idx(self.db, idx);
-        let Some(idx) = self.generics.as_ref().and_then(|g| g.param_idx(x)) else {
+        let it = from_placeholder_idx(self.db, idx);
+        let Some(idx) = self.generics.as_ref().and_then(|g| g.param_idx(it)) else {
             not_supported!("missing idx in generics");
         };
         Ok(self
             .subst
             .as_slice(Interner)
             .get(idx)
-            .and_then(|x| x.constant(Interner))
-            .ok_or_else(|| MirLowerError::GenericArgNotProvided(x, self.subst.clone()))?
+            .and_then(|it| it.constant(Interner))
+            .ok_or_else(|| MirLowerError::GenericArgNotProvided(it, self.subst.clone()))?
             .clone())
     }
 
@@ -115,16 +114,16 @@ impl FallibleTypeFolder<Interner> for Filler<'_> {
         idx: chalk_ir::PlaceholderIndex,
         _outer_binder: DebruijnIndex,
     ) -> std::result::Result<Ty, Self::Error> {
-        let x = from_placeholder_idx(self.db, idx);
-        let Some(idx) = self.generics.as_ref().and_then(|g| g.param_idx(x)) else {
+        let it = from_placeholder_idx(self.db, idx);
+        let Some(idx) = self.generics.as_ref().and_then(|g| g.param_idx(it)) else {
             not_supported!("missing idx in generics");
         };
         Ok(self
             .subst
             .as_slice(Interner)
             .get(idx)
-            .and_then(|x| x.ty(Interner))
-            .ok_or_else(|| MirLowerError::GenericArgNotProvided(x, self.subst.clone()))?
+            .and_then(|it| it.ty(Interner))
+            .ok_or_else(|| MirLowerError::GenericArgNotProvided(it, self.subst.clone()))?
             .clone())
     }
 
@@ -180,7 +179,7 @@ impl Filler<'_> {
                                 MirLowerError::GenericArgNotProvided(
                                     self.generics
                                         .as_ref()
-                                        .and_then(|x| x.iter().nth(b.index))
+                                        .and_then(|it| it.iter().nth(b.index))
                                         .unwrap()
                                         .0,
                                     self.subst.clone(),
@@ -193,25 +192,12 @@ impl Filler<'_> {
                     | chalk_ir::ConstValue::Placeholder(_) => {}
                     chalk_ir::ConstValue::Concrete(cc) => match &cc.interned {
                         crate::ConstScalar::UnevaluatedConst(const_id, subst) => {
-                            let mut const_id = *const_id;
                             let mut subst = subst.clone();
                             self.fill_subst(&mut subst)?;
-                            if let GeneralConstId::ConstId(c) = const_id {
-                                let (c, s) = lookup_impl_const(
-                                    self.db,
-                                    self.db.trait_environment_for_body(self.owner),
-                                    c,
-                                    subst,
-                                );
-                                const_id = GeneralConstId::ConstId(c);
-                                subst = s;
-                            }
-                            let result =
-                                self.db.const_eval(const_id.into(), subst).map_err(|e| {
-                                    let name = const_id.name(self.db.upcast());
-                                    MirLowerError::ConstEvalError(name, Box::new(e))
-                                })?;
-                            *c = result;
+                            *c = intern_const_scalar(
+                                crate::ConstScalar::UnevaluatedConst(*const_id, subst),
+                                c.data(Interner).ty.clone(),
+                            );
                         }
                         crate::ConstScalar::Bytes(_, _) | crate::ConstScalar::Unknown => (),
                     },

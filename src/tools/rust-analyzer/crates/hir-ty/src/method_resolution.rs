@@ -534,7 +534,7 @@ impl ReceiverAdjustments {
         let mut ty = table.resolve_ty_shallow(&ty);
         let mut adjust = Vec::new();
         for _ in 0..self.autoderefs {
-            match autoderef::autoderef_step(table, ty.clone()) {
+            match autoderef::autoderef_step(table, ty.clone(), true) {
                 None => {
                     never!("autoderef not possible for {:?}", ty);
                     ty = TyKind::Error.intern(Interner);
@@ -559,10 +559,10 @@ impl ReceiverAdjustments {
             adjust.push(a);
         }
         if self.unsize_array {
-            ty = 'x: {
+            ty = 'it: {
                 if let TyKind::Ref(m, l, inner) = ty.kind(Interner) {
                     if let TyKind::Array(inner, _) = inner.kind(Interner) {
-                        break 'x TyKind::Ref(
+                        break 'it TyKind::Ref(
                             m.clone(),
                             l.clone(),
                             TyKind::Slice(inner.clone()).intern(Interner),
@@ -666,7 +666,7 @@ pub fn is_dyn_method(
     let self_ty = trait_ref.self_type_parameter(Interner);
     if let TyKind::Dyn(d) = self_ty.kind(Interner) {
         let is_my_trait_in_bounds =
-            d.bounds.skip_binders().as_slice(Interner).iter().any(|x| match x.skip_binders() {
+            d.bounds.skip_binders().as_slice(Interner).iter().any(|it| match it.skip_binders() {
                 // rustc doesn't accept `impl Foo<2> for dyn Foo<5>`, so if the trait id is equal, no matter
                 // what the generics are, we are sure that the method is come from the vtable.
                 WhereClause::Implemented(tr) => tr.trait_id == trait_ref.trait_id,
@@ -682,14 +682,14 @@ pub fn is_dyn_method(
 /// Looks up the impl method that actually runs for the trait method `func`.
 ///
 /// Returns `func` if it's not a method defined in a trait or the lookup failed.
-pub fn lookup_impl_method(
+pub(crate) fn lookup_impl_method_query(
     db: &dyn HirDatabase,
     env: Arc<TraitEnvironment>,
     func: FunctionId,
     fn_subst: Substitution,
 ) -> (FunctionId, Substitution) {
     let ItemContainerId::TraitId(trait_id) = func.lookup(db.upcast()).container else {
-        return (func, fn_subst)
+        return (func, fn_subst);
     };
     let trait_params = db.generic_params(trait_id.into()).type_or_consts.len();
     let fn_params = fn_subst.len(Interner) - trait_params;
@@ -699,8 +699,8 @@ pub fn lookup_impl_method(
     };
 
     let name = &db.function_data(func).name;
-    let Some((impl_fn, impl_subst)) = lookup_impl_assoc_item_for_trait_ref(trait_ref, db, env, name)
-        .and_then(|assoc| {
+    let Some((impl_fn, impl_subst)) =
+        lookup_impl_assoc_item_for_trait_ref(trait_ref, db, env, name).and_then(|assoc| {
             if let (AssocItemId::FunctionId(id), subst) = assoc {
                 Some((id, subst))
             } else {
@@ -731,7 +731,7 @@ fn lookup_impl_assoc_item_for_trait_ref(
     let impls = db.trait_impls_in_deps(env.krate);
     let self_impls = match self_ty.kind(Interner) {
         TyKind::Adt(id, _) => {
-            id.0.module(db.upcast()).containing_block().map(|x| db.trait_impls_in_block(x))
+            id.0.module(db.upcast()).containing_block().map(|it| db.trait_impls_in_block(it))
         }
         _ => None,
     };
@@ -895,8 +895,8 @@ pub fn iterate_method_candidates_dyn(
             // (just as rustc does an autoderef and then autoref again).
 
             // We have to be careful about the order we're looking at candidates
-            // in here. Consider the case where we're resolving `x.clone()`
-            // where `x: &Vec<_>`. This resolves to the clone method with self
+            // in here. Consider the case where we're resolving `it.clone()`
+            // where `it: &Vec<_>`. This resolves to the clone method with self
             // type `Vec<_>`, *not* `&_`. I.e. we need to consider methods where
             // the receiver type exactly matches before cases where we have to
             // do autoref. But in the autoderef steps, the `&_` self type comes
@@ -1012,8 +1012,8 @@ fn iterate_method_candidates_by_receiver(
     let snapshot = table.snapshot();
     // We're looking for methods with *receiver* type receiver_ty. These could
     // be found in any of the derefs of receiver_ty, so we have to go through
-    // that.
-    let mut autoderef = autoderef::Autoderef::new(&mut table, receiver_ty.clone());
+    // that, including raw derefs.
+    let mut autoderef = autoderef::Autoderef::new(&mut table, receiver_ty.clone(), true);
     while let Some((self_ty, _)) = autoderef.next() {
         iterate_inherent_methods(
             &self_ty,
@@ -1028,7 +1028,7 @@ fn iterate_method_candidates_by_receiver(
 
     table.rollback_to(snapshot);
 
-    let mut autoderef = autoderef::Autoderef::new(&mut table, receiver_ty.clone());
+    let mut autoderef = autoderef::Autoderef::new(&mut table, receiver_ty.clone(), true);
     while let Some((self_ty, _)) = autoderef.next() {
         iterate_trait_method_candidates(
             &self_ty,
@@ -1480,8 +1480,8 @@ fn generic_implements_goal(
         .push(self_ty.value.clone())
         .fill_with_bound_vars(DebruijnIndex::INNERMOST, kinds.len())
         .build();
-    kinds.extend(trait_ref.substitution.iter(Interner).skip(1).map(|x| {
-        let vk = match x.data(Interner) {
+    kinds.extend(trait_ref.substitution.iter(Interner).skip(1).map(|it| {
+        let vk = match it.data(Interner) {
             chalk_ir::GenericArgData::Ty(_) => {
                 chalk_ir::VariableKind::Ty(chalk_ir::TyVariableKind::General)
             }
@@ -1504,7 +1504,7 @@ fn autoderef_method_receiver(
     ty: Ty,
 ) -> Vec<(Canonical<Ty>, ReceiverAdjustments)> {
     let mut deref_chain: Vec<_> = Vec::new();
-    let mut autoderef = autoderef::Autoderef::new(table, ty);
+    let mut autoderef = autoderef::Autoderef::new(table, ty, true);
     while let Some((ty, derefs)) = autoderef.next() {
         deref_chain.push((
             autoderef.table.canonicalize(ty).value,

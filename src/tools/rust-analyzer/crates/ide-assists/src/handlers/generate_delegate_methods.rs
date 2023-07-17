@@ -1,13 +1,17 @@
 use std::collections::HashSet;
 
 use hir::{self, HasCrate, HasSource, HasVisibility};
-use syntax::ast::{self, make, AstNode, HasGenericParams, HasName, HasVisibility as _};
+use syntax::{
+    ast::{
+        self, edit_in_place::Indent, make, AstNode, HasGenericParams, HasName, HasVisibility as _,
+    },
+    ted,
+};
 
 use crate::{
-    utils::{convert_param_list_to_arg_list, find_struct_impl, render_snippet, Cursor},
+    utils::{convert_param_list_to_arg_list, find_struct_impl},
     AssistContext, AssistId, AssistKind, Assists, GroupLabel,
 };
-use syntax::ast::edit::AstNodeEdit;
 
 // Assist: generate_delegate_methods
 //
@@ -88,13 +92,15 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
         let adt = ast::Adt::Struct(strukt.clone());
         let name = name.display(ctx.db()).to_string();
         // if `find_struct_impl` returns None, that means that a function named `name` already exists.
-        let Some(impl_def) = find_struct_impl(ctx, &adt, std::slice::from_ref(&name)) else { continue; };
+        let Some(impl_def) = find_struct_impl(ctx, &adt, std::slice::from_ref(&name)) else {
+            continue;
+        };
         acc.add_group(
             &GroupLabel("Generate delegate methods…".to_owned()),
             AssistId("generate_delegate_methods", AssistKind::Generate),
             format!("Generate delegate for `{field_name}.{name}()`",),
             target,
-            |builder| {
+            |edit| {
                 // Create the function
                 let method_source = match method.source(ctx.db()) {
                     Some(source) => source.value,
@@ -133,36 +139,12 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
                     is_const,
                     is_unsafe,
                 )
-                .indent(ast::edit::IndentLevel(1))
                 .clone_for_update();
 
-                let cursor = Cursor::Before(f.syntax());
-
-                // Create or update an impl block, attach the function to it,
-                // then insert into our code.
-                match impl_def {
-                    Some(impl_def) => {
-                        // Remember where in our source our `impl` block lives.
-                        let impl_def = impl_def.clone_for_update();
-                        let old_range = impl_def.syntax().text_range();
-
-                        // Attach the function to the impl block
-                        let assoc_items = impl_def.get_or_create_assoc_item_list();
-                        assoc_items.add_item(f.clone().into());
-
-                        // Update the impl block.
-                        match ctx.config.snippet_cap {
-                            Some(cap) => {
-                                let snippet = render_snippet(cap, impl_def.syntax(), cursor);
-                                builder.replace_snippet(cap, old_range, snippet);
-                            }
-                            None => {
-                                builder.replace(old_range, impl_def.syntax().to_string());
-                            }
-                        }
-                    }
+                // Get the impl to update, or create one if we need to.
+                let impl_def = match impl_def {
+                    Some(impl_def) => edit.make_mut(impl_def),
                     None => {
-                        // Attach the function to the impl block
                         let name = &strukt_name.to_string();
                         let params = strukt.generic_param_list();
                         let ty_params = params.clone();
@@ -176,24 +158,34 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
                             None,
                         )
                         .clone_for_update();
-                        let assoc_items = impl_def.get_or_create_assoc_item_list();
-                        assoc_items.add_item(f.clone().into());
+
+                        // Fixup impl_def indentation
+                        let indent = strukt.indent_level();
+                        impl_def.reindent_to(indent);
 
                         // Insert the impl block.
-                        match ctx.config.snippet_cap {
-                            Some(cap) => {
-                                let offset = strukt.syntax().text_range().end();
-                                let snippet = render_snippet(cap, impl_def.syntax(), cursor);
-                                let snippet = format!("\n\n{snippet}");
-                                builder.insert_snippet(cap, offset, snippet);
-                            }
-                            None => {
-                                let offset = strukt.syntax().text_range().end();
-                                let snippet = format!("\n\n{}", impl_def.syntax());
-                                builder.insert(offset, snippet);
-                            }
-                        }
+                        let strukt = edit.make_mut(strukt.clone());
+                        ted::insert_all(
+                            ted::Position::after(strukt.syntax()),
+                            vec![
+                                make::tokens::whitespace(&format!("\n\n{indent}")).into(),
+                                impl_def.syntax().clone().into(),
+                            ],
+                        );
+
+                        impl_def
                     }
+                };
+
+                // Fixup function indentation.
+                // FIXME: Should really be handled by `AssocItemList::add_item`
+                f.reindent_to(impl_def.indent_level() + 1);
+
+                let assoc_items = impl_def.get_or_create_assoc_item_list();
+                assoc_items.add_item(f.clone().into());
+
+                if let Some(cap) = ctx.config.snippet_cap {
+                    edit.add_tabstop_before(cap, f)
                 }
             },
         )?;
@@ -243,6 +235,45 @@ impl Person {
     }
 
     #[test]
+    fn test_generate_delegate_create_impl_block_match_indent() {
+        check_assist(
+            generate_delegate_methods,
+            r#"
+mod indent {
+    struct Age(u8);
+    impl Age {
+        fn age(&self) -> u8 {
+            self.0
+        }
+    }
+
+    struct Person {
+        ag$0e: Age,
+    }
+}"#,
+            r#"
+mod indent {
+    struct Age(u8);
+    impl Age {
+        fn age(&self) -> u8 {
+            self.0
+        }
+    }
+
+    struct Person {
+        age: Age,
+    }
+
+    impl Person {
+        $0fn age(&self) -> u8 {
+            self.age.age()
+        }
+    }
+}"#,
+        );
+    }
+
+    #[test]
     fn test_generate_delegate_update_impl_block() {
         check_assist(
             generate_delegate_methods,
@@ -274,6 +305,47 @@ struct Person {
 impl Person {
     $0fn age(&self) -> u8 {
         self.age.age()
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_generate_delegate_update_impl_block_match_indent() {
+        check_assist(
+            generate_delegate_methods,
+            r#"
+mod indent {
+    struct Age(u8);
+    impl Age {
+        fn age(&self) -> u8 {
+            self.0
+        }
+    }
+
+    struct Person {
+        ag$0e: Age,
+    }
+
+    impl Person {}
+}"#,
+            r#"
+mod indent {
+    struct Age(u8);
+    impl Age {
+        fn age(&self) -> u8 {
+            self.0
+        }
+    }
+
+    struct Person {
+        age: Age,
+    }
+
+    impl Person {
+        $0fn age(&self) -> u8 {
+            self.age.age()
+        }
     }
 }"#,
         );

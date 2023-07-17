@@ -7,7 +7,7 @@ use syntax::{
 };
 use text_edit::TextEdit;
 
-use crate::{adjusted_display_range, fix, Assist, Diagnostic, DiagnosticsContext};
+use crate::{adjusted_display_range, fix, Assist, Diagnostic, DiagnosticCode, DiagnosticsContext};
 
 // Diagnostic: type-mismatch
 //
@@ -39,7 +39,7 @@ pub(crate) fn type_mismatch(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch)
         }
     };
     let mut diag = Diagnostic::new(
-        "type-mismatch",
+        DiagnosticCode::RustcHardError("E0308"),
         format!(
             "expected {}, found {}",
             d.expected.display(ctx.sema.db).with_closure_style(ClosureStyle::ClosureWithId),

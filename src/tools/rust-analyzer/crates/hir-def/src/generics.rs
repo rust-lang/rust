@@ -67,21 +67,21 @@ pub enum TypeOrConstParamData {
 impl TypeOrConstParamData {
     pub fn name(&self) -> Option<&Name> {
         match self {
-            TypeOrConstParamData::TypeParamData(x) => x.name.as_ref(),
-            TypeOrConstParamData::ConstParamData(x) => Some(&x.name),
+            TypeOrConstParamData::TypeParamData(it) => it.name.as_ref(),
+            TypeOrConstParamData::ConstParamData(it) => Some(&it.name),
         }
     }
 
     pub fn has_default(&self) -> bool {
         match self {
-            TypeOrConstParamData::TypeParamData(x) => x.default.is_some(),
-            TypeOrConstParamData::ConstParamData(x) => x.has_default,
+            TypeOrConstParamData::TypeParamData(it) => it.default.is_some(),
+            TypeOrConstParamData::ConstParamData(it) => it.has_default,
         }
     }
 
     pub fn type_param(&self) -> Option<&TypeParamData> {
         match self {
-            TypeOrConstParamData::TypeParamData(x) => Some(x),
+            TypeOrConstParamData::TypeParamData(it) => Some(it),
             TypeOrConstParamData::ConstParamData(_) => None,
         }
     }
@@ -89,14 +89,14 @@ impl TypeOrConstParamData {
     pub fn const_param(&self) -> Option<&ConstParamData> {
         match self {
             TypeOrConstParamData::TypeParamData(_) => None,
-            TypeOrConstParamData::ConstParamData(x) => Some(x),
+            TypeOrConstParamData::ConstParamData(it) => Some(it),
         }
     }
 
     pub fn is_trait_self(&self) -> bool {
         match self {
-            TypeOrConstParamData::TypeParamData(x) => {
-                x.provenance == TypeParamProvenance::TraitSelf
+            TypeOrConstParamData::TypeParamData(it) => {
+                it.provenance == TypeParamProvenance::TraitSelf
             }
             TypeOrConstParamData::ConstParamData(_) => false,
         }

@@ -832,7 +832,7 @@ impl SourceAnalyzer {
             None => return func,
         };
         let env = db.trait_environment_for_body(owner);
-        method_resolution::lookup_impl_method(db, env, func, substs).0
+        db.lookup_impl_method(env, func, substs).0
     }
 
     fn resolve_impl_const_or_trait_def(

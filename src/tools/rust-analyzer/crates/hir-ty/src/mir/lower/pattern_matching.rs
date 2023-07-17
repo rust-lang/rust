@@ -307,6 +307,11 @@ impl MirLowerCtx<'_> {
                     mode,
                 )?,
                 None => {
+                    // The path is not a variant, so it is a const
+                    if mode != MatchingMode::Check {
+                        // A const don't bind anything. Only needs check.
+                        return Ok((current, current_else));
+                    }
                     let unresolved_name = || MirLowerError::unresolved_path(self.db, p);
                     let resolver = self.owner.resolver(self.db.upcast());
                     let pr = resolver
@@ -362,8 +367,8 @@ impl MirLowerCtx<'_> {
             },
             Pat::Lit(l) => match &self.body.exprs[*l] {
                 Expr::Literal(l) => {
-                    let c = self.lower_literal_to_operand(self.infer[pattern].clone(), l)?;
                     if mode == MatchingMode::Check {
+                        let c = self.lower_literal_to_operand(self.infer[pattern].clone(), l)?;
                         self.pattern_match_const(current_else, current, c, cond_place, pattern)?
                     } else {
                         (current, current_else)

@@ -243,10 +243,7 @@ fn analyze(
 
     let Some(name_like) = find_node_at_offset(&speculative_file, offset) else {
         let analysis = if let Some(original) = ast::String::cast(original_token.clone()) {
-            CompletionAnalysis::String {
-                original,
-                expanded: ast::String::cast(self_token.clone()),
-            }
+            CompletionAnalysis::String { original, expanded: ast::String::cast(self_token.clone()) }
         } else {
             // Fix up trailing whitespace problem
             // #[attr(foo = $0
@@ -736,7 +733,7 @@ fn classify_name_ref(
                         return None;
                     }
                     let parent = match ast::Fn::cast(parent.parent()?) {
-                        Some(x) => x.param_list(),
+                        Some(it) => it.param_list(),
                         None => ast::ClosureExpr::cast(parent.parent()?)?.param_list(),
                     };
 

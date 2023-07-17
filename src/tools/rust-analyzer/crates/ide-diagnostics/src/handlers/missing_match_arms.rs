@@ -1,4 +1,4 @@
-use crate::{Diagnostic, DiagnosticsContext};
+use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext};
 
 // Diagnostic: missing-match-arm
 //
@@ -7,10 +7,11 @@ pub(crate) fn missing_match_arms(
     ctx: &DiagnosticsContext<'_>,
     d: &hir::MissingMatchArms,
 ) -> Diagnostic {
-    Diagnostic::new(
-        "missing-match-arm",
+    Diagnostic::new_with_syntax_node_ptr(
+        ctx,
+        DiagnosticCode::RustcHardError("E0004"),
         format!("missing match arm: {}", d.uncovered_patterns),
-        ctx.sema.diagnostics_display_range(d.scrutinee_expr.clone().map(Into::into)).range,
+        d.scrutinee_expr.clone().map(Into::into),
     )
 }
 

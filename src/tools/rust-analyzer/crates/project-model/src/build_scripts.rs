@@ -225,9 +225,8 @@ impl WorkspaceBuildScripts {
                     let package_build_data = &mut res[idx].outputs[package];
                     if !package_build_data.is_unchanged() {
                         tracing::info!(
-                            "{}: {:?}",
-                            workspace[package].manifest.parent().display(),
-                            package_build_data,
+                            "{}: {package_build_data:?}",
+                            workspace[package].manifest.parent(),
                         );
                     }
                 }
@@ -270,9 +269,8 @@ impl WorkspaceBuildScripts {
                 let package_build_data = &outputs[package];
                 if !package_build_data.is_unchanged() {
                     tracing::info!(
-                        "{}: {:?}",
-                        workspace[package].manifest.parent().display(),
-                        package_build_data,
+                        "{}: {package_build_data:?}",
+                        workspace[package].manifest.parent(),
                     );
                 }
             }
@@ -424,7 +422,7 @@ impl WorkspaceBuildScripts {
 
             let target_libdir = AbsPathBuf::try_from(PathBuf::from(target_libdir))
                 .map_err(|_| anyhow::format_err!("target-libdir was not an absolute path"))?;
-            tracing::info!("Loading rustc proc-macro paths from {}", target_libdir.display());
+            tracing::info!("Loading rustc proc-macro paths from {target_libdir}");
 
             let proc_macro_dylibs: Vec<(String, AbsPathBuf)> = std::fs::read_dir(target_libdir)?
                 .filter_map(|entry| {
@@ -458,9 +456,8 @@ impl WorkspaceBuildScripts {
                     let package_build_data = &bs.outputs[package];
                     if !package_build_data.is_unchanged() {
                         tracing::info!(
-                            "{}: {:?}",
-                            rustc[package].manifest.parent().display(),
-                            package_build_data,
+                            "{}: {package_build_data:?}",
+                            rustc[package].manifest.parent(),
                         );
                     }
                 }

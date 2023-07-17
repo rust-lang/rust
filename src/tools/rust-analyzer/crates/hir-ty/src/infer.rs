@@ -290,7 +290,7 @@ impl Default for InternedStandardTypes {
 ///    ```
 ///
 ///    Note that for a struct, the 'deep' unsizing of the struct is not recorded.
-///    E.g., `struct Foo<T> { x: T }` we can coerce &Foo<[i32; 4]> to &Foo<[i32]>
+///    E.g., `struct Foo<T> { it: T }` we can coerce &Foo<[i32; 4]> to &Foo<[i32]>
 ///    The autoderef and -ref are the same as in the above example, but the type
 ///    stored in `unsize` is `Foo<[i32]>`, we don't store any further detail about
 ///    the underlying conversions from `[i32; 4]` to `[i32]`.
@@ -1172,7 +1172,7 @@ impl<'a> InferenceContext<'a> {
         unresolved: Option<usize>,
         path: &ModPath,
     ) -> (Ty, Option<VariantId>) {
-        let remaining = unresolved.map(|x| path.segments()[x..].len()).filter(|x| x > &0);
+        let remaining = unresolved.map(|it| path.segments()[it..].len()).filter(|it| it > &0);
         match remaining {
             None => {
                 let variant = ty.as_adt().and_then(|(adt_id, _)| match adt_id {
@@ -1232,7 +1232,9 @@ impl<'a> InferenceContext<'a> {
             .as_function()?
             .lookup(self.db.upcast())
             .container
-        else { return None };
+        else {
+            return None;
+        };
         self.resolve_output_on(trait_)
     }
 
@@ -1322,7 +1324,7 @@ impl Expectation {
     /// The primary use case is where the expected type is a fat pointer,
     /// like `&[isize]`. For example, consider the following statement:
     ///
-    ///     let x: &[isize] = &[1, 2, 3];
+    ///     let it: &[isize] = &[1, 2, 3];
     ///
     /// In this case, the expected type for the `&[1, 2, 3]` expression is
     /// `&[isize]`. If however we were to say that `[1, 2, 3]` has the

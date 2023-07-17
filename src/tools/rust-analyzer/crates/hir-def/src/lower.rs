@@ -1,5 +1,9 @@
 //! Context for lowering paths.
-use hir_expand::{ast_id_map::AstIdMap, hygiene::Hygiene, AstId, HirFileId, InFile};
+use hir_expand::{
+    ast_id_map::{AstIdMap, AstIdNode},
+    hygiene::Hygiene,
+    AstId, HirFileId, InFile,
+};
 use once_cell::unsync::OnceCell;
 use syntax::ast;
 use triomphe::Arc;
@@ -37,7 +41,7 @@ impl<'a> LowerCtx<'a> {
         Path::from_src(ast, self)
     }
 
-    pub(crate) fn ast_id<N: syntax::AstNode>(&self, item: &N) -> Option<AstId<N>> {
+    pub(crate) fn ast_id<N: AstIdNode>(&self, item: &N) -> Option<AstId<N>> {
         let &(file_id, ref ast_id_map) = self.ast_id_map.as_ref()?;
         let ast_id_map = ast_id_map.get_or_init(|| self.db.ast_id_map(file_id));
         Some(InFile::new(file_id, ast_id_map.ast_id(item)))
