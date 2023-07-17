@@ -40,7 +40,7 @@ use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::{OptLevel, OutputFilenames, PrintRequest};
+use rustc_session::config::{OptLevel, OutputFilenames, PrintKind, PrintRequest};
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
 
@@ -262,9 +262,9 @@ impl CodegenBackend for LlvmCodegenBackend {
             |tcx, ()| llvm_util::global_llvm_features(tcx.sess, true)
     }
 
-    fn print(&self, req: PrintRequest, sess: &Session) {
-        match req {
-            PrintRequest::RelocationModels => {
+    fn print(&self, req: &PrintRequest, sess: &Session) {
+        match req.kind {
+            PrintKind::RelocationModels => {
                 println!("Available relocation models:");
                 for name in &[
                     "static",
@@ -280,21 +280,21 @@ impl CodegenBackend for LlvmCodegenBackend {
                 }
                 println!();
             }
-            PrintRequest::CodeModels => {
+            PrintKind::CodeModels => {
                 println!("Available code models:");
                 for name in &["tiny", "small", "kernel", "medium", "large"] {
                     println!("    {}", name);
                 }
                 println!();
             }
-            PrintRequest::TlsModels => {
+            PrintKind::TlsModels => {
                 println!("Available TLS models:");
                 for name in &["global-dynamic", "local-dynamic", "initial-exec", "local-exec"] {
                     println!("    {}", name);
                 }
                 println!();
             }
-            PrintRequest::StackProtectorStrategies => {
+            PrintKind::StackProtectorStrategies => {
                 println!(
                     r#"Available stack protector strategies:
     all
@@ -319,7 +319,7 @@ impl CodegenBackend for LlvmCodegenBackend {
 "#
                 );
             }
-            req => llvm_util::print(req, sess),
+            _other => llvm_util::print(req, sess),
         }
     }
 

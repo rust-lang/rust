@@ -13,7 +13,7 @@ use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::SymbolExportKind;
 use rustc_session::config::{self, CFGuard, CrateType, DebugInfo, Strip};
-use rustc_session::config::{OutputFilenames, OutputType, PrintRequest, SplitDwarfKind};
+use rustc_session::config::{OutputFilenames, OutputType, PrintKind, SplitDwarfKind};
 use rustc_session::cstore::DllImport;
 use rustc_session::output::{check_file_is_writeable, invalid_output_for_target, out_filename};
 use rustc_session::search_paths::PathKind;
@@ -596,7 +596,7 @@ fn link_staticlib<'a>(
 
     all_native_libs.extend_from_slice(&codegen_results.crate_info.used_libraries);
 
-    if sess.opts.prints.contains(&PrintRequest::NativeStaticLibs) {
+    if sess.opts.prints.iter().any(|print| print.kind == PrintKind::NativeStaticLibs) {
         print_native_static_libs(sess, &all_native_libs, &all_rust_dylibs);
     }
 
@@ -744,7 +744,7 @@ fn link_natively<'a>(
         cmd.env_remove(k.as_ref());
     }
 
-    if sess.opts.prints.contains(&PrintRequest::LinkArgs) {
+    if sess.opts.prints.iter().any(|print| print.kind == PrintKind::LinkArgs) {
         println!("{:?}", &cmd);
     }
 

@@ -12,7 +12,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_fs_util::path_to_c_string;
 use rustc_middle::bug;
-use rustc_session::config::PrintRequest;
+use rustc_session::config::{PrintKind, PrintRequest};
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::{MergeFunctions, PanicStrategy};
@@ -400,11 +400,11 @@ fn print_target_features(sess: &Session, tm: &llvm::TargetMachine) {
     println!("and may be renamed or removed in a future version of LLVM or rustc.\n");
 }
 
-pub(crate) fn print(req: PrintRequest, sess: &Session) {
+pub(crate) fn print(req: &PrintRequest, sess: &Session) {
     require_inited();
     let tm = create_informational_target_machine(sess);
-    match req {
-        PrintRequest::TargetCPUs => {
+    match req.kind {
+        PrintKind::TargetCPUs => {
             // SAFETY generate a C compatible string from a byte slice to pass
             // the target CPU name into LLVM, the lifetime of the reference is
             // at least as long as the C function
@@ -412,7 +412,7 @@ pub(crate) fn print(req: PrintRequest, sess: &Session) {
                 .unwrap_or_else(|e| bug!("failed to convert to cstring: {}", e));
             unsafe { llvm::LLVMRustPrintTargetCPUs(tm, cpu_cstring.as_ptr()) };
         }
-        PrintRequest::TargetFeatures => print_target_features(sess, tm),
+        PrintKind::TargetFeatures => print_target_features(sess, tm),
         _ => bug!("rustc_codegen_llvm can't handle print request: {:?}", req),
     }
 }
