@@ -1,11 +1,10 @@
 use crate::diagnostic::DiagnosticLocation;
-use crate::{fluent_generated as fluent, AddToDiagnostic, Diagnostic};
+use crate::{fluent_generated as fluent, AddToDiagnostic};
 use crate::{DiagnosticArgValue, DiagnosticBuilder, Handler, IntoDiagnostic, IntoDiagnosticArg};
 use rustc_ast as ast;
 use rustc_ast_pretty::pprust;
-use rustc_error_messages::SubdiagnosticMessage;
 use rustc_hir as hir;
-use rustc_lint_defs::{Applicability, Level};
+use rustc_lint_defs::Level;
 use rustc_span::edition::Edition;
 use rustc_span::symbol::{Ident, MacroRulesNormalizedIdent, Symbol};
 use rustc_span::Span;
@@ -365,22 +364,11 @@ impl IntoDiagnosticArg for rustc_errors::Level {
     }
 }
 
+#[derive(Subdiagnostic)]
+#[suggestion(errors_indicate_anonymous_lifetime, code = "{suggestion}", style = "verbose")]
 pub struct IndicateAnonymousLifetime {
+    #[primary_span]
     pub span: Span,
     pub count: usize,
     pub suggestion: String,
-}
-
-impl AddToDiagnostic for IndicateAnonymousLifetime {
-    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
-    where
-        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
-    {
-        diag.span_suggestion_verbose(
-            self.span,
-            fluent::errors_indicate_anonymous_lifetime,
-            self.suggestion,
-            Applicability::MachineApplicable,
-        );
-    }
 }
