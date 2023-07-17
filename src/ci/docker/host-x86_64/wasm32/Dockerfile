@@ -13,11 +13,15 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-ins
   sudo \
   gdb \
   xz-utils \
+  libssl-dev \
   bzip2 \
   && rm -rf /var/lib/apt/lists/*
 
 COPY scripts/emscripten.sh /scripts/
 RUN bash /scripts/emscripten.sh
+
+COPY scripts/cmake.sh /scripts/
+RUN /scripts/cmake.sh
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh

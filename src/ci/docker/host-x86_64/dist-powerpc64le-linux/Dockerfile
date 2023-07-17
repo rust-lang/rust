@@ -14,6 +14,9 @@ RUN apt-get install -y --no-install-recommends rpm2cpio cpio
 COPY host-x86_64/dist-powerpc64le-linux/shared.sh host-x86_64/dist-powerpc64le-linux/build-powerpc64le-toolchain.sh /tmp/
 RUN ./build-powerpc64le-toolchain.sh
 
+COPY scripts/cmake.sh /scripts/
+RUN /scripts/cmake.sh
+
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
