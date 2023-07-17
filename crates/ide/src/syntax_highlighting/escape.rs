@@ -1,7 +1,7 @@
 //! Syntax highlighting for escape sequences
 use crate::syntax_highlighting::highlights::Highlights;
 use crate::{HlRange, HlTag};
-use syntax::ast::{Char, IsString};
+use syntax::ast::{Byte, Char, IsString};
 use syntax::{AstToken, TextRange, TextSize};
 
 pub(super) fn highlight_escape_string<T: IsString>(
@@ -41,5 +41,25 @@ pub(super) fn highlight_escape_char(stack: &mut Highlights, char: &Char, start: 
 
     let range =
         TextRange::new(start + TextSize::from(1), start + TextSize::from(text.len() as u32 + 1));
+    stack.add(HlRange { range, highlight: HlTag::EscapeSequence.into(), binding_hash: None })
+}
+
+pub(super) fn highlight_escape_byte(stack: &mut Highlights, byte: &Byte, start: TextSize) {
+    if byte.value().is_none() {
+        return;
+    }
+
+    let text = byte.text();
+    if !text.starts_with("b'") || !text.ends_with('\'') {
+        return;
+    }
+
+    let text = &text[2..text.len() - 1];
+    if !text.starts_with('\\') {
+        return;
+    }
+
+    let range =
+        TextRange::new(start + TextSize::from(2), start + TextSize::from(text.len() as u32 + 2));
     stack.add(HlRange { range, highlight: HlTag::EscapeSequence.into(), binding_hash: None })
 }

@@ -146,6 +146,7 @@ impl QuoteOffsets {
 
 pub trait IsString: AstToken {
     const RAW_PREFIX: &'static str;
+    const MODE: Mode;
     fn is_raw(&self) -> bool {
         self.text().starts_with(Self::RAW_PREFIX)
     }
@@ -181,7 +182,7 @@ pub trait IsString: AstToken {
         let text = &self.text()[text_range_no_quotes - start];
         let offset = text_range_no_quotes.start() - start;
 
-        unescape_literal(text, Mode::Str, &mut |range, unescaped_char| {
+        unescape_literal(text, Self::MODE, &mut |range, unescaped_char| {
             let text_range =
                 TextRange::new(range.start.try_into().unwrap(), range.end.try_into().unwrap());
             cb(text_range + offset, unescaped_char);
@@ -196,6 +197,7 @@ pub trait IsString: AstToken {
 
 impl IsString for ast::String {
     const RAW_PREFIX: &'static str = "r";
+    const MODE: Mode = Mode::Str;
 }
 
 impl ast::String {
@@ -213,7 +215,7 @@ impl ast::String {
         let mut buf = String::new();
         let mut prev_end = 0;
         let mut has_error = false;
-        unescape_literal(text, Mode::Str, &mut |char_range, unescaped_char| match (
+        unescape_literal(text, Self::MODE, &mut |char_range, unescaped_char| match (
             unescaped_char,
             buf.capacity() == 0,
         ) {
@@ -239,6 +241,7 @@ impl ast::String {
 
 impl IsString for ast::ByteString {
     const RAW_PREFIX: &'static str = "br";
+    const MODE: Mode = Mode::ByteStr;
 }
 
 impl ast::ByteString {
@@ -256,7 +259,7 @@ impl ast::ByteString {
         let mut buf: Vec<u8> = Vec::new();
         let mut prev_end = 0;
         let mut has_error = false;
-        unescape_literal(text, Mode::ByteStr, &mut |char_range, unescaped_char| match (
+        unescape_literal(text, Self::MODE, &mut |char_range, unescaped_char| match (
             unescaped_char,
             buf.capacity() == 0,
         ) {
@@ -282,6 +285,9 @@ impl ast::ByteString {
 
 impl IsString for ast::CString {
     const RAW_PREFIX: &'static str = "cr";
+    // XXX: `Mode::CStr` is not supported by `unescape_literal` of ra-ap-rustc_lexer yet.
+    // Here we pretend it to be a byte string.
+    const MODE: Mode = Mode::ByteStr;
 }
 
 impl ast::CString {
@@ -299,7 +305,7 @@ impl ast::CString {
         let mut buf = String::new();
         let mut prev_end = 0;
         let mut has_error = false;
-        unescape_literal(text, Mode::Str, &mut |char_range, unescaped_char| match (
+        unescape_literal(text, Self::MODE, &mut |char_range, unescaped_char| match (
             unescaped_char,
             buf.capacity() == 0,
         ) {

@@ -451,6 +451,8 @@ fn main() {
     let a = '\x65';
     let a = '\x00';
 
+    let a = b'\xFF';
+
     println!("Hello {{Hello}}");
     // from https://doc.rust-lang.org/std/fmt/index.html
     println!("Hello");                 // => "Hello"
@@ -505,8 +507,8 @@ fn main() {
     println!("Hello\nWorld");
     println!("\u{48}\x65\x6C\x6C\x6F World");
 
-    let _ = "\x28\x28\x00\x63\n";
-    let _ = b"\x28\x28\x00\x63\n";
+    let _ = "\x28\x28\x00\x63\xFF\n"; // invalid non-UTF8 escape sequences
+    let _ = b"\x28\x28\x00\x63\xFF\n"; // valid bytes
     let backslash = r"\\";
 
     println!("{\x41}", A = 92);
