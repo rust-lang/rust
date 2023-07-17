@@ -437,6 +437,10 @@ impl<'tcx> Inliner<'tcx> {
             validation: Ok(()),
         };
 
+        for var_debug_info in callee_body.var_debug_info.iter() {
+            checker.visit_var_debug_info(var_debug_info);
+        }
+
         // Traverse the MIR manually so we can account for the effects of inlining on the CFG.
         let mut work_list = vec![START_BLOCK];
         let mut visited = BitSet::new_empty(callee_body.basic_blocks.len());
@@ -845,7 +849,16 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
             let parent = Place { local, projection: self.tcx.mk_place_elems(proj_base) };
             let parent_ty = parent.ty(&self.callee_body.local_decls, self.tcx);
             let check_equal = |this: &mut Self, f_ty| {
-                if !util::is_equal_up_to_subtyping(this.tcx, this.param_env, ty, f_ty) {
+                // Fast path if there is nothing to substitute.
+                if ty == f_ty {
+                    return;
+                }
+                let ty = this.instance.subst_mir(this.tcx, ty::EarlyBinder(&ty));
+                let f_ty = this.instance.subst_mir(this.tcx, ty::EarlyBinder(&f_ty));
+                if ty == f_ty {
+                    return;
+                }
+                if !util::is_subtype(this.tcx, this.param_env, ty, f_ty) {
                     trace!(?ty, ?f_ty);
                     this.validation = Err("failed to normalize projection type");
                     return;
