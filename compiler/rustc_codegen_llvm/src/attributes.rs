@@ -128,7 +128,10 @@ fn instrument_function_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> SmallVec<[&'ll Attr
 
         // The function name varies on platforms.
         // See test/CodeGen/mcount.c in clang.
-        let mcount_name = cx.sess().target.mcount.as_ref();
+        let mcount_name = match &cx.sess().target.llvm_mcount_intrinsic {
+            Some(llvm_mcount_intrinsic) => llvm_mcount_intrinsic.as_ref(),
+            None => cx.sess().target.mcount.as_ref(),
+        };
 
         attrs.push(llvm::CreateAttrStringValue(
             cx.llcx,
