@@ -1567,7 +1567,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
             });
             for (bound, bound_span) in tcx
                 .explicit_item_bounds(opaque_ty.def_id)
-                .arg_iter_copied(tcx, opaque_ty.args)
+                .iter_instantiated_copied(tcx, opaque_ty.args)
             {
                 let bound = self.wfcx.normalize(bound_span, None, bound);
                 self.wfcx.register_obligations(traits::wf::predicate_obligations(
