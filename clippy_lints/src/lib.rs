@@ -136,6 +136,7 @@ mod format_args;
 mod format_impl;
 mod format_push_string;
 mod formatting;
+mod four_forward_slashes;
 mod from_over_into;
 mod from_raw_with_void_ptr;
 mod from_str_radix_10;
@@ -1078,6 +1079,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(|| Box::new(visibility::Visibility));
     store.register_late_pass(move |_| Box::new(tuple_array_conversions::TupleArrayConversions { msrv: msrv() }));
     store.register_late_pass(|_| Box::new(manual_float_methods::ManualFloatMethods));
+    store.register_late_pass(|_| Box::new(four_forward_slashes::FourForwardSlashes));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
