@@ -33,6 +33,7 @@ pub enum RigidTy {
     RawPtr(Ty, Mutability),
     Ref(Region, Ty, Mutability),
     FnDef(FnDef, GenericArgs),
+    Closure(ClosureDef, GenericArgs),
     Never,
     Tuple(Vec<Ty>),
 }
@@ -68,6 +69,9 @@ pub struct ForeignDef(pub(crate) DefId);
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct FnDef(pub(crate) DefId);
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct ClosureDef(pub(crate) DefId);
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct AdtDef(pub(crate) DefId);
