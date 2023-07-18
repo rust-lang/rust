@@ -30,7 +30,7 @@ LL | fn function(x: &SomeTrait, y: Box<dyn SomeTrait>) {
    |                                   +++
 
 error: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/dyn-2018-edition-lint.rs:17:14
+  --> $DIR/dyn-2018-edition-lint.rs:9:14
    |
 LL |     let _x: &SomeTrait = todo!();
    |              ^^^^^^^^^
@@ -42,61 +42,5 @@ help: use `dyn`
 LL |     let _x: &dyn SomeTrait = todo!();
    |              +++
 
-error: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/dyn-2018-edition-lint.rs:4:17
-   |
-LL | fn function(x: &SomeTrait, y: Box<SomeTrait>) {
-   |                 ^^^^^^^^^
-   |
-   = warning: this is accepted in the current edition (Rust 2018) but is a hard error in Rust 2021!
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-help: use `dyn`
-   |
-LL | fn function(x: &dyn SomeTrait, y: Box<SomeTrait>) {
-   |                 +++
-
-error: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/dyn-2018-edition-lint.rs:4:17
-   |
-LL | fn function(x: &SomeTrait, y: Box<SomeTrait>) {
-   |                 ^^^^^^^^^
-   |
-   = warning: this is accepted in the current edition (Rust 2018) but is a hard error in Rust 2021!
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-help: use `dyn`
-   |
-LL | fn function(x: &dyn SomeTrait, y: Box<SomeTrait>) {
-   |                 +++
-
-error: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/dyn-2018-edition-lint.rs:4:35
-   |
-LL | fn function(x: &SomeTrait, y: Box<SomeTrait>) {
-   |                                   ^^^^^^^^^
-   |
-   = warning: this is accepted in the current edition (Rust 2018) but is a hard error in Rust 2021!
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-help: use `dyn`
-   |
-LL | fn function(x: &SomeTrait, y: Box<dyn SomeTrait>) {
-   |                                   +++
-
-error: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/dyn-2018-edition-lint.rs:4:35
-   |
-LL | fn function(x: &SomeTrait, y: Box<SomeTrait>) {
-   |                                   ^^^^^^^^^
-   |
-   = warning: this is accepted in the current edition (Rust 2018) but is a hard error in Rust 2021!
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-help: use `dyn`
-   |
-LL | fn function(x: &SomeTrait, y: Box<dyn SomeTrait>) {
-   |                                   +++
-
-error: aborting due to 7 previous errors
+error: aborting due to 3 previous errors
 
