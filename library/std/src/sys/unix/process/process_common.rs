@@ -512,9 +512,16 @@ impl From<File> for Stdio {
 
 impl From<io::Stdout> for Stdio {
     fn from(_: io::Stdout) -> Stdio {
-        // What this ought to be is Stdio::StaticFd(input_argument.as_fd()).
-        // But there is no AsStaticFd trait or anything.
-        // https://github.com/rust-lang/rust/issues/90809
+        // This ought really to be is Stdio::StaticFd(input_argument.as_fd()).
+        // But AsFd::as_fd takes its argument by reference, and yields
+        // a bounded lifetime, so it's no use here. There is no AsStaticFd.
+        //
+        // Additionally AsFd is only implemented for the *locked* versions.
+        // We don't want to lock them here.  (The implications of not locking
+        // are the same as those for process::Stdio::inherit().)
+        //
+        // Arguably the hypothetical AsStaticFd and AsFd<'static>
+        // should be implemented for io::Stdout, not just for StdoutLocked.
         Stdio::StaticFd(unsafe { BorrowedFd::borrow_raw(libc::STDOUT_FILENO) })
     }
 }
