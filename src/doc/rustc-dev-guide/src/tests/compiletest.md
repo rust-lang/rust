@@ -452,7 +452,7 @@ compiler, and `no-prefer-dynamic` is needed to tell compiletest to not use
 `prefer-dynamic` which is not compatible with proc-macros.
 The `#![crate_type]` attribute is needed to specify the correct crate-type.
 
-Then in your test, you can build with with `aux-build`:
+Then in your test, you can build with `aux-build`:
 
 ```rust,ignore
 // aux-build: my-proc-macro.rs
