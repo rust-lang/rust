@@ -888,7 +888,7 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	justify-content: start;
 	flex: 3;
 }
-.search-results .result-name span.alias {
+.search-results .result-name .alias {
 	color: var(--search-results-alias-color);
 }
 .search-results .result-name .grey {
@@ -903,6 +903,9 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	word-break: break-all;
 	max-width: calc(100% - var(--search-typename-width));
 	display: inline-block;
+}
+.search-results .result-name .path > * {
+	display: inline;
 }
 
 .popover {
