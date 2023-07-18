@@ -117,6 +117,7 @@ pub fn feature_err_issue(
 /// Construct a future incompatibility diagnostic for a feature gate.
 ///
 /// This diagnostic is only a warning and *does not cause compilation to fail*.
+#[track_caller]
 pub fn feature_warn(sess: &ParseSess, feature: Symbol, span: Span, explain: &'static str) {
     feature_warn_issue(sess, feature, span, GateIssue::Language, explain);
 }
@@ -129,6 +130,7 @@ pub fn feature_warn(sess: &ParseSess, feature: Symbol, span: Span, explain: &'st
 /// Almost always, you want to use this for a language feature. If so, prefer `feature_warn`.
 #[allow(rustc::diagnostic_outside_of_impl)]
 #[allow(rustc::untranslatable_diagnostic)]
+#[track_caller]
 pub fn feature_warn_issue(
     sess: &ParseSess,
     feature: Symbol,
@@ -351,6 +353,7 @@ impl ParseSess {
         self.create_warning(warning).emit()
     }
 
+    #[track_caller]
     pub fn create_note<'a>(
         &'a self,
         note: impl IntoDiagnostic<'a, Noted>,
@@ -358,10 +361,12 @@ impl ParseSess {
         note.into_diagnostic(&self.span_diagnostic)
     }
 
+    #[track_caller]
     pub fn emit_note<'a>(&'a self, note: impl IntoDiagnostic<'a, Noted>) -> Noted {
         self.create_note(note).emit()
     }
 
+    #[track_caller]
     pub fn create_fatal<'a>(
         &'a self,
         fatal: impl IntoDiagnostic<'a, !>,
@@ -369,6 +374,7 @@ impl ParseSess {
         fatal.into_diagnostic(&self.span_diagnostic)
     }
 
+    #[track_caller]
     pub fn emit_fatal<'a>(&'a self, fatal: impl IntoDiagnostic<'a, !>) -> ! {
         self.create_fatal(fatal).emit()
     }
@@ -383,16 +389,19 @@ impl ParseSess {
     }
 
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn struct_warn(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, ()> {
         self.span_diagnostic.struct_warn(msg)
     }
 
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn struct_fatal(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, !> {
         self.span_diagnostic.struct_fatal(msg)
     }
 
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn struct_diagnostic<G: EmissionGuarantee>(
         &self,
         msg: impl Into<DiagnosticMessage>,
