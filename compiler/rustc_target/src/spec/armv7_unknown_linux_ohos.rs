@@ -17,12 +17,8 @@ pub fn target() -> Target {
             abi: "eabi".into(),
             features: "+v7,+thumb2,+soft-float,-neon".into(),
             max_atomic_width: Some(64),
-            env: "ohos".into(),
-            crt_static_default: false,
             mcount: "\u{1}mcount".into(),
-            force_emulated_tls: true,
-            has_thread_local: false,
-            ..super::linux_musl_base::opts()
+            ..super::linux_ohos_base::opts()
         },
     }
 }

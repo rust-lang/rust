@@ -55,7 +55,7 @@ fn lint_needless(cx: &LateContext<'_>, method_name: &str, expr: &Expr<'_>, self_
         NEEDLESS_SPLITN,
         expr.span,
         &format!("unnecessary use of `{r}splitn`"),
-        "try this",
+        "try",
         format!(
             "{}.{r}split({})",
             snippet_with_context(cx, self_arg.span, expr.span.ctxt(), "..", &mut app).0,
@@ -110,7 +110,7 @@ fn check_manual_split_once(
         IterUsageKind::Nth(_) => return,
     };
 
-    span_lint_and_sugg(cx, MANUAL_SPLIT_ONCE, usage.span, msg, "try this", sugg, app);
+    span_lint_and_sugg(cx, MANUAL_SPLIT_ONCE, usage.span, msg, "try", sugg, app);
 }
 
 /// checks for

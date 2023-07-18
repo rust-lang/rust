@@ -6,6 +6,7 @@ use std::mem;
 use crate::clean::{self, Item, ItemId, ItemIdSet};
 use crate::fold::{strip_item, DocFolder};
 use crate::formats::cache::Cache;
+use crate::visit_ast::inherits_doc_hidden;
 use crate::visit_lib::RustdocEffectiveVisibilities;
 
 pub(crate) struct Stripper<'a, 'tcx> {
@@ -151,6 +152,7 @@ pub(crate) struct ImplStripper<'a, 'tcx> {
     pub(crate) cache: &'a Cache,
     pub(crate) is_json_output: bool,
     pub(crate) document_private: bool,
+    pub(crate) document_hidden: bool,
 }
 
 impl<'a> ImplStripper<'a, '_> {
@@ -162,7 +164,13 @@ impl<'a> ImplStripper<'a, '_> {
             // If the "for" item is exported and the impl block isn't `#[doc(hidden)]`, then we
             // need to keep it.
             self.cache.effective_visibilities.is_exported(self.tcx, for_def_id)
-                && !item.is_doc_hidden()
+                && (self.document_hidden
+                    || ((!item.is_doc_hidden()
+                        && for_def_id
+                            .as_local()
+                            .map(|def_id| !inherits_doc_hidden(self.tcx, def_id, None))
+                            .unwrap_or(true))
+                        || self.cache.inlined_items.contains(&for_def_id)))
         } else {
             false
         }
@@ -231,6 +239,7 @@ impl<'a> DocFolder for ImplStripper<'a, '_> {
 pub(crate) struct ImportStripper<'tcx> {
     pub(crate) tcx: TyCtxt<'tcx>,
     pub(crate) is_json_output: bool,
+    pub(crate) document_hidden: bool,
 }
 
 impl<'tcx> ImportStripper<'tcx> {
@@ -247,8 +256,12 @@ impl<'tcx> ImportStripper<'tcx> {
 impl<'tcx> DocFolder for ImportStripper<'tcx> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         match *i.kind {
-            clean::ImportItem(imp) if self.import_should_be_hidden(&i, &imp) => None,
-            clean::ImportItem(_) if i.is_doc_hidden() => None,
+            clean::ImportItem(imp)
+                if !self.document_hidden && self.import_should_be_hidden(&i, &imp) =>
+            {
+                None
+            }
+            // clean::ImportItem(_) if !self.document_hidden && i.is_doc_hidden() => None,
             clean::ExternCrateItem { .. } | clean::ImportItem(..)
                 if i.visibility(self.tcx) != Some(Visibility::Public) =>
             {

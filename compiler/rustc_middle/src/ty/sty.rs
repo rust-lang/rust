@@ -1313,7 +1313,7 @@ impl<'tcx> AliasTy<'tcx> {
     ///     I_i impl subst
     ///     P_j GAT subst
     /// ```
-    pub fn rebase_args_onto_impl(
+    pub fn rebase_inherent_args_onto_impl(
         self,
         impl_args: ty::GenericArgsRef<'tcx>,
         tcx: TyCtxt<'tcx>,

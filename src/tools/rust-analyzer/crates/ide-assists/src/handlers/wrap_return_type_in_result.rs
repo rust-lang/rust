@@ -6,7 +6,7 @@ use ide_db::{
 };
 use syntax::{
     ast::{self, make, Expr},
-    match_ast, AstNode,
+    match_ast, ted, AstNode,
 };
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
@@ -52,8 +52,8 @@ pub(crate) fn wrap_return_type_in_result(acc: &mut Assists, ctx: &AssistContext<
         AssistId("wrap_return_type_in_result", AssistKind::RefactorRewrite),
         "Wrap return type in Result",
         type_ref.syntax().text_range(),
-        |builder| {
-            let body = ast::Expr::BlockExpr(body);
+        |edit| {
+            let body = edit.make_mut(ast::Expr::BlockExpr(body));
 
             let mut exprs_to_wrap = Vec::new();
             let tail_cb = &mut |e: &_| tail_cb_impl(&mut exprs_to_wrap, e);
@@ -70,17 +70,24 @@ pub(crate) fn wrap_return_type_in_result(acc: &mut Assists, ctx: &AssistContext<
                 let ok_wrapped = make::expr_call(
                     make::expr_path(make::ext::ident_path("Ok")),
                     make::arg_list(iter::once(ret_expr_arg.clone())),
-                );
-                builder.replace_ast(ret_expr_arg, ok_wrapped);
+                )
+                .clone_for_update();
+                ted::replace(ret_expr_arg.syntax(), ok_wrapped.syntax());
             }
 
-            match ctx.config.snippet_cap {
-                Some(cap) => {
-                    let snippet = format!("Result<{type_ref}, ${{0:_}}>");
-                    builder.replace_snippet(cap, type_ref.syntax().text_range(), snippet)
-                }
-                None => builder
-                    .replace(type_ref.syntax().text_range(), format!("Result<{type_ref}, _>")),
+            let new_result_ty =
+                make::ext::ty_result(type_ref.clone(), make::ty_placeholder()).clone_for_update();
+            let old_result_ty = edit.make_mut(type_ref.clone());
+
+            ted::replace(old_result_ty.syntax(), new_result_ty.syntax());
+
+            if let Some(cap) = ctx.config.snippet_cap {
+                let generic_args = new_result_ty
+                    .syntax()
+                    .descendants()
+                    .find_map(ast::GenericArgList::cast)
+                    .unwrap();
+                edit.add_placeholder_snippet(cap, generic_args.generic_args().last().unwrap());
             }
         },
     )

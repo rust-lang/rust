@@ -137,13 +137,16 @@ impl Attrs {
 
                 let cfg_options = &crate_graph[krate].cfg_options;
 
-                let Some(variant) = enum_.variants.clone().filter(|variant| {
-                    let attrs = item_tree.attrs(db, krate, (*variant).into());
-                    attrs.is_cfg_enabled(cfg_options)
-                })
-                .zip(0u32..)
-                .find(|(_variant, idx)| it.local_id == Idx::from_raw(RawIdx::from(*idx)))
-                .map(|(variant, _idx)| variant)
+                let Some(variant) = enum_
+                    .variants
+                    .clone()
+                    .filter(|variant| {
+                        let attrs = item_tree.attrs(db, krate, (*variant).into());
+                        attrs.is_cfg_enabled(cfg_options)
+                    })
+                    .zip(0u32..)
+                    .find(|(_variant, idx)| it.local_id == Idx::from_raw(RawIdx::from(*idx)))
+                    .map(|(variant, _idx)| variant)
                 else {
                     return Arc::new(res);
                 };
@@ -272,6 +275,25 @@ impl Attrs {
         self.by_key("proc_macro_derive").exists()
     }
 
+    pub fn is_test(&self) -> bool {
+        self.iter().any(|it| {
+            it.path()
+                .segments()
+                .iter()
+                .rev()
+                .zip(["core", "prelude", "v1", "test"].iter().rev())
+                .all(|it| it.0.as_str() == Some(it.1))
+        })
+    }
+
+    pub fn is_ignore(&self) -> bool {
+        self.by_key("ignore").exists()
+    }
+
+    pub fn is_bench(&self) -> bool {
+        self.by_key("bench").exists()
+    }
+
     pub fn is_unstable(&self) -> bool {
         self.by_key("unstable").exists()
     }
@@ -282,7 +304,7 @@ use std::slice::Iter as SliceIter;
 pub enum DocAtom {
     /// eg. `#[doc(hidden)]`
     Flag(SmolStr),
-    /// eg. `#[doc(alias = "x")]`
+    /// eg. `#[doc(alias = "it")]`
     ///
     /// Note that a key can have multiple values that are all considered "active" at the same time.
     /// For example, `#[doc(alias = "x")]` and `#[doc(alias = "y")]`.
@@ -462,6 +484,7 @@ impl AttrsWithOwner {
                 }
             },
             AttrDefId::ExternBlockId(it) => attrs_from_item_tree_loc(db, it),
+            AttrDefId::ExternCrateId(it) => attrs_from_item_tree_loc(db, it),
         };
 
         let attrs = raw_attrs.filter(db.upcast(), def.krate(db));
@@ -546,6 +569,7 @@ impl AttrsWithOwner {
                     .map(|source| ast::AnyHasAttrs::new(source[id.local_id].clone())),
             },
             AttrDefId::ExternBlockId(id) => any_has_attrs(db, id),
+            AttrDefId::ExternCrateId(id) => any_has_attrs(db, id),
         };
 
         AttrSourceMap::new(owner.as_ref().map(|node| node as &dyn HasAttrs))

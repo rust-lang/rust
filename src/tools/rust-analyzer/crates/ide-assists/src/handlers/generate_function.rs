@@ -623,7 +623,9 @@ fn fn_generic_params(
 fn params_and_where_preds_in_scope(
     ctx: &AssistContext<'_>,
 ) -> (Vec<ast::GenericParam>, Vec<ast::WherePred>) {
-    let Some(body) = containing_body(ctx) else { return Default::default(); };
+    let Some(body) = containing_body(ctx) else {
+        return Default::default();
+    };
 
     let mut generic_params = Vec::new();
     let mut where_clauses = Vec::new();

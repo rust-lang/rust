@@ -7,7 +7,7 @@ use ide_db::{
 use syntax::AstNode;
 use text_edit::TextEdit;
 
-use crate::{Diagnostic, DiagnosticsContext};
+use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext};
 
 // Diagnostic: typed-hole
 //
@@ -26,7 +26,8 @@ pub(crate) fn typed_hole(ctx: &DiagnosticsContext<'_>, d: &hir::TypedHole) -> Di
         )
     };
 
-    Diagnostic::new("typed-hole", message, display_range.range).with_fixes(fixes)
+    Diagnostic::new(DiagnosticCode::RustcHardError("typed-hole"), message, display_range.range)
+        .with_fixes(fixes)
 }
 
 fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::TypedHole) -> Option<Vec<Assist>> {

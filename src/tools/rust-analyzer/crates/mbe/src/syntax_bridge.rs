@@ -53,6 +53,37 @@ pub fn syntax_node_to_token_tree_with_modifications(
     (subtree, c.id_alloc.map, c.id_alloc.next_id)
 }
 
+/// Convert the syntax node to a `TokenTree` (what macro
+/// will consume).
+pub fn syntax_node_to_token_map(node: &SyntaxNode) -> TokenMap {
+    syntax_node_to_token_map_with_modifications(
+        node,
+        Default::default(),
+        0,
+        Default::default(),
+        Default::default(),
+    )
+    .0
+}
+
+/// Convert the syntax node to a `TokenTree` (what macro will consume)
+/// with the censored range excluded.
+pub fn syntax_node_to_token_map_with_modifications(
+    node: &SyntaxNode,
+    existing_token_map: TokenMap,
+    next_id: u32,
+    replace: FxHashMap<SyntaxElement, Vec<SyntheticToken>>,
+    append: FxHashMap<SyntaxElement, Vec<SyntheticToken>>,
+) -> (TokenMap, u32) {
+    let global_offset = node.text_range().start();
+    let mut c = Converter::new(node, global_offset, existing_token_map, next_id, replace, append);
+    collect_tokens(&mut c);
+    c.id_alloc.map.shrink_to_fit();
+    always!(c.replace.is_empty(), "replace: {:?}", c.replace);
+    always!(c.append.is_empty(), "append: {:?}", c.append);
+    (c.id_alloc.map, c.id_alloc.next_id)
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct SyntheticTokenId(pub u32);
 
@@ -327,6 +358,111 @@ fn convert_tokens<C: TokenConverter>(conv: &mut C) -> tt::Subtree {
     }
 }
 
+fn collect_tokens<C: TokenConverter>(conv: &mut C) {
+    struct StackEntry {
+        idx: usize,
+        open_range: TextRange,
+        delimiter: tt::DelimiterKind,
+    }
+
+    let entry = StackEntry {
+        delimiter: tt::DelimiterKind::Invisible,
+        // never used (delimiter is `None`)
+        idx: !0,
+        open_range: TextRange::empty(TextSize::of('.')),
+    };
+    let mut stack = NonEmptyVec::new(entry);
+
+    loop {
+        let StackEntry { delimiter, .. } = stack.last_mut();
+        let (token, range) = match conv.bump() {
+            Some(it) => it,
+            None => break,
+        };
+        let synth_id = token.synthetic_id(conv);
+
+        let kind = token.kind(conv);
+        if kind == COMMENT {
+            // Since `convert_doc_comment` can fail, we need to peek the next id, so that we can
+            // figure out which token id to use for the doc comment, if it is converted successfully.
+            let next_id = conv.id_alloc().peek_next_id();
+            if let Some(_tokens) = conv.convert_doc_comment(&token, next_id) {
+                let id = conv.id_alloc().alloc(range, synth_id);
+                debug_assert_eq!(id, next_id);
+            }
+            continue;
+        }
+        if kind.is_punct() && kind != UNDERSCORE {
+            if synth_id.is_none() {
+                assert_eq!(range.len(), TextSize::of('.'));
+            }
+
+            let expected = match delimiter {
+                tt::DelimiterKind::Parenthesis => Some(T![')']),
+                tt::DelimiterKind::Brace => Some(T!['}']),
+                tt::DelimiterKind::Bracket => Some(T![']']),
+                tt::DelimiterKind::Invisible => None,
+            };
+
+            if let Some(expected) = expected {
+                if kind == expected {
+                    if let Some(entry) = stack.pop() {
+                        conv.id_alloc().close_delim(entry.idx, Some(range));
+                    }
+                    continue;
+                }
+            }
+
+            let delim = match kind {
+                T!['('] => Some(tt::DelimiterKind::Parenthesis),
+                T!['{'] => Some(tt::DelimiterKind::Brace),
+                T!['['] => Some(tt::DelimiterKind::Bracket),
+                _ => None,
+            };
+
+            if let Some(kind) = delim {
+                let (_id, idx) = conv.id_alloc().open_delim(range, synth_id);
+
+                stack.push(StackEntry { idx, open_range: range, delimiter: kind });
+                continue;
+            }
+
+            conv.id_alloc().alloc(range, synth_id);
+        } else {
+            macro_rules! make_leaf {
+                ($i:ident) => {{
+                    conv.id_alloc().alloc(range, synth_id);
+                }};
+            }
+            match kind {
+                T![true] | T![false] => make_leaf!(Ident),
+                IDENT => make_leaf!(Ident),
+                UNDERSCORE => make_leaf!(Ident),
+                k if k.is_keyword() => make_leaf!(Ident),
+                k if k.is_literal() => make_leaf!(Literal),
+                LIFETIME_IDENT => {
+                    let char_unit = TextSize::of('\'');
+                    let r = TextRange::at(range.start(), char_unit);
+                    conv.id_alloc().alloc(r, synth_id);
+
+                    let r = TextRange::at(range.start() + char_unit, range.len() - char_unit);
+                    conv.id_alloc().alloc(r, synth_id);
+                    continue;
+                }
+                _ => continue,
+            };
+        };
+
+        // If we get here, we've consumed all input tokens.
+        // We might have more than one subtree in the stack, if the delimiters are improperly balanced.
+        // Merge them so we're left with one.
+        while let Some(entry) = stack.pop() {
+            conv.id_alloc().close_delim(entry.idx, None);
+            conv.id_alloc().alloc(entry.open_range, None);
+        }
+    }
+}
+
 fn is_single_token_op(kind: SyntaxKind) -> bool {
     matches!(
         kind,
@@ -509,12 +645,12 @@ trait TokenConverter: Sized {
     fn id_alloc(&mut self) -> &mut TokenIdAlloc;
 }
 
-impl<'a> SrcToken<RawConverter<'a>> for usize {
-    fn kind(&self, ctx: &RawConverter<'a>) -> SyntaxKind {
+impl SrcToken<RawConverter<'_>> for usize {
+    fn kind(&self, ctx: &RawConverter<'_>) -> SyntaxKind {
         ctx.lexed.kind(*self)
     }
 
-    fn to_char(&self, ctx: &RawConverter<'a>) -> Option<char> {
+    fn to_char(&self, ctx: &RawConverter<'_>) -> Option<char> {
         ctx.lexed.text(*self).chars().next()
     }
 
@@ -522,12 +658,12 @@ impl<'a> SrcToken<RawConverter<'a>> for usize {
         ctx.lexed.text(*self).into()
     }
 
-    fn synthetic_id(&self, _ctx: &RawConverter<'a>) -> Option<SyntheticTokenId> {
+    fn synthetic_id(&self, _ctx: &RawConverter<'_>) -> Option<SyntheticTokenId> {
         None
     }
 }
 
-impl<'a> TokenConverter for RawConverter<'a> {
+impl TokenConverter for RawConverter<'_> {
     type Token = usize;
 
     fn convert_doc_comment(&self, &token: &usize, span: tt::TokenId) -> Option<Vec<tt::TokenTree>> {
@@ -800,7 +936,7 @@ fn delim_to_str(d: tt::DelimiterKind, closing: bool) -> Option<&'static str> {
     Some(&texts[idx..texts.len() - (1 - idx)])
 }
 
-impl<'a> TtTreeSink<'a> {
+impl TtTreeSink<'_> {
     /// Parses a float literal as if it was a one to two name ref nodes with a dot inbetween.
     /// This occurs when a float literal is used as a field access.
     fn float_split(&mut self, has_pseudo_dot: bool) {

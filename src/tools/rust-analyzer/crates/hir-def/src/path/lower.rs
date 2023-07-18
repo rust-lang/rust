@@ -74,8 +74,8 @@ pub(super) fn lower_path(mut path: ast::Path, ctx: &LowerCtx<'_>) -> Option<Path
                     // <T as Trait<A>>::Foo desugars to Trait<Self=T, A>::Foo
                     Some(trait_ref) => {
                         let Path::Normal { mod_path, generic_args: path_generic_args, .. } =
-                            Path::from_src(trait_ref.path()?, ctx)? else
-                        {
+                            Path::from_src(trait_ref.path()?, ctx)?
+                        else {
                             return None;
                         };
                         let num_segments = mod_path.segments().len();

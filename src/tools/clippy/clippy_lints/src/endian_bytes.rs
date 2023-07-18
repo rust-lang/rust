@@ -1,8 +1,10 @@
 use crate::Lint;
-use clippy_utils::{diagnostics::span_lint_and_then, is_lint_allowed};
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::is_lint_allowed;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::{lint::in_external_macro, ty::Ty};
+use rustc_middle::lint::in_external_macro;
+use rustc_middle::ty::Ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::Symbol;
 use std::borrow::Cow;

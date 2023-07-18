@@ -264,7 +264,7 @@ pub(crate) struct CrateRoot {
     traits: LazyArray<DefIndex>,
     impls: LazyArray<TraitImpls>,
     incoherent_impls: LazyArray<IncoherentImpls>,
-    interpret_alloc_index: LazyArray<u32>,
+    interpret_alloc_index: LazyArray<u64>,
     proc_macro_data: Option<ProcMacroData>,
 
     tables: LazyTables,

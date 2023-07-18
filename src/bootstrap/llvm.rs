@@ -1056,6 +1056,9 @@ fn supported_sanitizers(
         "s390x-unknown-linux-musl" => {
             common_libs("linux", "s390x", &["asan", "lsan", "msan", "tsan"])
         }
+        "x86_64-unknown-linux-ohos" => {
+            common_libs("linux", "x86_64", &["asan", "lsan", "msan", "tsan"])
+        }
         _ => Vec::new(),
     }
 }

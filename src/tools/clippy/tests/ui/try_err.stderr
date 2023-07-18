@@ -2,7 +2,7 @@ error: returning an `Err(_)` with the `?` operator
   --> $DIR/try_err.rs:19:9
    |
 LL |         Err(err)?;
-   |         ^^^^^^^^^ help: try this: `return Err(err)`
+   |         ^^^^^^^^^ help: try: `return Err(err)`
    |
 note: the lint level is defined here
   --> $DIR/try_err.rs:4:9
@@ -14,25 +14,25 @@ error: returning an `Err(_)` with the `?` operator
   --> $DIR/try_err.rs:29:9
    |
 LL |         Err(err)?;
-   |         ^^^^^^^^^ help: try this: `return Err(err.into())`
+   |         ^^^^^^^^^ help: try: `return Err(err.into())`
 
 error: returning an `Err(_)` with the `?` operator
   --> $DIR/try_err.rs:49:17
    |
 LL |                 Err(err)?;
-   |                 ^^^^^^^^^ help: try this: `return Err(err)`
+   |                 ^^^^^^^^^ help: try: `return Err(err)`
 
 error: returning an `Err(_)` with the `?` operator
   --> $DIR/try_err.rs:68:17
    |
 LL |                 Err(err)?;
-   |                 ^^^^^^^^^ help: try this: `return Err(err.into())`
+   |                 ^^^^^^^^^ help: try: `return Err(err.into())`
 
 error: returning an `Err(_)` with the `?` operator
   --> $DIR/try_err.rs:88:23
    |
 LL |             Err(_) => Err(1)?,
-   |                       ^^^^^^^ help: try this: `return Err(1)`
+   |                       ^^^^^^^ help: try: `return Err(1)`
    |
    = note: this error originates in the macro `__inline_mac_fn_calling_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -40,7 +40,7 @@ error: returning an `Err(_)` with the `?` operator
   --> $DIR/try_err.rs:95:23
    |
 LL |             Err(_) => Err(inline!(1))?,
-   |                       ^^^^^^^^^^^^^^^^ help: try this: `return Err(inline!(1))`
+   |                       ^^^^^^^^^^^^^^^^ help: try: `return Err(inline!(1))`
    |
    = note: this error originates in the macro `__inline_mac_fn_calling_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -48,31 +48,31 @@ error: returning an `Err(_)` with the `?` operator
   --> $DIR/try_err.rs:122:9
    |
 LL |         Err(inline!(inline!(String::from("aasdfasdfasdfa"))))?;
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `return Err(inline!(inline!(String::from("aasdfasdfasdfa"))))`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `return Err(inline!(inline!(String::from("aasdfasdfasdfa"))))`
 
 error: returning an `Err(_)` with the `?` operator
   --> $DIR/try_err.rs:129:9
    |
 LL |         Err(io::ErrorKind::WriteZero)?
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `return Poll::Ready(Err(io::ErrorKind::WriteZero.into()))`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `return Poll::Ready(Err(io::ErrorKind::WriteZero.into()))`
 
 error: returning an `Err(_)` with the `?` operator
   --> $DIR/try_err.rs:131:9
    |
 LL |         Err(io::Error::new(io::ErrorKind::InvalidInput, "error"))?
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `return Poll::Ready(Err(io::Error::new(io::ErrorKind::InvalidInput, "error")))`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `return Poll::Ready(Err(io::Error::new(io::ErrorKind::InvalidInput, "error")))`
 
 error: returning an `Err(_)` with the `?` operator
   --> $DIR/try_err.rs:139:9
    |
 LL |         Err(io::ErrorKind::NotFound)?
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `return Poll::Ready(Some(Err(io::ErrorKind::NotFound.into())))`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `return Poll::Ready(Some(Err(io::ErrorKind::NotFound.into())))`
 
 error: returning an `Err(_)` with the `?` operator
   --> $DIR/try_err.rs:148:16
    |
 LL |         return Err(42)?;
-   |                ^^^^^^^^ help: try this: `Err(42)`
+   |                ^^^^^^^^ help: try: `Err(42)`
 
 error: aborting due to 11 previous errors
 

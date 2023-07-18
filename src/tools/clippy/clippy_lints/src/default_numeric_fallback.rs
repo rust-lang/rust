@@ -4,15 +4,11 @@ use clippy_utils::{get_parent_node, numeric_literal};
 use if_chain::if_chain;
 use rustc_ast::ast::{LitFloatType, LitIntType, LitKind};
 use rustc_errors::Applicability;
-use rustc_hir::{
-    intravisit::{walk_expr, walk_stmt, Visitor},
-    Body, Expr, ExprKind, HirId, ItemKind, Lit, Node, Stmt, StmtKind,
-};
+use rustc_hir::intravisit::{walk_expr, walk_stmt, Visitor};
+use rustc_hir::{Body, Expr, ExprKind, HirId, ItemKind, Lit, Node, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::{
-    lint::in_external_macro,
-    ty::{self, FloatTy, IntTy, PolyFnSig, Ty},
-};
+use rustc_middle::lint::in_external_macro;
+use rustc_middle::ty::{self, FloatTy, IntTy, PolyFnSig, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use std::iter;
 

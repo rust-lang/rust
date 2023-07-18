@@ -26,7 +26,7 @@ pub trait WithFixture: Default + SourceDatabaseExt + 'static {
         let fixture = ChangeFixture::parse(ra_fixture);
         let mut db = Self::default();
         fixture.change.apply(&mut db);
-        assert_eq!(fixture.files.len(), 1);
+        assert_eq!(fixture.files.len(), 1, "Multiple file found in the fixture");
         (db, fixture.files[0])
     }
 
@@ -102,6 +102,8 @@ pub struct ChangeFixture {
     pub change: Change,
 }
 
+const SOURCE_ROOT_PREFIX: &str = "/";
+
 impl ChangeFixture {
     pub fn parse(ra_fixture: &str) -> ChangeFixture {
         Self::parse_with_proc_macros(ra_fixture, Vec::new())
@@ -131,7 +133,6 @@ impl ChangeFixture {
 
         let mut file_set = FileSet::default();
         let mut current_source_root_kind = SourceRootKind::Local;
-        let source_root_prefix = "/".to_string();
         let mut file_id = FileId(0);
         let mut roots = Vec::new();
 
@@ -151,19 +152,23 @@ impl ChangeFixture {
                 entry.text.clone()
             };
 
-            let meta = FileMeta::from(entry);
-            assert!(meta.path.starts_with(&source_root_prefix));
+            let meta = FileMeta::from_fixture(entry, current_source_root_kind);
+            assert!(meta.path.starts_with(SOURCE_ROOT_PREFIX));
             if !meta.deps.is_empty() {
                 assert!(meta.krate.is_some(), "can't specify deps without naming the crate")
             }
 
-            if let Some(kind) = &meta.introduce_new_source_root {
-                let root = match current_source_root_kind {
+            if let Some(kind) = meta.introduce_new_source_root {
+                assert!(
+                    meta.krate.is_some(),
+                    "new_source_root meta doesn't make sense without crate meta"
+                );
+                let prev_kind = mem::replace(&mut current_source_root_kind, kind);
+                let prev_root = match prev_kind {
                     SourceRootKind::Local => SourceRoot::new_local(mem::take(&mut file_set)),
                     SourceRootKind::Library => SourceRoot::new_library(mem::take(&mut file_set)),
                 };
-                roots.push(root);
-                current_source_root_kind = *kind;
+                roots.push(prev_root);
             }
 
             if let Some((krate, origin, version)) = meta.krate {
@@ -185,7 +190,7 @@ impl ChangeFixture {
                     Some(toolchain),
                 );
                 let prev = crates.insert(crate_name.clone(), crate_id);
-                assert!(prev.is_none());
+                assert!(prev.is_none(), "multiple crates with same name: {}", crate_name);
                 for dep in meta.deps {
                     let prelude = meta.extern_prelude.contains(&dep);
                     let dep = CrateName::normalize_dashes(&dep);
@@ -219,7 +224,7 @@ impl ChangeFixture {
                 false,
                 CrateOrigin::Local { repo: None, name: None },
                 default_target_data_layout
-                    .map(|x| x.into())
+                    .map(|it| it.into())
                     .ok_or_else(|| "target_data_layout unset".into()),
                 Some(toolchain),
             );
@@ -442,49 +447,72 @@ struct FileMeta {
     target_data_layout: Option<String>,
 }
 
-fn parse_crate(crate_str: String) -> (String, CrateOrigin, Option<String>) {
-    if let Some((a, b)) = crate_str.split_once('@') {
-        let (version, origin) = match b.split_once(':') {
-            Some(("CratesIo", data)) => match data.split_once(',') {
-                Some((version, url)) => {
-                    (version, CrateOrigin::Local { repo: Some(url.to_owned()), name: None })
-                }
-                _ => panic!("Bad crates.io parameter: {data}"),
-            },
-            _ => panic!("Bad string for crate origin: {b}"),
-        };
-        (a.to_owned(), origin, Some(version.to_string()))
-    } else {
-        let crate_origin = match LangCrateOrigin::from(&*crate_str) {
-            LangCrateOrigin::Other => CrateOrigin::Local { repo: None, name: None },
-            origin => CrateOrigin::Lang(origin),
-        };
-        (crate_str, crate_origin, None)
-    }
-}
-
-impl From<Fixture> for FileMeta {
-    fn from(f: Fixture) -> FileMeta {
+impl FileMeta {
+    fn from_fixture(f: Fixture, current_source_root_kind: SourceRootKind) -> Self {
         let mut cfg = CfgOptions::default();
-        f.cfg_atoms.iter().for_each(|it| cfg.insert_atom(it.into()));
-        f.cfg_key_values.iter().for_each(|(k, v)| cfg.insert_key_value(k.into(), v.into()));
+        for (k, v) in f.cfgs {
+            if let Some(v) = v {
+                cfg.insert_key_value(k.into(), v.into());
+            } else {
+                cfg.insert_atom(k.into());
+            }
+        }
+
+        let introduce_new_source_root = f.introduce_new_source_root.map(|kind| match &*kind {
+            "local" => SourceRootKind::Local,
+            "library" => SourceRootKind::Library,
+            invalid => panic!("invalid source root kind '{invalid}'"),
+        });
+        let current_source_root_kind =
+            introduce_new_source_root.unwrap_or(current_source_root_kind);
+
         let deps = f.deps;
-        FileMeta {
+        Self {
             path: f.path,
-            krate: f.krate.map(parse_crate),
+            krate: f.krate.map(|it| parse_crate(it, current_source_root_kind, f.library)),
             extern_prelude: f.extern_prelude.unwrap_or_else(|| deps.clone()),
             deps,
             cfg,
-            edition: f.edition.as_ref().map_or(Edition::CURRENT, |v| Edition::from_str(v).unwrap()),
+            edition: f.edition.map_or(Edition::CURRENT, |v| Edition::from_str(&v).unwrap()),
             env: f.env.into_iter().collect(),
-            introduce_new_source_root: f.introduce_new_source_root.map(|kind| match &*kind {
-                "local" => SourceRootKind::Local,
-                "library" => SourceRootKind::Library,
-                invalid => panic!("invalid source root kind '{invalid}'"),
-            }),
+            introduce_new_source_root,
             target_data_layout: f.target_data_layout,
         }
     }
+}
+
+fn parse_crate(
+    crate_str: String,
+    current_source_root_kind: SourceRootKind,
+    explicit_non_workspace_member: bool,
+) -> (String, CrateOrigin, Option<String>) {
+    // syntax:
+    //   "my_awesome_crate"
+    //   "my_awesome_crate@0.0.1,http://example.com"
+    let (name, repo, version) = if let Some((name, remain)) = crate_str.split_once('@') {
+        let (version, repo) =
+            remain.split_once(',').expect("crate meta: found '@' without version and url");
+        (name.to_owned(), Some(repo.to_owned()), Some(version.to_owned()))
+    } else {
+        (crate_str, None, None)
+    };
+
+    let non_workspace_member = explicit_non_workspace_member
+        || matches!(current_source_root_kind, SourceRootKind::Library);
+
+    let origin = match LangCrateOrigin::from(&*name) {
+        LangCrateOrigin::Other => {
+            let name = name.clone();
+            if non_workspace_member {
+                CrateOrigin::Library { repo, name }
+            } else {
+                CrateOrigin::Local { repo, name: Some(name) }
+            }
+        }
+        origin => CrateOrigin::Lang(origin),
+    };
+
+    (name, origin, version)
 }
 
 // Identity mapping

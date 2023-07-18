@@ -88,7 +88,7 @@ pub(crate) fn path_to_const(
                     ConstValue::Placeholder(to_placeholder_idx(db, p.into()))
                 }
                 ParamLoweringMode::Variable => match args.param_idx(p.into()) {
-                    Some(x) => ConstValue::BoundVar(BoundVar::new(debruijn, x)),
+                    Some(it) => ConstValue::BoundVar(BoundVar::new(debruijn, it)),
                     None => {
                         never!(
                             "Generic list doesn't contain this param: {:?}, {:?}, {:?}",
@@ -139,11 +139,11 @@ pub fn intern_const_ref(
     let bytes = match value {
         LiteralConstRef::Int(i) => {
             // FIXME: We should handle failure of layout better.
-            let size = layout.map(|x| x.size.bytes_usize()).unwrap_or(16);
+            let size = layout.map(|it| it.size.bytes_usize()).unwrap_or(16);
             ConstScalar::Bytes(i.to_le_bytes()[0..size].to_vec(), MemoryMap::default())
         }
         LiteralConstRef::UInt(i) => {
-            let size = layout.map(|x| x.size.bytes_usize()).unwrap_or(16);
+            let size = layout.map(|it| it.size.bytes_usize()).unwrap_or(16);
             ConstScalar::Bytes(i.to_le_bytes()[0..size].to_vec(), MemoryMap::default())
         }
         LiteralConstRef::Bool(b) => ConstScalar::Bytes(vec![*b as u8], MemoryMap::default()),
@@ -171,7 +171,7 @@ pub fn try_const_usize(db: &dyn HirDatabase, c: &Const) -> Option<u128> {
         chalk_ir::ConstValue::InferenceVar(_) => None,
         chalk_ir::ConstValue::Placeholder(_) => None,
         chalk_ir::ConstValue::Concrete(c) => match &c.interned {
-            ConstScalar::Bytes(x, _) => Some(u128::from_le_bytes(pad16(&x, false))),
+            ConstScalar::Bytes(it, _) => Some(u128::from_le_bytes(pad16(&it, false))),
             ConstScalar::UnevaluatedConst(c, subst) => {
                 let ec = db.const_eval(*c, subst.clone()).ok()?;
                 try_const_usize(db, &ec)
@@ -228,7 +228,7 @@ pub(crate) fn const_eval_query(
         }
         GeneralConstId::InTypeConstId(c) => db.mir_body(c.into())?,
     };
-    let c = interpret_mir(db, &body, false).0?;
+    let c = interpret_mir(db, body, false).0?;
     Ok(c)
 }
 
@@ -241,7 +241,7 @@ pub(crate) fn const_eval_static_query(
         Substitution::empty(Interner),
         db.trait_environment_for_body(def.into()),
     )?;
-    let c = interpret_mir(db, &body, false).0?;
+    let c = interpret_mir(db, body, false).0?;
     Ok(c)
 }
 
@@ -268,7 +268,7 @@ pub(crate) fn const_eval_discriminant_variant(
         Substitution::empty(Interner),
         db.trait_environment_for_body(def),
     )?;
-    let c = interpret_mir(db, &mir_body, false).0?;
+    let c = interpret_mir(db, mir_body, false).0?;
     let c = try_const_usize(db, &c).unwrap() as i128;
     Ok(c)
 }
@@ -293,7 +293,7 @@ pub(crate) fn eval_to_const(
     }
     let infer = ctx.clone().resolve_all();
     if let Ok(mir_body) = lower_to_mir(ctx.db, ctx.owner, &ctx.body, &infer, expr) {
-        if let Ok(result) = interpret_mir(db, &mir_body, true).0 {
+        if let Ok(result) = interpret_mir(db, Arc::new(mir_body), true).0 {
             return result;
         }
     }

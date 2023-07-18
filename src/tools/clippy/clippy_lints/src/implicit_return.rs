@@ -1,9 +1,7 @@
-use clippy_utils::{
-    diagnostics::span_lint_hir_and_then,
-    get_async_fn_body, is_async_fn,
-    source::{snippet_with_applicability, snippet_with_context, walk_span_to_context},
-    visitors::for_each_expr,
-};
+use clippy_utils::diagnostics::span_lint_hir_and_then;
+use clippy_utils::source::{snippet_with_applicability, snippet_with_context, walk_span_to_context};
+use clippy_utils::visitors::for_each_expr;
+use clippy_utils::{get_async_fn_body, is_async_fn};
 use core::ops::ControlFlow;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;

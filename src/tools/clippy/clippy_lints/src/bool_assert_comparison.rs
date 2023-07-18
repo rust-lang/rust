@@ -61,7 +61,7 @@ fn is_impl_not_trait_with_bool_out<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -
             )
         })
         .map_or(false, |assoc_item| {
-            let proj = Ty::new_projection(cx.tcx,assoc_item.def_id, cx.tcx.mk_args_trait(ty, []));
+            let proj = Ty::new_projection(cx.tcx, assoc_item.def_id, cx.tcx.mk_args_trait(ty, []));
             let nty = cx.tcx.normalize_erasing_regions(cx.param_env, proj);
 
             nty.is_bool()
@@ -70,14 +70,18 @@ fn is_impl_not_trait_with_bool_out<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -
 
 impl<'tcx> LateLintPass<'tcx> for BoolAssertComparison {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        let Some(macro_call) = root_macro_call_first_node(cx, expr) else { return };
+        let Some(macro_call) = root_macro_call_first_node(cx, expr) else {
+            return;
+        };
         let macro_name = cx.tcx.item_name(macro_call.def_id);
         let eq_macro = match macro_name.as_str() {
             "assert_eq" | "debug_assert_eq" => true,
             "assert_ne" | "debug_assert_ne" => false,
             _ => return,
         };
-        let Some ((a, b, _)) = find_assert_eq_args(cx, expr, macro_call.expn) else { return };
+        let Some((a, b, _)) = find_assert_eq_args(cx, expr, macro_call.expn) else {
+            return;
+        };
 
         let a_span = a.span.source_callsite();
         let b_span = b.span.source_callsite();
@@ -126,7 +130,9 @@ impl<'tcx> LateLintPass<'tcx> for BoolAssertComparison {
                 let mut suggestions = vec![(name_span, non_eq_mac.to_string()), (lit_span, String::new())];
 
                 if bool_value ^ eq_macro {
-                    let Some(sugg) = Sugg::hir_opt(cx, non_lit_expr) else { return };
+                    let Some(sugg) = Sugg::hir_opt(cx, non_lit_expr) else {
+                        return;
+                    };
                     suggestions.push((non_lit_expr.span, (!sugg).to_string()));
                 }
 

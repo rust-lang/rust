@@ -96,6 +96,9 @@ RUN /tmp/build-wasi-toolchain.sh
 COPY scripts/freebsd-toolchain.sh /tmp/
 RUN /tmp/freebsd-toolchain.sh i686
 
+COPY scripts/cmake.sh /scripts/
+RUN /scripts/cmake.sh
+
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 

@@ -37,7 +37,7 @@ top, with no contents.
 ## Configuring rustdoc
 
 There are two problems with this: first, why does it
-think that our package is named "lib"? Second, why does it not have any
+think that our crate is named "lib"? Second, why does it not have any
 contents?
 
 The first problem is due to `rustdoc` trying to be helpful; like `rustc`,

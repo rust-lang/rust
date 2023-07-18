@@ -1217,3 +1217,20 @@ pub fn parse_alignment(node: &ast::LitKind) -> Result<u32, &'static str> {
         Err("not an unsuffixed integer")
     }
 }
+
+/// Read the content of a `rustc_confusables` attribute, and return the list of candidate names.
+pub fn parse_confusables(attr: &Attribute) -> Option<Vec<Symbol>> {
+    let meta = attr.meta()?;
+    let MetaItem { kind: MetaItemKind::List(ref metas), .. } = meta else { return None };
+
+    let mut candidates = Vec::new();
+
+    for meta in metas {
+        let NestedMetaItem::Lit(meta_lit) = meta else {
+            return None;
+        };
+        candidates.push(meta_lit.symbol);
+    }
+
+    return Some(candidates);
+}

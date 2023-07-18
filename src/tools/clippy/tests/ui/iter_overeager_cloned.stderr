@@ -4,7 +4,7 @@ error: unnecessarily eager cloning of iterator items
 LL |     let _: Option<String> = vec.iter().cloned().last();
    |                             ^^^^^^^^^^----------------
    |                                       |
-   |                                       help: try this: `.last().cloned()`
+   |                                       help: try: `.last().cloned()`
    |
    = note: `-D clippy::iter-overeager-cloned` implied by `-D warnings`
 
@@ -14,7 +14,7 @@ error: unnecessarily eager cloning of iterator items
 LL |     let _: Option<String> = vec.iter().chain(vec.iter()).cloned().next();
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^----------------
    |                                                         |
-   |                                                         help: try this: `.next().cloned()`
+   |                                                         help: try: `.next().cloned()`
 
 error: unneeded cloning of iterator items
   --> $DIR/iter_overeager_cloned.rs:12:20
@@ -22,7 +22,7 @@ error: unneeded cloning of iterator items
 LL |     let _: usize = vec.iter().filter(|x| x == &"2").cloned().count();
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-----------------
    |                                                    |
-   |                                                    help: try this: `.count()`
+   |                                                    help: try: `.count()`
    |
    = note: `-D clippy::redundant-clone` implied by `-D warnings`
 
@@ -32,7 +32,7 @@ error: unnecessarily eager cloning of iterator items
 LL |     let _: Vec<_> = vec.iter().cloned().take(2).collect();
    |                     ^^^^^^^^^^-----------------
    |                               |
-   |                               help: try this: `.take(2).cloned()`
+   |                               help: try: `.take(2).cloned()`
 
 error: unnecessarily eager cloning of iterator items
   --> $DIR/iter_overeager_cloned.rs:16:21
@@ -40,7 +40,7 @@ error: unnecessarily eager cloning of iterator items
 LL |     let _: Vec<_> = vec.iter().cloned().skip(2).collect();
    |                     ^^^^^^^^^^-----------------
    |                               |
-   |                               help: try this: `.skip(2).cloned()`
+   |                               help: try: `.skip(2).cloned()`
 
 error: unnecessarily eager cloning of iterator items
   --> $DIR/iter_overeager_cloned.rs:18:13
@@ -48,7 +48,7 @@ error: unnecessarily eager cloning of iterator items
 LL |     let _ = vec.iter().filter(|x| x == &"2").cloned().nth(2);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^----------------
    |                                             |
-   |                                             help: try this: `.nth(2).cloned()`
+   |                                             help: try: `.nth(2).cloned()`
 
 error: unnecessarily eager cloning of iterator items
   --> $DIR/iter_overeager_cloned.rs:20:13
@@ -60,7 +60,7 @@ LL | |         .cloned()
 LL | |         .flatten();
    | |__________________^
    |
-help: try this
+help: try
    |
 LL ~         .iter()
 LL ~         .flatten().cloned();

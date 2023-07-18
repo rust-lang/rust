@@ -89,7 +89,7 @@ struct SuperTraits<'a> {
     seen: FxHashSet<ChalkTraitId>,
 }
 
-impl<'a> SuperTraits<'a> {
+impl SuperTraits<'_> {
     fn elaborate(&mut self, trait_ref: &TraitRef) {
         direct_super_trait_refs(self.db, trait_ref, |trait_ref| {
             if !self.seen.contains(&trait_ref.trait_id) {
@@ -99,7 +99,7 @@ impl<'a> SuperTraits<'a> {
     }
 }
 
-impl<'a> Iterator for SuperTraits<'a> {
+impl Iterator for SuperTraits<'_> {
     type Item = TraitRef;
 
     fn next(&mut self) -> Option<Self::Item> {

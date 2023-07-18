@@ -110,4 +110,11 @@ impl TokenMap {
         // FIXME: This could be accidentally quadratic
         self.entries.remove(idx);
     }
+
+    pub fn entries(&self) -> impl Iterator<Item = (tt::TokenId, TextRange)> + '_ {
+        self.entries.iter().filter_map(|&(tid, tr)| match tr {
+            TokenTextRange::Token(range) => Some((tid, range)),
+            TokenTextRange::Delimiter(_) => None,
+        })
+    }
 }

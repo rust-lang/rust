@@ -30,7 +30,7 @@ fn eval_main(db: &TestDB, file_id: FileId) -> Result<(String, String), MirEvalEr
             db.trait_environment(func_id.into()),
         )
         .map_err(|e| MirEvalError::MirLowerError(func_id.into(), e))?;
-    let (result, stdout, stderr) = interpret_mir(db, &body, false);
+    let (result, stdout, stderr) = interpret_mir(db, body, false);
     result?;
     Ok((stdout, stderr))
 }
@@ -611,6 +611,34 @@ fn main() {
 }
         "#,
     );
+}
+
+#[test]
+fn syscalls() {
+    check_pass(
+        r#"
+//- minicore: option
+
+extern "C" {
+    pub unsafe extern "C" fn syscall(num: i64, ...) -> i64;
+}
+
+const SYS_getrandom: i64 = 318;
+
+fn should_not_reach() {
+    _ // FIXME: replace this function with panic when that works
+}
+
+fn main() {
+    let mut x: i32 = 0;
+    let r = syscall(SYS_getrandom, &mut x, 4usize, 0);
+    if r != 4 {
+        should_not_reach();
+    }
+}
+
+"#,
+    )
 }
 
 #[test]

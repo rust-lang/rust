@@ -1,18 +1,14 @@
-use clippy_utils::higher;
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::source::{reindent_multiline, snippet_indent, snippet_with_applicability, snippet_with_context};
 use clippy_utils::{
-    can_move_expr_to_closure_no_visit,
-    diagnostics::span_lint_and_sugg,
-    is_expr_final_block_expr, is_expr_used_or_unified, match_def_path, paths, peel_hir_expr_while,
-    source::{reindent_multiline, snippet_indent, snippet_with_applicability, snippet_with_context},
-    SpanlessEq,
+    can_move_expr_to_closure_no_visit, higher, is_expr_final_block_expr, is_expr_used_or_unified, match_def_path,
+    paths, peel_hir_expr_while, SpanlessEq,
 };
 use core::fmt::{self, Write};
 use rustc_errors::Applicability;
-use rustc_hir::{
-    hir_id::HirIdSet,
-    intravisit::{walk_expr, Visitor},
-    Block, Expr, ExprKind, Guard, HirId, Let, Pat, Stmt, StmtKind, UnOp,
-};
+use rustc_hir::hir_id::HirIdSet;
+use rustc_hir::intravisit::{walk_expr, Visitor};
+use rustc_hir::{Block, Expr, ExprKind, Guard, HirId, Let, Pat, Stmt, StmtKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{Span, SyntaxContext, DUMMY_SP};
@@ -69,16 +65,21 @@ impl<'tcx> LateLintPass<'tcx> for HashMapPass {
             return;
         }
 
-        let Some(higher::If { cond: cond_expr, then: then_expr, r#else: else_expr }) = higher::If::hir(expr) else {
-            return
+        let Some(higher::If {
+            cond: cond_expr,
+            then: then_expr,
+            r#else: else_expr,
+        }) = higher::If::hir(expr)
+        else {
+            return;
         };
 
         let Some((map_ty, contains_expr)) = try_parse_contains(cx, cond_expr) else {
-            return
+            return;
         };
 
         let Some(then_search) = find_insert_calls(cx, &contains_expr, then_expr) else {
-            return
+            return;
         };
 
         let mut app = Applicability::MachineApplicable;
@@ -186,7 +187,7 @@ impl<'tcx> LateLintPass<'tcx> for HashMapPass {
             MAP_ENTRY,
             expr.span,
             &format!("usage of `contains_key` followed by `insert` on a `{}`", map_ty.name()),
-            "try this",
+            "try",
             sugg,
             app,
         );

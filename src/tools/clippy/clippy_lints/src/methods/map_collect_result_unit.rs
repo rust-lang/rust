@@ -25,7 +25,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, iter: &hir::Expr
                 MAP_COLLECT_RESULT_UNIT,
                 expr.span,
                 "`.map().collect()` can be replaced with `.try_for_each()`",
-                "try this",
+                "try",
                 format!(
                     "{}.try_for_each({})",
                     snippet(cx, iter.span, ".."),

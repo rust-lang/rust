@@ -1,9 +1,7 @@
 #![warn(clippy::all)]
 #![allow(clippy::manual_clamp)]
 
-use std::cmp::max as my_max;
-use std::cmp::min as my_min;
-use std::cmp::{max, min};
+use std::cmp::{max as my_max, max, min as my_min, min};
 
 const LARGE: usize = 3;
 

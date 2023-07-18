@@ -19,7 +19,7 @@ itertools = "0.10.5"
 rowan = "0.15.11"
 rustc-hash = "1.1.0"
 once_cell = "1.17.0"
-indexmap = "1.9.1"
+indexmap = "2.0.0"
 smol_str.workspace = true
 triomphe.workspace = true
 

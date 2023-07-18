@@ -9,7 +9,10 @@ use crate::SnippetCap;
 use base_db::{AnchoredPathBuf, FileId};
 use nohash_hasher::IntMap;
 use stdx::never;
-use syntax::{algo, ast, ted, AstNode, SyntaxNode, SyntaxNodePtr, TextRange, TextSize};
+use syntax::{
+    algo, ast, ted, AstNode, SyntaxElement, SyntaxNode, SyntaxNodePtr, SyntaxToken, TextRange,
+    TextSize,
+};
 use text_edit::{TextEdit, TextEditBuilder};
 
 #[derive(Default, Debug, Clone)]
@@ -237,19 +240,31 @@ impl SourceChangeBuilder {
     /// Adds a tabstop snippet to place the cursor before `node`
     pub fn add_tabstop_before(&mut self, _cap: SnippetCap, node: impl AstNode) {
         assert!(node.syntax().parent().is_some());
-        self.add_snippet(PlaceSnippet::Before(node.syntax().clone()));
+        self.add_snippet(PlaceSnippet::Before(node.syntax().clone().into()));
     }
 
     /// Adds a tabstop snippet to place the cursor after `node`
     pub fn add_tabstop_after(&mut self, _cap: SnippetCap, node: impl AstNode) {
         assert!(node.syntax().parent().is_some());
-        self.add_snippet(PlaceSnippet::After(node.syntax().clone()));
+        self.add_snippet(PlaceSnippet::After(node.syntax().clone().into()));
+    }
+
+    /// Adds a tabstop snippet to place the cursor before `token`
+    pub fn add_tabstop_before_token(&mut self, _cap: SnippetCap, token: SyntaxToken) {
+        assert!(token.parent().is_some());
+        self.add_snippet(PlaceSnippet::Before(token.clone().into()));
+    }
+
+    /// Adds a tabstop snippet to place the cursor after `token`
+    pub fn add_tabstop_after_token(&mut self, _cap: SnippetCap, token: SyntaxToken) {
+        assert!(token.parent().is_some());
+        self.add_snippet(PlaceSnippet::After(token.clone().into()));
     }
 
     /// Adds a snippet to move the cursor selected over `node`
     pub fn add_placeholder_snippet(&mut self, _cap: SnippetCap, node: impl AstNode) {
         assert!(node.syntax().parent().is_some());
-        self.add_snippet(PlaceSnippet::Over(node.syntax().clone()))
+        self.add_snippet(PlaceSnippet::Over(node.syntax().clone().into()))
     }
 
     fn add_snippet(&mut self, snippet: PlaceSnippet) {
@@ -282,38 +297,40 @@ impl From<FileSystemEdit> for SourceChange {
 }
 
 enum PlaceSnippet {
-    /// Place a tabstop before a node
-    Before(SyntaxNode),
-    /// Place a tabstop before a node
-    After(SyntaxNode),
-    /// Place a placeholder snippet in place of the node
-    Over(SyntaxNode),
+    /// Place a tabstop before an element
+    Before(SyntaxElement),
+    /// Place a tabstop before an element
+    After(SyntaxElement),
+    /// Place a placeholder snippet in place of the element
+    Over(SyntaxElement),
 }
 
 impl PlaceSnippet {
-    /// Places the snippet before or over a node with the given tab stop index
+    /// Places the snippet before or over an element with the given tab stop index
     fn place(self, order: usize) {
-        // ensure the target node is still attached
+        // ensure the target element is still attached
         match &self {
-            PlaceSnippet::Before(node) | PlaceSnippet::After(node) | PlaceSnippet::Over(node) => {
-                // node should still be in the tree, but if it isn't
+            PlaceSnippet::Before(element)
+            | PlaceSnippet::After(element)
+            | PlaceSnippet::Over(element) => {
+                // element should still be in the tree, but if it isn't
                 // then it's okay to just ignore this place
-                if stdx::never!(node.parent().is_none()) {
+                if stdx::never!(element.parent().is_none()) {
                     return;
                 }
             }
         }
 
         match self {
-            PlaceSnippet::Before(node) => {
-                ted::insert_raw(ted::Position::before(&node), Self::make_tab_stop(order));
+            PlaceSnippet::Before(element) => {
+                ted::insert_raw(ted::Position::before(&element), Self::make_tab_stop(order));
             }
-            PlaceSnippet::After(node) => {
-                ted::insert_raw(ted::Position::after(&node), Self::make_tab_stop(order));
+            PlaceSnippet::After(element) => {
+                ted::insert_raw(ted::Position::after(&element), Self::make_tab_stop(order));
             }
-            PlaceSnippet::Over(node) => {
-                let position = ted::Position::before(&node);
-                node.detach();
+            PlaceSnippet::Over(element) => {
+                let position = ted::Position::before(&element);
+                element.detach();
 
                 let snippet = ast::SourceFile::parse(&format!("${{{order}:_}}"))
                     .syntax_node()
@@ -321,7 +338,7 @@ impl PlaceSnippet {
 
                 let placeholder =
                     snippet.descendants().find_map(ast::UnderscoreExpr::cast).unwrap();
-                ted::replace(placeholder.syntax(), node);
+                ted::replace(placeholder.syntax(), element);
 
                 ted::insert_raw(position, snippet);
             }

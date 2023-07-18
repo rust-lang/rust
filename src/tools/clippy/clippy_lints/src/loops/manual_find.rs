@@ -1,14 +1,14 @@
 use super::utils::make_iterator_snippet;
 use super::MANUAL_FIND;
-use clippy_utils::{
-    diagnostics::span_lint_and_then, higher, is_res_lang_ctor, path_res, peel_blocks_with_stmt,
-    source::snippet_with_applicability, ty::implements_trait,
-};
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::ty::implements_trait;
+use clippy_utils::{higher, is_res_lang_ctor, path_res, peel_blocks_with_stmt};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::{
-    def::Res, lang_items::LangItem, BindingAnnotation, Block, Expr, ExprKind, HirId, Node, Pat, PatKind, Stmt, StmtKind,
-};
+use rustc_hir::def::Res;
+use rustc_hir::lang_items::LangItem;
+use rustc_hir::{BindingAnnotation, Block, Expr, ExprKind, HirId, Node, Pat, PatKind, Stmt, StmtKind};
 use rustc_lint::LateContext;
 use rustc_span::source_map::Span;
 

@@ -9,8 +9,7 @@ use clippy_utils::visitors::is_local_used;
 use rustc_hir::{BindingAnnotation, Body, BorrowKind, ByRef, Expr, ExprKind, Mutability, Pat, PatKind};
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::ty;
-use rustc_span::sym;
-use rustc_span::Span;
+use rustc_span::{sym, Span};
 
 /// lint use of:
 /// - `hashmap.iter().map(|(_, v)| v)`

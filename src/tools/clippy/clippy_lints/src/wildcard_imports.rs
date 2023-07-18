@@ -3,10 +3,8 @@ use clippy_utils::is_test_module_or_function;
 use clippy_utils::source::{snippet, snippet_with_applicability};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::{
-    def::{DefKind, Res},
-    Item, ItemKind, PathSegment, UseKind,
-};
+use rustc_hir::def::{DefKind, Res};
+use rustc_hir::{Item, ItemKind, PathSegment, UseKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty;
 use rustc_session::{declare_tool_lint, impl_lint_pass};

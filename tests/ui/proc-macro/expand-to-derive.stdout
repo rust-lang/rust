@@ -6,35 +6,35 @@ PRINT-DERIVE INPUT (DISPLAY): struct Foo
 PRINT-DERIVE INPUT (DEBUG): TokenStream [
     Ident {
         ident: "struct",
-        span: $DIR/expand-to-derive.rs:16:9: 16:15 (#4),
+        span: $DIR/expand-to-derive.rs:16:9: 16:15 (#3),
     },
     Ident {
         ident: "Foo",
-        span: $DIR/expand-to-derive.rs:16:16: 16:19 (#4),
+        span: $DIR/expand-to-derive.rs:16:16: 16:19 (#3),
     },
     Group {
         delimiter: Brace,
         stream: TokenStream [
             Ident {
                 ident: "field",
-                span: $DIR/expand-to-derive.rs:18:13: 18:18 (#4),
+                span: $DIR/expand-to-derive.rs:18:13: 18:18 (#3),
             },
             Punct {
                 ch: ':',
                 spacing: Alone,
-                span: $DIR/expand-to-derive.rs:18:18: 18:19 (#4),
+                span: $DIR/expand-to-derive.rs:18:18: 18:19 (#3),
             },
             Group {
                 delimiter: Bracket,
                 stream: TokenStream [
                     Ident {
                         ident: "bool",
-                        span: $DIR/expand-to-derive.rs:18:21: 18:25 (#4),
+                        span: $DIR/expand-to-derive.rs:18:21: 18:25 (#3),
                     },
                     Punct {
                         ch: ';',
                         spacing: Alone,
-                        span: $DIR/expand-to-derive.rs:18:25: 18:26 (#4),
+                        span: $DIR/expand-to-derive.rs:18:25: 18:26 (#3),
                     },
                     Group {
                         delimiter: Brace,
@@ -90,15 +90,15 @@ PRINT-DERIVE INPUT (DEBUG): TokenStream [
                                 kind: Integer,
                                 symbol: "0",
                                 suffix: None,
-                                span: $DIR/expand-to-derive.rs:20:17: 20:18 (#4),
+                                span: $DIR/expand-to-derive.rs:20:17: 20:18 (#3),
                             },
                         ],
-                        span: $DIR/expand-to-derive.rs:18:27: 21:14 (#4),
+                        span: $DIR/expand-to-derive.rs:18:27: 21:14 (#3),
                     },
                 ],
-                span: $DIR/expand-to-derive.rs:18:20: 21:15 (#4),
+                span: $DIR/expand-to-derive.rs:18:20: 21:15 (#3),
             },
         ],
-        span: $DIR/expand-to-derive.rs:16:20: 22:10 (#4),
+        span: $DIR/expand-to-derive.rs:16:20: 22:10 (#3),
     },
 ]

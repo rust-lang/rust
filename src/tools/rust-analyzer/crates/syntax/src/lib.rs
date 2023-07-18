@@ -171,6 +171,109 @@ impl SourceFile {
     }
 }
 
+impl ast::TokenTree {
+    pub fn reparse_as_expr(self) -> Parse<ast::Expr> {
+        let tokens = self.syntax().descendants_with_tokens().filter_map(NodeOrToken::into_token);
+
+        let mut parser_input = parser::Input::default();
+        let mut was_joint = false;
+        for t in tokens {
+            let kind = t.kind();
+            if kind.is_trivia() {
+                was_joint = false
+            } else {
+                if kind == SyntaxKind::IDENT {
+                    let token_text = t.text();
+                    let contextual_kw = SyntaxKind::from_contextual_keyword(token_text)
+                        .unwrap_or(SyntaxKind::IDENT);
+                    parser_input.push_ident(contextual_kw);
+                } else {
+                    if was_joint {
+                        parser_input.was_joint();
+                    }
+                    parser_input.push(kind);
+                    // Tag the token as joint if it is float with a fractional part
+                    // we use this jointness to inform the parser about what token split
+                    // event to emit when we encounter a float literal in a field access
+                    if kind == SyntaxKind::FLOAT_NUMBER && !t.text().ends_with('.') {
+                        parser_input.was_joint();
+                    }
+                }
+                was_joint = true;
+            }
+        }
+
+        let parser_output = parser::TopEntryPoint::Expr.parse(&parser_input);
+
+        let mut tokens =
+            self.syntax().descendants_with_tokens().filter_map(NodeOrToken::into_token);
+        let mut text = String::new();
+        let mut pos = TextSize::from(0);
+        let mut builder = SyntaxTreeBuilder::default();
+        for event in parser_output.iter() {
+            match event {
+                parser::Step::Token { kind, n_input_tokens } => {
+                    let mut token = tokens.next().unwrap();
+                    while token.kind().is_trivia() {
+                        let text = token.text();
+                        pos += TextSize::from(text.len() as u32);
+                        builder.token(token.kind(), text);
+
+                        token = tokens.next().unwrap();
+                    }
+                    text.push_str(token.text());
+                    for _ in 1..n_input_tokens {
+                        let token = tokens.next().unwrap();
+                        text.push_str(token.text());
+                    }
+
+                    pos += TextSize::from(text.len() as u32);
+                    builder.token(kind, &text);
+                    text.clear();
+                }
+                parser::Step::FloatSplit { ends_in_dot: has_pseudo_dot } => {
+                    let token = tokens.next().unwrap();
+                    let text = token.text();
+
+                    match text.split_once('.') {
+                        Some((left, right)) => {
+                            assert!(!left.is_empty());
+                            builder.start_node(SyntaxKind::NAME_REF);
+                            builder.token(SyntaxKind::INT_NUMBER, left);
+                            builder.finish_node();
+
+                            // here we move the exit up, the original exit has been deleted in process
+                            builder.finish_node();
+
+                            builder.token(SyntaxKind::DOT, ".");
+
+                            if has_pseudo_dot {
+                                assert!(right.is_empty(), "{left}.{right}");
+                            } else {
+                                builder.start_node(SyntaxKind::NAME_REF);
+                                builder.token(SyntaxKind::INT_NUMBER, right);
+                                builder.finish_node();
+
+                                // the parser creates an unbalanced start node, we are required to close it here
+                                builder.finish_node();
+                            }
+                        }
+                        None => unreachable!(),
+                    }
+                    pos += TextSize::from(text.len() as u32);
+                }
+                parser::Step::Enter { kind } => builder.start_node(kind),
+                parser::Step::Exit => builder.finish_node(),
+                parser::Step::Error { msg } => builder.error(msg.to_owned(), pos),
+            }
+        }
+
+        let (green, errors) = builder.finish_raw();
+
+        Parse { green, errors: Arc::new(errors), _ty: PhantomData }
+    }
+}
+
 /// Matches a `SyntaxNode` against an `ast` type.
 ///
 /// # Example:

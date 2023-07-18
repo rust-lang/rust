@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
-use clippy_utils::higher;
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{path_to_local, usage::is_potentially_mutated};
+use clippy_utils::usage::is_potentially_mutated;
+use clippy_utils::{higher, path_to_local};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, walk_fn, FnKind, Visitor};

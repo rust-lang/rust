@@ -18,7 +18,7 @@ arrayvec = "0.7.2"
 itertools = "0.10.5"
 smallvec.workspace = true
 triomphe.workspace = true
-once_cell = "1.17.0"
+once_cell = "1.17.1"
 
 # local deps
 base-db.workspace = true

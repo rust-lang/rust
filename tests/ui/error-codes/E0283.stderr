@@ -7,7 +7,7 @@ LL |     fn create() -> u32;
 LL |     let cont: u32 = Generator::create();
    |                     ^^^^^^^^^^^^^^^^^ cannot call associated function of trait
    |
-help: use a fully-qualified path to a specific available implementation (2 found)
+help: use a fully-qualified path to a specific available implementation
    |
 LL |     let cont: u32 = </* self type */ as Generator>::create();
    |                     +++++++++++++++++++          +

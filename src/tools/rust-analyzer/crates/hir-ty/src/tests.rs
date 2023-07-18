@@ -30,7 +30,7 @@ use syntax::{
     ast::{self, AstNode, HasName},
     SyntaxNode,
 };
-use tracing_subscriber::{layer::SubscriberExt, EnvFilter, Registry};
+use tracing_subscriber::{layer::SubscriberExt, Registry};
 use tracing_tree::HierarchicalLayer;
 use triomphe::Arc;
 
@@ -52,7 +52,8 @@ fn setup_tracing() -> Option<tracing::subscriber::DefaultGuard> {
         return None;
     }
 
-    let filter = EnvFilter::from_env("CHALK_DEBUG");
+    let filter: tracing_subscriber::filter::Targets =
+        env::var("CHALK_DEBUG").ok().and_then(|it| it.parse().ok()).unwrap_or_default();
     let layer = HierarchicalLayer::default()
         .with_indent_lines(true)
         .with_ansi(false)
@@ -205,7 +206,9 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
             let Some(node) = (match expr_or_pat {
                 hir_def::hir::ExprOrPatId::ExprId(expr) => expr_node(&body_source_map, expr, &db),
                 hir_def::hir::ExprOrPatId::PatId(pat) => pat_node(&body_source_map, pat, &db),
-            }) else { continue; };
+            }) else {
+                continue;
+            };
             let range = node.as_ref().original_file_range(&db);
             let actual = format!(
                 "expected {}, got {}",

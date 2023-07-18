@@ -10,12 +10,6 @@ error[E0423]: expected value, found module `m1::arguments`
 LL |     log(debug, m1::arguments);
    |                ^^^^^^^^^^^^^ not a value
 
-error[E0425]: cannot find function `log` in this scope
-  --> $DIR/bad-expr-path2.rs:6:5
-   |
-LL |     log(debug, m1::arguments);
-   |     ^^^ not found in this scope
-
 error[E0580]: `main` function has wrong type
   --> $DIR/bad-expr-path2.rs:5:1
    |
@@ -24,6 +18,12 @@ LL | fn main(arguments: Vec<String>) {
    |
    = note: expected fn pointer `fn()`
               found fn pointer `fn(Vec<String>)`
+
+error[E0425]: cannot find function `log` in this scope
+  --> $DIR/bad-expr-path2.rs:6:5
+   |
+LL |     log(debug, m1::arguments);
+   |     ^^^ not found in this scope
 
 error: aborting due to 4 previous errors
 

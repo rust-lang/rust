@@ -749,7 +749,7 @@ impl<T, E> Result<T, E> {
     }
 
     /// Returns the provided default (if [`Err`]), or
-    /// applies a function to the contained value (if [`Ok`]),
+    /// applies a function to the contained value (if [`Ok`]).
     ///
     /// Arguments passed to `map_or` are eagerly evaluated; if you are passing
     /// the result of a function call, it is recommended to use [`map_or_else`],

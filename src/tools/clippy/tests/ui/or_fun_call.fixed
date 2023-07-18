@@ -9,8 +9,7 @@
     clippy::useless_vec
 )]
 
-use std::collections::BTreeMap;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::time::Duration;
 
 /// Checks implementation of the `OR_FUN_CALL` lint.

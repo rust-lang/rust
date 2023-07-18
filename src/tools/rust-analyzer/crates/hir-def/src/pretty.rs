@@ -12,8 +12,8 @@ use crate::{
 };
 
 pub(crate) fn print_path(db: &dyn ExpandDatabase, path: &Path, buf: &mut dyn Write) -> fmt::Result {
-    if let Path::LangItem(x) = path {
-        return write!(buf, "$lang_item::{x:?}");
+    if let Path::LangItem(it) = path {
+        return write!(buf, "$lang_item::{it:?}");
     }
     match path.type_anchor() {
         Some(anchor) => {

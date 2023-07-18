@@ -62,7 +62,7 @@ pub(super) fn check<'tcx>(
                     OR_FUN_CALL,
                     method_span.with_hi(span.hi()),
                     &format!("use of `{name}` followed by a call to `{path}`"),
-                    "try this",
+                    "try",
                     format!("{sugg}()"),
                     Applicability::MachineApplicable,
                 );
@@ -139,7 +139,7 @@ pub(super) fn check<'tcx>(
                     OR_FUN_CALL,
                     span_replace_word,
                     &format!("use of `{name}` followed by a function call"),
-                    "try this",
+                    "try",
                     format!("{name}_{suffix}({sugg})"),
                     app,
                 );

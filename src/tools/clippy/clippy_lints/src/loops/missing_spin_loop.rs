@@ -43,7 +43,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, cond: &'tcx Expr<'_>, body: &'
                 MISSING_SPIN_LOOP,
                 body.span,
                 "busy-waiting loop should at least have a spin loop hint",
-                "try this",
+                "try",
                 (if is_no_std_crate(cx) {
                     "{ core::hint::spin_loop() }"
                 } else {

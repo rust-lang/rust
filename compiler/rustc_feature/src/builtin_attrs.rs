@@ -625,6 +625,12 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         ErrorFollowing,
         INTERNAL_UNSTABLE
     ),
+    rustc_attr!(
+        rustc_confusables, Normal,
+        template!(List: r#""name1", "name2", ..."#),
+        ErrorFollowing,
+        INTERNAL_UNSTABLE,
+    ),
     // Enumerates "identity-like" conversion methods to suggest on type mismatch.
     rustc_attr!(
         rustc_conversion_suggestion, Normal, template!(Word), WarnFollowing, INTERNAL_UNSTABLE

@@ -300,6 +300,7 @@ struct Foo;
             at deprecated
             at derive           macro derive
             at derive(…)
+            at derive_const     macro derive_const
             at doc = "…"
             at doc(alias = "…")
             at doc(hidden)

@@ -13,9 +13,7 @@ use rustc_span::source_map::Span;
 use rustc_span::symbol::{sym, Symbol};
 use std::borrow::Cow;
 
-use super::MANUAL_FILTER_MAP;
-use super::MANUAL_FIND_MAP;
-use super::OPTION_FILTER_MAP;
+use super::{MANUAL_FILTER_MAP, MANUAL_FIND_MAP, OPTION_FILTER_MAP};
 
 fn is_method(cx: &LateContext<'_>, expr: &hir::Expr<'_>, method_name: Symbol) -> bool {
     match &expr.kind {

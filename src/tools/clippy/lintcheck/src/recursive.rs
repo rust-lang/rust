@@ -3,8 +3,7 @@
 //! [`LintcheckServer`] to ask if it should be skipped, and if not sends the stderr of running
 //! clippy on the crate to the server
 
-use crate::ClippyWarning;
-use crate::RecursiveOptions;
+use crate::{ClippyWarning, RecursiveOptions};
 
 use std::collections::HashSet;
 use std::io::{BufRead, BufReader, Read, Write};

@@ -186,6 +186,9 @@ ENV SCRIPT \
       python3 ../x.py --stage 2 test --host='' --target $RUN_MAKE_TARGETS tests/run-make && \
       python3 ../x.py dist --host='' --target $TARGETS
 
+COPY scripts/cmake.sh /scripts/
+RUN /scripts/cmake.sh
+
 # sccache
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh

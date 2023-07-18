@@ -2,7 +2,7 @@ use std::fmt;
 
 use ast::HasName;
 use cfg::CfgExpr;
-use hir::{AsAssocItem, HasAttrs, HasSource, Semantics};
+use hir::{db::HirDatabase, AsAssocItem, HasAttrs, HasSource, Semantics};
 use ide_assists::utils::test_related_attribute;
 use ide_db::{
     base_db::{FilePosition, FileRange},
@@ -14,7 +14,7 @@ use ide_db::{
 use itertools::Itertools;
 use stdx::{always, format_to};
 use syntax::{
-    ast::{self, AstNode, HasAttrs as _},
+    ast::{self, AstNode},
     SmolStr, SyntaxNode,
 };
 
@@ -307,7 +307,6 @@ pub(crate) fn runnable_fn(
     sema: &Semantics<'_, RootDatabase>,
     def: hir::Function,
 ) -> Option<Runnable> {
-    let func = def.source(sema.db)?;
     let name = def.name(sema.db).to_smol_str();
 
     let root = def.module(sema.db).krate().root_module(sema.db);
@@ -323,10 +322,10 @@ pub(crate) fn runnable_fn(
             canonical_path.map(TestId::Path).unwrap_or(TestId::Name(name))
         };
 
-        if test_related_attribute(&func.value).is_some() {
-            let attr = TestAttr::from_fn(&func.value);
+        if def.is_test(sema.db) {
+            let attr = TestAttr::from_fn(sema.db, def);
             RunnableKind::Test { test_id: test_id(), attr }
-        } else if func.value.has_atom_attr("bench") {
+        } else if def.is_bench(sema.db) {
             RunnableKind::Bench { test_id: test_id() }
         } else {
             return None;
@@ -335,7 +334,7 @@ pub(crate) fn runnable_fn(
 
     let nav = NavigationTarget::from_named(
         sema.db,
-        func.as_ref().map(|it| it as &dyn ast::HasName),
+        def.source(sema.db)?.as_ref().map(|it| it as &dyn ast::HasName),
         SymbolKind::Function,
     );
     let cfg = def.attrs(sema.db).cfg();
@@ -487,12 +486,8 @@ pub struct TestAttr {
 }
 
 impl TestAttr {
-    fn from_fn(fn_def: &ast::Fn) -> TestAttr {
-        let ignore = fn_def
-            .attrs()
-            .filter_map(|attr| attr.simple_name())
-            .any(|attribute_text| attribute_text == "ignore");
-        TestAttr { ignore }
+    fn from_fn(db: &dyn HirDatabase, fn_def: hir::Function) -> TestAttr {
+        TestAttr { ignore: fn_def.is_ignore(db) }
     }
 }
 
@@ -594,6 +589,9 @@ fn main() {}
 #[test]
 fn test_foo() {}
 
+#[::core::prelude::v1::test]
+fn test_full_path() {}
+
 #[test]
 #[ignore]
 fn test_foo() {}
@@ -605,7 +603,7 @@ mod not_a_root {
     fn main() {}
 }
 "#,
-            &[TestMod, Bin, Test, Test, Bench],
+            &[TestMod, Bin, Test, Test, Test, Bench],
             expect![[r#"
                 [
                     Runnable {
@@ -614,7 +612,7 @@ mod not_a_root {
                             file_id: FileId(
                                 0,
                             ),
-                            full_range: 0..137,
+                            full_range: 0..190,
                             name: "",
                             kind: Module,
                         },
@@ -664,8 +662,29 @@ mod not_a_root {
                             file_id: FileId(
                                 0,
                             ),
-                            full_range: 41..75,
-                            focus_range: 62..70,
+                            full_range: 41..92,
+                            focus_range: 73..87,
+                            name: "test_full_path",
+                            kind: Function,
+                        },
+                        kind: Test {
+                            test_id: Path(
+                                "test_full_path",
+                            ),
+                            attr: TestAttr {
+                                ignore: false,
+                            },
+                        },
+                        cfg: None,
+                    },
+                    Runnable {
+                        use_name_in_title: false,
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
+                            full_range: 94..128,
+                            focus_range: 115..123,
                             name: "test_foo",
                             kind: Function,
                         },
@@ -685,8 +704,8 @@ mod not_a_root {
                             file_id: FileId(
                                 0,
                             ),
-                            full_range: 77..99,
-                            focus_range: 89..94,
+                            full_range: 130..152,
+                            focus_range: 142..147,
                             name: "bench",
                             kind: Function,
                         },

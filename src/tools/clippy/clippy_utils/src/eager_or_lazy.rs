@@ -1,7 +1,7 @@
 //! Utilities for evaluating whether eagerly evaluated expressions can be made lazy and vice versa.
 //!
 //! Things to consider:
-//!  - has the expression side-effects?
+//!  - does the expression have side-effects?
 //!  - is the expression computationally expensive?
 //!
 //! See lints:
@@ -12,14 +12,14 @@
 use crate::ty::{all_predicates_of, is_copy};
 use crate::visitors::is_const_evaluatable;
 use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{walk_expr, Visitor};
-use rustc_hir::{def_id::DefId, Block, Expr, ExprKind, QPath, UnOp};
+use rustc_hir::{Block, Expr, ExprKind, QPath, UnOp};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_span::{sym, Symbol};
-use std::cmp;
-use std::ops;
+use std::{cmp, ops};
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 enum EagernessSuggestion {
@@ -68,19 +68,24 @@ fn fn_eagerness(cx: &LateContext<'_>, fn_id: DefId, name: Symbol, have_one_arg: 
         // Types where the only fields are generic types (or references to) with no trait bounds other
         // than marker traits.
         // Due to the limited operations on these types functions should be fairly cheap.
-        if def
-            .variants()
-            .iter()
-            .flat_map(|v| v.fields.iter())
-            .any(|x| matches!(cx.tcx.type_of(x.did).instantiate_identity().peel_refs().kind(), ty::Param(_)))
-            && all_predicates_of(cx.tcx, fn_id).all(|(pred, _)| match pred.kind().skip_binder() {
-                ty::ClauseKind::Trait(pred) => cx.tcx.trait_def(pred.trait_ref.def_id).is_marker,
-                _ => true,
-            })
-            && subs.types().all(|x| matches!(x.peel_refs().kind(), ty::Param(_)))
+        if def.variants().iter().flat_map(|v| v.fields.iter()).any(|x| {
+            matches!(
+                cx.tcx.type_of(x.did).instantiate_identity().peel_refs().kind(),
+                ty::Param(_)
+            )
+        }) && all_predicates_of(cx.tcx, fn_id).all(|(pred, _)| match pred.kind().skip_binder() {
+            ty::ClauseKind::Trait(pred) => cx.tcx.trait_def(pred.trait_ref.def_id).is_marker,
+            _ => true,
+        }) && subs.types().all(|x| matches!(x.peel_refs().kind(), ty::Param(_)))
         {
             // Limit the function to either `(self) -> bool` or `(&self) -> bool`
-            match &**cx.tcx.fn_sig(fn_id).instantiate_identity().skip_binder().inputs_and_output {
+            match &**cx
+                .tcx
+                .fn_sig(fn_id)
+                .instantiate_identity()
+                .skip_binder()
+                .inputs_and_output
+            {
                 [arg, res] if !arg.is_mutable_ptr() && arg.peel_refs() == ty && res.is_bool() => NoChange,
                 _ => Lazy,
             }

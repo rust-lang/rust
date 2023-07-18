@@ -272,9 +272,15 @@ impl<'tcx> LateLintPass<'tcx> for Write {
     }
 
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        let Some(macro_call) = root_macro_call_first_node(cx, expr) else { return };
-        let Some(diag_name) = cx.tcx.get_diagnostic_name(macro_call.def_id) else { return };
-        let Some(name) = diag_name.as_str().strip_suffix("_macro") else { return };
+        let Some(macro_call) = root_macro_call_first_node(cx, expr) else {
+            return;
+        };
+        let Some(diag_name) = cx.tcx.get_diagnostic_name(macro_call.def_id) else {
+            return;
+        };
+        let Some(name) = diag_name.as_str().strip_suffix("_macro") else {
+            return;
+        };
 
         let is_build_script = cx
             .sess()
@@ -343,7 +349,9 @@ fn is_debug_impl(cx: &LateContext<'_>, item: &Item<'_>) -> bool {
 }
 
 fn check_newline(cx: &LateContext<'_>, format_args: &FormatArgs, macro_call: &MacroCall, name: &str) {
-    let Some(FormatArgsPiece::Literal(last)) = format_args.template.last() else { return };
+    let Some(FormatArgsPiece::Literal(last)) = format_args.template.last() else {
+        return;
+    };
 
     let count_vertical_whitespace = || {
         format_args
@@ -379,7 +387,9 @@ fn check_newline(cx: &LateContext<'_>, format_args: &FormatArgs, macro_call: &Ma
             &format!("using `{name}!()` with a format string that ends in a single newline"),
             |diag| {
                 let name_span = cx.sess().source_map().span_until_char(macro_call.span, '!');
-                let Some(format_snippet) = snippet_opt(cx, format_string_span) else { return };
+                let Some(format_snippet) = snippet_opt(cx, format_string_span) else {
+                    return;
+                };
 
                 if format_args.template.len() == 1 && last.as_str() == "\n" {
                     // print!("\n"), write!(f, "\n")
@@ -522,7 +532,7 @@ fn check_literal(cx: &LateContext<'_>, format_args: &FormatArgs, name: &str) {
                     {
                         let replacement = replacement.replace('{', "{{").replace('}', "}}");
                         diag.multipart_suggestion(
-                            "try this",
+                            "try",
                             vec![(*placeholder_span, replacement), (removal_span, String::new())],
                             Applicability::MachineApplicable,
                         );

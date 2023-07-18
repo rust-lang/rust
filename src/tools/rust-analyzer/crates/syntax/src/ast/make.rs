@@ -10,6 +10,8 @@
 //! `parse(format!())` we use internally is an implementation detail -- long
 //! term, it will be replaced with direct tree manipulation.
 use itertools::Itertools;
+use parser::T;
+use rowan::NodeOrToken;
 use stdx::{format_to, never};
 
 use crate::{ast, utils::is_raw_identifier, AstNode, SourceFile, SyntaxKind, SyntaxToken};
@@ -447,6 +449,21 @@ pub fn block_expr(
     ast_from_text(&format!("fn f() {buf}"))
 }
 
+pub fn async_move_block_expr(
+    stmts: impl IntoIterator<Item = ast::Stmt>,
+    tail_expr: Option<ast::Expr>,
+) -> ast::BlockExpr {
+    let mut buf = "async move {\n".to_string();
+    for stmt in stmts.into_iter() {
+        format_to!(buf, "    {stmt}\n");
+    }
+    if let Some(tail_expr) = tail_expr {
+        format_to!(buf, "    {tail_expr}\n");
+    }
+    buf += "}";
+    ast_from_text(&format!("const _: () = {buf};"))
+}
+
 pub fn tail_only_block_expr(tail_expr: ast::Expr) -> ast::BlockExpr {
     ast_from_text(&format!("fn f() {{ {tail_expr} }}"))
 }
@@ -848,6 +865,36 @@ pub fn param_list(
     ast_from_text(&list)
 }
 
+pub fn trait_(
+    is_unsafe: bool,
+    ident: &str,
+    gen_params: Option<ast::GenericParamList>,
+    where_clause: Option<ast::WhereClause>,
+    assoc_items: ast::AssocItemList,
+) -> ast::Trait {
+    let mut text = String::new();
+
+    if is_unsafe {
+        format_to!(text, "unsafe ");
+    }
+
+    format_to!(text, "trait {ident}");
+
+    if let Some(gen_params) = gen_params {
+        format_to!(text, "{} ", gen_params.to_string());
+    } else {
+        text.push(' ');
+    }
+
+    if let Some(where_clause) = where_clause {
+        format_to!(text, "{} ", where_clause.to_string());
+    }
+
+    format_to!(text, "{}", assoc_items.to_string());
+
+    ast_from_text(&text)
+}
+
 pub fn type_bound(bound: &str) -> ast::TypeBound {
     ast_from_text(&format!("fn f<T: {bound}>() {{ }}"))
 }
@@ -985,6 +1032,41 @@ pub fn struct_(
     ast_from_text(&format!("{visibility}struct {strukt_name}{type_params}{field_list}{semicolon}",))
 }
 
+pub fn attr_outer(meta: ast::Meta) -> ast::Attr {
+    ast_from_text(&format!("#[{meta}]"))
+}
+
+pub fn attr_inner(meta: ast::Meta) -> ast::Attr {
+    ast_from_text(&format!("#![{meta}]"))
+}
+
+pub fn meta_expr(path: ast::Path, expr: ast::Expr) -> ast::Meta {
+    ast_from_text(&format!("#[{path} = {expr}]"))
+}
+
+pub fn meta_token_tree(path: ast::Path, tt: ast::TokenTree) -> ast::Meta {
+    ast_from_text(&format!("#[{path}{tt}]"))
+}
+
+pub fn meta_path(path: ast::Path) -> ast::Meta {
+    ast_from_text(&format!("#[{path}]"))
+}
+
+pub fn token_tree(
+    delimiter: SyntaxKind,
+    tt: Vec<NodeOrToken<ast::TokenTree, SyntaxToken>>,
+) -> ast::TokenTree {
+    let (l_delimiter, r_delimiter) = match delimiter {
+        T!['('] => ('(', ')'),
+        T!['['] => ('[', ']'),
+        T!['{'] => ('{', '}'),
+        _ => panic!("invalid delimiter `{delimiter:?}`"),
+    };
+    let tt = tt.into_iter().join("");
+
+    ast_from_text(&format!("tt!{l_delimiter}{tt}{r_delimiter}"))
+}
+
 #[track_caller]
 fn ast_from_text<N: AstNode>(text: &str) -> N {
     let parse = SourceFile::parse(text);
@@ -1021,6 +1103,17 @@ pub mod tokens {
             "const C: <()>::Item = (1 != 1, 2 == 2, 3 < 3, 4 <= 4, 5 > 5, 6 >= 6, !true, *p, &p , &mut p)\n;\n\n",
         )
     });
+
+    pub fn semicolon() -> SyntaxToken {
+        SOURCE_FILE
+            .tree()
+            .syntax()
+            .clone_for_update()
+            .descendants_with_tokens()
+            .filter_map(|it| it.into_token())
+            .find(|it| it.kind() == SEMICOLON)
+            .unwrap()
+    }
 
     pub fn single_space() -> SyntaxToken {
         SOURCE_FILE

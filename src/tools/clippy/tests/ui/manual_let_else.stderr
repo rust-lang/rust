@@ -352,7 +352,7 @@ LL +     };
    |
 
 error: this could be rewritten as `let...else`
-  --> $DIR/manual_let_else.rs:297:5
+  --> $DIR/manual_let_else.rs:299:5
    |
 LL | /     let _ = match ff {
 LL | |         Some(value) => value,

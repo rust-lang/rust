@@ -2,7 +2,7 @@ use ide_db::source_change::SourceChange;
 use syntax::{AstNode, SyntaxKind, SyntaxNode, SyntaxToken, T};
 use text_edit::TextEdit;
 
-use crate::{fix, Diagnostic, DiagnosticsContext, Severity};
+use crate::{fix, Diagnostic, DiagnosticCode, DiagnosticsContext};
 
 // Diagnostic: need-mut
 //
@@ -29,13 +29,15 @@ pub(crate) fn need_mut(ctx: &DiagnosticsContext<'_>, d: &hir::NeedMut) -> Diagno
             use_range,
         )])
     })();
-    Diagnostic::new(
-        "need-mut",
+    Diagnostic::new_with_syntax_node_ptr(
+        ctx,
+        // FIXME: `E0384` is not the only error that this diagnostic handles
+        DiagnosticCode::RustcHardError("E0384"),
         format!(
             "cannot mutate immutable variable `{}`",
             d.local.name(ctx.sema.db).display(ctx.sema.db)
         ),
-        ctx.sema.diagnostics_display_range(d.span.clone()).range,
+        d.span.clone(),
     )
     .with_fixes(fixes)
 }
@@ -68,12 +70,12 @@ pub(crate) fn unused_mut(ctx: &DiagnosticsContext<'_>, d: &hir::UnusedMut) -> Di
         )])
     })();
     let ast = d.local.primary_source(ctx.sema.db).syntax_ptr();
-    Diagnostic::new(
-        "unused-mut",
+    Diagnostic::new_with_syntax_node_ptr(
+        ctx,
+        DiagnosticCode::RustcLint("unused_mut"),
         "variable does not need to be mutable",
-        ctx.sema.diagnostics_display_range(ast).range,
+        ast,
     )
-    .severity(Severity::WeakWarning)
     .experimental() // Not supporting `#[allow(unused_mut)]` leads to false positive.
     .with_fixes(fixes)
 }
@@ -93,7 +95,7 @@ mod tests {
 fn f(_: i32) {}
 fn main() {
     let mut x = 2;
-      //^^^^^ 💡 weak: variable does not need to be mutable
+      //^^^^^ 💡 warn: variable does not need to be mutable
     f(x);
 }
 "#,
@@ -268,7 +270,7 @@ fn main() {
 fn f(_: i32) {}
 fn main() {
     let mut x = (2, 7);
-      //^^^^^ 💡 weak: variable does not need to be mutable
+      //^^^^^ 💡 warn: variable does not need to be mutable
     f(x.1);
 }
 "#,
@@ -302,7 +304,7 @@ fn main() {
             r#"
 fn main() {
     let mut x = &mut 2;
-      //^^^^^ 💡 weak: variable does not need to be mutable
+      //^^^^^ 💡 warn: variable does not need to be mutable
     *x = 5;
 }
 "#,
@@ -346,7 +348,7 @@ fn main() {
             r#"
             //- minicore: copy, builtin_impls
             fn clone(mut i: &!) -> ! {
-                   //^^^^^ 💡 weak: variable does not need to be mutable
+                   //^^^^^ 💡 warn: variable does not need to be mutable
                 *i
             }
         "#,
@@ -360,7 +362,7 @@ fn main() {
 //- minicore: option
 fn main() {
     let mut v = &mut Some(2);
-      //^^^^^ 💡 weak: variable does not need to be mutable
+      //^^^^^ 💡 warn: variable does not need to be mutable
     let _ = || match v {
         Some(k) => {
             *k = 5;
@@ -386,7 +388,7 @@ fn main() {
 fn main() {
     match (2, 3) {
         (x, mut y) => {
-          //^^^^^ 💡 weak: variable does not need to be mutable
+          //^^^^^ 💡 warn: variable does not need to be mutable
             x = 7;
           //^^^^^ 💡 error: cannot mutate immutable variable `x`
         }
@@ -407,7 +409,7 @@ fn main() {
 fn main() {
     return;
     let mut x = 2;
-      //^^^^^ 💡 weak: variable does not need to be mutable
+      //^^^^^ 💡 warn: variable does not need to be mutable
     &mut x;
 }
 "#,
@@ -417,7 +419,7 @@ fn main() {
 fn main() {
     loop {}
     let mut x = 2;
-      //^^^^^ 💡 weak: variable does not need to be mutable
+      //^^^^^ 💡 warn: variable does not need to be mutable
     &mut x;
 }
 "#,
@@ -438,7 +440,7 @@ fn main(b: bool) {
         g();
     }
     let mut x = 2;
-      //^^^^^ 💡 weak: variable does not need to be mutable
+      //^^^^^ 💡 warn: variable does not need to be mutable
     &mut x;
 }
 "#,
@@ -452,7 +454,7 @@ fn main(b: bool) {
         return;
     }
     let mut x = 2;
-      //^^^^^ 💡 weak: variable does not need to be mutable
+      //^^^^^ 💡 warn: variable does not need to be mutable
     &mut x;
 }
 "#,
@@ -466,7 +468,7 @@ fn main(b: bool) {
 fn f(_: i32) {}
 fn main() {
     let mut x;
-      //^^^^^ 💡 weak: variable does not need to be mutable
+      //^^^^^ 💡 warn: variable does not need to be mutable
     x = 5;
     f(x);
 }
@@ -477,7 +479,7 @@ fn main() {
 fn f(_: i32) {}
 fn main(b: bool) {
     let mut x;
-      //^^^^^ 💡 weak: variable does not need to be mutable
+      //^^^^^ 💡 warn: variable does not need to be mutable
     if b {
         x = 1;
     } else {
@@ -552,15 +554,15 @@ fn f(_: i32) {}
 fn main() {
     loop {
         let mut x = 1;
-          //^^^^^ 💡 weak: variable does not need to be mutable
+          //^^^^^ 💡 warn: variable does not need to be mutable
         f(x);
         if let mut y = 2 {
-             //^^^^^ 💡 weak: variable does not need to be mutable
+             //^^^^^ 💡 warn: variable does not need to be mutable
             f(y);
         }
         match 3 {
             mut z => f(z),
-          //^^^^^ 💡 weak: variable does not need to be mutable
+          //^^^^^ 💡 warn: variable does not need to be mutable
         }
     }
 }
@@ -577,9 +579,9 @@ fn main() {
     loop {
         let c @ (
             mut b,
-          //^^^^^ 💡 weak: variable does not need to be mutable
+          //^^^^^ 💡 warn: variable does not need to be mutable
             mut d
-          //^^^^^ 💡 weak: variable does not need to be mutable
+          //^^^^^ 💡 warn: variable does not need to be mutable
         );
         a = 1;
       //^^^^^ 💡 error: cannot mutate immutable variable `a`
@@ -597,7 +599,7 @@ fn main() {
         check_diagnostics(
             r#"
 fn f(mut x: i32) {
-   //^^^^^ 💡 weak: variable does not need to be mutable
+   //^^^^^ 💡 warn: variable does not need to be mutable
 }
 "#,
         );
@@ -640,7 +642,7 @@ fn f() {
 //- minicore: iterators, copy
 fn f(x: [(i32, u8); 10]) {
     for (a, mut b) in x {
-          //^^^^^ 💡 weak: variable does not need to be mutable
+          //^^^^^ 💡 warn: variable does not need to be mutable
         a = 2;
       //^^^^^ 💡 error: cannot mutate immutable variable `a`
     }
@@ -657,9 +659,9 @@ fn f(x: [(i32, u8); 10]) {
 fn f(x: [(i32, u8); 10]) {
     let mut it = x.into_iter();
     while let Some((a, mut b)) = it.next() {
-                     //^^^^^ 💡 weak: variable does not need to be mutable
+                     //^^^^^ 💡 warn: variable does not need to be mutable
         while let Some((c, mut d)) = it.next() {
-                         //^^^^^ 💡 weak: variable does not need to be mutable
+                         //^^^^^ 💡 warn: variable does not need to be mutable
             a = 2;
           //^^^^^ 💡 error: cannot mutate immutable variable `a`
             c = 2;
@@ -683,7 +685,7 @@ fn f() {
     let x = &mut x;
           //^^^^^^ 💡 error: cannot mutate immutable variable `x`
     let mut x = x;
-      //^^^^^ 💡 weak: variable does not need to be mutable
+      //^^^^^ 💡 warn: variable does not need to be mutable
     x[2] = 5;
 }
 "#,
@@ -711,13 +713,13 @@ impl IndexMut<usize> for Foo {
 }
 fn f() {
     let mut x = Foo;
-      //^^^^^ 💡 weak: variable does not need to be mutable
+      //^^^^^ 💡 warn: variable does not need to be mutable
     let y = &x[2];
     let x = Foo;
     let y = &mut x[2];
                //^💡 error: cannot mutate immutable variable `x`
     let mut x = &mut Foo;
-      //^^^^^ 💡 weak: variable does not need to be mutable
+      //^^^^^ 💡 warn: variable does not need to be mutable
     let y: &mut (i32, u8) = &mut x[2];
     let x = Foo;
     let ref mut y = x[7];
@@ -731,7 +733,7 @@ fn f() {
     }
     let mut x = Foo;
     let mut i = 5;
-      //^^^^^ 💡 weak: variable does not need to be mutable
+      //^^^^^ 💡 warn: variable does not need to be mutable
     let y = &mut x[i];
 }
 "#,
@@ -759,7 +761,7 @@ impl DerefMut for Foo {
 }
 fn f() {
     let mut x = Foo;
-      //^^^^^ 💡 weak: variable does not need to be mutable
+      //^^^^^ 💡 warn: variable does not need to be mutable
     let y = &*x;
     let x = Foo;
     let y = &mut *x;
@@ -790,8 +792,24 @@ fn f() {
 fn f(_: i32) {}
 fn main() {
     let ((Some(mut x), None) | (_, Some(mut x))) = (None, Some(7));
-             //^^^^^ 💡 weak: variable does not need to be mutable
+             //^^^^^ 💡 warn: variable does not need to be mutable
     f(x);
+}
+"#,
+        );
+        check_diagnostics(
+            r#"
+struct Foo(i32);
+
+const X: Foo = Foo(5);
+const Y: Foo = Foo(12);
+
+const fn f(mut a: Foo) -> bool {
+         //^^^^^ 💡 warn: variable does not need to be mutable
+    match a {
+        X | Y => true,
+        _ => false,
+    }
 }
 "#,
         );
@@ -842,7 +860,7 @@ pub struct TreeLeaf {
 
 pub fn test() {
     let mut tree = Tree::Leaf(
-      //^^^^^^^^ 💡 weak: variable does not need to be mutable
+      //^^^^^^^^ 💡 warn: variable does not need to be mutable
         TreeLeaf {
             depth: 0,
             data: 0
@@ -859,7 +877,7 @@ pub fn test() {
             r#"
 //- minicore: fn
 fn fn_ref(mut x: impl Fn(u8) -> u8) -> u8 {
-        //^^^^^ 💡 weak: variable does not need to be mutable
+        //^^^^^ 💡 warn: variable does not need to be mutable
     x(2)
 }
 fn fn_mut(x: impl FnMut(u8) -> u8) -> u8 {
@@ -867,11 +885,11 @@ fn fn_mut(x: impl FnMut(u8) -> u8) -> u8 {
   //^ 💡 error: cannot mutate immutable variable `x`
 }
 fn fn_borrow_mut(mut x: &mut impl FnMut(u8) -> u8) -> u8 {
-               //^^^^^ 💡 weak: variable does not need to be mutable
+               //^^^^^ 💡 warn: variable does not need to be mutable
     x(2)
 }
 fn fn_once(mut x: impl FnOnce(u8) -> u8) -> u8 {
-         //^^^^^ 💡 weak: variable does not need to be mutable
+         //^^^^^ 💡 warn: variable does not need to be mutable
     x(2)
 }
 "#,
@@ -915,14 +933,14 @@ fn fn_once(mut x: impl FnOnce(u8) -> u8) -> u8 {
         //- minicore: copy, fn
         fn f() {
             let mut x = 5;
-              //^^^^^ 💡 weak: variable does not need to be mutable
+              //^^^^^ 💡 warn: variable does not need to be mutable
             let mut y = 2;
             y = 7;
             let closure = || {
                 let mut z = 8;
                 z = 3;
                 let mut k = z;
-                  //^^^^^ 💡 weak: variable does not need to be mutable
+                  //^^^^^ 💡 warn: variable does not need to be mutable
             };
         }
                     "#,
@@ -949,7 +967,7 @@ fn f() {
 fn f() {
     struct X;
     let mut x = X;
-      //^^^^^ 💡 weak: variable does not need to be mutable
+      //^^^^^ 💡 warn: variable does not need to be mutable
     let c1 = || x;
     let mut x = X;
     let c2 = || { x = X; x };
@@ -965,12 +983,12 @@ fn f() {
 
         fn f() {
             let mut x = &mut 5;
-              //^^^^^ 💡 weak: variable does not need to be mutable
+              //^^^^^ 💡 warn: variable does not need to be mutable
             let closure1 = || { *x = 2; };
             let _ = closure1();
                   //^^^^^^^^ 💡 error: cannot mutate immutable variable `closure1`
             let mut x = &mut 5;
-              //^^^^^ 💡 weak: variable does not need to be mutable
+              //^^^^^ 💡 warn: variable does not need to be mutable
             let closure1 = || { *x = 2; &x; };
             let _ = closure1();
                   //^^^^^^^^ 💡 error: cannot mutate immutable variable `closure1`
@@ -979,12 +997,12 @@ fn f() {
             let _ = closure1();
                   //^^^^^^^^ 💡 error: cannot mutate immutable variable `closure1`
             let mut x = &mut 5;
-              //^^^^^ 💡 weak: variable does not need to be mutable
+              //^^^^^ 💡 warn: variable does not need to be mutable
             let closure1 = move || { *x = 2; };
             let _ = closure1();
                   //^^^^^^^^ 💡 error: cannot mutate immutable variable `closure1`
             let mut x = &mut X(1, 2);
-              //^^^^^ 💡 weak: variable does not need to be mutable
+              //^^^^^ 💡 warn: variable does not need to be mutable
             let closure1 = || { x.0 = 2; };
             let _ = closure1();
                   //^^^^^^^^ 💡 error: cannot mutate immutable variable `closure1`
@@ -1001,7 +1019,7 @@ fn f() {
 fn x(t: &[u8]) {
     match t {
         &[a, mut b] | &[a, _, mut b] => {
-           //^^^^^ 💡 weak: variable does not need to be mutable
+           //^^^^^ 💡 warn: variable does not need to be mutable
 
             a = 2;
           //^^^^^ 💡 error: cannot mutate immutable variable `a`
@@ -1055,7 +1073,7 @@ fn f() {
     *x = 7;
   //^^^^^^ 💡 error: cannot mutate immutable variable `x`
     let mut y = Box::new(5);
-      //^^^^^ 💡 weak: variable does not need to be mutable
+      //^^^^^ 💡 warn: variable does not need to be mutable
     *x = *y;
   //^^^^^^^ 💡 error: cannot mutate immutable variable `x`
     let x = Box::new(5);
@@ -1063,6 +1081,33 @@ fn f() {
                     //^ 💡 error: cannot mutate immutable variable `x`
 }
 "#,
+        );
+    }
+
+    #[test]
+    fn regression_15143() {
+        check_diagnostics(
+            r#"
+        trait Tr {
+            type Ty;
+        }
+
+        struct A;
+
+        impl Tr for A {
+            type Ty = (u32, i64);
+        }
+
+        struct B<T: Tr> {
+            f: <T as Tr>::Ty,
+        }
+
+        fn main(b: B<A>) {
+            let f = b.f.0;
+            f = 5;
+          //^^^^^ 💡 error: cannot mutate immutable variable `f`
+        }
+            "#,
         );
     }
 
@@ -1080,16 +1125,50 @@ fn main() {
     }
 
     #[test]
-    fn respect_allow_unused_mut() {
-        // FIXME: respect
+    fn respect_lint_attributes_for_unused_mut() {
         check_diagnostics(
             r#"
 fn f(_: i32) {}
 fn main() {
     #[allow(unused_mut)]
     let mut x = 2;
-      //^^^^^ 💡 weak: variable does not need to be mutable
     f(x);
+}
+
+fn main2() {
+    #[deny(unused_mut)]
+    let mut x = 2;
+      //^^^^^ 💡 error: variable does not need to be mutable
+    f(x);
+}
+"#,
+        );
+        check_diagnostics(
+            r#"
+macro_rules! mac {
+    ($($x:expr),*$(,)*) => ({
+        #[allow(unused_mut)]
+        let mut vec = 2;
+        vec
+    });
+}
+
+fn main2() {
+    let mut x = mac![];
+      //^^^^^ 💡 warn: variable does not need to be mutable
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn regression_15099() {
+        check_diagnostics(
+            r#"
+//- minicore: iterator, range
+fn f() {
+    loop {}
+    for _ in 0..2 {}
 }
 "#,
         );

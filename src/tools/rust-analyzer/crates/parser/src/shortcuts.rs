@@ -24,7 +24,7 @@ pub enum StrStep<'a> {
     Error { msg: &'a str, pos: usize },
 }
 
-impl<'a> LexedStr<'a> {
+impl LexedStr<'_> {
     pub fn to_input(&self) -> crate::Input {
         let mut res = crate::Input::default();
         let mut was_joint = false;

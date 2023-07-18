@@ -14,6 +14,16 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
 
         let actual = tcx.type_of(weak_ty.def_id).instantiate(tcx, weak_ty.args);
         self.eq(goal.param_env, expected, actual)?;
+
+        // Check where clauses
+        self.add_goals(
+            tcx.predicates_of(weak_ty.def_id)
+                .instantiate(tcx, weak_ty.args)
+                .predicates
+                .into_iter()
+                .map(|pred| goal.with(tcx, pred)),
+        );
+
         self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
 }
