@@ -1,4 +1,5 @@
-// compile-flags: -C no-prepopulate-passes
+// Verify that optimized MIR only copies `a` once.
+// compile-flags: -O -C no-prepopulate-passes
 
 #![crate_type = "lib"]
 
