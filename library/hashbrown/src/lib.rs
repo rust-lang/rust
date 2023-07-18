@@ -118,7 +118,7 @@ pub use crate::map::HashMap;
 pub use crate::set::HashSet;
 
 #[cfg(feature = "equivalent")]
-use equivalent::Equivalent;
+pub use equivalent::Equivalent;
 
 // This is only used as a fallback when building as part of `std`.
 #[cfg(not(feature = "equivalent"))]
