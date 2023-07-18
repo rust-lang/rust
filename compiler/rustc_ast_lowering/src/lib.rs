@@ -1619,13 +1619,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 debug!(?hir_bounds);
 
                 let lifetime_mapping = if in_trait {
-                    self.arena.alloc_from_iter(
-                        collected_lifetime_mapping
-                            .iter()
-                            .map(|(lifetime, def_id)| (**lifetime, *def_id)),
+                    Some(
+                        &*self.arena.alloc_from_iter(
+                            collected_lifetime_mapping
+                                .iter()
+                                .map(|(lifetime, def_id)| (**lifetime, *def_id)),
+                        ),
                     )
                 } else {
-                    &mut []
+                    None
                 };
 
                 let opaque_ty_item = hir::OpaqueTy {
@@ -2090,13 +2092,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 debug!("lower_async_fn_ret_ty: generic_params={:#?}", generic_params);
 
                 let lifetime_mapping = if in_trait {
-                    self.arena.alloc_from_iter(
-                        collected_lifetime_mapping
-                            .iter()
-                            .map(|(lifetime, def_id)| (**lifetime, *def_id)),
+                    Some(
+                        &*self.arena.alloc_from_iter(
+                            collected_lifetime_mapping
+                                .iter()
+                                .map(|(lifetime, def_id)| (**lifetime, *def_id)),
+                        ),
                     )
                 } else {
-                    &mut []
+                    None
                 };
 
                 let opaque_ty_item = hir::OpaqueTy {
