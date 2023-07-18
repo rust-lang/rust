@@ -100,10 +100,7 @@ use rustc_middle::mir::ConstantKind;
 use rustc_middle::ty as rustc_ty;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
 use rustc_middle::ty::binding::BindingMode;
-use rustc_middle::ty::fast_reject::SimplifiedType::{
-    ArraySimplifiedType, BoolSimplifiedType, CharSimplifiedType, FloatSimplifiedType, IntSimplifiedType,
-    PtrSimplifiedType, SliceSimplifiedType, StrSimplifiedType, UintSimplifiedType,
-};
+use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{
     BorrowKind, ClosureKind, FloatTy, IntTy, Ty, TyCtxt, TypeAndMut, TypeVisitableExt, UintTy, UpvarCapture,
@@ -512,30 +509,30 @@ pub fn path_def_id<'tcx>(cx: &LateContext<'_>, maybe_path: &impl MaybePath<'tcx>
 
 fn find_primitive_impls<'tcx>(tcx: TyCtxt<'tcx>, name: &str) -> impl Iterator<Item = DefId> + 'tcx {
     let ty = match name {
-        "bool" => BoolSimplifiedType,
-        "char" => CharSimplifiedType,
-        "str" => StrSimplifiedType,
-        "array" => ArraySimplifiedType,
-        "slice" => SliceSimplifiedType,
+        "bool" => SimplifiedType::Bool,
+        "char" => SimplifiedType::Char,
+        "str" => SimplifiedType::Str,
+        "array" => SimplifiedType::Array,
+        "slice" => SimplifiedType::Slice,
         // FIXME: rustdoc documents these two using just `pointer`.
         //
         // Maybe this is something we should do here too.
-        "const_ptr" => PtrSimplifiedType(Mutability::Not),
-        "mut_ptr" => PtrSimplifiedType(Mutability::Mut),
-        "isize" => IntSimplifiedType(IntTy::Isize),
-        "i8" => IntSimplifiedType(IntTy::I8),
-        "i16" => IntSimplifiedType(IntTy::I16),
-        "i32" => IntSimplifiedType(IntTy::I32),
-        "i64" => IntSimplifiedType(IntTy::I64),
-        "i128" => IntSimplifiedType(IntTy::I128),
-        "usize" => UintSimplifiedType(UintTy::Usize),
-        "u8" => UintSimplifiedType(UintTy::U8),
-        "u16" => UintSimplifiedType(UintTy::U16),
-        "u32" => UintSimplifiedType(UintTy::U32),
-        "u64" => UintSimplifiedType(UintTy::U64),
-        "u128" => UintSimplifiedType(UintTy::U128),
-        "f32" => FloatSimplifiedType(FloatTy::F32),
-        "f64" => FloatSimplifiedType(FloatTy::F64),
+        "const_ptr" => SimplifiedType::Ptr(Mutability::Not),
+        "mut_ptr" => SimplifiedType::Ptr(Mutability::Mut),
+        "isize" => SimplifiedType::Int(IntTy::Isize),
+        "i8" => SimplifiedType::Int(IntTy::I8),
+        "i16" => SimplifiedType::Int(IntTy::I16),
+        "i32" => SimplifiedType::Int(IntTy::I32),
+        "i64" => SimplifiedType::Int(IntTy::I64),
+        "i128" => SimplifiedType::Int(IntTy::I128),
+        "usize" => SimplifiedType::Uint(UintTy::Usize),
+        "u8" => SimplifiedType::Uint(UintTy::U8),
+        "u16" => SimplifiedType::Uint(UintTy::U16),
+        "u32" => SimplifiedType::Uint(UintTy::U32),
+        "u64" => SimplifiedType::Uint(UintTy::U64),
+        "u128" => SimplifiedType::Uint(UintTy::U128),
+        "f32" => SimplifiedType::Float(FloatTy::F32),
+        "f64" => SimplifiedType::Float(FloatTy::F64),
         _ => return [].iter().copied(),
     };
 
