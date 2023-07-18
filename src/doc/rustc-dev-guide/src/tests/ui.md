@@ -88,7 +88,7 @@ check for output files:
   contents of the stored output files by lines opposed to checking for strict
   equality.
 
-UI tests run with with `-Zdeduplicate-diagnostics=no` flag which disables
+UI tests run with `-Zdeduplicate-diagnostics=no` flag which disables
 rustc's built-in diagnostic deduplication mechanism.
 This means you may see some duplicate messages in the output.
 This helps illuminate situations where duplicate diagnostics are being
