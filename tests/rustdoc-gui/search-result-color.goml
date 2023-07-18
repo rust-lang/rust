@@ -368,8 +368,8 @@ define-function: (
         // Waiting for the search results to appear...
         wait-for: "#search-tabs"
         // Checking that the colors for the alias element are the ones expected.
-        assert-css: (".result-name > .alias", {"color": |alias|})
-        assert-css: (".result-name > .alias > .grey", {"color": |grey|})
+        assert-css: (".result-name .path .alias", {"color": |alias|})
+        assert-css: (".result-name .path .alias > .grey", {"color": |grey|})
         // Leave the search results to prevent reloading with an already filled search input.
         press-key: "Escape"
     },

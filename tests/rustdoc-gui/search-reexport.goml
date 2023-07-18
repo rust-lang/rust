@@ -26,7 +26,7 @@ write: (".search-input", "AliasForTheStdReexport")
 wait-for: "//a[@class='result-import']"
 assert-text: (
     "a.result-import .result-name",
-    "AliasForTheStdReexport - see re-export test_docs::TheStdReexport",
+    "re-export AliasForTheStdReexport - see test_docs::TheStdReexport",
 )
 // Same thing again, we click on it to ensure the background is once again set as expected.
 click: "//a[@class='result-import']"
