@@ -70,7 +70,6 @@ found in [`header.rs`] from the compiletest source.
     * `min-llvm-versionX`
     * `min-system-llvm-version`
     * `ignore-llvm-version`
-    * `ignore-llvm-version`
 * [Environment variable headers](#environment-variable-headers)
     * `rustc-env`
     * `exec-env`
