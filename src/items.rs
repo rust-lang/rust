@@ -306,22 +306,20 @@ impl<'a> FnSig<'a> {
         defaultness: ast::Defaultness,
     ) -> FnSig<'a> {
         match *fn_kind {
-            visit::FnKind::Fn(fn_ctxt, _, fn_sig, vis, generics, _) => match fn_ctxt {
-                visit::FnCtxt::Assoc(..) => {
-                    let mut fn_sig = FnSig::from_method_sig(fn_sig, generics, vis);
-                    fn_sig.defaultness = defaultness;
-                    fn_sig
-                }
-                _ => FnSig {
-                    decl,
-                    generics,
-                    ext: fn_sig.header.ext,
-                    constness: fn_sig.header.constness,
-                    is_async: Cow::Borrowed(&fn_sig.header.asyncness),
-                    defaultness,
-                    unsafety: fn_sig.header.unsafety,
-                    visibility: vis,
-                },
+            visit::FnKind::Fn(visit::FnCtxt::Assoc(..), _, fn_sig, vis, generics, _) => {
+                let mut fn_sig = FnSig::from_method_sig(fn_sig, generics, vis);
+                fn_sig.defaultness = defaultness;
+                fn_sig
+            }
+            visit::FnKind::Fn(_, _, fn_sig, vis, generics, _) => FnSig {
+                decl,
+                generics,
+                ext: fn_sig.header.ext,
+                constness: fn_sig.header.constness,
+                is_async: Cow::Borrowed(&fn_sig.header.asyncness),
+                defaultness,
+                unsafety: fn_sig.header.unsafety,
+                visibility: vis,
             },
             _ => unreachable!(),
         }
@@ -1118,172 +1116,172 @@ pub(crate) fn format_trait(
     item: &ast::Item,
     offset: Indent,
 ) -> Option<String> {
-    if let ast::ItemKind::Trait(trait_kind) = &item.kind {
-        let ast::Trait {
-            is_auto,
-            unsafety,
-            ref generics,
-            ref bounds,
-            ref items,
-        } = **trait_kind;
-        let mut result = String::with_capacity(128);
-        let header = format!(
-            "{}{}{}trait ",
-            format_visibility(context, &item.vis),
-            format_unsafety(unsafety),
-            format_auto(is_auto),
-        );
-        result.push_str(&header);
-
-        let body_lo = context.snippet_provider.span_after(item.span, "{");
-
-        let shape = Shape::indented(offset, context.config).offset_left(result.len())?;
-        let generics_str =
-            rewrite_generics(context, rewrite_ident(context, item.ident), generics, shape)?;
-        result.push_str(&generics_str);
-
-        // FIXME(#2055): rustfmt fails to format when there are comments between trait bounds.
-        if !bounds.is_empty() {
-            let ident_hi = context
-                .snippet_provider
-                .span_after(item.span, item.ident.as_str());
-            let bound_hi = bounds.last().unwrap().span().hi();
-            let snippet = context.snippet(mk_sp(ident_hi, bound_hi));
-            if contains_comment(snippet) {
-                return None;
-            }
-
-            result = rewrite_assign_rhs_with(
-                context,
-                result + ":",
-                bounds,
-                shape,
-                &RhsAssignKind::Bounds,
-                RhsTactics::ForceNextLineWithoutIndent,
-            )?;
-        }
-
-        // Rewrite where-clause.
-        if !generics.where_clause.predicates.is_empty() {
-            let where_on_new_line = context.config.indent_style() != IndentStyle::Block;
-
-            let where_budget = context.budget(last_line_width(&result));
-            let pos_before_where = if bounds.is_empty() {
-                generics.where_clause.span.lo()
-            } else {
-                bounds[bounds.len() - 1].span().hi()
-            };
-            let option = WhereClauseOption::snuggled(&generics_str);
-            let where_clause_str = rewrite_where_clause(
-                context,
-                &generics.where_clause.predicates,
-                generics.where_clause.span,
-                context.config.brace_style(),
-                Shape::legacy(where_budget, offset.block_only()),
-                where_on_new_line,
-                "{",
-                None,
-                pos_before_where,
-                option,
-            )?;
-            // If the where-clause cannot fit on the same line,
-            // put the where-clause on a new line
-            if !where_clause_str.contains('\n')
-                && last_line_width(&result) + where_clause_str.len() + offset.width()
-                    > context.config.comment_width()
-            {
-                let width = offset.block_indent + context.config.tab_spaces() - 1;
-                let where_indent = Indent::new(0, width);
-                result.push_str(&where_indent.to_string_with_newline(context.config));
-            }
-            result.push_str(&where_clause_str);
-        } else {
-            let item_snippet = context.snippet(item.span);
-            if let Some(lo) = item_snippet.find('/') {
-                // 1 = `{`
-                let comment_hi = if generics.params.len() > 0 {
-                    generics.span.lo() - BytePos(1)
-                } else {
-                    body_lo - BytePos(1)
-                };
-                let comment_lo = item.span.lo() + BytePos(lo as u32);
-                if comment_lo < comment_hi {
-                    match recover_missing_comment_in_span(
-                        mk_sp(comment_lo, comment_hi),
-                        Shape::indented(offset, context.config),
-                        context,
-                        last_line_width(&result),
-                    ) {
-                        Some(ref missing_comment) if !missing_comment.is_empty() => {
-                            result.push_str(missing_comment);
-                        }
-                        _ => (),
-                    }
-                }
-            }
-        }
-
-        let block_span = mk_sp(generics.where_clause.span.hi(), item.span.hi());
-        let snippet = context.snippet(block_span);
-        let open_pos = snippet.find_uncommented("{")? + 1;
-
-        match context.config.brace_style() {
-            _ if last_line_contains_single_line_comment(&result)
-                || last_line_width(&result) + 2 > context.budget(offset.width()) =>
-            {
-                result.push_str(&offset.to_string_with_newline(context.config));
-            }
-            _ if context.config.empty_item_single_line()
-                && items.is_empty()
-                && !result.contains('\n')
-                && !contains_comment(&snippet[open_pos..]) =>
-            {
-                result.push_str(" {}");
-                return Some(result);
-            }
-            BraceStyle::AlwaysNextLine => {
-                result.push_str(&offset.to_string_with_newline(context.config));
-            }
-            BraceStyle::PreferSameLine => result.push(' '),
-            BraceStyle::SameLineWhere => {
-                if result.contains('\n')
-                    || (!generics.where_clause.predicates.is_empty() && !items.is_empty())
-                {
-                    result.push_str(&offset.to_string_with_newline(context.config));
-                } else {
-                    result.push(' ');
-                }
-            }
-        }
-        result.push('{');
-
-        let outer_indent_str = offset.block_only().to_string_with_newline(context.config);
-
-        if !items.is_empty() || contains_comment(&snippet[open_pos..]) {
-            let mut visitor = FmtVisitor::from_context(context);
-            visitor.block_indent = offset.block_only().block_indent(context.config);
-            visitor.last_pos = block_span.lo() + BytePos(open_pos as u32);
-
-            for item in items {
-                visitor.visit_trait_item(item);
-            }
-
-            visitor.format_missing(item.span.hi() - BytePos(1));
-
-            let inner_indent_str = visitor.block_indent.to_string_with_newline(context.config);
-
-            result.push_str(&inner_indent_str);
-            result.push_str(visitor.buffer.trim());
-            result.push_str(&outer_indent_str);
-        } else if result.contains('\n') {
-            result.push_str(&outer_indent_str);
-        }
-
-        result.push('}');
-        Some(result)
-    } else {
+    let ast::ItemKind::Trait(trait_kind) = &item.kind else {
         unreachable!();
+    };
+    let ast::Trait {
+        is_auto,
+        unsafety,
+        ref generics,
+        ref bounds,
+        ref items,
+    } = **trait_kind;
+
+    let mut result = String::with_capacity(128);
+    let header = format!(
+        "{}{}{}trait ",
+        format_visibility(context, &item.vis),
+        format_unsafety(unsafety),
+        format_auto(is_auto),
+    );
+    result.push_str(&header);
+
+    let body_lo = context.snippet_provider.span_after(item.span, "{");
+
+    let shape = Shape::indented(offset, context.config).offset_left(result.len())?;
+    let generics_str =
+        rewrite_generics(context, rewrite_ident(context, item.ident), generics, shape)?;
+    result.push_str(&generics_str);
+
+    // FIXME(#2055): rustfmt fails to format when there are comments between trait bounds.
+    if !bounds.is_empty() {
+        let ident_hi = context
+            .snippet_provider
+            .span_after(item.span, item.ident.as_str());
+        let bound_hi = bounds.last().unwrap().span().hi();
+        let snippet = context.snippet(mk_sp(ident_hi, bound_hi));
+        if contains_comment(snippet) {
+            return None;
+        }
+
+        result = rewrite_assign_rhs_with(
+            context,
+            result + ":",
+            bounds,
+            shape,
+            &RhsAssignKind::Bounds,
+            RhsTactics::ForceNextLineWithoutIndent,
+        )?;
     }
+
+    // Rewrite where-clause.
+    if !generics.where_clause.predicates.is_empty() {
+        let where_on_new_line = context.config.indent_style() != IndentStyle::Block;
+
+        let where_budget = context.budget(last_line_width(&result));
+        let pos_before_where = if bounds.is_empty() {
+            generics.where_clause.span.lo()
+        } else {
+            bounds[bounds.len() - 1].span().hi()
+        };
+        let option = WhereClauseOption::snuggled(&generics_str);
+        let where_clause_str = rewrite_where_clause(
+            context,
+            &generics.where_clause.predicates,
+            generics.where_clause.span,
+            context.config.brace_style(),
+            Shape::legacy(where_budget, offset.block_only()),
+            where_on_new_line,
+            "{",
+            None,
+            pos_before_where,
+            option,
+        )?;
+        // If the where-clause cannot fit on the same line,
+        // put the where-clause on a new line
+        if !where_clause_str.contains('\n')
+            && last_line_width(&result) + where_clause_str.len() + offset.width()
+                > context.config.comment_width()
+        {
+            let width = offset.block_indent + context.config.tab_spaces() - 1;
+            let where_indent = Indent::new(0, width);
+            result.push_str(&where_indent.to_string_with_newline(context.config));
+        }
+        result.push_str(&where_clause_str);
+    } else {
+        let item_snippet = context.snippet(item.span);
+        if let Some(lo) = item_snippet.find('/') {
+            // 1 = `{`
+            let comment_hi = if generics.params.len() > 0 {
+                generics.span.lo() - BytePos(1)
+            } else {
+                body_lo - BytePos(1)
+            };
+            let comment_lo = item.span.lo() + BytePos(lo as u32);
+            if comment_lo < comment_hi {
+                match recover_missing_comment_in_span(
+                    mk_sp(comment_lo, comment_hi),
+                    Shape::indented(offset, context.config),
+                    context,
+                    last_line_width(&result),
+                ) {
+                    Some(ref missing_comment) if !missing_comment.is_empty() => {
+                        result.push_str(missing_comment);
+                    }
+                    _ => (),
+                }
+            }
+        }
+    }
+
+    let block_span = mk_sp(generics.where_clause.span.hi(), item.span.hi());
+    let snippet = context.snippet(block_span);
+    let open_pos = snippet.find_uncommented("{")? + 1;
+
+    match context.config.brace_style() {
+        _ if last_line_contains_single_line_comment(&result)
+            || last_line_width(&result) + 2 > context.budget(offset.width()) =>
+        {
+            result.push_str(&offset.to_string_with_newline(context.config));
+        }
+        _ if context.config.empty_item_single_line()
+            && items.is_empty()
+            && !result.contains('\n')
+            && !contains_comment(&snippet[open_pos..]) =>
+        {
+            result.push_str(" {}");
+            return Some(result);
+        }
+        BraceStyle::AlwaysNextLine => {
+            result.push_str(&offset.to_string_with_newline(context.config));
+        }
+        BraceStyle::PreferSameLine => result.push(' '),
+        BraceStyle::SameLineWhere => {
+            if result.contains('\n')
+                || (!generics.where_clause.predicates.is_empty() && !items.is_empty())
+            {
+                result.push_str(&offset.to_string_with_newline(context.config));
+            } else {
+                result.push(' ');
+            }
+        }
+    }
+    result.push('{');
+
+    let outer_indent_str = offset.block_only().to_string_with_newline(context.config);
+
+    if !items.is_empty() || contains_comment(&snippet[open_pos..]) {
+        let mut visitor = FmtVisitor::from_context(context);
+        visitor.block_indent = offset.block_only().block_indent(context.config);
+        visitor.last_pos = block_span.lo() + BytePos(open_pos as u32);
+
+        for item in items {
+            visitor.visit_trait_item(item);
+        }
+
+        visitor.format_missing(item.span.hi() - BytePos(1));
+
+        let inner_indent_str = visitor.block_indent.to_string_with_newline(context.config);
+
+        result.push_str(&inner_indent_str);
+        result.push_str(visitor.buffer.trim());
+        result.push_str(&outer_indent_str);
+    } else if result.contains('\n') {
+        result.push_str(&outer_indent_str);
+    }
+
+    result.push('}');
+    Some(result)
 }
 
 pub(crate) struct TraitAliasBounds<'a> {
