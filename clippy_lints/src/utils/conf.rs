@@ -551,10 +551,6 @@ define_Conf! {
     ///
     /// Whether to allow `r#""#` when `r""` can be used
     (allow_one_hash_in_raw_strings: bool = false),
-    /// Lint: ERROR_IMPL_ERROR.
-    ///
-    /// Whether to allow private types named `Error` that implement `Error`
-    (allow_private_error: bool = true),
 }
 
 /// Search for the configuration file.

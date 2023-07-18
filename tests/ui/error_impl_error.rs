@@ -1,6 +1,3 @@
-//@revisions: allow_private disallow_private
-//@[allow_private] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/error_impl_error/allow_private
-//@[disallow_private] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/error_impl_error/disallow_private
 #![allow(unused)]
 #![warn(clippy::error_impl_error)]
 #![no_main]
@@ -20,7 +17,7 @@ pub mod a {
 
 mod b {
     #[derive(Debug)]
-    enum Error {}
+    pub(super) enum Error {}
 
     impl std::fmt::Display for Error {
         fn fmt(&self, _: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -58,7 +55,7 @@ pub mod d {
 
 mod e {
     #[derive(Debug)]
-    struct MyError;
+    pub(super) struct MyError;
 
     impl std::fmt::Display for MyError {
         fn fmt(&self, _: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -69,6 +66,25 @@ mod e {
     impl std::error::Error for MyError {}
 }
 
-mod f {
-    type MyError = std::fmt::Error;
+pub mod f {
+    pub type MyError = std::fmt::Error;
+}
+
+// Do not lint module-private types
+
+mod g {
+    #[derive(Debug)]
+    enum Error {}
+
+    impl std::fmt::Display for Error {
+        fn fmt(&self, _: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            todo!()
+        }
+    }
+
+    impl std::error::Error for Error {}
+}
+
+mod h {
+    type Error = std::fmt::Error;
 }
