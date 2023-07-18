@@ -8,8 +8,8 @@ fn normalize_platform_differences() {
         "$BUILD_DIR/../parser.rs"
     );
     assert_eq!(
-        TestCx::normalize_platform_differences(r"$DIR\bar.rs hello\nworld"),
-        r"$DIR/bar.rs hello\nworld"
+        TestCx::normalize_platform_differences(r"$DIR\bar.rs: hello\nworld"),
+        r"$DIR/bar.rs: hello\nworld"
     );
     assert_eq!(
         TestCx::normalize_platform_differences(r"either bar\baz.rs or bar\baz\mod.rs"),
@@ -27,8 +27,8 @@ fn normalize_platform_differences() {
     );
     assert_eq!(TestCx::normalize_platform_differences(r"$DIR\foo.rs:12:11"), "$DIR/foo.rs:12:11",);
     assert_eq!(
-        TestCx::normalize_platform_differences(r"$DIR\path with spaces 'n' quotes"),
-        "$DIR/path with spaces 'n' quotes",
+        TestCx::normalize_platform_differences(r"$DIR\path with\spaces 'n' quotes"),
+        "$DIR/path with/spaces 'n' quotes",
     );
     assert_eq!(
         TestCx::normalize_platform_differences(r"$DIR\file_with\no_extension"),
