@@ -1,0 +1,23 @@
+error[E0283]: type annotations needed: cannot satisfy `<T as Id>::Assoc: Trait<'_>`
+  --> $DIR/assemble-normalizing-self-ty-impl-ambiguity.rs:19:5
+   |
+LL |     impls_trait::<<T as Id>::Assoc>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: cannot satisfy `<T as Id>::Assoc: Trait<'_>`
+note: required by a bound in `impls_trait`
+  --> $DIR/assemble-normalizing-self-ty-impl-ambiguity.rs:9:23
+   |
+LL | fn impls_trait<'a, T: Trait<'a>>() {}
+   |                       ^^^^^^^^^ required by this bound in `impls_trait`
+
+error[E0282]: type annotations needed
+  --> $DIR/assemble-normalizing-self-ty-impl-ambiguity.rs:24:5
+   |
+LL |     impls_trait::<<<() as Id>::Assoc as Id>::Assoc>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the function `impls_trait`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0282, E0283.
+For more information about an error, try `rustc --explain E0282`.
