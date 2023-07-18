@@ -510,15 +510,6 @@ impl From<File> for Stdio {
     }
 }
 
-impl From<io::Stdin> for Stdio {
-    fn from(_: io::Stdin) -> Stdio {
-        // What this ought to be is Stdio::StaticFd(input_argument.as_fd()).
-        // But there is no AsStaticFd trait or anything.
-        // https://github.com/rust-lang/rust/issues/90809
-        Stdio::StaticFd(unsafe { BorrowedFd::borrow_raw(libc::STDIN_FILENO) })
-    }
-}
-
 impl From<io::Stdout> for Stdio {
     fn from(_: io::Stdout) -> Stdio {
         Stdio::StaticFd(unsafe { BorrowedFd::borrow_raw(libc::STDOUT_FILENO) })
