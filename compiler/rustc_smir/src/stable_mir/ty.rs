@@ -1,4 +1,4 @@
-use super::{with, DefId};
+use super::{mir::Mutability, with, DefId};
 use crate::rustc_internal::Opaque;
 
 #[derive(Copy, Clone, Debug)]
@@ -11,7 +11,7 @@ impl Ty {
 }
 
 type Const = Opaque;
-type Region = Opaque;
+pub(crate) type Region = Opaque;
 
 #[derive(Clone, Debug)]
 pub enum TyKind {
@@ -29,6 +29,8 @@ pub enum RigidTy {
     Str,
     Array(Ty, Const),
     Slice(Ty),
+    RawPtr(Ty, Mutability),
+    Ref(Region, Ty, Mutability),
     Tuple(Vec<Ty>),
 }
 
