@@ -127,6 +127,7 @@ static TARGETS: &[&str] = &[
     "s390x-unknown-linux-gnu",
     "sparc64-unknown-linux-gnu",
     "sparcv9-sun-solaris",
+    "sparc-unknown-none-elf",
     "thumbv6m-none-eabi",
     "thumbv7em-none-eabi",
     "thumbv7em-none-eabihf",

@@ -463,7 +463,9 @@ impl CompletionContext<'_> {
 
     /// Checks whether this item should be listed in regards to stability. Returns `true` if we should.
     pub(crate) fn check_stability(&self, attrs: Option<&hir::Attrs>) -> bool {
-        let Some(attrs) = attrs else { return true; };
+        let Some(attrs) = attrs else {
+            return true;
+        };
         !attrs.is_unstable() || self.is_nightly
     }
 

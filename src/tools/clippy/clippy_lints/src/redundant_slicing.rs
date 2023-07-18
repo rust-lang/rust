@@ -7,9 +7,8 @@ use rustc_ast::util::parser::PREC_PREFIX;
 use rustc_errors::Applicability;
 use rustc_hir::{BorrowKind, Expr, ExprKind, LangItem, Mutability};
 use rustc_lint::{LateContext, LateLintPass, Lint};
-use rustc_middle::ty::Ty;
 use rustc_middle::ty::adjustment::{Adjust, AutoBorrow, AutoBorrowMutability};
-use rustc_middle::ty::GenericArg;
+use rustc_middle::ty::{GenericArg, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {

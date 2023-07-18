@@ -145,6 +145,7 @@ mod handlers {
     mod generate_constant;
     mod generate_default_from_enum_variant;
     mod generate_default_from_new;
+    mod generate_delegate_trait;
     mod generate_deref;
     mod generate_derive;
     mod generate_documentation_template;
@@ -153,12 +154,12 @@ mod handlers {
     mod generate_enum_variant;
     mod generate_from_impl_for_enum;
     mod generate_function;
-    mod generate_getter;
+    mod generate_getter_or_setter;
     mod generate_impl;
     mod generate_is_empty_from_len;
     mod generate_new;
-    mod generate_setter;
     mod generate_delegate_methods;
+    mod generate_trait_from_impl;
     mod add_return_type;
     mod inline_call;
     mod inline_const_as_literal;
@@ -251,6 +252,7 @@ mod handlers {
             generate_constant::generate_constant,
             generate_default_from_enum_variant::generate_default_from_enum_variant,
             generate_default_from_new::generate_default_from_new,
+            generate_delegate_trait::generate_delegate_trait,
             generate_derive::generate_derive,
             generate_documentation_template::generate_documentation_template,
             generate_documentation_template::generate_doc_example,
@@ -264,6 +266,7 @@ mod handlers {
             generate_impl::generate_trait_impl,
             generate_is_empty_from_len::generate_is_empty_from_len,
             generate_new::generate_new,
+            generate_trait_from_impl::generate_trait_from_impl,
             inline_call::inline_call,
             inline_call::inline_into_callers,
             inline_const_as_literal::inline_const_as_literal,
@@ -334,9 +337,9 @@ mod handlers {
             extract_function::extract_function,
             extract_module::extract_module,
             //
-            generate_getter::generate_getter,
-            generate_getter::generate_getter_mut,
-            generate_setter::generate_setter,
+            generate_getter_or_setter::generate_getter,
+            generate_getter_or_setter::generate_getter_mut,
+            generate_getter_or_setter::generate_setter,
             generate_delegate_methods::generate_delegate_methods,
             generate_deref::generate_deref,
             //

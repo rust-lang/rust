@@ -226,7 +226,7 @@ fn lint_map_unit_fn(
         );
 
         span_lint_and_then(cx, lint, expr.span, &msg, |diag| {
-            diag.span_suggestion(stmt.span, "try this", suggestion, applicability);
+            diag.span_suggestion(stmt.span, "try", suggestion, applicability);
         });
     } else if let Some((binding, closure_expr)) = unit_closure(cx, fn_arg) {
         let msg = suggestion_msg("closure", map_type);
@@ -241,7 +241,7 @@ fn lint_map_unit_fn(
                     snippet_with_applicability(cx, var_arg.span, "_", &mut applicability),
                     snippet_with_context(cx, reduced_expr_span, var_arg.span.ctxt(), "_", &mut applicability).0,
                 );
-                diag.span_suggestion(stmt.span, "try this", suggestion, applicability);
+                diag.span_suggestion(stmt.span, "try", suggestion, applicability);
             } else {
                 let suggestion = format!(
                     "if let {0}({1}) = {2} {{ ... }}",
@@ -249,7 +249,7 @@ fn lint_map_unit_fn(
                     snippet(cx, binding.pat.span, "_"),
                     snippet(cx, var_arg.span, "_"),
                 );
-                diag.span_suggestion(stmt.span, "try this", suggestion, Applicability::HasPlaceholders);
+                diag.span_suggestion(stmt.span, "try", suggestion, Applicability::HasPlaceholders);
             }
         });
     }

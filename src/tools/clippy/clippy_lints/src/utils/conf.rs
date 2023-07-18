@@ -319,7 +319,7 @@ define_Conf! {
     /// Lint: DISALLOWED_NAMES.
     ///
     /// The list of disallowed names to lint about. NB: `bar` is not here since it has legitimate uses. The value
-    /// `".."` can be used as part of the list to indicate, that the configured values should be appended to the
+    /// `".."` can be used as part of the list to indicate that the configured values should be appended to the
     /// default configuration of Clippy. By default, any configuration will replace the default value.
     (disallowed_names: Vec<String> = super::DEFAULT_DISALLOWED_NAMES.iter().map(ToString::to_string).collect()),
     /// Lint: SEMICOLON_INSIDE_BLOCK.

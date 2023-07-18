@@ -5,7 +5,8 @@ use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::{get_iterator_item_ty, implements_trait};
 use clippy_utils::{fn_def_id, get_parent_expr};
 use rustc_errors::Applicability;
-use rustc_hir::{def_id::DefId, Expr, ExprKind};
+use rustc_hir::def_id::DefId;
+use rustc_hir::{Expr, ExprKind};
 use rustc_lint::LateContext;
 use rustc_span::{sym, Symbol};
 

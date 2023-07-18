@@ -360,7 +360,7 @@ fn calculate_best_path(
                     prefer_no_std,
                 )?;
                 cov_mark::hit!(partially_imported);
-                path.push_segment(info.path.segments.last()?.clone());
+                path.push_segment(info.name.clone());
                 Some(path)
             })
         });

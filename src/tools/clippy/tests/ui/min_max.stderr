@@ -1,5 +1,5 @@
 error: this `min`/`max` combination leads to constant result
-  --> $DIR/min_max.rs:24:5
+  --> $DIR/min_max.rs:22:5
    |
 LL |     min(1, max(3, x));
    |     ^^^^^^^^^^^^^^^^^
@@ -7,73 +7,73 @@ LL |     min(1, max(3, x));
    = note: `-D clippy::min-max` implied by `-D warnings`
 
 error: this `min`/`max` combination leads to constant result
-  --> $DIR/min_max.rs:25:5
+  --> $DIR/min_max.rs:23:5
    |
 LL |     min(max(3, x), 1);
    |     ^^^^^^^^^^^^^^^^^
 
 error: this `min`/`max` combination leads to constant result
-  --> $DIR/min_max.rs:26:5
+  --> $DIR/min_max.rs:24:5
    |
 LL |     max(min(x, 1), 3);
    |     ^^^^^^^^^^^^^^^^^
 
 error: this `min`/`max` combination leads to constant result
-  --> $DIR/min_max.rs:27:5
+  --> $DIR/min_max.rs:25:5
    |
 LL |     max(3, min(x, 1));
    |     ^^^^^^^^^^^^^^^^^
 
 error: this `min`/`max` combination leads to constant result
-  --> $DIR/min_max.rs:29:5
+  --> $DIR/min_max.rs:27:5
    |
 LL |     my_max(3, my_min(x, 1));
    |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this `min`/`max` combination leads to constant result
-  --> $DIR/min_max.rs:39:5
+  --> $DIR/min_max.rs:37:5
    |
 LL |     min("Apple", max("Zoo", s));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this `min`/`max` combination leads to constant result
-  --> $DIR/min_max.rs:40:5
+  --> $DIR/min_max.rs:38:5
    |
 LL |     max(min(s, "Apple"), "Zoo");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this `min`/`max` combination leads to constant result
-  --> $DIR/min_max.rs:45:5
+  --> $DIR/min_max.rs:43:5
    |
 LL |     x.min(1).max(3);
    |     ^^^^^^^^^^^^^^^
 
 error: this `min`/`max` combination leads to constant result
-  --> $DIR/min_max.rs:46:5
+  --> $DIR/min_max.rs:44:5
    |
 LL |     x.max(3).min(1);
    |     ^^^^^^^^^^^^^^^
 
 error: this `min`/`max` combination leads to constant result
-  --> $DIR/min_max.rs:47:5
+  --> $DIR/min_max.rs:45:5
    |
 LL |     f.max(3f32).min(1f32);
    |     ^^^^^^^^^^^^^^^^^^^^^
 
 error: this `min`/`max` combination leads to constant result
-  --> $DIR/min_max.rs:53:5
+  --> $DIR/min_max.rs:51:5
    |
 LL |     max(x.min(1), 3);
    |     ^^^^^^^^^^^^^^^^
 
 error: this `min`/`max` combination leads to constant result
-  --> $DIR/min_max.rs:56:5
+  --> $DIR/min_max.rs:54:5
    |
 LL |     s.max("Zoo").min("Apple");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this `min`/`max` combination leads to constant result
-  --> $DIR/min_max.rs:57:5
+  --> $DIR/min_max.rs:55:5
    |
 LL |     s.min("Apple").max("Zoo");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^

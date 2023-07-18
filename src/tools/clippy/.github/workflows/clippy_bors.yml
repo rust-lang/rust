@@ -106,7 +106,7 @@ jobs:
         echo "$SYSROOT/bin" >> $GITHUB_PATH
 
     - name: Build
-      run: cargo build --features deny-warnings,internal
+      run: cargo build --tests --features deny-warnings,internal
 
     - name: Test
       if: runner.os == 'Linux'

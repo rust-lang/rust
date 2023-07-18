@@ -23,10 +23,9 @@ use crate::{
     lsp_ext,
     lsp_utils::{notification_is, Progress},
     reload::{BuildDataProgress, ProcMacroProgress, ProjectWorkspaceProgress},
-    Result,
 };
 
-pub fn main_loop(config: Config, connection: Connection) -> Result<()> {
+pub fn main_loop(config: Config, connection: Connection) -> anyhow::Result<()> {
     tracing::info!("initial config: {:#?}", config);
 
     // Windows scheduler implements priority boosts: if thread waits for an
@@ -109,7 +108,7 @@ impl fmt::Debug for Event {
 }
 
 impl GlobalState {
-    fn run(mut self, inbox: Receiver<lsp_server::Message>) -> Result<()> {
+    fn run(mut self, inbox: Receiver<lsp_server::Message>) -> anyhow::Result<()> {
         self.update_status_or_notify();
 
         if self.config.did_save_text_document_dynamic_registration() {
@@ -134,7 +133,7 @@ impl GlobalState {
             self.handle_event(event)?;
         }
 
-        Err("client exited without proper shutdown sequence".into())
+        anyhow::bail!("client exited without proper shutdown sequence")
     }
 
     fn register_did_save_capability(&mut self) {
@@ -191,7 +190,7 @@ impl GlobalState {
         }
     }
 
-    fn handle_event(&mut self, event: Event) -> Result<()> {
+    fn handle_event(&mut self, event: Event) -> anyhow::Result<()> {
         let loop_start = Instant::now();
         // NOTE: don't count blocking select! call as a loop-turn time
         let _p = profile::span("GlobalState::handle_event");
@@ -754,11 +753,12 @@ impl GlobalState {
             )
             .on::<lsp_types::request::WillRenameFiles>(handlers::handle_will_rename_files)
             .on::<lsp_ext::Ssr>(handlers::handle_ssr)
+            .on::<lsp_ext::ViewRecursiveMemoryLayout>(handlers::handle_view_recursive_memory_layout)
             .finish();
     }
 
     /// Handles an incoming notification.
-    fn on_notification(&mut self, not: Notification) -> Result<()> {
+    fn on_notification(&mut self, not: Notification) -> anyhow::Result<()> {
         use crate::handlers::notification as handlers;
         use lsp_types::notification as notifs;
 
@@ -843,11 +843,7 @@ impl GlobalState {
                                     d.code.as_str().to_string(),
                                 )),
                                 code_description: Some(lsp_types::CodeDescription {
-                                    href: lsp_types::Url::parse(&format!(
-                                        "https://rust-analyzer.github.io/manual.html#{}",
-                                        d.code.as_str()
-                                    ))
-                                    .unwrap(),
+                                    href: lsp_types::Url::parse(&d.code.url()).unwrap(),
                                 }),
                                 source: Some("rust-analyzer".to_string()),
                                 message: d.message,

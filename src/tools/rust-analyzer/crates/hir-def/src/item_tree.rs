@@ -46,7 +46,7 @@ use ast::{AstNode, HasName, StructKind};
 use base_db::CrateId;
 use either::Either;
 use hir_expand::{
-    ast_id_map::FileAstId,
+    ast_id_map::{AstIdNode, FileAstId},
     attrs::RawAttrs,
     hygiene::Hygiene,
     name::{name, AsName, Name},
@@ -314,7 +314,7 @@ from_attrs!(ModItem(ModItem), Variant(Idx<Variant>), Field(Idx<Field>), Param(Id
 
 /// Trait implemented by all item nodes in the item tree.
 pub trait ItemTreeNode: Clone {
-    type Source: AstNode + Into<ast::Item>;
+    type Source: AstIdNode + Into<ast::Item>;
 
     fn ast_id(&self) -> FileAstId<Self::Source>;
 

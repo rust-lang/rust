@@ -5,13 +5,10 @@
 extern crate proc_macro;
 
 use core::mem;
-use proc_macro::{
-    token_stream::IntoIter,
-    Delimiter::{self, Brace, Parenthesis},
-    Group, Ident, Literal, Punct,
-    Spacing::{self, Alone, Joint},
-    Span, TokenStream, TokenTree as TT,
-};
+use proc_macro::token_stream::IntoIter;
+use proc_macro::Delimiter::{self, Brace, Parenthesis};
+use proc_macro::Spacing::{self, Alone, Joint};
+use proc_macro::{Group, Ident, Literal, Punct, Span, TokenStream, TokenTree as TT};
 
 type Result<T> = core::result::Result<T, TokenStream>;
 

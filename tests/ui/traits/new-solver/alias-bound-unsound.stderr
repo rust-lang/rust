@@ -1,14 +1,69 @@
-error: the type `&<() as Foo>::Item` is not well-formed
-  --> $DIR/alias-bound-unsound.rs:23:31
+error[E0275]: overflow evaluating the requirement `<() as Foo>::Item: Copy`
+  --> $DIR/alias-bound-unsound.rs:18:17
+   |
+LL |     type Item = String where String: Copy;
+   |                 ^^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`alias_bound_unsound`)
+note: required by a bound in `Foo::Item`
+  --> $DIR/alias-bound-unsound.rs:8:16
+   |
+LL |     type Item: Copy
+   |                ^^^^ required by this bound in `Foo::Item`
+
+error[E0282]: type annotations needed
+  --> $DIR/alias-bound-unsound.rs:24:5
+   |
+LL |     drop(<() as Foo>::copy_me(&x));
+   |     ^^^^ cannot infer type of the type parameter `T` declared on the function `drop`
+   |
+help: consider specifying the generic argument
+   |
+LL |     drop::<T>(<() as Foo>::copy_me(&x));
+   |         +++++
+
+error[E0275]: overflow evaluating the requirement `&<() as Foo>::Item well-formed`
+  --> $DIR/alias-bound-unsound.rs:24:31
    |
 LL |     drop(<() as Foo>::copy_me(&x));
    |                               ^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`alias_bound_unsound`)
 
-error: the type `<() as Foo>::Item` is not well-formed
-  --> $DIR/alias-bound-unsound.rs:23:10
+error[E0275]: overflow evaluating the requirement `String <: <() as Foo>::Item`
+  --> $DIR/alias-bound-unsound.rs:24:31
+   |
+LL |     drop(<() as Foo>::copy_me(&x));
+   |                               ^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`alias_bound_unsound`)
+
+error[E0275]: overflow evaluating the requirement `<() as Foo>::Item well-formed`
+  --> $DIR/alias-bound-unsound.rs:24:10
    |
 LL |     drop(<() as Foo>::copy_me(&x));
    |          ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`alias_bound_unsound`)
 
-error: aborting due to 2 previous errors
+error[E0275]: overflow evaluating the requirement `<() as Foo>::Item == _`
+  --> $DIR/alias-bound-unsound.rs:24:10
+   |
+LL |     drop(<() as Foo>::copy_me(&x));
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`alias_bound_unsound`)
 
+error[E0275]: overflow evaluating the requirement `<() as Foo>::Item: Sized`
+  --> $DIR/alias-bound-unsound.rs:24:10
+   |
+LL |     drop(<() as Foo>::copy_me(&x));
+   |          ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`alias_bound_unsound`)
+   = note: the return type of a function must have a statically known size
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0275, E0282.
+For more information about an error, try `rustc --explain E0275`.

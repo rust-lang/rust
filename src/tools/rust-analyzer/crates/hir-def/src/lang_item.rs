@@ -180,15 +180,15 @@ impl LangItems {
         T: Into<AttrDefId> + Copy,
     {
         let _p = profile::span("collect_lang_item");
-        if let Some(lang_item) = lang_attr(db, item) {
+        if let Some(lang_item) = db.lang_attr(item.into()) {
             self.items.entry(lang_item).or_insert_with(|| constructor(item));
         }
     }
 }
 
-pub fn lang_attr(db: &dyn DefDatabase, item: impl Into<AttrDefId> + Copy) -> Option<LangItem> {
-    let attrs = db.attrs(item.into());
-    attrs.by_key("lang").string_value().cloned().and_then(|it| LangItem::from_str(&it))
+pub(crate) fn lang_attr_query(db: &dyn DefDatabase, item: AttrDefId) -> Option<LangItem> {
+    let attrs = db.attrs(item);
+    attrs.by_key("lang").string_value().and_then(|it| LangItem::from_str(&it))
 }
 
 pub enum GenericRequirement {

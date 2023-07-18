@@ -64,22 +64,8 @@ You can install the latest release of the plugin from
 https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer[the marketplace].
 
 Note that the plugin may cause conflicts with the
-https://marketplace.visualstudio.com/items?itemName=rust-lang.rust[official Rust plugin].
-It is recommended to disable the Rust plugin when using the rust-analyzer extension.
-
-By default, the plugin will prompt you to download the matching version of the server as well:
-
-image::https://user-images.githubusercontent.com/9021944/75067008-17502500-54ba-11ea-835a-f92aac50e866.png[]
-
-[NOTE]
-====
-To disable this notification put the following to `settings.json`
-
-[source,json]
-----
-{ "rust-analyzer.updates.askBeforeDownload": false }
-----
-====
+https://marketplace.visualstudio.com/items?itemName=rust-lang.rust[previous official Rust plugin].
+The latter is no longer maintained and should be uninstalled.
 
 The server binary is stored in the extension install directory, which starts with `rust-lang.rust-analyzer-` and is located under:
 
@@ -140,6 +126,9 @@ If you're not using Code, you can compile and install only the LSP server:
 ----
 $ cargo xtask install --server
 ----
+
+Make sure that `.cargo/bin` is in `$PATH` and precedes paths where `rust-analyzer` may also be installed.
+Specifically, `rustup` includes a proxy called `rust-analyzer`, which can cause problems if you're planning to use a source build or even a downloaded binary.
 
 === rust-analyzer Language Server Binary
 
@@ -280,12 +269,12 @@ Also see the https://emacs-lsp.github.io/lsp-mode/page/lsp-rust-analyzer/[rust-a
 
 Note the excellent https://robert.kra.hn/posts/2021-02-07_rust-with-emacs/[guide] from https://github.com/rksm[@rksm] on how to set-up Emacs for Rust development with LSP mode and several other packages.
 
-=== Vim/NeoVim
+=== Vim/Neovim
 
 Prerequisites: You have installed the <<rust-analyzer-language-server-binary,`rust-analyzer` binary>>.
 Not needed if the extension can install/update it on its own, coc-rust-analyzer is one example.
 
-There are several LSP client implementations for vim or neovim:
+There are several LSP client implementations for Vim or Neovim:
 
 ==== coc-rust-analyzer
 
@@ -308,7 +297,7 @@ Note: for code actions, use `coc-codeaction-cursor` and `coc-codeaction-selected
    https://github.com/autozimu/LanguageClient-neovim[here]
    * The GitHub project wiki has extra tips on configuration
 
-2. Configure by adding this to your vim/neovim config file (replacing the existing Rust-specific line if it exists):
+2. Configure by adding this to your Vim/Neovim config file (replacing the existing Rust-specific line if it exists):
 +
 [source,vim]
 ----
@@ -335,7 +324,7 @@ let g:ale_linters = {'rust': ['analyzer']}
 
 ==== nvim-lsp
 
-NeoVim 0.5 has built-in language server support.
+Neovim 0.5 has built-in language server support.
 For a quick start configuration of rust-analyzer, use https://github.com/neovim/nvim-lspconfig#rust_analyzer[neovim/nvim-lspconfig].
 Once `neovim/nvim-lspconfig` is installed, use `+lua require'lspconfig'.rust_analyzer.setup({})+` in your `init.vim`.
 
@@ -376,7 +365,7 @@ EOF
 
 See https://sharksforarms.dev/posts/neovim-rust/ for more tips on getting started.
 
-Check out https://github.com/simrat39/rust-tools.nvim for a batteries included rust-analyzer setup for neovim.
+Check out https://github.com/simrat39/rust-tools.nvim for a batteries included rust-analyzer setup for Neovim.
 
 ==== vim-lsp
 
@@ -933,17 +922,17 @@ For example:
 More about `when` clause contexts https://code.visualstudio.com/docs/getstarted/keybindings#_when-clause-contexts[here].
 
 ==== Setting runnable environment variables
-You can use "rust-analyzer.runnableEnv" setting to define runnable environment-specific substitution variables.
+You can use "rust-analyzer.runnables.extraEnv" setting to define runnable environment-specific substitution variables.
 The simplest way for all runnables in a bunch:
 ```jsonc
-"rust-analyzer.runnableEnv": {
+"rust-analyzer.runnables.extraEnv": {
     "RUN_SLOW_TESTS": "1"
 }
 ```
 
 Or it is possible to specify vars more granularly:
 ```jsonc
-"rust-analyzer.runnableEnv": [
+"rust-analyzer.runnables.extraEnv": [
     {
         // "mask": null, // null mask means that this rule will be applied for all runnables
         env: {

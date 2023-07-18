@@ -135,7 +135,12 @@ pub fn read_version(dylib_path: &AbsPath) -> io::Result<String> {
         }
     };
 
-    let mut snappy_decoder = SnapDecoder::new(snappy_portion);
+    let mut uncompressed: Box<dyn Read> = if &snappy_portion[0..4] == b"rust" {
+        // Not compressed.
+        Box::new(snappy_portion)
+    } else {
+        Box::new(SnapDecoder::new(snappy_portion))
+    };
 
     // the bytes before version string bytes, so this basically is:
     // 8 bytes for [b'r',b'u',b's',b't',0,0,0,5]
@@ -144,11 +149,11 @@ pub fn read_version(dylib_path: &AbsPath) -> io::Result<String> {
     // so 13 bytes in total, and we should check the 13th byte
     // to know the length
     let mut bytes_before_version = [0u8; 13];
-    snappy_decoder.read_exact(&mut bytes_before_version)?;
+    uncompressed.read_exact(&mut bytes_before_version)?;
     let length = bytes_before_version[12];
 
     let mut version_string_utf8 = vec![0u8; length as usize];
-    snappy_decoder.read_exact(&mut version_string_utf8)?;
+    uncompressed.read_exact(&mut version_string_utf8)?;
     let version_string = String::from_utf8(version_string_utf8);
     version_string.map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
 }

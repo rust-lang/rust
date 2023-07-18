@@ -4,7 +4,7 @@ exclude = ["crates/proc-macro-test/imp"]
 resolver = "2"
 
 [workspace.package]
-rust-version = "1.66"
+rust-version = "1.70"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 authors = ["rust-analyzer team"]
@@ -35,6 +35,10 @@ debug = 0
 # chalk-ir = { path = "../chalk/chalk-ir" }
 # chalk-recursive = { path = "../chalk/chalk-recursive" }
 # chalk-derive = { path = "../chalk/chalk-derive" }
+# line-index = { path = "lib/line-index" }
+# la-arena = { path = "lib/la-arena" }
+# lsp-server = { path = "lib/lsp-server" }
+
 
 # ungrammar = { path = "../ungrammar" }
 
@@ -57,13 +61,13 @@ ide-diagnostics = { path = "./crates/ide-diagnostics", version = "0.0.0" }
 ide-ssr = { path = "./crates/ide-ssr", version = "0.0.0" }
 intern = { path = "./crates/intern", version = "0.0.0" }
 limit = { path = "./crates/limit", version = "0.0.0" }
+load-cargo = { path = "./crates/load-cargo", version = "0.0.0" }
 mbe = { path = "./crates/mbe", version = "0.0.0" }
 parser = { path = "./crates/parser", version = "0.0.0" }
 paths = { path = "./crates/paths", version = "0.0.0" }
 proc-macro-api = { path = "./crates/proc-macro-api", version = "0.0.0" }
 proc-macro-srv = { path = "./crates/proc-macro-srv", version = "0.0.0" }
 proc-macro-srv-cli = { path = "./crates/proc-macro-srv-cli", version = "0.0.0" }
-proc-macro-test = { path = "./crates/proc-macro-test", version = "0.0.0" }
 profile = { path = "./crates/profile", version = "0.0.0" }
 project-model = { path = "./crates/project-model", version = "0.0.0" }
 sourcegen = { path = "./crates/sourcegen", version = "0.0.0" }
@@ -75,7 +79,14 @@ toolchain = { path = "./crates/toolchain", version = "0.0.0" }
 tt = { path = "./crates/tt", version = "0.0.0" }
 vfs-notify = { path = "./crates/vfs-notify", version = "0.0.0" }
 vfs = { path = "./crates/vfs", version = "0.0.0" }
-line-index = { version = "0.1.0-pre.1", path = "./lib/line-index" }
+
+# local crates that aren't published to crates.io. These should not have versions.
+proc-macro-test = { path = "./crates/proc-macro-test" }
+
+# In-tree crates that are published separately and follow semver. See lib/README.md
+line-index = { version = "0.1.0-pre.1" }
+la-arena = { version = "0.3.1" }
+lsp-server = { version = "0.7.1" }
 
 # non-local crates
 smallvec = { version = "1.10.0", features = [
@@ -86,9 +97,10 @@ smallvec = { version = "1.10.0", features = [
 smol_str = "0.2.0"
 nohash-hasher = "0.2.0"
 text-size = "1.1.0"
-# the following crates are pinned to prevent us from pulling in syn 2 until all our dependencies have moved
-serde = { version = "=1.0.156", features = ["derive"] }
-serde_json = "1.0.94"
+serde = { version = "1.0.156", features = ["derive"] }
+serde_json = "1.0.96"
 triomphe = { version = "0.1.8", default-features = false, features = ["std"] }
+# can't upgrade due to dashmap depending on 0.12.3 currently
+hashbrown = { version = "0.12.3", features = ["inline-more"], default-features = false }
 
 rustc_lexer = { version = "0.1.0", package = "ra-ap-rustc_lexer" }

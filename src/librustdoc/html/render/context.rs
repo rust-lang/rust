@@ -798,7 +798,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             if let Some(def_id) = item.def_id() && self.cache().inlined_items.contains(&def_id) {
                 self.is_inside_inlined_module = true;
             }
-        } else if item.is_doc_hidden() {
+        } else if !self.cache().document_hidden && item.is_doc_hidden() {
             // We're not inside an inlined module anymore since this one cannot be re-exported.
             self.is_inside_inlined_module = false;
         }

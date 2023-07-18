@@ -31,7 +31,9 @@ pub fn layout_of_adt_query(
     subst: Substitution,
     krate: CrateId,
 ) -> Result<Arc<Layout>, LayoutError> {
-    let Some(target) = db.target_data_layout(krate) else { return Err(LayoutError::TargetLayoutNotAvailable) };
+    let Some(target) = db.target_data_layout(krate) else {
+        return Err(LayoutError::TargetLayoutNotAvailable);
+    };
     let cx = LayoutCx { krate, target: &target };
     let dl = cx.current_data_layout();
     let handle_variant = |def: VariantId, var: &VariantData| {
@@ -70,9 +72,9 @@ pub fn layout_of_adt_query(
     };
     let variants = variants
         .iter()
-        .map(|x| x.iter().map(|x| &**x).collect::<Vec<_>>())
+        .map(|it| it.iter().map(|it| &**it).collect::<Vec<_>>())
         .collect::<SmallVec<[_; 1]>>();
-    let variants = variants.iter().map(|x| x.iter().collect()).collect();
+    let variants = variants.iter().map(|it| it.iter().collect()).collect();
     let result = if matches!(def, AdtId::UnionId(..)) {
         cx.layout_of_union(&repr, &variants).ok_or(LayoutError::Unknown)?
     } else {
@@ -103,7 +105,7 @@ pub fn layout_of_adt_query(
                 && variants
                     .iter()
                     .next()
-                    .and_then(|x| x.last().map(|x| x.is_unsized()))
+                    .and_then(|it| it.last().map(|it| !it.is_unsized()))
                     .unwrap_or(true),
         )
         .ok_or(LayoutError::SizeOverflow)?
@@ -116,9 +118,9 @@ fn layout_scalar_valid_range(db: &dyn HirDatabase, def: AdtId) -> (Bound<u128>, 
     let get = |name| {
         let attr = attrs.by_key(name).tt_values();
         for tree in attr {
-            if let Some(x) = tree.token_trees.first() {
-                if let Ok(x) = x.to_string().parse() {
-                    return Bound::Included(x);
+            if let Some(it) = tree.token_trees.first() {
+                if let Ok(it) = it.to_string().parse() {
+                    return Bound::Included(it);
                 }
             }
         }

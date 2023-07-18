@@ -1,0 +1,15 @@
+error: called `filter(..).next()` on an `Iterator`. This is more succinctly expressed by calling `.find(..)` instead
+  --> $DIR/methods_unfixable.rs:9:13
+   |
+LL |     let _ = iter.filter(|_| true).next();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `iter.find(|_| true)`
+   |
+help: you will also need to make `iter` mutable, because `find` takes `&mut self`
+  --> $DIR/methods_unfixable.rs:8:9
+   |
+LL |     let iter = (0..10);
+   |         ^^^^
+   = note: `-D clippy::filter-next` implied by `-D warnings`
+
+error: aborting due to previous error
+

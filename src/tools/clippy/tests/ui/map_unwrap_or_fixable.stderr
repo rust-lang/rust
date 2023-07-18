@@ -5,7 +5,7 @@ LL |       let _ = opt.map(|x| x + 1)
    |  _____________^
 LL | |         // Should lint even though this call is on a separate line.
 LL | |         .unwrap_or_else(|| 0);
-   | |_____________________________^ help: try this: `opt.map_or_else(|| 0, |x| x + 1)`
+   | |_____________________________^ help: try: `opt.map_or_else(|| 0, |x| x + 1)`
    |
    = note: `-D clippy::map-unwrap-or` implied by `-D warnings`
 
@@ -16,7 +16,7 @@ LL |       let _ = res.map(|x| x + 1)
    |  _____________^
 LL | |         // should lint even though this call is on a separate line
 LL | |         .unwrap_or_else(|_e| 0);
-   | |_______________________________^ help: try this: `res.map_or_else(|_e| 0, |x| x + 1)`
+   | |_______________________________^ help: try: `res.map_or_else(|_e| 0, |x| x + 1)`
 
 error: aborting due to 2 previous errors
 

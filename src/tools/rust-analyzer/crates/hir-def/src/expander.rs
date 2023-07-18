@@ -15,18 +15,11 @@ use crate::{
     MacroId, ModuleId,
 };
 
-/// A subset of Expander that only deals with cfg attributes. We only need it to
-/// avoid cyclic queries in crate def map during enum processing.
 #[derive(Debug)]
-pub(crate) struct CfgExpander {
+pub struct Expander {
     cfg_options: CfgOptions,
     hygiene: Hygiene,
     krate: CrateId,
-}
-
-#[derive(Debug)]
-pub struct Expander {
-    cfg_expander: CfgExpander,
     pub(crate) current_file_id: HirFileId,
     pub(crate) module: ModuleId,
     /// `recursion_depth == usize::MAX` indicates that the recursion limit has been reached.
@@ -34,41 +27,23 @@ pub struct Expander {
     recursion_limit: Limit,
 }
 
-impl CfgExpander {
-    pub(crate) fn new(
-        db: &dyn DefDatabase,
-        current_file_id: HirFileId,
-        krate: CrateId,
-    ) -> CfgExpander {
-        let hygiene = Hygiene::new(db.upcast(), current_file_id);
-        let cfg_options = db.crate_graph()[krate].cfg_options.clone();
-        CfgExpander { cfg_options, hygiene, krate }
-    }
-
-    pub(crate) fn parse_attrs(&self, db: &dyn DefDatabase, owner: &dyn ast::HasAttrs) -> Attrs {
-        Attrs::filter(db, self.krate, RawAttrs::new(db.upcast(), owner, &self.hygiene))
-    }
-
-    pub(crate) fn is_cfg_enabled(&self, db: &dyn DefDatabase, owner: &dyn ast::HasAttrs) -> bool {
-        let attrs = self.parse_attrs(db, owner);
-        attrs.is_cfg_enabled(&self.cfg_options)
-    }
-
-    pub(crate) fn hygiene(&self) -> &Hygiene {
-        &self.hygiene
-    }
-}
-
 impl Expander {
     pub fn new(db: &dyn DefDatabase, current_file_id: HirFileId, module: ModuleId) -> Expander {
-        let cfg_expander = CfgExpander::new(db, current_file_id, module.krate);
         let recursion_limit = db.recursion_limit(module.krate);
         #[cfg(not(test))]
         let recursion_limit = Limit::new(recursion_limit as usize);
         // Without this, `body::tests::your_stack_belongs_to_me` stack-overflows in debug
         #[cfg(test)]
         let recursion_limit = Limit::new(std::cmp::min(32, recursion_limit as usize));
-        Expander { cfg_expander, current_file_id, module, recursion_depth: 0, recursion_limit }
+        Expander {
+            current_file_id,
+            module,
+            recursion_depth: 0,
+            recursion_limit,
+            cfg_options: db.crate_graph()[module.krate].cfg_options.clone(),
+            hygiene: Hygiene::new(db.upcast(), current_file_id),
+            krate: module.krate,
+        }
     }
 
     pub fn enter_expand<T: ast::AstNode>(
@@ -120,7 +95,7 @@ impl Expander {
     }
 
     pub fn exit(&mut self, db: &dyn DefDatabase, mut mark: Mark) {
-        self.cfg_expander.hygiene = Hygiene::new(db.upcast(), mark.file_id);
+        self.hygiene = Hygiene::new(db.upcast(), mark.file_id);
         self.current_file_id = mark.file_id;
         if self.recursion_depth == u32::MAX {
             // Recursion limit has been reached somewhere in the macro expansion tree. Reset the
@@ -135,7 +110,7 @@ impl Expander {
     }
 
     pub fn ctx<'a>(&self, db: &'a dyn DefDatabase) -> LowerCtx<'a> {
-        LowerCtx::new(db, &self.cfg_expander.hygiene, self.current_file_id)
+        LowerCtx::new(db, &self.hygiene, self.current_file_id)
     }
 
     pub(crate) fn to_source<T>(&self, value: T) -> InFile<T> {
@@ -143,11 +118,11 @@ impl Expander {
     }
 
     pub(crate) fn parse_attrs(&self, db: &dyn DefDatabase, owner: &dyn ast::HasAttrs) -> Attrs {
-        self.cfg_expander.parse_attrs(db, owner)
+        Attrs::filter(db, self.krate, RawAttrs::new(db.upcast(), owner, &self.hygiene))
     }
 
     pub(crate) fn cfg_options(&self) -> &CfgOptions {
-        &self.cfg_expander.cfg_options
+        &self.cfg_options
     }
 
     pub fn current_file_id(&self) -> HirFileId {
@@ -155,7 +130,7 @@ impl Expander {
     }
 
     pub(crate) fn parse_path(&mut self, db: &dyn DefDatabase, path: ast::Path) -> Option<Path> {
-        let ctx = LowerCtx::new(db, &self.cfg_expander.hygiene, self.current_file_id);
+        let ctx = LowerCtx::new(db, &self.hygiene, self.current_file_id);
         Path::from_src(path, &ctx)
     }
 
@@ -194,7 +169,7 @@ impl Expander {
                 let parse = value.cast::<T>()?;
 
                 self.recursion_depth += 1;
-                self.cfg_expander.hygiene = Hygiene::new(db.upcast(), file_id);
+                self.hygiene = Hygiene::new(db.upcast(), file_id);
                 let old_file_id = std::mem::replace(&mut self.current_file_id, file_id);
                 let mark =
                     Mark { file_id: old_file_id, bomb: DropBomb::new("expansion mark dropped") };

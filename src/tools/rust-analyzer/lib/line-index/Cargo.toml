@@ -1,11 +1,11 @@
 [package]
 name = "line-index"
-version = "0.1.0-pre.1"
+version = "0.1.0"
 description = "Maps flat `TextSize` offsets to/from `(line, column)` representation."
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/rust-lang/rust-analyzer/tree/master/lib/line-index"
 edition = "2021"
 
 [dependencies]
-text-size.workspace = true
-nohash-hasher.workspace = true
+text-size = "1.1.0"
+nohash-hasher = "0.2.0"

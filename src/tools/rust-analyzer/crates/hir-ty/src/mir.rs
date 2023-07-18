@@ -3,9 +3,14 @@
 use std::{fmt::Display, iter};
 
 use crate::{
-    consteval::usize_const, db::HirDatabase, display::HirDisplay, infer::PointerCast,
-    lang_items::is_box, mapping::ToChalk, CallableDefId, ClosureId, Const, ConstScalar,
-    InferenceResult, Interner, MemoryMap, Substitution, Ty, TyKind,
+    consteval::usize_const,
+    db::HirDatabase,
+    display::HirDisplay,
+    infer::{normalize, PointerCast},
+    lang_items::is_box,
+    mapping::ToChalk,
+    CallableDefId, ClosureId, Const, ConstScalar, InferenceResult, Interner, MemoryMap,
+    Substitution, TraitEnvironment, Ty, TyKind,
 };
 use base_db::CrateId;
 use chalk_ir::Mutability;
@@ -22,7 +27,9 @@ mod pretty;
 mod monomorphization;
 
 pub use borrowck::{borrowck_query, BorrowckResult, MutabilityReason};
-pub use eval::{interpret_mir, pad16, Evaluator, MirEvalError, VTableMap};
+pub use eval::{
+    interpret_mir, pad16, render_const_using_debug_impl, Evaluator, MirEvalError, VTableMap,
+};
 pub use lower::{
     lower_to_mir, mir_body_for_closure_query, mir_body_query, mir_body_recover, MirLowerError,
 };
@@ -32,6 +39,7 @@ pub use monomorphization::{
 };
 use smallvec::{smallvec, SmallVec};
 use stdx::{impl_from, never};
+use triomphe::Arc;
 
 use super::consteval::{intern_const_scalar, try_const_usize};
 
@@ -129,11 +137,19 @@ pub enum ProjectionElem<V, T> {
 impl<V, T> ProjectionElem<V, T> {
     pub fn projected_ty(
         &self,
-        base: Ty,
+        mut base: Ty,
         db: &dyn HirDatabase,
         closure_field: impl FnOnce(ClosureId, &Substitution, usize) -> Ty,
         krate: CrateId,
     ) -> Ty {
+        if matches!(base.data(Interner).kind, TyKind::Alias(_) | TyKind::AssociatedType(..)) {
+            base = normalize(
+                db,
+                // FIXME: we should get this from caller
+                Arc::new(TraitEnvironment::empty(krate)),
+                base,
+            );
+        }
         match self {
             ProjectionElem::Deref => match &base.data(Interner).kind {
                 TyKind::Raw(_, inner) | TyKind::Ref(_, _, inner) => inner.clone(),
@@ -321,8 +337,8 @@ impl SwitchTargets {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Terminator {
-    span: MirSpan,
-    kind: TerminatorKind,
+    pub span: MirSpan,
+    pub kind: TerminatorKind,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]

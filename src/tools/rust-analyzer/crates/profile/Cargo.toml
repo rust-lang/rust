@@ -15,7 +15,7 @@ doctest = false
 once_cell = "1.17.0"
 cfg-if = "1.0.0"
 libc = "0.2.135"
-la-arena = { version = "0.3.0", path = "../../lib/la-arena" }
+la-arena.workspace = true
 countme = { version = "3.0.1", features = ["enable"] }
 jemalloc-ctl = { version = "0.5.0", package = "tikv-jemalloc-ctl", optional = true }
 

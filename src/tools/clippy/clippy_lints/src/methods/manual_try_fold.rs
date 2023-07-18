@@ -1,15 +1,11 @@
-use clippy_utils::{
-    diagnostics::span_lint_and_sugg,
-    is_from_proc_macro,
-    msrvs::{Msrv, ITERATOR_TRY_FOLD},
-    source::snippet_opt,
-    ty::implements_trait,
-};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::is_from_proc_macro;
+use clippy_utils::msrvs::{Msrv, ITERATOR_TRY_FOLD};
+use clippy_utils::source::snippet_opt;
+use clippy_utils::ty::implements_trait;
 use rustc_errors::Applicability;
-use rustc_hir::{
-    def::{DefKind, Res},
-    Expr, ExprKind,
-};
+use rustc_hir::def::{DefKind, Res};
+use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_span::Span;

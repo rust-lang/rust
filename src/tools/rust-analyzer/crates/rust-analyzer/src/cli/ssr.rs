@@ -1,16 +1,14 @@
 //! Applies structured search replace rules from the command line.
 
+use anyhow::Context;
 use ide_ssr::MatchFinder;
+use load_cargo::{load_workspace_at, LoadCargoConfig, ProcMacroServerChoice};
 use project_model::{CargoConfig, RustLibSource};
 
-use crate::cli::{
-    flags,
-    load_cargo::{load_workspace_at, LoadCargoConfig, ProcMacroServerChoice},
-    Result,
-};
+use crate::cli::flags;
 
 impl flags::Ssr {
-    pub fn run(self) -> Result<()> {
+    pub fn run(self) -> anyhow::Result<()> {
         use ide_db::base_db::SourceDatabaseExt;
         let mut cargo_config = CargoConfig::default();
         cargo_config.sysroot = Some(RustLibSource::Discover);
@@ -35,7 +33,8 @@ impl flags::Ssr {
             if let Some(path) = vfs.file_path(file_id).as_path() {
                 let mut contents = db.file_text(file_id).to_string();
                 edit.apply(&mut contents);
-                std::fs::write(path, contents)?;
+                std::fs::write(path, contents)
+                    .with_context(|| format!("failed to write {path}"))?;
             }
         }
         Ok(())
@@ -46,7 +45,7 @@ impl flags::Search {
     /// Searches for `patterns`, printing debug information for any nodes whose text exactly matches
     /// `debug_snippet`. This is intended for debugging and probably isn't in it's current form useful
     /// for much else.
-    pub fn run(self) -> Result<()> {
+    pub fn run(self) -> anyhow::Result<()> {
         use ide_db::base_db::SourceDatabaseExt;
         use ide_db::symbol_index::SymbolsDatabase;
         let cargo_config = CargoConfig::default();

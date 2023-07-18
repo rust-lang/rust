@@ -22,7 +22,7 @@ pub(crate) struct UsageCache {
     usages: Vec<(Definition, UsageSearchResult)>,
 }
 
-impl<'db> MatchFinder<'db> {
+impl MatchFinder<'_> {
     /// Adds all matches for `rule` to `matches_out`. Matches may overlap in ways that make
     /// replacement impossible, so further processing is required in order to properly nest matches
     /// and remove overlapping matches. This is done in the `nesting` module.

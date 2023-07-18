@@ -1,11 +1,12 @@
 import * as vscode from "vscode";
-import * as lc from "vscode-languageclient";
+import type * as lc from "vscode-languageclient";
 import * as ra from "./lsp_ext";
 import * as tasks from "./tasks";
 
-import { CtxInit } from "./ctx";
+import type { CtxInit } from "./ctx";
 import { makeDebugConfig } from "./debug";
-import { Config, RunnableEnvCfg } from "./config";
+import type { Config, RunnableEnvCfg } from "./config";
+import { unwrapUndefinable } from "./undefinable";
 
 const quickPickButtons = [
     { iconPath: new vscode.ThemeIcon("save"), tooltip: "Save as a launch.json configuration." },
@@ -15,7 +16,7 @@ export async function selectRunnable(
     ctx: CtxInit,
     prevRunnable?: RunnableQuickPick,
     debuggeeOnly = false,
-    showButtons: boolean = true
+    showButtons: boolean = true,
 ): Promise<RunnableQuickPick | undefined> {
     const editor = ctx.activeRustEditor;
     if (!editor) return;
@@ -68,12 +69,14 @@ export async function selectRunnable(
             quickPick.onDidHide(() => close()),
             quickPick.onDidAccept(() => close(quickPick.selectedItems[0])),
             quickPick.onDidTriggerButton(async (_button) => {
-                await makeDebugConfig(ctx, quickPick.activeItems[0].runnable);
+                const runnable = unwrapUndefinable(quickPick.activeItems[0]).runnable;
+                await makeDebugConfig(ctx, runnable);
                 close();
             }),
-            quickPick.onDidChangeActive((active) => {
-                if (showButtons && active.length > 0) {
-                    if (active[0].label.startsWith("cargo")) {
+            quickPick.onDidChangeActive((activeList) => {
+                if (showButtons && activeList.length > 0) {
+                    const active = unwrapUndefinable(activeList[0]);
+                    if (active.label.startsWith("cargo")) {
                         // save button makes no sense for `cargo test` or `cargo check`
                         quickPick.buttons = [];
                     } else if (quickPick.buttons.length === 0) {
@@ -81,7 +84,7 @@ export async function selectRunnable(
                     }
                 }
             }),
-            quickPick
+            quickPick,
         );
         quickPick.show();
     });
@@ -100,7 +103,7 @@ export class RunnableQuickPick implements vscode.QuickPickItem {
 
 export function prepareEnv(
     runnable: ra.Runnable,
-    runnableEnvCfg: RunnableEnvCfg
+    runnableEnvCfg: RunnableEnvCfg,
 ): Record<string, string> {
     const env: Record<string, string> = { RUST_BACKTRACE: "short" };
 
@@ -140,7 +143,7 @@ export async function createTask(runnable: ra.Runnable, config: Config): Promise
         command: args[0], // run, test, etc...
         args: args.slice(1),
         cwd: runnable.args.workspaceRoot || ".",
-        env: prepareEnv(runnable, config.runnableEnv),
+        env: prepareEnv(runnable, config.runnablesExtraEnv),
         overrideCargo: runnable.args.overrideCargo,
     };
 
@@ -151,8 +154,9 @@ export async function createTask(runnable: ra.Runnable, config: Config): Promise
         definition,
         runnable.label,
         args,
+        config.problemMatcher,
         config.cargoRunner,
-        true
+        true,
     );
 
     cargoTask.presentationOptions.clear = true;

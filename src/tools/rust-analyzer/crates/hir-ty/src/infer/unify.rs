@@ -22,7 +22,7 @@ use crate::{
     TraitEnvironment, Ty, TyBuilder, TyExt, TyKind, VariableKind,
 };
 
-impl<'a> InferenceContext<'a> {
+impl InferenceContext<'_> {
     pub(super) fn canonicalize<T: TypeFoldable<Interner> + HasInterner<Interner = Interner>>(
         &mut self,
         t: T,
@@ -91,7 +91,7 @@ pub(crate) fn unify(
     let mut table = InferenceTable::new(db, env);
     let vars = Substitution::from_iter(
         Interner,
-        tys.binders.iter(Interner).map(|x| match &x.kind {
+        tys.binders.iter(Interner).map(|it| match &it.kind {
             chalk_ir::VariableKind::Ty(_) => {
                 GenericArgData::Ty(table.new_type_var()).intern(Interner)
             }
@@ -547,7 +547,7 @@ impl<'a> InferenceTable<'a> {
             table: &'a mut InferenceTable<'b>,
             highest_known_var: InferenceVar,
         }
-        impl<'a, 'b> TypeFolder<Interner> for VarFudger<'a, 'b> {
+        impl TypeFolder<Interner> for VarFudger<'_, '_> {
             fn as_dyn(&mut self) -> &mut dyn TypeFolder<Interner, Error = Self::Error> {
                 self
             }
@@ -686,8 +686,8 @@ impl<'a> InferenceTable<'a> {
 
         let mut arg_tys = vec![];
         let arg_ty = TyBuilder::tuple(num_args)
-            .fill(|x| {
-                let arg = match x {
+            .fill(|it| {
+                let arg = match it {
                     ParamKind::Type => self.new_type_var(),
                     ParamKind::Const(ty) => {
                         never!("Tuple with const parameter");
@@ -753,7 +753,7 @@ impl<'a> InferenceTable<'a> {
     {
         fold_tys_and_consts(
             ty,
-            |x, _| match x {
+            |it, _| match it {
                 Either::Left(ty) => Either::Left(self.insert_type_vars_shallow(ty)),
                 Either::Right(c) => Either::Right(self.insert_const_vars_shallow(c)),
             },
@@ -798,7 +798,7 @@ impl<'a> InferenceTable<'a> {
     }
 }
 
-impl<'a> fmt::Debug for InferenceTable<'a> {
+impl fmt::Debug for InferenceTable<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("InferenceTable").field("num_vars", &self.type_variable_table.len()).finish()
     }
@@ -826,7 +826,7 @@ mod resolve {
         pub(super) var_stack: &'a mut Vec<InferenceVar>,
         pub(super) fallback: F,
     }
-    impl<'a, 'b, F> TypeFolder<Interner> for Resolver<'a, 'b, F>
+    impl<F> TypeFolder<Interner> for Resolver<'_, '_, F>
     where
         F: Fn(InferenceVar, VariableKind, GenericArg, DebruijnIndex) -> GenericArg,
     {

@@ -2,13 +2,12 @@
 //! found or is otherwise invalid.
 
 use crate::errors;
-use crate::errors::CandidateTraitNote;
-use crate::errors::NoAssociatedItem;
+use crate::errors::{CandidateTraitNote, NoAssociatedItem};
 use crate::Expectation;
 use crate::FnCtxt;
 use rustc_ast::ast::Mutability;
-use rustc_data_structures::fx::FxIndexMap;
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_attr::parse_confusables;
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::StashKey;
 use rustc_errors::{
@@ -1038,6 +1037,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             "the {item_kind} was found for\n{}{}",
                             type_candidates, additional_types
                         ));
+                    } else {
+                        'outer: for inherent_impl_did in self.tcx.inherent_impls(adt.did()) {
+                            for inherent_method in
+                                self.tcx.associated_items(inherent_impl_did).in_definition_order()
+                            {
+                                if let Some(attr) = self.tcx.get_attr(inherent_method.def_id, sym::rustc_confusables)
+                                    && let Some(candidates) = parse_confusables(attr)
+                                    && candidates.contains(&item_name.name)
+                                {
+                                    err.span_suggestion_verbose(
+                                        item_name.span,
+                                        format!(
+                                            "you might have meant to use `{}`",
+                                            inherent_method.name.as_str()
+                                        ),
+                                        inherent_method.name.as_str(),
+                                        Applicability::MaybeIncorrect,
+                                    );
+                                    break 'outer;
+                                }
+                            }
+                        }
                     }
                 }
             } else {

@@ -1,13 +1,13 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::source::snippet_opt;
-use clippy_utils::source::{indent_of, reindent_multiline};
+use clippy_utils::source::{indent_of, reindent_multiline, snippet_opt};
 use clippy_utils::ty::is_type_lang_item;
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, LangItem};
 use rustc_lint::LateContext;
-use rustc_span::{source_map::Spanned, Span};
+use rustc_span::source_map::Spanned;
+use rustc_span::Span;
 
 use super::CASE_SENSITIVE_FILE_EXTENSION_COMPARISONS;
 

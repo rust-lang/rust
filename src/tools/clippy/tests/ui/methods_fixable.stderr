@@ -2,7 +2,7 @@ error: called `filter(..).next()` on an `Iterator`. This is more succinctly expr
   --> $DIR/methods_fixable.rs:11:13
    |
 LL |     let _ = v.iter().filter(|&x| *x < 0).next();
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `v.iter().find(|&x| *x < 0)`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `v.iter().find(|&x| *x < 0)`
    |
    = note: `-D clippy::filter-next` implied by `-D warnings`
 

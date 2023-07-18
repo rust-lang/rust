@@ -1240,11 +1240,11 @@ fn test() {
             16..66 'for _ ...     }': IntoIterator::IntoIter<()>
             16..66 'for _ ...     }': &mut IntoIterator::IntoIter<()>
             16..66 'for _ ...     }': fn next<IntoIterator::IntoIter<()>>(&mut IntoIterator::IntoIter<()>) -> Option<<IntoIterator::IntoIter<()> as Iterator>::Item>
-            16..66 'for _ ...     }': Option<Iterator::Item<IntoIterator::IntoIter<()>>>
+            16..66 'for _ ...     }': Option<IntoIterator::Item<()>>
             16..66 'for _ ...     }': ()
             16..66 'for _ ...     }': ()
             16..66 'for _ ...     }': ()
-            20..21 '_': Iterator::Item<IntoIterator::IntoIter<()>>
+            20..21 '_': IntoIterator::Item<()>
             25..39 '{ let x = 0; }': ()
             31..32 'x': i32
             35..36 '0': i32

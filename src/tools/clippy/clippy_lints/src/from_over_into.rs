@@ -10,7 +10,8 @@ use rustc_hir::{
     TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::{hir::nested_filter::OnlyBodies, ty};
+use rustc_middle::hir::nested_filter::OnlyBodies;
+use rustc_middle::ty;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::{kw, sym};
 use rustc_span::{Span, Symbol};
@@ -76,7 +77,8 @@ impl<'tcx> LateLintPass<'tcx> for FromOverInto {
             && let Some(into_trait_seg) = hir_trait_ref.path.segments.last()
             // `impl Into<target_ty> for self_ty`
             && let Some(GenericArgs { args: [GenericArg::Type(target_ty)], .. }) = into_trait_seg.args
-            && let Some(middle_trait_ref) = cx.tcx.impl_trait_ref(item.owner_id).map(ty::EarlyBinder::instantiate_identity)
+            && let Some(middle_trait_ref) = cx.tcx.impl_trait_ref(item.owner_id)
+                                                  .map(ty::EarlyBinder::instantiate_identity)
             && cx.tcx.is_diagnostic_item(sym::Into, middle_trait_ref.def_id)
             && !matches!(middle_trait_ref.args.type_at(1).kind(), ty::Alias(ty::Opaque, _))
         {
@@ -163,10 +165,14 @@ fn convert_to_from(
         return None;
     }
     let impl_item = cx.tcx.hir().impl_item(impl_item_ref.id);
-    let ImplItemKind::Fn(ref sig, body_id) = impl_item.kind else { return None };
+    let ImplItemKind::Fn(ref sig, body_id) = impl_item.kind else {
+        return None;
+    };
     let body = cx.tcx.hir().body(body_id);
     let [input] = body.params else { return None };
-    let PatKind::Binding(.., self_ident, None) = input.pat.kind else { return None };
+    let PatKind::Binding(.., self_ident, None) = input.pat.kind else {
+        return None;
+    };
 
     let from = snippet_opt(cx, self_ty.span)?;
     let into = snippet_opt(cx, target_ty.span)?;

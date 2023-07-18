@@ -159,8 +159,8 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol, supports_128bit_i
             let cx = CodegenCx::new(&context, cgu, tcx, supports_128bit_integers);
 
             let mono_items = cgu.items_in_deterministic_order(tcx);
-            for &(mono_item, (linkage, visibility)) in &mono_items {
-                mono_item.predefine::<Builder<'_, '_, '_>>(&cx, linkage, visibility);
+            for &(mono_item, data) in &mono_items {
+                mono_item.predefine::<Builder<'_, '_, '_>>(&cx, data.linkage, data.visibility);
             }
 
             // ... and now that we have everything pre-defined, fill out those definitions.

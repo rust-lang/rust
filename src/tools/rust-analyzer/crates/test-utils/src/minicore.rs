@@ -20,6 +20,7 @@
 //!     deref_mut: deref
 //!     deref: sized
 //!     derive:
+//!     discriminant:
 //!     drop:
 //!     eq: sized
 //!     error: fmt
@@ -36,6 +37,7 @@
 //!     iterator: option
 //!     iterators: iterator, fn
 //!     manually_drop: drop
+//!     non_null:
 //!     non_zero:
 //!     option: panic
 //!     ord: eq, option
@@ -129,6 +131,14 @@ pub mod marker {
     #[lang = "phantom_data"]
     pub struct PhantomData<T: ?Sized>;
     // endregion:phantom_data
+
+    // region:discriminant
+    #[lang = "discriminant_kind"]
+    pub trait DiscriminantKind {
+        #[lang = "discriminant_type"]
+        type Discriminant;
+    }
+    // endregion:discriminant
 }
 
 // region:default
@@ -354,6 +364,11 @@ pub mod mem {
         pub fn size_of<T>() -> usize;
     }
     // endregion:size_of
+
+    // region:discriminant
+    use crate::marker::DiscriminantKind;
+    pub struct Discriminant<T>(<T as DiscriminantKind>::Discriminant);
+    // endregion:discriminant
 }
 
 pub mod ptr {
@@ -377,6 +392,19 @@ pub mod ptr {
         type Metadata;
     }
     // endregion:pointee
+    // region:non_null
+    #[rustc_layout_scalar_valid_range_start(1)]
+    #[rustc_nonnull_optimization_guaranteed]
+    pub struct NonNull<T: ?Sized> {
+        pointer: *const T,
+    }
+    // region:coerce_unsized
+    impl<T: ?Sized, U: ?Sized> crate::ops::CoerceUnsized<NonNull<U>> for NonNull<T> where
+        T: crate::marker::Unsize<U>
+    {
+    }
+    // endregion:coerce_unsized
+    // endregion:non_null
 }
 
 pub mod ops {
@@ -1287,6 +1315,11 @@ mod macros {
         pub macro derive($item:item) {
             /* compiler built-in */
         }
+
+        #[rustc_builtin_macro]
+        pub macro derive_const($item:item) {
+            /* compiler built-in */
+        }
     }
     // endregion:derive
 
@@ -1354,24 +1387,24 @@ pub mod error {
 pub mod prelude {
     pub mod v1 {
         pub use crate::{
-            clone::Clone,                       // :clone
-            cmp::{Eq, PartialEq},               // :eq
-            cmp::{Ord, PartialOrd},             // :ord
-            convert::AsRef,                     // :as_ref
-            convert::{From, Into},              // :from
-            default::Default,                   // :default
-            iter::{IntoIterator, Iterator},     // :iterator
-            macros::builtin::derive,            // :derive
-            marker::Copy,                       // :copy
-            marker::Send,                       // :send
-            marker::Sized,                      // :sized
-            marker::Sync,                       // :sync
-            mem::drop,                          // :drop
-            ops::Drop,                          // :drop
-            ops::{Fn, FnMut, FnOnce},           // :fn
-            option::Option::{self, None, Some}, // :option
-            panic,                              // :panic
-            result::Result::{self, Err, Ok},    // :result
+            clone::Clone,                            // :clone
+            cmp::{Eq, PartialEq},                    // :eq
+            cmp::{Ord, PartialOrd},                  // :ord
+            convert::AsRef,                          // :as_ref
+            convert::{From, Into},                   // :from
+            default::Default,                        // :default
+            iter::{IntoIterator, Iterator},          // :iterator
+            macros::builtin::{derive, derive_const}, // :derive
+            marker::Copy,                            // :copy
+            marker::Send,                            // :send
+            marker::Sized,                           // :sized
+            marker::Sync,                            // :sync
+            mem::drop,                               // :drop
+            ops::Drop,                               // :drop
+            ops::{Fn, FnMut, FnOnce},                // :fn
+            option::Option::{self, None, Some},      // :option
+            panic,                                   // :panic
+            result::Result::{self, Err, Ok},         // :result
         };
     }
 

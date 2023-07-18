@@ -2,8 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet;
 use clippy_utils::{is_lint_allowed, path_to_local, search_same, SpanlessEq, SpanlessHash};
 use core::cmp::Ordering;
-use core::iter;
-use core::slice;
+use core::{iter, slice};
 use rustc_arena::DroplessArena;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
@@ -240,7 +239,7 @@ impl<'a> NormalizedPat<'a> {
             },
             PatKind::TupleStruct(ref path, pats, wild_idx) => {
                 let Some(adt) = cx.typeck_results().pat_ty(pat).ty_adt_def() else {
-                    return Self::Wild
+                    return Self::Wild;
                 };
                 let (var_id, variant) = if adt.is_enum() {
                     match cx.qpath_res(path, pat.hir_id).opt_def_id() {

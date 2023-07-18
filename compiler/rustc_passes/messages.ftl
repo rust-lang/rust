@@ -98,6 +98,9 @@ passes_collapse_debuginfo =
     `collapse_debuginfo` attribute should be applied to macro definitions
     .label = not a macro definition
 
+passes_confusables = attribute should be applied to an inherent method
+    .label = not an inherent method
+
 passes_const_impl_const_trait =
     const `impl`s must be for traits marked with `#[const_trait]`
     .note = this trait must be annotated with `#[const_trait]`
@@ -266,6 +269,9 @@ passes_duplicate_lang_item_crate_depends =
     .first_definition_path = first definition in `{$orig_crate_name}` loaded from {$orig_path}
     .second_definition_path = second definition in `{$crate_name}` loaded from {$path}
 
+passes_empty_confusables =
+    expected at least one confusable name
+
 passes_export_name =
     attribute should be applied to a free function, impl method or static
     .label = not a free function, impl method or static
@@ -325,6 +331,9 @@ passes_implied_feature_not_exist =
 
 passes_incorrect_do_not_recommend_location =
     `#[do_not_recommend]` can only be placed on trait implementations
+
+passes_incorrect_meta_item = expected a quoted string literal
+passes_incorrect_meta_item_suggestion = consider surrounding this with quotes
 
 passes_incorrect_target =
     `{$name}` language item must be applied to a {$kind} with {$at_least ->

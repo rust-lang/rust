@@ -86,6 +86,9 @@ pub(crate) struct Cache {
     /// Whether to document private items.
     /// This is stored in `Cache` so it doesn't need to be passed through all rustdoc functions.
     pub(crate) document_private: bool,
+    /// Whether to document hidden items.
+    /// This is stored in `Cache` so it doesn't need to be passed through all rustdoc functions.
+    pub(crate) document_hidden: bool,
 
     /// Crates marked with [`#[doc(masked)]`][doc_masked].
     ///
@@ -137,8 +140,8 @@ struct CacheBuilder<'a, 'tcx> {
 }
 
 impl Cache {
-    pub(crate) fn new(document_private: bool) -> Self {
-        Cache { document_private, ..Cache::default() }
+    pub(crate) fn new(document_private: bool, document_hidden: bool) -> Self {
+        Cache { document_private, document_hidden, ..Cache::default() }
     }
 
     /// Populates the `Cache` with more data. The returned `Crate` will be missing some data that was

@@ -1392,6 +1392,11 @@ fn print_native_static_libs(
     let mut lib_args: Vec<_> = all_native_libs
         .iter()
         .filter(|l| relevant_lib(sess, l))
+        // Deduplication of successive repeated libraries, see rust-lang/rust#113209
+        //
+        // note: we don't use PartialEq/Eq because NativeLib transitively depends on local
+        // elements like spans, which we don't care about and would make the deduplication impossible
+        .dedup_by(|l1, l2| l1.name == l2.name && l1.kind == l2.kind && l1.verbatim == l2.verbatim)
         .filter_map(|lib| {
             let name = lib.name;
             match lib.kind {

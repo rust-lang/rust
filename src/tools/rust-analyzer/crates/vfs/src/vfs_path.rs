@@ -292,8 +292,8 @@ impl From<AbsPathBuf> for VfsPath {
 impl fmt::Display for VfsPath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self.0 {
-            VfsPathRepr::PathBuf(it) => fmt::Display::fmt(&it.display(), f),
-            VfsPathRepr::VirtualPath(VirtualPath(it)) => fmt::Display::fmt(it, f),
+            VfsPathRepr::PathBuf(it) => it.fmt(f),
+            VfsPathRepr::VirtualPath(VirtualPath(it)) => it.fmt(f),
         }
     }
 }
@@ -307,8 +307,8 @@ impl fmt::Debug for VfsPath {
 impl fmt::Debug for VfsPathRepr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self {
-            VfsPathRepr::PathBuf(it) => fmt::Debug::fmt(&it.display(), f),
-            VfsPathRepr::VirtualPath(VirtualPath(it)) => fmt::Debug::fmt(&it, f),
+            VfsPathRepr::PathBuf(it) => it.fmt(f),
+            VfsPathRepr::VirtualPath(VirtualPath(it)) => it.fmt(f),
         }
     }
 }

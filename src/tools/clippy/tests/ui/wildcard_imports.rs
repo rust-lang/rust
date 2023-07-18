@@ -112,6 +112,7 @@ mod in_fn_test {
     }
 
     fn test_inner_nested() {
+        #[rustfmt::skip]
         use self::{inner::*, inner2::*};
 
         inner_foo();

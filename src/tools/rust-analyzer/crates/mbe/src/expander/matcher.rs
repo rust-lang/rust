@@ -884,7 +884,7 @@ impl<'a> Iterator for OpDelimitedIter<'a> {
     }
 }
 
-impl<'a> TtIter<'a> {
+impl TtIter<'_> {
     fn expect_separator(&mut self, separator: &Separator) -> bool {
         let mut fork = self.clone();
         let ok = match separator {

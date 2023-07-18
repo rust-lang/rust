@@ -50,7 +50,7 @@ jobs:
         echo "LD_LIBRARY_PATH=${SYSROOT}/lib${LD_LIBRARY_PATH+:${LD_LIBRARY_PATH}}" >> $GITHUB_ENV
 
     - name: Build
-      run: cargo build --features deny-warnings,internal
+      run: cargo build --tests --features deny-warnings,internal
 
     - name: Test
       run: cargo test --features deny-warnings,internal

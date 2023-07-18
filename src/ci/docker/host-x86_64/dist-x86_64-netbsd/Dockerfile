@@ -7,6 +7,9 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -y zlib1g-dev
 COPY host-x86_64/dist-x86_64-netbsd/build-netbsd-toolchain.sh /tmp/
 RUN /tmp/build-netbsd-toolchain.sh
 
+COPY scripts/cmake.sh /scripts/
+RUN /scripts/cmake.sh
+
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 

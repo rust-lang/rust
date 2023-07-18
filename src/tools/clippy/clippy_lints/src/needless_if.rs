@@ -1,4 +1,7 @@
-use clippy_utils::{diagnostics::span_lint_and_sugg, higher::If, is_from_proc_macro, source::snippet_opt};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::higher::If;
+use clippy_utils::is_from_proc_macro;
+use clippy_utils::source::snippet_opt;
 use rustc_errors::Applicability;
 use rustc_hir::{ExprKind, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};

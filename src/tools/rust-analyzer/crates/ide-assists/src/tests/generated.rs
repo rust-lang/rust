@@ -1016,6 +1016,69 @@ impl Person {
 }
 
 #[test]
+fn doctest_generate_delegate_trait() {
+    check_doc_test(
+        "generate_delegate_trait",
+        r#####"
+trait SomeTrait {
+    type T;
+    fn fn_(arg: u32) -> u32;
+    fn method_(&mut self) -> bool;
+}
+struct A;
+impl SomeTrait for A {
+    type T = u32;
+
+    fn fn_(arg: u32) -> u32 {
+        42
+    }
+
+    fn method_(&mut self) -> bool {
+        false
+    }
+}
+struct B {
+    a$0: A,
+}
+"#####,
+        r#####"
+trait SomeTrait {
+    type T;
+    fn fn_(arg: u32) -> u32;
+    fn method_(&mut self) -> bool;
+}
+struct A;
+impl SomeTrait for A {
+    type T = u32;
+
+    fn fn_(arg: u32) -> u32 {
+        42
+    }
+
+    fn method_(&mut self) -> bool {
+        false
+    }
+}
+struct B {
+    a: A,
+}
+
+impl SomeTrait for B {
+    type T = <A as SomeTrait>::T;
+
+    fn fn_(arg: u32) -> u32 {
+        <A as SomeTrait>::fn_(arg)
+    }
+
+    fn method_(&mut self) -> bool {
+        <A as SomeTrait>::method_( &mut self.a )
+    }
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_generate_deref() {
     check_doc_test(
         "generate_deref",
@@ -1429,9 +1492,65 @@ struct Person {
 }
 
 impl Person {
-    fn set_name(&mut self, name: String) {
+    fn $0set_name(&mut self, name: String) {
         self.name = name;
     }
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_generate_trait_from_impl() {
+    check_doc_test(
+        "generate_trait_from_impl",
+        r#####"
+struct Foo<const N: usize>([i32; N]);
+
+macro_rules! const_maker {
+    ($t:ty, $v:tt) => {
+        const CONST: $t = $v;
+    };
+}
+
+impl<const N: usize> Fo$0o<N> {
+    // Used as an associated constant.
+    const CONST_ASSOC: usize = N * 4;
+
+    fn create() -> Option<()> {
+        Some(())
+    }
+
+    const_maker! {i32, 7}
+}
+"#####,
+        r#####"
+struct Foo<const N: usize>([i32; N]);
+
+macro_rules! const_maker {
+    ($t:ty, $v:tt) => {
+        const CONST: $t = $v;
+    };
+}
+
+trait ${0:TraitName}<const N: usize> {
+    // Used as an associated constant.
+    const CONST_ASSOC: usize = N * 4;
+
+    fn create() -> Option<()>;
+
+    const_maker! {i32, 7}
+}
+
+impl<const N: usize> ${0:TraitName}<N> for Foo<N> {
+    // Used as an associated constant.
+    const CONST_ASSOC: usize = N * 4;
+
+    fn create() -> Option<()> {
+        Some(())
+    }
+
+    const_maker! {i32, 7}
 }
 "#####,
     )

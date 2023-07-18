@@ -507,7 +507,7 @@ fn main() {
 
     let _ = "\x28\x28\x00\x63\n";
     let _ = b"\x28\x28\x00\x63\n";
-    let _ = r"\\";
+    let backslash = r"\\";
 
     println!("{\x41}", A = 92);
     println!("{ничоси}", ничоси = 92);
@@ -520,7 +520,7 @@ fn main() {
     toho!("{}fmt", 0);
     asm!("mov eax, {0}");
     format_args!(concat!("{}"), "{}");
-    format_args!("{}", format_args!("{}", 0));
+    format_args!("{} {} {} {} {} {}", backslash, format_args!("{}", 0), foo, "bar", toho!(), backslash);
 }"#,
         expect_file!["./test_data/highlight_strings.html"],
         false,

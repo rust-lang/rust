@@ -4,7 +4,7 @@
 
 use std::{collections::VecDeque, fmt, fs, process::Command, sync};
 
-use anyhow::{format_err, Context, Result};
+use anyhow::{format_err, Context};
 use base_db::{
     CrateDisplayName, CrateGraph, CrateId, CrateName, CrateOrigin, Dependency, Edition, Env,
     FileId, LangCrateOrigin, ProcMacroPaths, ReleaseChannel, TargetLayoutLoadResult,
@@ -151,7 +151,16 @@ impl ProjectWorkspace {
         manifest: ProjectManifest,
         config: &CargoConfig,
         progress: &dyn Fn(String),
-    ) -> Result<ProjectWorkspace> {
+    ) -> anyhow::Result<ProjectWorkspace> {
+        ProjectWorkspace::load_inner(&manifest, config, progress)
+            .with_context(|| format!("Failed to load the project at {manifest}"))
+    }
+
+    fn load_inner(
+        manifest: &ProjectManifest,
+        config: &CargoConfig,
+        progress: &dyn Fn(String),
+    ) -> anyhow::Result<ProjectWorkspace> {
         let version = |current_dir, cmd_path, prefix: &str| {
             let cargo_version = utf8_stdout({
                 let mut cmd = Command::new(cmd_path);
@@ -167,12 +176,10 @@ impl ProjectWorkspace {
         };
         let res = match manifest {
             ProjectManifest::ProjectJson(project_json) => {
-                let file = fs::read_to_string(&project_json).with_context(|| {
-                    format!("Failed to read json file {}", project_json.display())
-                })?;
-                let data = serde_json::from_str(&file).with_context(|| {
-                    format!("Failed to deserialize json file {}", project_json.display())
-                })?;
+                let file = fs::read_to_string(&project_json)
+                    .with_context(|| format!("Failed to read json file {project_json}"))?;
+                let data = serde_json::from_str(&file)
+                    .with_context(|| format!("Failed to deserialize json file {project_json}"))?;
                 let project_location = project_json.parent().to_path_buf();
                 let toolchain = version(&*project_location, toolchain::rustc(), "rustc ")?;
                 let project_json = ProjectJson::new(&project_location, data);
@@ -193,9 +200,7 @@ impl ProjectWorkspace {
                 )
                 .with_context(|| {
                     format!(
-                        "Failed to read Cargo metadata from Cargo.toml file {}, {:?}",
-                        cargo_toml.display(),
-                        toolchain
+                        "Failed to read Cargo metadata from Cargo.toml file {cargo_toml}, {toolchain:?}",
                     )
                 })?;
                 let cargo = CargoWorkspace::new(meta);
@@ -203,12 +208,12 @@ impl ProjectWorkspace {
                 let sysroot = match (&config.sysroot, &config.sysroot_src) {
                     (Some(RustLibSource::Path(path)), None) => {
                         Sysroot::with_sysroot_dir(path.clone()).map_err(|e| {
-                          Some(format!("Failed to find sysroot at {}:{e}", path.display()))
+                          Some(format!("Failed to find sysroot at {path}:{e}"))
                         })
                     }
                     (Some(RustLibSource::Discover), None) => {
                         Sysroot::discover(cargo_toml.parent(), &config.extra_env).map_err(|e| {
-                            Some(format!("Failed to find sysroot for Cargo.toml file {}. Is rust-src installed? {e}", cargo_toml.display()))
+                            Some(format!("Failed to find sysroot for Cargo.toml file {cargo_toml}. Is rust-src installed? {e}"))
                         })
                     }
                     (Some(RustLibSource::Path(sysroot)), Some(sysroot_src)) => {
@@ -220,21 +225,19 @@ impl ProjectWorkspace {
                             &config.extra_env,
                             sysroot_src.clone(),
                         ).map_err(|e| {
-                            Some(format!("Failed to find sysroot for Cargo.toml file {}. Is rust-src installed? {e}", cargo_toml.display()))
+                            Some(format!("Failed to find sysroot for Cargo.toml file {cargo_toml}. Is rust-src installed? {e}"))
                         })
                     }
                     (None, _) => Err(None),
                 };
 
                 if let Ok(sysroot) = &sysroot {
-                    tracing::info!(workspace = %cargo_toml.display(), src_root = %sysroot.src_root().display(), root = %sysroot.root().display(), "Using sysroot");
+                    tracing::info!(workspace = %cargo_toml, src_root = %sysroot.src_root(), root = %sysroot.root(), "Using sysroot");
                 }
 
                 let rustc_dir = match &config.rustc_source {
                     Some(RustLibSource::Path(path)) => ManifestPath::try_from(path.clone())
-                        .map_err(|p| {
-                            Some(format!("rustc source path is not absolute: {}", p.display()))
-                        }),
+                        .map_err(|p| Some(format!("rustc source path is not absolute: {p}"))),
                     Some(RustLibSource::Discover) => {
                         sysroot.as_ref().ok().and_then(Sysroot::discover_rustc).ok_or_else(|| {
                             Some(format!("Failed to discover rustc source for sysroot."))
@@ -244,7 +247,7 @@ impl ProjectWorkspace {
                 };
 
                 let rustc =  rustc_dir.and_then(|rustc_dir| {
-                    tracing::info!(workspace = %cargo_toml.display(), rustc_dir = %rustc_dir.display(), "Using rustc source");
+                    tracing::info!(workspace = %cargo_toml, rustc_dir = %rustc_dir, "Using rustc source");
                     match CargoWorkspace::fetch_metadata(
                         &rustc_dir,
                         cargo_toml.parent(),
@@ -266,13 +269,11 @@ impl ProjectWorkspace {
                         Err(e) => {
                             tracing::error!(
                                 %e,
-                                "Failed to read Cargo metadata from rustc source at {}",
-                                rustc_dir.display()
+                                "Failed to read Cargo metadata from rustc source at {rustc_dir}",
                             );
                             Err(Some(format!(
-                                "Failed to read Cargo metadata from rustc source at {}: {e}",
-                                rustc_dir.display())
-                            ))
+                                "Failed to read Cargo metadata from rustc source at {rustc_dir}: {e}"
+                            )))
                         }
                     }
                 });
@@ -330,7 +331,7 @@ impl ProjectWorkspace {
             (None, None) => Err(None),
         };
         if let Ok(sysroot) = &sysroot {
-            tracing::info!(src_root = %sysroot.src_root().display(), root = %sysroot.root().display(), "Using sysroot");
+            tracing::info!(src_root = %sysroot.src_root(), root = %sysroot.root(), "Using sysroot");
         }
 
         let rustc_cfg = rustc_cfg::get(None, target, extra_env);
@@ -340,26 +341,23 @@ impl ProjectWorkspace {
     pub fn load_detached_files(
         detached_files: Vec<AbsPathBuf>,
         config: &CargoConfig,
-    ) -> Result<ProjectWorkspace> {
+    ) -> anyhow::Result<ProjectWorkspace> {
         let sysroot = match &config.sysroot {
             Some(RustLibSource::Path(path)) => Sysroot::with_sysroot_dir(path.clone())
-                .map_err(|e| Some(format!("Failed to find sysroot at {}:{e}", path.display()))),
+                .map_err(|e| Some(format!("Failed to find sysroot at {path}:{e}"))),
             Some(RustLibSource::Discover) => {
                 let dir = &detached_files
                     .first()
                     .and_then(|it| it.parent())
                     .ok_or_else(|| format_err!("No detached files to load"))?;
                 Sysroot::discover(dir, &config.extra_env).map_err(|e| {
-                    Some(format!(
-                        "Failed to find sysroot for {}. Is rust-src installed? {e}",
-                        dir.display()
-                    ))
+                    Some(format!("Failed to find sysroot for {dir}. Is rust-src installed? {e}"))
                 })
             }
             None => Err(None),
         };
         if let Ok(sysroot) = &sysroot {
-            tracing::info!(src_root = %sysroot.src_root().display(), root = %sysroot.root().display(), "Using sysroot");
+            tracing::info!(src_root = %sysroot.src_root(), root = %sysroot.root(), "Using sysroot");
         }
         let rustc_cfg = rustc_cfg::get(None, None, &Default::default());
         Ok(ProjectWorkspace::DetachedFiles { files: detached_files, sysroot, rustc_cfg })
@@ -370,15 +368,12 @@ impl ProjectWorkspace {
         &self,
         config: &CargoConfig,
         progress: &dyn Fn(String),
-    ) -> Result<WorkspaceBuildScripts> {
+    ) -> anyhow::Result<WorkspaceBuildScripts> {
         match self {
             ProjectWorkspace::Cargo { cargo, toolchain, .. } => {
                 WorkspaceBuildScripts::run_for_workspace(config, cargo, progress, toolchain)
                     .with_context(|| {
-                        format!(
-                            "Failed to run build scripts for {}",
-                            &cargo.workspace_root().display()
-                        )
+                        format!("Failed to run build scripts for {}", cargo.workspace_root())
                     })
             }
             ProjectWorkspace::Json { .. } | ProjectWorkspace::DetachedFiles { .. } => {
@@ -393,7 +388,7 @@ impl ProjectWorkspace {
         workspaces: &[ProjectWorkspace],
         config: &CargoConfig,
         progress: &dyn Fn(String),
-    ) -> Vec<Result<WorkspaceBuildScripts>> {
+    ) -> Vec<anyhow::Result<WorkspaceBuildScripts>> {
         if matches!(config.invocation_strategy, InvocationStrategy::PerWorkspace)
             || config.run_build_script_command.is_none()
         {
@@ -419,10 +414,7 @@ impl ProjectWorkspace {
                 ProjectWorkspace::Cargo { cargo, .. } => match outputs {
                     Ok(outputs) => Ok(outputs.next().unwrap()),
                     Err(e) => Err(e.clone()).with_context(|| {
-                        format!(
-                            "Failed to run build scripts for {}",
-                            &cargo.workspace_root().display()
-                        )
+                        format!("Failed to run build scripts for {}", cargo.workspace_root())
                     }),
                 },
                 _ => Ok(WorkspaceBuildScripts::default()),
@@ -447,7 +439,7 @@ impl ProjectWorkspace {
         }
     }
 
-    pub fn find_sysroot_proc_macro_srv(&self) -> Result<AbsPathBuf> {
+    pub fn find_sysroot_proc_macro_srv(&self) -> anyhow::Result<AbsPathBuf> {
         match self {
             ProjectWorkspace::Cargo { sysroot: Ok(sysroot), .. }
             | ProjectWorkspace::Json { sysroot: Ok(sysroot), .. }
@@ -459,22 +451,22 @@ impl ProjectWorkspace {
                     .map(|segment| sysroot.root().join(segment).join(&standalone_server_name))
                     .find(|server_path| std::fs::metadata(server_path).is_ok())
                     .ok_or_else(|| {
-                        anyhow::anyhow!(
+                        anyhow::format_err!(
                             "cannot find proc-macro server in sysroot `{}`",
-                            sysroot.root().display()
+                            sysroot.root()
                         )
                     })
             }
             ProjectWorkspace::DetachedFiles { .. } => {
-                Err(anyhow::anyhow!("cannot find proc-macro server, no sysroot was found"))
+                Err(anyhow::format_err!("cannot find proc-macro server, no sysroot was found"))
             }
-            ProjectWorkspace::Cargo { cargo, .. } => Err(anyhow::anyhow!(
+            ProjectWorkspace::Cargo { cargo, .. } => Err(anyhow::format_err!(
                 "cannot find proc-macro-srv, the workspace `{}` is missing a sysroot",
-                cargo.workspace_root().display()
+                cargo.workspace_root()
             )),
-            ProjectWorkspace::Json { project, .. } => Err(anyhow::anyhow!(
+            ProjectWorkspace::Json { project, .. } => Err(anyhow::format_err!(
                 "cannot find proc-macro-srv, the workspace `{}` is missing a sysroot",
-                project.path().display()
+                project.path()
             )),
         }
     }

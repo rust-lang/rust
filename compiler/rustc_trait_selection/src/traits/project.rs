@@ -1402,9 +1402,17 @@ pub fn compute_inherent_assoc_ty_args<'a, 'b, 'tcx>(
     let impl_def_id = tcx.parent(alias_ty.def_id);
     let impl_args = selcx.infcx.fresh_args_for_item(cause.span, impl_def_id);
 
-    let impl_ty = tcx.type_of(impl_def_id).instantiate(tcx, impl_args);
-    let impl_ty =
-        normalize_with_depth_to(selcx, param_env, cause.clone(), depth + 1, impl_ty, obligations);
+    let mut impl_ty = tcx.type_of(impl_def_id).instantiate(tcx, impl_args);
+    if !selcx.infcx.next_trait_solver() {
+        impl_ty = normalize_with_depth_to(
+            selcx,
+            param_env,
+            cause.clone(),
+            depth + 1,
+            impl_ty,
+            obligations,
+        );
+    }
 
     // Infer the generic parameters of the impl by unifying the
     // impl type with the self type of the projection.
@@ -1421,7 +1429,7 @@ pub fn compute_inherent_assoc_ty_args<'a, 'b, 'tcx>(
         }
     }
 
-    alias_ty.rebase_args_onto_impl(impl_args, tcx)
+    alias_ty.rebase_inherent_args_onto_impl(impl_args, tcx)
 }
 
 enum Projected<'tcx> {

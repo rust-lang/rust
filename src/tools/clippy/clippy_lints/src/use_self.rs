@@ -5,13 +5,12 @@ use clippy_utils::ty::same_type_and_consts;
 use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
+use rustc_hir::def::{CtorOf, DefKind, Res};
+use rustc_hir::def_id::LocalDefId;
+use rustc_hir::intravisit::{walk_inf, walk_ty, Visitor};
 use rustc_hir::{
-    self as hir,
-    def::{CtorOf, DefKind, Res},
-    def_id::LocalDefId,
-    intravisit::{walk_inf, walk_ty, Visitor},
-    Expr, ExprKind, FnRetTy, FnSig, GenericArg, GenericArgsParentheses, GenericParam, GenericParamKind, HirId, Impl,
-    ImplItemKind, Item, ItemKind, Pat, PatKind, Path, QPath, Ty, TyKind,
+    self as hir, Expr, ExprKind, FnRetTy, FnSig, GenericArg, GenericArgsParentheses, GenericParam, GenericParamKind,
+    HirId, Impl, ImplItemKind, Item, ItemKind, Pat, PatKind, Path, QPath, Ty, TyKind,
 };
 use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_lint::{LateContext, LateLintPass};

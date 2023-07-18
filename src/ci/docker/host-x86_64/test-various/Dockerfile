@@ -37,6 +37,9 @@ COPY scripts/musl-toolchain.sh /build/
 RUN bash musl-toolchain.sh x86_64 && rm -rf build
 WORKDIR /
 
+COPY scripts/cmake.sh /scripts/
+RUN /scripts/cmake.sh
+
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 

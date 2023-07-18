@@ -674,7 +674,7 @@ struct Foo { fiel$0d_a: u8, field_b: i32, field_c: i16 }
             ```
 
             ```rust
-            field_a: u8 // size = 1, align = 1, offset = 4
+            field_a: u8 // size = 1, align = 1, offset = 6
             ```
         "#]],
     );
@@ -776,6 +776,39 @@ const foo$0: u32 = {
 
             ```rust
             static foo: u32 = 456
+            ```
+        "#]],
+    );
+
+    check(
+        r#"const FOO$0: i32 = -2147483648;"#,
+        expect![[r#"
+            *FOO*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const FOO: i32 = -2147483648 (0x80000000)
+            ```
+        "#]],
+    );
+
+    check(
+        r#"
+        const FOO: i32 = -2147483648;
+        const BAR$0: bool = FOO > 0;
+        "#,
+        expect![[r#"
+            *BAR*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const BAR: bool = false
             ```
         "#]],
     );

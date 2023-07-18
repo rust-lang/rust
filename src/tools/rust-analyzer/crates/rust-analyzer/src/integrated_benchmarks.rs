@@ -20,7 +20,7 @@ use test_utils::project_root;
 use triomphe::Arc;
 use vfs::{AbsPathBuf, VfsPath};
 
-use crate::cli::load_cargo::{load_workspace_at, LoadCargoConfig, ProcMacroServerChoice};
+use load_cargo::{load_workspace_at, LoadCargoConfig, ProcMacroServerChoice};
 
 #[test]
 fn integrated_highlighting_benchmark() {

@@ -670,7 +670,7 @@ impl<'a, 'tcx> FulfillProcessor<'a, 'tcx> {
         stalled_on: &mut Vec<TyOrConstInferVar<'tcx>>,
     ) -> ProcessResult<PendingPredicateObligation<'tcx>, FulfillmentErrorCode<'tcx>> {
         let infcx = self.selcx.infcx;
-        if obligation.predicate.is_global() {
+        if obligation.predicate.is_global() && !self.selcx.is_intercrate() {
             // no type variables present, can use evaluation for better caching.
             // FIXME: consider caching errors too.
             if infcx.predicate_must_hold_considering_regions(obligation) {
@@ -724,7 +724,7 @@ impl<'a, 'tcx> FulfillProcessor<'a, 'tcx> {
     ) -> ProcessResult<PendingPredicateObligation<'tcx>, FulfillmentErrorCode<'tcx>> {
         let tcx = self.selcx.tcx();
 
-        if obligation.predicate.is_global() {
+        if obligation.predicate.is_global() && !self.selcx.is_intercrate() {
             // no type variables present, can use evaluation for better caching.
             // FIXME: consider caching errors too.
             if self.selcx.infcx.predicate_must_hold_considering_regions(obligation) {

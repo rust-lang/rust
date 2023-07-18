@@ -32,6 +32,9 @@ const GENERIC_ARG_FIRST: TokenSet = TokenSet::new(&[
 ])
 .union(types::TYPE_FIRST);
 
+// Despite its name, it can also be used for generic param list.
+const GENERIC_ARG_RECOVERY_SET: TokenSet = TokenSet::new(&[T![>], T![,]]);
+
 // test generic_arg
 // type T = S<i32>;
 fn generic_arg(p: &mut Parser<'_>) -> bool {
@@ -55,6 +58,15 @@ fn generic_arg(p: &mut Parser<'_>) -> bool {
                         // test assoc_type_eq
                         // type T = StreamingIterator<Item<'a> = &'a T>;
                         types::type_(p);
+                    } else if p.at_ts(GENERIC_ARG_RECOVERY_SET) {
+                        // Although `const_arg()` recovers as expected, we want to
+                        // handle those here to give the following message because
+                        // we don't know whether this associated item is a type or
+                        // const at this point.
+
+                        // test_err recover_from_missing_assoc_item_binding
+                        // fn f() -> impl Iterator<Item = , Item = > {}
+                        p.error("missing associated item binding");
                     } else {
                         // test assoc_const_eq
                         // fn foo<F: Foo<N=3>>() {}
@@ -141,11 +153,16 @@ pub(super) fn const_arg_expr(p: &mut Parser<'_>) {
             expressions::literal(p);
             lm.complete(p, PREFIX_EXPR);
         }
-        _ => {
+        _ if paths::is_use_path_start(p) => {
             // This shouldn't be hit by `const_arg`
             let lm = p.start();
             paths::use_path(p);
             lm.complete(p, PATH_EXPR);
+        }
+        _ => {
+            // test_err recover_from_missing_const_default
+            // struct A<const N: i32 = , const M: i32 =>;
+            p.err_recover("expected a generic const argument", GENERIC_ARG_RECOVERY_SET);
         }
     }
 }

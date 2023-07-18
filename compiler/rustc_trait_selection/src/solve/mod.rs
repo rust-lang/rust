@@ -25,6 +25,7 @@ mod assembly;
 mod canonicalize;
 mod eval_ctxt;
 mod fulfill;
+mod inherent_projection;
 pub mod inspect;
 mod normalize;
 mod opaques;

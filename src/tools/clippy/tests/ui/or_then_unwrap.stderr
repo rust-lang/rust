@@ -2,7 +2,7 @@ error: found `.or(Some(…)).unwrap()`
   --> $DIR/or_then_unwrap.rs:24:20
    |
 LL |     let _ = option.or(Some("fallback")).unwrap(); // should trigger lint
-   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or("fallback")`
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or("fallback")`
    |
    = note: `-D clippy::or-then-unwrap` implied by `-D warnings`
 
@@ -10,13 +10,13 @@ error: found `.or(Ok(…)).unwrap()`
   --> $DIR/or_then_unwrap.rs:27:20
    |
 LL |     let _ = result.or::<&str>(Ok("fallback")).unwrap(); // should trigger lint
-   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or("fallback")`
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or("fallback")`
 
 error: found `.or(Some(…)).unwrap()`
   --> $DIR/or_then_unwrap.rs:31:31
    |
 LL |     let _ = option.map(|v| v).or(Some("fallback")).unwrap().to_string().chars(); // should trigger lint
-   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or("fallback")`
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or("fallback")`
 
 error: aborting due to 3 previous errors
 

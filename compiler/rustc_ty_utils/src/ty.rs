@@ -311,22 +311,6 @@ fn param_env_reveal_all_normalized(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamE
     tcx.param_env(def_id).with_reveal_all_normalized(tcx)
 }
 
-fn instance_def_size_estimate<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    instance_def: ty::InstanceDef<'tcx>,
-) -> usize {
-    use ty::InstanceDef;
-
-    match instance_def {
-        InstanceDef::Item(..) | InstanceDef::DropGlue(..) => {
-            let mir = tcx.instance_mir(instance_def);
-            mir.basic_blocks.iter().map(|bb| bb.statements.len() + 1).sum()
-        }
-        // Estimate the size of other compiler-generated shims to be 1.
-        _ => 1,
-    }
-}
-
 /// If `def_id` is an issue 33140 hack impl, returns its self type; otherwise, returns `None`.
 ///
 /// See [`ty::ImplOverlapKind::Issue33140`] for more details.
@@ -432,7 +416,6 @@ pub fn provide(providers: &mut Providers) {
         adt_sized_constraint,
         param_env,
         param_env_reveal_all_normalized,
-        instance_def_size_estimate,
         issue33140_self_ty,
         defaultness,
         unsizing_params_for_adt,

@@ -68,6 +68,21 @@ pub mod token_id {
             Self::Subtree(Subtree { delimiter: Delimiter::unspecified(), token_trees: vec![] })
         }
     }
+
+    impl Subtree {
+        pub fn visit_ids(&mut self, f: &impl Fn(TokenId) -> TokenId) {
+            self.delimiter.open = f(self.delimiter.open);
+            self.delimiter.close = f(self.delimiter.close);
+            self.token_trees.iter_mut().for_each(|tt| match tt {
+                crate::TokenTree::Leaf(leaf) => match leaf {
+                    crate::Leaf::Literal(it) => it.span = f(it.span),
+                    crate::Leaf::Punct(it) => it.span = f(it.span),
+                    crate::Leaf::Ident(it) => it.span = f(it.span),
+                },
+                crate::TokenTree::Subtree(s) => s.visit_ids(f),
+            })
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

@@ -1,9 +1,9 @@
 use ide_db::{base_db::FileId, source_change::SourceChange};
 use itertools::Itertools;
-use syntax::{ast, AstNode, SyntaxNode, TextRange};
+use syntax::{ast, AstNode, SyntaxNode};
 use text_edit::TextEdit;
 
-use crate::{fix, Diagnostic, Severity};
+use crate::{fix, Diagnostic, DiagnosticCode};
 
 // Diagnostic: unnecessary-braces
 //
@@ -15,6 +15,11 @@ pub(crate) fn useless_braces(
 ) -> Option<()> {
     let use_tree_list = ast::UseTreeList::cast(node.clone())?;
     if let Some((single_use_tree,)) = use_tree_list.use_trees().collect_tuple() {
+        // If there is a `self` inside the bracketed `use`, don't show diagnostic.
+        if single_use_tree.path()?.segment()?.self_token().is_some() {
+            return Some(());
+        }
+
         // If there is a comment inside the bracketed `use`,
         // assume it is a commented out module path and don't show diagnostic.
         if use_tree_list.has_inner_comment() {
@@ -22,21 +27,18 @@ pub(crate) fn useless_braces(
         }
 
         let use_range = use_tree_list.syntax().text_range();
-        let edit = remove_braces(&single_use_tree).unwrap_or_else(|| {
-            let to_replace = single_use_tree.syntax().text().to_string();
-            let mut edit_builder = TextEdit::builder();
-            edit_builder.delete(use_range);
-            edit_builder.insert(use_range.start(), to_replace);
-            edit_builder.finish()
-        });
+        let to_replace = single_use_tree.syntax().text().to_string();
+        let mut edit_builder = TextEdit::builder();
+        edit_builder.delete(use_range);
+        edit_builder.insert(use_range.start(), to_replace);
+        let edit = edit_builder.finish();
 
         acc.push(
             Diagnostic::new(
-                "unnecessary-braces",
+                DiagnosticCode::RustcLint("unused_braces"),
                 "Unnecessary braces in use statement".to_string(),
                 use_range,
             )
-            .severity(Severity::WeakWarning)
             .with_fixes(Some(vec![fix(
                 "remove_braces",
                 "Remove unnecessary braces",
@@ -49,19 +51,12 @@ pub(crate) fn useless_braces(
     Some(())
 }
 
-fn remove_braces(single_use_tree: &ast::UseTree) -> Option<TextEdit> {
-    let use_tree_list_node = single_use_tree.syntax().parent()?;
-    if single_use_tree.path()?.segment()?.self_token().is_some() {
-        let start = use_tree_list_node.prev_sibling_or_token()?.text_range().start();
-        let end = use_tree_list_node.text_range().end();
-        return Some(TextEdit::delete(TextRange::new(start, end)));
-    }
-    None
-}
-
 #[cfg(test)]
 mod tests {
-    use crate::tests::{check_diagnostics, check_fix};
+    use crate::{
+        tests::{check_diagnostics, check_diagnostics_with_config, check_fix},
+        DiagnosticsConfig,
+    };
 
     #[test]
     fn test_check_unnecessary_braces_in_use_statement() {
@@ -94,6 +89,32 @@ mod a {
 }
 "#,
         );
+        check_diagnostics(
+            r#"
+use a::{self};
+
+mod a {
+}
+"#,
+        );
+        check_diagnostics(
+            r#"
+use a::{self as cool_name};
+
+mod a {
+}
+"#,
+        );
+
+        let mut config = DiagnosticsConfig::test_sample();
+        config.disabled.insert("syntax-error".to_string());
+        check_diagnostics_with_config(
+            config,
+            r#"
+mod a { pub mod b {} }
+use a::{b::self};
+"#,
+        );
         check_fix(
             r#"
 mod b {}
@@ -122,16 +143,6 @@ use a::{c$0};
             r#"
 mod a { pub mod c {} }
 use a::c;
-"#,
-        );
-        check_fix(
-            r#"
-mod a {}
-use a::{self$0};
-"#,
-            r#"
-mod a {}
-use a;
 "#,
         );
         check_fix(

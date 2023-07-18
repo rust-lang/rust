@@ -2,7 +2,7 @@ use crate::FnCtxt;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::DefId;
-use rustc_infer::traits::ObligationCauseCode;
+use rustc_infer::{infer::type_variable::TypeVariableOriginKind, traits::ObligationCauseCode};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor};
 use rustc_span::{self, symbol::kw, Span};
 use rustc_trait_selection::traits;
@@ -267,8 +267,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             type BreakTy = ty::GenericArg<'tcx>;
             fn visit_ty(&mut self, ty: Ty<'tcx>) -> std::ops::ControlFlow<Self::BreakTy> {
                 if let Some(origin) = self.0.type_var_origin(ty)
-                    && let rustc_infer::infer::type_variable::TypeVariableOriginKind::TypeParameterDefinition(_, def_id) =
-                        origin.kind
+                    && let TypeVariableOriginKind::TypeParameterDefinition(_, def_id) = origin.kind
                     && let generics = self.0.tcx.generics_of(self.1)
                     && let Some(index) = generics.param_def_id_to_index(self.0.tcx, def_id)
                     && let Some(subst) = ty::GenericArgs::identity_for_item(self.0.tcx, self.1)

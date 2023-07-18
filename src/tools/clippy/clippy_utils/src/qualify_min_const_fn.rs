@@ -15,9 +15,8 @@ use rustc_middle::mir::{
     Terminator, TerminatorKind,
 };
 use rustc_middle::traits::{ImplSource, ObligationCause};
-use rustc_middle::ty::GenericArgKind;
-use rustc_middle::ty::{self, adjustment::PointerCoercion, Ty, TyCtxt};
-use rustc_middle::ty::{BoundConstness, TraitRef};
+use rustc_middle::ty::adjustment::PointerCoercion;
+use rustc_middle::ty::{self, BoundConstness, GenericArgKind, TraitRef, Ty, TyCtxt};
 use rustc_semver::RustcVersion;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
@@ -125,7 +124,9 @@ fn check_rvalue<'tcx>(
         ) => check_operand(tcx, operand, span, body),
         Rvalue::Cast(
             CastKind::PointerCoercion(
-                PointerCoercion::UnsafeFnPointer | PointerCoercion::ClosureFnPointer(_) | PointerCoercion::ReifyFnPointer,
+                PointerCoercion::UnsafeFnPointer
+                | PointerCoercion::ClosureFnPointer(_)
+                | PointerCoercion::ReifyFnPointer,
             ),
             _,
             _,
