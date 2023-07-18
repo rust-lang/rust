@@ -42,6 +42,7 @@ pub(crate) fn strip_hidden(krate: clean::Crate, cx: &mut DocContext<'_>) -> clea
         cache: &cx.cache,
         is_json_output,
         document_private: cx.render_options.document_private,
+        document_hidden: cx.render_options.document_hidden,
     };
     stripper.fold_crate(krate)
 }

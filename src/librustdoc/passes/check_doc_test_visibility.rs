@@ -92,8 +92,8 @@ pub(crate) fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -
         return false;
     }
 
-    if cx.tcx.is_doc_hidden(def_id.to_def_id())
-        || inherits_doc_hidden(cx.tcx, def_id, None)
+    if (!cx.render_options.document_hidden
+        && (cx.tcx.is_doc_hidden(def_id.to_def_id()) || inherits_doc_hidden(cx.tcx, def_id, None)))
         || cx.tcx.def_span(def_id.to_def_id()).in_derive_expansion()
     {
         return false;
