@@ -148,7 +148,25 @@ impl<'tcx> Tables<'tcx> {
             )),
             ty::FnPtr(_) => todo!(),
             ty::Dynamic(_, _, _) => todo!(),
-            ty::Closure(_, _) => todo!(),
+            ty::Closure(def_id, generic_args) => TyKind::RigidTy(RigidTy::Closure(
+                rustc_internal::closure_def(*def_id),
+                GenericArgs(
+                    generic_args
+                        .iter()
+                        .map(|arg| match arg.unpack() {
+                            ty::GenericArgKind::Lifetime(region) => {
+                                GenericArgKind::Lifetime(opaque(&region))
+                            }
+                            ty::GenericArgKind::Type(ty) => {
+                                GenericArgKind::Type(self.intern_ty(ty))
+                            }
+                            ty::GenericArgKind::Const(const_) => {
+                                GenericArgKind::Const(opaque(&const_))
+                            }
+                        })
+                        .collect(),
+                ),
+            )),
             ty::Generator(_, _, _) => todo!(),
             ty::Never => TyKind::RigidTy(RigidTy::Never),
             ty::Tuple(fields) => TyKind::RigidTy(RigidTy::Tuple(
