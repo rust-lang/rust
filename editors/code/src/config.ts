@@ -6,10 +6,12 @@ import type { Env } from "./client";
 import { log } from "./util";
 import { expectNotUndefined, unwrapUndefinable } from "./undefinable";
 
-export type RunnableEnvCfg =
-    | undefined
-    | Record<string, string>
-    | { mask?: string; env: Record<string, string> }[];
+export type RunnableEnvCfgItem = {
+    mask?: string;
+    env: Record<string, string>;
+    platform?: string | string[];
+};
+export type RunnableEnvCfg = undefined | Record<string, string> | RunnableEnvCfgItem[];
 
 export class Config {
     readonly extensionId = "rust-lang.rust-analyzer";
