@@ -1355,7 +1355,6 @@ impl<'ctx> MirLowerCtx<'ctx> {
                 return Ok(Operand::from_concrete_const(data, mm, ty));
             }
             hir_def::hir::Literal::CString(b) => {
-                let b = b.as_bytes();
                 let bytes = b.iter().copied().chain(iter::once(0)).collect::<Vec<_>>();
 
                 let mut data = Vec::with_capacity(mem::size_of::<usize>() * 2);
