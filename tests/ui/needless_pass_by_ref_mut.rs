@@ -91,15 +91,79 @@ impl<T> Mut<T> {
 // Should not warn.
 fn unused(_: &mut u32, _b: &mut u8) {}
 
+// Should not warn.
+async fn f1(x: &mut i32) {
+    *x += 1;
+}
+// Should not warn.
+async fn f2(x: &mut i32, y: String) {
+    *x += 1;
+}
+// Should not warn.
+async fn f3(x: &mut i32, y: String, z: String) {
+    *x += 1;
+}
+// Should not warn.
+async fn f4(x: &mut i32, y: i32) {
+    *x += 1;
+}
+// Should not warn.
+async fn f5(x: i32, y: &mut i32) {
+    *y += 1;
+}
+// Should not warn.
+async fn f6(x: i32, y: &mut i32, z: &mut i32) {
+    *y += 1;
+    *z += 1;
+}
+// Should not warn.
+async fn f7(x: &mut i32, y: i32, z: &mut i32, a: i32) {
+    *x += 1;
+    *z += 1;
+}
+
+// Should warn.
+async fn a1(x: &mut i32) {
+    println!("{:?}", x);
+}
+// Should warn.
+async fn a2(x: &mut i32, y: String) {
+    println!("{:?}", x);
+}
+// Should warn.
+async fn a3(x: &mut i32, y: String, z: String) {
+    println!("{:?}", x);
+}
+// Should warn.
+async fn a4(x: &mut i32, y: i32) {
+    println!("{:?}", x);
+}
+// Should warn.
+async fn a5(x: i32, y: &mut i32) {
+    println!("{:?}", x);
+}
+// Should warn.
+async fn a6(x: i32, y: &mut i32) {
+    println!("{:?}", x);
+}
+// Should warn.
+async fn a7(x: i32, y: i32, z: &mut i32) {
+    println!("{:?}", z);
+}
+// Should warn.
+async fn a8(x: i32, a: &mut i32, y: i32, z: &mut i32) {
+    println!("{:?}", z);
+}
+
 fn main() {
-    let mut u = 0;
-    let mut v = vec![0];
-    foo(&mut v, &0, &mut u);
-    foo2(&mut v);
-    foo3(&mut v);
-    foo4(&mut v);
-    foo5(&mut v);
-    alias_check(&mut v);
-    alias_check2(&mut v);
-    println!("{u}");
+    // let mut u = 0;
+    // let mut v = vec![0];
+    // foo(&mut v, &0, &mut u);
+    // foo2(&mut v);
+    // foo3(&mut v);
+    // foo4(&mut v);
+    // foo5(&mut v);
+    // alias_check(&mut v);
+    // alias_check2(&mut v);
+    // println!("{u}");
 }
