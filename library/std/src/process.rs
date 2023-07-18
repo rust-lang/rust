@@ -1492,32 +1492,6 @@ impl From<fs::File> for Stdio {
 }
 
 #[stable(feature = "stdio_from_stdio", since = "1.58.0")]
-impl From<io::Stdin> for Stdio {
-    /// Specify to inherit our stdin.
-    ///
-    /// # Examples
-    ///
-    /// ```rust,no_run
-    /// #![feature(exit_status_error)]
-    /// use std::io;
-    /// use std::process::Command;
-    ///
-    /// # fn test() -> Result<(), Box<dyn std::error::Error>> {
-    /// let output = Command::new("wc").arg("-l")
-    ///     .stdin(io::stdin())
-    ///     .output()?;
-    /// output.status.exit_ok()?;
-    /// let input_lines: u64 = std::str::from_utf8(&output.stdout)?.trim().parse()?;
-    /// eprintln!("our standard input had {} lines", input_lines);
-    /// # Ok(())
-    /// # }
-    /// ```
-    fn from(inherit: io::Stdin) -> Stdio {
-        Stdio::from_inner(inherit.into())
-    }
-}
-
-#[stable(feature = "stdio_from_stdio", since = "1.58.0")]
 impl From<io::Stdout> for Stdio {
     /// Redirect command stdout/stderr to our stdout
     ///
