@@ -96,7 +96,7 @@ where
                 return Some(Err(AlwaysRequiresDrop));
             }
 
-            let components = match needs_drop_components(ty, &tcx.data_layout) {
+            let components = match needs_drop_components(tcx, ty) {
                 Err(e) => return Some(Err(e)),
                 Ok(components) => components,
             };
@@ -160,7 +160,7 @@ where
                             queue_type(self, required);
                         }
                     }
-                    ty::Array(..) | ty::Alias(..) | ty::Param(_) => {
+                    ty::Alias(..) | ty::Array(..) | ty::Placeholder(_) | ty::Param(_) => {
                         if ty == component {
                             // Return the type to the caller: they may be able
                             // to normalize further than we can.
@@ -173,7 +173,7 @@ where
                         }
                     }
 
-                    ty::Foreign(_) | ty::Dynamic(..) | ty::Placeholder(_) => {
+                    ty::Foreign(_) | ty::Dynamic(..) => {
                         return Some(Err(AlwaysRequiresDrop));
                     }
 
