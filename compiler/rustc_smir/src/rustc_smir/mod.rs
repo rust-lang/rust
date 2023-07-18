@@ -113,7 +113,9 @@ impl<'tcx> Tables<'tcx> {
                         .collect(),
                 ),
             )),
-            ty::Foreign(_) => todo!(),
+            ty::Foreign(def_id) => {
+                TyKind::RigidTy(RigidTy::Foreign(rustc_internal::foreign_def(*def_id)))
+            }
             ty::Str => TyKind::RigidTy(RigidTy::Str),
             ty::Array(ty, constant) => {
                 TyKind::RigidTy(RigidTy::Array(self.intern_ty(*ty), opaque(constant)))

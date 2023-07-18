@@ -26,6 +26,7 @@ pub enum RigidTy {
     Uint(UintTy),
     Float(FloatTy),
     Adt(AdtDef, AdtSubsts),
+    Foreign(ForeignDef),
     Str,
     Array(Ty, Const),
     Slice(Ty),
@@ -59,6 +60,9 @@ pub enum FloatTy {
     F32,
     F64,
 }
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct ForeignDef(pub(crate) DefId);
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct AdtDef(pub(crate) DefId);

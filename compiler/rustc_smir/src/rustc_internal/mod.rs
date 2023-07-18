@@ -31,6 +31,10 @@ pub fn adt_def(did: DefId) -> stable_mir::ty::AdtDef {
     with_tables(|t| t.adt_def(did))
 }
 
+pub fn foreign_def(did: DefId) -> stable_mir::ty::ForeignDef {
+    with_tables(|t| t.foreign_def(did))
+}
+
 impl<'tcx> Tables<'tcx> {
     pub fn item_def_id(&self, item: &stable_mir::CrateItem) -> DefId {
         self.def_ids[item.0]
@@ -42,6 +46,10 @@ impl<'tcx> Tables<'tcx> {
 
     pub fn adt_def(&mut self, did: DefId) -> stable_mir::ty::AdtDef {
         stable_mir::ty::AdtDef(self.create_def_id(did))
+    }
+
+    pub fn foreign_def(&mut self, did: DefId) -> stable_mir::ty::ForeignDef {
+        stable_mir::ty::ForeignDef(self.create_def_id(did))
     }
 
     fn create_def_id(&mut self, did: DefId) -> stable_mir::DefId {
