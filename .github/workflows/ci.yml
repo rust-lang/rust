@@ -96,20 +96,6 @@ jobs:
               RUST_CONFIGURE_ARGS: "--build=i686-pc-windows-msvc"
               SCRIPT: make ci-msvc
             os: windows-2019-8core-32gb
-          - name: i686-mingw
-            env:
-              RUST_CONFIGURE_ARGS: "--build=i686-pc-windows-gnu"
-              SCRIPT: make ci-mingw
-              NO_DOWNLOAD_CI_LLVM: 1
-              CUSTOM_MINGW: 1
-            os: windows-2019-8core-32gb
-          - name: x86_64-mingw
-            env:
-              SCRIPT: make ci-mingw
-              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-gnu --enable-profiler"
-              NO_DOWNLOAD_CI_LLVM: 1
-              CUSTOM_MINGW: 1
-            os: windows-2019-8core-32gb
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:

@@ -361,7 +361,9 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
         features += " compiler-builtins-no-asm";
     }
 
-    features += " compiler-builtins-weak-intrinsics";
+    if !target.contains("mingw") {
+        features += " compiler-builtins-weak-intrinsics";
+    }
     if builder.no_std(target) == Some(true) {
         features += " compiler-builtins-mem";
         if !target.starts_with("bpf") {
