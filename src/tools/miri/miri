@@ -97,7 +97,9 @@ toolchain)
     CUR_COMMIT=$(rustc +miri --version -v 2>/dev/null | grep "^commit-hash: " | cut -d " " -f 2)
     if [[ "$CUR_COMMIT" == "$NEW_COMMIT" ]]; then
         echo "miri toolchain is already at commit $CUR_COMMIT."
-        rustup override set miri
+        if [[ "$TOOLCHAIN" != "miri" ]]; then
+            rustup override set miri
+        fi
         exit 0
     fi
     # Install and setup new toolchain.
