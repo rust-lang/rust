@@ -324,6 +324,12 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         candidates
     }
 
+    /// HACK: `_: Trait` is ambiguous, because it may be satisfied via a builtin rule,
+    /// object bound, alias bound, etc. We are unable to determine this until we can at
+    /// least structurally resolve the type one layer.
+    ///
+    /// It would also require us to consider all impls of the trait, which is both pretty
+    /// bad for perf and would also constrain the self type if there is just a single impl.
     fn self_ty_infer_ambiguity_hack<G: GoalKind<'tcx>>(
         &mut self,
         goal: Goal<'tcx, G>,
