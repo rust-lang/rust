@@ -32,6 +32,7 @@ pub enum RigidTy {
     Slice(Ty),
     RawPtr(Ty, Mutability),
     Ref(Region, Ty, Mutability),
+    FnDef(FnDef, GenericArgs),
     Never,
     Tuple(Vec<Ty>),
 }
@@ -64,6 +65,9 @@ pub enum FloatTy {
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct ForeignDef(pub(crate) DefId);
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct FnDef(pub(crate) DefId);
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct AdtDef(pub(crate) DefId);
