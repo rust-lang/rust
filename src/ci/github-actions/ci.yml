@@ -330,7 +330,7 @@ jobs:
             env:
               RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
               SCRIPT: make ci-msvc
-            <<: *job-windows-xl
+            <<: *job-windows-8c
             tidy: false
 
           - name: x86_64-gnu-tools
