@@ -132,7 +132,7 @@ impl<'tcx> Tables<'tcx> {
             ty::Dynamic(_, _, _) => todo!(),
             ty::Closure(_, _) => todo!(),
             ty::Generator(_, _, _) => todo!(),
-            ty::Never => todo!(),
+            ty::Never => TyKind::RigidTy(RigidTy::Never),
             ty::Tuple(fields) => TyKind::RigidTy(RigidTy::Tuple(
                 fields.iter().map(|ty| self.intern_ty(ty)).collect(),
             )),
