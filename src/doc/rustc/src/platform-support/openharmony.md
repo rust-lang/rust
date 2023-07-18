@@ -71,6 +71,28 @@ exec /path/to/ohos-sdk/linux/native/llvm/bin/clang++ \
   "$@"
 ```
 
+`x86_64-unknown-linux-ohos-clang.sh`
+
+```sh
+#!/bin/sh
+exec /path/to/ohos-sdk/linux/native/llvm/bin/clang \
+  -target x86_64-linux-ohos \
+  --sysroot=/path/to/ohos-sdk/linux/native/sysroot \
+  -D__MUSL__ \
+  "$@"
+```
+
+`x86_64-unknown-linux-ohos-clang++.sh`
+
+```sh
+#!/bin/sh
+exec /path/to/ohos-sdk/linux/native/llvm/bin/clang++ \
+  -target x86_64-linux-ohos \
+  --sysroot=/path/to/ohos-sdk/linux/native/sysroot \
+  -D__MUSL__ \
+  "$@"
+```
+
 Future versions of the OpenHarmony SDK will avoid the need for this process.
 
 ## Building the target
@@ -98,6 +120,13 @@ cxx = "/path/to/armv7-unknown-linux-ohos-clang++.sh"
 ar = "/path/to/ohos-sdk/linux/native/llvm/bin/llvm-ar"
 ranlib = "/path/to/ohos-sdk/linux/native/llvm/bin/llvm-ranlib"
 linker  = "/path/to/armv7-unknown-linux-ohos-clang.sh"
+
+[target.x86_64-unknown-linux-ohos]
+cc = "/path/to/x86_64-unknown-linux-ohos-clang.sh"
+cxx = "/path/to/x86_64-unknown-linux-ohos-clang++.sh"
+ar = "/path/to/ohos-sdk/linux/native/llvm/bin/llvm-ar"
+ranlib = "/path/to/ohos-sdk/linux/native/llvm/bin/llvm-ranlib"
+linker  = "/path/to/x86_64-unknown-linux-ohos-clang.sh"
 ```
 
 ## Building Rust programs
@@ -116,6 +145,10 @@ linker = "/path/to/aarch64-unknown-linux-ohos-clang.sh"
 [target.armv7-unknown-linux-ohos]
 ar = "/path/to/ohos-sdk/linux/native/llvm/bin/llvm-ar"
 linker = "/path/to/armv7-unknown-linux-ohos-clang.sh"
+
+[target.x86_64-unknown-linux-ohos]
+ar = "/path/to/ohos-sdk/linux/native/llvm/bin/llvm-ar"
+linker = "/path/to/x86_64-unknown-linux-ohos-clang.sh"
 ```
 
 ## Testing

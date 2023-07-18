@@ -3,9 +3,7 @@ use crate::spec::{Target, TargetOptions};
 use super::SanitizerSet;
 
 pub fn target() -> Target {
-    let mut base = super::linux_musl_base::opts();
-    base.env = "ohos".into();
-    base.crt_static_default = false;
+    let mut base = super::linux_ohos_base::opts();
     base.max_atomic_width = Some(128);
 
     Target {
@@ -17,8 +15,6 @@ pub fn target() -> Target {
         options: TargetOptions {
             features: "+reserve-x18".into(),
             mcount: "\u{1}_mcount".into(),
-            force_emulated_tls: true,
-            has_thread_local: false,
             supported_sanitizers: SanitizerSet::ADDRESS
                 | SanitizerSet::CFI
                 | SanitizerSet::LEAK
