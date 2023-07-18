@@ -7,7 +7,6 @@ import type { CtxInit } from "./ctx";
 import { makeDebugConfig } from "./debug";
 import type { Config, RunnableEnvCfg, RunnableEnvCfgItem } from "./config";
 import { unwrapUndefinable } from "./undefinable";
-import { string } from "vscode-languageclient/lib/common/utils/is";
 
 const quickPickButtons = [
     { iconPath: new vscode.ThemeIcon("save"), tooltip: "Save as a launch.json configuration." },
