@@ -28,7 +28,7 @@ Header commands can be standalone (like `// run-pass`) or take a value (like
 ## Header commands
 
 The following is a list of header commands.
-Commands are linked to sections the describe the command in more detail if available.
+Commands are linked to sections that describe the command in more detail if available.
 This list may not be exhaustive.
 Header commands can generally be found by browsing the `TestProps` structure
 found in [`header.rs`] from the compiletest source.
