@@ -686,7 +686,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             | ty::Tuple(_)
             | ty::Adt(_, _)
             // FIXME: Handling opaques here is kinda sus. Especially because we
-            // simplify them to PlaceholderSimplifiedType.
+            // simplify them to SimplifiedType::Placeholder.
             | ty::Alias(ty::Opaque, _) => {
                 let mut disqualifying_impl = None;
                 self.tcx().for_each_relevant_impl_treating_projections(
