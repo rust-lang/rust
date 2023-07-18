@@ -582,12 +582,6 @@ impl From<File> for Stdio {
     }
 }
 
-impl From<io::Stdin> for Stdio {
-    fn from(_: io::Stdin) -> Stdio {
-        Stdio::InheritSpecific { from_stdio_id: c::STD_INPUT_HANDLE }
-    }
-}
-
 impl From<io::Stdout> for Stdio {
     fn from(_: io::Stdout) -> Stdio {
         Stdio::InheritSpecific { from_stdio_id: c::STD_OUTPUT_HANDLE }
