@@ -318,14 +318,6 @@ changelog-branch = "master"
 
 [shortcut]
 
-
-[mentions."compiler/rustc_apfloat"]
-message = """
-Changes rustc_apfloat. rustc_apfloat is currently in limbo and you almost \
-certainly don't want to change it (see #55993).
-"""
-cc = ["@eddyb"]
-
 [mentions."compiler/rustc_codegen_cranelift"]
 cc = ["@bjorn3"]
 
@@ -609,7 +601,6 @@ style-team = [
 "/Cargo.lock" =                              ["@Mark-Simulacrum"]
 "/Cargo.toml" =                              ["@Mark-Simulacrum"]
 "/compiler" =                                ["compiler"]
-"/compiler/rustc_apfloat" =                  ["@eddyb"]
 "/compiler/rustc_ast" =                      ["compiler", "parser"]
 "/compiler/rustc_ast_lowering" =             ["compiler", "ast_lowering"]
 "/compiler/rustc_hir_analysis" =             ["compiler", "types"]
