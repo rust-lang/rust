@@ -32,6 +32,7 @@ pub enum RigidTy {
     Slice(Ty),
     RawPtr(Ty, Mutability),
     Ref(Region, Ty, Mutability),
+    Never,
     Tuple(Vec<Ty>),
 }
 
