@@ -16,6 +16,8 @@ defaults:
 env:
   # So cargo doesn't complain about unstable features
   RUSTC_BOOTSTRAP: 1
+
+  # User-facing text
   PR_TITLE: Weekly `cargo update`
   PR_MESSAGE: |
     Automation to keep dependencies in `Cargo.lock` current.
@@ -23,8 +25,14 @@ env:
     The following is the output from `cargo update`:
   COMMIT_MESSAGE: "cargo update \n\n"
 
+  # Name to use for the branch
+  BRANCH: cargo_update
+  # Github repository to open the PR on
+  BASE_REPO: pitaj/rust
+
 jobs:
   not-waiting-on-bors:
+    # Only run workflow if on rust-lang-ci
     if: github.repository_owner == 'pitaj-rust-lang-ci'
     name: skip if S-waiting-on-bors
     runs-on: ubuntu-latest
@@ -34,7 +42,7 @@ jobs:
         run: |
           # Fetch state and labels of PR
           # Or exit successfully if PR does not exist
-          JSON=$(gh pr view cargo_update --repo pitaj/rust --json labels,state || exit 0)
+          JSON=$(gh pr view "${GITHUB_REPOSITORY_OWNER}:${BRANCH}" --repo "$BASE_REPO" --json labels,state || exit 0)
           STATE=$(echo "$JSON" | jq -r '.state')
           WAITING_ON_BORS=$(echo "$JSON" | jq '.labels[] | any(.name == "S-waiting-on-bors"; .)')
 
@@ -44,7 +52,6 @@ jobs:
           fi
 
   update:
-    if: github.repository_owner == 'pitaj-rust-lang-ci'
     name: update dependencies
     needs: not-waiting-on-bors
     runs-on: ubuntu-latest
@@ -78,7 +85,6 @@ jobs:
           retention-days: 1
 
   pr:
-    if: github.repository_owner == 'pitaj-rust-lang-ci'
     name: amend PR
     needs: update
     runs-on: ubuntu-latest
@@ -111,12 +117,12 @@ jobs:
         run: |
           git config user.name github-actions
           git config user.email github-actions@github.com
-          git switch --force-create cargo_update
+          git switch --force-create "$BRANCH"
           git add ./Cargo.lock
           git commit --no-verify --file=commit.txt
 
       - name: push
-        run: git push --no-verify --force --set-upstream origin cargo_update
+        run: git push --no-verify --force --set-upstream origin "$BRANCH"
 
       - name: edit existing open pull request
         id: edit
@@ -126,16 +132,16 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.CARGO_UPDATE_TOKEN }}
         run: |
           # Exit with error if PR is closed
-          STATE=$(gh pr view cargo_update --repo pitaj/rust --json state --jq '.state')
+          STATE=$(gh pr view "${GITHUB_REPOSITORY_OWNER}:${BRANCH}" --repo "$BASE_REPO" --json state --jq '.state')
           if [[ "$STATE" != "OPEN" ]]; then
             exit 1
           fi
 
-          gh pr edit cargo_update --title "${PR_TITLE}" --body-file body.md --repo pitaj/rust
+          gh pr edit "${GITHUB_REPOSITORY_OWNER}:${BRANCH}" --title "${PR_TITLE}" --body-file body.md --repo "$BASE_REPO"
 
       - name: open new pull request
         # Only run if there wasn't an existing PR
         if: steps.edit.outcome != 'success'
         env:
           GITHUB_TOKEN: ${{ secrets.CARGO_UPDATE_TOKEN }}
-        run: gh pr create --title "${PR_TITLE}" --body-file body.md --repo pitaj/rust
+        run: gh pr create --title "${PR_TITLE}" --body-file body.md --repo "$BASE_REPO"
