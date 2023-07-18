@@ -9,10 +9,11 @@ note: the lint level is defined here
    |
 LL | #![deny(unused_qualifications)]
    |         ^^^^^^^^^^^^^^^^^^^^^
-help: replace it with the unqualified path
+help: remove the unnecessary path segments
    |
-LL |     bar();
-   |     ~~~
+LL -     foo::bar();
+LL +     bar();
+   |
 
 error: unnecessary qualification
   --> $DIR/unused-qualifications-suggestion.rs:21:5
@@ -20,10 +21,11 @@ error: unnecessary qualification
 LL |     baz::qux::quux();
    |     ^^^^^^^^^^^^^^
    |
-help: replace it with the unqualified path
+help: remove the unnecessary path segments
    |
-LL |     quux();
-   |     ~~~~
+LL -     baz::qux::quux();
+LL +     quux();
+   |
 
 error: aborting due to 2 previous errors
 

@@ -8,7 +8,7 @@ mod foo {
 
 fn main() {
     use foo::bar;
-    foo::bar(); //~ ERROR: unnecessary qualification
+    bar(); //~ ERROR: unnecessary qualification
     bar();
 
     let _ = || -> Result<(), ()> { try!(Ok(())); Ok(()) }; // issue #37345
