@@ -253,11 +253,7 @@ impl ChainItemKind {
                 return (
                     ChainItemKind::Parent {
                         expr: expr.clone(),
-                        parens: is_method_call_receiver
-                            && matches!(
-                                &expr.kind,
-                                ast::ExprKind::Lit(lit) if crate::expr::lit_ends_in_dot(lit)
-                            ),
+                        parens: is_method_call_receiver && should_add_parens(expr),
                     },
                     expr.span,
                 );
@@ -981,4 +977,23 @@ fn trim_tries(s: &str) -> String {
         result.push_str(&line_buffer);
     }
     result
+}
+
+/// Whether a method call's receiver needs parenthesis, like
+/// ```rust,ignore
+/// || .. .method();
+/// || 1.. .method();
+/// 1. .method();
+/// ```
+/// Which all need parenthesis or a space before `.method()`.
+fn should_add_parens(expr: &ast::Expr) -> bool {
+    match expr.kind {
+        ast::ExprKind::Lit(ref lit) => crate::expr::lit_ends_in_dot(lit),
+        ast::ExprKind::Closure(ref cl) => match cl.body.kind {
+            ast::ExprKind::Range(_, _, ast::RangeLimits::HalfOpen) => true,
+            ast::ExprKind::Lit(ref lit) => crate::expr::lit_ends_in_dot(lit),
+            _ => false,
+        },
+        _ => false,
+    }
 }
