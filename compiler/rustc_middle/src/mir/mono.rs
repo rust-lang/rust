@@ -61,19 +61,14 @@ impl<'tcx> MonoItem<'tcx> {
     pub fn size_estimate(&self, tcx: TyCtxt<'tcx>) -> usize {
         match *self {
             MonoItem::Fn(instance) => {
-                match instance.def {
-                    // "Normal" functions size estimate: the number of
-                    // statements, plus one for the terminator.
-                    InstanceDef::Item(..) | InstanceDef::DropGlue(..) => {
-                        let mir = tcx.instance_mir(instance.def);
-                        mir.basic_blocks.iter().map(|bb| bb.statements.len() + 1).sum()
-                    }
-                    // Other compiler-generated shims size estimate: 1
-                    _ => 1,
-                }
+                // Function size estimate: the number of statements, plus one
+                // for the terminator.
+                let mir = tcx.instance_mir(instance.def);
+                mir.basic_blocks.iter().map(|bb| bb.statements.len() + 1).sum()
             }
-            // Conservatively estimate the size of a static declaration or
-            // assembly item to be 1.
+            // Static declarations and asm item are hard to compare in size
+            // with functions, but they're quite rare so the exact value
+            // doesn't matter much.
             MonoItem::Static(_) | MonoItem::GlobalAsm(_) => 1,
         }
     }
