@@ -62,6 +62,9 @@ pub enum TreatParams {
     /// correct mode for *lookup*, as during candidate selection.
     ///
     /// N.B. during deep rejection, this acts identically to `ForLookup`.
+    ///
+    /// FIXME(-Ztrait-solver=next): Remove this variant and cleanup
+    /// the code.
     NextSolverLookup,
 }
 
