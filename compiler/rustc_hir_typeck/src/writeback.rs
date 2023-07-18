@@ -2,7 +2,7 @@
 // unresolved type variables and replaces "ty_var" types with their
 // substitutions.
 
-use crate::FnCtxt;
+use crate::{fluent_generated as fluent, FnCtxt};
 use hir::def_id::LocalDefId;
 use rustc_data_structures::unord::ExtendUnord;
 use rustc_errors::{ErrorGuaranteed, StashKey};
@@ -132,6 +132,20 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         self.fcx.tcx
     }
 
+    /// Checks if `ty` contains a `ty::Error` (i.e. `ty.references_error()`), but peering into
+    /// function signatures and ADTs.
+    fn deep_references_error(&self, ty: Ty<'tcx>) -> bool {
+        ty.references_error() || {
+            match ty.kind() {
+                ty::Adt(adt, substs) => {
+                    adt.all_fields().any(|field| field.ty(self.tcx(), substs).references_error())
+                }
+                ty::FnDef(..) => ty.fn_sig(self.tcx()).references_error(),
+                _ => false,
+            }
+        }
+    }
+
     fn write_ty_to_typeck_results(&mut self, hir_id: hir::HirId, ty: Ty<'tcx>) {
         debug!("write_ty_to_typeck_results({:?}, {:?})", hir_id, ty);
         assert!(
@@ -139,6 +153,13 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             "{ty} can't be put into typeck results"
         );
         self.typeck_results.node_types_mut().insert(hir_id, ty);
+        if self.deep_references_error(ty) {
+            self.typeck_results.tainted_by_errors = Some(
+                self.tcx()
+                    .sess
+                    .delay_span_bug(rustc_span::DUMMY_SP, fluent::hir_typeck_writeback_found_err),
+            );
+        }
     }
 
     // Hacky hack: During type-checking, we treat *all* operators

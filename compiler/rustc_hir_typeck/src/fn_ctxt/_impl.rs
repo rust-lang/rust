@@ -467,7 +467,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn node_ty_opt(&self, id: hir::HirId) -> Option<Ty<'tcx>> {
         match self.typeck_results.borrow().node_types().get(id) {
             Some(&t) => Some(t),
-            None if let Some(e) = self.tainted_by_errors() => Some(Ty::new_error(self.tcx,e)),
+            None if let Some(e) = self.tainted_by_errors() => Some(Ty::new_error(self.tcx, e)),
             None => None,
         }
     }

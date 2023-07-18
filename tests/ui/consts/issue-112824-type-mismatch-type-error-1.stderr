@@ -1,0 +1,23 @@
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/issue-112824-type-mismatch-type-error-1.rs:4:9
+   |
+LL | pub struct Opcode2 {
+   |                   - help: consider introducing lifetime `'a` here: `<'a>`
+LL |     s: &'a S,
+   |         ^^ undeclared lifetime
+
+error[E0412]: cannot find type `S` in this scope
+  --> $DIR/issue-112824-type-mismatch-type-error-1.rs:4:12
+   |
+LL |     s: &'a S,
+   |            ^ not found in this scope
+   |
+help: you might be missing a type parameter
+   |
+LL | pub struct Opcode2<S> {
+   |                   +++
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0261, E0412.
+For more information about an error, try `rustc --explain E0261`.
