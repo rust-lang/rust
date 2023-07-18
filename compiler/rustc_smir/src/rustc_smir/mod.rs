@@ -8,8 +8,9 @@
 //! For now, we are developing everything inside `rustc`, thus, we keep this module private.
 
 use crate::rustc_internal::{self, opaque};
-use crate::stable_mir::ty::{FloatTy, GenericArgKind, GenericArgs, IntTy, RigidTy, TyKind, UintTy};
+use crate::stable_mir::ty::{FloatTy, GenericArgKind, GenericArgs, IntTy, Movability, RigidTy, TyKind, UintTy};
 use crate::stable_mir::{self, Context};
+use rustc_hir as hir;
 use rustc_middle::mir;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::{CrateNum, DefId, LOCAL_CRATE};
@@ -167,7 +168,30 @@ impl<'tcx> Tables<'tcx> {
                         .collect(),
                 ),
             )),
-            ty::Generator(_, _, _) => todo!(),
+            ty::Generator(def_id, generic_args, movability) => TyKind::RigidTy(RigidTy::Generator(
+                rustc_internal::generator_def(*def_id),
+                GenericArgs(
+                    generic_args
+                        .iter()
+                        .map(|arg| match arg.unpack() {
+                            ty::GenericArgKind::Lifetime(region) => {
+                                GenericArgKind::Lifetime(opaque(&region))
+                            }
+                            ty::GenericArgKind::Type(ty) => {
+                                GenericArgKind::Type(self.intern_ty(ty))
+                            }
+                            ty::GenericArgKind::Const(const_) => {
+                                GenericArgKind::Const(opaque(&const_))
+                            }
+                        })
+                        .collect(),
+                ),
+                match movability {
+                    hir::Movability::Static => Movability::Static,
+                    hir::Movability::Movable => Movability::Movable,
+
+                }
+            )),
             ty::Never => TyKind::RigidTy(RigidTy::Never),
             ty::Tuple(fields) => TyKind::RigidTy(RigidTy::Tuple(
                 fields.iter().map(|ty| self.intern_ty(ty)).collect(),

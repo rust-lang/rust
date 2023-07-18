@@ -43,6 +43,10 @@ pub fn closure_def(did: DefId) -> stable_mir::ty::ClosureDef {
     with_tables(|t| t.closure_def(did))
 }
 
+pub fn generator_def(did: DefId) -> stable_mir::ty::GeneratorDef {
+    with_tables(|t| t.generator_def(did))
+}
+
 impl<'tcx> Tables<'tcx> {
     pub fn item_def_id(&self, item: &stable_mir::CrateItem) -> DefId {
         self.def_ids[item.0]
@@ -66,6 +70,10 @@ impl<'tcx> Tables<'tcx> {
 
     pub fn closure_def(&mut self, did: DefId) -> stable_mir::ty::ClosureDef {
         stable_mir::ty::ClosureDef(self.create_def_id(did))
+    }
+
+    pub fn generator_def(&mut self, did: DefId) -> stable_mir::ty::GeneratorDef {
+        stable_mir::ty::GeneratorDef(self.create_def_id(did))
     }
 
     fn create_def_id(&mut self, did: DefId) -> stable_mir::DefId {
