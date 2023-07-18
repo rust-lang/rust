@@ -92,7 +92,6 @@ Cargo
 -----
 - [Allow named debuginfo options in `Cargo.toml`.](https://github.com/rust-lang/cargo/pull/11958/)
 - [Add `workspace_default_members` to the output of `cargo metadata`.](https://github.com/rust-lang/cargo/pull/11978/)
-- [`cargo add` now considers `rust-version` when selecting packages.](https://github.com/rust-lang/cargo/pull/12078/)
 - [Automatically inherit workspace fields when running `cargo new`/`cargo init`.](https://github.com/rust-lang/cargo/pull/12069/)
 
 <a id="1.71.0-Rustdoc"></a>
