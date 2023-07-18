@@ -25,7 +25,7 @@ pub enum RigidTy {
     Int(IntTy),
     Uint(UintTy),
     Float(FloatTy),
-    Adt(AdtDef, AdtSubsts),
+    Adt(AdtDef, GenericArgs),
     Foreign(ForeignDef),
     Str,
     Array(Ty, Const),
@@ -69,7 +69,7 @@ pub struct ForeignDef(pub(crate) DefId);
 pub struct AdtDef(pub(crate) DefId);
 
 #[derive(Clone, Debug)]
-pub struct AdtSubsts(pub Vec<GenericArgKind>);
+pub struct GenericArgs(pub Vec<GenericArgKind>);
 
 #[derive(Clone, Debug)]
 pub enum GenericArgKind {
