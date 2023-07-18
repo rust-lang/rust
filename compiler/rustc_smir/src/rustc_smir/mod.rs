@@ -8,7 +8,7 @@
 //! For now, we are developing everything inside `rustc`, thus, we keep this module private.
 
 use crate::rustc_internal::{self, opaque};
-use crate::stable_mir::ty::{AdtSubsts, FloatTy, GenericArgKind, IntTy, RigidTy, TyKind, UintTy};
+use crate::stable_mir::ty::{FloatTy, GenericArgs, GenericArgKind, IntTy, RigidTy, TyKind, UintTy};
 use crate::stable_mir::{self, Context};
 use rustc_middle::mir;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -96,7 +96,7 @@ impl<'tcx> Tables<'tcx> {
             },
             ty::Adt(adt_def, substs) => TyKind::RigidTy(RigidTy::Adt(
                 rustc_internal::adt_def(adt_def.did()),
-                AdtSubsts(
+                GenericArgs(
                     substs
                         .iter()
                         .map(|arg| match arg.unpack() {
