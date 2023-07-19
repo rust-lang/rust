@@ -559,6 +559,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     self.with_hir_id_owner(id, |this| {
                         let mut ident = *ident;
 
+                        // `prefix` is lowered multiple times, but in different HIR owners.
+                        // So each segment gets renewed `HirId` with the same
+                        // `ItemLocalId` and the new owner. (See `lower_node_id`)
                         let kind =
                             this.lower_use_tree(use_tree, &prefix, id, vis_span, &mut ident, attrs);
                         if let Some(attrs) = attrs {
