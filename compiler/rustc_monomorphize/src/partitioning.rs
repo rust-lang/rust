@@ -394,7 +394,7 @@ fn merge_codegen_units<'tcx>(
         && codegen_units.iter().any(|cgu| cgu.size_estimate() < NON_INCR_MIN_CGU_SIZE)
     {
         // Sort small cgus to the back.
-        codegen_units.sort_by_cached_key(|cgu| cmp::Reverse(cgu.size_estimate()));
+        codegen_units.sort_by_key(|cgu| cmp::Reverse(cgu.size_estimate()));
 
         let mut smallest = codegen_units.pop().unwrap();
         let second_smallest = codegen_units.last_mut().unwrap();
