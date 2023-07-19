@@ -4,11 +4,6 @@ error[E0391]: cycle detected when const-evaluating + checking `Foo::B::{constant
 LL |     B = A,
    |         ^
    |
-note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
-  --> $DIR/issue-36163.rs:4:9
-   |
-LL |     B = A,
-   |         ^
 note: ...which requires const-evaluating + checking `A`...
   --> $DIR/issue-36163.rs:1:18
    |
@@ -20,6 +15,7 @@ note: cycle used when simplifying constant for the type system `Foo::B::{constan
    |
 LL |     B = A,
    |         ^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error: aborting due to previous error
 

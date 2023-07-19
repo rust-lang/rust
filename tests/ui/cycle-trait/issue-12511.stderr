@@ -4,11 +4,6 @@ error[E0391]: cycle detected when computing the super predicates of `T1`
 LL | trait T1 : T2 {
    |            ^^
    |
-note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
-  --> $DIR/issue-12511.rs:1:12
-   |
-LL | trait T1 : T2 {
-   |            ^^
 note: ...which requires computing the super predicates of `T2`...
   --> $DIR/issue-12511.rs:5:12
    |
@@ -22,6 +17,7 @@ LL | / trait T1 : T2 {
 LL | |
 LL | | }
    | |_^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error: aborting due to previous error
 

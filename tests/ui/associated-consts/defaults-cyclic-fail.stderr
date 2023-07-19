@@ -4,11 +4,6 @@ error[E0391]: cycle detected when const-evaluating + checking `Tr::A`
 LL |     const A: u8 = Self::B;
    |                   ^^^^^^^
    |
-note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
-  --> $DIR/defaults-cyclic-fail.rs:5:19
-   |
-LL |     const A: u8 = Self::B;
-   |                   ^^^^^^^
 note: ...which requires const-evaluating + checking `Tr::B`...
   --> $DIR/defaults-cyclic-fail.rs:8:19
    |
@@ -20,6 +15,7 @@ note: cycle used when const-evaluating + checking `main::promoted[1]`
    |
 LL |     assert_eq!(<() as Tr>::A, 0);
    |                ^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error: aborting due to previous error
 

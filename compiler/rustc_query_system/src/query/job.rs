@@ -607,6 +607,7 @@ pub(crate) fn report_cycle<'a, D: DepKind>(
         alias,
         cycle_usage: cycle_usage,
         stack_count,
+        note_span: (),
     };
 
     cycle_diag.into_diagnostic(&sess.parse_sess.span_diagnostic)

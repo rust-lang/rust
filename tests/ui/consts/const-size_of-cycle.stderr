@@ -4,11 +4,6 @@ error[E0391]: cycle detected when evaluating type-level constant
 LL |     bytes: [u8; std::mem::size_of::<Foo>()]
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
-  --> $DIR/const-size_of-cycle.rs:4:17
-   |
-LL |     bytes: [u8; std::mem::size_of::<Foo>()]
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: ...which requires const-evaluating + checking `Foo::bytes::{constant#0}`...
   --> $DIR/const-size_of-cycle.rs:4:17
    |
@@ -28,6 +23,7 @@ note: cycle used when checking that `Foo` is well-formed
    |
 LL | struct Foo {
    | ^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error: aborting due to previous error
 

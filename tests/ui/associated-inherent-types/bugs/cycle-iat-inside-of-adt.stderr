@@ -4,11 +4,6 @@ error[E0391]: cycle detected when computing predicates of `Foo`
 LL | struct Foo {
    | ^^^^^^^^^^
    |
-note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
-  --> $DIR/cycle-iat-inside-of-adt.rs:7:1
-   |
-LL | struct Foo {
-   | ^^^^^^^^^^
 note: ...which requires computing predicates of `Foo`...
   --> $DIR/cycle-iat-inside-of-adt.rs:7:1
    |
@@ -42,6 +37,7 @@ LL | |
 LL | |
 LL | | fn main() {}
    | |____________^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error: aborting due to previous error
 

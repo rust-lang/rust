@@ -4,11 +4,6 @@ error[E0391]: cycle detected when computing type of `Foo::{opaque#0}`
 LL | type Foo = impl Debug;
    |            ^^^^^^^^^^
    |
-note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
-  --> $DIR/reveal_local.rs:5:12
-   |
-LL | type Foo = impl Debug;
-   |            ^^^^^^^^^^
 note: ...which requires type-checking `not_good`...
   --> $DIR/reveal_local.rs:15:5
    |
@@ -27,6 +22,7 @@ LL | |
 LL | |
 LL | | fn main() {}
    | |____________^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error[E0391]: cycle detected when computing type of `Foo::{opaque#0}`
   --> $DIR/reveal_local.rs:5:12
@@ -34,11 +30,6 @@ error[E0391]: cycle detected when computing type of `Foo::{opaque#0}`
 LL | type Foo = impl Debug;
    |            ^^^^^^^^^^
    |
-note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
-  --> $DIR/reveal_local.rs:5:12
-   |
-LL | type Foo = impl Debug;
-   |            ^^^^^^^^^^
 note: ...which requires type-checking `not_good`...
   --> $DIR/reveal_local.rs:12:1
    |
@@ -56,6 +47,7 @@ LL | |
 LL | |
 LL | | fn main() {}
    | |____________^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error: cannot check whether the hidden type of `reveal_local[9507]::Foo::{opaque#0}` satisfies auto traits
   --> $DIR/reveal_local.rs:15:15
@@ -85,11 +77,6 @@ error[E0391]: cycle detected when computing type of `Foo::{opaque#0}`
 LL | type Foo = impl Debug;
    |            ^^^^^^^^^^
    |
-note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
-  --> $DIR/reveal_local.rs:5:12
-   |
-LL | type Foo = impl Debug;
-   |            ^^^^^^^^^^
 note: ...which requires type-checking `not_gooder`...
   --> $DIR/reveal_local.rs:19:1
    |
@@ -107,6 +94,7 @@ LL | |
 LL | |
 LL | | fn main() {}
    | |____________^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error: cannot check whether the hidden type of `reveal_local[9507]::Foo::{opaque#0}` satisfies auto traits
   --> $DIR/reveal_local.rs:25:15

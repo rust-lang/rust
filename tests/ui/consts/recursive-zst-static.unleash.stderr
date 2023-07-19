@@ -4,11 +4,6 @@ error[E0391]: cycle detected when const-evaluating + checking `FOO`
 LL | static FOO: () = FOO;
    | ^^^^^^^^^^^^^^
    |
-note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
-  --> $DIR/recursive-zst-static.rs:10:1
-   |
-LL | static FOO: () = FOO;
-   | ^^^^^^^^^^^^^^
 note: ...which requires const-evaluating + checking `FOO`...
   --> $DIR/recursive-zst-static.rs:10:18
    |
@@ -24,6 +19,7 @@ LL | | fn main() {
 LL | |     FOO
 LL | | }
    | |_^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error: aborting due to previous error
 

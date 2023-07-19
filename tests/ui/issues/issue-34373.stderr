@@ -4,11 +4,6 @@ error[E0391]: cycle detected when computing type of `Foo::T`
 LL | pub struct Foo<T = Box<Trait<DefaultFoo>>>;
    |                              ^^^^^^^^^^
    |
-note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
-  --> $DIR/issue-34373.rs:7:30
-   |
-LL | pub struct Foo<T = Box<Trait<DefaultFoo>>>;
-   |                              ^^^^^^^^^^
 note: ...which requires expanding type alias `DefaultFoo`...
   --> $DIR/issue-34373.rs:8:19
    |
@@ -26,6 +21,7 @@ LL | |     fn foo(_: T) {}
 LL | | fn main() {
 LL | | }
    | |_^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error: aborting due to previous error
 

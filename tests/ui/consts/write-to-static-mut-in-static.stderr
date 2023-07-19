@@ -10,11 +10,6 @@ error[E0391]: cycle detected when const-evaluating + checking `C`
 LL | pub static mut C: u32 = unsafe { C = 1; 0 };
    | ^^^^^^^^^^^^^^^^^^^^^
    |
-note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
-  --> $DIR/write-to-static-mut-in-static.rs:5:1
-   |
-LL | pub static mut C: u32 = unsafe { C = 1; 0 };
-   | ^^^^^^^^^^^^^^^^^^^^^
 note: ...which requires const-evaluating + checking `C`...
   --> $DIR/write-to-static-mut-in-static.rs:5:34
    |
@@ -32,6 +27,7 @@ LL | |
 LL | |
 LL | | fn main() {}
    | |____________^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error: aborting due to 2 previous errors
 

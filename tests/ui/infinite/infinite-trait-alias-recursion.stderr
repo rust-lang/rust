@@ -4,11 +4,6 @@ error[E0391]: cycle detected when computing the super predicates of `T1`
 LL | trait T1 = T2;
    |            ^^
    |
-note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
-  --> $DIR/infinite-trait-alias-recursion.rs:3:12
-   |
-LL | trait T1 = T2;
-   |            ^^
 note: ...which requires computing the super predicates of `T2`...
   --> $DIR/infinite-trait-alias-recursion.rs:6:12
    |
@@ -26,6 +21,7 @@ note: cycle used when collecting item types in top-level module
    |
 LL | trait T1 = T2;
    | ^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error: aborting due to previous error
 

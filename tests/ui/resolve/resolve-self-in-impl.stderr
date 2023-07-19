@@ -44,11 +44,6 @@ error[E0391]: cycle detected when computing trait implemented by `<impl at $DIR/
 LL | impl Tr<Self::A> for S {}
    | ^^^^^^^^^^^^^^^^^^^^^^
    |
-note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
-  --> $DIR/resolve-self-in-impl.rs:19:1
-   |
-LL | impl Tr<Self::A> for S {}
-   | ^^^^^^^^^^^^^^^^^^^^^^
    = note: ...which immediately requires computing trait implemented by `<impl at $DIR/resolve-self-in-impl.rs:19:1: 19:23>` again
 note: cycle used when collecting item types in top-level module
   --> $DIR/resolve-self-in-impl.rs:1:1
@@ -61,6 +56,7 @@ LL | | trait Tr<T = u8> {
 LL | |
 LL | | fn main() {}
    | |____________^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error: aborting due to 6 previous errors
 

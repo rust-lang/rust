@@ -14,17 +14,13 @@ error[E0391]: cycle detected when building specialization graph of trait `Trait`
 LL | trait Trait<T> { type Assoc; }
    | ^^^^^^^^^^^^^^
    |
-note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
-  --> $DIR/coherence-inherited-assoc-ty-cycle-err.rs:9:1
-   |
-LL | trait Trait<T> { type Assoc; }
-   | ^^^^^^^^^^^^^^
    = note: ...which immediately requires building specialization graph of trait `Trait` again
 note: cycle used when coherence checking all impls of trait `Trait`
   --> $DIR/coherence-inherited-assoc-ty-cycle-err.rs:9:1
    |
 LL | trait Trait<T> { type Assoc; }
    | ^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error: aborting due to previous error; 1 warning emitted
 

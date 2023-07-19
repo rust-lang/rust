@@ -4,11 +4,6 @@ error[E0391]: cycle detected when computing the super predicates of `B`
 LL | trait B: C {
    |          ^
    |
-note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
-  --> $DIR/cycle-trait-supertrait-indirect.rs:7:10
-   |
-LL | trait B: C {
-   |          ^
 note: ...which requires computing the super predicates of `C`...
   --> $DIR/cycle-trait-supertrait-indirect.rs:11:10
    |
@@ -20,6 +15,7 @@ note: cycle used when computing the super predicates of `A`
    |
 LL | trait A: B {
    |          ^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error: aborting due to previous error
 
