@@ -91,9 +91,7 @@ pub struct GenericArgs(pub Vec<GenericArgKind>);
 
 #[derive(Clone, Debug)]
 pub enum GenericArgKind {
-    // FIXME add proper region
     Lifetime(Region),
     Type(Ty),
-    // FIXME add proper const
     Const(Const),
 }
