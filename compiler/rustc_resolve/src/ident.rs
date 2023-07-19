@@ -1417,13 +1417,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         ));
                         continue;
                     }
-                    if name == kw::PathRoot && ident.span.rust_2018() {
+                    if name == kw::PathRoot && ident.span.at_least_rust_2018() {
                         module = Some(ModuleOrUniformRoot::ExternPrelude);
                         continue;
                     }
                     if name == kw::PathRoot
                         && ident.span.is_rust_2015()
-                        && self.tcx.sess.rust_2018()
+                        && self.tcx.sess.at_least_rust_2018()
                     {
                         // `::a::b` from 2015 macro on 2018 global edition
                         module = Some(ModuleOrUniformRoot::CrateRootAndExternPrelude);
