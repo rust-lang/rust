@@ -456,6 +456,12 @@ pub struct LinkerFileStem;
 pub struct StaticLibraryNativeArtifacts;
 
 #[derive(Diagnostic)]
+#[diag(codegen_ssa_static_library_native_artifacts_to_file)]
+pub struct StaticLibraryNativeArtifactsToFile<'a> {
+    pub path: &'a Path,
+}
+
+#[derive(Diagnostic)]
 #[diag(codegen_ssa_link_script_unavailable)]
 pub struct LinkScriptUnavailable;
 
