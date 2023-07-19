@@ -26,7 +26,7 @@ error: invalid format string: expected `'}'`, found `'?'`
   --> $DIR/format-string-wrong-order.rs:9:15
    |
 LL |     format!("{??}", bar);
-   |              -^ expected `}` in format string
+   |              -^ expected `'}'` in format string
    |              |
    |              because of this opening brace
    |
@@ -36,7 +36,7 @@ error: invalid format string: expected `'}'`, found `'?'`
   --> $DIR/format-string-wrong-order.rs:11:15
    |
 LL |     format!("{?;bar}");
-   |              -^ expected `}` in format string
+   |              -^ expected `'}'` in format string
    |              |
    |              because of this opening brace
    |
