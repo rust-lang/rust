@@ -434,12 +434,19 @@ fn impl_intersection_has_negative_obligation(
             param_env,
             negative_predicate,
         ));
-
         if !ocx.select_all_or_error().is_empty() {
             continue;
         }
 
-        // FIXME: regions here too...
+        // FIXME: We could use the assumed_wf_types from both impls, I think,
+        // if that wasn't implemented just for LocalDefId, and we'd need to do
+        //the normalization ourselves since this is totally fallible...
+        let outlives_env = OutlivesEnvironment::new(param_env);
+
+        let errors = infcx.resolve_regions(&outlives_env);
+        if !errors.is_empty() {
+            continue;
+        }
 
         return true;
     }
