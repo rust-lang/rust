@@ -771,23 +771,27 @@ fn print_crate_info(
                 }
                 println_info!("{}", serde_json::to_string_pretty(&targets).unwrap());
             }
-            FileNames | CrateName => {
+            FileNames => {
                 let Some(attrs) = attrs.as_ref() else {
                     // no crate attributes, print out an error and exit
                     return Compilation::Continue;
                 };
                 let t_outputs = rustc_interface::util::build_output_filenames(attrs, sess);
                 let id = rustc_session::output::find_crate_name(sess, attrs);
-                if req.kind == CrateName {
-                    println_info!("{id}");
-                } else {
-                    let crate_types = collect_crate_types(sess, attrs);
-                    for &style in &crate_types {
-                        let fname =
-                            rustc_session::output::filename_for_input(sess, style, id, &t_outputs);
-                        println_info!("{}", fname.as_path().file_name().unwrap().to_string_lossy());
-                    }
+                let crate_types = collect_crate_types(sess, attrs);
+                for &style in &crate_types {
+                    let fname =
+                        rustc_session::output::filename_for_input(sess, style, id, &t_outputs);
+                    println_info!("{}", fname.as_path().file_name().unwrap().to_string_lossy());
                 }
+            }
+            CrateName => {
+                let Some(attrs) = attrs.as_ref() else {
+                    // no crate attributes, print out an error and exit
+                    return Compilation::Continue;
+                };
+                let id = rustc_session::output::find_crate_name(sess, attrs);
+                println_info!("{id}");
             }
             Cfg => {
                 let mut cfgs = sess
