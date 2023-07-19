@@ -72,11 +72,11 @@ LL | fn register_plugins<'a>(mk_reg: impl Fn() -> &'a mut Registry<'a>) {
    |                     -- lifetime `'a` defined here
 ...
 LL |     reg.register_univ(Box::new(CapturePass::new(&reg.sess_mut)));
-   |     ^^^^^^^^^^^^^^^^^^-----------------------------------------^
-   |     |                 |                         |
-   |     |                 |                         immutable borrow occurs here
-   |     |                 cast requires that `reg.sess_mut` is borrowed for `'a`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-------------^^^
+   |     |                                           |
+   |     |                                           immutable borrow occurs here
    |     mutable borrow occurs here
+   |     argument requires that `reg.sess_mut` is borrowed for `'a`
 
 error[E0502]: cannot borrow `*reg` as mutable because it is also borrowed as immutable
   --> $DIR/two-phase-surprise-no-conflict.rs:144:5
@@ -114,11 +114,11 @@ LL | fn register_plugins<'a>(mk_reg: impl Fn() -> &'a mut Registry<'a>) {
    |                     -- lifetime `'a` defined here
 ...
 LL |     reg.register_univ(Box::new(CapturePass::new_mut(&mut reg.sess_mut)));
-   |     ^^^^^^^^^^^^^^^^^^-------------------------------------------------^
-   |     |                 |                             |
-   |     |                 |                             first mutable borrow occurs here
-   |     |                 cast requires that `reg.sess_mut` is borrowed for `'a`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-----------------^^^
+   |     |                                               |
+   |     |                                               first mutable borrow occurs here
    |     second mutable borrow occurs here
+   |     argument requires that `reg.sess_mut` is borrowed for `'a`
 
 error[E0499]: cannot borrow `reg.sess_mut` as mutable more than once at a time
   --> $DIR/two-phase-surprise-no-conflict.rs:158:53

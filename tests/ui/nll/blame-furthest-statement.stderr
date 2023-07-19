@@ -1,0 +1,112 @@
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/blame-furthest-statement.rs:10:5
+   |
+LL | fn test_static(a: Inv<'_>, b: Inv<'static>) {
+   |                -           - `b` declared here, outside of the function body
+   |                |
+   |                `a` is a reference that is only valid in the function body
+   |                has type `Inv<'1>`
+...
+LL |     relate(&a, &b);
+   |     ^^^^^^^^^^^^^^
+   |     |
+   |     `a` escapes the function body here
+   |     argument requires that `'1` must outlive `'static`
+   |
+   = note: requirement occurs because of the type `Inv<'_>`, which makes the generic argument `'_` invariant
+   = note: the struct `Inv<'a>` is invariant over the parameter `'a`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: lifetime may not live long enough
+  --> $DIR/blame-furthest-statement.rs:17:5
+   |
+LL | fn test1(a: Inv<'_>, b: Inv<'_>) {
+   |          -           - has type `Inv<'2>`
+   |          |
+   |          has type `Inv<'1>`
+...
+LL |     relate(&a, &b);
+   |     ^^^^^^^^^^^^^^ argument requires that `'1` must outlive `'2`
+   |
+   = note: requirement occurs because of the type `Inv<'_>`, which makes the generic argument `'_` invariant
+   = note: the struct `Inv<'a>` is invariant over the parameter `'a`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: lifetime may not live long enough
+  --> $DIR/blame-furthest-statement.rs:17:5
+   |
+LL | fn test1(a: Inv<'_>, b: Inv<'_>) {
+   |          -           - has type `Inv<'2>`
+   |          |
+   |          has type `Inv<'1>`
+...
+LL |     relate(&a, &b);
+   |     ^^^^^^^^^^^^^^ argument requires that `'2` must outlive `'1`
+   |
+   = note: requirement occurs because of the type `Inv<'_>`, which makes the generic argument `'_` invariant
+   = note: the struct `Inv<'a>` is invariant over the parameter `'a`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: lifetime may not live long enough
+  --> $DIR/blame-furthest-statement.rs:29:9
+   |
+LL | fn test2(cond: bool, a: Inv<'_>, b: Inv<'_>) {
+   |                      -           - has type `Inv<'2>`
+   |                      |
+   |                      has type `Inv<'1>`
+...
+LL |         y.replace(b);
+   |         ^^^^^^^^^^^^ argument requires that `'1` must outlive `'2`
+   |
+   = note: requirement occurs because of the type `Inv<'_>`, which makes the generic argument `'_` invariant
+   = note: the struct `Inv<'a>` is invariant over the parameter `'a`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: lifetime may not live long enough
+  --> $DIR/blame-furthest-statement.rs:29:9
+   |
+LL | fn test2(cond: bool, a: Inv<'_>, b: Inv<'_>) {
+   |                      -           - has type `Inv<'2>`
+   |                      |
+   |                      has type `Inv<'1>`
+...
+LL |         y.replace(b);
+   |         ^^^^^^^^^^^^ argument requires that `'2` must outlive `'1`
+   |
+   = note: requirement occurs because of a mutable reference to `Option<Inv<'_>>`
+   = note: mutable references are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: lifetime may not live long enough
+  --> $DIR/blame-furthest-statement.rs:42:9
+   |
+LL | fn test3(cond: bool, a: Inv<'_>, b: Inv<'_>) {
+   |                      -           - has type `Inv<'2>`
+   |                      |
+   |                      has type `Inv<'1>`
+...
+LL |         relate(&x, &y);
+   |         ^^^^^^^^^^^^^^ argument requires that `'1` must outlive `'2`
+   |
+   = note: requirement occurs because of the type `Inv<'_>`, which makes the generic argument `'_` invariant
+   = note: the struct `Inv<'a>` is invariant over the parameter `'a`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: lifetime may not live long enough
+  --> $DIR/blame-furthest-statement.rs:42:9
+   |
+LL | fn test3(cond: bool, a: Inv<'_>, b: Inv<'_>) {
+   |                      -           - has type `Inv<'2>`
+   |                      |
+   |                      has type `Inv<'1>`
+...
+LL |         relate(&x, &y);
+   |         ^^^^^^^^^^^^^^ argument requires that `'2` must outlive `'1`
+   |
+   = note: requirement occurs because of the type `Inv<'_>`, which makes the generic argument `'_` invariant
+   = note: the struct `Inv<'a>` is invariant over the parameter `'a`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0521`.

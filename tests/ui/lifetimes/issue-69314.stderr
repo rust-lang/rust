@@ -17,8 +17,8 @@ LL |         let mut buf = [0; 512];
 LL |         let m2 = &buf[..];
    |                   ^^^ borrowed value does not live long enough
 LL |         let m = Self::g(m2).await;
-   |                 ----------- argument requires that `buf` is borrowed for `'static`
 LL |         Self::f2(m).await;
+   |         ----------- argument requires that `buf` is borrowed for `'static`
 LL |     }
    |     - `buf` dropped here while still borrowed
 

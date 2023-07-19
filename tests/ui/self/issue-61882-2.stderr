@@ -4,10 +4,10 @@ error[E0597]: `x` does not live long enough
 LL |         let x = 0;
    |             - binding `x` declared here
 LL |         Self(&x);
-   |              ^^
-   |              |
-   |              borrowed value does not live long enough
-   |              this usage requires that `x` is borrowed for `'static`
+   |         -----^^-
+   |         |    |
+   |         |    borrowed value does not live long enough
+   |         requires that `x` is borrowed for `'static`
 LL |
 LL |     }
    |     - `x` dropped here while still borrowed

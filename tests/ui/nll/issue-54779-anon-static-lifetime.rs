@@ -29,7 +29,8 @@ impl DebugWith<dyn DebugContext> for Foo {
         fmt: &mut std::fmt::Formatter<'_>,
     ) -> std::fmt::Result {
         let Foo { bar } = self;
-        bar.debug_with(cx); //~ ERROR: lifetime may not live long enough
+        bar.debug_with(cx);
+        //~^ ERROR: borrowed data escapes outside of method [E0521]
         Ok(())
     }
 }

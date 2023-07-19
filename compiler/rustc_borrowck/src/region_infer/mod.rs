@@ -2233,10 +2233,21 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // is in the same SCC or something. In that case, find what
         // appears to be the most interesting point to report to the
         // user via an even more ad-hoc guess.
-        categorized_path.sort_by_key(|p| p.category);
+        categorized_path.sort_by_key(|p| {
+            let location = p.outlives_constraint.locations.from_location();
+            (
+                location.is_none()
+                    && matches!(
+                        p.category,
+                        ConstraintCategory::Return(_) | ConstraintCategory::OpaqueType
+                    ),
+                location,
+                std::cmp::Reverse(p.category),
+            )
+        });
         debug!("sorted_path={:#?}", categorized_path);
 
-        (categorized_path.remove(0), extra_info)
+        (categorized_path.pop().unwrap(), extra_info)
     }
 
     pub(crate) fn universe_info(&self, universe: ty::UniverseIndex) -> UniverseInfo<'tcx> {

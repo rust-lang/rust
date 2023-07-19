@@ -4,10 +4,10 @@ error[E0597]: `c` does not live long enough
 LL |     let c = 66;
    |         - binding `c` declared here
 LL |     SomeStruct::<&'static u32>(&c);
-   |                                ^^
-   |                                |
-   |                                borrowed value does not live long enough
-   |                                this usage requires that `c` is borrowed for `'static`
+   |     ---------------------------^^-
+   |     |                          |
+   |     |                          borrowed value does not live long enough
+   |     requires that `c` is borrowed for `'static`
 LL | }
    | - `c` dropped here while still borrowed
 

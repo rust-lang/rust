@@ -11,14 +11,14 @@ LL |     || { None::<&'a &'b ()>; };
    = help: consider adding the following bound: `'b: 'a`
 
 error: lifetime may not live long enough
-  --> $DIR/issue-98589-closures-relate-named-regions.rs:15:10
+  --> $DIR/issue-98589-closures-relate-named-regions.rs:15:5
    |
 LL | fn test_early_late<'a: 'a, 'b>() {
    |                    --      -- lifetime `'b` defined here
    |                    |
    |                    lifetime `'a` defined here
 LL |     || { None::<&'a &'b ()>; };
-   |          ^^^^^^^^^^^^^^^^^^ requires that `'b` must outlive `'a`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'b` must outlive `'a`
    |
    = help: consider adding the following bound: `'b: 'a`
 
