@@ -87,7 +87,7 @@ fn prepare_vtable_segments_inner<'tcx, T>(
     let mut visited = PredicateSet::new(tcx);
     let predicate = trait_ref.without_const().to_predicate(tcx);
     let mut stack: SmallVec<[(ty::PolyTraitRef<'tcx>, _, _); 5]> =
-        smallvec![(trait_ref, emit_vptr_on_new_entry, None)];
+        smallvec![(trait_ref, emit_vptr_on_new_entry, maybe_iter(None))];
     visited.insert(predicate);
 
     // the main traversal loop:
@@ -138,7 +138,7 @@ fn prepare_vtable_segments_inner<'tcx, T>(
                     stack.push((
                         next_super_trait,
                         emit_vptr_on_new_entry,
-                        Some(direct_super_traits_iter),
+                        maybe_iter(Some(direct_super_traits_iter)),
                     ))
                 }
 
@@ -152,36 +152,38 @@ fn prepare_vtable_segments_inner<'tcx, T>(
 
         // emit innermost item, move to next sibling and stop there if possible, otherwise jump to outer level.
         'exiting_out: loop {
-            if let Some((inner_most_trait_ref, emit_vptr, siblings_opt)) = stack.last_mut() {
+            if let Some((inner_most_trait_ref, emit_vptr, siblings)) = stack.last_mut() {
                 segment_visitor(VtblSegment::TraitOwnEntries {
                     trait_ref: *inner_most_trait_ref,
                     emit_vptr: *emit_vptr,
                 })?;
 
-                'exiting_out_skip_visited_traits: loop {
-                    if let Some(siblings) = siblings_opt {
-                        if let Some(next_inner_most_trait_ref) = siblings.next() {
-                            if visited.insert(next_inner_most_trait_ref.to_predicate(tcx)) {
-                                // We're throwing away potential constness of super traits here.
-                                // FIXME: handle ~const super traits
-                                let next_inner_most_trait_ref =
-                                    next_inner_most_trait_ref.map_bound(|t| t.trait_ref);
-                                *inner_most_trait_ref = next_inner_most_trait_ref;
-                                *emit_vptr = emit_vptr_on_new_entry;
-                                break 'exiting_out;
-                            } else {
-                                continue 'exiting_out_skip_visited_traits;
-                            }
-                        }
+                match siblings.find(|&sibling| visited.insert(sibling.to_predicate(tcx))) {
+                    Some(next_inner_most_trait_ref) => {
+                        // We're throwing away potential constness of super traits here.
+                        // FIXME: handle ~const super traits
+                        let next_inner_most_trait_ref =
+                            next_inner_most_trait_ref.map_bound(|t| t.trait_ref);
+                        *inner_most_trait_ref = next_inner_most_trait_ref;
+                        *emit_vptr = emit_vptr_on_new_entry;
+                        break 'exiting_out;
                     }
-                    stack.pop();
-                    continue 'exiting_out;
+                    None => {
+                        stack.pop();
+                        continue 'exiting_out;
+                    }
                 }
             }
             // all done
             return ControlFlow::Continue(());
         }
     }
+}
+
+/// Turns option of iterator into an iterator (this is just flatten)
+fn maybe_iter<I: Iterator>(i: Option<I>) -> impl Iterator<Item = I::Item> {
+    // Flatten is bad perf-vise, we could probably implement a special case here that is better
+    i.into_iter().flatten()
 }
 
 fn dump_vtable_entries<'tcx>(
