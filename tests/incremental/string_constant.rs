@@ -17,7 +17,7 @@ pub mod x {
     }
 
     #[cfg(cfail2)]
-    #[rustc_clean(except = "hir_owner_nodes,promoted_mir", cfg = "cfail2")]
+    #[rustc_clean(except = "hir_owner_nodes,promoted_mir,optimized_mir", cfg = "cfail2")]
     pub fn x() {
         println!("{}", "2");
     }
