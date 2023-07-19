@@ -1,0 +1,13 @@
+error[E0517]: attribute should be applied to a struct or union
+  --> $DIR/issue-112433.rs:4:11
+   |
+LL |   #[repr(C, packed)]
+   |             ^^^^^^
+LL | / enum V0usize {
+LL | |     V,
+LL | | }
+   | |_- not a struct or union
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0517`.
