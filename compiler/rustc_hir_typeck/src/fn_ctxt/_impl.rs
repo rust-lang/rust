@@ -860,7 +860,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .resolve_fully_qualified_call(span, item_name, ty.normalized, qself.span, hir_id)
             .and_then(|r| {
                 // lint bare trait if the method is found in the trait
-                if span.edition().rust_2021() && let Some(mut diag) = self.tcx.sess.diagnostic().steal_diagnostic(qself.span, StashKey::TraitMissingMethod) {
+                if span.edition().at_least_rust_2021() && let Some(mut diag) = self.tcx.sess.diagnostic().steal_diagnostic(qself.span, StashKey::TraitMissingMethod) {
                     diag.emit();
                 }
                 Ok(r)
@@ -890,7 +890,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
 
                 // emit or cancel the diagnostic for bare traits
-                if span.edition().rust_2021() && let Some(mut diag) = self.tcx.sess.diagnostic().steal_diagnostic(qself.span, StashKey::TraitMissingMethod) {
+                if span.edition().at_least_rust_2021() && let Some(mut diag) = self.tcx.sess.diagnostic().steal_diagnostic(qself.span, StashKey::TraitMissingMethod) {
                     if trait_missing_method {
                         // cancel the diag for bare traits when meeting `MyTrait::missing_method`
                         diag.cancel();
@@ -908,7 +908,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         error,
                         None,
                         Expectation::NoExpectation,
-                        trait_missing_method && span.edition().rust_2021(), // emits missing method for trait only after edition 2021
+                        trait_missing_method && span.edition().at_least_rust_2021(), // emits missing method for trait only after edition 2021
                     ) {
                         e.emit();
                     }

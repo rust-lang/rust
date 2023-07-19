@@ -1,4 +1,4 @@
-use rustc_ast::{ast, MetaItemKind, NestedMetaItem};
+use rustc_ast::{ast, attr, MetaItemKind, NestedMetaItem};
 use rustc_attr::{list_contains_name, InlineAttr, InstructionSetAttr, OptimizeAttr};
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
@@ -58,6 +58,14 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
     let mut codegen_fn_attrs = CodegenFnAttrs::new();
     if tcx.should_inherit_track_caller(did) {
         codegen_fn_attrs.flags |= CodegenFnAttrFlags::TRACK_CALLER;
+    }
+
+    // When `no_builtins` is applied at the crate level, we should add the
+    // `no-builtins` attribute to each function to ensure it takes effect in LTO.
+    let crate_attrs = tcx.hir().attrs(rustc_hir::CRATE_HIR_ID);
+    let no_builtins = attr::contains_name(crate_attrs, sym::no_builtins);
+    if no_builtins {
+        codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_BUILTINS;
     }
 
     let supported_target_features = tcx.supported_target_features(LOCAL_CRATE);

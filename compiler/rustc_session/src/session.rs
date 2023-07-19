@@ -995,18 +995,18 @@ impl Session {
     }
 
     /// Are we allowed to use features from the Rust 2018 edition?
-    pub fn rust_2018(&self) -> bool {
-        self.edition().rust_2018()
+    pub fn at_least_rust_2018(&self) -> bool {
+        self.edition().at_least_rust_2018()
     }
 
     /// Are we allowed to use features from the Rust 2021 edition?
-    pub fn rust_2021(&self) -> bool {
-        self.edition().rust_2021()
+    pub fn at_least_rust_2021(&self) -> bool {
+        self.edition().at_least_rust_2021()
     }
 
     /// Are we allowed to use features from the Rust 2024 edition?
-    pub fn rust_2024(&self) -> bool {
-        self.edition().rust_2024()
+    pub fn at_least_rust_2024(&self) -> bool {
+        self.edition().at_least_rust_2024()
     }
 
     /// Returns `true` if we should use the PLT for shared library calls.
