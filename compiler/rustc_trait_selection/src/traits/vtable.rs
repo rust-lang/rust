@@ -126,24 +126,24 @@ fn prepare_vtable_segments_inner<'tcx, T>(
                     pred.subst_supertrait(tcx, &inner_most_trait_ref).as_trait_clause()
                 });
 
-            'diving_in_skip_visited_traits: loop {
-                if let Some(next_super_trait) = direct_super_traits_iter.next() {
-                    if visited.insert(next_super_trait.to_predicate(tcx)) {
-                        // We're throwing away potential constness of super traits here.
-                        // FIXME: handle ~const super traits
-                        let next_super_trait = next_super_trait.map_bound(|t| t.trait_ref);
-                        stack.push((
-                            next_super_trait,
-                            emit_vptr_on_new_entry,
-                            Some(direct_super_traits_iter),
-                        ));
-                        break 'diving_in_skip_visited_traits;
-                    } else {
-                        continue 'diving_in_skip_visited_traits;
-                    }
-                } else {
-                    break 'diving_in;
+            // Find an unvisited supertrait
+            match direct_super_traits_iter
+                .find(|&super_trait| visited.insert(super_trait.to_predicate(tcx)))
+            {
+                // Push it to the stack for the next iteration of 'diving_in to pick up
+                Some(unvisited_super_trait) => {
+                    // We're throwing away potential constness of super traits here.
+                    // FIXME: handle ~const super traits
+                    let next_super_trait = unvisited_super_trait.map_bound(|t| t.trait_ref);
+                    stack.push((
+                        next_super_trait,
+                        emit_vptr_on_new_entry,
+                        Some(direct_super_traits_iter),
+                    ))
                 }
+
+                // There are no more unvisited direct super traits, dive-in finished
+                None => break 'diving_in,
             }
         }
 
