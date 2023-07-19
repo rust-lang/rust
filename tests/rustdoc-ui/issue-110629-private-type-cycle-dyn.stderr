@@ -4,11 +4,6 @@ error[E0391]: cycle detected when expanding type alias `Bar`
 LL | type Bar<'a, 'b> = Box<dyn PartialEq<Bar<'a, 'b>>>;
    |                                      ^^^^^^^^^^^
    |
-note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
-  --> $DIR/issue-110629-private-type-cycle-dyn.rs:1:38
-   |
-LL | type Bar<'a, 'b> = Box<dyn PartialEq<Bar<'a, 'b>>>;
-   |                                      ^^^^^^^^^^^
    = note: ...which immediately requires expanding type alias `Bar` again
    = note: type aliases cannot be recursive
    = help: consider using a struct, enum, or union instead to break the cycle
@@ -24,6 +19,7 @@ LL | | fn bar<'a, 'b>(i: &'a i32) -> Bar<'a, 'b> {
 LL | |     assert!(bar(&meh) == bar(&muh));
 LL | | }
    | |_^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error: aborting due to previous error
 
