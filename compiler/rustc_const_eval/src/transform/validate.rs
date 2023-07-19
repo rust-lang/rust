@@ -72,8 +72,9 @@ impl<'tcx> MirPass<'tcx> for Validator {
         cfg_checker.visit_body(body);
         cfg_checker.check_cleanup_control_flow();
 
-        let mut type_checker = TypeChecker { when: &self.when, body, tcx, param_env, mir_phase };
-        type_checker.visit_body(body);
+        for (location, msg) in validate_types(tcx, self.mir_phase, param_env, body) {
+            cfg_checker.fail(location, msg);
+        }
 
         if let MirPhase::Runtime(_) = body.phase {
             if let ty::InstanceDef::Item(_) = body.source.instance {
@@ -498,30 +499,28 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
     }
 }
 
+fn validate_types<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    mir_phase: MirPhase,
+    param_env: ty::ParamEnv<'tcx>,
+    body: &Body<'tcx>,
+) -> Vec<(Location, String)> {
+    let mut type_checker = TypeChecker { body, tcx, param_env, mir_phase, failures: Vec::new() };
+    type_checker.visit_body(body);
+    type_checker.failures
+}
+
 struct TypeChecker<'a, 'tcx> {
-    when: &'a str,
     body: &'a Body<'tcx>,
     tcx: TyCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,
     mir_phase: MirPhase,
+    failures: Vec<(Location, String)>,
 }
 
 impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
-    #[track_caller]
-    fn fail(&self, location: Location, msg: impl AsRef<str>) {
-        let span = self.body.source_info(location).span;
-        // We use `delay_span_bug` as we might see broken MIR when other errors have already
-        // occurred.
-        self.tcx.sess.diagnostic().delay_span_bug(
-            span,
-            format!(
-                "broken MIR in {:?} ({}) at {:?}:\n{}",
-                self.body.source.instance,
-                self.when,
-                location,
-                msg.as_ref()
-            ),
-        );
+    fn fail(&mut self, location: Location, msg: impl Into<String>) {
+        self.failures.push((location, msg.into()));
     }
 
     /// Check if src can be assigned into dest.
@@ -593,10 +592,10 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             }
             ProjectionElem::Field(f, ty) => {
                 let parent_ty = place_ref.ty(&self.body.local_decls, self.tcx);
-                let fail_out_of_bounds = |this: &Self, location| {
+                let fail_out_of_bounds = |this: &mut Self, location| {
                     this.fail(location, format!("Out of bounds field {:?} for {:?}", f, parent_ty));
                 };
-                let check_equal = |this: &Self, location, f_ty| {
+                let check_equal = |this: &mut Self, location, f_ty| {
                     if !this.mir_assign_valid_types(ty, f_ty) {
                         this.fail(
                             location,
@@ -691,9 +690,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
     }
 
     fn visit_var_debug_info(&mut self, debuginfo: &VarDebugInfo<'tcx>) {
-        let check_place = |place: Place<'_>| {
+        let check_place = |this: &mut Self, place: Place<'_>| {
             if place.projection.iter().any(|p| !p.can_use_in_debuginfo()) {
-                self.fail(
+                this.fail(
                     START_BLOCK.start_location(),
                     format!("illegal place {:?} in debuginfo for {:?}", place, debuginfo.name),
                 );
@@ -702,7 +701,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         match debuginfo.value {
             VarDebugInfoContents::Const(_) => {}
             VarDebugInfoContents::Place(place) => {
-                check_place(place);
+                check_place(self, place);
                 if debuginfo.references != 0 && place.projection.last() == Some(&PlaceElem::Deref) {
                     self.fail(
                         START_BLOCK.start_location(),
@@ -712,7 +711,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             }
             VarDebugInfoContents::Composite { ty, ref fragments } => {
                 for f in fragments {
-                    check_place(f.contents);
+                    check_place(self, f.contents);
                     if ty.is_union() || ty.is_enum() {
                         self.fail(
                             START_BLOCK.start_location(),
@@ -969,7 +968,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 }
             }
             Rvalue::NullaryOp(NullOp::OffsetOf(fields), container) => {
-                let fail_out_of_bounds = |this: &Self, location, field, ty| {
+                let fail_out_of_bounds = |this: &mut Self, location, field, ty| {
                     this.fail(location, format!("Out of bounds field {field:?} for {ty:?}"));
                 };
 
