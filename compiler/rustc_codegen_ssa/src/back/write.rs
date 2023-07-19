@@ -1962,19 +1962,6 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
         )
     }
 
-    pub fn submit_pre_codegened_module_to_llvm(
-        &self,
-        tcx: TyCtxt<'_>,
-        module: ModuleCodegen<B::Module>,
-    ) {
-        self.wait_for_signal_to_codegen_item();
-        self.check_for_errors(tcx.sess);
-
-        // These are generally cheap and won't throw off scheduling.
-        let cost = 0;
-        submit_codegened_module_to_llvm(&self.backend, &self.coordinator.sender, module, cost);
-    }
-
     pub fn codegen_finished(&self, tcx: TyCtxt<'_>) {
         self.wait_for_signal_to_codegen_item();
         self.check_for_errors(tcx.sess);
