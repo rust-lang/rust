@@ -27,6 +27,7 @@ use crate::comment::{
 use crate::config::lists::*;
 use crate::config::Version;
 use crate::expr::{rewrite_array, rewrite_assign_rhs, RhsAssignKind};
+use crate::header::{format_header, HeaderPart};
 use crate::lists::{itemize_list, write_list, ListFormatting};
 use crate::overflow;
 use crate::parse::macros::lazy_static::parse_lazy_static;
@@ -36,8 +37,8 @@ use crate::shape::{Indent, Shape};
 use crate::source_map::SpanUtils;
 use crate::spanned::Spanned;
 use crate::utils::{
-    filtered_str_fits, format_visibility, indent_next_line, is_empty_line, mk_sp,
-    remove_trailing_white_spaces, rewrite_ident, trim_left_preserve_layout, NodeIdExt,
+    filtered_str_fits, indent_next_line, is_empty_line, mk_sp, remove_trailing_white_spaces,
+    rewrite_ident, trim_left_preserve_layout, NodeIdExt,
 };
 use crate::visitor::FmtVisitor;
 
@@ -418,14 +419,21 @@ pub(crate) fn rewrite_macro_def(
         None => return snippet,
     };
 
-    let mut result = if def.macro_rules {
-        String::from("macro_rules!")
+    let mut header = if def.macro_rules {
+        let pos = context.snippet_provider.span_after(span, "macro_rules!");
+        vec![HeaderPart::new("macro_rules!", span.with_hi(pos))]
     } else {
-        format!("{}macro", format_visibility(context, vis))
+        let macro_lo = context.snippet_provider.span_before(span, "macro");
+        let macro_hi = macro_lo + BytePos("macro".len() as u32);
+        vec![
+            HeaderPart::visibility(context, vis),
+            HeaderPart::new("macro", mk_sp(macro_lo, macro_hi)),
+        ]
     };
 
-    result += " ";
-    result += rewrite_ident(context, ident);
+    header.push(HeaderPart::ident(context, ident));
+
+    let mut result = format_header(context, shape, header);
 
     let multi_branch_style = def.macro_rules || parsed_def.branches.len() != 1;
 
