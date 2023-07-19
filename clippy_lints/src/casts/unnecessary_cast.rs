@@ -257,7 +257,7 @@ fn is_cast_from_ty_alias<'tcx>(cx: &LateContext<'tcx>, expr: impl Visitable<'tcx
                 // Will this work for more complex types? Probably not!
                 if !snippet
                     .split("->")
-                    .skip(0)
+                    .skip(1)
                     .map(|s| {
                         s.trim() == cast_from.to_string()
                             || s.split("where").any(|ty| ty.trim() == cast_from.to_string())
