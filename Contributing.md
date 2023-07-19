@@ -95,10 +95,18 @@ wish there weren't. You can leave `FIXME`s, preferably with an issue number.
 
 You may want to run a version of rustfmt from source code as part of a test or
 hacking on the rustfmt codebase. It's strongly discouraged to install a version
-of rustfmt from source. Instead, run it using `cargo run`, and `--manifest-path`.
+of rustfmt from source.
+
+To run `rustfmt` on a file:
 
 ```
-cargo run --bin cargo-fmt -- --manifest-path path/to/project/you/want2test/Cargo.toml
+cargo run --bin rustfmt -- path/to/file.rs
+```
+
+If you want to test modified `cargo-fmt`, or run `rustfmt` on the whole project (You may need to build rustfmt first):
+
+```
+RUSTFMT="./target/debug/rustfmt" cargo run --bin cargo-fmt -- --manifest-path path/to/project/you/want2test/Cargo.toml
 ```
 
 ### Version-gate formatting changes
