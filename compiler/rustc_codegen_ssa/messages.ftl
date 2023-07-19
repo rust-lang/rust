@@ -197,6 +197,8 @@ codegen_ssa_specify_libraries_to_link = use the `-l` flag to specify native libr
 
 codegen_ssa_static_library_native_artifacts = Link against the following native artifacts when linking against this static library. The order and any duplication can be significant on some platforms.
 
+codegen_ssa_static_library_native_artifacts_to_file = Native artifacts to link against have been written to {$path}. The order and any duplication can be significant on some platforms.
+
 codegen_ssa_stripping_debug_info_failed = stripping debug info with `{$util}` failed: {$status}
     .note = {$output}
 
