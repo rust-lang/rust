@@ -46,6 +46,7 @@ use rustc_span::symbol::Symbol;
 
 use std::any::Any;
 use std::ffi::CStr;
+use std::io::Write;
 
 mod back {
     pub mod archive;
@@ -177,32 +178,30 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     type ThinData = back::lto::ThinData;
     type ThinBuffer = back::lto::ThinBuffer;
     fn print_pass_timings(&self) {
-        let msg = unsafe {
-            let cstr = llvm::LLVMRustPrintPassTimings();
+        unsafe {
+            let mut size = 0;
+            let cstr = llvm::LLVMRustPrintPassTimings(&mut size as *mut usize);
             if cstr.is_null() {
-                "failed to get pass timings".into()
+                println!("failed to get pass timings");
             } else {
-                let timings = CStr::from_ptr(cstr).to_bytes();
-                let timings = String::from_utf8_lossy(timings).to_string();
+                let timings = std::slice::from_raw_parts(cstr as *const u8, size);
+                std::io::stdout().write_all(timings).unwrap();
                 libc::free(cstr as *mut _);
-                timings
             }
-        };
-        println!("{}", msg);
+        }
     }
     fn print_statistics(&self) {
-        let msg = unsafe {
-            let cstr = llvm::LLVMRustPrintStatistics();
+        unsafe {
+            let mut size = 0;
+            let cstr = llvm::LLVMRustPrintStatistics(&mut size as *mut usize);
             if cstr.is_null() {
-                "failed to get stats".into()
+                println!("failed to get pass stats");
             } else {
-                let stats = CStr::from_ptr(cstr).to_bytes();
-                let stats = String::from_utf8_lossy(stats).to_string();
+                let stats = std::slice::from_raw_parts(cstr as *const u8, size);
+                std::io::stdout().write_all(stats).unwrap();
                 libc::free(cstr as *mut _);
-                stats
             }
-        };
-        println!("{}", msg);
+        }
     }
     fn run_link(
         cgcx: &CodegenContext<Self>,
