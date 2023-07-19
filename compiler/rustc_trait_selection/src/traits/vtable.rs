@@ -147,15 +147,20 @@ fn prepare_vtable_segments_inner<'tcx, T>(
             }
         }
 
-        // Other than the left-most path, vptr should be emitted for each trait.
-        emit_vptr_on_new_entry = true;
-
         // emit innermost item, move to next sibling and stop there if possible, otherwise jump to outer level.
         while let Some((inner_most_trait_ref, emit_vptr, mut siblings)) = stack.pop() {
             segment_visitor(VtblSegment::TraitOwnEntries {
                 trait_ref: inner_most_trait_ref,
                 emit_vptr,
             })?;
+
+            // If we've emitted (fed to `segment_visitor`) a trait that has methods present in the vtable,
+            // we'll need to emit vptrs from now on.
+            if !emit_vptr_on_new_entry
+                && has_own_existential_vtable_entries(tcx, inner_most_trait_ref.def_id())
+            {
+                emit_vptr_on_new_entry = true;
+            }
 
             if let Some(next_inner_most_trait_ref) =
                 siblings.find(|&sibling| visited.insert(sibling.to_predicate(tcx)))
@@ -196,11 +201,23 @@ fn dump_vtable_entries<'tcx>(
     });
 }
 
+fn has_own_existential_vtable_entries(tcx: TyCtxt<'_>, trait_def_id: DefId) -> bool {
+    own_existential_vtable_entries_iter(tcx, trait_def_id).next().is_some()
+}
+
 fn own_existential_vtable_entries(tcx: TyCtxt<'_>, trait_def_id: DefId) -> &[DefId] {
+    tcx.arena.alloc_from_iter(own_existential_vtable_entries_iter(tcx, trait_def_id))
+}
+
+fn own_existential_vtable_entries_iter(
+    tcx: TyCtxt<'_>,
+    trait_def_id: DefId,
+) -> impl Iterator<Item = DefId> + '_ {
     let trait_methods = tcx
         .associated_items(trait_def_id)
         .in_definition_order()
         .filter(|item| item.kind == ty::AssocKind::Fn);
+
     // Now list each method's DefId (for within its trait).
     let own_entries = trait_methods.filter_map(move |&trait_method| {
         debug!("own_existential_vtable_entry: trait_method={:?}", trait_method);
@@ -215,7 +232,7 @@ fn own_existential_vtable_entries(tcx: TyCtxt<'_>, trait_def_id: DefId) -> &[Def
         Some(def_id)
     });
 
-    tcx.arena.alloc_from_iter(own_entries.into_iter())
+    own_entries
 }
 
 /// Given a trait `trait_ref`, iterates the vtable entries
