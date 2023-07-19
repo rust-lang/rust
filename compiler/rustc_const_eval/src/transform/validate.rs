@@ -499,7 +499,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
     }
 }
 
-fn validate_types<'tcx>(
+pub fn validate_types<'tcx>(
     tcx: TyCtxt<'tcx>,
     mir_phase: MirPhase,
     param_env: ty::ParamEnv<'tcx>,
