@@ -12,7 +12,7 @@ use crate::overflow::OverflowableItem;
 use crate::rewrite::{Rewrite, RewriteContext};
 use crate::shape::Shape;
 use crate::source_map::SpanUtils;
-use crate::types::rewrite_lifetime_param;
+use crate::types::rewrite_bound_params;
 use crate::utils::{last_line_width, left_most_sub_expr, stmt_expr, NodeIdExt};
 
 // This module is pretty messy because of the rules around closures and blocks:
@@ -246,7 +246,7 @@ fn rewrite_closure_fn_decl(
             "for<> ".to_owned()
         }
         ast::ClosureBinder::For { generic_params, .. } => {
-            let lifetime_str = rewrite_lifetime_param(context, shape, generic_params)?;
+            let lifetime_str = rewrite_bound_params(context, shape, generic_params)?;
             format!("for<{lifetime_str}> ")
         }
         ast::ClosureBinder::NotPresent => "".to_owned(),
