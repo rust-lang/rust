@@ -69,7 +69,9 @@ pub struct ImplCandidate<'tcx> {
 }
 
 enum GetSafeTransmuteErrorAndReason {
-    Silent,
+    ErrorGuaranteed(ErrorGuaranteed),
+    // Unable to compute Safe Transmute result because of ambiguity
+    Ambiguous,
     Error { err_msg: String, safe_transmute_explanation: String },
 }
 
@@ -756,7 +758,10 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 trait_ref,
                                 span,
                             ) {
-                                GetSafeTransmuteErrorAndReason::Silent => return,
+                                GetSafeTransmuteErrorAndReason::ErrorGuaranteed(_guar) => return,
+                                // Unable to compute whether Safe Transmute is possible (for example, due to an unevaluated const).
+                                // The same thing occurred during trait selection/confirmation, so there is no error to report here.
+                                GetSafeTransmuteErrorAndReason::Ambiguous => return,
                                 GetSafeTransmuteErrorAndReason::Error {
                                     err_msg,
                                     safe_transmute_explanation,
@@ -2884,15 +2889,17 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             src: trait_ref.args.type_at(1),
         };
         let scope = trait_ref.args.type_at(2);
-        let Some(assume) = rustc_transmute::Assume::from_const(
+
+        let maybe_assume = rustc_transmute::Assume::from_const(
             self.infcx.tcx,
             obligation.param_env,
             trait_ref.args.const_at(3),
-        ) else {
-            span_bug!(
-                span,
-                "Unable to construct rustc_transmute::Assume where it was previously possible"
-            );
+        );
+
+        let assume = match maybe_assume {
+            Some(Ok(assume)) => assume,
+            Some(Err(guar)) => return GetSafeTransmuteErrorAndReason::ErrorGuaranteed(guar),
+            None => return GetSafeTransmuteErrorAndReason::Ambiguous,
         };
 
         match rustc_transmute::TransmuteTypeEnv::new(self.infcx).is_transmutable(
@@ -2938,8 +2945,8 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         format!("`{src}` is a shared reference, but `{dst}` is a unique reference")
                     }
                     // Already reported by rustc
-                    rustc_transmute::Reason::TypeError => {
-                        return GetSafeTransmuteErrorAndReason::Silent;
+                    rustc_transmute::Reason::TypeError(guar) => {
+                        return GetSafeTransmuteErrorAndReason::ErrorGuaranteed(guar);
                     }
                     rustc_transmute::Reason::SrcLayoutUnknown => {
                         format!("`{src}` has an unknown layout")

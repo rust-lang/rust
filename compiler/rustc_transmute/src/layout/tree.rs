@@ -261,8 +261,8 @@ pub(crate) mod rustc {
             use rustc_middle::ty::UintTy::*;
             use rustc_target::abi::HasDataLayout;
 
-            if let Err(e) = ty.error_reported() {
-                return Err(Err::TypeError(e));
+            if let Err(guar) = ty.error_reported() {
+                return Err(Err::TypeError(guar));
             }
 
             let target = tcx.data_layout();

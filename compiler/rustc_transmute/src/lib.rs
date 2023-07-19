@@ -59,7 +59,7 @@ pub enum Reason {
     /// Can't go from shared pointer to unique pointer
     DstIsMoreUnique,
     /// Encountered a type error
-    TypeError,
+    TypeError(ErrorGuaranteed),
     /// The layout of src is unknown
     SrcLayoutUnknown,
     /// The layout of dst is unknown
@@ -79,6 +79,7 @@ mod rustc {
     use rustc_middle::ty::Ty;
     use rustc_middle::ty::TyCtxt;
     use rustc_middle::ty::ValTree;
+    use rustc_span::ErrorGuaranteed;
 
     /// The source and destination types of a transmutation.
     #[derive(TypeVisitable, Debug, Clone, Copy)]
@@ -123,20 +124,14 @@ mod rustc {
             tcx: TyCtxt<'tcx>,
             param_env: ParamEnv<'tcx>,
             c: Const<'tcx>,
-        ) -> Option<Self> {
+        ) -> Option<Result<Self, ErrorGuaranteed>> {
             use rustc_middle::ty::ScalarInt;
             use rustc_middle::ty::TypeVisitableExt;
             use rustc_span::symbol::sym;
 
             let c = c.eval(tcx, param_env);
-
             if let Err(err) = c.error_reported() {
-                return Some(Self {
-                    alignment: true,
-                    lifetimes: true,
-                    safety: true,
-                    validity: true,
-                });
+                return Some(Err(err));
             }
 
             let adt_def = c.ty().ty_adt_def()?;
@@ -151,14 +146,7 @@ mod rustc {
             let variant = adt_def.non_enum_variant();
             let fields = match c.try_to_valtree() {
                 Some(ValTree::Branch(branch)) => branch,
-                _ => {
-                    return Some(Self {
-                        alignment: true,
-                        lifetimes: true,
-                        safety: true,
-                        validity: true,
-                    });
-                }
+                _ => return None,
             };
 
             let get_field = |name| {
@@ -171,15 +159,16 @@ mod rustc {
                 fields[field_idx].unwrap_leaf() == ScalarInt::TRUE
             };
 
-            Some(Self {
+            Some(Ok(Self {
                 alignment: get_field(sym::alignment),
                 lifetimes: get_field(sym::lifetimes),
                 safety: get_field(sym::safety),
                 validity: get_field(sym::validity),
-            })
+            }))
         }
     }
 }
 
 #[cfg(feature = "rustc")]
 pub use rustc::*;
+use rustc_span::ErrorGuaranteed;

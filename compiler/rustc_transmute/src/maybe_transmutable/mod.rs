@@ -78,8 +78,8 @@ mod rustc {
             let dst = Tree::from_ty(dst, context);
 
             match (src, dst) {
-                (Err(Err::TypeError(_)), _) | (_, Err(Err::TypeError(_))) => {
-                    Answer::No(Reason::TypeError)
+                (Err(Err::TypeError(guar)), _) | (_, Err(Err::TypeError(guar))) => {
+                    Answer::No(Reason::TypeError(guar))
                 }
                 (Err(Err::UnknownLayout), _) => Answer::No(Reason::SrcLayoutUnknown),
                 (_, Err(Err::UnknownLayout)) => Answer::No(Reason::DstLayoutUnknown),

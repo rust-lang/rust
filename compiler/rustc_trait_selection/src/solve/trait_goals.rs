@@ -599,10 +599,12 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         // which will ICE for region vars.
         let args = ecx.tcx().erase_regions(goal.predicate.trait_ref.args);
 
-        let Some(assume) =
-            rustc_transmute::Assume::from_const(ecx.tcx(), goal.param_env, args.const_at(3))
-        else {
-            return Err(NoSolution);
+        let maybe_assume =
+            rustc_transmute::Assume::from_const(ecx.tcx(), goal.param_env, args.const_at(3));
+        let assume = match maybe_assume {
+            Some(Ok(assume)) => assume,
+            Some(Err(_guar)) => return Err(NoSolution),
+            None => return Err(NoSolution),
         };
 
         let certainty = ecx.is_transmutable(

@@ -1,4 +1,6 @@
 // check-fail
+// revisions: current next
+//[next] compile-flags: -Ztrait-solver=next
 #![feature(generic_const_exprs, transmutability)]
 #![allow(incomplete_features)]
 
@@ -18,7 +20,7 @@ mod assert {
         Dst: BikeshedIntrinsicFrom<
             Src,
             Context,
-            { from_options(ASSUME_ALIGNMENT, ASSUME_LIFETIMES, ASSUME_SAFETY, ASSUME_VALIDITY) }
+            { from_options(ASSUME_ALIGNMENT, ASSUME_LIFETIMES, ASSUME_SAFETY, ASSUME_VALIDITY) } //[next]~ ERROR type annotations needed
         >,
     {}
 
@@ -28,7 +30,7 @@ mod assert {
         , //~ ERROR expected parameter name, found `,`
         , //~ ERROR expected parameter name, found `,`
         , //~ ERROR expected parameter name, found `,`
-    ) -> Assume {} //~ ERROR mismatched types
+    ) -> Assume {} //[current]~ ERROR mismatched types
 }
 
 fn main() {
