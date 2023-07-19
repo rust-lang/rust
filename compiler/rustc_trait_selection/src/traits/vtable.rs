@@ -24,8 +24,18 @@ pub enum VtblSegment<'tcx> {
 pub fn prepare_vtable_segments<'tcx, T>(
     tcx: TyCtxt<'tcx>,
     trait_ref: ty::PolyTraitRef<'tcx>,
-    mut segment_visitor: impl FnMut(VtblSegment<'tcx>) -> ControlFlow<T>,
+    segment_visitor: impl FnMut(VtblSegment<'tcx>) -> ControlFlow<T>,
 ) -> Option<T> {
+    prepare_vtable_segments_inner(tcx, trait_ref, segment_visitor).break_value()
+}
+
+/// Helper for [`prepare_vtable_segments`] that returns `ControlFlow`,
+/// such that we can use `?` in the body.
+fn prepare_vtable_segments_inner<'tcx, T>(
+    tcx: TyCtxt<'tcx>,
+    trait_ref: ty::PolyTraitRef<'tcx>,
+    mut segment_visitor: impl FnMut(VtblSegment<'tcx>) -> ControlFlow<T>,
+) -> ControlFlow<T> {
     // The following constraints holds for the final arrangement.
     // 1. The whole virtual table of the first direct super trait is included as the
     //    the prefix. If this trait doesn't have any super traits, then this step
@@ -71,9 +81,7 @@ pub fn prepare_vtable_segments<'tcx, T>(
     //  N, N-vptr, O
 
     // emit dsa segment first.
-    if let ControlFlow::Break(v) = (segment_visitor)(VtblSegment::MetadataDSA) {
-        return Some(v);
-    }
+    segment_visitor(VtblSegment::MetadataDSA)?;
 
     let mut emit_vptr_on_new_entry = false;
     let mut visited = PredicateSet::new(tcx);
@@ -146,12 +154,10 @@ pub fn prepare_vtable_segments<'tcx, T>(
         // emit innermost item, move to next sibling and stop there if possible, otherwise jump to outer level.
         'exiting_out: loop {
             if let Some((inner_most_trait_ref, emit_vptr, siblings_opt)) = stack.last_mut() {
-                if let ControlFlow::Break(v) = (segment_visitor)(VtblSegment::TraitOwnEntries {
+                segment_visitor(VtblSegment::TraitOwnEntries {
                     trait_ref: *inner_most_trait_ref,
                     emit_vptr: *emit_vptr,
-                }) {
-                    return Some(v);
-                }
+                })?;
 
                 'exiting_out_skip_visited_traits: loop {
                     if let Some(siblings) = siblings_opt {
@@ -174,7 +180,7 @@ pub fn prepare_vtable_segments<'tcx, T>(
                 }
             }
             // all done
-            return None;
+            return ControlFlow::Continue(());
         }
     }
 }
