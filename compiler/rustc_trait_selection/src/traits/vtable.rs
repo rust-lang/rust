@@ -92,7 +92,7 @@ fn prepare_vtable_segments_inner<'tcx, T>(
 
     // the main traversal loop:
     // basically we want to cut the inheritance directed graph into a few non-overlapping slices of nodes
-    // that each node is emitted after all its descendents have been emitted.
+    // such that each node is emitted after all its descendants have been emitted.
     // so we convert the directed graph into a tree by skipping all previously visited nodes using a visited set.
     // this is done on the fly.
     // Each loop run emits a slice - it starts by find a "childless" unvisited node, backtracking upwards, and it
