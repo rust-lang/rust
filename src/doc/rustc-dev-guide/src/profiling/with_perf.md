@@ -282,7 +282,7 @@ Tree
 What happens with `--tree-callees` is that
 
 - we find each sample matching the regular expression
-- we look at the code that is occurs *after* the regex match and try
+- we look at the code that occurs *after* the regex match and try
   to build up a call tree
 
 The `--tree-min-percent 3` option says "only show me things that take
