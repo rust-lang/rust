@@ -1120,6 +1120,7 @@ impl Ord for Ipv4Addr {
 
 #[stable(feature = "ip_u32", since = "1.1.0")]
 impl From<Ipv4Addr> for u32 {
+    /// Uses [`Ipv4Addr::to_bits`] to convert an IPv4 address to a host byte order `u32`.
     #[inline]
     fn from(ip: Ipv4Addr) -> u32 {
         ip.to_bits()
@@ -1128,6 +1129,7 @@ impl From<Ipv4Addr> for u32 {
 
 #[stable(feature = "ip_u32", since = "1.1.0")]
 impl From<u32> for Ipv4Addr {
+    /// Uses [`Ipv4Addr::from_bits`] to convert a host byte order `u32` into an IPv4 address.
     #[inline]
     fn from(ip: u32) -> Ipv4Addr {
         Ipv4Addr::from_bits(ip)
@@ -1995,6 +1997,7 @@ impl Ord for Ipv6Addr {
 
 #[stable(feature = "i128", since = "1.26.0")]
 impl From<Ipv6Addr> for u128 {
+    /// Uses [`Ipv6Addr::to_bits`] to convert an IPv6 address to a host byte order `u128`.
     #[inline]
     fn from(ip: Ipv6Addr) -> u128 {
         ip.to_bits()
@@ -2002,6 +2005,7 @@ impl From<Ipv6Addr> for u128 {
 }
 #[stable(feature = "i128", since = "1.26.0")]
 impl From<u128> for Ipv6Addr {
+    /// Uses [`Ipv6Addr::from_bits`] to convert a host byte order `u128` to an IPv6 address.
     #[inline]
     fn from(ip: u128) -> Ipv6Addr {
         Ipv6Addr::from_bits(ip)
