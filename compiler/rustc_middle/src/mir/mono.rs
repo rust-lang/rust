@@ -61,10 +61,20 @@ impl<'tcx> MonoItem<'tcx> {
     pub fn size_estimate(&self, tcx: TyCtxt<'tcx>) -> usize {
         match *self {
             MonoItem::Fn(instance) => {
-                // Function size estimate: the number of statements, plus one
-                // for the terminator.
                 let mir = tcx.instance_mir(instance.def);
-                mir.basic_blocks.iter().map(|bb| bb.statements.len() + 1).sum()
+                let bbs = &mir.basic_blocks;
+                let n = 1 // for the function itself
+                    + mir.arg_count  // args
+                    + mir.local_decls.len()  // local decls
+                    + bbs.len()  // bbs
+                    + bbs.iter().map(|bb| bb.statements.len()).sum::<usize>() // stmts
+                    + bbs.len(); // terminators
+
+                // Inlined functions require more work from the backend.
+                match self.instantiation_mode(tcx) {
+                    InstantiationMode::GloballyShared { .. } => n,
+                    InstantiationMode::LocalCopy => n * 2,
+                }
             }
             // Static declarations and asm item are hard to compare in size
             // with functions, but they're quite rare so the exact value

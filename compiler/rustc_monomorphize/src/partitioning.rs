@@ -375,9 +375,9 @@ fn merge_codegen_units<'tcx>(
     // Having multiple CGUs can drastically speed up compilation. But for
     // non-incremental builds, tiny CGUs slow down compilation *and* result in
     // worse generated code. So we don't allow CGUs smaller than this (unless
-    // there is just one CGU, of course). Note that CGU sizes of 100,000+ are
+    // there is just one CGU, of course). Note that CGU sizes of 200,000+ are
     // common in larger programs, so this isn't all that large.
-    const NON_INCR_MIN_CGU_SIZE: usize = 1800;
+    const NON_INCR_MIN_CGU_SIZE: usize = 4050;
 
     // Repeatedly merge the two smallest codegen units as long as: it's a
     // non-incremental build, and the user didn't specify a CGU count, and
