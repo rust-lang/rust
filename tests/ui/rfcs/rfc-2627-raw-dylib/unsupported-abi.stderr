@@ -2,7 +2,7 @@ error: ABI not supported by `#[link(kind = "raw-dylib")]` on this architecture
   --> $DIR/unsupported-abi.rs:6:5
    |
 LL |     fn f(x: i32);
-   |     ^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^
 
 error: aborting due to previous error
 
