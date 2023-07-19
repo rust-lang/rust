@@ -113,7 +113,7 @@ fn prepare_vtable_segments_inner<'tcx, T>(
     // Loop run #1: Emitting the slice [D C] (in reverse order). No one has a next-sibling node.
     // Loop run #1: Stack after exiting out is []. Now the function exits.
 
-    loop {
+    'outer: loop {
         // dive deeper into the stack, recording the path
         'diving_in: loop {
             let &(inner_most_trait_ref, _, _) = stack.last().unwrap();
@@ -151,32 +151,29 @@ fn prepare_vtable_segments_inner<'tcx, T>(
         emit_vptr_on_new_entry = true;
 
         // emit innermost item, move to next sibling and stop there if possible, otherwise jump to outer level.
-        'exiting_out: loop {
-            if let Some((inner_most_trait_ref, emit_vptr, siblings)) = stack.last_mut() {
-                segment_visitor(VtblSegment::TraitOwnEntries {
-                    trait_ref: *inner_most_trait_ref,
-                    emit_vptr: *emit_vptr,
-                })?;
+        while let Some((inner_most_trait_ref, emit_vptr, mut siblings)) = stack.pop() {
+            segment_visitor(VtblSegment::TraitOwnEntries {
+                trait_ref: inner_most_trait_ref,
+                emit_vptr,
+            })?;
 
-                match siblings.find(|&sibling| visited.insert(sibling.to_predicate(tcx))) {
-                    Some(next_inner_most_trait_ref) => {
-                        // We're throwing away potential constness of super traits here.
-                        // FIXME: handle ~const super traits
-                        let next_inner_most_trait_ref =
-                            next_inner_most_trait_ref.map_bound(|t| t.trait_ref);
-                        *inner_most_trait_ref = next_inner_most_trait_ref;
-                        *emit_vptr = emit_vptr_on_new_entry;
-                        break 'exiting_out;
-                    }
-                    None => {
-                        stack.pop();
-                        continue 'exiting_out;
-                    }
-                }
+            if let Some(next_inner_most_trait_ref) =
+                siblings.find(|&sibling| visited.insert(sibling.to_predicate(tcx)))
+            {
+                // We're throwing away potential constness of super traits here.
+                // FIXME: handle ~const super traits
+                let next_inner_most_trait_ref =
+                    next_inner_most_trait_ref.map_bound(|t| t.trait_ref);
+
+                stack.push((next_inner_most_trait_ref, emit_vptr_on_new_entry, siblings));
+
+                // just pushed a new trait onto the stack, so we need to go through its super traits
+                continue 'outer;
             }
-            // all done
-            return ControlFlow::Continue(());
         }
+
+        // the stack is empty, all done
+        return ControlFlow::Continue(());
     }
 }
 
