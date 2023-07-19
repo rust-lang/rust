@@ -86,6 +86,7 @@ mod skip_while_next;
 mod stable_sort_primitive;
 mod str_splitn;
 mod string_extend_chars;
+mod string_lit_chars_any;
 mod suspicious_command_arg_space;
 mod suspicious_map;
 mod suspicious_splitn;
@@ -115,7 +116,7 @@ use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::ty::{contains_ty_adt_constructor_opaque, implements_trait, is_copy, is_type_diagnostic_item};
-use clippy_utils::{contains_return, is_bool, is_trait_method, iter_input_pats, return_ty};
+use clippy_utils::{contains_return, is_bool, is_trait_method, iter_input_pats, peel_blocks, return_ty};
 use if_chain::if_chain;
 use rustc_hir as hir;
 use rustc_hir::{Expr, ExprKind, Node, Stmt, StmtKind, TraitItem, TraitItemKind};
@@ -3381,6 +3382,34 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Checks for `<string_lit>.chars().any(|i| i == c)`.
+    ///
+    /// ### Why is this bad?
+    /// It's significantly slower than using a pattern instead, like
+    /// `matches!(c, '\\' | '.' | '+')`.
+    ///
+    /// Despite this being faster, this is not `perf` as this is pretty common, and is a rather nice
+    /// way to check if a `char` is any in a set. In any case, this `restriction` lint is available
+    /// for situations where that additional performance is absolutely necessary.
+    ///
+    /// ### Example
+    /// ```rust
+    /// # let c = 'c';
+    /// "\\.+*?()|[]{}^$#&-~".chars().any(|x| x == c);
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// # let c = 'c';
+    /// matches!(c, '\\' | '.' | '+' | '*' | '(' | ')' | '|' | '[' | ']' | '{' | '}' | '^' | '$' | '#' | '&' | '-' | '~');
+    /// ```
+    #[clippy::version = "1.72.0"]
+    pub STRING_LIT_CHARS_ANY,
+    restriction,
+    "checks for `<string_lit>.chars().any(|i| i == c)`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     /// Checks for usage of `.map(|_| format!(..)).collect::<String>()`.
     ///
     /// ### Why is this bad?
@@ -3549,6 +3578,7 @@ impl_lint_pass!(Methods => [
     DRAIN_COLLECT,
     MANUAL_TRY_FOLD,
     FORMAT_COLLECT,
+    STRING_LIT_CHARS_ANY,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -3923,6 +3953,13 @@ impl Methods {
                         }
                     }
                 },
+                ("any", [arg]) if let ExprKind::Closure(arg) = arg.kind
+                    && let body = cx.tcx.hir().body(arg.body)
+                    && let [param] = body.params
+                    && let Some(("chars", recv, _, _, _)) = method_call(recv) =>
+                {
+                    string_lit_chars_any::check(cx, expr, recv, param, peel_blocks(body.value), &self.msrv);
+                }
                 ("nth", [n_arg]) => match method_call(recv) {
                     Some(("bytes", recv2, [], _, _)) => bytes_nth::check(cx, expr, recv2, n_arg),
                     Some(("cloned", recv2, [], _, _)) => iter_overeager_cloned::check(cx, expr, recv, recv2, false, false),
