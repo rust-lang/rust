@@ -10,14 +10,14 @@ pub(super) fn highlight_escape_string<T: IsString>(
     start: TextSize,
 ) {
     string.escaped_char_ranges(&mut |piece_range, char| {
-        if char.is_err() {
-            return;
-        }
-
         if string.text()[piece_range.start().into()..].starts_with('\\') {
+            let highlight = match char {
+                Ok(_) => HlTag::EscapeSequence,
+                Err(_) => HlTag::InvalidEscapeSequence,
+            };
             stack.add(HlRange {
                 range: piece_range + start,
-                highlight: HlTag::EscapeSequence.into(),
+                highlight: highlight.into(),
                 binding_hash: None,
             });
         }

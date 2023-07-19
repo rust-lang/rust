@@ -1801,11 +1801,15 @@
             },
             {
                 "id": "escapeSequence",
-                "description": "Style for char escapes in strings"
+                "description": "Style for char or byte escapes in strings"
             },
             {
                 "id": "formatSpecifier",
                 "description": "Style for {} placeholders in format strings"
+            },
+            {
+                "id": "invalidEscapeSequence",
+                "description": "Style for invalid char or byte escapes in strings"
             },
             {
                 "id": "label",
