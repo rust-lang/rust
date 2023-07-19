@@ -274,6 +274,8 @@ def get_commands(template):
                 args = shlex.split(args)
             except UnicodeEncodeError:
                 args = [arg.decode('utf-8') for arg in shlex.split(args.encode('utf-8'))]
+            except Exception as exc:
+                raise Exception("line {}: {}".format(lineno + 1, exc)) from None
             yield Command(negated=negated, cmd=cmd, args=args, lineno=lineno+1, context=line)
 
 
