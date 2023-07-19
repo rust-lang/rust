@@ -1504,7 +1504,7 @@ fn autoderef_method_receiver(
     ty: Ty,
 ) -> Vec<(Canonical<Ty>, ReceiverAdjustments)> {
     let mut deref_chain: Vec<_> = Vec::new();
-    let mut autoderef = autoderef::Autoderef::new(table, ty, true);
+    let mut autoderef = autoderef::Autoderef::new(table, ty, false);
     while let Some((ty, derefs)) = autoderef.next() {
         deref_chain.push((
             autoderef.table.canonicalize(ty).value,
