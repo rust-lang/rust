@@ -479,15 +479,15 @@ pub fn create_compressed_metadata_file(
     metadata: &EncodedMetadata,
     symbol_name: &str,
 ) -> Vec<u8> {
-    let mut compressed = rustc_metadata::METADATA_HEADER.to_vec();
-    compressed.write_all(&(metadata.raw_data().len() as u32).to_be_bytes()).unwrap();
-    compressed.extend(metadata.raw_data());
+    let mut packed_metadata = rustc_metadata::METADATA_HEADER.to_vec();
+    packed_metadata.write_all(&(metadata.raw_data().len() as u32).to_be_bytes()).unwrap();
+    packed_metadata.extend(metadata.raw_data());
 
     let Some(mut file) = create_object_file(sess) else {
-        return compressed.to_vec();
+        return packed_metadata.to_vec();
     };
     if file.format() == BinaryFormat::Xcoff {
-        return create_compressed_metadata_file_for_xcoff(file, &compressed, symbol_name);
+        return create_compressed_metadata_file_for_xcoff(file, &packed_metadata, symbol_name);
     }
     let section = file.add_section(
         file.segment_name(StandardSegment::Data).to_vec(),
@@ -501,14 +501,14 @@ pub fn create_compressed_metadata_file(
         }
         _ => {}
     };
-    let offset = file.append_section_data(section, &compressed, 1);
+    let offset = file.append_section_data(section, &packed_metadata, 1);
 
     // For MachO and probably PE this is necessary to prevent the linker from throwing away the
     // .rustc section. For ELF this isn't necessary, but it also doesn't harm.
     file.add_symbol(Symbol {
         name: symbol_name.as_bytes().to_vec(),
         value: offset,
-        size: compressed.len() as u64,
+        size: packed_metadata.len() as u64,
         kind: SymbolKind::Data,
         scope: SymbolScope::Dynamic,
         weak: false,

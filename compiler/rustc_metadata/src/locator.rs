@@ -511,7 +511,7 @@ impl<'a> CrateLocator<'a> {
             rlib: self.extract_one(rlibs, CrateFlavor::Rlib, &mut slot)?,
             dylib: self.extract_one(dylibs, CrateFlavor::Dylib, &mut slot)?,
         };
-        Ok(slot.map(|(_, svh, metadata)| (svh, Library { source, metadata })))
+        Ok(slot.map(|(svh, metadata, _)| (svh, Library { source, metadata })))
     }
 
     fn needs_crate_flavor(&self, flavor: CrateFlavor) -> bool {
@@ -535,11 +535,13 @@ impl<'a> CrateLocator<'a> {
     // read the metadata from it if `*slot` is `None`. If the metadata couldn't
     // be read, it is assumed that the file isn't a valid rust library (no
     // errors are emitted).
+    //
+    // The `PathBuf` in `slot` will only be used for diagnostic purposes.
     fn extract_one(
         &mut self,
         m: FxHashMap<PathBuf, PathKind>,
         flavor: CrateFlavor,
-        slot: &mut Option<(PathBuf, Svh, MetadataBlob)>,
+        slot: &mut Option<(Svh, MetadataBlob, PathBuf)>,
     ) -> Result<Option<(PathBuf, PathKind)>, CrateError> {
         // If we are producing an rlib, and we've already loaded metadata, then
         // we should not attempt to discover further crate sources (unless we're
@@ -595,7 +597,7 @@ impl<'a> CrateLocator<'a> {
                     }
                 };
             // If we see multiple hashes, emit an error about duplicate candidates.
-            if slot.as_ref().is_some_and(|s| s.1 != hash) {
+            if slot.as_ref().is_some_and(|s| s.0 != hash) {
                 if let Some(candidates) = err_data {
                     return Err(CrateError::MultipleCandidates(
                         self.crate_name,
@@ -603,7 +605,7 @@ impl<'a> CrateLocator<'a> {
                         candidates,
                     ));
                 }
-                err_data = Some(vec![slot.take().unwrap().0]);
+                err_data = Some(vec![slot.take().unwrap().2]);
             }
             if let Some(candidates) = &mut err_data {
                 candidates.push(lib);
@@ -636,7 +638,7 @@ impl<'a> CrateLocator<'a> {
                     continue;
                 }
             }
-            *slot = Some((lib.clone(), hash, metadata));
+            *slot = Some((hash, metadata, lib.clone()));
             ret = Some((lib, kind));
         }
 
