@@ -28,6 +28,9 @@ use std::iter;
 
 use crate::{match_def_path, path_res, paths};
 
+mod type_certainty;
+pub use type_certainty::expr_type_is_certain;
+
 /// Checks if the given type implements copy.
 pub fn is_copy<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
     ty.is_copy_modulo_regions(cx.tcx, cx.param_env)
