@@ -1,4 +1,5 @@
-error: Dlltool could not create import library: 
+error: Dlltool could not create import library with $DLLTOOL -d $DEF_FILE -D foo.dll -l $LIB_FILE $TARGET_MACHINE $ASM_FLAGS --no-leading-underscore $TEMP_PREFIX:
+       
        $DLLTOOL: Syntax error in def file $DEF_FILE:1
 
 error: aborting due to previous error
