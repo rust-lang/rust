@@ -261,7 +261,7 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 InlineAsmArch::M68k => {
                     constraints.push("~{ccr}".to_string());
                 }
-                InlineAsmArch::CSKY => {} // https://github.com/llvm/llvm-project/blob/8b76aea8d8b1b71f6220bc2845abc749f18a19b7/clang/lib/Basic/Targets/CSKY.h getClobers()
+                InlineAsmArch::CSKY => {}
             }
         }
         if !options.contains(InlineAsmOptions::NOMEM) {

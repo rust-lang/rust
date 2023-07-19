@@ -390,6 +390,22 @@ impl Step for Llvm {
             ldflags.shared.push(" -latomic");
         }
 
+        if target.starts_with("csky")
+            && !target.contains("freebsd")
+            && !target.contains("openbsd")
+            && !target.contains("netbsd")
+        {
+            // CSKY GCC erroneously requires linking against
+            // `libatomic` when using 1-byte and 2-byte C++
+            // atomics but the LLVM build system check cannot
+            // detect this. Therefore it is set manually here.
+            // Some BSD uses Clang as its system compiler and
+            // provides no libatomic in its base system so does
+            // not want this.
+            ldflags.exe.push(" -latomic");
+            ldflags.shared.push(" -latomic");
+        }
+
         if target.contains("msvc") {
             cfg.define("LLVM_USE_CRT_DEBUG", "MT");
             cfg.define("LLVM_USE_CRT_RELEASE", "MT");

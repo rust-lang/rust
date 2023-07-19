@@ -36,8 +36,8 @@ impl CSKYInlineAsmRegClass {
         _arch: InlineAsmArch,
     ) -> &'static [(InlineAsmType, Option<Symbol>)] {
         match self {
-            Self::reg => types! { _: I8, I16, I32, I64, F32, F64; },
-            Self::freg => types! { _: F32, F64; },
+            Self::reg => types! { _: I8, I16, I32; },
+            Self::freg => types! { _: F32; },
         }
     }
 }
@@ -52,31 +52,21 @@ def_regs! {
         r4: reg = ["r4","l0"],
         r5: reg = ["r5","l1"],
         r6: reg = ["r6","l2"],
-        // r7: reg = ["r7","l3"],
-        // r8: reg = ["r8","l4"],
-        // r9: reg = ["r9","l5"],
-        // r10: reg = ["r10","l6"],
-        // r11: reg = ["r11","l7"],
-        // r12: reg = ["r12","t0"],
-        // r13: reg = ["r13","t1"],
-        // r14: reg = ["r14","sp"],
-        // r15: reg = ["r15","lr"],
-        // r16: reg = ["r16","l8"],
-        // r17: reg = ["r17","l9"],
-        // r18: reg = ["r18","t2"],
-        // r19: reg = ["r19","t3"],
-        // r20: reg = ["r20","t4"],
-        // r21: reg = ["r21","t5"],
-        // r22: reg = ["r22","t6"],
-        // r23: reg = ["r23","t7", "fp"],
-        // r24: reg = ["r24","t8", "sop"],
-        // r25: reg = ["r25","tp", "bsp"],
-        // r26: reg = ["r26"],
-        // r27: reg = ["r27"],
-        // r28: reg = ["r28","gb", "rgb", "rdb"],
-        // r29: reg = ["r29","tb", "rtb"],
-        // r30: reg = ["r30","svbr"],
-        // r31: reg = ["r31","tls"],
+        r9: reg = ["r9","l5"],// feature e2
+        r10: reg = ["r10","l6"],// feature e2
+        r11: reg = ["r11","l7"],// feature e2
+        r12: reg = ["r12","t0"],// feature e2
+        r13: reg = ["r13","t1"],// feature e2
+        r16: reg = ["r16","l8"],// feature high-register
+        r17: reg = ["r17","l9"],// feature high-register
+        r18: reg = ["r18","t2"],// feature high-register
+        r19: reg = ["r19","t3"],// feature high-register
+        r20: reg = ["r20","t4"],// feature high-register
+        r21: reg = ["r21","t5"],// feature high-register
+        r22: reg = ["r22","t6"],// feature high-register
+        r23: reg = ["r23","t7", "fp"],// feature high-register
+        r24: reg = ["r24","t8", "sop"],// feature high-register
+        r25: reg = ["r25","t9","tp", "bsp"],// feature high-register
         f0: freg = ["fr0","vr0"],
         f1: freg = ["fr1","vr1"],
         f2: freg = ["fr2","vr2"],
@@ -121,10 +111,6 @@ def_regs! {
             "reserver for tls",
         #error = ["r28", "gb", "rgb", "rdb"] =>
             "the global pointer cannot be used as an operand for inline asm",
-        #error = ["r9","l5", "r10","l6", "r11","l7", "r12","t0", "r13","t1"] =>
-            "reserved (no E2)",
-        #error = ["r16","l8", "r17","l9", "r18","t2", "r19","t3", "r20","t4", "r21","t5", "r22","t6", "r23","t7", "fp", "r24","t8", "sop", "r25","tp", "bsp"] =>
-            "reserved (no HighRegisters)",
         #error = ["r26","r27","r29","tb", "rtb", "r30","svbr"] =>
             "reserved by the ABI",
     }
