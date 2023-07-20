@@ -290,6 +290,7 @@ impl TargetDataLayout {
                         16 => dl.i16_align = a,
                         32 => dl.i32_align = a,
                         64 => dl.i64_align = a,
+                        128 => dl.i128_align = a,
                         _ => {}
                     }
                     if bits >= i128_align_src && bits <= 128 {

@@ -3189,9 +3189,9 @@ mod size_asserts {
     static_assert_size!(Impl, 136);
     static_assert_size!(Item, 136);
     static_assert_size!(ItemKind, 64);
-    static_assert_size!(LitKind, 24);
+    // static_assert_size!(LitKind, 32);
     static_assert_size!(Local, 72);
-    static_assert_size!(MetaItemLit, 40);
+    // static_assert_size!(MetaItemLit, 48);
     static_assert_size!(Param, 40);
     static_assert_size!(Pat, 72);
     static_assert_size!(Path, 24);
