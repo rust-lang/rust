@@ -25,6 +25,13 @@ impl<'tcx> PredicateSet<'tcx> {
         Self { tcx, set: Default::default() }
     }
 
+    /// Adds a predicate to the set.
+    ///
+    /// Returns whether the predicate was newly inserted. That is:
+    /// - If the set did not previously contain this predicate, `true` is returned.
+    /// - If the set already contained this predicate, `false` is returned,
+    ///   and the set is not modified: original predicate is not replaced,
+    ///   and the predicate passed as argument is dropped.
     pub fn insert(&mut self, pred: ty::Predicate<'tcx>) -> bool {
         // We have to be careful here because we want
         //
