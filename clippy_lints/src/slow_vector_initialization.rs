@@ -2,7 +2,8 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{
-    get_enclosing_block, is_integer_literal, is_path_diagnostic_item, path_to_local, path_to_local_id, SpanlessEq,
+    get_enclosing_block, is_expr_path_def_path, is_integer_literal, is_path_diagnostic_item, path_to_local,
+    path_to_local_id, paths, SpanlessEq,
 };
 use if_chain::if_chain;
 use rustc_errors::Applicability;
@@ -60,7 +61,11 @@ struct VecAllocation<'tcx> {
 
     /// Reference to the expression used as argument on `with_capacity` call. This is used
     /// to only match slow zero-filling idioms of the same length than vector initialization.
-    len_expr: &'tcx Expr<'tcx>,
+    ///
+    /// Initially set to `None` if initialized with `Vec::new()`, but will always be `Some(_)` by
+    /// the time the visitor has looked through the enclosing block and found a slow
+    /// initialization, so it is safe to unwrap later at lint time.
+    size_expr: Option<&'tcx Expr<'tcx>>,
 }
 
 /// Type of slow initialization
@@ -77,18 +82,14 @@ impl<'tcx> LateLintPass<'tcx> for SlowVectorInit {
         // Matches initialization on reassignments. For example: `vec = Vec::with_capacity(100)`
         if_chain! {
             if let ExprKind::Assign(left, right, _) = expr.kind;
-
-            // Extract variable
             if let Some(local_id) = path_to_local(left);
-
-            // Extract len argument
-            if let Some(len_arg) = Self::is_vec_with_capacity(cx, right);
+            if let Some(size_expr) = Self::as_vec_initializer(cx, right);
 
             then {
                 let vi = VecAllocation {
                     local_id,
                     allocation_expr: right,
-                    len_expr: len_arg,
+                    size_expr,
                 };
 
                 Self::search_initialization(cx, vi, expr.hir_id);
@@ -98,17 +99,18 @@ impl<'tcx> LateLintPass<'tcx> for SlowVectorInit {
 
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
         // Matches statements which initializes vectors. For example: `let mut vec = Vec::with_capacity(10)`
+        // or `Vec::new()`
         if_chain! {
             if let StmtKind::Local(local) = stmt.kind;
             if let PatKind::Binding(BindingAnnotation::MUT, local_id, _, None) = local.pat.kind;
             if let Some(init) = local.init;
-            if let Some(len_arg) = Self::is_vec_with_capacity(cx, init);
+            if let Some(size_expr) = Self::as_vec_initializer(cx, init);
 
             then {
                 let vi = VecAllocation {
                     local_id,
                     allocation_expr: init,
-                    len_expr: len_arg,
+                    size_expr,
                 };
 
                 Self::search_initialization(cx, vi, stmt.hir_id);
@@ -118,6 +120,25 @@ impl<'tcx> LateLintPass<'tcx> for SlowVectorInit {
 }
 
 impl SlowVectorInit {
+    /// Given an expression, returns:
+    /// - `Some(Some(size))` if it is a function call to `Vec::with_capacity(size)`
+    /// - `Some(None)` if it is a call to `Vec::new()`
+    /// - `None` if it is neither
+    #[allow(
+        clippy::option_option,
+        reason = "outer option is immediately removed at call site and the inner option is kept around, \
+            so extracting into a dedicated enum seems unnecessarily complicated"
+    )]
+    fn as_vec_initializer<'tcx>(cx: &LateContext<'_>, expr: &'tcx Expr<'tcx>) -> Option<Option<&'tcx Expr<'tcx>>> {
+        if let Some(len_expr) = Self::is_vec_with_capacity(cx, expr) {
+            Some(Some(len_expr))
+        } else if Self::is_vec_new(cx, expr) {
+            Some(None)
+        } else {
+            None
+        }
+    }
+
     /// Checks if the given expression is `Vec::with_capacity(..)`. It will return the expression
     /// of the first argument of `with_capacity` call if it matches or `None` if it does not.
     fn is_vec_with_capacity<'tcx>(cx: &LateContext<'_>, expr: &Expr<'tcx>) -> Option<&'tcx Expr<'tcx>> {
@@ -132,6 +153,14 @@ impl SlowVectorInit {
                 None
             }
         }
+    }
+
+    /// Checks if the given expression is `Vec::new()`
+    fn is_vec_new(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+        matches!(
+            expr.kind,
+            ExprKind::Call(func, _) if is_expr_path_def_path(cx, func, &paths::VEC_NEW)
+        )
     }
 
     /// Search initialization for the given vector
@@ -169,12 +198,18 @@ impl SlowVectorInit {
     }
 
     fn emit_lint(cx: &LateContext<'_>, slow_fill: &Expr<'_>, vec_alloc: &VecAllocation<'_>, msg: &str) {
-        let len_expr = Sugg::hir(cx, vec_alloc.len_expr, "len");
+        let len_expr = Sugg::hir(
+            cx,
+            vec_alloc
+                .size_expr
+                .expect("length expression must be set by this point"),
+            "len",
+        );
 
         span_lint_and_then(cx, SLOW_VECTOR_INITIALIZATION, slow_fill.span, msg, |diag| {
             diag.span_suggestion(
                 vec_alloc.allocation_expr.span,
-                "consider replace allocation with",
+                "consider replacing this with",
                 format!("vec![0; {len_expr}]"),
                 Applicability::Unspecified,
             );
@@ -214,36 +249,45 @@ impl<'a, 'tcx> VectorInitializationVisitor<'a, 'tcx> {
     }
 
     /// Checks if the given expression is resizing a vector with 0
-    fn search_slow_resize_filling(&mut self, expr: &'tcx Expr<'_>) {
+    fn search_slow_resize_filling(&mut self, expr: &'tcx Expr<'tcx>) {
         if self.initialization_found
             && let ExprKind::MethodCall(path, self_arg, [len_arg, fill_arg], _) = expr.kind
             && path_to_local_id(self_arg, self.vec_alloc.local_id)
             && path.ident.name == sym!(resize)
             // Check that is filled with 0
-            && is_integer_literal(fill_arg, 0) {
-                // Check that len expression is equals to `with_capacity` expression
-                if SpanlessEq::new(self.cx).eq_expr(len_arg, self.vec_alloc.len_expr) {
-                    self.slow_expression = Some(InitializationType::Resize(expr));
-                } else if let ExprKind::MethodCall(path, ..) = len_arg.kind && path.ident.as_str() == "capacity" {
-                    self.slow_expression = Some(InitializationType::Resize(expr));
-                }
+            && is_integer_literal(fill_arg, 0)
+        {
+            let is_matching_resize = if let Some(size_expr) = self.vec_alloc.size_expr {
+                // If we have a size expression, check that it is equal to what's passed to `resize`
+                SpanlessEq::new(self.cx).eq_expr(len_arg, size_expr)
+                    || matches!(len_arg.kind, ExprKind::MethodCall(path, ..) if path.ident.as_str() == "capacity")
+            } else {
+                self.vec_alloc.size_expr = Some(len_arg);
+                true
+            };
+
+            if is_matching_resize {
+                self.slow_expression = Some(InitializationType::Resize(expr));
             }
+        }
     }
 
     /// Returns `true` if give expression is `repeat(0).take(...)`
-    fn is_repeat_take(&self, expr: &Expr<'_>) -> bool {
+    fn is_repeat_take(&mut self, expr: &'tcx Expr<'tcx>) -> bool {
         if_chain! {
             if let ExprKind::MethodCall(take_path, recv, [len_arg, ..], _) = expr.kind;
             if take_path.ident.name == sym!(take);
             // Check that take is applied to `repeat(0)`
             if self.is_repeat_zero(recv);
             then {
-                // Check that len expression is equals to `with_capacity` expression
-                if SpanlessEq::new(self.cx).eq_expr(len_arg, self.vec_alloc.len_expr) {
-                    return true;
-                } else if let ExprKind::MethodCall(path, ..) = len_arg.kind && path.ident.as_str() == "capacity" {
-                    return true;
+                if let Some(size_expr) = self.vec_alloc.size_expr {
+                    // Check that len expression is equals to `with_capacity` expression
+                    return SpanlessEq::new(self.cx).eq_expr(len_arg, size_expr)
+                        || matches!(len_arg.kind, ExprKind::MethodCall(path, ..) if path.ident.as_str() == "capacity")
                 }
+
+                self.vec_alloc.size_expr = Some(len_arg);
+                return true;
             }
         }
 

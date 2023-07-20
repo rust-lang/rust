@@ -1,5 +1,9 @@
 #![warn(clippy::read_zero_byte_vec)]
-#![allow(clippy::unused_io_amount, clippy::needless_pass_by_ref_mut)]
+#![allow(
+    clippy::unused_io_amount,
+    clippy::needless_pass_by_ref_mut,
+    clippy::slow_vector_initialization
+)]
 use std::fs::File;
 use std::io;
 use std::io::prelude::*;
