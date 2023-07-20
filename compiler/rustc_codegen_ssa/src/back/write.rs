@@ -997,7 +997,7 @@ struct Diagnostic {
 }
 
 #[derive(PartialEq, Clone, Copy, Debug)]
-enum MainThreadWorkerState {
+enum MainThreadState {
     /// Doing nothing.
     Idle,
 
@@ -1300,13 +1300,13 @@ fn start_executing_work<B: ExtraBackendMethods>(
         // the implicit Token the compiler process owns no matter what.
         let mut tokens = Vec::new();
 
-        let mut main_thread_worker_state = MainThreadWorkerState::Idle;
+        let mut main_thread_state = MainThreadState::Idle;
 
         // How many LLVM worker threads are running while holding a Token. This
         // *excludes* the LLVM worker thread that the main thread is lending a
         // Token to (when the main thread is in the `Lending` state).
         // In other words, the number of LLVM threads is actually equal to
-        // `running + if main_thread_worker_state == Lending { 1 } else { 0 }`.
+        // `running + if main_thread_state == Lending { 1 } else { 0 }`.
         let mut running_with_own_token = 0;
 
         let prof = &cgcx.prof;
@@ -1319,19 +1319,19 @@ fn start_executing_work<B: ExtraBackendMethods>(
         // work to be done.
         while codegen_state == Ongoing
             || running_with_own_token > 0
-            || main_thread_worker_state == MainThreadWorkerState::Lending
+            || main_thread_state == MainThreadState::Lending
             || (codegen_state == Completed
                 && !(work_items.is_empty()
                     && needs_fat_lto.is_empty()
                     && needs_thin_lto.is_empty()
                     && lto_import_only_modules.is_empty()
-                    && main_thread_worker_state == MainThreadWorkerState::Idle))
+                    && main_thread_state == MainThreadState::Idle))
         {
             // While there are still CGUs to be codegened, the coordinator has
             // to decide how to utilize the compiler processes implicit Token:
             // For codegenning more CGU or for running them through LLVM.
             if codegen_state == Ongoing {
-                if main_thread_worker_state == MainThreadWorkerState::Idle {
+                if main_thread_state == MainThreadState::Idle {
                     // Compute the number of workers that will be running once we've taken as many
                     // items from the work queue as we can, plus one for the main thread. It's not
                     // critically important that we use this instead of just
@@ -1348,7 +1348,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
                         if codegen_worker_send.send(CguMessage).is_err() {
                             panic!("Could not send CguMessage to main thread")
                         }
-                        main_thread_worker_state = MainThreadWorkerState::Codegenning;
+                        main_thread_state = MainThreadState::Codegenning;
                     } else {
                         // The queue is full enough to not let the worker
                         // threads starve. Use the implicit Token to do some
@@ -1364,7 +1364,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
                             cgcx.config(item.module_kind()),
                             &mut llvm_start_time,
                         );
-                        main_thread_worker_state = MainThreadWorkerState::Lending;
+                        main_thread_state = MainThreadState::Lending;
                         spawn_work(cgcx, item);
                     }
                 }
@@ -1376,7 +1376,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
                 // queue to do LTO
                 if work_items.is_empty()
                     && running_with_own_token == 0
-                    && main_thread_worker_state == MainThreadWorkerState::Idle
+                    && main_thread_state == MainThreadState::Idle
                 {
                     assert!(!started_lto);
                     started_lto = true;
@@ -1401,8 +1401,8 @@ fn start_executing_work<B: ExtraBackendMethods>(
                 // In this branch, we know that everything has been codegened,
                 // so it's just a matter of determining whether the implicit
                 // Token is free to use for LLVM work.
-                match main_thread_worker_state {
-                    MainThreadWorkerState::Idle => {
+                match main_thread_state {
+                    MainThreadState::Idle => {
                         if let Some((item, _)) = work_items.pop() {
                             let cgcx = CodegenContext {
                                 worker: get_worker_id(&mut free_worker_ids),
@@ -1413,7 +1413,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
                                 cgcx.config(item.module_kind()),
                                 &mut llvm_start_time,
                             );
-                            main_thread_worker_state = MainThreadWorkerState::Lending;
+                            main_thread_state = MainThreadState::Lending;
                             spawn_work(cgcx, item);
                         } else {
                             // There is no unstarted work, so let the main thread
@@ -1424,14 +1424,14 @@ fn start_executing_work<B: ExtraBackendMethods>(
                             // giving the Token back.
                             debug_assert!(running_with_own_token > 0);
                             running_with_own_token -= 1;
-                            main_thread_worker_state = MainThreadWorkerState::Lending;
+                            main_thread_state = MainThreadState::Lending;
                         }
                     }
-                    MainThreadWorkerState::Codegenning => bug!(
+                    MainThreadState::Codegenning => bug!(
                         "codegen worker should not be codegenning after \
                               codegen was already completed"
                     ),
-                    MainThreadWorkerState::Lending => {
+                    MainThreadState::Lending => {
                         // Already making good use of that token
                     }
                 }
@@ -1467,8 +1467,8 @@ fn start_executing_work<B: ExtraBackendMethods>(
             // We may also not actually drop a token here if the worker was
             // running with an "ephemeral token".
             let mut free_worker = |worker_id| {
-                if main_thread_worker_state == MainThreadWorkerState::Lending {
-                    main_thread_worker_state = MainThreadWorkerState::Idle;
+                if main_thread_state == MainThreadState::Lending {
+                    main_thread_state = MainThreadState::Idle;
                 } else {
                     running_with_own_token -= 1;
                 }
@@ -1486,12 +1486,12 @@ fn start_executing_work<B: ExtraBackendMethods>(
                         Ok(token) => {
                             tokens.push(token);
 
-                            if main_thread_worker_state == MainThreadWorkerState::Lending {
+                            if main_thread_state == MainThreadState::Lending {
                                 // If the main thread token is used for LLVM work
                                 // at the moment, we turn that thread into a regular
                                 // LLVM worker thread, so the main thread is free
                                 // to react to codegen demand.
-                                main_thread_worker_state = MainThreadWorkerState::Idle;
+                                main_thread_state = MainThreadState::Idle;
                                 running_with_own_token += 1;
                             }
                         }
@@ -1521,16 +1521,16 @@ fn start_executing_work<B: ExtraBackendMethods>(
                     if !cgcx.opts.unstable_opts.no_parallel_llvm {
                         helper.request_token();
                     }
-                    assert_eq!(main_thread_worker_state, MainThreadWorkerState::Codegenning);
-                    main_thread_worker_state = MainThreadWorkerState::Idle;
+                    assert_eq!(main_thread_state, MainThreadState::Codegenning);
+                    main_thread_state = MainThreadState::Idle;
                 }
 
                 Message::CodegenComplete => {
                     if codegen_state != Aborted {
                         codegen_state = Completed;
                     }
-                    assert_eq!(main_thread_worker_state, MainThreadWorkerState::Codegenning);
-                    main_thread_worker_state = MainThreadWorkerState::Idle;
+                    assert_eq!(main_thread_state, MainThreadState::Codegenning);
+                    main_thread_state = MainThreadState::Idle;
                 }
 
                 // If codegen is aborted that means translation was aborted due
@@ -1590,9 +1590,9 @@ fn start_executing_work<B: ExtraBackendMethods>(
                 Message::AddImportOnlyModule { module_data, work_product } => {
                     assert!(!started_lto);
                     assert_eq!(codegen_state, Ongoing);
-                    assert_eq!(main_thread_worker_state, MainThreadWorkerState::Codegenning);
+                    assert_eq!(main_thread_state, MainThreadState::Codegenning);
                     lto_import_only_modules.push((module_data, work_product));
-                    main_thread_worker_state = MainThreadWorkerState::Idle;
+                    main_thread_state = MainThreadState::Idle;
                 }
             }
         }
