@@ -13,6 +13,7 @@ use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::{ArgAbiMethods, BaseTypeMethods, BuilderMethods, ConstMethods, IntrinsicCallMethods};
 #[cfg(feature="master")]
 use rustc_codegen_ssa::traits::{DerivedTypeMethods, MiscMethods};
+use rustc_codegen_ssa::errors::InvalidMonomorphization;
 use rustc_middle::bug;
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_middle::ty::layout::LayoutOf;
@@ -31,7 +32,6 @@ use crate::abi::FnAbiGccExt;
 use crate::builder::Builder;
 use crate::common::{SignType, TypeReflection};
 use crate::context::CodegenCx;
-use crate::errors::InvalidMonomorphizationBasicInteger;
 use crate::type_of::LayoutGccExt;
 use crate::intrinsic::simd::generic_simd_intrinsic;
 
@@ -256,7 +256,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                                 _ => bug!(),
                             },
                             None => {
-                                tcx.sess.emit_err(InvalidMonomorphizationBasicInteger { span, name, ty });
+                                tcx.sess.emit_err(InvalidMonomorphization::BasicIntegerType { span, name, ty });
                                 return;
                             }
                         }
