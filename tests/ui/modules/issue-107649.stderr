@@ -11,7 +11,7 @@ help: consider annotating `Dummy` with `#[derive(Debug)]`
    --> $DIR/auxiliary/dummy_lib.rs:2:1
     |
 2   + #[derive(Debug)]
-3   | #[path = "auxiliary/dummy_lib.rs"]
+3   | pub struct Dummy;
     |
 
 error: aborting due to previous error

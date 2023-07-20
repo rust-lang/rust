@@ -2133,7 +2133,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 Where(
                     obligation
                         .predicate
-                        .rebind(sized_crit.arg_iter_copied(self.tcx(), args).collect()),
+                        .rebind(sized_crit.iter_instantiated_copied(self.tcx(), args).collect()),
                 )
             }
 

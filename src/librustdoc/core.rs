@@ -176,6 +176,7 @@ pub(crate) fn new_handler(
     rustc_errors::Handler::with_emitter_and_flags(
         emitter,
         unstable_opts.diagnostic_handler_flags(true),
+        None,
     )
 }
 
@@ -296,6 +297,7 @@ pub(crate) fn create_config(
         }),
         make_codegen_backend: None,
         registry: rustc_driver::diagnostics_registry(),
+        ice_file: None,
     }
 }
 

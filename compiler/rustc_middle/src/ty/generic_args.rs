@@ -610,8 +610,12 @@ impl<'tcx, 's, I: IntoIterator> EarlyBinder<I>
 where
     I::Item: TypeFoldable<TyCtxt<'tcx>>,
 {
-    pub fn arg_iter(self, tcx: TyCtxt<'tcx>, args: &'s [GenericArg<'tcx>]) -> ArgIter<'s, 'tcx, I> {
-        ArgIter { it: self.value.into_iter(), tcx, args }
+    pub fn iter_instantiated(
+        self,
+        tcx: TyCtxt<'tcx>,
+        args: &'s [GenericArg<'tcx>],
+    ) -> IterInstantiated<'s, 'tcx, I> {
+        IterInstantiated { it: self.value.into_iter(), tcx, args }
     }
 
     /// Similar to [`instantiate_identity`](EarlyBinder::instantiate_identity),
@@ -621,13 +625,13 @@ where
     }
 }
 
-pub struct ArgIter<'s, 'tcx, I: IntoIterator> {
+pub struct IterInstantiated<'s, 'tcx, I: IntoIterator> {
     it: I::IntoIter,
     tcx: TyCtxt<'tcx>,
     args: &'s [GenericArg<'tcx>],
 }
 
-impl<'tcx, I: IntoIterator> Iterator for ArgIter<'_, 'tcx, I>
+impl<'tcx, I: IntoIterator> Iterator for IterInstantiated<'_, 'tcx, I>
 where
     I::Item: TypeFoldable<TyCtxt<'tcx>>,
 {
@@ -642,7 +646,7 @@ where
     }
 }
 
-impl<'tcx, I: IntoIterator> DoubleEndedIterator for ArgIter<'_, 'tcx, I>
+impl<'tcx, I: IntoIterator> DoubleEndedIterator for IterInstantiated<'_, 'tcx, I>
 where
     I::IntoIter: DoubleEndedIterator,
     I::Item: TypeFoldable<TyCtxt<'tcx>>,
@@ -652,7 +656,7 @@ where
     }
 }
 
-impl<'tcx, I: IntoIterator> ExactSizeIterator for ArgIter<'_, 'tcx, I>
+impl<'tcx, I: IntoIterator> ExactSizeIterator for IterInstantiated<'_, 'tcx, I>
 where
     I::IntoIter: ExactSizeIterator,
     I::Item: TypeFoldable<TyCtxt<'tcx>>,
@@ -664,12 +668,12 @@ where
     I::Item: Deref,
     <I::Item as Deref>::Target: Copy + TypeFoldable<TyCtxt<'tcx>>,
 {
-    pub fn arg_iter_copied(
+    pub fn iter_instantiated_copied(
         self,
         tcx: TyCtxt<'tcx>,
         args: &'s [GenericArg<'tcx>],
-    ) -> ArgIterCopied<'s, 'tcx, I> {
-        ArgIterCopied { it: self.value.into_iter(), tcx, args }
+    ) -> IterInstantiatedCopied<'s, 'tcx, I> {
+        IterInstantiatedCopied { it: self.value.into_iter(), tcx, args }
     }
 
     /// Similar to [`instantiate_identity`](EarlyBinder::instantiate_identity),
@@ -681,13 +685,13 @@ where
     }
 }
 
-pub struct ArgIterCopied<'a, 'tcx, I: IntoIterator> {
+pub struct IterInstantiatedCopied<'a, 'tcx, I: IntoIterator> {
     it: I::IntoIter,
     tcx: TyCtxt<'tcx>,
     args: &'a [GenericArg<'tcx>],
 }
 
-impl<'tcx, I: IntoIterator> Iterator for ArgIterCopied<'_, 'tcx, I>
+impl<'tcx, I: IntoIterator> Iterator for IterInstantiatedCopied<'_, 'tcx, I>
 where
     I::Item: Deref,
     <I::Item as Deref>::Target: Copy + TypeFoldable<TyCtxt<'tcx>>,
@@ -703,7 +707,7 @@ where
     }
 }
 
-impl<'tcx, I: IntoIterator> DoubleEndedIterator for ArgIterCopied<'_, 'tcx, I>
+impl<'tcx, I: IntoIterator> DoubleEndedIterator for IterInstantiatedCopied<'_, 'tcx, I>
 where
     I::IntoIter: DoubleEndedIterator,
     I::Item: Deref,
@@ -716,7 +720,7 @@ where
     }
 }
 
-impl<'tcx, I: IntoIterator> ExactSizeIterator for ArgIterCopied<'_, 'tcx, I>
+impl<'tcx, I: IntoIterator> ExactSizeIterator for IterInstantiatedCopied<'_, 'tcx, I>
 where
     I::IntoIter: ExactSizeIterator,
     I::Item: Deref,

@@ -251,6 +251,7 @@ pub struct Config {
     pub input: Input,
     pub output_dir: Option<PathBuf>,
     pub output_file: Option<OutFileName>,
+    pub ice_file: Option<PathBuf>,
     pub file_loader: Option<Box<dyn FileLoader + Send + Sync>>,
     pub locale_resources: &'static [&'static str],
 
@@ -315,6 +316,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
                 config.lint_caps,
                 config.make_codegen_backend,
                 registry.clone(),
+                config.ice_file,
             );
 
             if let Some(parse_sess_created) = config.parse_sess_created {
@@ -346,7 +348,11 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
     )
 }
 
-pub fn try_print_query_stack(handler: &Handler, num_frames: Option<usize>) {
+pub fn try_print_query_stack(
+    handler: &Handler,
+    num_frames: Option<usize>,
+    file: Option<std::fs::File>,
+) {
     eprintln!("query stack during panic:");
 
     // Be careful relying on global state here: this code is called from
@@ -358,7 +364,8 @@ pub fn try_print_query_stack(handler: &Handler, num_frames: Option<usize>) {
                 QueryCtxt::new(icx.tcx),
                 icx.query,
                 handler,
-                num_frames
+                num_frames,
+                file,
             ))
         } else {
             0

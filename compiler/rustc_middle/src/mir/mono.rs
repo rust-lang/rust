@@ -56,6 +56,8 @@ impl<'tcx> MonoItem<'tcx> {
         }
     }
 
+    // Note: if you change how item size estimates work, you might need to
+    // change NON_INCR_MIN_CGU_SIZE as well.
     pub fn size_estimate(&self, tcx: TyCtxt<'tcx>) -> usize {
         match *self {
             MonoItem::Fn(instance) => {
@@ -248,8 +250,14 @@ pub struct CodegenUnit<'tcx> {
 /// Auxiliary info about a `MonoItem`.
 #[derive(Copy, Clone, PartialEq, Debug, HashStable)]
 pub struct MonoItemData {
+    /// A cached copy of the result of `MonoItem::instantiation_mode`, where
+    /// `GloballyShared` maps to `false` and `LocalCopy` maps to `true`.
+    pub inlined: bool,
+
     pub linkage: Linkage,
     pub visibility: Visibility,
+
+    /// A cached copy of the result of `MonoItem::size_estimate`.
     pub size_estimate: usize,
 }
 

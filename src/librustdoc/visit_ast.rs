@@ -35,6 +35,8 @@ pub(crate) struct Module<'hir> {
         (LocalDefId, Option<Symbol>),
         (&'hir hir::Item<'hir>, Option<Symbol>, Option<LocalDefId>),
     >,
+    /// Same as for `items`.
+    pub(crate) inlined_foreigns: FxIndexMap<(DefId, Option<Symbol>), (Res, LocalDefId)>,
     pub(crate) foreigns: Vec<(&'hir hir::ForeignItem<'hir>, Option<Symbol>)>,
 }
 
@@ -54,6 +56,7 @@ impl Module<'_> {
             import_id,
             mods: Vec::new(),
             items: FxIndexMap::default(),
+            inlined_foreigns: FxIndexMap::default(),
             foreigns: Vec::new(),
         }
     }
@@ -272,21 +275,30 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             return false;
         }
 
-        // For cross-crate impl inlining we need to know whether items are
-        // reachable in documentation -- a previously unreachable item can be
-        // made reachable by cross-crate inlining which we're checking here.
-        // (this is done here because we need to know this upfront).
-        if !ori_res_did.is_local() && !is_no_inline {
-            crate::visit_lib::lib_embargo_visit_item(self.cx, ori_res_did);
-            return false;
-        }
-
+        let is_hidden = !document_hidden && tcx.is_doc_hidden(ori_res_did);
         let Some(res_did) = ori_res_did.as_local() else {
-            return false;
+            // For cross-crate impl inlining we need to know whether items are
+            // reachable in documentation -- a previously unreachable item can be
+            // made reachable by cross-crate inlining which we're checking here.
+            // (this is done here because we need to know this upfront).
+            crate::visit_lib::lib_embargo_visit_item(self.cx, ori_res_did);
+            if is_hidden {
+                return false;
+            }
+            // We store inlined foreign items otherwise, it'd mean that the `use` item would be kept
+            // around. It's not a problem unless this `use` imports both a local AND a foreign item.
+            // If a local item is inlined, its `use` is not supposed to still be around in `clean`,
+            // which would make appear the `use` in the generated documentation like the local item
+            // was not inlined even though it actually was.
+            self.modules
+                .last_mut()
+                .unwrap()
+                .inlined_foreigns
+                .insert((ori_res_did, renamed), (res, def_id));
+            return true;
         };
 
         let is_private = !self.cx.cache.effective_visibilities.is_directly_public(tcx, ori_res_did);
-        let is_hidden = !document_hidden && tcx.is_doc_hidden(ori_res_did);
         let item = tcx.hir().get_by_def_id(res_did);
 
         if !please_inline {
@@ -314,7 +326,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             return false;
         }
 
-        let inlined = match tcx.hir().get_by_def_id(res_did) {
+        let inlined = match item {
             // Bang macros are handled a bit on their because of how they are handled by the
             // compiler. If they have `#[doc(hidden)]` and the re-export doesn't have
             // `#[doc(inline)]`, then we don't inline it.
@@ -346,7 +358,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         };
         self.view_item_stack.remove(&res_did);
         if inlined {
-            self.cx.cache.inlined_items.insert(res_did.to_def_id());
+            self.cx.cache.inlined_items.insert(ori_res_did);
         }
         inlined
     }
@@ -483,7 +495,6 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                             continue;
                         }
                     }
-
                     self.add_to_current_mod(item, renamed, import_id);
                 }
             }

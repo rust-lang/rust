@@ -1210,7 +1210,8 @@ impl<'a> Parser<'a> {
     fn parse_constness_(&mut self, case: Case, is_closure: bool) -> Const {
         // Avoid const blocks and const closures to be parsed as const items
         if (self.check_const_closure() == is_closure)
-            && self.look_ahead(1, |t| t != &token::OpenDelim(Delimiter::Brace))
+            && !self
+                .look_ahead(1, |t| *t == token::OpenDelim(Delimiter::Brace) || t.is_whole_block())
             && self.eat_keyword_case(kw::Const, case)
         {
             Const::Yes(self.prev_token.uninterpolated_span())

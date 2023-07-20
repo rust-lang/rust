@@ -177,7 +177,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     expected_ty,
                     self.tcx
                         .explicit_item_bounds(def_id)
-                        .arg_iter_copied(self.tcx, args)
+                        .iter_instantiated_copied(self.tcx, args)
                         .map(|(c, s)| (c.as_predicate(), s)),
                 ),
             ty::Dynamic(ref object_type, ..) => {
@@ -720,13 +720,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => self
                 .tcx
                 .explicit_item_bounds(def_id)
-                .arg_iter_copied(self.tcx, args)
+                .iter_instantiated_copied(self.tcx, args)
                 .find_map(|(p, s)| get_future_output(p.as_predicate(), s))?,
             ty::Error(_) => return None,
             ty::Alias(ty::Projection, proj) if self.tcx.is_impl_trait_in_trait(proj.def_id) => self
                 .tcx
                 .explicit_item_bounds(proj.def_id)
-                .arg_iter_copied(self.tcx, proj.args)
+                .iter_instantiated_copied(self.tcx, proj.args)
                 .find_map(|(p, s)| get_future_output(p.as_predicate(), s))?,
             _ => span_bug!(
                 self.tcx.def_span(expr_def_id),

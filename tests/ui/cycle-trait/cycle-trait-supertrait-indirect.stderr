@@ -15,6 +15,7 @@ note: cycle used when computing the super predicates of `A`
    |
 LL | trait A: B {
    |          ^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error: aborting due to previous error
 

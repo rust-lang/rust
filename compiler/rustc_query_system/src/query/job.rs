@@ -13,6 +13,7 @@ use rustc_session::Session;
 use rustc_span::Span;
 
 use std::hash::Hash;
+use std::io::Write;
 use std::num::NonZeroU64;
 
 #[cfg(parallel_compiler)]
@@ -607,6 +608,7 @@ pub(crate) fn report_cycle<'a, D: DepKind>(
         alias,
         cycle_usage: cycle_usage,
         stack_count,
+        note_span: (),
     };
 
     cycle_diag.into_diagnostic(&sess.parse_sess.span_diagnostic)
@@ -617,30 +619,50 @@ pub fn print_query_stack<Qcx: QueryContext>(
     mut current_query: Option<QueryJobId>,
     handler: &Handler,
     num_frames: Option<usize>,
+    mut file: Option<std::fs::File>,
 ) -> usize {
     // Be careful relying on global state here: this code is called from
     // a panic hook, which means that the global `Handler` may be in a weird
     // state if it was responsible for triggering the panic.
-    let mut i = 0;
+    let mut count_printed = 0;
+    let mut count_total = 0;
     let query_map = qcx.try_collect_active_jobs();
 
+    if let Some(ref mut file) = file {
+        let _ = writeln!(file, "\n\nquery stack during panic:");
+    }
     while let Some(query) = current_query {
-        if Some(i) == num_frames {
-            break;
-        }
         let Some(query_info) = query_map.as_ref().and_then(|map| map.get(&query)) else {
             break;
         };
-        let mut diag = Diagnostic::new(
-            Level::FailureNote,
-            format!("#{} [{:?}] {}", i, query_info.query.dep_kind, query_info.query.description),
-        );
-        diag.span = query_info.job.span.into();
-        handler.force_print_diagnostic(diag);
+        if Some(count_printed) < num_frames || num_frames.is_none() {
+            // Only print to stderr as many stack frames as `num_frames` when present.
+            let mut diag = Diagnostic::new(
+                Level::FailureNote,
+                format!(
+                    "#{} [{:?}] {}",
+                    count_printed, query_info.query.dep_kind, query_info.query.description
+                ),
+            );
+            diag.span = query_info.job.span.into();
+            handler.force_print_diagnostic(diag);
+            count_printed += 1;
+        }
+
+        if let Some(ref mut file) = file {
+            let _ = writeln!(
+                file,
+                "#{} [{:?}] {}",
+                count_total, query_info.query.dep_kind, query_info.query.description
+            );
+        }
 
         current_query = query_info.job.parent;
-        i += 1;
+        count_total += 1;
     }
 
-    i
+    if let Some(ref mut file) = file {
+        let _ = writeln!(file, "end of query stack");
+    }
+    count_printed
 }

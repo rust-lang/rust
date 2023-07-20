@@ -1,0 +1,12 @@
+error: invalid format string: expected `'}'` but string was terminated
+  --> $DIR/closing-brace-as-fill.rs:6:35
+   |
+LL |     println!("Hello, world! {0:}<3", 2);
+   |                                -  ^ expected `'}'` in format string
+   |                                |
+   |                                this is not interpreted as a formatting closing brace
+   |
+   = note: the character `'}'` is interpreted as a fill character because of the `:` that precedes it
+
+error: aborting due to previous error
+

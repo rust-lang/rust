@@ -19,7 +19,7 @@ use rustc_index::bit_set::GrowableBitSet;
 use rustc_macros::HashStable;
 use rustc_session::Limit;
 use rustc_span::sym;
-use rustc_target::abi::{Integer, IntegerType, Size, TargetDataLayout};
+use rustc_target::abi::{Integer, IntegerType, Size};
 use rustc_target::spec::abi::Abi;
 use smallvec::SmallVec;
 use std::{fmt, iter};
@@ -1085,7 +1085,7 @@ impl<'tcx> Ty<'tcx> {
     #[inline]
     pub fn needs_drop(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
         // Avoid querying in simple cases.
-        match needs_drop_components(self, &tcx.data_layout) {
+        match needs_drop_components(tcx, self) {
             Err(AlwaysRequiresDrop) => true,
             Ok(components) => {
                 let query_ty = match *components {
@@ -1118,7 +1118,7 @@ impl<'tcx> Ty<'tcx> {
     #[inline]
     pub fn has_significant_drop(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
         // Avoid querying in simple cases.
-        match needs_drop_components(self, &tcx.data_layout) {
+        match needs_drop_components(tcx, self) {
             Err(AlwaysRequiresDrop) => true,
             Ok(components) => {
                 let query_ty = match *components {
@@ -1278,10 +1278,10 @@ impl<'tcx> ExplicitSelf<'tcx> {
 /// *any* of the returned types need drop. Returns `Err(AlwaysRequiresDrop)` if
 /// this type always needs drop.
 pub fn needs_drop_components<'tcx>(
+    tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
-    target_layout: &TargetDataLayout,
 ) -> Result<SmallVec<[Ty<'tcx>; 2]>, AlwaysRequiresDrop> {
-    match ty.kind() {
+    match *ty.kind() {
         ty::Infer(ty::FreshIntTy(_))
         | ty::Infer(ty::FreshFloatTy(_))
         | ty::Bool
@@ -1303,11 +1303,11 @@ pub fn needs_drop_components<'tcx>(
 
         ty::Dynamic(..) | ty::Error(_) => Err(AlwaysRequiresDrop),
 
-        ty::Slice(ty) => needs_drop_components(*ty, target_layout),
+        ty::Slice(ty) => needs_drop_components(tcx, ty),
         ty::Array(elem_ty, size) => {
-            match needs_drop_components(*elem_ty, target_layout) {
+            match needs_drop_components(tcx, elem_ty) {
                 Ok(v) if v.is_empty() => Ok(v),
-                res => match size.try_to_bits(target_layout.pointer_size) {
+                res => match size.try_to_target_usize(tcx) {
                     // Arrays of size zero don't need drop, even if their element
                     // type does.
                     Some(0) => Ok(SmallVec::new()),
@@ -1321,7 +1321,7 @@ pub fn needs_drop_components<'tcx>(
         }
         // If any field needs drop, then the whole tuple does.
         ty::Tuple(fields) => fields.iter().try_fold(SmallVec::new(), move |mut acc, elem| {
-            acc.extend(needs_drop_components(elem, target_layout)?);
+            acc.extend(needs_drop_components(tcx, elem)?);
             Ok(acc)
         }),
 

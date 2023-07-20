@@ -437,7 +437,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // this case used to be allowed by the compiler,
                 // so we do a future-compat lint here for the 2015 edition
                 // (see https://github.com/rust-lang/rust/issues/46906)
-                if self.tcx.sess.rust_2018() {
+                if self.tcx.sess.at_least_rust_2018() {
                     self.tcx.sess.emit_err(MethodCallOnUnknownRawPointee { span });
                 } else {
                     self.tcx.struct_span_lint_hir(
@@ -1592,7 +1592,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     if let Some(method_name) = self.method_name {
                         // Some trait methods are excluded for arrays before 2021.
                         // (`array.into_iter()` wants a slice iterator for compatibility.)
-                        if self_ty.is_array() && !method_name.span.rust_2021() {
+                        if self_ty.is_array() && !method_name.span.at_least_rust_2021() {
                             let trait_def = self.tcx.trait_def(trait_ref.def_id);
                             if trait_def.skip_array_during_method_dispatch {
                                 return ProbeResult::NoMatch;

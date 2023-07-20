@@ -100,6 +100,8 @@ bitflags! {
         const REALLOCATOR               = 1 << 18;
         /// `#[rustc_allocator_zeroed]`: a hint to LLVM that the function only allocates zeroed memory.
         const ALLOCATOR_ZEROED          = 1 << 19;
+        /// `#[no_builtins]`: indicates that disable implicit builtin knowledge of functions for the function.
+        const NO_BUILTINS               = 1 << 20;
     }
 }
 

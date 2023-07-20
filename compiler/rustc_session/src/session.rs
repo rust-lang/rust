@@ -677,7 +677,7 @@ impl Session {
     pub fn delay_span_bug<S: Into<MultiSpan>>(
         &self,
         sp: S,
-        msg: impl Into<DiagnosticMessage>,
+        msg: impl Into<String>,
     ) -> ErrorGuaranteed {
         self.diagnostic().delay_span_bug(sp, msg)
     }
@@ -995,18 +995,18 @@ impl Session {
     }
 
     /// Are we allowed to use features from the Rust 2018 edition?
-    pub fn rust_2018(&self) -> bool {
-        self.edition().rust_2018()
+    pub fn at_least_rust_2018(&self) -> bool {
+        self.edition().at_least_rust_2018()
     }
 
     /// Are we allowed to use features from the Rust 2021 edition?
-    pub fn rust_2021(&self) -> bool {
-        self.edition().rust_2021()
+    pub fn at_least_rust_2021(&self) -> bool {
+        self.edition().at_least_rust_2021()
     }
 
     /// Are we allowed to use features from the Rust 2024 edition?
-    pub fn rust_2024(&self) -> bool {
-        self.edition().rust_2024()
+    pub fn at_least_rust_2024(&self) -> bool {
+        self.edition().at_least_rust_2024()
     }
 
     /// Returns `true` if we should use the PLT for shared library calls.
@@ -1392,6 +1392,7 @@ pub fn build_session(
     file_loader: Option<Box<dyn FileLoader + Send + Sync + 'static>>,
     target_override: Option<Target>,
     cfg_version: &'static str,
+    ice_file: Option<PathBuf>,
 ) -> Session {
     // FIXME: This is not general enough to make the warning lint completely override
     // normal diagnostic warnings, since the warning lint can also be denied and changed
@@ -1440,6 +1441,7 @@ pub fn build_session(
     let span_diagnostic = rustc_errors::Handler::with_emitter_and_flags(
         emitter,
         sopts.unstable_opts.diagnostic_handler_flags(can_emit_warnings),
+        ice_file,
     );
 
     let self_profiler = if let SwitchWithOptPath::Enabled(ref d) = sopts.unstable_opts.self_profile
@@ -1731,7 +1733,7 @@ pub struct EarlyErrorHandler {
 impl EarlyErrorHandler {
     pub fn new(output: ErrorOutputType) -> Self {
         let emitter = mk_emitter(output);
-        Self { handler: rustc_errors::Handler::with_emitter(true, None, emitter) }
+        Self { handler: rustc_errors::Handler::with_emitter(true, None, emitter, None) }
     }
 
     pub fn abort_if_errors(&self) {
@@ -1745,7 +1747,7 @@ impl EarlyErrorHandler {
         self.handler.abort_if_errors();
 
         let emitter = mk_emitter(output);
-        self.handler = Handler::with_emitter(true, None, emitter);
+        self.handler = Handler::with_emitter(true, None, emitter, None);
     }
 
     #[allow(rustc::untranslatable_diagnostic)]

@@ -2108,29 +2108,22 @@ function initSearch(rawSearchIndex) {
                 const resultName = document.createElement("div");
                 resultName.className = "result-name";
 
-                if (item.is_alias) {
-                    const alias = document.createElement("span");
-                    alias.className = "alias";
-
-                    const bold = document.createElement("b");
-                    bold.innerText = item.alias;
-                    alias.appendChild(bold);
-
-                    alias.insertAdjacentHTML(
-                        "beforeend",
-                        "<i class=\"grey\">&nbsp;- see&nbsp;</i>");
-
-                    resultName.appendChild(alias);
-                }
-
                 resultName.insertAdjacentHTML(
                     "beforeend",
-                    `\
-<span class="typename">${typeName}</span>\
-<div class="path">\
- ${item.displayPath}<span class="${type}">${name}</span>\
-</div>`);
+                    `<span class="typename">${typeName}</span>`);
                 link.appendChild(resultName);
+
+                let alias = " ";
+                if (item.is_alias) {
+                    alias = ` <div class="alias">\
+<b>${item.alias}</b><i class="grey">&nbsp;- see&nbsp;</i>\
+</div>`;
+                }
+                resultName.insertAdjacentHTML(
+                    "beforeend",
+                    `<div class="path">${alias}\
+${item.displayPath}<span class="${type}">${name}</span>\
+</div>`);
 
                 const description = document.createElement("div");
                 description.className = "desc";

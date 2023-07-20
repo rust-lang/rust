@@ -20,6 +20,7 @@ note: cycle used when checking that `test` is well-formed
    |
 LL | fn test<const N: usize>() -> [u8; N + (|| 42)()] {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error: aborting due to previous error
 

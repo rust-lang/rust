@@ -551,10 +551,8 @@ pub enum BuiltinLintDiagnostics {
         private_item_span: Span,
     },
     UnusedQualifications {
-        /// The span of the unnecessarily-qualified path.
-        path_span: Span,
-        /// The replacement unqualified path.
-        unqualified_path: Ident,
+        /// The span of the unnecessarily-qualified path to remove.
+        removal_span: Span,
     },
 }
 

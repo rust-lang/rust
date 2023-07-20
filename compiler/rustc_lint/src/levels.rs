@@ -978,6 +978,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
     /// Returns `true` if the lint's feature is enabled.
     // FIXME only emit this once for each attribute, instead of repeating it 4 times for
     // pre-expansion lints, post-expansion lints, `shallow_lint_levels_on` and `lint_expectations`.
+    #[track_caller]
     fn check_gated_lint(&self, lint_id: LintId, span: Span) -> bool {
         if let Some(feature) = lint_id.lint.feature_gate {
             if !self.sess.features_untracked().enabled(feature) {
@@ -1015,6 +1016,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
     ///
     /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub(crate) fn struct_lint(
         &self,
         lint: &'static Lint,
@@ -1028,6 +1030,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
         struct_lint_level(self.sess, lint, level, src, span, msg, decorate)
     }
 
+    #[track_caller]
     pub fn emit_spanned_lint(
         &self,
         lint: &'static Lint,
@@ -1040,6 +1043,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
         });
     }
 
+    #[track_caller]
     pub fn emit_lint(&self, lint: &'static Lint, decorate: impl for<'a> DecorateLint<'a, ()>) {
         let (level, src) = self.lint_level(lint);
         struct_lint_level(self.sess, lint, level, src, None, decorate.msg(), |lint| {
