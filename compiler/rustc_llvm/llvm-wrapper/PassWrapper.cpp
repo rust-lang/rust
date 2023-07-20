@@ -322,8 +322,6 @@ extern "C" void LLVMRustPrintTargetCPUs(LLVMTargetMachineRef TM,
 
 #if LLVM_VERSION_GE(17, 0)
   const ArrayRef<SubtargetSubTypeKV> CPUTable = MCInfo->getAllProcessorDescriptions();
-#elif defined(LLVM_RUSTLLVM)
-  const ArrayRef<SubtargetSubTypeKV> CPUTable = MCInfo->getCPUTable();
 #else
   Buf << "Full target CPU help is not supported by this LLVM version.\n\n";
   SubtargetSubTypeKV TargetCPUKV = { TargetCPU, {{}}, {{}} };
