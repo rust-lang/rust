@@ -184,18 +184,21 @@ pub(super) trait GoalKind<'tcx>:
         impl_def_id: DefId,
     ) -> QueryResult<'tcx>;
 
-    /// If the predicate contained an error, we want to avoid emitting unnecessary trait errors but
-    /// still want to emit errors for other trait goals. We have some special handling for this case.
+    /// If the predicate contained an error, we want to avoid emitting unnecessary trait
+    /// errors but still want to emit errors for other trait goals. We have some special
+    /// handling for this case.
     ///
-    /// Trait goals always hold while projection goals never do. This is a bit arbitrary but prevents
-    /// incorrect normalization while hiding any trait errors.
+    /// Trait goals always hold while projection goals never do. This is a bit arbitrary
+    /// but prevents incorrect normalization while hiding any trait errors.
     fn consider_error_guaranteed_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         guar: ErrorGuaranteed,
     ) -> QueryResult<'tcx>;
 
-    /// A type implements an `auto trait` if its components do as well. These components
-    /// are given by built-in rules from [`instantiate_constituent_tys_for_auto_trait`].
+    /// A type implements an `auto trait` if its components do as well.
+    ///
+    /// These components are given by built-in rules from
+    /// [`structural_traits::instantiate_constituent_tys_for_auto_trait`].
     fn consider_auto_trait_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
@@ -207,15 +210,19 @@ pub(super) trait GoalKind<'tcx>:
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
 
-    /// A type is `Copy` or `Clone` if its components are `Sized`. These components
-    /// are given by built-in rules from [`instantiate_constituent_tys_for_sized_trait`].
+    /// A type is `Copy` or `Clone` if its components are `Sized`.
+    ///
+    /// These components are given by built-in rules from
+    /// [`structural_traits::instantiate_constituent_tys_for_sized_trait`].
     fn consider_builtin_sized_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
 
-    /// A type is `Copy` or `Clone` if its components are `Copy` or `Clone`. These
-    /// components are given by built-in rules from [`instantiate_constituent_tys_for_copy_clone_trait`].
+    /// A type is `Copy` or `Clone` if its components are `Copy` or `Clone`.
+    ///
+    /// These components are given by built-in rules from
+    /// [`structural_traits::instantiate_constituent_tys_for_copy_clone_trait`].
     fn consider_builtin_copy_clone_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
