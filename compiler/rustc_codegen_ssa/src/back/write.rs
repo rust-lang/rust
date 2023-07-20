@@ -2057,7 +2057,7 @@ pub fn submit_pre_lto_module_to_llvm<B: ExtraBackendMethods>(
     })));
 }
 
-pub fn pre_lto_bitcode_filename(module_name: &str) -> String {
+fn pre_lto_bitcode_filename(module_name: &str) -> String {
     format!("{module_name}.{PRE_LTO_BC_EXT}")
 }
 
