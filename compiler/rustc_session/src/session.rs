@@ -7,6 +7,7 @@ use crate::config::{
 use crate::config::{ErrorOutputType, Input};
 use crate::errors;
 use crate::parse::{add_feature_diagnostics, ParseSess};
+use crate::progress::ProgressBars;
 use crate::search_paths::{PathKind, SearchPath};
 use crate::{filesearch, lint};
 
@@ -157,6 +158,10 @@ pub struct Session {
 
     /// Data about code being compiled, gathered during compilation.
     pub code_stats: CodeStats,
+
+    /// The central object where progress information should be displayed in.
+    /// Is `Some` if `RUSTC_PROGRESS` is set.
+    pub progress_bars: Option<ProgressBars>,
 
     /// Tracks fuel info if `-zfuel=crate=n` is specified.
     optimization_fuel: Lock<OptimizationFuel>,
@@ -1155,6 +1160,11 @@ pub fn build_session(
     let asm_arch =
         if target_cfg.allow_asm { InlineAsmArch::from_str(&target_cfg.arch).ok() } else { None };
 
+    let progress_bars = match std::env::var_os("RUSTC_PROGRESS") {
+        Some(val) if val != "0" => Some(Session::init_progress_bars()),
+        _ => None,
+    };
+
     let sess = Session {
         target: target_cfg,
         host,
@@ -1167,6 +1177,7 @@ pub fn build_session(
         incr_comp_session: RwLock::new(IncrCompSession::NotInitialized),
         prof,
         code_stats: Default::default(),
+        progress_bars,
         optimization_fuel,
         print_fuel,
         jobserver: jobserver::client(),

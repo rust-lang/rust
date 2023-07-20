@@ -204,6 +204,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "cc",
     "cfg-if",
     "compiler_builtins",
+    "console",      // Dependency of indicatif
     "convert_case", // dependency of derive_more
     "cpufeatures",
     "crc32fast",
@@ -226,6 +227,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "either",
     "elsa",
     "ena",
+    "encode_unicode", // Dependency of indicatif
     "equivalent",
     "errno",
     "expect-test",
@@ -255,6 +257,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "icu_provider_macros",
     "ident_case",
     "indexmap",
+    "indicatif",
     "intl-memoizer",
     "intl_pluralrules",
     "is-terminal",
@@ -278,6 +281,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "miniz_oxide",
     "nu-ansi-term",
     "num_cpus",
+    "number_prefix", // Dependency of indicatif
     "object",
     "odht",
     "once_cell",
@@ -288,7 +292,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "perf-event-open-sys",
     "pin-project-lite",
     "polonius-engine",
-    "portable-atomic", // dependency for platforms doesn't support `AtomicU64` in std
+    "portable-atomic", // dependency for platforms doesn't support `AtomicU64` in std, and indicatif
     "ppv-lite86",
     "proc-macro-hack",
     "proc-macro2",

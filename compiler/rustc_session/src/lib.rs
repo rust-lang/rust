@@ -26,6 +26,8 @@ pub mod config;
 pub mod cstore;
 pub mod filesearch;
 mod options;
+mod progress;
+pub use progress::*;
 pub mod search_paths;
 
 mod session;

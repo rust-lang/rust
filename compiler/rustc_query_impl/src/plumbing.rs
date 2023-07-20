@@ -29,6 +29,7 @@ use rustc_query_system::{LayoutOfDepth, QueryOverflow};
 use rustc_serialize::Decodable;
 use rustc_serialize::Encodable;
 use rustc_session::Limit;
+use rustc_session::ProgressBars;
 use rustc_span::def_id::LOCAL_CRATE;
 use std::num::NonZeroU64;
 use thin_vec::ThinVec;
@@ -420,6 +421,24 @@ where
     value
 }
 
+macro_rules! trace_query {
+    ($tcx:expr, $name:ident, $key:ident) => {
+        #[cfg(debug_assertions)]
+        let _guard = tracing::span!(tracing::Level::TRACE, stringify!($name), ?$key).entered();
+        let _spinner = $tcx
+            .sess
+            .progress_bars
+            .as_ref()
+            .map(|bars| $crate::plumbing::update_spinner($tcx, bars, stringify!($name)));
+    };
+}
+
+#[inline(never)]
+#[cold]
+pub fn update_spinner(tcx: TyCtxt<'_>, bars: &ProgressBars, name: &'static str) -> impl Sized {
+    tcx.sess.push_spinner(bars, name)
+}
+
 fn force_from_dep_node<'tcx, Q>(query: Q, tcx: TyCtxt<'tcx>, dep_node: DepNode) -> bool
 where
     Q: QueryConfig<QueryCtxt<'tcx>>,
@@ -538,8 +557,7 @@ macro_rules! define_queries {
                     key: queries::$name::Key<'tcx>,
                     mode: QueryMode,
                 ) -> Option<Erase<queries::$name::Value<'tcx>>> {
-                    #[cfg(debug_assertions)]
-                    let _guard = tracing::span!(tracing::Level::TRACE, stringify!($name), ?key).entered();
+                    trace_query!(tcx, $name, key);
                     get_query_incr(
                         QueryType::config(tcx),
                         QueryCtxt::new(tcx),
@@ -580,8 +598,7 @@ macro_rules! define_queries {
                     cache_on_disk: |tcx, key| ::rustc_middle::query::cached::$name(tcx, key),
                     execute_query: |tcx, key| erase(tcx.$name(key)),
                     compute: |tcx, key| {
-                        #[cfg(debug_assertions)]
-                        let _guard = tracing::span!(tracing::Level::TRACE, stringify!($name), ?key).entered();
+                        trace_query!(tcx, $name, key);
                         __rust_begin_short_backtrace(||
                             queries::$name::provided_to_erased(
                                 tcx,
