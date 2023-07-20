@@ -51,6 +51,13 @@ pub fn issue_11128() {
     }
 }
 
+pub fn issue_11160() -> bool {
+    let mutex = Mutex::new(1i32);
+    let lock = mutex.lock().unwrap();
+    let _ = lock.abs();
+    true
+}
+
 pub fn path_return_can_be_ignored() -> i32 {
     let mutex = Mutex::new(1);
     let lock = mutex.lock().unwrap();

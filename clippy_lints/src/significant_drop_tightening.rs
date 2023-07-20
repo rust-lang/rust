@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::{indent_of, snippet};
-use clippy_utils::{expr_or_init, get_attr, path_to_local};
+use clippy_utils::{expr_or_init, get_attr, path_to_local, peel_hir_expr_unary};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
@@ -236,7 +236,7 @@ impl<'ap, 'lc, 'others, 'stmt, 'tcx> StmtsChecker<'ap, 'lc, 'others, 'stmt, 'tcx
 
     fn manage_has_expensive_expr_after_last_attr(&mut self) {
         let has_expensive_stmt = match self.ap.curr_stmt.kind {
-            hir::StmtKind::Expr(expr) if !is_expensive_expr(expr) => false,
+            hir::StmtKind::Expr(expr) if is_inexpensive_expr(expr) => false,
             hir::StmtKind::Local(local) if let Some(expr) = local.init
                 && let hir::ExprKind::Path(_) = expr.kind => false,
             _ => true
@@ -445,6 +445,9 @@ fn has_drop(expr: &hir::Expr<'_>, first_bind_ident: &Ident, lcx: &LateContext<'_
     }
 }
 
-fn is_expensive_expr(expr: &hir::Expr<'_>) -> bool {
-    !matches!(expr.kind, hir::ExprKind::Path(_))
+fn is_inexpensive_expr(expr: &hir::Expr<'_>) -> bool {
+    let actual = peel_hir_expr_unary(expr).0;
+    let is_path = matches!(actual.kind, hir::ExprKind::Path(_));
+    let is_lit = matches!(actual.kind, hir::ExprKind::Lit(_));
+    is_path || is_lit
 }
