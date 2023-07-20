@@ -141,18 +141,6 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
         back::write::target_machine_factory(sess, optlvl, target_features)
     }
 
-    fn spawn_thread<F, T>(time_trace: bool, f: F) -> std::thread::JoinHandle<T>
-    where
-        F: FnOnce() -> T,
-        F: Send + 'static,
-        T: Send + 'static,
-    {
-        std::thread::spawn(move || {
-            let _profiler = TimeTraceProfiler::new(time_trace);
-            f()
-        })
-    }
-
     fn spawn_named_thread<F, T>(
         time_trace: bool,
         name: String,
