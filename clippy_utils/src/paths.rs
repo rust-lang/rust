@@ -161,3 +161,4 @@ pub const OPTION_UNWRAP: [&str; 4] = ["core", "option", "Option", "unwrap"];
 pub const OPTION_EXPECT: [&str; 4] = ["core", "option", "Option", "expect"];
 pub const FORMATTER: [&str; 3] = ["core", "fmt", "Formatter"];
 pub const DEBUG_STRUCT: [&str; 4] = ["core", "fmt", "builders", "DebugStruct"];
+pub const ORD_CMP: [&str; 4] = ["core", "cmp", "Ord", "cmp"];
