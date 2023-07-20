@@ -1496,17 +1496,55 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
     Item::from_def_id_and_parts(assoc_item.def_id, Some(assoc_item.name), kind, cx)
 }
 
+fn first_non_private_clean_path<'tcx>(
+    cx: &mut DocContext<'tcx>,
+    path: &hir::Path<'tcx>,
+    mut new_path_segments: Vec<hir::PathSegment<'tcx>>,
+    new_path_span: rustc_span::Span,
+) -> Path {
+    use std::mem::transmute;
+
+    // In here we need to play with the path data one last time to provide it the
+    // missing `args` and `res` of the final `Path` we get, which, since it comes
+    // from a re-export, doesn't have the generics that were originally there, so
+    // we add them by hand.
+    if let Some(last) = new_path_segments.last_mut() {
+        // `transmute` is needed because we are using a wrong lifetime. Since
+        // `segments` will be dropped at the end of this block, it's fine.
+        last.args = unsafe { transmute(path.segments.last().as_ref().unwrap().args.clone()) };
+        last.res = path.res;
+    }
+    // `transmute` is needed because we are using a wrong lifetime. Since
+    // `segments` will be dropped at the end of this block, it's fine.
+    let path = unsafe {
+        hir::Path {
+            segments: transmute(new_path_segments.as_slice()),
+            res: path.res,
+            span: new_path_span,
+        }
+    };
+    clean_path(&path, cx)
+}
+
 /// The goal of this function is to return the first `Path` which is not private (ie not private
 /// or `doc(hidden)`). If it's not possible, it'll return the "end type".
 ///
 /// If the path is not a re-export or is public, it'll return `None`.
-fn first_non_private(
-    cx: &mut DocContext<'_>,
+fn first_non_private<'tcx>(
+    cx: &mut DocContext<'tcx>,
     hir_id: hir::HirId,
-    path: &hir::Path<'_>,
+    path: &hir::Path<'tcx>,
 ) -> Option<Path> {
-    use std::mem::transmute;
-
+    let use_id = path.segments.last().map(|seg| seg.hir_id)?;
+    let target_def_id = path.res.opt_def_id()?;
+    let saved_path = cx
+        .updated_qpath
+        .borrow()
+        .get(&use_id)
+        .map(|saved_path| (saved_path.segments.to_vec(), saved_path.span));
+    if let Some((segments, span)) = saved_path {
+        return Some(first_non_private_clean_path(cx, path, segments, span));
+    }
     let (parent_def_id, mut ident) = match &path.segments[..] {
         [] => return None,
         // Relative paths are available in the same scope as the owner.
@@ -1531,7 +1569,6 @@ fn first_non_private(
         // Absolute paths are not. We start from the parent of the item.
         [.., parent, leaf] => (parent.res.opt_def_id()?.as_local()?, leaf.ident),
     };
-    let target_def_id = path.res.opt_def_id()?;
     // First we try to get the `DefId` of the item.
     for child in
         cx.tcx.module_children_local(parent_def_id).iter().filter(move |c| c.ident == ident)
@@ -1577,26 +1614,9 @@ fn first_non_private(
                 // 1. We found a public reexport.
                 // 2. We didn't find a public reexport so it's the "end type" path.
                 if let Some((new_path, _)) = last_path_res {
-                    // In here we need to play with the path data one last time to provide it the
-                    // missing `args` and `res` of the final `Path` we get, which, since it comes
-                    // from a re-export, doesn't have the generics that were originally there, so
-                    // we add them by hand.
-                    let mut segments = new_path.segments.to_vec();
-                    if let Some(last) = segments.last_mut() {
-                        // `transmute` is needed because we are using a wrong lifetime. Since
-                        // `segments` will be dropped at the end of this block, it's fine.
-                        last.args = unsafe {
-                            transmute(
-                                path.segments.last().as_ref().unwrap().args.clone(),
-                            )
-                        };
-                        last.res = path.res;
-                    }
-                    // `transmute` is needed because we are using a wrong lifetime. Since
-                    // `segments` will be dropped at the end of this block, it's fine.
-                    let segments = unsafe { transmute(segments.as_slice()) };
-                    let new_path = hir::Path { segments, res: path.res, span: new_path.span };
-                    return Some(clean_path(&new_path, cx));
+                    cx.updated_qpath.borrow_mut().insert(use_id, new_path.clone());
+                    let new_path_segments = new_path.segments.to_vec();
+                    return Some(first_non_private_clean_path(cx, path, new_path_segments, new_path.span));
                 }
                 // If `last_path_res` is `None`, it can mean two things:
                 //
