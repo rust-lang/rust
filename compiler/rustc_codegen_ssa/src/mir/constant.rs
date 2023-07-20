@@ -65,8 +65,22 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         &self,
         constant: &mir::Constant<'tcx>,
     ) -> Result<Option<ty::ValTree<'tcx>>, ErrorHandled> {
-        let uv = match constant.literal {
+        let uv = match self.monomorphize(constant.literal) {
             mir::ConstantKind::Unevaluated(uv, _) => uv.shrink(),
+            mir::ConstantKind::Ty(c) => match c.kind() {
+                // A constant that came from a const generic but was then used as an argument to old-style
+                // simd_shuffle (passing as argument instead of as a generic param).
+                rustc_type_ir::ConstKind::Value(valtree) => return Ok(Some(valtree)),
+                other => span_bug!(constant.span, "{other:#?}"),
+            },
+            // We should never encounter `ConstantKind::Val` unless MIR opts (like const prop) evaluate
+            // a constant and write that value back into `Operand`s. This could happen, but is unlikely.
+            // Also: all users of `simd_shuffle` are on unstable and already need to take a lot of care
+            // around intrinsics. For an issue to happen here, it would require a macro expanding to a
+            // `simd_shuffle` call without wrapping the constant argument in a `const {}` block, but
+            // the user pass through arbitrary expressions.
+            // FIXME(oli-obk): replace the magic const generic argument of `simd_shuffle` with a real
+            // const generic.
             other => span_bug!(constant.span, "{other:#?}"),
         };
         let uv = self.monomorphize(uv);
