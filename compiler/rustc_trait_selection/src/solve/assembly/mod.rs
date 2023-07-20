@@ -311,7 +311,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         goal: Goal<'tcx, G>,
     ) -> Vec<Candidate<'tcx>> {
         debug_assert_eq!(goal, self.resolve_vars_if_possible(goal));
-        if let Some(ambig) = self.self_ty_infer_ambiguity_hack(goal) {
+        if let Some(ambig) = self.assemble_self_ty_infer_ambiguity_response(goal) {
             return ambig;
         }
 
@@ -324,13 +324,13 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         candidates
     }
 
-    /// HACK: `_: Trait` is ambiguous, because it may be satisfied via a builtin rule,
+    /// `?0: Trait` is ambiguous, because it may be satisfied via a builtin rule,
     /// object bound, alias bound, etc. We are unable to determine this until we can at
     /// least structurally resolve the type one layer.
     ///
     /// It would also require us to consider all impls of the trait, which is both pretty
     /// bad for perf and would also constrain the self type if there is just a single impl.
-    fn self_ty_infer_ambiguity_hack<G: GoalKind<'tcx>>(
+    fn assemble_self_ty_infer_ambiguity_response<G: GoalKind<'tcx>>(
         &mut self,
         goal: Goal<'tcx, G>,
     ) -> Option<Vec<Candidate<'tcx>>> {
@@ -353,7 +353,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         goal: Goal<'tcx, G>,
     ) -> Vec<Candidate<'tcx>> {
         debug_assert_eq!(goal, self.resolve_vars_if_possible(goal));
-        if let Some(ambig) = self.self_ty_infer_ambiguity_hack(goal) {
+        if let Some(ambig) = self.assemble_self_ty_infer_ambiguity_response(goal) {
             return ambig;
         }
 
