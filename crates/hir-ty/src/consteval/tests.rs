@@ -1941,6 +1941,33 @@ fn dyn_trait() {
         "#,
         900,
     );
+    check_number(
+        r#"
+    //- minicore: coerce_unsized, index, slice
+    trait A {
+        fn x(&self) -> i32;
+    }
+
+    trait B: A {}
+
+    impl A for i32 {
+        fn x(&self) -> i32 {
+            5
+        }
+    }
+
+    impl B for i32 {
+
+    }
+
+    const fn f(x: &dyn B) -> i32 {
+        x.x()
+    }
+
+    const GOAL: i32 = f(&2i32);
+        "#,
+        5,
+    );
 }
 
 #[test]
