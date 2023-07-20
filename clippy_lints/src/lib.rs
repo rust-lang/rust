@@ -120,6 +120,7 @@ mod entry;
 mod enum_clike;
 mod enum_variants;
 mod equatable_if_let;
+mod error_impl_error;
 mod escape;
 mod eta_reduction;
 mod excessive_bools;
@@ -1080,6 +1081,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(move |_| Box::new(tuple_array_conversions::TupleArrayConversions { msrv: msrv() }));
     store.register_late_pass(|_| Box::new(manual_float_methods::ManualFloatMethods));
     store.register_late_pass(|_| Box::new(four_forward_slashes::FourForwardSlashes));
+    store.register_late_pass(|_| Box::new(error_impl_error::ErrorImplError));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

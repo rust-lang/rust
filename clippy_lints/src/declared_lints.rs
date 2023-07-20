@@ -155,6 +155,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::enum_variants::MODULE_INCEPTION_INFO,
     crate::enum_variants::MODULE_NAME_REPETITIONS_INFO,
     crate::equatable_if_let::EQUATABLE_IF_LET_INFO,
+    crate::error_impl_error::ERROR_IMPL_ERROR_INFO,
     crate::escape::BOXED_LOCAL_INFO,
     crate::eta_reduction::REDUNDANT_CLOSURE_INFO,
     crate::eta_reduction::REDUNDANT_CLOSURE_FOR_METHOD_CALLS_INFO,
