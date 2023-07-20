@@ -738,6 +738,7 @@ fn test_unstable_options_tracking_hash() {
     untracked!(unstable_options, true);
     untracked!(validate_mir, true);
     untracked!(verbose, true);
+    untracked!(write_long_types_to_disk, true);
     // tidy-alphabetical-end
 
     macro_rules! tracked {

@@ -339,12 +339,17 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn short_ty_string(self, ty: Ty<'tcx>) -> (String, Option<PathBuf>) {
-        let width = self.sess.diagnostic_width();
-        let length_limit = width.saturating_sub(30);
         let regular = FmtPrinter::new(self, hir::def::Namespace::TypeNS)
             .pretty_print_type(ty)
             .expect("could not write to `String`")
             .into_buffer();
+
+        if !self.sess.opts.unstable_opts.write_long_types_to_disk {
+            return (regular, None);
+        }
+
+        let width = self.sess.diagnostic_width();
+        let length_limit = width.saturating_sub(30);
         if regular.len() <= width {
             return (regular, None);
         }

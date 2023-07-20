@@ -1,5 +1,5 @@
 // build-fail
-// compile-flags: -Copt-level=0
+// compile-flags: -Copt-level=0 -Zwrite-long-types-to-disk=yes
 // normalize-stderr-test: "long-type-\d+" -> "long-type-hash"
 //~^^^ ERROR overflow evaluating the requirement
 // ignore-compare-mode-next-solver (hangs)

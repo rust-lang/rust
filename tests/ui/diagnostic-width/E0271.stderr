@@ -15,8 +15,7 @@ note: expected this to be `Foo`
    |
 LL |     type Error = E;
    |                  ^
-   = note: required for the cast from `Box<Result<..., ...>>` to `Box<(dyn Future<Error = Foo> + 'static)>`
-   = note: the full name for the source type has been written to '$TEST_BUILD_DIR/diagnostic-width/E0271/E0271.long-type-hash.txt'
+   = note: required for the cast from `Box<Result<Result<(), Result<Result<(), Result<Result<(), Option<{integer}>>, ()>>, ()>>, ()>>` to `Box<(dyn Future<Error = Foo> + 'static)>`
 
 error: aborting due to previous error
 
