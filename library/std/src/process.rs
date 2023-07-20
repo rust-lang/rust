@@ -558,6 +558,14 @@ impl Command {
     /// but this has some implementation limitations on Windows
     /// (see issue #37519).
     ///
+    /// # Platform-specific behavior
+    ///
+    /// Note on Windows: For executable files with the .exe extension,
+    /// it can be omitted when specifying the program for this Command.
+    /// However, if the file has a different extension,
+    /// a filename including the extension needs to be provided,
+    /// otherwise the file won't be found.
+    ///
     /// # Examples
     ///
     /// Basic usage:

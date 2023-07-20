@@ -1629,6 +1629,7 @@ impl<'a> Builder<'a> {
         // fun to pass a flag to a tool to pass a flag to pass a flag to a tool
         // to change a flag in a binary?
         if self.config.rpath_enabled(target) && util::use_host_linker(target) {
+            let libdir = self.sysroot_libdir_relative(compiler).to_str().unwrap();
             let rpath = if target.contains("apple") {
                 // Note that we need to take one extra step on macOS to also pass
                 // `-Wl,-instal_name,@rpath/...` to get things to work right. To
@@ -1636,10 +1637,10 @@ impl<'a> Builder<'a> {
                 // so. Note that this is definitely a hack, and we should likely
                 // flesh out rpath support more fully in the future.
                 rustflags.arg("-Zosx-rpath-install-name");
-                Some("-Wl,-rpath,@loader_path/../lib")
+                Some(format!("-Wl,-rpath,@loader_path/../{}", libdir))
             } else if !target.contains("windows") && !target.contains("aix") {
                 rustflags.arg("-Clink-args=-Wl,-z,origin");
-                Some("-Wl,-rpath,$ORIGIN/../lib")
+                Some(format!("-Wl,-rpath,$ORIGIN/../{}", libdir))
             } else {
                 None
             };
