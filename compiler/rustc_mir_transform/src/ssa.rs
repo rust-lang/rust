@@ -5,7 +5,6 @@
 //! As a consequence of rule 2, we consider that borrowed locals are not SSA, even if they are
 //! `Freeze`, as we do not track that the assignment dominates all uses of the borrow.
 
-use either::Either;
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_index::bit_set::BitSet;
 use rustc_index::{IndexSlice, IndexVec};
@@ -27,6 +26,12 @@ pub struct SsaLocals {
     direct_uses: IndexVec<Local, u32>,
 }
 
+pub enum AssignedValue<'a, 'tcx> {
+    Arg,
+    Rvalue(&'a mut Rvalue<'tcx>),
+    Terminator(&'a mut TerminatorKind<'tcx>),
+}
+
 impl SsaLocals {
     pub fn new<'tcx>(body: &Body<'tcx>) -> SsaLocals {
         let assignment_order = Vec::with_capacity(body.local_decls.len());
@@ -39,6 +44,7 @@ impl SsaLocals {
 
         for local in body.args_iter() {
             visitor.assignments[local] = Set1::One(DefLocation::Argument);
+            visitor.assignment_order.push(local);
         }
 
         // For SSA assignments, a RPO visit will see the assignment before it sees any use.
@@ -105,8 +111,8 @@ impl SsaLocals {
     ) -> impl Iterator<Item = (Local, &'a Rvalue<'tcx>, Location)> + 'a {
         self.assignment_order.iter().filter_map(|&local| {
             if let Set1::One(DefLocation::Body(loc)) = self.assignments[local] {
+                let stmt = body.stmt_at(loc).left()?;
                 // `loc` must point to a direct assignment to `local`.
-                let Either::Left(stmt) = body.stmt_at(loc) else { bug!() };
                 let Some((target, rvalue)) = stmt.kind.as_assign() else { bug!() };
                 assert_eq!(target.as_local(), Some(local));
                 Some((local, rvalue, loc))
@@ -118,18 +124,33 @@ impl SsaLocals {
 
     pub fn for_each_assignment_mut<'tcx>(
         &self,
-        basic_blocks: &mut BasicBlocks<'tcx>,
-        mut f: impl FnMut(Local, &mut Rvalue<'tcx>, Location),
+        basic_blocks: &mut IndexSlice<BasicBlock, BasicBlockData<'tcx>>,
+        mut f: impl FnMut(Local, AssignedValue<'_, 'tcx>, Location),
     ) {
         for &local in &self.assignment_order {
-            if let Set1::One(DefLocation::Body(loc)) = self.assignments[local] {
-                // `loc` must point to a direct assignment to `local`.
-                let bbs = basic_blocks.as_mut_preserves_cfg();
-                let bb = &mut bbs[loc.block];
-                let stmt = &mut bb.statements[loc.statement_index];
-                let StatementKind::Assign(box (target, ref mut rvalue)) = stmt.kind else { bug!() };
-                assert_eq!(target.as_local(), Some(local));
-                f(local, rvalue, loc)
+            match self.assignments[local] {
+                Set1::One(DefLocation::Argument) => f(
+                    local,
+                    AssignedValue::Arg,
+                    Location { block: START_BLOCK, statement_index: 0 },
+                ),
+                Set1::One(DefLocation::Body(loc)) => {
+                    let bb = &mut basic_blocks[loc.block];
+                    let value = if loc.statement_index < bb.statements.len() {
+                        // `loc` must point to a direct assignment to `local`.
+                        let stmt = &mut bb.statements[loc.statement_index];
+                        let StatementKind::Assign(box (target, ref mut rvalue)) = stmt.kind else {
+                            bug!()
+                        };
+                        assert_eq!(target.as_local(), Some(local));
+                        AssignedValue::Rvalue(rvalue)
+                    } else {
+                        let term = bb.terminator_mut();
+                        AssignedValue::Terminator(&mut term.kind)
+                    };
+                    f(local, value, loc)
+                }
+                _ => {}
             }
         }
     }
@@ -228,8 +249,22 @@ impl<'tcx> Visitor<'tcx> for SsaVisitor<'_> {
     }
 
     fn visit_place(&mut self, place: &Place<'tcx>, ctxt: PlaceContext, loc: Location) {
-        if place.projection.first() == Some(&PlaceElem::Deref) {
-            // Do not do anything for storage statements and debuginfo.
+        let location = match ctxt {
+            PlaceContext::MutatingUse(
+                MutatingUseContext::Store | MutatingUseContext::Call | MutatingUseContext::Yield,
+            ) => Some(DefLocation::Body(loc)),
+            _ => None,
+        };
+        if let Some(location) = location
+            && let Some(local) = place.as_local()
+        {
+            self.assignments[local].insert(location);
+            if let Set1::One(_) = self.assignments[local] {
+                // Only record if SSA-like, to avoid growing the vector needlessly.
+                self.assignment_order.push(local);
+            }
+        } else if place.projection.first() == Some(&PlaceElem::Deref) {
+            // Do not do anything for debuginfo.
             if ctxt.is_use() {
                 // Only change the context if it is a real use, not a "use" in debuginfo.
                 let new_ctxt = PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy);
@@ -237,24 +272,10 @@ impl<'tcx> Visitor<'tcx> for SsaVisitor<'_> {
                 self.visit_projection(place.as_ref(), new_ctxt, loc);
                 self.check_dominates(place.local, loc);
             }
-            return;
         } else {
             self.visit_projection(place.as_ref(), ctxt, loc);
             self.visit_local(place.local, ctxt, loc);
         }
-    }
-
-    fn visit_assign(&mut self, place: &Place<'tcx>, rvalue: &Rvalue<'tcx>, loc: Location) {
-        if let Some(local) = place.as_local() {
-            self.assignments[local].insert(DefLocation::Body(loc));
-            if let Set1::One(_) = self.assignments[local] {
-                // Only record if SSA-like, to avoid growing the vector needlessly.
-                self.assignment_order.push(local);
-            }
-        } else {
-            self.visit_place(place, PlaceContext::MutatingUse(MutatingUseContext::Store), loc);
-        }
-        self.visit_rvalue(rvalue, loc);
     }
 }
 

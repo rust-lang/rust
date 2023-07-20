@@ -10,10 +10,10 @@
 +         let mut _3: &fn() -> ! {sleep};
 +         let _4: !;
 +         let mut _5: &fn() -> ! {sleep};
-+         let mut _6: !;
 +         let mut _7: !;
 +         scope 2 {
 +             debug a => _4;
++             let _6: !;
 +             scope 3 {
 +                 debug b => _6;
 +             }
