@@ -1535,6 +1535,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
                         Ok(WorkItemResult::Finished(compiled_module)) => {
                             match compiled_module.kind {
                                 ModuleKind::Regular => {
+                                    assert!(needs_link.is_empty());
                                     compiled_modules.push(compiled_module);
                                 }
                                 ModuleKind::Allocator => {
@@ -1545,14 +1546,17 @@ fn start_executing_work<B: ExtraBackendMethods>(
                             }
                         }
                         Ok(WorkItemResult::NeedsLink(module)) => {
+                            assert!(compiled_modules.is_empty());
                             needs_link.push(module);
                         }
                         Ok(WorkItemResult::NeedsFatLTO(fat_lto_input)) => {
                             assert!(!started_lto);
+                            assert!(needs_thin_lto.is_empty());
                             needs_fat_lto.push(fat_lto_input);
                         }
                         Ok(WorkItemResult::NeedsThinLTO(name, thin_buffer)) => {
                             assert!(!started_lto);
+                            assert!(needs_fat_lto.is_empty());
                             needs_thin_lto.push((name, thin_buffer));
                         }
                         Err(Some(WorkerFatalError)) => {
