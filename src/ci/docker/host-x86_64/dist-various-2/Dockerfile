@@ -1,4 +1,4 @@
-FROM ubuntu:20.04
+FROM ubuntu:22.04
 
 COPY scripts/cross-apt-packages.sh /scripts/
 RUN sh /scripts/cross-apt-packages.sh
@@ -9,7 +9,7 @@ RUN sed -i 's/^# deb-src/deb-src/' /etc/apt/sources.list
 RUN apt-get update && apt-get build-dep -y clang llvm && apt-get install -y --no-install-recommends \
   build-essential \
 # gcc-multilib can not be installed together with gcc-arm-linux-gnueabi
-  g++-8-multilib \
+  g++-9-multilib \
   libedit-dev \
   libgmp-dev \
   libisl-dev \
@@ -24,7 +24,7 @@ RUN apt-get update && apt-get build-dep -y clang llvm && apt-get install -y --no
   # Needed for apt-key to work:
   dirmngr \
   gpg-agent \
-  g++-8-arm-linux-gnueabi
+  g++-9-arm-linux-gnueabi
 
 RUN apt-key adv --batch --yes --keyserver keyserver.ubuntu.com --recv-keys 74DA7924C5513486
 RUN add-apt-repository -y 'deb https://apt.dilos.org/dilos dilos2 main'
@@ -51,8 +51,8 @@ ENV \
     AR_x86_64_sun_solaris=x86_64-sun-solaris2.10-ar \
     CC_x86_64_sun_solaris=x86_64-sun-solaris2.10-gcc \
     CXX_x86_64_sun_solaris=x86_64-sun-solaris2.10-g++ \
-    CC_armv7_unknown_linux_gnueabi=arm-linux-gnueabi-gcc-8 \
-    CXX_armv7_unknown_linux_gnueabi=arm-linux-gnueabi-g++-8 \
+    CC_armv7_unknown_linux_gnueabi=arm-linux-gnueabi-gcc-9 \
+    CXX_armv7_unknown_linux_gnueabi=arm-linux-gnueabi-g++-9 \
     AR_x86_64_fortanix_unknown_sgx=ar \
     CC_x86_64_fortanix_unknown_sgx=clang-11 \
     CFLAGS_x86_64_fortanix_unknown_sgx="-D__ELF__ -isystem/usr/include/x86_64-linux-gnu -mlvi-hardening -mllvm -x86-experimental-lvi-inline-asm-hardening" \
@@ -67,14 +67,14 @@ ENV \
     CXX_i686_unknown_uefi=clang++-11 \
     CC_x86_64_unknown_uefi=clang-11 \
     CXX_x86_64_unknown_uefi=clang++-11 \
-    CC=gcc-8 \
-    CXX=g++-8
+    CC=gcc-9 \
+    CXX=g++-9
 
 WORKDIR /build
 COPY scripts/musl.sh /build
 RUN env \
-    CC=arm-linux-gnueabi-gcc-8 CFLAGS="-march=armv7-a" \
-    CXX=arm-linux-gnueabi-g++-8 CXXFLAGS="-march=armv7-a" \
+    CC=arm-linux-gnueabi-gcc-9 CFLAGS="-march=armv7-a" \
+    CXX=arm-linux-gnueabi-g++-9 CXXFLAGS="-march=armv7-a" \
     bash musl.sh armv7 && \
     rm -rf /build/*
 
@@ -95,9 +95,6 @@ RUN /tmp/build-wasi-toolchain.sh
 
 COPY scripts/freebsd-toolchain.sh /tmp/
 RUN /tmp/freebsd-toolchain.sh i686
-
-COPY scripts/cmake.sh /scripts/
-RUN /scripts/cmake.sh
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
@@ -132,7 +129,7 @@ ENV TARGETS=$TARGETS,i686-unknown-uefi
 ENV TARGETS=$TARGETS,x86_64-unknown-uefi
 
 # As per https://bugs.launchpad.net/ubuntu/+source/gcc-defaults/+bug/1300211
-# we need asm in the search path for gcc-8 (for gnux32) but not in the search path of the
+# we need asm in the search path for gcc-9 (for gnux32) but not in the search path of the
 # cross compilers.
 # Luckily one of the folders is /usr/local/include so symlink /usr/include/asm-generic there
 RUN ln -s /usr/include/asm-generic /usr/local/include/asm
