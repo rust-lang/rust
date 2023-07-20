@@ -155,9 +155,9 @@ impl<'mir, 'tcx> TriColorVisitor<BasicBlocks<'tcx>> for Search<'mir, 'tcx> {
             return true;
         }
         // Don't traverse successors of recursive calls or false CFG edges.
-        match self.body[bb].terminator().kind {
-            TerminatorKind::Call { ref func, ref args, .. } => self.is_recursive_call(func, args),
-            TerminatorKind::FalseEdge { imaginary_target, .. } => imaginary_target == target,
+        match &terminator.kind {
+            TerminatorKind::Call { func, args, .. } => self.is_recursive_call(func, args),
+            TerminatorKind::FalseEdge { imaginary_target, .. } => imaginary_target == &target,
             _ => false,
         }
     }
