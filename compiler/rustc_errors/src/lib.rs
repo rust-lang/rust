@@ -1003,7 +1003,7 @@ impl Handler {
         self.emit_diag_at_span(Diagnostic::new_with_code(Warning(None), Some(code), msg), span);
     }
 
-    pub fn span_bug(&self, span: impl Into<MultiSpan>, msg: impl Into<DiagnosticMessage>) -> ! {
+    pub fn span_bug(&self, span: impl Into<MultiSpan>, msg: impl Into<String>) -> ! {
         self.inner.borrow_mut().span_bug(span, msg)
     }
 
@@ -1012,7 +1012,7 @@ impl Handler {
     pub fn delay_span_bug(
         &self,
         span: impl Into<MultiSpan>,
-        msg: impl Into<DiagnosticMessage>,
+        msg: impl Into<String>,
     ) -> ErrorGuaranteed {
         self.inner.borrow_mut().delay_span_bug(span, msg)
     }
@@ -1596,8 +1596,8 @@ impl HandlerInner {
     }
 
     #[track_caller]
-    fn span_bug(&mut self, sp: impl Into<MultiSpan>, msg: impl Into<DiagnosticMessage>) -> ! {
-        self.emit_diag_at_span(Diagnostic::new(Bug, msg), sp);
+    fn span_bug(&mut self, sp: impl Into<MultiSpan>, msg: impl Into<String>) -> ! {
+        self.emit_diag_at_span(Diagnostic::new(Bug, msg.into()), sp);
         panic::panic_any(ExplicitBug);
     }
 
@@ -1610,7 +1610,7 @@ impl HandlerInner {
     fn delay_span_bug(
         &mut self,
         sp: impl Into<MultiSpan>,
-        msg: impl Into<DiagnosticMessage>,
+        msg: impl Into<String>,
     ) -> ErrorGuaranteed {
         // This is technically `self.treat_err_as_bug()` but `delay_span_bug` is called before
         // incrementing `err_count` by one, so we need to +1 the comparing.
@@ -1619,9 +1619,9 @@ impl HandlerInner {
             self.err_count() + self.lint_err_count + self.delayed_bug_count() + 1 >= c.get()
         }) {
             // FIXME: don't abort here if report_delayed_bugs is off
-            self.span_bug(sp, msg);
+            self.span_bug(sp, msg.into());
         }
-        let mut diagnostic = Diagnostic::new(Level::DelayedBug, msg);
+        let mut diagnostic = Diagnostic::new(Level::DelayedBug, msg.into());
         diagnostic.set_span(sp.into());
         self.emit_diagnostic(&mut diagnostic).unwrap()
     }
