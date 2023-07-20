@@ -484,9 +484,10 @@ pub fn interpret_mir(
     // a zero size, hoping that they are all outside of our current body. Even without a fix for #7434, we can
     // (and probably should) do better here, for example by excluding bindings outside of the target expression.
     assert_placeholder_ty_is_unused: bool,
+    trait_env: Option<Arc<TraitEnvironment>>,
 ) -> (Result<Const>, String, String) {
     let ty = body.locals[return_slot()].ty.clone();
-    let mut evaluator = Evaluator::new(db, body.owner, assert_placeholder_ty_is_unused);
+    let mut evaluator = Evaluator::new(db, body.owner, assert_placeholder_ty_is_unused, trait_env);
     let it: Result<Const> = (|| {
         if evaluator.ptr_size() != std::mem::size_of::<usize>() {
             not_supported!("targets with different pointer size from host");
@@ -512,9 +513,9 @@ impl Evaluator<'_> {
         db: &'a dyn HirDatabase,
         owner: DefWithBodyId,
         assert_placeholder_ty_is_unused: bool,
+        trait_env: Option<Arc<TraitEnvironment>>,
     ) -> Evaluator<'a> {
         let crate_id = owner.module(db.upcast()).krate();
-        let trait_env = db.trait_environment_for_body(owner);
         Evaluator {
             stack: vec![0],
             heap: vec![0],
@@ -524,7 +525,7 @@ impl Evaluator<'_> {
             static_locations: HashMap::default(),
             db,
             random_state: oorandom::Rand64::new(0),
-            trait_env,
+            trait_env: trait_env.unwrap_or_else(|| db.trait_environment_for_body(owner)),
             crate_id,
             stdout: vec![],
             stderr: vec![],
@@ -694,14 +695,14 @@ impl Evaluator<'_> {
         }
         let r = self
             .db
-            .layout_of_ty(ty.clone(), self.crate_id)
+            .layout_of_ty(ty.clone(), self.trait_env.clone())
             .map_err(|e| MirEvalError::LayoutError(e, ty.clone()))?;
         self.layout_cache.borrow_mut().insert(ty.clone(), r.clone());
         Ok(r)
     }
 
     fn layout_adt(&self, adt: AdtId, subst: Substitution) -> Result<Arc<Layout>> {
-        self.db.layout_of_adt(adt, subst.clone(), self.crate_id).map_err(|e| {
+        self.db.layout_of_adt(adt, subst.clone(), self.trait_env.clone()).map_err(|e| {
             MirEvalError::LayoutError(e, TyKind::Adt(chalk_ir::AdtId(adt), subst).intern(Interner))
         })
     }
@@ -1582,10 +1583,13 @@ impl Evaluator<'_> {
                     const_id = hir_def::GeneralConstId::ConstId(c);
                     subst = s;
                 }
-                result_owner = self.db.const_eval(const_id.into(), subst).map_err(|e| {
-                    let name = const_id.name(self.db.upcast());
-                    MirEvalError::ConstEvalError(name, Box::new(e))
-                })?;
+                result_owner = self
+                    .db
+                    .const_eval(const_id.into(), subst, Some(self.trait_env.clone()))
+                    .map_err(|e| {
+                        let name = const_id.name(self.db.upcast());
+                        MirEvalError::ConstEvalError(name, Box::new(e))
+                    })?;
                 if let chalk_ir::ConstValue::Concrete(c) = &result_owner.data(Interner).value {
                     if let ConstScalar::Bytes(v, mm) = &c.interned {
                         break 'b (v, mm);
@@ -1818,9 +1822,13 @@ impl Evaluator<'_> {
                     }
                     AdtId::EnumId(e) => {
                         let layout = this.layout(ty)?;
-                        if let Some((v, l)) =
-                            detect_variant_from_bytes(&layout, this.db, this.crate_id, bytes, e)
-                        {
+                        if let Some((v, l)) = detect_variant_from_bytes(
+                            &layout,
+                            this.db,
+                            this.trait_env.clone(),
+                            bytes,
+                            e,
+                        ) {
                             let data = &this.db.enum_data(e).variants[v].variant_data;
                             let field_types = this
                                 .db
@@ -2409,7 +2417,7 @@ pub fn render_const_using_debug_impl(
     owner: ConstId,
     c: &Const,
 ) -> Result<String> {
-    let mut evaluator = Evaluator::new(db, owner.into(), false);
+    let mut evaluator = Evaluator::new(db, owner.into(), false, None);
     let locals = &Locals {
         ptr: ArenaMap::new(),
         body: db
