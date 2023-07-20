@@ -26,8 +26,9 @@
           StorageLive(_4);
           StorageLive(_5);
 -         _5 = _1;
+-         _4 = foo(move _5) -> [return: bb1, unwind continue];
 +         _5 = const 1_u8;
-          _4 = foo(move _5) -> [return: bb1, unwind continue];
++         _4 = foo(const 1_u8) -> [return: bb1, unwind continue];
       }
   
       bb1: {

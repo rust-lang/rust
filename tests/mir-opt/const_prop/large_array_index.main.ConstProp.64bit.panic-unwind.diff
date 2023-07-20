@@ -23,7 +23,7 @@
 -         assert(move _5, "index out of bounds: the length is {} but the index is {}", move _4, _3) -> [success: bb1, unwind continue];
 +         _4 = const 5000_usize;
 +         _5 = const true;
-+         assert(const true, "index out of bounds: the length is {} but the index is {}", move _4, _3) -> [success: bb1, unwind continue];
++         assert(const true, "index out of bounds: the length is {} but the index is {}", const 5000_usize, const 2_usize) -> [success: bb1, unwind continue];
       }
   
       bb1: {

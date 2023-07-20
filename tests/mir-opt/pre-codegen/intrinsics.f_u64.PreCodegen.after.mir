@@ -2,22 +2,18 @@
 
 fn f_u64() -> () {
     let mut _0: ();
-    let mut _1: u64;
     scope 1 (inlined f_dispatch::<u64>) {
         debug t => const 0_u64;
-        let _2: ();
+        let _1: ();
         scope 2 (inlined std::mem::size_of::<u64>) {
         }
     }
 
     bb0: {
-        StorageLive(_1);
-        _1 = const 0_u64;
-        _2 = f_non_zst::<u64>(move _1) -> [return: bb1, unwind unreachable];
+        _1 = f_non_zst::<u64>(const 0_u64) -> [return: bb1, unwind unreachable];
     }
 
     bb1: {
-        StorageDead(_1);
         return;
     }
 }

@@ -30,7 +30,7 @@
 -         assert(move _8, "index out of bounds: the length is {} but the index is {}", move _7, _6) -> [success: bb1, unwind unreachable];
 +         _7 = const 3_usize;
 +         _8 = const true;
-+         assert(const true, "index out of bounds: the length is {} but the index is {}", move _7, _6) -> [success: bb1, unwind unreachable];
++         assert(const true, "index out of bounds: the length is {} but the index is {}", const 3_usize, const 1_usize) -> [success: bb1, unwind unreachable];
       }
   
       bb1: {
