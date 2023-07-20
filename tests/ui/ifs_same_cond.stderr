@@ -36,13 +36,13 @@ LL |     if 2 * a == 1 {
    |        ^^^^^^^^^^
 
 error: this `if` has the same condition as a previous `if`
-  --> $DIR/ifs_same_cond.rs:54:15
+  --> $DIR/ifs_same_cond.rs:58:15
    |
 LL |     } else if a.contains("ah") {
    |               ^^^^^^^^^^^^^^^^
    |
 note: same as this
-  --> $DIR/ifs_same_cond.rs:53:8
+  --> $DIR/ifs_same_cond.rs:57:8
    |
 LL |     if a.contains("ah") {
    |        ^^^^^^^^^^^^^^^^

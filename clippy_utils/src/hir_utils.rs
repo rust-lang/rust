@@ -494,10 +494,13 @@ impl HirEqInterExpr<'_, '_, '_> {
             loop {
                 use TokenKind::{BlockComment, LineComment, Whitespace};
                 if left_data.macro_def_id != right_data.macro_def_id
-                    || (matches!(left_data.kind, ExpnKind::Macro(MacroKind::Bang, name) if name == sym::cfg)
-                        && !eq_span_tokens(self.inner.cx, left_data.call_site, right_data.call_site, |t| {
-                            !matches!(t, Whitespace | LineComment { .. } | BlockComment { .. })
-                        }))
+                    || (matches!(
+                        left_data.kind,
+                        ExpnKind::Macro(MacroKind::Bang, name)
+                        if name == sym::cfg || name == sym::option_env
+                    ) && !eq_span_tokens(self.inner.cx, left_data.call_site, right_data.call_site, |t| {
+                        !matches!(t, Whitespace | LineComment { .. } | BlockComment { .. })
+                    }))
                 {
                     // Either a different chain of macro calls, or different arguments to the `cfg` macro.
                     return false;
