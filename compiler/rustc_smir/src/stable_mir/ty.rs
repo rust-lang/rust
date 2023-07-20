@@ -25,12 +25,17 @@ pub enum RigidTy {
     Int(IntTy),
     Uint(UintTy),
     Float(FloatTy),
-    Adt(AdtDef, AdtSubsts),
+    Adt(AdtDef, GenericArgs),
+    Foreign(ForeignDef),
     Str,
     Array(Ty, Const),
     Slice(Ty),
     RawPtr(Ty, Mutability),
     Ref(Region, Ty, Mutability),
+    FnDef(FnDef, GenericArgs),
+    Closure(ClosureDef, GenericArgs),
+    Generator(GeneratorDef, GenericArgs, Movability),
+    Never,
     Tuple(Vec<Ty>),
 }
 
@@ -60,17 +65,33 @@ pub enum FloatTy {
     F64,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Movability {
+    Static,
+    Movable,
+}
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct ForeignDef(pub(crate) DefId);
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct FnDef(pub(crate) DefId);
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct ClosureDef(pub(crate) DefId);
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct GeneratorDef(pub(crate) DefId);
+
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct AdtDef(pub(crate) DefId);
 
 #[derive(Clone, Debug)]
-pub struct AdtSubsts(pub Vec<GenericArgKind>);
+pub struct GenericArgs(pub Vec<GenericArgKind>);
 
 #[derive(Clone, Debug)]
 pub enum GenericArgKind {
-    // FIXME add proper region
     Lifetime(Region),
     Type(Ty),
-    // FIXME add proper const
     Const(Const),
 }
