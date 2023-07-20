@@ -65,7 +65,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         &self,
         constant: &mir::Constant<'tcx>,
     ) -> Result<Option<ty::ValTree<'tcx>>, ErrorHandled> {
-        let uv = match constant.literal {
+        let uv = match self.monomorphize(constant.literal) {
             mir::ConstantKind::Unevaluated(uv, _) => uv.shrink(),
             mir::ConstantKind::Ty(c) => match c.kind() {
                 // A constant that came from a const generic but was then used as an argument to old-style
