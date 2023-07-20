@@ -1,4 +1,5 @@
 query_system_cycle = cycle detected when {$stack_bottom}
+    .note = see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 query_system_cycle_recursive_trait_alias = trait aliases cannot be recursive
 

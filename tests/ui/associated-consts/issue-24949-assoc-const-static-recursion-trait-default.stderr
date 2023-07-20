@@ -26,6 +26,7 @@ LL |     const BAR: u32 = DEFAULT_REF_BAR;
    |     ^^^^^^^^^^^^^^
    = note: ...which again requires elaborating drops for `FooDefault::BAR`, completing the cycle
    = note: cycle used when running analysis passes on this crate
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error: aborting due to previous error
 

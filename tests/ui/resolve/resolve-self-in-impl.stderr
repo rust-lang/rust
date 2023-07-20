@@ -56,6 +56,7 @@ LL | | trait Tr<T = u8> {
 LL | |
 LL | | fn main() {}
    | |____________^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error: aborting due to 6 previous errors
 

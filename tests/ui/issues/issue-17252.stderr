@@ -10,6 +10,7 @@ note: cycle used when const-evaluating + checking `main::{constant#0}`
    |
 LL |     let _x: [u8; FOO]; // caused stack overflow prior to fix
    |                  ^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error: aborting due to previous error
 

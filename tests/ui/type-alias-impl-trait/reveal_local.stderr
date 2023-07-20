@@ -22,6 +22,7 @@ LL | |
 LL | |
 LL | | fn main() {}
    | |____________^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error[E0391]: cycle detected when computing type of `Foo::{opaque#0}`
   --> $DIR/reveal_local.rs:5:12
@@ -46,6 +47,7 @@ LL | |
 LL | |
 LL | | fn main() {}
    | |____________^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error: cannot check whether the hidden type of `reveal_local[9507]::Foo::{opaque#0}` satisfies auto traits
   --> $DIR/reveal_local.rs:15:15
@@ -92,6 +94,7 @@ LL | |
 LL | |
 LL | | fn main() {}
    | |____________^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error: cannot check whether the hidden type of `reveal_local[9507]::Foo::{opaque#0}` satisfies auto traits
   --> $DIR/reveal_local.rs:25:15

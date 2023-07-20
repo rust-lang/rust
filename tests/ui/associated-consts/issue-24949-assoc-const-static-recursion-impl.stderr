@@ -26,6 +26,7 @@ LL |     const BAR: u32 = IMPL_REF_BAR;
    |     ^^^^^^^^^^^^^^
    = note: ...which again requires elaborating drops for `<impl at $DIR/issue-24949-assoc-const-static-recursion-impl.rs:11:1: 11:19>::BAR`, completing the cycle
    = note: cycle used when running analysis passes on this crate
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error: aborting due to previous error
 
