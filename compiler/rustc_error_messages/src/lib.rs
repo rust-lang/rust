@@ -354,6 +354,13 @@ impl DiagnosticMessage {
             }
         }
     }
+
+    pub fn as_str(&self) -> Option<&str> {
+        match self {
+            DiagnosticMessage::Eager(s) | DiagnosticMessage::Str(s) => Some(s),
+            DiagnosticMessage::FluentIdentifier(_, _) => None,
+        }
+    }
 }
 
 impl From<String> for DiagnosticMessage {

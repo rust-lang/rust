@@ -604,6 +604,9 @@ pub mod alloc;
 // Private support modules
 mod panicking;
 
+#[unstable(feature = "ice_to_disk", issue = "none")]
+pub use panicking::panic_hook_with_disk_dump;
+
 #[path = "../../backtrace/src/lib.rs"]
 #[allow(dead_code, unused_attributes, fuzzy_provenance_casts)]
 mod backtrace_rs;

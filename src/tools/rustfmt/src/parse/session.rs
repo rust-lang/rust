@@ -162,6 +162,7 @@ fn default_handler(
             ignore_path_set,
             can_reset,
         }),
+        None,
     )
 }
 
@@ -233,7 +234,7 @@ impl ParseSess {
     }
 
     pub(crate) fn set_silent_emitter(&mut self) {
-        self.parse_sess.span_diagnostic = Handler::with_emitter(true, None, silent_emitter());
+        self.parse_sess.span_diagnostic = Handler::with_emitter(true, None, silent_emitter(), None);
     }
 
     pub(crate) fn span_to_filename(&self, span: Span) -> FileName {

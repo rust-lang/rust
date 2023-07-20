@@ -1,5 +1,5 @@
 error: expected one of `->`, `where`, or `{`, found `<eof>`
-  --> $DIR/ice-bug-report-url.rs:13:10
+  --> $DIR/ice-bug-report-url.rs:14:10
    |
 LL | fn wrong()
    |          ^ expected one of `->`, `where`, or `{`
