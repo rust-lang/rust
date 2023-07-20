@@ -116,10 +116,19 @@ impl<'tcx> InferCtxtSelectExt<'tcx> for InferCtxt<'tcx> {
                 ),
             ) => rematch_object(self, goal, nested_obligations),
 
-            (Certainty::Maybe(_), CandidateSource::BuiltinImpl(BuiltinImplSource::Misc))
+            (
+                Certainty::Maybe(_),
+                CandidateSource::BuiltinImpl(
+                    BuiltinImplSource::Misc | BuiltinImplSource::TupleUnsize,
+                ),
+            ) if self.tcx.lang_items().unsize_trait() == Some(goal.predicate.def_id()) => {
+                rematch_unsize(self, goal, nested_obligations)
+            }
+
+            (Certainty::Yes, CandidateSource::BuiltinImpl(BuiltinImplSource::TupleUnsize))
                 if self.tcx.lang_items().unsize_trait() == Some(goal.predicate.def_id()) =>
             {
-                rematch_unsize(self, goal, nested_obligations)
+                Ok(Some(ImplSource::TupleUnsizing(nested_obligations)))
             }
 
             // Technically some builtin impls have nested obligations, but if

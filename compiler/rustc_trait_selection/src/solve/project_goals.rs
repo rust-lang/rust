@@ -1,6 +1,6 @@
 use crate::traits::specialization_graph;
 
-use super::assembly::{self, structural_traits};
+use super::assembly::{self, structural_traits, BuiltinImplSource};
 use super::EvalCtxt;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
@@ -502,17 +502,10 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
         )
     }
 
-    fn consider_builtin_unsize_candidate(
+    fn consider_builtin_unsize_and_upcast_candidates(
         _ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
-    ) -> QueryResult<'tcx> {
-        bug!("`Unsize` does not have an associated type: {:?}", goal);
-    }
-
-    fn consider_builtin_dyn_upcast_candidates(
-        _ecx: &mut EvalCtxt<'_, 'tcx>,
-        goal: Goal<'tcx, Self>,
-    ) -> Vec<CanonicalResponse<'tcx>> {
+    ) -> Vec<(CanonicalResponse<'tcx>, BuiltinImplSource)> {
         bug!("`Unsize` does not have an associated type: {:?}", goal);
     }
 

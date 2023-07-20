@@ -94,6 +94,7 @@ pub(super) enum CandidateSource {
 #[derive(Debug, Clone, Copy)]
 pub(super) enum BuiltinImplSource {
     TraitUpcasting,
+    TupleUnsize,
     Object,
     Misc,
     Ambiguity,
@@ -281,20 +282,19 @@ pub(super) trait GoalKind<'tcx>:
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
 
+    /// Consider (possibly several) goals to upcast or unsize a type to another
+    /// type.
+    ///
     /// The most common forms of unsizing are array to slice, and concrete (Sized)
     /// type into a `dyn Trait`. ADTs and Tuples can also have their final field
     /// unsized if it's generic.
-    fn consider_builtin_unsize_candidate(
-        ecx: &mut EvalCtxt<'_, 'tcx>,
-        goal: Goal<'tcx, Self>,
-    ) -> QueryResult<'tcx>;
-
+    ///
     /// `dyn Trait1` can be unsized to `dyn Trait2` if they are the same trait, or
     /// if `Trait2` is a (transitive) supertrait of `Trait2`.
-    fn consider_builtin_dyn_upcast_candidates(
-        ecx: &mut EvalCtxt<'_, 'tcx>,
+    fn consider_builtin_unsize_and_upcast_candidates(
+        _ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
-    ) -> Vec<CanonicalResponse<'tcx>>;
+    ) -> Vec<(CanonicalResponse<'tcx>, BuiltinImplSource)>;
 
     fn consider_builtin_discriminant_kind_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
@@ -610,8 +610,6 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             G::consider_builtin_future_candidate(self, goal)
         } else if lang_items.gen_trait() == Some(trait_def_id) {
             G::consider_builtin_generator_candidate(self, goal)
-        } else if lang_items.unsize_trait() == Some(trait_def_id) {
-            G::consider_builtin_unsize_candidate(self, goal)
         } else if lang_items.discriminant_kind_trait() == Some(trait_def_id) {
             G::consider_builtin_discriminant_kind_candidate(self, goal)
         } else if lang_items.destruct_trait() == Some(trait_def_id) {
@@ -633,11 +631,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         // There may be multiple unsize candidates for a trait with several supertraits:
         // `trait Foo: Bar<A> + Bar<B>` and `dyn Foo: Unsize<dyn Bar<_>>`
         if lang_items.unsize_trait() == Some(trait_def_id) {
-            for result in G::consider_builtin_dyn_upcast_candidates(self, goal) {
-                candidates.push(Candidate {
-                    source: CandidateSource::BuiltinImpl(BuiltinImplSource::TraitUpcasting),
-                    result,
-                });
+            for (result, source) in G::consider_builtin_unsize_and_upcast_candidates(self, goal) {
+                candidates.push(Candidate { source: CandidateSource::BuiltinImpl(source), result });
             }
         }
     }
