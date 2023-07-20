@@ -1257,7 +1257,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
     // Each LLVM module is automatically sent back to the coordinator for LTO if
     // necessary. There's already optimizations in place to avoid sending work
     // back to the coordinator if LTO isn't requested.
-    return B::spawn_thread(cgcx.time_trace, move || {
+    return B::spawn_named_thread(cgcx.time_trace, "coordinator".to_string(), move || {
         let mut worker_id_counter = 0;
         let mut free_worker_ids = Vec::new();
         let mut get_worker_id = |free_worker_ids: &mut Vec<usize>| {
@@ -1625,7 +1625,8 @@ fn start_executing_work<B: ExtraBackendMethods>(
             modules: compiled_modules,
             allocator_module: compiled_allocator_module,
         })
-    });
+    })
+    .expect("failed to spawn coordinator thread");
 
     // A heuristic that determines if we have enough LLVM WorkItems in the
     // queue so that the main thread can do LLVM work instead of codegen
@@ -1758,7 +1759,7 @@ fn spawn_work<B: ExtraBackendMethods>(cgcx: CodegenContext<B>, work: WorkItem<B>
             })
         };
     })
-    .expect("failed to spawn thread");
+    .expect("failed to spawn work thread");
 }
 
 enum SharedEmitterMessage {
