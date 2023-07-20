@@ -96,7 +96,7 @@ where
                 return Some(Err(AlwaysRequiresDrop));
             }
 
-            let components = match needs_drop_components(ty, &tcx.data_layout) {
+            let components = match needs_drop_components(tcx, ty) {
                 Err(e) => return Some(Err(e)),
                 Ok(components) => components,
             };
@@ -160,7 +160,7 @@ where
                             queue_type(self, required);
                         }
                     }
-                    ty::Array(..) | ty::Alias(..) | ty::Param(_) => {
+                    ty::Alias(..) | ty::Array(..) | ty::Placeholder(_) | ty::Param(_) => {
                         if ty == component {
                             // Return the type to the caller: they may be able
                             // to normalize further than we can.
@@ -172,7 +172,31 @@ where
                             queue_type(self, component);
                         }
                     }
-                    _ => return Some(Err(AlwaysRequiresDrop)),
+
+                    ty::Foreign(_) | ty::Dynamic(..) => {
+                        return Some(Err(AlwaysRequiresDrop));
+                    }
+
+                    ty::Bool
+                    | ty::Char
+                    | ty::Int(_)
+                    | ty::Uint(_)
+                    | ty::Float(_)
+                    | ty::Str
+                    | ty::Slice(_)
+                    | ty::Ref(..)
+                    | ty::RawPtr(..)
+                    | ty::FnDef(..)
+                    | ty::FnPtr(..)
+                    | ty::Tuple(_)
+                    | ty::Bound(..)
+                    | ty::GeneratorWitness(..)
+                    | ty::GeneratorWitnessMIR(..)
+                    | ty::Never
+                    | ty::Infer(_)
+                    | ty::Error(_) => {
+                        bug!("unexpected type returned by `needs_drop_components`: {component}")
+                    }
                 }
             }
         }

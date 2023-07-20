@@ -10,6 +10,7 @@ note: cycle used when collecting item types in top-level module
    |
 LL | trait A: B + A {}
    | ^^^^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error: aborting due to previous error
 

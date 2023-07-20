@@ -347,7 +347,7 @@ impl<'tcx> GenericPredicates<'tcx> {
         tcx: TyCtxt<'tcx>,
         args: GenericArgsRef<'tcx>,
     ) -> impl Iterator<Item = (Clause<'tcx>, Span)> + DoubleEndedIterator + ExactSizeIterator {
-        EarlyBinder::bind(self.predicates).arg_iter_copied(tcx, args)
+        EarlyBinder::bind(self.predicates).iter_instantiated_copied(tcx, args)
     }
 
     #[instrument(level = "debug", skip(self, tcx))]

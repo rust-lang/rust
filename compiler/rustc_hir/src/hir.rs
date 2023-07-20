@@ -2664,10 +2664,19 @@ pub struct OpaqueTy<'hir> {
     pub generics: &'hir Generics<'hir>,
     pub bounds: GenericBounds<'hir>,
     pub origin: OpaqueTyOrigin,
-    // Opaques have duplicated lifetimes, this mapping connects the original lifetime with the copy
-    // so we can later generate bidirectional outlives predicates to enforce that these lifetimes
-    // stay in sync.
-    pub lifetime_mapping: &'hir [(Lifetime, LocalDefId)],
+    /// Return-position impl traits (and async futures) must "reify" any late-bound
+    /// lifetimes that are captured from the function signature they originate from.
+    ///
+    /// This is done by generating a new early-bound lifetime parameter local to the
+    /// opaque which is substituted in the function signature with the late-bound
+    /// lifetime.
+    ///
+    /// This mapping associated a captured lifetime (first parameter) with the new
+    /// early-bound lifetime that was generated for the opaque.
+    pub lifetime_mapping: Option<&'hir [(Lifetime, LocalDefId)]>,
+    /// Whether the opaque is a return-position impl trait (or async future)
+    /// originating from a trait method. This makes it so that the opaque is
+    /// lowered as an associated type.
     pub in_trait: bool,
 }
 

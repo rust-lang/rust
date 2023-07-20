@@ -321,7 +321,7 @@ pub fn supported_target_features(sess: &Session) -> &'static [(&'static str, Opt
         "aarch64" => AARCH64_ALLOWED_FEATURES,
         "x86" | "x86_64" => X86_ALLOWED_FEATURES,
         "hexagon" => HEXAGON_ALLOWED_FEATURES,
-        "mips" | "mips64" => MIPS_ALLOWED_FEATURES,
+        "mips" | "mips32r6" | "mips64" | "mips64r6" => MIPS_ALLOWED_FEATURES,
         "powerpc" | "powerpc64" => POWERPC_ALLOWED_FEATURES,
         "riscv32" | "riscv64" => RISCV_ALLOWED_FEATURES,
         "wasm32" | "wasm64" => WASM_ALLOWED_FEATURES,

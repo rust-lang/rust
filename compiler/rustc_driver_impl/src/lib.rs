@@ -7,6 +7,8 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(lazy_cell)]
 #![feature(decl_macro)]
+#![feature(ice_to_disk)]
+#![feature(let_chains)]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
 #![deny(rustc::untranslatable_diagnostic)]
@@ -57,8 +59,11 @@ use std::panic::{self, catch_unwind};
 use std::path::PathBuf;
 use std::process::{self, Command, Stdio};
 use std::str;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::OnceLock;
-use std::time::Instant;
+use std::time::{Instant, SystemTime};
+use time::format_description::well_known::Rfc3339;
+use time::OffsetDateTime;
 
 #[allow(unused_macros)]
 macro do_not_use_print($($t:tt)*) {
@@ -294,6 +299,7 @@ fn run_compiler(
         input: Input::File(PathBuf::new()),
         output_file: ofile,
         output_dir: odir,
+        ice_file: ice_path().clone(),
         file_loader,
         locale_resources: DEFAULT_LOCALE_RESOURCES,
         lint_caps: Default::default(),
@@ -1292,9 +1298,29 @@ pub fn catch_with_exit_code(f: impl FnOnce() -> interface::Result<()>) -> i32 {
     }
 }
 
-/// Stores the default panic hook, from before [`install_ice_hook`] was called.
-static DEFAULT_HOOK: OnceLock<Box<dyn Fn(&panic::PanicInfo<'_>) + Sync + Send + 'static>> =
-    OnceLock::new();
+pub static ICE_PATH: OnceLock<Option<PathBuf>> = OnceLock::new();
+
+pub fn ice_path() -> &'static Option<PathBuf> {
+    ICE_PATH.get_or_init(|| {
+        if !rustc_feature::UnstableFeatures::from_environment(None).is_nightly_build() {
+            return None;
+        }
+        if let Ok("0") = std::env::var("RUST_BACKTRACE").as_deref() {
+            return None;
+        }
+        let mut path = match std::env::var("RUSTC_ICE").as_deref() {
+            // Explicitly opting out of writing ICEs to disk.
+            Ok("0") => return None,
+            Ok(s) => PathBuf::from(s),
+            Err(_) => std::env::current_dir().unwrap_or_default(),
+        };
+        let now: OffsetDateTime = SystemTime::now().into();
+        let file_now = now.format(&Rfc3339).unwrap_or(String::new());
+        let pid = std::process::id();
+        path.push(format!("rustc-ice-{file_now}-{pid}.txt"));
+        Some(path)
+    })
+}
 
 /// Installs a panic hook that will print the ICE message on unexpected panics.
 ///
@@ -1318,8 +1344,6 @@ pub fn install_ice_hook(bug_report_url: &'static str, extra_info: fn(&Handler)) 
         std::env::set_var("RUST_BACKTRACE", "full");
     }
 
-    let default_hook = DEFAULT_HOOK.get_or_init(panic::take_hook);
-
     panic::set_hook(Box::new(move |info| {
         // If the error was caused by a broken pipe then this is not a bug.
         // Write the error and return immediately. See #98700.
@@ -1336,7 +1360,7 @@ pub fn install_ice_hook(bug_report_url: &'static str, extra_info: fn(&Handler)) 
         // Invoke the default handler, which prints the actual panic message and optionally a backtrace
         // Don't do this for delayed bugs, which already emit their own more useful backtrace.
         if !info.payload().is::<rustc_errors::DelayedBugPanic>() {
-            (*default_hook)(info);
+            std::panic_hook_with_disk_dump(info, ice_path().as_deref());
 
             // Separate the output with an empty line
             eprintln!();
@@ -1368,7 +1392,7 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str, extra_info:
         false,
         TerminalUrl::No,
     ));
-    let handler = rustc_errors::Handler::with_emitter(true, None, emitter);
+    let handler = rustc_errors::Handler::with_emitter(true, None, emitter, None);
 
     // a .span_bug or .bug call has already printed what
     // it wants to print.
@@ -1379,10 +1403,40 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str, extra_info:
     }
 
     handler.emit_note(session_diagnostics::IceBugReport { bug_report_url });
-    handler.emit_note(session_diagnostics::IceVersion {
-        version: util::version_str!().unwrap_or("unknown_version"),
-        triple: config::host_triple(),
-    });
+
+    let version = util::version_str!().unwrap_or("unknown_version");
+    let triple = config::host_triple();
+
+    static FIRST_PANIC: AtomicBool = AtomicBool::new(true);
+
+    let file = if let Some(path) = ice_path().as_ref() {
+        // Create the ICE dump target file.
+        match crate::fs::File::options().create(true).append(true).open(&path) {
+            Ok(mut file) => {
+                handler
+                    .emit_note(session_diagnostics::IcePath { path: path.display().to_string() });
+                if FIRST_PANIC.swap(false, Ordering::SeqCst) {
+                    let _ = write!(file, "\n\nrustc version: {version}\nplatform: {triple}");
+                }
+                Some(file)
+            }
+            Err(err) => {
+                // The path ICE couldn't be written to disk, provide feedback to the user as to why.
+                handler.emit_warning(session_diagnostics::IcePathError {
+                    path: path.display().to_string(),
+                    error: err.to_string(),
+                    env_var: std::env::var("RUSTC_ICE")
+                        .ok()
+                        .map(|env_var| session_diagnostics::IcePathErrorEnv { env_var }),
+                });
+                handler.emit_note(session_diagnostics::IceVersion { version, triple });
+                None
+            }
+        }
+    } else {
+        handler.emit_note(session_diagnostics::IceVersion { version, triple });
+        None
+    };
 
     if let Some((flags, excluded_cargo_defaults)) = extra_compiler_flags() {
         handler.emit_note(session_diagnostics::IceFlags { flags: flags.join(" ") });
@@ -1396,7 +1450,7 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str, extra_info:
 
     let num_frames = if backtrace { None } else { Some(2) };
 
-    interface::try_print_query_stack(&handler, num_frames);
+    interface::try_print_query_stack(&handler, num_frames, file);
 
     // We don't trust this callback not to panic itself, so run it at the end after we're sure we've
     // printed all the relevant info.

@@ -145,7 +145,7 @@ fn variance_of_opaque(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Varianc
     let mut collector =
         OpaqueTypeLifetimeCollector { tcx, root_def_id: item_def_id.to_def_id(), variances };
     let id_args = ty::GenericArgs::identity_for_item(tcx, item_def_id);
-    for (pred, _) in tcx.explicit_item_bounds(item_def_id).arg_iter_copied(tcx, id_args) {
+    for (pred, _) in tcx.explicit_item_bounds(item_def_id).iter_instantiated_copied(tcx, id_args) {
         debug!(?pred);
 
         // We only ignore opaque type args if the opaque type is the outermost type.

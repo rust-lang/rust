@@ -3,7 +3,6 @@
 // substitutions.
 
 use crate::FnCtxt;
-use hir::def_id::LocalDefId;
 use rustc_data_structures::unord::ExtendUnord;
 use rustc_errors::{ErrorGuaranteed, StashKey};
 use rustc_hir as hir;
@@ -11,13 +10,12 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_infer::infer::error_reporting::TypeAnnotationNeeded::E0282;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCoercion};
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
-use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt};
+use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 
 use std::mem;
-use std::ops::ControlFlow;
 
 ///////////////////////////////////////////////////////////////////////////
 // Entry point
@@ -565,23 +563,9 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             let hidden_type = self.resolve(decl.hidden_type, &decl.hidden_type.span);
             let opaque_type_key = self.resolve(opaque_type_key, &decl.hidden_type.span);
 
-            struct RecursionChecker {
-                def_id: LocalDefId,
-            }
-            impl<'tcx> ty::TypeVisitor<TyCtxt<'tcx>> for RecursionChecker {
-                type BreakTy = ();
-                fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-                    if let ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) = *t.kind() {
-                        if def_id == self.def_id.to_def_id() {
-                            return ControlFlow::Break(());
-                        }
-                    }
-                    t.super_visit_with(self)
-                }
-            }
-            if hidden_type
-                .visit_with(&mut RecursionChecker { def_id: opaque_type_key.def_id })
-                .is_break()
+            if let ty::Alias(ty::Opaque, alias_ty) = hidden_type.ty.kind()
+                && alias_ty.def_id == opaque_type_key.def_id.to_def_id()
+                && alias_ty.args == opaque_type_key.args
             {
                 continue;
             }

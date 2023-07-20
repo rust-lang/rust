@@ -34,7 +34,7 @@ use rustc_session::cstore::{
 use rustc_session::Session;
 use rustc_span::hygiene::ExpnIndex;
 use rustc_span::symbol::{kw, Ident, Symbol};
-use rustc_span::{self, BytePos, ExpnId, Pos, Span, SyntaxContext, DUMMY_SP};
+use rustc_span::{self, BytePos, ExpnId, Pos, Span, SpanData, SyntaxContext, DUMMY_SP};
 
 use proc_macro::bridge::client::ProcMacro;
 use std::iter::TrustedLen;
@@ -513,11 +513,26 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for ExpnId {
 
 impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for Span {
     fn decode(decoder: &mut DecodeContext<'a, 'tcx>) -> Span {
+        let mode = SpanEncodingMode::decode(decoder);
+        let data = match mode {
+            SpanEncodingMode::Direct => SpanData::decode(decoder),
+            SpanEncodingMode::Shorthand(position) => decoder.with_position(position, |decoder| {
+                let mode = SpanEncodingMode::decode(decoder);
+                debug_assert!(matches!(mode, SpanEncodingMode::Direct));
+                SpanData::decode(decoder)
+            }),
+        };
+        Span::new(data.lo, data.hi, data.ctxt, data.parent)
+    }
+}
+
+impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for SpanData {
+    fn decode(decoder: &mut DecodeContext<'a, 'tcx>) -> SpanData {
         let ctxt = SyntaxContext::decode(decoder);
         let tag = u8::decode(decoder);
 
         if tag == TAG_PARTIAL_SPAN {
-            return DUMMY_SP.with_ctxt(ctxt);
+            return DUMMY_SP.with_ctxt(ctxt).data();
         }
 
         debug_assert!(tag == TAG_VALID_SPAN_LOCAL || tag == TAG_VALID_SPAN_FOREIGN);
@@ -612,7 +627,7 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for Span {
         let hi = hi + source_file.translated_source_file.start_pos;
 
         // Do not try to decode parent for foreign spans.
-        Span::new(lo, hi, ctxt, None)
+        SpanData { lo, hi, ctxt, parent: None }
     }
 }
 

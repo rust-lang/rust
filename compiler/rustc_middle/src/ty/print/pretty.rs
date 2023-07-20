@@ -928,7 +928,7 @@ pub trait PrettyPrinter<'tcx>:
         let mut is_sized = false;
         let mut lifetimes = SmallVec::<[ty::Region<'tcx>; 1]>::new();
 
-        for (predicate, _) in bounds.arg_iter_copied(tcx, args) {
+        for (predicate, _) in bounds.iter_instantiated_copied(tcx, args) {
             let bound_predicate = predicate.kind();
 
             match bound_predicate.skip_binder() {
@@ -1932,7 +1932,7 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
     fn path_crate(mut self, cnum: CrateNum) -> Result<Self::Path, Self::Error> {
         self.empty_path = true;
         if cnum == LOCAL_CRATE {
-            if self.tcx.sess.rust_2018() {
+            if self.tcx.sess.at_least_rust_2018() {
                 // We add the `crate::` keyword on Rust 2018, only when desired.
                 if SHOULD_PREFIX_WITH_CRATE.with(|flag| flag.get()) {
                     write!(self, "{}", kw::Crate)?;

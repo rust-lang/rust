@@ -33,6 +33,7 @@ LL | | fn send<T: Send>(_: T) {}
 LL | |     Rc::new(String::from("foo"))
 LL | | }
    | |_^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error[E0391]: cycle detected when computing type of `cycle1::{opaque#0}`
   --> $DIR/auto-trait-leak.rs:11:16
@@ -68,6 +69,7 @@ LL | | fn send<T: Send>(_: T) {}
 LL | |     Rc::new(String::from("foo"))
 LL | | }
    | |_^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error: cannot check whether the hidden type of opaque type satisfies auto traits
   --> $DIR/auto-trait-leak.rs:21:10

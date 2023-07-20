@@ -90,6 +90,19 @@ pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<
         }
         v
     }));
+    items.extend(doc.inlined_foreigns.iter().flat_map(|((_, renamed), (res, local_import_id))| {
+        let Some(def_id) = res.opt_def_id() else { return Vec::new() };
+        let name = renamed.unwrap_or_else(|| cx.tcx.item_name(def_id));
+        let import = cx.tcx.hir().expect_item(*local_import_id);
+        match import.kind {
+            hir::ItemKind::Use(path, kind) => {
+                let hir::UsePath { segments, span, .. } = *path;
+                let path = hir::Path { segments, res: *res, span };
+                clean_use_statement_inner(import, name, &path, kind, cx, &mut Default::default())
+            }
+            _ => unreachable!(),
+        }
+    }));
     items.extend(doc.items.values().flat_map(|(item, renamed, _)| {
         // Now we actually lower the imports, skipping everything else.
         if let hir::ItemKind::Use(path, hir::UseKind::Glob) = item.kind {
@@ -441,7 +454,7 @@ fn clean_projection<'tcx>(
         let bounds = cx
             .tcx
             .explicit_item_bounds(ty.skip_binder().def_id)
-            .arg_iter_copied(cx.tcx, ty.skip_binder().args)
+            .iter_instantiated_copied(cx.tcx, ty.skip_binder().args)
             .map(|(pred, _)| pred)
             .collect::<Vec<_>>();
         return clean_middle_opaque_bounds(cx, bounds);
@@ -2071,7 +2084,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
                 let bounds = cx
                     .tcx
                     .explicit_item_bounds(def_id)
-                    .arg_iter_copied(cx.tcx, args)
+                    .iter_instantiated_copied(cx.tcx, args)
                     .map(|(bound, _)| bound)
                     .collect::<Vec<_>>();
                 let ty = clean_middle_opaque_bounds(cx, bounds);
@@ -2652,9 +2665,6 @@ fn clean_use_statement<'tcx>(
     let mut items = Vec::new();
     let hir::UsePath { segments, ref res, span } = *path;
     for &res in res {
-        if let Res::Def(DefKind::Ctor(..), _) | Res::SelfCtor(..) = res {
-            continue;
-        }
         let path = hir::Path { segments, res, span };
         items.append(&mut clean_use_statement_inner(import, name, &path, kind, cx, inlined_names));
     }
@@ -2669,6 +2679,9 @@ fn clean_use_statement_inner<'tcx>(
     cx: &mut DocContext<'tcx>,
     inlined_names: &mut FxHashSet<(ItemType, Symbol)>,
 ) -> Vec<Item> {
+    if let Res::Def(DefKind::Ctor(..), _) | Res::SelfCtor(..) = path.res {
+        return Vec::new();
+    }
     // We need this comparison because some imports (for std types for example)
     // are "inserted" as well but directly by the compiler and they should not be
     // taken into account.

@@ -117,7 +117,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
             for (assoc_pred, assoc_pred_span) in cx
                 .tcx
                 .explicit_item_bounds(proj.projection_ty.def_id)
-                .arg_iter_copied(cx.tcx, &proj.projection_ty.args)
+                .iter_instantiated_copied(cx.tcx, &proj.projection_ty.args)
             {
                 let assoc_pred = assoc_pred.fold_with(proj_replacer);
                 let Ok(assoc_pred) = traits::fully_normalize(

@@ -232,7 +232,7 @@ impl TestProps {
             aux_builds: vec![],
             aux_crates: vec![],
             revisions: vec![],
-            rustc_env: vec![],
+            rustc_env: vec![("RUSTC_ICE".to_string(), "0".to_string())],
             unset_rustc_env: vec![],
             exec_env: vec![],
             unset_exec_env: vec![],

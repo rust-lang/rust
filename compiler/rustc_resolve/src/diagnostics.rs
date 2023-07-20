@@ -1203,7 +1203,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     if filter_fn(res) {
                         // create the path
                         let mut segms = path_segments.clone();
-                        if lookup_ident.span.rust_2018() {
+                        if lookup_ident.span.at_least_rust_2018() {
                             // crate-local absolute paths start with `crate::` in edition 2018
                             // FIXME: may also be stabilized for Rust 2015 (Issues #45477, #44660)
                             segms.insert(0, ast::PathSegment::from_ident(crate_name));
@@ -1268,7 +1268,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     path_segments.push(ast::PathSegment::from_ident(ident));
 
                     let is_extern_crate_that_also_appears_in_prelude =
-                        name_binding.is_extern_crate() && lookup_ident.span.rust_2018();
+                        name_binding.is_extern_crate() && lookup_ident.span.at_least_rust_2018();
 
                     if !is_extern_crate_that_also_appears_in_prelude {
                         // add the module to the lookup
@@ -1315,7 +1315,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             &filter_fn,
         );
 
-        if lookup_ident.span.rust_2018() {
+        if lookup_ident.span.at_least_rust_2018() {
             let extern_prelude_names = self.extern_prelude.clone();
             for (ident, _) in extern_prelude_names.into_iter() {
                 if ident.span.from_expansion() {
@@ -1568,7 +1568,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     "consider adding an explicit import of `{ident}` to disambiguate"
                 ))
             }
-            if b.is_extern_crate() && ident.span.rust_2018() {
+            if b.is_extern_crate() && ident.span.at_least_rust_2018() {
                 help_msgs.push(format!("use `::{ident}` to refer to this {thing} unambiguously"))
             }
             match misc {
@@ -1973,7 +1973,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 if fst.ident.name == kw::PathRoot && !snd.ident.is_path_segment_keyword() => {}
             // `ident::...` on 2018.
             (Some(fst), _)
-                if fst.ident.span.rust_2018() && !fst.ident.is_path_segment_keyword() =>
+                if fst.ident.span.at_least_rust_2018() && !fst.ident.is_path_segment_keyword() =>
             {
                 // Insert a placeholder that's later replaced by `self`/`super`/etc.
                 path.insert(0, Segment::from_ident(Ident::empty()));

@@ -16,6 +16,7 @@ note: cycle used when checking item types in module `m`
    |
 LL | mod m {
    | ^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error[E0391]: cycle detected when computing type of `m::Foo::{opaque#0}`
   --> $DIR/auto-trait-leakage3.rs:7:20
@@ -34,6 +35,7 @@ note: cycle used when checking item types in module `m`
    |
 LL | mod m {
    | ^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error: cannot check whether the hidden type of `auto_trait_leakage3[211d]::m::Foo::{opaque#0}` satisfies auto traits
   --> $DIR/auto-trait-leakage3.rs:16:17

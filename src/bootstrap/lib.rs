@@ -133,7 +133,12 @@ const EXTRA_CHECK_CFGS: &[(Option<Mode>, &'static str, Option<&[&'static str]>)]
     /* Extra values not defined in the built-in targets yet, but used in std */
     (Some(Mode::Std), "target_env", Some(&["libnx"])),
     // (Some(Mode::Std), "target_os", Some(&[])),
-    (Some(Mode::Std), "target_arch", Some(&["asmjs", "spirv", "nvptx", "xtensa"])),
+    // #[cfg(bootstrap)] mips32r6, mips64r6
+    (
+        Some(Mode::Std),
+        "target_arch",
+        Some(&["asmjs", "spirv", "nvptx", "xtensa", "mips32r6", "mips64r6"]),
+    ),
     /* Extra names used by dependencies */
     // FIXME: Used by serde_json, but we should not be triggering on external dependencies.
     (Some(Mode::Rustc), "no_btreemap_remove_entry", None),

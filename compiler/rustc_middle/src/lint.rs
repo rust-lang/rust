@@ -278,6 +278,7 @@ pub fn explain_lint_level_source(
 ///     //          ^^^^^^^^^^^^^^^^^^^^^ returns `&mut DiagnosticBuilder` by default
 /// )
 /// ```
+#[track_caller]
 pub fn struct_lint_level(
     sess: &Session,
     lint: &'static Lint,
@@ -291,6 +292,7 @@ pub fn struct_lint_level(
 ) {
     // Avoid codegen bloat from monomorphization by immediately doing dyn dispatch of `decorate` to
     // the "real" work.
+    #[track_caller]
     fn struct_lint_level_impl(
         sess: &Session,
         lint: &'static Lint,

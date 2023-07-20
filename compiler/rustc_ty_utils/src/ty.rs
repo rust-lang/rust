@@ -42,7 +42,7 @@ fn sized_constraint_for_ty<'tcx>(
             let adt_tys = adt.sized_constraint(tcx);
             debug!("sized_constraint_for_ty({:?}) intermediate = {:?}", ty, adt_tys);
             adt_tys
-                .arg_iter_copied(tcx, args)
+                .iter_instantiated_copied(tcx, args)
                 .flat_map(|ty| sized_constraint_for_ty(tcx, adtdef, ty))
                 .collect()
         }
@@ -297,7 +297,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
             for bound in self
                 .tcx
                 .item_bounds(unshifted_alias_ty.def_id)
-                .arg_iter(self.tcx, unshifted_alias_ty.args)
+                .iter_instantiated(self.tcx, unshifted_alias_ty.args)
             {
                 bound.visit_with(self);
             }

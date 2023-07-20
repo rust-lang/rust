@@ -66,6 +66,12 @@ const METADATA_VERSION: u8 = 8;
 /// unsigned integer, and further followed by the rustc version string.
 pub const METADATA_HEADER: &[u8] = &[b'r', b'u', b's', b't', 0, 0, 0, METADATA_VERSION];
 
+#[derive(Encodable, Decodable)]
+enum SpanEncodingMode {
+    Shorthand(usize),
+    Direct,
+}
+
 /// A value of type T referred to by its absolute position
 /// in the metadata, and which can be decoded lazily.
 ///

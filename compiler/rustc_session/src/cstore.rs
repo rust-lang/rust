@@ -13,6 +13,7 @@ use rustc_hir::definitions::{DefKey, DefPath, DefPathHash, Definitions};
 use rustc_span::hygiene::{ExpnHash, ExpnId};
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
+use rustc_target::spec::abi::Abi;
 use rustc_target::spec::Target;
 
 use std::any::Any;
@@ -147,6 +148,7 @@ pub enum DllCallingConvention {
 pub struct ForeignModule {
     pub foreign_items: Vec<DefId>,
     pub def_id: DefId,
+    pub abi: Abi,
 }
 
 #[derive(Copy, Clone, Debug, HashStable_Generic)]

@@ -663,7 +663,7 @@ pub fn ty_sig<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'t
         ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => sig_from_bounds(
             cx,
             ty,
-            cx.tcx.item_bounds(def_id).arg_iter(cx.tcx, args),
+            cx.tcx.item_bounds(def_id).iter_instantiated(cx.tcx, args),
             cx.tcx.opt_parent(def_id),
         ),
         ty::FnPtr(sig) => Some(ExprFnSig::Sig(sig, None)),
@@ -739,7 +739,7 @@ fn sig_for_projection<'tcx>(cx: &LateContext<'tcx>, ty: AliasTy<'tcx>) -> Option
     let mut output = None;
     let lang_items = cx.tcx.lang_items();
 
-    for (pred, _) in cx.tcx.explicit_item_bounds(ty.def_id).arg_iter_copied(cx.tcx, ty.args) {
+    for (pred, _) in cx.tcx.explicit_item_bounds(ty.def_id).iter_instantiated_copied(cx.tcx, ty.args) {
         match pred.kind().skip_binder() {
             ty::ClauseKind::Trait(p)
                 if (lang_items.fn_trait() == Some(p.def_id())

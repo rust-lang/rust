@@ -198,25 +198,24 @@ impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
                 "arm" => ("arm", "--32"),
                 _ => panic!("unsupported arch {}", sess.target.arch),
             };
-            let result = std::process::Command::new(&dlltool)
-                .args([
-                    "-d",
-                    def_file_path.to_str().unwrap(),
-                    "-D",
-                    lib_name,
-                    "-l",
-                    output_path.to_str().unwrap(),
-                    "-m",
-                    dlltool_target_arch,
-                    "-f",
-                    dlltool_target_bitness,
-                    "--no-leading-underscore",
-                    "--temp-prefix",
-                    temp_prefix.to_str().unwrap(),
-                ])
-                .output();
+            let mut dlltool_cmd = std::process::Command::new(&dlltool);
+            dlltool_cmd.args([
+                "-d",
+                def_file_path.to_str().unwrap(),
+                "-D",
+                lib_name,
+                "-l",
+                output_path.to_str().unwrap(),
+                "-m",
+                dlltool_target_arch,
+                "-f",
+                dlltool_target_bitness,
+                "--no-leading-underscore",
+                "--temp-prefix",
+                temp_prefix.to_str().unwrap(),
+            ]);
 
-            match result {
+            match dlltool_cmd.output() {
                 Err(e) => {
                     sess.emit_fatal(ErrorCallingDllTool {
                         dlltool_path: dlltool.to_string_lossy(),
@@ -226,6 +225,12 @@ impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
                 // dlltool returns '0' on failure, so check for error output instead.
                 Ok(output) if !output.stderr.is_empty() => {
                     sess.emit_fatal(DlltoolFailImportLibrary {
+                        dlltool_path: dlltool.to_string_lossy(),
+                        dlltool_args: dlltool_cmd
+                            .get_args()
+                            .map(|arg| arg.to_string_lossy())
+                            .collect::<Vec<_>>()
+                            .join(" "),
                         stdout: String::from_utf8_lossy(&output.stdout),
                         stderr: String::from_utf8_lossy(&output.stderr),
                     })
