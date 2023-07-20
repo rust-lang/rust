@@ -149,7 +149,14 @@ pub trait FileExt {
     /// Note that similar to [`File::write`], it is not an error to return a
     /// short write.
     ///
+    /// # Bug
+    /// On some systems, due to a [bug] with [`pwrite64`] (the underlying
+    /// syscall), files opened with the `O_APPEND` flag fail to respect the
+    /// offset parameter, always appending to the end of the file instead.
+    ///
     /// [`File::write`]: fs::File::write
+    /// [`pwrite64`]: https://man7.org/linux/man-pages/man2/pwrite.2.html
+    /// [bug]: https://man7.org/linux/man-pages/man2/pwrite.2.html#BUGS
     ///
     /// # Examples
     ///
@@ -159,7 +166,7 @@ pub trait FileExt {
     /// use std::os::unix::prelude::FileExt;
     ///
     /// fn main() -> io::Result<()> {
-    ///     let file = File::open("foo.txt")?;
+    ///     let file = File::create("foo.txt")?;
     ///
     ///     // We now write at the offset 10.
     ///     file.write_at(b"sushi", 10)?;
