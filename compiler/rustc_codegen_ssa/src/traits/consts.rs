@@ -5,7 +5,13 @@ use rustc_target::abi;
 pub trait ConstMethods<'tcx>: BackendTypes {
     // Constant constructors
     fn const_null(&self, t: Self::Type) -> Self::Value;
+    /// Generate an uninitialized value (matching uninitialized memory in MIR).
+    /// Whether memory is initialized or not is tracked byte-for-byte.
     fn const_undef(&self, t: Self::Type) -> Self::Value;
+    /// Generate a fake value. Poison always affects the entire value, even if just a single byte is
+    /// poison. This can only be used in codepaths that are already UB, i.e., UB-free Rust code
+    /// (including code that e.g. copies uninit memory with `MaybeUninit`) can never encounter a
+    /// poison value.
     fn const_poison(&self, t: Self::Type) -> Self::Value;
     fn const_int(&self, t: Self::Type, i: i64) -> Self::Value;
     fn const_uint(&self, t: Self::Type, i: u64) -> Self::Value;
