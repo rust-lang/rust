@@ -349,8 +349,6 @@ pub struct CodegenContext<B: WriteBackendMethods> {
     /// Directory into which should the LLVM optimization remarks be written.
     /// If `None`, they will be written to stderr.
     pub remark_dir: Option<PathBuf>,
-    /// Worker thread number
-    pub worker: usize,
     /// The incremental compilation session directory, or None if we are not
     /// compiling incrementally
     pub incr_comp_session_dir: Option<PathBuf>,
@@ -1104,7 +1102,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
         exported_symbols,
         remark: sess.opts.cg.remark.clone(),
         remark_dir,
-        worker: 0,
         incr_comp_session_dir: sess.incr_comp_session_dir_opt().map(|r| r.clone()),
         cgu_reuse_tracker: sess.cgu_reuse_tracker.clone(),
         coordinator_send,
@@ -1355,17 +1352,13 @@ fn start_executing_work<B: ExtraBackendMethods>(
                         // LLVM work too.
                         let (item, _) =
                             work_items.pop().expect("queue empty - queue_full_enough() broken?");
-                        let cgcx = CodegenContext {
-                            worker: get_worker_id(&mut free_worker_ids),
-                            ..cgcx.clone()
-                        };
                         maybe_start_llvm_timer(
                             prof,
                             cgcx.config(item.module_kind()),
                             &mut llvm_start_time,
                         );
                         main_thread_state = MainThreadState::Lending;
-                        spawn_work(cgcx, item);
+                        spawn_work(&cgcx, get_worker_id(&mut free_worker_ids), item);
                     }
                 }
             } else if codegen_state == Completed {
@@ -1404,17 +1397,13 @@ fn start_executing_work<B: ExtraBackendMethods>(
                 match main_thread_state {
                     MainThreadState::Idle => {
                         if let Some((item, _)) = work_items.pop() {
-                            let cgcx = CodegenContext {
-                                worker: get_worker_id(&mut free_worker_ids),
-                                ..cgcx.clone()
-                            };
                             maybe_start_llvm_timer(
                                 prof,
                                 cgcx.config(item.module_kind()),
                                 &mut llvm_start_time,
                             );
                             main_thread_state = MainThreadState::Lending;
-                            spawn_work(cgcx, item);
+                            spawn_work(&cgcx, get_worker_id(&mut free_worker_ids), item);
                         } else {
                             // There is no unstarted work, so let the main thread
                             // take over for a running worker. Otherwise the
@@ -1450,11 +1439,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
                 let (item, _) = work_items.pop().unwrap();
 
                 maybe_start_llvm_timer(prof, cgcx.config(item.module_kind()), &mut llvm_start_time);
-
-                let cgcx =
-                    CodegenContext { worker: get_worker_id(&mut free_worker_ids), ..cgcx.clone() };
-
-                spawn_work(cgcx, item);
+                spawn_work(&cgcx, get_worker_id(&mut free_worker_ids), item);
                 running_with_own_token += 1;
             }
 
@@ -1700,7 +1685,13 @@ fn start_executing_work<B: ExtraBackendMethods>(
 #[must_use]
 pub struct WorkerFatalError;
 
-fn spawn_work<B: ExtraBackendMethods>(cgcx: CodegenContext<B>, work: WorkItem<B>) {
+fn spawn_work<B: ExtraBackendMethods>(
+    cgcx: &CodegenContext<B>,
+    worker_id: usize,
+    work: WorkItem<B>,
+) {
+    let cgcx = cgcx.clone();
+
     B::spawn_named_thread(cgcx.time_trace, work.short_description(), move || {
         // Set up a destructor which will fire off a message that we're done as
         // we exit.
@@ -1723,11 +1714,8 @@ fn spawn_work<B: ExtraBackendMethods>(cgcx: CodegenContext<B>, work: WorkItem<B>
             }
         }
 
-        let mut bomb = Bomb::<B> {
-            coordinator_send: cgcx.coordinator_send.clone(),
-            result: None,
-            worker_id: cgcx.worker,
-        };
+        let mut bomb =
+            Bomb::<B> { coordinator_send: cgcx.coordinator_send.clone(), result: None, worker_id };
 
         // Execute the work itself, and if it finishes successfully then flag
         // ourselves as a success as well.
