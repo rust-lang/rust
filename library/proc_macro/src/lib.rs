@@ -1479,7 +1479,7 @@ pub mod tracked {
     pub fn path<P: AsRef<Path>>(path: P) -> Result<(), ()> {
         let path: &Path = path.as_ref();
         if let Some(path) = path.to_str() {
-            crate::bridge::client::FreeFunctions::track_fs_path(path);
+            crate::bridge::client::FreeFunctions::track_path(path);
             Ok(())
         } else {
             Err(())

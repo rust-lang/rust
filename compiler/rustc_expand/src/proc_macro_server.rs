@@ -402,7 +402,7 @@ impl server::FreeFunctions for Rustc<'_, '_> {
             .insert((Symbol::intern(var), value.map(Symbol::intern)));
     }
 
-    fn track_fs_path(&mut self, path: &str) {
+    fn track_path(&mut self, path: &str) {
         self.sess().file_depinfo.borrow_mut().insert(Symbol::intern(path));
     }
 
