@@ -1881,6 +1881,7 @@ written to standard error output)"),
 
     // If you add a new option, please update:
     // - compiler/rustc_interface/src/tests.rs
+    // - src/doc/unstable-book/src/compiler-flags
 }
 
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
