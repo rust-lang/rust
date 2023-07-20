@@ -751,9 +751,19 @@ impl<B: WriteBackendMethods> WorkItem<B> {
 
 /// A result produced by the backend.
 pub(crate) enum WorkItemResult<B: WriteBackendMethods> {
-    Compiled(CompiledModule),
+    /// The backend has finished compiling a CGU, nothing more required.
+    Finished(CompiledModule),
+
+    /// The backend has finished compiling a CGU, which now needs linking
+    /// because `-Zcombine-cgu` was specified.
     NeedsLink(ModuleCodegen<B::Module>),
+
+    /// The backend has finished compiling a CGU, which now needs to go through
+    /// fat LTO.
     NeedsFatLTO(FatLTOInput<B>),
+
+    /// The backend has finished compiling a CGU, which now needs to go through
+    /// thin LTO.
     NeedsThinLTO(String, B::ThinBuffer),
 }
 
@@ -906,7 +916,7 @@ fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
             load_from_incr_comp_dir(dwarf_obj_out, &saved_dwarf_object_file)
         });
 
-    WorkItemResult::Compiled(CompiledModule {
+    WorkItemResult::Finished(CompiledModule {
         name: module.name,
         kind: ModuleKind::Regular,
         object,
@@ -936,7 +946,7 @@ fn finish_intra_module_work<B: ExtraBackendMethods>(
         || module.kind == ModuleKind::Allocator
     {
         let module = unsafe { B::codegen(cgcx, &diag_handler, module, module_config)? };
-        Ok(WorkItemResult::Compiled(module))
+        Ok(WorkItemResult::Finished(module))
     } else {
         Ok(WorkItemResult::NeedsLink(module))
     }
@@ -1522,7 +1532,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
                     free_worker(worker_id);
 
                     match result {
-                        Ok(WorkItemResult::Compiled(compiled_module)) => {
+                        Ok(WorkItemResult::Finished(compiled_module)) => {
                             match compiled_module.kind {
                                 ModuleKind::Regular => {
                                     compiled_modules.push(compiled_module);
