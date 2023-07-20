@@ -13,6 +13,7 @@ use crate::clean::Item;
 use crate::core::DocContext;
 use crate::html::markdown::main_body_opts;
 use crate::passes::source_span_for_markdown_range;
+use crate::visit_ast::inherits_doc_hidden;
 
 #[derive(Debug)]
 struct LinkData {
@@ -36,6 +37,24 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item) {
         // If there's no link names in this item,
         // then we skip resolution querying to
         // avoid from panicking.
+        return;
+    }
+
+    let Some(item_id) = item.def_id() else {
+        return;
+    };
+    let Some(local_item_id) = item_id.as_local() else {
+        return;
+    };
+
+    let is_hidden = !cx.render_options.document_hidden
+        && (item.is_doc_hidden() || inherits_doc_hidden(cx.tcx, local_item_id, None));
+    if is_hidden {
+        return;
+    }
+    let is_private = !cx.render_options.document_private
+        && !cx.cache.effective_visibilities.is_directly_public(cx.tcx, item_id);
+    if is_private {
         return;
     }
 
