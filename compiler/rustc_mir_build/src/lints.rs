@@ -3,7 +3,7 @@ use rustc_data_structures::graph::iterate::{
     NodeStatus, TriColorDepthFirstSearch, TriColorVisitor,
 };
 use rustc_hir::def::DefKind;
-use rustc_middle::mir::{self, BasicBlock, BasicBlocks, Body, Operand, TerminatorKind};
+use rustc_middle::mir::{self, BasicBlock, BasicBlocks, Body, Operand, Terminator, TerminatorKind};
 use rustc_middle::ty::{self, Instance, TyCtxt};
 use rustc_middle::ty::{GenericArg, GenericArgs};
 use rustc_session::lint::builtin::UNCONDITIONAL_RECURSION;
@@ -57,6 +57,13 @@ struct Search<'mir, 'tcx> {
 }
 
 impl<'mir, 'tcx> Search<'mir, 'tcx> {
+    fn is_recursive_terminator(&self, terminator: &Terminator<'tcx>) -> bool {
+        match &terminator.kind {
+            TerminatorKind::Call { func, args, .. } => self.is_recursive_call(func, args),
+            _ => false,
+        }
+    }
+
     /// Returns `true` if `func` refers to the function we are searching in.
     fn is_recursive_call(&self, func: &Operand<'tcx>, args: &[Operand<'tcx>]) -> bool {
         let Search { tcx, body, trait_args, .. } = *self;
@@ -138,10 +145,8 @@ impl<'mir, 'tcx> TriColorVisitor<BasicBlocks<'tcx>> for Search<'mir, 'tcx> {
     fn node_settled(&mut self, bb: BasicBlock) -> ControlFlow<Self::BreakVal> {
         // When we examine a node for the last time, remember it if it is a recursive call.
         let terminator = self.body[bb].terminator();
-        if let TerminatorKind::Call { func, args, .. } = &terminator.kind {
-            if self.is_recursive_call(func, args) {
-                self.reachable_recursive_calls.push(terminator.source_info.span);
-            }
+        if self.is_recursive_terminator(terminator) {
+            self.reachable_recursive_calls.push(terminator.source_info.span);
         }
 
         ControlFlow::Continue(())
@@ -149,14 +154,12 @@ impl<'mir, 'tcx> TriColorVisitor<BasicBlocks<'tcx>> for Search<'mir, 'tcx> {
 
     fn ignore_edge(&mut self, bb: BasicBlock, target: BasicBlock) -> bool {
         let terminator = self.body[bb].terminator();
-        if terminator.unwind() == Some(&mir::UnwindAction::Cleanup(target))
-            && terminator.successors().count() > 1
-        {
+        let ignore_unwind = terminator.unwind() == Some(&mir::UnwindAction::Cleanup(target))
+            && terminator.successors().count() > 1;
+        if ignore_unwind || self.is_recursive_terminator(terminator) {
             return true;
         }
-        // Don't traverse successors of recursive calls or false CFG edges.
         match &terminator.kind {
-            TerminatorKind::Call { func, args, .. } => self.is_recursive_call(func, args),
             TerminatorKind::FalseEdge { imaginary_target, .. } => imaginary_target == &target,
             _ => false,
         }
