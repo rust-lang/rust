@@ -31,6 +31,22 @@ pub fn adt_def(did: DefId) -> stable_mir::ty::AdtDef {
     with_tables(|t| t.adt_def(did))
 }
 
+pub fn foreign_def(did: DefId) -> stable_mir::ty::ForeignDef {
+    with_tables(|t| t.foreign_def(did))
+}
+
+pub fn fn_def(did: DefId) -> stable_mir::ty::FnDef {
+    with_tables(|t| t.fn_def(did))
+}
+
+pub fn closure_def(did: DefId) -> stable_mir::ty::ClosureDef {
+    with_tables(|t| t.closure_def(did))
+}
+
+pub fn generator_def(did: DefId) -> stable_mir::ty::GeneratorDef {
+    with_tables(|t| t.generator_def(did))
+}
+
 impl<'tcx> Tables<'tcx> {
     pub fn item_def_id(&self, item: &stable_mir::CrateItem) -> DefId {
         self.def_ids[item.0]
@@ -42,6 +58,22 @@ impl<'tcx> Tables<'tcx> {
 
     pub fn adt_def(&mut self, did: DefId) -> stable_mir::ty::AdtDef {
         stable_mir::ty::AdtDef(self.create_def_id(did))
+    }
+
+    pub fn foreign_def(&mut self, did: DefId) -> stable_mir::ty::ForeignDef {
+        stable_mir::ty::ForeignDef(self.create_def_id(did))
+    }
+
+    pub fn fn_def(&mut self, did: DefId) -> stable_mir::ty::FnDef {
+        stable_mir::ty::FnDef(self.create_def_id(did))
+    }
+
+    pub fn closure_def(&mut self, did: DefId) -> stable_mir::ty::ClosureDef {
+        stable_mir::ty::ClosureDef(self.create_def_id(did))
+    }
+
+    pub fn generator_def(&mut self, did: DefId) -> stable_mir::ty::GeneratorDef {
+        stable_mir::ty::GeneratorDef(self.create_def_id(did))
     }
 
     fn create_def_id(&mut self, did: DefId) -> stable_mir::DefId {
