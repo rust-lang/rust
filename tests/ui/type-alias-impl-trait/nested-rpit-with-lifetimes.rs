@@ -1,6 +1,6 @@
-// check-pass
-
 // Regression test for issue #83190, triggering an ICE in borrowck.
+
+// check-pass
 
 pub trait Any {}
 impl<T> Any for T {}
