@@ -15,7 +15,6 @@ use hir::def::DefKind;
 use polonius_engine::Atom;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::intern::Interned;
-use rustc_error_messages::DiagnosticMessage;
 use rustc_errors::{DiagnosticArgValue, ErrorGuaranteed, IntoDiagnosticArg, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -1991,7 +1990,7 @@ impl<'tcx> Ty<'tcx> {
     pub fn new_error_with_message<S: Into<MultiSpan>>(
         tcx: TyCtxt<'tcx>,
         span: S,
-        msg: impl Into<DiagnosticMessage>,
+        msg: impl Into<String>,
     ) -> Ty<'tcx> {
         let reported = tcx.sess.delay_span_bug(span, msg);
         Ty::new(tcx, Error(reported))
