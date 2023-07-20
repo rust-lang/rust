@@ -1431,13 +1431,17 @@ fn start_executing_work<B: ExtraBackendMethods>(
 
             // Spin up what work we can, only doing this while we've got available
             // parallelism slots and work left to spawn.
-            while codegen_state != Aborted
-                && !work_items.is_empty()
-                && running_with_own_token < tokens.len()
-            {
-                let (item, _) = work_items.pop().unwrap();
-                spawn_work(&cgcx, &mut llvm_start_time, get_worker_id(&mut free_worker_ids), item);
-                running_with_own_token += 1;
+            if codegen_state != Aborted {
+                while !work_items.is_empty() && running_with_own_token < tokens.len() {
+                    let (item, _) = work_items.pop().unwrap();
+                    spawn_work(
+                        &cgcx,
+                        &mut llvm_start_time,
+                        get_worker_id(&mut free_worker_ids),
+                        item,
+                    );
+                    running_with_own_token += 1;
+                }
             }
 
             // Relinquish accidentally acquired extra tokens.
