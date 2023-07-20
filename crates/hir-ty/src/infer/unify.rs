@@ -252,7 +252,8 @@ impl<'a> InferenceTable<'a> {
                             // and registering an obligation. But it needs chalk support, so we handle the most basic
                             // case (a non associated const without generic parameters) manually.
                             if subst.len(Interner) == 0 {
-                                if let Ok(eval) = self.db.const_eval((*c_id).into(), subst.clone())
+                                if let Ok(eval) =
+                                    self.db.const_eval((*c_id).into(), subst.clone(), None)
                                 {
                                     eval
                                 } else {
@@ -785,7 +786,7 @@ impl<'a> InferenceTable<'a> {
                 crate::ConstScalar::Unknown => self.new_const_var(data.ty.clone()),
                 // try to evaluate unevaluated const. Replace with new var if const eval failed.
                 crate::ConstScalar::UnevaluatedConst(id, subst) => {
-                    if let Ok(eval) = self.db.const_eval(*id, subst.clone()) {
+                    if let Ok(eval) = self.db.const_eval(*id, subst.clone(), None) {
                         eval
                     } else {
                         self.new_const_var(data.ty.clone())

@@ -114,7 +114,7 @@ fn eval_goal(db: &TestDB, file_id: FileId) -> Result<Const, ConstEvalError> {
             _ => None,
         })
         .expect("No const named GOAL found in the test");
-    db.const_eval(const_id.into(), Substitution::empty(Interner))
+    db.const_eval(const_id.into(), Substitution::empty(Interner), None)
 }
 
 #[test]
@@ -2491,6 +2491,28 @@ fn const_trait_assoc() {
     const GOAL: usize = to_const::<U0>();
     "#,
         5,
+    );
+    check_number(
+        r#"
+    //- minicore: size_of
+    //- /a/lib.rs crate:a
+    use core::mem::size_of;
+    pub struct S<T>(T);
+    impl<T> S<T> {
+        pub const X: usize = core::mem::size_of::<T>();
+    }
+    //- /main.rs crate:main deps:a
+    use a::{S};
+    trait Tr {
+        type Ty;
+    }
+    impl Tr for i32 {
+        type Ty = u64;
+    }
+    struct K<T: Tr>(<T as Tr>::Ty);
+    const GOAL: usize = S::<K<i32>>::X;
+    "#,
+        8,
     );
     check_number(
         r#"

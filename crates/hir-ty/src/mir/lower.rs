@@ -1341,7 +1341,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
     fn lower_literal_to_operand(&mut self, ty: Ty, l: &Literal) -> Result<Operand> {
         let size = self
             .db
-            .layout_of_ty(ty.clone(), self.owner.module(self.db.upcast()).krate())?
+            .layout_of_ty(ty.clone(), self.db.trait_environment_for_body(self.owner))?
             .size
             .bytes_usize();
         let bytes = match l {
@@ -1418,7 +1418,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
         } else {
             let name = const_id.name(self.db.upcast());
             self.db
-                .const_eval(const_id.into(), subst)
+                .const_eval(const_id.into(), subst, None)
                 .map_err(|e| MirLowerError::ConstEvalError(name, Box::new(e)))?
         };
         Ok(Operand::Constant(c))

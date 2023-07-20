@@ -30,7 +30,7 @@ fn eval_main(db: &TestDB, file_id: FileId) -> Result<(String, String), MirEvalEr
             db.trait_environment(func_id.into()),
         )
         .map_err(|e| MirEvalError::MirLowerError(func_id.into(), e))?;
-    let (result, stdout, stderr) = interpret_mir(db, body, false);
+    let (result, stdout, stderr) = interpret_mir(db, body, false, None);
     result?;
     Ok((stdout, stderr))
 }
