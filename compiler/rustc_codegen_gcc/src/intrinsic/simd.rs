@@ -22,17 +22,8 @@ use crate::builder::Builder;
 #[cfg(feature="master")]
 use crate::context::CodegenCx;
 #[cfg(feature="master")]
-use crate::errors::{InvalidMonomorphizationExpectedSignedUnsigned, InvalidMonomorphizationInsertedType};
 use crate::errors::{
     InvalidMonomorphizationExpectedSimd,
-    InvalidMonomorphizationInvalidBitmask,
-    InvalidMonomorphizationInvalidFloatVector, InvalidMonomorphizationMaskType,
-    InvalidMonomorphizationMismatchedLengths, InvalidMonomorphizationNotFloat,
-    InvalidMonomorphizationReturnElement, InvalidMonomorphizationReturnIntegerType,
-    InvalidMonomorphizationReturnLength, InvalidMonomorphizationReturnLengthInputType,
-    InvalidMonomorphizationReturnType, InvalidMonomorphizationSimdShuffle,
-    InvalidMonomorphizationUnrecognized, InvalidMonomorphizationUnsupportedElement,
-    InvalidMonomorphizationUnsupportedOperation,
 };
 
 pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
@@ -99,10 +90,10 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
                 let ptr = bx.pointercast(place.llval, bx.cx.type_ptr_to(int_ty));
                 bx.load(int_ty, ptr, Align::ONE)
             }
-            _ => return_error!(InvalidMonomorphizationInvalidBitmask {
+            _ => return_error!(InvalidMonomorphization::InvalidBitmask {
                 span,
                 name,
-                ty: mask_ty,
+                mask_ty,
                 expected_int_bits,
                 expected_bytes
             }),
@@ -151,7 +142,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         let (out_len, out_ty) = ret_ty.simd_size_and_type(bx.tcx());
         require!(
             in_len == out_len,
-            InvalidMonomorphizationReturnLengthInputType {
+            InvalidMonomorphization::ReturnLengthInputType {
                 span,
                 name,
                 in_len,
@@ -162,7 +153,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         );
         require!(
             bx.type_kind(bx.element_type(llret_ty)) == TypeKind::Integer,
-            InvalidMonomorphizationReturnIntegerType { span, name, ret_ty, out_ty }
+            InvalidMonomorphization::ReturnIntegerType { span, name, ret_ty, out_ty }
         );
 
         let arg1 = args[0].immediate();
@@ -190,7 +181,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
                         || span_bug!(span, "could not evaluate shuffle index array length"),
                     )
                 }
-                _ => return_error!(InvalidMonomorphizationSimdShuffle {
+                _ => return_error!(InvalidMonomorphization::SimdShuffle {
                     span,
                     name,
                     ty: args[2].layout.ty
@@ -207,11 +198,11 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         let (out_len, out_ty) = ret_ty.simd_size_and_type(bx.tcx());
         require!(
             out_len == n,
-            InvalidMonomorphizationReturnLength { span, name, in_len: n, ret_ty, out_len }
+            InvalidMonomorphization::ReturnLength { span, name, in_len: n, ret_ty, out_len }
         );
         require!(
             in_elem == out_ty,
-            InvalidMonomorphizationReturnElement { span, name, in_elem, in_ty, ret_ty, out_ty }
+            InvalidMonomorphization::ReturnElement { span, name, in_elem, in_ty, ret_ty, out_ty }
         );
 
         let vector = args[2].immediate();
@@ -223,7 +214,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
     if name == sym::simd_insert {
         require!(
             in_elem == arg_tys[2],
-            InvalidMonomorphizationInsertedType { span, name, in_elem, in_ty, out_ty: arg_tys[2] }
+            InvalidMonomorphization::InsertedType { span, name, in_elem, in_ty, out_ty: arg_tys[2] }
         );
         let vector = args[0].immediate();
         let index = args[1].immediate();
@@ -240,7 +231,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
     if name == sym::simd_extract {
         require!(
             ret_ty == in_elem,
-            InvalidMonomorphizationReturnType { span, name, in_elem, in_ty, ret_ty }
+            InvalidMonomorphization::ReturnType { span, name, in_elem, in_ty, ret_ty }
         );
         let vector = args[0].immediate();
         return Ok(bx.context.new_vector_access(None, vector, args[1].immediate()).to_rvalue());
@@ -253,11 +244,11 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         let (v_len, _) = arg_tys[1].simd_size_and_type(bx.tcx());
         require!(
             m_len == v_len,
-            InvalidMonomorphizationMismatchedLengths { span, name, m_len, v_len }
+            InvalidMonomorphization::MismatchedLengths { span, name, m_len, v_len }
         );
         match m_elem_ty.kind() {
             ty::Int(_) => {}
-            _ => return_error!(InvalidMonomorphizationMaskType { span, name, ty: m_elem_ty }),
+            _ => return_error!(InvalidMonomorphization::MaskType { span, name, ty: m_elem_ty }),
         }
         return Ok(bx.vector_select(args[0].immediate(), args[1].immediate(), args[2].immediate()));
     }
@@ -268,7 +259,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         let (out_len, out_elem) = ret_ty.simd_size_and_type(bx.tcx());
         require!(
             in_len == out_len,
-            InvalidMonomorphizationReturnLengthInputType {
+            InvalidMonomorphization::ReturnLengthInputType {
                 span,
                 name,
                 in_len,
@@ -329,7 +320,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
                     })*
                     _ => {},
                 }
-                return_error!(InvalidMonomorphizationUnsupportedOperation { span, name, in_ty, in_elem })
+                return_error!(InvalidMonomorphization::UnsupportedOperation { span, name, in_ty, in_elem })
             })*
         }
     }
@@ -422,12 +413,12 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
                     32 => ("f", elem_ty),
                     64 => ("", elem_ty),
                     _ => {
-                        return_error!(InvalidMonomorphizationInvalidFloatVector { span, name, elem_ty: f.name_str(), vec_ty: in_ty });
+                        return_error!(InvalidMonomorphization::FloatingPointVector { span, name, f_ty: *f, in_ty });
                     }
                 }
             }
             else {
-                return_error!(InvalidMonomorphizationNotFloat { span, name, ty: in_ty });
+                return_error!(InvalidMonomorphization::FloatingPointType { span, name, in_ty });
             };
 
         let vec_ty = bx.cx.type_vector(elem_ty, in_len);
@@ -450,7 +441,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
                 sym::simd_fsqrt => "sqrt",
                 sym::simd_round => "round",
                 sym::simd_trunc => "trunc",
-                _ => return_error!(InvalidMonomorphizationUnrecognized { span, name })
+                _ => return_error!(InvalidMonomorphization::UnrecognizedIntrinsic { span, name })
             };
         let builtin_name = format!("{}{}", intr_name, elem_ty_str);
         let funcs = bx.cx.functions.borrow();
@@ -815,7 +806,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
                     })*
                     _ => {},
                 }
-                return_error!(InvalidMonomorphizationUnsupportedOperation { span, name, in_ty, in_elem })
+                return_error!(InvalidMonomorphization::UnsupportedOperation { span, name, in_ty, in_elem })
             })*
         }
     }
@@ -835,11 +826,11 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
                 ty::Int(i) => (true, i.bit_width().unwrap_or(ptr_bits) / 8, bx.cx.type_int_from_ty(i)),
                 ty::Uint(i) => (false, i.bit_width().unwrap_or(ptr_bits) / 8, bx.cx.type_uint_from_ty(i)),
                 _ => {
-                return_error!(InvalidMonomorphizationExpectedSignedUnsigned {
+                return_error!(InvalidMonomorphization::ExpectedVectorElementType {
                     span,
                     name,
-                    elem_ty: arg_tys[0].simd_size_and_type(bx.tcx()).1,
-                    vec_ty: arg_tys[0],
+                    expected_element: arg_tys[0].simd_size_and_type(bx.tcx()).1,
+                    vector_type: arg_tys[0],
                 });
             }
         };
@@ -925,7 +916,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
             if name == sym::$name {
                 require!(
                     ret_ty == in_elem,
-                    InvalidMonomorphizationReturnType { span, name, in_elem, in_ty, ret_ty }
+                    InvalidMonomorphization::ReturnType { span, name, in_elem, in_ty, ret_ty }
                 );
                 return match in_elem.kind() {
                     ty::Int(_) | ty::Uint(_) => {
@@ -947,11 +938,12 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
                             Ok(bx.vector_reduce_op(args[0].immediate(), $vec_op))
                         }
                     }
-                    _ => return_error!(InvalidMonomorphizationUnsupportedElement {
+                    _ => return_error!(InvalidMonomorphization::UnsupportedSymbol {
                         span,
                         name,
+                        symbol: sym::$name,
                         in_ty,
-                        elem_ty: in_elem,
+                        in_elem,
                         ret_ty
                     }),
                 };
@@ -994,12 +986,19 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
             if name == sym::$name {
                 require!(
                     ret_ty == in_elem,
-                    InvalidMonomorphizationReturnType { span, name, in_elem, in_ty, ret_ty }
+                    InvalidMonomorphization::ReturnType { span, name, in_elem, in_ty, ret_ty }
                 );
                 return match in_elem.kind() {
                     ty::Int(_) | ty::Uint(_) => Ok(bx.$int_red(args[0].immediate())),
                     ty::Float(_) => Ok(bx.$float_red(args[0].immediate())),
-                    _ => return_error!(InvalidMonomorphizationUnsupportedElement { span, name, in_ty, elem_ty: in_elem, ret_ty }),
+                    _ => return_error!(InvalidMonomorphization::UnsupportedSymbol { 
+                        span, 
+                        name,
+                        symbol: sym::$name,
+                        in_ty,
+                        in_elem, 
+                        ret_ty 
+                    }),
                 };
             }
         };
@@ -1017,17 +1016,18 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
                 let input = if !$boolean {
                     require!(
                         ret_ty == in_elem,
-                        InvalidMonomorphizationReturnType { span, name, in_elem, in_ty, ret_ty }
+                        InvalidMonomorphization::ReturnType { span, name, in_elem, in_ty, ret_ty }
                     );
                     args[0].immediate()
                 } else {
                     match in_elem.kind() {
                         ty::Int(_) | ty::Uint(_) => {}
-                        _ => return_error!(InvalidMonomorphizationUnsupportedElement {
+                        _ => return_error!(InvalidMonomorphization::UnsupportedSymbol {
                             span,
                             name,
+                            symbol: sym::$name,
                             in_ty,
-                            elem_ty: in_elem,
+                            in_elem,
                             ret_ty
                         }),
                     }
@@ -1039,11 +1039,12 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
                         let r = bx.vector_reduce_op(input, $op);
                         Ok(if !$boolean { r } else { bx.icmp(IntPredicate::IntNE, r, bx.context.new_rvalue_zero(r.get_type())) })
                     }
-                    _ => return_error!(InvalidMonomorphizationUnsupportedElement {
+                    _ => return_error!(InvalidMonomorphization::UnsupportedSymbol {
                         span,
                         name,
+                        symbol: sym::$name,
                         in_ty,
-                        elem_ty: in_elem,
+                        in_elem,
                         ret_ty
                     }),
                 };
