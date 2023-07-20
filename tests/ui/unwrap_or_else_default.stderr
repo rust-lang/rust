@@ -4,7 +4,7 @@ error: use of `unwrap_or_else` to construct default value
 LL |     with_new.unwrap_or_else(Vec::new);
    |              ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_default()`
    |
-   = note: `-D clippy::unwrap-or-else-default` implied by `-D warnings`
+   = note: `-D clippy::unwrap-or-default` implied by `-D warnings`
 
 error: use of `unwrap_or_else` to construct default value
   --> $DIR/unwrap_or_else_default.rs:62:23

@@ -1,6 +1,6 @@
 //@run-rustfix
 
-#![warn(clippy::unwrap_or_else_default)]
+#![warn(clippy::unwrap_or_default)]
 #![allow(dead_code)]
 #![allow(clippy::unnecessary_wraps, clippy::unnecessary_literal_unwrap)]
 

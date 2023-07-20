@@ -11,7 +11,7 @@ use rustc_span::source_map::Span;
 use rustc_span::symbol::{self, sym, Symbol};
 use {rustc_ast as ast, rustc_hir as hir};
 
-use super::{OR_FUN_CALL, UNWRAP_OR_ELSE_DEFAULT};
+use super::{OR_FUN_CALL, UNWRAP_OR_DEFAULT};
 
 /// Checks for the `OR_FUN_CALL` lint.
 #[allow(clippy::too_many_lines)]
@@ -80,7 +80,7 @@ pub(super) fn check<'tcx>(
             then {
                 span_lint_and_sugg(
                     cx,
-                    UNWRAP_OR_ELSE_DEFAULT,
+                    UNWRAP_OR_DEFAULT,
                     method_span.with_hi(span.hi()),
                     &format!("use of `{name}` to construct default value"),
                     "try",

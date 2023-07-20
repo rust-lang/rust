@@ -12,7 +12,7 @@ error: use of `unwrap_or` to construct default value
 LL |     with_new.unwrap_or(Vec::new());
    |              ^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_default()`
    |
-   = note: `-D clippy::unwrap-or-else-default` implied by `-D warnings`
+   = note: `-D clippy::unwrap-or-default` implied by `-D warnings`
 
 error: use of `unwrap_or` followed by a function call
   --> $DIR/or_fun_call.rs:59:21

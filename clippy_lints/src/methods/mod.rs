@@ -506,7 +506,7 @@ declare_clippy_lint! {
     /// map.entry(42).or_default();
     /// ```
     #[clippy::version = "1.56.0"]
-    pub UNWRAP_OR_ELSE_DEFAULT,
+    pub UNWRAP_OR_DEFAULT,
     style,
     "using `.unwrap_or`, etc. with an argument that constructs a default value"
 }
@@ -3505,7 +3505,7 @@ impl_lint_pass!(Methods => [
     SHOULD_IMPLEMENT_TRAIT,
     WRONG_SELF_CONVENTION,
     OK_EXPECT,
-    UNWRAP_OR_ELSE_DEFAULT,
+    UNWRAP_OR_DEFAULT,
     MAP_UNWRAP_OR,
     RESULT_MAP_OR_INTO_OPTION,
     OPTION_MAP_OR_NONE,
