@@ -8,8 +8,11 @@
 //! For now, we are developing everything inside `rustc`, thus, we keep this module private.
 
 use crate::rustc_internal::{self, opaque};
-use crate::stable_mir::ty::{AdtSubsts, FloatTy, GenericArgKind, IntTy, RigidTy, TyKind, UintTy};
+use crate::stable_mir::ty::{
+    FloatTy, GenericArgKind, GenericArgs, IntTy, Movability, RigidTy, TyKind, UintTy,
+};
 use crate::stable_mir::{self, Context};
+use rustc_hir as hir;
 use rustc_middle::mir;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::{CrateNum, DefId, LOCAL_CRATE};
@@ -94,26 +97,13 @@ impl<'tcx> Tables<'tcx> {
                 ty::FloatTy::F32 => TyKind::RigidTy(RigidTy::Float(FloatTy::F32)),
                 ty::FloatTy::F64 => TyKind::RigidTy(RigidTy::Float(FloatTy::F64)),
             },
-            ty::Adt(adt_def, substs) => TyKind::RigidTy(RigidTy::Adt(
+            ty::Adt(adt_def, generic_args) => TyKind::RigidTy(RigidTy::Adt(
                 rustc_internal::adt_def(adt_def.did()),
-                AdtSubsts(
-                    substs
-                        .iter()
-                        .map(|arg| match arg.unpack() {
-                            ty::GenericArgKind::Lifetime(region) => {
-                                GenericArgKind::Lifetime(opaque(&region))
-                            }
-                            ty::GenericArgKind::Type(ty) => {
-                                GenericArgKind::Type(self.intern_ty(ty))
-                            }
-                            ty::GenericArgKind::Const(const_) => {
-                                GenericArgKind::Const(opaque(&const_))
-                            }
-                        })
-                        .collect(),
-                ),
+                self.generic_args(generic_args),
             )),
-            ty::Foreign(_) => todo!(),
+            ty::Foreign(def_id) => {
+                TyKind::RigidTy(RigidTy::Foreign(rustc_internal::foreign_def(*def_id)))
+            }
             ty::Str => TyKind::RigidTy(RigidTy::Str),
             ty::Array(ty, constant) => {
                 TyKind::RigidTy(RigidTy::Array(self.intern_ty(*ty), opaque(constant)))
@@ -125,12 +115,25 @@ impl<'tcx> Tables<'tcx> {
             ty::Ref(region, ty, mutbl) => {
                 TyKind::RigidTy(RigidTy::Ref(opaque(region), self.intern_ty(*ty), mutbl.stable()))
             }
-            ty::FnDef(_, _) => todo!(),
+            ty::FnDef(def_id, generic_args) => TyKind::RigidTy(RigidTy::FnDef(
+                rustc_internal::fn_def(*def_id),
+                self.generic_args(generic_args),
+            )),
             ty::FnPtr(_) => todo!(),
             ty::Dynamic(_, _, _) => todo!(),
-            ty::Closure(_, _) => todo!(),
-            ty::Generator(_, _, _) => todo!(),
-            ty::Never => todo!(),
+            ty::Closure(def_id, generic_args) => TyKind::RigidTy(RigidTy::Closure(
+                rustc_internal::closure_def(*def_id),
+                self.generic_args(generic_args),
+            )),
+            ty::Generator(def_id, generic_args, movability) => TyKind::RigidTy(RigidTy::Generator(
+                rustc_internal::generator_def(*def_id),
+                self.generic_args(generic_args),
+                match movability {
+                    hir::Movability::Static => Movability::Static,
+                    hir::Movability::Movable => Movability::Movable,
+                },
+            )),
+            ty::Never => TyKind::RigidTy(RigidTy::Never),
             ty::Tuple(fields) => TyKind::RigidTy(RigidTy::Tuple(
                 fields.iter().map(|ty| self.intern_ty(ty)).collect(),
             )),
@@ -154,6 +157,24 @@ impl<'tcx> Tables<'tcx> {
         let id = self.types.len();
         self.types.push(ty);
         stable_mir::ty::Ty(id)
+    }
+
+    fn generic_args(
+        &mut self,
+        generic_args: &ty::GenericArgs<'tcx>,
+    ) -> stable_mir::ty::GenericArgs {
+        GenericArgs(
+            generic_args
+                .iter()
+                .map(|arg| match arg.unpack() {
+                    ty::GenericArgKind::Lifetime(region) => {
+                        GenericArgKind::Lifetime(opaque(&region))
+                    }
+                    ty::GenericArgKind::Type(ty) => GenericArgKind::Type(self.intern_ty(ty)),
+                    ty::GenericArgKind::Const(const_) => GenericArgKind::Const(opaque(&const_)),
+                })
+                .collect(),
+        )
     }
 }
 
