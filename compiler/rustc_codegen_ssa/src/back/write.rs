@@ -1306,7 +1306,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
         // `running + if main_thread_state == Lending { 1 } else { 0 }`.
         let mut running_with_own_token = 0;
 
-        let prof = &cgcx.prof;
         let mut llvm_start_time: Option<VerboseTimingGuard<'_>> = None;
 
         // Run the message loop while there's still anything that needs message
@@ -1352,13 +1351,13 @@ fn start_executing_work<B: ExtraBackendMethods>(
                         // LLVM work too.
                         let (item, _) =
                             work_items.pop().expect("queue empty - queue_full_enough() broken?");
-                        maybe_start_llvm_timer(
-                            prof,
-                            cgcx.config(item.module_kind()),
-                            &mut llvm_start_time,
-                        );
                         main_thread_state = MainThreadState::Lending;
-                        spawn_work(&cgcx, get_worker_id(&mut free_worker_ids), item);
+                        spawn_work(
+                            &cgcx,
+                            &mut llvm_start_time,
+                            get_worker_id(&mut free_worker_ids),
+                            item,
+                        );
                     }
                 }
             } else if codegen_state == Completed {
@@ -1397,13 +1396,13 @@ fn start_executing_work<B: ExtraBackendMethods>(
                 match main_thread_state {
                     MainThreadState::Idle => {
                         if let Some((item, _)) = work_items.pop() {
-                            maybe_start_llvm_timer(
-                                prof,
-                                cgcx.config(item.module_kind()),
-                                &mut llvm_start_time,
-                            );
                             main_thread_state = MainThreadState::Lending;
-                            spawn_work(&cgcx, get_worker_id(&mut free_worker_ids), item);
+                            spawn_work(
+                                &cgcx,
+                                &mut llvm_start_time,
+                                get_worker_id(&mut free_worker_ids),
+                                item,
+                            );
                         } else {
                             // There is no unstarted work, so let the main thread
                             // take over for a running worker. Otherwise the
@@ -1437,9 +1436,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
                 && running_with_own_token < tokens.len()
             {
                 let (item, _) = work_items.pop().unwrap();
-
-                maybe_start_llvm_timer(prof, cgcx.config(item.module_kind()), &mut llvm_start_time);
-                spawn_work(&cgcx, get_worker_id(&mut free_worker_ids), item);
+                spawn_work(&cgcx, &mut llvm_start_time, get_worker_id(&mut free_worker_ids), item);
                 running_with_own_token += 1;
             }
 
@@ -1669,27 +1666,22 @@ fn start_executing_work<B: ExtraBackendMethods>(
         let quarter_of_workers = workers_running - 3 * workers_running / 4;
         items_in_queue > 0 && items_in_queue >= quarter_of_workers
     }
-
-    fn maybe_start_llvm_timer<'a>(
-        prof: &'a SelfProfilerRef,
-        config: &ModuleConfig,
-        llvm_start_time: &mut Option<VerboseTimingGuard<'a>>,
-    ) {
-        if config.time_module && llvm_start_time.is_none() {
-            *llvm_start_time = Some(prof.verbose_generic_activity("LLVM_passes"));
-        }
-    }
 }
 
 /// `FatalError` is explicitly not `Send`.
 #[must_use]
 pub struct WorkerFatalError;
 
-fn spawn_work<B: ExtraBackendMethods>(
-    cgcx: &CodegenContext<B>,
+fn spawn_work<'a, B: ExtraBackendMethods>(
+    cgcx: &'a CodegenContext<B>,
+    llvm_start_time: &mut Option<VerboseTimingGuard<'a>>,
     worker_id: usize,
     work: WorkItem<B>,
 ) {
+    if cgcx.config(work.module_kind()).time_module && llvm_start_time.is_none() {
+        *llvm_start_time = Some(cgcx.prof.verbose_generic_activity("LLVM_passes"));
+    }
+
     let cgcx = cgcx.clone();
 
     B::spawn_named_thread(cgcx.time_trace, work.short_description(), move || {
