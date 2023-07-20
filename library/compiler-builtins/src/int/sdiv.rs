@@ -1,4 +1,4 @@
-use int::udiv::*;
+use crate::int::udiv::*;
 
 macro_rules! sdivmod {
     (

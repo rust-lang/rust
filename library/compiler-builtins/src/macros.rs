@@ -321,10 +321,10 @@ macro_rules! intrinsics {
             #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
             #[cfg_attr(feature = "weak-intrinsics", linkage = "weak")]
             pub extern $abi fn $name( $($argname: $ty),* )
-                -> ::macros::win64_128bit_abi_hack::U64x2
+                -> $crate::macros::win64_128bit_abi_hack::U64x2
             {
                 let e: $($ret)? = super::$name($($argname),*);
-                ::macros::win64_128bit_abi_hack::U64x2::from(e)
+                $crate::macros::win64_128bit_abi_hack::U64x2::from(e)
             }
         }
 
@@ -540,7 +540,7 @@ pub mod win64_128bit_abi_hack {
 
     impl From<i128> for U64x2 {
         fn from(i: i128) -> U64x2 {
-            use int::DInt;
+            use crate::int::DInt;
             let j = i as u128;
             U64x2(j.lo(), j.hi())
         }
@@ -548,7 +548,7 @@ pub mod win64_128bit_abi_hack {
 
     impl From<u128> for U64x2 {
         fn from(i: u128) -> U64x2 {
-            use int::DInt;
+            use crate::int::DInt;
             U64x2(i.lo(), i.hi())
         }
     }

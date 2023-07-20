@@ -1,7 +1,7 @@
 #![allow(unreachable_code)]
 
-use float::Float;
-use int::Int;
+use crate::float::Float;
+use crate::int::Int;
 
 #[derive(Clone, Copy)]
 enum Result {

@@ -1,5 +1,5 @@
-use float::Float;
-use int::{CastInto, Int};
+use crate::float::Float;
+use crate::int::{CastInto, Int};
 
 /// Returns `a + b`
 fn add<F: Float>(a: F, b: F) -> F

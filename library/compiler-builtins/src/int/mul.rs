@@ -1,4 +1,4 @@
-use int::{DInt, HInt, Int};
+use crate::int::{DInt, HInt, Int};
 
 trait Mul: DInt
 where
