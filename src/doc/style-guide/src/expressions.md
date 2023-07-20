@@ -254,7 +254,7 @@ fn main() {
 }
 ```
 
-For arrays large enough to break across lines, if using the repeating
+For arrays that have to be broken across lines, if using the repeating
 initializer, break after the `;`, not before. Otherwise, follow the rules below
 for function calls. In any case, block-indent the contents of the initializer,
 and put line breaks after the opening square bracket and before the closing
