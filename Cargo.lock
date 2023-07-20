@@ -3367,7 +3367,6 @@ dependencies = [
  "rustc_type_ir",
  "serde_json",
  "smallvec",
- "snap",
  "tempfile",
  "thorin-dwp",
  "tracing",

@@ -17,7 +17,6 @@ tempfile = "3.2"
 thorin-dwp = "0.6"
 pathdiff = "0.2.0"
 serde_json = "1.0.59"
-snap = "1"
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
 regex = "1.4"
 

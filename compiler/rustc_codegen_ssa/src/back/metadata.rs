@@ -10,8 +10,6 @@ use object::{
     ObjectSymbol, SectionFlags, SectionKind, SymbolFlags, SymbolKind, SymbolScope,
 };
 
-use snap::write::FrameEncoder;
-
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::owned_slice::{try_slice_owned, OwnedSlice};
 use rustc_metadata::fs::METADATA_FILENAME;
@@ -481,19 +479,15 @@ pub fn create_compressed_metadata_file(
     metadata: &EncodedMetadata,
     symbol_name: &str,
 ) -> Vec<u8> {
-    let mut compressed = rustc_metadata::METADATA_HEADER.to_vec();
-    // Our length will be backfilled once we're done writing
-    compressed.write_all(&[0; 4]).unwrap();
-    FrameEncoder::new(&mut compressed).write_all(metadata.raw_data()).unwrap();
-    let meta_len = rustc_metadata::METADATA_HEADER.len();
-    let data_len = (compressed.len() - meta_len - 4) as u32;
-    compressed[meta_len..meta_len + 4].copy_from_slice(&data_len.to_be_bytes());
+    let mut packed_metadata = rustc_metadata::METADATA_HEADER.to_vec();
+    packed_metadata.write_all(&(metadata.raw_data().len() as u32).to_be_bytes()).unwrap();
+    packed_metadata.extend(metadata.raw_data());
 
     let Some(mut file) = create_object_file(sess) else {
-        return compressed.to_vec();
+        return packed_metadata.to_vec();
     };
     if file.format() == BinaryFormat::Xcoff {
-        return create_compressed_metadata_file_for_xcoff(file, &compressed, symbol_name);
+        return create_compressed_metadata_file_for_xcoff(file, &packed_metadata, symbol_name);
     }
     let section = file.add_section(
         file.segment_name(StandardSegment::Data).to_vec(),
@@ -507,14 +501,14 @@ pub fn create_compressed_metadata_file(
         }
         _ => {}
     };
-    let offset = file.append_section_data(section, &compressed, 1);
+    let offset = file.append_section_data(section, &packed_metadata, 1);
 
     // For MachO and probably PE this is necessary to prevent the linker from throwing away the
     // .rustc section. For ELF this isn't necessary, but it also doesn't harm.
     file.add_symbol(Symbol {
         name: symbol_name.as_bytes().to_vec(),
         value: offset,
-        size: compressed.len() as u64,
+        size: packed_metadata.len() as u64,
         kind: SymbolKind::Data,
         scope: SymbolScope::Dynamic,
         weak: false,
