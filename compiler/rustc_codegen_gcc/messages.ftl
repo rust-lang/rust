@@ -1,9 +1,6 @@
 codegen_gcc_invalid_minimum_alignment =
     invalid minimum global alignment: {$err}
 
-codegen_gcc_invalid_monomorphization_expected_simd =
-    invalid monomorphization of `{$name}` intrinsic: expected SIMD {$expected_ty} type, found non-SIMD `{$found_ty}`
-
 codegen_gcc_lto_not_supported =
     LTO is not supported. You may get a linker error.
 

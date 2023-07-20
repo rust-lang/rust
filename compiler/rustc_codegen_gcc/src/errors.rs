@@ -1,7 +1,6 @@
 use rustc_errors::{DiagnosticArgValue, IntoDiagnosticArg};
 use rustc_macros::Diagnostic;
-use rustc_middle::ty::Ty;
-use rustc_span::{Span, Symbol};
+use rustc_span::Span;
 use std::borrow::Cow;
 
 struct ExitCode(Option<i32>);
@@ -14,16 +13,6 @@ impl IntoDiagnosticArg for ExitCode {
             None => DiagnosticArgValue::Str(Cow::Borrowed("<signal>")),
         }
     }
-}
-
-#[derive(Diagnostic)]
-#[diag(codegen_gcc_invalid_monomorphization_expected_simd, code = "E0511")]
-pub(crate) struct InvalidMonomorphizationExpectedSimd<'a> {
-    #[primary_span]
-    pub span: Span,
-    pub name: Symbol,
-    pub position: &'a str,
-    pub found_ty: Ty<'a>,
 }
 
 #[derive(Diagnostic)]
