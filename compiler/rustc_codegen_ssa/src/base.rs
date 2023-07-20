@@ -768,7 +768,6 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
                     module,
                     cost,
                 );
-                false
             }
             CguReuse::PreLto => {
                 submit_pre_lto_module_to_llvm(
@@ -780,7 +779,6 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
                         source: cgu.previous_work_product(tcx),
                     },
                 );
-                true
             }
             CguReuse::PostLto => {
                 submit_post_lto_module_to_llvm(
@@ -791,7 +789,6 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
                         source: cgu.previous_work_product(tcx),
                     },
                 );
-                true
             }
         };
     }
