@@ -1,5 +1,6 @@
 use crate::visitors::{for_each_expr, for_each_expr_with_closures, Descend};
 use core::ops::ControlFlow;
+use hir::def::Res;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{Expr, ExprKind, HirId, HirIdSet, Node};
 use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
@@ -127,7 +128,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for BindingUsageFinder<'a, 'tcx> {
     }
 
     fn visit_path(&mut self, path: &hir::Path<'tcx>, _: hir::HirId) {
-        if let hir::def::Res::Local(id) = path.res {
+        if let Res::Local(id) = path.res {
             if self.binding_ids.contains(&id) {
                 self.usage_found = true;
             }
