@@ -19,6 +19,7 @@ pub enum TyKind {
     RigidTy(RigidTy),
     Alias(AliasKind, AliasTy),
     Param(ParamTy),
+    Bound(usize, BoundTy),
 }
 
 #[derive(Clone, Debug)]
@@ -234,4 +235,10 @@ pub struct ExistentialProjection {
 pub struct ParamTy {
     pub index: u32,
     pub name: String,
+}
+
+#[derive(Clone, Debug)]
+pub struct BoundTy {
+    pub var: usize,
+    pub kind: BoundTyKind,
 }
