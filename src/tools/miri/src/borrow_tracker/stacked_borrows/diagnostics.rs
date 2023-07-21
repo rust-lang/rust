@@ -61,12 +61,15 @@ struct Invalidation {
 #[derive(Clone, Debug)]
 enum InvalidationCause {
     Access(AccessKind),
-    Retag(Permission, RetagCause),
+    Retag(Permission, RetagInfo),
 }
 
 impl Invalidation {
     fn generate_diagnostic(&self) -> (String, SpanData) {
-        let message = if let InvalidationCause::Retag(_, RetagCause::FnEntry) = self.cause {
+        let message = if matches!(
+            self.cause,
+            InvalidationCause::Retag(_, RetagInfo { cause: RetagCause::FnEntry, .. })
+        ) {
             // For a FnEntry retag, our Span points at the caller.
             // See `DiagnosticCx::log_invalidation`.
             format!(
@@ -87,8 +90,8 @@ impl fmt::Display for InvalidationCause {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             InvalidationCause::Access(kind) => write!(f, "{kind}"),
-            InvalidationCause::Retag(perm, kind) =>
-                write!(f, "{perm:?} {retag}", retag = kind.summary()),
+            InvalidationCause::Retag(perm, info) =>
+                write!(f, "{perm:?} {retag}", retag = info.summary()),
         }
     }
 }
@@ -129,13 +132,13 @@ impl<'ecx, 'mir, 'tcx> DiagnosticCxBuilder<'ecx, 'mir, 'tcx> {
 
     pub fn retag(
         machine: &'ecx MiriMachine<'mir, 'tcx>,
-        cause: RetagCause,
+        info: RetagInfo,
         new_tag: BorTag,
         orig_tag: ProvenanceExtra,
         range: AllocRange,
     ) -> Self {
         let operation =
-            Operation::Retag(RetagOp { cause, new_tag, orig_tag, range, permission: None });
+            Operation::Retag(RetagOp { info, new_tag, orig_tag, range, permission: None });
 
         DiagnosticCxBuilder { machine, operation }
     }
@@ -179,11 +182,17 @@ enum Operation {
 
 #[derive(Debug, Clone)]
 struct RetagOp {
-    cause: RetagCause,
+    info: RetagInfo,
     new_tag: BorTag,
     orig_tag: ProvenanceExtra,
     range: AllocRange,
     permission: Option<Permission>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct RetagInfo {
+    pub cause: RetagCause,
+    pub in_field: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -258,11 +267,11 @@ impl<'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'history, 'ecx, 'mir, 'tcx> {
     pub fn log_invalidation(&mut self, tag: BorTag) {
         let mut span = self.machine.current_span();
         let (range, cause) = match &self.operation {
-            Operation::Retag(RetagOp { cause, range, permission, .. }) => {
-                if *cause == RetagCause::FnEntry {
+            Operation::Retag(RetagOp { info, range, permission, .. }) => {
+                if info.cause == RetagCause::FnEntry {
                     span = self.machine.caller_span();
                 }
-                (*range, InvalidationCause::Retag(permission.unwrap(), *cause))
+                (*range, InvalidationCause::Retag(permission.unwrap(), *info))
             }
             Operation::Access(AccessOp { kind, range, .. }) =>
                 (*range, InvalidationCause::Access(*kind)),
@@ -374,7 +383,7 @@ impl<'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'history, 'ecx, 'mir, 'tcx> {
         );
         err_sb_ub(
             format!("{action}{}", error_cause(stack, op.orig_tag)),
-            Some(operation_summary(&op.cause.summary(), self.history.id, op.range)),
+            Some(operation_summary(&op.info.summary(), self.history.id, op.range)),
             op.orig_tag.and_then(|orig_tag| self.get_logs_relevant_to(orig_tag, None)),
         )
     }
@@ -496,14 +505,18 @@ fn error_cause(stack: &Stack, prov_extra: ProvenanceExtra) -> &'static str {
     }
 }
 
-impl RetagCause {
+impl RetagInfo {
     fn summary(&self) -> String {
-        match self {
+        let mut s = match self.cause {
             RetagCause::Normal => "retag",
             RetagCause::FnEntry => "function-entry retag",
             RetagCause::InPlaceFnPassing => "in-place function argument/return passing protection",
             RetagCause::TwoPhase => "two-phase retag",
         }
-        .to_string()
+        .to_string();
+        if self.in_field {
+            s.push_str(" (of a reference/box inside this compound value)");
+        }
+        s
     }
 }

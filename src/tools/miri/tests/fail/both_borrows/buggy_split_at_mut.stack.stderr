@@ -8,7 +8,7 @@ LL | |             )
    | |             ^
    | |             |
    | |_____________trying to retag from <TAG> for Unique permission at ALLOC[0x0], but that tag does not exist in the borrow stack for this location
-   |               this error occurs as part of retag at ALLOC[0x0..0x10]
+   |               this error occurs as part of retag (of a reference/box inside this compound value) at ALLOC[0x0..0x10]
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
    = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
