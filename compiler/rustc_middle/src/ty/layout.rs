@@ -655,6 +655,8 @@ impl std::ops::DerefMut for TyAndNaiveLayout<'_> {
 #[derive(Copy, Clone, Debug, HashStable)]
 pub struct NaiveLayout {
     pub abi: NaiveAbi,
+    /// Niche information, required for tracking non-null enum optimizations.
+    pub niches: NaiveNiches,
     /// An underestimate of the layout's size.
     pub size: Size,
     /// An underestimate of the layout's required alignment.
@@ -664,12 +666,19 @@ pub struct NaiveLayout {
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, HashStable)]
+pub enum NaiveNiches {
+    None,
+    Some,
+    Maybe,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, HashStable)]
 pub enum NaiveAbi {
-    /// A scalar layout, always implies `exact`.
+    /// A scalar layout, always implies `exact` and a non-zero `size`.
     Scalar(Primitive),
-    /// An uninhabited layout. (needed to properly track `Scalar`)
+    /// An uninhabited layout. (needed to properly track `Scalar` and niches)
     Uninhabited,
-    /// An unsized aggregate. (needed to properly track `Scalar`)
+    /// An unsized aggregate. (needed to properly track `Scalar` and niches)
     Unsized,
     /// Any other sized layout.
     Sized,
@@ -687,8 +696,13 @@ impl NaiveAbi {
 
 impl NaiveLayout {
     /// The layout of an empty aggregate, e.g. `()`.
-    pub const EMPTY: Self =
-        Self { size: Size::ZERO, align: Align::ONE, exact: true, abi: NaiveAbi::Sized };
+    pub const EMPTY: Self = Self {
+        size: Size::ZERO,
+        align: Align::ONE,
+        exact: true,
+        abi: NaiveAbi::Sized,
+        niches: NaiveNiches::None,
+    };
 
     /// Returns whether `self` is a valid approximation of the given full `layout`.
     ///
@@ -699,10 +713,18 @@ impl NaiveLayout {
         }
 
         if let NaiveAbi::Scalar(prim) = self.abi {
-            assert!(self.exact);
-            if !matches!(layout.abi(), Abi::Scalar(s) if s.primitive() == prim) {
+            if !self.exact
+                || self.size == Size::ZERO
+                || !matches!(layout.abi(), Abi::Scalar(s) if s.primitive() == prim)
+            {
                 return false;
             }
+        }
+
+        match (self.niches, layout.largest_niche()) {
+            (NaiveNiches::None, Some(_)) => return false,
+            (NaiveNiches::Some, None) => return false,
+            _ => (),
         }
 
         !self.exact || (self.size, self.align) == (layout.size(), layout.align().abi)
@@ -745,6 +767,15 @@ impl NaiveLayout {
         self
     }
 
+    /// Artificially makes this layout inexact.
+    #[must_use]
+    #[inline]
+    pub fn inexact(mut self) -> Self {
+        self.abi = self.abi.as_aggregate();
+        self.exact = false;
+        self
+    }
+
     /// Pads this layout so that its size is a multiple of `align`.
     #[must_use]
     #[inline]
@@ -777,11 +808,18 @@ impl NaiveLayout {
             // Default case.
             (_, _) => Sized,
         };
-        Some(Self { abi, size, align, exact })
+        let niches = match (self.niches, other.niches) {
+            (NaiveNiches::Some, _) | (_, NaiveNiches::Some) => NaiveNiches::Some,
+            (NaiveNiches::None, NaiveNiches::None) => NaiveNiches::None,
+            (_, _) => NaiveNiches::Maybe,
+        };
+        Some(Self { abi, size, align, exact, niches })
     }
 
     /// Returns the layout of `self` superposed with `other`, as in an `enum`
     /// or an `union`.
+    ///
+    /// Note: This always ignore niche information from `other`.
     #[must_use]
     #[inline]
     pub fn union(&self, other: &Self) -> Self {
@@ -793,7 +831,7 @@ impl NaiveLayout {
         let abi = match (self.abi, other.abi) {
             // The unsized ABI overrides everything.
             (Unsized, _) | (_, Unsized) => Unsized,
-            // A scalar union must have a single non ZST-field.
+            // A scalar union must have a single non ZST-field...
             (_, s @ Scalar(_)) if exact && self.size == Size::ZERO => s,
             (s @ Scalar(_), _) if exact && other.size == Size::ZERO => s,
             // ...or identical scalar fields.
@@ -802,7 +840,7 @@ impl NaiveLayout {
             (Uninhabited, Uninhabited) => Uninhabited,
             (_, _) => Sized,
         };
-        Self { abi, size, align, exact }
+        Self { abi, size, align, exact, niches: self.niches }
     }
 }
 

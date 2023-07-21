@@ -1062,9 +1062,15 @@ impl WrappingRange {
     /// Returns `true` if `size` completely fills the range.
     #[inline]
     pub fn is_full_for(&self, size: Size) -> bool {
+        debug_assert!(self.is_in_range_for(size));
+        self.start == (self.end.wrapping_add(1) & size.unsigned_int_max())
+    }
+
+    /// Returns `true` if the range is valid for `size`.
+    #[inline(always)]
+    pub fn is_in_range_for(&self, size: Size) -> bool {
         let max_value = size.unsigned_int_max();
-        debug_assert!(self.start <= max_value && self.end <= max_value);
-        self.start == (self.end.wrapping_add(1) & max_value)
+        self.start <= max_value && self.end <= max_value
     }
 }
 
