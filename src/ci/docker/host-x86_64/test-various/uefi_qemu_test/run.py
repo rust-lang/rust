@@ -109,12 +109,7 @@ def build_and_run(tmp_dir, target):
                  '-drive',
                  f'format=raw,file=fat:rw:{esp}',
                  capture=True,
-                 # Ubuntu 20.04 (which is what the Dockerfile currently
-                 # uses) provides QEMU 4.2.1, which segfaults on
-                 # shutdown under some circumstances. That has been
-                 # fixed in newer versions of QEMU, but for now just
-                 # don't check the exit status.
-                 check=False,
+                 check=True,
                  # Set a timeout to kill the VM in case something goes wrong.
                  timeout=60).stdout
 

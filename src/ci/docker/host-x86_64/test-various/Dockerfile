@@ -1,6 +1,7 @@
-FROM ubuntu:20.04
+FROM ubuntu:22.04
 
-RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+ARG DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends \
   clang-11 \
   g++ \
   make \
@@ -15,10 +16,12 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-ins
   gdb \
   libssl-dev \
   pkg-config \
+  bzip2 \
   xz-utils \
   wget \
   patch \
   ovmf \
+  ovmf-ia32 \
   qemu-efi-aarch64 \
   qemu-system-arm \
   qemu-system-x86 \
@@ -27,18 +30,10 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-ins
 RUN curl -sL https://nodejs.org/dist/v18.12.0/node-v18.12.0-linux-x64.tar.xz | \
   tar -xJ
 
-# Install 32-bit OVMF files for the i686-unknown-uefi test. This package
-# is not available in ubuntu 20.04, so download a 22.04 package.
-RUN curl -sL --output ovmf-ia32.deb http://mirrors.kernel.org/ubuntu/pool/universe/e/edk2/ovmf-ia32_2022.02-3_all.deb
-RUN dpkg -i ovmf-ia32.deb && rm ovmf-ia32.deb
-
 WORKDIR /build/
 COPY scripts/musl-toolchain.sh /build/
 RUN bash musl-toolchain.sh x86_64 && rm -rf build
 WORKDIR /
-
-COPY scripts/cmake.sh /scripts/
-RUN /scripts/cmake.sh
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
