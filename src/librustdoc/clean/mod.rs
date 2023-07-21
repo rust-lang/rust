@@ -2643,15 +2643,12 @@ fn clean_extern_crate<'tcx>(
         }
     }
 
-    // FIXME: using `from_def_id_and_kind` breaks `rustdoc/masked` for some reason
-    vec![Item {
-        name: Some(name),
-        attrs: Box::new(Attributes::from_ast(attrs)),
-        item_id: crate_def_id.into(),
-        kind: Box::new(ExternCrateItem { src: orig_name }),
-        cfg: attrs.cfg(cx.tcx, &cx.cache.hidden_cfg),
-        inline_stmt_id: Some(krate_owner_def_id),
-    }]
+    vec![Item::from_def_id_and_parts(
+        krate_owner_def_id,
+        Some(name),
+        ExternCrateItem { src: orig_name },
+        cx,
+    )]
 }
 
 fn clean_use_statement<'tcx>(

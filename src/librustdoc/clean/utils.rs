@@ -38,11 +38,15 @@ pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
             for it in &module.items {
                 // `compiler_builtins` should be masked too, but we can't apply
                 // `#[doc(masked)]` to the injected `extern crate` because it's unstable.
-                if it.is_extern_crate()
-                    && (it.attrs.has_doc_flag(sym::masked)
-                        || cx.tcx.is_compiler_builtins(it.item_id.krate()))
-                {
+                if cx.tcx.is_compiler_builtins(it.item_id.krate()) {
                     cx.cache.masked_crates.insert(it.item_id.krate());
+                } else if it.is_extern_crate()
+                    && it.attrs.has_doc_flag(sym::masked)
+                    && let Some(def_id) = it.item_id.as_def_id()
+                    && let Some(local_def_id) = def_id.as_local()
+                    && let Some(cnum) = cx.tcx.extern_mod_stmt_cnum(local_def_id)
+                {
+                    cx.cache.masked_crates.insert(cnum);
                 }
             }
         }
