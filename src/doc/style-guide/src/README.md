@@ -37,8 +37,8 @@ options.
 ### Indentation and line width
 
 * Use spaces, not tabs.
-* Each level of indentation must be four spaces (that is, all indentation
-  outside of string literals and comments must be a multiple of four).
+* Each level of indentation must be 4 spaces (that is, all indentation
+  outside of string literals and comments must be a multiple of 4).
 * The maximum width for a line is 100 characters.
 
 #### Block indent
