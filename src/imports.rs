@@ -589,7 +589,7 @@ impl UseTree {
 
         // Normalise foo::{bar} -> foo::bar
         if let UseSegmentKind::List(ref list) = last.kind {
-            if list.len() == 1 && list[0].to_string() != "self" {
+            if list.len() == 1 && list[0].to_string() != "self" && !list[0].has_comment() {
                 normalize_sole_list = true;
             }
         }
@@ -1032,7 +1032,9 @@ fn rewrite_nested_use_tree(
 
     let list_str = write_list(&list_items, &fmt)?;
 
-    let result = if (list_str.contains('\n') || list_str.len() > remaining_width)
+    let result = if (list_str.contains('\n')
+        || list_str.len() > remaining_width
+        || tactic == DefinitiveListTactic::Vertical)
         && context.config.imports_indent() == IndentStyle::Block
     {
         format!(
