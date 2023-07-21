@@ -336,7 +336,10 @@ macro_rules! impl_trait {
 
             #[inline]
             fn is_subnormal(self) -> Self::Mask {
-                self.abs().simd_ne(Self::splat(0.0)) & (self.to_bits() & Self::splat(Self::Scalar::INFINITY).to_bits()).simd_eq(Simd::splat(0))
+                // On some architectures (e.g. armv7 and some ppc) subnormals are flushed to zero,
+                // so this comparison must be done with integers.
+                let not_zero = self.abs().to_bits().simd_ne(Self::splat(0.0).to_bits());
+                not_zero & (self.to_bits() & Self::splat(Self::Scalar::INFINITY).to_bits()).simd_eq(Simd::splat(0))
             }
 
             #[inline]
