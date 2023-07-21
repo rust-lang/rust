@@ -5329,6 +5329,7 @@ Released 2018-09-13
 [`short_circuit_statement`]: https://rust-lang.github.io/rust-clippy/master/index.html#short_circuit_statement
 [`should_assert_eq`]: https://rust-lang.github.io/rust-clippy/master/index.html#should_assert_eq
 [`should_implement_trait`]: https://rust-lang.github.io/rust-clippy/master/index.html#should_implement_trait
+[`should_panic_without_expect`]: https://rust-lang.github.io/rust-clippy/master/index.html#should_panic_without_expect
 [`significant_drop_in_scrutinee`]: https://rust-lang.github.io/rust-clippy/master/index.html#significant_drop_in_scrutinee
 [`significant_drop_tightening`]: https://rust-lang.github.io/rust-clippy/master/index.html#significant_drop_tightening
 [`similar_names`]: https://rust-lang.github.io/rust-clippy/master/index.html#similar_names

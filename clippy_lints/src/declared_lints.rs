@@ -58,6 +58,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::attrs::MAYBE_MISUSED_CFG_INFO,
     crate::attrs::MISMATCHED_TARGET_OS_INFO,
     crate::attrs::NON_MINIMAL_CFG_INFO,
+    crate::attrs::SHOULD_PANIC_WITHOUT_EXPECT_INFO,
     crate::attrs::USELESS_ATTRIBUTE_INFO,
     crate::await_holding_invalid::AWAIT_HOLDING_INVALID_TYPE_INFO,
     crate::await_holding_invalid::AWAIT_HOLDING_LOCK_INFO,
