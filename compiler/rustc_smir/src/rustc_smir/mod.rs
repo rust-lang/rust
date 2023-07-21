@@ -49,8 +49,12 @@ impl<'tcx> Context for Tables<'tcx> {
                 .basic_blocks
                 .iter()
                 .map(|block| stable_mir::mir::BasicBlock {
-                    terminator: block.terminator().stable(),
-                    statements: block.statements.iter().map(mir::Statement::stable).collect(),
+                    terminator: block.terminator().stable(self),
+                    statements: block
+                        .statements
+                        .iter()
+                        .map(|statement| statement.stable(self))
+                        .collect(),
                 })
                 .collect(),
             locals: mir.local_decls.iter().map(|decl| self.intern_ty(decl.ty)).collect(),
@@ -110,11 +114,13 @@ impl<'tcx> Tables<'tcx> {
             }
             ty::Slice(ty) => TyKind::RigidTy(RigidTy::Slice(self.intern_ty(*ty))),
             ty::RawPtr(ty::TypeAndMut { ty, mutbl }) => {
-                TyKind::RigidTy(RigidTy::RawPtr(self.intern_ty(*ty), mutbl.stable()))
+                TyKind::RigidTy(RigidTy::RawPtr(self.intern_ty(*ty), mutbl.stable(self)))
             }
-            ty::Ref(region, ty, mutbl) => {
-                TyKind::RigidTy(RigidTy::Ref(opaque(region), self.intern_ty(*ty), mutbl.stable()))
-            }
+            ty::Ref(region, ty, mutbl) => TyKind::RigidTy(RigidTy::Ref(
+                opaque(region),
+                self.intern_ty(*ty),
+                mutbl.stable(self),
+            )),
             ty::FnDef(def_id, generic_args) => TyKind::RigidTy(RigidTy::FnDef(
                 rustc_internal::fn_def(*def_id),
                 self.generic_args(generic_args),
@@ -187,20 +193,20 @@ fn smir_crate(tcx: TyCtxt<'_>, crate_num: CrateNum) -> stable_mir::Crate {
 }
 
 /// Trait used to convert between an internal MIR type to a Stable MIR type.
-pub(crate) trait Stable {
+pub(crate) trait Stable<'tcx> {
     /// The stable representation of the type implementing Stable.
     type T;
     /// Converts an object to the equivalent Stable MIR representation.
-    fn stable(&self) -> Self::T;
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T;
 }
 
-impl<'tcx> Stable for mir::Statement<'tcx> {
+impl<'tcx> Stable<'tcx> for mir::Statement<'tcx> {
     type T = stable_mir::mir::Statement;
-    fn stable(&self) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
         use rustc_middle::mir::StatementKind::*;
         match &self.kind {
             Assign(assign) => {
-                stable_mir::mir::Statement::Assign(assign.0.stable(), assign.1.stable())
+                stable_mir::mir::Statement::Assign(assign.0.stable(tables), assign.1.stable(tables))
             }
             FakeRead(_) => todo!(),
             SetDiscriminant { .. } => todo!(),
@@ -218,45 +224,51 @@ impl<'tcx> Stable for mir::Statement<'tcx> {
     }
 }
 
-impl<'tcx> Stable for mir::Rvalue<'tcx> {
+impl<'tcx> Stable<'tcx> for mir::Rvalue<'tcx> {
     type T = stable_mir::mir::Rvalue;
-    fn stable(&self) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
         use mir::Rvalue::*;
         match self {
-            Use(op) => stable_mir::mir::Rvalue::Use(op.stable()),
+            Use(op) => stable_mir::mir::Rvalue::Use(op.stable(tables)),
             Repeat(_, _) => todo!(),
-            Ref(region, kind, place) => {
-                stable_mir::mir::Rvalue::Ref(opaque(region), kind.stable(), place.stable())
-            }
+            Ref(region, kind, place) => stable_mir::mir::Rvalue::Ref(
+                opaque(region),
+                kind.stable(tables),
+                place.stable(tables),
+            ),
             ThreadLocalRef(def_id) => {
                 stable_mir::mir::Rvalue::ThreadLocalRef(rustc_internal::crate_item(*def_id))
             }
             AddressOf(mutability, place) => {
-                stable_mir::mir::Rvalue::AddressOf(mutability.stable(), place.stable())
+                stable_mir::mir::Rvalue::AddressOf(mutability.stable(tables), place.stable(tables))
             }
-            Len(place) => stable_mir::mir::Rvalue::Len(place.stable()),
+            Len(place) => stable_mir::mir::Rvalue::Len(place.stable(tables)),
             Cast(_, _, _) => todo!(),
-            BinaryOp(bin_op, ops) => {
-                stable_mir::mir::Rvalue::BinaryOp(bin_op.stable(), ops.0.stable(), ops.1.stable())
-            }
+            BinaryOp(bin_op, ops) => stable_mir::mir::Rvalue::BinaryOp(
+                bin_op.stable(tables),
+                ops.0.stable(tables),
+                ops.1.stable(tables),
+            ),
             CheckedBinaryOp(bin_op, ops) => stable_mir::mir::Rvalue::CheckedBinaryOp(
-                bin_op.stable(),
-                ops.0.stable(),
-                ops.1.stable(),
+                bin_op.stable(tables),
+                ops.0.stable(tables),
+                ops.1.stable(tables),
             ),
             NullaryOp(_, _) => todo!(),
-            UnaryOp(un_op, op) => stable_mir::mir::Rvalue::UnaryOp(un_op.stable(), op.stable()),
-            Discriminant(place) => stable_mir::mir::Rvalue::Discriminant(place.stable()),
+            UnaryOp(un_op, op) => {
+                stable_mir::mir::Rvalue::UnaryOp(un_op.stable(tables), op.stable(tables))
+            }
+            Discriminant(place) => stable_mir::mir::Rvalue::Discriminant(place.stable(tables)),
             Aggregate(_, _) => todo!(),
             ShallowInitBox(_, _) => todo!(),
-            CopyForDeref(place) => stable_mir::mir::Rvalue::CopyForDeref(place.stable()),
+            CopyForDeref(place) => stable_mir::mir::Rvalue::CopyForDeref(place.stable(tables)),
         }
     }
 }
 
-impl Stable for mir::Mutability {
+impl<'tcx> Stable<'tcx> for mir::Mutability {
     type T = stable_mir::mir::Mutability;
-    fn stable(&self) -> Self::T {
+    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
         use mir::Mutability::*;
         match *self {
             Not => stable_mir::mir::Mutability::Not,
@@ -265,21 +277,21 @@ impl Stable for mir::Mutability {
     }
 }
 
-impl Stable for mir::BorrowKind {
+impl<'tcx> Stable<'tcx> for mir::BorrowKind {
     type T = stable_mir::mir::BorrowKind;
-    fn stable(&self) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
         use mir::BorrowKind::*;
         match *self {
             Shared => stable_mir::mir::BorrowKind::Shared,
             Shallow => stable_mir::mir::BorrowKind::Shallow,
-            Mut { kind } => stable_mir::mir::BorrowKind::Mut { kind: kind.stable() },
+            Mut { kind } => stable_mir::mir::BorrowKind::Mut { kind: kind.stable(tables) },
         }
     }
 }
 
-impl Stable for mir::MutBorrowKind {
+impl<'tcx> Stable<'tcx> for mir::MutBorrowKind {
     type T = stable_mir::mir::MutBorrowKind;
-    fn stable(&self) -> Self::T {
+    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
         use mir::MutBorrowKind::*;
         match *self {
             Default => stable_mir::mir::MutBorrowKind::Default,
@@ -289,28 +301,28 @@ impl Stable for mir::MutBorrowKind {
     }
 }
 
-impl<'tcx> Stable for mir::NullOp<'tcx> {
+impl<'tcx> Stable<'tcx> for mir::NullOp<'tcx> {
     type T = stable_mir::mir::NullOp;
-    fn stable(&self) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
         use mir::NullOp::*;
         match self {
             SizeOf => stable_mir::mir::NullOp::SizeOf,
             AlignOf => stable_mir::mir::NullOp::AlignOf,
-            OffsetOf(indices) => {
-                stable_mir::mir::NullOp::OffsetOf(indices.iter().map(|idx| idx.stable()).collect())
-            }
+            OffsetOf(indices) => stable_mir::mir::NullOp::OffsetOf(
+                indices.iter().map(|idx| idx.stable(tables)).collect(),
+            ),
         }
     }
 }
 
-impl Stable for mir::CastKind {
+impl<'tcx> Stable<'tcx> for mir::CastKind {
     type T = stable_mir::mir::CastKind;
-    fn stable(&self) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
         use mir::CastKind::*;
         match self {
             PointerExposeAddress => stable_mir::mir::CastKind::PointerExposeAddress,
             PointerFromExposedAddress => stable_mir::mir::CastKind::PointerFromExposedAddress,
-            PointerCoercion(c) => stable_mir::mir::CastKind::PointerCoercion(c.stable()),
+            PointerCoercion(c) => stable_mir::mir::CastKind::PointerCoercion(c.stable(tables)),
             DynStar => stable_mir::mir::CastKind::DynStar,
             IntToInt => stable_mir::mir::CastKind::IntToInt,
             FloatToInt => stable_mir::mir::CastKind::FloatToInt,
@@ -323,15 +335,15 @@ impl Stable for mir::CastKind {
     }
 }
 
-impl Stable for ty::adjustment::PointerCoercion {
+impl<'tcx> Stable<'tcx> for ty::adjustment::PointerCoercion {
     type T = stable_mir::mir::PointerCoercion;
-    fn stable(&self) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
         use ty::adjustment::PointerCoercion;
         match self {
             PointerCoercion::ReifyFnPointer => stable_mir::mir::PointerCoercion::ReifyFnPointer,
             PointerCoercion::UnsafeFnPointer => stable_mir::mir::PointerCoercion::UnsafeFnPointer,
             PointerCoercion::ClosureFnPointer(unsafety) => {
-                stable_mir::mir::PointerCoercion::ClosureFnPointer(unsafety.stable())
+                stable_mir::mir::PointerCoercion::ClosureFnPointer(unsafety.stable(tables))
             }
             PointerCoercion::MutToConstPointer => {
                 stable_mir::mir::PointerCoercion::MutToConstPointer
@@ -342,9 +354,9 @@ impl Stable for ty::adjustment::PointerCoercion {
     }
 }
 
-impl Stable for rustc_hir::Unsafety {
+impl<'tcx> Stable<'tcx> for rustc_hir::Unsafety {
     type T = stable_mir::mir::Safety;
-    fn stable(&self) -> Self::T {
+    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
         match self {
             rustc_hir::Unsafety::Unsafe => stable_mir::mir::Safety::Unsafe,
             rustc_hir::Unsafety::Normal => stable_mir::mir::Safety::Normal,
@@ -352,28 +364,28 @@ impl Stable for rustc_hir::Unsafety {
     }
 }
 
-impl Stable for FieldIdx {
+impl<'tcx> Stable<'tcx> for FieldIdx {
     type T = usize;
-    fn stable(&self) -> Self::T {
+    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
         self.as_usize()
     }
 }
 
-impl<'tcx> Stable for mir::Operand<'tcx> {
+impl<'tcx> Stable<'tcx> for mir::Operand<'tcx> {
     type T = stable_mir::mir::Operand;
-    fn stable(&self) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
         use mir::Operand::*;
         match self {
-            Copy(place) => stable_mir::mir::Operand::Copy(place.stable()),
-            Move(place) => stable_mir::mir::Operand::Move(place.stable()),
+            Copy(place) => stable_mir::mir::Operand::Copy(place.stable(tables)),
+            Move(place) => stable_mir::mir::Operand::Move(place.stable(tables)),
             Constant(c) => stable_mir::mir::Operand::Constant(c.to_string()),
         }
     }
 }
 
-impl<'tcx> Stable for mir::Place<'tcx> {
+impl<'tcx> Stable<'tcx> for mir::Place<'tcx> {
     type T = stable_mir::mir::Place;
-    fn stable(&self) -> Self::T {
+    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
         stable_mir::mir::Place {
             local: self.local.as_usize(),
             projection: format!("{:?}", self.projection),
@@ -381,9 +393,9 @@ impl<'tcx> Stable for mir::Place<'tcx> {
     }
 }
 
-impl Stable for mir::UnwindAction {
+impl<'tcx> Stable<'tcx> for mir::UnwindAction {
     type T = stable_mir::mir::UnwindAction;
-    fn stable(&self) -> Self::T {
+    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
         use rustc_middle::mir::UnwindAction;
         match self {
             UnwindAction::Continue => stable_mir::mir::UnwindAction::Continue,
@@ -394,46 +406,48 @@ impl Stable for mir::UnwindAction {
     }
 }
 
-impl<'tcx> Stable for mir::AssertMessage<'tcx> {
+impl<'tcx> Stable<'tcx> for mir::AssertMessage<'tcx> {
     type T = stable_mir::mir::AssertMessage;
-    fn stable(&self) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
         use rustc_middle::mir::AssertKind;
         match self {
             AssertKind::BoundsCheck { len, index } => stable_mir::mir::AssertMessage::BoundsCheck {
-                len: len.stable(),
-                index: index.stable(),
+                len: len.stable(tables),
+                index: index.stable(tables),
             },
             AssertKind::Overflow(bin_op, op1, op2) => stable_mir::mir::AssertMessage::Overflow(
-                bin_op.stable(),
-                op1.stable(),
-                op2.stable(),
+                bin_op.stable(tables),
+                op1.stable(tables),
+                op2.stable(tables),
             ),
-            AssertKind::OverflowNeg(op) => stable_mir::mir::AssertMessage::OverflowNeg(op.stable()),
+            AssertKind::OverflowNeg(op) => {
+                stable_mir::mir::AssertMessage::OverflowNeg(op.stable(tables))
+            }
             AssertKind::DivisionByZero(op) => {
-                stable_mir::mir::AssertMessage::DivisionByZero(op.stable())
+                stable_mir::mir::AssertMessage::DivisionByZero(op.stable(tables))
             }
             AssertKind::RemainderByZero(op) => {
-                stable_mir::mir::AssertMessage::RemainderByZero(op.stable())
+                stable_mir::mir::AssertMessage::RemainderByZero(op.stable(tables))
             }
             AssertKind::ResumedAfterReturn(generator) => {
-                stable_mir::mir::AssertMessage::ResumedAfterReturn(generator.stable())
+                stable_mir::mir::AssertMessage::ResumedAfterReturn(generator.stable(tables))
             }
             AssertKind::ResumedAfterPanic(generator) => {
-                stable_mir::mir::AssertMessage::ResumedAfterPanic(generator.stable())
+                stable_mir::mir::AssertMessage::ResumedAfterPanic(generator.stable(tables))
             }
             AssertKind::MisalignedPointerDereference { required, found } => {
                 stable_mir::mir::AssertMessage::MisalignedPointerDereference {
-                    required: required.stable(),
-                    found: found.stable(),
+                    required: required.stable(tables),
+                    found: found.stable(tables),
                 }
             }
         }
     }
 }
 
-impl Stable for mir::BinOp {
+impl<'tcx> Stable<'tcx> for mir::BinOp {
     type T = stable_mir::mir::BinOp;
-    fn stable(&self) -> Self::T {
+    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
         use mir::BinOp;
         match self {
             BinOp::Add => stable_mir::mir::BinOp::Add,
@@ -462,9 +476,9 @@ impl Stable for mir::BinOp {
     }
 }
 
-impl Stable for mir::UnOp {
+impl<'tcx> Stable<'tcx> for mir::UnOp {
     type T = stable_mir::mir::UnOp;
-    fn stable(&self) -> Self::T {
+    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
         use mir::UnOp;
         match self {
             UnOp::Not => stable_mir::mir::UnOp::Not,
@@ -473,9 +487,9 @@ impl Stable for mir::UnOp {
     }
 }
 
-impl Stable for rustc_hir::GeneratorKind {
+impl<'tcx> Stable<'tcx> for rustc_hir::GeneratorKind {
     type T = stable_mir::mir::GeneratorKind;
-    fn stable(&self) -> Self::T {
+    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
         use rustc_hir::{AsyncGeneratorKind, GeneratorKind};
         match self {
             GeneratorKind::Async(async_gen) => {
@@ -491,16 +505,16 @@ impl Stable for rustc_hir::GeneratorKind {
     }
 }
 
-impl<'tcx> Stable for mir::InlineAsmOperand<'tcx> {
+impl<'tcx> Stable<'tcx> for mir::InlineAsmOperand<'tcx> {
     type T = stable_mir::mir::InlineAsmOperand;
-    fn stable(&self) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
         use rustc_middle::mir::InlineAsmOperand;
 
         let (in_value, out_place) = match self {
-            InlineAsmOperand::In { value, .. } => (Some(value.stable()), None),
-            InlineAsmOperand::Out { place, .. } => (None, place.map(|place| place.stable())),
+            InlineAsmOperand::In { value, .. } => (Some(value.stable(tables)), None),
+            InlineAsmOperand::Out { place, .. } => (None, place.map(|place| place.stable(tables))),
             InlineAsmOperand::InOut { in_value, out_place, .. } => {
-                (Some(in_value.stable()), out_place.map(|place| place.stable()))
+                (Some(in_value.stable(tables)), out_place.map(|place| place.stable(tables)))
             }
             InlineAsmOperand::Const { .. }
             | InlineAsmOperand::SymFn { .. }
@@ -511,15 +525,15 @@ impl<'tcx> Stable for mir::InlineAsmOperand<'tcx> {
     }
 }
 
-impl<'tcx> Stable for mir::Terminator<'tcx> {
+impl<'tcx> Stable<'tcx> for mir::Terminator<'tcx> {
     type T = stable_mir::mir::Terminator;
-    fn stable(&self) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
         use rustc_middle::mir::TerminatorKind::*;
         use stable_mir::mir::Terminator;
         match &self.kind {
             Goto { target } => Terminator::Goto { target: target.as_usize() },
             SwitchInt { discr, targets } => Terminator::SwitchInt {
-                discr: discr.stable(),
+                discr: discr.stable(tables),
                 targets: targets
                     .iter()
                     .map(|(value, target)| stable_mir::mir::SwitchTarget {
@@ -534,34 +548,34 @@ impl<'tcx> Stable for mir::Terminator<'tcx> {
             Return => Terminator::Return,
             Unreachable => Terminator::Unreachable,
             Drop { place, target, unwind, replace: _ } => Terminator::Drop {
-                place: place.stable(),
+                place: place.stable(tables),
                 target: target.as_usize(),
-                unwind: unwind.stable(),
+                unwind: unwind.stable(tables),
             },
             Call { func, args, destination, target, unwind, call_source: _, fn_span: _ } => {
                 Terminator::Call {
-                    func: func.stable(),
-                    args: args.iter().map(|arg| arg.stable()).collect(),
-                    destination: destination.stable(),
+                    func: func.stable(tables),
+                    args: args.iter().map(|arg| arg.stable(tables)).collect(),
+                    destination: destination.stable(tables),
                     target: target.map(|t| t.as_usize()),
-                    unwind: unwind.stable(),
+                    unwind: unwind.stable(tables),
                 }
             }
             Assert { cond, expected, msg, target, unwind } => Terminator::Assert {
-                cond: cond.stable(),
+                cond: cond.stable(tables),
                 expected: *expected,
-                msg: msg.stable(),
+                msg: msg.stable(tables),
                 target: target.as_usize(),
-                unwind: unwind.stable(),
+                unwind: unwind.stable(tables),
             },
             InlineAsm { template, operands, options, line_spans, destination, unwind } => {
                 Terminator::InlineAsm {
                     template: format!("{:?}", template),
-                    operands: operands.iter().map(|operand| operand.stable()).collect(),
+                    operands: operands.iter().map(|operand| operand.stable(tables)).collect(),
                     options: format!("{:?}", options),
                     line_spans: format!("{:?}", line_spans),
                     destination: destination.map(|d| d.as_usize()),
-                    unwind: unwind.stable(),
+                    unwind: unwind.stable(tables),
                 }
             }
             Yield { .. } | GeneratorDrop | FalseEdge { .. } | FalseUnwind { .. } => unreachable!(),
