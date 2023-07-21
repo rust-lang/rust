@@ -1,5 +1,4 @@
-#![warn(clippy::inherent_to_string)]
-#![deny(clippy::inherent_to_string_shadow_display)]
+#![allow(improper_ctypes_definitions)]
 
 use std::fmt;
 
@@ -14,6 +13,9 @@ struct D;
 struct E;
 struct F;
 struct G;
+struct H;
+struct I;
+struct J;
 
 impl A {
     // Should be detected; emit warning
@@ -76,6 +78,26 @@ impl F {
 impl G {
     // Should not be detected, as it does not match the function signature
     fn to_string<const _N: usize>(&self) -> String {
+        "G.to_string()".to_string()
+    }
+}
+
+// Issue #11201
+
+impl H {
+    unsafe fn to_string(&self) -> String {
+        "G.to_string()".to_string()
+    }
+}
+
+impl I {
+    extern "C" fn to_string(&self) -> String {
+        "G.to_string()".to_string()
+    }
+}
+
+impl J {
+    unsafe extern "C" fn to_string(&self) -> String {
         "G.to_string()".to_string()
     }
 }
