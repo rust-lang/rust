@@ -183,7 +183,7 @@ impl Default for MiriConfig {
             mute_stdout_stderr: false,
             preemption_rate: 0.01, // 1%
             report_progress: None,
-            retag_fields: RetagFields::OnlyScalar,
+            retag_fields: RetagFields::Yes,
             external_so_file: None,
             gc_interval: 10_000,
             num_cpus: 1,

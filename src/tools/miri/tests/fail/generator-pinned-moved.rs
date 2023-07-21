@@ -1,4 +1,4 @@
-//@compile-flags: -Zmiri-disable-validation
+//@compile-flags: -Zmiri-disable-validation -Zmiri-disable-stacked-borrows
 #![feature(generators, generator_trait)]
 
 use std::{
@@ -10,9 +10,10 @@ fn firstn() -> impl Generator<Yield = u64, Return = ()> {
     static move || {
         let mut num = 0;
         let num = &mut num;
+        *num += 0;
 
         yield *num;
-        *num += 1; //~ ERROR: dereferenced after this allocation got freed
+        *num += 1; //~ERROR: dereferenced after this allocation got freed
     }
 }
 
