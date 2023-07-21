@@ -1366,6 +1366,11 @@ LLVMRustPrepareThinLTOImport(const LLVMRustThinLTOData *Data, LLVMModuleRef M,
     if (WasmCustomSections)
       WasmCustomSections->eraseFromParent();
 
+    // `llvm.ident` named metadata also gets duplicated.
+    auto *llvmIdent = (*MOrErr)->getNamedMetadata("llvm.ident");
+    if (llvmIdent)
+      llvmIdent->eraseFromParent();
+
     return MOrErr;
   };
   bool ClearDSOLocal = clearDSOLocalOnDeclarations(Mod, Target);

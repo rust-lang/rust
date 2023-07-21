@@ -888,21 +888,6 @@ pub fn build_compile_unit_di_node<'ll, 'tcx>(
             llvm::LLVMAddNamedMetadataOperand(debug_context.llmod, llvm_gcov_ident.as_ptr(), val);
         }
 
-        // Insert `llvm.ident` metadata on the wasm targets since that will
-        // get hooked up to the "producer" sections `processed-by` information.
-        if tcx.sess.target.is_like_wasm {
-            let name_metadata = llvm::LLVMMDStringInContext(
-                debug_context.llcontext,
-                rustc_producer.as_ptr().cast(),
-                rustc_producer.as_bytes().len() as c_uint,
-            );
-            llvm::LLVMAddNamedMetadataOperand(
-                debug_context.llmod,
-                cstr!("llvm.ident").as_ptr(),
-                llvm::LLVMMDNodeInContext(debug_context.llcontext, &name_metadata, 1),
-            );
-        }
-
         return unit_metadata;
     };
 

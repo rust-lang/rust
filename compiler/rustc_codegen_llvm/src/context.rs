@@ -33,6 +33,7 @@ use rustc_target::abi::{
 use rustc_target::spec::{HasTargetSpec, RelocModel, Target, TlsModel};
 use smallvec::SmallVec;
 
+use libc::c_uint;
 use std::cell::{Cell, RefCell};
 use std::ffi::CStr;
 use std::str;
@@ -348,6 +349,23 @@ pub unsafe fn create_module<'ll>(
             1,
         );
     }
+
+    // Insert `llvm.ident` metadata.
+    //
+    // On the wasm targets it will get hooked up to the "producer" sections
+    // `processed-by` information.
+    let rustc_producer =
+        format!("rustc version {}", option_env!("CFG_VERSION").expect("CFG_VERSION"));
+    let name_metadata = llvm::LLVMMDStringInContext(
+        llcx,
+        rustc_producer.as_ptr().cast(),
+        rustc_producer.as_bytes().len() as c_uint,
+    );
+    llvm::LLVMAddNamedMetadataOperand(
+        llmod,
+        cstr!("llvm.ident").as_ptr(),
+        llvm::LLVMMDNodeInContext(llcx, &name_metadata, 1),
+    );
 
     llmod
 }
