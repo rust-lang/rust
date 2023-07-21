@@ -378,11 +378,6 @@ impl ModuleDef {
             ModuleDef::BuiltinType(_) | ModuleDef::Macro(_) => return Vec::new(),
         };
 
-        let module = match self.module(db) {
-            Some(it) => it,
-            None => return Vec::new(),
-        };
-
         let mut acc = Vec::new();
 
         match self.as_def_with_body() {
@@ -390,7 +385,7 @@ impl ModuleDef {
                 def.diagnostics(db, &mut acc);
             }
             None => {
-                for diag in hir_ty::diagnostics::incorrect_case(db, module.id.krate(), id) {
+                for diag in hir_ty::diagnostics::incorrect_case(db, id) {
                     acc.push(diag.into())
                 }
             }
@@ -1831,7 +1826,7 @@ impl DefWithBody {
             // FIXME: don't ignore diagnostics for in type const
             DefWithBody::InTypeConst(_) => return,
         };
-        for diag in hir_ty::diagnostics::incorrect_case(db, krate, def.into()) {
+        for diag in hir_ty::diagnostics::incorrect_case(db, def.into()) {
             acc.push(diag.into())
         }
     }
