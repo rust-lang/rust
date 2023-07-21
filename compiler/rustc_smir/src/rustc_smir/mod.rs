@@ -64,7 +64,8 @@ impl<'tcx> Context for Tables<'tcx> {
     }
 
     fn ty_kind(&mut self, ty: crate::stable_mir::ty::Ty) -> TyKind {
-        self.rustc_ty_to_ty(self.types[ty.0])
+        let ty = self.types[ty.0];
+        ty.stable(self)
     }
 }
 
@@ -75,85 +76,6 @@ pub struct Tables<'tcx> {
 }
 
 impl<'tcx> Tables<'tcx> {
-    fn rustc_ty_to_ty(&mut self, ty: Ty<'tcx>) -> TyKind {
-        match ty.kind() {
-            ty::Bool => TyKind::RigidTy(RigidTy::Bool),
-            ty::Char => TyKind::RigidTy(RigidTy::Char),
-            ty::Int(int_ty) => match int_ty {
-                ty::IntTy::Isize => TyKind::RigidTy(RigidTy::Int(IntTy::Isize)),
-                ty::IntTy::I8 => TyKind::RigidTy(RigidTy::Int(IntTy::I8)),
-                ty::IntTy::I16 => TyKind::RigidTy(RigidTy::Int(IntTy::I16)),
-                ty::IntTy::I32 => TyKind::RigidTy(RigidTy::Int(IntTy::I32)),
-                ty::IntTy::I64 => TyKind::RigidTy(RigidTy::Int(IntTy::I64)),
-                ty::IntTy::I128 => TyKind::RigidTy(RigidTy::Int(IntTy::I128)),
-            },
-            ty::Uint(uint_ty) => match uint_ty {
-                ty::UintTy::Usize => TyKind::RigidTy(RigidTy::Uint(UintTy::Usize)),
-                ty::UintTy::U8 => TyKind::RigidTy(RigidTy::Uint(UintTy::U8)),
-                ty::UintTy::U16 => TyKind::RigidTy(RigidTy::Uint(UintTy::U16)),
-                ty::UintTy::U32 => TyKind::RigidTy(RigidTy::Uint(UintTy::U32)),
-                ty::UintTy::U64 => TyKind::RigidTy(RigidTy::Uint(UintTy::U64)),
-                ty::UintTy::U128 => TyKind::RigidTy(RigidTy::Uint(UintTy::U128)),
-            },
-            ty::Float(float_ty) => match float_ty {
-                ty::FloatTy::F32 => TyKind::RigidTy(RigidTy::Float(FloatTy::F32)),
-                ty::FloatTy::F64 => TyKind::RigidTy(RigidTy::Float(FloatTy::F64)),
-            },
-            ty::Adt(adt_def, generic_args) => TyKind::RigidTy(RigidTy::Adt(
-                rustc_internal::adt_def(adt_def.did()),
-                generic_args.stable(self),
-            )),
-            ty::Foreign(def_id) => {
-                TyKind::RigidTy(RigidTy::Foreign(rustc_internal::foreign_def(*def_id)))
-            }
-            ty::Str => TyKind::RigidTy(RigidTy::Str),
-            ty::Array(ty, constant) => {
-                TyKind::RigidTy(RigidTy::Array(self.intern_ty(*ty), opaque(constant)))
-            }
-            ty::Slice(ty) => TyKind::RigidTy(RigidTy::Slice(self.intern_ty(*ty))),
-            ty::RawPtr(ty::TypeAndMut { ty, mutbl }) => {
-                TyKind::RigidTy(RigidTy::RawPtr(self.intern_ty(*ty), mutbl.stable(self)))
-            }
-            ty::Ref(region, ty, mutbl) => TyKind::RigidTy(RigidTy::Ref(
-                opaque(region),
-                self.intern_ty(*ty),
-                mutbl.stable(self),
-            )),
-            ty::FnDef(def_id, generic_args) => TyKind::RigidTy(RigidTy::FnDef(
-                rustc_internal::fn_def(*def_id),
-                generic_args.stable(self),
-            )),
-            ty::FnPtr(poly_fn_sig) => TyKind::RigidTy(RigidTy::FnPtr(poly_fn_sig.stable(self))),
-            ty::Dynamic(_, _, _) => todo!(),
-            ty::Closure(def_id, generic_args) => TyKind::RigidTy(RigidTy::Closure(
-                rustc_internal::closure_def(*def_id),
-                generic_args.stable(self),
-            )),
-            ty::Generator(def_id, generic_args, movability) => TyKind::RigidTy(RigidTy::Generator(
-                rustc_internal::generator_def(*def_id),
-                generic_args.stable(self),
-                match movability {
-                    hir::Movability::Static => Movability::Static,
-                    hir::Movability::Movable => Movability::Movable,
-                },
-            )),
-            ty::Never => TyKind::RigidTy(RigidTy::Never),
-            ty::Tuple(fields) => TyKind::RigidTy(RigidTy::Tuple(
-                fields.iter().map(|ty| self.intern_ty(ty)).collect(),
-            )),
-            ty::Alias(_, _) => todo!(),
-            ty::Param(_) => todo!(),
-            ty::Bound(_, _) => todo!(),
-            ty::Placeholder(..)
-            | ty::GeneratorWitness(_)
-            | ty::GeneratorWitnessMIR(_, _)
-            | ty::Infer(_)
-            | ty::Error(_) => {
-                unreachable!();
-            }
-        }
-    }
-
     fn intern_ty(&mut self, ty: Ty<'tcx>) -> stable_mir::ty::Ty {
         if let Some(id) = self.types.iter().position(|&t| t == ty) {
             return stable_mir::ty::Ty(id);
@@ -673,6 +595,88 @@ impl<'tcx> Stable<'tcx> for ty::BoundVariableKind {
                 })
             }
             ty::BoundVariableKind::Const => BoundVariableKind::Const,
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for Ty<'tcx> {
+    type T = stable_mir::ty::TyKind;
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        match self.kind() {
+            ty::Bool => TyKind::RigidTy(RigidTy::Bool),
+            ty::Char => TyKind::RigidTy(RigidTy::Char),
+            ty::Int(int_ty) => match int_ty {
+                ty::IntTy::Isize => TyKind::RigidTy(RigidTy::Int(IntTy::Isize)),
+                ty::IntTy::I8 => TyKind::RigidTy(RigidTy::Int(IntTy::I8)),
+                ty::IntTy::I16 => TyKind::RigidTy(RigidTy::Int(IntTy::I16)),
+                ty::IntTy::I32 => TyKind::RigidTy(RigidTy::Int(IntTy::I32)),
+                ty::IntTy::I64 => TyKind::RigidTy(RigidTy::Int(IntTy::I64)),
+                ty::IntTy::I128 => TyKind::RigidTy(RigidTy::Int(IntTy::I128)),
+            },
+            ty::Uint(uint_ty) => match uint_ty {
+                ty::UintTy::Usize => TyKind::RigidTy(RigidTy::Uint(UintTy::Usize)),
+                ty::UintTy::U8 => TyKind::RigidTy(RigidTy::Uint(UintTy::U8)),
+                ty::UintTy::U16 => TyKind::RigidTy(RigidTy::Uint(UintTy::U16)),
+                ty::UintTy::U32 => TyKind::RigidTy(RigidTy::Uint(UintTy::U32)),
+                ty::UintTy::U64 => TyKind::RigidTy(RigidTy::Uint(UintTy::U64)),
+                ty::UintTy::U128 => TyKind::RigidTy(RigidTy::Uint(UintTy::U128)),
+            },
+            ty::Float(float_ty) => match float_ty {
+                ty::FloatTy::F32 => TyKind::RigidTy(RigidTy::Float(FloatTy::F32)),
+                ty::FloatTy::F64 => TyKind::RigidTy(RigidTy::Float(FloatTy::F64)),
+            },
+            ty::Adt(adt_def, generic_args) => TyKind::RigidTy(RigidTy::Adt(
+                rustc_internal::adt_def(adt_def.did()),
+                generic_args.stable(tables),
+            )),
+            ty::Foreign(def_id) => {
+                TyKind::RigidTy(RigidTy::Foreign(rustc_internal::foreign_def(*def_id)))
+            }
+            ty::Str => TyKind::RigidTy(RigidTy::Str),
+            ty::Array(ty, constant) => {
+                TyKind::RigidTy(RigidTy::Array(tables.intern_ty(*ty), opaque(constant)))
+            }
+            ty::Slice(ty) => TyKind::RigidTy(RigidTy::Slice(tables.intern_ty(*ty))),
+            ty::RawPtr(ty::TypeAndMut { ty, mutbl }) => {
+                TyKind::RigidTy(RigidTy::RawPtr(tables.intern_ty(*ty), mutbl.stable(tables)))
+            }
+            ty::Ref(region, ty, mutbl) => TyKind::RigidTy(RigidTy::Ref(
+                opaque(region),
+                tables.intern_ty(*ty),
+                mutbl.stable(tables),
+            )),
+            ty::FnDef(def_id, generic_args) => TyKind::RigidTy(RigidTy::FnDef(
+                rustc_internal::fn_def(*def_id),
+                generic_args.stable(tables),
+            )),
+            ty::FnPtr(poly_fn_sig) => TyKind::RigidTy(RigidTy::FnPtr(poly_fn_sig.stable(tables))),
+            ty::Dynamic(_, _, _) => todo!(),
+            ty::Closure(def_id, generic_args) => TyKind::RigidTy(RigidTy::Closure(
+                rustc_internal::closure_def(*def_id),
+                generic_args.stable(tables),
+            )),
+            ty::Generator(def_id, generic_args, movability) => TyKind::RigidTy(RigidTy::Generator(
+                rustc_internal::generator_def(*def_id),
+                generic_args.stable(tables),
+                match movability {
+                    hir::Movability::Static => Movability::Static,
+                    hir::Movability::Movable => Movability::Movable,
+                },
+            )),
+            ty::Never => TyKind::RigidTy(RigidTy::Never),
+            ty::Tuple(fields) => TyKind::RigidTy(RigidTy::Tuple(
+                fields.iter().map(|ty| tables.intern_ty(ty)).collect(),
+            )),
+            ty::Alias(_, _) => todo!(),
+            ty::Param(_) => todo!(),
+            ty::Bound(_, _) => todo!(),
+            ty::Placeholder(..)
+            | ty::GeneratorWitness(_)
+            | ty::GeneratorWitnessMIR(_, _)
+            | ty::Infer(_)
+            | ty::Error(_) => {
+                unreachable!();
+            }
         }
     }
 }
