@@ -3,6 +3,7 @@
 
 pub use crate::options::*;
 
+use crate::errors::FileWriteFail;
 use crate::search_paths::SearchPath;
 use crate::utils::{CanonicalizedPath, NativeLib, NativeLibKind};
 use crate::{lint, HashStableContext};
@@ -31,6 +32,7 @@ use std::collections::btree_map::{
 use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::OsStr;
 use std::fmt;
+use std::fs;
 use std::hash::Hash;
 use std::iter;
 use std::path::{Path, PathBuf};
@@ -710,8 +712,14 @@ impl ExternEntry {
     }
 }
 
+#[derive(Clone, PartialEq, Debug)]
+pub struct PrintRequest {
+    pub kind: PrintKind,
+    pub out: OutFileName,
+}
+
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub enum PrintRequest {
+pub enum PrintKind {
     FileNames,
     Sysroot,
     TargetLibdir,
@@ -853,6 +861,17 @@ impl OutFileName {
         match *self {
             OutFileName::Real(ref path) => path.clone(),
             OutFileName::Stdout => outputs.temp_path(flavor, codegen_unit_name),
+        }
+    }
+
+    pub fn overwrite(&self, content: &str, sess: &Session) {
+        match self {
+            OutFileName::Stdout => print!("{content}"),
+            OutFileName::Real(path) => {
+                if let Err(e) = fs::write(path, content) {
+                    sess.emit_fatal(FileWriteFail { path, err: e.to_string() });
+                }
+            }
         }
     }
 }
@@ -2005,13 +2024,7 @@ fn parse_output_types(
     if !unstable_opts.parse_only {
         for list in matches.opt_strs("emit") {
             for output_type in list.split(',') {
-                let (shorthand, path) = match output_type.split_once('=') {
-                    None => (output_type, None),
-                    Some((shorthand, "-")) => (shorthand, Some(OutFileName::Stdout)),
-                    Some((shorthand, path)) => {
-                        (shorthand, Some(OutFileName::Real(PathBuf::from(path))))
-                    }
-                };
+                let (shorthand, path) = split_out_file_name(output_type);
                 let output_type = OutputType::from_shorthand(shorthand).unwrap_or_else(|| {
                     handler.early_error(format!(
                         "unknown emission type: `{shorthand}` - expected one of: {display}",
@@ -2026,6 +2039,14 @@ fn parse_output_types(
         output_types.insert(OutputType::Exe, None);
     }
     OutputTypes(output_types)
+}
+
+fn split_out_file_name(arg: &str) -> (&str, Option<OutFileName>) {
+    match arg.split_once('=') {
+        None => (arg, None),
+        Some((kind, "-")) => (kind, Some(OutFileName::Stdout)),
+        Some((kind, path)) => (kind, Some(OutFileName::Real(PathBuf::from(path)))),
+    }
 }
 
 fn should_override_cgus_and_disable_thinlto(
@@ -2091,41 +2112,49 @@ fn collect_print_requests(
 ) -> Vec<PrintRequest> {
     let mut prints = Vec::<PrintRequest>::new();
     if cg.target_cpu.as_ref().is_some_and(|s| s == "help") {
-        prints.push(PrintRequest::TargetCPUs);
+        prints.push(PrintRequest { kind: PrintKind::TargetCPUs, out: OutFileName::Stdout });
         cg.target_cpu = None;
     };
     if cg.target_feature == "help" {
-        prints.push(PrintRequest::TargetFeatures);
+        prints.push(PrintRequest { kind: PrintKind::TargetFeatures, out: OutFileName::Stdout });
         cg.target_feature = String::new();
     }
 
-    const PRINT_REQUESTS: &[(&str, PrintRequest)] = &[
-        ("crate-name", PrintRequest::CrateName),
-        ("file-names", PrintRequest::FileNames),
-        ("sysroot", PrintRequest::Sysroot),
-        ("target-libdir", PrintRequest::TargetLibdir),
-        ("cfg", PrintRequest::Cfg),
-        ("calling-conventions", PrintRequest::CallingConventions),
-        ("target-list", PrintRequest::TargetList),
-        ("target-cpus", PrintRequest::TargetCPUs),
-        ("target-features", PrintRequest::TargetFeatures),
-        ("relocation-models", PrintRequest::RelocationModels),
-        ("code-models", PrintRequest::CodeModels),
-        ("tls-models", PrintRequest::TlsModels),
-        ("native-static-libs", PrintRequest::NativeStaticLibs),
-        ("stack-protector-strategies", PrintRequest::StackProtectorStrategies),
-        ("target-spec-json", PrintRequest::TargetSpec),
-        ("all-target-specs-json", PrintRequest::AllTargetSpecs),
-        ("link-args", PrintRequest::LinkArgs),
-        ("split-debuginfo", PrintRequest::SplitDebuginfo),
-        ("deployment-target", PrintRequest::DeploymentTarget),
+    const PRINT_KINDS: &[(&str, PrintKind)] = &[
+        ("crate-name", PrintKind::CrateName),
+        ("file-names", PrintKind::FileNames),
+        ("sysroot", PrintKind::Sysroot),
+        ("target-libdir", PrintKind::TargetLibdir),
+        ("cfg", PrintKind::Cfg),
+        ("calling-conventions", PrintKind::CallingConventions),
+        ("target-list", PrintKind::TargetList),
+        ("target-cpus", PrintKind::TargetCPUs),
+        ("target-features", PrintKind::TargetFeatures),
+        ("relocation-models", PrintKind::RelocationModels),
+        ("code-models", PrintKind::CodeModels),
+        ("tls-models", PrintKind::TlsModels),
+        ("native-static-libs", PrintKind::NativeStaticLibs),
+        ("stack-protector-strategies", PrintKind::StackProtectorStrategies),
+        ("target-spec-json", PrintKind::TargetSpec),
+        ("all-target-specs-json", PrintKind::AllTargetSpecs),
+        ("link-args", PrintKind::LinkArgs),
+        ("split-debuginfo", PrintKind::SplitDebuginfo),
+        ("deployment-target", PrintKind::DeploymentTarget),
     ];
 
+    // We disallow reusing the same path in multiple prints, such as `--print
+    // cfg=output.txt --print link-args=output.txt`, because outputs are printed
+    // by disparate pieces of the compiler, and keeping track of which files
+    // need to be overwritten vs appended to is annoying.
+    let mut printed_paths = FxHashSet::default();
+
     prints.extend(matches.opt_strs("print").into_iter().map(|req| {
-        match PRINT_REQUESTS.iter().find(|&&(name, _)| name == req) {
-            Some((_, PrintRequest::TargetSpec)) => {
+        let (req, out) = split_out_file_name(&req);
+
+        let kind = match PRINT_KINDS.iter().find(|&&(name, _)| name == req) {
+            Some((_, PrintKind::TargetSpec)) => {
                 if unstable_opts.unstable_options {
-                    PrintRequest::TargetSpec
+                    PrintKind::TargetSpec
                 } else {
                     handler.early_error(
                         "the `-Z unstable-options` flag must also be passed to \
@@ -2133,9 +2162,9 @@ fn collect_print_requests(
                     );
                 }
             }
-            Some((_, PrintRequest::AllTargetSpecs)) => {
+            Some((_, PrintKind::AllTargetSpecs)) => {
                 if unstable_opts.unstable_options {
-                    PrintRequest::AllTargetSpecs
+                    PrintKind::AllTargetSpecs
                 } else {
                     handler.early_error(
                         "the `-Z unstable-options` flag must also be passed to \
@@ -2143,16 +2172,28 @@ fn collect_print_requests(
                     );
                 }
             }
-            Some(&(_, print_request)) => print_request,
+            Some(&(_, print_kind)) => print_kind,
             None => {
                 let prints =
-                    PRINT_REQUESTS.iter().map(|(name, _)| format!("`{name}`")).collect::<Vec<_>>();
+                    PRINT_KINDS.iter().map(|(name, _)| format!("`{name}`")).collect::<Vec<_>>();
                 let prints = prints.join(", ");
                 handler.early_error(format!(
                     "unknown print request `{req}`. Valid print requests are: {prints}"
                 ));
             }
+        };
+
+        let out = out.unwrap_or(OutFileName::Stdout);
+        if let OutFileName::Real(path) = &out {
+            if !printed_paths.insert(path.clone()) {
+                handler.early_error(format!(
+                    "cannot print multiple outputs to the same path: {}",
+                    path.display(),
+                ));
+            }
         }
+
+        PrintRequest { kind, out }
     }));
 
     prints

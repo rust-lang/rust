@@ -12,8 +12,8 @@ use rustc_metadata::fs::{copy_to_stdout, emit_wrapper_file, METADATA_FILENAME};
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::SymbolExportKind;
-use rustc_session::config::{self, CFGuard, CrateType, DebugInfo, Strip};
-use rustc_session::config::{OutputFilenames, OutputType, PrintRequest, SplitDwarfKind};
+use rustc_session::config::{self, CFGuard, CrateType, DebugInfo, OutFileName, Strip};
+use rustc_session::config::{OutputFilenames, OutputType, PrintKind, SplitDwarfKind};
 use rustc_session::cstore::DllImport;
 use rustc_session::output::{check_file_is_writeable, invalid_output_for_target, out_filename};
 use rustc_session::search_paths::PathKind;
@@ -596,8 +596,10 @@ fn link_staticlib<'a>(
 
     all_native_libs.extend_from_slice(&codegen_results.crate_info.used_libraries);
 
-    if sess.opts.prints.contains(&PrintRequest::NativeStaticLibs) {
-        print_native_static_libs(sess, &all_native_libs, &all_rust_dylibs);
+    for print in &sess.opts.prints {
+        if print.kind == PrintKind::NativeStaticLibs {
+            print_native_static_libs(sess, &print.out, &all_native_libs, &all_rust_dylibs);
+        }
     }
 
     Ok(())
@@ -744,8 +746,11 @@ fn link_natively<'a>(
         cmd.env_remove(k.as_ref());
     }
 
-    if sess.opts.prints.contains(&PrintRequest::LinkArgs) {
-        println!("{:?}", &cmd);
+    for print in &sess.opts.prints {
+        if print.kind == PrintKind::LinkArgs {
+            let content = format!("{:?}", cmd);
+            print.out.overwrite(&content, sess);
+        }
     }
 
     // May have not found libraries in the right formats.
@@ -1386,6 +1391,7 @@ enum RlibFlavor {
 
 fn print_native_static_libs(
     sess: &Session,
+    out: &OutFileName,
     all_native_libs: &[NativeLib],
     all_rust_dylibs: &[&Path],
 ) {
@@ -1459,11 +1465,22 @@ fn print_native_static_libs(
             lib_args.push(format!("-l{}", lib));
         }
     }
-    if !lib_args.is_empty() {
-        sess.emit_note(errors::StaticLibraryNativeArtifacts);
-        // Prefix for greppability
-        // Note: This must not be translated as tools are allowed to depend on this exact string.
-        sess.note_without_error(format!("native-static-libs: {}", &lib_args.join(" ")));
+
+    match out {
+        OutFileName::Real(path) => {
+            out.overwrite(&lib_args.join(" "), sess);
+            if !lib_args.is_empty() {
+                sess.emit_note(errors::StaticLibraryNativeArtifactsToFile { path });
+            }
+        }
+        OutFileName::Stdout => {
+            if !lib_args.is_empty() {
+                sess.emit_note(errors::StaticLibraryNativeArtifacts);
+                // Prefix for greppability
+                // Note: This must not be translated as tools are allowed to depend on this exact string.
+                sess.note_without_error(format!("native-static-libs: {}", &lib_args.join(" ")));
+            }
+        }
     }
 }
 
