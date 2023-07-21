@@ -989,7 +989,7 @@ mod parse {
             Some("next") => *slot = TraitSolver::Next,
             Some("next-coherence") => *slot = TraitSolver::NextCoherence,
             // default trait solver is subject to change..
-            Some("default") => *slot = TraitSolver::Classic,
+            Some("default") => *slot = TraitSolver::NextCoherence,
             _ => return false,
         }
         true
@@ -1817,8 +1817,8 @@ written to standard error output)"),
         "for every macro invocation, print its name and arguments (default: no)"),
     track_diagnostics: bool = (false, parse_bool, [UNTRACKED],
         "tracks where in rustc a diagnostic was emitted"),
-    trait_solver: TraitSolver = (TraitSolver::Classic, parse_trait_solver, [TRACKED],
-        "specify the trait solver mode used by rustc (default: classic)"),
+    trait_solver: TraitSolver = (TraitSolver::NextCoherence, parse_trait_solver, [TRACKED],
+        "specify the trait solver mode used by rustc (default: next-coherence)"),
     // Diagnostics are considered side-effects of a query (see `QuerySideEffects`) and are saved
     // alongside query results and changes to translation options can affect diagnostics - so
     // translation options should be tracked.
