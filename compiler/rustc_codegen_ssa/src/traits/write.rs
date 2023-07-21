@@ -35,6 +35,7 @@ pub trait WriteBackendMethods: 'static + Sized + Clone {
         cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
     ) -> Result<(Vec<LtoModuleCodegen<Self>>, Vec<WorkProduct>), FatalError>;
     fn print_pass_timings(&self);
+    fn print_statistics(&self);
     unsafe fn optimize(
         cgcx: &CodegenContext<Self>,
         diag_handler: &Handler,
