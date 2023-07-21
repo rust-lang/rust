@@ -14,13 +14,12 @@ mod case_conv;
 
 use std::fmt;
 
-use base_db::CrateId;
 use hir_def::{
     data::adt::VariantData,
     hir::{Pat, PatId},
     src::HasSource,
-    AdtId, AttrDefId, ConstId, EnumId, FunctionId, ItemContainerId, Lookup, ModuleDefId, StaticId,
-    StructId,
+    AdtId, AttrDefId, ConstId, DefWithBodyId, EnumId, FunctionId, ItemContainerId, Lookup,
+    ModuleDefId, StaticId, StructId,
 };
 use hir_expand::{
     name::{AsName, Name},
@@ -44,13 +43,9 @@ mod allow {
     pub(super) const NON_CAMEL_CASE_TYPES: &str = "non_camel_case_types";
 }
 
-pub fn incorrect_case(
-    db: &dyn HirDatabase,
-    krate: CrateId,
-    owner: ModuleDefId,
-) -> Vec<IncorrectCase> {
+pub fn incorrect_case(db: &dyn HirDatabase, owner: ModuleDefId) -> Vec<IncorrectCase> {
     let _p = profile::span("validate_module_item");
-    let mut validator = DeclValidator::new(db, krate);
+    let mut validator = DeclValidator::new(db);
     validator.validate_item(owner);
     validator.sink
 }
@@ -120,7 +115,6 @@ pub struct IncorrectCase {
 
 pub(super) struct DeclValidator<'a> {
     db: &'a dyn HirDatabase,
-    krate: CrateId,
     pub(super) sink: Vec<IncorrectCase>,
 }
 
@@ -132,8 +126,8 @@ struct Replacement {
 }
 
 impl<'a> DeclValidator<'a> {
-    pub(super) fn new(db: &'a dyn HirDatabase, krate: CrateId) -> DeclValidator<'a> {
-        DeclValidator { db, krate, sink: Vec::new() }
+    pub(super) fn new(db: &'a dyn HirDatabase) -> DeclValidator<'a> {
+        DeclValidator { db, sink: Vec::new() }
     }
 
     pub(super) fn validate_item(&mut self, item: ModuleDefId) {
@@ -206,17 +200,7 @@ impl<'a> DeclValidator<'a> {
             return;
         }
 
-        let body = self.db.body(func.into());
-
-        // Recursively validate inner scope items, such as static variables and constants.
-        for (_, block_def_map) in body.blocks(self.db.upcast()) {
-            for (_, module) in block_def_map.modules() {
-                for def_id in module.scope.declarations() {
-                    let mut validator = DeclValidator::new(self.db, self.krate);
-                    validator.validate_item(def_id);
-                }
-            }
-        }
+        self.validate_body_inner_items(func.into());
 
         // Check whether non-snake case identifiers are allowed for this function.
         if self.allowed(func.into(), allow::NON_SNAKE_CASE, false) {
@@ -230,6 +214,8 @@ impl<'a> DeclValidator<'a> {
             suggested_text: new_name,
             expected_case: CaseType::LowerSnakeCase,
         });
+
+        let body = self.db.body(func.into());
 
         // Check the patterns inside the function body.
         // This includes function parameters.
@@ -706,5 +692,17 @@ impl<'a> DeclValidator<'a> {
         };
 
         self.sink.push(diagnostic);
+    }
+
+    /// Recursively validates inner scope items, such as static variables and constants.
+    fn validate_body_inner_items(&mut self, body_id: DefWithBodyId) {
+        let body = self.db.body(body_id);
+        for (_, block_def_map) in body.blocks(self.db.upcast()) {
+            for (_, module) in block_def_map.modules() {
+                for def_id in module.scope.declarations() {
+                    self.validate_item(def_id);
+                }
+            }
+        }
     }
 }
