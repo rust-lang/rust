@@ -21,7 +21,7 @@ use rustc_middle::ty::{
 use rustc_target::abi::{Abi, Size};
 
 use crate::borrow_tracker::{
-    stacked_borrows::diagnostics::{AllocHistory, DiagnosticCx, DiagnosticCxBuilder, TagHistory},
+    stacked_borrows::diagnostics::{AllocHistory, DiagnosticCx, DiagnosticCxBuilder},
     AccessKind, GlobalStateInner, ProtectorKind, RetagFields,
 };
 use crate::*;
@@ -168,15 +168,6 @@ impl NewPermission {
             NewPermission::FreezeSensitive { freeze_protector, .. } => *freeze_protector,
         }
     }
-}
-
-/// Error reporting
-pub fn err_sb_ub<'tcx>(
-    msg: String,
-    help: Option<String>,
-    history: Option<TagHistory>,
-) -> InterpError<'tcx> {
-    err_machine_stop!(TerminationInfo::StackedBorrowsUb { msg, help, history })
 }
 
 // # Stacked Borrows Core Begin
