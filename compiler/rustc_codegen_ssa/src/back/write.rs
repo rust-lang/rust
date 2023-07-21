@@ -1300,11 +1300,15 @@ fn start_executing_work<B: ExtraBackendMethods>(
         let mut main_thread_state = MainThreadState::Idle;
 
         // How many LLVM worker threads are running while holding a Token. This
-        // *excludes* the LLVM worker thread that the main thread is lending a
-        // Token to (when the main thread is in the `Lending` state).
-        // In other words, the number of LLVM threads is actually equal to
-        // `running + if main_thread_state == Lending { 1 } else { 0 }`.
+        // *excludes* any that the main thread is lending a Token to.
         let mut running_with_own_token = 0;
+
+        // How many LLVM worker threads are running in total. This *includes*
+        // any that the main thread is lending a Token to.
+        let running_with_any_token = |main_thread_state, running_with_own_token| {
+            running_with_own_token
+                + if main_thread_state == MainThreadState::Lending { 1 } else { 0 }
+        };
 
         let mut llvm_start_time: Option<VerboseTimingGuard<'_>> = None;
 
@@ -1352,8 +1356,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
                     }
                 }
             } else if codegen_state == Completed {
-                if running_with_own_token == 0
-                    && main_thread_state == MainThreadState::Idle
+                if running_with_any_token(main_thread_state, running_with_own_token) == 0
                     && work_items.is_empty()
                 {
                     // All codegen work is done. Do we have LTO work to do?
@@ -1427,7 +1430,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
                 // Don't queue up any more work if codegen was aborted, we're
                 // just waiting for our existing children to finish.
                 assert!(codegen_state == Aborted);
-                if running_with_own_token == 0 && main_thread_state != MainThreadState::Lending {
+                if running_with_any_token(main_thread_state, running_with_own_token) == 0 {
                     break;
                 }
             }
