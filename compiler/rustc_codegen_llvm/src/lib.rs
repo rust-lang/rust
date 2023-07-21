@@ -28,7 +28,7 @@ pub use llvm_util::target_features;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule};
 use rustc_codegen_ssa::back::write::{
-    CodegenContext, FatLTOInput, ModuleConfig, TargetMachineFactoryConfig, TargetMachineFactoryFn,
+    CodegenContext, FatLtoInput, ModuleConfig, TargetMachineFactoryConfig, TargetMachineFactoryFn,
 };
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::ModuleCodegen;
@@ -200,7 +200,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     }
     fn run_fat_lto(
         cgcx: &CodegenContext<Self>,
-        modules: Vec<FatLTOInput<Self>>,
+        modules: Vec<FatLtoInput<Self>>,
         cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
     ) -> Result<LtoModuleCodegen<Self>, FatalError> {
         back::lto::run_fat(cgcx, modules, cached_modules)

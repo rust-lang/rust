@@ -374,7 +374,7 @@ impl<B: WriteBackendMethods> CodegenContext<B> {
 
 fn generate_lto_work<B: ExtraBackendMethods>(
     cgcx: &CodegenContext<B>,
-    needs_fat_lto: Vec<FatLTOInput<B>>,
+    needs_fat_lto: Vec<FatLtoInput<B>>,
     needs_thin_lto: Vec<(String, B::ThinBuffer)>,
     import_only_modules: Vec<(SerializedModule<B::ModuleBuffer>, WorkProduct)>,
 ) -> Vec<(WorkItem<B>, u64)> {
@@ -758,14 +758,14 @@ pub(crate) enum WorkItemResult<B: WriteBackendMethods> {
 
     /// The backend has finished compiling a CGU, which now needs to go through
     /// fat LTO.
-    NeedsFatLTO(FatLTOInput<B>),
+    NeedsFatLto(FatLtoInput<B>),
 
     /// The backend has finished compiling a CGU, which now needs to go through
     /// thin LTO.
-    NeedsThinLTO(String, B::ThinBuffer),
+    NeedsThinLto(String, B::ThinBuffer),
 }
 
-pub enum FatLTOInput<B: WriteBackendMethods> {
+pub enum FatLtoInput<B: WriteBackendMethods> {
     Serialized { name: String, buffer: B::ModuleBuffer },
     InMemory(ModuleCodegen<B::Module>),
 }
@@ -854,7 +854,7 @@ fn execute_optimize_work_item<B: ExtraBackendMethods>(
                     panic!("Error writing pre-lto-bitcode file `{}`: {}", path.display(), e);
                 });
             }
-            Ok(WorkItemResult::NeedsThinLTO(name, thin_buffer))
+            Ok(WorkItemResult::NeedsThinLto(name, thin_buffer))
         }
         ComputedLtoType::Fat => match bitcode {
             Some(path) => {
@@ -862,9 +862,9 @@ fn execute_optimize_work_item<B: ExtraBackendMethods>(
                 fs::write(&path, buffer.data()).unwrap_or_else(|e| {
                     panic!("Error writing pre-lto-bitcode file `{}`: {}", path.display(), e);
                 });
-                Ok(WorkItemResult::NeedsFatLTO(FatLTOInput::Serialized { name, buffer }))
+                Ok(WorkItemResult::NeedsFatLto(FatLtoInput::Serialized { name, buffer }))
             }
-            None => Ok(WorkItemResult::NeedsFatLTO(FatLTOInput::InMemory(module))),
+            None => Ok(WorkItemResult::NeedsFatLto(FatLtoInput::InMemory(module))),
         },
     }
 }
@@ -1554,12 +1554,12 @@ fn start_executing_work<B: ExtraBackendMethods>(
                             assert!(compiled_modules.is_empty());
                             needs_link.push(module);
                         }
-                        Ok(WorkItemResult::NeedsFatLTO(fat_lto_input)) => {
+                        Ok(WorkItemResult::NeedsFatLto(fat_lto_input)) => {
                             assert!(!started_lto);
                             assert!(needs_thin_lto.is_empty());
                             needs_fat_lto.push(fat_lto_input);
                         }
-                        Ok(WorkItemResult::NeedsThinLTO(name, thin_buffer)) => {
+                        Ok(WorkItemResult::NeedsThinLto(name, thin_buffer)) => {
                             assert!(!started_lto);
                             assert!(needs_fat_lto.is_empty());
                             needs_thin_lto.push((name, thin_buffer));
