@@ -140,24 +140,3 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         offset
     }
 }
-
-impl<'a, Ty> TyAndLayout<'a, Ty> {
-    /// Returns `true` if the layout corresponds to an unsized type.
-    pub fn is_unsized(&self) -> bool {
-        self.abi.is_unsized()
-    }
-
-    #[inline]
-    pub fn is_sized(&self) -> bool {
-        self.abi.is_sized()
-    }
-
-    /// Returns `true` if the type is a ZST and not unsized.
-    pub fn is_zst(&self) -> bool {
-        match self.abi {
-            Abi::Scalar(_) | Abi::ScalarPair(..) | Abi::Vector { .. } => false,
-            Abi::Uninhabited => self.size.bytes() == 0,
-            Abi::Aggregate { sized } => sized && self.size.bytes() == 0,
-        }
-    }
-}
