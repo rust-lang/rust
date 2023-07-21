@@ -26,6 +26,8 @@ session_feature_gate_error = {$explain}
 
 session_file_is_not_writeable = output file {$file} is not writeable -- check its permissions
 
+session_file_write_fail = failed to write `{$path}` due to error `{$err}`
+
 session_hexadecimal_float_literal_not_supported = hexadecimal float literal is not supported
 
 session_incompatible_linker_flavor = linker flavor `{$flavor}` is incompatible with the current target
