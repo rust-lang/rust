@@ -6,6 +6,19 @@ pub mod wasm;
 #[macro_use]
 pub mod biteq;
 
+/// Indicates if subnormal floats are flushed to zero.
+pub fn flush_subnormals<T>() -> bool {
+    let is_f32 = core::mem::size_of::<T>() == 4;
+    let ppc_flush = is_f32
+        && cfg!(all(
+            target_arch = "powerpc64",
+            target_endian = "big",
+            not(target_feature = "vsx")
+        ));
+    let arm_flush = is_f32 && cfg!(all(target_arch = "arm", target_feature = "neon"));
+    ppc_flush || arm_flush
+}
+
 /// Specifies the default strategy for testing a type.
 ///
 /// This strategy should be what "makes sense" to test.

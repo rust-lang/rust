@@ -40,6 +40,8 @@ macro_rules! impl_float_biteq {
             fn biteq(&self, other: &Self) -> bool {
                 if self.is_nan() && other.is_nan() {
                     true // exact nan bits don't matter
+                } else if crate::flush_subnormals::<Self>() {
+                    self.to_bits() == other.to_bits() || float_eq::float_eq!(self, other, abs <= 2. * <$type>::EPSILON)
                 } else {
                     self.to_bits() == other.to_bits()
                 }
