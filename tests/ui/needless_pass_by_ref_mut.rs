@@ -1,4 +1,5 @@
-#![allow(unused)]
+#![allow(clippy::if_same_then_else, clippy::no_effect)]
+#![feature(lint_reasons)]
 
 use std::ptr::NonNull;
 
@@ -155,15 +156,48 @@ async fn a8(x: i32, a: &mut i32, y: i32, z: &mut i32) {
     println!("{:?}", z);
 }
 
+// Should not warn (passed as closure which takes `&mut`).
+fn passed_as_closure(s: &mut u32) {}
+
+// Should not warn.
+fn passed_as_local(s: &mut u32) {}
+
+// Should not warn.
+fn ty_unify_1(s: &mut u32) {}
+
+// Should not warn.
+fn ty_unify_2(s: &mut u32) {}
+
+// Should not warn.
+fn passed_as_field(s: &mut u32) {}
+
+fn closure_takes_mut(s: fn(&mut u32)) {}
+
+struct A {
+    s: fn(&mut u32),
+}
+
+// Should warn.
+fn used_as_path(s: &mut u32) {}
+
+// Make sure lint attributes work fine
+#[expect(clippy::needless_pass_by_ref_mut)]
+fn lint_attr(s: &mut u32) {}
+
 fn main() {
-    // let mut u = 0;
-    // let mut v = vec![0];
-    // foo(&mut v, &0, &mut u);
-    // foo2(&mut v);
-    // foo3(&mut v);
-    // foo4(&mut v);
-    // foo5(&mut v);
-    // alias_check(&mut v);
-    // alias_check2(&mut v);
-    // println!("{u}");
+    let mut u = 0;
+    let mut v = vec![0];
+    foo(&mut v, &0, &mut u);
+    foo2(&mut v);
+    foo3(&mut v);
+    foo4(&mut v);
+    foo5(&mut v);
+    alias_check(&mut v);
+    alias_check2(&mut v);
+    println!("{u}");
+    closure_takes_mut(passed_as_closure);
+    A { s: passed_as_field };
+    used_as_path;
+    let _: fn(&mut u32) = passed_as_local;
+    let _ = if v[0] == 0 { ty_unify_1 } else { ty_unify_2 };
 }
