@@ -167,7 +167,7 @@ error: cannot rebase: You have unstaged changes.
 error: Please commit or stash them.
 ```
 
-(See https://git-scm.com/book/en/v2/Getting-Started-What-is-Git%3F#_the_three_states for the difference between the two.)
+(See [https://git-scm.com/book/en/v2/Getting-Started-What-is-Git%3F#_the_three_states](https://git-scm.com/book/en/v2/Getting-Started-What-is-Git%3F#_the_three_states) for the difference between the two.)
 
 This means you have made changes since the last time you made a commit. To be able to rebase, either
 commit your changes, or make a temporary commit called a "stash" to have them still not be commited
@@ -178,7 +178,7 @@ will prevent the "cannot rebase" error in nearly all cases:
 git config --global rebase.autostash true
 ```
 
-See https://git-scm.com/book/en/v2/Git-Tools-Stashing-and-Cleaning for more info about stashing.
+See [https://git-scm.com/book/en/v2/Git-Tools-Stashing-and-Cleaning](https://git-scm.com/book/en/v2/Git-Tools-Stashing-and-Cleaning) for more info about stashing.
 
 ### I see 'Untracked Files: src/stdarch'?
 
