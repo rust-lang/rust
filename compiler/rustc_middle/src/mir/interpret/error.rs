@@ -388,7 +388,6 @@ pub enum ValidationErrorKind<'tcx> {
     MutableRefInConst,
     NullFnPtr,
     NeverVal,
-    NullablePtrOutOfRange { range: WrappingRange, max_value: u128 },
     PtrOutOfRange { range: WrappingRange, max_value: u128 },
     OutOfRange { value: String, range: WrappingRange, max_value: u128 },
     UnsafeCell,

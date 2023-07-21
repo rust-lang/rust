@@ -244,7 +244,6 @@ const_eval_not_enough_caller_args =
 const_eval_null_box = {$front_matter}: encountered a null box
 const_eval_null_fn_ptr = {$front_matter}: encountered a null function pointer
 const_eval_null_ref = {$front_matter}: encountered a null reference
-const_eval_nullable_ptr_out_of_range = {$front_matter}: encountered a potentially null pointer, but expected something that cannot possibly fail to be {$in_range}
 const_eval_nullary_intrinsic_fail =
     could not evaluate nullary intrinsic
 

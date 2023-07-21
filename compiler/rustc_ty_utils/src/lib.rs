@@ -31,6 +31,7 @@ mod errors;
 mod implied_bounds;
 pub mod instance;
 mod layout;
+mod layout_naive;
 mod layout_sanity_check;
 mod needs_drop;
 mod opaque_types;
@@ -47,6 +48,7 @@ pub fn provide(providers: &mut Providers) {
     consts::provide(providers);
     implied_bounds::provide(providers);
     layout::provide(providers);
+    layout_naive::provide(providers);
     needs_drop::provide(providers);
     opaque_types::provide(providers);
     representability::provide(providers);

@@ -223,9 +223,20 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             return ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS);
         }
 
-        if let Ok(layout) = tcx.layout_of(key)
-            && layout.layout.is_pointer_like(&tcx.data_layout)
-        {
+        // First, try computing an exact naive layout in case the type is generic.
+        let is_pointer_like = if let Ok(layout) = tcx.naive_layout_of(key) {
+            layout.is_pointer_like(&tcx.data_layout).unwrap_or_else(|| {
+                // Second, we fall back to full layout computation.
+                tcx.layout_of(key)
+                    .ok()
+                    .filter(|l| l.layout.is_pointer_like(&tcx.data_layout))
+                    .is_some()
+            })
+        } else {
+            false
+        };
+
+        if is_pointer_like {
             // FIXME: We could make this faster by making a no-constraints response
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         } else {

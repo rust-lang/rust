@@ -6,6 +6,7 @@ use crate::{lint, EarlyErrorHandler};
 use rustc_data_structures::profiling::TimePassesFormat;
 use rustc_errors::ColorConfig;
 use rustc_errors::{LanguageIdentifier, TerminalUrl};
+use rustc_target::abi::ReferenceNichePolicy;
 use rustc_target::spec::{CodeModel, LinkerFlavorCli, MergeFunctions, PanicStrategy, SanitizerSet};
 use rustc_target::spec::{
     RelocModel, RelroLevel, SplitDebuginfo, StackProtector, TargetTriple, TlsModel,
@@ -421,6 +422,8 @@ mod desc {
     pub const parse_proc_macro_execution_strategy: &str =
         "one of supported execution strategies (`same-thread`, or `cross-thread`)";
     pub const parse_dump_solver_proof_tree: &str = "one of: `always`, `on-request`, `on-error`";
+    pub const parse_opt_reference_niches: &str =
+        "`null`, or a `,` separated combination of `size` or `align`";
 }
 
 mod parse {
@@ -1253,6 +1256,31 @@ mod parse {
         };
         true
     }
+
+    pub(crate) fn parse_opt_reference_niches(
+        slot: &mut Option<ReferenceNichePolicy>,
+        v: Option<&str>,
+    ) -> bool {
+        let Some(s) = v else {
+            return false;
+        };
+
+        let slot = slot.get_or_insert_default();
+
+        if s == "null" {
+            return true;
+        }
+
+        for opt in s.split(",") {
+            match opt {
+                "size" => slot.size = true,
+                "align" => slot.align = true,
+                _ => return false,
+            }
+        }
+
+        true
+    }
 }
 
 options! {
@@ -1701,6 +1729,8 @@ options! {
         "enable queries of the dependency graph for regression testing (default: no)"),
     randomize_layout: bool = (false, parse_bool, [TRACKED],
         "randomize the layout of types (default: no)"),
+    reference_niches: Option<ReferenceNichePolicy> = (None, parse_opt_reference_niches, [TRACKED],
+        "override the set of discriminant niches that may be exposed by references"),
     relax_elf_relocations: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "whether ELF relocations can be relaxed"),
     relro_level: Option<RelroLevel> = (None, parse_relro_level, [TRACKED],
