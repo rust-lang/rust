@@ -1,6 +1,7 @@
-FROM ubuntu:20.04
+FROM ubuntu:22.04
 
-RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+ARG DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends \
   g++ \
   make \
   ninja-build \
@@ -19,9 +20,6 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-ins
 
 COPY scripts/emscripten.sh /scripts/
 RUN bash /scripts/emscripten.sh
-
-COPY scripts/cmake.sh /scripts/
-RUN /scripts/cmake.sh
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
@@ -57,6 +55,7 @@ COPY static/gitconfig /etc/gitconfig
 
 # Emscripten installation is user-specific
 ENV NO_CHANGE_USER=1
+RUN chown 10719 -R /emsdk-portable/
 
 # Exclude library/alloc due to OOM in benches.
 ENV SCRIPT python3 ../x.py test --stage 2 --host='' --target $TARGETS \
