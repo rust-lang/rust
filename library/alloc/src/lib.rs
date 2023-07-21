@@ -89,6 +89,7 @@
 #![allow(explicit_outlives_requirements)]
 #![warn(multiple_supertrait_upcastable)]
 #![cfg_attr(not(bootstrap), allow(internal_features))]
+#![cfg_attr(not(bootstrap), allow(rustdoc::redundant_explicit_links))]
 //
 // Library features:
 // tidy-alphabetical-start
