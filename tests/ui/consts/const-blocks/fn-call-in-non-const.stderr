@@ -6,12 +6,16 @@ LL |     let _: [Option<Bar>; 2] = [no_copy(); 2];
    |
    = note: required for `Option<Bar>` to implement `Copy`
    = note: the `Copy` trait is required because this value will be copied for each element of the array
-   = help: consider creating a new `const` item and initializing it with the result of the function call to be used in the repeat position, like `const VAL: Type = const_fn();` and `let x = [VAL; 42];`
    = help: create an inline `const` block, see RFC #2920 <https://github.com/rust-lang/rfcs/pull/2920> for more information
 help: consider annotating `Bar` with `#[derive(Copy)]`
    |
 LL + #[derive(Copy)]
 LL | struct Bar;
+   |
+help: consider creating a new `const` item and initializing it with the result of the function call to be used in the repeat position
+   |
+LL ~     const ARRAY_REPEAT_VALUE: Option<Bar> = no_copy();
+LL ~     let _: [Option<Bar>; 2] = [ARRAY_REPEAT_VALUE; 2];
    |
 
 error: aborting due to previous error
