@@ -13,6 +13,7 @@ use std::{env, mem, str};
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_metadata::find_native_static_library;
 use rustc_middle::middle::dependency_format::Linkage;
+use rustc_middle::middle::exported_symbols;
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo, SymbolExportKind};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{self, CrateType, DebugInfo, LinkerPluginLto, Lto, OptLevel, Strip};
@@ -658,8 +659,6 @@ impl<'a> Linker for GccLinker<'a> {
         if !self.sess.target.limit_rdylib_exports {
             return;
         }
-
-        // FIXME(#99978) hide #[no_mangle] symbols for proc-macros
 
         let is_windows = self.sess.target.is_like_windows;
         let path = tmpdir.join(if is_windows { "list.def" } else { "list" });
@@ -1679,8 +1678,15 @@ pub(crate) fn exported_symbols(tcx: TyCtxt<'_>, crate_type: CrateType) -> Vec<St
         return exports.iter().map(ToString::to_string).collect();
     }
 
-    let mut symbols = Vec::new();
+    if let CrateType::ProcMacro = crate_type {
+        exported_symbols_for_proc_macro_crate(tcx)
+    } else {
+        exported_symbols_for_non_proc_macro(tcx, crate_type)
+    }
+}
 
+fn exported_symbols_for_non_proc_macro(tcx: TyCtxt<'_>, crate_type: CrateType) -> Vec<String> {
+    let mut symbols = Vec::new();
     let export_threshold = symbol_export::crates_export_threshold(&[crate_type]);
     for_each_exported_symbols_include_dep(tcx, crate_type, |symbol, info, cnum| {
         if info.level.is_below_threshold(export_threshold) {
@@ -1689,6 +1695,26 @@ pub(crate) fn exported_symbols(tcx: TyCtxt<'_>, crate_type: CrateType) -> Vec<St
     });
 
     symbols
+}
+
+fn exported_symbols_for_proc_macro_crate(tcx: TyCtxt<'_>) -> Vec<String> {
+    let mut symbols = Vec::new();
+
+    let stable_crate_id = tcx.sess.local_stable_crate_id();
+    let proc_macro_decls_name = tcx.sess.generate_proc_macro_decls_symbol(stable_crate_id);
+    let metadata_symbol_name = exported_symbols::metadata_symbol_name(tcx);
+
+    // You would think that both the two names would always be there, but in
+    // pnkfelix's local experiments that was not case. So instead we walk the
+    // list and only add them if they *are* there.
+    for_each_exported_symbols_include_dep(tcx, CrateType::ProcMacro, |symbol, _info, cnum| {
+        let name = symbol_export::symbol_name_for_instance_in_crate(tcx, symbol, cnum);
+        if name == proc_macro_decls_name || name == metadata_symbol_name {
+            symbols.push(name);
+        }
+    });
+
+    return symbols;
 }
 
 pub(crate) fn linked_symbols(
