@@ -504,12 +504,18 @@ fn sanity_check_found_hidden_type<'tcx>(
             _ => l,
         },
     });
-    // Get the hidden type, and in case it is in a nested opaque type, find that opaque type's
-    // usage in the function signature and use the generic arguments from the usage site.
+    // Get the hidden type.
     let mut hidden_ty = tcx.type_of(key.def_id).instantiate(tcx, key.args);
+    // In case it is in a nested opaque type, find that opaque type's
+    // usage in the function signature and use the generic arguments from the usage site.
+    // We need to do because RPITs ignore the lifetimes of the function,
+    // as they have their own copies of all the lifetimes they capture.
+    // So the only way to get the lifetimes represented in terms of the function,
+    // is to look how they are used in the function signature (or do some other fancy
+    // recording of this mapping at ast -> hir lowering time).
     if let hir::OpaqueTyOrigin::FnReturn(..) | hir::OpaqueTyOrigin::AsyncFn(..) = origin {
         if hidden_ty != ty.ty {
-            hidden_ty = find_and_apply_rpit_substs(
+            hidden_ty = find_and_apply_rpit_args(
                 tcx,
                 hidden_ty,
                 defining_use_anchor.to_def_id(),
@@ -517,6 +523,7 @@ fn sanity_check_found_hidden_type<'tcx>(
             )?;
         }
     }
+
     // If the hidden types differ, emit a type mismatch diagnostic.
     if hidden_ty == ty.ty {
         Ok(())
@@ -527,13 +534,13 @@ fn sanity_check_found_hidden_type<'tcx>(
     }
 }
 
-fn find_and_apply_rpit_substs<'tcx>(
+fn find_and_apply_rpit_args<'tcx>(
     tcx: TyCtxt<'tcx>,
     mut hidden_ty: Ty<'tcx>,
     function: DefId,
     opaque: DefId,
 ) -> Result<Ty<'tcx>, ErrorGuaranteed> {
-    // Find use of the RPIT in the function signature and thus find the right substs to
+    // Find use of the RPIT in the function signature and thus find the right args to
     // convert it into the parameter space of the function signature. This is needed,
     // because that's what `type_of` returns, against which we compare later.
     let ret = tcx.fn_sig(function).instantiate_identity().output();
