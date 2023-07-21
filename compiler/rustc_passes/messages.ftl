@@ -211,6 +211,17 @@ passes_doc_keyword_not_mod =
 passes_doc_keyword_only_impl =
     `#[doc(keyword = "...")]` should be used on impl blocks
 
+passes_doc_masked_not_extern_crate_self =
+    this attribute cannot be applied to an `extern crate self` item
+    .label = not applicable on `extern crate self` items
+    .extern_crate_self_label = `extern crate self` defined here
+
+passes_doc_masked_only_extern_crate =
+    this attribute can only be applied to an `extern crate` item
+    .label = only applicable on `extern crate` items
+    .not_an_extern_crate_label = not an `extern crate` item
+    .note = read <https://doc.rust-lang.org/unstable-book/language-features/doc-masked.html> for more information
+
 passes_doc_test_literal = `#![doc(test(...)]` does not take a literal
 
 passes_doc_test_takes_list =

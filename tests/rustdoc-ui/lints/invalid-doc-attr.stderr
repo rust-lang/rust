@@ -1,5 +1,5 @@
 error: this attribute can only be applied at the crate level
-  --> $DIR/invalid-doc-attr.rs:4:7
+  --> $DIR/invalid-doc-attr.rs:9:7
    |
 LL | #[doc(test(no_crate_inject))]
    |       ^^^^^^^^^^^^^^^^^^^^^
@@ -19,7 +19,7 @@ LL | #![doc(test(no_crate_inject))]
    |  +
 
 error: this attribute can only be applied to a `use` item
-  --> $DIR/invalid-doc-attr.rs:9:7
+  --> $DIR/invalid-doc-attr.rs:14:7
    |
 LL | #[doc(inline)]
    |       ^^^^^^ only applicable on `use` items
@@ -32,7 +32,7 @@ LL | pub fn foo() {}
    = note: read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#inline-and-no_inline> for more information
 
 error: this attribute can only be applied at the crate level
-  --> $DIR/invalid-doc-attr.rs:15:12
+  --> $DIR/invalid-doc-attr.rs:20:12
    |
 LL |     #![doc(test(no_crate_inject))]
    |            ^^^^^^^^^^^^^^^^^^^^^
@@ -42,7 +42,7 @@ LL |     #![doc(test(no_crate_inject))]
    = note: read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#at-the-crate-level> for more information
 
 error: conflicting doc inlining attributes
-  --> $DIR/invalid-doc-attr.rs:28:7
+  --> $DIR/invalid-doc-attr.rs:33:7
    |
 LL | #[doc(inline)]
    |       ^^^^^^ this attribute...
@@ -51,8 +51,43 @@ LL | #[doc(no_inline)]
    |
    = help: remove one of the conflicting attributes
 
+error: this attribute can only be applied to an `extern crate` item
+  --> $DIR/invalid-doc-attr.rs:39:7
+   |
+LL | #[doc(masked)]
+   |       ^^^^^^ only applicable on `extern crate` items
+...
+LL | pub struct Masked;
+   | ----------------- not an `extern crate` item
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #82730 <https://github.com/rust-lang/rust/issues/82730>
+   = note: read <https://doc.rust-lang.org/unstable-book/language-features/doc-masked.html> for more information
+
+error: this attribute cannot be applied to an `extern crate self` item
+  --> $DIR/invalid-doc-attr.rs:44:7
+   |
+LL | #[doc(masked)]
+   |       ^^^^^^ not applicable on `extern crate self` items
+...
+LL | pub extern crate self as reexport;
+   | --------------------------------- `extern crate self` defined here
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #82730 <https://github.com/rust-lang/rust/issues/82730>
+
+error: this attribute can only be applied to an `extern crate` item
+  --> $DIR/invalid-doc-attr.rs:5:8
+   |
+LL | #![doc(masked)]
+   |        ^^^^^^ only applicable on `extern crate` items
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #82730 <https://github.com/rust-lang/rust/issues/82730>
+   = note: read <https://doc.rust-lang.org/unstable-book/language-features/doc-masked.html> for more information
+
 error: this attribute can only be applied at the crate level
-  --> $DIR/invalid-doc-attr.rs:19:11
+  --> $DIR/invalid-doc-attr.rs:24:11
    |
 LL |     #[doc(test(no_crate_inject))]
    |           ^^^^^^^^^^^^^^^^^^^^^
@@ -62,7 +97,7 @@ LL |     #[doc(test(no_crate_inject))]
    = note: read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#at-the-crate-level> for more information
 
 error: this attribute can only be applied to a `use` item
-  --> $DIR/invalid-doc-attr.rs:22:11
+  --> $DIR/invalid-doc-attr.rs:27:11
    |
 LL |     #[doc(inline)]
    |           ^^^^^^ only applicable on `use` items
@@ -74,5 +109,5 @@ LL |     pub fn baz() {}
    = note: for more information, see issue #82730 <https://github.com/rust-lang/rust/issues/82730>
    = note: read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#inline-and-no_inline> for more information
 
-error: aborting due to 6 previous errors
+error: aborting due to 9 previous errors
 

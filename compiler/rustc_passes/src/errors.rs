@@ -267,6 +267,25 @@ pub struct DocInlineOnlyUse {
     pub item_span: Option<Span>,
 }
 
+#[derive(LintDiagnostic)]
+#[diag(passes_doc_masked_only_extern_crate)]
+#[note]
+pub struct DocMaskedOnlyExternCrate {
+    #[label]
+    pub attr_span: Span,
+    #[label(passes_not_an_extern_crate_label)]
+    pub item_span: Option<Span>,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(passes_doc_masked_not_extern_crate_self)]
+pub struct DocMaskedNotExternCrateSelf {
+    #[label]
+    pub attr_span: Span,
+    #[label(passes_extern_crate_self_label)]
+    pub item_span: Option<Span>,
+}
+
 #[derive(Diagnostic)]
 #[diag(passes_doc_attr_not_crate_level)]
 pub struct DocAttrNotCrateLevel<'a> {
