@@ -373,6 +373,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
             && has_changed
             && is_normalizes_to_hack == IsNormalizesToHack::No
             && !self.search_graph.in_cycle()
+            && false
         {
             debug!("rerunning goal to check result is stable");
             let (_orig_values, canonical_goal) = self.canonicalize_goal(goal);
