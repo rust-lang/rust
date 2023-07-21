@@ -123,7 +123,7 @@ impl<'tcx> Tables<'tcx> {
                 rustc_internal::fn_def(*def_id),
                 generic_args.stable(self),
             )),
-            ty::FnPtr(_) => todo!(),
+            ty::FnPtr(poly_fn_sig) => TyKind::RigidTy(RigidTy::FnPtr(poly_fn_sig.stable(self))),
             ty::Dynamic(_, _, _) => todo!(),
             ty::Closure(def_id, generic_args) => TyKind::RigidTy(RigidTy::Closure(
                 rustc_internal::closure_def(*def_id),
@@ -579,5 +579,100 @@ impl<'tcx> Stable<'tcx> for ty::GenericArgs<'tcx> {
                 })
                 .collect(),
         )
+    }
+}
+
+impl<'tcx> Stable<'tcx> for ty::PolyFnSig<'tcx> {
+    type T = stable_mir::ty::PolyFnSig;
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        use stable_mir::ty::Binder;
+
+        Binder {
+            value: self.skip_binder().stable(tables),
+            bound_vars: self
+                .bound_vars()
+                .iter()
+                .map(|bound_var| bound_var.stable(tables))
+                .collect(),
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for ty::FnSig<'tcx> {
+    type T = stable_mir::ty::FnSig;
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        use rustc_target::spec::abi;
+        use stable_mir::ty::{Abi, FnSig, Unsafety};
+
+        FnSig {
+            inputs_and_output: self
+                .inputs_and_output
+                .iter()
+                .map(|ty| tables.intern_ty(ty))
+                .collect(),
+            c_variadic: self.c_variadic,
+            unsafety: match self.unsafety {
+                hir::Unsafety::Normal => Unsafety::Normal,
+                hir::Unsafety::Unsafe => Unsafety::Unsafe,
+            },
+            abi: match self.abi {
+                abi::Abi::Rust => Abi::Rust,
+                abi::Abi::C { unwind } => Abi::C { unwind },
+                abi::Abi::Cdecl { unwind } => Abi::Cdecl { unwind },
+                abi::Abi::Stdcall { unwind } => Abi::Stdcall { unwind },
+                abi::Abi::Fastcall { unwind } => Abi::Fastcall { unwind },
+                abi::Abi::Vectorcall { unwind } => Abi::Vectorcall { unwind },
+                abi::Abi::Thiscall { unwind } => Abi::Thiscall { unwind },
+                abi::Abi::Aapcs { unwind } => Abi::Aapcs { unwind },
+                abi::Abi::Win64 { unwind } => Abi::Win64 { unwind },
+                abi::Abi::SysV64 { unwind } => Abi::SysV64 { unwind },
+                abi::Abi::PtxKernel => Abi::PtxKernel,
+                abi::Abi::Msp430Interrupt => Abi::Msp430Interrupt,
+                abi::Abi::X86Interrupt => Abi::X86Interrupt,
+                abi::Abi::AmdGpuKernel => Abi::AmdGpuKernel,
+                abi::Abi::EfiApi => Abi::EfiApi,
+                abi::Abi::AvrInterrupt => Abi::AvrInterrupt,
+                abi::Abi::AvrNonBlockingInterrupt => Abi::AvrNonBlockingInterrupt,
+                abi::Abi::CCmseNonSecureCall => Abi::CCmseNonSecureCall,
+                abi::Abi::Wasm => Abi::Wasm,
+                abi::Abi::System { unwind } => Abi::System { unwind },
+                abi::Abi::RustIntrinsic => Abi::RustIntrinsic,
+                abi::Abi::RustCall => Abi::RustCall,
+                abi::Abi::PlatformIntrinsic => Abi::PlatformIntrinsic,
+                abi::Abi::Unadjusted => Abi::Unadjusted,
+                abi::Abi::RustCold => Abi::RustCold,
+            },
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for ty::BoundVariableKind {
+    type T = stable_mir::ty::BoundVariableKind;
+    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
+        use stable_mir::ty::{BoundRegionKind, BoundTyKind, BoundVariableKind};
+
+        match self {
+            ty::BoundVariableKind::Ty(bound_ty_kind) => {
+                BoundVariableKind::Ty(match bound_ty_kind {
+                    ty::BoundTyKind::Anon => BoundTyKind::Anon,
+                    ty::BoundTyKind::Param(def_id, symbol) => {
+                        BoundTyKind::Param(rustc_internal::param_def(*def_id), symbol.to_string())
+                    }
+                })
+            }
+            ty::BoundVariableKind::Region(bound_region_kind) => {
+                BoundVariableKind::Region(match bound_region_kind {
+                    ty::BoundRegionKind::BrAnon(option_span) => {
+                        BoundRegionKind::BrAnon(option_span.map(|span| opaque(&span)))
+                    }
+                    ty::BoundRegionKind::BrNamed(def_id, symbol) => BoundRegionKind::BrNamed(
+                        rustc_internal::br_named_def(*def_id),
+                        symbol.to_string(),
+                    ),
+                    ty::BoundRegionKind::BrEnv => BoundRegionKind::BrEnv,
+                })
+            }
+            ty::BoundVariableKind::Const => BoundVariableKind::Const,
+        }
     }
 }
