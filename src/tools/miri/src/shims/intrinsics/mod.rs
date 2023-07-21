@@ -120,6 +120,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 this.write_bytes_ptr(ptr, iter::repeat(val_byte).take(byte_count.bytes_usize()))?;
             }
 
+            "nontemporal_store" => {
+                let [place, dest] = check_arg_count(args)?;
+                let place = this.deref_operand(place)?;
+                this.copy_op(dest, &place.into(), /*allow_transmute*/ false)?;
+            }
+
             "ptr_mask" => {
                 let [ptr, mask] = check_arg_count(args)?;
 
