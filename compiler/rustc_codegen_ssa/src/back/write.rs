@@ -1313,16 +1313,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
         // wait for all existing work to finish, so many of the conditions here
         // only apply if codegen hasn't been aborted as they represent pending
         // work to be done.
-        while codegen_state == Ongoing
-            || running_with_own_token > 0
-            || main_thread_state == MainThreadState::Lending
-            || (codegen_state == Completed
-                && !(work_items.is_empty()
-                    && needs_fat_lto.is_empty()
-                    && needs_thin_lto.is_empty()
-                    && lto_import_only_modules.is_empty()
-                    && main_thread_state == MainThreadState::Idle))
-        {
+        loop {
             // While there are still CGUs to be codegened, the coordinator has
             // to decide how to utilize the compiler processes implicit Token:
             // For codegenning more CGU or for running them through LLVM.
@@ -1361,15 +1352,24 @@ fn start_executing_work<B: ExtraBackendMethods>(
                     }
                 }
             } else if codegen_state == Completed {
-                // If we've finished everything related to normal codegen
-                // then it must be the case that we've got some LTO work to do.
-                // Perform the serial work here of figuring out what we're
-                // going to LTO and then push a bunch of work items onto our
-                // queue to do LTO
-                if work_items.is_empty()
-                    && running_with_own_token == 0
+                if running_with_own_token == 0
                     && main_thread_state == MainThreadState::Idle
+                    && work_items.is_empty()
                 {
+                    // All codegen work is done. Do we have LTO work to do?
+                    if needs_fat_lto.is_empty()
+                        && needs_thin_lto.is_empty()
+                        && lto_import_only_modules.is_empty()
+                    {
+                        // Nothing more to do!
+                        break;
+                    }
+
+                    // We have LTO work to do. Perform the serial work here of
+                    // figuring out what we're going to LTO and then push a
+                    // bunch of work items onto our queue to do LTO. This all
+                    // happens on the coordinator thread but it's very quick so
+                    // we don't worry about tokens.
                     assert!(!started_lto);
                     started_lto = true;
 
@@ -1427,6 +1427,9 @@ fn start_executing_work<B: ExtraBackendMethods>(
                 // Don't queue up any more work if codegen was aborted, we're
                 // just waiting for our existing children to finish.
                 assert!(codegen_state == Aborted);
+                if running_with_own_token == 0 && main_thread_state != MainThreadState::Lending {
+                    break;
+                }
             }
 
             // Spin up what work we can, only doing this while we've got available
