@@ -1130,7 +1130,7 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
         return;
     }
 
-    // For each field, figure out if it's known to be a ZST and align(1), with "known"
+    // For each field, figure out if it's known to be a ZST with layout, with "known"
     // respecting #[non_exhaustive] attributes.
     let field_infos = adt.all_fields().map(|field| {
         let ty = field.ty(tcx, GenericArgs::identity_for_item(tcx, field.did));
@@ -1139,9 +1139,8 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
         // We are currently checking the type this field came from, so it must be local
         let span = tcx.hir().span_if_local(field.did).unwrap();
         let zst = layout.is_ok_and(|layout| layout.is_zst());
-        let align = layout.ok().map(|layout| layout.align.abi.bytes());
         if !zst {
-            return (span, zst, align, None);
+            return (span, zst, layout, None);
         }
 
         fn check_non_exhaustive<'tcx>(
@@ -1176,12 +1175,12 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
             }
         }
 
-        (span, zst, align, check_non_exhaustive(tcx, ty).break_value())
+        (span, zst, layout, check_non_exhaustive(tcx, ty).break_value())
     });
 
     let non_zst_fields = field_infos
         .clone()
-        .filter_map(|(span, zst, _align, _non_exhaustive)| if !zst { Some(span) } else { None });
+        .filter_map(|(span, zst, _layout, _non_exhaustive)| if !zst { Some(span) } else { None });
     let non_zst_count = non_zst_fields.clone().count();
     if non_zst_count >= 2 {
         bad_non_zero_sized_fields(tcx, adt, non_zst_count, non_zst_fields, tcx.def_span(adt.did()));
@@ -1189,7 +1188,8 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
     let incompatible_zst_fields =
         field_infos.clone().filter(|(_, _, _, opt)| opt.is_some()).count();
     let incompat = incompatible_zst_fields + non_zst_count >= 2 && non_zst_count < 2;
-    for (span, zst, align, non_exhaustive) in field_infos {
+    for (span, zst, layout, non_exhaustive) in field_infos {
+        let align = layout.ok().map(|layout| layout.align.abi.bytes());
         if zst && align != Some(1) {
             let mut err = struct_span_err!(
                 tcx.sess,
