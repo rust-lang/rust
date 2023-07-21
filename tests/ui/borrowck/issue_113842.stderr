@@ -1,0 +1,31 @@
+error[E0596]: cannot borrow data in a `&` reference as mutable
+  --> $DIR/issue_113842.rs:17:24
+   |
+LL |     let _y: &mut Foo = &mut &foo;
+   |                        ^^^^^----
+   |                             |
+   |                             cannot borrow as mutable
+   |
+help: this expression is of type `&Foo`, which is an immutable reference
+  --> $DIR/issue_113842.rs:17:29
+   |
+LL |     let _y: &mut Foo = &mut &foo;
+   |                             ^^^^
+
+error[E0596]: cannot borrow data in a `&` reference as mutable
+  --> $DIR/issue_113842.rs:21:23
+   |
+LL |     some_library::foo(&mut some_library::bar());
+   |                       ^^^^^-------------------
+   |                            |
+   |                            cannot borrow as mutable
+   |
+help: this expression is of type `&[i32]`, which is an immutable reference
+  --> $DIR/issue_113842.rs:21:28
+   |
+LL |     some_library::foo(&mut some_library::bar());
+   |                            ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0596`.

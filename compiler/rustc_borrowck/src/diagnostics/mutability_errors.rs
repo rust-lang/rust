@@ -506,9 +506,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 self.expected_fn_found_fn_mut_call(&mut err, span, act);
             }
 
-            PlaceRef { local: _, projection: [.., ProjectionElem::Deref] } => {
-                err.span_label(span, format!("cannot {act}"));
-
+            PlaceRef { local: _, projection: [proj_base @ .., ProjectionElem::Deref] } => {
+                let mut span = span;
                 match opt_source {
                     Some(BorrowedContentSource::OverloadedDeref(ty)) => {
                         err.help(format!(
@@ -523,8 +522,15 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         ));
                         self.suggest_map_index_mut_alternatives(ty, &mut err, span);
                     }
+                    Some(BorrowedContentSource::DerefSharedRef) => {
+                        let place_ref =
+                            PlaceRef { local: the_place_err.local, projection: proj_base };
+                        let ty = place_ref.ty(self.body, self.infcx.tcx).ty;
+                        self.suggest_detailed_hint_for_ref(ty, &mut err, &mut span);
+                    }
                     _ => (),
                 }
+                err.span_label(span, format!("cannot {act}"));
             }
 
             _ => {
@@ -536,6 +542,46 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             self.buffer_mut_error(span, err, count);
         } else {
             self.buffer_error(err);
+        }
+    }
+
+    fn suggest_detailed_hint_for_ref(&self, ty: Ty<'_>, err: &mut Diagnostic, span: &mut Span) {
+        struct ExprFinder {
+            span: Span,
+            hir_id: Option<hir::HirId>,
+        }
+
+        impl<'tcx> Visitor<'tcx> for ExprFinder {
+            fn visit_expr(&mut self, s: &'tcx hir::Expr<'tcx>) {
+                if s.span.contains(self.span) {
+                    self.hir_id = Some(s.hir_id);
+                }
+                hir::intravisit::walk_expr(self, s);
+            }
+        }
+        let hir_map = self.infcx.tcx.hir();
+        let def_id = self.body.source.def_id();
+        let hir_id = if let Some(local_def_id) = def_id.as_local()
+            && let Some(body_id) = hir_map.maybe_body_owned_by(local_def_id) {
+            let body = hir_map.body(body_id);
+            let mut v = ExprFinder {
+                span: *span,
+                hir_id: None,
+            };
+            v.visit_body(body);
+            v.hir_id
+        } else {
+            None
+        };
+        let expr = if let Some(hir_id) = hir_id {
+            hir_map.expect_expr(hir_id)
+        } else {
+            return;
+        };
+        if let hir::ExprKind::AddrOf(hir::BorrowKind::Ref, Mutability::Mut, ex) = expr.kind
+            && !matches!(ex.kind, hir::ExprKind::Unary(hir::UnOp::Deref, _) | hir::ExprKind::Field(_, _) | hir::ExprKind::Lit(_)) {
+                *span = ex.span;
+                err.span_help(ex.span, format!("this expression is of type `{}`, which is an immutable reference", ty));
         }
     }
 

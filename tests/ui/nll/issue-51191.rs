@@ -22,6 +22,7 @@ impl Struct {
         (&mut self).bar();
         //~^ ERROR cannot borrow `self` as mutable, as it is not declared as mutable [E0596]
         //~^^ ERROR cannot borrow data in a `&` reference as mutable [E0596]
+        //~^^^ HELP this expression is of type `&Struct`, which is an immutable reference
     }
 
     fn mtblref(&mut self) {
