@@ -8,9 +8,7 @@
 //! For now, we are developing everything inside `rustc`, thus, we keep this module private.
 
 use crate::rustc_internal::{self, opaque};
-use crate::stable_mir::ty::{
-    FloatTy, GenericArgKind, GenericArgs, IntTy, Movability, RigidTy, TyKind, UintTy,
-};
+use crate::stable_mir::ty::{FloatTy, IntTy, Movability, RigidTy, TyKind, UintTy};
 use crate::stable_mir::{self, Context};
 use rustc_hir as hir;
 use rustc_middle::mir;
@@ -103,7 +101,7 @@ impl<'tcx> Tables<'tcx> {
             },
             ty::Adt(adt_def, generic_args) => TyKind::RigidTy(RigidTy::Adt(
                 rustc_internal::adt_def(adt_def.did()),
-                self.generic_args(generic_args),
+                generic_args.stable(self),
             )),
             ty::Foreign(def_id) => {
                 TyKind::RigidTy(RigidTy::Foreign(rustc_internal::foreign_def(*def_id)))
@@ -123,17 +121,17 @@ impl<'tcx> Tables<'tcx> {
             )),
             ty::FnDef(def_id, generic_args) => TyKind::RigidTy(RigidTy::FnDef(
                 rustc_internal::fn_def(*def_id),
-                self.generic_args(generic_args),
+                generic_args.stable(self),
             )),
             ty::FnPtr(_) => todo!(),
             ty::Dynamic(_, _, _) => todo!(),
             ty::Closure(def_id, generic_args) => TyKind::RigidTy(RigidTy::Closure(
                 rustc_internal::closure_def(*def_id),
-                self.generic_args(generic_args),
+                generic_args.stable(self),
             )),
             ty::Generator(def_id, generic_args, movability) => TyKind::RigidTy(RigidTy::Generator(
                 rustc_internal::generator_def(*def_id),
-                self.generic_args(generic_args),
+                generic_args.stable(self),
                 match movability {
                     hir::Movability::Static => Movability::Static,
                     hir::Movability::Movable => Movability::Movable,
@@ -163,24 +161,6 @@ impl<'tcx> Tables<'tcx> {
         let id = self.types.len();
         self.types.push(ty);
         stable_mir::ty::Ty(id)
-    }
-
-    fn generic_args(
-        &mut self,
-        generic_args: &ty::GenericArgs<'tcx>,
-    ) -> stable_mir::ty::GenericArgs {
-        GenericArgs(
-            generic_args
-                .iter()
-                .map(|arg| match arg.unpack() {
-                    ty::GenericArgKind::Lifetime(region) => {
-                        GenericArgKind::Lifetime(opaque(&region))
-                    }
-                    ty::GenericArgKind::Type(ty) => GenericArgKind::Type(self.intern_ty(ty)),
-                    ty::GenericArgKind::Const(const_) => GenericArgKind::Const(opaque(&const_)),
-                })
-                .collect(),
-        )
     }
 }
 
@@ -580,5 +560,24 @@ impl<'tcx> Stable<'tcx> for mir::Terminator<'tcx> {
             }
             Yield { .. } | GeneratorDrop | FalseEdge { .. } | FalseUnwind { .. } => unreachable!(),
         }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for ty::GenericArgs<'tcx> {
+    type T = stable_mir::ty::GenericArgs;
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        use stable_mir::ty::{GenericArgKind, GenericArgs};
+
+        GenericArgs(
+            self.iter()
+                .map(|arg| match arg.unpack() {
+                    ty::GenericArgKind::Lifetime(region) => {
+                        GenericArgKind::Lifetime(opaque(&region))
+                    }
+                    ty::GenericArgKind::Type(ty) => GenericArgKind::Type(tables.intern_ty(ty)),
+                    ty::GenericArgKind::Const(const_) => GenericArgKind::Const(opaque(&const_)),
+                })
+                .collect(),
+        )
     }
 }
