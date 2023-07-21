@@ -443,7 +443,7 @@ that merge commits in PRs are not accepted. As a result, if you are running
 course, this is not always true; if your merge will just be a fast-forward,
 like the merges that `git pull` usually performs, then no merge commit is
 created and you have nothing to worry about. Running `git config merge.ff only`
-(this will apply the config to the local repo).
+(this will apply the config to the local repo)
 once will ensure that all the merges you perform are of this type, so that you
 cannot make a mistake.
 
