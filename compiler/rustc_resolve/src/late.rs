@@ -549,6 +549,7 @@ enum MaybeExported<'a> {
     Ok(NodeId),
     Impl(Option<DefId>),
     ImplItem(Result<DefId, &'a Visibility>),
+    NestedUse(&'a Visibility),
 }
 
 impl MaybeExported<'_> {
@@ -559,7 +560,9 @@ impl MaybeExported<'_> {
                 trait_def_id.as_local()
             }
             MaybeExported::Impl(None) => return true,
-            MaybeExported::ImplItem(Err(vis)) => return vis.kind.is_pub(),
+            MaybeExported::ImplItem(Err(vis)) | MaybeExported::NestedUse(vis) => {
+                return vis.kind.is_pub();
+            }
         };
         def_id.map_or(true, |def_id| r.effective_visibilities.is_exported(def_id))
     }
@@ -2284,7 +2287,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
     fn resolve_item(&mut self, item: &'ast Item) {
         let mod_inner_docs =
             matches!(item.kind, ItemKind::Mod(..)) && rustdoc::inner_docs(&item.attrs);
-        if !mod_inner_docs && !matches!(item.kind, ItemKind::Impl(..)) {
+        if !mod_inner_docs && !matches!(item.kind, ItemKind::Impl(..) | ItemKind::Use(..)) {
             self.resolve_doc_links(&item.attrs, MaybeExported::Ok(item.id));
         }
 
@@ -2428,6 +2431,12 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             }
 
             ItemKind::Use(ref use_tree) => {
+                let maybe_exported = match use_tree.kind {
+                    UseTreeKind::Simple(_) | UseTreeKind::Glob => MaybeExported::Ok(item.id),
+                    UseTreeKind::Nested(_) => MaybeExported::NestedUse(&item.vis),
+                };
+                self.resolve_doc_links(&item.attrs, maybe_exported);
+
                 self.future_proof_import(use_tree);
             }
 
