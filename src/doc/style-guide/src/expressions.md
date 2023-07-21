@@ -64,8 +64,8 @@ Write an empty block as `{}`.
 Write a block on a single line if:
 
 * it is either used in expression position (not statement position) or is an
-  unsafe block in statement position
-* it contains a single-line expression and no statements
+  unsafe block in statement position,
+* it contains a single-line expression and no statements, and
 * it contains no comments
 
 For a single-line block, put spaces after the opening brace and before the
@@ -125,9 +125,9 @@ expression of the closure. Between the `|`s, use function definition syntax,
 but elide types where possible.
 
 Use closures without the enclosing `{}`, if possible. Add the `{}` when you have
-a return type, when there are statements, there are comments in the body, or the
-body expression spans multiple lines and is a control-flow expression. If using
-braces, follow the rules above for blocks. Examples:
+a return type, when there are statements, when there are comments inside the
+closure, or when the body expression is a control-flow expression that spans
+multiple lines. If using braces, follow the rules above for blocks. Examples:
 
 ```rust
 |arg1, arg2| expr
@@ -178,10 +178,12 @@ let f = Foo {
 Functional record update syntax is treated like a field, but it must never have
 a trailing comma. Do not put a space after `..`.
 
+```rust
 let f = Foo {
     field1,
     ..an_expr
 };
+```
 
 
 ### Tuple literals
