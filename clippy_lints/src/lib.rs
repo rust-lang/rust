@@ -275,6 +275,7 @@ mod redundant_clone;
 mod redundant_closure_call;
 mod redundant_else;
 mod redundant_field_names;
+mod redundant_locals;
 mod redundant_pub_crate;
 mod redundant_slicing;
 mod redundant_static_lifetimes;
@@ -1091,6 +1092,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
             absolute_paths_allowed_crates: absolute_paths_allowed_crates.clone(),
         })
     });
+    store.register_late_pass(|_| Box::new(redundant_locals::RedundantLocals));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

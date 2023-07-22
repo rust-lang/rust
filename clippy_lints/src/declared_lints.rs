@@ -561,6 +561,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::redundant_closure_call::REDUNDANT_CLOSURE_CALL_INFO,
     crate::redundant_else::REDUNDANT_ELSE_INFO,
     crate::redundant_field_names::REDUNDANT_FIELD_NAMES_INFO,
+    crate::redundant_locals::REDUNDANT_LOCALS_INFO,
     crate::redundant_pub_crate::REDUNDANT_PUB_CRATE_INFO,
     crate::redundant_slicing::DEREF_BY_SLICING_INFO,
     crate::redundant_slicing::REDUNDANT_SLICING_INFO,
