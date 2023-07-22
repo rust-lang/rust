@@ -167,7 +167,7 @@ jobs:
             RUSTFLAGS: ${{ matrix.rustflags }}
 
   cross-tests:
-    name: "${{ matrix.target }} (via cross)"
+    name: "${{ matrix.target_feature }} on ${{ matrix.target }} (via cross)"
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -175,6 +175,7 @@ jobs:
       matrix:
         target:
           - armv7-unknown-linux-gnueabihf
+          - thumbv7neon-unknown-linux-gnueabihf
           - aarch64-unknown-linux-gnu
           - powerpc-unknown-linux-gnu
           - powerpc64-unknown-linux-gnu
@@ -183,7 +184,11 @@ jobs:
           # MIPS uses a nonstandard binary representation for NaNs which makes it worth testing
           # - mips-unknown-linux-gnu
           # - mips64-unknown-linux-gnuabi64
-        target_feature: ["", "+native"]
+        target_feature: "default"
+        include:
+          - { target: powerpc64-unknown-linux-gnu, target_feature: "native" }
+          - { target: powerpc64le-unknown-linux-gnu, target_feature: "native" }
+          - { target: riscv64gc-unknown-linux-gnu, target_feature: "native" }
 
     steps:
       - uses: actions/checkout@v2
@@ -206,7 +211,18 @@ jobs:
           echo "$HOME/.bin" >> $GITHUB_PATH
 
       - name: Configure RUSTFLAGS
-        run: echo "-Ctarget-feature=${{ matrix.target_feature }}" >> $GITHUB_ENV
+        shell: bash
+        run: |
+          case "${{ matrix.target_feature }}" in
+            default)
+              echo "RUSTFLAGS=" >> $GITHUB_ENV;;
+            native)
+              echo "RUSTFLAGS=-Ctarget-cpu=native" >> $GITHUB_ENV
+              ;;
+            *)
+              echo "RUSTFLAGS=-Ctarget-feature=${{ matrix.target_feature }}" >> $GITHUB_ENV
+              ;;
+          esac
 
       - name: Test (debug)
         run: cross test --verbose --target=${{ matrix.target }}
