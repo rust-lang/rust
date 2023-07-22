@@ -58,11 +58,10 @@ impl<'tcx> MirPass<'tcx> for Validator {
             .iterate_to_fixpoint()
             .into_results_cursor(body);
 
-        let mut checker = TypeChecker {
+        let mut cfg_checker = CfgChecker {
             when: &self.when,
             body,
             tcx,
-            param_env,
             mir_phase,
             unwind_edge_count: 0,
             reachable_blocks: traversal::reachable_as_bitset(body),
@@ -70,13 +69,17 @@ impl<'tcx> MirPass<'tcx> for Validator {
             place_cache: FxHashSet::default(),
             value_cache: FxHashSet::default(),
         };
-        checker.visit_body(body);
-        checker.check_cleanup_control_flow();
+        cfg_checker.visit_body(body);
+        cfg_checker.check_cleanup_control_flow();
+
+        for (location, msg) in validate_types(tcx, self.mir_phase, param_env, body) {
+            cfg_checker.fail(location, msg);
+        }
 
         if let MirPhase::Runtime(_) = body.phase {
             if let ty::InstanceDef::Item(_) = body.source.instance {
                 if body.has_free_regions() {
-                    checker.fail(
+                    cfg_checker.fail(
                         Location::START,
                         format!("Free regions in optimized {} MIR", body.phase.name()),
                     );
@@ -86,11 +89,10 @@ impl<'tcx> MirPass<'tcx> for Validator {
     }
 }
 
-struct TypeChecker<'a, 'tcx> {
+struct CfgChecker<'a, 'tcx> {
     when: &'a str,
     body: &'a Body<'tcx>,
     tcx: TyCtxt<'tcx>,
-    param_env: ParamEnv<'tcx>,
     mir_phase: MirPhase,
     unwind_edge_count: usize,
     reachable_blocks: BitSet<BasicBlock>,
@@ -99,7 +101,7 @@ struct TypeChecker<'a, 'tcx> {
     value_cache: FxHashSet<u128>,
 }
 
-impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
+impl<'a, 'tcx> CfgChecker<'a, 'tcx> {
     #[track_caller]
     fn fail(&self, location: Location, msg: impl AsRef<str>) {
         let span = self.body.source_info(location).span;
@@ -248,30 +250,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             UnwindAction::Unreachable | UnwindAction::Terminate => (),
         }
     }
-
-    /// Check if src can be assigned into dest.
-    /// This is not precise, it will accept some incorrect assignments.
-    fn mir_assign_valid_types(&self, src: Ty<'tcx>, dest: Ty<'tcx>) -> bool {
-        // Fast path before we normalize.
-        if src == dest {
-            // Equal types, all is good.
-            return true;
-        }
-
-        // We sometimes have to use `defining_opaque_types` for subtyping
-        // to succeed here and figuring out how exactly that should work
-        // is annoying. It is harmless enough to just not validate anything
-        // in that case. We still check this after analysis as all opaque
-        // types have been revealed at this point.
-        if (src, dest).has_opaque_types() {
-            return true;
-        }
-
-        crate::util::is_subtype(self.tcx, self.param_env, src, dest)
-    }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
+impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
     fn visit_local(&mut self, local: Local, context: PlaceContext, location: Location) {
         if self.body.local_decls.get(local).is_none() {
             self.fail(
@@ -296,6 +277,275 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         }
     }
 
+    fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
+        match &statement.kind {
+            StatementKind::Assign(box (dest, rvalue)) => {
+                // FIXME(JakobDegen): Check this for all rvalues, not just this one.
+                if let Rvalue::Use(Operand::Copy(src) | Operand::Move(src)) = rvalue {
+                    // The sides of an assignment must not alias. Currently this just checks whether
+                    // the places are identical.
+                    if dest == src {
+                        self.fail(
+                            location,
+                            "encountered `Assign` statement with overlapping memory",
+                        );
+                    }
+                }
+            }
+            StatementKind::AscribeUserType(..) => {
+                if self.mir_phase >= MirPhase::Runtime(RuntimePhase::Initial) {
+                    self.fail(
+                        location,
+                        "`AscribeUserType` should have been removed after drop lowering phase",
+                    );
+                }
+            }
+            StatementKind::FakeRead(..) => {
+                if self.mir_phase >= MirPhase::Runtime(RuntimePhase::Initial) {
+                    self.fail(
+                        location,
+                        "`FakeRead` should have been removed after drop lowering phase",
+                    );
+                }
+            }
+            StatementKind::SetDiscriminant { .. } => {
+                if self.mir_phase < MirPhase::Runtime(RuntimePhase::Initial) {
+                    self.fail(location, "`SetDiscriminant`is not allowed until deaggregation");
+                }
+            }
+            StatementKind::Deinit(..) => {
+                if self.mir_phase < MirPhase::Runtime(RuntimePhase::Initial) {
+                    self.fail(location, "`Deinit`is not allowed until deaggregation");
+                }
+            }
+            StatementKind::Retag(kind, _) => {
+                // FIXME(JakobDegen) The validator should check that `self.mir_phase <
+                // DropsLowered`. However, this causes ICEs with generation of drop shims, which
+                // seem to fail to set their `MirPhase` correctly.
+                if matches!(kind, RetagKind::Raw | RetagKind::TwoPhase) {
+                    self.fail(location, format!("explicit `{:?}` is forbidden", kind));
+                }
+            }
+            StatementKind::StorageLive(local) => {
+                // We check that the local is not live when entering a `StorageLive` for it.
+                // Technically, violating this restriction is only UB and not actually indicative
+                // of not well-formed MIR. This means that an optimization which turns MIR that
+                // already has UB into MIR that fails this check is not necessarily wrong. However,
+                // we have no such optimizations at the moment, and so we include this check anyway
+                // to help us catch bugs. If you happen to write an optimization that might cause
+                // this to incorrectly fire, feel free to remove this check.
+                if self.reachable_blocks.contains(location.block) {
+                    self.storage_liveness.seek_before_primary_effect(location);
+                    let locals_with_storage = self.storage_liveness.get();
+                    if locals_with_storage.contains(*local) {
+                        self.fail(
+                            location,
+                            format!("StorageLive({local:?}) which already has storage here"),
+                        );
+                    }
+                }
+            }
+            StatementKind::StorageDead(_)
+            | StatementKind::Intrinsic(_)
+            | StatementKind::Coverage(_)
+            | StatementKind::ConstEvalCounter
+            | StatementKind::PlaceMention(..)
+            | StatementKind::Nop => {}
+        }
+
+        self.super_statement(statement, location);
+    }
+
+    fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
+        match &terminator.kind {
+            TerminatorKind::Goto { target } => {
+                self.check_edge(location, *target, EdgeKind::Normal);
+            }
+            TerminatorKind::SwitchInt { targets, discr: _ } => {
+                for (_, target) in targets.iter() {
+                    self.check_edge(location, target, EdgeKind::Normal);
+                }
+                self.check_edge(location, targets.otherwise(), EdgeKind::Normal);
+
+                self.value_cache.clear();
+                self.value_cache.extend(targets.iter().map(|(value, _)| value));
+                let has_duplicates = targets.iter().len() != self.value_cache.len();
+                if has_duplicates {
+                    self.fail(
+                        location,
+                        format!(
+                            "duplicated values in `SwitchInt` terminator: {:?}",
+                            terminator.kind,
+                        ),
+                    );
+                }
+            }
+            TerminatorKind::Drop { target, unwind, .. } => {
+                self.check_edge(location, *target, EdgeKind::Normal);
+                self.check_unwind_edge(location, *unwind);
+            }
+            TerminatorKind::Call { args, destination, target, unwind, .. } => {
+                if let Some(target) = target {
+                    self.check_edge(location, *target, EdgeKind::Normal);
+                }
+                self.check_unwind_edge(location, *unwind);
+
+                // The call destination place and Operand::Move place used as an argument might be
+                // passed by a reference to the callee. Consequently they must be non-overlapping.
+                // Currently this simply checks for duplicate places.
+                self.place_cache.clear();
+                self.place_cache.insert(destination.as_ref());
+                let mut has_duplicates = false;
+                for arg in args {
+                    if let Operand::Move(place) = arg {
+                        has_duplicates |= !self.place_cache.insert(place.as_ref());
+                    }
+                }
+
+                if has_duplicates {
+                    self.fail(
+                        location,
+                        format!(
+                            "encountered overlapping memory in `Call` terminator: {:?}",
+                            terminator.kind,
+                        ),
+                    );
+                }
+            }
+            TerminatorKind::Assert { target, unwind, .. } => {
+                self.check_edge(location, *target, EdgeKind::Normal);
+                self.check_unwind_edge(location, *unwind);
+            }
+            TerminatorKind::Yield { resume, drop, .. } => {
+                if self.body.generator.is_none() {
+                    self.fail(location, "`Yield` cannot appear outside generator bodies");
+                }
+                if self.mir_phase >= MirPhase::Runtime(RuntimePhase::Initial) {
+                    self.fail(location, "`Yield` should have been replaced by generator lowering");
+                }
+                self.check_edge(location, *resume, EdgeKind::Normal);
+                if let Some(drop) = drop {
+                    self.check_edge(location, *drop, EdgeKind::Normal);
+                }
+            }
+            TerminatorKind::FalseEdge { real_target, imaginary_target } => {
+                if self.mir_phase >= MirPhase::Runtime(RuntimePhase::Initial) {
+                    self.fail(
+                        location,
+                        "`FalseEdge` should have been removed after drop elaboration",
+                    );
+                }
+                self.check_edge(location, *real_target, EdgeKind::Normal);
+                self.check_edge(location, *imaginary_target, EdgeKind::Normal);
+            }
+            TerminatorKind::FalseUnwind { real_target, unwind } => {
+                if self.mir_phase >= MirPhase::Runtime(RuntimePhase::Initial) {
+                    self.fail(
+                        location,
+                        "`FalseUnwind` should have been removed after drop elaboration",
+                    );
+                }
+                self.check_edge(location, *real_target, EdgeKind::Normal);
+                self.check_unwind_edge(location, *unwind);
+            }
+            TerminatorKind::InlineAsm { destination, unwind, .. } => {
+                if let Some(destination) = destination {
+                    self.check_edge(location, *destination, EdgeKind::Normal);
+                }
+                self.check_unwind_edge(location, *unwind);
+            }
+            TerminatorKind::GeneratorDrop => {
+                if self.body.generator.is_none() {
+                    self.fail(location, "`GeneratorDrop` cannot appear outside generator bodies");
+                }
+                if self.mir_phase >= MirPhase::Runtime(RuntimePhase::Initial) {
+                    self.fail(
+                        location,
+                        "`GeneratorDrop` should have been replaced by generator lowering",
+                    );
+                }
+            }
+            TerminatorKind::Resume | TerminatorKind::Terminate => {
+                let bb = location.block;
+                if !self.body.basic_blocks[bb].is_cleanup {
+                    self.fail(
+                        location,
+                        "Cannot `Resume` or `Terminate` from non-cleanup basic block",
+                    )
+                }
+            }
+            TerminatorKind::Return => {
+                let bb = location.block;
+                if self.body.basic_blocks[bb].is_cleanup {
+                    self.fail(location, "Cannot `Return` from cleanup basic block")
+                }
+            }
+            TerminatorKind::Unreachable => {}
+        }
+
+        self.super_terminator(terminator, location);
+    }
+
+    fn visit_source_scope(&mut self, scope: SourceScope) {
+        if self.body.source_scopes.get(scope).is_none() {
+            self.tcx.sess.diagnostic().delay_span_bug(
+                self.body.span,
+                format!(
+                    "broken MIR in {:?} ({}):\ninvalid source scope {:?}",
+                    self.body.source.instance, self.when, scope,
+                ),
+            );
+        }
+    }
+}
+
+pub fn validate_types<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    mir_phase: MirPhase,
+    param_env: ty::ParamEnv<'tcx>,
+    body: &Body<'tcx>,
+) -> Vec<(Location, String)> {
+    let mut type_checker = TypeChecker { body, tcx, param_env, mir_phase, failures: Vec::new() };
+    type_checker.visit_body(body);
+    type_checker.failures
+}
+
+struct TypeChecker<'a, 'tcx> {
+    body: &'a Body<'tcx>,
+    tcx: TyCtxt<'tcx>,
+    param_env: ParamEnv<'tcx>,
+    mir_phase: MirPhase,
+    failures: Vec<(Location, String)>,
+}
+
+impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
+    fn fail(&mut self, location: Location, msg: impl Into<String>) {
+        self.failures.push((location, msg.into()));
+    }
+
+    /// Check if src can be assigned into dest.
+    /// This is not precise, it will accept some incorrect assignments.
+    fn mir_assign_valid_types(&self, src: Ty<'tcx>, dest: Ty<'tcx>) -> bool {
+        // Fast path before we normalize.
+        if src == dest {
+            // Equal types, all is good.
+            return true;
+        }
+
+        // We sometimes have to use `defining_opaque_types` for subtyping
+        // to succeed here and figuring out how exactly that should work
+        // is annoying. It is harmless enough to just not validate anything
+        // in that case. We still check this after analysis as all opaque
+        // types have been revealed at this point.
+        if (src, dest).has_opaque_types() {
+            return true;
+        }
+
+        crate::util::is_subtype(self.tcx, self.param_env, src, dest)
+    }
+}
+
+impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
     fn visit_operand(&mut self, operand: &Operand<'tcx>, location: Location) {
         // This check is somewhat expensive, so only run it when -Zvalidate-mir is passed.
         if self.tcx.sess.opts.unstable_opts.validate_mir
@@ -342,10 +592,10 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             }
             ProjectionElem::Field(f, ty) => {
                 let parent_ty = place_ref.ty(&self.body.local_decls, self.tcx);
-                let fail_out_of_bounds = |this: &Self, location| {
+                let fail_out_of_bounds = |this: &mut Self, location| {
                     this.fail(location, format!("Out of bounds field {:?} for {:?}", f, parent_ty));
                 };
-                let check_equal = |this: &Self, location, f_ty| {
+                let check_equal = |this: &mut Self, location, f_ty| {
                     if !this.mir_assign_valid_types(ty, f_ty) {
                         this.fail(
                             location,
@@ -440,9 +690,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
     }
 
     fn visit_var_debug_info(&mut self, debuginfo: &VarDebugInfo<'tcx>) {
-        let check_place = |place: Place<'_>| {
+        let check_place = |this: &mut Self, place: Place<'_>| {
             if place.projection.iter().any(|p| !p.can_use_in_debuginfo()) {
-                self.fail(
+                this.fail(
                     START_BLOCK.start_location(),
                     format!("illegal place {:?} in debuginfo for {:?}", place, debuginfo.name),
                 );
@@ -451,7 +701,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         match debuginfo.value {
             VarDebugInfoContents::Const(_) => {}
             VarDebugInfoContents::Place(place) => {
-                check_place(place);
+                check_place(self, place);
                 if debuginfo.references != 0 && place.projection.last() == Some(&PlaceElem::Deref) {
                     self.fail(
                         START_BLOCK.start_location(),
@@ -461,7 +711,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             }
             VarDebugInfoContents::Composite { ty, ref fragments } => {
                 for f in fragments {
-                    check_place(f.contents);
+                    check_place(self, f.contents);
                     if ty.is_union() || ty.is_enum() {
                         self.fail(
                             START_BLOCK.start_location(),
@@ -718,7 +968,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 }
             }
             Rvalue::NullaryOp(NullOp::OffsetOf(fields), container) => {
-                let fail_out_of_bounds = |this: &Self, location, field, ty| {
+                let fail_out_of_bounds = |this: &mut Self, location, field, ty| {
                     this.fail(location, format!("Out of bounds field {field:?} for {ty:?}"));
                 };
 
@@ -894,26 +1144,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     self.fail(location, format!("explicit `{:?}` is forbidden", kind));
                 }
             }
-            StatementKind::StorageLive(local) => {
-                // We check that the local is not live when entering a `StorageLive` for it.
-                // Technically, violating this restriction is only UB and not actually indicative
-                // of not well-formed MIR. This means that an optimization which turns MIR that
-                // already has UB into MIR that fails this check is not necessarily wrong. However,
-                // we have no such optimizations at the moment, and so we include this check anyway
-                // to help us catch bugs. If you happen to write an optimization that might cause
-                // this to incorrectly fire, feel free to remove this check.
-                if self.reachable_blocks.contains(location.block) {
-                    self.storage_liveness.seek_before_primary_effect(location);
-                    let locals_with_storage = self.storage_liveness.get();
-                    if locals_with_storage.contains(*local) {
-                        self.fail(
-                            location,
-                            format!("StorageLive({local:?}) which already has storage here"),
-                        );
-                    }
-                }
-            }
-            StatementKind::StorageDead(_)
+            StatementKind::StorageLive(_)
+            | StatementKind::StorageDead(_)
             | StatementKind::Coverage(_)
             | StatementKind::ConstEvalCounter
             | StatementKind::PlaceMention(..)
@@ -925,9 +1157,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
 
     fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
         match &terminator.kind {
-            TerminatorKind::Goto { target } => {
-                self.check_edge(location, *target, EdgeKind::Normal);
-            }
             TerminatorKind::SwitchInt { targets, discr } => {
                 let switch_ty = discr.ty(&self.body.local_decls, self.tcx);
 
@@ -941,36 +1170,16 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     other => bug!("unhandled type: {:?}", other),
                 });
 
-                for (value, target) in targets.iter() {
+                for (value, _) in targets.iter() {
                     if Scalar::<()>::try_from_uint(value, size).is_none() {
                         self.fail(
                             location,
                             format!("the value {:#x} is not a proper {:?}", value, switch_ty),
                         )
                     }
-
-                    self.check_edge(location, target, EdgeKind::Normal);
-                }
-                self.check_edge(location, targets.otherwise(), EdgeKind::Normal);
-
-                self.value_cache.clear();
-                self.value_cache.extend(targets.iter().map(|(value, _)| value));
-                let has_duplicates = targets.iter().len() != self.value_cache.len();
-                if has_duplicates {
-                    self.fail(
-                        location,
-                        format!(
-                            "duplicated values in `SwitchInt` terminator: {:?}",
-                            terminator.kind,
-                        ),
-                    );
                 }
             }
-            TerminatorKind::Drop { target, unwind, .. } => {
-                self.check_edge(location, *target, EdgeKind::Normal);
-                self.check_unwind_edge(location, *unwind);
-            }
-            TerminatorKind::Call { func, args, destination, target, unwind, .. } => {
+            TerminatorKind::Call { func, .. } => {
                 let func_ty = func.ty(&self.body.local_decls, self.tcx);
                 match func_ty.kind() {
                     ty::FnPtr(..) | ty::FnDef(..) => {}
@@ -979,34 +1188,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         format!("encountered non-callable type {} in `Call` terminator", func_ty),
                     ),
                 }
-                if let Some(target) = target {
-                    self.check_edge(location, *target, EdgeKind::Normal);
-                }
-                self.check_unwind_edge(location, *unwind);
-
-                // The call destination place and Operand::Move place used as an argument might be
-                // passed by a reference to the callee. Consequently they must be non-overlapping.
-                // Currently this simply checks for duplicate places.
-                self.place_cache.clear();
-                self.place_cache.insert(destination.as_ref());
-                let mut has_duplicates = false;
-                for arg in args {
-                    if let Operand::Move(place) = arg {
-                        has_duplicates |= !self.place_cache.insert(place.as_ref());
-                    }
-                }
-
-                if has_duplicates {
-                    self.fail(
-                        location,
-                        format!(
-                            "encountered overlapping memory in `Call` terminator: {:?}",
-                            terminator.kind,
-                        ),
-                    );
-                }
             }
-            TerminatorKind::Assert { cond, target, unwind, .. } => {
+            TerminatorKind::Assert { cond, .. } => {
                 let cond_ty = cond.ty(&self.body.local_decls, self.tcx);
                 if cond_ty != self.tcx.types.bool {
                     self.fail(
@@ -1017,88 +1200,20 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         ),
                     );
                 }
-                self.check_edge(location, *target, EdgeKind::Normal);
-                self.check_unwind_edge(location, *unwind);
             }
-            TerminatorKind::Yield { resume, drop, .. } => {
-                if self.body.generator.is_none() {
-                    self.fail(location, "`Yield` cannot appear outside generator bodies");
-                }
-                if self.mir_phase >= MirPhase::Runtime(RuntimePhase::Initial) {
-                    self.fail(location, "`Yield` should have been replaced by generator lowering");
-                }
-                self.check_edge(location, *resume, EdgeKind::Normal);
-                if let Some(drop) = drop {
-                    self.check_edge(location, *drop, EdgeKind::Normal);
-                }
-            }
-            TerminatorKind::FalseEdge { real_target, imaginary_target } => {
-                if self.mir_phase >= MirPhase::Runtime(RuntimePhase::Initial) {
-                    self.fail(
-                        location,
-                        "`FalseEdge` should have been removed after drop elaboration",
-                    );
-                }
-                self.check_edge(location, *real_target, EdgeKind::Normal);
-                self.check_edge(location, *imaginary_target, EdgeKind::Normal);
-            }
-            TerminatorKind::FalseUnwind { real_target, unwind } => {
-                if self.mir_phase >= MirPhase::Runtime(RuntimePhase::Initial) {
-                    self.fail(
-                        location,
-                        "`FalseUnwind` should have been removed after drop elaboration",
-                    );
-                }
-                self.check_edge(location, *real_target, EdgeKind::Normal);
-                self.check_unwind_edge(location, *unwind);
-            }
-            TerminatorKind::InlineAsm { destination, unwind, .. } => {
-                if let Some(destination) = destination {
-                    self.check_edge(location, *destination, EdgeKind::Normal);
-                }
-                self.check_unwind_edge(location, *unwind);
-            }
-            TerminatorKind::GeneratorDrop => {
-                if self.body.generator.is_none() {
-                    self.fail(location, "`GeneratorDrop` cannot appear outside generator bodies");
-                }
-                if self.mir_phase >= MirPhase::Runtime(RuntimePhase::Initial) {
-                    self.fail(
-                        location,
-                        "`GeneratorDrop` should have been replaced by generator lowering",
-                    );
-                }
-            }
-            TerminatorKind::Resume | TerminatorKind::Terminate => {
-                let bb = location.block;
-                if !self.body.basic_blocks[bb].is_cleanup {
-                    self.fail(
-                        location,
-                        "Cannot `Resume` or `Terminate` from non-cleanup basic block",
-                    )
-                }
-            }
-            TerminatorKind::Return => {
-                let bb = location.block;
-                if self.body.basic_blocks[bb].is_cleanup {
-                    self.fail(location, "Cannot `Return` from cleanup basic block")
-                }
-            }
-            TerminatorKind::Unreachable => {}
+            TerminatorKind::Goto { .. }
+            | TerminatorKind::Drop { .. }
+            | TerminatorKind::Yield { .. }
+            | TerminatorKind::FalseEdge { .. }
+            | TerminatorKind::FalseUnwind { .. }
+            | TerminatorKind::InlineAsm { .. }
+            | TerminatorKind::GeneratorDrop
+            | TerminatorKind::Resume
+            | TerminatorKind::Terminate
+            | TerminatorKind::Return
+            | TerminatorKind::Unreachable => {}
         }
 
         self.super_terminator(terminator, location);
-    }
-
-    fn visit_source_scope(&mut self, scope: SourceScope) {
-        if self.body.source_scopes.get(scope).is_none() {
-            self.tcx.sess.diagnostic().delay_span_bug(
-                self.body.span,
-                format!(
-                    "broken MIR in {:?} ({}):\ninvalid source scope {:?}",
-                    self.body.source.instance, self.when, scope,
-                ),
-            );
-        }
     }
 }
