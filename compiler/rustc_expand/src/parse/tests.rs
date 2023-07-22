@@ -1,4 +1,6 @@
-use crate::tests::{matches_codepattern, string_to_stream, with_error_checking_parse};
+use crate::tests::{
+    matches_codepattern, string_to_stream, with_error_checking_parse, with_expected_parse_error,
+};
 
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Token};
@@ -51,11 +53,15 @@ fn string_to_item(source_str: String) -> Option<P<ast::Item>> {
     with_error_checking_parse(source_str, &sess(), |p| p.parse_item(ForceCollect::No))
 }
 
-#[should_panic]
 #[test]
 fn bad_path_expr_1() {
+    // This should trigger error: expected identifier, found keyword `return`
     create_default_session_globals_then(|| {
-        string_to_expr("::abc::def::return".to_string());
+        with_expected_parse_error(
+            "::abc::def::return",
+            "expected identifier, found keyword `return`",
+            |p| p.parse_expr(),
+        );
     })
 }
 
