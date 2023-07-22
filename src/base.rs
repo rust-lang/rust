@@ -7,6 +7,8 @@ use rustc_middle::ty::layout::FnAbiOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 
 use cranelift_codegen::ir::UserFuncName;
+use cranelift_codegen::CodegenError;
+use cranelift_module::ModuleError;
 
 use crate::constant::ConstantCx;
 use crate::debuginfo::FunctionDebugContext;
@@ -172,7 +174,21 @@ pub(crate) fn compile_fn(
     // Define function
     cx.profiler.generic_activity("define function").run(|| {
         context.want_disasm = cx.should_write_ir;
-        module.define_function(codegened_func.func_id, context).unwrap();
+        match module.define_function(codegened_func.func_id, context) {
+            Ok(()) => {}
+            Err(ModuleError::Compilation(CodegenError::ImplLimitExceeded)) => {
+                let handler = rustc_session::EarlyErrorHandler::new(
+                    rustc_session::config::ErrorOutputType::default(),
+                );
+                handler.early_error(format!(
+                    "backend implementation limit exceeded while compiling {name}",
+                    name = codegened_func.symbol_name
+                ));
+            }
+            Err(err) => {
+                panic!("Error while defining {name}: {err:?}", name = codegened_func.symbol_name);
+            }
+        }
     });
 
     if cx.should_write_ir {
@@ -356,7 +372,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
 
                         codegen_panic_inner(
                             fx,
-                            rustc_hir::LangItem::PanicBoundsCheck,
+                            rustc_hir::LangItem::PanicMisalignedPointerDereference,
                             &[required, found, location],
                             source_info.span,
                         );

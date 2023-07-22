@@ -38,9 +38,9 @@ diff --git a/library/core/src/sync/atomic.rs b/library/core/src/sync/atomic.rs
 index d9de37e..8293fce 100644
 --- a/library/core/src/sync/atomic.rs
 +++ b/library/core/src/sync/atomic.rs
-@@ -2234,46 +2234,6 @@ atomic_int! {
-     "AtomicU64::new(0)",
-     u64 AtomicU64 ATOMIC_U64_INIT
+@@ -2996,42 +2996,6 @@ atomic_int! {
+     8,
+     u64 AtomicU64
  }
 -#[cfg(target_has_atomic_load_store = "128")]
 -atomic_int! {
@@ -53,14 +53,12 @@ index d9de37e..8293fce 100644
 -    unstable(feature = "integer_atomics", issue = "99069"),
 -    unstable(feature = "integer_atomics", issue = "99069"),
 -    rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
--    unstable(feature = "integer_atomics", issue = "99069"),
 -    cfg_attr(not(test), rustc_diagnostic_item = "AtomicI128"),
 -    "i128",
 -    "#![feature(integer_atomics)]\n\n",
 -    atomic_min, atomic_max,
 -    16,
--    "AtomicI128::new(0)",
--    i128 AtomicI128 ATOMIC_I128_INIT
+-    i128 AtomicI128
 -}
 -#[cfg(target_has_atomic_load_store = "128")]
 -atomic_int! {
@@ -73,16 +71,15 @@ index d9de37e..8293fce 100644
 -    unstable(feature = "integer_atomics", issue = "99069"),
 -    unstable(feature = "integer_atomics", issue = "99069"),
 -    rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
--    unstable(feature = "integer_atomics", issue = "99069"),
 -    cfg_attr(not(test), rustc_diagnostic_item = "AtomicU128"),
 -    "u128",
 -    "#![feature(integer_atomics)]\n\n",
 -    atomic_umin, atomic_umax,
 -    16,
--    "AtomicU128::new(0)",
--    u128 AtomicU128 ATOMIC_U128_INIT
+-    u128 AtomicU128
 -}
  
+ #[cfg(target_has_atomic_load_store = "ptr")]
  macro_rules! atomic_int_ptr_sized {
      ( $($target_pointer_width:literal $align:literal)* ) => { $(
 --

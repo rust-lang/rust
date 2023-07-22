@@ -8,17 +8,17 @@ crate-type = ["dylib"]
 
 [dependencies]
 # These have to be in sync with each other
-cranelift-codegen = {  version = "0.96.1", features = ["unwind", "all-arch"] }
-cranelift-frontend = { version = "0.96.1" }
-cranelift-module = { version = "0.96.1" }
-cranelift-native = { version = "0.96.1" }
-cranelift-jit = { version = "0.96.1", optional = true }
-cranelift-object = { version = "0.96.1" }
+cranelift-codegen = { version = "0.98", features = ["unwind", "all-arch"] }
+cranelift-frontend = { version = "0.98" }
+cranelift-module = { version = "0.98" }
+cranelift-native = { version = "0.98" }
+cranelift-jit = { version = "0.98", optional = true }
+cranelift-object = { version = "0.98" }
 target-lexicon = "0.12.0"
 gimli = { version = "0.27.2", default-features = false, features = ["write"]}
 object = { version = "0.30.3", default-features = false, features = ["std", "read_core", "write", "archive", "coff", "elf", "macho", "pe"] }
 
-indexmap = "1.9.3"
+indexmap = "2.0.0"
 libloading = { version = "0.7.3", optional = true }
 smallvec = "1.8.1"
 

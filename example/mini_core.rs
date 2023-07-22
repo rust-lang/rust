@@ -547,7 +547,9 @@ impl<T> Box<T> {
 impl<T: ?Sized, A> Drop for Box<T, A> {
     fn drop(&mut self) {
         // inner value is dropped by compiler
-        libc::free(self.0.pointer.0 as *mut u8);
+        unsafe {
+            libc::free(self.0.pointer.0 as *mut u8);
+        }
     }
 }
 
