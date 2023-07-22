@@ -19,7 +19,9 @@ fn main() {
     // CHECK: bb1: {
     // CHECK: switchInt({{.*}}) -> [1: bb2, otherwise: bb6];
     // CHECK: bb2: {
-    // CHECK: switchInt({{.*}}) -> [0: bb4, otherwise: bb3];
+    // CHECK: [[ne:_.*]] = Ne({{.*}}, const false);
+    // CHECK: assume(move [[ne]]);
+    // CHECK: goto -> bb3;
     // CHECK: bb3: {
     // CHECK: {{_.*}} = loop_forever()
     // CHECK: bb4: {

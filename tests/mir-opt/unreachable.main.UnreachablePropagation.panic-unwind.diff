@@ -8,6 +8,8 @@
       let _5: ();
       let mut _6: bool;
       let mut _7: !;
++     let mut _8: bool;
++     let mut _9: bool;
       scope 1 {
           debug _x => _3;
           let _3: Empty;
@@ -24,7 +26,10 @@
   
       bb1: {
           _2 = discriminant(_1);
-          switchInt(move _2) -> [1: bb2, otherwise: bb6];
+-         switchInt(move _2) -> [1: bb2, otherwise: bb6];
++         _9 = Ne(_2, const 1_isize);
++         assume(move _9);
++         goto -> bb6;
       }
   
       bb2: {

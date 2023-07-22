@@ -11,16 +11,15 @@ fn main() -> () {
     let mut _7: Test2;
     let mut _8: isize;
     let _9: &str;
+    let mut _10: bool;
 
     bb0: {
         StorageLive(_1);
         StorageLive(_2);
         _2 = Test1::C;
         _3 = discriminant(_2);
-        switchInt(move _3) -> [2: bb1, otherwise: bb2];
-    }
-
-    bb1: {
+        _10 = Eq(_3, const 2_isize);
+        assume(move _10);
         StorageLive(_5);
         _5 = const "C";
         _1 = &(*_5);
@@ -31,27 +30,27 @@ fn main() -> () {
         StorageLive(_7);
         _7 = Test2::D;
         _8 = discriminant(_7);
-        switchInt(move _8) -> [4: bb4, 5: bb3, otherwise: bb2];
+        switchInt(move _8) -> [4: bb3, 5: bb2, otherwise: bb1];
     }
 
-    bb2: {
+    bb1: {
         unreachable;
     }
 
-    bb3: {
+    bb2: {
         StorageLive(_9);
         _9 = const "E";
         _6 = &(*_9);
         StorageDead(_9);
-        goto -> bb5;
+        goto -> bb4;
+    }
+
+    bb3: {
+        _6 = const "D";
+        goto -> bb4;
     }
 
     bb4: {
-        _6 = const "D";
-        goto -> bb5;
-    }
-
-    bb5: {
         StorageDead(_7);
         StorageDead(_6);
         _0 = const ();

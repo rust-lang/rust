@@ -7,13 +7,14 @@ fn ub_if_b(_1: Thing) -> Thing {
     scope 1 (inlined unreachable_unchecked) {
         scope 2 {
             scope 3 (inlined unreachable_unchecked::runtime) {
+                let _3: !;
             }
         }
     }
 
     bb0: {
         _2 = discriminant(_1);
-        switchInt(move _2) -> [0: bb1, otherwise: bb2];
+        switchInt(move _2) -> [0: bb1, 1: bb2, otherwise: bb3];
     }
 
     bb1: {
@@ -22,6 +23,11 @@ fn ub_if_b(_1: Thing) -> Thing {
     }
 
     bb2: {
+        assume(const false);
+        _3 = core::panicking::panic_nounwind(const "unsafe precondition(s) violated: hint::unreachable_unchecked must never be reached") -> unwind unreachable;
+    }
+
+    bb3: {
         unreachable;
     }
 }
