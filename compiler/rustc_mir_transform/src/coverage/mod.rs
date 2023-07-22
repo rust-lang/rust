@@ -309,19 +309,14 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
             };
             graphviz_data.add_bcb_coverage_span_with_counter(bcb, &covspan, &counter_kind);
 
-            debug!(
-                "Calling make_code_region(file_name={}, source_file={:?}, span={}, body_span={})",
-                file_name,
-                self.source_file,
-                source_map.span_to_diagnostic_string(span),
-                source_map.span_to_diagnostic_string(body_span)
-            );
+            let code_region =
+                make_code_region(source_map, file_name, &self.source_file, span, body_span);
 
             inject_statement(
                 self.mir_body,
                 counter_kind,
                 self.bcb_leader_bb(bcb),
-                Some(make_code_region(source_map, file_name, &self.source_file, span, body_span)),
+                Some(code_region),
             );
         }
     }
@@ -498,6 +493,14 @@ fn make_code_region(
     span: Span,
     body_span: Span,
 ) -> CodeRegion {
+    debug!(
+        "Called make_code_region(file_name={}, source_file={:?}, span={}, body_span={})",
+        file_name,
+        source_file,
+        source_map.span_to_diagnostic_string(span),
+        source_map.span_to_diagnostic_string(body_span)
+    );
+
     let (start_line, mut start_col) = source_file.lookup_file_pos(span.lo());
     let (end_line, end_col) = if span.hi() == span.lo() {
         let (end_line, mut end_col) = (start_line, start_col);
