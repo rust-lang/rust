@@ -227,6 +227,11 @@ https://rust-lang.zulipchat.com/#narrow/stream/301329-t-devtools/topic/subtree.2
 
 `rustc` needs to be built without `jemalloc` so that `mem-trace` can overload `malloc` since `jemalloc` is linked statically, so a `LD_PRELOAD`-ed library won't a chance to intercept the calls to `malloc`.
 
+### How to generate GIMPLE
+
+If you need to check what gccjit is generating (GIMPLE), then take a look at how to
+generate it in [gimple.md](./doc/gimple.md).
+
 ### How to build a cross-compiling libgccjit
 
 #### Building libgccjit
