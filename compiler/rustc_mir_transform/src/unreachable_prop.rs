@@ -2,7 +2,6 @@
 //! when all of their successors are unreachable. This is achieved through a
 //! post-order traversal of the blocks.
 
-use crate::simplify;
 use crate::MirPass;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_middle::mir::*;
@@ -52,8 +51,6 @@ impl MirPass<'_> for UnreachablePropagation {
             body.basic_blocks_mut()[bb].statements.clear();
         }
 
-        let replaced = !replacements.is_empty();
-
         for (bb, terminator_kind) in replacements {
             if !tcx.consider_optimizing(|| {
                 format!("UnreachablePropagation {:?} ", body.source.def_id())
@@ -64,9 +61,7 @@ impl MirPass<'_> for UnreachablePropagation {
             body.basic_blocks_mut()[bb].terminator_mut().kind = terminator_kind;
         }
 
-        if replaced {
-            simplify::remove_dead_blocks(body);
-        }
+        // Do not remove dead blocks, let `SimplifyCfg` do it.
     }
 }
 
