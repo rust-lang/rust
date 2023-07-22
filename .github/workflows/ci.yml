@@ -171,36 +171,19 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      # TODO: Sadly, we cant configure target-feature in a meaningful way
-      # because `cross` doesn't tell qemu to enable any non-default cpu
-      # features, nor does it give us a way to do so.
-      #
-      # Ultimately, we'd like to do something like [rust-lang/stdarch][stdarch].
-      # This is a lot more complex... but in practice it's likely that we can just
-      # snarf the docker config from around [here][1000-dockerfiles].
-      #
-      # [stdarch]: https://github.com/rust-lang/stdarch/blob/a5db4eaf/.github/workflows/main.yml#L67
-      # [1000-dockerfiles]: https://github.com/rust-lang/stdarch/tree/a5db4eaf/ci/docker
 
       matrix:
         target:
-          - i586-unknown-linux-gnu
-          # 32-bit arm has a few idiosyncracies like having subnormal flushing
-          # to zero on by default. Ideally we'd set
           - armv7-unknown-linux-gnueabihf
           - aarch64-unknown-linux-gnu
-          # Note: The issue above means neither of these mips targets will use
-          # MSA (mips simd) but MIPS uses a nonstandard binary representation
-          # for NaNs which makes it worth testing on despite that.
+          - powerpc-unknown-linux-gnu
+          - powerpc64-unknown-linux-gnu
+          - powerpc64le-unknown-linux-gnu
+          - riscv64gc-unknown-linux-gnu
+          # MIPS uses a nonstandard binary representation for NaNs which makes it worth testing
           # - mips-unknown-linux-gnu
           # - mips64-unknown-linux-gnuabi64
-          - riscv64gc-unknown-linux-gnu
-          # TODO this test works, but it appears to time out
-          # - powerpc-unknown-linux-gnu
-          # TODO this test is broken, but it appears to be a problem with QEMU, not us.
-          # - powerpc64le-unknown-linux-gnu
-          # TODO enable this once a new version of cross is released
-          # - powerpc64-unknown-linux-gnu
+        target_feature: ["", "+native"]
 
     steps:
       - uses: actions/checkout@v2
@@ -217,10 +200,13 @@ jobs:
         # being part of the tarball means we can't just use the download/latest
         # URL :(
         run: |
-          CROSS_URL=https://github.com/rust-embedded/cross/releases/download/v0.2.1/cross-v0.2.1-x86_64-unknown-linux-gnu.tar.gz
+          CROSS_URL=https://github.com/cross-rs/cross/releases/download/v0.2.5/cross-x86_64-unknown-linux-gnu.tar.gz
           mkdir -p "$HOME/.bin"
           curl -sfSL --retry-delay 10 --retry 5 "${CROSS_URL}" | tar zxf - -C "$HOME/.bin"
           echo "$HOME/.bin" >> $GITHUB_PATH
+
+      - name: Configure RUSTFLAGS
+        run: echo "-Ctarget-feature=${{ matrix.target_feature }}" >> $GITHUB_ENV
 
       - name: Test (debug)
         run: cross test --verbose --target=${{ matrix.target }}
