@@ -184,7 +184,7 @@ jobs:
           # MIPS uses a nonstandard binary representation for NaNs which makes it worth testing
           # - mips-unknown-linux-gnu
           # - mips64-unknown-linux-gnuabi64
-        target_feature: "default"
+        target_feature: [default]
         include:
           - { target: powerpc64-unknown-linux-gnu, target_feature: "native" }
           - { target: powerpc64le-unknown-linux-gnu, target_feature: "native" }
