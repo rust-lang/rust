@@ -6,6 +6,7 @@ use super::path::{Dirs, RelPath};
 use super::rustc_info::get_file_name;
 use super::utils::{
     maybe_incremental, remove_dir_if_exists, spawn_and_wait, try_hard_link, CargoProject, Compiler,
+    LogGroup,
 };
 use super::{CodegenBackend, SysrootKind};
 
@@ -22,6 +23,8 @@ pub(crate) fn build_sysroot(
     rustup_toolchain_name: Option<&str>,
     target_triple: String,
 ) -> Compiler {
+    let _guard = LogGroup::guard("Build sysroot");
+
     eprintln!("[BUILD] sysroot {:?}", sysroot_kind);
 
     DIST_DIR.ensure_fresh(dirs);
@@ -251,7 +254,10 @@ fn build_clif_sysroot_for_triple(
     rustflags
         .push_str(&format!(" --sysroot {}", RTSTARTUP_SYSROOT.to_path(dirs).to_str().unwrap()));
     if channel == "release" {
-        rustflags.push_str(" -Zmir-opt-level=3");
+        // Incremental compilation by default disables mir inlining. This leads to both a decent
+        // compile perf and a significant runtime perf regression. As such forcefully enable mir
+        // inlining.
+        rustflags.push_str(" -Zinline-mir");
     }
     compiler.rustflags += &rustflags;
     let mut build_cmd = STANDARD_LIBRARY.build(&compiler, dirs);

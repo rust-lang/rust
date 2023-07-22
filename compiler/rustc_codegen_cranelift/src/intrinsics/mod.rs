@@ -647,12 +647,13 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let val = CValue::by_ref(Pointer::new(ptr.load_scalar(fx)), inner_layout);
             ret.write_cvalue(fx, val);
         }
-        sym::volatile_store | sym::unaligned_volatile_store => {
+        sym::volatile_store | sym::unaligned_volatile_store | sym::nontemporal_store => {
             intrinsic_args!(fx, args => (ptr, val); intrinsic);
             let ptr = ptr.load_scalar(fx);
 
             // Cranelift treats stores as volatile by default
             // FIXME correctly handle unaligned_volatile_store
+            // FIXME actually do nontemporal stores if requested
             let dest = CPlace::for_ptr(Pointer::new(ptr), val.layout());
             dest.write_cvalue(fx, val);
         }

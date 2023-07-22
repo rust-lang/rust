@@ -12,9 +12,11 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - name: Install rustfmt
+    - name: Avoid installing rustc-dev
       run: |
-        rustup component add rustfmt
+        sed -i 's/components.*/components = ["rustfmt"]/' rust-toolchain
+        echo 'profile = "minimal"' >> rust-toolchain
+        rustfmt -v
 
     - name: Rustfmt
       run: |
@@ -127,7 +129,7 @@ jobs:
     - uses: actions/checkout@v3
 
     - name: Prepare dependencies
-      run: ./y.rs prepare
+      run: ./y.sh prepare
 
     - name: Disable JIT tests
       run: |
@@ -136,7 +138,7 @@ jobs:
     - name: Test
       env:
         TARGET_TRIPLE: x86_64-unknown-linux-gnu
-      run: ./y.rs test --use-backend llvm
+      run: ./y.sh test --use-backend llvm
 
   bench:
     runs-on: ubuntu-latest

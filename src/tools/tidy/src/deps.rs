@@ -334,6 +334,7 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "cranelift-native",
     "cranelift-object",
     "crc32fast",
+    "equivalent",
     "fallible-iterator",
     "gimli",
     "hashbrown",
