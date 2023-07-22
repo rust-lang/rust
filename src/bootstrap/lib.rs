@@ -36,7 +36,7 @@ use once_cell::sync::OnceCell;
 use crate::builder::Kind;
 use crate::config::{LlvmLibunwind, TargetSelection};
 use crate::util::{
-    exe, libdir, mtime, output, run, run_suppressed, symlink_dir, try_run_suppressed,
+    dir_is_empty, exe, libdir, mtime, output, run, run_suppressed, symlink_dir, try_run_suppressed,
 };
 
 mod bolt;
@@ -535,10 +535,6 @@ impl Build {
     ///
     /// `relative_path` should be relative to the root of the git repository, not an absolute path.
     pub(crate) fn update_submodule(&self, relative_path: &Path) {
-        fn dir_is_empty(dir: &Path) -> bool {
-            t!(std::fs::read_dir(dir)).next().is_none()
-        }
-
         if !self.config.submodules(&self.rust_info()) {
             return;
         }
