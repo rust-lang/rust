@@ -96,9 +96,11 @@ macro_rules! impl_common_integer_tests {
         test_helpers::test_lanes! {
             fn reduce_sum<const LANES: usize>() {
                 test_helpers::test_1(&|x| {
+                    use test_helpers::subnormals::{flush, flush_in};
                     test_helpers::prop_assert_biteq! (
                         $vector::<LANES>::from_array(x).reduce_sum(),
                         x.iter().copied().fold(0 as $scalar, $scalar::wrapping_add),
+                        flush(x.iter().copied().map(flush_in).fold(0 as $scalar, $scalar::wrapping_add)),
                     );
                     Ok(())
                 });
@@ -106,9 +108,11 @@ macro_rules! impl_common_integer_tests {
 
             fn reduce_product<const LANES: usize>() {
                 test_helpers::test_1(&|x| {
+                    use test_helpers::subnormals::{flush, flush_in};
                     test_helpers::prop_assert_biteq! (
                         $vector::<LANES>::from_array(x).reduce_product(),
                         x.iter().copied().fold(1 as $scalar, $scalar::wrapping_mul),
+                        flush(x.iter().copied().map(flush_in).fold(1 as $scalar, $scalar::wrapping_mul)),
                     );
                     Ok(())
                 });
