@@ -34,7 +34,8 @@ LL |         let _val: Wrap<&'static T> = mem::zeroed();
    |                                      this code causes undefined behavior when executed
    |                                      help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
-note: references must be non-null (in this struct field)
+   = note: `Wrap<&T>` must be non-null
+note: because references must be non-null (in this struct field)
   --> $DIR/invalid_value.rs:17:18
    |
 LL | struct Wrap<T> { wrapped: T }
@@ -49,7 +50,8 @@ LL |         let _val: Wrap<&'static T> = mem::uninitialized();
    |                                      this code causes undefined behavior when executed
    |                                      help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
-note: references must be non-null (in this struct field)
+   = note: `Wrap<&T>` must be non-null
+note: because references must be non-null (in this struct field)
   --> $DIR/invalid_value.rs:17:18
    |
 LL | struct Wrap<T> { wrapped: T }

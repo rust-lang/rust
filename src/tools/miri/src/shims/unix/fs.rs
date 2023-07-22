@@ -12,7 +12,7 @@ use log::trace;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::ty::TyCtxt;
-use rustc_target::abi::{Align, Size, HasDataLayout as _};
+use rustc_target::abi::{Align, Size};
 
 use crate::shims::os_str::bytes_to_os_str;
 use crate::*;
@@ -753,7 +753,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // We cap the number of read bytes to the largest value that we are able to fit in both the
         // host's and target's `isize`. This saves us from having to handle overflows later.
         let count = count
-            .min(u64::try_from(this.data_layout().target_isize_max()).unwrap())
+            .min(u64::try_from(this.target_isize_max()).unwrap())
             .min(u64::try_from(isize::MAX).unwrap());
         let communicate = this.machine.communicate();
 
@@ -807,7 +807,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // We cap the number of written bytes to the largest value that we are able to fit in both the
         // host's and target's `isize`. This saves us from having to handle overflows later.
         let count = count
-            .min(u64::try_from(this.data_layout().target_isize_max()).unwrap())
+            .min(u64::try_from(this.target_isize_max()).unwrap())
             .min(u64::try_from(isize::MAX).unwrap());
         let communicate = this.machine.communicate();
 

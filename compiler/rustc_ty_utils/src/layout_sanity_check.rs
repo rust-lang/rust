@@ -1,5 +1,5 @@
 use rustc_middle::ty::{
-    layout::{LayoutCx, NaiveLayout, TyAndLayout},
+    layout::{LayoutCx, TyAndLayout},
     TyCtxt,
 };
 use rustc_target::abi::*;
@@ -10,7 +10,6 @@ use std::assert_matches::assert_matches;
 pub(super) fn sanity_check_layout<'tcx>(
     cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
     layout: &TyAndLayout<'tcx>,
-    naive: &NaiveLayout,
 ) {
     // Type-level uninhabitedness should always imply ABI uninhabitedness.
     if layout.ty.is_privately_uninhabited(cx.tcx, cx.param_env) {
@@ -19,10 +18,6 @@ pub(super) fn sanity_check_layout<'tcx>(
 
     if layout.size.bytes() % layout.align.abi.bytes() != 0 {
         bug!("size is not a multiple of align, in the following layout:\n{layout:#?}");
-    }
-
-    if !naive.is_refined_by(layout.layout) {
-        bug!("the naive layout isn't refined by the actual layout:\n{:#?}\n{:#?}", naive, layout);
     }
 
     if !cfg!(debug_assertions) {
