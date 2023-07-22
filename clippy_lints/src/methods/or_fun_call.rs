@@ -64,34 +64,33 @@ pub(super) fn check<'tcx>(
             }
         };
 
-        if_chain! {
-            if let Some(sugg) = match (name, call_expr.is_some()) {
-                ("unwrap_or", true) | ("unwrap_or_else", false) => Some("unwrap_or_default"),
-                ("or_insert", true) | ("or_insert_with", false) => Some("or_default"),
-                _ => None,
-            };
-            // needs to target Default::default in particular or be *::new and have a Default impl
-            // available
-            if (is_new(fun) && output_type_implements_default(fun))
-                || match call_expr {
-                    Some(call_expr) => is_default_equivalent(cx, call_expr),
-                    None => is_default_equivalent_call(cx, fun) || closure_body_returns_empty_to_string(cx, fun),
-                };
-            then {
-                span_lint_and_sugg(
-                    cx,
-                    UNWRAP_OR_DEFAULT,
-                    method_span.with_hi(span.hi()),
-                    &format!("use of `{name}` to construct default value"),
-                    "try",
-                    format!("{sugg}()"),
-                    Applicability::MachineApplicable,
-                );
+        let sugg = match (name, call_expr.is_some()) {
+            ("unwrap_or", true) | ("unwrap_or_else", false) => "unwrap_or_default",
+            ("or_insert", true) | ("or_insert_with", false) => "or_default",
+            _ => return false,
+        };
 
-                true
-            } else {
-                false
+        // needs to target Default::default in particular or be *::new and have a Default impl
+        // available
+        if (is_new(fun) && output_type_implements_default(fun))
+            || match call_expr {
+                Some(call_expr) => is_default_equivalent(cx, call_expr),
+                None => is_default_equivalent_call(cx, fun) || closure_body_returns_empty_to_string(cx, fun),
             }
+        {
+            span_lint_and_sugg(
+                cx,
+                UNWRAP_OR_DEFAULT,
+                method_span.with_hi(span.hi()),
+                &format!("use of `{name}` to construct default value"),
+                "try",
+                format!("{sugg}()"),
+                Applicability::MachineApplicable,
+            );
+
+            true
+        } else {
+            false
         }
     }
 
@@ -223,7 +222,7 @@ fn closure_body_returns_empty_to_string(cx: &LateContext<'_>, e: &hir::Expr<'_>)
         if body.params.is_empty()
             && let hir::Expr{ kind, .. } = &body.value
             && let hir::ExprKind::MethodCall(hir::PathSegment {ident, ..}, self_arg, _, _) = kind
-            && ident == &symbol::Ident::from_str("to_string")
+            && ident.name == sym::to_string
             && let hir::Expr{ kind, .. } = self_arg
             && let hir::ExprKind::Lit(lit) = kind
             && let ast::LitKind::Str(symbol::kw::Empty, _) = lit.node
