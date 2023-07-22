@@ -163,7 +163,7 @@ Depending on the feature/change/bug fix/improvement, implementation may be
 relatively-straightforward or it may be a major undertaking. You can always ask
 for help or mentorship from more experienced compiler devs.  Also, you don't
 have to be the one to implement your feature; but keep in mind that if you
-don't it might be a while before someone else does.
+don't, it might be a while before someone else does.
 
 For the `?` macro feature, I needed to go understand the relevant parts of
 macro expansion in the compiler. Personally, I find that [improving the
