@@ -40,14 +40,22 @@ fn main() {
         "cargo"
     };
 
-    let args: Vec<_> = match env::args().nth(1).as_deref() {
+    let mut args = env::args().skip(1).collect::<Vec<_>>();
+    if args.get(0).map(|arg| &**arg) == Some("clif") {
+        // Avoid infinite recursion when invoking `cargo-clif` as cargo subcommand using
+        // `cargo clif`.
+        args.remove(0);
+    }
+
+    let args: Vec<_> = match args.get(0).map(|arg| &**arg) {
         Some("jit") => {
             env::set_var(
                 "RUSTFLAGS",
                 env::var("RUSTFLAGS").unwrap_or(String::new()) + " -Cprefer-dynamic",
             );
+            args.remove(0);
             IntoIterator::into_iter(["rustc".to_string()])
-                .chain(env::args().skip(2))
+                .chain(args)
                 .chain([
                     "--".to_string(),
                     "-Zunstable-options".to_string(),
@@ -60,8 +68,9 @@ fn main() {
                 "RUSTFLAGS",
                 env::var("RUSTFLAGS").unwrap_or(String::new()) + " -Cprefer-dynamic",
             );
+            args.remove(0);
             IntoIterator::into_iter(["rustc".to_string()])
-                .chain(env::args().skip(2))
+                .chain(args)
                 .chain([
                     "--".to_string(),
                     "-Zunstable-options".to_string(),
@@ -69,7 +78,7 @@ fn main() {
                 ])
                 .collect()
         }
-        _ => env::args().skip(1).collect(),
+        _ => args,
     };
 
     #[cfg(unix)]
