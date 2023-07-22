@@ -1,6 +1,6 @@
 use rustc_abi::{BackendRepr, FieldIdx, VariantIdx};
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_middle::mir::interpret::{EvalToValTreeResult, GlobalId, ValTreeCreationError};
+use rustc_middle::mir::interpret::{EvalToValTreeResult, ValTreeCreationError};
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::layout::{LayoutCx, TyAndLayout};
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -234,7 +234,7 @@ fn create_valtree_place<'tcx>(
 pub(crate) fn eval_to_valtree<'tcx>(
     tcx: TyCtxt<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
-    cid: GlobalId<'tcx>,
+    instance: ty::Instance<'tcx>,
 ) -> EvalToValTreeResult<'tcx> {
     if cfg!(debug_assertions) {
         match typing_env.typing_mode() {
@@ -249,7 +249,7 @@ pub(crate) fn eval_to_valtree<'tcx>(
             }
         }
     }
-    let const_alloc = tcx.eval_to_allocation_raw(typing_env.as_query_input(cid))?;
+    let const_alloc = tcx.eval_to_allocation_raw(typing_env.as_query_input(instance))?;
 
     // FIXME Need to provide a span to `eval_to_valtree`
     let ecx = mk_eval_cx_to_read_const_val(

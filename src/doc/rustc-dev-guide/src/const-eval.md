@@ -27,9 +27,9 @@ done to precompute expressions to be used at runtime.
 Constant evaluation can be done by calling the `const_eval_*` functions of `TyCtxt`.
 They're the wrappers of the `const_eval` query.
 
-* `const_eval_global_id_for_typeck` evaluates a constant to a valtree,
+* `const_eval_instance_for_typeck` evaluates a constant to a valtree,
   so the result value can be further inspected by the compiler.
-* `const_eval_global_id` evaluate a constant to an "opaque blob" containing its final value;
+* `const_eval_instance` evaluate a constant to an "opaque blob" containing its final value;
   this is only useful for codegen backends and the CTFE evaluator engine itself.
 * `eval_static_initializer` specifically computes the initial values of a static.
   Statics are special; all other functions do not represent statics correctly

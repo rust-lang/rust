@@ -12,7 +12,7 @@ error[E0391]: cycle detected when evaluating type-level constant
 LL | fn accept0<T: Trait>(_: Container<{ T::make() }>) {}
    |                                   ^^^^^^^^^^^^^
    |
-note: ...which requires const-evaluating + checking `accept0::{constant#0}`...
+note: ...which requires const-evaluating + checking `accept0::<!0>::{constant#0}`...
   --> $DIR/unsatisfied-const-trait-bound.rs:28:35
    |
 LL | fn accept0<T: Trait>(_: Container<{ T::make() }>) {}
@@ -81,13 +81,13 @@ note: ...which requires evaluating type-level constant...
    |
 LL | const fn accept1<T: [const] Trait>(_: Container<{ T::make() }>) {}
    |                                                 ^^^^^^^^^^^^^
-note: ...which requires const-evaluating + checking `accept1::{constant#0}`...
+note: ...which requires const-evaluating + checking `accept1::<!0>::{constant#0}`...
   --> $DIR/unsatisfied-const-trait-bound.rs:32:49
    |
 LL | const fn accept1<T: [const] Trait>(_: Container<{ T::make() }>) {}
    |                                                 ^^^^^^^^^^^^^
    = note: ...which again requires checking if `accept1::{constant#0}` is a trivial const, completing the cycle
-note: cycle used when const-evaluating + checking `accept1::{constant#0}`
+note: cycle used when const-evaluating + checking `accept1::<!0>::{constant#0}`
   --> $DIR/unsatisfied-const-trait-bound.rs:32:49
    |
 LL | const fn accept1<T: [const] Trait>(_: Container<{ T::make() }>) {}

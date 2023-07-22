@@ -18,7 +18,7 @@ use rustc_target::callconv::FnAbi;
 use tracing::{debug, trace};
 
 use super::{
-    Frame, FrameInfo, GlobalId, InterpErrorInfo, InterpErrorKind, InterpResult, MPlaceTy, Machine,
+    Frame, FrameInfo, InterpErrorInfo, InterpErrorKind, InterpResult, MPlaceTy, Machine,
     MemPlaceMeta, Memory, OpTy, Place, PlaceTy, PointerArithmetic, Projectable, Provenance,
     err_inval, interp_ok, throw_inval, throw_ub, throw_ub_format,
 };
@@ -581,14 +581,15 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         &self,
         instance: ty::Instance<'tcx>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {
-        let gid = GlobalId { instance };
-        let val = if self.tcx.is_static(gid.instance.def_id()) {
-            let alloc_id = self.tcx.reserve_and_set_static_alloc(gid.instance.def_id());
+        let val = if self.tcx.is_static(instance.def_id()) {
+            let alloc_id = self.tcx.reserve_and_set_static_alloc(instance.def_id());
 
             let ty = instance.ty(self.tcx.tcx, self.typing_env);
             mir::ConstAlloc { alloc_id, ty }
         } else {
-            self.ctfe_query(|tcx| tcx.eval_to_allocation_raw(self.typing_env.as_query_input(gid)))?
+            self.ctfe_query(|tcx| {
+                tcx.eval_to_allocation_raw(self.typing_env.as_query_input(instance))
+            })?
         };
         self.raw_const_to_mplace(val)
     }

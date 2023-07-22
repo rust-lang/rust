@@ -93,13 +93,13 @@ error[E0425]: cannot find function `v6` in this scope
 LL |     const v0: [[usize; v4]; v4] = v6(v8);
    |                                   ^^ not found in this scope
 
-error: maximum number of nodes exceeded in constant v20::v17::<v10, v2>::{constant#0}
+error: maximum number of nodes exceeded in constant v17::<v10, v2>::{constant#0}
   --> $DIR/unevaluated-const-ice-119731.rs:28:37
    |
 LL |     impl<const v10: usize> v17<v10, v2> {
    |                                     ^^
 
-error: maximum number of nodes exceeded in constant v20::v17::<v10, v2>::{constant#0}
+error: maximum number of nodes exceeded in constant v17::<v10, v2>::{constant#0}
   --> $DIR/unevaluated-const-ice-119731.rs:28:37
    |
 LL |     impl<const v10: usize> v17<v10, v2> {
@@ -107,7 +107,7 @@ LL |     impl<const v10: usize> v17<v10, v2> {
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: maximum number of nodes exceeded in constant v20::v17::<v10, v2>::{constant#0}
+error: maximum number of nodes exceeded in constant v17::<v10, v2>::{constant#0}
   --> $DIR/unevaluated-const-ice-119731.rs:28:37
    |
 LL |     impl<const v10: usize> v17<v10, v2> {

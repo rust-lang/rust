@@ -85,7 +85,6 @@ pub use errors::NoVariantNamed;
 use rustc_abi::{CVariadicStatus, ExternAbi};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
-use rustc_middle::mir::interpret::GlobalId;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{Const, Ty, TyCtxt};
 use rustc_middle::{middle, ty};
@@ -179,9 +178,8 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
                 // FIXME(generic_const_items): Passing empty instead of identity args is fishy but
                 //                             seems to be fine for now. Revisit this!
                 let instance = ty::Instance::new_raw(item_def_id.into(), ty::GenericArgs::empty());
-                let cid = GlobalId { instance };
                 let typing_env = ty::TypingEnv::fully_monomorphized();
-                tcx.ensure_ok().eval_to_const_value_raw(typing_env.as_query_input(cid));
+                tcx.ensure_ok().eval_to_const_value_raw(typing_env.as_query_input(instance));
             }
             _ => (),
         }

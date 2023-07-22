@@ -33,7 +33,7 @@ error[E0391]: cycle detected when evaluating type-level constant
 LL | fn foo<'a, T: 'a>(_: [(); std::mem::offset_of!((T,), 0)]) {}
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: ...which requires const-evaluating + checking `foo::{constant#0}`...
+note: ...which requires const-evaluating + checking `foo::<'_, T>::{constant#0}`...
   --> $DIR/inside-array-length.rs:9:27
    |
 LL | fn foo<'a, T: 'a>(_: [(); std::mem::offset_of!((T,), 0)]) {}
