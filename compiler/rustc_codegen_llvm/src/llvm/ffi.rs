@@ -1,8 +1,6 @@
 #![allow(non_camel_case_types)]
 #![allow(non_upper_case_globals)]
 
-use crate::coverageinfo::map_data as coverage_map;
-
 use super::debuginfo::{
     DIArray, DIBasicType, DIBuilder, DICompositeType, DIDerivedType, DIDescriptor, DIEnumerator,
     DIFile, DIFlags, DIGlobalVariableExpression, DILexicalBlock, DILocation, DINameSpace,
@@ -687,204 +685,6 @@ extern "C" {
 
 pub type DiagnosticHandlerTy = unsafe extern "C" fn(&DiagnosticInfo, *mut c_void);
 pub type InlineAsmDiagHandlerTy = unsafe extern "C" fn(&SMDiagnostic, *const c_void, c_uint);
-
-pub mod coverageinfo {
-    use super::coverage_map;
-
-    /// Corresponds to enum `llvm::coverage::CounterMappingRegion::RegionKind`.
-    ///
-    /// Must match the layout of `LLVMRustCounterMappingRegionKind`.
-    #[derive(Copy, Clone, Debug)]
-    #[repr(C)]
-    pub enum RegionKind {
-        /// A CodeRegion associates some code with a counter
-        CodeRegion = 0,
-
-        /// An ExpansionRegion represents a file expansion region that associates
-        /// a source range with the expansion of a virtual source file, such as
-        /// for a macro instantiation or #include file.
-        ExpansionRegion = 1,
-
-        /// A SkippedRegion represents a source range with code that was skipped
-        /// by a preprocessor or similar means.
-        SkippedRegion = 2,
-
-        /// A GapRegion is like a CodeRegion, but its count is only set as the
-        /// line execution count when its the only region in the line.
-        GapRegion = 3,
-
-        /// A BranchRegion represents leaf-level boolean expressions and is
-        /// associated with two counters, each representing the number of times the
-        /// expression evaluates to true or false.
-        BranchRegion = 4,
-    }
-
-    /// This struct provides LLVM's representation of a "CoverageMappingRegion", encoded into the
-    /// coverage map, in accordance with the
-    /// [LLVM Code Coverage Mapping Format](https://github.com/rust-lang/llvm-project/blob/rustc/13.0-2021-09-30/llvm/docs/CoverageMappingFormat.rst#llvm-code-coverage-mapping-format).
-    /// The struct composes fields representing the `Counter` type and value(s) (injected counter
-    /// ID, or expression type and operands), the source file (an indirect index into a "filenames
-    /// array", encoded separately), and source location (start and end positions of the represented
-    /// code region).
-    ///
-    /// Corresponds to struct `llvm::coverage::CounterMappingRegion`.
-    ///
-    /// Must match the layout of `LLVMRustCounterMappingRegion`.
-    #[derive(Copy, Clone, Debug)]
-    #[repr(C)]
-    pub struct CounterMappingRegion {
-        /// The counter type and type-dependent counter data, if any.
-        counter: coverage_map::Counter,
-
-        /// If the `RegionKind` is a `BranchRegion`, this represents the counter
-        /// for the false branch of the region.
-        false_counter: coverage_map::Counter,
-
-        /// An indirect reference to the source filename. In the LLVM Coverage Mapping Format, the
-        /// file_id is an index into a function-specific `virtual_file_mapping` array of indexes
-        /// that, in turn, are used to look up the filename for this region.
-        file_id: u32,
-
-        /// If the `RegionKind` is an `ExpansionRegion`, the `expanded_file_id` can be used to find
-        /// the mapping regions created as a result of macro expansion, by checking if their file id
-        /// matches the expanded file id.
-        expanded_file_id: u32,
-
-        /// 1-based starting line of the mapping region.
-        start_line: u32,
-
-        /// 1-based starting column of the mapping region.
-        start_col: u32,
-
-        /// 1-based ending line of the mapping region.
-        end_line: u32,
-
-        /// 1-based ending column of the mapping region. If the high bit is set, the current
-        /// mapping region is a gap area.
-        end_col: u32,
-
-        kind: RegionKind,
-    }
-
-    impl CounterMappingRegion {
-        pub(crate) fn code_region(
-            counter: coverage_map::Counter,
-            file_id: u32,
-            start_line: u32,
-            start_col: u32,
-            end_line: u32,
-            end_col: u32,
-        ) -> Self {
-            Self {
-                counter,
-                false_counter: coverage_map::Counter::zero(),
-                file_id,
-                expanded_file_id: 0,
-                start_line,
-                start_col,
-                end_line,
-                end_col,
-                kind: RegionKind::CodeRegion,
-            }
-        }
-
-        // This function might be used in the future; the LLVM API is still evolving, as is coverage
-        // support.
-        #[allow(dead_code)]
-        pub(crate) fn branch_region(
-            counter: coverage_map::Counter,
-            false_counter: coverage_map::Counter,
-            file_id: u32,
-            start_line: u32,
-            start_col: u32,
-            end_line: u32,
-            end_col: u32,
-        ) -> Self {
-            Self {
-                counter,
-                false_counter,
-                file_id,
-                expanded_file_id: 0,
-                start_line,
-                start_col,
-                end_line,
-                end_col,
-                kind: RegionKind::BranchRegion,
-            }
-        }
-
-        // This function might be used in the future; the LLVM API is still evolving, as is coverage
-        // support.
-        #[allow(dead_code)]
-        pub(crate) fn expansion_region(
-            file_id: u32,
-            expanded_file_id: u32,
-            start_line: u32,
-            start_col: u32,
-            end_line: u32,
-            end_col: u32,
-        ) -> Self {
-            Self {
-                counter: coverage_map::Counter::zero(),
-                false_counter: coverage_map::Counter::zero(),
-                file_id,
-                expanded_file_id,
-                start_line,
-                start_col,
-                end_line,
-                end_col,
-                kind: RegionKind::ExpansionRegion,
-            }
-        }
-
-        // This function might be used in the future; the LLVM API is still evolving, as is coverage
-        // support.
-        #[allow(dead_code)]
-        pub(crate) fn skipped_region(
-            file_id: u32,
-            start_line: u32,
-            start_col: u32,
-            end_line: u32,
-            end_col: u32,
-        ) -> Self {
-            Self {
-                counter: coverage_map::Counter::zero(),
-                false_counter: coverage_map::Counter::zero(),
-                file_id,
-                expanded_file_id: 0,
-                start_line,
-                start_col,
-                end_line,
-                end_col,
-                kind: RegionKind::SkippedRegion,
-            }
-        }
-
-        // This function might be used in the future; the LLVM API is still evolving, as is coverage
-        // support.
-        #[allow(dead_code)]
-        pub(crate) fn gap_region(
-            counter: coverage_map::Counter,
-            file_id: u32,
-            start_line: u32,
-            start_col: u32,
-            end_line: u32,
-            end_col: u32,
-        ) -> Self {
-            Self {
-                counter,
-                false_counter: coverage_map::Counter::zero(),
-                file_id,
-                expanded_file_id: 0,
-                start_line,
-                start_col,
-                end_line,
-                end_col: (1_u32 << 31) | end_col,
-                kind: RegionKind::GapRegion,
-            }
-        }
-    }
-}
 
 pub mod debuginfo {
     use super::{InvariantOpaque, Metadata};
@@ -1911,9 +1711,9 @@ extern "C" {
     pub fn LLVMRustCoverageWriteMappingToBuffer(
         VirtualFileMappingIDs: *const c_uint,
         NumVirtualFileMappingIDs: c_uint,
-        Expressions: *const coverage_map::CounterExpression,
+        Expressions: *const crate::coverageinfo::ffi::CounterExpression,
         NumExpressions: c_uint,
-        MappingRegions: *const coverageinfo::CounterMappingRegion,
+        MappingRegions: *const crate::coverageinfo::ffi::CounterMappingRegion,
         NumMappingRegions: c_uint,
         BufferOut: &RustString,
     );
