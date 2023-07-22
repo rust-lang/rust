@@ -58,6 +58,26 @@ pub fn issue_11160() -> bool {
     true
 }
 
+pub fn issue_11189() {
+    struct Number {
+        pub value: u32,
+    }
+
+    fn do_something() -> Result<(), ()> {
+        let number = Mutex::new(Number { value: 1 });
+        let number2 = Mutex::new(Number { value: 2 });
+        let number3 = Mutex::new(Number { value: 3 });
+        let mut lock = number.lock().unwrap();
+        let mut lock2 = number2.lock().unwrap();
+        let mut lock3 = number3.lock().unwrap();
+        lock.value += 1;
+        lock2.value += 1;
+        lock3.value += 1;
+        drop((lock, lock2, lock3));
+        Ok(())
+    }
+}
+
 pub fn path_return_can_be_ignored() -> i32 {
     let mutex = Mutex::new(1);
     let lock = mutex.lock().unwrap();
