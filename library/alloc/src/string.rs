@@ -1290,11 +1290,11 @@ impl String {
     /// Basic usage:
     ///
     /// ```
-    /// let mut s = String::from("foo");
+    /// let mut s = String::from("abč");
     ///
-    /// assert_eq!(s.pop(), Some('o'));
-    /// assert_eq!(s.pop(), Some('o'));
-    /// assert_eq!(s.pop(), Some('f'));
+    /// assert_eq!(s.pop(), Some('č'));
+    /// assert_eq!(s.pop(), Some('b'));
+    /// assert_eq!(s.pop(), Some('a'));
     ///
     /// assert_eq!(s.pop(), None);
     /// ```
@@ -1324,11 +1324,11 @@ impl String {
     /// Basic usage:
     ///
     /// ```
-    /// let mut s = String::from("foo");
+    /// let mut s = String::from("abç");
     ///
-    /// assert_eq!(s.remove(0), 'f');
-    /// assert_eq!(s.remove(1), 'o');
-    /// assert_eq!(s.remove(0), 'o');
+    /// assert_eq!(s.remove(0), 'a');
+    /// assert_eq!(s.remove(1), 'ç');
+    /// assert_eq!(s.remove(0), 'b');
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
