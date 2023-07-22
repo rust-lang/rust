@@ -1,23 +1,4 @@
 error: unused `async` for function with no await statements
-  --> $DIR/unused_async.rs:45:5
-   |
-LL |     async fn f3() {}
-   |     ^^^^^^^^^^^^^^^^
-   |
-   = help: consider removing the `async` from this function
-   = note: `-D clippy::unused-async` implied by `-D warnings`
-
-error: unused `async` for function with no await statements
-  --> $DIR/unused_async.rs:57:1
-   |
-LL | / async fn foo() -> i32 {
-LL | |     4
-LL | | }
-   | |_^
-   |
-   = help: consider removing the `async` from this function
-
-error: unused `async` for function with no await statements
   --> $DIR/unused_async.rs:13:5
    |
 LL | /     async fn async_block_await() {
@@ -33,6 +14,25 @@ note: `await` used in an async block, which does not require the enclosing funct
    |
 LL |             ready(()).await;
    |                       ^^^^^
+   = note: `-D clippy::unused-async` implied by `-D warnings`
+
+error: unused `async` for function with no await statements
+  --> $DIR/unused_async.rs:45:5
+   |
+LL |     async fn f3() {}
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: consider removing the `async` from this function
+
+error: unused `async` for function with no await statements
+  --> $DIR/unused_async.rs:57:1
+   |
+LL | / async fn foo() -> i32 {
+LL | |     4
+LL | | }
+   | |_^
+   |
+   = help: consider removing the `async` from this function
 
 error: unused `async` for function with no await statements
   --> $DIR/unused_async.rs:68:5

@@ -1,6 +1,5 @@
-use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::is_def_id_trait_method;
-use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::DefKind;
 use rustc_hir::intravisit::{walk_body, walk_expr, walk_fn, FnKind, Visitor};
 use rustc_hir::{Body, Expr, ExprKind, FnDecl, Node, YieldSource};
@@ -47,11 +46,12 @@ pub struct UnusedAsync {
     async_fns_as_value: LocalDefIdSet,
     /// Functions with unused `async`, linted post-crate after we've found all uses of local async
     /// functions
-    unused_async_fns: FxHashMap<LocalDefId, UnusedAsyncFn>,
+    unused_async_fns: Vec<UnusedAsyncFn>,
 }
 
 #[derive(Copy, Clone)]
 struct UnusedAsyncFn {
+    def_id: LocalDefId,
     fn_span: Span,
     await_in_async_block: Option<Span>,
 }
@@ -122,13 +122,11 @@ impl<'tcx> LateLintPass<'tcx> for UnusedAsync {
                 // Don't lint just yet, but store the necessary information for later.
                 // The actual linting happens in `check_crate_post`, once we've found all
                 // uses of local async functions that do require asyncness to pass typeck
-                self.unused_async_fns.insert(
+                self.unused_async_fns.push(UnusedAsyncFn {
+                    await_in_async_block: visitor.await_in_async_block,
+                    fn_span: span,
                     def_id,
-                    UnusedAsyncFn {
-                        await_in_async_block: visitor.await_in_async_block,
-                        fn_span: span,
-                    },
-                );
+                });
             }
         }
     }
@@ -164,12 +162,13 @@ impl<'tcx> LateLintPass<'tcx> for UnusedAsync {
         let iter = self
             .unused_async_fns
             .iter()
-            .filter_map(|(did, item)| (!self.async_fns_as_value.contains(did)).then_some(item));
+            .filter(|UnusedAsyncFn { def_id, .. }| (!self.async_fns_as_value.contains(def_id)));
 
         for fun in iter {
-            span_lint_and_then(
+            span_lint_hir_and_then(
                 cx,
                 UNUSED_ASYNC,
+                cx.tcx.local_def_id_to_hir_id(fun.def_id),
                 fun.fn_span,
                 "unused `async` for function with no await statements",
                 |diag| {
