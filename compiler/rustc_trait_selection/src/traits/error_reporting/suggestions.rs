@@ -5,6 +5,7 @@ use super::{
     PredicateObligation,
 };
 
+use crate::errors;
 use crate::infer::InferCtxt;
 use crate::traits::{NormalizeExt, ObligationCtxt};
 
@@ -4031,6 +4032,10 @@ fn hint_missing_borrow<'tcx>(
     found_node: Node<'_>,
     err: &mut Diagnostic,
 ) {
+    if matches!(found_node, Node::TraitItem(..)) {
+        return;
+    }
+
     let found_args = match found.kind() {
         ty::FnPtr(f) => infcx.instantiate_binder_with_placeholders(*f).inputs().iter(),
         kind => {
@@ -4102,19 +4107,11 @@ fn hint_missing_borrow<'tcx>(
     }
 
     if !to_borrow.is_empty() {
-        err.multipart_suggestion_verbose(
-            "consider borrowing the argument",
-            to_borrow,
-            Applicability::MaybeIncorrect,
-        );
+        err.subdiagnostic(errors::AdjustSignatureBorrow::Borrow { to_borrow });
     }
 
     if !remove_borrow.is_empty() {
-        err.multipart_suggestion_verbose(
-            "do not borrow the argument",
-            remove_borrow,
-            Applicability::MaybeIncorrect,
-        );
+        err.subdiagnostic(errors::AdjustSignatureBorrow::RemoveBorrow { remove_borrow });
     }
 }
 
