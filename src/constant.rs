@@ -57,7 +57,7 @@ pub(crate) fn codegen_tls_ref<'tcx>(
     let tls_ptr = if !def_id.is_local() && fx.tcx.needs_thread_local_shim(def_id) {
         let instance = ty::Instance {
             def: ty::InstanceDef::ThreadLocalShim(def_id),
-            substs: ty::InternalSubsts::empty(),
+            args: ty::GenericArgs::empty(),
         };
         let func_ref = fx.get_function_ref(instance);
         let call = fx.bcx.ins().call(func_ref, &[]);
