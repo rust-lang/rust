@@ -50,9 +50,6 @@ pub trait TyAbiInterface<'a, C>: Sized {
         this: TyAndLayout<'a, Self>,
         cx: &C,
         offset: Size,
-        // If true, assume that pointers are either null or valid (according to their type),
-        // enabling extra optimizations.
-        assume_valid_ptr: bool,
     ) -> Option<PointeeInfo>;
     fn is_adt(this: TyAndLayout<'a, Self>) -> bool;
     fn is_never(this: TyAndLayout<'a, Self>) -> bool;
@@ -79,8 +76,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
     where
         Ty: TyAbiInterface<'a, C>,
     {
-        let assume_valid_ptr = true;
-        Ty::ty_and_layout_pointee_info_at(self, cx, offset, assume_valid_ptr)
+        Ty::ty_and_layout_pointee_info_at(self, cx, offset)
     }
 
     pub fn is_single_fp_element<C>(self, cx: &C) -> bool

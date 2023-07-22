@@ -301,7 +301,6 @@ provide! { tcx, def_id, other, cdata,
     is_profiler_runtime => { cdata.root.profiler_runtime }
     required_panic_strategy => { cdata.root.required_panic_strategy }
     panic_in_drop_strategy => { cdata.root.panic_in_drop_strategy }
-    reference_niches_policy => { cdata.root.reference_niches_policy }
     extern_crate => {
         let r = *cdata.extern_crate.lock();
         r.map(|c| &*tcx.arena.alloc(c))
