@@ -186,6 +186,7 @@ jobs:
           # - mips64-unknown-linux-gnuabi64
         target_feature: [default]
         include:
+          - { target: powerpc-unknown-linux-gnu, target_feature: "+altivec" }
           - { target: powerpc64-unknown-linux-gnu, target_feature: "+vsx" }
           - { target: powerpc64le-unknown-linux-gnu, target_feature: "+vsx" }
           # We should test this, but cross currently can't run it
@@ -217,9 +218,6 @@ jobs:
           case "${{ matrix.target_feature }}" in
             default)
               echo "RUSTFLAGS=" >> $GITHUB_ENV;;
-            native)
-              echo "RUSTFLAGS=-Ctarget-cpu=native" >> $GITHUB_ENV
-              ;;
             *)
               echo "RUSTFLAGS=-Ctarget-feature=${{ matrix.target_feature }}" >> $GITHUB_ENV
               ;;
