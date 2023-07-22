@@ -237,6 +237,27 @@ impl<'tcx> Stable<'tcx> for mir::CastKind {
     }
 }
 
+impl<'tcx> Stable<'tcx> for ty::AliasKind {
+    type T = stable_mir::ty::AliasKind;
+    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
+        use ty::AliasKind::*;
+        match self {
+            Projection => stable_mir::ty::AliasKind::Projection,
+            Inherent => stable_mir::ty::AliasKind::Inherent,
+            Opaque => stable_mir::ty::AliasKind::Opaque,
+            Weak => stable_mir::ty::AliasKind::Weak,
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for ty::AliasTy<'tcx> {
+    type T = stable_mir::ty::AliasTy;
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        let ty::AliasTy { args, def_id, .. } = self;
+        stable_mir::ty::AliasTy { def_id: tables.alias_def(*def_id), args: args.stable(tables) }
+    }
+}
+
 impl<'tcx> Stable<'tcx> for ty::adjustment::PointerCoercion {
     type T = stable_mir::mir::PointerCoercion;
     fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
@@ -667,7 +688,9 @@ impl<'tcx> Stable<'tcx> for Ty<'tcx> {
             ty::Tuple(fields) => TyKind::RigidTy(RigidTy::Tuple(
                 fields.iter().map(|ty| tables.intern_ty(ty)).collect(),
             )),
-            ty::Alias(_, _) => todo!(),
+            ty::Alias(alias_kind, alias_ty) => {
+                TyKind::Alias(alias_kind.stable(tables), alias_ty.stable(tables))
+            }
             ty::Param(_) => todo!(),
             ty::Bound(_, _) => todo!(),
             ty::Placeholder(..)

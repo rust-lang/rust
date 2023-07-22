@@ -47,6 +47,10 @@ pub fn generator_def(did: DefId) -> stable_mir::ty::GeneratorDef {
     with_tables(|t| t.generator_def(did))
 }
 
+pub fn alias_def(did: DefId) -> stable_mir::ty::AliasDef {
+    with_tables(|t| t.alias_def(did))
+}
+
 pub fn param_def(did: DefId) -> stable_mir::ty::ParamDef {
     with_tables(|t| t.param_def(did))
 }
@@ -82,6 +86,10 @@ impl<'tcx> Tables<'tcx> {
 
     pub fn generator_def(&mut self, did: DefId) -> stable_mir::ty::GeneratorDef {
         stable_mir::ty::GeneratorDef(self.create_def_id(did))
+    }
+
+    pub fn alias_def(&mut self, did: DefId) -> stable_mir::ty::AliasDef {
+        stable_mir::ty::AliasDef(self.create_def_id(did))
     }
 
     pub fn param_def(&mut self, did: DefId) -> stable_mir::ty::ParamDef {
