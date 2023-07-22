@@ -4,30 +4,22 @@ fn ub_if_b(_1: Thing) -> Thing {
     debug t => _1;
     let mut _0: Thing;
     let mut _2: isize;
+    let mut _3: bool;
+    let mut _4: bool;
     scope 1 (inlined unreachable_unchecked) {
         scope 2 {
             scope 3 (inlined unreachable_unchecked::runtime) {
-                let _3: !;
             }
         }
     }
 
     bb0: {
         _2 = discriminant(_1);
-        switchInt(move _2) -> [0: bb1, 1: bb2, otherwise: bb3];
-    }
-
-    bb1: {
+        _3 = Ne(_2, const 1_isize);
+        assume(move _3);
+        _4 = Eq(_2, const 0_isize);
+        assume(move _4);
         _0 = move _1;
         return;
-    }
-
-    bb2: {
-        assume(const false);
-        _3 = core::panicking::panic_nounwind(const "unsafe precondition(s) violated: hint::unreachable_unchecked must never be reached") -> unwind unreachable;
-    }
-
-    bb3: {
-        unreachable;
     }
 }
