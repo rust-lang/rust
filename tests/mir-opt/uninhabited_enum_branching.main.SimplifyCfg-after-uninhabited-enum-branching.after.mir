@@ -12,14 +12,20 @@ fn main() -> () {
     let mut _8: isize;
     let _9: &str;
     let mut _10: bool;
+    let mut _11: bool;
+    let mut _12: bool;
 
     bb0: {
         StorageLive(_1);
         StorageLive(_2);
         _2 = Test1::C;
         _3 = discriminant(_2);
-        _10 = Eq(_3, const 2_isize);
+        _10 = Ne(_3, const 0_isize);
         assume(move _10);
+        _11 = Ne(_3, const 1_isize);
+        assume(move _11);
+        _12 = Eq(_3, const 2_isize);
+        assume(move _12);
         StorageLive(_5);
         _5 = const "C";
         _1 = &(*_5);

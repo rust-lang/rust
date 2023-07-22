@@ -15,6 +15,10 @@ fn main() -> () {
     let _11: &str;
     let _12: &str;
     let _13: &str;
+    let mut _14: bool;
+    let mut _15: bool;
+    let mut _16: bool;
+    let mut _17: bool;
     scope 1 {
         debug plop => _1;
     }
@@ -29,6 +33,10 @@ fn main() -> () {
         StorageLive(_4);
         _4 = &(_1.1: Test1);
         _5 = discriminant((*_4));
+        _16 = Ne(_5, const 0_isize);
+        assume(move _16);
+        _17 = Ne(_5, const 1_isize);
+        assume(move _17);
         switchInt(move _5) -> [2: bb3, 3: bb1, otherwise: bb2];
     }
 
@@ -57,6 +65,10 @@ fn main() -> () {
         StorageDead(_3);
         StorageLive(_9);
         _10 = discriminant((_1.1: Test1));
+        _14 = Ne(_10, const 0_isize);
+        assume(move _14);
+        _15 = Ne(_10, const 1_isize);
+        assume(move _15);
         switchInt(move _10) -> [2: bb6, 3: bb5, otherwise: bb2];
     }
 
