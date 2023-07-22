@@ -1,3 +1,5 @@
+#![feature(stdsimd, powerpc_target_feature)]
+
 pub mod array;
 
 #[cfg(target_arch = "wasm32")]
@@ -198,7 +200,7 @@ pub fn test_unary_elementwise_flush_subnormals<
     Vector: Into<[Scalar; LANES]> + From<[Scalar; LANES]> + Copy,
     VectorResult: Into<[ScalarResult; LANES]> + From<[ScalarResult; LANES]> + Copy,
 {
-    let flush = |x: Scalar| FlushSubnormals::flush(fs(FlushSubnormals::flush(x)));
+    let flush = |x: Scalar| subnormals::flush(fs(subnormals::flush_in(x)));
     test_1(&|x: [Scalar; LANES]| {
         proptest::prop_assume!(check(x));
         let result_v: [ScalarResult; LANES] = fv(x.into()).into();
@@ -308,7 +310,7 @@ pub fn test_binary_elementwise_flush_subnormals<
     VectorResult: Into<[ScalarResult; LANES]> + From<[ScalarResult; LANES]> + Copy,
 {
     let flush = |x: Scalar1, y: Scalar2| {
-        FlushSubnormals::flush(fs(FlushSubnormals::flush(x), FlushSubnormals::flush(y)))
+        subnormals::flush(fs(subnormals::flush_in(x), subnormals::flush_in(y)))
     };
     test_2(&|x: [Scalar1; LANES], y: [Scalar2; LANES]| {
         proptest::prop_assume!(check(x, y));
