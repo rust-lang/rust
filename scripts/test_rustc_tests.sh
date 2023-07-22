@@ -32,6 +32,8 @@ rm tests/ui/parser/unclosed-delimiter-in-dep.rs # submodule contains //~ERROR
 # missing features
 # ================
 
+rm -r tests/run-make/comment-section # cg_clif doesn't yet write the .comment section
+
 # requires stack unwinding
 # FIXME add needs-unwind to this test
 rm -r tests/run-make/libtest-junit
@@ -98,6 +100,8 @@ rm -r tests/run-make/sepcomp-inlining # same
 rm -r tests/run-make/sepcomp-separate # same
 rm -r tests/run-make/sepcomp-cci-copies # same
 rm -r tests/run-make/volatile-intrinsics # same
+rm -r tests/run-make/llvm-ident # same
+rm -r tests/run-make/no-builtins-attribute # same
 rm tests/ui/abi/stack-protector.rs # requires stack protector support
 rm -r tests/run-make/emit-stack-sizes # requires support for -Z emit-stack-sizes
 rm -r tests/run-make/optimization-remarks-dir # remarks are LLVM specific
@@ -144,6 +148,8 @@ rm -r tests/run-make/output-type-permutations # same
 rm -r tests/run-make/used # same
 rm -r tests/run-make/no-alloc-shim
 rm -r tests/run-make/emit-to-stdout
+
+rm -r tests/run-make/extern-fn-explicit-align # argument alignment not yet supported
 
 # bugs in the test suite
 # ======================
