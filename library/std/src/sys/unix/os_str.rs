@@ -96,6 +96,16 @@ impl AsInner<[u8]> for Buf {
 }
 
 impl Buf {
+    #[inline]
+    pub fn into_os_str_bytes(self) -> Vec<u8> {
+        self.inner
+    }
+
+    #[inline]
+    pub unsafe fn from_os_str_bytes_unchecked(s: Vec<u8>) -> Self {
+        Self { inner: s }
+    }
+
     pub fn from_string(s: String) -> Buf {
         Buf { inner: s.into_bytes() }
     }
