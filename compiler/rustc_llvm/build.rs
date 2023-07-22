@@ -343,6 +343,8 @@ fn main() {
     } else if target.contains("netbsd") && llvm_static_stdcpp.is_some() {
         // NetBSD uses a separate library when relocation is required
         "stdc++_p"
+    } else if target.contains("dragonfly") {
+        "stdc++"
     } else if llvm_use_libcxx.is_some() {
         "c++"
     } else {
