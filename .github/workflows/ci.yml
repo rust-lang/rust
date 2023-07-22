@@ -188,7 +188,8 @@ jobs:
         include:
           - { target: powerpc64-unknown-linux-gnu, target_feature: "+vsx" }
           - { target: powerpc64le-unknown-linux-gnu, target_feature: "+vsx" }
-          - { target: riscv64gc-unknown-linux-gnu, target_feature: "+v,+zvl128b" }
+          # We should test this, but cross currently can't run it
+          # - { target: riscv64gc-unknown-linux-gnu, target_feature: "+v,+zvl128b" }
 
     steps:
       - uses: actions/checkout@v2
