@@ -124,6 +124,9 @@ pub fn from_fn_attrs<'gcc, 'tcx>(
         if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::FFI_PURE) {
             func.add_attribute(FnAttribute::Pure);
         }
+        if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::FFI_CONST) {
+            func.add_attribute(FnAttribute::Const);
+        }
     }
 
     let function_features =
