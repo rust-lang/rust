@@ -43,8 +43,9 @@
           StorageLive(_5);
           _5 = InvalidTag { int: const 4_u32 };
 -         _4 = (_5.1: E);
+-         _3 = [move _4];
 +         _4 = const Scalar(0x00000004): E;
-          _3 = [move _4];
++         _3 = [const Scalar(0x00000004): E];
           StorageDead(_4);
           StorageDead(_5);
           nop;

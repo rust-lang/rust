@@ -8,16 +8,17 @@ use libc::c_int;
 use rustc_codegen_ssa::target_features::{
     supported_target_features, tied_target_features, RUSTC_SPECIFIC_FEATURES,
 };
+use rustc_codegen_ssa::traits::PrintBackendInfo;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_fs_util::path_to_c_string;
 use rustc_middle::bug;
-use rustc_session::config::PrintRequest;
+use rustc_session::config::{PrintKind, PrintRequest};
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::{MergeFunctions, PanicStrategy};
-use std::ffi::{CStr, CString};
 
+use std::ffi::{c_char, c_void, CStr, CString};
 use std::path::Path;
 use std::ptr;
 use std::slice;
@@ -109,6 +110,10 @@ unsafe fn configure_llvm(sess: &Session) {
 
         // Use non-zero `import-instr-limit` multiplier for cold callsites.
         add("-import-cold-multiplier=0.1", false);
+
+        if sess.print_llvm_stats() {
+            add("-stats", false);
+        }
 
         for arg in sess_args {
             add(&(*arg), true);
@@ -350,7 +355,7 @@ fn llvm_target_features(tm: &llvm::TargetMachine) -> Vec<(&str, &str)> {
     ret
 }
 
-fn print_target_features(sess: &Session, tm: &llvm::TargetMachine) {
+fn print_target_features(out: &mut dyn PrintBackendInfo, sess: &Session, tm: &llvm::TargetMachine) {
     let mut llvm_target_features = llvm_target_features(tm);
     let mut known_llvm_target_features = FxHashSet::<&'static str>::default();
     let mut rustc_target_features = supported_target_features(sess)
@@ -383,36 +388,48 @@ fn print_target_features(sess: &Session, tm: &llvm::TargetMachine) {
         .max()
         .unwrap_or(0);
 
-    println!("Features supported by rustc for this target:");
+    writeln!(out, "Features supported by rustc for this target:");
     for (feature, desc) in &rustc_target_features {
-        println!("    {1:0$} - {2}.", max_feature_len, feature, desc);
+        writeln!(out, "    {1:0$} - {2}.", max_feature_len, feature, desc);
     }
-    println!("\nCode-generation features supported by LLVM for this target:");
+    writeln!(out, "\nCode-generation features supported by LLVM for this target:");
     for (feature, desc) in &llvm_target_features {
-        println!("    {1:0$} - {2}.", max_feature_len, feature, desc);
+        writeln!(out, "    {1:0$} - {2}.", max_feature_len, feature, desc);
     }
     if llvm_target_features.is_empty() {
-        println!("    Target features listing is not supported by this LLVM version.");
+        writeln!(out, "    Target features listing is not supported by this LLVM version.");
     }
-    println!("\nUse +feature to enable a feature, or -feature to disable it.");
-    println!("For example, rustc -C target-cpu=mycpu -C target-feature=+feature1,-feature2\n");
-    println!("Code-generation features cannot be used in cfg or #[target_feature],");
-    println!("and may be renamed or removed in a future version of LLVM or rustc.\n");
+    writeln!(out, "\nUse +feature to enable a feature, or -feature to disable it.");
+    writeln!(out, "For example, rustc -C target-cpu=mycpu -C target-feature=+feature1,-feature2\n");
+    writeln!(out, "Code-generation features cannot be used in cfg or #[target_feature],");
+    writeln!(out, "and may be renamed or removed in a future version of LLVM or rustc.\n");
 }
 
-pub(crate) fn print(req: PrintRequest, sess: &Session) {
+pub(crate) fn print(req: &PrintRequest, mut out: &mut dyn PrintBackendInfo, sess: &Session) {
     require_inited();
     let tm = create_informational_target_machine(sess);
-    match req {
-        PrintRequest::TargetCPUs => {
+    match req.kind {
+        PrintKind::TargetCPUs => {
             // SAFETY generate a C compatible string from a byte slice to pass
             // the target CPU name into LLVM, the lifetime of the reference is
             // at least as long as the C function
             let cpu_cstring = CString::new(handle_native(sess.target.cpu.as_ref()))
                 .unwrap_or_else(|e| bug!("failed to convert to cstring: {}", e));
-            unsafe { llvm::LLVMRustPrintTargetCPUs(tm, cpu_cstring.as_ptr()) };
+            unsafe extern "C" fn callback(out: *mut c_void, string: *const c_char, len: usize) {
+                let out = &mut *(out as *mut &mut dyn PrintBackendInfo);
+                let bytes = slice::from_raw_parts(string as *const u8, len);
+                write!(out, "{}", String::from_utf8_lossy(bytes));
+            }
+            unsafe {
+                llvm::LLVMRustPrintTargetCPUs(
+                    tm,
+                    cpu_cstring.as_ptr(),
+                    callback,
+                    &mut out as *mut &mut dyn PrintBackendInfo as *mut c_void,
+                );
+            }
         }
-        PrintRequest::TargetFeatures => print_target_features(sess, tm),
+        PrintKind::TargetFeatures => print_target_features(out, sess, tm),
         _ => bug!("rustc_codegen_llvm can't handle print request: {:?}", req),
     }
 }

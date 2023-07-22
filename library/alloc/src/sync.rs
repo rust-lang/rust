@@ -678,10 +678,14 @@ impl<T> Arc<T> {
 
 impl<T, A: Allocator> Arc<T, A> {
     /// Returns a reference to the underlying allocator.
+    ///
+    /// Note: this is an associated function, which means that you have
+    /// to call it as `Arc::allocator(&a)` instead of `a.allocator()`. This
+    /// is so that there is no conflict with a method on the inner type.
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    pub fn allocator(&self) -> &A {
-        &self.alloc
+    pub fn allocator(this: &Self) -> &A {
+        &this.alloc
     }
     /// Constructs a new `Arc<T>` in the provided allocator.
     ///

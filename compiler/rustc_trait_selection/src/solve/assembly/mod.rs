@@ -10,9 +10,11 @@ use rustc_infer::traits::util::elaborate;
 use rustc_infer::traits::Reveal;
 use rustc_middle::traits::solve::inspect::CandidateKind;
 use rustc_middle::traits::solve::{CanonicalResponse, Certainty, Goal, MaybeCause, QueryResult};
-use rustc_middle::ty::fast_reject::TreatProjections;
-use rustc_middle::ty::TypeFoldable;
+use rustc_middle::ty::fast_reject::{SimplifiedType, TreatParams};
+use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{fast_reject, TypeFoldable};
+use rustc_span::ErrorGuaranteed;
 use std::fmt::Debug;
 
 pub(super) mod structural_traits;
@@ -109,10 +111,10 @@ pub(super) trait GoalKind<'tcx>:
 
     fn trait_def_id(self, tcx: TyCtxt<'tcx>) -> DefId;
 
-    // Try equating an assumption predicate against a goal's predicate. If it
-    // holds, then execute the `then` callback, which should do any additional
-    // work, then produce a response (typically by executing
-    // [`EvalCtxt::evaluate_added_goals_and_make_canonical_response`]).
+    /// Try equating an assumption predicate against a goal's predicate. If it
+    /// holds, then execute the `then` callback, which should do any additional
+    /// work, then produce a response (typically by executing
+    /// [`EvalCtxt::evaluate_added_goals_and_make_canonical_response`]).
     fn probe_and_match_goal_against_assumption(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
@@ -120,9 +122,9 @@ pub(super) trait GoalKind<'tcx>:
         then: impl FnOnce(&mut EvalCtxt<'_, 'tcx>) -> QueryResult<'tcx>,
     ) -> QueryResult<'tcx>;
 
-    // Consider a clause, which consists of a "assumption" and some "requirements",
-    // to satisfy a goal. If the requirements hold, then attempt to satisfy our
-    // goal by equating it with the assumption.
+    /// Consider a clause, which consists of a "assumption" and some "requirements",
+    /// to satisfy a goal. If the requirements hold, then attempt to satisfy our
+    /// goal by equating it with the assumption.
     fn consider_implied_clause(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
@@ -149,9 +151,9 @@ pub(super) trait GoalKind<'tcx>:
         })
     }
 
-    // Consider a clause specifically for a `dyn Trait` self type. This requires
-    // additionally checking all of the supertraits and object bounds to hold,
-    // since they're not implied by the well-formedness of the object type.
+    /// Consider a clause specifically for a `dyn Trait` self type. This requires
+    /// additionally checking all of the supertraits and object bounds to hold,
+    /// since they're not implied by the well-formedness of the object type.
     fn consider_object_bound_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
@@ -182,96 +184,113 @@ pub(super) trait GoalKind<'tcx>:
         impl_def_id: DefId,
     ) -> QueryResult<'tcx>;
 
-    // A type implements an `auto trait` if its components do as well. These components
-    // are given by built-in rules from [`instantiate_constituent_tys_for_auto_trait`].
+    /// If the predicate contained an error, we want to avoid emitting unnecessary trait
+    /// errors but still want to emit errors for other trait goals. We have some special
+    /// handling for this case.
+    ///
+    /// Trait goals always hold while projection goals never do. This is a bit arbitrary
+    /// but prevents incorrect normalization while hiding any trait errors.
+    fn consider_error_guaranteed_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        guar: ErrorGuaranteed,
+    ) -> QueryResult<'tcx>;
+
+    /// A type implements an `auto trait` if its components do as well.
+    ///
+    /// These components are given by built-in rules from
+    /// [`structural_traits::instantiate_constituent_tys_for_auto_trait`].
     fn consider_auto_trait_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
 
-    // A trait alias holds if the RHS traits and `where` clauses hold.
+    /// A trait alias holds if the RHS traits and `where` clauses hold.
     fn consider_trait_alias_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
 
-    // A type is `Copy` or `Clone` if its components are `Sized`. These components
-    // are given by built-in rules from [`instantiate_constituent_tys_for_sized_trait`].
+    /// A type is `Copy` or `Clone` if its components are `Sized`.
+    ///
+    /// These components are given by built-in rules from
+    /// [`structural_traits::instantiate_constituent_tys_for_sized_trait`].
     fn consider_builtin_sized_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
 
-    // A type is `Copy` or `Clone` if its components are `Copy` or `Clone`. These
-    // components are given by built-in rules from [`instantiate_constituent_tys_for_copy_clone_trait`].
+    /// A type is `Copy` or `Clone` if its components are `Copy` or `Clone`.
+    ///
+    /// These components are given by built-in rules from
+    /// [`structural_traits::instantiate_constituent_tys_for_copy_clone_trait`].
     fn consider_builtin_copy_clone_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
 
-    // A type is `PointerLike` if we can compute its layout, and that layout
-    // matches the layout of `usize`.
+    /// A type is `PointerLike` if we can compute its layout, and that layout
+    /// matches the layout of `usize`.
     fn consider_builtin_pointer_like_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
 
-    // A type is a `FnPtr` if it is of `FnPtr` type.
+    /// A type is a `FnPtr` if it is of `FnPtr` type.
     fn consider_builtin_fn_ptr_trait_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
 
-    // A callable type (a closure, fn def, or fn ptr) is known to implement the `Fn<A>`
-    // family of traits where `A` is given by the signature of the type.
+    /// A callable type (a closure, fn def, or fn ptr) is known to implement the `Fn<A>`
+    /// family of traits where `A` is given by the signature of the type.
     fn consider_builtin_fn_trait_candidates(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
         kind: ty::ClosureKind,
     ) -> QueryResult<'tcx>;
 
-    // `Tuple` is implemented if the `Self` type is a tuple.
+    /// `Tuple` is implemented if the `Self` type is a tuple.
     fn consider_builtin_tuple_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
 
-    // `Pointee` is always implemented.
-    //
-    // See the projection implementation for the `Metadata` types for all of
-    // the built-in types. For structs, the metadata type is given by the struct
-    // tail.
+    /// `Pointee` is always implemented.
+    ///
+    /// See the projection implementation for the `Metadata` types for all of
+    /// the built-in types. For structs, the metadata type is given by the struct
+    /// tail.
     fn consider_builtin_pointee_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
 
-    // A generator (that comes from an `async` desugaring) is known to implement
-    // `Future<Output = O>`, where `O` is given by the generator's return type
-    // that was computed during type-checking.
+    /// A generator (that comes from an `async` desugaring) is known to implement
+    /// `Future<Output = O>`, where `O` is given by the generator's return type
+    /// that was computed during type-checking.
     fn consider_builtin_future_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
 
-    // A generator (that doesn't come from an `async` desugaring) is known to
-    // implement `Generator<R, Yield = Y, Return = O>`, given the resume, yield,
-    // and return types of the generator computed during type-checking.
+    /// A generator (that doesn't come from an `async` desugaring) is known to
+    /// implement `Generator<R, Yield = Y, Return = O>`, given the resume, yield,
+    /// and return types of the generator computed during type-checking.
     fn consider_builtin_generator_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
 
-    // The most common forms of unsizing are array to slice, and concrete (Sized)
-    // type into a `dyn Trait`. ADTs and Tuples can also have their final field
-    // unsized if it's generic.
+    /// The most common forms of unsizing are array to slice, and concrete (Sized)
+    /// type into a `dyn Trait`. ADTs and Tuples can also have their final field
+    /// unsized if it's generic.
     fn consider_builtin_unsize_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
 
-    // `dyn Trait1` can be unsized to `dyn Trait2` if they are the same trait, or
-    // if `Trait2` is a (transitive) supertrait of `Trait2`.
+    /// `dyn Trait1` can be unsized to `dyn Trait2` if they are the same trait, or
+    /// if `Trait2` is a (transitive) supertrait of `Trait2`.
     fn consider_builtin_dyn_upcast_candidates(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
@@ -299,34 +318,65 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         goal: Goal<'tcx, G>,
     ) -> Vec<Candidate<'tcx>> {
         debug_assert_eq!(goal, self.resolve_vars_if_possible(goal));
+        if let Some(ambig) = self.assemble_self_ty_infer_ambiguity_response(goal) {
+            return ambig;
+        }
 
-        // HACK: `_: Trait` is ambiguous, because it may be satisfied via a builtin rule,
-        // object bound, alias bound, etc. We are unable to determine this until we can at
-        // least structurally resolve the type one layer.
-        if goal.predicate.self_ty().is_ty_var() {
-            return vec![Candidate {
+        let mut candidates = self.assemble_candidates_via_self_ty(goal);
+
+        self.assemble_blanket_impl_candidates(goal, &mut candidates);
+
+        self.assemble_param_env_candidates(goal, &mut candidates);
+
+        candidates
+    }
+
+    /// `?0: Trait` is ambiguous, because it may be satisfied via a builtin rule,
+    /// object bound, alias bound, etc. We are unable to determine this until we can at
+    /// least structurally resolve the type one layer.
+    ///
+    /// It would also require us to consider all impls of the trait, which is both pretty
+    /// bad for perf and would also constrain the self type if there is just a single impl.
+    fn assemble_self_ty_infer_ambiguity_response<G: GoalKind<'tcx>>(
+        &mut self,
+        goal: Goal<'tcx, G>,
+    ) -> Option<Vec<Candidate<'tcx>>> {
+        goal.predicate.self_ty().is_ty_var().then(|| {
+            vec![Candidate {
                 source: CandidateSource::BuiltinImpl(BuiltinImplSource::Ambiguity),
                 result: self
                     .evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
                     .unwrap(),
-            }];
+            }]
+        })
+    }
+
+    /// Assemble candidates which apply to the self type. This only looks at candidate which
+    /// apply to the specific self type and ignores all others.
+    ///
+    /// Returns `None` if the self type is still ambiguous.
+    fn assemble_candidates_via_self_ty<G: GoalKind<'tcx>>(
+        &mut self,
+        goal: Goal<'tcx, G>,
+    ) -> Vec<Candidate<'tcx>> {
+        debug_assert_eq!(goal, self.resolve_vars_if_possible(goal));
+        if let Some(ambig) = self.assemble_self_ty_infer_ambiguity_response(goal) {
+            return ambig;
         }
 
         let mut candidates = Vec::new();
 
-        self.assemble_candidates_after_normalizing_self_ty(goal, &mut candidates);
-
-        self.assemble_impl_candidates(goal, &mut candidates);
+        self.assemble_non_blanket_impl_candidates(goal, &mut candidates);
 
         self.assemble_builtin_impl_candidates(goal, &mut candidates);
-
-        self.assemble_param_env_candidates(goal, &mut candidates);
 
         self.assemble_alias_bound_candidates(goal, &mut candidates);
 
         self.assemble_object_bound_candidates(goal, &mut candidates);
 
         self.assemble_coherence_unknowable_candidates(goal, &mut candidates);
+
+        self.assemble_candidates_after_normalizing_self_ty(goal, &mut candidates);
 
         candidates
     }
@@ -385,7 +435,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                         // have a `Normalized` candidate. This doesn't work as long as we
                         // use `CandidateSource` in winnowing.
                         let goal = goal.with(tcx, goal.predicate.with_self_ty(tcx, normalized_ty));
-                        Ok(ecx.assemble_and_evaluate_candidates(goal))
+                        Ok(ecx.assemble_candidates_via_self_ty(goal))
                     },
                 )
             });
@@ -396,22 +446,125 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     }
 
     #[instrument(level = "debug", skip_all)]
-    fn assemble_impl_candidates<G: GoalKind<'tcx>>(
+    fn assemble_non_blanket_impl_candidates<G: GoalKind<'tcx>>(
         &mut self,
         goal: Goal<'tcx, G>,
         candidates: &mut Vec<Candidate<'tcx>>,
     ) {
         let tcx = self.tcx();
-        tcx.for_each_relevant_impl_treating_projections(
-            goal.predicate.trait_def_id(tcx),
-            goal.predicate.self_ty(),
-            TreatProjections::NextSolverLookup,
-            |impl_def_id| match G::consider_impl_candidate(self, goal, impl_def_id) {
+        let self_ty = goal.predicate.self_ty();
+        let trait_impls = tcx.trait_impls_of(goal.predicate.trait_def_id(tcx));
+        let mut consider_impls_for_simplified_type = |simp| {
+            if let Some(impls_for_type) = trait_impls.non_blanket_impls().get(&simp) {
+                for &impl_def_id in impls_for_type {
+                    match G::consider_impl_candidate(self, goal, impl_def_id) {
+                        Ok(result) => candidates
+                            .push(Candidate { source: CandidateSource::Impl(impl_def_id), result }),
+                        Err(NoSolution) => (),
+                    }
+                }
+            }
+        };
+
+        match self_ty.kind() {
+            ty::Bool
+            | ty::Char
+            | ty::Int(_)
+            | ty::Uint(_)
+            | ty::Float(_)
+            | ty::Adt(_, _)
+            | ty::Foreign(_)
+            | ty::Str
+            | ty::Array(_, _)
+            | ty::Slice(_)
+            | ty::RawPtr(_)
+            | ty::Ref(_, _, _)
+            | ty::FnDef(_, _)
+            | ty::FnPtr(_)
+            | ty::Dynamic(_, _, _)
+            | ty::Closure(_, _)
+            | ty::Generator(_, _, _)
+            | ty::Never
+            | ty::Tuple(_) => {
+                let simp =
+                    fast_reject::simplify_type(tcx, self_ty, TreatParams::ForLookup).unwrap();
+                consider_impls_for_simplified_type(simp);
+            }
+
+            // HACK: For integer and float variables we have to manually look at all impls
+            // which have some integer or float as a self type.
+            ty::Infer(ty::IntVar(_)) => {
+                use ty::IntTy::*;
+                use ty::UintTy::*;
+                // This causes a compiler error if any new integer kinds are added.
+                let (I8 | I16 | I32 | I64 | I128 | Isize): ty::IntTy;
+                let (U8 | U16 | U32 | U64 | U128 | Usize): ty::UintTy;
+                let possible_integers = [
+                    // signed integers
+                    SimplifiedType::Int(I8),
+                    SimplifiedType::Int(I16),
+                    SimplifiedType::Int(I32),
+                    SimplifiedType::Int(I64),
+                    SimplifiedType::Int(I128),
+                    SimplifiedType::Int(Isize),
+                    // unsigned integers
+                    SimplifiedType::Uint(U8),
+                    SimplifiedType::Uint(U16),
+                    SimplifiedType::Uint(U32),
+                    SimplifiedType::Uint(U64),
+                    SimplifiedType::Uint(U128),
+                    SimplifiedType::Uint(Usize),
+                ];
+                for simp in possible_integers {
+                    consider_impls_for_simplified_type(simp);
+                }
+            }
+
+            ty::Infer(ty::FloatVar(_)) => {
+                // This causes a compiler error if any new float kinds are added.
+                let (ty::FloatTy::F32 | ty::FloatTy::F64);
+                let possible_floats = [
+                    SimplifiedType::Float(ty::FloatTy::F32),
+                    SimplifiedType::Float(ty::FloatTy::F64),
+                ];
+
+                for simp in possible_floats {
+                    consider_impls_for_simplified_type(simp);
+                }
+            }
+
+            // The only traits applying to aliases and placeholders are blanket impls.
+            //
+            // Impls which apply to an alias after normalization are handled by
+            // `assemble_candidates_after_normalizing_self_ty`.
+            ty::Alias(_, _) | ty::Placeholder(..) | ty::Error(_) => (),
+
+            // FIXME: These should ideally not exist as a self type. It would be nice for
+            // the builtin auto trait impls of generators should instead directly recurse
+            // into the witness.
+            ty::GeneratorWitness(_) | ty::GeneratorWitnessMIR(_, _) => (),
+
+            // These variants should not exist as a self type.
+            ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_))
+            | ty::Param(_)
+            | ty::Bound(_, _) => bug!("unexpected self type: {self_ty}"),
+        }
+    }
+
+    fn assemble_blanket_impl_candidates<G: GoalKind<'tcx>>(
+        &mut self,
+        goal: Goal<'tcx, G>,
+        candidates: &mut Vec<Candidate<'tcx>>,
+    ) {
+        let tcx = self.tcx();
+        let trait_impls = tcx.trait_impls_of(goal.predicate.trait_def_id(tcx));
+        for &impl_def_id in trait_impls.blanket_impls() {
+            match G::consider_impl_candidate(self, goal, impl_def_id) {
                 Ok(result) => candidates
                     .push(Candidate { source: CandidateSource::Impl(impl_def_id), result }),
                 Err(NoSolution) => (),
-            },
-        );
+            }
+        }
     }
 
     #[instrument(level = "debug", skip_all)]
@@ -420,8 +573,9 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         goal: Goal<'tcx, G>,
         candidates: &mut Vec<Candidate<'tcx>>,
     ) {
-        let lang_items = self.tcx().lang_items();
-        let trait_def_id = goal.predicate.trait_def_id(self.tcx());
+        let tcx = self.tcx();
+        let lang_items = tcx.lang_items();
+        let trait_def_id = goal.predicate.trait_def_id(tcx);
 
         // N.B. When assembling built-in candidates for lang items that are also
         // `auto` traits, then the auto trait candidate that is assembled in
@@ -430,9 +584,11 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         // Instead of adding the logic here, it's a better idea to add it in
         // `EvalCtxt::disqualify_auto_trait_candidate_due_to_possible_impl` in
         // `solve::trait_goals` instead.
-        let result = if self.tcx().trait_is_auto(trait_def_id) {
+        let result = if let Err(guar) = goal.predicate.error_reported() {
+            G::consider_error_guaranteed_candidate(self, guar)
+        } else if tcx.trait_is_auto(trait_def_id) {
             G::consider_auto_trait_candidate(self, goal)
-        } else if self.tcx().trait_is_alias(trait_def_id) {
+        } else if tcx.trait_is_alias(trait_def_id) {
             G::consider_trait_alias_candidate(self, goal)
         } else if lang_items.sized_trait() == Some(trait_def_id) {
             G::consider_builtin_sized_candidate(self, goal)

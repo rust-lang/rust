@@ -42,7 +42,7 @@ fn inclusive_loop(_1: u32, _2: u32, _3: impl Fn(u32)) -> () {
         StorageLive(_7);
         StorageLive(_6);
         _6 = &mut _5;
-        _7 = <RangeInclusive<u32> as iter::range::RangeInclusiveIteratorImpl>::spec_next(_6) -> [return: bb2, unwind unreachable];
+        _7 = <RangeInclusive<u32> as iter::range::RangeInclusiveIteratorImpl>::spec_next(move _6) -> [return: bb2, unwind unreachable];
     }
 
     bb2: {

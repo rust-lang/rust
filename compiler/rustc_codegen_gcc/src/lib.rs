@@ -239,6 +239,10 @@ impl WriteBackendMethods for GccCodegenBackend {
         unimplemented!();
     }
 
+    fn print_statistics(&self) {
+        unimplemented!()
+    }
+
     unsafe fn optimize(_cgcx: &CodegenContext<Self>, _diag_handler: &Handler, module: &ModuleCodegen<Self::Module>, config: &ModuleConfig) -> Result<(), FatalError> {
         module.module_llvm.context.set_optimization_level(to_gcc_opt_level(config.opt_level));
         Ok(())

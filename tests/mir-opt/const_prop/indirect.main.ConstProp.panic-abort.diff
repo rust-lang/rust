@@ -18,7 +18,7 @@
 -         assert(!move (_3.1: bool), "attempt to compute `{} + {}`, which would overflow", move _2, const 1_u8) -> [success: bb1, unwind unreachable];
 +         _2 = const 2_u8;
 +         _3 = const (3_u8, false);
-+         assert(!const false, "attempt to compute `{} + {}`, which would overflow", move _2, const 1_u8) -> [success: bb1, unwind unreachable];
++         assert(!const false, "attempt to compute `{} + {}`, which would overflow", const 2_u8, const 1_u8) -> [success: bb1, unwind unreachable];
       }
   
       bb1: {

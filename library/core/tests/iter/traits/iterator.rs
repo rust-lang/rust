@@ -1,3 +1,4 @@
+use core::cmp::Ordering;
 use core::num::NonZeroUsize;
 
 /// A wrapper struct that implements `Eq` and `Ord` based on the wrapped
@@ -371,11 +372,39 @@ fn test_by_ref() {
 
 #[test]
 fn test_is_sorted() {
+    // Tests on integers
     assert!([1, 2, 2, 9].iter().is_sorted());
     assert!(![1, 3, 2].iter().is_sorted());
     assert!([0].iter().is_sorted());
-    assert!(std::iter::empty::<i32>().is_sorted());
+    assert!([0, 0].iter().is_sorted());
+    assert!(core::iter::empty::<i32>().is_sorted());
+
+    // Tests on floats
+    assert!([1.0f32, 2.0, 2.0, 9.0].iter().is_sorted());
+    assert!(![1.0f32, 3.0f32, 2.0f32].iter().is_sorted());
+    assert!([0.0f32].iter().is_sorted());
+    assert!([0.0f32, 0.0f32].iter().is_sorted());
+    // Test cases with NaNs
+    assert!([f32::NAN].iter().is_sorted());
+    assert!(![f32::NAN, f32::NAN].iter().is_sorted());
     assert!(![0.0, 1.0, f32::NAN].iter().is_sorted());
+    // Tests from <https://github.com/rust-lang/rust/pull/55045#discussion_r229689884>
+    assert!(![f32::NAN, f32::NAN, f32::NAN].iter().is_sorted());
+    assert!(![1.0, f32::NAN, 2.0].iter().is_sorted());
+    assert!(![2.0, f32::NAN, 1.0].iter().is_sorted());
+    assert!(![2.0, f32::NAN, 1.0, 7.0].iter().is_sorted());
+    assert!(![2.0, f32::NAN, 1.0, 0.0].iter().is_sorted());
+    assert!(![-f32::NAN, -1.0, 0.0, 1.0, f32::NAN].iter().is_sorted());
+    assert!(![f32::NAN, -f32::NAN, -1.0, 0.0, 1.0].iter().is_sorted());
+    assert!(![1.0, f32::NAN, -f32::NAN, -1.0, 0.0].iter().is_sorted());
+    assert!(![0.0, 1.0, f32::NAN, -f32::NAN, -1.0].iter().is_sorted());
+    assert!(![-1.0, 0.0, 1.0, f32::NAN, -f32::NAN].iter().is_sorted());
+
+    // Tests for is_sorted_by
+    assert!(![6, 2, 8, 5, 1, -60, 1337].iter().is_sorted());
+    assert!([6, 2, 8, 5, 1, -60, 1337].iter().is_sorted_by(|_, _| Some(Ordering::Less)));
+
+    // Tests for is_sorted_by_key
     assert!([-2, -1, 0, 3].iter().is_sorted());
     assert!(![-2i32, -1, 0, 3].iter().is_sorted_by_key(|n| n.abs()));
     assert!(!["c", "bb", "aaa"].iter().is_sorted());

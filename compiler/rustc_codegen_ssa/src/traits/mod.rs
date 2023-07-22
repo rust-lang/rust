@@ -30,7 +30,9 @@ mod write;
 
 pub use self::abi::AbiBuilderMethods;
 pub use self::asm::{AsmBuilderMethods, AsmMethods, GlobalAsmOperandRef, InlineAsmOperandRef};
-pub use self::backend::{Backend, BackendTypes, CodegenBackend, ExtraBackendMethods};
+pub use self::backend::{
+    Backend, BackendTypes, CodegenBackend, ExtraBackendMethods, PrintBackendInfo,
+};
 pub use self::builder::{BuilderMethods, OverflowOp};
 pub use self::consts::ConstMethods;
 pub use self::coverageinfo::CoverageInfoBuilderMethods;

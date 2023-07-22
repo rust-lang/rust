@@ -1,7 +1,6 @@
 use rustc_hir::def::DefKind;
 use rustc_hir::{LangItem, CRATE_HIR_ID};
 use rustc_middle::mir;
-use rustc_middle::mir::interpret::PointerArithmetic;
 use rustc_middle::ty::layout::{FnAbiOf, TyAndLayout};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::lint::builtin::INVALID_ALIGNMENT;
@@ -17,7 +16,7 @@ use rustc_ast::Mutability;
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::AssertMessage;
 use rustc_span::symbol::{sym, Symbol};
-use rustc_target::abi::{Align, Size};
+use rustc_target::abi::{Align, HasDataLayout as _, Size};
 use rustc_target::spec::abi::Abi as CallAbi;
 
 use crate::errors::{LongRunning, LongRunningWarn};
@@ -304,8 +303,8 @@ impl<'mir, 'tcx: 'mir> CompileTimeEvalContext<'mir, 'tcx> {
                     Ok(ControlFlow::Break(()))
                 } else {
                     // Not alignable in const, return `usize::MAX`.
-                    let usize_max = Scalar::from_target_usize(self.target_usize_max(), self);
-                    self.write_scalar(usize_max, dest)?;
+                    let usize_max = self.data_layout().target_usize_max();
+                    self.write_scalar(Scalar::from_target_usize(usize_max, self), dest)?;
                     self.return_to_block(ret)?;
                     Ok(ControlFlow::Break(()))
                 }
@@ -333,7 +332,7 @@ impl<'mir, 'tcx: 'mir> CompileTimeEvalContext<'mir, 'tcx> {
             // Inequality with integers other than null can never be known for sure.
             (Scalar::Int(int), ptr @ Scalar::Ptr(..))
             | (ptr @ Scalar::Ptr(..), Scalar::Int(int))
-                if int.is_null() && !self.scalar_may_be_null(ptr)? =>
+                if int.is_null() && !self.ptr_scalar_range(ptr)?.contains(&0) =>
             {
                 0
             }

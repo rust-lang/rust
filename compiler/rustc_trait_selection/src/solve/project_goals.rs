@@ -2,7 +2,6 @@ use crate::traits::specialization_graph;
 
 use super::assembly::{self, structural_traits};
 use super::EvalCtxt;
-use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::LangItem;
@@ -15,7 +14,7 @@ use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::ProjectionPredicate;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{ToPredicate, TypeVisitableExt};
-use rustc_span::{sym, DUMMY_SP};
+use rustc_span::{sym, ErrorGuaranteed, DUMMY_SP};
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {
     #[instrument(level = "debug", skip(self), ret)]
@@ -244,6 +243,15 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                 .expect("expected goal term to be fully unconstrained");
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
+    }
+
+    /// Fail to normalize if the predicate contains an error, alternatively, we could normalize to `ty::Error`
+    /// and succeed. Can experiment with this to figure out what results in better error messages.
+    fn consider_error_guaranteed_candidate(
+        _ecx: &mut EvalCtxt<'_, 'tcx>,
+        _guar: ErrorGuaranteed,
+    ) -> QueryResult<'tcx> {
+        Err(NoSolution)
     }
 
     fn consider_auto_trait_candidate(

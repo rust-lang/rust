@@ -93,7 +93,7 @@
 #![feature(const_option)]
 #![feature(const_option_ext)]
 #![feature(const_result)]
-#![feature(integer_atomics)]
+#![cfg_attr(target_has_atomic = "128", feature(integer_atomics))]
 #![feature(int_roundings)]
 #![feature(slice_group_by)]
 #![feature(split_array)]

@@ -898,6 +898,10 @@ rustc_queries! {
         desc { |tcx| "linting {}", describe_as_module(key, tcx) }
     }
 
+    query check_unused_traits(_: ()) -> () {
+        desc { "checking unused trait imports in crate" }
+    }
+
     /// Checks the attributes in the module.
     query check_mod_attrs(key: LocalDefId) -> () {
         desc { |tcx| "checking attributes in {}", describe_as_module(key, tcx) }
@@ -1390,6 +1394,18 @@ rustc_queries! {
         desc { "computing layout of `{}`", key.value }
     }
 
+    /// Computes the naive layout approximation of a type. Note that this implicitly
+    /// executes in "reveal all" mode, and will normalize the input type.
+    ///
+    /// Unlike `layout_of`, this doesn't look past references (beyond the `Pointee::Metadata`
+    /// projection), and as such can be called on generic types like `Option<&T>`.
+    query naive_layout_of(
+        key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>
+    ) -> Result<ty::layout::TyAndNaiveLayout<'tcx>, &'tcx ty::layout::LayoutError<'tcx>> {
+        depth_limit
+        desc { "computing layout (naive) of `{}`", key.value }
+    }
+
     /// Compute a `FnAbi` suitable for indirect calls, i.e. to `fn` pointers.
     ///
     /// NB: this doesn't handle virtual calls - those should use `fn_abi_of_instance`
@@ -1463,6 +1479,11 @@ rustc_queries! {
     query panic_in_drop_strategy(_: CrateNum) -> PanicStrategy {
         fatal_cycle
         desc { "getting a crate's configured panic-in-drop strategy" }
+        separate_provide_extern
+    }
+    query reference_niches_policy(_: CrateNum) -> abi::ReferenceNichePolicy {
+        fatal_cycle
+        desc { "getting a crate's policy for size and alignment niches of references" }
         separate_provide_extern
     }
     query is_no_builtins(_: CrateNum) -> bool {

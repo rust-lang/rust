@@ -617,7 +617,6 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
             MutableRefInConst => const_eval_mutable_ref_in_const,
             NullFnPtr => const_eval_null_fn_ptr,
             NeverVal => const_eval_never_val,
-            NullablePtrOutOfRange { .. } => const_eval_nullable_ptr_out_of_range,
             PtrOutOfRange { .. } => const_eval_ptr_out_of_range,
             OutOfRange { .. } => const_eval_out_of_range,
             UnsafeCell => const_eval_unsafe_cell,
@@ -732,9 +731,7 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
             | InvalidFnPtr { value } => {
                 err.set_arg("value", value);
             }
-            NullablePtrOutOfRange { range, max_value } | PtrOutOfRange { range, max_value } => {
-                add_range_arg(range, max_value, handler, err)
-            }
+            PtrOutOfRange { range, max_value } => add_range_arg(range, max_value, handler, err),
             OutOfRange { range, max_value, value } => {
                 err.set_arg("value", value);
                 add_range_arg(range, max_value, handler, err);

@@ -3,7 +3,7 @@ use rustc_hir as hir;
 use rustc_index::bit_set::BitSet;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::{GeneratorLayout, GeneratorSavedLocal};
-use rustc_middle::query::Providers;
+use rustc_middle::query::{LocalCrate, Providers};
 use rustc_middle::ty::layout::{
     IntegerExt, LayoutCx, LayoutError, LayoutOf, TyAndLayout, MAX_SIMD_LANES,
 };
@@ -24,32 +24,28 @@ use crate::errors::{
 use crate::layout_sanity_check::sanity_check_layout;
 
 pub fn provide(providers: &mut Providers) {
-    *providers = Providers { layout_of, ..*providers };
+    *providers = Providers { layout_of, reference_niches_policy, ..*providers };
 }
+
+#[instrument(skip(tcx), level = "debug")]
+fn reference_niches_policy<'tcx>(tcx: TyCtxt<'tcx>, _: LocalCrate) -> ReferenceNichePolicy {
+    tcx.sess.opts.unstable_opts.reference_niches.unwrap_or(DEFAULT_REF_NICHES)
+}
+
+/// The reference niche policy for builtin types, and for types in
+/// crates not specifying `-Z reference-niches`.
+const DEFAULT_REF_NICHES: ReferenceNichePolicy = ReferenceNichePolicy { size: false, align: false };
 
 #[instrument(skip(tcx, query), level = "debug")]
 fn layout_of<'tcx>(
     tcx: TyCtxt<'tcx>,
     query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
 ) -> Result<TyAndLayout<'tcx>, &'tcx LayoutError<'tcx>> {
-    let (param_env, ty) = query.into_parts();
-    debug!(?ty);
-
+    let (param_env, unnormalized_ty) = query.into_parts();
     let param_env = param_env.with_reveal_all_normalized(tcx);
-    let unnormalized_ty = ty;
-
-    // FIXME: We might want to have two different versions of `layout_of`:
-    // One that can be called after typecheck has completed and can use
-    // `normalize_erasing_regions` here and another one that can be called
-    // before typecheck has completed and uses `try_normalize_erasing_regions`.
-    let ty = match tcx.try_normalize_erasing_regions(param_env, ty) {
-        Ok(t) => t,
-        Err(normalization_error) => {
-            return Err(tcx
-                .arena
-                .alloc(LayoutError::NormalizationFailure(ty, normalization_error)));
-        }
-    };
+    // `naive_layout_of` takes care of normalizing the type.
+    let naive = tcx.naive_layout_of(query)?;
+    let ty = naive.ty;
 
     if ty != unnormalized_ty {
         // Ensure this layout is also cached for the normalized type.
@@ -57,13 +53,11 @@ fn layout_of<'tcx>(
     }
 
     let cx = LayoutCx { tcx, param_env };
-
     let layout = layout_of_uncached(&cx, ty)?;
+
     let layout = TyAndLayout { ty, layout };
-
     record_layout_for_printing(&cx, layout);
-
-    sanity_check_layout(&cx, &layout);
+    sanity_check_layout(&cx, &layout, &naive);
 
     Ok(layout)
 }
@@ -83,12 +77,10 @@ fn univariant_uninterned<'tcx>(
     kind: StructKind,
 ) -> Result<LayoutS, &'tcx LayoutError<'tcx>> {
     let dl = cx.data_layout();
-    let pack = repr.pack;
-    if pack.is_some() && repr.align.is_some() {
-        cx.tcx.sess.delay_span_bug(DUMMY_SP, "struct cannot be packed and aligned");
-        return Err(cx.tcx.arena.alloc(LayoutError::Unknown(ty)));
-    }
-
+    assert!(
+        !(repr.pack.is_some() && repr.align.is_some()),
+        "already rejected by `naive_layout_of`"
+    );
     cx.univariant(dl, fields, repr, kind).ok_or_else(|| error(cx, LayoutError::SizeOverflow(ty)))
 }
 
@@ -146,75 +138,35 @@ fn layout_of_uncached<'tcx>(
         ty::Ref(_, pointee, _) | ty::RawPtr(ty::TypeAndMut { ty: pointee, .. }) => {
             let mut data_ptr = scalar_unit(Pointer(AddressSpace::DATA));
             if !ty.is_unsafe_ptr() {
-                data_ptr.valid_range_mut().start = 1;
-            }
+                // Calling `layout_of` here would cause a query cycle for recursive types;
+                // so use a conservative estimate that doesn't look past references.
+                let naive = cx.naive_layout_of(pointee)?.layout;
 
-            let pointee = tcx.normalize_erasing_regions(param_env, pointee);
-            if pointee.is_sized(tcx, param_env) {
-                return Ok(tcx.mk_layout(LayoutS::scalar(cx, data_ptr)));
-            }
-
-            let metadata = if let Some(metadata_def_id) = tcx.lang_items().metadata_type()
-                // Projection eagerly bails out when the pointee references errors,
-                // fall back to structurally deducing metadata.
-                && !pointee.references_error()
-            {
-                let pointee_metadata = Ty::new_projection(tcx,metadata_def_id, [pointee]);
-                let metadata_ty = match tcx.try_normalize_erasing_regions(
-                    param_env,
-                    pointee_metadata,
-                ) {
-                    Ok(metadata_ty) => metadata_ty,
-                    Err(mut err) => {
-                        // Usually `<Ty as Pointee>::Metadata` can't be normalized because
-                        // its struct tail cannot be normalized either, so try to get a
-                        // more descriptive layout error here, which will lead to less confusing
-                        // diagnostics.
-                        match tcx.try_normalize_erasing_regions(
-                            param_env,
-                            tcx.struct_tail_without_normalization(pointee),
-                        ) {
-                            Ok(_) => {},
-                            Err(better_err) => {
-                                err = better_err;
-                            }
-                        }
-                        return Err(error(cx, LayoutError::NormalizationFailure(pointee, err)));
-                    },
+                let niches = match *pointee.kind() {
+                    ty::FnDef(def, ..)
+                    | ty::Foreign(def)
+                    | ty::Generator(def, ..)
+                    | ty::Closure(def, ..) => tcx.reference_niches_policy(def.krate),
+                    ty::Adt(def, _) => tcx.reference_niches_policy(def.did().krate),
+                    _ => DEFAULT_REF_NICHES,
                 };
 
-                let metadata_layout = cx.layout_of(metadata_ty)?;
-                // If the metadata is a 1-zst, then the pointer is thin.
-                if metadata_layout.is_zst() && metadata_layout.align.abi.bytes() == 1 {
-                    return Ok(tcx.mk_layout(LayoutS::scalar(cx, data_ptr)));
-                }
+                let (min_addr, max_addr) = dl.address_range_for(
+                    if niches.size { naive.size } else { Size::ZERO },
+                    if niches.align { naive.align } else { Align::ONE },
+                );
 
-                let Abi::Scalar(metadata) = metadata_layout.abi else {
-                    return Err(error(cx, LayoutError::Unknown(pointee)));
-                };
+                *data_ptr.valid_range_mut() =
+                    WrappingRange { start: min_addr.into(), end: max_addr.into() };
+            }
 
-                metadata
+            if let Some(metadata) = ptr_metadata_scalar(cx, pointee)? {
+                // Effectively a (ptr, meta) tuple.
+                tcx.mk_layout(cx.scalar_pair(data_ptr, metadata))
             } else {
-                let unsized_part = tcx.struct_tail_erasing_lifetimes(pointee, param_env);
-
-                match unsized_part.kind() {
-                    ty::Foreign(..) => {
-                        return Ok(tcx.mk_layout(LayoutS::scalar(cx, data_ptr)));
-                    }
-                    ty::Slice(_) | ty::Str => scalar_unit(Int(dl.ptr_sized_integer(), false)),
-                    ty::Dynamic(..) => {
-                        let mut vtable = scalar_unit(Pointer(AddressSpace::DATA));
-                        vtable.valid_range_mut().start = 1;
-                        vtable
-                    }
-                    _ => {
-                        return Err(error(cx, LayoutError::Unknown(pointee)));
-                    }
-                }
-            };
-
-            // Effectively a (ptr, meta) tuple.
-            tcx.mk_layout(cx.scalar_pair(data_ptr, metadata))
+                // No metadata, this is a thin pointer.
+                tcx.mk_layout(LayoutS::scalar(cx, data_ptr))
+            }
         }
 
         ty::Dynamic(_, _, ty::DynStar) => {
@@ -226,16 +178,8 @@ fn layout_of_uncached<'tcx>(
         }
 
         // Arrays and slices.
-        ty::Array(element, mut count) => {
-            if count.has_projections() {
-                count = tcx.normalize_erasing_regions(param_env, count);
-                if count.has_projections() {
-                    return Err(error(cx, LayoutError::Unknown(ty)));
-                }
-            }
-
-            let count = count
-                .try_eval_target_usize(tcx, param_env)
+        ty::Array(element, count) => {
+            let count = compute_array_count(cx, count)
                 .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
             let element = cx.layout_of(element)?;
             let size = element
@@ -558,20 +502,104 @@ fn layout_of_uncached<'tcx>(
         }
 
         // Types with no meaningful known layout.
-        ty::Alias(..) => {
-            // NOTE(eddyb) `layout_of` query should've normalized these away,
-            // if that was possible, so there's no reason to try again here.
-            return Err(error(cx, LayoutError::Unknown(ty)));
-        }
-
-        ty::Bound(..) | ty::GeneratorWitness(..) | ty::GeneratorWitnessMIR(..) | ty::Infer(_) => {
-            bug!("Layout::compute: unexpected type `{}`", ty)
-        }
-
-        ty::Placeholder(..) | ty::Param(_) | ty::Error(_) => {
-            return Err(error(cx, LayoutError::Unknown(ty)));
+        ty::Alias(..)
+        | ty::Bound(..)
+        | ty::GeneratorWitness(..)
+        | ty::GeneratorWitnessMIR(..)
+        | ty::Infer(_)
+        | ty::Placeholder(..)
+        | ty::Param(_)
+        | ty::Error(_) => {
+            unreachable!("already rejected by `naive_layout_of`");
         }
     })
+}
+
+pub(crate) fn compute_array_count<'tcx>(
+    cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
+    mut count: ty::Const<'tcx>,
+) -> Option<u64> {
+    let LayoutCx { tcx, param_env } = *cx;
+    if count.has_projections() {
+        count = tcx.normalize_erasing_regions(param_env, count);
+        if count.has_projections() {
+            return None;
+        }
+    }
+
+    count.try_eval_target_usize(tcx, param_env)
+}
+
+pub(crate) fn ptr_metadata_scalar<'tcx>(
+    cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
+    pointee: Ty<'tcx>,
+) -> Result<Option<Scalar>, &'tcx LayoutError<'tcx>> {
+    let dl = cx.data_layout();
+    let scalar_unit = |value: Primitive| {
+        let size = value.size(dl);
+        assert!(size.bits() <= 128);
+        Scalar::Initialized { value, valid_range: WrappingRange::full(size) }
+    };
+
+    let LayoutCx { tcx, param_env } = *cx;
+
+    let pointee = tcx.normalize_erasing_regions(param_env, pointee);
+    if pointee.is_sized(tcx, param_env) {
+        return Ok(None);
+    }
+
+    if let Some(metadata_def_id) = tcx.lang_items().metadata_type()
+        // Projection eagerly bails out when the pointee references errors,
+        // fall back to structurally deducing metadata.
+        && !pointee.references_error()
+    {
+        let pointee_metadata = Ty::new_projection(tcx,metadata_def_id, [pointee]);
+        let metadata_ty = match tcx.try_normalize_erasing_regions(
+            param_env,
+            pointee_metadata,
+        ) {
+            Ok(metadata_ty) => metadata_ty,
+            Err(mut err) => {
+                // Usually `<Ty as Pointee>::Metadata` can't be normalized because
+                // its struct tail cannot be normalized either, so try to get a
+                // more descriptive layout error here, which will lead to less confusing
+                // diagnostics.
+                match tcx.try_normalize_erasing_regions(
+                    param_env,
+                    tcx.struct_tail_without_normalization(pointee),
+                ) {
+                    Ok(_) => {},
+                    Err(better_err) => {
+                        err = better_err;
+                    }
+                }
+                return Err(error(cx, LayoutError::NormalizationFailure(pointee, err)));
+            },
+        };
+
+        let metadata_layout = cx.layout_of(metadata_ty)?;
+
+        if metadata_layout.is_zst() && metadata_layout.align.abi.bytes() == 1 {
+            Ok(None) // If the metadata is a 1-zst, then the pointer is thin.
+        } else if let Abi::Scalar(metadata) = metadata_layout.abi {
+            Ok(Some(metadata))
+        } else {
+            Err(error(cx, LayoutError::Unknown(pointee)))
+        }
+    } else {
+        let unsized_part = tcx.struct_tail_erasing_lifetimes(pointee, param_env);
+
+        match unsized_part.kind() {
+            ty::Foreign(..) => Ok(None),
+            ty::Slice(_) | ty::Str => Ok(Some(scalar_unit(Int(dl.ptr_sized_integer(), false)))),
+            ty::Dynamic(..) => {
+                let mut vtable = scalar_unit(Pointer(AddressSpace::DATA));
+                vtable.valid_range_mut().start = 1;
+                Ok(Some(vtable))
+            }
+            _ => Err(error(cx, LayoutError::Unknown(pointee))),
+        }
+    }
 }
 
 /// Overlap eligibility and variant assignment for each GeneratorSavedLocal.

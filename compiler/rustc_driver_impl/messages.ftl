@@ -19,5 +19,3 @@ driver_impl_rlink_rustc_version_mismatch = .rlink file was produced by rustc ver
 driver_impl_rlink_unable_to_read = failed to read rlink file: `{$err}`
 
 driver_impl_rlink_wrong_file_type = The input does not look like a .rlink file
-
-driver_impl_unpretty_dump_fail = pretty-print failed to write `{$path}` due to error `{$err}`

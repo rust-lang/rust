@@ -776,7 +776,6 @@ table,
 }
 #crate-search {
 	min-width: 115px;
-	/* keep these two in sync with "@-moz-document url-prefix()" below */
 	padding: 0 23px 0 4px;
 	/* prevents the <select> from overflowing the containing div in case it's shrunk */
 	max-width: 100%;
@@ -797,14 +796,6 @@ table,
 }
 #crate-search:hover, #crate-search:focus {
 	border-color: var(--crate-search-hover-border);
-}
-/* cancel stylistic differences in padding in firefox
-for "appearance: none"-style (or equivalent) <select>s */
-@-moz-document url-prefix() {
-	#crate-search {
-		padding-left: 0px; /* == 4px - 4px */
-		padding-right: 19px; /* == 23px - 4px */
-	}
 }
 /* pseudo-element for holding the dropdown-arrow image; needs to be a separate thing
 so that we can apply CSS-filters to change the arrow color in themes */

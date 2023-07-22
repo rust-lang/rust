@@ -568,10 +568,10 @@ fn fast_reject_auto_impl<'tcx>(tcx: TyCtxt<'tcx>, trait_def_id: DefId, self_ty: 
 
     impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for DisableAutoTraitVisitor<'tcx> {
         type BreakTy = ();
-        fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+        fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
             let tcx = self.tcx;
-            if t != self.self_ty_root {
-                for impl_def_id in tcx.non_blanket_impls_for_ty(self.trait_def_id, t) {
+            if ty != self.self_ty_root {
+                for impl_def_id in tcx.non_blanket_impls_for_ty(self.trait_def_id, ty) {
                     match tcx.impl_polarity(impl_def_id) {
                         ImplPolarity::Negative => return ControlFlow::Break(()),
                         ImplPolarity::Reservation => {}
@@ -584,7 +584,7 @@ fn fast_reject_auto_impl<'tcx>(tcx: TyCtxt<'tcx>, trait_def_id: DefId, self_ty: 
                 }
             }
 
-            match t.kind() {
+            match ty.kind() {
                 ty::Adt(def, args) if def.is_phantom_data() => args.visit_with(self),
                 ty::Adt(def, args) => {
                     // @lcnr: This is the only place where cycles can happen. We avoid this
@@ -599,7 +599,7 @@ fn fast_reject_auto_impl<'tcx>(tcx: TyCtxt<'tcx>, trait_def_id: DefId, self_ty: 
 
                     ControlFlow::Continue(())
                 }
-                _ => t.super_visit_with(self),
+                _ => ty.super_visit_with(self),
             }
         }
     }

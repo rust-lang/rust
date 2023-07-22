@@ -38,7 +38,7 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
                 scope 6 {
                     let _7: *const T;
                     scope 7 {
-                        debug end => _7;
+                        debug end_or_len => _7;
                         scope 13 (inlined NonNull::<T>::new_unchecked) {
                             debug ptr => _9;
                             let mut _10: *const T;
@@ -138,7 +138,7 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
         StorageDead(_9);
         StorageLive(_12);
         _12 = _7;
-        _13 = std::slice::Iter::<'_, T> { ptr: move _11, end: move _12, _marker: const ZeroSized: PhantomData<&T> };
+        _13 = std::slice::Iter::<'_, T> { ptr: move _11, end_or_len: move _12, _marker: const ZeroSized: PhantomData<&T> };
         StorageDead(_12);
         StorageDead(_11);
         StorageDead(_7);

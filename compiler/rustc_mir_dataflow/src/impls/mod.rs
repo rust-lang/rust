@@ -26,6 +26,7 @@ pub use self::borrowed_locals::borrowed_locals;
 pub use self::borrowed_locals::MaybeBorrowedLocals;
 pub use self::liveness::MaybeLiveLocals;
 pub use self::liveness::MaybeTransitiveLiveLocals;
+pub use self::liveness::TransferFunction as LivenessTransferFunction;
 pub use self::storage_liveness::{MaybeRequiresStorage, MaybeStorageDead, MaybeStorageLive};
 
 /// `MaybeInitializedPlaces` tracks all places that might be

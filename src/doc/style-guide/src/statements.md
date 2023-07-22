@@ -2,8 +2,8 @@
 
 ### Let statements
 
-There should be spaces after the `:` and on both sides of the `=` (if they are
-present). No space before the semicolon.
+Put a space after the `:` and on both sides of the `=` (if they are present).
+Don't put a space before the semicolon.
 
 ```rust
 // A comment.
@@ -14,19 +14,19 @@ let pattern: Type;
 let pattern = expr;
 ```
 
-If possible the declaration should be formatted on a single line. If this is not
-possible, then try splitting after the `=`, if the declaration can fit on two
-lines. The expression should be block indented.
+If possible, format the declaration on a single line. If not possible, then try
+splitting after the `=`, if the declaration fits on two lines. Block-indent the
+expression.
 
 ```rust
 let pattern: Type =
     expr;
 ```
 
-If the first line does not fit on a single line, then split after the colon,
-using block indentation. If the type covers multiple lines, even after line-
-breaking after the `:`, then the first line may be placed on the same line as
-the `:`, subject to the [combining rules](https://github.com/rust-lang-nursery/fmt-rfcs/issues/61) (WIP).
+If the first line still does not fit on a single line, split after the `:`, and
+use block indentation. If the type requires multiple lines, even after
+line-breaking after the `:`, then place the first line on the same line as the
+`:`, subject to the [combining rules](expressions.html#combinable-expressions).
 
 
 ```rust
@@ -51,12 +51,12 @@ let (abcd,
 ```
 
 If the expression covers multiple lines, if the first line of the expression
-fits in the remaining space, it stays on the same line as the `=`, the rest of the
-expression is not indented. If the first line does not fit, then it should start
-on the next lines, and should be block indented. If the expression is a block
-and the type or pattern cover multiple lines, then the opening brace should be
-on a new line and not indented (this provides separation for the interior of the
-block from the type), otherwise the opening brace follows the `=`.
+fits in the remaining space, it stays on the same line as the `=`, and the rest
+of the expression is not further indented. If the first line does not fit, then
+put the expression on subsequent lines, block indented. If the expression is a
+block and the type or pattern cover multiple lines, put the opening brace on a
+new line and not indented (this provides separation for the interior of the
+block from the type); otherwise, the opening brace follows the `=`.
 
 Examples:
 
@@ -108,8 +108,8 @@ In this case, always apply the same formatting rules to the components preceding
 the `else` block (i.e. the `let pattern: Type = initializer_expr` portion)
 as described [for other let statements](#let-statements).
 
-The entire let-else statement may be formatted on a single line if all the
-following are true:
+Format the entire let-else statement on a single line if all the following are
+true:
 
 * the entire statement is *short*
 * the `else` block contains only a single-line expression and no statements
@@ -119,9 +119,6 @@ following are true:
 ```rust
 let Some(1) = opt else { return };
 ```
-
-Formatters may allow users to configure the value of the threshold
-used to determine whether a let-else statement is *short*.
 
 Otherwise, the let-else statement requires some line breaks.
 
@@ -157,9 +154,9 @@ before the `else`.
     };
 ```
 
-If the initializer expression is multi-line, the `else` keyword and opening
-brace of the block (i.e. `else {`) should be put on the same line as the end of
-the initializer expression, with a space between them, if and only if all the
+If the initializer expression is multi-line, put the `else` keyword and opening
+brace of the block (i.e. `else {`) on the same line as the end of the
+initializer expression, with a space between them, if and only if all the
 following are true:
 
 * The initializer expression ends with one or more closing
@@ -182,9 +179,9 @@ let Some(x) = y.foo(
 }
 ```
 
-Otherwise, the `else` keyword and opening brace should be placed on the next
-line after the end of the initializer expression, and the `else` keyword should
-have the same indentation level as the `let` keyword.
+Otherwise, put the `else` keyword and opening brace on the next line after the
+end of the initializer expression, with the `else` keyword at the same
+indentation level as the `let` keyword.
 
 For example:
 
@@ -236,9 +233,9 @@ fn main() {
 
 ### Macros in statement position
 
-A macro use in statement position should use parentheses or square brackets as
-delimiters and should be terminated with a semicolon. There should be no spaces
-between the name, `!`, the delimiters, or the `;`.
+For a macro use in statement position, use parentheses or square brackets as
+delimiters, and terminate it with a semicolon. Do not put spaces around the
+name, `!`, the delimiters, or the `;`.
 
 ```rust
 // A comment.
@@ -248,14 +245,14 @@ a_macro!(...);
 
 ### Expressions in statement position
 
-There should be no space between the expression and the semicolon.
+Do not put space between the expression and the semicolon.
 
 ```
 <expr>;
 ```
 
-All expressions in statement position should be terminated with a semicolon,
-unless they end with a block or are used as the value for a block.
+Terminate all expressions in statement position with a semicolon, unless they
+end with a block or are used as the value for a block.
 
 E.g.,
 

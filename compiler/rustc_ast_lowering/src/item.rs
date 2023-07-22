@@ -551,17 +551,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 for &(ref use_tree, id) in trees {
                     let new_hir_id = self.local_def_id(id);
 
-                    let mut prefix = prefix.clone();
-
-                    // Give the segments new node-ids since they are being cloned.
-                    for seg in &mut prefix.segments {
-                        // Give the cloned segment the same resolution information
-                        // as the old one (this is needed for stability checking).
-                        let new_id = self.next_node_id();
-                        self.resolver.clone_res(seg.id, new_id);
-                        seg.id = new_id;
-                    }
-
                     // Each `use` import is an item and thus are owners of the
                     // names in the path. Up to this point the nested import is
                     // the current owner, since we want each desugared import to
@@ -570,6 +559,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     self.with_hir_id_owner(id, |this| {
                         let mut ident = *ident;
 
+                        // `prefix` is lowered multiple times, but in different HIR owners.
+                        // So each segment gets renewed `HirId` with the same
+                        // `ItemLocalId` and the new owner. (See `lower_node_id`)
                         let kind =
                             this.lower_use_tree(use_tree, &prefix, id, vis_span, &mut ident, attrs);
                         if let Some(attrs) = attrs {

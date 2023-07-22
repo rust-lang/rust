@@ -569,6 +569,7 @@ pub struct GlobalCtxt<'tcx> {
 
     /// Caches the results of goal evaluation in the new solver.
     pub new_solver_evaluation_cache: solve::EvaluationCache<'tcx>,
+    pub new_solver_coherence_evaluation_cache: solve::EvaluationCache<'tcx>,
 
     /// Data layout specification for the current target.
     pub data_layout: TargetDataLayout,
@@ -680,10 +681,12 @@ impl<'tcx> TyCtxt<'tcx> {
         value.lift_to_tcx(self)
     }
 
-    /// Creates a type context and call the closure with a `TyCtxt` reference
-    /// to the context. The closure enforces that the type context and any interned
-    /// value (types, args, etc.) can only be used while `ty::tls` has a valid
-    /// reference to the context, to allow formatting values that need it.
+    /// Creates a type context. To use the context call `fn enter` which
+    /// provides a `TyCtxt`.
+    ///
+    /// By only providing the `TyCtxt` inside of the closure we enforce that the type
+    /// context and any interned alue (types, args, etc.) can only be used while `ty::tls`
+    /// has a valid reference to the context, to allow formatting values that need it.
     pub fn create_global_ctxt(
         s: &'tcx Session,
         lint_store: Lrc<dyn Any + sync::DynSend + sync::DynSync>,
@@ -721,6 +724,7 @@ impl<'tcx> TyCtxt<'tcx> {
             selection_cache: Default::default(),
             evaluation_cache: Default::default(),
             new_solver_evaluation_cache: Default::default(),
+            new_solver_coherence_evaluation_cache: Default::default(),
             data_layout,
             alloc_map: Lock::new(interpret::AllocMap::new()),
         }

@@ -2,8 +2,7 @@
 
 use rustc_middle::ty::layout::{LayoutOf, PrimitiveExt};
 use rustc_middle::{mir, ty};
-use rustc_target::abi::{self, TagEncoding};
-use rustc_target::abi::{VariantIdx, Variants};
+use rustc_target::abi::{self, TagEncoding, VariantIdx, Variants, WrappingRange};
 
 use super::{ImmTy, InterpCx, InterpResult, Machine, OpTy, PlaceTy, Scalar};
 
@@ -180,19 +179,24 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // discriminant (encoded in niche/tag) and variant index are the same.
                 let variants_start = niche_variants.start().as_u32();
                 let variants_end = niche_variants.end().as_u32();
+                let variants_len = u128::from(variants_end - variants_start);
                 let variant = match tag_val.try_to_int() {
                     Err(dbg_val) => {
                         // So this is a pointer then, and casting to an int failed.
                         // Can only happen during CTFE.
-                        // The niche must be just 0, and the ptr not null, then we know this is
-                        // okay. Everything else, we conservatively reject.
-                        let ptr_valid = niche_start == 0
-                            && variants_start == variants_end
-                            && !self.scalar_may_be_null(tag_val)?;
-                        if !ptr_valid {
+                        // The pointer and niches ranges must be disjoint, then we know
+                        // this is the untagged variant (as the value is not in the niche).
+                        // Everything else, we conservatively reject.
+                        let range = self.ptr_scalar_range(tag_val)?;
+                        let niches = WrappingRange {
+                            start: niche_start,
+                            end: niche_start.wrapping_add(variants_len),
+                        };
+                        if niches.overlaps_range(range) {
                             throw_ub!(InvalidTag(dbg_val))
+                        } else {
+                            untagged_variant
                         }
-                        untagged_variant
                     }
                     Ok(tag_bits) => {
                         let tag_bits = tag_bits.assert_bits(tag_layout.size);
@@ -205,7 +209,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         let variant_index_relative =
                             variant_index_relative_val.to_scalar().assert_bits(tag_val.layout.size);
                         // Check if this is in the range that indicates an actual discriminant.
-                        if variant_index_relative <= u128::from(variants_end - variants_start) {
+                        if variant_index_relative <= variants_len {
                             let variant_index_relative = u32::try_from(variant_index_relative)
                                 .expect("we checked that this fits into a u32");
                             // Then computing the absolute variant idx should not overflow any more.

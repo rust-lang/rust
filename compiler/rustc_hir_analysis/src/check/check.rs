@@ -1078,9 +1078,9 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
         // We are currently checking the type this field came from, so it must be local
         let span = tcx.hir().span_if_local(field.did).unwrap();
         let zst = layout.is_ok_and(|layout| layout.is_zst());
-        let align1 = layout.is_ok_and(|layout| layout.align.abi.bytes() == 1);
+        let align = layout.ok().map(|layout| layout.align.abi.bytes());
         if !zst {
-            return (span, zst, align1, None);
+            return (span, zst, align, None);
         }
 
         fn check_non_exhaustive<'tcx>(
@@ -1115,12 +1115,12 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
             }
         }
 
-        (span, zst, align1, check_non_exhaustive(tcx, ty).break_value())
+        (span, zst, align, check_non_exhaustive(tcx, ty).break_value())
     });
 
     let non_zst_fields = field_infos
         .clone()
-        .filter_map(|(span, zst, _align1, _non_exhaustive)| if !zst { Some(span) } else { None });
+        .filter_map(|(span, zst, _align, _non_exhaustive)| if !zst { Some(span) } else { None });
     let non_zst_count = non_zst_fields.clone().count();
     if non_zst_count >= 2 {
         bad_non_zero_sized_fields(tcx, adt, non_zst_count, non_zst_fields, tcx.def_span(adt.did()));
@@ -1128,17 +1128,26 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
     let incompatible_zst_fields =
         field_infos.clone().filter(|(_, _, _, opt)| opt.is_some()).count();
     let incompat = incompatible_zst_fields + non_zst_count >= 2 && non_zst_count < 2;
-    for (span, zst, align1, non_exhaustive) in field_infos {
-        if zst && !align1 {
-            struct_span_err!(
+    for (span, zst, align, non_exhaustive) in field_infos {
+        if zst && align != Some(1) {
+            let mut err = struct_span_err!(
                 tcx.sess,
                 span,
                 E0691,
                 "zero-sized field in transparent {} has alignment larger than 1",
                 adt.descr(),
-            )
-            .span_label(span, "has alignment larger than 1")
-            .emit();
+            );
+
+            if let Some(align_bytes) = align {
+                err.span_label(
+                    span,
+                    format!("has alignment of {align_bytes}, which is larger than 1"),
+                );
+            } else {
+                err.span_label(span, "may have alignment larger than 1");
+            }
+
+            err.emit();
         }
         if incompat && let Some((descr, def_id, args, non_exhaustive)) = non_exhaustive {
             tcx.struct_span_lint_hir(

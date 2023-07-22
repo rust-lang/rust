@@ -38,11 +38,12 @@
 +         _5 = const false;
 +         _6 = const false;
 +         _7 = const false;
-+         assert(!const false, "attempt to compute the remainder of `{} % {}`, which would overflow", const 1_i32, _3) -> [success: bb2, unwind unreachable];
++         assert(!const false, "attempt to compute the remainder of `{} % {}`, which would overflow", const 1_i32, const 0_i32) -> [success: bb2, unwind unreachable];
       }
   
       bb2: {
-          _2 = Rem(const 1_i32, move _3);
+-         _2 = Rem(const 1_i32, move _3);
++         _2 = Rem(const 1_i32, const 0_i32);
           StorageDead(_3);
           _0 = const ();
           StorageDead(_2);

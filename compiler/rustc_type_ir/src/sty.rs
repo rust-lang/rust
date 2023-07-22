@@ -39,6 +39,7 @@ pub enum AliasKind {
     /// A projection `<Type as Trait>::AssocType`.
     /// Can get normalized away if monomorphic enough.
     Projection,
+    /// An associated type in an inherent `impl`
     Inherent,
     /// An opaque type (usually from `impl Trait` in type aliases or function return types)
     /// Can only be normalized away in RevealAll mode

@@ -23,7 +23,7 @@
 -         _4 = CheckedAdd(_2, _3);
 -         assert(!move (_4.1: bool), "attempt to compute `{} + {}`, which would overflow", _2, _3) -> [success: bb1, unwind continue];
 +         _4 = const (0_u8, true);
-+         assert(!const true, "attempt to compute `{} + {}`, which would overflow", _2, _3) -> [success: bb1, unwind continue];
++         assert(!const true, "attempt to compute `{} + {}`, which would overflow", const u8::MAX, const 1_u8) -> [success: bb1, unwind continue];
       }
   
       bb1: {
