@@ -44,13 +44,20 @@ impl_else! { i8, i16, i32, i64, isize, u8, u16, u32, u64, usize }
 
 /// AltiVec should flush subnormal inputs to zero, but QEMU seems to only flush outputs.
 /// https://gitlab.com/qemu-project/qemu/-/issues/1779
-#[cfg(all(target_arch = "powerpc", target_feature = "altivec"))]
+#[cfg(all(
+    any(target_arch = "powerpc", target_arch = "powerpc64"),
+    target_feature = "altivec"
+))]
 fn in_buggy_qemu() -> bool {
     use std::sync::OnceLock;
     static BUGGY: OnceLock<bool> = OnceLock::new();
 
     fn add(x: f32, y: f32) -> f32 {
+        #[cfg(target_arch = "powerpc")]
         use core::arch::powerpc::*;
+        #[cfg(target_arch = "powerpc64")]
+        use core::arch::powerpc64::*;
+
         let array: [f32; 4] =
             unsafe { core::mem::transmute(vec_add(vec_splats(x), vec_splats(y))) };
         array[0]
@@ -59,7 +66,10 @@ fn in_buggy_qemu() -> bool {
     *BUGGY.get_or_init(|| add(-1.0857398e-38, 0.).is_sign_negative())
 }
 
-#[cfg(all(target_arch = "powerpc", target_feature = "altivec"))]
+#[cfg(all(
+    any(target_arch = "powerpc", target_arch = "powerpc64"),
+    target_feature = "altivec"
+))]
 pub fn flush_in<T: FlushSubnormals>(x: T) -> T {
     if in_buggy_qemu() {
         x
@@ -68,7 +78,10 @@ pub fn flush_in<T: FlushSubnormals>(x: T) -> T {
     }
 }
 
-#[cfg(not(all(target_arch = "powerpc", target_feature = "altivec")))]
+#[cfg(not(all(
+    any(target_arch = "powerpc", target_arch = "powerpc64"),
+    target_feature = "altivec"
+)))]
 pub fn flush_in<T: FlushSubnormals>(x: T) -> T {
     x.flush()
 }
