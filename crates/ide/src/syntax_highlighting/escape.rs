@@ -26,6 +26,9 @@ pub(super) fn highlight_escape_string<T: IsString>(
 
 pub(super) fn highlight_escape_char(stack: &mut Highlights, char: &Char, start: TextSize) {
     if char.value().is_none() {
+        // We do not emit invalid escapes highlighting here. The lexer would likely be in a bad
+        // state and this token contains junks, since `'` is not a reliable delimiter (consider
+        // lifetimes). Nonetheless, parser errors should already be emitted.
         return;
     }
 
@@ -46,6 +49,7 @@ pub(super) fn highlight_escape_char(stack: &mut Highlights, char: &Char, start: 
 
 pub(super) fn highlight_escape_byte(stack: &mut Highlights, byte: &Byte, start: TextSize) {
     if byte.value().is_none() {
+        // See `highlight_escape_char` for why no error highlighting here.
         return;
     }
 
