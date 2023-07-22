@@ -63,6 +63,16 @@ impl fmt::Display for Slice {
 }
 
 impl Buf {
+    #[inline]
+    pub fn into_os_str_bytes(self) -> Vec<u8> {
+        self.inner.into_bytes()
+    }
+
+    #[inline]
+    pub unsafe fn from_os_str_bytes_unchecked(s: Vec<u8>) -> Self {
+        Self { inner: Wtf8Buf::from_bytes_unchecked(s) }
+    }
+
     pub fn with_capacity(capacity: usize) -> Buf {
         Buf { inner: Wtf8Buf::with_capacity(capacity) }
     }
