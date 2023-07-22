@@ -1,5 +1,6 @@
 #include <stdio.h>
 
+#include <iomanip>
 #include <vector>
 #include <set>
 
@@ -306,44 +307,55 @@ static size_t getLongestEntryLength(ArrayRef<KV> Table) {
   return MaxLen;
 }
 
-extern "C" void LLVMRustPrintTargetCPUs(LLVMTargetMachineRef TM, const char* TargetCPU) {
+using PrintBackendInfo = void(void*, const char* Data, size_t Len);
+
+extern "C" void LLVMRustPrintTargetCPUs(LLVMTargetMachineRef TM,
+                                        const char* TargetCPU,
+                                        PrintBackendInfo Print,
+                                        void* Out) {
   const TargetMachine *Target = unwrap(TM);
   const MCSubtargetInfo *MCInfo = Target->getMCSubtargetInfo();
   const Triple::ArchType HostArch = Triple(sys::getDefaultTargetTriple()).getArch();
   const Triple::ArchType TargetArch = Target->getTargetTriple().getArch();
+
+  std::ostringstream Buf;
 
 #if LLVM_VERSION_GE(17, 0)
   const ArrayRef<SubtargetSubTypeKV> CPUTable = MCInfo->getAllProcessorDescriptions();
 #elif defined(LLVM_RUSTLLVM)
   const ArrayRef<SubtargetSubTypeKV> CPUTable = MCInfo->getCPUTable();
 #else
-  printf("Full target CPU help is not supported by this LLVM version.\n\n");
+  Buf << "Full target CPU help is not supported by this LLVM version.\n\n";
   SubtargetSubTypeKV TargetCPUKV = { TargetCPU, {{}}, {{}} };
   const ArrayRef<SubtargetSubTypeKV> CPUTable = TargetCPUKV;
 #endif
   unsigned MaxCPULen = getLongestEntryLength(CPUTable);
 
-  printf("Available CPUs for this target:\n");
+  Buf << "Available CPUs for this target:\n";
   // Don't print the "native" entry when the user specifies --target with a
   // different arch since that could be wrong or misleading.
   if (HostArch == TargetArch) {
     MaxCPULen = std::max(MaxCPULen, (unsigned) std::strlen("native"));
     const StringRef HostCPU = sys::getHostCPUName();
-    printf("    %-*s - Select the CPU of the current host (currently %.*s).\n",
-      MaxCPULen, "native", (int)HostCPU.size(), HostCPU.data());
+    Buf << "    " << std::left << std::setw(MaxCPULen) << "native"
+        << " - Select the CPU of the current host "
+           "(currently " << HostCPU.str() << ").\n";
   }
   for (auto &CPU : CPUTable) {
     // Compare cpu against current target to label the default
     if (strcmp(CPU.Key, TargetCPU) == 0) {
-      printf("    %-*s - This is the default target CPU"
-      " for the current build target (currently %s).",
-        MaxCPULen, CPU.Key, Target->getTargetTriple().str().c_str());
+      Buf << "    " << std::left << std::setw(MaxCPULen) << CPU.Key
+          << " - This is the default target CPU for the current build target "
+             "(currently " << Target->getTargetTriple().str() << ").";
     }
     else {
-      printf("    %-*s", MaxCPULen, CPU.Key);
+      Buf << "    " << CPU.Key;
     }
-    printf("\n");
+    Buf << "\n";
   }
+
+  const auto &BufString = Buf.str();
+  Print(Out, BufString.data(), BufString.size());
 }
 
 extern "C" size_t LLVMRustGetTargetFeaturesCount(LLVMTargetMachineRef TM) {
@@ -1353,6 +1365,11 @@ LLVMRustPrepareThinLTOImport(const LLVMRustThinLTOData *Data, LLVMModuleRef M,
     auto *WasmCustomSections = (*MOrErr)->getNamedMetadata("wasm.custom_sections");
     if (WasmCustomSections)
       WasmCustomSections->eraseFromParent();
+
+    // `llvm.ident` named metadata also gets duplicated.
+    auto *llvmIdent = (*MOrErr)->getNamedMetadata("llvm.ident");
+    if (llvmIdent)
+      llvmIdent->eraseFromParent();
 
     return MOrErr;
   };

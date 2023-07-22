@@ -35,7 +35,7 @@ fn num_to_digit(_1: char) -> u32 {
 
     bb2: {
         StorageLive(_4);
-        _4 = char::methods::<impl char>::to_digit(_1, const 8_u32) -> [return: bb3, unwind continue];
+        _4 = char::methods::<impl char>::to_digit(move _1, const 8_u32) -> [return: bb3, unwind continue];
     }
 
     bb3: {

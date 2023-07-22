@@ -11,7 +11,7 @@ use rustc_middle::traits::Reveal;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams, TreatProjections};
 use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt};
 use rustc_middle::ty::{TraitPredicate, TypeVisitableExt};
-use rustc_span::DUMMY_SP;
+use rustc_span::{ErrorGuaranteed, DUMMY_SP};
 
 impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
     fn self_ty(self) -> Ty<'tcx> {
@@ -76,6 +76,13 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
 
             ecx.evaluate_added_goals_and_make_canonical_response(maximal_certainty)
         })
+    }
+
+    fn consider_error_guaranteed_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        _guar: ErrorGuaranteed,
+    ) -> QueryResult<'tcx> {
+        ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
 
     fn probe_and_match_goal_against_assumption(
@@ -216,9 +223,20 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             return ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS);
         }
 
-        if let Ok(layout) = tcx.layout_of(key)
-            && layout.layout.is_pointer_like(&tcx.data_layout)
-        {
+        // First, try computing an exact naive layout in case the type is generic.
+        let is_pointer_like = if let Ok(layout) = tcx.naive_layout_of(key) {
+            layout.is_pointer_like(&tcx.data_layout).unwrap_or_else(|| {
+                // Second, we fall back to full layout computation.
+                tcx.layout_of(key)
+                    .ok()
+                    .filter(|l| l.layout.is_pointer_like(&tcx.data_layout))
+                    .is_some()
+            })
+        } else {
+            false
+        };
+
+        if is_pointer_like {
             // FIXME: We could make this faster by making a no-constraints response
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         } else {
@@ -686,7 +704,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             | ty::Tuple(_)
             | ty::Adt(_, _)
             // FIXME: Handling opaques here is kinda sus. Especially because we
-            // simplify them to PlaceholderSimplifiedType.
+            // simplify them to SimplifiedType::Placeholder.
             | ty::Alias(ty::Opaque, _) => {
                 let mut disqualifying_impl = None;
                 self.tcx().for_each_relevant_impl_treating_projections(

@@ -10,8 +10,9 @@ trait C {
     fn x() {} // not object safe, shouldn't be reported
 }
 
-// This ideally should not have any upcasting cost,
-// but currently does due to a bug
+// This does not have any upcasting cost,
+// because both `Send` and `Sync` are traits
+// with no methods
 trait D: Send + Sync + help::MarkerWithSuper {}
 
 // This can't have no cost without reordering,

@@ -661,10 +661,14 @@ impl<T> Rc<T> {
 
 impl<T, A: Allocator> Rc<T, A> {
     /// Returns a reference to the underlying allocator.
+    ///
+    /// Note: this is an associated function, which means that you have
+    /// to call it as `Rc::allocator(&r)` instead of `r.allocator()`. This
+    /// is so that there is no conflict with a method on the inner type.
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    pub fn allocator(&self) -> &A {
-        &self.alloc
+    pub fn allocator(this: &Self) -> &A {
+        &this.alloc
     }
     /// Constructs a new `Rc` in the provided allocator.
     ///

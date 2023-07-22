@@ -31,7 +31,7 @@ pub enum Immediate<Prov: Provenance = AllocId> {
     /// A pair of two scalar value (must have `ScalarPair` ABI where both fields are
     /// `Scalar::Initialized`).
     ScalarPair(Scalar<Prov>, Scalar<Prov>),
-    /// A value of fully uninitialized memory. Can have and size and layout.
+    /// A value of fully uninitialized memory. Can have arbitrary size and layout.
     Uninit,
 }
 

@@ -5,7 +5,7 @@ fn slice_iter_mut_next_back(_1: &mut std::slice::IterMut<'_, T>) -> Option<&mut 
     let mut _0: std::option::Option<&mut T>;
 
     bb0: {
-        _0 = <std::slice::IterMut<'_, T> as DoubleEndedIterator>::next_back(_1) -> [return: bb1, unwind continue];
+        _0 = <std::slice::IterMut<'_, T> as DoubleEndedIterator>::next_back(move _1) -> [return: bb1, unwind continue];
     }
 
     bb1: {

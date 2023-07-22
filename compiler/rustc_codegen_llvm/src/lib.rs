@@ -40,12 +40,13 @@ use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::{OptLevel, OutputFilenames, PrintRequest};
+use rustc_session::config::{OptLevel, OutputFilenames, PrintKind, PrintRequest};
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
 
 use std::any::Any;
 use std::ffi::CStr;
+use std::io::Write;
 
 mod back {
     pub mod archive;
@@ -178,7 +179,28 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     type ThinBuffer = back::lto::ThinBuffer;
     fn print_pass_timings(&self) {
         unsafe {
-            llvm::LLVMRustPrintPassTimings();
+            let mut size = 0;
+            let cstr = llvm::LLVMRustPrintPassTimings(&mut size as *mut usize);
+            if cstr.is_null() {
+                println!("failed to get pass timings");
+            } else {
+                let timings = std::slice::from_raw_parts(cstr as *const u8, size);
+                std::io::stdout().write_all(timings).unwrap();
+                libc::free(cstr as *mut _);
+            }
+        }
+    }
+    fn print_statistics(&self) {
+        unsafe {
+            let mut size = 0;
+            let cstr = llvm::LLVMRustPrintStatistics(&mut size as *mut usize);
+            if cstr.is_null() {
+                println!("failed to get pass stats");
+            } else {
+                let stats = std::slice::from_raw_parts(cstr as *const u8, size);
+                std::io::stdout().write_all(stats).unwrap();
+                libc::free(cstr as *mut _);
+            }
         }
     }
     fn run_link(
@@ -262,10 +284,10 @@ impl CodegenBackend for LlvmCodegenBackend {
             |tcx, ()| llvm_util::global_llvm_features(tcx.sess, true)
     }
 
-    fn print(&self, req: PrintRequest, sess: &Session) {
-        match req {
-            PrintRequest::RelocationModels => {
-                println!("Available relocation models:");
+    fn print(&self, req: &PrintRequest, out: &mut dyn PrintBackendInfo, sess: &Session) {
+        match req.kind {
+            PrintKind::RelocationModels => {
+                writeln!(out, "Available relocation models:");
                 for name in &[
                     "static",
                     "pic",
@@ -276,26 +298,27 @@ impl CodegenBackend for LlvmCodegenBackend {
                     "ropi-rwpi",
                     "default",
                 ] {
-                    println!("    {}", name);
+                    writeln!(out, "    {}", name);
                 }
-                println!();
+                writeln!(out);
             }
-            PrintRequest::CodeModels => {
-                println!("Available code models:");
+            PrintKind::CodeModels => {
+                writeln!(out, "Available code models:");
                 for name in &["tiny", "small", "kernel", "medium", "large"] {
-                    println!("    {}", name);
+                    writeln!(out, "    {}", name);
                 }
-                println!();
+                writeln!(out);
             }
-            PrintRequest::TlsModels => {
-                println!("Available TLS models:");
+            PrintKind::TlsModels => {
+                writeln!(out, "Available TLS models:");
                 for name in &["global-dynamic", "local-dynamic", "initial-exec", "local-exec"] {
-                    println!("    {}", name);
+                    writeln!(out, "    {}", name);
                 }
-                println!();
+                writeln!(out);
             }
-            PrintRequest::StackProtectorStrategies => {
-                println!(
+            PrintKind::StackProtectorStrategies => {
+                writeln!(
+                    out,
                     r#"Available stack protector strategies:
     all
         Generate stack canaries in all functions.
@@ -319,7 +342,7 @@ impl CodegenBackend for LlvmCodegenBackend {
 "#
                 );
             }
-            req => llvm_util::print(req, sess),
+            _other => llvm_util::print(req, out, sess),
         }
     }
 

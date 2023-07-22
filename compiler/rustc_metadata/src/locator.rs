@@ -511,7 +511,7 @@ impl<'a> CrateLocator<'a> {
             rlib: self.extract_one(rlibs, CrateFlavor::Rlib, &mut slot)?,
             dylib: self.extract_one(dylibs, CrateFlavor::Dylib, &mut slot)?,
         };
-        Ok(slot.map(|(svh, metadata)| (svh, Library { source, metadata })))
+        Ok(slot.map(|(svh, metadata, _)| (svh, Library { source, metadata })))
     }
 
     fn needs_crate_flavor(&self, flavor: CrateFlavor) -> bool {
@@ -535,11 +535,13 @@ impl<'a> CrateLocator<'a> {
     // read the metadata from it if `*slot` is `None`. If the metadata couldn't
     // be read, it is assumed that the file isn't a valid rust library (no
     // errors are emitted).
+    //
+    // The `PathBuf` in `slot` will only be used for diagnostic purposes.
     fn extract_one(
         &mut self,
         m: FxHashMap<PathBuf, PathKind>,
         flavor: CrateFlavor,
-        slot: &mut Option<(Svh, MetadataBlob)>,
+        slot: &mut Option<(Svh, MetadataBlob, PathBuf)>,
     ) -> Result<Option<(PathBuf, PathKind)>, CrateError> {
         // If we are producing an rlib, and we've already loaded metadata, then
         // we should not attempt to discover further crate sources (unless we're
@@ -550,16 +552,9 @@ impl<'a> CrateLocator<'a> {
         //
         // See also #68149 which provides more detail on why emitting the
         // dependency on the rlib is a bad thing.
-        //
-        // We currently do not verify that these other sources are even in sync,
-        // and this is arguably a bug (see #10786), but because reading metadata
-        // is quite slow (especially from dylibs) we currently do not read it
-        // from the other crate sources.
         if slot.is_some() {
             if m.is_empty() || !self.needs_crate_flavor(flavor) {
                 return Ok(None);
-            } else if m.len() == 1 {
-                return Ok(Some(m.into_iter().next().unwrap()));
             }
         }
 
@@ -610,8 +605,7 @@ impl<'a> CrateLocator<'a> {
                         candidates,
                     ));
                 }
-                err_data = Some(vec![ret.as_ref().unwrap().0.clone()]);
-                *slot = None;
+                err_data = Some(vec![slot.take().unwrap().2]);
             }
             if let Some(candidates) = &mut err_data {
                 candidates.push(lib);
@@ -644,7 +638,7 @@ impl<'a> CrateLocator<'a> {
                     continue;
                 }
             }
-            *slot = Some((hash, metadata));
+            *slot = Some((hash, metadata, lib.clone()));
             ret = Some((lib, kind));
         }
 
@@ -814,19 +808,26 @@ fn get_metadata_section<'p>(
             let compressed_len = u32::from_be_bytes(len_bytes) as usize;
 
             // Header is okay -> inflate the actual metadata
-            let compressed_bytes = &buf[data_start..(data_start + compressed_len)];
-            debug!("inflating {} bytes of compressed metadata", compressed_bytes.len());
-            // Assume the decompressed data will be at least the size of the compressed data, so we
-            // don't have to grow the buffer as much.
-            let mut inflated = Vec::with_capacity(compressed_bytes.len());
-            FrameDecoder::new(compressed_bytes).read_to_end(&mut inflated).map_err(|_| {
-                MetadataError::LoadFailure(format!(
-                    "failed to decompress metadata: {}",
-                    filename.display()
-                ))
-            })?;
+            let compressed_bytes = buf.slice(|buf| &buf[data_start..(data_start + compressed_len)]);
+            if &compressed_bytes[..cmp::min(METADATA_HEADER.len(), compressed_bytes.len())]
+                == METADATA_HEADER
+            {
+                // The metadata was not actually compressed.
+                compressed_bytes
+            } else {
+                debug!("inflating {} bytes of compressed metadata", compressed_bytes.len());
+                // Assume the decompressed data will be at least the size of the compressed data, so we
+                // don't have to grow the buffer as much.
+                let mut inflated = Vec::with_capacity(compressed_bytes.len());
+                FrameDecoder::new(&*compressed_bytes).read_to_end(&mut inflated).map_err(|_| {
+                    MetadataError::LoadFailure(format!(
+                        "failed to decompress metadata: {}",
+                        filename.display()
+                    ))
+                })?;
 
-            slice_owned(inflated, Deref::deref)
+                slice_owned(inflated, Deref::deref)
+            }
         }
         CrateFlavor::Rmeta => {
             // mmap the file, because only a small fraction of it is read.

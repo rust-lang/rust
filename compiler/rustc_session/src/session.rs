@@ -1057,6 +1057,10 @@ impl Session {
         self.opts.unstable_opts.verbose
     }
 
+    pub fn print_llvm_stats(&self) -> bool {
+        self.opts.unstable_opts.print_codegen_stats
+    }
+
     pub fn verify_llvm_ir(&self) -> bool {
         self.opts.unstable_opts.verify_llvm_ir || option_env!("RUSTC_VERIFY_LLVM_IR").is_some()
     }
@@ -1421,7 +1425,7 @@ pub fn build_session(
     let loader = file_loader.unwrap_or_else(|| Box::new(RealFileLoader));
     let hash_kind = sopts.unstable_opts.src_hash_algorithm.unwrap_or_else(|| {
         if target_cfg.is_like_msvc {
-            SourceFileHashAlgorithm::Sha1
+            SourceFileHashAlgorithm::Sha256
         } else {
             SourceFileHashAlgorithm::Md5
         }

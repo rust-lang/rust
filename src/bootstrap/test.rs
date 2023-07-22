@@ -2087,10 +2087,11 @@ impl Step for ErrorIndex {
         let mut tool = tool::ErrorIndex::command(builder);
         tool.arg("markdown").arg(&output);
 
-        let _guard =
+        let guard =
             builder.msg(Kind::Test, compiler.stage, "error-index", compiler.host, compiler.host);
         let _time = util::timeit(&builder);
         builder.run_quiet(&mut tool);
+        drop(guard);
         // The tests themselves need to link to std, so make sure it is
         // available.
         builder.ensure(compile::Std::new(compiler, compiler.host));

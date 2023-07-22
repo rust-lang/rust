@@ -9,7 +9,9 @@ use cache::ProvisionalCache;
 use overflow::OverflowData;
 use rustc_index::IndexVec;
 use rustc_middle::dep_graph::DepKind;
-use rustc_middle::traits::solve::{CanonicalInput, Certainty, MaybeCause, QueryResult};
+use rustc_middle::traits::solve::{
+    CanonicalInput, Certainty, EvaluationCache, MaybeCause, QueryResult,
+};
 use rustc_middle::ty::TyCtxt;
 use std::{collections::hash_map::Entry, mem};
 
@@ -58,10 +60,10 @@ impl<'tcx> SearchGraph<'tcx> {
     ///
     /// We could add another global cache for coherence instead,
     /// but that's effort so let's only do it if necessary.
-    pub(super) fn should_use_global_cache(&self) -> bool {
+    pub(super) fn global_cache(&self, tcx: TyCtxt<'tcx>) -> &'tcx EvaluationCache<'tcx> {
         match self.mode {
-            SolverMode::Normal => true,
-            SolverMode::Coherence => false,
+            SolverMode::Normal => &tcx.new_solver_evaluation_cache,
+            SolverMode::Coherence => &tcx.new_solver_coherence_evaluation_cache,
         }
     }
 
@@ -213,8 +215,8 @@ impl<'tcx> SearchGraph<'tcx> {
         inspect: &mut ProofTreeBuilder<'tcx>,
         mut loop_body: impl FnMut(&mut Self, &mut ProofTreeBuilder<'tcx>) -> QueryResult<'tcx>,
     ) -> QueryResult<'tcx> {
-        if self.should_use_global_cache() && inspect.use_global_cache() {
-            if let Some(result) = tcx.new_solver_evaluation_cache.get(&canonical_input, tcx) {
+        if inspect.use_global_cache() {
+            if let Some(result) = self.global_cache(tcx).get(&canonical_input, tcx) {
                 debug!(?canonical_input, ?result, "cache hit");
                 inspect.cache_hit(CacheHit::Global);
                 return result;
@@ -278,13 +280,10 @@ impl<'tcx> SearchGraph<'tcx> {
             // dependencies, our non-root goal may no longer appear as child of the root goal.
             //
             // See https://github.com/rust-lang/rust/pull/108071 for some additional context.
-            let can_cache = !self.overflow_data.did_overflow() || self.stack.is_empty();
-            if self.should_use_global_cache() && can_cache {
-                tcx.new_solver_evaluation_cache.insert(
-                    current_goal.input,
-                    dep_node,
-                    current_goal.response,
-                );
+            let can_cache = inspect.use_global_cache()
+                && (!self.overflow_data.did_overflow() || self.stack.is_empty());
+            if can_cache {
+                self.global_cache(tcx).insert(current_goal.input, dep_node, current_goal.response)
             }
         }
 

@@ -1958,14 +1958,12 @@ macro_rules! atomic_int {
      $stable_from:meta,
      $stable_nand:meta,
      $const_stable:meta,
-     $stable_init_const:meta,
      $diagnostic_item:meta,
      $s_int_type:literal,
      $extra_feature:expr,
      $min_fn:ident, $max_fn:ident,
      $align:expr,
-     $atomic_new:expr,
-     $int_type:ident $atomic_type:ident $atomic_init:ident) => {
+     $int_type:ident $atomic_type:ident) => {
         /// An integer type which can be safely shared between threads.
         ///
         /// This type has the same in-memory representation as the underlying
@@ -1987,15 +1985,6 @@ macro_rules! atomic_int {
         pub struct $atomic_type {
             v: UnsafeCell<$int_type>,
         }
-
-        /// An atomic integer initialized to `0`.
-        #[$stable_init_const]
-        #[deprecated(
-            since = "1.34.0",
-            note = "the `new` function is now preferred",
-            suggestion = $atomic_new,
-        )]
-        pub const $atomic_init: $atomic_type = $atomic_type::new(0);
 
         #[$stable]
         impl Default for $atomic_type {
@@ -2874,14 +2863,12 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
-    unstable(feature = "integer_atomics", issue = "99069"),
     cfg_attr(not(test), rustc_diagnostic_item = "AtomicI8"),
     "i8",
     "",
     atomic_min, atomic_max,
     1,
-    "AtomicI8::new(0)",
-    i8 AtomicI8 ATOMIC_I8_INIT
+    i8 AtomicI8
 }
 #[cfg(target_has_atomic_load_store = "8")]
 atomic_int! {
@@ -2894,14 +2881,12 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
-    unstable(feature = "integer_atomics", issue = "99069"),
     cfg_attr(not(test), rustc_diagnostic_item = "AtomicU8"),
     "u8",
     "",
     atomic_umin, atomic_umax,
     1,
-    "AtomicU8::new(0)",
-    u8 AtomicU8 ATOMIC_U8_INIT
+    u8 AtomicU8
 }
 #[cfg(target_has_atomic_load_store = "16")]
 atomic_int! {
@@ -2914,14 +2899,12 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
-    unstable(feature = "integer_atomics", issue = "99069"),
     cfg_attr(not(test), rustc_diagnostic_item = "AtomicI16"),
     "i16",
     "",
     atomic_min, atomic_max,
     2,
-    "AtomicI16::new(0)",
-    i16 AtomicI16 ATOMIC_I16_INIT
+    i16 AtomicI16
 }
 #[cfg(target_has_atomic_load_store = "16")]
 atomic_int! {
@@ -2934,14 +2917,12 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
-    unstable(feature = "integer_atomics", issue = "99069"),
     cfg_attr(not(test), rustc_diagnostic_item = "AtomicU16"),
     "u16",
     "",
     atomic_umin, atomic_umax,
     2,
-    "AtomicU16::new(0)",
-    u16 AtomicU16 ATOMIC_U16_INIT
+    u16 AtomicU16
 }
 #[cfg(target_has_atomic_load_store = "32")]
 atomic_int! {
@@ -2954,14 +2935,12 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
-    unstable(feature = "integer_atomics", issue = "99069"),
     cfg_attr(not(test), rustc_diagnostic_item = "AtomicI32"),
     "i32",
     "",
     atomic_min, atomic_max,
     4,
-    "AtomicI32::new(0)",
-    i32 AtomicI32 ATOMIC_I32_INIT
+    i32 AtomicI32
 }
 #[cfg(target_has_atomic_load_store = "32")]
 atomic_int! {
@@ -2974,14 +2953,12 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
-    unstable(feature = "integer_atomics", issue = "99069"),
     cfg_attr(not(test), rustc_diagnostic_item = "AtomicU32"),
     "u32",
     "",
     atomic_umin, atomic_umax,
     4,
-    "AtomicU32::new(0)",
-    u32 AtomicU32 ATOMIC_U32_INIT
+    u32 AtomicU32
 }
 #[cfg(target_has_atomic_load_store = "64")]
 atomic_int! {
@@ -2994,14 +2971,12 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
-    unstable(feature = "integer_atomics", issue = "99069"),
     cfg_attr(not(test), rustc_diagnostic_item = "AtomicI64"),
     "i64",
     "",
     atomic_min, atomic_max,
     8,
-    "AtomicI64::new(0)",
-    i64 AtomicI64 ATOMIC_I64_INIT
+    i64 AtomicI64
 }
 #[cfg(target_has_atomic_load_store = "64")]
 atomic_int! {
@@ -3014,14 +2989,12 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
-    unstable(feature = "integer_atomics", issue = "99069"),
     cfg_attr(not(test), rustc_diagnostic_item = "AtomicU64"),
     "u64",
     "",
     atomic_umin, atomic_umax,
     8,
-    "AtomicU64::new(0)",
-    u64 AtomicU64 ATOMIC_U64_INIT
+    u64 AtomicU64
 }
 #[cfg(target_has_atomic_load_store = "128")]
 atomic_int! {
@@ -3034,14 +3007,12 @@ atomic_int! {
     unstable(feature = "integer_atomics", issue = "99069"),
     unstable(feature = "integer_atomics", issue = "99069"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
-    unstable(feature = "integer_atomics", issue = "99069"),
     cfg_attr(not(test), rustc_diagnostic_item = "AtomicI128"),
     "i128",
     "#![feature(integer_atomics)]\n\n",
     atomic_min, atomic_max,
     16,
-    "AtomicI128::new(0)",
-    i128 AtomicI128 ATOMIC_I128_INIT
+    i128 AtomicI128
 }
 #[cfg(target_has_atomic_load_store = "128")]
 atomic_int! {
@@ -3054,19 +3025,17 @@ atomic_int! {
     unstable(feature = "integer_atomics", issue = "99069"),
     unstable(feature = "integer_atomics", issue = "99069"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
-    unstable(feature = "integer_atomics", issue = "99069"),
     cfg_attr(not(test), rustc_diagnostic_item = "AtomicU128"),
     "u128",
     "#![feature(integer_atomics)]\n\n",
     atomic_umin, atomic_umax,
     16,
-    "AtomicU128::new(0)",
-    u128 AtomicU128 ATOMIC_U128_INIT
+    u128 AtomicU128
 }
 
+#[cfg(target_has_atomic_load_store = "ptr")]
 macro_rules! atomic_int_ptr_sized {
     ( $($target_pointer_width:literal $align:literal)* ) => { $(
-        #[cfg(target_has_atomic_load_store = "ptr")]
         #[cfg(target_pointer_width = $target_pointer_width)]
         atomic_int! {
             cfg(target_has_atomic = "ptr"),
@@ -3078,16 +3047,13 @@ macro_rules! atomic_int_ptr_sized {
             stable(feature = "atomic_from", since = "1.23.0"),
             stable(feature = "atomic_nand", since = "1.27.0"),
             rustc_const_stable(feature = "const_ptr_sized_atomics", since = "1.24.0"),
-            stable(feature = "rust1", since = "1.0.0"),
             cfg_attr(not(test), rustc_diagnostic_item = "AtomicIsize"),
             "isize",
             "",
             atomic_min, atomic_max,
             $align,
-            "AtomicIsize::new(0)",
-            isize AtomicIsize ATOMIC_ISIZE_INIT
+            isize AtomicIsize
         }
-        #[cfg(target_has_atomic_load_store = "ptr")]
         #[cfg(target_pointer_width = $target_pointer_width)]
         atomic_int! {
             cfg(target_has_atomic = "ptr"),
@@ -3099,18 +3065,37 @@ macro_rules! atomic_int_ptr_sized {
             stable(feature = "atomic_from", since = "1.23.0"),
             stable(feature = "atomic_nand", since = "1.27.0"),
             rustc_const_stable(feature = "const_ptr_sized_atomics", since = "1.24.0"),
-            stable(feature = "rust1", since = "1.0.0"),
             cfg_attr(not(test), rustc_diagnostic_item = "AtomicUsize"),
             "usize",
             "",
             atomic_umin, atomic_umax,
             $align,
-            "AtomicUsize::new(0)",
-            usize AtomicUsize ATOMIC_USIZE_INIT
+            usize AtomicUsize
         }
+
+        /// An [`AtomicIsize`] initialized to `0`.
+        #[cfg(target_pointer_width = $target_pointer_width)]
+        #[stable(feature = "rust1", since = "1.0.0")]
+        #[deprecated(
+            since = "1.34.0",
+            note = "the `new` function is now preferred",
+            suggestion = "AtomicIsize::new(0)",
+        )]
+        pub const ATOMIC_ISIZE_INIT: AtomicIsize = AtomicIsize::new(0);
+
+        /// An [`AtomicUsize`] initialized to `0`.
+        #[cfg(target_pointer_width = $target_pointer_width)]
+        #[stable(feature = "rust1", since = "1.0.0")]
+        #[deprecated(
+            since = "1.34.0",
+            note = "the `new` function is now preferred",
+            suggestion = "AtomicUsize::new(0)",
+        )]
+        pub const ATOMIC_USIZE_INIT: AtomicUsize = AtomicUsize::new(0);
     )* };
 }
 
+#[cfg(target_has_atomic_load_store = "ptr")]
 atomic_int_ptr_sized! {
     "16" 2
     "32" 4

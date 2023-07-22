@@ -74,10 +74,10 @@ pub fn check_path(cx: &LateContext<'_>, path: &[&str]) -> bool {
     let lang_items = cx.tcx.lang_items();
     // This list isn't complete, but good enough for our current list of paths.
     let incoherent_impls = [
-        SimplifiedType::FloatSimplifiedType(FloatTy::F32),
-        SimplifiedType::FloatSimplifiedType(FloatTy::F64),
-        SimplifiedType::SliceSimplifiedType,
-        SimplifiedType::StrSimplifiedType,
+        SimplifiedType::Float(FloatTy::F32),
+        SimplifiedType::Float(FloatTy::F64),
+        SimplifiedType::Slice,
+        SimplifiedType::Str,
     ]
     .iter()
     .flat_map(|&ty| cx.tcx.incoherent_impls(ty).iter().copied());

@@ -2,10 +2,13 @@
 
 ### Blocks
 
-A block expression should have a newline after the initial `{` and before the
-terminal `}`. Any qualifier before the block (e.g., `unsafe`) should always be
-on the same line as the opening brace, and separated with a single space. The
-contents of the block should be block indented:
+A block expression must have a newline after the initial `{` and before the
+terminal `}`, unless it qualifies to be written as a single line based on
+another style rule.
+
+A keyword before the block (such as `unsafe` or `async`) must be on the same
+line as the opening brace, with a single space between the keyword and the
+opening brace. Indent the contents of the block.
 
 ```rust
 fn block_as_stmt() {
@@ -40,7 +43,7 @@ fn unsafe_block_as_stmt() {
 }
 ```
 
-If a block has an attribute, it should be on its own line:
+If a block has an attribute, put it on its own line before the block:
 
 ```rust
 fn block_as_stmt() {
@@ -54,18 +57,18 @@ fn block_as_stmt() {
 }
 ```
 
-Avoid writing comments on the same line as the braces.
+Avoid writing comments on the same lines as either of the braces.
 
-An empty block should be written as `{}`.
+Write an empty block as `{}`.
 
-A block may be written on a single line if:
+Write a block on a single line if:
 
 * it is either used in expression position (not statement position) or is an
-  unsafe block in statement position
-* contains a single-line expression and no statements
-* contains no comments
+  unsafe block in statement position,
+* it contains a single-line expression and no statements, and
+* it contains no comments
 
-A single line block should have spaces after the opening brace and before the
+For a single-line block, put spaces after the opening brace and before the
 closing brace.
 
 Examples:
@@ -117,14 +120,14 @@ fn main() {
 ### Closures
 
 Don't put any extra spaces before the first `|` (unless the closure is prefixed
-by `move`); put a space between the second `|` and the expression of the
-closure. Between the `|`s, you should use function definition syntax, however,
-elide types where possible.
+by a keyword such as `move`); put a space between the second `|` and the
+expression of the closure. Between the `|`s, use function definition syntax,
+but elide types where possible.
 
 Use closures without the enclosing `{}`, if possible. Add the `{}` when you have
-a return type, when there are statements, there are comments in the body, or the
-body expression spans multiple lines and is a control-flow expression. If using
-braces, follow the rules above for blocks. Examples:
+a return type, when there are statements, when there are comments inside the
+closure, or when the body expression is a control-flow expression that spans
+multiple lines. If using braces, follow the rules above for blocks. Examples:
 
 ```rust
 |arg1, arg2| expr
@@ -155,13 +158,14 @@ move |arg1: i32, arg2: i32| -> i32 {
 
 ### Struct literals
 
-If a struct literal is *small* it may be formatted on a single line. If not,
-each field should be on it's own, block-indented line. There should be a
-trailing comma in the multi-line form only. There should be a space after the
-colon only.
+If a struct literal is *small*, format it on a single line, and do not use a
+trailing comma. If not, split it across multiple lines, with each field on its
+own block-indented line, and use a trailing comma.
 
-There should be a space before the opening brace. In the single-line form there
-should be spaces after the opening brace and before the closing brace.
+For each `field: value` entry, put a space after the colon only.
+
+Put a space before the opening brace. In the single-line form, put spaces after
+the opening brace and before the closing brace.
 
 ```rust
 Foo { field1, field2: 0 }
@@ -172,19 +176,25 @@ let f = Foo {
 ```
 
 Functional record update syntax is treated like a field, but it must never have
-a trailing comma. There should be no space after `..`.
+a trailing comma. Do not put a space after `..`.
 
+```rust
 let f = Foo {
     field1,
     ..an_expr
 };
+```
 
 
 ### Tuple literals
 
-Use a single-line form where possible. There should not be spaces around the
-parentheses. Where a single-line form is not possible, each element of the tuple
-should be on its own block-indented line and there should be a trailing comma.
+Use a single-line form where possible. Do not put spaces between the opening
+parenthesis and the first element, or between the last element and the closing
+parenthesis. Separate elements with a comma followed by a space.
+
+Where a single-line form is not possible, write the tuple across
+multiple lines, with each element of the tuple on its own block-indented line,
+and use a trailing comma.
 
 ```rust
 (a, b, c)
@@ -198,14 +208,23 @@ let x = (
 
 ### Tuple struct literals
 
-There should be no space between the identifier and the opening parenthesis.
-Otherwise, follow the rules for tuple literals, e.g., `Foo(a, b)`.
+Do not put space between the identifier and the opening parenthesis. Otherwise,
+follow the rules for tuple literals:
+
+```rust
+Foo(a, b, c)
+
+let x = Foo(
+    a_long_expr,
+    another_very_long_expr,
+);
+```
 
 
 ### Enum literals
 
 Follow the formatting rules for the various struct literals. Prefer using the
-name of the enum as a qualifying name, unless the enum is in the prelude. E.g.,
+name of the enum as a qualifying name, unless the enum is in the prelude:
 
 ```rust
 Foo::Bar(a, b)
@@ -219,24 +238,29 @@ Ok(an_expr)
 
 ### Array literals
 
-For simple array literals, avoid line breaking, no spaces around square
-brackets, contents of the array should be separated by commas and spaces. If
-using the repeating initialiser, there should be a space after the semicolon
-only. Apply the same rules if using the `vec!` or similar macros (always use
-square brackets here). Examples:
+Write small array literals on a single line. Do not put spaces between the opening
+square bracket and the first element, or between the last element and the closing
+square bracket. Separate elements with a comma followed by a space.
+
+If using the repeating initializer, put a space after the semicolon
+only.
+
+Apply the same rules if using `vec!` or similar array-like macros; always use
+square brackets with such macros. Examples:
 
 ```rust
 fn main() {
-    [1, 2, 3];
-    vec![a, b, c, d];
+    let x = [1, 2, 3];
+    let y = vec![a, b, c, d];
     let a = [42; 10];
 }
 ```
 
-If a line must be broken, prefer breaking only after the `;`, if possible.
-Otherwise, follow the rules below for function calls. In any case, the contents
-of the initialiser should be block indented and there should be line breaks
-after the opening bracket and before the closing bracket:
+For arrays that have to be broken across lines, if using the repeating
+initializer, break after the `;`, not before. Otherwise, follow the rules below
+for function calls. In any case, block-indent the contents of the initializer,
+and put line breaks after the opening square bracket and before the closing
+square bracket:
 
 ```rust
 fn main() {
@@ -255,11 +279,12 @@ fn main() {
 
 ### Array accesses, indexing, and slicing.
 
-No spaces around the square brackets, avoid breaking lines if possible, never
-break a line between the target expression and the opening bracket. If the
-indexing expression covers multiple lines, then it should be block indented and
-there should be newlines after the opening brackets and before the closing
-bracket. However, this should be avoided where possible.
+Don't put spaces around the square brackets. Avoid breaking lines if possible.
+Never break a line between the target expression and the opening square
+bracket. If the indexing expression must be broken onto a subsequent line, or
+spans multiple lines itself, then block-indent the indexing expression, and put
+newlines after the opening square bracket and before the closing square
+bracket:
 
 Examples:
 
@@ -291,7 +316,7 @@ if you have `t: &T`, and `u: U`, prefer `*t op u` to `t op &u`. In general,
 within expressions, prefer dereferencing to taking references, unless necessary
 (e.g. to avoid an unnecessarily expensive operation).
 
-Use parentheses liberally, do not necessarily elide them due to precedence.
+Use parentheses liberally; do not necessarily elide them due to precedence.
 Tools should not automatically insert or remove parentheses. Do not use spaces
 to indicate precedence.
 
@@ -353,10 +378,10 @@ foo(x, y, z)
 #### Multi-line calls
 
 If the function call is not *small*, it would otherwise over-run the max width,
-or any argument or the callee is multi-line, then the call should be formatted
-across multiple lines. In this case, each argument should be on it's own block-
-indented line, there should be a newline after the opening parenthesis and
-before the closing parenthesis, and there should be a trailing comma. E.g.,
+or any argument or the callee is multi-line, then format the call across
+multiple lines. In this case, put each argument on its own block-indented line,
+break after the opening parenthesis and before the closing parenthesis,
+and use a trailing comma:
 
 ```rust
 a_function_call(
@@ -379,17 +404,18 @@ x.foo().bar().baz(x, y, z);
 
 ### Macro uses
 
-Macros which can be parsed like other constructs should be formatted like those
+If a macro can be parsed like other constructs, format it like those
 constructs. For example, a macro use `foo!(a, b, c)` can be parsed like a
-function call (ignoring the `!`), therefore it should be formatted following the
-rules for function calls.
+function call (ignoring the `!`), so format it using the rules for function
+calls.
 
 #### Special case macros
 
-Macros which take a format string and where all other arguments are *small* may
-be formatted with arguments before and after the format string on a single line
-and the format string on its own line, rather than putting each argument on its
-own line. For example,
+For macros which take a format string, if all other arguments are *small*,
+format the arguments before the format string on a single line if they fit, and
+format the arguments after the format string on a single line if they fit, with
+the format string on its own line. If the arguments are not small or do not
+fit, put each on its own line as with a function. For example:
 
 ```rust
 println!(
@@ -416,13 +442,13 @@ let cstr = "Hi\0" as *const str as *const [u8] as *const std::os::raw::c_char;
 
 ### Chains of fields and method calls
 
-A chain is a sequence of field accesses and/or method calls. A chain may also
-include the try operator ('?'). E.g., `a.b.c().d` or `foo?.bar().baz?`.
+A chain is a sequence of field accesses, method calls, and/or uses of the try
+operator `?`. E.g., `a.b.c().d` or `foo?.bar().baz?`.
 
-Prefer formatting on one line if possible, and the chain is *small*. If
-formatting on multiple lines, each field access or method call in the chain
-should be on its own line with the line-break before the `.` and after any `?`.
-Each line should be block-indented. E.g.,
+Format the chain on one line if it is "small" and otherwise possible to do so.
+If formatting on multiple lines, put each field access or method call in the
+chain on its own line, with the line-break before the `.` and after any `?`.
+Block-indent each subsequent line:
 
 ```rust
 let foo = bar
@@ -431,11 +457,14 @@ let foo = bar
 ```
 
 If the length of the last line of the first element plus its indentation is
-less than or equal to the indentation of the second line (and there is space),
-then combine the first and second lines, e.g.,
+less than or equal to the indentation of the second line, then combine the
+first and second lines if they fit. Apply this rule recursively.
 
 ```rust
 x.baz?
+    .qux()
+
+x.y.z
     .qux()
 
 let foo = x
@@ -489,13 +518,13 @@ self.pre_comment.as_ref().map_or(
 This section covers `if`, `if let`, `loop`, `while`, `while let`, and `for`
 expressions.
 
-The keyword, any initial clauses, and the opening brace of the block should be
-on a single line. The usual rules for [block formatting](#blocks) should be
-applied to the block.
+Put the keyword, any initial clauses, and the opening brace of the block all on
+a single line, if they fit. Apply the usual rules for [block
+formatting](#blocks) to the block.
 
-If there is an `else` component, then the closing brace, `else`, any following
-clause, and the opening brace should all be on the same line. There should be a
-single space before and after the `else` keyword. For example:
+If there is an `else` component, then put the closing brace, `else`, any
+following clause, and the opening brace all on the same line, with a single
+space before and after the `else` keyword:
 
 ```rust
 if ... {
@@ -513,10 +542,10 @@ if let ... {
 }
 ```
 
-If the control line needs to be broken, then prefer to break before the `=` in
-`* let` expressions and before `in` in a `for` expression; the following line
-should be block indented. If the control line is broken for any reason, then the
-opening brace should be on its own line and not indented. Examples:
+If the control line needs to be broken, prefer to break before the `=` in `*
+let` expressions and before `in` in a `for` expression; block-indent the
+following line. If the control line is broken for any reason, put the opening
+brace on its own line, not indented. Examples:
 
 ```rust
 while let Some(foo)
@@ -539,10 +568,10 @@ if a_long_expression
 }
 ```
 
-Where the initial clause is multi-lined and ends with one or more closing
-parentheses, square brackets, or braces, and there is nothing else on that line,
-and that line is not indented beyond the indent on the first line of the control
-flow expression, then the opening brace of the block should be put on the same
+Where the initial clause spans multiple lines and ends with one or more closing
+parentheses, square brackets, or braces, and there is nothing else on that
+line, and that line is not indented beyond the indent on the first line of the
+control flow expression, then put the opening brace of the block on the same
 line with a preceding space. For example:
 
 ```rust
@@ -558,9 +587,9 @@ if !self.config.file_lines().intersects(
 
 #### Single line `if else`
 
-Formatters may place an `if else` or `if let else` on a single line if it occurs
-in expression context (i.e., is not a standalone statement), it contains a
-single `else` clause, and is *small*. For example:
+Put an `if else` or `if let else` on a single line if it occurs in expression
+context (i.e., is not a standalone statement), it contains a single `else`
+clause, and is *small*:
 
 ```rust
 let y = if x { 0 } else { 1 };
@@ -582,9 +611,9 @@ if x {
 
 ### Match
 
-Prefer not to line-break inside the discriminant expression. There must always
-be a line break after the opening brace and before the closing brace. The match
-arms must be block indented once:
+Prefer not to line-break inside the discriminant expression. Always break after
+the opening brace and before the closing brace. Block-indent the match arms
+once:
 
 ```rust
 match foo {
@@ -598,7 +627,7 @@ let x = match foo.bar.baz() {
 
 Use a trailing comma for a match arm if and only if not using a block.
 
-Never start a match arm pattern with `|`, e.g.,
+Never start a match arm pattern with `|`:
 
 ```rust
 match foo {
@@ -608,14 +637,13 @@ match foo {
     | a_very_long_pattern
     | another_pattern
     | yet_another_pattern
-    | a_forth_pattern => {
+    | a_fourth_pattern => {
         ...
     }
 }
 ```
 
-Prefer
-
+Prefer:
 
 ```rust
 match foo {
@@ -623,7 +651,7 @@ match foo {
     a_very_long_pattern
     | another_pattern
     | yet_another_pattern
-    | a_forth_pattern => {
+    | a_fourth_pattern => {
         ...
     }
 }
@@ -633,11 +661,11 @@ Avoid splitting the left-hand side (before the `=>`) of a match arm where
 possible. If the right-hand side of the match arm is kept on the same line,
 never use a block (unless the block is empty).
 
-If the right-hand side consists of multiple statements or has line comments or
-the start of the line cannot be fit on the same line as the left-hand side, use
-a block.
+If the right-hand side consists of multiple statements, or has line comments,
+or the start of the line does not fit on the same line as the left-hand side,
+use a block.
 
-The body of a block arm should be block indented once.
+Block-indent the body of a block arm.
 
 Examples:
 
@@ -662,8 +690,8 @@ match foo {
 ```
 
 If the body is a single expression with no line comments and not a control flow
-expression, then it may be started on the same line as the right-hand side. If
-not, then it must be in a block. Example,
+expression, start it on the same line as the left-hand side. If not, then it
+must be in a block. Example:
 
 ```rust
 match foo {
@@ -687,8 +715,8 @@ match foo {
 
 #### Line-breaking
 
-Where it is possible to use a block form on the right-hand side and avoid
-breaking the left-hand side, do that. E.g.
+If using a block form on the right-hand side of a match arm makes it possible
+to avoid breaking on the left-hand side, do that:
 
 ```rust
     // Assuming the following line does not fit in the max width
@@ -720,7 +748,7 @@ body on a new line:
 
 If required to break the pattern, put each clause of the pattern on its own
 line with no additional indent, breaking before the `|`. If there is an `if`
-clause, then you must use the above form:
+clause, use the above form:
 
 ```rust
     a_very_long_pattern
@@ -740,7 +768,7 @@ clause, then you must use the above form:
 ```
 
 If the pattern is multi-line, and the last line is less wide than the indent, do
-not put the `if` clause on a newline. E.g.,
+not put the `if` clause on a new line. E.g.,
 
 ```rust
     Token::Dimension {
@@ -753,8 +781,8 @@ not put the `if` clause on a newline. E.g.,
 ```
 
 If every clause in a pattern is *small*, but the whole pattern does not fit on
-one line, then the pattern may be formatted across multiple lines with as many
-clauses per line as possible. Again break before a `|`:
+one line, then format the pattern across multiple lines with as many clauses
+per line as possible. Again, break before a `|`:
 
 ```rust
     foo | bar | baz
@@ -783,8 +811,8 @@ E.g., `&&Some(foo)` matches, `Foo(4, Bar)` does not.
 ### Combinable expressions
 
 Where a function call has a single argument, and that argument is formatted
-across multiple-lines, the outer call may be formatted as if it were a single-
-line call. The same combining behaviour may be applied to any similar
+across multiple-lines, format the outer call as if it were a single-line call,
+if the result fits. Apply the same combining behaviour to any similar
 expressions which have multi-line, block-indented lists of sub-expressions
 delimited by parentheses (e.g., macros or tuple struct literals). E.g.,
 
@@ -814,13 +842,12 @@ let arr = [combinable(
 )];
 ```
 
-Such behaviour should extend recursively, however, tools may choose to limit the
-depth of nesting.
+Apply this behavior recursively.
 
-Only where the multi-line sub-expression is a closure with an explicit block,
-this combining behaviour may be used where there are other arguments, as long as
-all the arguments and the first line of the closure fit on the first line, the
-closure is the last argument, and there is only one closure argument:
+For a function with multiple arguments, if the last argument is a multi-line
+closure with an explicit block, there are no other closure arguments, and all
+the arguments and the first line of the closure fit on the first line, use the
+same combining behavior:
 
 ```rust
 foo(first_arg, x, |param| {
@@ -835,16 +862,17 @@ foo(first_arg, x, |param| {
 Do not put spaces in ranges, e.g., `0..10`, `x..=y`, `..x.len()`, `foo..`.
 
 When writing a range with both upper and lower bounds, if the line must be
-broken, break before the range operator and block indent the second line:
+broken within the range, break before the range operator and block indent the
+second line:
 
 ```rust
 a_long_expression
     ..another_long_expression
 ```
 
-For the sake of indicating precedence, we recommend that if either bound is a
-compound expression, then use parentheses around it, e.g., `..(x + 1)`,
-`(x.f)..(x.f.len())`, or `0..(x - 10)`.
+For the sake of indicating precedence, if either bound is a compound
+expression, use parentheses around it, e.g., `..(x + 1)`, `(x.f)..(x.f.len())`,
+or `0..(x - 10)`.
 
 
 ### Hexadecimal literals
@@ -852,11 +880,8 @@ compound expression, then use parentheses around it, e.g., `..(x + 1)`,
 Hexadecimal literals may use upper- or lower-case letters, but they must not be
 mixed within the same literal. Projects should use the same case for all
 literals, but we do not make a recommendation for either lower- or upper-case.
-Tools should have an option to convert mixed case literals to upper-case, and
-may have an option to convert all literals to either lower- or upper-case.
-
 
 ## Patterns
 
-Patterns should be formatted like their corresponding expressions. See the
-section on `match` for additional formatting for patterns in match arms.
+Format patterns like their corresponding expressions. See the section on
+`match` for additional formatting for patterns in match arms.

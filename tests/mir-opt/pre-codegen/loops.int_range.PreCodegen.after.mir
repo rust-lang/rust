@@ -88,7 +88,7 @@ fn int_range(_1: usize, _2: usize) -> () {
 
     bb7: {
         _10 = ((_6 as Some).0: usize);
-        _11 = opaque::<usize>(_10) -> [return: bb8, unwind continue];
+        _11 = opaque::<usize>(move _10) -> [return: bb8, unwind continue];
     }
 
     bb8: {

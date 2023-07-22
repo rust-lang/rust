@@ -66,7 +66,7 @@
       bb2: {
           _6 = Shl(move _7, const 1_i32);
           StorageDead(_7);
-          _3 = rotate_right::<u32>(_4, _6) -> [return: bb3, unwind unreachable];
+          _3 = rotate_right::<u32>(move _4, move _6) -> [return: bb3, unwind unreachable];
       }
   
       bb3: {

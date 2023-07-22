@@ -462,6 +462,30 @@ impl<T: ?Sized> NonNull<T> {
         // And the caller promised the `delta` is sound to add.
         unsafe { NonNull { pointer: self.pointer.add(delta) } }
     }
+
+    /// See [`pointer::sub`] for semantics and safety requirements.
+    #[inline]
+    pub(crate) const unsafe fn sub(self, delta: usize) -> Self
+    where
+        T: Sized,
+    {
+        // SAFETY: We require that the delta stays in-bounds of the object, and
+        // thus it cannot become null, as no legal objects can be allocated
+        // in such as way that the null address is part of them.
+        // And the caller promised the `delta` is sound to subtract.
+        unsafe { NonNull { pointer: self.pointer.sub(delta) } }
+    }
+
+    /// See [`pointer::sub_ptr`] for semantics and safety requirements.
+    #[inline]
+    pub(crate) const unsafe fn sub_ptr(self, subtrahend: Self) -> usize
+    where
+        T: Sized,
+    {
+        // SAFETY: The caller promised that this is safe to do, and
+        // the non-nullness is irrelevant to the operation.
+        unsafe { self.pointer.sub_ptr(subtrahend.pointer) }
+    }
 }
 
 impl<T> NonNull<[T]> {

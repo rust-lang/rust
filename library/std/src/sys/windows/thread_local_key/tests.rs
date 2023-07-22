@@ -1,3 +1,7 @@
+// This file only tests the thread local key fallback.
+// Windows targets with native thread local support do not use this.
+#![cfg(not(target_thread_local))]
+
 use super::StaticKey;
 use crate::ptr;
 

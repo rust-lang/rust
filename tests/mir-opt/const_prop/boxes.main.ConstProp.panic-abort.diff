@@ -24,9 +24,10 @@
           StorageLive(_3);
 -         _4 = SizeOf(i32);
 -         _5 = AlignOf(i32);
+-         _6 = alloc::alloc::exchange_malloc(move _4, move _5) -> [return: bb1, unwind unreachable];
 +         _4 = const 4_usize;
 +         _5 = const 4_usize;
-          _6 = alloc::alloc::exchange_malloc(move _4, move _5) -> [return: bb1, unwind unreachable];
++         _6 = alloc::alloc::exchange_malloc(const 4_usize, const 4_usize) -> [return: bb1, unwind unreachable];
       }
   
       bb1: {
