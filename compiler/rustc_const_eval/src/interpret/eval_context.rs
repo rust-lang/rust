@@ -21,8 +21,8 @@ use rustc_target::abi::{call::FnAbi, Align, HasDataLayout, Size, TargetDataLayou
 
 use super::{
     AllocId, GlobalId, Immediate, InterpErrorInfo, InterpResult, MPlaceTy, Machine, MemPlace,
-    MemPlaceMeta, Memory, MemoryKind, Operand, Place, PlaceTy, PointerArithmetic, Provenance,
-    Scalar, StackPopJump,
+    MemPlaceMeta, Memory, MemoryKind, Operand, Place, PointerArithmetic, Provenance, Scalar,
+    StackPopJump,
 };
 use crate::errors::{self, ErroneousConstUsed};
 use crate::fluent_generated as fluent;
@@ -105,7 +105,7 @@ pub struct Frame<'mir, 'tcx, Prov: Provenance = AllocId, Extra = ()> {
 
     /// The location where the result of the current stack frame should be written to,
     /// and its layout in the caller.
-    pub return_place: PlaceTy<'tcx, Prov>,
+    pub return_place: MPlaceTy<'tcx, Prov>,
 
     /// The list of locals for this stack frame, stored in order as
     /// `[return_ptr, arguments..., variables..., temporaries...]`.
@@ -680,7 +680,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &mut self,
         instance: ty::Instance<'tcx>,
         body: &'mir mir::Body<'tcx>,
-        return_place: &PlaceTy<'tcx, M::Provenance>,
+        return_place: &MPlaceTy<'tcx, M::Provenance>,
         return_to_block: StackPopCleanup,
     ) -> InterpResult<'tcx> {
         trace!("body: {:#?}", body);
@@ -810,7 +810,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             let op = self
                 .local_to_op(self.frame(), mir::RETURN_PLACE, None)
                 .expect("return place should always be live");
-            let dest = self.frame().return_place.clone();
+            let dest = self.frame().return_place.into();
             let err = self.copy_op(&op, &dest, /*allow_transmute*/ true);
             trace!("return value: {:?}", self.dump_place(*dest));
             // We delay actually short-circuiting on this error until *after* the stack frame is
@@ -1014,15 +1014,11 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> std::fmt::Debug
 {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.place {
-            Place::Local { frame, local } => {
+            Place::Local { local } => {
                 let mut allocs = Vec::new();
-                write!(fmt, "{:?}", local)?;
-                if frame != self.ecx.frame_idx() {
-                    write!(fmt, " ({} frames up)", self.ecx.frame_idx() - frame)?;
-                }
-                write!(fmt, ":")?;
+                write!(fmt, "{:?}:", local)?;
 
-                match self.ecx.stack()[frame].locals[local].value {
+                match self.ecx.frame().locals[local].value {
                     LocalValue::Dead => write!(fmt, " is dead")?,
                     LocalValue::Live(Operand::Immediate(Immediate::Uninit)) => {
                         write!(fmt, " is uninitialized")?

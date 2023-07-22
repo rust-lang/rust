@@ -75,7 +75,9 @@ pub enum Place<Prov: Provenance = AllocId> {
 
     /// To support alloc-free locals, we are able to write directly to a local.
     /// (Without that optimization, we'd just always be a `MemPlace`.)
-    Local { frame: usize, local: mir::Local },
+    /// This always refers to a local in the current stack frame. That works because `Place` is
+    /// never stored anywhere long-term, only for the duration of evaluating a single statement.
+    Local { local: mir::Local },
 }
 
 #[derive(Clone, Debug)]
@@ -169,9 +171,9 @@ impl<Prov: Provenance> Place<Prov> {
     /// Returns the frame idx and the variable idx.
     #[inline]
     #[cfg_attr(debug_assertions, track_caller)] // only in debug builds due to perf (see #98980)
-    pub fn assert_local(&self) -> (usize, mir::Local) {
+    pub fn assert_local(&self) -> mir::Local {
         match self {
-            Place::Local { frame, local } => (*frame, *local),
+            Place::Local { local } => *local,
             _ => bug!("assert_local: expected Place::Local, got {:?}", self),
         }
     }
@@ -283,10 +285,10 @@ impl<'tcx, Prov: Provenance> OpTy<'tcx, Prov> {
 impl<'tcx, Prov: Provenance> PlaceTy<'tcx, Prov> {
     /// A place is either an mplace or some local.
     #[inline]
-    pub fn as_mplace_or_local(&self) -> Either<MPlaceTy<'tcx, Prov>, (usize, mir::Local)> {
+    pub fn as_mplace_or_local(&self) -> Either<MPlaceTy<'tcx, Prov>, mir::Local> {
         match **self {
             Place::Ptr(mplace) => Left(MPlaceTy { mplace, layout: self.layout, align: self.align }),
-            Place::Local { frame, local } => Right((frame, local)),
+            Place::Local { local } => Right(local),
         }
     }
 
@@ -348,7 +350,7 @@ where
         }
 
         let mplace = self.ref_to_mplace(&val)?;
-        self.check_mplace(mplace)?;
+        self.check_mplace(&mplace)?;
         Ok(mplace)
     }
 
@@ -379,7 +381,7 @@ where
     }
 
     /// Check if this mplace is dereferenceable and sufficiently aligned.
-    pub fn check_mplace(&self, mplace: MPlaceTy<'tcx, M::Provenance>) -> InterpResult<'tcx> {
+    pub fn check_mplace(&self, mplace: &MPlaceTy<'tcx, M::Provenance>) -> InterpResult<'tcx> {
         let (size, _align) = self
             .size_and_align_of_mplace(&mplace)?
             .unwrap_or((mplace.layout.size, mplace.layout.align.abi));
@@ -418,11 +420,10 @@ where
 
     pub fn local_to_place(
         &self,
-        frame: usize,
         local: mir::Local,
     ) -> InterpResult<'tcx, PlaceTy<'tcx, M::Provenance>> {
-        let layout = self.layout_of_local(&self.stack()[frame], local, None)?;
-        let place = Place::Local { frame, local };
+        let layout = self.layout_of_local(&self.frame(), local, None)?;
+        let place = Place::Local { local };
         Ok(PlaceTy { place, layout, align: layout.align.abi })
     }
 
@@ -433,7 +434,7 @@ where
         &mut self,
         mir_place: mir::Place<'tcx>,
     ) -> InterpResult<'tcx, PlaceTy<'tcx, M::Provenance>> {
-        let mut place = self.local_to_place(self.frame_idx(), mir_place.local)?;
+        let mut place = self.local_to_place(mir_place.local)?;
         // Using `try_fold` turned out to be bad for performance, hence the loop.
         for elem in mir_place.projection.iter() {
             place = self.place_projection(&place, elem)?
@@ -509,8 +510,8 @@ where
         // See if we can avoid an allocation. This is the counterpart to `read_immediate_raw`,
         // but not factored as a separate function.
         let mplace = match dest.place {
-            Place::Local { frame, local } => {
-                match M::access_local_mut(self, frame, local)? {
+            Place::Local { local } => {
+                match M::access_local_mut(self, local)? {
                     Operand::Immediate(local) => {
                         // Local can be updated in-place.
                         *local = src;
@@ -593,8 +594,8 @@ where
     pub fn write_uninit(&mut self, dest: &PlaceTy<'tcx, M::Provenance>) -> InterpResult<'tcx> {
         let mplace = match dest.as_mplace_or_local() {
             Left(mplace) => mplace,
-            Right((frame, local)) => {
-                match M::access_local_mut(self, frame, local)? {
+            Right(local) => {
+                match M::access_local_mut(self, local)? {
                     Operand::Immediate(local) => {
                         *local = Immediate::Uninit;
                         return Ok(());
@@ -728,16 +729,15 @@ where
         place: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {
         let mplace = match place.place {
-            Place::Local { frame, local } => {
-                match M::access_local_mut(self, frame, local)? {
+            Place::Local { local } => {
+                match M::access_local_mut(self, local)? {
                     &mut Operand::Immediate(local_val) => {
                         // We need to make an allocation.
 
                         // We need the layout of the local. We can NOT use the layout we got,
                         // that might e.g., be an inner field of a struct with `Scalar` layout,
                         // that has different alignment than the outer field.
-                        let local_layout =
-                            self.layout_of_local(&self.stack()[frame], local, None)?;
+                        let local_layout = self.layout_of_local(&self.frame(), local, None)?;
                         if local_layout.is_unsized() {
                             throw_unsup_format!("unsized locals are not supported");
                         }
@@ -755,8 +755,7 @@ where
                         }
                         // Now we can call `access_mut` again, asserting it goes well,
                         // and actually overwrite things.
-                        *M::access_local_mut(self, frame, local).unwrap() =
-                            Operand::Indirect(mplace);
+                        *M::access_local_mut(self, local).unwrap() = Operand::Indirect(mplace);
                         mplace
                     }
                     &mut Operand::Indirect(mplace) => mplace, // this already was an indirect local

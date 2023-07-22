@@ -223,10 +223,9 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
 
     fn access_local_mut<'a>(
         ecx: &'a mut InterpCx<'mir, 'tcx, Self>,
-        frame: usize,
         local: Local,
     ) -> InterpResult<'tcx, &'a mut interpret::Operand<Self::Provenance>> {
-        assert_eq!(frame, 0);
+        assert_eq!(ecx.frame_idx(), 0);
         match ecx.machine.can_const_prop[local] {
             ConstPropMode::NoPropagation => {
                 throw_machine_stop_str!(
@@ -238,7 +237,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
             }
             ConstPropMode::FullConstProp => {}
         }
-        ecx.machine.stack[frame].locals[local].access_mut()
+        ecx.frame_mut().locals[local].access_mut()
     }
 
     fn before_access_global(

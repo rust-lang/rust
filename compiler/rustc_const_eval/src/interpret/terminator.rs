@@ -1,6 +1,5 @@
 use std::borrow::Cow;
 
-use either::Either;
 use rustc_ast::ast::InlineAsmOptions;
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, TyAndLayout};
 use rustc_middle::ty::Instance;
@@ -25,7 +24,8 @@ pub enum FnArg<'tcx, Prov: Provenance = AllocId> {
     Copy(OpTy<'tcx, Prov>),
     /// Allow for the argument to be passed in-place: destroy the value originally stored at that place and
     /// make the place inaccessible for the duration of the function call.
-    InPlace(PlaceTy<'tcx, Prov>),
+    /// Needs to be in-memory since `PlaceTy` is not stable across stack frame pushing.
+    InPlace(MPlaceTy<'tcx, Prov>),
 }
 
 impl<'tcx, Prov: Provenance> FnArg<'tcx, Prov> {
@@ -40,13 +40,10 @@ impl<'tcx, Prov: Provenance> FnArg<'tcx, Prov> {
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Make a copy of the given fn_arg. Any `InPlace` are degenerated to copies, no protection of the
     /// original memory occurs.
-    pub fn copy_fn_arg(
-        &self,
-        arg: &FnArg<'tcx, M::Provenance>,
-    ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
+    pub fn copy_fn_arg(&self, arg: &FnArg<'tcx, M::Provenance>) -> OpTy<'tcx, M::Provenance> {
         match arg {
-            FnArg::Copy(op) => Ok(op.clone()),
-            FnArg::InPlace(place) => self.place_to_op(&place),
+            FnArg::Copy(op) => op.clone(),
+            FnArg::InPlace(place) => place.into(),
         }
     }
 
@@ -55,18 +52,18 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn copy_fn_args(
         &self,
         args: &[FnArg<'tcx, M::Provenance>],
-    ) -> InterpResult<'tcx, Vec<OpTy<'tcx, M::Provenance>>> {
+    ) -> Vec<OpTy<'tcx, M::Provenance>> {
         args.iter().map(|fn_arg| self.copy_fn_arg(fn_arg)).collect()
     }
 
     pub fn fn_arg_field(
-        &mut self,
+        &self,
         arg: &FnArg<'tcx, M::Provenance>,
         field: usize,
     ) -> InterpResult<'tcx, FnArg<'tcx, M::Provenance>> {
         Ok(match arg {
             FnArg::Copy(op) => FnArg::Copy(self.operand_field(op, field)?),
-            FnArg::InPlace(place) => FnArg::InPlace(self.place_field(place, field)?),
+            FnArg::InPlace(place) => FnArg::InPlace(self.mplace_field(place, field)?),
         })
     }
 
@@ -245,7 +242,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         ops.iter()
             .map(|op| {
                 Ok(match op {
-                    mir::Operand::Move(place) => FnArg::InPlace(self.eval_place(*place)?),
+                    mir::Operand::Move(place) => {
+                        let place = self.eval_place(*place)?;
+                        FnArg::InPlace(self.force_allocation(&place)?)
+                    }
                     _ => FnArg::Copy(self.eval_operand(op, None)?),
                 })
             })
@@ -372,7 +372,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // We work with a copy of the argument for now; if this is in-place argument passing, we
         // will later protect the source it comes from. This means the callee cannot observe if we
         // did in-place of by-copy argument passing, except for pointer equality tests.
-        let caller_arg_copy = self.copy_fn_arg(&caller_arg)?;
+        let caller_arg_copy = self.copy_fn_arg(&caller_arg);
         // Special handling for unsized parameters.
         if caller_arg_copy.layout.is_unsized() {
             // `check_argument_compat` ensures that both have the same type, so we know they will use the metadata the same way.
@@ -382,10 +382,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // This all has to be in memory, there are no immediate unsized values.
             let src = caller_arg_copy.assert_mem_place();
             // The destination cannot be one of these "spread args".
-            let (dest_frame, dest_local) = callee_arg.assert_local();
+            let dest_local = callee_arg.assert_local();
             // We are just initializing things, so there can't be anything here yet.
             assert!(matches!(
-                *self.local_to_op(&self.stack()[dest_frame], dest_local, None)?,
+                *self.local_to_op(&self.frame(), dest_local, None)?,
                 Operand::Immediate(Immediate::Uninit)
             ));
             // Allocate enough memory to hold `src`.
@@ -399,7 +399,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             let dest_place =
                 MPlaceTy::from_aligned_ptr_with_meta(ptr.into(), callee_arg.layout, src.meta);
             // Update the local to be that new place.
-            *M::access_local_mut(self, dest_frame, dest_local)? = Operand::Indirect(*dest_place);
+            *M::access_local_mut(self, dest_local)? = Operand::Indirect(*dest_place);
         }
         // We allow some transmutes here.
         // FIXME: Depending on the PassMode, this should reset some padding to uninitialized. (This
@@ -455,7 +455,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 M::call_intrinsic(
                     self,
                     instance,
-                    &self.copy_fn_args(args)?,
+                    &self.copy_fn_args(args),
                     destination,
                     target,
                     unwind,
@@ -513,10 +513,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     unwind = mir::UnwindAction::Unreachable;
                 }
 
+                // `Place` might be `Local` which refers to the current frame, but we are about to push a new one... make sure this is a stable `MPlace`.
+                let destination = self.force_allocation(destination)?;
+
                 self.push_stack_frame(
                     instance,
                     body,
-                    destination,
+                    &destination,
                     StackPopCleanup::Goto { ret: target, unwind },
                 )?;
 
@@ -629,12 +632,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     }
                     // Ensure the return place is aligned and dereferenceable, and protect it for
                     // in-place return value passing.
-                    if let Either::Left(mplace) = destination.as_mplace_or_local() {
-                        self.check_mplace(mplace)?;
-                    } else {
-                        // Nothing to do for locals, they are always properly allocated and aligned.
-                    }
-                    M::protect_in_place_function_argument(self, destination)?;
+                    self.check_mplace(&destination)?;
+                    M::protect_in_place_function_argument(self, &destination)?;
                 };
                 match res {
                     Err(err) => {
@@ -653,7 +652,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // An `InPlace` does nothing here, we keep the original receiver intact. We can't
                 // really pass the argument in-place anyway, and we are constructing a new
                 // `Immediate` receiver.
-                let mut receiver = self.copy_fn_arg(&args[0])?;
+                let mut receiver = self.copy_fn_arg(&args[0]);
                 let receiver_place = loop {
                     match receiver.layout.ty.kind() {
                         ty::Ref(..) | ty::RawPtr(..) => {

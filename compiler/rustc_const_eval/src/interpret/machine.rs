@@ -18,7 +18,7 @@ use crate::const_eval::CheckAlignment;
 
 use super::{
     AllocBytes, AllocId, AllocRange, Allocation, ConstAllocation, FnArg, Frame, ImmTy, InterpCx,
-    InterpResult, MemoryKind, OpTy, Operand, PlaceTy, Pointer, Provenance, Scalar,
+    InterpResult, MPlaceTy, MemoryKind, OpTy, Operand, PlaceTy, Pointer, Provenance, Scalar,
 };
 
 /// Data returned by Machine::stack_pop,
@@ -233,22 +233,18 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
         right: &ImmTy<'tcx, Self::Provenance>,
     ) -> InterpResult<'tcx, (Scalar<Self::Provenance>, bool, Ty<'tcx>)>;
 
-    /// Called to write the specified `local` from the `frame`.
+    /// Called to write the specified `local` from the current frame.
     /// Since writing a ZST is not actually accessing memory or locals, this is never invoked
     /// for ZST reads.
-    ///
-    /// Due to borrow checker trouble, we indicate the `frame` as an index rather than an `&mut
-    /// Frame`.
     #[inline]
     fn access_local_mut<'a>(
         ecx: &'a mut InterpCx<'mir, 'tcx, Self>,
-        frame: usize,
         local: mir::Local,
     ) -> InterpResult<'tcx, &'a mut Operand<Self::Provenance>>
     where
         'tcx: 'mir,
     {
-        ecx.stack_mut()[frame].locals[local].access_mut()
+        ecx.frame_mut().locals[local].access_mut()
     }
 
     /// Called before a basic block terminator is executed.
@@ -424,10 +420,10 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
     /// argument/return value was actually copied or passed in-place..
     fn protect_in_place_function_argument(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        place: &PlaceTy<'tcx, Self::Provenance>,
+        place: &MPlaceTy<'tcx, Self::Provenance>,
     ) -> InterpResult<'tcx> {
         // Without an aliasing model, all we can do is put `Uninit` into the place.
-        ecx.write_uninit(place)
+        ecx.write_uninit(&place.into())
     }
 
     /// Called immediately before a new stack frame gets pushed.

@@ -504,9 +504,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
         let op = match **place {
             Place::Ptr(mplace) => Operand::Indirect(mplace),
-            Place::Local { frame, local } => {
-                *self.local_to_op(&self.stack()[frame], local, None)?
-            }
+            Place::Local { local } => *self.local_to_op(&self.frame(), local, None)?,
         };
         Ok(OpTy { op, layout: place.layout, align: Some(place.align) })
     }
