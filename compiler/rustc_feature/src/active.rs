@@ -352,6 +352,8 @@ declare_features! (
     (active, c_variadic, "1.34.0", Some(44930), None),
     /// Allows the use of `#[cfg(overflow_checks)` to check if integer overflow behaviour.
     (active, cfg_overflow_checks, "1.71.0", Some(111466), None),
+    /// Provides the relocation model information as cfg entry
+    (active, cfg_relocation_model, "CURRENT_RUSTC_VERSION", Some(114929), None),
     /// Allows the use of `#[cfg(sanitize = "option")]`; set when -Zsanitizer is used.
     (active, cfg_sanitize, "1.41.0", Some(39699), None),
     /// Allows `cfg(target_abi = "...")`.
