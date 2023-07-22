@@ -2,9 +2,10 @@ use syntax::{
     ast::{self, HasName, HasVisibility},
     AstNode,
     SyntaxKind::{
-        CONST, ENUM, FN, MACRO_DEF, MODULE, STATIC, STRUCT, TRAIT, TYPE_ALIAS, USE, VISIBILITY,
+        self, ASSOC_ITEM_LIST, CONST, ENUM, FN, MACRO_DEF, MODULE, SOURCE_FILE, STATIC, STRUCT,
+        TRAIT, TYPE_ALIAS, USE, VISIBILITY,
     },
-    T,
+    SyntaxNode, T,
 };
 
 use crate::{utils::vis_offset, AssistContext, AssistId, AssistKind, Assists};
@@ -46,13 +47,11 @@ fn add_vis(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
 
     let (offset, target) = if let Some(keyword) = item_keyword {
         let parent = keyword.parent()?;
-        let def_kws =
-            vec![CONST, STATIC, TYPE_ALIAS, FN, MODULE, STRUCT, ENUM, TRAIT, USE, MACRO_DEF];
-        // Parent is not a definition, can't add visibility
-        if !def_kws.iter().any(|&def_kw| def_kw == parent.kind()) {
+
+        if !can_add(&parent) {
             return None;
         }
-        // Already have visibility, do nothing
+        // Already has visibility, do nothing
         if parent.children().any(|child| child.kind() == VISIBILITY) {
             return None;
         }
@@ -84,6 +83,29 @@ fn add_vis(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
             edit.insert(offset, "pub(crate) ");
         },
     )
+}
+
+fn can_add(node: &SyntaxNode) -> bool {
+    const LEGAL: &[SyntaxKind] =
+        &[CONST, STATIC, TYPE_ALIAS, FN, MODULE, STRUCT, ENUM, TRAIT, USE, MACRO_DEF];
+
+    LEGAL.contains(&node.kind()) && {
+        let Some(p) = node.parent() else {
+            return false;
+        };
+
+        if p.kind() == ASSOC_ITEM_LIST {
+            p.parent()
+                .and_then(|it| ast::Impl::cast(it))
+                // inherent impls i.e 'non-trait impls' have a non-local
+                // effect, thus can have visibility even when nested.
+                // so filter them out
+                .filter(|imp| imp.for_token().is_none())
+                .is_some()
+        } else {
+            matches!(p.kind(), SOURCE_FILE | MODULE)
+        }
+    }
 }
 
 fn change_vis(acc: &mut Assists, vis: ast::Visibility) -> Option<()> {
@@ -129,6 +151,16 @@ mod tests {
         check_assist(change_visibility, "unsafe f$0n foo() {}", "pub(crate) unsafe fn foo() {}");
         check_assist(change_visibility, "$0macro foo() {}", "pub(crate) macro foo() {}");
         check_assist(change_visibility, "$0use foo;", "pub(crate) use foo;");
+        check_assist(
+            change_visibility,
+            "impl Foo { f$0n foo() {} }",
+            "impl Foo { pub(crate) fn foo() {} }",
+        );
+        check_assist(
+            change_visibility,
+            "fn bar() { impl Foo { f$0n foo() {} } }",
+            "fn bar() { impl Foo { pub(crate) fn foo() {} } }",
+        );
     }
 
     #[test]
@@ -212,5 +244,34 @@ mod tests {
         check_assist_target(change_visibility, "$0fn foo() {}", "fn");
         check_assist_target(change_visibility, "pub(crate)$0 fn foo() {}", "pub(crate)");
         check_assist_target(change_visibility, "struct S { $0field: u32 }", "field");
+    }
+
+    #[test]
+    fn not_applicable_for_items_within_traits() {
+        check_assist_not_applicable(change_visibility, "trait Foo { f$0n run() {} }");
+        check_assist_not_applicable(change_visibility, "trait Foo { con$0st FOO: u8 = 69; }");
+        check_assist_not_applicable(change_visibility, "impl Foo for Bar { f$0n quox() {} }");
+    }
+
+    #[test]
+    fn not_applicable_for_items_within_fns() {
+        check_assist_not_applicable(change_visibility, "fn foo() { f$0n inner() {} }");
+        check_assist_not_applicable(change_visibility, "fn foo() { unsafe f$0n inner() {} }");
+        check_assist_not_applicable(change_visibility, "fn foo() { const f$0n inner() {} }");
+        check_assist_not_applicable(change_visibility, "fn foo() { con$0st FOO: u8 = 69; }");
+        check_assist_not_applicable(change_visibility, "fn foo() { en$0um Foo {} }");
+        check_assist_not_applicable(change_visibility, "fn foo() { stru$0ct Foo {} }");
+        check_assist_not_applicable(change_visibility, "fn foo() { mo$0d foo {} }");
+        check_assist_not_applicable(change_visibility, "fn foo() { $0use foo; }");
+        check_assist_not_applicable(change_visibility, "fn foo() { $0type Foo = Bar<T>; }");
+        check_assist_not_applicable(change_visibility, "fn foo() { tr$0ait Foo {} }");
+        check_assist_not_applicable(
+            change_visibility,
+            "fn foo() { impl Trait for Bar { f$0n bar() {} } }",
+        );
+        check_assist_not_applicable(
+            change_visibility,
+            "fn foo() { impl Trait for Bar { con$0st FOO: u8 = 69; } }",
+        );
     }
 }
