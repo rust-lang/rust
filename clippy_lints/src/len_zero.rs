@@ -170,7 +170,7 @@ impl<'tcx> LateLintPass<'tcx> for LenZero {
         if let ExprKind::Let(lt) = expr.kind
             && has_is_empty(cx, lt.init)
             && match lt.pat.kind {
-                PatKind::Slice([], _, []) => true,
+                PatKind::Slice([], None, []) => true,
                 PatKind::Lit(lit) if is_empty_string(lit) => true,
                 _ => false,
             }

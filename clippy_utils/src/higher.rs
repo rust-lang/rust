@@ -5,7 +5,6 @@
 use crate::consts::{constant_simple, Constant};
 use crate::ty::is_type_diagnostic_item;
 use crate::{is_expn_of, match_def_path, paths};
-use hir::BinOpKind;
 use if_chain::if_chain;
 use rustc_ast::ast;
 use rustc_hir as hir;
@@ -136,97 +135,6 @@ impl<'hir> IfLet<'hir> {
         }
         None
     }
-}
-
-/// A `let` chain, like `if true && let Some(true) = x {}`
-#[derive(Debug)]
-pub struct LetChain<'hir> {
-    pub conds: Vec<IfOrIfLetInChain<'hir>>,
-    pub if_then: &'hir Expr<'hir>,
-    pub if_else: Option<&'hir Expr<'hir>>,
-}
-
-impl<'hir> LetChain<'hir> {
-    pub fn hir(expr: &Expr<'hir>) -> Option<Self> {
-        if let ExprKind::If(cond, if_then, if_else) = expr.kind {
-            let mut conds = vec![];
-            let mut cursor = cond;
-            while let ExprKind::Binary(binop, lhs, rhs) = cursor.kind
-                && let BinOpKind::And = binop.node
-            {
-                cursor = lhs;
-                conds.push(IfOrIfLetInChain::hir(rhs)?);
-            }
-
-            // The final lhs cannot be `&&`
-            conds.push(IfOrIfLetInChain::hir(cursor)?);
-
-            return Some(Self {
-                conds,
-                if_then,
-                if_else,
-            });
-        }
-
-        None
-    }
-}
-
-/// An `if let` or `if` expression in a let chain.
-#[derive(Debug)]
-pub enum IfOrIfLetInChain<'hir> {
-    If(IfInChain<'hir>),
-    IfLet(IfLetInChain<'hir>),
-}
-
-impl<'hir> IfOrIfLetInChain<'hir> {
-    pub fn hir(expr: &Expr<'hir>) -> Option<Self> {
-        match expr.kind {
-            ExprKind::DropTemps(cond) => Some(IfInChain { cond }.into()),
-            ExprKind::Let(hir::Let {
-                pat: let_pat,
-                init: let_expr,
-                span: let_span,
-                ..
-            }) => Some(
-                IfLetInChain {
-                    let_pat,
-                    let_expr,
-                    let_span: *let_span,
-                }
-                .into(),
-            ),
-            _ => None,
-        }
-    }
-}
-
-impl<'hir> From<IfInChain<'hir>> for IfOrIfLetInChain<'hir> {
-    fn from(value: IfInChain<'hir>) -> Self {
-        Self::If(value)
-    }
-}
-
-impl<'hir> From<IfLetInChain<'hir>> for IfOrIfLetInChain<'hir> {
-    fn from(value: IfLetInChain<'hir>) -> Self {
-        Self::IfLet(value)
-    }
-}
-
-/// An `if` expression in a let chain.
-#[derive(Debug)]
-pub struct IfInChain<'hir> {
-    pub cond: &'hir Expr<'hir>,
-}
-
-/// An `if let` expression in a let chain.
-#[derive(Debug)]
-pub struct IfLetInChain<'hir> {
-    pub let_span: Span,
-    /// `if let` pattern
-    pub let_pat: &'hir Pat<'hir>,
-    /// `if let` scrutinee
-    pub let_expr: &'hir Expr<'hir>,
 }
 
 /// An `if let` or `match` expression. Useful for lints that trigger on one or the other.
