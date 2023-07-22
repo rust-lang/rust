@@ -187,8 +187,8 @@ jobs:
         target_feature: [default]
         include:
           - { target: powerpc-unknown-linux-gnu, target_feature: "+altivec" }
-          - { target: powerpc64-unknown-linux-gnu, target_feature: "+power10-vector" }
-          - { target: powerpc64le-unknown-linux-gnu, target_feature: "+power10-vector" }
+          - { target: powerpc64-unknown-linux-gnu, target_feature: "+vsx" }
+          - { target: powerpc64le-unknown-linux-gnu, target_feature: "+vsx" }
           # We should test this, but cross currently can't run it
           # - { target: riscv64gc-unknown-linux-gnu, target_feature: "+v,+zvl128b" }
 
@@ -215,8 +215,7 @@ jobs:
       - name: Configure Emulated CPUs
         run: |
           echo "CARGO_TARGET_POWERPC_UNKNOWN_LINUX_GNU_RUNNER=qemu-ppc -cpu e600" >> $GITHUB_ENV
-          echo "CARGO_TARGET_POWERPC64_UNKNOWN_LINUX_GNU_RUNNER=qemu-ppc64 -cpu power10" >> $GITHUB_ENV
-          echo "CARGO_TARGET_RISCV64GC_UNKNOWN_LINUX_GNU_RUNNER=qemu-riscv64 -cpu rv64,zba=true,zbb=true,v=true,vlen=256,vext_spec=v1.0" >> $GITHUB_ENV
+          # echo "CARGO_TARGET_RISCV64GC_UNKNOWN_LINUX_GNU_RUNNER=qemu-riscv64 -cpu rv64,zba=true,zbb=true,v=true,vlen=256,vext_spec=v1.0" >> $GITHUB_ENV
 
       - name: Configure RUSTFLAGS
         shell: bash
