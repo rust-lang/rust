@@ -18,7 +18,7 @@ note: required by a bound in `foo`
    |
 LL | fn foo<F: Fn(&char) -> bool + Fn(char) -> bool>(f: F) {
    |                               ^^^^^^^^^^^^^^^^ required by this bound in `foo`
-help: do not borrow the argument
+help: consider adjusting the signature so it does not borrow its argument
    |
 LL |     foo(move |char| v);
    |               ~~~~

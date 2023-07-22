@@ -1,3 +1,13 @@
+trait_selection_adjust_signature_borrow = consider adjusting the signature so it borrows its {$len ->
+        [one] argument
+        *[other] arguments
+    }
+
+trait_selection_adjust_signature_remove_borrow = consider adjusting the signature so it does not borrow its {$len ->
+        [one] argument
+        *[other] arguments
+    }
+
 trait_selection_dump_vtable_entries = vtable entries for `{$trait_ref}`: {$entries}
 
 trait_selection_empty_on_clause_in_rustc_on_unimplemented = empty `on`-clause in `#[rustc_on_unimplemented]`
