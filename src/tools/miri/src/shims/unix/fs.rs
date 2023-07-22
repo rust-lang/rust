@@ -12,7 +12,7 @@ use log::trace;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::ty::TyCtxt;
-use rustc_target::abi::{Align, Size, HasDataLayout as _};
+use rustc_target::abi::{Align, HasDataLayout as _, Size};
 
 use crate::shims::os_str::bytes_to_os_str;
 use crate::*;
