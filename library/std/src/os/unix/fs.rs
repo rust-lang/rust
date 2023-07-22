@@ -149,7 +149,36 @@ pub trait FileExt {
     /// Note that similar to [`File::write`], it is not an error to return a
     /// short write.
     ///
+    /// # Bug
+    /// On some systems, `write_at` utilises [`pwrite64`] to write to files.
+    /// However, this syscall has a [bug] where files opened with the `O_APPEND`
+    /// flag fail to respect the offset parameter, always appending to the end
+    /// of the file instead.
+    ///
+    /// It is possible to inadvertantly set this flag, like in the example below.
+    /// Therefore, it is important to be vigilant while changing options to mitigate
+    /// unexpected behaviour.
+    ///
+    /// ```no_run
+    /// use std::fs::File;
+    /// use std::io;
+    /// use std::os::unix::prelude::FileExt;
+    ///
+    /// fn main() -> io::Result<()> {
+    ///     // Open a file with the append option (sets the `O_APPEND` flag)
+    ///     let file = File::options().append(true).open("foo.txt")?;
+    ///
+    ///     // We attempt to write at offset 10; instead appended to EOF
+    ///     file.write_at(b"sushi", 10)?;
+    ///
+    ///     // foo.txt is 5 bytes long instead of 15
+    ///     Ok(())
+    /// }
+    /// ```
+    ///
     /// [`File::write`]: fs::File::write
+    /// [`pwrite64`]: https://man7.org/linux/man-pages/man2/pwrite.2.html
+    /// [bug]: https://man7.org/linux/man-pages/man2/pwrite.2.html#BUGS
     ///
     /// # Examples
     ///
@@ -159,7 +188,7 @@ pub trait FileExt {
     /// use std::os::unix::prelude::FileExt;
     ///
     /// fn main() -> io::Result<()> {
-    ///     let file = File::open("foo.txt")?;
+    ///     let file = File::create("foo.txt")?;
     ///
     ///     // We now write at the offset 10.
     ///     file.write_at(b"sushi", 10)?;
