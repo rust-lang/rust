@@ -514,9 +514,11 @@ macro_rules! impl_float_tests {
                     assert!(n_zero.simd_max(p_zero).to_array().iter().all(|x| *x == 0.));
                 }
 
-                #[cfg(not(all(target_arch = "powerpc64", target_feature = "vsx")))]
-                // https://gitlab.com/qemu-project/qemu/-/issues/1780
                 fn simd_clamp<const LANES: usize>() {
+                    if cfg!(all(target_arch = "powerpc64", target_feature = "vsx")) {
+                        // https://gitlab.com/qemu-project/qemu/-/issues/1780
+                        return;
+                    }
                     test_helpers::test_3(&|value: [Scalar; LANES], mut min: [Scalar; LANES], mut max: [Scalar; LANES]| {
                         use test_helpers::subnormals::flush_in;
                         for (min, max) in min.iter_mut().zip(max.iter_mut()) {
