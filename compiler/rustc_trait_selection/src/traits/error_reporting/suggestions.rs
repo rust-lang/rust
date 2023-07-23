@@ -1471,7 +1471,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
                         let span = if needs_parens { span } else { span.shrink_to_lo() };
                         let suggestions = if !needs_parens {
-                            vec![(span.shrink_to_lo(), format!("{}", sugg_prefix))]
+                            vec![(span.shrink_to_lo(), sugg_prefix)]
                         } else {
                             vec![
                                 (span.shrink_to_lo(), format!("{}(", sugg_prefix)),

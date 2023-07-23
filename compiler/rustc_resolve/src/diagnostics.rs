@@ -1395,7 +1395,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             let head_span = source_map.guess_head_span(span);
             err.subdiagnostic(ConsiderAddingADerive {
                 span: head_span.shrink_to_lo(),
-                suggestion: format!("#[derive(Default)]\n")
+                suggestion: "#[derive(Default)]\n".to_string(),
             });
         }
         for ns in [Namespace::MacroNS, Namespace::TypeNS, Namespace::ValueNS] {
@@ -1718,7 +1718,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             if next_binding.is_none() && let Some(span) = non_exhaustive {
                 note_span.push_span_label(
                     span,
-                    format!("cannot be constructed because it is `#[non_exhaustive]`"),
+                    "cannot be constructed because it is `#[non_exhaustive]`",
                 );
             }
             err.span_note(note_span, msg);
