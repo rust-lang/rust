@@ -56,6 +56,7 @@ pub struct InPublicInterface<'a> {
     pub span: Span,
     pub vis_descr: &'static str,
     pub kind: &'a str,
+    pub vis_sugg: &'static str,
     pub descr: DiagArgFromDisplay<'a>,
     #[label(privacy_visibility_label)]
     pub vis_span: Span,

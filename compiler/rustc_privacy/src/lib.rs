@@ -1337,12 +1337,31 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
                 }
             };
 
+            // FIXME: this code was adapted from the above `vis_descr` computation,
+            //        but it's not clear if it's correct.
+            let vis_sugg = match self.required_visibility {
+                ty::Visibility::Public => "pub",
+                ty::Visibility::Restricted(vis_def_id) => {
+                    if vis_def_id
+                        == self.tcx.parent_module_from_def_id(local_def_id).to_local_def_id()
+                    {
+                        "???FIXME???"
+                    } else if vis_def_id.is_top_level_module() {
+                        "pub(crate)"
+                    } else {
+                        "???FIXME???"
+                    }
+                }
+            };
+
             self.tcx.dcx().emit_err(InPublicInterface {
                 span,
                 vis_descr,
                 kind,
+                vis_sugg,
                 descr: descr.into(),
                 vis_span,
+                suggestion: vis_span,
             });
             return false;
         }
