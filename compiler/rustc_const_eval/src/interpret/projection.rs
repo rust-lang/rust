@@ -7,17 +7,15 @@
 //! but we still need to do bounds checking and adjust the layout. To not duplicate that with MPlaceTy, we actually
 //! implement the logic on OpTy, and MPlaceTy calls that.
 
-use either::{Left, Right};
-
 use rustc_middle::mir;
 use rustc_middle::ty;
-use rustc_middle::ty::layout::LayoutOf;
+use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::Ty;
-use rustc_target::abi::{self, Abi, VariantIdx};
+use rustc_target::abi::Size;
+use rustc_target::abi::{self, VariantIdx};
 
 use super::{
-    ImmTy, Immediate, InterpCx, InterpResult, MPlaceTy, Machine, MemPlaceMeta, OpTy, PlaceTy,
-    Provenance, Scalar,
+    InterpCx, InterpResult, MPlaceTy, Machine, MemPlaceMeta, OpTy, PlaceTy, Provenance, Scalar,
 };
 
 // FIXME: Working around https://github.com/rust-lang/rust/issues/54385
@@ -27,6 +25,43 @@ where
     M: Machine<'mir, 'tcx, Provenance = Prov>,
 {
     //# Field access
+
+    fn project_field(
+        &self,
+        base_layout: TyAndLayout<'tcx>,
+        base_meta: MemPlaceMeta<M::Provenance>,
+        field: usize,
+    ) -> InterpResult<'tcx, (Size, MemPlaceMeta<M::Provenance>, TyAndLayout<'tcx>)> {
+        let offset = base_layout.fields.offset(field);
+        let field_layout = base_layout.field(self, field);
+
+        // Offset may need adjustment for unsized fields.
+        let (meta, offset) = if field_layout.is_unsized() {
+            if base_layout.is_sized() {
+                // An unsized field of a sized type? Sure...
+                // But const-prop actually feeds us such nonsense MIR!
+                throw_inval!(ConstPropNonsense);
+            }
+            // Re-use parent metadata to determine dynamic field layout.
+            // With custom DSTS, this *will* execute user-defined code, but the same
+            // happens at run-time so that's okay.
+            match self.size_and_align_of(&base_meta, &field_layout)? {
+                Some((_, align)) => (base_meta, offset.align_to(align)),
+                None => {
+                    // For unsized types with an extern type tail we perform no adjustments.
+                    // NOTE: keep this in sync with `PlaceRef::project_field` in the codegen backend.
+                    assert!(matches!(base_meta, MemPlaceMeta::None));
+                    (base_meta, offset)
+                }
+            }
+        } else {
+            // base_meta could be present; we might be accessing a sized field of an unsized
+            // struct.
+            (MemPlaceMeta::None, offset)
+        };
+
+        Ok((offset, meta, field_layout))
+    }
 
     /// Offset a pointer to project to a field of a struct/union. Unlike `place_field`, this is
     /// always possible without allocating, so it can take `&self`. Also return the field's layout.
@@ -39,28 +74,7 @@ where
         base: &MPlaceTy<'tcx, M::Provenance>,
         field: usize,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {
-        let offset = base.layout.fields.offset(field);
-        let field_layout = base.layout.field(self, field);
-
-        // Offset may need adjustment for unsized fields.
-        let (meta, offset) = if field_layout.is_unsized() {
-            // Re-use parent metadata to determine dynamic field layout.
-            // With custom DSTS, this *will* execute user-defined code, but the same
-            // happens at run-time so that's okay.
-            match self.size_and_align_of(&base.meta, &field_layout)? {
-                Some((_, align)) => (base.meta, offset.align_to(align)),
-                None => {
-                    // For unsized types with an extern type tail we perform no adjustments.
-                    // NOTE: keep this in sync with `PlaceRef::project_field` in the codegen backend.
-                    assert!(matches!(base.meta, MemPlaceMeta::None));
-                    (base.meta, offset)
-                }
-            }
-        } else {
-            // base.meta could be present; we might be accessing a sized field of an unsized
-            // struct.
-            (MemPlaceMeta::None, offset)
-        };
+        let (offset, meta, field_layout) = self.project_field(base.layout, base.meta, field)?;
 
         // We do not look at `base.layout.align` nor `field_layout.align`, unlike
         // codegen -- mostly to see if we can get away with that
@@ -68,18 +82,14 @@ where
     }
 
     /// Gets the place of a field inside the place, and also the field's type.
-    /// Just a convenience function, but used quite a bit.
-    /// This is the only projection that might have a side-effect: We cannot project
-    /// into the field of a local `ScalarPair`, we have to first allocate it.
     pub fn place_field(
-        &mut self,
+        &self,
         base: &PlaceTy<'tcx, M::Provenance>,
         field: usize,
     ) -> InterpResult<'tcx, PlaceTy<'tcx, M::Provenance>> {
-        // FIXME: We could try to be smarter and avoid allocation for fields that span the
-        // entire place.
-        let base = self.force_allocation(base)?;
-        Ok(self.mplace_field(&base, field)?.into())
+        let (offset, meta, field_layout) =
+            self.project_field(base.layout, self.place_meta(base)?, field)?;
+        base.offset_with_meta(offset, meta, field_layout, self)
     }
 
     pub fn operand_field(
@@ -87,56 +97,8 @@ where
         base: &OpTy<'tcx, M::Provenance>,
         field: usize,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
-        let base = match base.as_mplace_or_imm() {
-            Left(ref mplace) => {
-                // We can reuse the mplace field computation logic for indirect operands.
-                let field = self.mplace_field(mplace, field)?;
-                return Ok(field.into());
-            }
-            Right(value) => value,
-        };
-
-        let field_layout = base.layout.field(self, field);
-        let offset = base.layout.fields.offset(field);
-        // This makes several assumptions about what layouts we will encounter; we match what
-        // codegen does as good as we can (see `extract_field` in `rustc_codegen_ssa/src/mir/operand.rs`).
-        let field_val: Immediate<_> = match (*base, base.layout.abi) {
-            // if the entire value is uninit, then so is the field (can happen in ConstProp)
-            (Immediate::Uninit, _) => Immediate::Uninit,
-            // the field contains no information, can be left uninit
-            _ if field_layout.is_zst() => Immediate::Uninit,
-            // the field covers the entire type
-            _ if field_layout.size == base.layout.size => {
-                assert!(match (base.layout.abi, field_layout.abi) {
-                    (Abi::Scalar(..), Abi::Scalar(..)) => true,
-                    (Abi::ScalarPair(..), Abi::ScalarPair(..)) => true,
-                    _ => false,
-                });
-                assert!(offset.bytes() == 0);
-                *base
-            }
-            // extract fields from types with `ScalarPair` ABI
-            (Immediate::ScalarPair(a_val, b_val), Abi::ScalarPair(a, b)) => {
-                assert!(matches!(field_layout.abi, Abi::Scalar(..)));
-                Immediate::from(if offset.bytes() == 0 {
-                    debug_assert_eq!(field_layout.size, a.size(self));
-                    a_val
-                } else {
-                    debug_assert_eq!(offset, a.size(self).align_to(b.align(self).abi));
-                    debug_assert_eq!(field_layout.size, b.size(self));
-                    b_val
-                })
-            }
-            // everything else is a bug
-            _ => span_bug!(
-                self.cur_span(),
-                "invalid field access on immediate {}, layout {:#?}",
-                base,
-                base.layout
-            ),
-        };
-
-        Ok(ImmTy::from_immediate(field_val, field_layout).into())
+        let (offset, meta, field_layout) = self.project_field(base.layout, base.meta()?, field)?;
+        base.offset_with_meta(offset, meta, field_layout, self)
     }
 
     //# Downcasting
@@ -177,7 +139,36 @@ where
         Ok(base)
     }
 
-    //# Slice indexing
+    //# Slice and array indexing
+
+    /// Compute the offset and field layout for accessing the given index.
+    fn project_index(
+        &self,
+        base_layout: TyAndLayout<'tcx>,
+        base_meta: MemPlaceMeta<M::Provenance>,
+        index: u64,
+    ) -> InterpResult<'tcx, (Size, TyAndLayout<'tcx>)> {
+        // Not using the layout method because we want to compute on u64
+        match base_layout.fields {
+            abi::FieldsShape::Array { stride, count: _ } => {
+                // `count` is nonsense for slices, use the dynamic length instead.
+                let len = base_meta.len(base_layout, self)?;
+                if index >= len {
+                    // This can only be reached in ConstProp and non-rustc-MIR.
+                    throw_ub!(BoundsCheckFailed { len, index });
+                }
+                let offset = stride * index; // `Size` multiplication
+                // All fields have the same layout.
+                let field_layout = base_layout.field(self, 0);
+                Ok((offset, field_layout))
+            }
+            _ => span_bug!(
+                self.cur_span(),
+                "`mplace_index` called on non-array type {:?}",
+                base_layout.ty
+            ),
+        }
+    }
 
     #[inline(always)]
     pub fn operand_index(
@@ -185,42 +176,8 @@ where
         base: &OpTy<'tcx, M::Provenance>,
         index: u64,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
-        // Not using the layout method because we want to compute on u64
-        match base.layout.fields {
-            abi::FieldsShape::Array { stride, count: _ } => {
-                // `count` is nonsense for slices, use the dynamic length instead.
-                let len = base.len(self)?;
-                if index >= len {
-                    // This can only be reached in ConstProp and non-rustc-MIR.
-                    throw_ub!(BoundsCheckFailed { len, index });
-                }
-                let offset = stride * index; // `Size` multiplication
-                // All fields have the same layout.
-                let field_layout = base.layout.field(self, 0);
-                base.offset(offset, field_layout, self)
-            }
-            _ => span_bug!(
-                self.cur_span(),
-                "`mplace_index` called on non-array type {:?}",
-                base.layout.ty
-            ),
-        }
-    }
-
-    /// Iterates over all fields of an array. Much more efficient than doing the
-    /// same by repeatedly calling `operand_index`.
-    pub fn operand_array_fields<'a>(
-        &self,
-        base: &'a OpTy<'tcx, Prov>,
-    ) -> InterpResult<'tcx, impl Iterator<Item = InterpResult<'tcx, OpTy<'tcx, Prov>>> + 'a> {
-        let len = base.len(self)?; // also asserts that we have a type where this makes sense
-        let abi::FieldsShape::Array { stride, .. } = base.layout.fields else {
-            span_bug!(self.cur_span(), "operand_array_fields: expected an array layout");
-        };
-        let field_layout = base.layout.field(self, 0);
-        let dl = &self.tcx.data_layout;
-        // `Size` multiplication
-        Ok((0..len).map(move |i| base.offset(stride * i, field_layout, dl)))
+        let (offset, field_layout) = self.project_index(base.layout, base.meta()?, index)?;
+        base.offset(offset, field_layout, self)
     }
 
     /// Index into an array.
@@ -229,31 +186,63 @@ where
         base: &MPlaceTy<'tcx, M::Provenance>,
         index: u64,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {
-        Ok(self.operand_index(&base.into(), index)?.assert_mem_place())
+        let (offset, field_layout) = self.project_index(base.layout, base.meta, index)?;
+        base.offset(offset, field_layout, self)
     }
 
     pub fn place_index(
-        &mut self,
+        &self,
         base: &PlaceTy<'tcx, M::Provenance>,
         index: u64,
     ) -> InterpResult<'tcx, PlaceTy<'tcx, M::Provenance>> {
-        // There's not a lot we can do here, since we cannot have a place to a part of a local. If
-        // we are accessing the only element of a 1-element array, it's still the entire local...
-        // that doesn't seem worth it.
-        let base = self.force_allocation(base)?;
-        Ok(self.mplace_index(&base, index)?.into())
+        let (offset, field_layout) =
+            self.project_index(base.layout, self.place_meta(base)?, index)?;
+        base.offset(offset, field_layout, self)
+    }
+
+    /// Iterates over all fields of an array. Much more efficient than doing the
+    /// same by repeatedly calling `operand_index`.
+    pub fn operand_array_fields<'a>(
+        &self,
+        base: &'a OpTy<'tcx, Prov>,
+    ) -> InterpResult<'tcx, impl Iterator<Item = InterpResult<'tcx, OpTy<'tcx, Prov>>> + 'a> {
+        let abi::FieldsShape::Array { stride, .. } = base.layout.fields else {
+            span_bug!(self.cur_span(), "operand_array_fields: expected an array layout");
+        };
+        let len = base.len(self)?;
+        let field_layout = base.layout.field(self, 0);
+        let dl = &self.tcx.data_layout;
+        // `Size` multiplication
+        Ok((0..len).map(move |i| base.offset(stride * i, field_layout, dl)))
+    }
+
+    /// Iterates over all fields of an array. Much more efficient than doing the
+    /// same by repeatedly calling `place_index`.
+    pub fn place_array_fields<'a>(
+        &self,
+        base: &'a PlaceTy<'tcx, Prov>,
+    ) -> InterpResult<'tcx, impl Iterator<Item = InterpResult<'tcx, PlaceTy<'tcx, Prov>>> + 'a> {
+        let abi::FieldsShape::Array { stride, .. } = base.layout.fields else {
+            span_bug!(self.cur_span(), "place_array_fields: expected an array layout");
+        };
+        let len = self.place_meta(base)?.len(base.layout, self)?;
+        let field_layout = base.layout.field(self, 0);
+        let dl = &self.tcx.data_layout;
+        // `Size` multiplication
+        Ok((0..len).map(move |i| base.offset(stride * i, field_layout, dl)))
     }
 
     //# ConstantIndex support
 
-    fn operand_constant_index(
+    fn project_constant_index(
         &self,
-        base: &OpTy<'tcx, M::Provenance>,
+        base_layout: TyAndLayout<'tcx>,
+        base_meta: MemPlaceMeta<M::Provenance>,
         offset: u64,
         min_length: u64,
         from_end: bool,
-    ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
-        let n = base.len(self)?;
+    ) -> InterpResult<'tcx, (Size, TyAndLayout<'tcx>)> {
+        let n = base_meta.len(base_layout, self)?;
         if n < min_length {
             // This can only be reached in ConstProp and non-rustc-MIR.
             throw_ub!(BoundsCheckFailed { len: min_length, index: n });
@@ -267,33 +256,49 @@ where
             offset
         };
 
-        self.operand_index(base, index)
+        self.project_index(base_layout, base_meta, index)
+    }
+
+    fn operand_constant_index(
+        &self,
+        base: &OpTy<'tcx, M::Provenance>,
+        offset: u64,
+        min_length: u64,
+        from_end: bool,
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
+        let (offset, layout) =
+            self.project_constant_index(base.layout, base.meta()?, offset, min_length, from_end)?;
+        base.offset(offset, layout, self)
     }
 
     fn place_constant_index(
-        &mut self,
+        &self,
         base: &PlaceTy<'tcx, M::Provenance>,
         offset: u64,
         min_length: u64,
         from_end: bool,
     ) -> InterpResult<'tcx, PlaceTy<'tcx, M::Provenance>> {
-        let base = self.force_allocation(base)?;
-        Ok(self
-            .operand_constant_index(&base.into(), offset, min_length, from_end)?
-            .assert_mem_place()
-            .into())
+        let (offset, layout) = self.project_constant_index(
+            base.layout,
+            self.place_meta(base)?,
+            offset,
+            min_length,
+            from_end,
+        )?;
+        base.offset(offset, layout, self)
     }
 
     //# Subslicing
 
-    fn operand_subslice(
+    fn project_subslice(
         &self,
-        base: &OpTy<'tcx, M::Provenance>,
+        base_layout: TyAndLayout<'tcx>,
+        base_meta: MemPlaceMeta<M::Provenance>,
         from: u64,
         to: u64,
         from_end: bool,
-    ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
-        let len = base.len(self)?; // also asserts that we have a type where this makes sense
+    ) -> InterpResult<'tcx, (Size, MemPlaceMeta<M::Provenance>, TyAndLayout<'tcx>)> {
+        let len = base_meta.len(base_layout, self)?; // also asserts that we have a type where this makes sense
         let actual_to = if from_end {
             if from.checked_add(to).map_or(true, |to| to > len) {
                 // This can only be reached in ConstProp and non-rustc-MIR.
@@ -306,16 +311,16 @@ where
 
         // Not using layout method because that works with usize, and does not work with slices
         // (that have count 0 in their layout).
-        let from_offset = match base.layout.fields {
+        let from_offset = match base_layout.fields {
             abi::FieldsShape::Array { stride, .. } => stride * from, // `Size` multiplication is checked
             _ => {
-                span_bug!(self.cur_span(), "unexpected layout of index access: {:#?}", base.layout)
+                span_bug!(self.cur_span(), "unexpected layout of index access: {:#?}", base_layout)
             }
         };
 
         // Compute meta and new layout
         let inner_len = actual_to.checked_sub(from).unwrap();
-        let (meta, ty) = match base.layout.ty.kind() {
+        let (meta, ty) = match base_layout.ty.kind() {
             // It is not nice to match on the type, but that seems to be the only way to
             // implement this.
             ty::Array(inner, _) => {
@@ -323,25 +328,38 @@ where
             }
             ty::Slice(..) => {
                 let len = Scalar::from_target_usize(inner_len, self);
-                (MemPlaceMeta::Meta(len), base.layout.ty)
+                (MemPlaceMeta::Meta(len), base_layout.ty)
             }
             _ => {
-                span_bug!(self.cur_span(), "cannot subslice non-array type: `{:?}`", base.layout.ty)
+                span_bug!(self.cur_span(), "cannot subslice non-array type: `{:?}`", base_layout.ty)
             }
         };
         let layout = self.layout_of(ty)?;
+        Ok((from_offset, meta, layout))
+    }
+
+    fn operand_subslice(
+        &self,
+        base: &OpTy<'tcx, M::Provenance>,
+        from: u64,
+        to: u64,
+        from_end: bool,
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
+        let (from_offset, meta, layout) =
+            self.project_subslice(base.layout, base.meta()?, from, to, from_end)?;
         base.offset_with_meta(from_offset, meta, layout, self)
     }
 
     pub fn place_subslice(
-        &mut self,
+        &self,
         base: &PlaceTy<'tcx, M::Provenance>,
         from: u64,
         to: u64,
         from_end: bool,
     ) -> InterpResult<'tcx, PlaceTy<'tcx, M::Provenance>> {
-        let base = self.force_allocation(base)?;
-        Ok(self.operand_subslice(&base.into(), from, to, from_end)?.assert_mem_place().into())
+        let (from_offset, meta, layout) =
+            self.project_subslice(base.layout, self.place_meta(base)?, from, to, from_end)?;
+        base.offset_with_meta(from_offset, meta, layout, self)
     }
 
     //# Applying a general projection
@@ -349,7 +367,7 @@ where
     /// Projects into a place.
     #[instrument(skip(self), level = "trace")]
     pub fn place_projection(
-        &mut self,
+        &self,
         base: &PlaceTy<'tcx, M::Provenance>,
         proj_elem: mir::PlaceElem<'tcx>,
     ) -> InterpResult<'tcx, PlaceTy<'tcx, M::Provenance>> {

@@ -301,8 +301,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     }
 
     /// Get the `Place` for a local
-    fn local_place(&mut self, local: mir::Local) -> InterpResult<'tcx, PlaceTy<'tcx, Provenance>> {
-        let this = self.eval_context_mut();
+    fn local_place(&self, local: mir::Local) -> InterpResult<'tcx, PlaceTy<'tcx, Provenance>> {
+        let this = self.eval_context_ref();
         let place = mir::Place { local, projection: List::empty() };
         this.eval_place(place)
     }

@@ -13,7 +13,7 @@ use rustc_target::abi::{self, Abi, Align, HasDataLayout, Size};
 
 use super::{
     alloc_range, from_known_layout, mir_assign_valid_types, AllocId, ConstValue, Frame, GlobalId,
-    InterpCx, InterpResult, MPlaceTy, Machine, MemPlace, MemPlaceMeta, Place, PlaceTy, Pointer,
+    InterpCx, InterpResult, MPlaceTy, Machine, MemPlace, MemPlaceMeta, PlaceTy, Pointer,
     Provenance, Scalar,
 };
 
@@ -240,37 +240,69 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
         let int = self.to_scalar().assert_int();
         ConstInt::new(int, self.layout.ty.is_signed(), self.layout.ty.is_ptr_sized_integral())
     }
+
+    /// Compute the "sub-immediate" that is located within the `base` at the given offset with the
+    /// given layout.
+    pub(super) fn offset(
+        &self,
+        offset: Size,
+        layout: TyAndLayout<'tcx>,
+        cx: &impl HasDataLayout,
+    ) -> Self {
+        // This makes several assumptions about what layouts we will encounter; we match what
+        // codegen does as good as we can (see `extract_field` in `rustc_codegen_ssa/src/mir/operand.rs`).
+        let inner_val: Immediate<_> = match (**self, self.layout.abi) {
+            // if the entire value is uninit, then so is the field (can happen in ConstProp)
+            (Immediate::Uninit, _) => Immediate::Uninit,
+            // the field contains no information, can be left uninit
+            _ if layout.is_zst() => Immediate::Uninit,
+            // the field covers the entire type
+            _ if layout.size == self.layout.size => {
+                assert!(match (self.layout.abi, layout.abi) {
+                    (Abi::Scalar(..), Abi::Scalar(..)) => true,
+                    (Abi::ScalarPair(..), Abi::ScalarPair(..)) => true,
+                    _ => false,
+                });
+                assert!(offset.bytes() == 0);
+                **self
+            }
+            // extract fields from types with `ScalarPair` ABI
+            (Immediate::ScalarPair(a_val, b_val), Abi::ScalarPair(a, b)) => {
+                assert!(matches!(layout.abi, Abi::Scalar(..)));
+                Immediate::from(if offset.bytes() == 0 {
+                    debug_assert_eq!(layout.size, a.size(cx));
+                    a_val
+                } else {
+                    debug_assert_eq!(offset, a.size(cx).align_to(b.align(cx).abi));
+                    debug_assert_eq!(layout.size, b.size(cx));
+                    b_val
+                })
+            }
+            // everything else is a bug
+            _ => bug!("invalid field access on immediate {}, layout {:#?}", self, self.layout),
+        };
+
+        ImmTy::from_immediate(inner_val, layout)
+    }
 }
 
 impl<'tcx, Prov: Provenance> OpTy<'tcx, Prov> {
-    pub fn len(&self, cx: &impl HasDataLayout) -> InterpResult<'tcx, u64> {
-        if self.layout.is_unsized() {
-            if matches!(self.op, Operand::Immediate(Immediate::Uninit)) {
-                // Uninit unsized places shouldn't occur. In the interpreter we have them
-                // temporarily for unsized arguments before their value is put in; in ConstProp they
-                // remain uninit and this code can actually be reached.
-                throw_inval!(UninitUnsizedLocal);
+    pub(super) fn meta(&self) -> InterpResult<'tcx, MemPlaceMeta<Prov>> {
+        Ok(if self.layout.is_unsized() {
+            if matches!(self.op, Operand::Immediate(_)) {
+                // Unsized immediate OpTy cannot occur. We create a MemPlace for all unsized locals during argument passing.
+                // However, ConstProp doesn't do that, so we can run into this nonsense situation.
+                throw_inval!(ConstPropNonsense);
             }
             // There are no unsized immediates.
-            self.assert_mem_place().len(cx)
+            self.assert_mem_place().meta
         } else {
-            match self.layout.fields {
-                abi::FieldsShape::Array { count, .. } => Ok(count),
-                _ => bug!("len not supported on sized type {:?}", self.layout.ty),
-            }
-        }
+            MemPlaceMeta::None
+        })
     }
 
-    /// Replace the layout of this operand. There's basically no sanity check that this makes sense,
-    /// you better know what you are doing! If this is an immediate, applying the wrong layout can
-    /// not just lead to invalid data, it can actually *shift the data around* since the offsets of
-    /// a ScalarPair are entirely determined by the layout, not the data.
-    pub fn transmute(&self, layout: TyAndLayout<'tcx>) -> Self {
-        assert_eq!(
-            self.layout.size, layout.size,
-            "transmuting with a size change, that doesn't seem right"
-        );
-        OpTy { layout, ..*self }
+    pub fn len(&self, cx: &impl HasDataLayout) -> InterpResult<'tcx, u64> {
+        self.meta()?.len(self.layout, cx)
     }
 
     /// Offset the operand in memory (if possible) and change its metadata.
@@ -286,13 +318,9 @@ impl<'tcx, Prov: Provenance> OpTy<'tcx, Prov> {
         match self.as_mplace_or_imm() {
             Left(mplace) => Ok(mplace.offset_with_meta(offset, meta, layout, cx)?.into()),
             Right(imm) => {
-                assert!(
-                    matches!(*imm, Immediate::Uninit),
-                    "Scalar/ScalarPair cannot be offset into"
-                );
                 assert!(!meta.has_meta()); // no place to store metadata here
                 // Every part of an uninit is uninit.
-                Ok(ImmTy::uninit(layout).into())
+                Ok(imm.offset(offset, layout, cx).into())
             }
         }
     }
@@ -502,13 +530,24 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &self,
         place: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
-        let op = match **place {
-            Place::Ptr(mplace) => Operand::Indirect(mplace),
-            Place::Local { frame, local } => {
-                *self.local_to_op(&self.stack()[frame], local, None)?
+        match place.as_mplace_or_local() {
+            Left(mplace) => Ok(mplace.into()),
+            Right((frame, local, offset)) => {
+                let base = self.local_to_op(&self.stack()[frame], local, None)?;
+                let mut field = if let Some(offset) = offset {
+                    // This got offset. We can be sure that the field is sized.
+                    base.offset(offset, place.layout, self)?
+                } else {
+                    assert_eq!(place.layout, base.layout);
+                    // Unsized cases are possible here since an unsized local will be a
+                    // `Place::Local` until the first projection calls `place_to_op` to extract the
+                    // underlying mplace.
+                    base
+                };
+                field.align = Some(place.align);
+                Ok(field)
             }
-        };
-        Ok(OpTy { op, layout: place.layout, align: Some(place.align) })
+        }
     }
 
     /// Evaluate a place with the goal of reading from it. This lets us sometimes

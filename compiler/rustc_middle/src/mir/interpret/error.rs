@@ -191,9 +191,8 @@ pub enum InvalidProgramInfo<'tcx> {
     FnAbiAdjustForForeignAbi(call::AdjustForForeignAbiError),
     /// SizeOf of unsized type was requested.
     SizeOfUnsizedType(Ty<'tcx>),
-    /// An unsized local was accessed without having been initialized.
-    /// This is not meaningful as we can't even have backing memory for such locals.
-    UninitUnsizedLocal,
+    /// We are runnning into a nonsense situation due to ConstProp violating our invariants.
+    ConstPropNonsense,
 }
 
 /// Details of why a pointer had to be in-bounds.

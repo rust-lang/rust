@@ -60,7 +60,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     pub fn fn_arg_field(
-        &mut self,
+        &self,
         arg: &FnArg<'tcx, M::Provenance>,
         field: usize,
     ) -> InterpResult<'tcx, FnArg<'tcx, M::Provenance>> {
@@ -239,7 +239,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     /// Evaluate the arguments of a function call
     pub(super) fn eval_fn_call_arguments(
-        &mut self,
+        &self,
         ops: &[mir::Operand<'tcx>],
     ) -> InterpResult<'tcx, Vec<FnArg<'tcx, M::Provenance>>> {
         ops.iter()
@@ -382,12 +382,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // This all has to be in memory, there are no immediate unsized values.
             let src = caller_arg_copy.assert_mem_place();
             // The destination cannot be one of these "spread args".
-            let (dest_frame, dest_local) = callee_arg.assert_local();
+            let (dest_frame, dest_local, dest_offset) =
+                callee_arg.as_mplace_or_local().right().expect("calee fn arguments must be locals");
             // We are just initializing things, so there can't be anything here yet.
             assert!(matches!(
                 *self.local_to_op(&self.stack()[dest_frame], dest_local, None)?,
                 Operand::Immediate(Immediate::Uninit)
             ));
+            assert_eq!(dest_offset, None);
             // Allocate enough memory to hold `src`.
             let Some((size, align)) = self.size_and_align_of_mplace(&src)? else {
                 span_bug!(

@@ -423,8 +423,6 @@ const_eval_uninit_int = {$front_matter}: encountered uninitialized memory, but e
 const_eval_uninit_raw_ptr = {$front_matter}: encountered uninitialized memory, but expected a raw pointer
 const_eval_uninit_ref = {$front_matter}: encountered uninitialized memory, but expected a reference
 const_eval_uninit_str = {$front_matter}: encountered uninitialized data in `str`
-const_eval_uninit_unsized_local =
-    unsized local is used while uninitialized
 const_eval_unreachable = entering unreachable code
 const_eval_unreachable_unwind =
     unwinding past a stack frame that does not allow unwinding

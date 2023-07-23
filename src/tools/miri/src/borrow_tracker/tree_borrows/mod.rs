@@ -578,7 +578,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 /// I.e. input is what you get from the visitor upon encountering an `adt` that is `Unique`,
 /// and output can be used by `retag_ptr_inplace`.
 fn inner_ptr_of_unique<'tcx>(
-    ecx: &mut MiriInterpCx<'_, 'tcx>,
+    ecx: &MiriInterpCx<'_, 'tcx>,
     place: &PlaceTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, PlaceTy<'tcx, Provenance>> {
     // Follows the same layout as `interpret/visitor.rs:walk_value` for `Box` in

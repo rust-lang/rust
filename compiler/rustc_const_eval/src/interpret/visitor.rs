@@ -78,14 +78,14 @@ pub trait ValueMut<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>>: Sized {
     /// Projects to the given enum variant.
     fn project_downcast(
         &self,
-        ecx: &mut InterpCx<'mir, 'tcx, M>,
+        ecx: &InterpCx<'mir, 'tcx, M>,
         variant: VariantIdx,
     ) -> InterpResult<'tcx, Self>;
 
     /// Projects to the n-th field.
     fn project_field(
         &self,
-        ecx: &mut InterpCx<'mir, 'tcx, M>,
+        ecx: &InterpCx<'mir, 'tcx, M>,
         field: usize,
     ) -> InterpResult<'tcx, Self>;
 }
@@ -165,7 +165,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueMut<'mir, 'tcx, M>
     #[inline(always)]
     fn project_downcast(
         &self,
-        ecx: &mut InterpCx<'mir, 'tcx, M>,
+        ecx: &InterpCx<'mir, 'tcx, M>,
         variant: VariantIdx,
     ) -> InterpResult<'tcx, Self> {
         ecx.operand_downcast(self, variant)
@@ -174,7 +174,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueMut<'mir, 'tcx, M>
     #[inline(always)]
     fn project_field(
         &self,
-        ecx: &mut InterpCx<'mir, 'tcx, M>,
+        ecx: &InterpCx<'mir, 'tcx, M>,
         field: usize,
     ) -> InterpResult<'tcx, Self> {
         ecx.operand_field(self, field)
@@ -255,7 +255,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueMut<'mir, 'tcx, M>
     #[inline(always)]
     fn project_downcast(
         &self,
-        ecx: &mut InterpCx<'mir, 'tcx, M>,
+        ecx: &InterpCx<'mir, 'tcx, M>,
         variant: VariantIdx,
     ) -> InterpResult<'tcx, Self> {
         ecx.mplace_downcast(self, variant)
@@ -264,7 +264,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueMut<'mir, 'tcx, M>
     #[inline(always)]
     fn project_field(
         &self,
-        ecx: &mut InterpCx<'mir, 'tcx, M>,
+        ecx: &InterpCx<'mir, 'tcx, M>,
         field: usize,
     ) -> InterpResult<'tcx, Self> {
         ecx.mplace_field(self, field)
@@ -306,7 +306,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueMut<'mir, 'tcx, M>
     #[inline(always)]
     fn project_downcast(
         &self,
-        ecx: &mut InterpCx<'mir, 'tcx, M>,
+        ecx: &InterpCx<'mir, 'tcx, M>,
         variant: VariantIdx,
     ) -> InterpResult<'tcx, Self> {
         ecx.place_downcast(self, variant)
@@ -315,7 +315,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueMut<'mir, 'tcx, M>
     #[inline(always)]
     fn project_field(
         &self,
-        ecx: &mut InterpCx<'mir, 'tcx, M>,
+        ecx: &InterpCx<'mir, 'tcx, M>,
         field: usize,
     ) -> InterpResult<'tcx, Self> {
         ecx.place_field(self, field)
@@ -508,7 +508,7 @@ macro_rules! make_value_visitor {
                     }
                     FieldsShape::Array { .. } => {
                         // Let's get an mplace (or immediate) first.
-                        // This might `force_allocate` if `v` is a `PlaceTy`, but `place_index` does that anyway.
+                        // FIXME: This might `force_allocate` if `v` is a `PlaceTy`!
                         let op = v.to_op_for_proj(self.ecx())?;
                         // Now we can go over all the fields.
                         // This uses the *run-time length*, i.e., if we are a slice,
