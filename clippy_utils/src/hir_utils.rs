@@ -252,15 +252,15 @@ impl HirEqInterExpr<'_, '_, '_> {
             return false;
         }
 
-        if let Some((typeck_lhs, typeck_rhs)) = self.inner.maybe_typeck_results {
-            if let (Some(l), Some(r)) = (
+        if let Some((typeck_lhs, typeck_rhs)) = self.inner.maybe_typeck_results
+            && typeck_lhs.expr_ty(left) == typeck_rhs.expr_ty(right)
+            && let (Some(l), Some(r)) = (
                 constant_simple(self.inner.cx, typeck_lhs, left),
                 constant_simple(self.inner.cx, typeck_rhs, right),
-            ) {
-                if l == r {
-                    return true;
-                }
-            }
+            )
+            && l == r
+        {
+            return true;
         }
 
         let is_eq = match (
