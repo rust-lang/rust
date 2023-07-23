@@ -2569,7 +2569,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             let res = match kind {
                 RibKind::Item(..) | RibKind::AssocItem => Res::Def(def_kind, def_id.to_def_id()),
                 RibKind::Normal => {
-                    if self.r.tcx.sess.features_untracked().non_lifetime_binders {
+                    if self.r.tcx.features().non_lifetime_binders {
                         Res::Def(def_kind, def_id.to_def_id())
                     } else {
                         Res::Err
