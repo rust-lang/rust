@@ -516,7 +516,7 @@ macro_rules! impl_float_tests {
 
                 fn simd_clamp<const LANES: usize>() {
                     test_helpers::test_3(&|value: [Scalar; LANES], mut min: [Scalar; LANES], mut max: [Scalar; LANES]| {
-                        use test_helpers::subnormals::FlushSubnormals;
+                        use test_helpers::subnormals::flush_in;
                         for (min, max) in min.iter_mut().zip(max.iter_mut()) {
                             if max < min {
                                 core::mem::swap(min, max);
@@ -535,13 +535,14 @@ macro_rules! impl_float_tests {
                         }
                         let mut result_scalar_flush = [Scalar::default(); LANES];
                         for i in 0..LANES {
-                            result_scalar_flush[i] = value[i];
-                            if FlushSubnormals::flush(value[i]) < FlushSubnormals::flush(min[i]) {
-                                result_scalar_flush[i] = min[i];
+                            let mut value = flush_in(value[i]);
+                            if value < flush_in(min[i]) {
+                                value = min[i];
                             }
-                            if FlushSubnormals::flush(value[i]) > FlushSubnormals::flush(max[i]) {
-                                result_scalar_flush[i] = max[i];
+                            if value > flush_in(max[i]) {
+                                value = max[i];
                             }
+                            result_scalar_flush[i] = value
                         }
                         let result_vector = Vector::from_array(value).simd_clamp(min.into(), max.into()).to_array();
                         test_helpers::prop_assert_biteq!(result_vector, result_scalar, result_scalar_flush);
