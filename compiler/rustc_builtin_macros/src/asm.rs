@@ -401,7 +401,7 @@ fn parse_clobber_abi<'a>(p: &mut Parser<'a>, args: &mut AsmArgs) -> PResult<'a, 
         // should have errored above during parsing
         [] => unreachable!(),
         [(abi, _span)] => args.clobber_abis.push((*abi, full_span)),
-        [abis @ ..] => {
+        abis => {
             for (abi, span) in abis {
                 args.clobber_abis.push((*abi, *span));
             }
