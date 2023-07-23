@@ -1233,7 +1233,7 @@ pub struct NoopMethodCallDiag<'a> {
     pub method: Symbol,
     pub orig_ty: Ty<'a>,
     pub trait_: Symbol,
-    #[label]
+    #[suggestion(code = "", applicability = "machine-applicable")]
     pub label: Span,
 }
 
