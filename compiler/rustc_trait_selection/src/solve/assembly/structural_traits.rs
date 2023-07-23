@@ -1,3 +1,5 @@
+//! Code which is used by built-in goals that match "structurally", such a auto
+//! traits, `Copy`/`Clone`.
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::{def_id::DefId, Movability, Mutability};
 use rustc_infer::traits::query::NoSolution;
