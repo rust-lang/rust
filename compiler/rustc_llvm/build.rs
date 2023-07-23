@@ -382,7 +382,11 @@ fn main() {
             } else {
                 println!("cargo:rustc-link-lib=static={stdcppname}");
             }
-        } else if cxxflags.contains("stdlib=libc++") {
+        } else if !is_crossed && cxxflags.contains("stdlib=libc++") {
+            // If we're in a cross build these flags come from the host
+            // compiler and not the target compiler. In the case of an
+            // Apple to non-Apple cross build, there's a good chance we
+            // don't want libc++.
             println!("cargo:rustc-link-lib=c++");
         } else {
             println!("cargo:rustc-link-lib={stdcppname}");
