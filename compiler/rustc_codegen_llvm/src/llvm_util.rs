@@ -47,7 +47,6 @@ fn require_inited() {
 
 unsafe fn configure_llvm(sess: &Session) {
     let n_args = sess.opts.cg.llvm_args.len() + sess.target.llvm_args.len();
-    let mut llvm_c_strs = Vec::with_capacity(n_args + 1);
     let mut llvm_args = Vec::with_capacity(n_args + 1);
 
     llvm::LLVMRustInstallFatalErrorHandler();
@@ -76,7 +75,6 @@ unsafe fn configure_llvm(sess: &Session) {
             if force || !user_specified_args.contains(llvm_arg_to_arg_name(arg)) {
                 let s = CString::new(arg).unwrap();
                 llvm_args.push(s.as_ptr());
-                llvm_c_strs.push(s);
             }
         };
         // Set the llvm "program name" to make usage and invalid argument messages more clear.

@@ -357,7 +357,6 @@ impl<'a> LlvmArchiveBuilder<'a> {
             .unwrap_or_else(|kind| self.sess.emit_fatal(UnknownArchiveKind { kind }));
 
         let mut additions = mem::take(&mut self.additions);
-        let mut strings = Vec::new();
         let mut members = Vec::new();
 
         let dst = CString::new(output.to_str().unwrap())?;
@@ -373,8 +372,6 @@ impl<'a> LlvmArchiveBuilder<'a> {
                             name.as_ptr(),
                             None,
                         ));
-                        strings.push(path);
-                        strings.push(name);
                     }
                     Addition::Archive { archive, skip, .. } => {
                         for child in archive.iter() {
@@ -402,7 +399,6 @@ impl<'a> LlvmArchiveBuilder<'a> {
                                 Some(child.raw),
                             );
                             members.push(m);
-                            strings.push(name);
                         }
                     }
                 }
