@@ -382,32 +382,33 @@ fn generate_lto_work<B: ExtraBackendMethods>(
 ) -> Vec<(WorkItem<B>, u64)> {
     let _prof_timer = cgcx.prof.generic_activity("codegen_generate_lto_work");
 
-    let (lto_modules, copy_jobs) = if !needs_fat_lto.is_empty() {
+    if !needs_fat_lto.is_empty() {
         assert!(needs_thin_lto.is_empty());
-        let lto_module =
+        let module =
             B::run_fat_lto(cgcx, needs_fat_lto, import_only_modules).unwrap_or_else(|e| e.raise());
-        (vec![lto_module], vec![])
+        // We are adding a single work item, so the cost doesn't matter.
+        vec![(WorkItem::LTO(module), 0)]
     } else {
         assert!(needs_fat_lto.is_empty());
-        B::run_thin_lto(cgcx, needs_thin_lto, import_only_modules).unwrap_or_else(|e| e.raise())
-    };
-
-    lto_modules
-        .into_iter()
-        .map(|module| {
-            let cost = module.cost();
-            (WorkItem::LTO(module), cost)
-        })
-        .chain(copy_jobs.into_iter().map(|wp| {
-            (
-                WorkItem::CopyPostLtoArtifacts(CachedModuleCodegen {
-                    name: wp.cgu_name.clone(),
-                    source: wp,
-                }),
-                0,
-            )
-        }))
-        .collect()
+        let (lto_modules, copy_jobs) = B::run_thin_lto(cgcx, needs_thin_lto, import_only_modules)
+            .unwrap_or_else(|e| e.raise());
+        lto_modules
+            .into_iter()
+            .map(|module| {
+                let cost = module.cost();
+                (WorkItem::LTO(module), cost)
+            })
+            .chain(copy_jobs.into_iter().map(|wp| {
+                (
+                    WorkItem::CopyPostLtoArtifacts(CachedModuleCodegen {
+                        name: wp.cgu_name.clone(),
+                        source: wp,
+                    }),
+                    0, // copying is very cheap
+                )
+            }))
+            .collect()
+    }
 }
 
 pub struct CompiledModules {
