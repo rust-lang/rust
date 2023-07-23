@@ -29,9 +29,10 @@ pub trait WriteBackendMethods: 'static + Sized + Clone {
     /// Performs thin LTO by performing necessary global analysis and returning two
     /// lists, one of the modules that need optimization and another for modules that
     /// can simply be copied over from the incr. comp. cache.
+    // njn: explain the u64 cost
     fn run_thin_lto(
         cgcx: &CodegenContext<Self>,
-        modules: Vec<(String, Self::ThinBuffer)>,
+        modules: Vec<(String, Self::ThinBuffer, u64)>,
         cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
     ) -> Result<(Vec<LtoModuleCodegen<Self>>, Vec<WorkProduct>), FatalError>;
     fn print_pass_timings(&self);
@@ -41,7 +42,7 @@ pub trait WriteBackendMethods: 'static + Sized + Clone {
         diag_handler: &Handler,
         module: &ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
-    ) -> Result<(), FatalError>;
+    ) -> Result<(), FatalError>; //njn: need a cost here
     fn optimize_fat(
         cgcx: &CodegenContext<Self>,
         llmod: &mut ModuleCodegen<Self::Module>,

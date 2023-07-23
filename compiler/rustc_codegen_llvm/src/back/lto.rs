@@ -188,7 +188,7 @@ pub(crate) fn run_fat(
 /// can simply be copied over from the incr. comp. cache.
 pub(crate) fn run_thin(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
-    modules: Vec<(String, ThinBuffer)>,
+    modules: Vec<(String, ThinBuffer, u64)>,
     cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>,
 ) -> Result<(Vec<LtoModuleCodegen<LlvmCodegenBackend>>, Vec<WorkProduct>), FatalError> {
     let diag_handler = cgcx.create_diag_handler();
@@ -422,7 +422,7 @@ impl Drop for Linker<'_> {
 fn thin_lto(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
     diag_handler: &Handler,
-    modules: Vec<(String, ThinBuffer)>,
+    modules: Vec<(String, ThinBuffer, u64)>,
     serialized_modules: Vec<(SerializedModule<ModuleBuffer>, CString)>,
     cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>,
     symbols_below_threshold: &[*const libc::c_char],
@@ -438,8 +438,9 @@ fn thin_lto(
         let mut thin_buffers = Vec::with_capacity(modules.len());
         let mut module_names = Vec::with_capacity(full_scope_len);
         let mut thin_modules = Vec::with_capacity(full_scope_len);
+        let mut costs = Vec::with_capacity(full_scope_len);
 
-        for (i, (name, buffer)) in modules.into_iter().enumerate() {
+        for (i, (name, buffer, cost)) in modules.into_iter().enumerate() {
             info!("local module: {} - {}", i, name);
             let cname = CString::new(name.clone()).unwrap();
             thin_modules.push(llvm::ThinLTOModule {
@@ -449,6 +450,7 @@ fn thin_lto(
             });
             thin_buffers.push(buffer);
             module_names.push(cname);
+            costs.push(cost);
         }
 
         // FIXME: All upstream crates are deserialized internally in the
@@ -481,10 +483,12 @@ fn thin_lto(
             });
             serialized.push(module);
             module_names.push(name);
+            costs.push(0); // use a cheap cost
         }
 
         // Sanity check
         assert_eq!(thin_modules.len(), module_names.len());
+        assert_eq!(module_names.len(), costs.len());
 
         // Delegate to the C++ bindings to create some data here. Once this is a
         // tried-and-true interface we may wish to try to upstream some of this
@@ -533,13 +537,16 @@ fn thin_lto(
             thin_buffers,
             serialized_modules: serialized,
             module_names,
+            costs,
         });
 
         let mut copy_jobs = vec![];
         let mut opt_jobs = vec![];
 
         info!("checking which modules can be-reused and which have to be re-optimized.");
-        for (module_index, module_name) in shared.module_names.iter().enumerate() {
+        for (module_index, (module_name, cost)) in
+            shared.module_names.iter().zip(shared.costs.iter()).enumerate()
+        {
             let module_name = module_name_to_str(module_name);
             if let (Some(prev_key_map), true) =
                 (prev_key_map.as_ref(), green_modules.contains_key(module_name))
@@ -562,6 +569,7 @@ fn thin_lto(
             opt_jobs.push(LtoModuleCodegen::Thin(ThinModule {
                 shared: shared.clone(),
                 idx: module_index,
+                cost: *cost,
             }));
         }
 

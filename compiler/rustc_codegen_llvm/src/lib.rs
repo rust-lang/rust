@@ -219,7 +219,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     }
     fn run_thin_lto(
         cgcx: &CodegenContext<Self>,
-        modules: Vec<(String, Self::ThinBuffer)>,
+        modules: Vec<(String, Self::ThinBuffer, u64)>,
         cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
     ) -> Result<(Vec<LtoModuleCodegen<Self>>, Vec<WorkProduct>), FatalError> {
         back::lto::run_thin(cgcx, modules, cached_modules)

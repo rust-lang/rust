@@ -11,17 +11,15 @@ use std::sync::Arc;
 pub struct ThinModule<B: WriteBackendMethods> {
     pub shared: Arc<ThinShared<B>>,
     pub idx: usize,
+
+    /// The cost of the pre-LTO optimization done by the backend, which is used
+    /// to estimate how long LTO will take.
+    pub cost: u64,
 }
 
 impl<B: WriteBackendMethods> ThinModule<B> {
     pub fn name(&self) -> &str {
         self.shared.module_names[self.idx].to_str().unwrap()
-    }
-
-    pub fn cost(&self) -> u64 {
-        // Yes, that's correct, we're using the size of the bytecode as an
-        // indicator for how costly this codegen unit is.
-        self.data().len() as u64
     }
 
     pub fn data(&self) -> &[u8] {
@@ -38,6 +36,7 @@ pub struct ThinShared<B: WriteBackendMethods> {
     pub thin_buffers: Vec<B::ThinBuffer>,
     pub serialized_modules: Vec<SerializedModule<B::ModuleBuffer>>,
     pub module_names: Vec<CString>,
+    pub costs: Vec<u64>, // njn: same length as module_names
 }
 
 pub enum LtoModuleCodegen<B: WriteBackendMethods> {
@@ -82,7 +81,7 @@ impl<B: WriteBackendMethods> LtoModuleCodegen<B> {
         match *self {
             // Only one module with fat LTO, so the cost doesn't matter.
             LtoModuleCodegen::Fat { .. } => 0,
-            LtoModuleCodegen::Thin(ref m) => m.cost(),
+            LtoModuleCodegen::Thin(ref m) => m.cost,
         }
     }
 }

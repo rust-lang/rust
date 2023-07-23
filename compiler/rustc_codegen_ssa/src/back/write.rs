@@ -47,6 +47,7 @@ use std::str;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
 use std::thread;
+use std::time::Instant;
 
 const PRE_LTO_BC_EXT: &str = "pre-lto.bc";
 
@@ -377,7 +378,7 @@ impl<B: WriteBackendMethods> CodegenContext<B> {
 fn generate_lto_work<B: ExtraBackendMethods>(
     cgcx: &CodegenContext<B>,
     needs_fat_lto: Vec<FatLTOInput<B>>,
-    needs_thin_lto: Vec<(String, B::ThinBuffer)>,
+    needs_thin_lto: Vec<(String, B::ThinBuffer, u64)>,
     import_only_modules: Vec<(SerializedModule<B::ModuleBuffer>, WorkProduct)>,
 ) -> Vec<(WorkItem<B>, u64)> {
     let _prof_timer = cgcx.prof.generic_activity("codegen_generate_lto_work");
@@ -390,6 +391,9 @@ fn generate_lto_work<B: ExtraBackendMethods>(
         vec![(WorkItem::LTO(module), 0)]
     } else {
         assert!(needs_fat_lto.is_empty());
+
+        // We separate the data from the costs, process the data, the recombine
+        // the results with the costs.
         let (lto_modules, copy_jobs) = B::run_thin_lto(cgcx, needs_thin_lto, import_only_modules)
             .unwrap_or_else(|e| e.raise());
         lto_modules
@@ -755,7 +759,7 @@ pub(crate) enum WorkItemResult<B: WriteBackendMethods> {
     Compiled(CompiledModule),
     NeedsLink(ModuleCodegen<B::Module>),
     NeedsFatLTO(FatLTOInput<B>),
-    NeedsThinLTO(String, B::ThinBuffer),
+    NeedsThinLTO(String, B::ThinBuffer, u64),
 }
 
 pub enum FatLTOInput<B: WriteBackendMethods> {
@@ -818,9 +822,15 @@ fn execute_optimize_work_item<B: ExtraBackendMethods>(
 ) -> Result<WorkItemResult<B>, FatalError> {
     let diag_handler = cgcx.create_diag_handler();
 
+    // njn: move this measurement into the backend
+    let start_time = Instant::now();
     unsafe {
         B::optimize(cgcx, &diag_handler, &module, module_config)?;
     }
+    let time_to_codegen = start_time.elapsed();
+    // We assume that the cost to run LLVM on a CGU is proportional to
+    // the time we needed for codegenning it.
+    let cost = time_to_codegen.as_nanos() as u64;
 
     // After we've done the initial round of optimizations we need to
     // decide whether to synchronously codegen this module or ship it
@@ -847,7 +857,7 @@ fn execute_optimize_work_item<B: ExtraBackendMethods>(
                     panic!("Error writing pre-lto-bitcode file `{}`: {}", path.display(), e);
                 });
             }
-            Ok(WorkItemResult::NeedsThinLTO(name, thin_buffer))
+            Ok(WorkItemResult::NeedsThinLTO(name, thin_buffer, cost))
         }
         ComputedLtoType::Fat => match bitcode {
             Some(path) => {
@@ -1542,9 +1552,9 @@ fn start_executing_work<B: ExtraBackendMethods>(
                             assert!(!started_lto);
                             needs_fat_lto.push(fat_lto_input);
                         }
-                        Ok(WorkItemResult::NeedsThinLTO(name, thin_buffer)) => {
+                        Ok(WorkItemResult::NeedsThinLTO(name, thin_buffer, cost)) => {
                             assert!(!started_lto);
-                            needs_thin_lto.push((name, thin_buffer));
+                            needs_thin_lto.push((name, thin_buffer, cost));
                         }
                         Err(Some(WorkerFatalError)) => {
                             // Like `CodegenAborted`, wait for remaining work to finish.
