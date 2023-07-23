@@ -27,7 +27,7 @@ pub(crate) fn emit_unescape_error(
         lit, span_with_quotes, mode, range, error
     );
     let last_char = || {
-        let c = lit[range.clone()].chars().rev().next().unwrap();
+        let c = lit[range.clone()].chars().next_back().unwrap();
         let span = span.with_lo(span.hi() - BytePos(c.len_utf8() as u32));
         (c, span)
     };

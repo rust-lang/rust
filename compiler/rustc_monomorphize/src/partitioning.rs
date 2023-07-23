@@ -1229,12 +1229,13 @@ fn dump_mono_items_stats<'tcx>(
     // Gather instantiated mono items grouped by def_id
     let mut items_per_def_id: FxHashMap<_, Vec<_>> = Default::default();
     for cgu in codegen_units {
-        for (&mono_item, _) in cgu.items() {
+        cgu.items()
+            .keys()
             // Avoid variable-sized compiler-generated shims
-            if mono_item.is_user_defined() {
+            .filter(|mono_item| mono_item.is_user_defined())
+            .for_each(|mono_item| {
                 items_per_def_id.entry(mono_item.def_id()).or_default().push(mono_item);
-            }
-        }
+            });
     }
 
     #[derive(serde::Serialize)]
@@ -1287,7 +1288,7 @@ fn codegened_and_inlined_items(tcx: TyCtxt<'_>, (): ()) -> &DefIdSet {
     let mut result = items.clone();
 
     for cgu in cgus {
-        for (item, _) in cgu.items() {
+        for item in cgu.items().keys() {
             if let MonoItem::Fn(ref instance) = item {
                 let did = instance.def_id();
                 if !visited.insert(did) {

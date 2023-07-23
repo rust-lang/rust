@@ -425,9 +425,11 @@ impl<'tcx> MiniGraph<'tcx> {
                 }
             }
         } else {
-            for (constraint, _origin) in &region_constraints.data().constraints {
-                each_constraint(constraint)
-            }
+            region_constraints
+                .data()
+                .constraints
+                .keys()
+                .for_each(|constraint| each_constraint(constraint));
         }
     }
 

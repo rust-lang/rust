@@ -621,7 +621,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // is in a different line, so we point at both.
                     err.span_label(secondary_span, "expected due to the type of this binding");
                     err.span_label(primary_span, format!("expected due to this{post_message}"));
-                } else if post_message == "" {
+                } else if post_message.is_empty() {
                     // We are pointing at either the assignment lhs or the binding def pattern.
                     err.span_label(primary_span, "expected due to the type of this binding");
                 } else {
