@@ -990,7 +990,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         });
                         let res = binding.res();
                         if let Ok(initial_res) = initial_res {
-                            if res != initial_res && this.ambiguity_errors.is_empty() {
+                            if res != initial_res
+                                && this.ambiguity_errors.is_empty()
+                                && res != Res::Err
+                            {
                                 span_bug!(import.span, "inconsistent resolution for an import");
                             }
                         } else if res != Res::Err

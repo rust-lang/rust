@@ -1,0 +1,9 @@
+error[E0432]: unresolved import `unresolved`
+  --> $DIR/issue-113953.rs:3:5
+   |
+LL | use unresolved as u8;
+   |     ^^^^^^^^^^^^^^^^ no external crate `unresolved`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0432`.
