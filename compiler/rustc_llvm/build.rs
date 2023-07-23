@@ -189,6 +189,18 @@ fn main() {
             continue;
         }
 
+        // In the cross compiling case we pick up the C++ runtime flags from the host compiler
+        // and not the target.  This breaks the build in the case of the host and target using
+        // different runtimes.
+        if is_crossed && flag.starts_with("-stdlib") {
+            println!("cargo:warning=Skipping attempt to set C++ library to {flag:?} on target {target:?}");
+
+            // Most targets these days seem to use libc+, but DragonFly uses GNU libstdc++ for sure
+            if target.contains("dragonfly") {
+                continue;
+            }
+        }
+
         // -Wdate-time is not supported by the netbsd cross compiler
         if is_crossed && target.contains("netbsd") && flag.contains("date-time") {
             continue;
