@@ -329,16 +329,11 @@ pub struct OnUnimplementedNote {
 }
 
 /// Append a message for `~const Trait` errors.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub enum AppendConstMessage {
+    #[default]
     Default,
     Custom(Symbol),
-}
-
-impl Default for AppendConstMessage {
-    fn default() -> Self {
-        AppendConstMessage::Default
-    }
 }
 
 impl<'tcx> OnUnimplementedDirective {
