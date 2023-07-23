@@ -339,8 +339,7 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
             return pointee;
         }
 
-        let assume_valid_ptr = true;
-        let result = Ty::ty_and_layout_pointee_info_at(*self, cx, offset, assume_valid_ptr);
+        let result = Ty::ty_and_layout_pointee_info_at(*self, cx, offset);
 
         cx.pointee_infos.borrow_mut().insert((self.ty, offset), result);
         result

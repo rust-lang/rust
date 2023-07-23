@@ -30,16 +30,4 @@ fn f<T, U: ?Sized>(x: &T) -> &U {
     unsafe { transmute(x) } //~ ERROR cannot transmute between types of different sizes
 }
 
-fn g<T, U>(x: &T) -> Option<&U> {
-    unsafe { transmute(x) }
-}
-
-fn h<T>(x: &[T]) -> Option<&dyn Send> {
-    unsafe { transmute(x) }
-}
-
-fn i<T>(x: [usize; 1]) -> Option<&'static T> {
-    unsafe { transmute(x) }
-}
-
 fn main() { }

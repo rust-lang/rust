@@ -450,6 +450,57 @@ impl Ipv4Addr {
         Ipv4Addr { octets: [a, b, c, d] }
     }
 
+    /// The size of an IPv4 address in bits.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ip_bits)]
+    /// use std::net::Ipv4Addr;
+    ///
+    /// assert_eq!(Ipv4Addr::BITS, 32);
+    /// ```
+    #[unstable(feature = "ip_bits", issue = "113744")]
+    pub const BITS: u32 = 32;
+
+    /// Converts an IPv4 address into host byte order `u32`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ip_bits)]
+    /// use std::net::Ipv4Addr;
+    ///
+    /// let addr = Ipv4Addr::new(0x12, 0x34, 0x56, 0x78);
+    /// assert_eq!(0x12345678, addr.to_bits());
+    /// ```
+    #[rustc_const_unstable(feature = "ip_bits", issue = "113744")]
+    #[unstable(feature = "ip_bits", issue = "113744")]
+    #[must_use]
+    #[inline]
+    pub const fn to_bits(self) -> u32 {
+        u32::from_be_bytes(self.octets)
+    }
+
+    /// Converts a host byte order `u32` into an IPv4 address.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ip_bits)]
+    /// use std::net::Ipv4Addr;
+    ///
+    /// let addr = Ipv4Addr::from(0x12345678);
+    /// assert_eq!(Ipv4Addr::new(0x12, 0x34, 0x56, 0x78), addr);
+    /// ```
+    #[rustc_const_unstable(feature = "ip_bits", issue = "113744")]
+    #[unstable(feature = "ip_bits", issue = "113744")]
+    #[must_use]
+    #[inline]
+    pub const fn from_bits(bits: u32) -> Ipv4Addr {
+        Ipv4Addr { octets: bits.to_be_bytes() }
+    }
+
     /// An IPv4 address with the address pointing to localhost: `127.0.0.1`
     ///
     /// # Examples
@@ -1069,37 +1120,19 @@ impl Ord for Ipv4Addr {
 
 #[stable(feature = "ip_u32", since = "1.1.0")]
 impl From<Ipv4Addr> for u32 {
-    /// Converts an `Ipv4Addr` into a host byte order `u32`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::net::Ipv4Addr;
-    ///
-    /// let addr = Ipv4Addr::new(0x12, 0x34, 0x56, 0x78);
-    /// assert_eq!(0x12345678, u32::from(addr));
-    /// ```
+    /// Uses [`Ipv4Addr::to_bits`] to convert an IPv4 address to a host byte order `u32`.
     #[inline]
     fn from(ip: Ipv4Addr) -> u32 {
-        u32::from_be_bytes(ip.octets)
+        ip.to_bits()
     }
 }
 
 #[stable(feature = "ip_u32", since = "1.1.0")]
 impl From<u32> for Ipv4Addr {
-    /// Converts a host byte order `u32` into an `Ipv4Addr`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::net::Ipv4Addr;
-    ///
-    /// let addr = Ipv4Addr::from(0x12345678);
-    /// assert_eq!(Ipv4Addr::new(0x12, 0x34, 0x56, 0x78), addr);
-    /// ```
+    /// Uses [`Ipv4Addr::from_bits`] to convert a host byte order `u32` into an IPv4 address.
     #[inline]
     fn from(ip: u32) -> Ipv4Addr {
-        Ipv4Addr { octets: ip.to_be_bytes() }
+        Ipv4Addr::from_bits(ip)
     }
 }
 
@@ -1171,6 +1204,65 @@ impl Ipv6Addr {
             // SAFETY: `[u16; 8]` is always safe to transmute to `[u8; 16]`.
             octets: unsafe { transmute::<_, [u8; 16]>(addr16) },
         }
+    }
+
+    /// The size of an IPv6 address in bits.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ip_bits)]
+    /// use std::net::Ipv6Addr;
+    ///
+    /// assert_eq!(Ipv6Addr::BITS, 128);
+    /// ```
+    #[unstable(feature = "ip_bits", issue = "113744")]
+    pub const BITS: u32 = 128;
+
+    /// Converts an IPv6 address into host byte order `u128`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ip_bits)]
+    /// use std::net::Ipv6Addr;
+    ///
+    /// let addr = Ipv6Addr::new(
+    ///     0x1020, 0x3040, 0x5060, 0x7080,
+    ///     0x90A0, 0xB0C0, 0xD0E0, 0xF00D,
+    /// );
+    /// assert_eq!(0x102030405060708090A0B0C0D0E0F00D_u128, u128::from(addr));
+    /// ```
+    #[rustc_const_unstable(feature = "ip_bits", issue = "113744")]
+    #[unstable(feature = "ip_bits", issue = "113744")]
+    #[must_use]
+    #[inline]
+    pub const fn to_bits(self) -> u128 {
+        u128::from_be_bytes(self.octets)
+    }
+
+    /// Converts a host byte order `u128` into an IPv6 address.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ip_bits)]
+    /// use std::net::Ipv6Addr;
+    ///
+    /// let addr = Ipv6Addr::from(0x102030405060708090A0B0C0D0E0F00D_u128);
+    /// assert_eq!(
+    ///     Ipv6Addr::new(
+    ///         0x1020, 0x3040, 0x5060, 0x7080,
+    ///         0x90A0, 0xB0C0, 0xD0E0, 0xF00D,
+    ///     ),
+    ///     addr);
+    /// ```
+    #[rustc_const_unstable(feature = "ip_bits", issue = "113744")]
+    #[unstable(feature = "ip_bits", issue = "113744")]
+    #[must_use]
+    #[inline]
+    pub const fn from_bits(bits: u128) -> Ipv6Addr {
+        Ipv6Addr { octets: bits.to_be_bytes() }
     }
 
     /// An IPv6 address representing localhost: `::1`.
@@ -1905,44 +1997,18 @@ impl Ord for Ipv6Addr {
 
 #[stable(feature = "i128", since = "1.26.0")]
 impl From<Ipv6Addr> for u128 {
-    /// Convert an `Ipv6Addr` into a host byte order `u128`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::net::Ipv6Addr;
-    ///
-    /// let addr = Ipv6Addr::new(
-    ///     0x1020, 0x3040, 0x5060, 0x7080,
-    ///     0x90A0, 0xB0C0, 0xD0E0, 0xF00D,
-    /// );
-    /// assert_eq!(0x102030405060708090A0B0C0D0E0F00D_u128, u128::from(addr));
-    /// ```
+    /// Uses [`Ipv6Addr::to_bits`] to convert an IPv6 address to a host byte order `u128`.
     #[inline]
     fn from(ip: Ipv6Addr) -> u128 {
-        u128::from_be_bytes(ip.octets)
+        ip.to_bits()
     }
 }
 #[stable(feature = "i128", since = "1.26.0")]
 impl From<u128> for Ipv6Addr {
-    /// Convert a host byte order `u128` into an `Ipv6Addr`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::net::Ipv6Addr;
-    ///
-    /// let addr = Ipv6Addr::from(0x102030405060708090A0B0C0D0E0F00D_u128);
-    /// assert_eq!(
-    ///     Ipv6Addr::new(
-    ///         0x1020, 0x3040, 0x5060, 0x7080,
-    ///         0x90A0, 0xB0C0, 0xD0E0, 0xF00D,
-    ///     ),
-    ///     addr);
-    /// ```
+    /// Uses [`Ipv6Addr::from_bits`] to convert a host byte order `u128` to an IPv6 address.
     #[inline]
     fn from(ip: u128) -> Ipv6Addr {
-        Ipv6Addr::from(ip.to_be_bytes())
+        Ipv6Addr::from_bits(ip)
     }
 }
 

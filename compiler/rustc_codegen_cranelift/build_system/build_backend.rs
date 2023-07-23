@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use super::path::{Dirs, RelPath};
 use super::rustc_info::get_file_name;
-use super::utils::{is_ci, is_ci_opt, maybe_incremental, CargoProject, Compiler};
+use super::utils::{is_ci, is_ci_opt, maybe_incremental, CargoProject, Compiler, LogGroup};
 
 pub(crate) static CG_CLIF: CargoProject = CargoProject::new(&RelPath::SOURCE, "cg_clif");
 
@@ -13,6 +13,8 @@ pub(crate) fn build_backend(
     bootstrap_host_compiler: &Compiler,
     use_unstable_features: bool,
 ) -> PathBuf {
+    let _group = LogGroup::guard("Build backend");
+
     let mut cmd = CG_CLIF.build(&bootstrap_host_compiler, dirs);
     maybe_incremental(&mut cmd);
 

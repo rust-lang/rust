@@ -32,7 +32,7 @@ use rustc_span::edition::Edition;
 use rustc_span::hygiene::{ExpnIndex, MacroKind};
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::{self, ExpnData, ExpnHash, ExpnId, Span};
-use rustc_target::abi::{FieldIdx, ReferenceNichePolicy, VariantIdx};
+use rustc_target::abi::{FieldIdx, VariantIdx};
 use rustc_target::spec::{PanicStrategy, TargetTriple};
 
 use std::marker::PhantomData;
@@ -251,7 +251,6 @@ pub(crate) struct CrateRoot {
     stable_crate_id: StableCrateId,
     required_panic_strategy: Option<PanicStrategy>,
     panic_in_drop_strategy: PanicStrategy,
-    reference_niches_policy: ReferenceNichePolicy,
     edition: Edition,
     has_global_allocator: bool,
     has_alloc_error_handler: bool,

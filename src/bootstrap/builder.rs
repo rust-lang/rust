@@ -2043,6 +2043,13 @@ impl<'a> Builder<'a> {
             rustflags.arg("-Zinline-mir");
         }
 
+        // set rustc args passed from command line
+        let rustc_args =
+            self.config.cmd.rustc_args().iter().map(|s| s.to_string()).collect::<Vec<_>>();
+        if !rustc_args.is_empty() {
+            cargo.env("RUSTFLAGS", &rustc_args.join(" "));
+        }
+
         Cargo { command: cargo, rustflags, rustdocflags, allow_features }
     }
 

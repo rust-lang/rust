@@ -1,6 +1,7 @@
 //! Inlining pass for MIR functions
 use crate::deref_separator::deref_finder;
 use rustc_attr::InlineAttr;
+use rustc_const_eval::transform::validate::validate_types;
 use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::BitSet;
 use rustc_index::Idx;
@@ -10,7 +11,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::{self, Instance, InstanceDef, ParamEnv, Ty, TyCtxt};
 use rustc_session::config::OptLevel;
-use rustc_target::abi::{FieldIdx, FIRST_VARIANT};
+use rustc_target::abi::FieldIdx;
 use rustc_target::spec::abi::Abi;
 
 use crate::simplify::{remove_dead_blocks, CfgSimplifier};
@@ -199,6 +200,19 @@ impl<'tcx> Inliner<'tcx> {
         ) else {
             return Err("failed to normalize callee body");
         };
+
+        // Normally, this shouldn't be required, but trait normalization failure can create a
+        // validation ICE.
+        if !validate_types(
+            self.tcx,
+            MirPhase::Runtime(RuntimePhase::Optimized),
+            self.param_env,
+            &callee_body,
+        )
+        .is_empty()
+        {
+            return Err("failed to validate callee body");
+        }
 
         // Check call signature compatibility.
         // Normally, this shouldn't be required, but trait normalization failure can create a
@@ -437,12 +451,7 @@ impl<'tcx> Inliner<'tcx> {
             instance: callsite.callee,
             callee_body,
             cost: 0,
-            validation: Ok(()),
         };
-
-        for var_debug_info in callee_body.var_debug_info.iter() {
-            checker.visit_var_debug_info(var_debug_info);
-        }
 
         // Traverse the MIR manually so we can account for the effects of inlining on the CFG.
         let mut work_list = vec![START_BLOCK];
@@ -479,9 +488,6 @@ impl<'tcx> Inliner<'tcx> {
                 work_list.extend(term.successors())
             }
         }
-
-        // Abort if type validation found anything fishy.
-        checker.validation?;
 
         // N.B. We still apply our cost threshold to #[inline(always)] functions.
         // That attribute is often applied to very large functions that exceed LLVM's (very
@@ -774,11 +780,10 @@ struct CostChecker<'b, 'tcx> {
     cost: usize,
     callee_body: &'b Body<'tcx>,
     instance: ty::Instance<'tcx>,
-    validation: Result<(), &'static str>,
 }
 
 impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
-    fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
+    fn visit_statement(&mut self, statement: &Statement<'tcx>, _: Location) {
         // Don't count StorageLive/StorageDead in the inlining cost.
         match statement.kind {
             StatementKind::StorageLive(_)
@@ -787,11 +792,9 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
             | StatementKind::Nop => {}
             _ => self.cost += INSTR_COST,
         }
-
-        self.super_statement(statement, location);
     }
 
-    fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
+    fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, _: Location) {
         let tcx = self.tcx;
         match terminator.kind {
             TerminatorKind::Drop { ref place, unwind, .. } => {
@@ -835,109 +838,6 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
             }
             _ => self.cost += INSTR_COST,
         }
-
-        self.super_terminator(terminator, location);
-    }
-
-    /// This method duplicates code from MIR validation in an attempt to detect type mismatches due
-    /// to normalization failure.
-    fn visit_projection_elem(
-        &mut self,
-        place_ref: PlaceRef<'tcx>,
-        elem: PlaceElem<'tcx>,
-        context: PlaceContext,
-        location: Location,
-    ) {
-        if let ProjectionElem::Field(f, ty) = elem {
-            let parent_ty = place_ref.ty(&self.callee_body.local_decls, self.tcx);
-            let check_equal = |this: &mut Self, f_ty| {
-                // Fast path if there is nothing to substitute.
-                if ty == f_ty {
-                    return;
-                }
-                let ty = this.instance.subst_mir(this.tcx, ty::EarlyBinder::bind(&ty));
-                let f_ty = this.instance.subst_mir(this.tcx, ty::EarlyBinder::bind(&f_ty));
-                if ty == f_ty {
-                    return;
-                }
-                if !util::is_subtype(this.tcx, this.param_env, ty, f_ty) {
-                    trace!(?ty, ?f_ty);
-                    this.validation = Err("failed to normalize projection type");
-                    return;
-                }
-            };
-
-            let kind = match parent_ty.ty.kind() {
-                &ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => {
-                    self.tcx.type_of(def_id).instantiate(self.tcx, args).kind()
-                }
-                kind => kind,
-            };
-
-            match kind {
-                ty::Tuple(fields) => {
-                    let Some(f_ty) = fields.get(f.as_usize()) else {
-                        self.validation = Err("malformed MIR");
-                        return;
-                    };
-                    check_equal(self, *f_ty);
-                }
-                ty::Adt(adt_def, args) => {
-                    let var = parent_ty.variant_index.unwrap_or(FIRST_VARIANT);
-                    let Some(field) = adt_def.variant(var).fields.get(f) else {
-                        self.validation = Err("malformed MIR");
-                        return;
-                    };
-                    check_equal(self, field.ty(self.tcx, args));
-                }
-                ty::Closure(_, args) => {
-                    let args = args.as_closure();
-                    let Some(f_ty) = args.upvar_tys().nth(f.as_usize()) else {
-                        self.validation = Err("malformed MIR");
-                        return;
-                    };
-                    check_equal(self, f_ty);
-                }
-                &ty::Generator(def_id, args, _) => {
-                    let f_ty = if let Some(var) = parent_ty.variant_index {
-                        let gen_body = if def_id == self.callee_body.source.def_id() {
-                            self.callee_body
-                        } else {
-                            self.tcx.optimized_mir(def_id)
-                        };
-
-                        let Some(layout) = gen_body.generator_layout() else {
-                            self.validation = Err("malformed MIR");
-                            return;
-                        };
-
-                        let Some(&local) = layout.variant_fields[var].get(f) else {
-                            self.validation = Err("malformed MIR");
-                            return;
-                        };
-
-                        let Some(f_ty) = layout.field_tys.get(local) else {
-                            self.validation = Err("malformed MIR");
-                            return;
-                        };
-
-                        f_ty.ty
-                    } else {
-                        let Some(f_ty) = args.as_generator().prefix_tys().nth(f.index()) else {
-                            self.validation = Err("malformed MIR");
-                            return;
-                        };
-
-                        f_ty
-                    };
-
-                    check_equal(self, f_ty);
-                }
-                _ => self.validation = Err("malformed MIR"),
-            }
-        }
-
-        self.super_projection_elem(place_ref, elem, context, location);
     }
 }
 

@@ -20,6 +20,7 @@ define-function: (
     block {
         go-to: "file://" + |DOC_PATH| + "/test_docs/struct.WithGenerics.html"
         show-text: true
+
         set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
         reload:
         assert-css: (".item-decl .code-attribute", {"color": |attr_color|}, ALL)
@@ -40,41 +41,41 @@ call-function: (
     "check-colors",
     {
         "theme": "ayu",
-        "attr_color": "rgb(153, 153, 153)",
-        "trait_color": "rgb(57, 175, 215)",
-        "struct_color": "rgb(255, 160, 165)",
-        "enum_color": "rgb(255, 160, 165)",
-        "primitive_color": "rgb(255, 160, 165)",
-        "constant_color": "rgb(57, 175, 215)",
-        "fn_color": "rgb(253, 214, 135)",
-        "assoc_type_color": "rgb(57, 175, 215)",
+        "attr_color": "#999",
+        "trait_color": "#39afd7",
+        "struct_color": "#ffa0a5",
+        "enum_color": "#ffa0a5",
+        "primitive_color": "#ffa0a5",
+        "constant_color": "#39afd7",
+        "fn_color": "#fdd687",
+        "assoc_type_color": "#39afd7",
     },
 )
 call-function: (
     "check-colors",
     {
         "theme": "dark",
-        "attr_color": "rgb(153, 153, 153)",
-        "trait_color": "rgb(183, 140, 242)",
-        "struct_color": "rgb(45, 191, 184)",
-        "enum_color": "rgb(45, 191, 184)",
-        "primitive_color": "rgb(45, 191, 184)",
-        "constant_color": "rgb(210, 153, 29)",
-        "fn_color": "rgb(43, 171, 99)",
-        "assoc_type_color": "rgb(210, 153, 29)",
+        "attr_color": "#999",
+        "trait_color": "#b78cf2",
+        "struct_color": "#2dbfb8",
+        "enum_color": "#2dbfb8",
+        "primitive_color": "#2dbfb8",
+        "constant_color": "#d2991d",
+        "fn_color": "#2bab63",
+        "assoc_type_color": "#d2991d",
     },
 )
 call-function: (
     "check-colors",
     {
         "theme": "light",
-        "attr_color": "rgb(153, 153, 153)",
-        "trait_color": "rgb(110, 79, 201)",
-        "struct_color": "rgb(173, 55, 138)",
-        "enum_color": "rgb(173, 55, 138)",
-        "primitive_color": "rgb(173, 55, 138)",
-        "constant_color": "rgb(56, 115, 173)",
-        "fn_color": "rgb(173, 124, 55)",
-        "assoc_type_color": "rgb(56, 115, 173)",
+        "attr_color": "#999",
+        "trait_color": "#6e4fc9",
+        "struct_color": "#ad378a",
+        "enum_color": "#ad378a",
+        "primitive_color": "#ad378a",
+        "constant_color": "#3873ad",
+        "fn_color": "#ad7c37",
+        "assoc_type_color": "#3873ad",
     },
 )
