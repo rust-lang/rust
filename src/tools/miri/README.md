@@ -74,12 +74,19 @@ behavior** in your program, and cannot run all programs:
   unobservable by compiled programs running on real hardware when `SeqCst` fences are used, and it
   cannot produce all behaviors possibly observable on real hardware.
 
+Moreover, Miri fundamentally cannot tell you whether your code is *sound*. [Soundness] is the property
+of never causing undefined behavior when invoked from arbitrary safe code, even in combination with
+other sound code. In contrast, Miri can just tell you if *a particular way of interacting with your
+code* (e.g., a test suite) causes any undefined behavior. It is up to you to ensure sufficient
+coverage.
+
 [rust]: https://www.rust-lang.org/
 [mir]: https://github.com/rust-lang/rfcs/blob/master/text/1211-mir.md
 [`unreachable_unchecked`]: https://doc.rust-lang.org/stable/std/hint/fn.unreachable_unchecked.html
 [`copy_nonoverlapping`]: https://doc.rust-lang.org/stable/std/ptr/fn.copy_nonoverlapping.html
 [Stacked Borrows]: https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md
 [Tree Borrows]: https://perso.crans.org/vanille/treebor/
+[Soundness]: https://rust-lang.github.io/unsafe-code-guidelines/glossary.html#soundness-of-code--of-a-library
 
 
 ## Using Miri
@@ -400,15 +407,11 @@ to Miri failing to detect cases of undefined behavior in a program.
   application instead of raising an error within the context of Miri (and halting
   execution). Note that code might not expect these operations to ever panic, so
   this flag can lead to strange (mis)behavior.
-* `-Zmiri-retag-fields` changes Stacked Borrows retagging to recurse into *all* fields.
-  This means that references in fields of structs/enums/tuples/arrays/... are retagged,
-  and in particular, they are protected when passed as function arguments.
-  (The default is to recurse only in cases where rustc would actually emit a `noalias` attribute.)
-* `-Zmiri-retag-fields=<all|none|scalar>` controls when Stacked Borrows retagging recurses into
-  fields. `all` means it always recurses (like `-Zmiri-retag-fields`), `none` means it never
-  recurses, `scalar` (the default) means it only recurses for types where we would also emit
-  `noalias` annotations in the generated LLVM IR (types passed as individual scalars or pairs of
-  scalars). Setting this to `none` is **unsound**.
+* `-Zmiri-retag-fields[=<all|none|scalar>]` controls when Stacked Borrows retagging recurses into
+  fields. `all` means it always recurses (the default, and equivalent to `-Zmiri-retag-fields`
+  without an explicit value), `none` means it never recurses, `scalar` means it only recurses for
+  types where we would also emit `noalias` annotations in the generated LLVM IR (types passed as
+  individual scalars or pairs of scalars). Setting this to `none` is **unsound**.
 * `-Zmiri-tag-gc=<blocks>` configures how often the pointer tag garbage collector runs. The default
   is to search for and remove unreachable tags once every `10000` basic blocks. Setting this to
   `0` disables the garbage collector, which causes some programs to have explosive memory usage

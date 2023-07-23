@@ -5,9 +5,11 @@ pub mod diagnostics;
 mod item;
 mod stack;
 
-use log::trace;
 use std::cmp;
 use std::fmt::Write;
+use std::mem;
+
+use log::trace;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::mir::{Mutability, RetagKind};
@@ -19,12 +21,12 @@ use rustc_middle::ty::{
 use rustc_target::abi::{Abi, Size};
 
 use crate::borrow_tracker::{
-    stacked_borrows::diagnostics::{AllocHistory, DiagnosticCx, DiagnosticCxBuilder, TagHistory},
+    stacked_borrows::diagnostics::{AllocHistory, DiagnosticCx, DiagnosticCxBuilder},
     AccessKind, GlobalStateInner, ProtectorKind, RetagFields,
 };
 use crate::*;
 
-use diagnostics::RetagCause;
+use diagnostics::{RetagCause, RetagInfo};
 pub use item::{Item, Permission};
 pub use stack::Stack;
 
@@ -168,15 +170,6 @@ impl NewPermission {
     }
 }
 
-/// Error reporting
-pub fn err_sb_ub<'tcx>(
-    msg: String,
-    help: Option<String>,
-    history: Option<TagHistory>,
-) -> InterpError<'tcx> {
-    err_machine_stop!(TerminationInfo::StackedBorrowsUb { msg, help, history })
-}
-
 // # Stacked Borrows Core Begin
 
 /// We need to make at least the following things true:
@@ -244,7 +237,7 @@ impl<'tcx> Stack {
     fn item_invalidated(
         item: &Item,
         global: &GlobalStateInner,
-        dcx: &mut DiagnosticCx<'_, '_, '_, 'tcx>,
+        dcx: &DiagnosticCx<'_, '_, '_, 'tcx>,
         cause: ItemInvalidationCause,
     ) -> InterpResult<'tcx> {
         if !global.tracked_pointer_tags.is_empty() {
@@ -575,7 +568,7 @@ impl Stacks {
         alloc_id: AllocId,
         tag: ProvenanceExtra,
         range: AllocRange,
-        machine: &mut MiriMachine<'_, 'tcx>,
+        machine: &MiriMachine<'_, 'tcx>,
     ) -> InterpResult<'tcx> {
         trace!(
             "write access with tag {:?}: {:?}, size {}",
@@ -596,7 +589,7 @@ impl Stacks {
         alloc_id: AllocId,
         tag: ProvenanceExtra,
         range: AllocRange,
-        machine: &mut MiriMachine<'_, 'tcx>,
+        machine: &MiriMachine<'_, 'tcx>,
     ) -> InterpResult<'tcx> {
         trace!("deallocation with tag {:?}: {:?}, size {}", tag, alloc_id, range.size.bytes());
         let dcx = DiagnosticCxBuilder::dealloc(machine, tag);
@@ -623,7 +616,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
         size: Size,
         new_perm: NewPermission,
         new_tag: BorTag,
-        retag_cause: RetagCause, // What caused this retag, for diagnostics only
+        retag_info: RetagInfo, // diagnostics info about this retag
     ) -> InterpResult<'tcx, Option<AllocId>> {
         let this = self.eval_context_mut();
 
@@ -670,7 +663,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
                     // FIXME: can this be done cleaner?
                     let dcx = DiagnosticCxBuilder::retag(
                         &this.machine,
-                        retag_cause,
+                        retag_info,
                         new_tag,
                         orig_tag,
                         alloc_range(base_offset, size),
@@ -761,7 +754,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
                 let global = machine.borrow_tracker.as_ref().unwrap().borrow();
                 let dcx = DiagnosticCxBuilder::retag(
                     machine,
-                    retag_cause,
+                    retag_info,
                     new_tag,
                     orig_tag,
                     alloc_range(base_offset, size),
@@ -804,7 +797,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
                     let global = this.machine.borrow_tracker.as_ref().unwrap().borrow();
                     let dcx = DiagnosticCxBuilder::retag(
                         &this.machine,
-                        retag_cause,
+                        retag_info,
                         new_tag,
                         orig_tag,
                         alloc_range(base_offset, size),
@@ -834,7 +827,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
         &mut self,
         val: &ImmTy<'tcx, Provenance>,
         new_perm: NewPermission,
-        cause: RetagCause, // What caused this retag, for diagnostics only
+        info: RetagInfo, // diagnostics info about this retag
     ) -> InterpResult<'tcx, ImmTy<'tcx, Provenance>> {
         let this = self.eval_context_mut();
         // We want a place for where the ptr *points to*, so we get one.
@@ -852,7 +845,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
         let new_tag = this.machine.borrow_tracker.as_mut().unwrap().get_mut().new_ptr();
 
         // Reborrow.
-        let alloc_id = this.sb_reborrow(&place, size, new_perm, new_tag, cause)?;
+        let alloc_id = this.sb_reborrow(&place, size, new_perm, new_tag, info)?;
 
         // Adjust pointer.
         let new_place = place.map_provenance(|p| {
@@ -886,12 +879,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, ImmTy<'tcx, Provenance>> {
         let this = self.eval_context_mut();
         let new_perm = NewPermission::from_ref_ty(val.layout.ty, kind, this);
-        let retag_cause = match kind {
+        let cause = match kind {
             RetagKind::TwoPhase { .. } => RetagCause::TwoPhase,
             RetagKind::FnEntry => unreachable!(),
             RetagKind::Raw | RetagKind::Default => RetagCause::Normal,
         };
-        this.sb_retag_reference(val, new_perm, retag_cause)
+        this.sb_retag_reference(val, new_perm, RetagInfo { cause, in_field: false })
     }
 
     fn sb_retag_place_contents(
@@ -906,7 +899,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             RetagKind::FnEntry => RetagCause::FnEntry,
             RetagKind::Default => RetagCause::Normal,
         };
-        let mut visitor = RetagVisitor { ecx: this, kind, retag_cause, retag_fields };
+        let mut visitor =
+            RetagVisitor { ecx: this, kind, retag_cause, retag_fields, in_field: false };
         return visitor.visit_value(place);
 
         // The actual visitor.
@@ -915,6 +909,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             kind: RetagKind,
             retag_cause: RetagCause,
             retag_fields: RetagFields,
+            in_field: bool,
         }
         impl<'ecx, 'mir, 'tcx> RetagVisitor<'ecx, 'mir, 'tcx> {
             #[inline(always)] // yes this helps in our benchmarks
@@ -922,10 +917,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 &mut self,
                 place: &PlaceTy<'tcx, Provenance>,
                 new_perm: NewPermission,
-                retag_cause: RetagCause,
             ) -> InterpResult<'tcx> {
                 let val = self.ecx.read_immediate(&self.ecx.place_to_op(place)?)?;
-                let val = self.ecx.sb_retag_reference(&val, new_perm, retag_cause)?;
+                let val = self.ecx.sb_retag_reference(
+                    &val,
+                    new_perm,
+                    RetagInfo { cause: self.retag_cause, in_field: self.in_field },
+                )?;
                 self.ecx.write_immediate(*val, place)?;
                 Ok(())
             }
@@ -943,7 +941,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             fn visit_box(&mut self, place: &PlaceTy<'tcx, Provenance>) -> InterpResult<'tcx> {
                 // Boxes get a weak protectors, since they may be deallocated.
                 let new_perm = NewPermission::from_box_ty(place.layout.ty, self.kind, self.ecx);
-                self.retag_ptr_inplace(place, new_perm, self.retag_cause)
+                self.retag_ptr_inplace(place, new_perm)
             }
 
             fn visit_value(&mut self, place: &PlaceTy<'tcx, Provenance>) -> InterpResult<'tcx> {
@@ -960,7 +958,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     ty::Ref(..) => {
                         let new_perm =
                             NewPermission::from_ref_ty(place.layout.ty, self.kind, self.ecx);
-                        self.retag_ptr_inplace(place, new_perm, self.retag_cause)?;
+                        self.retag_ptr_inplace(place, new_perm)?;
                     }
                     ty::RawPtr(..) => {
                         // We do *not* want to recurse into raw pointers -- wide raw pointers have
@@ -984,7 +982,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                             }
                         };
                         if recurse {
+                            let in_field = mem::replace(&mut self.in_field, true); // remember and restore old value
                             self.walk_value(place)?;
+                            self.in_field = in_field;
                         }
                     }
                 }
@@ -1011,7 +1011,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             access: Some(AccessKind::Write),
             protector: Some(ProtectorKind::StrongProtector),
         };
-        let _new_ptr = this.sb_retag_reference(&ptr, new_perm, RetagCause::InPlaceFnPassing)?;
+        let _new_ptr = this.sb_retag_reference(
+            &ptr,
+            new_perm,
+            RetagInfo { cause: RetagCause::InPlaceFnPassing, in_field: false },
+        )?;
         // We just throw away `new_ptr`, so nobody can access this memory while it is protected.
 
         Ok(())

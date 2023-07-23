@@ -22,7 +22,7 @@ pub enum TerminationInfo {
     UnsupportedInIsolation(String),
     StackedBorrowsUb {
         msg: String,
-        help: Option<String>,
+        help: Vec<String>,
         history: Option<TagHistory>,
     },
     TreeBorrowsUb {
@@ -224,11 +224,10 @@ pub fn report_error<'tcx, 'mir>(
                     (None, format!("or pass `-Zmiri-isolation-error=warn` to configure Miri to return an error code from isolated operations (if supported for that operation) and continue with a warning")),
                 ],
             StackedBorrowsUb { help, history, .. } => {
-                let url = "https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md";
                 msg.extend(help.clone());
                 let mut helps = vec![
                     (None, format!("this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental")),
-                    (None, format!("see {url} for further information")),
+                    (None, format!("see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information")),
                 ];
                 if let Some(TagHistory {created, invalidated, protected}) = history.clone() {
                     helps.push((Some(created.1), created.0));
