@@ -469,7 +469,6 @@ TrivialTypeTraversalAndLiftImpls! {
     ::rustc_target::spec::abi::Abi,
     crate::mir::coverage::CounterId,
     crate::mir::coverage::ExpressionId,
-    crate::mir::coverage::MappedExpressionIndex,
     crate::mir::Local,
     crate::mir::Promoted,
     crate::traits::Reveal,
