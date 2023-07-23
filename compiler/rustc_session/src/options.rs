@@ -1145,7 +1145,7 @@ mod parse {
         }
 
         // 2. Parse a list of enabled and disabled components.
-        for comp in s.split(",") {
+        for comp in s.split(',') {
             if slot.handle_cli_component(comp).is_err() {
                 return false;
             }

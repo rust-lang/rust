@@ -15,11 +15,11 @@ struct Indentor<'a, 'b> {
 
 impl Write for Indentor<'_, '_> {
     fn write_str(&mut self, s: &str) -> std::fmt::Result {
-        for line in s.split_inclusive("\n") {
+        for line in s.split_inclusive('\n') {
             if self.on_newline {
                 self.f.write_str("    ")?;
             }
-            self.on_newline = line.ends_with("\n");
+            self.on_newline = line.ends_with('\n');
             self.f.write_str(line)?;
         }
 

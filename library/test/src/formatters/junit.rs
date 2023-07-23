@@ -32,7 +32,7 @@ fn str_to_cdata(s: &str) -> String {
     let escaped_output = s.replace("]]>", "]]]]><![CDATA[>");
     let escaped_output = escaped_output.replace("<?", "<]]><![CDATA[?");
     // We also smuggle newlines as &#xa so as to keep all the output on one line
-    let escaped_output = escaped_output.replace("\n", "]]>&#xA;<![CDATA[");
+    let escaped_output = escaped_output.replace('\n', "]]>&#xA;<![CDATA[");
     // Prune empty CDATA blocks resulting from any escaping
     let escaped_output = escaped_output.replace("<![CDATA[]]>", "");
     format!("<![CDATA[{}]]>", escaped_output)

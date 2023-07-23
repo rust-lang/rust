@@ -279,11 +279,11 @@ impl LinkSelfContained {
         // set of all values like `y` or `n` used to be. Therefore, if this flag had previously been
         // set in bulk with its historical values, then manually setting a component clears that
         // `explicitly_set` state.
-        if let Some(component_to_enable) = component.strip_prefix("+") {
+        if let Some(component_to_enable) = component.strip_prefix('+') {
             self.explicitly_set = None;
             self.components.insert(component_to_enable.parse()?);
             Ok(())
-        } else if let Some(component_to_disable) = component.strip_prefix("-") {
+        } else if let Some(component_to_disable) = component.strip_prefix('-') {
             self.explicitly_set = None;
             self.components.remove(component_to_disable.parse()?);
             Ok(())
