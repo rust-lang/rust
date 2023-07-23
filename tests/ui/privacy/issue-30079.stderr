@@ -18,7 +18,7 @@ LL |     struct Priv;
    |     -----------
    |     |
    |     `m2::Priv` declared as private
-   |     help: consider adding `pub` in front of it
+   |     help: consider adding `pub(crate)` in front of it
 LL |     impl ::std::ops::Deref for ::SemiPriv {
 LL |         type Target = Priv;
    |         ^^^^^^^^^^^ can't leak private type
@@ -30,7 +30,7 @@ LL |     struct Priv;
    |     -----------
    |     |
    |     `m3::Priv` declared as private
-   |     help: consider adding `pub` in front of it
+   |     help: consider adding `pub(crate)` in front of it
 LL |     impl ::SemiPrivTrait for () {
 LL |         type Assoc = Priv;
    |         ^^^^^^^^^^ can't leak private type

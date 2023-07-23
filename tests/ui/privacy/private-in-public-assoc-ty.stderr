@@ -75,7 +75,10 @@ error[E0446]: private trait `PrivTr` in public interface
   --> $DIR/private-in-public-assoc-ty.rs:41:9
    |
 LL |     trait PrivTr {}
-   |     ------------ `PrivTr` declared as private
+   |     ------------
+   |     |
+   |     `PrivTr` declared as private
+   |     help: consider adding `pub` in front of it
 ...
 LL |         type Exist = impl PrivTr;
    |         ^^^^^^^^^^ can't leak private trait
