@@ -163,12 +163,13 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
                 return;
             }
 
+            check_mut_from_ref(cx, sig, None);
+
             if !matches!(sig.header.abi, Abi::Rust) {
                 // Ignore `extern` functions with non-Rust calling conventions
                 return;
             }
 
-            check_mut_from_ref(cx, sig, None);
             for arg in check_fn_args(
                 cx,
                 cx.tcx.fn_sig(item.owner_id).subst_identity().skip_binder().inputs(),
@@ -223,12 +224,13 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
             _ => return,
         };
 
+        check_mut_from_ref(cx, sig, Some(body));
+
         if !matches!(sig.header.abi, Abi::Rust) {
             // Ignore `extern` functions with non-Rust calling conventions
             return;
         }
 
-        check_mut_from_ref(cx, sig, Some(body));
         let decl = sig.decl;
         let sig = cx.tcx.fn_sig(item_id).subst_identity().skip_binder();
         let lint_args: Vec<_> = check_fn_args(cx, sig.inputs(), decl.inputs, &decl.output, body.params)
