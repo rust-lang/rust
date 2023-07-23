@@ -313,16 +313,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
     ) -> Result<SizeSkeleton<'tcx>, &'tcx LayoutError<'tcx>> {
         debug_assert!(!ty.has_non_region_infer());
 
-        // First, try computing an exact naive layout (this covers simple types with generic
-        // references, where a full static layout would fail).
-        if let Ok(layout) = tcx.naive_layout_of(param_env.and(ty)) {
-            if layout.exact {
-                return Ok(SizeSkeleton::Known(layout.size));
-            }
-        }
-
-        // Second, try computing a full static layout (this covers cases when the naive layout
-        // wasn't smart enough, but cannot deal with generic references).
+        // First try computing a static layout.
         let err = match tcx.layout_of(param_env.and(ty)) {
             Ok(layout) => {
                 return Ok(SizeSkeleton::Known(layout.size));
@@ -336,7 +327,6 @@ impl<'tcx> SizeSkeleton<'tcx> {
             ) => return Err(e),
         };
 
-        // Third, fall back to ad-hoc cases.
         match *ty.kind() {
             ty::Ref(_, pointee, _) | ty::RawPtr(ty::TypeAndMut { ty: pointee, .. }) => {
                 let non_zero = !ty.is_unsafe_ptr();
@@ -631,219 +621,6 @@ impl<T, E> MaybeResult<T> for Result<T, E> {
 
 pub type TyAndLayout<'tcx> = rustc_target::abi::TyAndLayout<'tcx, Ty<'tcx>>;
 
-#[derive(Copy, Clone, Debug, HashStable)]
-pub struct TyAndNaiveLayout<'tcx> {
-    pub ty: Ty<'tcx>,
-    pub layout: NaiveLayout,
-}
-
-impl std::ops::Deref for TyAndNaiveLayout<'_> {
-    type Target = NaiveLayout;
-    fn deref(&self) -> &Self::Target {
-        &self.layout
-    }
-}
-
-impl std::ops::DerefMut for TyAndNaiveLayout<'_> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.layout
-    }
-}
-
-/// Extremely simplified approximation of a type's layout returned by the
-/// `naive_layout_of` query.
-#[derive(Copy, Clone, Debug, HashStable)]
-pub struct NaiveLayout {
-    pub abi: NaiveAbi,
-    /// Niche information, required for tracking non-null enum optimizations.
-    pub niches: NaiveNiches,
-    /// An underestimate of the layout's size.
-    pub size: Size,
-    /// An underestimate of the layout's required alignment.
-    pub align: Align,
-    /// If `true`, `size` and `align` must be exact values.
-    pub exact: bool,
-}
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq, HashStable)]
-pub enum NaiveNiches {
-    None,
-    Some,
-    Maybe,
-}
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq, HashStable)]
-pub enum NaiveAbi {
-    /// A scalar layout, always implies `exact` and a non-zero `size`.
-    Scalar(Primitive),
-    /// An uninhabited layout. (needed to properly track `Scalar` and niches)
-    Uninhabited,
-    /// An unsized aggregate. (needed to properly track `Scalar` and niches)
-    Unsized,
-    /// Any other sized layout.
-    Sized,
-}
-
-impl NaiveAbi {
-    #[inline]
-    pub fn as_aggregate(self) -> Self {
-        match self {
-            NaiveAbi::Scalar(_) => NaiveAbi::Sized,
-            _ => self,
-        }
-    }
-}
-
-impl NaiveLayout {
-    /// The layout of an empty aggregate, e.g. `()`.
-    pub const EMPTY: Self = Self {
-        size: Size::ZERO,
-        align: Align::ONE,
-        exact: true,
-        abi: NaiveAbi::Sized,
-        niches: NaiveNiches::None,
-    };
-
-    /// Returns whether `self` is a valid approximation of the given full `layout`.
-    ///
-    /// This should always return `true` when both layouts are computed from the same type.
-    pub fn is_refined_by(&self, layout: Layout<'_>) -> bool {
-        if self.size > layout.size() || self.align > layout.align().abi {
-            return false;
-        }
-
-        if let NaiveAbi::Scalar(prim) = self.abi {
-            if !self.exact
-                || self.size == Size::ZERO
-                || !matches!(layout.abi(), Abi::Scalar(s) if s.primitive() == prim)
-            {
-                return false;
-            }
-        }
-
-        match (self.niches, layout.largest_niche()) {
-            (NaiveNiches::None, Some(_)) => return false,
-            (NaiveNiches::Some, None) => return false,
-            _ => (),
-        }
-
-        !self.exact || (self.size, self.align) == (layout.size(), layout.align().abi)
-    }
-
-    /// Returns if this layout is known to be pointer-like (`None` if uncertain)
-    ///
-    /// See the corresponding `Layout::is_pointer_like` method.
-    pub fn is_pointer_like(&self, dl: &TargetDataLayout) -> Option<bool> {
-        match self.abi {
-            NaiveAbi::Scalar(_) => {
-                assert!(self.exact);
-                Some(self.size == dl.pointer_size && self.align == dl.pointer_align.abi)
-            }
-            NaiveAbi::Uninhabited | NaiveAbi::Unsized => Some(false),
-            NaiveAbi::Sized if self.exact => Some(false),
-            NaiveAbi::Sized => None,
-        }
-    }
-
-    /// Artificially lowers the alignment of this layout.
-    #[must_use]
-    #[inline]
-    pub fn packed(mut self, align: Align) -> Self {
-        if self.align > align {
-            self.align = align;
-            self.abi = self.abi.as_aggregate();
-        }
-        self
-    }
-
-    /// Artificially raises the alignment of this layout.
-    #[must_use]
-    #[inline]
-    pub fn align_to(mut self, align: Align) -> Self {
-        if align > self.align {
-            self.align = align;
-            self.abi = self.abi.as_aggregate();
-        }
-        self
-    }
-
-    /// Artificially makes this layout inexact.
-    #[must_use]
-    #[inline]
-    pub fn inexact(mut self) -> Self {
-        self.abi = self.abi.as_aggregate();
-        self.exact = false;
-        self
-    }
-
-    /// Pads this layout so that its size is a multiple of `align`.
-    #[must_use]
-    #[inline]
-    pub fn pad_to_align(mut self, align: Align) -> Self {
-        let new_size = self.size.align_to(align);
-        if new_size > self.size {
-            self.abi = self.abi.as_aggregate();
-            self.size = new_size;
-        }
-        self
-    }
-
-    /// Returns the layout of `self` immediately followed by `other`, without any
-    /// padding between them, as in a packed `struct` or tuple.
-    #[must_use]
-    #[inline]
-    pub fn concat(&self, other: &Self, dl: &TargetDataLayout) -> Option<Self> {
-        use NaiveAbi::*;
-
-        let size = self.size.checked_add(other.size, dl)?;
-        let align = cmp::max(self.align, other.align);
-        let exact = self.exact && other.exact;
-        let abi = match (self.abi, other.abi) {
-            // The uninhabited and unsized ABIs override everything.
-            (Uninhabited, _) | (_, Uninhabited) => Uninhabited,
-            (Unsized, _) | (_, Unsized) => Unsized,
-            // A scalar struct must have a single non ZST-field.
-            (_, s @ Scalar(_)) if exact && self.size == Size::ZERO => s,
-            (s @ Scalar(_), _) if exact && other.size == Size::ZERO => s,
-            // Default case.
-            (_, _) => Sized,
-        };
-        let niches = match (self.niches, other.niches) {
-            (NaiveNiches::Some, _) | (_, NaiveNiches::Some) => NaiveNiches::Some,
-            (NaiveNiches::None, NaiveNiches::None) => NaiveNiches::None,
-            (_, _) => NaiveNiches::Maybe,
-        };
-        Some(Self { abi, size, align, exact, niches })
-    }
-
-    /// Returns the layout of `self` superposed with `other`, as in an `enum`
-    /// or an `union`.
-    ///
-    /// Note: This always ignore niche information from `other`.
-    #[must_use]
-    #[inline]
-    pub fn union(&self, other: &Self) -> Self {
-        use NaiveAbi::*;
-
-        let size = cmp::max(self.size, other.size);
-        let align = cmp::max(self.align, other.align);
-        let exact = self.exact && other.exact;
-        let abi = match (self.abi, other.abi) {
-            // The unsized ABI overrides everything.
-            (Unsized, _) | (_, Unsized) => Unsized,
-            // A scalar union must have a single non ZST-field...
-            (_, s @ Scalar(_)) if exact && self.size == Size::ZERO => s,
-            (s @ Scalar(_), _) if exact && other.size == Size::ZERO => s,
-            // ...or identical scalar fields.
-            (Scalar(s1), Scalar(s2)) if s1 == s2 => Scalar(s1),
-            // Default cases.
-            (Uninhabited, Uninhabited) => Uninhabited,
-            (_, _) => Sized,
-        };
-        Self { abi, size, align, exact, niches: self.niches }
-    }
-}
-
 /// Trait for contexts that want to be able to compute layouts of types.
 /// This automatically gives access to `LayoutOf`, through a blanket `impl`.
 pub trait LayoutOfHelpers<'tcx>: HasDataLayout + HasTyCtxt<'tcx> + HasParamEnv<'tcx> {
@@ -895,19 +672,6 @@ pub trait LayoutOf<'tcx>: LayoutOfHelpers<'tcx> {
             tcx.layout_of(self.param_env().and(ty))
                 .map_err(|err| self.handle_layout_err(*err, span, ty)),
         )
-    }
-
-    /// Computes the naive layout estimate of a type. Note that this implicitly
-    /// executes in "reveal all" mode, and will normalize the input type.
-    ///
-    /// Unlike `layout_of`, this doesn't look past references (beyond the `Pointee::Metadata`
-    /// projection), and as such can be called on generic types like `Option<&T>`.
-    #[inline]
-    fn naive_layout_of(
-        &self,
-        ty: Ty<'tcx>,
-    ) -> Result<TyAndNaiveLayout<'tcx>, &'tcx LayoutError<'tcx>> {
-        self.tcx().naive_layout_of(self.param_env().and(ty))
     }
 }
 
@@ -1205,9 +969,6 @@ where
         this: TyAndLayout<'tcx>,
         cx: &C,
         offset: Size,
-        // If true, assume that pointers are either null or valid (according to their type),
-        // enabling extra optimizations.
-        mut assume_valid_ptr: bool,
     ) -> Option<PointeeInfo> {
         let tcx = cx.tcx();
         let param_env = cx.param_env();
@@ -1230,19 +991,19 @@ where
                 // Freeze/Unpin queries, and can save time in the codegen backend (noalias
                 // attributes in LLVM have compile-time cost even in unoptimized builds).
                 let optimize = tcx.sess.opts.optimize != OptLevel::No;
-                let safe = match (assume_valid_ptr, mt) {
-                    (true, hir::Mutability::Not) => Some(PointerKind::SharedRef {
+                let kind = match mt {
+                    hir::Mutability::Not => PointerKind::SharedRef {
                         frozen: optimize && ty.is_freeze(tcx, cx.param_env()),
-                    }),
-                    (true, hir::Mutability::Mut) => Some(PointerKind::MutableRef {
+                    },
+                    hir::Mutability::Mut => PointerKind::MutableRef {
                         unpin: optimize && ty.is_unpin(tcx, cx.param_env()),
-                    }),
-                    (false, _) => None,
+                    },
                 };
+
                 tcx.layout_of(param_env.and(ty)).ok().map(|layout| PointeeInfo {
                     size: layout.size,
                     align: layout.align.abi,
-                    safe,
+                    safe: Some(kind),
                 })
             }
 
@@ -1251,21 +1012,19 @@ where
                     // Within the discriminant field, only the niche itself is
                     // always initialized, so we only check for a pointer at its
                     // offset.
+                    //
+                    // If the niche is a pointer, it's either valid (according
+                    // to its type), or null (which the niche field's scalar
+                    // validity range encodes). This allows using
+                    // `dereferenceable_or_null` for e.g., `Option<&T>`, and
+                    // this will continue to work as long as we don't start
+                    // using more niches than just null (e.g., the first page of
+                    // the address space, or unaligned pointers).
                     Variants::Multiple {
-                        tag_encoding:
-                            TagEncoding::Niche {
-                                untagged_variant,
-                                niche_variants: ref variants,
-                                niche_start,
-                            },
+                        tag_encoding: TagEncoding::Niche { untagged_variant, .. },
                         tag_field,
                         ..
                     } if this.fields.offset(tag_field) == offset => {
-                        // We can only continue assuming pointer validity if the only possible
-                        // discriminant value is null. The null special-case is permitted by LLVM's
-                        // `dereferenceable_or_null`, and allow types like `Option<&T>` to benefit
-                        // from optimizations.
-                        assume_valid_ptr &= niche_start == 0 && variants.start() == variants.end();
                         Some(this.for_variant(cx, untagged_variant))
                     }
                     _ => Some(this),
@@ -1291,12 +1050,9 @@ where
                             result = field.to_result().ok().and_then(|field| {
                                 if ptr_end <= field_start + field.size {
                                     // We found the right field, look inside it.
-                                    Self::ty_and_layout_pointee_info_at(
-                                        field,
-                                        cx,
-                                        offset - field_start,
-                                        assume_valid_ptr,
-                                    )
+                                    let field_info =
+                                        field.pointee_info_at(cx, offset - field_start);
+                                    field_info
                                 } else {
                                     None
                                 }
@@ -1311,7 +1067,7 @@ where
                 // FIXME(eddyb) This should be for `ptr::Unique<T>`, not `Box<T>`.
                 if let Some(ref mut pointee) = result {
                     if let ty::Adt(def, _) = this.ty.kind() {
-                        if assume_valid_ptr && def.is_box() && offset.bytes() == 0 {
+                        if def.is_box() && offset.bytes() == 0 {
                             let optimize = tcx.sess.opts.optimize != OptLevel::No;
                             pointee.safe = Some(PointerKind::Box {
                                 unpin: optimize && this.ty.boxed_ty().is_unpin(tcx, cx.param_env()),

@@ -65,12 +65,12 @@ to `./build/host/stage2/bin/`. Note that you would need to do this every time yo
 5. Copy cargo from another toolchain: `cp $(rustup which cargo) .build/<your hostname triple>/stage2/bin/cargo`
    * Another option is to build it at step 3 and copy with other executables at step 4.
 6. Link your new `rustc` to toolchain: `rustup toolchain link stage2 ./build/host/stage2/`.
-7. (Windows only) compile y.rs: `rustc +stage2 -O y.rs`.
-8. You need to prefix every `./y.rs` (or `y` if you built `y.rs`) command by `rustup run stage2` to make cg_clif use your local changes in rustc.
+7. (Windows only) compile the build system: `rustc +stage2 -O build_system/main.rs -o y.exe`.
+8. You need to prefix every `./y.sh` (or `y` if you built `build_system/main.rs` as `y`) command by `rustup run stage2` to make cg_clif use your local changes in rustc.
 
-  * `rustup run stage2 ./y.rs prepare`
-  * `rustup run stage2 ./y.rs build`
-  * (Optional) run tests: `rustup run stage2 ./y.rs test`
+  * `rustup run stage2 ./y.sh prepare`
+  * `rustup run stage2 ./y.sh build`
+  * (Optional) run tests: `rustup run stage2 ./y.sh test`
 9. Now you can use your cg_clif build to compile other Rust programs, e.g. you can open any Rust crate and run commands like `$RustCheckoutDir/compiler/rustc_codegen_cranelift/dist/cargo-clif build --release`.
 
 ## Configuration

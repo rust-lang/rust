@@ -501,7 +501,22 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
     });
 
     // #73631: closures inherit `#[target_feature]` annotations
-    if tcx.features().target_feature_11 && tcx.is_closure(did.to_def_id()) {
+    //
+    // If this closure is marked `#[inline(always)]`, simply skip adding `#[target_feature]`.
+    //
+    // At this point, `unsafe` has already been checked and `#[target_feature]` only affects codegen.
+    // Emitting both `#[inline(always)]` and `#[target_feature]` can potentially result in an
+    // ICE, because LLVM errors when the function fails to be inlined due to a target feature
+    // mismatch.
+    //
+    // Using `#[inline(always)]` implies that this closure will most likely be inlined into
+    // its parent function, which effectively inherits the features anyway. Boxing this closure
+    // would result in this closure being compiled without the inherited target features, but this
+    // is probably a poor usage of `#[inline(always)]` and easily avoided by not using the attribute.
+    if tcx.features().target_feature_11
+        && tcx.is_closure(did.to_def_id())
+        && codegen_fn_attrs.inline != InlineAttr::Always
+    {
         let owner_id = tcx.parent(did.to_def_id());
         if tcx.def_kind(owner_id).has_codegen_attrs() {
             codegen_fn_attrs

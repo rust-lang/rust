@@ -137,12 +137,6 @@ enum Scope<'a> {
         s: ScopeRef<'a>,
     },
 
-    /// A scope which either determines unspecified lifetimes or errors
-    /// on them (e.g., due to ambiguity).
-    Elision {
-        s: ScopeRef<'a>,
-    },
-
     /// Use a specific lifetime (if `Some`) or leave it unset (to be
     /// inferred in a function body or potentially error outside one),
     /// for the default choice of lifetime in a trait object type.
@@ -211,7 +205,6 @@ impl<'a> fmt::Debug for TruncatedScopeDebug<'a> {
             Scope::Body { id, s: _ } => {
                 f.debug_struct("Body").field("id", id).field("s", &"..").finish()
             }
-            Scope::Elision { s: _ } => f.debug_struct("Elision").field("s", &"..").finish(),
             Scope::ObjectLifetimeDefault { lifetime, s: _ } => f
                 .debug_struct("ObjectLifetimeDefault")
                 .field("lifetime", lifetime)
@@ -325,9 +318,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                     break (vec![], BinderScopeType::Normal);
                 }
 
-                Scope::Elision { s, .. }
-                | Scope::ObjectLifetimeDefault { s, .. }
-                | Scope::AnonConstBoundary { s } => {
+                Scope::ObjectLifetimeDefault { s, .. } | Scope::AnonConstBoundary { s } => {
                     scope = s;
                 }
 
@@ -526,15 +517,11 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
             | hir::ItemKind::Macro(..)
             | hir::ItemKind::Mod(..)
             | hir::ItemKind::ForeignMod { .. }
+            | hir::ItemKind::Static(..)
+            | hir::ItemKind::Const(..)
             | hir::ItemKind::GlobalAsm(..) => {
                 // These sorts of items have no lifetime parameters at all.
                 intravisit::walk_item(self, item);
-            }
-            hir::ItemKind::Static(..) | hir::ItemKind::Const(..) => {
-                // No lifetime parameters, but implied 'static.
-                self.with(Scope::Elision { s: self.scope }, |this| {
-                    intravisit::walk_item(this, item)
-                });
             }
             hir::ItemKind::OpaqueTy(hir::OpaqueTy {
                 origin: hir::OpaqueTyOrigin::TyAlias { .. },
@@ -727,12 +714,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                         // Elided lifetimes are not allowed in non-return
                         // position impl Trait
                         let scope = Scope::TraitRefBoundary { s: self.scope };
-                        self.with(scope, |this| {
-                            let scope = Scope::Elision { s: this.scope };
-                            this.with(scope, |this| {
-                                intravisit::walk_item(this, opaque_ty);
-                            })
-                        });
+                        self.with(scope, |this| intravisit::walk_item(this, opaque_ty));
 
                         return;
                     }
@@ -1293,8 +1275,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                     scope = s;
                 }
 
-                Scope::Elision { s, .. }
-                | Scope::ObjectLifetimeDefault { s, .. }
+                Scope::ObjectLifetimeDefault { s, .. }
                 | Scope::Supertrait { s, .. }
                 | Scope::TraitRefBoundary { s, .. }
                 | Scope::AnonConstBoundary { s } => {
@@ -1357,7 +1338,6 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 Scope::Root { .. } => break,
                 Scope::Binder { s, .. }
                 | Scope::Body { s, .. }
-                | Scope::Elision { s, .. }
                 | Scope::ObjectLifetimeDefault { s, .. }
                 | Scope::Supertrait { s, .. }
                 | Scope::TraitRefBoundary { s, .. }
@@ -1409,8 +1389,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                     scope = s;
                 }
 
-                Scope::Elision { s, .. }
-                | Scope::ObjectLifetimeDefault { s, .. }
+                Scope::ObjectLifetimeDefault { s, .. }
                 | Scope::Supertrait { s, .. }
                 | Scope::TraitRefBoundary { s, .. } => {
                     scope = s;
@@ -1483,7 +1462,6 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 Scope::Root { .. } => break,
                 Scope::Binder { s, .. }
                 | Scope::Body { s, .. }
-                | Scope::Elision { s, .. }
                 | Scope::ObjectLifetimeDefault { s, .. }
                 | Scope::Supertrait { s, .. }
                 | Scope::TraitRefBoundary { s, .. }
@@ -1564,7 +1542,6 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                         Scope::Body { .. } => break true,
 
                         Scope::Binder { s, .. }
-                        | Scope::Elision { s, .. }
                         | Scope::ObjectLifetimeDefault { s, .. }
                         | Scope::Supertrait { s, .. }
                         | Scope::TraitRefBoundary { s, .. }
@@ -1832,14 +1809,20 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         output: Option<&'tcx hir::Ty<'tcx>>,
         in_closure: bool,
     ) {
-        self.with(Scope::Elision { s: self.scope }, |this| {
-            for input in inputs {
-                this.visit_ty(input);
-            }
-            if !in_closure && let Some(output) = output {
-                this.visit_ty(output);
-            }
-        });
+        self.with(
+            Scope::ObjectLifetimeDefault {
+                lifetime: Some(ResolvedArg::StaticLifetime),
+                s: self.scope,
+            },
+            |this| {
+                for input in inputs {
+                    this.visit_ty(input);
+                }
+                if !in_closure && let Some(output) = output {
+                    this.visit_ty(output);
+                }
+            },
+        );
         if in_closure && let Some(output) = output {
             self.visit_ty(output);
         }
@@ -1859,7 +1842,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                     scope = s;
                 }
 
-                Scope::Root { .. } | Scope::Elision { .. } => break ResolvedArg::StaticLifetime,
+                Scope::Root { .. } => break ResolvedArg::StaticLifetime,
 
                 Scope::Body { .. } | Scope::ObjectLifetimeDefault { lifetime: None, .. } => return,
 

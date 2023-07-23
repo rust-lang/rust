@@ -3003,7 +3003,8 @@ impl<'a> Parser<'a> {
     fn is_do_catch_block(&self) -> bool {
         self.token.is_keyword(kw::Do)
             && self.is_keyword_ahead(1, &[kw::Catch])
-            && self.look_ahead(2, |t| *t == token::OpenDelim(Delimiter::Brace))
+            && self
+                .look_ahead(2, |t| *t == token::OpenDelim(Delimiter::Brace) || t.is_whole_block())
             && !self.restrictions.contains(Restrictions::NO_STRUCT_LITERAL)
     }
 
@@ -3013,7 +3014,8 @@ impl<'a> Parser<'a> {
 
     fn is_try_block(&self) -> bool {
         self.token.is_keyword(kw::Try)
-            && self.look_ahead(1, |t| *t == token::OpenDelim(Delimiter::Brace))
+            && self
+                .look_ahead(1, |t| *t == token::OpenDelim(Delimiter::Brace) || t.is_whole_block())
             && self.token.uninterpolated_span().at_least_rust_2018()
     }
 
@@ -3032,10 +3034,14 @@ impl<'a> Parser<'a> {
             && ((
                 // `async move {`
                 self.is_keyword_ahead(1, &[kw::Move])
-                    && self.look_ahead(2, |t| *t == token::OpenDelim(Delimiter::Brace))
+                    && self.look_ahead(2, |t| {
+                        *t == token::OpenDelim(Delimiter::Brace) || t.is_whole_block()
+                    })
             ) || (
                 // `async {`
-                self.look_ahead(1, |t| *t == token::OpenDelim(Delimiter::Brace))
+                self.look_ahead(1, |t| {
+                    *t == token::OpenDelim(Delimiter::Brace) || t.is_whole_block()
+                })
             ))
     }
 

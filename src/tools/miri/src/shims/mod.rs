@@ -20,7 +20,6 @@ pub mod tls;
 use log::trace;
 
 use rustc_middle::{mir, ty};
-use rustc_target::abi::HasDataLayout as _;
 use rustc_target::spec::abi::Abi;
 
 use crate::*;
@@ -109,8 +108,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
 
         // Return error result (usize::MAX), and jump to caller.
-        let usize_max = this.data_layout().target_usize_max();
-        this.write_scalar(Scalar::from_target_usize(usize_max, this), dest)?;
+        this.write_scalar(Scalar::from_target_usize(this.target_usize_max(), this), dest)?;
         this.go_to_block(ret);
         Ok(true)
     }

@@ -10,7 +10,6 @@ use std::assert_matches::assert_matches;
 use std::borrow::Cow;
 use std::collections::VecDeque;
 use std::fmt;
-use std::ops::RangeInclusive;
 use std::ptr;
 
 use rustc_ast::Mutability;
@@ -1223,34 +1222,24 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
 /// Machine pointer introspection.
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
-    /// Turn a pointer-sized scalar into a (non-empty) range of possible values.
+    /// Test if this value might be null.
     /// If the machine does not support ptr-to-int casts, this is conservative.
-    pub fn ptr_scalar_range(
-        &self,
-        scalar: Scalar<M::Provenance>,
-    ) -> InterpResult<'tcx, RangeInclusive<u64>> {
-        if let Ok(int) = scalar.to_target_usize(self) {
-            return Ok(int..=int);
-        }
-
-        let ptr = scalar.to_pointer(self)?;
-
-        // Can only happen during CTFE.
-        Ok(match self.ptr_try_get_alloc_id(ptr) {
-            Ok((alloc_id, offset, _)) => {
-                let offset = offset.bytes();
-                let (size, align, _) = self.get_alloc_info(alloc_id);
-                let dl = self.data_layout();
-                if offset > size.bytes() {
-                    // If the pointer is out-of-bounds, we do not have a
-                    // meaningful range to return.
-                    0..=dl.target_usize_max()
-                } else {
-                    let (min, max) = dl.address_range_for(size, align);
-                    (min + offset)..=(max + offset)
+    pub fn scalar_may_be_null(&self, scalar: Scalar<M::Provenance>) -> InterpResult<'tcx, bool> {
+        Ok(match scalar.try_to_int() {
+            Ok(int) => int.is_null(),
+            Err(_) => {
+                // Can only happen during CTFE.
+                let ptr = scalar.to_pointer(self)?;
+                match self.ptr_try_get_alloc_id(ptr) {
+                    Ok((alloc_id, offset, _)) => {
+                        let (size, _align, _kind) = self.get_alloc_info(alloc_id);
+                        // If the pointer is out-of-bounds, it may be null.
+                        // Note that one-past-the-end (offset == size) is still inbounds, and never null.
+                        offset > size
+                    }
+                    Err(_offset) => bug!("a non-int scalar is always a pointer"),
                 }
             }
-            Err(_offset) => bug!("a non-int scalar is always a pointer"),
         })
     }
 

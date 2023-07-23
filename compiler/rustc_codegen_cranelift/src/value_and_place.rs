@@ -2,6 +2,8 @@
 
 use crate::prelude::*;
 
+use rustc_middle::ty::FnSig;
+
 use cranelift_codegen::entity::EntityRef;
 use cranelift_codegen::ir::immediates::Offset32;
 
@@ -160,6 +162,7 @@ impl<'tcx> CValue<'tcx> {
     }
 
     /// Load a value with layout.abi of scalar
+    #[track_caller]
     pub(crate) fn load_scalar(self, fx: &mut FunctionCx<'_, '_, 'tcx>) -> Value {
         let layout = self.1;
         match self.0 {
@@ -182,6 +185,7 @@ impl<'tcx> CValue<'tcx> {
     }
 
     /// Load a value pair with layout.abi of scalar pair
+    #[track_caller]
     pub(crate) fn load_scalar_pair(self, fx: &mut FunctionCx<'_, '_, 'tcx>) -> (Value, Value) {
         let layout = self.1;
         match self.0 {
@@ -583,17 +587,25 @@ impl<'tcx> CPlace<'tcx> {
         let dst_layout = self.layout();
         match self.inner {
             CPlaceInner::Var(_local, var) => {
-                let data = CValue(from.0, dst_layout).load_scalar(fx);
+                let data = match from.1.abi {
+                    Abi::Scalar(_) => CValue(from.0, dst_layout).load_scalar(fx),
+                    _ => {
+                        let (ptr, meta) = from.force_stack(fx);
+                        assert!(meta.is_none());
+                        CValue(CValueInner::ByRef(ptr, None), dst_layout).load_scalar(fx)
+                    }
+                };
                 let dst_ty = fx.clif_type(self.layout().ty).unwrap();
                 transmute_scalar(fx, var, data, dst_ty);
             }
             CPlaceInner::VarPair(_local, var1, var2) => {
-                let (data1, data2) = if from.layout().ty == dst_layout.ty {
-                    CValue(from.0, dst_layout).load_scalar_pair(fx)
-                } else {
-                    let (ptr, meta) = from.force_stack(fx);
-                    assert!(meta.is_none());
-                    CValue(CValueInner::ByRef(ptr, None), dst_layout).load_scalar_pair(fx)
+                let (data1, data2) = match from.1.abi {
+                    Abi::ScalarPair(_, _) => CValue(from.0, dst_layout).load_scalar_pair(fx),
+                    _ => {
+                        let (ptr, meta) = from.force_stack(fx);
+                        assert!(meta.is_none());
+                        CValue(CValueInner::ByRef(ptr, None), dst_layout).load_scalar_pair(fx)
+                    }
                 };
                 let (dst_ty1, dst_ty2) = fx.clif_pair_type(self.layout().ty).unwrap();
                 transmute_scalar(fx, var1, data1, dst_ty1);
@@ -607,30 +619,38 @@ impl<'tcx> CPlace<'tcx> {
 
                 let mut flags = MemFlags::new();
                 flags.set_notrap();
-                match from.layout().abi {
-                    Abi::Scalar(_) => {
-                        let val = from.load_scalar(fx);
-                        to_ptr.store(fx, val, flags);
-                        return;
-                    }
-                    Abi::ScalarPair(a_scalar, b_scalar) => {
-                        let (value, extra) = from.load_scalar_pair(fx);
-                        let b_offset = scalar_pair_calculate_b_offset(fx.tcx, a_scalar, b_scalar);
-                        to_ptr.store(fx, value, flags);
-                        to_ptr.offset(fx, b_offset).store(fx, extra, flags);
-                        return;
-                    }
-                    _ => {}
-                }
 
                 match from.0 {
                     CValueInner::ByVal(val) => {
                         to_ptr.store(fx, val, flags);
                     }
-                    CValueInner::ByValPair(_, _) => {
-                        bug!("Non ScalarPair abi {:?} for ByValPair CValue", dst_layout.abi);
-                    }
+                    CValueInner::ByValPair(val1, val2) => match from.layout().abi {
+                        Abi::ScalarPair(a_scalar, b_scalar) => {
+                            let b_offset =
+                                scalar_pair_calculate_b_offset(fx.tcx, a_scalar, b_scalar);
+                            to_ptr.store(fx, val1, flags);
+                            to_ptr.offset(fx, b_offset).store(fx, val2, flags);
+                        }
+                        _ => bug!("Non ScalarPair abi {:?} for ByValPair CValue", dst_layout.abi),
+                    },
                     CValueInner::ByRef(from_ptr, None) => {
+                        match from.layout().abi {
+                            Abi::Scalar(_) => {
+                                let val = from.load_scalar(fx);
+                                to_ptr.store(fx, val, flags);
+                                return;
+                            }
+                            Abi::ScalarPair(a_scalar, b_scalar) => {
+                                let b_offset =
+                                    scalar_pair_calculate_b_offset(fx.tcx, a_scalar, b_scalar);
+                                let (val1, val2) = from.load_scalar_pair(fx);
+                                to_ptr.store(fx, val1, flags);
+                                to_ptr.offset(fx, b_offset).store(fx, val2, flags);
+                                return;
+                            }
+                            _ => {}
+                        }
+
                         let from_addr = from_ptr.get_addr(fx);
                         let to_addr = to_ptr.get_addr(fx);
                         let src_layout = from.1;
@@ -815,11 +835,42 @@ pub(crate) fn assert_assignable<'tcx>(
                 ParamEnv::reveal_all(),
                 from_ty.fn_sig(fx.tcx),
             );
+            let FnSig {
+                inputs_and_output: types_from,
+                c_variadic: c_variadic_from,
+                unsafety: unsafety_from,
+                abi: abi_from,
+            } = from_sig;
             let to_sig = fx
                 .tcx
                 .normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), to_ty.fn_sig(fx.tcx));
+            let FnSig {
+                inputs_and_output: types_to,
+                c_variadic: c_variadic_to,
+                unsafety: unsafety_to,
+                abi: abi_to,
+            } = to_sig;
+            let mut types_from = types_from.iter();
+            let mut types_to = types_to.iter();
+            loop {
+                match (types_from.next(), types_to.next()) {
+                    (Some(a), Some(b)) => assert_assignable(fx, a, b, limit - 1),
+                    (None, None) => break,
+                    (Some(_), None) | (None, Some(_)) => panic!("{:#?}/{:#?}", from_ty, to_ty),
+                }
+            }
             assert_eq!(
-                from_sig, to_sig,
+                c_variadic_from, c_variadic_to,
+                "Can't write fn ptr with incompatible sig {:?} to place with sig {:?}\n\n{:#?}",
+                from_sig, to_sig, fx,
+            );
+            assert_eq!(
+                unsafety_from, unsafety_to,
+                "Can't write fn ptr with incompatible sig {:?} to place with sig {:?}\n\n{:#?}",
+                from_sig, to_sig, fx,
+            );
+            assert_eq!(
+                abi_from, abi_to,
                 "Can't write fn ptr with incompatible sig {:?} to place with sig {:?}\n\n{:#?}",
                 from_sig, to_sig, fx,
             );

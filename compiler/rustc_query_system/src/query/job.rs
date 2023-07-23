@@ -176,8 +176,7 @@ impl QueryJobId {
         while let Some(id) = current_id {
             let info = query_map.get(&id).unwrap();
             // FIXME: This string comparison should probably not be done.
-            let query_name = format!("{:?}", info.query.dep_kind);
-            if query_name == "layout_of" || query_name == "naive_layout_of" {
+            if format!("{:?}", info.query.dep_kind) == "layout_of" {
                 depth += 1;
                 last_layout = Some((info.clone(), depth));
             }

@@ -3,7 +3,7 @@ use super::config;
 use super::path::{Dirs, RelPath};
 use super::prepare::{apply_patches, GitRepo};
 use super::rustc_info::get_default_sysroot;
-use super::utils::{spawn_and_wait, spawn_and_wait_with_input, CargoProject, Compiler};
+use super::utils::{spawn_and_wait, spawn_and_wait_with_input, CargoProject, Compiler, LogGroup};
 use super::{CodegenBackend, SysrootKind};
 use std::env;
 use std::ffi::OsStr;
@@ -21,6 +21,7 @@ struct TestCase {
 enum TestCaseCmd {
     Custom { func: &'static dyn Fn(&TestRunner<'_>) },
     BuildLib { source: &'static str, crate_types: &'static str },
+    BuildBin { source: &'static str },
     BuildBinAndRun { source: &'static str, args: &'static [&'static str] },
     JitBin { source: &'static str, args: &'static str },
 }
@@ -37,6 +38,10 @@ impl TestCase {
         crate_types: &'static str,
     ) -> Self {
         Self { config, cmd: TestCaseCmd::BuildLib { source, crate_types } }
+    }
+
+    const fn build_bin(config: &'static str, source: &'static str) -> Self {
+        Self { config, cmd: TestCaseCmd::BuildBin { source } }
     }
 
     const fn build_bin_and_run(
@@ -92,6 +97,7 @@ const BASE_SYSROOT_SUITE: &[TestCase] = &[
     TestCase::build_bin_and_run("aot.float-minmax-pass", "example/float-minmax-pass.rs", &[]),
     TestCase::build_bin_and_run("aot.mod_bench", "example/mod_bench.rs", &[]),
     TestCase::build_bin_and_run("aot.issue-72793", "example/issue-72793.rs", &[]),
+    TestCase::build_bin("aot.issue-59326", "example/issue-59326.rs"),
 ];
 
 // FIXME(rust-random/rand#1293): Newer rand versions fail to test on Windows. Update once this is
@@ -119,8 +125,8 @@ pub(crate) static REGEX: CargoProject = CargoProject::new(&REGEX_REPO.source_dir
 pub(crate) static PORTABLE_SIMD_REPO: GitRepo = GitRepo::github(
     "rust-lang",
     "portable-simd",
-    "ad8afa8c81273b3b49acbea38cd3bcf17a34cf2b",
-    "800548f8000e31bd",
+    "7c7dbe0c505ccbc02ff30c1e37381ab1d47bf46f",
+    "5bcc9c544f6fa7bd",
     "portable-simd",
 );
 
@@ -380,15 +386,17 @@ impl<'a> TestRunner<'a> {
             let tag = tag.to_uppercase();
             let is_jit_test = tag == "JIT";
 
-            if !config::get_bool(config)
+            let _guard = if !config::get_bool(config)
                 || (is_jit_test && !self.jit_supported)
                 || self.skip_tests.contains(&config)
             {
                 eprintln!("[{tag}] {testname} (skipped)");
                 continue;
             } else {
+                let guard = LogGroup::guard(&format!("[{tag}] {testname}"));
                 eprintln!("[{tag}] {testname}");
-            }
+                guard
+            };
 
             match *cmd {
                 TestCaseCmd::Custom { func } => func(self),
@@ -403,6 +411,13 @@ impl<'a> TestRunner<'a> {
                             "--cfg",
                             "no_unstable_features",
                         ]);
+                    }
+                }
+                TestCaseCmd::BuildBin { source } => {
+                    if self.use_unstable_features {
+                        self.run_rustc([source]);
+                    } else {
+                        self.run_rustc([source, "--cfg", "no_unstable_features"]);
                     }
                 }
                 TestCaseCmd::BuildBinAndRun { source, args } => {

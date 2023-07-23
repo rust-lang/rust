@@ -66,24 +66,27 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                     Invert::Yes,
                 ));
                 // Relate via args
-                let subst_relate_response = self
-                    .assemble_subst_relate_candidate(param_env, alias_lhs, alias_rhs, direction);
-                candidates.extend(subst_relate_response);
+                candidates.extend(
+                    self.assemble_subst_relate_candidate(
+                        param_env, alias_lhs, alias_rhs, direction,
+                    ),
+                );
                 debug!(?candidates);
 
                 if let Some(merged) = self.try_merge_responses(&candidates) {
                     Ok(merged)
                 } else {
-                    // When relating two aliases and we have ambiguity, we prefer
-                    // relating the generic arguments of the aliases over normalizing
-                    // them. This is necessary for inference during typeck.
+                    // When relating two aliases and we have ambiguity, if both
+                    // aliases can be normalized to something, we prefer
+                    // "bidirectionally normalizing" both of them within the same
+                    // candidate.
+                    //
+                    // See <https://github.com/rust-lang/trait-system-refactor-initiative/issues/25>.
                     //
                     // As this is incomplete, we must not do so during coherence.
                     match self.solver_mode() {
                         SolverMode::Normal => {
-                            if let Ok(subst_relate_response) = subst_relate_response {
-                                Ok(subst_relate_response)
-                            } else if let Ok(bidirectional_normalizes_to_response) = self
+                            if let Ok(bidirectional_normalizes_to_response) = self
                                 .assemble_bidirectional_normalizes_to_candidate(
                                     param_env, lhs, rhs, direction,
                                 )

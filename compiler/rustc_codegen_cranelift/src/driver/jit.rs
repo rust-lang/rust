@@ -114,9 +114,9 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
         .iter()
         .map(|cgu| cgu.items_in_deterministic_order(tcx).into_iter())
         .flatten()
-        .collect::<FxHashMap<_, (_, _)>>()
+        .collect::<FxHashMap<_, _>>()
         .into_iter()
-        .collect::<Vec<(_, (_, _))>>();
+        .collect::<Vec<(_, _)>>();
 
     tcx.sess.time("codegen mono items", || {
         super::predefine_mono_items(tcx, &mut jit_module, &mono_items);

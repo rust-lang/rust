@@ -182,6 +182,15 @@ impl Wtf8Buf {
         Wtf8Buf { bytes: Vec::with_capacity(capacity), is_known_utf8: true }
     }
 
+    /// Creates a WTF-8 string from a WTF-8 byte vec.
+    ///
+    /// Since the byte vec is not checked for valid WTF-8, this functions is
+    /// marked unsafe.
+    #[inline]
+    pub unsafe fn from_bytes_unchecked(value: Vec<u8>) -> Wtf8Buf {
+        Wtf8Buf { bytes: value, is_known_utf8: false }
+    }
+
     /// Creates a WTF-8 string from a UTF-8 `String`.
     ///
     /// This takes ownership of the `String` and does not copy.
@@ -400,6 +409,12 @@ impl Wtf8Buf {
     pub fn truncate(&mut self, new_len: usize) {
         assert!(is_code_point_boundary(self, new_len));
         self.bytes.truncate(new_len)
+    }
+
+    /// Consumes the WTF-8 string and tries to convert it to a vec of bytes.
+    #[inline]
+    pub fn into_bytes(self) -> Vec<u8> {
+        self.bytes
     }
 
     /// Consumes the WTF-8 string and tries to convert it to UTF-8.

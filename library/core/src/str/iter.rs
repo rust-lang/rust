@@ -1439,11 +1439,22 @@ impl<'a> Iterator for EncodeUtf16<'a> {
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let (low, high) = self.chars.size_hint();
-        // every char gets either one u16 or two u16,
-        // so this iterator is between 1 or 2 times as
-        // long as the underlying iterator.
-        (low, high.and_then(|n| n.checked_mul(2)))
+        let len = self.chars.iter.len();
+        // The highest bytes:code units ratio occurs for 3-byte sequences,
+        // since a 4-byte sequence results in 2 code units. The lower bound
+        // is therefore determined by assuming the remaining bytes contain as
+        // many 3-byte sequences as possible. The highest bytes:code units
+        // ratio is for 1-byte sequences, so use this for the upper bound.
+        // `(len + 2)` can't overflow, because we know that the `slice::Iter`
+        // belongs to a slice in memory which has a maximum length of
+        // `isize::MAX` (that's well below `usize::MAX`)
+        if self.extra == 0 {
+            ((len + 2) / 3, Some(len))
+        } else {
+            // We're in the middle of a surrogate pair, so add the remaining
+            // surrogate to the bounds.
+            ((len + 2) / 3 + 1, Some(len + 1))
+        }
     }
 }
 

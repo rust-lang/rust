@@ -10,6 +10,18 @@ Cranelift doesn't support them yet
  library/core/tests/atomic.rs          |  4 ---
  4 files changed, 4 insertions(+), 50 deletions(-)
 
+diff --git a/lib.rs b/lib.rs
+index 897a5e9..331f66f 100644
+--- a/lib.rs
++++ b/lib.rs
+@@ -93,7 +93,6 @@
+ #![feature(const_option)]
+ #![feature(const_option_ext)]
+ #![feature(const_result)]
+-#![cfg_attr(target_has_atomic = "128", feature(integer_atomics))]
+ #![feature(int_roundings)]
+ #![feature(slice_group_by)]
+ #![feature(split_array)]
 diff --git a/atomic.rs b/atomic.rs
 index b735957..ea728b6 100644
 --- a/atomic.rs
