@@ -425,7 +425,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::methods::UNNECESSARY_LITERAL_UNWRAP_INFO,
     crate::methods::UNNECESSARY_SORT_BY_INFO,
     crate::methods::UNNECESSARY_TO_OWNED_INFO,
-    crate::methods::UNWRAP_OR_ELSE_DEFAULT_INFO,
+    crate::methods::UNWRAP_OR_DEFAULT_INFO,
     crate::methods::UNWRAP_USED_INFO,
     crate::methods::USELESS_ASREF_INFO,
     crate::methods::VEC_RESIZE_TO_ZERO_INFO,

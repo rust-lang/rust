@@ -5370,6 +5370,7 @@ Released 2018-09-13
 [`unused_unit`]: https://rust-lang.github.io/rust-clippy/master/index.html#unused_unit
 [`unusual_byte_groupings`]: https://rust-lang.github.io/rust-clippy/master/index.html#unusual_byte_groupings
 [`unwrap_in_result`]: https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_in_result
+[`unwrap_or_default`]: https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_or_default
 [`unwrap_or_else_default`]: https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_or_else_default
 [`unwrap_used`]: https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
 [`upper_case_acronyms`]: https://rust-lang.github.io/rust-clippy/master/index.html#upper_case_acronyms

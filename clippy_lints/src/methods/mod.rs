@@ -103,7 +103,6 @@ mod unnecessary_lazy_eval;
 mod unnecessary_literal_unwrap;
 mod unnecessary_sort_by;
 mod unnecessary_to_owned;
-mod unwrap_or_else_default;
 mod unwrap_used;
 mod useless_asref;
 mod utils;
@@ -476,29 +475,40 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usage of `_.unwrap_or_else(Default::default)` on `Option` and
-    /// `Result` values.
+    /// Checks for usages of the following functions with an argument that constructs a default value
+    /// (e.g., `Default::default` or `String::new`):
+    /// - `unwrap_or`
+    /// - `unwrap_or_else`
+    /// - `or_insert`
+    /// - `or_insert_with`
     ///
     /// ### Why is this bad?
-    /// Readability, these can be written as `_.unwrap_or_default`, which is
-    /// simpler and more concise.
+    /// Readability. Using `unwrap_or_default` in place of `unwrap_or`/`unwrap_or_else`, or `or_default`
+    /// in place of `or_insert`/`or_insert_with`, is simpler and more concise.
+    ///
+    /// ### Known problems
+    /// In some cases, the argument of `unwrap_or`, etc. is needed for type inference. The lint uses a
+    /// heuristic to try to identify such cases. However, the heuristic can produce false negatives.
     ///
     /// ### Examples
     /// ```rust
     /// # let x = Some(1);
-    /// x.unwrap_or_else(Default::default);
-    /// x.unwrap_or_else(u32::default);
+    /// # let mut map = std::collections::HashMap::<u64, String>::new();
+    /// x.unwrap_or(Default::default());
+    /// map.entry(42).or_insert_with(String::new);
     /// ```
     ///
     /// Use instead:
     /// ```rust
     /// # let x = Some(1);
+    /// # let mut map = std::collections::HashMap::<u64, String>::new();
     /// x.unwrap_or_default();
+    /// map.entry(42).or_default();
     /// ```
     #[clippy::version = "1.56.0"]
-    pub UNWRAP_OR_ELSE_DEFAULT,
+    pub UNWRAP_OR_DEFAULT,
     style,
-    "using `.unwrap_or_else(Default::default)`, which is more succinctly expressed as `.unwrap_or_default()`"
+    "using `.unwrap_or`, etc. with an argument that constructs a default value"
 }
 
 declare_clippy_lint! {
@@ -3495,7 +3505,7 @@ impl_lint_pass!(Methods => [
     SHOULD_IMPLEMENT_TRAIT,
     WRONG_SELF_CONVENTION,
     OK_EXPECT,
-    UNWRAP_OR_ELSE_DEFAULT,
+    UNWRAP_OR_DEFAULT,
     MAP_UNWRAP_OR,
     RESULT_MAP_OR_INTO_OPTION,
     OPTION_MAP_OR_NONE,
@@ -3756,8 +3766,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             then {
                 let first_arg_span = first_arg_ty.span;
                 let first_arg_ty = hir_ty_to_ty(cx.tcx, first_arg_ty);
-                let self_ty = TraitRef::identity(cx.tcx, item.owner_id.to_def_id())
-                    .self_ty();
+                let self_ty = TraitRef::identity(cx.tcx, item.owner_id.to_def_id()).self_ty();
                 wrong_self_convention::check(
                     cx,
                     item.ident.name.as_str(),
@@ -3774,8 +3783,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             if item.ident.name == sym::new;
             if let TraitItemKind::Fn(_, _) = item.kind;
             let ret_ty = return_ty(cx, item.owner_id);
-            let self_ty = TraitRef::identity(cx.tcx, item.owner_id.to_def_id())
-                .self_ty();
+            let self_ty = TraitRef::identity(cx.tcx, item.owner_id.to_def_id()).self_ty();
             if !ret_ty.contains(self_ty);
 
             then {
@@ -4134,7 +4142,6 @@ impl Methods {
                         Some(("map", recv, [map_arg], _, _))
                             if map_unwrap_or::check(cx, expr, recv, map_arg, u_arg, &self.msrv) => {},
                         _ => {
-                            unwrap_or_else_default::check(cx, expr, recv, u_arg);
                             unnecessary_lazy_eval::check(cx, expr, recv, u_arg, "unwrap_or");
                         },
                     }
