@@ -10,11 +10,11 @@ assert: (".stab.portability")
 // make sure that deprecated and portability have the right colors
 assert-css: (
     ".item-table .item-name .stab.deprecated",
-    { "background-color": "rgb(255, 245, 214)" },
+    { "background-color": "#fff5d6" },
 )
 assert-css: (
     ".item-table .item-name .stab.portability",
-    { "background-color": "rgb(255, 245, 214)" },
+    { "background-color": "#fff5d6" },
 )
 
 // table like view
