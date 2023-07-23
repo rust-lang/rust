@@ -194,7 +194,7 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for NormalizationFolder<'_, 'tcx> {
                 mapped_regions,
                 mapped_types,
                 mapped_consts,
-                &mut self.universes,
+                &self.universes,
                 result,
             ))
         } else {
@@ -224,7 +224,7 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for NormalizationFolder<'_, 'tcx> {
                 mapped_regions,
                 mapped_types,
                 mapped_consts,
-                &mut self.universes,
+                &self.universes,
                 result,
             ))
         } else {

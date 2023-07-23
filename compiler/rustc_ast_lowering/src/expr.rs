@@ -286,7 +286,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ExprKind::OffsetOf(container, fields) => hir::ExprKind::OffsetOf(
                     self.lower_ty(
                         container,
-                        &mut ImplTraitContext::Disallowed(ImplTraitPosition::OffsetOf),
+                        &ImplTraitContext::Disallowed(ImplTraitPosition::OffsetOf),
                     ),
                     self.arena.alloc_from_iter(fields.iter().map(|&ident| self.lower_ident(ident))),
                 ),

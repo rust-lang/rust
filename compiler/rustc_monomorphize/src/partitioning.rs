@@ -1041,10 +1041,7 @@ fn debug_dump<'a, 'tcx: 'a>(tcx: TyCtxt<'tcx>, label: &str, cgus: &[CodegenUnit<
             }
             elem(curr, curr_count);
 
-            let mut s = "[".to_string();
-            s.push_str(&v.join(", "));
-            s.push_str("]");
-            s
+            format!("[{}]", v.join(", "))
         }
     };
 
