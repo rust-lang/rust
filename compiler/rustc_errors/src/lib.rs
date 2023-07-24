@@ -1485,7 +1485,7 @@ impl HandlerInner {
                 let _ = self.fatal(errors);
             }
             (_, _) => {
-                let _ = self.fatal(format!("{}; {}", &errors, &warnings));
+                let _ = self.fatal(format!("{errors}; {warnings}"));
             }
         }
 
