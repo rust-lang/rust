@@ -1801,6 +1801,12 @@ pub struct UnknownPrefix<'a> {
 }
 
 #[derive(Subdiagnostic)]
+#[note(parse_macro_expands_to_adt_field)]
+pub struct MacroExpandsToAdtField<'a> {
+    pub adt_ty: &'a str,
+}
+
+#[derive(Subdiagnostic)]
 pub enum UnknownPrefixSugg {
     #[suggestion(
         parse_suggestion_br,

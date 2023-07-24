@@ -1,0 +1,29 @@
+error: expected `:`, found `!`
+  --> $DIR/macro-expand-to-field.rs:16:10
+   |
+LL |     field!(bar:u128),
+   |          ^ expected `:`
+   |
+   = note: macros cannot expand to struct fields
+
+error: expected `,`, or `}`, found `(`
+  --> $DIR/macro-expand-to-field.rs:16:11
+   |
+LL | struct Struct {
+   |        ------ while parsing this struct
+LL |     field!(bar:u128),
+   |           ^
+
+error: unexpected token: `!`
+  --> $DIR/macro-expand-to-field.rs:23:12
+   |
+LL | enum EnumVariant {
+   |      ----------- while parsing this enum
+LL |     variant!(whoops),
+   |            ^ unexpected token after this
+   |
+   = note: macros cannot expand to enum variants
+   = help: enum variants can be `Variant`, `Variant = <integer>`, `Variant(Type, ..., TypeN)` or `Variant { fields: Types }`
+
+error: aborting due to 3 previous errors
+

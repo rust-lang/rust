@@ -1,8 +1,8 @@
-use crate::errors;
-
 use super::diagnostics::{dummy_arg, ConsumeClosingDelim};
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{AttrWrapper, FollowedByType, ForceCollect, Parser, PathStyle, TrailingToken};
+use crate::errors::{self, MacroExpandsToAdtField};
+use crate::fluent_generated as fluent;
 use ast::StaticItem;
 use rustc_ast::ast::*;
 use rustc_ast::ptr::P;
@@ -1342,6 +1342,13 @@ impl<'a> Parser<'a> {
                 }
                 let ident = this.parse_field_ident("enum", vlo)?;
 
+                if this.token == token::Not {
+                    return this.unexpected().map_err(|mut err| {
+                        err.note(fluent::parse_macro_expands_to_enum_variant);
+                        err
+                    });
+                }
+
                 let struct_def = if this.check(&token::OpenDelim(Delimiter::Brace)) {
                     // Parse a struct variant.
                     let (fields, recovered) =
@@ -1369,7 +1376,7 @@ impl<'a> Parser<'a> {
 
                 Ok((Some(vr), TrailingToken::MaybeComma))
             },
-        ).map_err(|mut err|{
+        ).map_err(|mut err| {
             err.help("enum variants can be `Variant`, `Variant = <integer>`, `Variant(Type, ..., TypeN)` or `Variant { fields: Types }`");
             err
         })
@@ -1691,9 +1698,10 @@ impl<'a> Parser<'a> {
         Ok(a_var)
     }
 
-    fn expect_field_ty_separator(&mut self) -> PResult<'a, ()> {
+    fn expect_field_ty_separator(&mut self, adt_ty: &str) -> PResult<'a, ()> {
         if let Err(mut err) = self.expect(&token::Colon) {
             let sm = self.sess.source_map();
+            let mac_invoc = self.token.kind == token::Not;
             let eq_typo = self.token.kind == token::Eq && self.look_ahead(1, |t| t.is_path_start());
             let semi_typo = self.token.kind == token::Semi
                 && self.look_ahead(1, |t| {
@@ -1705,7 +1713,9 @@ impl<'a> Parser<'a> {
                         _ => true,
                     }
                 });
-            if eq_typo || semi_typo {
+            if mac_invoc {
+                err.subdiagnostic(MacroExpandsToAdtField { adt_ty }).emit();
+            } else if eq_typo || semi_typo {
                 self.bump();
                 // Gracefully handle small typos.
                 err.span_suggestion_short(
@@ -1713,8 +1723,8 @@ impl<'a> Parser<'a> {
                     "field names and their types are separated with `:`",
                     ":",
                     Applicability::MachineApplicable,
-                );
-                err.emit();
+                )
+                .emit();
             } else {
                 return Err(err);
             }
@@ -1731,7 +1741,7 @@ impl<'a> Parser<'a> {
         attrs: AttrVec,
     ) -> PResult<'a, FieldDef> {
         let name = self.parse_field_ident(adt_ty, lo)?;
-        self.expect_field_ty_separator()?;
+        self.expect_field_ty_separator(adt_ty)?;
         let ty = self.parse_ty()?;
         if self.token.kind == token::Colon && self.look_ahead(1, |tok| tok.kind != token::Colon) {
             self.sess.emit_err(errors::SingleColonStructType { span: self.token.span });

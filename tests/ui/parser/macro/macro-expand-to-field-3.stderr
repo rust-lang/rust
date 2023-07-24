@@ -1,0 +1,19 @@
+error: expected `:`, found `!`
+  --> $DIR/macro-expand-to-field-3.rs:11:10
+   |
+LL |     field!(oopsies:()),
+   |          ^ expected `:`
+   |
+   = note: macros cannot expand to union fields
+
+error: expected `,`, or `}`, found `(`
+  --> $DIR/macro-expand-to-field-3.rs:11:11
+   |
+LL | union EnumVariantField {
+   |       ---------------- while parsing this union
+LL |     A: u32,
+LL |     field!(oopsies:()),
+   |           ^
+
+error: aborting due to 2 previous errors
+

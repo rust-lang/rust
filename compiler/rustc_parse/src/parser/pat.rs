@@ -135,7 +135,11 @@ impl<'a> Parser<'a> {
         // Parse the first pattern (`p_0`).
         let mut first_pat = self.parse_pat_no_top_alt(expected)?;
         if rc == RecoverComma::Yes {
-            self.maybe_recover_unexpected_comma(first_pat.span, rt)?;
+            self.maybe_recover_unexpected_comma(
+                first_pat.span,
+                matches!(first_pat.kind, PatKind::MacCall(_)),
+                rt,
+            )?;
         }
 
         // If the next token is not a `|`,
@@ -177,7 +181,11 @@ impl<'a> Parser<'a> {
                 err
             })?;
             if rc == RecoverComma::Yes {
-                self.maybe_recover_unexpected_comma(pat.span, rt)?;
+                self.maybe_recover_unexpected_comma(
+                    pat.span,
+                    matches!(pat.kind, PatKind::MacCall(_)),
+                    rt,
+                )?;
             }
             pats.push(pat);
         }
