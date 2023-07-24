@@ -100,7 +100,7 @@ to avoid introducing syntax, type-, and borrow-checking errors while using
 these tools, post both the complete and minimized test cases. Generally,
 *syntax-aware* tools give the best results in the least amount of time.
 [`treereduce-rust`][treereduce] and [picireny][picireny] are syntax-aware.
-`halfempty` is not, but is generally a high-quality tool.
+[`halfempty`][halfempty] is not, but is generally a high-quality tool.
 
 [halfempty]: https://github.com/googleprojectzero/halfempty
 [picireny]: https://github.com/renatahodovan/picireny
