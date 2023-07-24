@@ -65,7 +65,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     trait_bounds.push((
                         bound_pred.rebind(trait_pred.trait_ref),
                         span,
-                        trait_pred.constness,
                     ));
                 }
                 ty::ClauseKind::Projection(proj) => {
@@ -86,7 +85,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         // Expand trait aliases recursively and check that only one regular (non-auto) trait
         // is used and no 'maybe' bounds are used.
         let expanded_traits =
-            traits::expand_trait_aliases(tcx, trait_bounds.iter().map(|&(a, b, _)| (a, b)));
+            traits::expand_trait_aliases(tcx, trait_bounds.iter().map(|&(a, b)| (a, b)));
 
         let (mut auto_traits, regular_traits): (Vec<_>, Vec<_>) = expanded_traits
             .filter(|i| i.trait_ref().self_ty().skip_binder() == dummy_self)
@@ -126,7 +125,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         if regular_traits.is_empty() && auto_traits.is_empty() {
             let trait_alias_span = trait_bounds
                 .iter()
-                .map(|&(trait_ref, _, _)| trait_ref.def_id())
+                .map(|&(trait_ref, _)| trait_ref.def_id())
                 .find(|&trait_ref| tcx.is_trait_alias(trait_ref))
                 .map(|trait_ref| tcx.def_span(trait_ref));
             let reported =
@@ -157,10 +156,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         let regular_traits_refs_spans = trait_bounds
             .into_iter()
-            .filter(|(trait_ref, _, _)| !tcx.trait_is_auto(trait_ref.def_id()));
+            .filter(|(trait_ref, _)| !tcx.trait_is_auto(trait_ref.def_id()));
 
-        for (base_trait_ref, span, constness) in regular_traits_refs_spans {
-            assert_eq!(constness, ty::BoundConstness::NotConst);
+        for (base_trait_ref, span) in regular_traits_refs_spans {
+            // TODO?
+            //assert_eq!(constness, ty::BoundConstness::NotConst);
             let base_pred: ty::Predicate<'tcx> = base_trait_ref.to_predicate(tcx);
             for pred in traits::elaborate(tcx, [base_pred]) {
                 debug!("conv_object_ty_poly_trait_ref: observing object predicate `{:?}`", pred);

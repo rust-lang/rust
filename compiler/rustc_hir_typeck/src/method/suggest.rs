@@ -30,7 +30,7 @@ use rustc_middle::traits::util::supertraits;
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::fast_reject::{simplify_type, TreatParams};
 use rustc_middle::ty::print::{with_crate_prefix, with_forced_trimmed_paths};
-use rustc_middle::ty::IsSuggestable;
+use rustc_middle::ty::{IsSuggestable, ToPredicate};
 use rustc_middle::ty::{self, GenericArgKind, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::def_id::DefIdSet;
 use rustc_span::symbol::{kw, sym, Ident};
@@ -94,7 +94,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             span,
                             self.body_id,
                             self.param_env,
-                            poly_trait_ref.without_const(),
+                            poly_trait_ref,
                         );
                         self.predicate_may_hold(&obligation)
                     })

@@ -1000,13 +1000,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         let stack = self.push_stack(previous_stack, &obligation);
-        let mut fresh_trait_pred = stack.fresh_trait_pred;
-        let mut param_env = obligation.param_env;
-
-        fresh_trait_pred = fresh_trait_pred.map_bound(|mut pred| {
-            pred.remap_constness(&mut param_env);
-            pred
-        });
+        let fresh_trait_pred = stack.fresh_trait_pred;
+        let param_env = obligation.param_env;
 
         debug!(?fresh_trait_pred);
 
@@ -1398,16 +1393,18 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let tcx = self.tcx();
         let mut result = Vec::with_capacity(candidates.len());
 
+        let host_effect_idx = tcx.generics_of(obligation.predicate.def_id()).host_effect_index;
+
         for candidate in candidates {
             // Respect const trait obligations
-            if obligation.is_const() {
+            if let Some(idx) = host_effect_idx {
                 match candidate {
                     // const impl
                     ImplCandidate(def_id) if tcx.constness(def_id) == hir::Constness::Const => {}
-                    // const param
-                    ParamCandidate(trait_pred) if trait_pred.is_const_if_const() => {}
-                    // const projection
-                    ProjectionCandidate(_, ty::BoundConstness::ConstIfConst)
+                    // param could be const, we need to confirm via nested obligations
+                    ParamCandidate(_)
+                    // projection could be const, we need to confirm via nested obligations
+                    | ProjectionCandidate(_, Some(_))
                     // auto trait impl
                     | AutoImplCandidate
                     // generator / future, this will raise error in other places
@@ -1528,7 +1525,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     fn check_candidate_cache(
         &mut self,
-        mut param_env: ty::ParamEnv<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
         cache_fresh_trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> Option<SelectionResult<'tcx, SelectionCandidate<'tcx>>> {
         // Neither the global nor local cache is aware of intercrate
@@ -1539,8 +1536,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return None;
         }
         let tcx = self.tcx();
-        let mut pred = cache_fresh_trait_pred.skip_binder();
-        pred.remap_constness(&mut param_env);
+        let pred = cache_fresh_trait_pred.skip_binder();
 
         if self.can_use_global_caches(param_env) {
             if let Some(res) = tcx.selection_cache.get(&(param_env, pred), tcx) {
@@ -1586,15 +1582,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     #[instrument(skip(self, param_env, cache_fresh_trait_pred, dep_node), level = "debug")]
     fn insert_candidate_cache(
         &mut self,
-        mut param_env: ty::ParamEnv<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
         cache_fresh_trait_pred: ty::PolyTraitPredicate<'tcx>,
         dep_node: DepNodeIndex,
         candidate: SelectionResult<'tcx, SelectionCandidate<'tcx>>,
     ) {
         let tcx = self.tcx();
-        let mut pred = cache_fresh_trait_pred.skip_binder();
-
-        pred.remap_constness(&mut param_env);
+        let pred = cache_fresh_trait_pred.skip_binder();
 
         if !self.can_cache_candidate(&candidate) {
             debug!(?pred, ?candidate, "insert_candidate_cache - candidate is not cacheable");
@@ -1628,7 +1622,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn match_projection_obligation_against_definition_bounds(
         &mut self,
         obligation: &PolyTraitObligation<'tcx>,
-    ) -> smallvec::SmallVec<[(usize, ty::BoundConstness); 2]> {
+    ) -> smallvec::SmallVec<[(usize, Option<ty::Const<'tcx>>); 2]> {
         let poly_trait_predicate = self.infcx.resolve_vars_if_possible(obligation.predicate);
         let placeholder_trait_predicate =
             self.infcx.instantiate_binder_with_placeholders(poly_trait_predicate);
@@ -1677,7 +1671,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             _ => false,
                         }
                     }) {
-                        return Some((idx, pred.constness));
+                        return Some((idx, pred.trait_ref.host_effect_param()));
                     }
                 }
                 None
@@ -1849,6 +1843,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         //
         // This is a fix for #53123 and prevents winnowing from accidentally extending the
         // lifetime of a variable.
+        // FIXME(effects) winnow should prefer candidates with const `ParamCandidate`
         match (&other.candidate, &victim.candidate) {
             (_, AutoImplCandidate) | (AutoImplCandidate, _) => {
                 bug!(
@@ -1871,7 +1866,6 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             (ParamCandidate(other), ParamCandidate(victim)) => {
                 let same_except_bound_vars = other.skip_binder().trait_ref
                     == victim.skip_binder().trait_ref
-                    && other.skip_binder().constness == victim.skip_binder().constness
                     && other.skip_binder().polarity == victim.skip_binder().polarity
                     && !other.skip_binder().trait_ref.has_escaping_bound_vars();
                 if same_except_bound_vars {
@@ -1881,12 +1875,6 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                     // probably best characterized as a "hack", since we might prefer to just do our
                     // best to *not* create essentially duplicate candidates in the first place.
                     DropVictim::drop_if(other.bound_vars().len() <= victim.bound_vars().len())
-                } else if other.skip_binder().trait_ref == victim.skip_binder().trait_ref
-                    && victim.skip_binder().constness == ty::BoundConstness::NotConst
-                    && other.skip_binder().polarity == victim.skip_binder().polarity
-                {
-                    // Drop otherwise equivalent non-const candidates in favor of const candidates.
-                    DropVictim::Yes
                 } else {
                     DropVictim::No
                 }

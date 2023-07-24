@@ -132,7 +132,7 @@ impl<'tcx> InferCtxtSelectExt<'tcx> for InferCtxt<'tcx> {
             // It's fine not to do anything to rematch these, since there are no
             // nested obligations.
             (Certainty::Yes, CandidateSource::ParamEnv(_) | CandidateSource::AliasBound) => {
-                Ok(Some(ImplSource::Param(nested_obligations, ty::BoundConstness::NotConst)))
+                Ok(Some(ImplSource::Param(nested_obligations)))
             }
 
             (_, CandidateSource::BuiltinImpl(BuiltinImplSource::Ambiguity))

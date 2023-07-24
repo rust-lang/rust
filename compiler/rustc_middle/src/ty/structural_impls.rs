@@ -172,9 +172,6 @@ impl fmt::Debug for ty::ParamConst {
 
 impl<'tcx> fmt::Debug for ty::TraitPredicate<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if let ty::BoundConstness::ConstIfConst = self.constness {
-            write!(f, "~const ")?;
-        }
         write!(f, "TraitPredicate({:?}, polarity:{:?})", self.trait_ref, self.polarity)
     }
 }

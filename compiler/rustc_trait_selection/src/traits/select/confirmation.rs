@@ -13,8 +13,8 @@ use rustc_infer::infer::LateBoundRegionConversionTime::HigherRankedType;
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
 use rustc_middle::traits::SelectionOutputTypeParameterMismatch;
 use rustc_middle::ty::{
-    self, Binder, GenericArgs, GenericArgsRef, GenericParamDefKind, ToPolyTraitRef, ToPredicate,
-    TraitPredicate, TraitRef, Ty, TyCtxt, TypeVisitableExt,
+    self, GenericArgs, GenericArgsRef, GenericParamDefKind, ToPolyTraitRef, ToPredicate,
+    TraitPredicate, Ty, TyCtxt, TypeVisitableExt,
 };
 use rustc_span::def_id::DefId;
 
@@ -59,7 +59,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ParamCandidate(param) => {
                 let obligations =
                     self.confirm_param_candidate(obligation, param.map_bound(|t| t.trait_ref));
-                ImplSource::Param(obligations, param.skip_binder().constness)
+                ImplSource::Param(obligations)
             }
 
             ImplCandidate(impl_def_id) => {
@@ -72,8 +72,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             ProjectionCandidate(idx, constness) => {
-                let obligations = self.confirm_projection_candidate(obligation, idx)?;
-                ImplSource::Param(obligations, constness)
+                let obligations = self.confirm_projection_candidate(obligation, idx, constness)?;
+                ImplSource::Param(obligations)
             }
 
             ObjectCandidate(idx) => {
@@ -135,14 +135,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             subobligation.set_depth_from_parent(obligation.recursion_depth);
         }
 
-        if !obligation.predicate.is_const_if_const() {
-            // normalize nested predicates according to parent predicate's constness.
-            impl_src = impl_src.map(|mut o| {
-                o.predicate = o.predicate.without_const(self.tcx());
-                o
-            });
-        }
-
         Ok(impl_src)
     }
 
@@ -150,6 +142,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         obligation: &PolyTraitObligation<'tcx>,
         idx: usize,
+        host_effect_param: Option<ty::Const<'tcx>>
     ) -> Result<Vec<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
         let tcx = self.tcx();
 
@@ -225,6 +218,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // where-clause trait-ref could be unified with the obligation
         // trait-ref. Repeat that unification now without any
         // transactional boundary; it should not fail.
+        // TODO constness could mismatch?
         match self.match_where_clause_trait_ref(obligation, param) {
             Ok(obligations) => obligations,
             Err(()) => {
@@ -681,7 +675,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let mut nested = self.confirm_poly_trait_refs(obligation, trait_ref)?;
         let cause = obligation.derived_cause(BuiltinDerivedObligation);
 
-        if obligation.is_const() && !is_const {
+        // TODO don't think we need this
+        /*if nested. && !is_const {
             // function is a trait method
             if let ty::FnDef(def_id, args) = self_ty.kind() && let Some(trait_id) = tcx.trait_of_item(*def_id) {
                 let trait_ref = TraitRef::from_method(tcx, trait_id, *args);
@@ -689,7 +684,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let obligation = Obligation::new(tcx, cause.clone(), obligation.param_env, poly_trait_pred);
                 nested.push(obligation);
             }
-        }
+        }*/
 
         // Confirm the `type Output: Sized;` bound that is present on `FnOnce`
         let output_ty = self.infcx.instantiate_binder_with_placeholders(sig.output());
@@ -1208,9 +1203,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         impl_def_id: Option<DefId>,
     ) -> Result<Vec<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
         // `~const Destruct` in a non-const environment is always trivially true, since our type is `Drop`
-        if !obligation.is_const() {
+        // TODO hmm?
+        /*if obligation.predicate.skip_binder().trait_ref.host_effect_param().is_none() {
             return Ok(vec![]);
-        }
+        }*/
 
         let drop_trait = self.tcx().require_lang_item(LangItem::Drop, None);
 
@@ -1223,6 +1219,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // If we have a custom `impl const Drop`, then
         // first check it like a regular impl candidate.
         // This is copied from confirm_impl_candidate but remaps the predicate to `~const Drop` beforehand.
+        // TODO is this needed?
         if let Some(impl_def_id) = impl_def_id {
             let mut new_obligation = obligation.clone();
             new_obligation.predicate = new_obligation.predicate.map_bound(|mut trait_pred| {
@@ -1320,9 +1317,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 self.tcx(),
                                 LangItem::Destruct,
                                 cause.span,
+                                // TODO const substs
                                 [nested_ty],
                             ),
-                            constness: ty::BoundConstness::ConstIfConst,
                             polarity: ty::ImplPolarity::Positive,
                         }),
                         &mut nested,
@@ -1346,9 +1343,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             self.tcx(),
                             LangItem::Destruct,
                             cause.span,
+                            // TODO const substs
                             [nested_ty],
                         ),
-                        constness: ty::BoundConstness::ConstIfConst,
                         polarity: ty::ImplPolarity::Positive,
                     });
 

@@ -448,13 +448,8 @@ fn trait_predicates_eq<'tcx>(
         _ => return predicate1 == predicate2,
     };
 
-    let predicates_equal_modulo_constness = {
-        let pred1_unconsted =
-            ty::TraitPredicate { constness: ty::BoundConstness::NotConst, ..trait_pred1 };
-        let pred2_unconsted =
-            ty::TraitPredicate { constness: ty::BoundConstness::NotConst, ..trait_pred2 };
-        pred1_unconsted == pred2_unconsted
-    };
+    // TODO
+    let predicates_equal_modulo_constness = predicate1 == predicate2;
 
     if !predicates_equal_modulo_constness {
         return false;
@@ -462,12 +457,13 @@ fn trait_predicates_eq<'tcx>(
 
     // Check that the predicate on the specializing impl is at least as const as
     // the one on the base.
-    match (trait_pred2.constness, trait_pred1.constness) {
+    // TODO
+    /*match (trait_pred2.constness, trait_pred1.constness) {
         (ty::BoundConstness::ConstIfConst, ty::BoundConstness::NotConst) => {
             tcx.sess.emit_err(errors::MissingTildeConst { span });
         }
         _ => {}
-    }
+    }*/
 
     true
 }
@@ -482,7 +478,6 @@ fn check_specialization_on<'tcx>(tcx: TyCtxt<'tcx>, predicate: ty::Predicate<'tc
         // items.
         ty::PredicateKind::Clause(ty::ClauseKind::Trait(ty::TraitPredicate {
             trait_ref,
-            constness: _,
             polarity: _,
         })) => {
             if !matches!(
@@ -536,7 +531,6 @@ fn trait_predicate_kind<'tcx>(
     match predicate.kind().skip_binder() {
         ty::PredicateKind::Clause(ty::ClauseKind::Trait(ty::TraitPredicate {
             trait_ref,
-            constness: _,
             polarity: _,
         })) => Some(tcx.trait_def(trait_ref.def_id).specialization_kind),
         ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(_))

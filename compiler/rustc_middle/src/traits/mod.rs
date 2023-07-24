@@ -649,7 +649,7 @@ pub enum ImplSource<'tcx, N> {
     /// for some type parameter. The `Vec<N>` represents the
     /// obligations incurred from normalizing the where-clause (if
     /// any).
-    Param(Vec<N>, ty::BoundConstness),
+    Param(Vec<N>),
 
     /// Virtual calls through an object.
     Object(ImplSourceObjectData<N>),
@@ -665,7 +665,7 @@ impl<'tcx, N> ImplSource<'tcx, N> {
     pub fn nested_obligations(self) -> Vec<N> {
         match self {
             ImplSource::UserDefined(i) => i.nested,
-            ImplSource::Param(n, _) | ImplSource::Builtin(n) => n,
+            ImplSource::Param(n) | ImplSource::Builtin(n) => n,
             ImplSource::Object(d) => d.nested,
             ImplSource::TraitUpcasting(d) => d.nested,
         }
@@ -674,7 +674,7 @@ impl<'tcx, N> ImplSource<'tcx, N> {
     pub fn borrow_nested_obligations(&self) -> &[N] {
         match self {
             ImplSource::UserDefined(i) => &i.nested,
-            ImplSource::Param(n, _) | ImplSource::Builtin(n) => &n,
+            ImplSource::Param(n) | ImplSource::Builtin(n) => &n,
             ImplSource::Object(d) => &d.nested,
             ImplSource::TraitUpcasting(d) => &d.nested,
         }
@@ -683,7 +683,7 @@ impl<'tcx, N> ImplSource<'tcx, N> {
     pub fn borrow_nested_obligations_mut(&mut self) -> &mut [N] {
         match self {
             ImplSource::UserDefined(i) => &mut i.nested,
-            ImplSource::Param(n, _) | ImplSource::Builtin(n) => n,
+            ImplSource::Param(n) | ImplSource::Builtin(n) => n,
             ImplSource::Object(d) => &mut d.nested,
             ImplSource::TraitUpcasting(d) => &mut d.nested,
         }
@@ -699,7 +699,7 @@ impl<'tcx, N> ImplSource<'tcx, N> {
                 args: i.args,
                 nested: i.nested.into_iter().map(f).collect(),
             }),
-            ImplSource::Param(n, ct) => ImplSource::Param(n.into_iter().map(f).collect(), ct),
+            ImplSource::Param(n) => ImplSource::Param(n.into_iter().map(f).collect()),
             ImplSource::Builtin(n) => ImplSource::Builtin(n.into_iter().map(f).collect()),
             ImplSource::Object(o) => ImplSource::Object(ImplSourceObjectData {
                 vtable_base: o.vtable_base,

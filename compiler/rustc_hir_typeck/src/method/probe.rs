@@ -1600,7 +1600,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         }
                     }
                     let predicate =
-                        ty::Binder::dummy(trait_ref).without_const().to_predicate(self.tcx);
+                        ty::Binder::dummy(trait_ref).to_predicate(self.tcx);
                     parent_pred = Some(predicate);
                     let obligation =
                         traits::Obligation::new(self.tcx, cause.clone(), self.param_env, predicate);

@@ -728,7 +728,7 @@ impl<'tcx> PolyExistentialPredicate<'tcx> {
         use crate::ty::ToPredicate;
         match self.skip_binder() {
             ExistentialPredicate::Trait(tr) => {
-                self.rebind(tr).with_self_ty(tcx, self_ty).without_const().to_predicate(tcx)
+                self.rebind(tr).with_self_ty(tcx, self_ty).to_predicate(tcx)
             }
             ExistentialPredicate::Projection(p) => {
                 self.rebind(p.with_self_ty(tcx, self_ty)).to_predicate(tcx)
@@ -743,7 +743,7 @@ impl<'tcx> PolyExistentialPredicate<'tcx> {
                     let err_args = ty::GenericArgs::extend_with_error(tcx, did, &[self_ty.into()]);
                     ty::TraitRef::new(tcx, did, err_args)
                 };
-                self.rebind(trait_ref).without_const().to_predicate(tcx)
+                self.rebind(trait_ref).to_predicate(tcx)
             }
         }
     }
@@ -875,21 +875,14 @@ impl<'tcx> TraitRef<'tcx> {
         )
     }
 
-    /// Converts this trait ref to a trait predicate with a given `constness` and a positive polarity.
-    #[inline]
-    pub fn with_constness(self, constness: ty::BoundConstness) -> ty::TraitPredicate<'tcx> {
-        ty::TraitPredicate { trait_ref: self, constness, polarity: ty::ImplPolarity::Positive }
-    }
-
-    /// Converts this trait ref to a trait predicate without `const` and a positive polarity.
-    #[inline]
-    pub fn without_const(self) -> ty::TraitPredicate<'tcx> {
-        self.with_constness(ty::BoundConstness::NotConst)
-    }
-
     #[inline]
     pub fn self_ty(&self) -> Ty<'tcx> {
         self.args.type_at(0)
+    }
+
+    #[inline]
+    pub fn host_effect_param(&self) -> Option<ty::Const<'tcx>> {
+        self.args.host_effect_param()
     }
 }
 
@@ -902,6 +895,11 @@ impl<'tcx> PolyTraitRef<'tcx> {
 
     pub fn def_id(&self) -> DefId {
         self.skip_binder().def_id
+    }
+
+    #[inline]
+    pub fn host_effect_param(&self) -> Option<ty::Const<'tcx>> {
+        self.skip_binder().host_effect_param()
     }
 }
 

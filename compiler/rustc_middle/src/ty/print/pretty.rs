@@ -17,7 +17,7 @@ use rustc_hir::LangItem;
 use rustc_session::config::TrimmedDefPaths;
 use rustc_session::cstore::{ExternCrate, ExternCrateSource};
 use rustc_session::Limit;
-use rustc_span::symbol::{kw, Ident, Symbol};
+use rustc_span::symbol::{sym, kw, Ident, Symbol};
 use rustc_span::FileNameDisplayPreference;
 use rustc_target::abi::Size;
 use rustc_target::spec::abi::Abi;
@@ -2017,11 +2017,21 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
     ) -> Result<Self::Path, Self::Error> {
         self = print_prefix(self)?;
 
-        if args.first().is_some() {
+        let tcx = self.tcx;
+
+        // skip host param as those are printed as `~const`
+        let mut args = args.iter().copied().filter(|arg| {
+            match arg.unpack() {
+                GenericArgKind::Const(c) if tcx.features().effects && matches!(c.kind(), ty::ConstKind::Param(ty::ParamConst { name: sym::host, .. })) => tcx.sess.verbose(),
+                _ => true
+            }
+        }).peekable();
+
+        if args.peek().is_some() {
             if self.in_value {
                 write!(self, "::")?;
             }
-            self.generic_delimiters(|cx| cx.comma_sep(args.iter().cloned()))
+            self.generic_delimiters(|cx| cx.comma_sep(args))
         } else {
             Ok(self)
         }
@@ -2779,7 +2789,7 @@ define_print_and_forward_display! {
     }
 
     TraitPredPrintModifiersAndPath<'tcx> {
-        if let ty::BoundConstness::ConstIfConst = self.0.constness {
+        if self.0.trait_ref.args.host_effect_param().is_some() {
             p!("~const ")
         }
 
@@ -2816,7 +2826,7 @@ define_print_and_forward_display! {
 
     ty::TraitPredicate<'tcx> {
         p!(print(self.trait_ref.self_ty()), ": ");
-        if let ty::BoundConstness::ConstIfConst = self.constness && cx.tcx().features().const_trait_impl {
+        if self.trait_ref.args.host_effect_param().is_some() && cx.tcx().features().const_trait_impl {
             p!("~const ");
         }
         if let ty::ImplPolarity::Negative = self.polarity {

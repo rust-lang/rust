@@ -356,6 +356,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         generic_args: &'a hir::GenericArgs<'_>,
         infer_args: bool,
         self_ty: Option<Ty<'tcx>>,
+        // TODO actually use this constness
         constness: ty::BoundConstness,
     ) -> (GenericArgsRef<'tcx>, GenericArgCountResult) {
         // If the type is parameterized by this region, then replace this
@@ -707,13 +708,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         let assoc_bindings = self.create_assoc_bindings_for_generic_args(args);
 
+        // TODO this needs constness
         let poly_trait_ref = ty::Binder::bind_with_vars(
             ty::TraitRef::new(tcx, trait_def_id, generic_args),
             bound_vars,
         );
 
         debug!(?poly_trait_ref, ?assoc_bindings);
-        bounds.push_trait_bound(tcx, poly_trait_ref, span, constness, polarity);
+        bounds.push_trait_bound(tcx, poly_trait_ref, span, polarity);
 
         let mut dup_bindings = FxHashMap::default();
         for binding in &assoc_bindings {

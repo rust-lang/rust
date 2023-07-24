@@ -1187,6 +1187,7 @@ fn check_impl<'tcx>(
                 // `#[rustc_reservation_impl]` impls are not real impls and
                 // therefore don't need to be WF (the trait's `Self: Trait` predicate
                 // won't hold).
+                // TODO constness?
                 let trait_ref = tcx.impl_trait_ref(item.owner_id).unwrap().instantiate_identity();
                 let trait_ref = wfcx.normalize(
                     ast_trait_ref.path.span,
@@ -1195,10 +1196,6 @@ fn check_impl<'tcx>(
                 );
                 let trait_pred = ty::TraitPredicate {
                     trait_ref,
-                    constness: match constness {
-                        hir::Constness::Const => ty::BoundConstness::ConstIfConst,
-                        hir::Constness::NotConst => ty::BoundConstness::NotConst,
-                    },
                     polarity: ty::ImplPolarity::Positive,
                 };
                 let mut obligations = traits::wf::trait_obligations(

@@ -754,8 +754,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                         return;
                     }
 
+                    // TODO this needs constness
                     let trait_ref = TraitRef::from_method(tcx, trait_id, fn_args);
-                    let trait_ref = trait_ref.with_constness(ty::BoundConstness::ConstIfConst);
                     let obligation =
                         Obligation::new(tcx, ObligationCause::dummy(), param_env, trait_ref);
 
@@ -766,7 +766,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     };
 
                     match implsrc {
-                        Ok(Some(ImplSource::Param(_, ty::BoundConstness::ConstIfConst))) => {
+                        // TODO hmm?
+                        Ok(Some(ImplSource::Param(_))) => {
                             debug!(
                                 "const_trait_impl: provided {:?} via where-clause in {:?}",
                                 trait_ref, param_env

@@ -346,7 +346,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.tcx,
                 cause,
                 self.param_env,
-                poly_trait_ref.without_const(),
+                poly_trait_ref,
             ),
             args,
         )

@@ -157,8 +157,8 @@ impl Qualif for NeedsNonConstDrop {
             cx.tcx,
             ObligationCause::dummy_with_span(cx.body.span),
             cx.param_env,
-            ty::TraitRef::from_lang_item(cx.tcx, LangItem::Destruct, cx.body.span, [ty])
-                .with_constness(ty::BoundConstness::ConstIfConst),
+            // TODO this needs constness
+            ty::TraitRef::from_lang_item(cx.tcx, LangItem::Destruct, cx.body.span, [ty]),
         );
 
         let infcx = cx.tcx.infer_ctxt().build();
@@ -172,7 +172,7 @@ impl Qualif for NeedsNonConstDrop {
 
         if !matches!(
             impl_src,
-            ImplSource::Builtin(_) | ImplSource::Param(_, ty::BoundConstness::ConstIfConst)
+            ImplSource::Builtin(_) | ImplSource::Param(_)
         ) {
             // If our const destruct candidate is not ConstDestruct or implied by the param env,
             // then it's bad

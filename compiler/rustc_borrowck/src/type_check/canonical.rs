@@ -92,7 +92,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             ty::Binder::dummy(ty::PredicateKind::Clause(ty::ClauseKind::Trait(
                 ty::TraitPredicate {
                     trait_ref,
-                    constness: ty::BoundConstness::NotConst,
                     polarity: ty::ImplPolarity::Positive,
                 },
             ))),

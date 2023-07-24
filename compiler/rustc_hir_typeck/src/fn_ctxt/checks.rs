@@ -1875,11 +1875,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     error.obligation.predicate,
                     error.obligation.cause.clone(),
                 ));
-                remap_cause.insert((
+                // TODO: UM WHAT?
+
+                /* remap_cause.insert((
                     before_span,
                     error.obligation.predicate.without_const(self.tcx),
                     error.obligation.cause.clone(),
-                ));
+                )); */
             } else {
                 // If it failed to be adjusted once around, it may be adjusted
                 // via the "remap cause" mapping the second time...
