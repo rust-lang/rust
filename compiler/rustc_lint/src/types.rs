@@ -966,12 +966,12 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         args: GenericArgsRef<'tcx>,
     ) -> FfiResult<'tcx> {
         let field_ty = field.ty(self.cx.tcx, args);
-        if field_ty.has_opaque_types() {
-            self.check_type_for_ffi(cache, field_ty)
-        } else {
-            let field_ty = self.cx.tcx.normalize_erasing_regions(self.cx.param_env, field_ty);
-            self.check_type_for_ffi(cache, field_ty)
-        }
+        let field_ty = self
+            .cx
+            .tcx
+            .try_normalize_erasing_regions(self.cx.param_env, field_ty)
+            .unwrap_or(field_ty);
+        self.check_type_for_ffi(cache, field_ty)
     }
 
     /// Checks if the given `VariantDef`'s field types are "ffi-safe".
@@ -1320,7 +1320,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         if let Some(ty) = self
             .cx
             .tcx
-            .normalize_erasing_regions(self.cx.param_env, ty)
+            .try_normalize_erasing_regions(self.cx.param_env, ty)
+            .unwrap_or(ty)
             .visit_with(&mut ProhibitOpaqueTypes)
             .break_value()
         {
@@ -1338,16 +1339,12 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         is_static: bool,
         is_return_type: bool,
     ) {
-        // We have to check for opaque types before `normalize_erasing_regions`,
-        // which will replace opaque types with their underlying concrete type.
         if self.check_for_opaque_ty(sp, ty) {
             // We've already emitted an error due to an opaque type.
             return;
         }
 
-        // it is only OK to use this function because extern fns cannot have
-        // any generic types right now:
-        let ty = self.cx.tcx.normalize_erasing_regions(self.cx.param_env, ty);
+        let ty = self.cx.tcx.try_normalize_erasing_regions(self.cx.param_env, ty).unwrap_or(ty);
 
         // C doesn't really support passing arrays by value - the only way to pass an array by value
         // is through a struct. So, first test that the top level isn't an array, and then
