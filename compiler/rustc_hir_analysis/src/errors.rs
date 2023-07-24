@@ -777,25 +777,29 @@ pub(crate) struct TransparentEnumVariant {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis_transparent_non_zero_sized_enum, code = "E0690")]
-pub(crate) struct TransparentNonZeroSizedEnum<'a> {
+#[diag(hir_analysis_transparent_layout_enum, code = "E0690")]
+pub(crate) struct TransparentLayoutEnum<'a> {
     #[primary_span]
     #[label]
     pub span: Span,
-    #[label(hir_analysis_labels)]
-    pub spans: Vec<Span>,
+    #[label(hir_analysis_non_layout_labels)]
+    pub non_layout_spans: Vec<Span>,
+    #[label(hir_analysis_non_zst_labels)]
+    pub non_zst_spans: Vec<Span>,
     pub field_count: usize,
     pub desc: &'a str,
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis_transparent_non_zero_sized, code = "E0690")]
-pub(crate) struct TransparentNonZeroSized<'a> {
+#[diag(hir_analysis_transparent_layout, code = "E0690")]
+pub(crate) struct TransparentLayout<'a> {
     #[primary_span]
     #[label]
     pub span: Span,
-    #[label(hir_analysis_labels)]
-    pub spans: Vec<Span>,
+    #[label(hir_analysis_non_layout_labels)]
+    pub non_layout_spans: Vec<Span>,
+    #[label(hir_analysis_non_zst_labels)]
+    pub non_zst_spans: Vec<Span>,
     pub field_count: usize,
     pub desc: &'a str,
 }

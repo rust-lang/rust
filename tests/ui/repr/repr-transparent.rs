@@ -23,14 +23,15 @@ struct ContainsMultipleZst(PhantomData<*const i32>, NoFields);
 struct ContainsZstAndNonZst((), [i32; 2]);
 
 #[repr(transparent)]
-struct MultipleNonZst(u8, u8); //~ ERROR needs at most one non-zero-sized field
+struct MultipleNonZst(u8, u8);
+//~^ ERROR needs at most one field of non-zero size or alignment larger than 1
 
 trait Mirror { type It: ?Sized; }
 impl<T: ?Sized> Mirror for T { type It = Self; }
 
 #[repr(transparent)]
 pub struct StructWithProjection(f32, <f32 as Mirror>::It);
-//~^ ERROR needs at most one non-zero-sized field
+//~^ ERROR needs at most one field of non-zero size or alignment larger than 1
 
 #[repr(transparent)]
 struct NontrivialAlignZst(u32, [u16; 0]); //~ ERROR alignment larger than 1
@@ -58,7 +59,7 @@ enum UnitFieldEnum {
 enum TooManyFieldsEnum {
     Foo(u32, String),
 }
-//~^^^ ERROR transparent enum needs at most one non-zero-sized field, but has 2
+//~^^^ ERROR needs at most one field of non-zero size or alignment larger than 1, but has 2
 
 #[repr(transparent)]
 enum MultipleVariants { //~ ERROR transparent enum needs exactly one variant, but has 2
@@ -82,9 +83,10 @@ union UnitUnion {
 }
 
 #[repr(transparent)]
-union TooManyFields { //~ ERROR transparent union needs at most one non-zero-sized field, but has 2
+union TooManyFields {
     u: u32,
     s: i32
 }
+//~^^^^ ERROR transparent union needs at most one field of non-zero size or alignment larger than 1, but has 2
 
 fn main() {}

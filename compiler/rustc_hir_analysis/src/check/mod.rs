@@ -516,26 +516,29 @@ fn bad_variant_count<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>, sp: Span, d
     });
 }
 
-/// Emit an error when encountering two or more non-zero-sized fields in a transparent
-/// enum.
-fn bad_non_zero_sized_fields<'tcx>(
+/// Emit an error when encountering two or more fields without layout or non-zero size
+/// in a transparent Adt.
+fn bad_transparent_layout<'tcx>(
     tcx: TyCtxt<'tcx>,
     adt: ty::AdtDef<'tcx>,
     field_count: usize,
-    field_spans: impl Iterator<Item = Span>,
+    non_layout_spans: impl Iterator<Item = Span>,
+    non_zst_spans: impl Iterator<Item = Span>,
     sp: Span,
 ) {
     if adt.is_enum() {
-        tcx.sess.emit_err(errors::TransparentNonZeroSizedEnum {
+        tcx.sess.emit_err(errors::TransparentLayoutEnum {
             span: sp,
-            spans: field_spans.collect(),
+            non_layout_spans: non_layout_spans.collect(),
+            non_zst_spans: non_zst_spans.collect(),
             field_count,
             desc: adt.descr(),
         });
     } else {
-        tcx.sess.emit_err(errors::TransparentNonZeroSized {
+        tcx.sess.emit_err(errors::TransparentLayout {
             span: sp,
-            spans: field_spans.collect(),
+            non_layout_spans: non_layout_spans.collect(),
+            non_zst_spans: non_zst_spans.collect(),
             field_count,
             desc: adt.descr(),
         });
