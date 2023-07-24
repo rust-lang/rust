@@ -506,13 +506,6 @@ fn sanity_check_found_hidden_type<'tcx>(
     });
     // Get the hidden type.
     let mut hidden_ty = tcx.type_of(key.def_id).instantiate(tcx, key.args);
-    // In case it is in a nested opaque type, find that opaque type's
-    // usage in the function signature and use the generic arguments from the usage site.
-    // We need to do because RPITs ignore the lifetimes of the function,
-    // as they have their own copies of all the lifetimes they capture.
-    // So the only way to get the lifetimes represented in terms of the function,
-    // is to look how they are used in the function signature (or do some other fancy
-    // recording of this mapping at ast -> hir lowering time).
     if let hir::OpaqueTyOrigin::FnReturn(..) | hir::OpaqueTyOrigin::AsyncFn(..) = origin {
         if hidden_ty != ty.ty {
             hidden_ty = find_and_apply_rpit_args(
@@ -534,6 +527,36 @@ fn sanity_check_found_hidden_type<'tcx>(
     }
 }
 
+/// In case it is in a nested opaque type, find that opaque type's
+/// usage in the function signature and use the generic arguments from the usage site.
+/// We need to do because RPITs ignore the lifetimes of the function,
+/// as they have their own copies of all the lifetimes they capture.
+/// So the only way to get the lifetimes represented in terms of the function,
+/// is to look how they are used in the function signature (or do some other fancy
+/// recording of this mapping at ast -> hir lowering time).
+///
+/// As an example:
+/// ```text
+/// trait Id {
+///     type Assoc;
+/// }
+/// impl<'a> Id for &'a () {
+///     type Assoc = &'a ();
+/// }
+/// fn func<'a>(x: &'a ()) -> impl Id<Assoc = impl Sized + 'a> { x }
+/// // desugared to
+///
+/// // hidden type is `&'bDup ()`
+/// // During wfcheck the hidden type of `Inner` is `&'a ()`, but
+/// // `typeof(Inner<'b, 'bDup>) = &'bDup ()`.
+/// // So we walk the signature of `func` to find the use of `Inner<'static, 'a>`
+/// // and then use that to replace the lifetimes in the hidden type, obtaining
+/// // `&'a ()`.
+/// type Outer<'b, 'bDup> = impl Id<Assoc = Inner<'b, 'bDup>>;
+/// // hidden type is `&'cDup ()`
+/// type Inner<'c, 'cDup> = impl Sized + 'cDup;
+/// fn func<'a>(x: &'a () -> Outer<'static, 'a> { x }
+/// ```
 fn find_and_apply_rpit_args<'tcx>(
     tcx: TyCtxt<'tcx>,
     mut hidden_ty: Ty<'tcx>,
