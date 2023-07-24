@@ -48,10 +48,6 @@ use crate::os::uefi;
 use crate::ptr::NonNull;
 use crate::sync::atomic::{AtomicPtr, Ordering};
 
-pub mod memchr {
-    pub use core::slice::memchr::{memchr, memrchr};
-}
-
 static EXIT_BOOT_SERVICE_EVENT: AtomicPtr<crate::ffi::c_void> =
     AtomicPtr::new(crate::ptr::null_mut());
 

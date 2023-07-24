@@ -12,7 +12,9 @@ use crate::sync::{PoisonError, RwLock};
 use crate::sys::common::small_c_string::run_with_cstr;
 use crate::vec;
 
-use super::{error, itron, memchr};
+use super::{error, itron};
+
+use core::slice::memchr;
 
 // `solid` directly maps `errno`s to μITRON error codes.
 impl itron::error::ItronError {

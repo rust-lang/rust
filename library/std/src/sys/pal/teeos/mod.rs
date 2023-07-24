@@ -18,8 +18,6 @@ pub mod env;
 pub mod fs;
 #[path = "../unsupported/io.rs"]
 pub mod io;
-#[path = "../unix/memchr.rs"]
-pub mod memchr;
 pub mod net;
 #[path = "../unsupported/once.rs"]
 pub mod once;

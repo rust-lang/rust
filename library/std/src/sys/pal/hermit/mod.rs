@@ -25,7 +25,6 @@ pub mod fs;
 pub mod futex;
 #[path = "../unsupported/io.rs"]
 pub mod io;
-pub mod memchr;
 pub mod net;
 pub mod os;
 #[path = "../unsupported/pipe.rs"]

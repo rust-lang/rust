@@ -19,7 +19,6 @@ pub mod env;
 pub mod fs;
 pub mod handle;
 pub mod io;
-pub mod memchr;
 pub mod net;
 pub mod os;
 pub mod pipe;

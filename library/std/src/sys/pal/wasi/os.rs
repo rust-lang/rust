@@ -10,9 +10,9 @@ use crate::os::wasi::prelude::*;
 use crate::path::{self, PathBuf};
 use crate::str;
 use crate::sys::common::small_c_string::{run_path_with_cstr, run_with_cstr};
-use crate::sys::memchr;
 use crate::sys::unsupported;
 use crate::vec;
+use core::slice::memchr;
 
 // Add a few symbols not in upstream `libc` just yet.
 mod libc {

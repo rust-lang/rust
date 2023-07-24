@@ -17,7 +17,6 @@ pub mod fd;
 pub mod fs;
 #[path = "../unsupported/io.rs"]
 pub mod io;
-pub mod memchr;
 pub mod net;
 pub mod os;
 #[path = "../unsupported/pipe.rs"]
