@@ -130,7 +130,7 @@ pub(crate) fn const_to_valtree_inner<'tcx>(
                 bug!("uninhabited types should have errored and never gotten converted to valtree")
             }
 
-            let Ok((_, variant)) = ecx.read_discriminant(&place.into()) else {
+            let Ok(variant) = ecx.read_discriminant(&place.into()) else {
                 return Err(ValTreeCreationError::Other);
             };
             branches(ecx, place, def.variant(variant).fields.len(), def.is_enum().then_some(variant), num_nodes)

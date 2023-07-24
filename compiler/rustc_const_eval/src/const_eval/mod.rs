@@ -101,7 +101,7 @@ pub(crate) fn try_destructure_mir_constant_for_diagnostics<'tcx>(
             return None;
         }
         ty::Adt(def, _) => {
-            let variant = ecx.read_discriminant(&op).ok()?.1;
+            let variant = ecx.read_discriminant(&op).ok()?;
             let down = ecx.project_downcast(&op, variant).ok()?;
             (def.variants()[variant].fields.len(), Some(variant), down)
         }

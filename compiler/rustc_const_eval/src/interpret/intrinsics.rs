@@ -226,8 +226,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
             sym::discriminant_value => {
                 let place = self.deref_operand(&args[0])?;
-                let discr_val = self.read_discriminant(&place.into())?.0;
-                self.write_scalar(discr_val, dest)?;
+                let variant = self.read_discriminant(&place.into())?;
+                let discr = self.discriminant_for_variant(place.layout, variant)?;
+                self.write_scalar(discr, dest)?;
             }
             sym::exact_div => {
                 let l = self.read_immediate(&args[0])?;
