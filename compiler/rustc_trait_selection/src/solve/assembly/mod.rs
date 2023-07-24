@@ -889,20 +889,48 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             SolverMode::Normal => return,
             SolverMode::Coherence => {
                 let trait_ref = goal.predicate.trait_ref(self.tcx());
-                match coherence::trait_ref_is_knowable(self.tcx(), trait_ref) {
-                    Ok(()) => {}
-                    Err(_) => match self
-                        .evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
-                    {
-                        Ok(result) => candidates.push(Candidate {
-                            source: CandidateSource::BuiltinImpl(BuiltinImplSource::Ambiguity),
-                            result,
-                        }),
-                        // FIXME: This will be reachable at some point if we're in
-                        // `assemble_candidates_after_normalizing_self_ty` and we get a
-                        // universe error. We'll deal with it at this point.
-                        Err(NoSolution) => bug!("coherence candidate resulted in NoSolution"),
-                    },
+                // will assemble in `assemble_candidates_after_normalizing_self_ty`
+                if matches!(trait_ref.self_ty().kind(), ty::Alias(..)) {
+                    return;
+                }
+                let result = self.probe_candidate("unknowable candidate").enter(|ecx| {
+                    let mut args = trait_ref.args.to_vec();
+                    for arg in args.iter_mut().skip(1) {
+                        let Some(ty) = arg.as_type() else {
+                            continue;
+                        };
+                        let Some(normalized_ty) = ecx.normalize_non_self_ty(ty, goal.param_env)?
+                        else {
+                            return Ok(ecx
+                                .evaluate_added_goals_and_make_canonical_response(
+                                    Certainty::AMBIGUOUS,
+                                )
+                                .unwrap());
+                        };
+                        *arg = normalized_ty.into();
+                    }
+                    match coherence::trait_ref_is_knowable(ecx.tcx(), trait_ref) {
+                        Ok(()) => Err(NoSolution),
+                        Err(_) => {
+                            match ecx.evaluate_added_goals_and_make_canonical_response(
+                                Certainty::AMBIGUOUS,
+                            ) {
+                                Ok(result) => Ok(result),
+                                // FIXME: This will be reachable at some point if we're in
+                                // `assemble_candidates_after_normalizing_self_ty` and we get a
+                                // universe error. We'll deal with it at this point.
+                                Err(NoSolution) => {
+                                    bug!("coherence candidate resulted in NoSolution")
+                                }
+                            }
+                        }
+                    }
+                });
+                if let Ok(result) = result {
+                    candidates.push(Candidate {
+                        source: CandidateSource::BuiltinImpl(BuiltinImplSource::Ambiguity),
+                        result,
+                    });
                 }
             }
         }

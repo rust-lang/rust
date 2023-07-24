@@ -1,6 +1,7 @@
 //! Dealing with trait goals, i.e. `T: Trait<'a, U>`.
 
 use super::assembly::{self, structural_traits};
+use super::search_graph::OverflowHandler;
 use super::{EvalCtxt, SolverMode};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{LangItem, Movability};
@@ -749,5 +750,48 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     ) -> QueryResult<'tcx> {
         let candidates = self.assemble_and_evaluate_candidates(goal);
         self.merge_candidates(candidates)
+    }
+
+    /// Normalize a non-self type when it is structually matched on when solving
+    /// a built-in goal. This is handled already through `assemble_candidates_after_normalizing_self_ty`
+    /// for the self type, but for other goals, additional normalization of other
+    /// arguments may be needed to completely implement the semantics of the trait.
+    ///
+    /// This is required when structurally matching on any trait argument that is
+    /// not the self type.
+    pub(super) fn normalize_non_self_ty(
+        &mut self,
+        mut ty: Ty<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+    ) -> Result<Option<Ty<'tcx>>, NoSolution> {
+        if !matches!(ty.kind(), ty::Alias(..)) {
+            return Ok(Some(ty));
+        }
+
+        self.repeat_while_none(
+            |_| Ok(None),
+            |ecx| {
+                let ty::Alias(_, projection_ty) = *ty.kind() else {
+                    return Some(Ok(Some(ty)));
+                };
+
+                let normalized_ty = ecx.next_ty_infer();
+                let normalizes_to_goal = Goal::new(
+                    ecx.tcx(),
+                    param_env,
+                    ty::Binder::dummy(ty::ProjectionPredicate {
+                        projection_ty,
+                        term: normalized_ty.into(),
+                    }),
+                );
+                ecx.add_goal(normalizes_to_goal);
+                if let Err(err) = ecx.try_evaluate_added_goals() {
+                    return Some(Err(err));
+                }
+
+                ty = ecx.resolve_vars_if_possible(normalized_ty);
+                None
+            },
+        )
     }
 }
