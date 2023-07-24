@@ -42,7 +42,7 @@ particularly those of **middle priority**:
 
 ## Joining a notification group
 
-To join an notification group, you just have to open a PR adding your
+To join a notification group, you just have to open a PR adding your
 Github username to the appropriate file in the Rust team repository.
 See the "example PRs" below to get a precise idea and to identify the
 file to edit.
