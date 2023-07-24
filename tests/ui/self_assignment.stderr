@@ -24,11 +24,11 @@ error: self-assignment of `s.a` to `s.a`
 LL |     s.a = s.a;
    |     ^^^^^^^^^
 
-error: self-assignment of `s.b[5 + 5]` to `s.b[10]`
+error: self-assignment of `s.b[5 + 4]` to `s.b[9]`
   --> $DIR/self_assignment.rs:17:5
    |
-LL |     s.b[10] = s.b[5 + 5];
-   |     ^^^^^^^^^^^^^^^^^^^^
+LL |     s.b[9] = s.b[5 + 4];
+   |     ^^^^^^^^^^^^^^^^^^^
 
 error: self-assignment of `s.c[0][1]` to `s.c[0][1]`
   --> $DIR/self_assignment.rs:18:5
