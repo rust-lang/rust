@@ -129,6 +129,14 @@ impl Visitor<'_> for IdentVisitor<'_, '_> {
                 return;
             }
 
+            // `struct Array<T, const N: usize>([T; N])`
+            //                        ^
+            if let Node::GenericParam(generic_param) = node
+                && let GenericParamKind::Const { .. } = generic_param.kind
+            {
+                return;
+            }
+
             if is_from_proc_macro(cx, &ident) {
                 return;
             }
