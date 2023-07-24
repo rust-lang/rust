@@ -131,6 +131,17 @@ use crate::intrinsics;
 
 use crate::hint::spin_loop;
 
+// Some architectures don't have byte-sized atomics, which results in LLVM
+// emulating them using a LL/SC loop. However for AtomicBool we can take
+// advantage of the fact that it only ever contains 0 or 1 and use atomic OR/AND
+// instead, which LLVM can emulate using a larger atomic OR/AND operation.
+//
+// This list should only contain architectures which have word-sized atomic-or/
+// atomic-and instructions but don't natively support byte-sized atomics.
+#[cfg(target_has_atomic = "8")]
+const EMULATE_ATOMIC_BOOL: bool =
+    cfg!(any(target_arch = "riscv32", target_arch = "riscv64", target_arch = "loongarch64"));
+
 /// A boolean type which can be safely shared between threads.
 ///
 /// This type has the same in-memory representation as a [`bool`].
@@ -553,8 +564,12 @@ impl AtomicBool {
     #[cfg(target_has_atomic = "8")]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn swap(&self, val: bool, order: Ordering) -> bool {
-        // SAFETY: data races are prevented by atomic intrinsics.
-        unsafe { atomic_swap(self.v.get(), val as u8, order) != 0 }
+        if EMULATE_ATOMIC_BOOL {
+            if val { self.fetch_or(true, order) } else { self.fetch_and(false, order) }
+        } else {
+            // SAFETY: data races are prevented by atomic intrinsics.
+            unsafe { atomic_swap(self.v.get(), val as u8, order) != 0 }
+        }
     }
 
     /// Stores a value into the [`bool`] if the current value is the same as the `current` value.
@@ -664,12 +679,39 @@ impl AtomicBool {
         success: Ordering,
         failure: Ordering,
     ) -> Result<bool, bool> {
-        // SAFETY: data races are prevented by atomic intrinsics.
-        match unsafe {
-            atomic_compare_exchange(self.v.get(), current as u8, new as u8, success, failure)
-        } {
-            Ok(x) => Ok(x != 0),
-            Err(x) => Err(x != 0),
+        if EMULATE_ATOMIC_BOOL {
+            // Pick the strongest ordering from success and failure.
+            let order = match (success, failure) {
+                (SeqCst, _) => SeqCst,
+                (_, SeqCst) => SeqCst,
+                (AcqRel, _) => AcqRel,
+                (_, AcqRel) => {
+                    panic!("there is no such thing as an acquire-release failure ordering")
+                }
+                (Release, Acquire) => AcqRel,
+                (Acquire, _) => Acquire,
+                (_, Acquire) => Acquire,
+                (Release, Relaxed) => Release,
+                (_, Release) => panic!("there is no such thing as a release failure ordering"),
+                (Relaxed, Relaxed) => Relaxed,
+            };
+            let old = if current == new {
+                // This is a no-op, but we still need to perform the operation
+                // for memory ordering reasons.
+                self.fetch_or(false, order)
+            } else {
+                // This sets the value to the new one and returns the old one.
+                self.swap(new, order)
+            };
+            if old == current { Ok(old) } else { Err(old) }
+        } else {
+            // SAFETY: data races are prevented by atomic intrinsics.
+            match unsafe {
+                atomic_compare_exchange(self.v.get(), current as u8, new as u8, success, failure)
+            } {
+                Ok(x) => Ok(x != 0),
+                Err(x) => Err(x != 0),
+            }
         }
     }
 
@@ -719,6 +761,10 @@ impl AtomicBool {
         success: Ordering,
         failure: Ordering,
     ) -> Result<bool, bool> {
+        if EMULATE_ATOMIC_BOOL {
+            return self.compare_exchange(current, new, success, failure);
+        }
+
         // SAFETY: data races are prevented by atomic intrinsics.
         match unsafe {
             atomic_compare_exchange_weak(self.v.get(), current as u8, new as u8, success, failure)
