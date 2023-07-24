@@ -3647,6 +3647,8 @@ impl ::core::clone::Clone for OBJECT_ATTRIBUTES {
 pub const OBJ_DONT_REPARSE: i32 = 4096i32;
 pub const OPEN_ALWAYS: FILE_CREATION_DISPOSITION = 4u32;
 pub const OPEN_EXISTING: FILE_CREATION_DISPOSITION = 3u32;
+#[allow(unnameable_types)]
+//~^ reachable at visibility `pub`, but can only be named at visibility `pub(crate)`
 #[repr(C)]
 pub struct OVERLAPPED {
     pub Internal: usize,
@@ -3660,6 +3662,8 @@ impl ::core::clone::Clone for OVERLAPPED {
         *self
     }
 }
+#[allow(unnameable_types)]
+//~^ reachable at visibility `pub`, but can only be named at visibility `pub(crate)`
 #[repr(C)]
 pub union OVERLAPPED_0 {
     pub Anonymous: OVERLAPPED_0_0,
@@ -3671,6 +3675,8 @@ impl ::core::clone::Clone for OVERLAPPED_0 {
         *self
     }
 }
+#[allow(unnameable_types)]
+//~^ reachable at visibility `pub`, but can only be named at visibility `pub(crate)`
 #[repr(C)]
 pub struct OVERLAPPED_0_0 {
     pub Offset: u32,
@@ -3784,6 +3790,8 @@ pub const SECURITY_SQOS_PRESENT: FILE_FLAGS_AND_ATTRIBUTES = 1048576u32;
 pub const SECURITY_VALID_SQOS_FLAGS: FILE_FLAGS_AND_ATTRIBUTES = 2031616u32;
 pub type SEND_RECV_FLAGS = i32;
 pub type SET_FILE_POINTER_MOVE_METHOD = u32;
+#[allow(unnameable_types)]
+//~^ reachable at visibility `pub`, but can only be named at visibility `pub(crate)`
 #[repr(C)]
 pub struct SOCKADDR {
     pub sa_family: ADDRESS_FAMILY,

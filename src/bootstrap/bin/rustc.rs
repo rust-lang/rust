@@ -82,7 +82,13 @@ fn main() {
         cmd.env("RUST_BACKTRACE", "1");
     }
 
-    if let Ok(lint_flags) = env::var("RUSTC_LINT_FLAGS") {
+    if let Ok(mut lint_flags) = env::var("RUSTC_LINT_FLAGS") {
+        if target.is_none() {
+            lint_flags = lint_flags
+                .replace("-Wprivate_interfaces", "")
+                .replace("-Wprivate_bounds", "")
+                .replace("-Wunnameable_types", "");
+        }
         cmd.args(lint_flags.split_whitespace());
     }
 

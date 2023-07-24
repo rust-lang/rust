@@ -655,6 +655,7 @@ mod sealed {
     /// This trait being unreachable from outside the crate
     /// prevents outside implementations of our extension traits.
     /// This allows adding more trait methods in the future.
+    #[allow(unnameable_types)]
     #[unstable(feature = "sealed", issue = "none")]
     pub trait Sealed {}
 }

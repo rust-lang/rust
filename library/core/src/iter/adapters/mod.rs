@@ -145,6 +145,8 @@ pub unsafe trait SourceIter {
 ///
 /// If a `ControlFlow::Break` is encountered, the iterator stops and the
 /// residual is stored.
+#[cfg_attr(bootstrap, allow(unnameable_types))]
+//~^ reachable at visibility `pub(crate)`, but can only be named at visibility `pub(iter)`
 pub(crate) struct GenericShunt<'a, I, R> {
     iter: I,
     residual: &'a mut Option<R>,
@@ -172,6 +174,8 @@ impl<I, R> Iterator for GenericShunt<'_, I, R>
 where
     I: Iterator<Item: Try<Residual = R>>,
 {
+    #[cfg_attr(bootstrap, allow(unnameable_types))]
+    //~^ reachable at visibility `pub(crate)`, but can only be named at visibility `pub(iter)`
     type Item = <I::Item as Try>::Output;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -211,6 +215,8 @@ unsafe impl<I, R> SourceIter for GenericShunt<'_, I, R>
 where
     I: SourceIter,
 {
+    #[cfg_attr(bootstrap, allow(unnameable_types))]
+    //~^ reachable at visibility `pub(crate)`, but can only be named at visibility `pub(iter)`
     type Source = I::Source;
 
     #[inline]

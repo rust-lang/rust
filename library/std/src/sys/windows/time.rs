@@ -169,6 +169,8 @@ mod perf_counter {
     use crate::sys_common::mul_div_u64;
     use crate::time::Duration;
 
+    #[cfg_attr(bootstrap, allow(unnameable_types))]
+    //~^  reachable at visibility `pub(crate)`, but can only be named at visibility `pub(time)`
     pub struct PerformanceCounterInstant {
         ts: c::LARGE_INTEGER,
     }

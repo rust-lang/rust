@@ -149,6 +149,8 @@ macro join_internal {
 /// be later taken and doesn't panic when polled after ready.
 ///
 /// This type is public in a private module for use by the macro.
+#[allow(unnameable_types)]
+//~^ reachable at visibility `pub`, but can only be named at visibility `pub(future)`
 #[allow(missing_debug_implementations)]
 #[unstable(feature = "future_join", issue = "91642")]
 pub enum MaybeDone<F: Future> {
@@ -172,6 +174,8 @@ impl<F: Future> MaybeDone<F> {
 
 #[unstable(feature = "future_join", issue = "91642")]
 impl<F: Future> Future for MaybeDone<F> {
+    #[cfg_attr(bootstrap, allow(unnameable_types))]
+    //~^ reachable at visibility `pub`, but can only be named at visibility `pub(future)`
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {

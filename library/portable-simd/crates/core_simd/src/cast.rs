@@ -6,6 +6,8 @@ mod sealed {
     /// # Safety
     /// Implementing this trait asserts that the type is a valid vector element for the `simd_cast`
     /// or `simd_as` intrinsics.
+    #[allow(unnameable_types)]
+    //~^ reachable at visibility `pub`, but can only be named at visibility `pub(cast)`
     pub unsafe trait Sealed {}
 }
 use sealed::Sealed;

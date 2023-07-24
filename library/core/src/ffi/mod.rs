@@ -522,6 +522,8 @@ impl<'a, 'f: 'a> DerefMut for VaList<'a, 'f> {
 // improving this.
 mod sealed_trait {
     /// Trait which permits the allowed types to be used with [super::VaListImpl::arg].
+    #[allow(unnameable_types)]
+    //~^ reachable at visibility `pub`, but can only be named at visibility `pub(ffi)`
     #[unstable(
         feature = "c_variadic",
         reason = "the `c_variadic` feature has not been properly tested on \

@@ -118,6 +118,8 @@ pub type RawOsError = i32;
 // (For the sake of being explicit: the alignment requirement here only matters
 // if `error/repr_bitpacked.rs` is in use — for the unpacked repr it doesn't
 // matter at all)
+#[cfg_attr(bootstrap, allow(unnameable_types))]
+//~^ reachable at visibility `pub(crate)`, but can only be named at visibility `pub(io)`
 #[repr(align(4))]
 #[derive(Debug)]
 pub(crate) struct SimpleMessage {

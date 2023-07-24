@@ -5,6 +5,8 @@ use super::test_result::TestResult;
 use super::time::TestExecTime;
 use super::types::{TestDesc, TestId};
 
+#[allow(unnameable_types)]
+//~^ reachable at visibility `pub`, but can only be named at visibility `pub(crate)`
 #[derive(Debug, Clone)]
 pub struct CompletedTest {
     pub id: TestId,
@@ -25,7 +27,8 @@ impl CompletedTest {
         Self { id, desc, result, exec_time, stdout }
     }
 }
-
+#[allow(unnameable_types)]
+//~^ reachable at visibility `pub`, but can only be named at visibility `pub(crate)`
 #[derive(Debug, Clone)]
 pub enum TestEvent {
     TeFiltered(usize, Option<u64>),

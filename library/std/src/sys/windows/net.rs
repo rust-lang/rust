@@ -27,6 +27,8 @@ pub mod netc {
     pub use crate::sys::c::*;
 }
 
+#[allow(unnameable_types)]
+//~^ reachable at visibility `pub`, but can only be named at visibility `pub(crate)`
 pub struct Socket(OwnedSocket);
 
 static WSA_CLEANUP: OnceLock<unsafe extern "system" fn() -> i32> = OnceLock::new();

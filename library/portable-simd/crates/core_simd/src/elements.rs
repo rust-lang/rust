@@ -5,6 +5,8 @@ mod mut_ptr;
 mod uint;
 
 mod sealed {
+    #[allow(unnameable_types)]
+    //~^ reachable at visibility `pub`, but can only be named at visibility `pub(elements)`
     pub trait Sealed {}
 }
 

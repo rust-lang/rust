@@ -5,6 +5,8 @@ mod private {
     /// This trait being unreachable from outside the crate
     /// prevents other implementations of the `FloatToInt` trait,
     /// which allows potentially adding more trait methods after the trait is `#[stable]`.
+    #[allow(unnameable_types)]
+    //~^ reachable at visibility `pub`, but can only be named at visibility `pub(num)`
     #[unstable(feature = "convert_float_to_int", issue = "67057")]
     pub trait Sealed {}
 }

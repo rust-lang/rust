@@ -848,6 +848,8 @@ where
 }
 
 mod sealed {
+    #[allow(unnameable_types)]
+    //~^ reachable at visibility `pub`, but can only be named at visibility `pub(vector)`
     pub trait Sealed {}
 }
 use sealed::Sealed;

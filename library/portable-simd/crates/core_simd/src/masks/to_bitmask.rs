@@ -2,6 +2,8 @@ use super::{mask_impl, Mask, MaskElement};
 use crate::simd::{LaneCount, SupportedLaneCount};
 
 mod sealed {
+    #[allow(unnameable_types)]
+    //~^ reachable at visibility `pub`, but can only be named at visibility `pub(masks)`
     pub trait Sealed {}
 }
 pub use sealed::Sealed;

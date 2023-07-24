@@ -1,4 +1,6 @@
 mod sealed {
+    #[allow(unnameable_types)]
+    //~^ reachable at visibility `pub`, but can only be named at visibility `pub(lane_count)`
     pub trait Sealed {}
 }
 use sealed::Sealed;

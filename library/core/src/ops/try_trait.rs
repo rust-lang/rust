@@ -418,6 +418,8 @@ impl<T> NeverShortCircuit<T> {
     }
 }
 
+#[cfg_attr(bootstrap, allow(unnameable_types))]
+//~^ reachable at visibility `pub(crate)`, but can only be named at visibility `pub(ops)`
 pub(crate) enum NeverShortCircuitResidual {}
 
 impl<T> Try for NeverShortCircuit<T> {
@@ -443,6 +445,8 @@ impl<T> FromResidual for NeverShortCircuit<T> {
 }
 
 impl<T> Residual<T> for NeverShortCircuitResidual {
+    #[cfg_attr(bootstrap, allow(unnameable_types))]
+    //~^ reachable at visibility `pub(crate)`, but can only be named at visibility `pub(ops)`
     type TryType = NeverShortCircuit<T>;
 }
 

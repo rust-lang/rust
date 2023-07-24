@@ -16,6 +16,8 @@ use std::str;
 use super::*;
 
 /// Handle for a symbol string stored within the Interner.
+#[allow(unnameable_types)]
+//~^ reachable at visibility `pub`, but can only be named at visibility `pub(crate)`
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Symbol(NonZeroU32);
 

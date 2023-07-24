@@ -82,6 +82,8 @@ impl fmt::Display for TestSuiteExecTime {
 }
 
 /// Structure denoting time limits for test execution.
+#[allow(unnameable_types)]
+//~^ reachable at visibility `pub`, but can only be named at visibility `pub(crate)`
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub struct TimeThreshold {
     pub warn: Duration,

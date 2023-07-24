@@ -1819,6 +1819,13 @@ impl<'a> Builder<'a> {
             lint_flags.push("-Wunused_lifetimes");
             lint_flags.push("-Wsemicolon_in_expressions_from_macros");
 
+            if matches!(mode, Mode::Std) {
+                rustflags.arg("-Zcrate-attr=feature(type_privacy_lints)");
+                lint_flags.push("-Wprivate_interfaces");
+                lint_flags.push("-Wprivate_bounds");
+                lint_flags.push("-Wunnameable_types");
+            }
+
             if self.config.deny_warnings {
                 lint_flags.push("-Dwarnings");
                 rustdocflags.arg("-Dwarnings");

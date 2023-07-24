@@ -120,6 +120,8 @@ const fn slice_end_index_overflow_fail() -> ! {
 
 mod private_slice_index {
     use super::ops;
+    #[allow(unnameable_types)]
+    //~^ reachable at visibility `pub`, but can only be named at visibility `pub(index)`
     #[stable(feature = "slice_get_slice", since = "1.28.0")]
     pub trait Sealed {}
 

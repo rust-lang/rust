@@ -79,10 +79,14 @@ macro_rules! diagnostic_child_methods {
 }
 
 /// Iterator over the children diagnostics of a `Diagnostic`.
+#[allow(unnameable_types)]
+//~^ reachable at visibility `pub`, but can only be named at visibility `pub(crate)`
 #[derive(Debug, Clone)]
 #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
 pub struct Children<'a>(std::slice::Iter<'a, Diagnostic>);
 
+#[allow(unnameable_types)]
+//~^ reachable at visibility `pub`, but can only be named at visibility `pub(crate)`
 #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
 impl<'a> Iterator for Children<'a> {
     type Item = &'a Diagnostic;

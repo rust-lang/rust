@@ -5,6 +5,8 @@
 
 use super::*;
 
+#[allow(unnameable_types)]
+//~^ reachable at visibility `pub`, but can only be named at visibility `pub(fmt)`
 #[lang = "format_placeholder"]
 #[derive(Copy, Clone)]
 pub struct Placeholder {
@@ -30,6 +32,8 @@ impl Placeholder {
     }
 }
 
+#[allow(unnameable_types)]
+//~^ reachable at visibility `pub`, but can only be named at visibility `pub(fmt)`
 #[lang = "format_alignment"]
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum Alignment {
@@ -41,6 +45,8 @@ pub enum Alignment {
 
 /// Used by [width](https://doc.rust-lang.org/std/fmt/#width)
 /// and [precision](https://doc.rust-lang.org/std/fmt/#precision) specifiers.
+#[allow(unnameable_types)]
+//~^ reachable at visibility `pub`, but can only be named at visibility `pub(fmt)`
 #[lang = "format_count"]
 #[derive(Copy, Clone)]
 pub enum Count {
@@ -70,6 +76,8 @@ pub(super) enum Flag {
 ///
 /// Argument is essentially an optimized partially applied formatting function,
 /// equivalent to `exists T.(&T, fn(&T, &mut Formatter<'_>) -> Result`.
+#[allow(unnameable_types)]
+//~^ reachable at visibility `pub`, but can only be named at visibility `pub(fmt)`
 #[lang = "format_argument"]
 #[derive(Copy, Clone)]
 pub struct Argument<'a> {
@@ -172,6 +180,8 @@ impl<'a> Argument<'a> {
 /// This struct represents the unsafety of constructing an `Arguments`.
 /// It exists, rather than an unsafe function, in order to simplify the expansion
 /// of `format_args!(..)` and reduce the scope of the `unsafe` block.
+#[allow(unnameable_types)]
+//~^ reachable at visibility `pub`, but can only be named at visibility `pub(fmt)`
 #[lang = "format_unsafe_arg"]
 pub struct UnsafeArg {
     _private: (),

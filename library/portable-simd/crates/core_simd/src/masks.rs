@@ -31,6 +31,8 @@ mod sealed {
     /// For example, `eq` could be provided by requiring `MaskElement: PartialEq`, but that would
     /// prevent us from ever removing that bound, or from implementing `MaskElement` on
     /// non-`PartialEq` types in the future.
+    #[allow(unnameable_types)]
+    //~^ reachable at visibility `pub`, but can only be named at visibility `pub(vector)`
     pub trait Sealed {
         fn valid<const LANES: usize>(values: Simd<Self, LANES>) -> bool
         where

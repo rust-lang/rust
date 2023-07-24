@@ -6,6 +6,8 @@ use std::ops::{Deref, DerefMut};
 use std::slice;
 
 #[repr(C)]
+#[allow(unnameable_types)]
+//~^ reachable at visibility `pub`, but can only be named at visibility `pub(bridge)`
 pub struct Buffer {
     data: *mut u8,
     len: usize,
@@ -25,6 +27,8 @@ impl Default for Buffer {
 }
 
 impl Deref for Buffer {
+    #[cfg_attr(bootstrap, allow(unnameable_types))]
+    //~^ reachable at visibility `pub`, but can only be named at visibility `pub(bridge)`
     type Target = [u8];
     #[inline]
     fn deref(&self) -> &[u8] {

@@ -111,6 +111,8 @@ pub(crate) mod hack {
         T::to_vec(s, alloc)
     }
 
+    #[allow(unnameable_types)]
+    //~^ reachable at visibility `pub`, but can only be named at visibility `pub(crate)`
     #[cfg(not(no_global_oom_handling))]
     pub trait ConvertVec {
         fn to_vec<A: Allocator>(s: &[Self], alloc: A) -> Vec<Self, A>

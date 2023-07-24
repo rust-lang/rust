@@ -24,6 +24,8 @@ use libc::off64_t;
 )))]
 use libc::off_t as off64_t;
 
+#[allow(unnameable_types)]
+//~^ reachable at visibility `pub`, but can only be named at visibility `pub(crate)`
 #[derive(Debug)]
 pub struct FileDesc(OwnedFd);
 

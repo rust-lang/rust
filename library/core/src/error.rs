@@ -207,6 +207,8 @@ where
 mod private {
     // This is a hack to prevent `type_id` from being overridden by `Error`
     // implementations, since that can enable unsound downcasting.
+    #[allow(unnameable_types)]
+    //~^ reachable at visibility `pub`, but can only be named at visibility `pub(error)`
     #[unstable(feature = "error_type_id", issue = "60784")]
     #[derive(Debug)]
     pub struct Internal;

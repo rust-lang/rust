@@ -397,6 +397,7 @@ pub mod primitive;
     missing_docs,
     missing_debug_implementations,
     dead_code,
+    unnameable_types,
     unused_imports,
     unsafe_op_in_unsafe_fn
 )]

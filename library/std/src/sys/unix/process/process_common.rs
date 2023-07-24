@@ -127,12 +127,16 @@ pub struct StdioPipes {
 
 // passed to do_exec() with configuration of what the child stdio should look
 // like
+#[cfg_attr(bootstrap, allow(unnameable_types))]
+//~^ reachable at visibility `pub(crate)`, but can only be named at visibility `pub(process)`
 pub struct ChildPipes {
     pub stdin: ChildStdio,
     pub stdout: ChildStdio,
     pub stderr: ChildStdio,
 }
 
+#[cfg_attr(bootstrap, allow(unnameable_types))]
+//~^ reachable at visibility `pub(crate)`, but can only be named at visibility `pub(process)`
 pub enum ChildStdio {
     Inherit,
     Explicit(c_int),
@@ -152,6 +156,8 @@ pub enum Stdio {
     Fd(FileDesc),
 }
 
+#[cfg_attr(bootstrap, allow(unnameable_types))]
+//~^ reachable at visibility `pub(crate)`, but can only be named at visibility `pub(process)`
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum ProgramKind {
     /// A program that would be looked up on the PATH (e.g. `ls`)
@@ -399,6 +405,8 @@ fn os2c(s: &OsStr, saw_nul: &mut bool) -> CString {
 }
 
 // Helper type to manage ownership of the strings within a C-style array.
+#[cfg_attr(bootstrap, allow(unnameable_types))]
+//~^ reachable at visibility `pub(crate)`, but can only be named at visibility `pub(process)`
 pub struct CStringArray {
     items: Vec<CString>,
     ptrs: Vec<*const c_char>,

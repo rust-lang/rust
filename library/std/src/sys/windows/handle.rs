@@ -17,6 +17,8 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 /// An owned container for `HANDLE` object, closing them on Drop.
 ///
 /// All methods are inherited through a `Deref` impl to `RawHandle`
+#[allow(unnameable_types)]
+//~^ reachable at visibility `pub`, but can only be named at visibility `pub(crate)`
 pub struct Handle(OwnedHandle);
 
 impl Handle {

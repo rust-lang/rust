@@ -7,6 +7,8 @@ use crate::simd::{LaneCount, Simd, SupportedLaneCount, ToBitMask};
 #[cfg(feature = "generic_const_exprs")]
 use crate::simd::ToBitMaskArray;
 
+#[allow(unnameable_types)]
+//~^ reachable at visibility `pub`, but can only be named at visibility `pub(masks)`
 #[repr(transparent)]
 pub struct Mask<T, const LANES: usize>(Simd<T, LANES>)
 where
@@ -73,6 +75,8 @@ where
 }
 
 // Used for bitmask bit order workaround
+#[cfg_attr(bootstrap, allow(unnameable_types))]
+//~^ reachable at visibility `pub(crate)`, but can only be named at visibility `pub(masks)`
 pub(crate) trait ReverseBits {
     // Reverse the least significant `n` bits of `self`.
     // (Remaining bits must be 0.)
@@ -276,6 +280,8 @@ where
     T: MaskElement,
     LaneCount<LANES>: SupportedLaneCount,
 {
+    #[cfg_attr(bootstrap, allow(unnameable_types))]
+    //~^  reachable at visibility `pub`, but can only be named at visibility `pub(masks)`
     type Output = Self;
     #[inline]
     #[must_use = "method returns a new mask and does not mutate the original value"]
@@ -290,6 +296,8 @@ where
     T: MaskElement,
     LaneCount<LANES>: SupportedLaneCount,
 {
+    #[cfg_attr(bootstrap, allow(unnameable_types))]
+    //~^  reachable at visibility `pub`, but can only be named at visibility `pub(masks)`
     type Output = Self;
     #[inline]
     #[must_use = "method returns a new mask and does not mutate the original value"]
@@ -304,6 +312,8 @@ where
     T: MaskElement,
     LaneCount<LANES>: SupportedLaneCount,
 {
+    #[cfg_attr(bootstrap, allow(unnameable_types))]
+    //~^  reachable at visibility `pub`, but can only be named at visibility `pub(masks)`
     type Output = Self;
     #[inline]
     #[must_use = "method returns a new mask and does not mutate the original value"]
@@ -318,6 +328,8 @@ where
     T: MaskElement,
     LaneCount<LANES>: SupportedLaneCount,
 {
+    #[cfg_attr(bootstrap, allow(unnameable_types))]
+    //~^  reachable at visibility `pub`, but can only be named at visibility `pub(masks)`
     type Output = Self;
     #[inline]
     #[must_use = "method returns a new mask and does not mutate the original value"]

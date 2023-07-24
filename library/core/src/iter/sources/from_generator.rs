@@ -34,12 +34,16 @@ pub fn from_generator<G: Generator<Return = ()> + Unpin>(generator: G) -> FromGe
 /// more.
 ///
 /// [`iter::from_generator()`]: from_generator
+#[allow(unnameable_types)]
+//~^ reachable at visibility `pub`, but can only be named at visibility `pub(sources)`
 #[unstable(feature = "iter_from_generator", issue = "43122", reason = "generators are unstable")]
 #[derive(Clone)]
 pub struct FromGenerator<G>(G);
 
 #[unstable(feature = "iter_from_generator", issue = "43122", reason = "generators are unstable")]
 impl<G: Generator<Return = ()> + Unpin> Iterator for FromGenerator<G> {
+    #[cfg_attr(bootstrap, allow(unnameable_types))]
+    //~^ reachable at visibility `pub`, but can only be named at visibility `pub(sources)`
     type Item = G::Yield;
 
     fn next(&mut self) -> Option<Self::Item> {

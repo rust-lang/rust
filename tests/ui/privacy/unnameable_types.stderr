@@ -22,17 +22,5 @@ error: trait `PubTr` is reachable but cannot be named
 LL |     pub trait PubTr {
    |     ^^^^^^^^^^^^^^^ reachable at visibility `pub`, but can only be named at visibility `pub(crate)`
 
-error: associated type `PubTr::Alias` is reachable but cannot be named
-  --> $DIR/unnameable_types.rs:14:9
-   |
-LL |         type Alias;
-   |         ^^^^^^^^^^ reachable at visibility `pub`, but can only be named at visibility `pub(crate)`
-
-error: associated type `<PubStruct as PubTr>::Alias` is reachable but cannot be named
-  --> $DIR/unnameable_types.rs:19:9
-   |
-LL |         type Alias = i32;
-   |         ^^^^^^^^^^ reachable at visibility `pub`, but can only be named at visibility `pub(crate)`
-
-error: aborting due to 5 previous errors
+error: aborting due to 3 previous errors
 

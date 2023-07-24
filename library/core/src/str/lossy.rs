@@ -69,6 +69,8 @@ impl<'a> Utf8Chunk<'a> {
     }
 }
 
+#[allow(unnameable_types)]
+//~^ reachable at visibility `pub`, but can only be named at visibility `pub(str)`
 #[must_use]
 #[unstable(feature = "str_internals", issue = "none")]
 pub struct Debug<'a>(&'a [u8]);

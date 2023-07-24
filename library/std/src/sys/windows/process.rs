@@ -35,6 +35,8 @@ use libc::{c_void, EXIT_FAILURE, EXIT_SUCCESS};
 // Command
 ////////////////////////////////////////////////////////////////////////////////
 
+#[allow(unnameable_types)]
+//~^ reachable at visibility `pub`, but can only be named at visibility `pub(crate)`
 #[derive(Clone, Debug, Eq)]
 #[doc(hidden)]
 pub struct EnvKey {
