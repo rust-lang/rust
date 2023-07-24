@@ -673,6 +673,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     match (p1.kind, p2.kind) {
                         // Paths are the same, continue to next loop.
                         (ProjectionKind::Deref, ProjectionKind::Deref) => {}
+                        (ProjectionKind::OpaqueCast, ProjectionKind::OpaqueCast) => {}
                         (ProjectionKind::Field(i1, _), ProjectionKind::Field(i2, _))
                             if i1 == i2 => {}
 
@@ -695,10 +696,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             l @ (ProjectionKind::Index
                             | ProjectionKind::Subslice
                             | ProjectionKind::Deref
+                            | ProjectionKind::OpaqueCast
                             | ProjectionKind::Field(..)),
                             r @ (ProjectionKind::Index
                             | ProjectionKind::Subslice
                             | ProjectionKind::Deref
+                            | ProjectionKind::OpaqueCast
                             | ProjectionKind::Field(..)),
                         ) => bug!(
                             "ProjectionKinds Index or Subslice were unexpected: ({:?}, {:?})",
@@ -1885,6 +1888,7 @@ fn restrict_capture_precision(
                 return (place, curr_mode);
             }
             ProjectionKind::Deref => {}
+            ProjectionKind::OpaqueCast => {}
             ProjectionKind::Field(..) => {} // ignore
         }
     }
@@ -1941,6 +1945,7 @@ fn construct_place_string<'tcx>(tcx: TyCtxt<'_>, place: &Place<'tcx>) -> String 
             ProjectionKind::Deref => String::from("Deref"),
             ProjectionKind::Index => String::from("Index"),
             ProjectionKind::Subslice => String::from("Subslice"),
+            ProjectionKind::OpaqueCast => String::from("OpaqueCast"),
         };
         if i != 0 {
             projections_str.push(',');

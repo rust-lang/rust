@@ -457,7 +457,16 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         ty: Ty<'tcx>,
         kind: ProjectionKind,
     ) -> PlaceWithHirId<'tcx> {
+        let place_ty = base_place.place.ty();
         let mut projections = base_place.place.projections;
+
+        let node_ty = self.typeck_results.node_type(node.hir_id());
+        // Opaque types can't have field projections, but we can instead convert
+        // the current place in-place (heh) to the hidden type, and then apply all
+        // follow up projections on that.
+        if node_ty != place_ty && place_ty.has_opaque_types() {
+            projections.push(Projection { kind: ProjectionKind::OpaqueCast, ty: node_ty });
+        }
         projections.push(Projection { kind, ty });
         PlaceWithHirId::new(
             node.hir_id(),

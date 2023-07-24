@@ -236,6 +236,9 @@ fn strip_prefix<'a, 'tcx>(
                 }
                 assert_matches!(iter.next(), Some(ProjectionElem::Field(..)));
             }
+            HirProjectionKind::OpaqueCast => {
+                assert_matches!(iter.next(), Some(ProjectionElem::OpaqueCast(..)));
+            }
             HirProjectionKind::Index | HirProjectionKind::Subslice => {
                 bug!("unexpected projection kind: {:?}", projection);
             }
