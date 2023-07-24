@@ -5,6 +5,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_infer::traits::util::PredicateSet;
 use rustc_infer::traits::ImplSource;
 use rustc_middle::query::Providers;
+use rustc_middle::traits::BuiltinImplSource;
 use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::GenericArgs;
 use rustc_middle::ty::{self, GenericParamDefKind, ToPredicate, Ty, TyCtxt, VtblEntry};
@@ -384,8 +385,8 @@ pub(crate) fn vtable_trait_upcasting_coercion_new_vptr_slot<'tcx>(
     let trait_ref = ty::TraitRef::new(tcx, unsize_trait_did, [source, target]);
 
     match tcx.codegen_select_candidate((ty::ParamEnv::reveal_all(), trait_ref)) {
-        Ok(ImplSource::TraitUpcasting(implsrc_traitcasting)) => {
-            implsrc_traitcasting.vtable_vptr_slot
+        Ok(ImplSource::Builtin(BuiltinImplSource::TraitUpcasting { vtable_vptr_slot }, _)) => {
+            *vtable_vptr_slot
         }
         otherwise => bug!("expected TraitUpcasting candidate, got {otherwise:?}"),
     }

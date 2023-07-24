@@ -1,15 +1,14 @@
 //! Dealing with trait goals, i.e. `T: Trait<'a, U>`.
 
-use super::assembly::{self, structural_traits, BuiltinImplSource};
+use super::assembly::{self, structural_traits};
 use super::search_graph::OverflowHandler;
 use super::{EvalCtxt, SolverMode};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{LangItem, Movability};
 use rustc_infer::traits::query::NoSolution;
-use rustc_infer::traits::util::supertraits;
 use rustc_middle::traits::solve::inspect::CandidateKind;
-use rustc_middle::traits::solve::{CanonicalResponse, Certainty, Goal, QueryResult};
-use rustc_middle::traits::Reveal;
+use rustc_middle::traits::solve::{CanonicalResponse, Certainty, Goal, MaybeCause, QueryResult};
+use rustc_middle::traits::{BuiltinImplSource, Reveal};
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams, TreatProjections};
 use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt};
 use rustc_middle::ty::{TraitPredicate, TypeVisitableExt};
@@ -382,37 +381,48 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             let b_ty = match ecx
                 .normalize_non_self_ty(goal.predicate.trait_ref.args.type_at(1), goal.param_env)
             {
-                Ok(Some(b_ty)) if !b_ty.is_ty_var() => b_ty,
-                Ok(_) => {
-                    return vec![(
-                        ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
+                Ok(Some(b_ty)) => {
+                    // If we have a type var, then bail with ambiguity.
+                    if b_ty.is_ty_var() {
+                        return vec![(
+                            ecx.evaluate_added_goals_and_make_canonical_response(
+                                Certainty::AMBIGUOUS,
+                            )
                             .unwrap(),
-                        BuiltinImplSource::Ambiguity,
+                            BuiltinImplSource::Misc,
+                        )];
+                    } else {
+                        b_ty
+                    }
+                }
+                Ok(None) => {
+                    return vec![(
+                        ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Maybe(
+                            MaybeCause::Overflow,
+                        ))
+                        .unwrap(),
+                        BuiltinImplSource::Misc,
                     )];
                 }
                 Err(_) => return vec![],
             };
 
             let mut results = vec![];
+            results.extend(ecx.consider_builtin_dyn_upcast_candidates(goal.param_env, a_ty, b_ty));
             results.extend(
-                ecx.consider_builtin_dyn_upcast_candidates(goal.param_env, a_ty, b_ty)
+                ecx.consider_builtin_unsize_candidate(goal.with(ecx.tcx(), (a_ty, b_ty)))
                     .into_iter()
-                    .map(|resp| (resp, BuiltinImplSource::TraitUpcasting)),
-            );
-            results.extend(
-                ecx.consider_builtin_unsize_candidate(goal.param_env, a_ty, b_ty).into_iter().map(
-                    |resp| {
+                    .map(|resp| {
                         // If we're unsizing from tuple -> tuple, detect
                         let source =
                             if matches!((a_ty.kind(), b_ty.kind()), (ty::Tuple(..), ty::Tuple(..)))
                             {
-                                BuiltinImplSource::TupleUnsize
+                                BuiltinImplSource::TupleUnsizing
                             } else {
                                 BuiltinImplSource::Misc
                             };
                         (resp, source)
-                    },
-                ),
+                    }),
             );
 
             results
@@ -484,10 +494,9 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
 impl<'tcx> EvalCtxt<'_, 'tcx> {
     fn consider_builtin_unsize_candidate(
         &mut self,
-        param_env: ty::ParamEnv<'tcx>,
-        a_ty: Ty<'tcx>,
-        b_ty: Ty<'tcx>,
+        goal: Goal<'tcx, (Ty<'tcx>, Ty<'tcx>)>,
     ) -> QueryResult<'tcx> {
+        let Goal { param_env, predicate: (a_ty, b_ty) } = goal;
         self.probe_candidate("builtin unsize").enter(|ecx| {
             let tcx = ecx.tcx();
             match (a_ty.kind(), b_ty.kind()) {
@@ -614,7 +623,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         a_ty: Ty<'tcx>,
         b_ty: Ty<'tcx>,
-    ) -> Vec<CanonicalResponse<'tcx>> {
+    ) -> Vec<(CanonicalResponse<'tcx>, BuiltinImplSource)> {
         if a_ty.is_ty_var() || b_ty.is_ty_var() {
             bug!("unexpected type variable in unsize goal")
         }
@@ -634,57 +643,64 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             return vec![];
         }
 
-        let mut unsize_dyn_to_principal = |principal: Option<ty::PolyExistentialTraitRef<'tcx>>| {
-            self.probe_candidate("upcast dyn to principle").enter(|ecx| -> Result<_, NoSolution> {
-                // Require that all of the trait predicates from A match B, except for
-                // the auto traits. We do this by constructing a new A type with B's
-                // auto traits, and equating these types.
-                let new_a_data = principal
-                    .into_iter()
-                    .map(|trait_ref| trait_ref.map_bound(ty::ExistentialPredicate::Trait))
-                    .chain(a_data.iter().filter(|a| {
-                        matches!(a.skip_binder(), ty::ExistentialPredicate::Projection(_))
-                    }))
-                    .chain(
-                        b_data
-                            .auto_traits()
-                            .map(ty::ExistentialPredicate::AutoTrait)
-                            .map(ty::Binder::dummy),
-                    );
-                let new_a_data = tcx.mk_poly_existential_predicates_from_iter(new_a_data);
-                let new_a_ty = Ty::new_dynamic(tcx, new_a_data, b_region, ty::Dyn);
+        // Try to match `a_ty` against `b_ty`, replacing `a_ty`'s principal trait ref with
+        // the supertrait principal and subtyping the types.
+        let unsize_dyn_to_principal =
+            |ecx: &mut Self, principal: Option<ty::PolyExistentialTraitRef<'tcx>>| {
+                ecx.probe_candidate("upcast dyn to principle").enter(
+                    |ecx| -> Result<_, NoSolution> {
+                        // Require that all of the trait predicates from A match B, except for
+                        // the auto traits. We do this by constructing a new A type with B's
+                        // auto traits, and equating these types.
+                        let new_a_data = principal
+                            .into_iter()
+                            .map(|trait_ref| trait_ref.map_bound(ty::ExistentialPredicate::Trait))
+                            .chain(a_data.iter().filter(|a| {
+                                matches!(a.skip_binder(), ty::ExistentialPredicate::Projection(_))
+                            }))
+                            .chain(
+                                b_data
+                                    .auto_traits()
+                                    .map(ty::ExistentialPredicate::AutoTrait)
+                                    .map(ty::Binder::dummy),
+                            );
+                        let new_a_data = tcx.mk_poly_existential_predicates_from_iter(new_a_data);
+                        let new_a_ty = Ty::new_dynamic(tcx, new_a_data, b_region, ty::Dyn);
 
-                // We also require that A's lifetime outlives B's lifetime.
-                ecx.eq(param_env, new_a_ty, b_ty)?;
-                ecx.add_goal(Goal::new(
-                    tcx,
-                    param_env,
-                    ty::Binder::dummy(ty::OutlivesPredicate(a_region, b_region)),
-                ));
-                ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-            })
-        };
+                        // We also require that A's lifetime outlives B's lifetime.
+                        ecx.eq(param_env, new_a_ty, b_ty)?;
+                        ecx.add_goal(Goal::new(
+                            tcx,
+                            param_env,
+                            ty::Binder::dummy(ty::OutlivesPredicate(a_region, b_region)),
+                        ));
+                        ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                    },
+                )
+            };
 
         let mut responses = vec![];
         // If the principal def ids match (or are both none), then we're not doing
         // trait upcasting. We're just removing auto traits (or shortening the lifetime).
         if a_data.principal_def_id() == b_data.principal_def_id() {
-            if let Ok(response) = unsize_dyn_to_principal(a_data.principal()) {
-                responses.push(response);
+            if let Ok(resp) = unsize_dyn_to_principal(self, a_data.principal()) {
+                responses.push((resp, BuiltinImplSource::Misc));
             }
-        } else if let Some(a_principal) = a_data.principal()
-            && let Some(b_principal) = b_data.principal()
-        {
-            for super_trait_ref in supertraits(tcx, a_principal.with_self_ty(tcx, a_ty)) {
-                if super_trait_ref.def_id() != b_principal.def_id() {
-                    continue;
-                }
-                let erased_trait_ref = super_trait_ref
-                    .map_bound(|trait_ref| ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref));
-                if let Ok(response) = unsize_dyn_to_principal(Some(erased_trait_ref)) {
-                    responses.push(response);
-                }
-            }
+        } else if let Some(a_principal) = a_data.principal() {
+            self.walk_vtable(
+                a_principal.with_self_ty(tcx, a_ty),
+                |ecx, new_a_principal, _, vtable_vptr_slot| {
+                    if let Ok(resp) = unsize_dyn_to_principal(
+                        ecx,
+                        Some(new_a_principal.map_bound(|trait_ref| {
+                            ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref)
+                        })),
+                    ) {
+                        responses
+                            .push((resp, BuiltinImplSource::TraitUpcasting { vtable_vptr_slot }));
+                    }
+                },
+            );
         }
 
         responses

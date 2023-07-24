@@ -1,6 +1,6 @@
 use crate::traits::specialization_graph;
 
-use super::assembly::{self, structural_traits, BuiltinImplSource};
+use super::assembly::{self, structural_traits};
 use super::EvalCtxt;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
@@ -10,6 +10,7 @@ use rustc_infer::traits::specialization_graph::LeafDef;
 use rustc_infer::traits::Reveal;
 use rustc_middle::traits::solve::inspect::CandidateKind;
 use rustc_middle::traits::solve::{CanonicalResponse, Certainty, Goal, QueryResult};
+use rustc_middle::traits::BuiltinImplSource;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::ProjectionPredicate;
 use rustc_middle::ty::{self, Ty, TyCtxt};

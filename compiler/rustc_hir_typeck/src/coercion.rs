@@ -46,6 +46,7 @@ use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKi
 use rustc_infer::infer::{Coercion, DefineOpaqueTypes, InferOk, InferResult};
 use rustc_infer::traits::{Obligation, PredicateObligation};
 use rustc_middle::lint::in_external_macro;
+use rustc_middle::traits::BuiltinImplSource;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCoercion,
 };
@@ -687,12 +688,18 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 }
 
                 Ok(Some(impl_source)) => {
+                    // Some builtin coercions are still unstable so we detect
+                    // these here and emit a feature error if coercion doesn't fail
+                    // due to another reason.
                     match impl_source {
-                        traits::ImplSource::TraitUpcasting(..) => {
+                        traits::ImplSource::Builtin(
+                            BuiltinImplSource::TraitUpcasting { .. },
+                            _,
+                        ) => {
                             has_trait_upcasting_coercion =
                                 Some((trait_pred.self_ty(), trait_pred.trait_ref.args.type_at(1)));
                         }
-                        traits::ImplSource::TupleUnsizing(_) => {
+                        traits::ImplSource::Builtin(BuiltinImplSource::TupleUnsizing, _) => {
                             has_unsized_tuple_coercion = true;
                         }
                         _ => {}

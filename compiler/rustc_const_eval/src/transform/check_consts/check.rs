@@ -8,6 +8,7 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{ImplSource, Obligation, ObligationCause};
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
+use rustc_middle::traits::BuiltinImplSource;
 use rustc_middle::ty::{self, adjustment::PointerCoercion, Instance, InstanceDef, Ty, TyCtxt};
 use rustc_middle::ty::{GenericArgKind, GenericArgs};
 use rustc_middle::ty::{TraitRef, TypeVisitableExt};
@@ -766,7 +767,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     };
 
                     match implsrc {
-                        Ok(Some(ImplSource::Param(_, ty::BoundConstness::ConstIfConst))) => {
+                        Ok(Some(ImplSource::Param(ty::BoundConstness::ConstIfConst, _))) => {
                             debug!(
                                 "const_trait_impl: provided {:?} via where-clause in {:?}",
                                 trait_ref, param_env
@@ -774,7 +775,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             return;
                         }
                         // Closure: Fn{Once|Mut}
-                        Ok(Some(ImplSource::Builtin(_)))
+                        Ok(Some(ImplSource::Builtin(BuiltinImplSource::Misc, _)))
                             if trait_ref.self_ty().is_closure()
                                 && tcx.fn_trait_kind_from_def_id(trait_id).is_some() =>
                         {
