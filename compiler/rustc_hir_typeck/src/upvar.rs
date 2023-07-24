@@ -264,12 +264,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.demand_eqtype(span, closure_kind.to_ty(self.tcx), closure_kind_ty);
 
             // If we have an origin, store it.
-            if let Some(origin) = origin {
-                let origin = if enable_precise_capture(span) {
-                    (origin.0, origin.1)
-                } else {
-                    (origin.0, Place { projections: vec![], ..origin.1 })
-                };
+            if let Some(mut origin) = origin {
+                if !enable_precise_capture(span) {
+                    // Without precise captures, we just capture the base and ignore
+                    // the projections.
+                    origin.1.projections.clear()
+                }
 
                 self.typeck_results
                     .borrow_mut()
