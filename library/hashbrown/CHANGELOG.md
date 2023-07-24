@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Changed
 
 - Optimized insertion to only perform a single lookup. (#277)
-- `DrainFilter` has been renamed to `ExtractIf` and no longer drops remaining
+- `DrainFilter` (`drain_filter`) has been renamed to `ExtractIf` and no longer drops remaining
   elements when the iterator is dropped. #(374)
 - Bumped MSRV to 1.64.0. (#431)
 - `{Map,Set}::raw_table` now returns an immutable reference. (#404)
