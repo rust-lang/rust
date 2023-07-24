@@ -1,3 +1,6 @@
+//! Computes a normalizes-to (projection) goal for opaque types. This goal
+//! behaves differently depending on the param-env's reveal mode and whether
+//! the opaque is in a defining scope.
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::{Certainty, Goal, QueryResult};
 use rustc_middle::traits::Reveal;

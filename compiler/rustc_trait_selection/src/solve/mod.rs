@@ -1,14 +1,19 @@
-//! The new trait solver, currently still WIP.
+//! The next-generation trait solver, currently still WIP.
 //!
-//! As a user of the trait system, you can use `TyCtxt::evaluate_goal` to
-//! interact with this solver.
+//! As a user of rust, you can use `-Ztrait-solver=next` or `next-coherence`
+//! to enable the new trait solver always, or just within coherence, respectively.
+//!
+//! As a developer of rustc, you shouldn't be using the new trait
+//! solver without asking the trait-system-refactor-initiative, but it can
+//! be enabled with `InferCtxtBuilder::with_next_trait_solver`. This will
+//! ensure that trait solving using that inference context will be routed
+//! to the new trait solver.
 //!
 //! For a high-level overview of how this solver works, check out the relevant
 //! section of the rustc-dev-guide.
 //!
 //! FIXME(@lcnr): Write that section. If you read this before then ask me
 //! about it on zulip.
-
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::canonical::{Canonical, CanonicalVarValues};
 use rustc_infer::traits::query::NoSolution;

@@ -1,3 +1,8 @@
+//! Computes a normalizes-to (projection) goal for inherent associated types,
+//! `#![feature(lazy_type_alias)]` and `#![feature(type_alias_impl_trait)]`.
+//!
+//! Since a weak alias is not ambiguous, this just computes the `type_of` of
+//! the alias and registers the where-clauses of the type alias.
 use rustc_middle::traits::solve::{Certainty, Goal, QueryResult};
 use rustc_middle::ty;
 
