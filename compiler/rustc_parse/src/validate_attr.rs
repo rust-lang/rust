@@ -157,15 +157,15 @@ fn emit_malformed_attribute(
         matches!(name, sym::doc | sym::ignore | sym::inline | sym::link | sym::test | sym::bench)
     };
 
-    let error_msg = format!("malformed `{}` attribute input", name);
+    let error_msg = format!("malformed `{name}` attribute input");
     let mut msg = "attribute must be of the form ".to_owned();
     let mut suggestions = vec![];
     let mut first = true;
     let inner = if style == ast::AttrStyle::Inner { "!" } else { "" };
     if template.word {
         first = false;
-        let code = format!("#{}[{}]", inner, name);
-        msg.push_str(&format!("`{}`", &code));
+        let code = format!("#{inner}[{name}]");
+        msg.push_str(&format!("`{code}`"));
         suggestions.push(code);
     }
     if let Some(descr) = template.list {
@@ -173,16 +173,16 @@ fn emit_malformed_attribute(
             msg.push_str(" or ");
         }
         first = false;
-        let code = format!("#{}[{}({})]", inner, name, descr);
-        msg.push_str(&format!("`{}`", &code));
+        let code = format!("#{inner}[{name}({descr})]");
+        msg.push_str(&format!("`{code}`"));
         suggestions.push(code);
     }
     if let Some(descr) = template.name_value_str {
         if !first {
             msg.push_str(" or ");
         }
-        let code = format!("#{}[{} = \"{}\"]", inner, name, descr);
-        msg.push_str(&format!("`{}`", &code));
+        let code = format!("#{inner}[{name} = \"{descr}\"]");
+        msg.push_str(&format!("`{code}`"));
         suggestions.push(code);
     }
     if should_warn(name) {

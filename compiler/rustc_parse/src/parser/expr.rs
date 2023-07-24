@@ -238,7 +238,7 @@ impl<'a> Parser<'a> {
                     _ => unreachable!(),
                 }
                 .into();
-                let invalid = format!("{}=", &sugg);
+                let invalid = format!("{sugg}=");
                 self.sess.emit_err(errors::InvalidComparisonOperator {
                     span: sp,
                     invalid: invalid.clone(),
