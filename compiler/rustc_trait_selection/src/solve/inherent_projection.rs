@@ -1,3 +1,9 @@
+//! Computes a normalizes-to (projection) goal for inherent associated types,
+//! `#![feature(inherent_associated_type)]`. Since astconv already determines
+//! which impl the IAT is being projected from, we just:
+//! 1. instantiate substs,
+//! 2. equate the self type, and
+//! 3. instantiate and register where clauses.
 use rustc_middle::traits::solve::{Certainty, Goal, QueryResult};
 use rustc_middle::ty;
 
