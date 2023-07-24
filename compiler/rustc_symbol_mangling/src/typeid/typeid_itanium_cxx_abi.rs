@@ -400,7 +400,7 @@ fn encode_ty_name(tcx: TyCtxt<'_>, def_id: DefId) -> String {
         let _ = write!(s, "{}", name.len());
 
         // Prepend a '_' if name starts with a digit or '_'
-        if let Some(first) = name.as_bytes().get(0) {
+        if let Some(first) = name.as_bytes().first() {
             if first.is_ascii_digit() || *first == b'_' {
                 s.push('_');
             }
