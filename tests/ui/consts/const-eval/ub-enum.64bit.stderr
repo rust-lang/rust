@@ -75,7 +75,7 @@ error[E0080]: it is undefined behavior to use this value
   --> $DIR/ub-enum.rs:81:1
    |
 LL | const BAD_UNINHABITED_VARIANT1: UninhDiscriminant = unsafe { mem::transmute(1u8) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<enum-variant(B)>.0: encountered a value of the never type `!`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<enum-tag>: encountered an uninhabited enum variant
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
@@ -86,7 +86,7 @@ error[E0080]: it is undefined behavior to use this value
   --> $DIR/ub-enum.rs:83:1
    |
 LL | const BAD_UNINHABITED_VARIANT2: UninhDiscriminant = unsafe { mem::transmute(3u8) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<enum-variant(D)>.0: encountered a value of uninhabited type `Never`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<enum-tag>: encountered an uninhabited enum variant
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
@@ -108,14 +108,27 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/ub-enum.rs:96:77
    |
 LL | const BAD_UNINHABITED_WITH_DATA1: Result<(i32, Never), (i32, !)> = unsafe { mem::transmute(0u64) };
-   |                                                                             ^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<enum-variant(Ok)>.0.1: encountered a value of uninhabited type `Never`
+   |                                                                             ^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<enum-tag>: encountered an uninhabited enum variant
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/ub-enum.rs:98:77
    |
 LL | const BAD_UNINHABITED_WITH_DATA2: Result<(i32, !), (i32, Never)> = unsafe { mem::transmute(0u64) };
-   |                                                                             ^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<enum-variant(Ok)>.0.1: encountered a value of the never type `!`
+   |                                                                             ^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<enum-tag>: encountered an uninhabited enum variant
 
-error: aborting due to 13 previous errors
+error[E0080]: evaluation of constant value failed
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
+   |
+   = note: read discriminant of an uninhabited enum variant
+   |
+note: inside `discriminant::<Never>`
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
+note: inside `TEST_ICE_89765`
+  --> $DIR/ub-enum.rs:103:14
+   |
+LL |     unsafe { std::mem::discriminant(&*(&() as *const () as *const Never)); };
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 14 previous errors
 
 For more information about this error, try `rustc --explain E0080`.

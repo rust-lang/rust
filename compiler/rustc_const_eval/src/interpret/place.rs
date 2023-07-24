@@ -18,7 +18,7 @@ use rustc_target::abi::{self, Abi, Align, FieldIdx, HasDataLayout, Size, FIRST_V
 use super::{
     alloc_range, mir_assign_valid_types, AllocId, AllocRef, AllocRefMut, CheckInAllocMsg,
     ConstAlloc, ImmTy, Immediate, InterpCx, InterpResult, Machine, MemoryKind, OpTy, Operand,
-    Pointer, Provenance, Scalar,
+    Pointer, Projectable, Provenance, Scalar,
 };
 
 #[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
@@ -183,7 +183,8 @@ impl<Prov: Provenance> MemPlace<Prov> {
     }
 
     #[inline]
-    fn offset_with_meta<'tcx>(
+    // Not called `offset_with_meta` to avoid confusion with the trait method.
+    fn offset_with_meta_<'tcx>(
         self,
         offset: Size,
         meta: MemPlaceMeta<Prov>,
@@ -194,11 +195,6 @@ impl<Prov: Provenance> MemPlace<Prov> {
             "cannot use `offset_with_meta` to add metadata to a place"
         );
         Ok(MemPlace { ptr: self.ptr.offset(offset, cx)?, meta })
-    }
-
-    #[inline]
-    fn offset<'tcx>(&self, offset: Size, cx: &impl HasDataLayout) -> InterpResult<'tcx, Self> {
-        self.offset_with_meta(offset, MemPlaceMeta::None, cx)
     }
 }
 
@@ -212,37 +208,6 @@ impl<'tcx, Prov: Provenance> MPlaceTy<'tcx, Prov> {
         let align = layout.align.abi;
         let ptr = Pointer::from_addr_invalid(align.bytes()); // no provenance, absolute address
         MPlaceTy { mplace: MemPlace { ptr, meta: MemPlaceMeta::None }, layout, align }
-    }
-
-    /// Offset the place in memory and change its metadata.
-    ///
-    /// This can go wrong very easily if you give the wrong layout for the new place!
-    #[inline]
-    pub(crate) fn offset_with_meta(
-        &self,
-        offset: Size,
-        meta: MemPlaceMeta<Prov>,
-        layout: TyAndLayout<'tcx>,
-        cx: &impl HasDataLayout,
-    ) -> InterpResult<'tcx, Self> {
-        Ok(MPlaceTy {
-            mplace: self.mplace.offset_with_meta(offset, meta, cx)?,
-            align: self.align.restrict_for_offset(offset),
-            layout,
-        })
-    }
-
-    /// Offset the place in memory.
-    ///
-    /// This can go wrong very easily if you give the wrong layout for the new place!
-    pub fn offset(
-        &self,
-        offset: Size,
-        layout: TyAndLayout<'tcx>,
-        cx: &impl HasDataLayout,
-    ) -> InterpResult<'tcx, Self> {
-        assert!(layout.is_sized());
-        self.offset_with_meta(offset, MemPlaceMeta::None, layout, cx)
     }
 
     #[inline]
@@ -262,10 +227,42 @@ impl<'tcx, Prov: Provenance> MPlaceTy<'tcx, Prov> {
             align: layout.align.abi,
         }
     }
+}
 
-    #[inline]
-    pub(crate) fn len(&self, cx: &impl HasDataLayout) -> InterpResult<'tcx, u64> {
-        self.mplace.meta.len(self.layout, cx)
+impl<'mir, 'tcx: 'mir, Prov: Provenance + 'static> Projectable<'mir, 'tcx, Prov>
+    for MPlaceTy<'tcx, Prov>
+{
+    #[inline(always)]
+    fn layout(&self) -> TyAndLayout<'tcx> {
+        self.layout
+    }
+
+    fn meta<M: Machine<'mir, 'tcx, Provenance = Prov>>(
+        &self,
+        _ecx: &InterpCx<'mir, 'tcx, M>,
+    ) -> InterpResult<'tcx, MemPlaceMeta<M::Provenance>> {
+        Ok(self.meta)
+    }
+
+    fn offset_with_meta(
+        &self,
+        offset: Size,
+        meta: MemPlaceMeta<Prov>,
+        layout: TyAndLayout<'tcx>,
+        cx: &impl HasDataLayout,
+    ) -> InterpResult<'tcx, Self> {
+        Ok(MPlaceTy {
+            mplace: self.mplace.offset_with_meta_(offset, meta, cx)?,
+            align: self.align.restrict_for_offset(offset),
+            layout,
+        })
+    }
+
+    fn to_op<M: Machine<'mir, 'tcx, Provenance = Prov>>(
+        &self,
+        _ecx: &InterpCx<'mir, 'tcx, M>,
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
+        Ok(self.into())
     }
 }
 
@@ -293,7 +290,7 @@ impl<'tcx, Prov: Provenance> OpTy<'tcx, Prov> {
     }
 }
 
-impl<'tcx, Prov: Provenance> PlaceTy<'tcx, Prov> {
+impl<'tcx, Prov: Provenance + 'static> PlaceTy<'tcx, Prov> {
     /// A place is either an mplace or some local.
     #[inline]
     pub fn as_mplace_or_local(
@@ -315,11 +312,24 @@ impl<'tcx, Prov: Provenance> PlaceTy<'tcx, Prov> {
             )
         })
     }
+}
 
-    /// Offset the place in memory and change its metadata.
-    ///
-    /// This can go wrong very easily if you give the wrong layout for the new place!
-    pub(crate) fn offset_with_meta(
+impl<'mir, 'tcx: 'mir, Prov: Provenance + 'static> Projectable<'mir, 'tcx, Prov>
+    for PlaceTy<'tcx, Prov>
+{
+    #[inline(always)]
+    fn layout(&self) -> TyAndLayout<'tcx> {
+        self.layout
+    }
+
+    fn meta<M: Machine<'mir, 'tcx, Provenance = Prov>>(
+        &self,
+        ecx: &InterpCx<'mir, 'tcx, M>,
+    ) -> InterpResult<'tcx, MemPlaceMeta<M::Provenance>> {
+        ecx.place_meta(self)
+    }
+
+    fn offset_with_meta(
         &self,
         offset: Size,
         meta: MemPlaceMeta<Prov>,
@@ -346,17 +356,11 @@ impl<'tcx, Prov: Provenance> PlaceTy<'tcx, Prov> {
         })
     }
 
-    /// Offset the place in memory.
-    ///
-    /// This can go wrong very easily if you give the wrong layout for the new place!
-    pub fn offset(
+    fn to_op<M: Machine<'mir, 'tcx, Provenance = Prov>>(
         &self,
-        offset: Size,
-        layout: TyAndLayout<'tcx>,
-        cx: &impl HasDataLayout,
-    ) -> InterpResult<'tcx, Self> {
-        assert!(layout.is_sized());
-        self.offset_with_meta(offset, MemPlaceMeta::None, layout, cx)
+        ecx: &InterpCx<'mir, 'tcx, M>,
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
+        ecx.place_to_op(self)
     }
 }
 
@@ -506,7 +510,7 @@ where
         let mut place = self.local_to_place(self.frame_idx(), mir_place.local)?;
         // Using `try_fold` turned out to be bad for performance, hence the loop.
         for elem in mir_place.projection.iter() {
-            place = self.place_projection(&place, elem)?
+            place = self.project(&place, elem)?
         }
 
         trace!("{:?}", self.dump_place(place.place));
@@ -849,7 +853,7 @@ where
                     &mut Operand::Indirect(mplace) => mplace, // this already was an indirect local
                 };
                 if let Some(offset) = offset {
-                    whole_local.offset(offset, self)?
+                    whole_local.offset_with_meta_(offset, MemPlaceMeta::None, self)?
                 } else {
                     // Preserve wide place metadata, do not call `offset`.
                     whole_local
@@ -902,7 +906,7 @@ where
         self.write_uninit(&dest)?;
         let (variant_index, variant_dest, active_field_index) = match *kind {
             mir::AggregateKind::Adt(_, variant_index, _, _, active_field_index) => {
-                let variant_dest = self.place_downcast(&dest, variant_index)?;
+                let variant_dest = self.project_downcast(dest, variant_index)?;
                 (variant_index, variant_dest, active_field_index)
             }
             _ => (FIRST_VARIANT, dest.clone(), None),
@@ -912,7 +916,7 @@ where
         }
         for (field_index, operand) in operands.iter_enumerated() {
             let field_index = active_field_index.unwrap_or(field_index);
-            let field_dest = self.place_field(&variant_dest, field_index.as_usize())?;
+            let field_dest = self.project_field(&variant_dest, field_index.as_usize())?;
             let op = self.eval_operand(operand, Some(field_dest.layout))?;
             self.copy_op(&op, &field_dest, /*allow_transmute*/ false)?;
         }
@@ -952,22 +956,24 @@ where
         Ok((mplace, vtable))
     }
 
-    /// Turn an operand with a `dyn* Trait` type into an operand with the actual dynamic type.
-    /// Aso returns the vtable.
-    pub(super) fn unpack_dyn_star(
+    /// Turn a `dyn* Trait` type into an value with the actual dynamic type.
+    /// Also returns the vtable.
+    pub(super) fn unpack_dyn_star<P: Projectable<'mir, 'tcx, M::Provenance>>(
         &self,
-        op: &OpTy<'tcx, M::Provenance>,
-    ) -> InterpResult<'tcx, (OpTy<'tcx, M::Provenance>, Pointer<Option<M::Provenance>>)> {
+        val: &P,
+    ) -> InterpResult<'tcx, (P, Pointer<Option<M::Provenance>>)> {
         assert!(
-            matches!(op.layout.ty.kind(), ty::Dynamic(_, _, ty::DynStar)),
+            matches!(val.layout().ty.kind(), ty::Dynamic(_, _, ty::DynStar)),
             "`unpack_dyn_star` only makes sense on `dyn*` types"
         );
-        let data = self.operand_field(&op, 0)?;
-        let vtable = self.operand_field(&op, 1)?;
-        let vtable = self.read_pointer(&vtable)?;
+        let data = self.project_field(val, 0)?;
+        let vtable = self.project_field(val, 1)?;
+        let vtable = self.read_pointer(&vtable.to_op(self)?)?;
         let (ty, _) = self.get_ptr_vtable(vtable)?;
         let layout = self.layout_of(ty)?;
-        let data = data.offset(Size::ZERO, layout, self)?;
+        // `data` is already the right thing but has the wrong type. So we transmute it, by
+        // projecting with offset 0.
+        let data = data.transmute(layout, self)?;
         Ok((data, vtable))
     }
 }

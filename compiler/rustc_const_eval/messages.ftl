@@ -408,8 +408,11 @@ const_eval_undefined_behavior =
 const_eval_undefined_behavior_note =
     The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
 
+const_eval_uninhabited_enum_tag = {$front_matter}: encountered an uninhabited enum variant
+const_eval_uninhabited_enum_variant_read =
+    read discriminant of an uninhabited enum variant
 const_eval_uninhabited_enum_variant_written =
-    writing discriminant of an uninhabited enum
+    writing discriminant of an uninhabited enum variant
 const_eval_uninhabited_val = {$front_matter}: encountered a value of uninhabited type `{$ty}`
 const_eval_uninit = {$front_matter}: encountered uninitialized bytes
 const_eval_uninit_bool = {$front_matter}: encountered uninitialized memory, but expected a boolean

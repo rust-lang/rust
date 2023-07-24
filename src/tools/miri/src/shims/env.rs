@@ -456,7 +456,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         ))?;
         let vars_place = this.allocate(vars_layout, MiriMemoryKind::Runtime.into())?;
         for (idx, var) in vars.into_iter().enumerate() {
-            let place = this.mplace_field(&vars_place, idx)?;
+            let place = this.project_field(&vars_place, idx)?;
             this.write_pointer(var, &place.into())?;
         }
         this.write_pointer(vars_place.ptr, &this.machine.env_vars.environ.unwrap().into())?;

@@ -2670,11 +2670,6 @@ impl<'tcx> Ty<'tcx> {
         variant_index: VariantIdx,
     ) -> Option<Discr<'tcx>> {
         match self.kind() {
-            TyKind::Adt(adt, _) if adt.variants().is_empty() => {
-                // This can actually happen during CTFE, see
-                // https://github.com/rust-lang/rust/issues/89765.
-                None
-            }
             TyKind::Adt(adt, _) if adt.is_enum() => {
                 Some(adt.discriminant_for_variant(tcx, variant_index))
             }

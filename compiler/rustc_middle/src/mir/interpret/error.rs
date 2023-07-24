@@ -12,7 +12,8 @@ use rustc_errors::{
 use rustc_macros::HashStable;
 use rustc_session::CtfeBacktrace;
 use rustc_span::def_id::DefId;
-use rustc_target::abi::{call, Align, Size, WrappingRange};
+use rustc_target::abi::{call, Align, Size, VariantIdx, WrappingRange};
+
 use std::borrow::Cow;
 use std::{any::Any, backtrace::Backtrace, fmt};
 
@@ -323,7 +324,9 @@ pub enum UndefinedBehaviorInfo<'a> {
     /// Data size is not equal to target size.
     ScalarSizeMismatch(ScalarSizeMismatch),
     /// A discriminant of an uninhabited enum variant is written.
-    UninhabitedEnumVariantWritten,
+    UninhabitedEnumVariantWritten(VariantIdx),
+    /// An uninhabited enum variant is projected.
+    UninhabitedEnumVariantRead(VariantIdx),
     /// Validation error.
     Validation(ValidationErrorInfo<'a>),
     // FIXME(fee1-dead) these should all be actual variants of the enum instead of dynamically
@@ -393,6 +396,7 @@ pub enum ValidationErrorKind<'tcx> {
     UnsafeCell,
     UninhabitedVal { ty: Ty<'tcx> },
     InvalidEnumTag { value: String },
+    UninhabitedEnumTag,
     UninitEnumTag,
     UninitStr,
     Uninit { expected: ExpectedKind },

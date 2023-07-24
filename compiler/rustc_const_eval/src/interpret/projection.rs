@@ -11,12 +11,67 @@ use rustc_middle::mir;
 use rustc_middle::ty;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::Ty;
+use rustc_middle::ty::TyCtxt;
+use rustc_target::abi::HasDataLayout;
 use rustc_target::abi::Size;
 use rustc_target::abi::{self, VariantIdx};
 
-use super::{
-    InterpCx, InterpResult, MPlaceTy, Machine, MemPlaceMeta, OpTy, PlaceTy, Provenance, Scalar,
-};
+use super::MPlaceTy;
+use super::{InterpCx, InterpResult, Machine, MemPlaceMeta, OpTy, Provenance, Scalar};
+
+/// A thing that we can project into, and that has a layout.
+pub trait Projectable<'mir, 'tcx: 'mir, Prov: Provenance>: Sized {
+    /// Get the layout.
+    fn layout(&self) -> TyAndLayout<'tcx>;
+
+    /// Get the metadata of a wide value.
+    fn meta<M: Machine<'mir, 'tcx, Provenance = Prov>>(
+        &self,
+        ecx: &InterpCx<'mir, 'tcx, M>,
+    ) -> InterpResult<'tcx, MemPlaceMeta<M::Provenance>>;
+
+    fn len<M: Machine<'mir, 'tcx, Provenance = Prov>>(
+        &self,
+        ecx: &InterpCx<'mir, 'tcx, M>,
+    ) -> InterpResult<'tcx, u64> {
+        self.meta(ecx)?.len(self.layout(), ecx)
+    }
+
+    /// Offset the value by the given amount, replacing the layout and metadata.
+    fn offset_with_meta(
+        &self,
+        offset: Size,
+        meta: MemPlaceMeta<Prov>,
+        layout: TyAndLayout<'tcx>,
+        cx: &impl HasDataLayout,
+    ) -> InterpResult<'tcx, Self>;
+
+    fn offset(
+        &self,
+        offset: Size,
+        layout: TyAndLayout<'tcx>,
+        cx: &impl HasDataLayout,
+    ) -> InterpResult<'tcx, Self> {
+        assert!(layout.is_sized());
+        self.offset_with_meta(offset, MemPlaceMeta::None, layout, cx)
+    }
+
+    fn transmute(
+        &self,
+        layout: TyAndLayout<'tcx>,
+        cx: &impl HasDataLayout,
+    ) -> InterpResult<'tcx, Self> {
+        assert_eq!(self.layout().size, layout.size);
+        self.offset_with_meta(Size::ZERO, MemPlaceMeta::None, layout, cx)
+    }
+
+    /// Convert this to an `OpTy`. This might be an irreversible transformation, but is useful for
+    /// reading from this thing.
+    fn to_op<M: Machine<'mir, 'tcx, Provenance = Prov>>(
+        &self,
+        ecx: &InterpCx<'mir, 'tcx, M>,
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>>;
+}
 
 // FIXME: Working around https://github.com/rust-lang/rust/issues/54385
 impl<'mir, 'tcx: 'mir, Prov, M> InterpCx<'mir, 'tcx, M>
@@ -24,24 +79,33 @@ where
     Prov: Provenance + 'static,
     M: Machine<'mir, 'tcx, Provenance = Prov>,
 {
-    //# Field access
-
-    fn project_field(
+    /// Offset a pointer to project to a field of a struct/union. Unlike `place_field`, this is
+    /// always possible without allocating, so it can take `&self`. Also return the field's layout.
+    /// This supports both struct and array fields, but not slices!
+    ///
+    /// This also works for arrays, but then the `usize` index type is restricting.
+    /// For indexing into arrays, use `mplace_index`.
+    pub fn project_field<P: Projectable<'mir, 'tcx, M::Provenance>>(
         &self,
-        base_layout: TyAndLayout<'tcx>,
-        base_meta: MemPlaceMeta<M::Provenance>,
+        base: &P,
         field: usize,
-    ) -> InterpResult<'tcx, (Size, MemPlaceMeta<M::Provenance>, TyAndLayout<'tcx>)> {
-        let offset = base_layout.fields.offset(field);
-        let field_layout = base_layout.field(self, field);
+    ) -> InterpResult<'tcx, P> {
+        // Slices nominally have length 0, so they will panic somewhere in `fields.offset`.
+        debug_assert!(
+            !matches!(base.layout().ty.kind(), ty::Slice(..)),
+            "`field` projection called on a slice -- call `index` projection instead"
+        );
+        let offset = base.layout().fields.offset(field);
+        let field_layout = base.layout().field(self, field);
 
         // Offset may need adjustment for unsized fields.
         let (meta, offset) = if field_layout.is_unsized() {
-            if base_layout.is_sized() {
+            if base.layout().is_sized() {
                 // An unsized field of a sized type? Sure...
                 // But const-prop actually feeds us such nonsense MIR!
                 throw_inval!(ConstPropNonsense);
             }
+            let base_meta = base.meta(self)?;
             // Re-use parent metadata to determine dynamic field layout.
             // With custom DSTS, this *will* execute user-defined code, but the same
             // happens at run-time so that's okay.
@@ -60,189 +124,68 @@ where
             (MemPlaceMeta::None, offset)
         };
 
-        Ok((offset, meta, field_layout))
-    }
-
-    /// Offset a pointer to project to a field of a struct/union. Unlike `place_field`, this is
-    /// always possible without allocating, so it can take `&self`. Also return the field's layout.
-    /// This supports both struct and array fields.
-    ///
-    /// This also works for arrays, but then the `usize` index type is restricting.
-    /// For indexing into arrays, use `mplace_index`.
-    pub fn mplace_field(
-        &self,
-        base: &MPlaceTy<'tcx, M::Provenance>,
-        field: usize,
-    ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {
-        let (offset, meta, field_layout) = self.project_field(base.layout, base.meta, field)?;
-
-        // We do not look at `base.layout.align` nor `field_layout.align`, unlike
-        // codegen -- mostly to see if we can get away with that
         base.offset_with_meta(offset, meta, field_layout, self)
     }
 
-    /// Gets the place of a field inside the place, and also the field's type.
-    pub fn place_field(
+    /// Downcasting to an enum variant.
+    pub fn project_downcast<P: Projectable<'mir, 'tcx, M::Provenance>>(
         &self,
-        base: &PlaceTy<'tcx, M::Provenance>,
-        field: usize,
-    ) -> InterpResult<'tcx, PlaceTy<'tcx, M::Provenance>> {
-        let (offset, meta, field_layout) =
-            self.project_field(base.layout, self.place_meta(base)?, field)?;
-        base.offset_with_meta(offset, meta, field_layout, self)
-    }
-
-    pub fn operand_field(
-        &self,
-        base: &OpTy<'tcx, M::Provenance>,
-        field: usize,
-    ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
-        let (offset, meta, field_layout) = self.project_field(base.layout, base.meta()?, field)?;
-        base.offset_with_meta(offset, meta, field_layout, self)
-    }
-
-    //# Downcasting
-
-    pub fn mplace_downcast(
-        &self,
-        base: &MPlaceTy<'tcx, M::Provenance>,
+        base: &P,
         variant: VariantIdx,
-    ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {
+    ) -> InterpResult<'tcx, P> {
+        assert!(!base.meta(self)?.has_meta());
         // Downcasts only change the layout.
         // (In particular, no check about whether this is even the active variant -- that's by design,
         // see https://github.com/rust-lang/rust/issues/93688#issuecomment-1032929496.)
-        assert!(!base.meta.has_meta());
-        let mut base = *base;
-        base.layout = base.layout.for_variant(self, variant);
-        Ok(base)
+        // So we just "offset" by 0.
+        let layout = base.layout().for_variant(self, variant);
+        if layout.abi.is_uninhabited() {
+            // `read_discriminant` should have excluded uninhabited variants... but ConstProp calls
+            // us on dead code.
+            throw_inval!(ConstPropNonsense)
+        }
+        // This cannot be `transmute` as variants *can* have a smaller size than the entire enum.
+        base.offset(Size::ZERO, layout, self)
     }
-
-    pub fn place_downcast(
-        &self,
-        base: &PlaceTy<'tcx, M::Provenance>,
-        variant: VariantIdx,
-    ) -> InterpResult<'tcx, PlaceTy<'tcx, M::Provenance>> {
-        // Downcast just changes the layout
-        let mut base = base.clone();
-        base.layout = base.layout.for_variant(self, variant);
-        Ok(base)
-    }
-
-    pub fn operand_downcast(
-        &self,
-        base: &OpTy<'tcx, M::Provenance>,
-        variant: VariantIdx,
-    ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
-        // Downcast just changes the layout
-        let mut base = base.clone();
-        base.layout = base.layout.for_variant(self, variant);
-        Ok(base)
-    }
-
-    //# Slice and array indexing
 
     /// Compute the offset and field layout for accessing the given index.
-    fn project_index(
+    pub fn project_index<P: Projectable<'mir, 'tcx, M::Provenance>>(
         &self,
-        base_layout: TyAndLayout<'tcx>,
-        base_meta: MemPlaceMeta<M::Provenance>,
+        base: &P,
         index: u64,
-    ) -> InterpResult<'tcx, (Size, TyAndLayout<'tcx>)> {
+    ) -> InterpResult<'tcx, P> {
         // Not using the layout method because we want to compute on u64
-        match base_layout.fields {
+        let (offset, field_layout) = match base.layout().fields {
             abi::FieldsShape::Array { stride, count: _ } => {
                 // `count` is nonsense for slices, use the dynamic length instead.
-                let len = base_meta.len(base_layout, self)?;
+                let len = base.len(self)?;
                 if index >= len {
                     // This can only be reached in ConstProp and non-rustc-MIR.
                     throw_ub!(BoundsCheckFailed { len, index });
                 }
                 let offset = stride * index; // `Size` multiplication
                 // All fields have the same layout.
-                let field_layout = base_layout.field(self, 0);
-                Ok((offset, field_layout))
+                let field_layout = base.layout().field(self, 0);
+                (offset, field_layout)
             }
             _ => span_bug!(
                 self.cur_span(),
                 "`mplace_index` called on non-array type {:?}",
-                base_layout.ty
+                base.layout().ty
             ),
-        }
-    }
-
-    #[inline(always)]
-    pub fn operand_index(
-        &self,
-        base: &OpTy<'tcx, M::Provenance>,
-        index: u64,
-    ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
-        let (offset, field_layout) = self.project_index(base.layout, base.meta()?, index)?;
-        base.offset(offset, field_layout, self)
-    }
-
-    /// Index into an array.
-    pub fn mplace_index(
-        &self,
-        base: &MPlaceTy<'tcx, M::Provenance>,
-        index: u64,
-    ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {
-        let (offset, field_layout) = self.project_index(base.layout, base.meta, index)?;
-        base.offset(offset, field_layout, self)
-    }
-
-    pub fn place_index(
-        &self,
-        base: &PlaceTy<'tcx, M::Provenance>,
-        index: u64,
-    ) -> InterpResult<'tcx, PlaceTy<'tcx, M::Provenance>> {
-        let (offset, field_layout) =
-            self.project_index(base.layout, self.place_meta(base)?, index)?;
-        base.offset(offset, field_layout, self)
-    }
-
-    /// Iterates over all fields of an array. Much more efficient than doing the
-    /// same by repeatedly calling `operand_index`.
-    pub fn operand_array_fields<'a>(
-        &self,
-        base: &'a OpTy<'tcx, Prov>,
-    ) -> InterpResult<'tcx, impl Iterator<Item = InterpResult<'tcx, OpTy<'tcx, Prov>>> + 'a> {
-        let abi::FieldsShape::Array { stride, .. } = base.layout.fields else {
-            span_bug!(self.cur_span(), "operand_array_fields: expected an array layout");
         };
-        let len = base.len(self)?;
-        let field_layout = base.layout.field(self, 0);
-        let dl = &self.tcx.data_layout;
-        // `Size` multiplication
-        Ok((0..len).map(move |i| base.offset(stride * i, field_layout, dl)))
+
+        base.offset(offset, field_layout, self)
     }
 
-    /// Iterates over all fields of an array. Much more efficient than doing the
-    /// same by repeatedly calling `place_index`.
-    pub fn place_array_fields<'a>(
+    fn project_constant_index<P: Projectable<'mir, 'tcx, M::Provenance>>(
         &self,
-        base: &'a PlaceTy<'tcx, Prov>,
-    ) -> InterpResult<'tcx, impl Iterator<Item = InterpResult<'tcx, PlaceTy<'tcx, Prov>>> + 'a> {
-        let abi::FieldsShape::Array { stride, .. } = base.layout.fields else {
-            span_bug!(self.cur_span(), "place_array_fields: expected an array layout");
-        };
-        let len = self.place_meta(base)?.len(base.layout, self)?;
-        let field_layout = base.layout.field(self, 0);
-        let dl = &self.tcx.data_layout;
-        // `Size` multiplication
-        Ok((0..len).map(move |i| base.offset(stride * i, field_layout, dl)))
-    }
-
-    //# ConstantIndex support
-
-    fn project_constant_index(
-        &self,
-        base_layout: TyAndLayout<'tcx>,
-        base_meta: MemPlaceMeta<M::Provenance>,
+        base: &P,
         offset: u64,
         min_length: u64,
         from_end: bool,
-    ) -> InterpResult<'tcx, (Size, TyAndLayout<'tcx>)> {
-        let n = base_meta.len(base_layout, self)?;
+    ) -> InterpResult<'tcx, P> {
+        let n = base.len(self)?;
         if n < min_length {
             // This can only be reached in ConstProp and non-rustc-MIR.
             throw_ub!(BoundsCheckFailed { len: min_length, index: n });
@@ -256,49 +199,39 @@ where
             offset
         };
 
-        self.project_index(base_layout, base_meta, index)
+        self.project_index(base, index)
     }
 
-    fn operand_constant_index(
+    /// Iterates over all fields of an array. Much more efficient than doing the
+    /// same by repeatedly calling `operand_index`.
+    pub fn project_array_fields<'a, P: Projectable<'mir, 'tcx, M::Provenance>>(
         &self,
-        base: &OpTy<'tcx, M::Provenance>,
-        offset: u64,
-        min_length: u64,
-        from_end: bool,
-    ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
-        let (offset, layout) =
-            self.project_constant_index(base.layout, base.meta()?, offset, min_length, from_end)?;
-        base.offset(offset, layout, self)
+        base: &'a P,
+    ) -> InterpResult<'tcx, impl Iterator<Item = InterpResult<'tcx, P>> + 'a>
+    where
+        'tcx: 'a,
+    {
+        let abi::FieldsShape::Array { stride, .. } = base.layout().fields else {
+            span_bug!(self.cur_span(), "operand_array_fields: expected an array layout");
+        };
+        let len = base.len(self)?;
+        let field_layout = base.layout().field(self, 0);
+        let tcx: TyCtxt<'tcx> = *self.tcx;
+        // `Size` multiplication
+        Ok((0..len).map(move |i| {
+            base.offset_with_meta(stride * i, MemPlaceMeta::None, field_layout, &tcx)
+        }))
     }
 
-    fn place_constant_index(
+    /// Subslicing
+    fn project_subslice<P: Projectable<'mir, 'tcx, M::Provenance>>(
         &self,
-        base: &PlaceTy<'tcx, M::Provenance>,
-        offset: u64,
-        min_length: u64,
-        from_end: bool,
-    ) -> InterpResult<'tcx, PlaceTy<'tcx, M::Provenance>> {
-        let (offset, layout) = self.project_constant_index(
-            base.layout,
-            self.place_meta(base)?,
-            offset,
-            min_length,
-            from_end,
-        )?;
-        base.offset(offset, layout, self)
-    }
-
-    //# Subslicing
-
-    fn project_subslice(
-        &self,
-        base_layout: TyAndLayout<'tcx>,
-        base_meta: MemPlaceMeta<M::Provenance>,
+        base: &P,
         from: u64,
         to: u64,
         from_end: bool,
-    ) -> InterpResult<'tcx, (Size, MemPlaceMeta<M::Provenance>, TyAndLayout<'tcx>)> {
-        let len = base_meta.len(base_layout, self)?; // also asserts that we have a type where this makes sense
+    ) -> InterpResult<'tcx, P> {
+        let len = base.len(self)?; // also asserts that we have a type where this makes sense
         let actual_to = if from_end {
             if from.checked_add(to).map_or(true, |to| to > len) {
                 // This can only be reached in ConstProp and non-rustc-MIR.
@@ -311,16 +244,20 @@ where
 
         // Not using layout method because that works with usize, and does not work with slices
         // (that have count 0 in their layout).
-        let from_offset = match base_layout.fields {
+        let from_offset = match base.layout().fields {
             abi::FieldsShape::Array { stride, .. } => stride * from, // `Size` multiplication is checked
             _ => {
-                span_bug!(self.cur_span(), "unexpected layout of index access: {:#?}", base_layout)
+                span_bug!(
+                    self.cur_span(),
+                    "unexpected layout of index access: {:#?}",
+                    base.layout()
+                )
             }
         };
 
         // Compute meta and new layout
         let inner_len = actual_to.checked_sub(from).unwrap();
-        let (meta, ty) = match base_layout.ty.kind() {
+        let (meta, ty) = match base.layout().ty.kind() {
             // It is not nice to match on the type, but that seems to be the only way to
             // implement this.
             ty::Array(inner, _) => {
@@ -328,98 +265,45 @@ where
             }
             ty::Slice(..) => {
                 let len = Scalar::from_target_usize(inner_len, self);
-                (MemPlaceMeta::Meta(len), base_layout.ty)
+                (MemPlaceMeta::Meta(len), base.layout().ty)
             }
             _ => {
-                span_bug!(self.cur_span(), "cannot subslice non-array type: `{:?}`", base_layout.ty)
+                span_bug!(
+                    self.cur_span(),
+                    "cannot subslice non-array type: `{:?}`",
+                    base.layout().ty
+                )
             }
         };
         let layout = self.layout_of(ty)?;
-        Ok((from_offset, meta, layout))
-    }
 
-    fn operand_subslice(
-        &self,
-        base: &OpTy<'tcx, M::Provenance>,
-        from: u64,
-        to: u64,
-        from_end: bool,
-    ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
-        let (from_offset, meta, layout) =
-            self.project_subslice(base.layout, base.meta()?, from, to, from_end)?;
         base.offset_with_meta(from_offset, meta, layout, self)
     }
 
-    pub fn place_subslice(
-        &self,
-        base: &PlaceTy<'tcx, M::Provenance>,
-        from: u64,
-        to: u64,
-        from_end: bool,
-    ) -> InterpResult<'tcx, PlaceTy<'tcx, M::Provenance>> {
-        let (from_offset, meta, layout) =
-            self.project_subslice(base.layout, self.place_meta(base)?, from, to, from_end)?;
-        base.offset_with_meta(from_offset, meta, layout, self)
-    }
-
-    //# Applying a general projection
-
-    /// Projects into a place.
+    /// Applying a general projection
     #[instrument(skip(self), level = "trace")]
-    pub fn place_projection(
-        &self,
-        base: &PlaceTy<'tcx, M::Provenance>,
-        proj_elem: mir::PlaceElem<'tcx>,
-    ) -> InterpResult<'tcx, PlaceTy<'tcx, M::Provenance>> {
+    pub fn project<P>(&self, base: &P, proj_elem: mir::PlaceElem<'tcx>) -> InterpResult<'tcx, P>
+    where
+        P: Projectable<'mir, 'tcx, M::Provenance>
+            + From<MPlaceTy<'tcx, M::Provenance>>
+            + std::fmt::Debug,
+    {
         use rustc_middle::mir::ProjectionElem::*;
         Ok(match proj_elem {
-            OpaqueCast(ty) => {
-                let mut place = base.clone();
-                place.layout = self.layout_of(ty)?;
-                place
-            }
-            Field(field, _) => self.place_field(base, field.index())?,
-            Downcast(_, variant) => self.place_downcast(base, variant)?,
-            Deref => self.deref_operand(&self.place_to_op(base)?)?.into(),
+            OpaqueCast(ty) => base.transmute(self.layout_of(ty)?, self)?,
+            Field(field, _) => self.project_field(base, field.index())?,
+            Downcast(_, variant) => self.project_downcast(base, variant)?,
+            Deref => self.deref_operand(&base.to_op(self)?)?.into(),
             Index(local) => {
                 let layout = self.layout_of(self.tcx.types.usize)?;
                 let n = self.local_to_op(self.frame(), local, Some(layout))?;
                 let n = self.read_target_usize(&n)?;
-                self.place_index(base, n)?
+                self.project_index(base, n)?
             }
             ConstantIndex { offset, min_length, from_end } => {
-                self.place_constant_index(base, offset, min_length, from_end)?
+                self.project_constant_index(base, offset, min_length, from_end)?
             }
-            Subslice { from, to, from_end } => self.place_subslice(base, from, to, from_end)?,
-        })
-    }
-
-    #[instrument(skip(self), level = "trace")]
-    pub fn operand_projection(
-        &self,
-        base: &OpTy<'tcx, M::Provenance>,
-        proj_elem: mir::PlaceElem<'tcx>,
-    ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
-        use rustc_middle::mir::ProjectionElem::*;
-        Ok(match proj_elem {
-            OpaqueCast(ty) => {
-                let mut op = base.clone();
-                op.layout = self.layout_of(ty)?;
-                op
-            }
-            Field(field, _) => self.operand_field(base, field.index())?,
-            Downcast(_, variant) => self.operand_downcast(base, variant)?,
-            Deref => self.deref_operand(base)?.into(),
-            Index(local) => {
-                let layout = self.layout_of(self.tcx.types.usize)?;
-                let n = self.local_to_op(self.frame(), local, Some(layout))?;
-                let n = self.read_target_usize(&n)?;
-                self.operand_index(base, n)?
-            }
-            ConstantIndex { offset, min_length, from_end } => {
-                self.operand_constant_index(base, offset, min_length, from_end)?
-            }
-            Subslice { from, to, from_end } => self.operand_subslice(base, from, to, from_end)?,
+            Subslice { from, to, from_end } => self.project_subslice(base, from, to, from_end)?,
         })
     }
 }
