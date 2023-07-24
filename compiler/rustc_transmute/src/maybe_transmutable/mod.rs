@@ -79,7 +79,7 @@ mod rustc {
 
             match (src, dst) {
                 (Err(Err::TypeError(guar)), _) | (_, Err(Err::TypeError(guar))) => {
-                    Answer::No(Reason::TypeError(guar))
+                    Answer::No(Reason::ErrorGuaranteed(guar))
                 }
                 (Err(Err::UnknownLayout), _) => Answer::No(Reason::SrcLayoutUnknown),
                 (_, Err(Err::UnknownLayout)) => Answer::No(Reason::DstLayoutUnknown),

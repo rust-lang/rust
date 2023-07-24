@@ -59,7 +59,7 @@ pub enum Reason {
     /// Can't go from shared pointer to unique pointer
     DstIsMoreUnique,
     /// Encountered a type error
-    TypeError(ErrorGuaranteed),
+    ErrorGuaranteed(ErrorGuaranteed),
     /// The layout of src is unknown
     SrcLayoutUnknown,
     /// The layout of dst is unknown
@@ -124,17 +124,20 @@ mod rustc {
             tcx: TyCtxt<'tcx>,
             param_env: ParamEnv<'tcx>,
             c: Const<'tcx>,
-        ) -> Option<Result<Self, ErrorGuaranteed>> {
+        ) -> Result<Option<Self>, ErrorGuaranteed> {
             use rustc_middle::ty::ScalarInt;
             use rustc_middle::ty::TypeVisitableExt;
             use rustc_span::symbol::sym;
 
             let c = c.eval(tcx, param_env);
             if let Err(err) = c.error_reported() {
-                return Some(Err(err));
+                return Err(err);
             }
 
-            let adt_def = c.ty().ty_adt_def()?;
+            let adt_def = match c.ty().ty_adt_def() {
+                Some(adt_def) => adt_def,
+                None => return Ok(None),
+            };
 
             assert_eq!(
                 tcx.require_lang_item(LangItem::TransmuteOpts, None),
@@ -146,7 +149,7 @@ mod rustc {
             let variant = adt_def.non_enum_variant();
             let fields = match c.try_to_valtree() {
                 Some(ValTree::Branch(branch)) => branch,
-                _ => return None,
+                _ => return Ok(None),
             };
 
             let get_field = |name| {
@@ -159,7 +162,7 @@ mod rustc {
                 fields[field_idx].unwrap_leaf() == ScalarInt::TRUE
             };
 
-            Some(Ok(Self {
+            Ok(Some(Self {
                 alignment: get_field(sym::alignment),
                 lifetimes: get_field(sym::lifetimes),
                 safety: get_field(sym::safety),
@@ -169,6 +172,9 @@ mod rustc {
     }
 }
 
+// FIXME(bryangarza): This prevents `cargo build` from building.
+// Need to remove this dependency on `ErrorGuaranteed` so the crate can
+// build/test independently of rustc again.
 #[cfg(feature = "rustc")]
 pub use rustc::*;
 use rustc_span::ErrorGuaranteed;

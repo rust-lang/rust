@@ -2897,9 +2897,9 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         );
 
         let assume = match maybe_assume {
-            Some(Ok(assume)) => assume,
-            Some(Err(guar)) => return GetSafeTransmuteErrorAndReason::ErrorGuaranteed(guar),
-            None => return GetSafeTransmuteErrorAndReason::Ambiguous,
+            Ok(Some(assume)) => assume,
+            Ok(None) => return GetSafeTransmuteErrorAndReason::Ambiguous,
+            Err(guar) => return GetSafeTransmuteErrorAndReason::ErrorGuaranteed(guar),
         };
 
         match rustc_transmute::TransmuteTypeEnv::new(self.infcx).is_transmutable(
@@ -2945,7 +2945,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         format!("`{src}` is a shared reference, but `{dst}` is a unique reference")
                     }
                     // Already reported by rustc
-                    rustc_transmute::Reason::TypeError(guar) => {
+                    rustc_transmute::Reason::ErrorGuaranteed(guar) => {
                         return GetSafeTransmuteErrorAndReason::ErrorGuaranteed(guar);
                     }
                     rustc_transmute::Reason::SrcLayoutUnknown => {

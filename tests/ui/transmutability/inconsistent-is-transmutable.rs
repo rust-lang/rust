@@ -1,6 +1,7 @@
 // check-fail
 // revisions: current next
 //[next] compile-flags: -Ztrait-solver=next
+// https://github.com/rust-lang/rust/issues/110969
 #![feature(adt_const_params, generic_const_exprs, transmutability)]
 #![allow(incomplete_features)]
 

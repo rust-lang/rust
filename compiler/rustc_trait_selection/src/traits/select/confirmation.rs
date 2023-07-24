@@ -340,12 +340,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let predicate =
             self.tcx().erase_regions(self.tcx().erase_late_bound_regions(obligation.predicate));
 
-        let Some(Ok(assume)) = rustc_transmute::Assume::from_const(
+        let assume = match rustc_transmute::Assume::from_const(
             self.infcx.tcx,
             obligation.param_env,
             predicate.trait_ref.args.const_at(3),
-        ) else {
-            return Err(Unimplemented);
+        ) {
+            Ok(Some(assume)) => assume,
+            Ok(None) => return Ok(vec![]),
+            Err(_guar) => return Err(Unimplemented),
         };
 
         let dst = predicate.trait_ref.args.type_at(0);

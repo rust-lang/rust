@@ -602,9 +602,11 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         let maybe_assume =
             rustc_transmute::Assume::from_const(ecx.tcx(), goal.param_env, args.const_at(3));
         let assume = match maybe_assume {
-            Some(Ok(assume)) => assume,
-            Some(Err(_guar)) => return Err(NoSolution),
-            None => return Err(NoSolution),
+            Ok(Some(assume)) => assume,
+            Ok(None) => {
+                return ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS);
+            }
+            Err(_guar) => return Err(NoSolution),
         };
 
         let certainty = ecx.is_transmutable(
