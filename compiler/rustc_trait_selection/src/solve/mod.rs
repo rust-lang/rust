@@ -3,7 +3,7 @@
 //! As a user of rust, you can use `-Ztrait-solver=next` or `next-coherence`
 //! to enable the new trait solver always, or just within coherence, respectively.
 //!
-//! As a developer of rustc, you probably shouldn't be using the new trait
+//! As a developer of rustc, you shouldn't be using the new trait
 //! solver without asking the trait-system-refactor-initiative, but it can
 //! be enabled with `InferCtxtBuilder::with_next_trait_solver`. This will
 //! ensure that trait solving using that inference context will be routed

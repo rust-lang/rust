@@ -1,5 +1,6 @@
-//! Implements the `AliasRelate` goal, which is used to unify two aliases in the
-//! new solver, which uses "lazy normalization".
+//! Implements the `AliasRelate` goal, which is used when unifying aliases.
+//! Doing this via a separate goal is called "deferred alias relation" and part
+//! of our more general approach to "lazy normalization".
 //!
 //! This goal, e.g. `A alias-relate B`, may be satisfied by one of three branches:
 //! * normalizes-to: If `A` is a projection, we can prove the equivalent
