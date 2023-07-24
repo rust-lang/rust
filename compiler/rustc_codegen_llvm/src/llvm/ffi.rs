@@ -1704,6 +1704,8 @@ extern "C" {
     pub fn LLVMRustCoverageWriteFilenamesSectionToBuffer(
         Filenames: *const *const c_char,
         FilenamesLen: size_t,
+        Lengths: *const size_t,
+        LengthsLen: size_t,
         BufferOut: &RustString,
     );
 

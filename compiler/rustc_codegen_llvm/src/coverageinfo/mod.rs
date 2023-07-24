@@ -339,14 +339,20 @@ fn create_pgo_func_name_var<'ll, 'tcx>(
 }
 
 pub(crate) fn write_filenames_section_to_buffer<'a>(
-    filenames: impl IntoIterator<Item = &'a CString>,
+    filenames: impl IntoIterator<Item = &'a str>,
     buffer: &RustString,
 ) {
-    let c_str_vec = filenames.into_iter().map(|cstring| cstring.as_ptr()).collect::<Vec<_>>();
+    let (pointers, lengths) = filenames
+        .into_iter()
+        .map(|s: &str| (s.as_ptr().cast(), s.len()))
+        .unzip::<_, _, Vec<_>, Vec<_>>();
+
     unsafe {
         llvm::LLVMRustCoverageWriteFilenamesSectionToBuffer(
-            c_str_vec.as_ptr(),
-            c_str_vec.len(),
+            pointers.as_ptr(),
+            pointers.len(),
+            lengths.as_ptr(),
+            lengths.len(),
             buffer,
         );
     }
