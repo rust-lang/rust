@@ -84,7 +84,7 @@ pub fn expand_env<'cx>(
             // Use the string literal in the code in the diagnostic to avoid confusing diagnostics,
             // e.g. when the literal contains escape sequences.
             let ast::ExprKind::Lit(ast::token::Lit {
-                kind: ast::token::LitKind::Str,
+                kind: ast::token::LitKind::Str | ast::token::LitKind::StrRaw(..),
                 symbol: original_var,
                 ..
             }) = &var_expr.kind
