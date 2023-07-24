@@ -100,9 +100,11 @@ pub fn finalize(cx: &CodegenCx<'_, '_>) {
     // Generate the LLVM IR representation of the coverage map and store it in a well-known global
     let cov_data_val = mapgen.generate_coverage_map(cx, version, filenames_size, filenames_val);
 
+    let covfun_section_name = coverageinfo::covfun_section_name(cx);
     for (mangled_function_name, source_hash, is_used, coverage_mapping_buffer) in function_data {
         save_function_record(
             cx,
+            &covfun_section_name,
             mangled_function_name,
             source_hash,
             filenames_ref,
@@ -228,6 +230,7 @@ impl CoverageMapGenerator {
 /// specific, well-known section and name.
 fn save_function_record(
     cx: &CodegenCx<'_, '_>,
+    covfun_section_name: &str,
     mangled_function_name: &str,
     source_hash: u64,
     filenames_ref: u64,
@@ -254,7 +257,13 @@ fn save_function_record(
         /*packed=*/ true,
     );
 
-    coverageinfo::save_func_record_to_mod(cx, func_name_hash, func_record_val, is_used);
+    coverageinfo::save_func_record_to_mod(
+        cx,
+        covfun_section_name,
+        func_name_hash,
+        func_record_val,
+        is_used,
+    );
 }
 
 /// When finalizing the coverage map, `FunctionCoverage` only has the `CodeRegion`s and counters for
