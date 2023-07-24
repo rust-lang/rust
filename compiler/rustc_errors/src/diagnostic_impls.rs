@@ -102,7 +102,7 @@ impl IntoDiagnosticArg for bool {
 
 impl IntoDiagnosticArg for char {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
-        DiagnosticArgValue::Str(Cow::Owned(format!("{:?}", self)))
+        DiagnosticArgValue::Str(Cow::Owned(format!("{self:?}")))
     }
 }
 
