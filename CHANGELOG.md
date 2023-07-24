@@ -5097,6 +5097,7 @@ Released 2018-09-13
 [`needless_raw_string_hashes`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_raw_string_hashes
 [`needless_raw_strings`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_raw_strings
 [`needless_return`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_return
+[`needless_return_with_question_mark`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_return_with_question_mark
 [`needless_splitn`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_splitn
 [`needless_update`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_update
 [`neg_cmp_op_on_partial_ord`]: https://rust-lang.github.io/rust-clippy/master/index.html#neg_cmp_op_on_partial_ord
