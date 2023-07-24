@@ -199,6 +199,14 @@ pub struct InvalidCharacterInCrateName {
     pub span: Option<Span>,
     pub character: char,
     pub crate_name: Symbol,
+    #[subdiagnostic]
+    pub crate_name_help: Option<InvalidCrateNameHelp>,
+}
+
+#[derive(Subdiagnostic)]
+pub enum InvalidCrateNameHelp {
+    #[help(session_invalid_character_in_create_name_help)]
+    AddCrateName,
 }
 
 #[derive(Subdiagnostic)]
