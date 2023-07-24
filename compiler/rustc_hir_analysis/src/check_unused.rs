@@ -10,6 +10,10 @@ pub fn provide(providers: &mut Providers) {
 }
 
 fn check_unused_traits(tcx: TyCtxt<'_>, (): ()) {
+    if tcx.sess.opts.lint_cap.is_some_and(|cap| cap == rustc_session::lint::Allow) {
+        return;
+    }
+
     let mut used_trait_imports = UnordSet::<LocalDefId>::default();
 
     // FIXME: Use `tcx.hir().par_body_owners()` when we implement creating `DefId`s

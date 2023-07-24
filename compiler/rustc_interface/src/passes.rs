@@ -130,6 +130,10 @@ fn pre_expansion_lint<'a>(
     check_node: impl EarlyCheckNode<'a>,
     node_name: Symbol,
 ) {
+    if sess.opts.lint_cap.is_some_and(|cap| cap == rustc_session::lint::Allow) {
+        return;
+    }
+
     sess.prof.generic_activity_with_arg("pre_AST_expansion_lint_checks", node_name.as_str()).run(
         || {
             rustc_lint::check_ast_node(
@@ -329,6 +333,10 @@ fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
     sess.time("complete_gated_feature_checking", || {
         rustc_ast_passes::feature_gate::check_crate(&krate, sess);
     });
+
+    if sess.opts.lint_cap.is_some_and(|cap| cap == rustc_session::lint::Allow) {
+        return;
+    }
 
     // Add all buffered lints from the `ParseSess` to the `Session`.
     sess.parse_sess.buffered_lints.with_lock(|buffered_lints| {
@@ -841,8 +849,16 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
                         tcx.ensure().check_private_in_public(());
                     },
                     {
-                        tcx.hir()
-                            .par_for_each_module(|module| tcx.ensure().check_mod_deathness(module));
+                        if !tcx
+                            .sess
+                            .opts
+                            .lint_cap
+                            .is_some_and(|cap| cap == rustc_session::lint::Allow)
+                        {
+                            tcx.hir().par_for_each_module(|module| {
+                                tcx.ensure().check_mod_deathness(module)
+                            });
+                        }
                     },
                     {
                         sess.time("lint_checking", || {

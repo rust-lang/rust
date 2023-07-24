@@ -436,6 +436,10 @@ pub fn check_crate<'tcx, T: LateLintPass<'tcx> + 'tcx>(
     tcx: TyCtxt<'tcx>,
     builtin_lints: impl FnOnce() -> T + Send + DynSend,
 ) {
+    if tcx.sess.opts.lint_cap.is_some_and(|cap| cap == rustc_session::lint::Allow) {
+        return;
+    }
+
     join(
         || {
             tcx.sess.time("crate_lints", || {
