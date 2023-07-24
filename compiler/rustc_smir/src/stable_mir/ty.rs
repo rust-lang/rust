@@ -38,6 +38,7 @@ pub enum RigidTy {
     FnPtr(PolyFnSig),
     Closure(ClosureDef, GenericArgs),
     Generator(GeneratorDef, GenericArgs, Movability),
+    Dynamic(Vec<Binder<ExistentialPredicate>>, Region, DynKind),
     Never,
     Tuple(Vec<Ty>),
 }
@@ -98,12 +99,21 @@ pub struct AdtDef(pub(crate) DefId);
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct AliasDef(pub(crate) DefId);
 
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct TraitDef(pub(crate) DefId);
+
 #[derive(Clone, Debug)]
 pub struct GenericArgs(pub Vec<GenericArgKind>);
 
 #[derive(Clone, Debug)]
 pub enum GenericArgKind {
     Lifetime(Region),
+    Type(Ty),
+    Const(Const),
+}
+
+#[derive(Clone, Debug)]
+pub enum TermKind {
     Type(Ty),
     Const(Const),
 }
@@ -191,4 +201,30 @@ pub enum BoundRegionKind {
     BrAnon(Option<Span>),
     BrNamed(BrNamedDef, String),
     BrEnv,
+}
+
+#[derive(Clone, Debug)]
+pub enum DynKind {
+    Dyn,
+    DynStar,
+}
+
+#[derive(Clone, Debug)]
+pub enum ExistentialPredicate {
+    Trait(ExistentialTraitRef),
+    Projection(ExistentialProjection),
+    AutoTrait(TraitDef),
+}
+
+#[derive(Clone, Debug)]
+pub struct ExistentialTraitRef {
+    pub def_id: TraitDef,
+    pub generic_args: GenericArgs,
+}
+
+#[derive(Clone, Debug)]
+pub struct ExistentialProjection {
+    pub def_id: TraitDef,
+    pub generic_args: GenericArgs,
+    pub term: TermKind,
 }

@@ -258,6 +258,72 @@ impl<'tcx> Stable<'tcx> for ty::AliasTy<'tcx> {
     }
 }
 
+impl<'tcx> Stable<'tcx> for ty::DynKind {
+    type T = stable_mir::ty::DynKind;
+
+    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
+        use ty::DynKind;
+        match self {
+            DynKind::Dyn => stable_mir::ty::DynKind::Dyn,
+            DynKind::DynStar => stable_mir::ty::DynKind::DynStar,
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for ty::ExistentialPredicate<'tcx> {
+    type T = stable_mir::ty::ExistentialPredicate;
+
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        use stable_mir::ty::ExistentialPredicate::*;
+        match self {
+            ty::ExistentialPredicate::Trait(existential_trait_ref) => {
+                Trait(existential_trait_ref.stable(tables))
+            }
+            ty::ExistentialPredicate::Projection(existential_projection) => {
+                Projection(existential_projection.stable(tables))
+            }
+            ty::ExistentialPredicate::AutoTrait(def_id) => AutoTrait(tables.trait_def(*def_id)),
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for ty::ExistentialTraitRef<'tcx> {
+    type T = stable_mir::ty::ExistentialTraitRef;
+
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        let ty::ExistentialTraitRef { def_id, args } = self;
+        stable_mir::ty::ExistentialTraitRef {
+            def_id: tables.trait_def(*def_id),
+            generic_args: args.stable(tables),
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for ty::TermKind<'tcx> {
+    type T = stable_mir::ty::TermKind;
+
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        use stable_mir::ty::TermKind;
+        match self {
+            ty::TermKind::Ty(ty) => TermKind::Type(tables.intern_ty(*ty)),
+            ty::TermKind::Const(const_) => TermKind::Const(opaque(const_)),
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for ty::ExistentialProjection<'tcx> {
+    type T = stable_mir::ty::ExistentialProjection;
+
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        let ty::ExistentialProjection { def_id, args, term } = self;
+        stable_mir::ty::ExistentialProjection {
+            def_id: tables.trait_def(*def_id),
+            generic_args: args.stable(tables),
+            term: term.unpack().stable(tables),
+        }
+    }
+}
+
 impl<'tcx> Stable<'tcx> for ty::adjustment::PointerCoercion {
     type T = stable_mir::mir::PointerCoercion;
     fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
@@ -525,13 +591,17 @@ impl<'tcx> Stable<'tcx> for ty::GenericArgs<'tcx> {
     }
 }
 
-impl<'tcx> Stable<'tcx> for ty::PolyFnSig<'tcx> {
-    type T = stable_mir::ty::PolyFnSig;
+impl<'tcx, S, V> Stable<'tcx> for ty::Binder<'tcx, S>
+where
+    S: Stable<'tcx, T = V>,
+{
+    type T = stable_mir::ty::Binder<V>;
+
     fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
         use stable_mir::ty::Binder;
 
         Binder {
-            value: self.skip_binder().stable(tables),
+            value: self.as_ref().skip_binder().stable(tables),
             bound_vars: self
                 .bound_vars()
                 .iter()
@@ -671,7 +741,16 @@ impl<'tcx> Stable<'tcx> for Ty<'tcx> {
                 generic_args.stable(tables),
             )),
             ty::FnPtr(poly_fn_sig) => TyKind::RigidTy(RigidTy::FnPtr(poly_fn_sig.stable(tables))),
-            ty::Dynamic(_, _, _) => todo!(),
+            ty::Dynamic(existential_predicates, region, dyn_kind) => {
+                TyKind::RigidTy(RigidTy::Dynamic(
+                    existential_predicates
+                        .iter()
+                        .map(|existential_predicate| existential_predicate.stable(tables))
+                        .collect(),
+                    opaque(region),
+                    dyn_kind.stable(tables),
+                ))
+            }
             ty::Closure(def_id, generic_args) => TyKind::RigidTy(RigidTy::Closure(
                 rustc_internal::closure_def(*def_id),
                 generic_args.stable(tables),
