@@ -1,6 +1,5 @@
 //! Compute the binary representation of a type
 
-use base_db::CrateId;
 use chalk_ir::{AdtId, FloatTy, IntTy, TyKind, UintTy};
 use hir_def::{
     layout::{
@@ -61,7 +60,6 @@ pub enum LayoutError {
 }
 
 struct LayoutCx<'a> {
-    krate: CrateId,
     target: &'a TargetDataLayout,
 }
 
@@ -82,7 +80,7 @@ fn layout_of_simd_ty(
     db: &dyn HirDatabase,
     id: StructId,
     subst: &Substitution,
-    krate: CrateId,
+    env: Arc<TraitEnvironment>,
     dl: &TargetDataLayout,
 ) -> Result<Arc<Layout>, LayoutError> {
     let fields = db.field_types(id.into());
@@ -111,7 +109,7 @@ fn layout_of_simd_ty(
     // * the homogeneous field type and the number of fields.
     let (e_ty, e_len, is_array) = if let TyKind::Array(e_ty, _) = f0_ty.kind(Interner) {
         // Extract the number of elements from the layout of the array field:
-        let FieldsShape::Array { count, .. } = db.layout_of_ty(f0_ty.clone(), krate)?.fields else {
+        let FieldsShape::Array { count, .. } = db.layout_of_ty(f0_ty.clone(), env.clone())?.fields else {
             user_error!("Array with non array layout");
         };
 
@@ -122,7 +120,7 @@ fn layout_of_simd_ty(
     };
 
     // Compute the ABI of the element type:
-    let e_ly = db.layout_of_ty(e_ty, krate)?;
+    let e_ly = db.layout_of_ty(e_ty, env.clone())?;
     let Abi::Scalar(e_abi) = e_ly.abi else {
         user_error!("simd type with inner non scalar type");
     };
@@ -152,25 +150,25 @@ fn layout_of_simd_ty(
 pub fn layout_of_ty_query(
     db: &dyn HirDatabase,
     ty: Ty,
-    krate: CrateId,
+    trait_env: Arc<TraitEnvironment>,
 ) -> Result<Arc<Layout>, LayoutError> {
+    let krate = trait_env.krate;
     let Some(target) = db.target_data_layout(krate) else {
         return Err(LayoutError::TargetLayoutNotAvailable);
     };
-    let cx = LayoutCx { krate, target: &target };
+    let cx = LayoutCx { target: &target };
     let dl = &*cx.current_data_layout();
-    let trait_env = Arc::new(TraitEnvironment::empty(krate));
-    let ty = normalize(db, trait_env, ty.clone());
+    let ty = normalize(db, trait_env.clone(), ty.clone());
     let result = match ty.kind(Interner) {
         TyKind::Adt(AdtId(def), subst) => {
             if let hir_def::AdtId::StructId(s) = def {
                 let data = db.struct_data(*s);
                 let repr = data.repr.unwrap_or_default();
                 if repr.simd() {
-                    return layout_of_simd_ty(db, *s, subst, krate, &target);
+                    return layout_of_simd_ty(db, *s, subst, trait_env.clone(), &target);
                 }
             };
-            return db.layout_of_adt(*def, subst.clone(), krate);
+            return db.layout_of_adt(*def, subst.clone(), trait_env.clone());
         }
         TyKind::Scalar(s) => match s {
             chalk_ir::Scalar::Bool => Layout::scalar(
@@ -228,7 +226,7 @@ pub fn layout_of_ty_query(
 
             let fields = tys
                 .iter(Interner)
-                .map(|k| db.layout_of_ty(k.assert_ty_ref(Interner).clone(), krate))
+                .map(|k| db.layout_of_ty(k.assert_ty_ref(Interner).clone(), trait_env.clone()))
                 .collect::<Result<Vec<_>, _>>()?;
             let fields = fields.iter().map(|it| &**it).collect::<Vec<_>>();
             let fields = fields.iter().collect::<Vec<_>>();
@@ -238,7 +236,7 @@ pub fn layout_of_ty_query(
             let count = try_const_usize(db, &count).ok_or(LayoutError::UserError(
                 "unevaluated or mistyped const generic parameter".to_string(),
             ))? as u64;
-            let element = db.layout_of_ty(element.clone(), krate)?;
+            let element = db.layout_of_ty(element.clone(), trait_env.clone())?;
             let size = element.size.checked_mul(count, dl).ok_or(LayoutError::SizeOverflow)?;
 
             let abi = if count != 0 && matches!(element.abi, Abi::Uninhabited) {
@@ -259,7 +257,7 @@ pub fn layout_of_ty_query(
             }
         }
         TyKind::Slice(element) => {
-            let element = db.layout_of_ty(element.clone(), krate)?;
+            let element = db.layout_of_ty(element.clone(), trait_env.clone())?;
             Layout {
                 variants: Variants::Single { index: struct_variant_idx() },
                 fields: FieldsShape::Array { stride: element.size, count: 0 },
@@ -335,7 +333,7 @@ pub fn layout_of_ty_query(
             match impl_trait_id {
                 crate::ImplTraitId::ReturnTypeImplTrait(func, idx) => {
                     let infer = db.infer(func.into());
-                    return db.layout_of_ty(infer.type_of_rpit[idx].clone(), krate);
+                    return db.layout_of_ty(infer.type_of_rpit[idx].clone(), trait_env.clone());
                 }
                 crate::ImplTraitId::AsyncBlockTypeImplTrait(_, _) => {
                     return Err(LayoutError::NotImplemented)
@@ -351,7 +349,7 @@ pub fn layout_of_ty_query(
                 .map(|it| {
                     db.layout_of_ty(
                         it.ty.clone().substitute(Interner, ClosureSubst(subst).parent_subst()),
-                        krate,
+                        trait_env.clone(),
                     )
                 })
                 .collect::<Result<Vec<_>, _>>()?;
@@ -377,7 +375,7 @@ pub fn layout_of_ty_recover(
     _: &dyn HirDatabase,
     _: &[String],
     _: &Ty,
-    _: &CrateId,
+    _: &Arc<TraitEnvironment>,
 ) -> Result<Arc<Layout>, LayoutError> {
     user_error!("infinite sized recursive type");
 }

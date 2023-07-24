@@ -665,13 +665,21 @@ pub fn is_dyn_method(
     };
     let self_ty = trait_ref.self_type_parameter(Interner);
     if let TyKind::Dyn(d) = self_ty.kind(Interner) {
-        let is_my_trait_in_bounds =
-            d.bounds.skip_binders().as_slice(Interner).iter().any(|it| match it.skip_binders() {
-                // rustc doesn't accept `impl Foo<2> for dyn Foo<5>`, so if the trait id is equal, no matter
-                // what the generics are, we are sure that the method is come from the vtable.
-                WhereClause::Implemented(tr) => tr.trait_id == trait_ref.trait_id,
-                _ => false,
-            });
+        let is_my_trait_in_bounds = d
+            .bounds
+            .skip_binders()
+            .as_slice(Interner)
+            .iter()
+            .map(|it| it.skip_binders())
+            .flat_map(|it| match it {
+                WhereClause::Implemented(tr) => {
+                    all_super_traits(db.upcast(), from_chalk_trait_id(tr.trait_id))
+                }
+                _ => smallvec![],
+            })
+            // rustc doesn't accept `impl Foo<2> for dyn Foo<5>`, so if the trait id is equal, no matter
+            // what the generics are, we are sure that the method is come from the vtable.
+            .any(|x| x == trait_id);
         if is_my_trait_in_bounds {
             return Some(fn_params);
         }
@@ -1504,7 +1512,7 @@ fn autoderef_method_receiver(
     ty: Ty,
 ) -> Vec<(Canonical<Ty>, ReceiverAdjustments)> {
     let mut deref_chain: Vec<_> = Vec::new();
-    let mut autoderef = autoderef::Autoderef::new(table, ty, true);
+    let mut autoderef = autoderef::Autoderef::new(table, ty, false);
     while let Some((ty, derefs)) = autoderef.next() {
         deref_chain.push((
             autoderef.table.canonicalize(ty).value,

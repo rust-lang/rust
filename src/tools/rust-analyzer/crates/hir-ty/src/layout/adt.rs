@@ -2,7 +2,6 @@
 
 use std::{cmp, ops::Bound};
 
-use base_db::CrateId;
 use hir_def::{
     data::adt::VariantData,
     layout::{Integer, LayoutCalculator, ReprOptions, TargetDataLayout},
@@ -16,7 +15,7 @@ use crate::{
     db::HirDatabase,
     lang_items::is_unsafe_cell,
     layout::{field_ty, Layout, LayoutError, RustcEnumVariantIdx},
-    Substitution,
+    Substitution, TraitEnvironment,
 };
 
 use super::LayoutCx;
@@ -29,17 +28,18 @@ pub fn layout_of_adt_query(
     db: &dyn HirDatabase,
     def: AdtId,
     subst: Substitution,
-    krate: CrateId,
+    trait_env: Arc<TraitEnvironment>,
 ) -> Result<Arc<Layout>, LayoutError> {
+    let krate = trait_env.krate;
     let Some(target) = db.target_data_layout(krate) else {
         return Err(LayoutError::TargetLayoutNotAvailable);
     };
-    let cx = LayoutCx { krate, target: &target };
+    let cx = LayoutCx { target: &target };
     let dl = cx.current_data_layout();
     let handle_variant = |def: VariantId, var: &VariantData| {
         var.fields()
             .iter()
-            .map(|(fd, _)| db.layout_of_ty(field_ty(db, def, fd, &subst), cx.krate))
+            .map(|(fd, _)| db.layout_of_ty(field_ty(db, def, fd, &subst), trait_env.clone()))
             .collect::<Result<Vec<_>, _>>()
     };
     let (variants, repr) = match def {
@@ -134,7 +134,7 @@ pub fn layout_of_adt_recover(
     _: &[String],
     _: &AdtId,
     _: &Substitution,
-    _: &CrateId,
+    _: &Arc<TraitEnvironment>,
 ) -> Result<Arc<Layout>, LayoutError> {
     user_error!("infinite sized recursive type");
 }

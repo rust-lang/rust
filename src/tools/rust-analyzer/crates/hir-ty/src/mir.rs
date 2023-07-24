@@ -142,7 +142,7 @@ impl<V, T> ProjectionElem<V, T> {
         closure_field: impl FnOnce(ClosureId, &Substitution, usize) -> Ty,
         krate: CrateId,
     ) -> Ty {
-        if matches!(base.data(Interner).kind, TyKind::Alias(_) | TyKind::AssociatedType(..)) {
+        if matches!(base.kind(Interner), TyKind::Alias(_) | TyKind::AssociatedType(..)) {
             base = normalize(
                 db,
                 // FIXME: we should get this from caller
@@ -151,7 +151,7 @@ impl<V, T> ProjectionElem<V, T> {
             );
         }
         match self {
-            ProjectionElem::Deref => match &base.data(Interner).kind {
+            ProjectionElem::Deref => match &base.kind(Interner) {
                 TyKind::Raw(_, inner) | TyKind::Ref(_, _, inner) => inner.clone(),
                 TyKind::Adt(adt, subst) if is_box(db, adt.0) => {
                     subst.at(Interner, 0).assert_ty_ref(Interner).clone()
@@ -161,7 +161,7 @@ impl<V, T> ProjectionElem<V, T> {
                     return TyKind::Error.intern(Interner);
                 }
             },
-            ProjectionElem::Field(f) => match &base.data(Interner).kind {
+            ProjectionElem::Field(f) => match &base.kind(Interner) {
                 TyKind::Adt(_, subst) => {
                     db.field_types(f.parent)[f.local_id].clone().substitute(Interner, subst)
                 }
@@ -170,7 +170,7 @@ impl<V, T> ProjectionElem<V, T> {
                     return TyKind::Error.intern(Interner);
                 }
             },
-            ProjectionElem::TupleOrClosureField(f) => match &base.data(Interner).kind {
+            ProjectionElem::TupleOrClosureField(f) => match &base.kind(Interner) {
                 TyKind::Tuple(_, subst) => subst
                     .as_slice(Interner)
                     .get(*f)
@@ -187,7 +187,7 @@ impl<V, T> ProjectionElem<V, T> {
                 }
             },
             ProjectionElem::ConstantIndex { .. } | ProjectionElem::Index(_) => {
-                match &base.data(Interner).kind {
+                match &base.kind(Interner) {
                     TyKind::Array(inner, _) | TyKind::Slice(inner) => inner.clone(),
                     _ => {
                         never!("Overloaded index is not a projection");
@@ -195,7 +195,7 @@ impl<V, T> ProjectionElem<V, T> {
                     }
                 }
             }
-            &ProjectionElem::Subslice { from, to } => match &base.data(Interner).kind {
+            &ProjectionElem::Subslice { from, to } => match &base.kind(Interner) {
                 TyKind::Array(inner, c) => {
                     let next_c = usize_const(
                         db,

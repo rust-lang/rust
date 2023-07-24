@@ -24,7 +24,7 @@ use syntax::{
 
 use crate::{
     syntax_highlighting::{
-        escape::{highlight_escape_char, highlight_escape_string},
+        escape::{highlight_escape_byte, highlight_escape_char, highlight_escape_string},
         format::highlight_format_string,
         highlights::Highlights,
         macro_::MacroHighlighter,
@@ -471,6 +471,14 @@ fn traverse(
                 };
 
                 highlight_escape_char(hl, &char, range.start())
+            } else if ast::Byte::can_cast(token.kind())
+                && ast::Byte::can_cast(descended_token.kind())
+            {
+                let Some(byte) = ast::Byte::cast(token) else {
+                    continue;
+                };
+
+                highlight_escape_byte(hl, &byte, range.start())
             }
         }
 

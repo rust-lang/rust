@@ -40,7 +40,8 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .control            { font-style: italic; }
 .reference          { font-style: italic; font-weight: bold; }
 
-.unresolved_reference { color: #FC5555; text-decoration: wavy underline; }
+.invalid_escape_sequence { color: #FC5555; text-decoration: wavy underline; }
+.unresolved_reference    { color: #FC5555; text-decoration: wavy underline; }
 </style>
 <pre><code><span class="keyword">macro_rules</span><span class="macro_bang">!</span> <span class="macro declaration">id</span> <span class="brace">{</span>
     <span class="parenthesis">(</span><span class="punctuation">$</span><span class="parenthesis">(</span><span class="punctuation">$</span>tt<span class="colon">:</span>tt<span class="parenthesis">)</span><span class="punctuation">*</span><span class="parenthesis">)</span> <span class="operator">=</span><span class="angle">&gt;</span> <span class="brace">{</span>
