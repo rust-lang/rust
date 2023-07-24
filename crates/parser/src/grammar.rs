@@ -211,70 +211,54 @@ impl BlockLike {
 const VISIBILITY_FIRST: TokenSet = TokenSet::new(&[T![pub], T![crate]]);
 
 fn opt_visibility(p: &mut Parser<'_>, in_tuple_field: bool) -> bool {
-    match p.current() {
-        T![pub] => {
-            let m = p.start();
-            p.bump(T![pub]);
-            if p.at(T!['(']) {
-                match p.nth(1) {
-                    // test crate_visibility
-                    // pub(crate) struct S;
-                    // pub(self) struct S;
-                    // pub(super) struct S;
+    if !p.at(T![pub]) {
+        return false;
+    }
 
-                    // test_err crate_visibility_empty_recover
-                    // pub() struct S;
+    let m = p.start();
+    p.bump(T![pub]);
+    if p.at(T!['(']) {
+        match p.nth(1) {
+            // test crate_visibility
+            // pub(crate) struct S;
+            // pub(self) struct S;
+            // pub(super) struct S;
 
-                    // test pub_parens_typepath
-                    // struct B(pub (super::A));
-                    // struct B(pub (crate::A,));
-                    T![crate] | T![self] | T![super] | T![ident] | T![')'] if p.nth(2) != T![:] => {
-                        // If we are in a tuple struct, then the parens following `pub`
-                        // might be an tuple field, not part of the visibility. So in that
-                        // case we don't want to consume an identifier.
+            // test_err crate_visibility_empty_recover
+            // pub() struct S;
 
-                        // test pub_tuple_field
-                        // struct MyStruct(pub (u32, u32));
-                        // struct MyStruct(pub (u32));
-                        // struct MyStruct(pub ());
-                        if !(in_tuple_field && matches!(p.nth(1), T![ident] | T![')'])) {
-                            p.bump(T!['(']);
-                            paths::use_path(p);
-                            p.expect(T![')']);
-                        }
-                    }
-                    // test crate_visibility_in
-                    // pub(in super::A) struct S;
-                    // pub(in crate) struct S;
-                    T![in] => {
-                        p.bump(T!['(']);
-                        p.bump(T![in]);
-                        paths::use_path(p);
-                        p.expect(T![')']);
-                    }
-                    _ => {}
+            // test pub_parens_typepath
+            // struct B(pub (super::A));
+            // struct B(pub (crate::A,));
+            T![crate] | T![self] | T![super] | T![ident] | T![')'] if p.nth(2) != T![:] => {
+                // If we are in a tuple struct, then the parens following `pub`
+                // might be an tuple field, not part of the visibility. So in that
+                // case we don't want to consume an identifier.
+
+                // test pub_tuple_field
+                // struct MyStruct(pub (u32, u32));
+                // struct MyStruct(pub (u32));
+                // struct MyStruct(pub ());
+                if !(in_tuple_field && matches!(p.nth(1), T![ident] | T![')'])) {
+                    p.bump(T!['(']);
+                    paths::use_path(p);
+                    p.expect(T![')']);
                 }
             }
-            m.complete(p, VISIBILITY);
-            true
-        }
-        // test crate_keyword_vis
-        // crate fn main() { }
-        // struct S { crate field: u32 }
-        // struct T(crate u32);
-        T![crate] => {
-            if p.nth_at(1, T![::]) {
-                // test crate_keyword_path
-                // fn foo() { crate::foo(); }
-                return false;
+            // test crate_visibility_in
+            // pub(in super::A) struct S;
+            // pub(in crate) struct S;
+            T![in] => {
+                p.bump(T!['(']);
+                p.bump(T![in]);
+                paths::use_path(p);
+                p.expect(T![')']);
             }
-            let m = p.start();
-            p.bump(T![crate]);
-            m.complete(p, VISIBILITY);
-            true
+            _ => {}
         }
-        _ => false,
     }
+    m.complete(p, VISIBILITY);
+    true
 }
 
 fn opt_rename(p: &mut Parser<'_>) {

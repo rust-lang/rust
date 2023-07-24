@@ -66,6 +66,12 @@ export async function startDebugSession(ctx: Ctx, runnable: ra.Runnable): Promis
     return vscode.debug.startDebugging(undefined, debugConfig);
 }
 
+function createCommandLink(extensionId: string): string {
+    // do not remove the second quotes inside
+    // encodeURIComponent or it won't work
+    return `extension.open?${encodeURIComponent(`"${extensionId}"`)}`;
+}
+
 async function getDebugConfiguration(
     ctx: Ctx,
     runnable: ra.Runnable,
@@ -90,9 +96,12 @@ async function getDebugConfiguration(
     }
 
     if (!debugEngine) {
+        const commandCodeLLDB: string = createCommandLink("vadimcn.vscode-lldb");
+        const commandCpp: string = createCommandLink("ms-vscode.cpptools");
+
         await vscode.window.showErrorMessage(
-            `Install [CodeLLDB](https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb)` +
-                ` or [MS C++ tools](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools) extension for debugging.`,
+            `Install [CodeLLDB](command:${commandCodeLLDB} "Open CodeLLDB")` +
+                ` or [C/C++](command:${commandCpp} "Open C/C++") extension for debugging.`,
         );
         return;
     }

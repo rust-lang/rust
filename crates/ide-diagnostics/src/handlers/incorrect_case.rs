@@ -545,4 +545,100 @@ pub static SomeStatic: u8 = 10;
     "#,
         );
     }
+
+    #[test]
+    fn fn_inner_items() {
+        check_diagnostics(
+            r#"
+fn main() {
+    const foo: bool = true;
+        //^^^ 💡 warn: Constant `foo` should have UPPER_SNAKE_CASE name, e.g. `FOO`
+    static bar: bool = true;
+         //^^^ 💡 warn: Static variable `bar` should have UPPER_SNAKE_CASE name, e.g. `BAR`
+    fn BAZ() {
+     //^^^ 💡 warn: Function `BAZ` should have snake_case name, e.g. `baz`
+        const foo: bool = true;
+            //^^^ 💡 warn: Constant `foo` should have UPPER_SNAKE_CASE name, e.g. `FOO`
+        static bar: bool = true;
+             //^^^ 💡 warn: Static variable `bar` should have UPPER_SNAKE_CASE name, e.g. `BAR`
+        fn BAZ() {
+         //^^^ 💡 warn: Function `BAZ` should have snake_case name, e.g. `baz`
+            let INNER_INNER = 42;
+              //^^^^^^^^^^^ 💡 warn: Variable `INNER_INNER` should have snake_case name, e.g. `inner_inner`
+        }
+
+        let INNER_LOCAL = 42;
+          //^^^^^^^^^^^ 💡 warn: Variable `INNER_LOCAL` should have snake_case name, e.g. `inner_local`
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn const_body_inner_items() {
+        check_diagnostics(
+            r#"
+const _: () = {
+    static bar: bool = true;
+         //^^^ 💡 warn: Static variable `bar` should have UPPER_SNAKE_CASE name, e.g. `BAR`
+    fn BAZ() {}
+     //^^^ 💡 warn: Function `BAZ` should have snake_case name, e.g. `baz`
+
+    const foo: () = {
+        //^^^ 💡 warn: Constant `foo` should have UPPER_SNAKE_CASE name, e.g. `FOO`
+        const foo: bool = true;
+            //^^^ 💡 warn: Constant `foo` should have UPPER_SNAKE_CASE name, e.g. `FOO`
+        static bar: bool = true;
+             //^^^ 💡 warn: Static variable `bar` should have UPPER_SNAKE_CASE name, e.g. `BAR`
+        fn BAZ() {}
+         //^^^ 💡 warn: Function `BAZ` should have snake_case name, e.g. `baz`
+    };
+};
+"#,
+        );
+    }
+
+    #[test]
+    fn static_body_inner_items() {
+        check_diagnostics(
+            r#"
+static FOO: () = {
+    const foo: bool = true;
+        //^^^ 💡 warn: Constant `foo` should have UPPER_SNAKE_CASE name, e.g. `FOO`
+    fn BAZ() {}
+     //^^^ 💡 warn: Function `BAZ` should have snake_case name, e.g. `baz`
+
+    static bar: () = {
+         //^^^ 💡 warn: Static variable `bar` should have UPPER_SNAKE_CASE name, e.g. `BAR`
+        const foo: bool = true;
+            //^^^ 💡 warn: Constant `foo` should have UPPER_SNAKE_CASE name, e.g. `FOO`
+        static bar: bool = true;
+             //^^^ 💡 warn: Static variable `bar` should have UPPER_SNAKE_CASE name, e.g. `BAR`
+        fn BAZ() {}
+         //^^^ 💡 warn: Function `BAZ` should have snake_case name, e.g. `baz`
+    };
+};
+"#,
+        );
+    }
+
+    #[test]
+    fn enum_variant_body_inner_item() {
+        check_diagnostics(
+            r#"
+enum E {
+    A = {
+        const foo: bool = true;
+            //^^^ 💡 warn: Constant `foo` should have UPPER_SNAKE_CASE name, e.g. `FOO`
+        static bar: bool = true;
+             //^^^ 💡 warn: Static variable `bar` should have UPPER_SNAKE_CASE name, e.g. `BAR`
+        fn BAZ() {}
+         //^^^ 💡 warn: Function `BAZ` should have snake_case name, e.g. `baz`
+        42
+    },
+}
+"#,
+        );
+    }
 }

@@ -1665,6 +1665,7 @@ impl InferenceContext<'_> {
                 // the parameter to coerce to the expected type (for example in
                 // `coerce_unsize_expected_type_4`).
                 let param_ty = self.normalize_associated_types_in(param_ty);
+                let expected_ty = self.normalize_associated_types_in(expected_ty);
                 let expected = Expectation::rvalue_hint(self, expected_ty);
                 // infer with the expected type we have...
                 let ty = self.infer_expr_inner(arg, &expected);

@@ -378,11 +378,6 @@ impl ModuleDef {
             ModuleDef::BuiltinType(_) | ModuleDef::Macro(_) => return Vec::new(),
         };
 
-        let module = match self.module(db) {
-            Some(it) => it,
-            None => return Vec::new(),
-        };
-
         let mut acc = Vec::new();
 
         match self.as_def_with_body() {
@@ -390,7 +385,7 @@ impl ModuleDef {
                 def.diagnostics(db, &mut acc);
             }
             None => {
-                for diag in hir_ty::diagnostics::incorrect_case(db, module.id.krate(), id) {
+                for diag in hir_ty::diagnostics::incorrect_case(db, id) {
                     acc.push(diag.into())
                 }
             }
@@ -965,8 +960,15 @@ impl Field {
     }
 
     pub fn layout(&self, db: &dyn HirDatabase) -> Result<Layout, LayoutError> {
-        db.layout_of_ty(self.ty(db).ty.clone(), self.parent.module(db).krate().into())
-            .map(|layout| Layout(layout, db.target_data_layout(self.krate(db).into()).unwrap()))
+        db.layout_of_ty(
+            self.ty(db).ty.clone(),
+            db.trait_environment(match hir_def::VariantId::from(self.parent) {
+                hir_def::VariantId::EnumVariantId(id) => GenericDefId::EnumVariantId(id),
+                hir_def::VariantId::StructId(id) => GenericDefId::AdtId(id.into()),
+                hir_def::VariantId::UnionId(id) => GenericDefId::AdtId(id.into()),
+            }),
+        )
+        .map(|layout| Layout(layout, db.target_data_layout(self.krate(db).into()).unwrap()))
     }
 
     pub fn parent_def(&self, _db: &dyn HirDatabase) -> VariantDef {
@@ -1246,8 +1248,12 @@ impl Adt {
             return Err(LayoutError::HasPlaceholder);
         }
         let krate = self.krate(db).id;
-        db.layout_of_adt(self.into(), Substitution::empty(Interner), krate)
-            .map(|layout| Layout(layout, db.target_data_layout(krate).unwrap()))
+        db.layout_of_adt(
+            self.into(),
+            Substitution::empty(Interner),
+            db.trait_environment(self.into()),
+        )
+        .map(|layout| Layout(layout, db.target_data_layout(krate).unwrap()))
     }
 
     /// Turns this ADT into a type. Any type parameters of the ADT will be
@@ -1820,7 +1826,7 @@ impl DefWithBody {
             // FIXME: don't ignore diagnostics for in type const
             DefWithBody::InTypeConst(_) => return,
         };
-        for diag in hir_ty::diagnostics::incorrect_case(db, krate, def.into()) {
+        for diag in hir_ty::diagnostics::incorrect_case(db, def.into()) {
             acc.push(diag.into())
         }
     }
@@ -1987,7 +1993,7 @@ impl Function {
                 return r;
             }
         };
-        let (result, stdout, stderr) = interpret_mir(db, body, false);
+        let (result, stdout, stderr) = interpret_mir(db, body, false, None);
         let mut text = match result {
             Ok(_) => "pass".to_string(),
             Err(e) => {
@@ -2156,7 +2162,7 @@ impl Const {
     }
 
     pub fn render_eval(self, db: &dyn HirDatabase) -> Result<String, ConstEvalError> {
-        let c = db.const_eval(self.id.into(), Substitution::empty(Interner))?;
+        let c = db.const_eval(self.id.into(), Substitution::empty(Interner), None)?;
         let data = &c.data(Interner);
         if let TyKind::Scalar(s) = data.ty.kind(Interner) {
             if matches!(s, Scalar::Int(_) | Scalar::Uint(_)) {
@@ -4322,7 +4328,7 @@ impl Type {
     }
 
     pub fn layout(&self, db: &dyn HirDatabase) -> Result<Layout, LayoutError> {
-        db.layout_of_ty(self.ty.clone(), self.env.krate)
+        db.layout_of_ty(self.ty.clone(), self.env.clone())
             .map(|layout| Layout(layout, db.target_data_layout(self.env.krate).unwrap()))
     }
 }
