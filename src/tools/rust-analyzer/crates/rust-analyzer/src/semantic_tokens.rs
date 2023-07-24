@@ -78,6 +78,7 @@ define_semantic_token_types![
         (DERIVE_HELPER, "deriveHelper") => DECORATOR,
         (DOT, "dot"),
         (ESCAPE_SEQUENCE, "escapeSequence") => STRING,
+        (INVALID_ESCAPE_SEQUENCE, "invalidEscapeSequence") => STRING,
         (FORMAT_SPECIFIER, "formatSpecifier") => STRING,
         (GENERIC, "generic") => TYPE_PARAMETER,
         (LABEL, "label"),

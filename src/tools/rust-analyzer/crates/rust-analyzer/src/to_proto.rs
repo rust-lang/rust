@@ -640,6 +640,7 @@ fn semantic_token_type_and_modifiers(
         HlTag::CharLiteral => semantic_tokens::CHAR,
         HlTag::Comment => semantic_tokens::COMMENT,
         HlTag::EscapeSequence => semantic_tokens::ESCAPE_SEQUENCE,
+        HlTag::InvalidEscapeSequence => semantic_tokens::INVALID_ESCAPE_SEQUENCE,
         HlTag::FormatSpecifier => semantic_tokens::FORMAT_SPECIFIER,
         HlTag::Keyword => semantic_tokens::KEYWORD,
         HlTag::None => semantic_tokens::GENERIC,

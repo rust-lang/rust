@@ -145,7 +145,7 @@ pub struct PackageDependency {
     pub kind: DepKind,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DepKind {
     /// Available to the library, binary, and dev targets in the package (but not the build script).
     Normal,
@@ -156,23 +156,20 @@ pub enum DepKind {
 }
 
 impl DepKind {
-    fn iter(list: &[cargo_metadata::DepKindInfo]) -> impl Iterator<Item = Self> + '_ {
-        let mut dep_kinds = Vec::new();
+    fn iter(list: &[cargo_metadata::DepKindInfo]) -> impl Iterator<Item = Self> {
+        let mut dep_kinds = [None; 3];
         if list.is_empty() {
-            dep_kinds.push(Self::Normal);
+            dep_kinds[0] = Some(Self::Normal);
         }
         for info in list {
-            let kind = match info.kind {
-                cargo_metadata::DependencyKind::Normal => Self::Normal,
-                cargo_metadata::DependencyKind::Development => Self::Dev,
-                cargo_metadata::DependencyKind::Build => Self::Build,
+            match info.kind {
+                cargo_metadata::DependencyKind::Normal => dep_kinds[0] = Some(Self::Normal),
+                cargo_metadata::DependencyKind::Development => dep_kinds[1] = Some(Self::Dev),
+                cargo_metadata::DependencyKind::Build => dep_kinds[2] = Some(Self::Build),
                 cargo_metadata::DependencyKind::Unknown => continue,
-            };
-            dep_kinds.push(kind);
+            }
         }
-        dep_kinds.sort_unstable();
-        dep_kinds.dedup();
-        dep_kinds.into_iter()
+        dep_kinds.into_iter().flatten()
     }
 }
 

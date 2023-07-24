@@ -633,7 +633,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                     );
                 }
                 let callee_ty = self.expr_ty_after_adjustments(*callee);
-                match &callee_ty.data(Interner).kind {
+                match &callee_ty.kind(Interner) {
                     chalk_ir::TyKind::FnDef(..) => {
                         let func = Operand::from_bytes(vec![], callee_ty.clone());
                         self.lower_call_and_args(
@@ -1229,7 +1229,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
             }
             Expr::Array(l) => match l {
                 Array::ElementList { elements, .. } => {
-                    let elem_ty = match &self.expr_ty_without_adjust(expr_id).data(Interner).kind {
+                    let elem_ty = match &self.expr_ty_without_adjust(expr_id).kind(Interner) {
                         TyKind::Array(ty, _) => ty.clone(),
                         _ => {
                             return Err(MirLowerError::TypeError(
@@ -1260,7 +1260,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                     else {
                         return Ok(None);
                     };
-                    let len = match &self.expr_ty_without_adjust(expr_id).data(Interner).kind {
+                    let len = match &self.expr_ty_without_adjust(expr_id).kind(Interner) {
                         TyKind::Array(_, len) => len.clone(),
                         _ => {
                             return Err(MirLowerError::TypeError(
@@ -1341,7 +1341,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
     fn lower_literal_to_operand(&mut self, ty: Ty, l: &Literal) -> Result<Operand> {
         let size = self
             .db
-            .layout_of_ty(ty.clone(), self.owner.module(self.db.upcast()).krate())?
+            .layout_of_ty(ty.clone(), self.db.trait_environment_for_body(self.owner))?
             .size
             .bytes_usize();
         let bytes = match l {
@@ -1355,7 +1355,6 @@ impl<'ctx> MirLowerCtx<'ctx> {
                 return Ok(Operand::from_concrete_const(data, mm, ty));
             }
             hir_def::hir::Literal::CString(b) => {
-                let b = b.as_bytes();
                 let bytes = b.iter().copied().chain(iter::once(0)).collect::<Vec<_>>();
 
                 let mut data = Vec::with_capacity(mem::size_of::<usize>() * 2);
@@ -1418,7 +1417,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
         } else {
             let name = const_id.name(self.db.upcast());
             self.db
-                .const_eval(const_id.into(), subst)
+                .const_eval(const_id.into(), subst, None)
                 .map_err(|e| MirLowerError::ConstEvalError(name, Box::new(e)))?
         };
         Ok(Operand::Constant(c))

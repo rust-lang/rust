@@ -634,7 +634,7 @@ impl Printer<'_> {
         match literal {
             Literal::String(it) => w!(self, "{:?}", it),
             Literal::ByteString(it) => w!(self, "\"{}\"", it.escape_ascii()),
-            Literal::CString(it) => w!(self, "\"{}\\0\"", it),
+            Literal::CString(it) => w!(self, "\"{}\\0\"", it.escape_ascii()),
             Literal::Char(it) => w!(self, "'{}'", it.escape_debug()),
             Literal::Bool(it) => w!(self, "{}", it),
             Literal::Int(i, suffix) => {

@@ -26,7 +26,7 @@ fn eval_goal(ra_fixture: &str, minicore: &str) -> Result<Arc<Layout>, LayoutErro
     );
 
     let (db, file_ids) = TestDB::with_many_files(&ra_fixture);
-    let (adt_or_type_alias_id, module_id) = file_ids
+    let adt_or_type_alias_id = file_ids
         .into_iter()
         .find_map(|file_id| {
             let module_id = db.module_for_file(file_id);
@@ -47,7 +47,7 @@ fn eval_goal(ra_fixture: &str, minicore: &str) -> Result<Arc<Layout>, LayoutErro
                 }
                 _ => None,
             })?;
-            Some((adt_or_type_alias_id, module_id))
+            Some(adt_or_type_alias_id)
         })
         .unwrap();
     let goal_ty = match adt_or_type_alias_id {
@@ -58,7 +58,13 @@ fn eval_goal(ra_fixture: &str, minicore: &str) -> Result<Arc<Layout>, LayoutErro
             db.ty(ty_id.into()).substitute(Interner, &Substitution::empty(Interner))
         }
     };
-    db.layout_of_ty(goal_ty, module_id.krate())
+    db.layout_of_ty(
+        goal_ty,
+        db.trait_environment(match adt_or_type_alias_id {
+            Either::Left(adt) => hir_def::GenericDefId::AdtId(adt),
+            Either::Right(ty) => hir_def::GenericDefId::TypeAliasId(ty),
+        }),
+    )
 }
 
 /// A version of `eval_goal` for types that can not be expressed in ADTs, like closures and `impl Trait`
@@ -72,7 +78,7 @@ fn eval_expr(ra_fixture: &str, minicore: &str) -> Result<Arc<Layout>, LayoutErro
     let module_id = db.module_for_file(file_id);
     let def_map = module_id.def_map(&db);
     let scope = &def_map[module_id.local_id].scope;
-    let adt_id = scope
+    let function_id = scope
         .declarations()
         .find_map(|x| match x {
             hir_def::ModuleDefId::FunctionId(x) => {
@@ -82,11 +88,11 @@ fn eval_expr(ra_fixture: &str, minicore: &str) -> Result<Arc<Layout>, LayoutErro
             _ => None,
         })
         .unwrap();
-    let hir_body = db.body(adt_id.into());
+    let hir_body = db.body(function_id.into());
     let b = hir_body.bindings.iter().find(|x| x.1.name.to_smol_str() == "goal").unwrap().0;
-    let infer = db.infer(adt_id.into());
+    let infer = db.infer(function_id.into());
     let goal_ty = infer.type_of_binding[b].clone();
-    db.layout_of_ty(goal_ty, module_id.krate())
+    db.layout_of_ty(goal_ty, db.trait_environment(function_id.into()))
 }
 
 #[track_caller]

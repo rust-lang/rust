@@ -449,27 +449,24 @@ You'll need to close and reopen all .rs and Cargo files, or to restart the IDE, 
 Support for the language server protocol is built into Kate through the LSP plugin, which is included by default.
 It is preconfigured to use rust-analyzer for Rust sources since Kate 21.12.
 
-Earlier versions allow you to use rust-analyzer through a simple settings change.
-In the LSP Client settings of Kate, copy the content of the third tab "default parameters" to the second tab "server configuration".
-Then in the configuration replace:
+To change rust-analyzer config options, start from the following example and put it into Kate's "User Server Settings" tab (located under the LSP Client settings):
 [source,json]
 ----
+{
+    "servers": {
         "rust": {
-            "command": ["rls"],
-            "rootIndicationFileNames": ["Cargo.lock", "Cargo.toml"],
-            "url": "https://github.com/rust-lang/rls",
-            "highlightingModeRegex": "^Rust$"
-        },
-----
-With
-[source,json]
-----
-        "rust": {
-            "command": ["rust-analyzer"],
-            "rootIndicationFileNames": ["Cargo.lock", "Cargo.toml"],
-            "url": "https://github.com/rust-lang/rust-analyzer",
-            "highlightingModeRegex": "^Rust$"
-        },
+            "initializationOptions": {
+                "cachePriming": {
+                    "enable": false
+                },
+                "check": {
+                    "allTargets": false
+                },
+                "checkOnSave": false
+            }
+        }
+    }
+}
 ----
 Then click on apply, and restart the LSP server for your rust project.
 
