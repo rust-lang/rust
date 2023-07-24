@@ -1,9 +1,9 @@
 use std::env;
 use std::path::PathBuf;
 
-use super::path::{Dirs, RelPath};
-use super::rustc_info::get_file_name;
-use super::utils::{is_ci, is_ci_opt, maybe_incremental, CargoProject, Compiler, LogGroup};
+use crate::path::{Dirs, RelPath};
+use crate::rustc_info::get_file_name;
+use crate::utils::{is_ci, is_ci_opt, maybe_incremental, CargoProject, Compiler, LogGroup};
 
 pub(crate) static CG_CLIF: CargoProject = CargoProject::new(&RelPath::SOURCE, "cg_clif");
 
@@ -45,7 +45,7 @@ pub(crate) fn build_backend(
     cmd.env("RUSTFLAGS", rustflags);
 
     eprintln!("[BUILD] rustc_codegen_cranelift");
-    super::utils::spawn_and_wait(cmd);
+    crate::utils::spawn_and_wait(cmd);
 
     CG_CLIF
         .target_dir(dirs)

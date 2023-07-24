@@ -2,13 +2,13 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use super::path::{Dirs, RelPath};
-use super::rustc_info::get_file_name;
-use super::utils::{
+use crate::path::{Dirs, RelPath};
+use crate::rustc_info::get_file_name;
+use crate::utils::{
     maybe_incremental, remove_dir_if_exists, spawn_and_wait, try_hard_link, CargoProject, Compiler,
     LogGroup,
 };
-use super::{CodegenBackend, SysrootKind};
+use crate::{config, CodegenBackend, SysrootKind};
 
 static DIST_DIR: RelPath = RelPath::DIST;
 static BIN_DIR: RelPath = RelPath::DIST.join("bin");
@@ -185,7 +185,7 @@ fn build_sysroot_for_triple(
 
 #[must_use]
 fn build_llvm_sysroot_for_triple(compiler: Compiler) -> SysrootTarget {
-    let default_sysroot = super::rustc_info::get_default_sysroot(&compiler.rustc);
+    let default_sysroot = crate::rustc_info::get_default_sysroot(&compiler.rustc);
 
     let mut target_libs = SysrootTarget { triple: compiler.triple, libs: vec![] };
 
@@ -234,7 +234,7 @@ fn build_clif_sysroot_for_triple(
 
     let build_dir = STANDARD_LIBRARY.target_dir(dirs).join(&compiler.triple).join(channel);
 
-    if !super::config::get_bool("keep_sysroot") {
+    if !config::get_bool("keep_sysroot") {
         // Cleanup the deps dir, but keep build scripts and the incremental cache for faster
         // recompilation as they are not affected by changes in cg_clif.
         remove_dir_if_exists(&build_dir.join("deps"));
@@ -289,8 +289,8 @@ fn build_clif_sysroot_for_triple(
 }
 
 fn build_rtstartup(dirs: &Dirs, compiler: &Compiler) -> Option<SysrootTarget> {
-    if !super::config::get_bool("keep_sysroot") {
-        super::prepare::prepare_stdlib(dirs, &compiler.rustc);
+    if !config::get_bool("keep_sysroot") {
+        crate::prepare::prepare_stdlib(dirs, &compiler.rustc);
     }
 
     if !compiler.triple.ends_with("windows-gnu") {

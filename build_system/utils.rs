@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use std::process::{self, Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use super::path::{Dirs, RelPath};
+use crate::path::{Dirs, RelPath};
 
 #[derive(Clone, Debug)]
 pub(crate) struct Compiler {

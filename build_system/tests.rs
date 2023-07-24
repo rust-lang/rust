@@ -1,15 +1,16 @@
-use super::build_sysroot;
-use super::config;
-use super::path::{Dirs, RelPath};
-use super::prepare::{apply_patches, GitRepo};
-use super::rustc_info::get_default_sysroot;
-use super::utils::{spawn_and_wait, spawn_and_wait_with_input, CargoProject, Compiler, LogGroup};
-use super::{CodegenBackend, SysrootKind};
 use std::env;
 use std::ffi::OsStr;
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
+
+use crate::build_sysroot;
+use crate::config;
+use crate::path::{Dirs, RelPath};
+use crate::prepare::{apply_patches, GitRepo};
+use crate::rustc_info::get_default_sysroot;
+use crate::utils::{spawn_and_wait, spawn_and_wait_with_input, CargoProject, Compiler, LogGroup};
+use crate::{CodegenBackend, SysrootKind};
 
 static BUILD_EXAMPLE_OUT_DIR: RelPath = RelPath::BUILD.join("example");
 

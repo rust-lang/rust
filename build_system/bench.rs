@@ -2,10 +2,10 @@ use std::env;
 use std::io::Write;
 use std::path::Path;
 
-use super::path::{Dirs, RelPath};
-use super::prepare::GitRepo;
-use super::rustc_info::get_file_name;
-use super::utils::{hyperfine_command, spawn_and_wait, Compiler};
+use crate::path::{Dirs, RelPath};
+use crate::prepare::GitRepo;
+use crate::rustc_info::get_file_name;
+use crate::utils::{hyperfine_command, spawn_and_wait, Compiler};
 
 static SIMPLE_RAYTRACER_REPO: GitRepo = GitRepo::github(
     "ebobby",
