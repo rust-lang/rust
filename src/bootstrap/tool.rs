@@ -558,39 +558,6 @@ impl Step for Cargo {
                 allow_features: "",
             })
             .expect("expected to build -- essential tool");
-
-        let build_cred = |name, path| {
-            // These credential helpers are currently experimental.
-            // Any build failures will be ignored.
-            let _ = builder.ensure(ToolBuild {
-                compiler: self.compiler,
-                target: self.target,
-                tool: name,
-                mode: Mode::ToolRustc,
-                path,
-                is_optional_tool: true,
-                source_type: SourceType::Submodule,
-                extra_features: Vec::new(),
-                allow_features: "",
-            });
-        };
-
-        if self.target.contains("windows") {
-            build_cred(
-                "cargo-credential-wincred",
-                "src/tools/cargo/credential/cargo-credential-wincred",
-            );
-        }
-        if self.target.contains("apple-darwin") {
-            build_cred(
-                "cargo-credential-macos-keychain",
-                "src/tools/cargo/credential/cargo-credential-macos-keychain",
-            );
-        }
-        build_cred(
-            "cargo-credential-1password",
-            "src/tools/cargo/credential/cargo-credential-1password",
-        );
         cargo_bin_path
     }
 }
