@@ -545,17 +545,23 @@ fn sanity_check_found_hidden_type<'tcx>(
 /// }
 /// fn func<'a>(x: &'a ()) -> impl Id<Assoc = impl Sized + 'a> { x }
 /// // desugared to
+/// fn func<'a>(x: &'a () -> Outer<'a, Assoc = Inner<'a>> {
+///     // Note that in contrast to other nested items, RPIT type aliases can
+///     // access their parents' generics.
 ///
-/// // hidden type is `&'bDup ()`
-/// // During wfcheck the hidden type of `Inner` is `&'a ()`, but
-/// // `typeof(Inner<'b, 'bDup>) = &'bDup ()`.
-/// // So we walk the signature of `func` to find the use of `Inner<'static, 'a>`
-/// // and then use that to replace the lifetimes in the hidden type, obtaining
-/// // `&'a ()`.
-/// type Outer<'b, 'bDup> = impl Id<Assoc = Inner<'b, 'bDup>>;
-/// // hidden type is `&'cDup ()`
-/// type Inner<'c, 'cDup> = impl Sized + 'cDup;
-/// fn func<'a>(x: &'a () -> Outer<'static, 'a> { x }
+///     // hidden type is `&'aDupOuter ()`
+///     // During wfcheck the hidden type of `Inner<'aDupOuter>` is `&'a ()`, but
+///     // `typeof(Inner<'aDupOuter>) = &'aDupOuter ()`.
+///     // So we walk the signature of `func` to find the use of `Inner<'a>`
+///     // and then use that to replace the lifetimes in the hidden type, obtaining
+///     // `&'a ()`.
+///     type Outer<'aDupOuter> = impl Id<Assoc = Inner<'aDupOuter>>;
+///
+///     // hidden type is `&'aDupInner ()`
+///     type Inner<'aDupInner> = impl Sized + 'aDupInner;
+///
+///     x
+/// }
 /// ```
 fn find_and_apply_rpit_args<'tcx>(
     tcx: TyCtxt<'tcx>,
