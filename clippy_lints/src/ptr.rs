@@ -26,6 +26,7 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 use rustc_span::sym;
 use rustc_span::symbol::Symbol;
+use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use std::{fmt, iter};
@@ -163,6 +164,12 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
             }
 
             check_mut_from_ref(cx, sig, None);
+
+            if !matches!(sig.header.abi, Abi::Rust) {
+                // Ignore `extern` functions with non-Rust calling conventions
+                return;
+            }
+
             for arg in check_fn_args(
                 cx,
                 cx.tcx.fn_sig(item.owner_id).subst_identity().skip_binder().inputs(),
@@ -218,6 +225,12 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
         };
 
         check_mut_from_ref(cx, sig, Some(body));
+
+        if !matches!(sig.header.abi, Abi::Rust) {
+            // Ignore `extern` functions with non-Rust calling conventions
+            return;
+        }
+
         let decl = sig.decl;
         let sig = cx.tcx.fn_sig(item_id).subst_identity().skip_binder();
         let lint_args: Vec<_> = check_fn_args(cx, sig.inputs(), decl.inputs, &decl.output, body.params)
