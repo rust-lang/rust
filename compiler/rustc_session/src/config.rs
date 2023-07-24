@@ -1015,7 +1015,7 @@ impl Default for Options {
             optimize: OptLevel::No,
             debuginfo: DebugInfo::None,
             lint_opts: Vec::new(),
-            lint_cap: None,
+            lint_cap: Some(lint::Allow),
             describe_lints: false,
             output_types: OutputTypes(BTreeMap::new()),
             search_paths: vec![],
@@ -1787,7 +1787,7 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
 }
 
 pub fn get_cmd_lint_options(
-    handler: &EarlyErrorHandler,
+    _handler: &EarlyErrorHandler,
     matches: &getopts::Matches,
 ) -> (Vec<(String, lint::Level)>, bool, Option<lint::Level>) {
     let mut lint_opts_with_position = vec![];
@@ -1810,10 +1810,7 @@ pub fn get_cmd_lint_options(
         .map(|(_, lint_name, level)| (lint_name, level))
         .collect();
 
-    let lint_cap = matches.opt_str("cap-lints").map(|cap| {
-        lint::Level::from_str(&cap)
-            .unwrap_or_else(|| handler.early_error(format!("unknown lint level: `{cap}`")))
-    });
+    let lint_cap = Some(lint::Allow);
 
     (lint_opts, describe_lints, lint_cap)
 }
