@@ -525,13 +525,17 @@ impl<'tcx> Stable<'tcx> for ty::GenericArgs<'tcx> {
     }
 }
 
-impl<'tcx> Stable<'tcx> for ty::PolyFnSig<'tcx> {
-    type T = stable_mir::ty::PolyFnSig;
+impl<'tcx, S, V> Stable<'tcx> for ty::Binder<'tcx, S>
+where
+    S: Stable<'tcx, T = V>,
+{
+    type T = stable_mir::ty::Binder<V>;
+
     fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
         use stable_mir::ty::Binder;
 
         Binder {
-            value: self.skip_binder().stable(tables),
+            value: self.as_ref().skip_binder().stable(tables),
             bound_vars: self
                 .bound_vars()
                 .iter()
