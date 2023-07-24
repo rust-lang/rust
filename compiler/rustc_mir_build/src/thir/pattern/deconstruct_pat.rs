@@ -306,9 +306,9 @@ impl fmt::Debug for IntRange {
         let (lo, hi) = self.boundaries();
         let bias = self.bias;
         let (lo, hi) = (lo ^ bias, hi ^ bias);
-        write!(f, "{}", lo)?;
+        write!(f, "{lo}")?;
         write!(f, "{}", RangeEnd::Included)?;
-        write!(f, "{}", hi)
+        write!(f, "{hi}")
     }
 }
 
@@ -1619,7 +1619,7 @@ impl<'p, 'tcx> fmt::Debug for DeconstructedPat<'p, 'tcx> {
                     // of `std`). So this branch is only reachable when the feature is enabled and
                     // the pattern is a box pattern.
                     let subpattern = self.iter_fields().next().unwrap();
-                    write!(f, "box {:?}", subpattern)
+                    write!(f, "box {subpattern:?}")
                 }
                 ty::Adt(..) | ty::Tuple(..) => {
                     let variant = match self.ty.kind() {
@@ -1638,7 +1638,7 @@ impl<'p, 'tcx> fmt::Debug for DeconstructedPat<'p, 'tcx> {
                     write!(f, "(")?;
                     for p in self.iter_fields() {
                         write!(f, "{}", start_or_comma())?;
-                        write!(f, "{:?}", p)?;
+                        write!(f, "{p:?}")?;
                     }
                     write!(f, ")")
                 }
@@ -1674,11 +1674,11 @@ impl<'p, 'tcx> fmt::Debug for DeconstructedPat<'p, 'tcx> {
                 write!(f, "]")
             }
             &FloatRange(lo, hi, end) => {
-                write!(f, "{}", lo)?;
-                write!(f, "{}", end)?;
-                write!(f, "{}", hi)
+                write!(f, "{lo}")?;
+                write!(f, "{end}")?;
+                write!(f, "{hi}")
             }
-            IntRange(range) => write!(f, "{:?}", range), // Best-effort, will render e.g. `false` as `0..=0`
+            IntRange(range) => write!(f, "{range:?}"), // Best-effort, will render e.g. `false` as `0..=0`
             Wildcard | Missing { .. } | NonExhaustive => write!(f, "_ : {:?}", self.ty),
             Or => {
                 for pat in self.iter_fields() {
@@ -1686,7 +1686,7 @@ impl<'p, 'tcx> fmt::Debug for DeconstructedPat<'p, 'tcx> {
                 }
                 Ok(())
             }
-            Str(value) => write!(f, "{}", value),
+            Str(value) => write!(f, "{value}"),
             Opaque => write!(f, "<constant pattern>"),
         }
     }

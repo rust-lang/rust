@@ -1477,7 +1477,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
                 )
             }
             _ => {
-                tcx.sess.delay_span_bug(body.span, format!("unexpected generator type {}", gen_ty));
+                tcx.sess.delay_span_bug(body.span, format!("unexpected generator type {gen_ty}"));
                 return;
             }
         };

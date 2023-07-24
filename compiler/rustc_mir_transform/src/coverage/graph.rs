@@ -360,8 +360,7 @@ impl BasicCoverageBlockData {
         if let Some(replaced) = self.counter_kind.replace(counter_kind) {
             Error::from_string(format!(
                 "attempt to set a BasicCoverageBlock coverage counter more than once; \
-                {:?} already had counter {:?}",
-                self, replaced,
+                {self:?} already had counter {replaced:?}",
             ))
         } else {
             Ok(operand)
@@ -389,9 +388,8 @@ impl BasicCoverageBlockData {
             // `BasicCoverageBlock`).
             if self.counter_kind.as_ref().is_some_and(|c| !c.is_expression()) {
                 return Error::from_string(format!(
-                    "attempt to add an incoming edge counter from {:?} when the target BCB already \
-                    has a `Counter`",
-                    from_bcb
+                    "attempt to add an incoming edge counter from {from_bcb:?} when the target BCB already \
+                    has a `Counter`"
                 ));
             }
         }
@@ -401,8 +399,7 @@ impl BasicCoverageBlockData {
         {
             Error::from_string(format!(
                 "attempt to set an edge counter more than once; from_bcb: \
-                {:?} already had counter {:?}",
-                from_bcb, replaced,
+                {from_bcb:?} already had counter {replaced:?}",
             ))
         } else {
             Ok(operand)
@@ -612,7 +609,7 @@ impl TraverseCoverageGraphWithLoops {
                             the {}",
                             successor_to_add,
                             if let Some(loop_header) = some_loop_header {
-                                format!("worklist for the loop headed by {:?}", loop_header)
+                                format!("worklist for the loop headed by {loop_header:?}")
                             } else {
                                 String::from("non-loop worklist")
                             },
@@ -623,7 +620,7 @@ impl TraverseCoverageGraphWithLoops {
                             "{:?} successor is non-branching. Defer it to the end of the {}",
                             successor_to_add,
                             if let Some(loop_header) = some_loop_header {
-                                format!("worklist for the loop headed by {:?}", loop_header)
+                                format!("worklist for the loop headed by {loop_header:?}")
                             } else {
                                 String::from("non-loop worklist")
                             },

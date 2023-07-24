@@ -124,14 +124,14 @@ fn dump_matched_mir_node<'tcx, F>(
         let def_path =
             ty::print::with_forced_impl_filename_line!(tcx.def_path_str(body.source.def_id()));
         // ignore-tidy-odd-backticks the literal below is fine
-        write!(file, "// MIR for `{}", def_path)?;
+        write!(file, "// MIR for `{def_path}")?;
         match body.source.promoted {
             None => write!(file, "`")?,
-            Some(promoted) => write!(file, "::{:?}`", promoted)?,
+            Some(promoted) => write!(file, "::{promoted:?}`")?,
         }
-        writeln!(file, " {} {}", disambiguator, pass_name)?;
+        writeln!(file, " {disambiguator} {pass_name}")?;
         if let Some(ref layout) = body.generator_layout() {
-            writeln!(file, "/* generator_layout = {:#?} */", layout)?;
+            writeln!(file, "/* generator_layout = {layout:#?} */")?;
         }
         writeln!(file)?;
         extra_data(PassWhere::BeforeCFG, &mut file)?;
@@ -169,7 +169,7 @@ fn dump_file_basename<'tcx>(
 ) -> String {
     let source = body.source;
     let promotion_id = match source.promoted {
-        Some(id) => format!("-{:?}", id),
+        Some(id) => format!("-{id:?}"),
         None => String::new(),
     };
 
@@ -203,8 +203,7 @@ fn dump_file_basename<'tcx>(
     };
 
     format!(
-        "{}.{}{}{}{}.{}.{}",
-        crate_name, item_name, shim_disambiguator, promotion_id, pass_num, pass_name, disambiguator,
+        "{crate_name}.{item_name}{shim_disambiguator}{promotion_id}{pass_num}.{pass_name}.{disambiguator}",
     )
 }
 
@@ -215,7 +214,7 @@ fn dump_path(tcx: TyCtxt<'_>, basename: &str, extension: &str) -> PathBuf {
     let mut file_path = PathBuf::new();
     file_path.push(Path::new(&tcx.sess.opts.unstable_opts.dump_mir_dir));
 
-    let file_name = format!("{}.{}", basename, extension,);
+    let file_name = format!("{basename}.{extension}",);
 
     file_path.push(&file_name);
 
@@ -233,12 +232,12 @@ fn create_dump_file_with_basename(
         fs::create_dir_all(parent).map_err(|e| {
             io::Error::new(
                 e.kind(),
-                format!("IO error creating MIR dump directory: {:?}; {}", parent, e),
+                format!("IO error creating MIR dump directory: {parent:?}; {e}"),
             )
         })?;
     }
     Ok(io::BufWriter::new(fs::File::create(&file_path).map_err(|e| {
-        io::Error::new(e.kind(), format!("IO error creating MIR dump file: {:?}; {}", file_path, e))
+        io::Error::new(e.kind(), format!("IO error creating MIR dump file: {file_path:?}; {e}"))
     })?))
 }
 
@@ -346,28 +345,24 @@ where
 
     // Basic block label at the top.
     let cleanup_text = if data.is_cleanup { " (cleanup)" } else { "" };
-    writeln!(w, "{}{:?}{}: {{", INDENT, block, cleanup_text)?;
+    writeln!(w, "{INDENT}{block:?}{cleanup_text}: {{")?;
 
     // List of statements in the middle.
     let mut current_location = Location { block, statement_index: 0 };
     for statement in &data.statements {
         extra_data(PassWhere::BeforeLocation(current_location), w)?;
-        let indented_body = format!("{0}{0}{1:?};", INDENT, statement);
+        let indented_body = format!("{INDENT}{INDENT}{statement:?};");
         if tcx.sess.opts.unstable_opts.mir_include_spans {
             writeln!(
                 w,
                 "{:A$} // {}{}",
                 indented_body,
-                if tcx.sess.verbose() {
-                    format!("{:?}: ", current_location)
-                } else {
-                    String::new()
-                },
+                if tcx.sess.verbose() { format!("{current_location:?}: ") } else { String::new() },
                 comment(tcx, statement.source_info),
                 A = ALIGN,
             )?;
         } else {
-            writeln!(w, "{}", indented_body)?;
+            writeln!(w, "{indented_body}")?;
         }
 
         write_extra(tcx, w, |visitor| {
@@ -387,12 +382,12 @@ where
             w,
             "{:A$} // {}{}",
             indented_terminator,
-            if tcx.sess.verbose() { format!("{:?}: ", current_location) } else { String::new() },
+            if tcx.sess.verbose() { format!("{current_location:?}: ") } else { String::new() },
             comment(tcx, data.terminator().source_info),
             A = ALIGN,
         )?;
     } else {
-        writeln!(w, "{}", indented_terminator)?;
+        writeln!(w, "{indented_terminator}")?;
     }
 
     write_extra(tcx, w, |visitor| {
@@ -402,7 +397,7 @@ where
     extra_data(PassWhere::AfterLocation(current_location), w)?;
     extra_data(PassWhere::AfterTerminator(block), w)?;
 
-    writeln!(w, "{}}}", INDENT)
+    writeln!(w, "{INDENT}}}")
 }
 
 /// After we print the main statement, we sometimes dump extra
@@ -457,25 +452,25 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
                 self.tcx.sess.source_map().span_to_embeddable_string(*span)
             ));
             if let Some(user_ty) = user_ty {
-                self.push(&format!("+ user_ty: {:?}", user_ty));
+                self.push(&format!("+ user_ty: {user_ty:?}"));
             }
 
             // FIXME: this is a poor version of `pretty_print_const_value`.
             let fmt_val = |val: &ConstValue<'tcx>| match val {
                 ConstValue::ZeroSized => "<ZST>".to_string(),
-                ConstValue::Scalar(s) => format!("Scalar({:?})", s),
+                ConstValue::Scalar(s) => format!("Scalar({s:?})"),
                 ConstValue::Slice { .. } => "Slice(..)".to_string(),
                 ConstValue::ByRef { .. } => "ByRef(..)".to_string(),
             };
 
             let fmt_valtree = |valtree: &ty::ValTree<'tcx>| match valtree {
-                ty::ValTree::Leaf(leaf) => format!("ValTree::Leaf({:?})", leaf),
+                ty::ValTree::Leaf(leaf) => format!("ValTree::Leaf({leaf:?})"),
                 ty::ValTree::Branch(_) => "ValTree::Branch(..)".to_string(),
             };
 
             let val = match literal {
                 ConstantKind::Ty(ct) => match ct.kind() {
-                    ty::ConstKind::Param(p) => format!("Param({})", p),
+                    ty::ConstKind::Param(p) => format!("Param({p})"),
                     ty::ConstKind::Unevaluated(uv) => {
                         format!("Unevaluated({}, {:?})", self.tcx.def_path_str(uv.def), uv.args,)
                     }
@@ -514,20 +509,20 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
             match **kind {
                 AggregateKind::Closure(def_id, args) => {
                     self.push("closure");
-                    self.push(&format!("+ def_id: {:?}", def_id));
-                    self.push(&format!("+ args: {:#?}", args));
+                    self.push(&format!("+ def_id: {def_id:?}"));
+                    self.push(&format!("+ args: {args:#?}"));
                 }
 
                 AggregateKind::Generator(def_id, args, movability) => {
                     self.push("generator");
-                    self.push(&format!("+ def_id: {:?}", def_id));
-                    self.push(&format!("+ args: {:#?}", args));
-                    self.push(&format!("+ movability: {:?}", movability));
+                    self.push(&format!("+ def_id: {def_id:?}"));
+                    self.push(&format!("+ args: {args:#?}"));
+                    self.push(&format!("+ movability: {movability:?}"));
                 }
 
                 AggregateKind::Adt(_, _, _, Some(user_ty), _) => {
                     self.push("adt");
-                    self.push(&format!("+ user_ty: {:?}", user_ty));
+                    self.push(&format!("+ user_ty: {user_ty:?}"));
                 }
 
                 _ => {}
@@ -578,7 +573,7 @@ fn write_scope_tree(
                 comment(tcx, var_debug_info.source_info),
             )?;
         } else {
-            writeln!(w, "{}", indented_debug_info)?;
+            writeln!(w, "{indented_debug_info}")?;
         }
     }
 
@@ -600,7 +595,7 @@ fn write_scope_tree(
             format!("{0:1$}let {2}{3:?}: {4:?}", INDENT, indent, mut_str, local, local_decl.ty);
         if let Some(user_ty) = &local_decl.user_ty {
             for user_ty in user_ty.projections() {
-                write!(indented_decl, " as {:?}", user_ty).unwrap();
+                write!(indented_decl, " as {user_ty:?}").unwrap();
             }
         }
         indented_decl.push(';');
@@ -617,7 +612,7 @@ fn write_scope_tree(
                 comment(tcx, local_decl.source_info),
             )?;
         } else {
-            writeln!(w, "{}", indented_decl,)?;
+            writeln!(w, "{indented_decl}",)?;
         }
     }
 
@@ -654,10 +649,10 @@ fn write_scope_tree(
                     tcx.sess.source_map().span_to_embeddable_string(span),
                 )?;
             } else {
-                writeln!(w, "{}", indented_header)?;
+                writeln!(w, "{indented_header}")?;
             }
         } else {
-            writeln!(w, "{}", indented_header)?;
+            writeln!(w, "{indented_header}")?;
         }
 
         write_scope_tree(tcx, body, scope_tree, w, child, depth + 1)?;
@@ -844,7 +839,7 @@ fn write_allocation_endline(w: &mut dyn std::fmt::Write, ascii: &str) -> std::fm
     for _ in 0..(BYTES_PER_LINE - ascii.chars().count()) {
         write!(w, "   ")?;
     }
-    writeln!(w, " │ {}", ascii)
+    writeln!(w, " │ {ascii}")
 }
 
 /// Number of bytes to print per allocation hex dump line.
@@ -880,7 +875,7 @@ pub fn write_allocation_bytes<'tcx, Prov: Provenance, Extra, Bytes: AllocBytes>(
     if num_lines > 0 {
         write!(w, "{}0x{:02$x} │ ", prefix, 0, pos_width)?;
     } else {
-        write!(w, "{}", prefix)?;
+        write!(w, "{prefix}")?;
     }
 
     let mut i = Size::ZERO;
@@ -913,10 +908,10 @@ pub fn write_allocation_bytes<'tcx, Prov: Provenance, Extra, Bytes: AllocBytes>(
             let offset = Size::from_bytes(offset);
             let provenance_width = |bytes| bytes * 3;
             let ptr = Pointer::new(prov, offset);
-            let mut target = format!("{:?}", ptr);
+            let mut target = format!("{ptr:?}");
             if target.len() > provenance_width(ptr_size.bytes_usize() - 1) {
                 // This is too long, try to save some space.
-                target = format!("{:#?}", ptr);
+                target = format!("{ptr:#?}");
             }
             if ((i - line_start) + ptr_size).bytes_usize() > BYTES_PER_LINE {
                 // This branch handles the situation where a provenance starts in the current line
@@ -935,10 +930,10 @@ pub fn write_allocation_bytes<'tcx, Prov: Provenance, Extra, Bytes: AllocBytes>(
                     line_start =
                         write_allocation_newline(w, line_start, &ascii, pos_width, prefix)?;
                     ascii.clear();
-                    write!(w, "{0:─^1$}╼", target, overflow_width)?;
+                    write!(w, "{target:─^overflow_width$}╼")?;
                 } else {
                     oversized_ptr(&mut target, remainder_width);
-                    write!(w, "╾{0:─^1$}", target, remainder_width)?;
+                    write!(w, "╾{target:─^remainder_width$}")?;
                     line_start =
                         write_allocation_newline(w, line_start, &ascii, pos_width, prefix)?;
                     write!(w, "{0:─^1$}╼", "", overflow_width)?;
@@ -955,7 +950,7 @@ pub fn write_allocation_bytes<'tcx, Prov: Provenance, Extra, Bytes: AllocBytes>(
                 let provenance_width = provenance_width(ptr_size.bytes_usize() - 1);
                 oversized_ptr(&mut target, provenance_width);
                 ascii.push('╾');
-                write!(w, "╾{0:─^1$}╼", target, provenance_width)?;
+                write!(w, "╾{target:─^provenance_width$}╼")?;
                 for _ in 0..ptr_size.bytes() - 2 {
                     ascii.push('─');
                 }
@@ -972,7 +967,7 @@ pub fn write_allocation_bytes<'tcx, Prov: Provenance, Extra, Bytes: AllocBytes>(
             // Format is similar to "oversized" above.
             let j = i.bytes_usize();
             let c = alloc.inspect_with_uninit_and_ptr_outside_interpreter(j..j + 1)[0];
-            write!(w, "╾{:02x}{:#?} (1 ptr byte)╼", c, prov)?;
+            write!(w, "╾{c:02x}{prov:#?} (1 ptr byte)╼")?;
             i += Size::from_bytes(1);
         } else if alloc
             .init_mask()
@@ -984,7 +979,7 @@ pub fn write_allocation_bytes<'tcx, Prov: Provenance, Extra, Bytes: AllocBytes>(
             // Checked definedness (and thus range) and provenance. This access also doesn't
             // influence interpreter execution but is only for debugging.
             let c = alloc.inspect_with_uninit_and_ptr_outside_interpreter(j..j + 1)[0];
-            write!(w, "{:02x}", c)?;
+            write!(w, "{c:02x}")?;
             if c.is_ascii_control() || c >= 0x80 {
                 ascii.push('.');
             } else {
@@ -1018,7 +1013,7 @@ fn write_mir_sig(tcx: TyCtxt<'_>, body: &Body<'_>, w: &mut dyn Write) -> io::Res
         _ => tcx.is_closure(def_id),
     };
     match (kind, body.source.promoted) {
-        (_, Some(i)) => write!(w, "{:?} in ", i)?,
+        (_, Some(i)) => write!(w, "{i:?} in ")?,
         (DefKind::Const | DefKind::AssocConst, _) => write!(w, "const ")?,
         (DefKind::Static(hir::Mutability::Not), _) => write!(w, "static ")?,
         (DefKind::Static(hir::Mutability::Mut), _) => write!(w, "static mut ")?,
@@ -1051,7 +1046,7 @@ fn write_mir_sig(tcx: TyCtxt<'_>, body: &Body<'_>, w: &mut dyn Write) -> io::Res
 
     if let Some(yield_ty) = body.yield_ty() {
         writeln!(w)?;
-        writeln!(w, "yields {}", yield_ty)?;
+        writeln!(w, "yields {yield_ty}")?;
     }
 
     write!(w, " ")?;

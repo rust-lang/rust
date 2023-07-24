@@ -294,7 +294,7 @@ fn check_duplicate_params<'tcx>(
     if let (_, [duplicate, ..]) = base_params.partition_dedup() {
         let param = impl1_args[duplicate.0 as usize];
         tcx.sess
-            .struct_span_err(span, format!("specializing impl repeats parameter `{}`", param))
+            .struct_span_err(span, format!("specializing impl repeats parameter `{param}`"))
             .emit();
     }
 }
@@ -523,7 +523,7 @@ fn check_specialization_on<'tcx>(tcx: TyCtxt<'tcx>, predicate: ty::Predicate<'tc
         }
         _ => {
             tcx.sess
-                .struct_span_err(span, format!("cannot specialize on predicate `{}`", predicate))
+                .struct_span_err(span, format!("cannot specialize on predicate `{predicate}`"))
                 .emit();
         }
     }

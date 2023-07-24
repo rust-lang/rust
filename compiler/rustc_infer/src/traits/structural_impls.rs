@@ -38,17 +38,17 @@ impl<'tcx> fmt::Debug for traits::FulfillmentError<'tcx> {
 impl<'tcx> fmt::Debug for traits::FulfillmentErrorCode<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            super::CodeSelectionError(ref e) => write!(f, "{:?}", e),
-            super::CodeProjectionError(ref e) => write!(f, "{:?}", e),
+            super::CodeSelectionError(ref e) => write!(f, "{e:?}"),
+            super::CodeProjectionError(ref e) => write!(f, "{e:?}"),
             super::CodeSubtypeError(ref a, ref b) => {
-                write!(f, "CodeSubtypeError({:?}, {:?})", a, b)
+                write!(f, "CodeSubtypeError({a:?}, {b:?})")
             }
             super::CodeConstEquateError(ref a, ref b) => {
-                write!(f, "CodeConstEquateError({:?}, {:?})", a, b)
+                write!(f, "CodeConstEquateError({a:?}, {b:?})")
             }
             super::CodeAmbiguity { overflow: false } => write!(f, "Ambiguity"),
             super::CodeAmbiguity { overflow: true } => write!(f, "Overflow"),
-            super::CodeCycle(ref cycle) => write!(f, "Cycle({:?})", cycle),
+            super::CodeCycle(ref cycle) => write!(f, "Cycle({cycle:?})"),
         }
     }
 }

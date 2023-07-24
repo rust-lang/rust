@@ -380,7 +380,7 @@ impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for HirId {
             let local_id = local_id
                 .as_u64()
                 .try_into()
-                .unwrap_or_else(|_| panic!("local id should be u32, found {:?}", local_id));
+                .unwrap_or_else(|_| panic!("local id should be u32, found {local_id:?}"));
             Some(HirId { owner: OwnerId { def_id }, local_id: ItemLocalId::from_u32(local_id) })
         } else {
             None

@@ -164,14 +164,14 @@ fn write_path(out: &mut String, path: &[PathElem]) {
 
     for elem in path.iter() {
         match elem {
-            Field(name) => write!(out, ".{}", name),
+            Field(name) => write!(out, ".{name}"),
             EnumTag => write!(out, ".<enum-tag>"),
-            Variant(name) => write!(out, ".<enum-variant({})>", name),
+            Variant(name) => write!(out, ".<enum-variant({name})>"),
             GeneratorTag => write!(out, ".<generator-tag>"),
             GeneratorState(idx) => write!(out, ".<generator-state({})>", idx.index()),
-            CapturedVar(name) => write!(out, ".<captured-var({})>", name),
-            TupleElem(idx) => write!(out, ".{}", idx),
-            ArrayElem(idx) => write!(out, "[{}]", idx),
+            CapturedVar(name) => write!(out, ".<captured-var({name})>"),
+            TupleElem(idx) => write!(out, ".{idx}"),
+            ArrayElem(idx) => write!(out, "[{idx}]"),
             // `.<deref>` does not match Rust syntax, but it is more readable for long paths -- and
             // some of the other items here also are not Rust syntax. Actually we can't
             // even use the usual syntax because we are just showing the projections,

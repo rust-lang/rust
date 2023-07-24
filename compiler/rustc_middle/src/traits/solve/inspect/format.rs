@@ -68,7 +68,7 @@ impl<'a, 'b> ProofTreeFormatter<'a, 'b> {
             writeln!(self.f, "NESTED GOALS ADDED TO CALLER: [")?;
             self.nested(|this| {
                 for goal in goal.returned_goals.iter() {
-                    writeln!(this.f, "ADDED GOAL: {:?},", goal)?;
+                    writeln!(this.f, "ADDED GOAL: {goal:?},")?;
                 }
                 Ok(())
             })?;
@@ -101,7 +101,7 @@ impl<'a, 'b> ProofTreeFormatter<'a, 'b> {
                 writeln!(self.f, "NORMALIZING SELF TY FOR ASSEMBLY:")
             }
             CandidateKind::Candidate { name, result } => {
-                writeln!(self.f, "CANDIDATE {}: {:?}", name, result)
+                writeln!(self.f, "CANDIDATE {name}: {result:?}")
             }
         }?;
 

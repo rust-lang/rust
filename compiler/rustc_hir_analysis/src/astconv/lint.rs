@@ -34,9 +34,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             let param_name = generics.params.next_type_param_name(None);
 
             let add_generic_sugg = if let Some(span) = generics.span_for_param_suggestion() {
-                (span, format!(", {}: {}", param_name, impl_trait_name))
+                (span, format!(", {param_name}: {impl_trait_name}"))
             } else {
-                (generics.span, format!("<{}: {}>", param_name, impl_trait_name))
+                (generics.span, format!("<{param_name}: {impl_trait_name}>"))
             };
             diag.multipart_suggestion(
             format!("alternatively use a blanket \

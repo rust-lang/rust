@@ -238,8 +238,7 @@ impl<'ll> CodegenCx<'ll, '_> {
         assert!(
             !defined_in_current_codegen_unit,
             "consts::get_static() should always hit the cache for \
-                 statics defined in the same CGU, but did not for `{:?}`",
-            def_id
+                 statics defined in the same CGU, but did not for `{def_id:?}`"
         );
 
         let ty = instance.ty(self.tcx, ty::ParamEnv::reveal_all());

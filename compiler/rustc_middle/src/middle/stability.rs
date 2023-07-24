@@ -107,7 +107,7 @@ pub fn report_unstable(
     soft_handler: impl FnOnce(&'static Lint, Span, String),
 ) {
     let msg = match reason {
-        Some(r) => format!("use of unstable library feature '{}': {}", feature, r),
+        Some(r) => format!("use of unstable library feature '{feature}': {r}"),
         None => format!("use of unstable library feature '{}'", &feature),
     };
 
@@ -170,7 +170,7 @@ pub fn deprecation_suggestion(
     if let Some(suggestion) = suggestion {
         diag.span_suggestion_verbose(
             span,
-            format!("replace the use of the deprecated {}", kind),
+            format!("replace the use of the deprecated {kind}"),
             suggestion,
             Applicability::MachineApplicable,
         );
@@ -189,12 +189,12 @@ fn deprecation_message(
     path: &str,
 ) -> String {
     let message = if is_in_effect {
-        format!("use of deprecated {} `{}`", kind, path)
+        format!("use of deprecated {kind} `{path}`")
     } else {
         let since = since.as_ref().map(Symbol::as_str);
 
         if since == Some("TBD") {
-            format!("use of {} `{}` that will be deprecated in a future Rust version", kind, path)
+            format!("use of {kind} `{path}` that will be deprecated in a future Rust version")
         } else {
             format!(
                 "use of {} `{}` that will be deprecated in future version {}",
@@ -206,7 +206,7 @@ fn deprecation_message(
     };
 
     match note {
-        Some(reason) => format!("{}: {}", message, reason),
+        Some(reason) => format!("{message}: {reason}"),
         None => message,
     }
 }
@@ -312,7 +312,7 @@ fn suggestion_for_allocator_api(
                     return Some((
                         inner_types,
                         "consider wrapping the inner types in tuple".to_string(),
-                        format!("({})", snippet),
+                        format!("({snippet})"),
                         Applicability::MaybeIncorrect,
                     ));
                 }
@@ -599,7 +599,7 @@ impl<'tcx> TyCtxt<'tcx> {
             |span, def_id| {
                 // The API could be uncallable for other reasons, for example when a private module
                 // was referenced.
-                self.sess.delay_span_bug(span, format!("encountered unmarked API: {:?}", def_id));
+                self.sess.delay_span_bug(span, format!("encountered unmarked API: {def_id:?}"));
             },
         )
     }

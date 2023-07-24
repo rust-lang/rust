@@ -472,8 +472,7 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, associated_items: &[hir::TraitItemRe
             let bound =
                 if unsatisfied_bounds.len() > 1 { "these bounds are" } else { "this bound is" };
             err.note(format!(
-                "{} currently required to ensure that impls have maximum flexibility",
-                bound
+                "{bound} currently required to ensure that impls have maximum flexibility"
             ));
             err.note(
                 "we are soliciting feedback, see issue #87479 \
@@ -989,7 +988,7 @@ fn check_type_defn<'tcx>(tcx: TyCtxt<'tcx>, item: &hir::Item<'tcx>, all_sized: b
                     let ty = tcx.erase_regions(ty);
                     if ty.has_infer() {
                         tcx.sess
-                            .delay_span_bug(item.span, format!("inference variables in {:?}", ty));
+                            .delay_span_bug(item.span, format!("inference variables in {ty:?}"));
                         // Just treat unresolved type expression as if it needs drop.
                         true
                     } else {
@@ -1863,8 +1862,7 @@ fn report_bivariance(
 
     if matches!(param.kind, hir::GenericParamKind::Type { .. }) && !has_explicit_bounds {
         err.help(format!(
-            "if you intended `{0}` to be a const parameter, use `const {0}: usize` instead",
-            param_name
+            "if you intended `{param_name}` to be a const parameter, use `const {param_name}: usize` instead"
         ));
     }
     err.emit()

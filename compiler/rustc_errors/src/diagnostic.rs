@@ -420,13 +420,13 @@ impl Diagnostic {
         let expected_label = if expected_label.is_empty() {
             "expected".to_string()
         } else {
-            format!("expected {}", expected_label)
+            format!("expected {expected_label}")
         };
         let found_label = found_label.to_string();
         let found_label = if found_label.is_empty() {
             "found".to_string()
         } else {
-            format!("found {}", found_label)
+            format!("found {found_label}")
         };
         let (found_padding, expected_padding) = if expected_label.len() > found_label.len() {
             (expected_label.len() - found_label.len(), 0)
@@ -439,13 +439,13 @@ impl Diagnostic {
             StringPart::Normal(ref s) => (s.to_owned(), Style::NoStyle),
             StringPart::Highlighted(ref s) => (s.to_owned(), Style::Highlight),
         }));
-        msg.push((format!("`{}\n", expected_extra), Style::NoStyle));
+        msg.push((format!("`{expected_extra}\n"), Style::NoStyle));
         msg.push((format!("{}{} `", " ".repeat(found_padding), found_label), Style::NoStyle));
         msg.extend(found.0.iter().map(|x| match *x {
             StringPart::Normal(ref s) => (s.to_owned(), Style::NoStyle),
             StringPart::Highlighted(ref s) => (s.to_owned(), Style::Highlight),
         }));
-        msg.push((format!("`{}", found_extra), Style::NoStyle));
+        msg.push((format!("`{found_extra}"), Style::NoStyle));
 
         // For now, just attach these as notes.
         self.highlighted_note(msg);
@@ -454,7 +454,7 @@ impl Diagnostic {
 
     pub fn note_trait_signature(&mut self, name: Symbol, signature: String) -> &mut Self {
         self.highlighted_note(vec![
-            (format!("`{}` from trait: `", name), Style::NoStyle),
+            (format!("`{name}` from trait: `"), Style::NoStyle),
             (signature, Style::Highlight),
             ("`".to_string(), Style::NoStyle),
         ]);

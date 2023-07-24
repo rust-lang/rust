@@ -412,9 +412,8 @@ fn emit_orphan_check_error<'tcx>(
                 .span_label(
                     sp,
                     format!(
-                        "type parameter `{}` must be covered by another type \
-                    when it appears before the first local type (`{}`)",
-                        param_ty, local_type
+                        "type parameter `{param_ty}` must be covered by another type \
+                    when it appears before the first local type (`{local_type}`)"
                     ),
                 )
                 .note(
@@ -441,9 +440,8 @@ fn emit_orphan_check_error<'tcx>(
                 .span_label(
                     sp,
                     format!(
-                        "type parameter `{}` must be used as the type parameter for some \
+                        "type parameter `{param_ty}` must be used as the type parameter for some \
                     local type",
-                        param_ty,
                     ),
                 )
                 .note(
@@ -541,17 +539,16 @@ fn lint_auto_trait_impl<'tcx>(
             let self_descr = tcx.def_descr(self_type_did);
             match arg {
                 ty::util::NotUniqueParam::DuplicateParam(arg) => {
-                    lint.note(format!("`{}` is mentioned multiple times", arg));
+                    lint.note(format!("`{arg}` is mentioned multiple times"));
                 }
                 ty::util::NotUniqueParam::NotParam(arg) => {
-                    lint.note(format!("`{}` is not a generic parameter", arg));
+                    lint.note(format!("`{arg}` is not a generic parameter"));
                 }
             }
             lint.span_note(
                 item_span,
                 format!(
-                    "try using the same sequence of generic parameters as the {} definition",
-                    self_descr,
+                    "try using the same sequence of generic parameters as the {self_descr} definition",
                 ),
             )
         },

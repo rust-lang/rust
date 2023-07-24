@@ -76,7 +76,7 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                             clobbered_x87 = true;
                             clobbers.push("~{st}".to_string());
                             for i in 1..=7 {
-                                clobbers.push(format!("~{{st({})}}", i));
+                                clobbers.push(format!("~{{st({i})}}"));
                             }
                         }
                         continue;
@@ -589,7 +589,7 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'_>>) ->
                     // We use f32 as the type for discarded outputs
                     'x'
                 };
-                format!("{{{}mm{}}}", class, idx)
+                format!("{{{class}mm{idx}}}")
             } else if let Some(idx) = a64_reg_index(reg) {
                 let class = if let Some(layout) = layout {
                     match layout.size.bytes() {
@@ -604,7 +604,7 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'_>>) ->
                     // LLVM doesn't recognize x30. use lr instead.
                     "{lr}".to_string()
                 } else {
-                    format!("{{{}{}}}", class, idx)
+                    format!("{{{class}{idx}}}")
                 }
             } else if let Some(idx) = a64_vreg_index(reg) {
                 let class = if let Some(layout) = layout {
@@ -620,7 +620,7 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'_>>) ->
                     // We use i64x2 as the type for discarded outputs
                     'q'
                 };
-                format!("{{{}{}}}", class, idx)
+                format!("{{{class}{idx}}}")
             } else if reg == InlineAsmReg::Arm(ArmInlineAsmReg::r14) {
                 // LLVM doesn't recognize r14
                 "{lr}".to_string()

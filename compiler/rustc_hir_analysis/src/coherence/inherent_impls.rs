@@ -148,8 +148,7 @@ impl<'tcx> InherentCollect<'tcx> {
                 if let ty::Ref(_, subty, _) = ty.kind() {
                     err.note(format!(
                         "you could also try moving the reference to \
-                            uses of `{}` (such as `self`) within the implementation",
-                        subty
+                            uses of `{subty}` (such as `self`) within the implementation"
                     ));
                 }
                 err.emit();

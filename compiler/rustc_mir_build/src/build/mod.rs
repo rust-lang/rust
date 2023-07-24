@@ -94,8 +94,7 @@ fn mir_build(tcx: TyCtxt<'_>, def: LocalDefId) -> Body<'_> {
             || body.basic_blocks.has_free_regions()
             || body.var_debug_info.has_free_regions()
             || body.yield_ty().has_free_regions()),
-        "Unexpected free regions in MIR: {:?}",
-        body,
+        "Unexpected free regions in MIR: {body:?}",
     );
 
     body
@@ -977,9 +976,9 @@ pub(crate) fn parse_float_into_scalar(
     match float_ty {
         ty::FloatTy::F32 => {
             let Ok(rust_f) = num.parse::<f32>() else { return None };
-            let mut f = num.parse::<Single>().unwrap_or_else(|e| {
-                panic!("apfloat::ieee::Single failed to parse `{}`: {:?}", num, e)
-            });
+            let mut f = num
+                .parse::<Single>()
+                .unwrap_or_else(|e| panic!("apfloat::ieee::Single failed to parse `{num}`: {e:?}"));
 
             assert!(
                 u128::from(rust_f.to_bits()) == f.to_bits(),
@@ -1000,9 +999,9 @@ pub(crate) fn parse_float_into_scalar(
         }
         ty::FloatTy::F64 => {
             let Ok(rust_f) = num.parse::<f64>() else { return None };
-            let mut f = num.parse::<Double>().unwrap_or_else(|e| {
-                panic!("apfloat::ieee::Double failed to parse `{}`: {:?}", num, e)
-            });
+            let mut f = num
+                .parse::<Double>()
+                .unwrap_or_else(|e| panic!("apfloat::ieee::Double failed to parse `{num}`: {e:?}"));
 
             assert!(
                 u128::from(rust_f.to_bits()) == f.to_bits(),

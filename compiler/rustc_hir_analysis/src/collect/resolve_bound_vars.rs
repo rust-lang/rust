@@ -2040,8 +2040,7 @@ fn is_late_bound_map(
                                             tcx.sess.delay_span_bug(
                                                 *span,
                                                 format!(
-                                                    "Incorrect generic arg count for alias {:?}",
-                                                    alias_def
+                                                    "Incorrect generic arg count for alias {alias_def:?}"
                                                 ),
                                             );
                                             None

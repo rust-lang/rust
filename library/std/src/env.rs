@@ -291,7 +291,7 @@ impl fmt::Display for VarError {
         match *self {
             VarError::NotPresent => write!(f, "environment variable not found"),
             VarError::NotUnicode(ref s) => {
-                write!(f, "environment variable was not valid unicode: {:?}", s)
+                write!(f, "environment variable was not valid unicode: {s:?}")
             }
         }
     }

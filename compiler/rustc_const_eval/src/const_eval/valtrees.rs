@@ -57,7 +57,7 @@ fn slice_branches<'tcx>(
 ) -> ValTreeCreationResult<'tcx> {
     let n = place
         .len(&ecx.tcx.tcx)
-        .unwrap_or_else(|_| panic!("expected to use len of place {:?}", place));
+        .unwrap_or_else(|_| panic!("expected to use len of place {place:?}"));
 
     let mut elems = Vec::with_capacity(n as usize);
     for i in 0..n {

@@ -246,7 +246,7 @@ fn closure_as_fn_str<'tcx>(infcx: &InferCtxt<'tcx>, ty: Ty<'tcx>) -> String {
     } else {
         format!(" -> {}", ty_to_string(infcx, fn_sig.output().skip_binder(), None))
     };
-    format!("fn({}){}", args, ret)
+    format!("fn({args}){ret}")
 }
 
 impl<'tcx> InferCtxt<'tcx> {

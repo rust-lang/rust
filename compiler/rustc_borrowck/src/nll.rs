@@ -347,7 +347,7 @@ pub(super) fn dump_mir_results<'tcx>(
                     for_each_region_constraint(
                         infcx.tcx,
                         closure_region_requirements,
-                        &mut |msg| writeln!(out, "| {}", msg),
+                        &mut |msg| writeln!(out, "| {msg}"),
                     )?;
                     writeln!(out, "|")?;
                 }
@@ -426,7 +426,7 @@ pub(super) fn dump_annotation<'tcx>(
     };
 
     if !opaque_type_values.is_empty() {
-        err.note(format!("Inferred opaque type values:\n{:#?}", opaque_type_values));
+        err.note(format!("Inferred opaque type values:\n{opaque_type_values:#?}"));
     }
 
     errors.buffer_non_error_diag(err);
@@ -439,7 +439,7 @@ fn for_each_region_constraint<'tcx>(
 ) -> io::Result<()> {
     for req in &closure_region_requirements.outlives_requirements {
         let subject = match req.subject {
-            ClosureOutlivesSubject::Region(subject) => format!("{:?}", subject),
+            ClosureOutlivesSubject::Region(subject) => format!("{subject:?}"),
             ClosureOutlivesSubject::Ty(ty) => {
                 format!("{:?}", ty.instantiate(tcx, |vid| ty::Region::new_var(tcx, vid)))
             }

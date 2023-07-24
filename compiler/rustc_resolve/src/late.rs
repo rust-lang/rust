@@ -1913,10 +1913,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         candidate: LifetimeElisionCandidate,
     ) {
         if let Some(prev_res) = self.r.lifetimes_res_map.insert(id, res) {
-            panic!(
-                "lifetime {:?} resolved multiple times ({:?} before, {:?} now)",
-                id, prev_res, res
-            )
+            panic!("lifetime {id:?} resolved multiple times ({prev_res:?} before, {res:?} now)")
         }
         match res {
             LifetimeRes::Param { .. } | LifetimeRes::Fresh { .. } | LifetimeRes::Static => {
@@ -1932,8 +1929,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
     fn record_lifetime_param(&mut self, id: NodeId, res: LifetimeRes) {
         if let Some(prev_res) = self.r.lifetimes_res_map.insert(id, res) {
             panic!(
-                "lifetime parameter {:?} resolved multiple times ({:?} before, {:?} now)",
-                id, prev_res, res
+                "lifetime parameter {id:?} resolved multiple times ({prev_res:?} before, {res:?} now)"
             )
         }
     }

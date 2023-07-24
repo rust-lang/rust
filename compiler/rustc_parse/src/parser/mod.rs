@@ -368,7 +368,7 @@ impl TokenType {
     fn to_string(&self) -> String {
         match self {
             TokenType::Token(t) => format!("`{}`", pprust::token_kind_to_string(t)),
-            TokenType::Keyword(kw) => format!("`{}`", kw),
+            TokenType::Keyword(kw) => format!("`{kw}`"),
             TokenType::Operator => "an operator".to_string(),
             TokenType::Lifetime => "lifetime".to_string(),
             TokenType::Ident => "identifier".to_string(),
@@ -438,7 +438,7 @@ pub(super) fn token_descr(token: &Token) -> String {
         TokenDescription::DocComment => "doc comment",
     });
 
-    if let Some(kind) = kind { format!("{} `{}`", kind, name) } else { format!("`{}`", name) }
+    if let Some(kind) = kind { format!("{kind} `{name}`") } else { format!("`{name}`") }
 }
 
 impl<'a> Parser<'a> {
@@ -923,7 +923,7 @@ impl<'a> Parser<'a> {
                                     expect_err
                                         .span_suggestion_short(
                                             sp,
-                                            format!("missing `{}`", token_str),
+                                            format!("missing `{token_str}`"),
                                             token_str,
                                             Applicability::MaybeIncorrect,
                                         )

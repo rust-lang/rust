@@ -622,7 +622,7 @@ impl server::SourceFile for Rustc<'_, '_> {
 impl server::Span for Rustc<'_, '_> {
     fn debug(&mut self, span: Self::Span) -> String {
         if self.ecx.ecfg.span_debug {
-            format!("{:?}", span)
+            format!("{span:?}")
         } else {
             format!("{:?} bytes({}..{})", span.ctxt(), span.lo().0, span.hi().0)
         }

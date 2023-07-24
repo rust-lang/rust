@@ -299,7 +299,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'cx, 'tcx> 
                     if !tcx.sess.opts.actually_rustdoc {
                         tcx.sess.delay_span_bug(
                             DUMMY_SP,
-                            format!("unexpected ambiguity: {:?} {:?}", c_data, result),
+                            format!("unexpected ambiguity: {c_data:?} {result:?}"),
                         );
                     }
                     return Err(NoSolution);

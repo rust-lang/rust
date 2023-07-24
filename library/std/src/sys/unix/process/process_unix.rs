@@ -146,8 +146,7 @@ impl Command {
                     let (errno, footer) = bytes.split_at(4);
                     assert_eq!(
                         CLOEXEC_MSG_FOOTER, footer,
-                        "Validation on the CLOEXEC pipe failed: {:?}",
-                        bytes
+                        "Validation on the CLOEXEC pipe failed: {bytes:?}"
                     );
                     let errno = i32::from_be_bytes(errno.try_into().unwrap());
                     assert!(p.wait().is_ok(), "wait() should either return Ok or panic");

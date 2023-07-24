@@ -177,31 +177,31 @@ impl IntoDiagnostic<'_> for ThorinErrorWrapper {
             }
             thorin::Error::NamelessSection(_, offset) => {
                 diag = handler.struct_err(fluent::codegen_ssa_thorin_section_without_name);
-                diag.set_arg("offset", format!("0x{:08x}", offset));
+                diag.set_arg("offset", format!("0x{offset:08x}"));
                 diag
             }
             thorin::Error::RelocationWithInvalidSymbol(section, offset) => {
                 diag =
                     handler.struct_err(fluent::codegen_ssa_thorin_relocation_with_invalid_symbol);
                 diag.set_arg("section", section);
-                diag.set_arg("offset", format!("0x{:08x}", offset));
+                diag.set_arg("offset", format!("0x{offset:08x}"));
                 diag
             }
             thorin::Error::MultipleRelocations(section, offset) => {
                 diag = handler.struct_err(fluent::codegen_ssa_thorin_multiple_relocations);
                 diag.set_arg("section", section);
-                diag.set_arg("offset", format!("0x{:08x}", offset));
+                diag.set_arg("offset", format!("0x{offset:08x}"));
                 diag
             }
             thorin::Error::UnsupportedRelocation(section, offset) => {
                 diag = handler.struct_err(fluent::codegen_ssa_thorin_unsupported_relocation);
                 diag.set_arg("section", section);
-                diag.set_arg("offset", format!("0x{:08x}", offset));
+                diag.set_arg("offset", format!("0x{offset:08x}"));
                 diag
             }
             thorin::Error::MissingDwoName(id) => {
                 diag = handler.struct_err(fluent::codegen_ssa_thorin_missing_dwo_name);
-                diag.set_arg("id", format!("0x{:08x}", id));
+                diag.set_arg("id", format!("0x{id:08x}"));
                 diag
             }
             thorin::Error::NoCompilationUnits => {
@@ -251,7 +251,7 @@ impl IntoDiagnostic<'_> for ThorinErrorWrapper {
             }
             thorin::Error::StrAtOffset(_, offset) => {
                 diag = handler.struct_err(fluent::codegen_ssa_thorin_str_at_offset);
-                diag.set_arg("offset", format!("0x{:08x}", offset));
+                diag.set_arg("offset", format!("0x{offset:08x}"));
                 diag
             }
             thorin::Error::ParseIndex(_, section) => {
@@ -261,7 +261,7 @@ impl IntoDiagnostic<'_> for ThorinErrorWrapper {
             }
             thorin::Error::UnitNotInIndex(unit) => {
                 diag = handler.struct_err(fluent::codegen_ssa_thorin_unit_not_in_index);
-                diag.set_arg("unit", format!("0x{:08x}", unit));
+                diag.set_arg("unit", format!("0x{unit:08x}"));
                 diag
             }
             thorin::Error::RowNotInIndex(_, row) => {
@@ -275,7 +275,7 @@ impl IntoDiagnostic<'_> for ThorinErrorWrapper {
             }
             thorin::Error::EmptyUnit(unit) => {
                 diag = handler.struct_err(fluent::codegen_ssa_thorin_empty_unit);
-                diag.set_arg("unit", format!("0x{:08x}", unit));
+                diag.set_arg("unit", format!("0x{unit:08x}"));
                 diag
             }
             thorin::Error::MultipleDebugInfoSection => {
@@ -292,12 +292,12 @@ impl IntoDiagnostic<'_> for ThorinErrorWrapper {
             }
             thorin::Error::DuplicateUnit(unit) => {
                 diag = handler.struct_err(fluent::codegen_ssa_thorin_duplicate_unit);
-                diag.set_arg("unit", format!("0x{:08x}", unit));
+                diag.set_arg("unit", format!("0x{unit:08x}"));
                 diag
             }
             thorin::Error::MissingReferencedUnit(unit) => {
                 diag = handler.struct_err(fluent::codegen_ssa_thorin_missing_referenced_unit);
-                diag.set_arg("unit", format!("0x{:08x}", unit));
+                diag.set_arg("unit", format!("0x{unit:08x}"));
                 diag
             }
             thorin::Error::NoOutputObjectCreated => {

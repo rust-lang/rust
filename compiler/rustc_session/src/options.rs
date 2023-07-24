@@ -330,8 +330,7 @@ fn build_options<O: Default>(
                     match value {
                         None => handler.early_error(
                             format!(
-                                "{0} option `{1}` requires {2} ({3} {1}=<value>)",
-                                outputname, key, type_desc, prefix
+                                "{outputname} option `{key}` requires {type_desc} ({prefix} {key}=<value>)"
                             ),
                         ),
                         Some(value) => handler.early_error(

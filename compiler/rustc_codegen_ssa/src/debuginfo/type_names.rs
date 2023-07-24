@@ -414,7 +414,7 @@ fn push_debuginfo_type_name<'tcx>(
         }
         // Type parameters from polymorphized functions.
         ty::Param(_) => {
-            write!(output, "{:?}", t).unwrap();
+            write!(output, "{t:?}").unwrap();
         }
         ty::Error(_)
         | ty::Infer(_)
@@ -565,9 +565,9 @@ fn push_disambiguated_special_name(
     output: &mut String,
 ) {
     if cpp_like_debuginfo {
-        write!(output, "{}${}", label, disambiguator).unwrap();
+        write!(output, "{label}${disambiguator}").unwrap();
     } else {
-        write!(output, "{{{}#{}}}", label, disambiguator).unwrap();
+        write!(output, "{{{label}#{disambiguator}}}").unwrap();
     }
 }
 
@@ -651,15 +651,15 @@ fn push_const_param<'tcx>(tcx: TyCtxt<'tcx>, ct: ty::Const<'tcx>, output: &mut S
             ty::Int(ity) => {
                 let bits = ct.eval_bits(tcx, ty::ParamEnv::reveal_all(), ct.ty());
                 let val = Integer::from_int_ty(&tcx, *ity).size().sign_extend(bits) as i128;
-                write!(output, "{}", val)
+                write!(output, "{val}")
             }
             ty::Uint(_) => {
                 let val = ct.eval_bits(tcx, ty::ParamEnv::reveal_all(), ct.ty());
-                write!(output, "{}", val)
+                write!(output, "{val}")
             }
             ty::Bool => {
                 let val = ct.try_eval_bool(tcx, ty::ParamEnv::reveal_all()).unwrap();
-                write!(output, "{}", val)
+                write!(output, "{val}")
             }
             _ => {
                 // If we cannot evaluate the constant to a known type, we fall back
@@ -678,9 +678,9 @@ fn push_const_param<'tcx>(tcx: TyCtxt<'tcx>, ct: ty::Const<'tcx>, output: &mut S
                 });
 
                 if cpp_like_debuginfo(tcx) {
-                    write!(output, "CONST${:x}", hash_short)
+                    write!(output, "CONST${hash_short:x}")
                 } else {
-                    write!(output, "{{CONST#{:x}}}", hash_short)
+                    write!(output, "{{CONST#{hash_short:x}}}")
                 }
             }
         },
@@ -752,7 +752,7 @@ fn push_close_angle_bracket(cpp_like_debuginfo: bool, output: &mut String) {
 }
 
 fn pop_close_angle_bracket(output: &mut String) {
-    assert!(output.ends_with('>'), "'output' does not end with '>': {}", output);
+    assert!(output.ends_with('>'), "'output' does not end with '>': {output}");
     output.pop();
     if output.ends_with(' ') {
         output.pop();

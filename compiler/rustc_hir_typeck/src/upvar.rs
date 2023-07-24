@@ -109,11 +109,11 @@ impl MigrationWarningReason {
     fn migration_message(&self) -> String {
         let base = "changes to closure capture in Rust 2021 will affect";
         if !self.auto_traits.is_empty() && self.drop_order {
-            format!("{} drop order and which traits the closure implements", base)
+            format!("{base} drop order and which traits the closure implements")
         } else if self.drop_order {
-            format!("{} drop order", base)
+            format!("{base} drop order")
         } else {
-            format!("{} which traits the closure implements", base)
+            format!("{base} which traits the closure implements")
         }
     }
 }
@@ -824,8 +824,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     lint.note("for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>");
 
                     let diagnostic_msg = format!(
-                        "add a dummy let to cause {} to be fully captured",
-                        migrated_variables_concat
+                        "add a dummy let to cause {migrated_variables_concat} to be fully captured"
                     );
 
                     let closure_span = self.tcx.hir().span_with_body(closure_hir_id);
@@ -1943,7 +1942,7 @@ fn construct_place_string<'tcx>(tcx: TyCtxt<'_>, place: &Place<'tcx>) -> String 
     let mut projections_str = String::new();
     for (i, item) in place.projections.iter().enumerate() {
         let proj = match item.kind {
-            ProjectionKind::Field(a, b) => format!("({:?}, {:?})", a, b),
+            ProjectionKind::Field(a, b) => format!("({a:?}, {b:?})"),
             ProjectionKind::Deref => String::from("Deref"),
             ProjectionKind::Index => String::from("Index"),
             ProjectionKind::Subslice => String::from("Subslice"),
@@ -1966,7 +1965,7 @@ fn construct_capture_kind_reason_string<'tcx>(
 
     let capture_kind_str = match capture_info.capture_kind {
         ty::UpvarCapture::ByValue => "ByValue".into(),
-        ty::UpvarCapture::ByRef(kind) => format!("{:?}", kind),
+        ty::UpvarCapture::ByRef(kind) => format!("{kind:?}"),
     };
 
     format!("{place_str} captured as {capture_kind_str} here")
@@ -1987,7 +1986,7 @@ fn construct_capture_info_string<'tcx>(
 
     let capture_kind_str = match capture_info.capture_kind {
         ty::UpvarCapture::ByValue => "ByValue".into(),
-        ty::UpvarCapture::ByRef(kind) => format!("{:?}", kind),
+        ty::UpvarCapture::ByRef(kind) => format!("{kind:?}"),
     };
     format!("{place_str} -> {capture_kind_str}")
 }

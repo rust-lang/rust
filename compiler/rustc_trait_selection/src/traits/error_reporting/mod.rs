@@ -226,7 +226,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
                 let span = variant_data.ctor_hir_id().map_or(DUMMY_SP, |id| hir.span(id));
                 (span, None, vec![ArgKind::empty(); variant_data.fields().len()])
             }
-            _ => panic!("non-FnLike node found: {:?}", node),
+            _ => panic!("non-FnLike node found: {node:?}"),
         })
     }
 
@@ -273,10 +273,10 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
             found_str,
         );
 
-        err.span_label(span, format!("expected {} that takes {}", kind, expected_str));
+        err.span_label(span, format!("expected {kind} that takes {expected_str}"));
 
         if let Some(found_span) = found_span {
-            err.span_label(found_span, format!("takes {}", found_str));
+            err.span_label(found_span, format!("takes {found_str}"));
 
             // Suggest to take and ignore the arguments with expected_args_length `_`s if
             // found arguments is empty (assume the user just wants to ignore args in this case).
@@ -289,7 +289,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
                         "consider changing the closure to take and ignore the expected argument{}",
                         pluralize!(expected_args.len())
                     ),
-                    format!("|{}|", underscores),
+                    format!("|{underscores}|"),
                     Applicability::MachineApplicable,
                 );
             }
@@ -304,7 +304,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
                     err.span_suggestion_verbose(
                         found_span,
                         "change the closure to take multiple arguments instead of a single tuple",
-                        format!("|{}|", sugg),
+                        format!("|{sugg}|"),
                         Applicability::MachineApplicable,
                     );
                 }
@@ -704,9 +704,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             .get_parent_trait_ref(obligation.cause.code())
                             .map(|(t, s)| {
                                 (
-                                    format!(" in `{}`", t),
-                                    format!("within `{}`, ", t),
-                                    s.map(|s| (format!("within this `{}`", t), s)),
+                                    format!(" in `{t}`"),
+                                    format!("within `{t}`, "),
+                                    s.map(|s| (format!("within this `{t}`"), s)),
                                 )
                             })
                             .unwrap_or_default();
@@ -1071,7 +1071,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 // which bounds actually failed to hold.
                                 self.tcx.sess.struct_span_err(
                                     span,
-                                    format!("the type `{}` is not well-formed", ty),
+                                    format!("the type `{ty}` is not well-formed"),
                                 )
                             }
                         }
@@ -1109,7 +1109,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, ty)) => {
                         let mut diag = self.tcx.sess.struct_span_err(
                             span,
-                            format!("the constant `{}` is not of type `{}`", ct, ty),
+                            format!("the constant `{ct}` is not of type `{ty}`"),
                         );
                         self.note_type_err(
                             &mut diag,
@@ -1981,7 +1981,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     if all_traits_equal {
                         format!("\n  {}", c.self_ty())
                     } else {
-                        format!("\n  {}", c)
+                        format!("\n  {c}")
                     }
                 })
                 .collect();
@@ -2179,10 +2179,8 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 format!("trait impl{} with same name found", pluralize!(trait_impls.len())),
             );
             let trait_crate = self.tcx.crate_name(trait_with_same_path.krate);
-            let crate_msg = format!(
-                "perhaps two different versions of crate `{}` are being used?",
-                trait_crate
-            );
+            let crate_msg =
+                format!("perhaps two different versions of crate `{trait_crate}` are being used?");
             err.note(crate_msg);
             suggested = true;
         }
@@ -2310,7 +2308,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         err.cancel();
                         return;
                     }
-                    err.note(format!("cannot satisfy `{}`", predicate));
+                    err.note(format!("cannot satisfy `{predicate}`"));
                     let impl_candidates = self
                         .find_similar_impl_candidates(predicate.to_opt_poly_trait_pred().unwrap());
                     if impl_candidates.len() < 10 {
@@ -2374,7 +2372,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         if let Some(local_def_id) = data.trait_ref.def_id.as_local()
                             && let Some(hir::Node::Item(hir::Item { ident: trait_name, kind: hir::ItemKind::Trait(_, _, _, _, trait_item_refs), .. })) = self.tcx.hir().find_by_def_id(local_def_id)
                             && let Some(method_ref) = trait_item_refs.iter().find(|item_ref| item_ref.ident == *assoc_item_name) {
-                            err.span_label(method_ref.span, format!("`{}::{}` defined here", trait_name, assoc_item_name));
+                            err.span_label(method_ref.span, format!("`{trait_name}::{assoc_item_name}` defined here"));
                         }
 
                         err.span_label(span, format!("cannot {verb} associated {noun} of trait"));
@@ -2475,7 +2473,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         ErrorCode::E0284,
                         true,
                     );
-                    err.note(format!("cannot satisfy `{}`", predicate));
+                    err.note(format!("cannot satisfy `{predicate}`"));
                     err
                 } else {
                     // If we can't find a substitution, just print a generic error
@@ -2486,7 +2484,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         "type annotations needed: cannot satisfy `{}`",
                         predicate,
                     );
-                    err.span_label(span, format!("cannot satisfy `{}`", predicate));
+                    err.span_label(span, format!("cannot satisfy `{predicate}`"));
                     err
                 }
             }
@@ -2514,7 +2512,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         "type annotations needed: cannot satisfy `{}`",
                         predicate,
                     );
-                    err.span_label(span, format!("cannot satisfy `{}`", predicate));
+                    err.span_label(span, format!("cannot satisfy `{predicate}`"));
                     err
                 }
             }
@@ -2529,7 +2527,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     "type annotations needed: cannot satisfy `{}`",
                     predicate,
                 );
-                err.span_label(span, format!("cannot satisfy `{}`", predicate));
+                err.span_label(span, format!("cannot satisfy `{predicate}`"));
                 err
             }
         };
@@ -2566,7 +2564,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 }
             }
         }
-        let mut crate_names: Vec<_> = crates.iter().map(|n| format!("`{}`", n)).collect();
+        let mut crate_names: Vec<_> = crates.iter().map(|n| format!("`{n}`")).collect();
         crate_names.sort();
         crate_names.dedup();
         post.sort();
@@ -2593,7 +2591,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             predicate
         );
         let post = if post.len() > 1 || (post.len() == 1 && post[0].contains('\n')) {
-            format!(":\n{}", post.iter().map(|p| format!("- {}", p)).collect::<Vec<_>>().join("\n"),)
+            format!(":\n{}", post.iter().map(|p| format!("- {p}")).collect::<Vec<_>>().join("\n"),)
         } else if post.len() == 1 {
             format!(": `{}`", post[0])
         } else {
@@ -2602,7 +2600,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
         match (spans.len(), crates.len(), crate_names.len()) {
             (0, 0, 0) => {
-                err.note(format!("cannot satisfy `{}`", predicate));
+                err.note(format!("cannot satisfy `{predicate}`"));
             }
             (0, _, 1) => {
                 err.note(format!("{} in the `{}` crate{}", msg, crates[0], post,));
@@ -2773,7 +2771,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         err.span_suggestion_verbose(
             span,
             "consider relaxing the implicit `Sized` restriction",
-            format!("{} ?Sized", separator),
+            format!("{separator} ?Sized"),
             Applicability::MachineApplicable,
         );
     }
@@ -2864,7 +2862,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 }
             })
             .unwrap_or_else(|| {
-                format!("the trait bound `{}` is not satisfied{}", trait_predicate, post_message)
+                format!("the trait bound `{trait_predicate}` is not satisfied{post_message}")
             })
     }
 
@@ -3152,11 +3150,11 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
         err.span_label(
             closure_span,
-            format!("this closure implements `{}`, not `{}`", found_kind, kind),
+            format!("this closure implements `{found_kind}`, not `{kind}`"),
         );
         err.span_label(
             obligation.cause.span,
-            format!("the requirement to implement `{}` derives from here", kind),
+            format!("the requirement to implement `{kind}` derives from here"),
         );
 
         // Additional context information explaining why the closure only implements
@@ -3383,8 +3381,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 let const_span = self.tcx.def_span(uv.def);
                 match self.tcx.sess.source_map().span_to_snippet(const_span) {
                     Ok(snippet) => err.help(format!(
-                        "try adding a `where` bound using this expression: `where [(); {}]:`",
-                        snippet
+                        "try adding a `where` bound using this expression: `where [(); {snippet}]:`"
                     )),
                     _ => err.help("consider adding a `where` bound using this expression"),
                 };

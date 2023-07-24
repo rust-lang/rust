@@ -43,7 +43,7 @@ fn decodable_body(
     let ty_name = s.ast().ident.to_string();
     let decode_body = match s.variants() {
         [] => {
-            let message = format!("`{}` has no variants to decode", ty_name);
+            let message = format!("`{ty_name}` has no variants to decode");
             quote! {
                 panic!(#message)
             }

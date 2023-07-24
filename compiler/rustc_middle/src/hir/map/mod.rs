@@ -534,7 +534,7 @@ impl<'hir> Map<'hir> {
                 (m, span, hir_id)
             }
             Some(OwnerNode::Crate(item)) => (item, item.spans.inner_span, hir_id),
-            node => panic!("not a module: {:?}", node),
+            node => panic!("not a module: {node:?}"),
         }
     }
 

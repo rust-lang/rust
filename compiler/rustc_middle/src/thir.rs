@@ -659,7 +659,7 @@ impl<'tcx> Pat<'tcx> {
 
 impl<'tcx> IntoDiagnosticArg for Pat<'tcx> {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
-        format!("{}", self).into_diagnostic_arg()
+        format!("{self}").into_diagnostic_arg()
     }
 }
 
@@ -789,7 +789,7 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
 
         match self.kind {
             PatKind::Wild => write!(f, "_"),
-            PatKind::AscribeUserType { ref subpattern, .. } => write!(f, "{}: _", subpattern),
+            PatKind::AscribeUserType { ref subpattern, .. } => write!(f, "{subpattern}: _"),
             PatKind::Binding { mutability, name, mode, ref subpattern, .. } => {
                 let is_mut = match mode {
                     BindingMode::ByValue => mutability == Mutability::Mut,
@@ -801,9 +801,9 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
                 if is_mut {
                     write!(f, "mut ")?;
                 }
-                write!(f, "{}", name)?;
+                write!(f, "{name}")?;
                 if let Some(ref subpattern) = *subpattern {
-                    write!(f, " @ {}", subpattern)?;
+                    write!(f, " @ {subpattern}")?;
                 }
                 Ok(())
             }
@@ -833,7 +833,7 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
                 };
 
                 if let Some((variant, name)) = &variant_and_name {
-                    write!(f, "{}", name)?;
+                    write!(f, "{name}")?;
 
                     // Only for Adt we can have `S {...}`,
                     // which we handle separately here.
@@ -893,13 +893,13 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
                     }
                     _ => bug!("{} is a bad Deref pattern type", self.ty),
                 }
-                write!(f, "{}", subpattern)
+                write!(f, "{subpattern}")
             }
-            PatKind::Constant { value } => write!(f, "{}", value),
+            PatKind::Constant { value } => write!(f, "{value}"),
             PatKind::Range(box PatRange { lo, hi, end }) => {
-                write!(f, "{}", lo)?;
-                write!(f, "{}", end)?;
-                write!(f, "{}", hi)
+                write!(f, "{lo}")?;
+                write!(f, "{end}")?;
+                write!(f, "{hi}")
             }
             PatKind::Slice { ref prefix, ref slice, ref suffix }
             | PatKind::Array { ref prefix, ref slice, ref suffix } => {
@@ -911,7 +911,7 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
                     write!(f, "{}", start_or_comma())?;
                     match slice.kind {
                         PatKind::Wild => {}
-                        _ => write!(f, "{}", slice)?,
+                        _ => write!(f, "{slice}")?,
                     }
                     write!(f, "..")?;
                 }

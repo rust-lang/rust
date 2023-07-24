@@ -554,7 +554,7 @@ pub fn compile_declarative_macro(
     let (transparency, transparency_error) = attr::find_transparency(&def.attrs, macro_rules);
     match transparency_error {
         Some(TransparencyError::UnknownTransparency(value, span)) => {
-            diag.span_err(span, format!("unknown macro transparency: `{}`", value));
+            diag.span_err(span, format!("unknown macro transparency: `{value}`"));
         }
         Some(TransparencyError::MultipleTransparencyAttrs(old_span, new_span)) => {
             diag.span_err(vec![old_span, new_span], "multiple macro transparency attributes");
@@ -1197,7 +1197,7 @@ fn check_matcher_core<'tt>(
                                     may_be = may_be
                                 ),
                             );
-                            err.span_label(sp, format!("not allowed after `{}` fragments", kind));
+                            err.span_label(sp, format!("not allowed after `{kind}` fragments"));
 
                             if kind == NonterminalKind::PatWithOr
                                 && sess.edition.at_least_rust_2021()
@@ -1221,8 +1221,7 @@ fn check_matcher_core<'tt>(
                                 &[] => {}
                                 &[t] => {
                                     err.note(format!(
-                                        "only {} is allowed after `{}` fragments",
-                                        t, kind,
+                                        "only {t} is allowed after `{kind}` fragments",
                                     ));
                                 }
                                 ts => {
@@ -1407,9 +1406,9 @@ fn is_in_follow(tok: &mbe::TokenTree, kind: NonterminalKind) -> IsInFollow {
 fn quoted_tt_to_string(tt: &mbe::TokenTree) -> String {
     match tt {
         mbe::TokenTree::Token(token) => pprust::token_to_string(&token).into(),
-        mbe::TokenTree::MetaVar(_, name) => format!("${}", name),
-        mbe::TokenTree::MetaVarDecl(_, name, Some(kind)) => format!("${}:{}", name, kind),
-        mbe::TokenTree::MetaVarDecl(_, name, None) => format!("${}:", name),
+        mbe::TokenTree::MetaVar(_, name) => format!("${name}"),
+        mbe::TokenTree::MetaVarDecl(_, name, Some(kind)) => format!("${name}:{kind}"),
+        mbe::TokenTree::MetaVarDecl(_, name, None) => format!("${name}:"),
         _ => panic!(
             "{}",
             "unexpected mbe::TokenTree::{Sequence or Delimited} \

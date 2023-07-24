@@ -91,8 +91,7 @@ pub(crate) fn fat_pointer_kind<'ll, 'tcx>(
             // For all other pointee types we should already have returned None
             // at the beginning of the function.
             panic!(
-                "fat_pointer_kind() - Encountered unexpected `pointee_tail_ty`: {:?}",
-                pointee_tail_ty
+                "fat_pointer_kind() - Encountered unexpected `pointee_tail_ty`: {pointee_tail_ty:?}"
             )
         }
     }

@@ -608,13 +608,13 @@ impl<'a> Parser<'a> {
         if let TokenKind::Ident(prev, _) = &self.prev_token.kind
           && let TokenKind::Ident(cur, _) = &self.token.kind
         {
-                let concat = Symbol::intern(&format!("{}{}", prev, cur));
+                let concat = Symbol::intern(&format!("{prev}{cur}"));
                 let ident = Ident::new(concat, DUMMY_SP);
                 if ident.is_used_keyword() || ident.is_reserved() || ident.is_raw_guess() {
                     let span = self.prev_token.span.to(self.token.span);
                     err.span_suggestion_verbose(
                         span,
-                        format!("consider removing the space to spell keyword `{}`", concat),
+                        format!("consider removing the space to spell keyword `{concat}`"),
                         concat,
                         Applicability::MachineApplicable,
                     );

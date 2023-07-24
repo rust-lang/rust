@@ -1415,9 +1415,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
     ) -> Cow<'b, [&'ll Value]> {
         assert!(
             self.cx.type_kind(fn_ty) == TypeKind::Function,
-            "builder::{} not passed a function, but {:?}",
-            typ,
-            fn_ty
+            "builder::{typ} not passed a function, but {fn_ty:?}"
         );
 
         let param_tys = self.cx.func_params_types(fn_ty);
@@ -1509,12 +1507,9 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
 
         let instr = if signed { "fptosi" } else { "fptoui" };
         let name = if let Some(vector_length) = vector_length {
-            format!(
-                "llvm.{}.sat.v{}i{}.v{}f{}",
-                instr, vector_length, int_width, vector_length, float_width
-            )
+            format!("llvm.{instr}.sat.v{vector_length}i{int_width}.v{vector_length}f{float_width}")
         } else {
-            format!("llvm.{}.sat.i{}.f{}", instr, int_width, float_width)
+            format!("llvm.{instr}.sat.i{int_width}.f{float_width}")
         };
         let f = self.declare_cfn(&name, llvm::UnnamedAddr::No, self.type_func(&[src_ty], dest_ty));
         self.call(self.type_func(&[src_ty], dest_ty), None, None, f, &[val], None)

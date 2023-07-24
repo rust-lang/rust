@@ -480,13 +480,13 @@ fn suggest_restriction<'tcx>(
                 .visit_ty(input);
         }
         // The type param `T: Trait` we will suggest to introduce.
-        let type_param = format!("{}: {}", type_param_name, bound_str);
+        let type_param = format!("{type_param_name}: {bound_str}");
 
         let mut sugg = vec![
             if let Some(span) = hir_generics.span_for_param_suggestion() {
-                (span, format!(", {}", type_param))
+                (span, format!(", {type_param}"))
             } else {
-                (hir_generics.span, format!("<{}>", type_param))
+                (hir_generics.span, format!("<{type_param}>"))
             },
             // `fn foo(t: impl Trait)`
             //                       ^ suggest `where <T as Trait>::A: Bound`
@@ -531,7 +531,7 @@ fn suggest_restriction<'tcx>(
 
         err.span_suggestion_verbose(
             sp,
-            format!("consider further restricting {}", msg),
+            format!("consider further restricting {msg}"),
             suggestion,
             Applicability::MachineApplicable,
         );
@@ -694,7 +694,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 term
                             );
                         } else {
-                            constraint.push_str(&format!("<{} = {}>", name, term));
+                            constraint.push_str(&format!("<{name} = {term}>"));
                         }
                     }
 
@@ -1019,7 +1019,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     let name = self.tcx.def_path_str(def_id);
                     err.span_label(
                         self.tcx.def_span(def_id),
-                        format!("consider calling the constructor for `{}`", name),
+                        format!("consider calling the constructor for `{name}`"),
                     );
                     name
                 }
@@ -1398,7 +1398,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     // Because of this, we modify the error to refer to the original obligation and
                     // return early in the caller.
 
-                    let msg = format!("the trait bound `{}` is not satisfied", old_pred);
+                    let msg = format!("the trait bound `{old_pred}` is not satisfied");
                     if has_custom_message {
                         err.note(msg);
                     } else {
@@ -1438,7 +1438,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 err.multipart_suggestion_verbose(
                                     sugg_msg,
                                     vec![
-                                        (span.shrink_to_lo(), format!("({}", sugg_prefix)),
+                                        (span.shrink_to_lo(), format!("({sugg_prefix}")),
                                         (span.shrink_to_hi(), ")".to_string()),
                                     ],
                                     Applicability::MaybeIncorrect,
@@ -1474,7 +1474,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             vec![(span.shrink_to_lo(), sugg_prefix)]
                         } else {
                             vec![
-                                (span.shrink_to_lo(), format!("{}(", sugg_prefix)),
+                                (span.shrink_to_lo(), format!("{sugg_prefix}(")),
                                 (span.shrink_to_hi(), ")".to_string()),
                             ]
                         };
@@ -1705,8 +1705,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             hir.get_if_local(*def_id)
                     {
                         let msg = format!(
-                            "alternatively, consider making `fn {}` asynchronous",
-                            ident
+                            "alternatively, consider making `fn {ident}` asynchronous"
                         );
                         if vis_span.is_empty() {
                             err.span_suggestion_verbose(
@@ -1957,10 +1956,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         // don't print out the [type error] here
                         err.delay_as_bug();
                     } else {
-                        err.span_label(
-                            expr.span,
-                            format!("this returned value is of type `{}`", ty),
-                        );
+                        err.span_label(expr.span, format!("this returned value is of type `{ty}`"));
                     }
                 }
             }
@@ -2461,8 +2457,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
             err.clear_code();
             err.set_primary_message(format!(
-                "{} cannot be {} between threads safely",
-                future_or_generator, trait_verb
+                "{future_or_generator} cannot be {trait_verb} between threads safely"
             ));
 
             let original_span = err.span.primary_span().unwrap();
@@ -2471,7 +2466,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             let message = outer_generator
                 .and_then(|generator_did| {
                     Some(match self.tcx.generator_kind(generator_did).unwrap() {
-                        GeneratorKind::Gen => format!("generator is not {}", trait_name),
+                        GeneratorKind::Gen => format!("generator is not {trait_name}"),
                         GeneratorKind::Async(AsyncGeneratorKind::Fn) => self
                             .tcx
                             .parent(generator_did)
@@ -2479,73 +2474,73 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             .map(|parent_did| hir.local_def_id_to_hir_id(parent_did))
                             .and_then(|parent_hir_id| hir.opt_name(parent_hir_id))
                             .map(|name| {
-                                format!("future returned by `{}` is not {}", name, trait_name)
+                                format!("future returned by `{name}` is not {trait_name}")
                             })?,
                         GeneratorKind::Async(AsyncGeneratorKind::Block) => {
-                            format!("future created by async block is not {}", trait_name)
+                            format!("future created by async block is not {trait_name}")
                         }
                         GeneratorKind::Async(AsyncGeneratorKind::Closure) => {
-                            format!("future created by async closure is not {}", trait_name)
+                            format!("future created by async closure is not {trait_name}")
                         }
                     })
                 })
-                .unwrap_or_else(|| format!("{} is not {}", future_or_generator, trait_name));
+                .unwrap_or_else(|| format!("{future_or_generator} is not {trait_name}"));
 
             span.push_span_label(original_span, message);
             err.set_span(span);
 
-            format!("is not {}", trait_name)
+            format!("is not {trait_name}")
         } else {
             format!("does not implement `{}`", trait_pred.print_modifiers_and_trait_path())
         };
 
-        let mut explain_yield =
-            |interior_span: Span, yield_span: Span, scope_span: Option<Span>| {
-                let mut span = MultiSpan::from_span(yield_span);
-                let snippet = match source_map.span_to_snippet(interior_span) {
-                    // #70935: If snippet contains newlines, display "the value" instead
-                    // so that we do not emit complex diagnostics.
-                    Ok(snippet) if !snippet.contains('\n') => format!("`{}`", snippet),
-                    _ => "the value".to_string(),
-                };
-                // note: future is not `Send` as this value is used across an await
-                //   --> $DIR/issue-70935-complex-spans.rs:13:9
-                //    |
-                // LL |            baz(|| async {
-                //    |  ______________-
-                //    | |
-                //    | |
-                // LL | |              foo(tx.clone());
-                // LL | |          }).await;
-                //    | |          - ^^^^^^ await occurs here, with value maybe used later
-                //    | |__________|
-                //    |            has type `closure` which is not `Send`
-                // note: value is later dropped here
-                // LL | |          }).await;
-                //    | |                  ^
-                //
-                span.push_span_label(
-                    yield_span,
-                    format!("{} occurs here, with {} maybe used later", await_or_yield, snippet),
-                );
-                span.push_span_label(
-                    interior_span,
-                    format!("has type `{}` which {}", target_ty, trait_explanation),
-                );
-                if let Some(scope_span) = scope_span {
-                    let scope_span = source_map.end_point(scope_span);
+        let mut explain_yield = |interior_span: Span,
+                                 yield_span: Span,
+                                 scope_span: Option<Span>| {
+            let mut span = MultiSpan::from_span(yield_span);
+            let snippet = match source_map.span_to_snippet(interior_span) {
+                // #70935: If snippet contains newlines, display "the value" instead
+                // so that we do not emit complex diagnostics.
+                Ok(snippet) if !snippet.contains('\n') => format!("`{snippet}`"),
+                _ => "the value".to_string(),
+            };
+            // note: future is not `Send` as this value is used across an await
+            //   --> $DIR/issue-70935-complex-spans.rs:13:9
+            //    |
+            // LL |            baz(|| async {
+            //    |  ______________-
+            //    | |
+            //    | |
+            // LL | |              foo(tx.clone());
+            // LL | |          }).await;
+            //    | |          - ^^^^^^ await occurs here, with value maybe used later
+            //    | |__________|
+            //    |            has type `closure` which is not `Send`
+            // note: value is later dropped here
+            // LL | |          }).await;
+            //    | |                  ^
+            //
+            span.push_span_label(
+                yield_span,
+                format!("{await_or_yield} occurs here, with {snippet} maybe used later"),
+            );
+            span.push_span_label(
+                interior_span,
+                format!("has type `{target_ty}` which {trait_explanation}"),
+            );
+            if let Some(scope_span) = scope_span {
+                let scope_span = source_map.end_point(scope_span);
 
-                    let msg = format!("{} is later dropped here", snippet);
-                    span.push_span_label(scope_span, msg);
-                }
-                err.span_note(
+                let msg = format!("{snippet} is later dropped here");
+                span.push_span_label(scope_span, msg);
+            }
+            err.span_note(
                     span,
                     format!(
-                        "{} {} as this value is used across {}",
-                        future_or_generator, trait_explanation, an_await_or_yield
+                        "{future_or_generator} {trait_explanation} as this value is used across {an_await_or_yield}"
                     ),
                 );
-            };
+        };
         match interior_or_upvar_span {
             GeneratorInteriorOrUpvar::Interior(interior_span, interior_extra_info) => {
                 if let Some((scope_span, yield_span, expr, from_awaited_ty)) = interior_extra_info {
@@ -2555,15 +2550,13 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         span.push_span_label(
                             await_span,
                             format!(
-                                "await occurs here on type `{}`, which {}",
-                                target_ty, trait_explanation
+                                "await occurs here on type `{target_ty}`, which {trait_explanation}"
                             ),
                         );
                         err.span_note(
                             span,
                             format!(
-                                "future {not_trait} as it awaits another future which {not_trait}",
-                                not_trait = trait_explanation
+                                "future {trait_explanation} as it awaits another future which {trait_explanation}"
                             ),
                         );
                     } else {
@@ -2646,18 +2639,16 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         let ref_kind = if is_mut { "&mut" } else { "&" };
                         (
                             format!(
-                                "has type `{}` which {}, because `{}` is not `{}`",
-                                target_ty, trait_explanation, ref_ty, ref_ty_trait
+                                "has type `{target_ty}` which {trait_explanation}, because `{ref_ty}` is not `{ref_ty_trait}`"
                             ),
                             format!(
-                                "captured value {} because `{}` references cannot be sent unless their referent is `{}`",
-                                trait_explanation, ref_kind, ref_ty_trait
+                                "captured value {trait_explanation} because `{ref_kind}` references cannot be sent unless their referent is `{ref_ty_trait}`"
                             ),
                         )
                     }
                     None => (
-                        format!("has type `{}` which {}", target_ty, trait_explanation),
-                        format!("captured value {}", trait_explanation),
+                        format!("has type `{target_ty}` which {trait_explanation}"),
+                        format!("captured value {trait_explanation}"),
                     ),
                 };
 
@@ -2746,8 +2737,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
             ObligationCauseCode::ObjectTypeBound(object_ty, region) => {
                 err.note(format!(
-                    "required so that the lifetime bound of `{}` for `{}` is satisfied",
-                    region, object_ty,
+                    "required so that the lifetime bound of `{region}` for `{object_ty}` is satisfied",
                 ));
             }
             ObligationCauseCode::ItemObligation(_)
@@ -3067,7 +3057,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 let mut msg =
                                     "required because it captures the following types: ".to_owned();
                                 for ty in bound_tys.skip_binder() {
-                                    with_forced_trimmed_paths!(write!(msg, "`{}`, ", ty).unwrap());
+                                    with_forced_trimmed_paths!(write!(msg, "`{ty}`, ").unwrap());
                                 }
                                 err.note(msg.trim_end_matches(", ").to_string())
                             }
@@ -3081,7 +3071,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                     "required because it captures the following types: ".to_owned();
                                 for bty in tcx.generator_hidden_types(*def_id) {
                                     let ty = bty.instantiate(tcx, args);
-                                    write!(msg, "`{}`, ", ty).unwrap();
+                                    write!(msg, "`{ty}`, ").unwrap();
                                 }
                                 err.note(msg.trim_end_matches(", ").to_string())
                             }
@@ -3517,7 +3507,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     trait_pred.skip_binder().self_ty(),
                     diagnostic_name,
                 ),
-                format!("#[derive({})]\n", diagnostic_name),
+                format!("#[derive({diagnostic_name})]\n"),
                 Applicability::MaybeIncorrect,
             );
         }
@@ -4003,7 +3993,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             .map(|trait_ref| trait_ref.trait_ref.self_ty())
             .find(|t| is_slice(*t))
         {
-            let msg = format!("convert the array to a `{}` slice instead", slice_ty);
+            let msg = format!("convert the array to a `{slice_ty}` slice instead");
 
             if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
                 let mut suggestions = vec![];

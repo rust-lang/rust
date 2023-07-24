@@ -159,10 +159,10 @@ where
         indent_to_initial_start_col,
         source_map.span_to_snippet(spanview_span).expect("function should have printable source")
     );
-    writeln!(w, "{}", HEADER)?;
-    writeln!(w, "<title>{}</title>", title)?;
-    writeln!(w, "{}", STYLE_SECTION)?;
-    writeln!(w, "{}", START_BODY)?;
+    writeln!(w, "{HEADER}")?;
+    writeln!(w, "<title>{title}</title>")?;
+    writeln!(w, "{STYLE_SECTION}")?;
+    writeln!(w, "{START_BODY}")?;
     write!(
         w,
         r#"<div class="code" style="counter-reset: line {}"><span class="line">{}"#,
@@ -226,7 +226,7 @@ where
         write_coverage_gap(tcx, from_pos, end_pos, w)?;
     }
     writeln!(w, r#"</span></div>"#)?;
-    writeln!(w, "{}", FOOTER)?;
+    writeln!(w, "{FOOTER}")?;
     Ok(())
 }
 
@@ -561,17 +561,16 @@ where
     }
     for (i, line) in html_snippet.lines().enumerate() {
         if i > 0 {
-            write!(w, "{}", NEW_LINE_SPAN)?;
+            write!(w, "{NEW_LINE_SPAN}")?;
         }
         write!(
             w,
-            r#"<span class="code{}" style="--layer: {}"{}>{}</span>"#,
-            maybe_alt_class, layer, maybe_title_attr, line
+            r#"<span class="code{maybe_alt_class}" style="--layer: {layer}"{maybe_title_attr}>{line}</span>"#
         )?;
     }
     // Check for and translate trailing newlines, because `str::lines()` ignores them
     if html_snippet.ends_with('\n') {
-        write!(w, "{}", NEW_LINE_SPAN)?;
+        write!(w, "{NEW_LINE_SPAN}")?;
     }
     if layer == 1 {
         write!(w, "</span>")?;

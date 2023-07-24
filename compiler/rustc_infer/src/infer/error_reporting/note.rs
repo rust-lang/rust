@@ -227,7 +227,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     span,
                     impl_item_def_id,
                     trait_item_def_id,
-                    &format!("`{}: {}`", sup, sub),
+                    &format!("`{sup}: {sub}`"),
                 );
                 // We should only suggest rewriting the `where` clause if the predicate is within that `where` clause
                 if let Some(generics) = self.tcx.hir().get_generics(impl_item_def_id)
@@ -245,10 +245,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 let mut err = self.report_concrete_failure(*parent, sub, sup);
                 let trait_item_span = self.tcx.def_span(trait_item_def_id);
                 let item_name = self.tcx.item_name(impl_item_def_id.to_def_id());
-                err.span_label(
-                    trait_item_span,
-                    format!("definition of `{}` from trait", item_name),
-                );
+                err.span_label(trait_item_span, format!("definition of `{item_name}` from trait"));
                 self.suggest_copy_trait_method_bounds(
                     trait_item_def_id,
                     impl_item_def_id,
