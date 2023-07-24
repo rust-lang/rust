@@ -504,14 +504,13 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
 
     /// Checks that the types internal to the `place` match up with
     /// what would be expected.
+    #[instrument(level = "debug", skip(self, location), ret)]
     fn sanitize_place(
         &mut self,
         place: &Place<'tcx>,
         location: Location,
         context: PlaceContext,
     ) -> PlaceTy<'tcx> {
-        debug!("sanitize_place: {:?}", place);
-
         let mut place_ty = PlaceTy::from_ty(self.body().local_decls[place.local].ty);
 
         for elem in place.projection.iter() {
@@ -614,7 +613,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
         }
     }
 
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip(self, location), ret, level = "debug")]
     fn sanitize_projection(
         &mut self,
         base: PlaceTy<'tcx>,
@@ -623,7 +622,6 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
         location: Location,
         context: PlaceContext,
     ) -> PlaceTy<'tcx> {
-        debug!("sanitize_projection: {:?} {:?} {:?}", base, pi, place);
         let tcx = self.tcx();
         let base_ty = base.ty;
         match pi {

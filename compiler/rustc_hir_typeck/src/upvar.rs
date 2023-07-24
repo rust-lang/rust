@@ -294,10 +294,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Equate the type variables for the upvars with the actual types.
         let final_upvar_tys = self.final_upvar_tys(closure_def_id);
-        debug!(
-            "analyze_closure: id={:?} args={:?} final_upvar_tys={:?}",
-            closure_hir_id, args, final_upvar_tys
-        );
+        debug!(?closure_hir_id, ?args, ?final_upvar_tys);
 
         // Build a tuple (U0..Un) of the final upvar types U0..Un
         // and unify the upvar tuple type in the closure with it:
@@ -338,10 +335,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let upvar_ty = captured_place.place.ty();
                 let capture = captured_place.info.capture_kind;
 
-                debug!(
-                    "final_upvar_tys: place={:?} upvar_ty={:?} capture={:?}, mutability={:?}",
-                    captured_place.place, upvar_ty, capture, captured_place.mutability,
-                );
+                debug!(?captured_place.place, ?upvar_ty, ?capture, ?captured_place.mutability);
 
                 apply_capture_kind_on_capture_ty(self.tcx, upvar_ty, capture, captured_place.region)
             })
