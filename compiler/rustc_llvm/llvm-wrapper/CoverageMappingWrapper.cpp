@@ -161,8 +161,11 @@ extern "C" void LLVMRustCoverageWriteMappingToBuffer(
   CoverageMappingWriter.write(OS);
 }
 
-extern "C" LLVMValueRef LLVMRustCoverageCreatePGOFuncNameVar(LLVMValueRef F, const char *FuncName) {
-  StringRef FuncNameRef(FuncName);
+extern "C" LLVMValueRef LLVMRustCoverageCreatePGOFuncNameVar(
+    LLVMValueRef F,
+    const char *FuncName,
+    size_t FuncNameLen) {
+  StringRef FuncNameRef(FuncName, FuncNameLen);
   return wrap(createPGOFuncNameVar(*cast<Function>(unwrap(F)), FuncNameRef));
 }
 
