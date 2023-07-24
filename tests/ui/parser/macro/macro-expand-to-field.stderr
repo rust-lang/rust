@@ -1,29 +1,66 @@
-error: expected `:`, found `!`
+error: unexpected token: `!`
   --> $DIR/macro-expand-to-field.rs:16:10
    |
 LL |     field!(bar:u128),
-   |          ^ expected `:`
+   |          ^ unexpected token after this
    |
    = note: macros cannot expand to struct fields
 
-error: expected `,`, or `}`, found `(`
-  --> $DIR/macro-expand-to-field.rs:16:11
+error: unexpected token: `!`
+  --> $DIR/macro-expand-to-field.rs:21:10
    |
-LL | struct Struct {
-   |        ------ while parsing this struct
-LL |     field!(bar:u128),
-   |           ^
+LL |     field!(recovers:()),
+   |          ^ unexpected token after this
+   |
+   = note: macros cannot expand to struct fields
 
 error: unexpected token: `!`
-  --> $DIR/macro-expand-to-field.rs:23:12
+  --> $DIR/macro-expand-to-field.rs:27:12
    |
-LL | enum EnumVariant {
-   |      ----------- while parsing this enum
 LL |     variant!(whoops),
    |            ^ unexpected token after this
    |
    = note: macros cannot expand to enum variants
-   = help: enum variants can be `Variant`, `Variant = <integer>`, `Variant(Type, ..., TypeN)` or `Variant { fields: Types }`
 
-error: aborting due to 3 previous errors
+error: unexpected token: `!`
+  --> $DIR/macro-expand-to-field.rs:32:12
+   |
+LL |     variant!(recovers),
+   |            ^ unexpected token after this
+   |
+   = note: macros cannot expand to enum variants
+
+error: unexpected token: `!`
+  --> $DIR/macro-expand-to-field.rs:39:14
+   |
+LL |         field!(oopsies:()),
+   |              ^ unexpected token after this
+   |
+   = note: macros cannot expand to struct fields
+
+error: unexpected token: `!`
+  --> $DIR/macro-expand-to-field.rs:42:14
+   |
+LL |         field!(oopsies2:()),
+   |              ^ unexpected token after this
+   |
+   = note: macros cannot expand to struct fields
+
+error: unexpected token: `!`
+  --> $DIR/macro-expand-to-field.rs:50:10
+   |
+LL |     field!(oopsies:()),
+   |          ^ unexpected token after this
+   |
+   = note: macros cannot expand to union fields
+
+error: unexpected token: `!`
+  --> $DIR/macro-expand-to-field.rs:54:10
+   |
+LL |     field!(recovers:()),
+   |          ^ unexpected token after this
+   |
+   = note: macros cannot expand to union fields
+
+error: aborting due to 8 previous errors
 

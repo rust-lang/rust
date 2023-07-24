@@ -1343,10 +1343,14 @@ impl<'a> Parser<'a> {
                 let ident = this.parse_field_ident("enum", vlo)?;
 
                 if this.token == token::Not {
-                    return this.unexpected().map_err(|mut err| {
-                        err.note(fluent::parse_macro_expands_to_enum_variant);
-                        err
-                    });
+                    if let Err(mut err) = this.unexpected::<()>() {
+                        err.note(fluent::parse_macro_expands_to_enum_variant).emit();
+                    }
+
+                    this.bump();
+                    this.parse_delim_args()?;
+
+                    return Ok((None, TrailingToken::MaybeComma));
                 }
 
                 let struct_def = if this.check(&token::OpenDelim(Delimiter::Brace)) {
@@ -1586,7 +1590,8 @@ impl<'a> Parser<'a> {
         self.collect_tokens_trailing_token(attrs, ForceCollect::No, |this, attrs| {
             let lo = this.token.span;
             let vis = this.parse_visibility(FollowedByType::No)?;
-            Ok((this.parse_single_struct_field(adt_ty, lo, vis, attrs)?, TrailingToken::None))
+            this.parse_single_struct_field(adt_ty, lo, vis, attrs)
+                .map(|field| (field, TrailingToken::None))
         })
     }
 
@@ -1698,10 +1703,9 @@ impl<'a> Parser<'a> {
         Ok(a_var)
     }
 
-    fn expect_field_ty_separator(&mut self, adt_ty: &str) -> PResult<'a, ()> {
+    fn expect_field_ty_separator(&mut self) -> PResult<'a, ()> {
         if let Err(mut err) = self.expect(&token::Colon) {
             let sm = self.sess.source_map();
-            let mac_invoc = self.token.kind == token::Not;
             let eq_typo = self.token.kind == token::Eq && self.look_ahead(1, |t| t.is_path_start());
             let semi_typo = self.token.kind == token::Semi
                 && self.look_ahead(1, |t| {
@@ -1713,9 +1717,7 @@ impl<'a> Parser<'a> {
                         _ => true,
                     }
                 });
-            if mac_invoc {
-                err.subdiagnostic(MacroExpandsToAdtField { adt_ty }).emit();
-            } else if eq_typo || semi_typo {
+            if eq_typo || semi_typo {
                 self.bump();
                 // Gracefully handle small typos.
                 err.span_suggestion_short(
@@ -1741,7 +1743,29 @@ impl<'a> Parser<'a> {
         attrs: AttrVec,
     ) -> PResult<'a, FieldDef> {
         let name = self.parse_field_ident(adt_ty, lo)?;
-        self.expect_field_ty_separator(adt_ty)?;
+        // Parse the macro invocation and recover
+        if self.token.kind == token::Not {
+            if let Err(mut err) = self.unexpected::<FieldDef>() {
+                err.subdiagnostic(MacroExpandsToAdtField { adt_ty }).emit();
+                self.bump();
+                self.parse_delim_args()?;
+                return Ok(FieldDef {
+                    span: DUMMY_SP,
+                    ident: None,
+                    vis,
+                    id: DUMMY_NODE_ID,
+                    ty: P(Ty {
+                        id: DUMMY_NODE_ID,
+                        kind: TyKind::Err,
+                        span: DUMMY_SP,
+                        tokens: None,
+                    }),
+                    attrs,
+                    is_placeholder: false,
+                });
+            }
+        }
+        self.expect_field_ty_separator()?;
         let ty = self.parse_ty()?;
         if self.token.kind == token::Colon && self.look_ahead(1, |tok| tok.kind != token::Colon) {
             self.sess.emit_err(errors::SingleColonStructType { span: self.token.span });

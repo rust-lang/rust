@@ -181,11 +181,7 @@ impl<'a> Parser<'a> {
                 err
             })?;
             if rc == RecoverComma::Yes {
-                self.maybe_recover_unexpected_comma(
-                    pat.span,
-                    matches!(pat.kind, PatKind::MacCall(_)),
-                    rt,
-                )?;
+                self.maybe_recover_unexpected_comma(pat.span, false, rt)?;
             }
             pats.push(pat);
         }

@@ -10,6 +10,8 @@ fn main() {
         Some(1) => {},
         arm!(None => {}), //~ NOTE macros cannot expand to match arms
         //~^ ERROR unexpected `,` in pattern
+        // doesn't recover
+        Some(2) => {},
         _ => {},
     };
 }
