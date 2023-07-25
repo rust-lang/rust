@@ -18,7 +18,7 @@ const BOOK_CONFIGS_PATH: &str = "https://doc.rust-lang.org/clippy/lint_configura
 // ==================================================================
 // Configuration
 // ==================================================================
-#[derive(Debug, Clone, Default)] //~ ERROR no such field
+#[derive(Debug, Clone, Default)]
 pub struct ClippyConfiguration {
     pub name: String,
     #[allow(dead_code)]
