@@ -138,7 +138,6 @@ pub struct Parser<'a> {
     // Important: This must only be advanced from `bump` to ensure that
     // `token_cursor.num_next_calls` is updated properly.
     token_cursor: TokenCursor,
-    desugar_doc_comments: bool,
     /// This field is used to keep track of how many left angle brackets we have seen. This is
     /// required in order to detect extra leading left angle brackets (`<` characters) and error
     /// appropriately.
@@ -463,7 +462,6 @@ impl<'a> Parser<'a> {
                 desugar_doc_comments,
                 break_last_token: false,
             },
-            desugar_doc_comments,
             unmatched_angle_bracket_count: 0,
             max_angle_bracket_count: 0,
             last_unexpected_token_span: None,
@@ -1107,7 +1105,7 @@ impl<'a> Parser<'a> {
     pub fn bump(&mut self) {
         // Note: destructuring here would give nicer code, but it was found in #96210 to be slower
         // than `.0`/`.1` access.
-        let mut next = self.token_cursor.inlined_next(self.desugar_doc_comments);
+        let mut next = self.token_cursor.inlined_next(self.token_cursor.desugar_doc_comments);
         self.token_cursor.num_next_calls += 1;
         // We've retrieved an token from the underlying
         // cursor, so we no longer need to worry about
