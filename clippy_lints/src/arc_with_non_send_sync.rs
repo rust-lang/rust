@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::last_path_segment;
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
+use clippy_utils::{is_from_proc_macro, last_path_segment};
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
@@ -38,10 +38,11 @@ declare_clippy_lint! {
 }
 declare_lint_pass!(ArcWithNonSendSync => [ARC_WITH_NON_SEND_SYNC]);
 
-impl LateLintPass<'_> for ArcWithNonSendSync {
-    fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
-        let ty = cx.typeck_results().expr_ty(expr);
-        if is_type_diagnostic_item(cx, ty, sym::Arc)
+impl<'tcx> LateLintPass<'tcx> for ArcWithNonSendSync {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
+        if !expr.span.from_expansion()
+            && let ty = cx.typeck_results().expr_ty(expr)
+            && is_type_diagnostic_item(cx, ty, sym::Arc)
             && let ExprKind::Call(func, [arg]) = expr.kind
             && let ExprKind::Path(func_path) = func.kind
             && last_path_segment(&func_path).ident.name == sym::new
@@ -54,6 +55,7 @@ impl LateLintPass<'_> for ArcWithNonSendSync {
             && let Some(sync) = cx.tcx.lang_items().sync_trait()
             && let [is_send, is_sync] = [send, sync].map(|id| implements_trait(cx, arg_ty, id, &[]))
             && !(is_send && is_sync)
+            && !is_from_proc_macro(cx, expr)
         {
             span_lint_and_then(
                 cx,

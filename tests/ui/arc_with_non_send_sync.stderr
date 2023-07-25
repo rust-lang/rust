@@ -1,5 +1,5 @@
 error: usage of an `Arc` that is not `Send` or `Sync`
-  --> $DIR/arc_with_non_send_sync.rs:18:13
+  --> $DIR/arc_with_non_send_sync.rs:35:13
    |
 LL |     let _ = Arc::new(RefCell::new(42));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -10,7 +10,7 @@ LL |     let _ = Arc::new(RefCell::new(42));
    = note: `-D clippy::arc-with-non-send-sync` implied by `-D warnings`
 
 error: usage of an `Arc` that is not `Send` or `Sync`
-  --> $DIR/arc_with_non_send_sync.rs:21:13
+  --> $DIR/arc_with_non_send_sync.rs:40:13
    |
 LL |     let _ = Arc::new(mutex.lock().unwrap());
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -20,7 +20,7 @@ LL |     let _ = Arc::new(mutex.lock().unwrap());
    = help: consider using an `Rc` instead or wrapping the inner type with a `Mutex`
 
 error: usage of an `Arc` that is not `Send` or `Sync`
-  --> $DIR/arc_with_non_send_sync.rs:23:13
+  --> $DIR/arc_with_non_send_sync.rs:44:13
    |
 LL |     let _ = Arc::new(&42 as *const i32);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
