@@ -11,7 +11,7 @@ pub fn target() -> Target {
     Target {
         llvm_target: "powerpc64-unknown-openbsd".into(),
         pointer_width: 64,
-        data_layout: "E-m:e-i64:64-n32:64".into(),
+        data_layout: "E-m:e-Fn32-i64:64-n32:64".into(),
         arch: "powerpc64".into(),
         options: TargetOptions { endian: Endian::Big, mcount: "_mcount".into(), ..base },
     }
