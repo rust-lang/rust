@@ -2244,13 +2244,12 @@ pub fn provide(providers: &mut Providers) {
             tcx.resolutions(())
                 .doc_link_resolutions
                 .get(&def_id)
-                .expect("no resolutions for a doc link")
+                .unwrap_or_else(|| span_bug!(tcx.def_span(def_id), "no resolutions for a doc link"))
         },
         doc_link_traits_in_scope: |tcx, def_id| {
-            tcx.resolutions(())
-                .doc_link_traits_in_scope
-                .get(&def_id)
-                .expect("no traits in scope for a doc link")
+            tcx.resolutions(()).doc_link_traits_in_scope.get(&def_id).unwrap_or_else(|| {
+                span_bug!(tcx.def_span(def_id), "no traits in scope for a doc link")
+            })
         },
         traits: |tcx, LocalCrate| {
             let mut traits = Vec::new();
