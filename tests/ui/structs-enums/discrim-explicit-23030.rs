@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Issue 23030: Workaround overflowing discriminant
 // with explicit assignments.
 

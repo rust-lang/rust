@@ -1,4 +1,4 @@
-// run-pass
+//@run
 use std::ops::Index;
 fn bar() {}
 static UNIT: () = ();

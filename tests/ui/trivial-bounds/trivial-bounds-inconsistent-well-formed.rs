@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Test that inconsistent bounds are used in well-formedness checks
 #![feature(trivial_bounds)]
 

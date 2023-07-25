@@ -1,4 +1,4 @@
-// compile-flags: --crate-type=lib
+//@compile-flags: --crate-type=lib
 
 #[derive(Default)] //~ ERROR multiple declared defaults
 enum E {

@@ -1,5 +1,5 @@
-// edition:2018
-// run-pass
+//@edition:2018
+//@run
 // ignore-emscripten no threads support
 
 use std::thread;

@@ -1,4 +1,4 @@
-// revisions: allow deny
+//@revisions: allow deny
 #![feature(exclusive_range_pattern)]
 #![cfg_attr(allow, feature(precise_pointer_size_matching))]
 

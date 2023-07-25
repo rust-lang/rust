@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 #![allow(incomplete_features)]
 #![feature(inline_const_pat)]

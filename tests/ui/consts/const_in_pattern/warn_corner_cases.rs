@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 // This test is checking our logic for structural match checking by enumerating
 // the different kinds of const expressions. This test is collecting cases where

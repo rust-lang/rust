@@ -1,6 +1,6 @@
 // Verify that unreachable code undergoes unsafety checks.
-// revisions: mir thir
-// [thir]compile-flags: -Z thir-unsafeck
+//@revisions: mir thir
+//@[thir] compile-flags: -Z thir-unsafeck
 
 fn main() {
     return;

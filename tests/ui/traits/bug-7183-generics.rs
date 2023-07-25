@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 trait Speak : Sized {
     fn say(&self, s:&str) -> String;

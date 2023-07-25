@@ -1,4 +1,4 @@
-// check-pass
+//@check-pass
 // incremental
 
 // This test case makes sure that we can compile with incremental compilation

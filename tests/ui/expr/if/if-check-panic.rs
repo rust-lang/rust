@@ -1,5 +1,5 @@
 // run-fail
-// error-pattern:Number is odd
+//@error-pattern:Number is odd
 // ignore-emscripten no processes
 
 fn even(x: usize) -> bool {

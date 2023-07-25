@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(dead_code)]
 // after fixing #9384 and implementing hygiene for match bindings,
 // this now fails because the insertion of the 'y' into the match

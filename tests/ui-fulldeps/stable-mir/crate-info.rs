@@ -4,7 +4,7 @@
 // ignore-stage1
 // ignore-cross-compile
 // ignore-remote
-// edition: 2021
+//@edition: 2021
 
 #![feature(rustc_private)]
 #![feature(assert_matches)]

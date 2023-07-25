@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // pretty-expanded FIXME #23616
 
 struct S<T>(#[allow(unused_tuple_struct_fields)] T);

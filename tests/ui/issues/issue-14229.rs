@@ -1,4 +1,4 @@
-// run-pass
+//@run
 trait Foo: Sized {
     fn foo(self) {}
 }

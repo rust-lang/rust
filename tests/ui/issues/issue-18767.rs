@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Test that regionck uses the right memcat for patterns in for loops
 // and doesn't ICE.
 

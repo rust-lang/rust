@@ -1,7 +1,7 @@
 // Regression test for #86600, where an instance of the
 // `illegal_floating_point_literal_pattern` lint was issued twice.
 
-// check-pass
+//@check-pass
 
 fn main() {
     let x = 42.0;

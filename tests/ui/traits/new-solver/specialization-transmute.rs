@@ -1,4 +1,4 @@
-// compile-flags: -Ztrait-solver=next
+//@compile-flags: -Ztrait-solver=next
 
 #![feature(specialization)]
 //~^ WARN the feature `specialization` is incomplete

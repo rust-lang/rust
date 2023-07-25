@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 fn select<'r>(x: &'r Option<isize>, y: &'r Option<isize>) -> &'r Option<isize> {
     match (x, y) {

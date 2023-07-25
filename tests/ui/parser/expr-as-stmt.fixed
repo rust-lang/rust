@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 // rustfix-only-machine-applicable
 #![allow(unused_variables)]
 #![allow(dead_code)]

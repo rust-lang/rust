@@ -1,5 +1,5 @@
-// run-pass
-// compile-flags: -Clto=fat
+//@run
+//@compile-flags: -Clto=fat
 // no-prefer-dynamic
 
 fn main() {

@@ -1,10 +1,10 @@
-// run-pass
+//@run
 
 #![allow(unused_must_use)]
 #![allow(stable_features)]
 #![allow(deprecated)]
 #![allow(unused_imports)]
-// compile-flags:--test
+//@compile-flags:--test
 // ignore-emscripten no processes
 // ignore-sgx no processes
 // ignore-vxworks no 'cat' and 'sleep'

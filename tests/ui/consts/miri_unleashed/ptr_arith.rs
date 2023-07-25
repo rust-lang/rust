@@ -1,4 +1,4 @@
-// compile-flags: -Zunleash-the-miri-inside-of-you
+//@compile-flags: -Zunleash-the-miri-inside-of-you
 #![feature(core_intrinsics)]
 
 // During CTFE, we prevent pointer-to-int casts.

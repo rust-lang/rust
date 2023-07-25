@@ -1,7 +1,7 @@
 // Test precise capture of a multi-variant enum (when remaining variants are
 // visibly uninhabited).
-// edition:2021
-// run-pass
+//@edition:2021
+//@run
 #![feature(exhaustive_patterns)]
 #![feature(never_type)]
 

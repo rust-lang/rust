@@ -1,4 +1,4 @@
-// run-pass
+//@run
 struct B;
 
 impl B {

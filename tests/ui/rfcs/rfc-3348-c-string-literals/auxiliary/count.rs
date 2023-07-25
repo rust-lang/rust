@@ -1,5 +1,5 @@
 // force-host
-// edition: 2018
+//@edition: 2018
 // no-prefer-dynamic
 #![crate_type = "proc-macro"]
 

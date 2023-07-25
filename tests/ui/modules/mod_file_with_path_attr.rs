@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 // Testing that a plain .rs file can load modules from other source files
 

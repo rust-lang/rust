@@ -1,4 +1,4 @@
-// needs-asm-support
+//@needs-asm-support
 // only-x86_64
 
 struct W<T: ?Sized>(Oops);

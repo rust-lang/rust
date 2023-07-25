@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 struct TupleStruct<S, T>(S, T);
 

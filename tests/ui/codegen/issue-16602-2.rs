@@ -1,4 +1,4 @@
-// run-pass
+//@run
 struct A {
     pub x: u32,
     pub y: u32,

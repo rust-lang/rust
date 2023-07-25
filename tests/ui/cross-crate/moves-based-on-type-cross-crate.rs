@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:moves_based_on_type_lib.rs
+//@run
+//@aux-build:moves_based_on_type_lib.rs
 
 // pretty-expanded FIXME #23616
 

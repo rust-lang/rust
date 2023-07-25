@@ -1,5 +1,5 @@
 // build-pass
-// aux-build:def_external.rs
+//@aux-build:def_external.rs
 
 extern crate def_external as dep;
 

@@ -1,10 +1,10 @@
-// revisions: current next
-//[next] compile-flags: -Ztrait-solver=next
-// check-pass
+//@revisions: current next
+//@[next] compile-flags: -Ztrait-solver=next
+//@check-pass
 
-use std::path::Path;
 use std::ffi::OsStr;
 use std::ops::Deref;
+use std::path::Path;
 
 fn frob(path: &str) -> impl Deref<Target = Path> + '_ {
     OsStr::new(path).as_ref()

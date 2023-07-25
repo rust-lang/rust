@@ -1,6 +1,6 @@
-// run-pass
-// edition:2021
-// compile-flags: --test
+//@run
+//@edition:2021
+//@compile-flags: --test
 
 #![feature(async_closure)]
 #![feature(box_patterns)]

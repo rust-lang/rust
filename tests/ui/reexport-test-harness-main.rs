@@ -1,5 +1,5 @@
-// run-pass
-// compile-flags:--test
+//@run
+//@compile-flags:--test
 
 #![reexport_test_harness_main = "test_main"]
 

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(dead_code)]
 // Check that merely having lifetime parameters is not
 // enough for codegen to consider this as non-monomorphic,

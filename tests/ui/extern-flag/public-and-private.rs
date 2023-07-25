@@ -1,6 +1,6 @@
 // aux-crate:priv:somedep=somedep.rs
-// compile-flags: -Zunstable-options --extern somedep
-// edition:2018
+//@compile-flags: -Zunstable-options --extern somedep
+//@edition:2018
 
 #![deny(exported_private_dependencies)]
 

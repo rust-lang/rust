@@ -1,4 +1,4 @@
-// check-pass
+//@check-pass
 // known-bug: #84533
 
 // Should fail. Lifetimes are checked correctly when `foo` is called, but NOT

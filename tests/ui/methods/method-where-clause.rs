@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Test that we can use method notation to call methods based on a
 // where clause type, and not only type parameters.
 

@@ -1,5 +1,5 @@
-// run-pass
-// compile-flags: -C debug_assertions=no
+//@run
+//@compile-flags: -C debug_assertions=no
 // ignore-emscripten dies with an LLVM error
 
 fn main() {

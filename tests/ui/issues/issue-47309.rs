@@ -2,7 +2,7 @@
 // instantiate a default impl of a method with lifetime parameters.
 // See https://github.com/rust-lang/rust/issues/47309
 
-// compile-flags:-Clink-dead-code
+//@compile-flags:-Clink-dead-code
 // build-pass
 
 #![crate_type="rlib"]

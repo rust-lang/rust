@@ -1,4 +1,4 @@
-// check-pass
+//@check-pass
 // known-bug: #104005
 
 // Should fail. Function type parameters with implicit type annotations are not

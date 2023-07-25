@@ -1,4 +1,4 @@
-// run-pass
+//@run
 struct S<T: 'static>(#[allow(unused_tuple_struct_fields)] Option<&'static T>);
 
 trait Tr { type Out; }

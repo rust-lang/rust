@@ -1,7 +1,8 @@
 // build-fail
-// compile-flags: -Zinline-mir=no
-// error-pattern: overflow evaluating the requirement `<std::iter::Empty<()> as Iterator>::Item == ()`
-// error-pattern: function cannot return without recursing
+//@compile-flags: -Zinline-mir=no
+// ignore-tidy-linelength
+//@error-pattern: overflow evaluating the requirement `<std::iter::Empty<()> as Iterator>::Item == ()`
+//@error-pattern: function cannot return without recursing
 // normalize-stderr-test: "long-type-\d+" -> "long-type-hash"
 // ignore-compare-mode-next-solver (hangs)
 

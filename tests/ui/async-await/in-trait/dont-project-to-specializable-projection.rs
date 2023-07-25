@@ -1,4 +1,4 @@
-// edition: 2021
+//@edition: 2021
 // known-bug: #108309
 
 #![feature(async_fn_in_trait)]

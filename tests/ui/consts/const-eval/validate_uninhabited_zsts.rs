@@ -1,4 +1,4 @@
-// stderr-per-bitwidth
+//@stderr-per-bitwidth
 
 const fn foo() -> ! {
     unsafe { std::mem::transmute(()) }

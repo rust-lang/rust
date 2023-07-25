@@ -1,4 +1,4 @@
-// run-pass
+//@run
 use std::ops::Add;
 
 extern "C" fn foo<T: Add>(a: T, b: T) -> T::Output { a + b }

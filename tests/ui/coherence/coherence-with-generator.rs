@@ -3,8 +3,8 @@
 #![cfg_attr(specialized, feature(specialization))]
 #![allow(incomplete_features)]
 
-// revisions: stock specialized
-// [specialized]check-pass
+//@revisions: stock specialized
+//@[specialized] check-pass
 
 type OpaqueGenerator = impl Sized;
 fn defining_use() -> OpaqueGenerator {

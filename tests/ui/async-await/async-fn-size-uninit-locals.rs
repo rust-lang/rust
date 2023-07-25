@@ -6,9 +6,9 @@
 
 // ignore-emscripten (sizes don't match)
 // needs-unwind Size of Futures change on panic=abort
-// run-pass
+//@run
 
-// edition:2018
+//@edition:2018
 
 #![allow(unused_variables, unused_assignments)]
 

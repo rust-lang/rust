@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 #![allow(unused_imports)]
 #![deny(unused_assignments)]

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 fn f(arg: &mut A) {
     arg.a = 100;

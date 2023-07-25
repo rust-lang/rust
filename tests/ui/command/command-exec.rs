@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 #![allow(stable_features)]
 // ignore-windows - this is a unix-specific test

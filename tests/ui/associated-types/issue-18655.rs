@@ -1,4 +1,4 @@
-// run-pass
+//@run
 trait Factory {
     type Product;
     fn create(&self) -> <Self as Factory>::Product;

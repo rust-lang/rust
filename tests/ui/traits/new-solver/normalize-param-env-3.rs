@@ -1,5 +1,5 @@
-// check-pass
-// compile-flags: -Ztrait-solver=next
+//@check-pass
+//@compile-flags: -Ztrait-solver=next
 // Issue 100177
 
 trait GenericTrait<T> {}

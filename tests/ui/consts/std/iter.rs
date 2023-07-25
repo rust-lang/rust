@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 const I: std::iter::Empty<u32> = std::iter::empty();
 

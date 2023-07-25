@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 struct Recbox<T> {x: Box<T>}
 

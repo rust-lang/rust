@@ -1,5 +1,5 @@
-// revisions: mir thir
-// [thir]compile-flags: -Z thir-unsafeck
+//@revisions: mir thir
+//@[thir] compile-flags: -Z thir-unsafeck
 
 fn f(p: *const u8) -> u8 {
     let _ = *p; //~ ERROR dereference of raw pointer is unsafe

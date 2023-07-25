@@ -1,4 +1,4 @@
-// run-pass
+//@run
 use std::fmt;
 
 #[repr(C)]

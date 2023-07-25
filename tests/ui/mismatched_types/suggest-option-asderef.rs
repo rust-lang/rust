@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 
 fn produces_string() -> Option<String> {
     Some("my cool string".to_owned())

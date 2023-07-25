@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 // ignore-test (rustfix needs multiple suggestions)
 //
 // FIXME: Re-enable this test once we support choosing

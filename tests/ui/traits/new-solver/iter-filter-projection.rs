@@ -1,5 +1,5 @@
-// compile-flags: -Ztrait-solver=next
-// check-pass
+//@compile-flags: -Ztrait-solver=next
+//@check-pass
 
 use std::{iter, slice};
 

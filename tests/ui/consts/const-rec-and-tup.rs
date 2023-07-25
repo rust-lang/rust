@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(dead_code)]
 #![allow(non_upper_case_globals)]
 #![allow(overflowing_literals)]

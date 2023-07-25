@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #[derive(Clone, Debug, PartialEq)]
 enum Expression {
     Dummy,

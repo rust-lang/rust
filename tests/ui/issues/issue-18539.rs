@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Test that coercing bare fn's that return a zero sized type to
 // a closure doesn't cause an LLVM ERROR
 

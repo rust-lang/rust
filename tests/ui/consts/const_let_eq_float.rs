@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 #![feature(const_fn_floating_point_arithmetic)]
 

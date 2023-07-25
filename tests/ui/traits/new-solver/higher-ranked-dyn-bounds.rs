@@ -1,5 +1,5 @@
-// compile-flags: -Ztrait-solver=next
-// check-pass
+//@compile-flags: -Ztrait-solver=next
+//@check-pass
 
 trait Trait<'a> {
     type Item: for<'b> Trait2<'b>;

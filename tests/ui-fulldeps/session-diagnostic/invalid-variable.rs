@@ -1,5 +1,5 @@
 // run-fail
-// compile-flags: --test
+//@compile-flags: --test
 // test that messages referencing non-existent fields cause test failures
 
 #![feature(rustc_private)]

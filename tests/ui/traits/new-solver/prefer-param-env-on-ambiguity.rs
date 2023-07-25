@@ -1,5 +1,5 @@
-// compile-flags: -Ztrait-solver=next
-// check-pass
+//@compile-flags: -Ztrait-solver=next
+//@check-pass
 
 trait Foo<'a> {}
 trait Bar<'a> {}

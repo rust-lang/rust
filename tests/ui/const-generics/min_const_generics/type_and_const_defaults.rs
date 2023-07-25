@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(dead_code)]
 
 struct Both<T=u32, const N: usize=3> {

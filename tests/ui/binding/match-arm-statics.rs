@@ -1,6 +1,6 @@
-// run-pass
+//@run
 #![allow(dead_code)]
-// compile-flags: -g
+//@compile-flags: -g
 // ignore-asmjs wasm2js does not support source maps yet
 
 #[derive(PartialEq, Eq)]

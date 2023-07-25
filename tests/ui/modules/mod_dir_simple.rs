@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 mod mod_dir_simple {
     pub mod test;

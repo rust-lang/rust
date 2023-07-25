@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // test for #8664
 
 use std::marker;

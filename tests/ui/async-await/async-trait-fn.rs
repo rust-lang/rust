@@ -1,4 +1,4 @@
-// edition:2018
+//@edition:2018
 
 trait T {
     async fn foo() {} //~ ERROR functions in traits cannot be declared `async`

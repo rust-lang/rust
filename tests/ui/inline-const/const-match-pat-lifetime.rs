@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 #![allow(incomplete_features)]
 #![feature(const_mut_refs)]

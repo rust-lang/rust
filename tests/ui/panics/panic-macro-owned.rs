@@ -1,5 +1,5 @@
 // run-fail
-// error-pattern:panicked at 'test-fail-owned'
+//@error-pattern:panicked at 'test-fail-owned'
 // ignore-emscripten no processes
 
 fn main() {

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![feature(unboxed_closures, fn_traits)]
 
 // Test that unboxing shim for calling rust-call ABI methods through a

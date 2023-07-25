@@ -1,4 +1,4 @@
-// run-pass
+//@run
 use std::mem;
 
 #[r#repr(r#C, r#packed)]

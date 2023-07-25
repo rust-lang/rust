@@ -1,6 +1,6 @@
-// run-pass
+//@run
 #![allow(unused_attributes)]
-// aux-build:issue-29485.rs
+//@aux-build:issue-29485.rs
 // needs-unwind
 // ignore-emscripten no threads
 

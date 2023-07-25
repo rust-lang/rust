@@ -1,5 +1,5 @@
-// run-pass
-// compile-flags:-Zpolymorphize=on
+//@run
+//@compile-flags:-Zpolymorphize=on
 
 fn fop<T>() {}
 

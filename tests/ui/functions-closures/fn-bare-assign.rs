@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 fn f(i: isize, called: &mut bool) {
     assert_eq!(i, 10);

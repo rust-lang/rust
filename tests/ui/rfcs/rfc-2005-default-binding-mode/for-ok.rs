@@ -1,4 +1,4 @@
-// run-pass
+//@run
 pub fn main() {
     let mut tups = vec![(0u8, 1u8)];
 

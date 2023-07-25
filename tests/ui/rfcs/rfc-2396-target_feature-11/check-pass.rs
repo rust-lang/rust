@@ -6,10 +6,10 @@
 //   unsafe contexts
 // - functions with `#[target_feature]` can coerce to unsafe fn pointers
 
-// check-pass
+//@check-pass
 // only-x86_64
-// revisions: mir thir
-// [thir]compile-flags: -Z thir-unsafeck
+//@revisions: mir thir
+//@[thir] compile-flags: -Z thir-unsafeck
 
 #![feature(target_feature_11)]
 

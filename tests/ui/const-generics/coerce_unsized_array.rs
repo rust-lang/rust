@@ -1,4 +1,4 @@
-// run-pass
+//@run
 fn foo<const N: usize>(v: &[u8; N]) -> &[u8] {
     v
 }

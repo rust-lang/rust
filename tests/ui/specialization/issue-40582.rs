@@ -1,4 +1,4 @@
-// check-pass
+//@check-pass
 // known-bug: #40582
 
 // Should fail. Should not be possible to implement `make_static`.

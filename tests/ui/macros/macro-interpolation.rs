@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 macro_rules! overly_complicated {
     ($fnname:ident, $arg:ident, $ty:ty, $body:block, $val:expr, $pat:pat, $res:path) =>

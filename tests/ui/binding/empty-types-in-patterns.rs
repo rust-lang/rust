@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 #![feature(never_type, never_type_fallback)]
 #![feature(exhaustive_patterns)]

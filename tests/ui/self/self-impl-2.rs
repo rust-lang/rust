@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(dead_code)]
 #![allow(unused_variables)]
 // Test that we can use `Self` types in impls in the expected way.

@@ -1,4 +1,4 @@
-// check-pass
+//@check-pass
 
 // Allow this for now, can remove this UI test when this becomes a hard error.
 #![allow(implied_bounds_entailment)]

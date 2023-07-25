@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(dead_code, unused_imports, unused_macro_rules)]
 
 /**

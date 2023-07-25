@@ -1,5 +1,5 @@
-// revisions: mir thir
-// [thir]compile-flags: -Z thir-unsafeck
+//@revisions: mir thir
+//@[thir] compile-flags: -Z thir-unsafeck
 
 #![feature(const_extern_fn)]
 

@@ -1,5 +1,5 @@
-// aux-build:trait_object_lt_defaults_lib.rs
-// run-pass
+//@aux-build:trait_object_lt_defaults_lib.rs
+//@run
 #![allow(dead_code)]
 extern crate trait_object_lt_defaults_lib;
 

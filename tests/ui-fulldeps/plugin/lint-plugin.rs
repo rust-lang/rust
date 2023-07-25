@@ -1,5 +1,5 @@
 // run-pass
-// aux-build:lint-plugin-test.rs
+//@aux-build:lint-plugin-test.rs
 // ignore-stage1
 #![feature(plugin)]
 #![plugin(lint_plugin_test)] //~ WARNING use of deprecated attribute

@@ -1,4 +1,4 @@
-// compile-flags: -Ztrait-solver=next
+//@compile-flags: -Ztrait-solver=next
 
 // Makes sure that alias bounds are not unsound!
 

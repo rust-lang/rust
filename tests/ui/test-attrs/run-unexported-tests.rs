@@ -1,5 +1,5 @@
 // run-fail
-// compile-flags:--test
+//@compile-flags:--test
 // check-stdout
 
 mod m {

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(unused_macros)]
 macro_rules! m {
     ($e:expr) => {

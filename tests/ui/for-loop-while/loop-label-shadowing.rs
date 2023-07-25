@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Issue #12512.
 
 // pretty-expanded FIXME #23616

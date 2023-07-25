@@ -1,6 +1,6 @@
-// run-pass
-// revisions: old next
-//[next] compile-flags: -Ztrait-solver=next
+//@run
+//@revisions: old next
+//@[next] compile-flags: -Ztrait-solver=next
 #![allow(coherence_leak_check)]
 
 trait Trait: Sized {

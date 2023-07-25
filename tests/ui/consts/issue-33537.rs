@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 const fn foo() -> *const i8 {
     b"foo" as *const _ as *const i8

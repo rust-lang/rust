@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // ignore-emscripten no processes
 // ignore-sgx no processes
 // ignore-vxworks no 'ps'

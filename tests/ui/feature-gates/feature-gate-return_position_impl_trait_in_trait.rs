@@ -1,4 +1,4 @@
-// edition:2021
+//@edition:2021
 
 // async_fn_in_trait is not enough to allow use of RPITIT
 #![allow(incomplete_features)]

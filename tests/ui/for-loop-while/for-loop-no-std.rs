@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(unused_imports)]
 #![feature(lang_items, start)]
 #![no_std]

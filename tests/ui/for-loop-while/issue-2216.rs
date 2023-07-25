@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(unreachable_code)]
 pub fn main() {
     let mut x = 0;

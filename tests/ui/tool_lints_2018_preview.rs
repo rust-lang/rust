@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 #![feature(rust_2018_preview)]
 #![deny(unknown_lints)]

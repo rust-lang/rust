@@ -3,8 +3,8 @@
 // panic when resumed after completion.
 
 // run-fail
-// error-pattern:generator resumed after completion
-// edition:2018
+//@error-pattern:generator resumed after completion
+//@edition:2018
 // ignore-wasm no panic or subprocess support
 // ignore-emscripten no panic or subprocess support
 

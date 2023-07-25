@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // ignore-emscripten fma not implemented in emscripten
 
 macro_rules! assert_approx_eq {

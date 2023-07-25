@@ -1,6 +1,6 @@
-// run-pass
+//@run
 #![allow(dead_code)]
-// aux-build:issue-4208-cc.rs
+//@aux-build:issue-4208-cc.rs
 
 // pretty-expanded FIXME #23616
 

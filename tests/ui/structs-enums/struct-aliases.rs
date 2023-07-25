@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(non_shorthand_field_patterns)]
 
 use std::mem;

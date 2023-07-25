@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(unused_braces)]
 #![allow(non_camel_case_types)]
 

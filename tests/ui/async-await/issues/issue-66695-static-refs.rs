@@ -1,5 +1,5 @@
 // build-pass
-// edition:2018
+//@edition:2018
 
 static A: [i32; 5] = [1, 2, 3, 4, 5];
 

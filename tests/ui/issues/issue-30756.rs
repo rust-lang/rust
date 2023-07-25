@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![forbid(unsafe_code)]
 
 thread_local!(static FOO: u8 = 1);

@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 
 pub T(String);
 //~^ ERROR missing `struct` for struct definition

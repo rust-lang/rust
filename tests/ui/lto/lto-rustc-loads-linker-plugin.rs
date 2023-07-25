@@ -1,6 +1,6 @@
-// compile-flags: -C lto
-// aux-build:lto-rustc-loads-linker-plugin.rs
-// run-pass
+//@compile-flags: -C lto
+//@aux-build:lto-rustc-loads-linker-plugin.rs
+//@run
 // no-prefer-dynamic
 
 // This test ensures that if a dependency was compiled with

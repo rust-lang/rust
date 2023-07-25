@@ -1,4 +1,4 @@
-// check-pass
+//@check-pass
 
 #![warn(private_interfaces)] //~ WARN unknown lint
                              //~| WARN unknown lint

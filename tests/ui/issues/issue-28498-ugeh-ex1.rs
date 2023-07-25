@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 // Example taken from RFC 1238 text
 

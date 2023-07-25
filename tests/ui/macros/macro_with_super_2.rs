@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:macro_with_super_1.rs
+//@run
+//@aux-build:macro_with_super_1.rs
 
 // pretty-expanded FIXME #23616
 

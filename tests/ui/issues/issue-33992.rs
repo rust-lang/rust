@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // ignore-windows
 // ignore-macos
 // ignore-emscripten common linkage not implemented right now

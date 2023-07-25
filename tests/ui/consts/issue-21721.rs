@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 fn main() {
     static NONE: Option<((), &'static u8)> = None;

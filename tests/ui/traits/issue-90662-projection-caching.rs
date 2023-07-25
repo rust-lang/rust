@@ -1,4 +1,4 @@
-// check-pass
+//@check-pass
 
 // Regression test for issue #90662
 // Tests that projection caching does not cause a spurious error

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Issue 15523: derive(PartialOrd) should use the provided
 // discriminant values for the derived ordering.
 //

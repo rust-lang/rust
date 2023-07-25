@@ -1,4 +1,4 @@
-// run-pass
+//@run
 struct Foo<A = (isize, char)> {
     a: A
 }

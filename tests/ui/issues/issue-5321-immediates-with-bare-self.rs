@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 trait Fooable {
     fn yes(self);

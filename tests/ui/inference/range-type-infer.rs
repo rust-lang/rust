@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 #![allow(unused_must_use)]
 // Make sure the type inference for the new range expression work as

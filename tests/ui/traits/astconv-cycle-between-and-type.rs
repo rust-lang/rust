@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Test that we are able to successfully compile a setup where a trait
 // (`Trait1`) references a struct (`SomeType<u32>`) which in turn
 // carries a predicate that references the trait (`u32 : Trait1`,

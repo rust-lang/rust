@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 fn f(x: isize) -> isize {
     // println!("in f:");

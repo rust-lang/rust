@@ -1,7 +1,7 @@
 // no-prefer-dynamic
-// compile-flags: --test
+//@compile-flags: --test
 // run-flags: --test-threads=1
-// run-pass
+//@run
 // check-run-results
 // only-wasm32
 

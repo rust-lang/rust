@@ -1,7 +1,7 @@
 // no-system-llvm
-// compile-flags: -C opt-level=3
-// aux-build: issue-76387.rs
-// run-pass
+//@compile-flags: -C opt-level=3
+//@aux-build: issue-76387.rs
+//@run
 
 // Regression test for issue #76387
 // Tests that LLVM doesn't miscompile this

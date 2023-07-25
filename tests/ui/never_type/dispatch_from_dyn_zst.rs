@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 #![feature(unsize, dispatch_from_dyn, never_type)]
 

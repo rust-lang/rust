@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(dead_code)]
 // Test transitive analysis for associated types. Collected types
 // should be normalized and new obligations generated.

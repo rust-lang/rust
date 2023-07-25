@@ -1,6 +1,6 @@
-// run-pass
+//@run
 
-// compile-flags: -C codegen-units=8 -Z thinlto
+//@compile-flags: -C codegen-units=8 -Z thinlto
 // ignore-windows
 
 #![feature(linkage)]

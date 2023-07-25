@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // ABI is cdecl by default
 
 // ignore-wasm32-bare no libc to test ffi with

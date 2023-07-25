@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // ignore-emscripten no threads
 // ignore-sgx no processes
 

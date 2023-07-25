@@ -1,4 +1,4 @@
-// edition:2018
+//@edition:2018
 // aux-crate:reexported_trait=reexported-trait.rs
 
 fn main() {

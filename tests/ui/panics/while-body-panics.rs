@@ -1,7 +1,7 @@
 #![allow(while_true)]
 
 // run-fail
-// error-pattern:quux
+//@error-pattern:quux
 // ignore-emscripten no processes
 
 fn main() {

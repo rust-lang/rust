@@ -1,4 +1,4 @@
-// compile-flags: -Z trace-macros
+//@compile-flags: -Z trace-macros
 // build-pass (FIXME(62277): could be check-pass?)
 
 fn main() {

@@ -8,7 +8,7 @@
 // is not normally limited to 1 CGU. This is important so that the `__rust_begin_short_backtrace`
 // and `__rust_end_short_backtrace` symbols are not marked internal to the CGU and thus will be
 // named in the symbol table.
-// compile-flags: -O -Ccodegen-units=8
+//@compile-flags: -O -Ccodegen-units=8
 
 // run-fail
 // check-run-results

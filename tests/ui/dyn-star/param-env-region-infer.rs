@@ -1,7 +1,7 @@
-// revisions: current next
+//@revisions: current next
 // Need `-Zdeduplicate-diagnostics=yes` because the number of cycle errors
 // emitted is for some horrible reason platform-specific.
-//[next] compile-flags: -Ztrait-solver=next -Zdeduplicate-diagnostics=yes
+//@[next] compile-flags: -Ztrait-solver=next -Zdeduplicate-diagnostics=yes
 // incremental
 
 // checks that we don't ICE if there are region inference variables in the environment

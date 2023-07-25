@@ -1,4 +1,4 @@
-// aux-build:cross_crate_ice.rs
+//@aux-build:cross_crate_ice.rs
 // build-pass (FIXME(62277): could be check-pass?)
 
 extern crate cross_crate_ice;

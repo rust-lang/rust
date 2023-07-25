@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Check that closures implement `Copy`.
 
 fn call<T, F: FnOnce() -> T>(f: F) -> T { f() }

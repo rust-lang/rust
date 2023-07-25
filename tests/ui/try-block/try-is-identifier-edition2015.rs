@@ -1,7 +1,7 @@
-// run-pass
+//@run
 
 #![allow(non_camel_case_types)]
-// compile-flags: --edition 2015
+//@compile-flags: --edition 2015
 
 fn main() {
     let try = 2;

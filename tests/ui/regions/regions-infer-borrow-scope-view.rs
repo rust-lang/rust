@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 
 fn view<T>(x: &[T]) -> &[T] {x}

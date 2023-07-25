@@ -1,4 +1,4 @@
-// revisions: fn_once_bad_item fn_once_bad_sig fn_mut_bad_item fn_mut_bad_sig fn_bad_item fn_bad_sig
+//@revisions: fn_once_bad_item fn_once_bad_sig fn_mut_bad_item fn_mut_bad_sig fn_bad_item fn_bad_sig
 
 #![feature(lang_items)]
 #![feature(no_core)]

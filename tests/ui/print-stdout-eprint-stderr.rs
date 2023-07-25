@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // ignore-emscripten spawning processes is not supported
 // ignore-sgx no processes
 

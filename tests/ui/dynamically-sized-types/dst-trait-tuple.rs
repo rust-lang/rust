@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(type_alias_bounds)]
 
 #![allow(unused_features)]

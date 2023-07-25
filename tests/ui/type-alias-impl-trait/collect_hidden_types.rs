@@ -1,4 +1,4 @@
-// aux-build:collect_hidden_types.rs
+//@aux-build:collect_hidden_types.rs
 use collect_hidden_types::Service;
 use std::future::Future;
 use std::pin::Pin;
@@ -6,7 +6,7 @@ use std::task::Context;
 
 // build-pass
 
-// edition:2018
+//@edition:2018
 
 extern crate collect_hidden_types;
 

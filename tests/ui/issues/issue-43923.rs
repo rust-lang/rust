@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(dead_code)]
 #![allow(unused_variables)]
 struct A<T: ?Sized> { ptr: T }

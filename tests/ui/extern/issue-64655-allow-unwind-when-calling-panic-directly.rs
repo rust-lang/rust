@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // needs-unwind
 // ignore-emscripten no threads support
 
@@ -17,10 +17,10 @@
 
 // The revisions just enumerate lto settings (the opt-level appeared irrelevant in practice)
 
-// revisions: no thin fat
-//[no]compile-flags: -C lto=no
-//[thin]compile-flags: -C lto=thin
-//[fat]compile-flags: -C lto=fat
+//@revisions: no thin fat
+//@[no] compile-flags: -C lto=no
+//@[thin] compile-flags: -C lto=thin
+//@[fat] compile-flags: -C lto=fat
 
 #![feature(core_panic)]
 

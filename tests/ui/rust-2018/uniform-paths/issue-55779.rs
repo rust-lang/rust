@@ -1,5 +1,5 @@
-// run-pass
-// edition:2018
+//@run
+//@edition:2018
 // aux-crate:issue_55779_extern_trait=issue-55779-extern-trait.rs
 
 use issue_55779_extern_trait::Trait;

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 struct Foo {
     a: u32
 }

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 #![deny(unused_mut)]
 #![allow(unreachable_code)]

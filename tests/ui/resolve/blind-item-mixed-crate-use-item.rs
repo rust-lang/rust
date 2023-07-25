@@ -1,6 +1,6 @@
-// run-pass
-// aux-build:blind-item-mixed-crate-use-item-foo.rs
-// aux-build:blind-item-mixed-crate-use-item-foo2.rs
+//@run
+//@aux-build:blind-item-mixed-crate-use-item-foo.rs
+//@aux-build:blind-item-mixed-crate-use-item-foo2.rs
 
 // pretty-expanded FIXME #23616
 

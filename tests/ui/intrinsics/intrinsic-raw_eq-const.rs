@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 #![feature(core_intrinsics)]
 #![feature(const_intrinsic_raw_eq)]

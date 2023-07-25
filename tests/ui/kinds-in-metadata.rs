@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:kinds_in_metadata.rs
+//@run
+//@aux-build:kinds_in_metadata.rs
 
 // pretty-expanded FIXME #23616
 

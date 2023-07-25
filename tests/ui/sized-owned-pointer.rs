@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 #![allow(dead_code)]
 // Possibly-dynamic size of typaram should be cleared at pointer boundary.

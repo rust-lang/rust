@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(unused_mut)]
 // ignore-emscripten no processes
 // ignore-sgx no processes

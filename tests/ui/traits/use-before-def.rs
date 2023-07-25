@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(non_camel_case_types)]
 
 // Issue #1761

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(unused_imports)]
 use std::thread;
 use std::sync::Mutex;

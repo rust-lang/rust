@@ -1,5 +1,5 @@
-// check-pass
-// compile-flags: -Ztrait-solver=next
+//@check-pass
+//@compile-flags: -Ztrait-solver=next
 // Issue 96750
 
 use std::marker::PhantomData;

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 struct S {
     o: Option<String>
 }

@@ -1,4 +1,4 @@
-// stderr-per-bitwidth
+//@stderr-per-bitwidth
 // ignore-endian-big
 // ignore-tidy-linelength
 // normalize-stderr-test "╾─*a(lloc)?[0-9]+(\+[a-z0-9]+)?─*╼" -> "╾ALLOC_ID$2╼"

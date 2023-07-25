@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // ignore-test: not a test, used by backtrace-debuginfo.rs to test file!()
 
 #[inline(never)]

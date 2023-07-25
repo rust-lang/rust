@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 pub fn main() {
     let a = 0xBEEF_isize;

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 // When the NRVO is applied, the return place (`_0`) gets treated like a normal local. For example,
 // its address may be taken and it may be written to indirectly. Ensure that MIRI can handle this.

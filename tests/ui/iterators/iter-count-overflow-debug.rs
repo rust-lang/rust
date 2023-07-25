@@ -1,7 +1,7 @@
-// run-pass
+//@run
 // only-32bit too impatient for 2⁶⁴ items
 // needs-unwind
-// compile-flags: -C debug_assertions=yes -C opt-level=3
+//@compile-flags: -C debug_assertions=yes -C opt-level=3
 
 use std::panic;
 

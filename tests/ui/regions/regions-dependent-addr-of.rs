@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Test lifetimes are linked properly when we create dependent region pointers.
 // Issue #3148.
 

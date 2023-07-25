@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // no-prefer-dynamic
 // ignore-emscripten no threads support
 

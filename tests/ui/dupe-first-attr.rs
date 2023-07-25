@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 // Regression test for a problem with the first mod attribute
 // being applied to every mod

@@ -1,7 +1,7 @@
 // Regression test for Issue #20971.
 
 // run-fail
-// error-pattern:Hello, world!
+//@error-pattern:Hello, world!
 // ignore-emscripten no processes
 
 pub trait Parser {

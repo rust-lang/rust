@@ -1,5 +1,5 @@
 warning: unexpected `cfg` condition name
-  --> $DIR/diagnotics.rs:4:7
+  --> $DIR/diagnotics.rs:5:7
    |
 LL | #[cfg(featur)]
    |       ^^^^^^ help: there is a config with a similar name: `feature`
@@ -8,7 +8,7 @@ LL | #[cfg(featur)]
    = note: `#[warn(unexpected_cfgs)]` on by default
 
 warning: unexpected `cfg` condition name
-  --> $DIR/diagnotics.rs:8:7
+  --> $DIR/diagnotics.rs:9:7
    |
 LL | #[cfg(featur = "foo")]
    |       ^^^^^^^^^^^^^^
@@ -20,7 +20,7 @@ LL | #[cfg(feature = "foo")]
    |       ~~~~~~~
 
 warning: unexpected `cfg` condition name
-  --> $DIR/diagnotics.rs:12:7
+  --> $DIR/diagnotics.rs:13:7
    |
 LL | #[cfg(featur = "fo")]
    |       ^^^^^^^^^^^^^
@@ -32,13 +32,13 @@ LL | #[cfg(feature = "foo")]
    |       ~~~~~~~~~~~~~~~
 
 warning: unexpected `cfg` condition name
-  --> $DIR/diagnotics.rs:19:7
+  --> $DIR/diagnotics.rs:20:7
    |
 LL | #[cfg(no_value)]
    |       ^^^^^^^^ help: there is a config with a similar name: `no_values`
 
 warning: unexpected `cfg` condition name
-  --> $DIR/diagnotics.rs:23:7
+  --> $DIR/diagnotics.rs:24:7
    |
 LL | #[cfg(no_value = "foo")]
    |       ^^^^^^^^^^^^^^^^
@@ -49,7 +49,7 @@ LL | #[cfg(no_values)]
    |       ~~~~~~~~~
 
 warning: unexpected `cfg` condition value
-  --> $DIR/diagnotics.rs:27:7
+  --> $DIR/diagnotics.rs:28:7
    |
 LL | #[cfg(no_values = "bar")]
    |       ^^^^^^^^^--------

@@ -1,5 +1,5 @@
-// check-pass
-// compile-flags: -Ztrait-solver=next
+//@check-pass
+//@compile-flags: -Ztrait-solver=next
 
 trait Mirror {
     type Item;

@@ -1,5 +1,5 @@
-// aux-build:impl-const.rs
-// run-pass
+//@aux-build:impl-const.rs
+//@run
 #![feature(generic_const_exprs)]
 #![allow(incomplete_features)]
 

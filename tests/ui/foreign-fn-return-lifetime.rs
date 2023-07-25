@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 
 extern "C" {
     pub fn g(_: &u8) -> &u8; // OK

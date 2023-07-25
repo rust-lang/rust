@@ -2,10 +2,10 @@
 // needs-sanitizer-address
 // ignore-cross-compile
 //
-// compile-flags: -Z sanitizer=address -O
+//@compile-flags: -Z sanitizer=address -O
 //
 // run-fail
-// error-pattern: AddressSanitizer: SEGV
+//@error-pattern: AddressSanitizer: SEGV
 
 use std::ffi::c_void;
 

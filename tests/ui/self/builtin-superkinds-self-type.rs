@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Tests the ability for the Self type in default methods to use
 // capabilities granted by builtin kinds as supertraits.
 

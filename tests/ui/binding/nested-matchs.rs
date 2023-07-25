@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(unused_mut)] // under NLL we get warning about `bar` below
 fn baz() -> ! { panic!(); }
 

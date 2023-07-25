@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 /*!
  * This is a regression test for a bug in LLVM, fixed in upstream r179587,

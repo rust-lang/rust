@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 
 fn bar(v: &mut [usize]) -> Vec<usize> {

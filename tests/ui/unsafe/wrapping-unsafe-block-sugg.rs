@@ -1,5 +1,5 @@
-// run-rustfix
-// aux-build:external_unsafe_macro.rs
+//@run-rustfix
+//@aux-build:external_unsafe_macro.rs
 
 #![deny(unsafe_op_in_unsafe_fn)] //~ NOTE
 

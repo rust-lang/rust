@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 #![feature(raw_ref_op)]
 

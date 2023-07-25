@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:coherence_lib.rs
+//@run
+//@aux-build:coherence_lib.rs
 
 // pretty-expanded FIXME #23616
 

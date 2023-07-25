@@ -1,4 +1,4 @@
-// compile-flags: -Clink-dead-code=on --crate-type=lib
+//@compile-flags: -Clink-dead-code=on --crate-type=lib
 // build-pass
 
 // Make sure that we don't monomorphize the impossible method `<() as Visit>::visit`,

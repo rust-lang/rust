@@ -1,5 +1,5 @@
 // run-pass
-// aux-build:lint-group-plugin-test.rs
+//@aux-build:lint-group-plugin-test.rs
 // ignore-stage1
 
 #![feature(plugin)]

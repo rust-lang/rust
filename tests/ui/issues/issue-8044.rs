@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:issue-8044.rs
+//@run
+//@aux-build:issue-8044.rs
 
 // pretty-expanded FIXME #23616
 

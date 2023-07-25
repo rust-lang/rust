@@ -1,4 +1,4 @@
-// run-pass
+//@run
 mod buildings {
     pub struct Tower { pub height: usize }
 }

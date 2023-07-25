@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // needs-unwind
 
 #![allow(dead_code, unreachable_code)]

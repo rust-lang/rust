@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 // Check that `Allocator` is object safe, this allows for polymorphic allocators
 

@@ -1,5 +1,5 @@
 // only-aarch64
-// run-pass
+//@run
 #![allow(dead_code)]
 use std::arch::*;
 use std::arch::aarch64::*;

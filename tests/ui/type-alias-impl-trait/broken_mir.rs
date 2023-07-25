@@ -4,7 +4,7 @@
 //! This test used to ICE because oli-obk assumed mir validation
 //! was only ever run after opaque types were revealed in MIR.
 
-// compile-flags: -Zvalidate-mir
+//@compile-flags: -Zvalidate-mir
 // check-pass
 
 fn main() {

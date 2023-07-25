@@ -1,6 +1,6 @@
 // Test that `impl MyTrait for &i32` works and is equivalent to any lifetime.
 
-// run-pass
+//@run
 
 #![allow(warnings)]
 

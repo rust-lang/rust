@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // #42164
 
 #![feature(decl_macro)]

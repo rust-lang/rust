@@ -1,4 +1,4 @@
 // build-fail
-// compile-flags: -Cpasses=unknown-pass
+//@compile-flags: -Cpasses=unknown-pass
 
 fn main() {}

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(dead_code)]
 // check for const_err regressions
 

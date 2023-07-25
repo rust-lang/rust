@@ -1,4 +1,4 @@
-// run-pass
+//@run
 //! Test that #[derive(Copy, Clone)] produces a shallow copy
 //! even when a member violates RFC 1521
 

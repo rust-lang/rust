@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![deny(warnings)]
 
 #[derive(Hash, Ord, PartialOrd, Eq, PartialEq, Debug, Clone, Copy)]

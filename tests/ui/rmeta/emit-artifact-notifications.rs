@@ -1,4 +1,4 @@
-// compile-flags:--emit=metadata --error-format=json --json artifacts
+//@compile-flags:--emit=metadata --error-format=json --json artifacts
 // build-pass
 // ignore-pass
 // ^-- needed because `--pass check` does not emit the output needed.

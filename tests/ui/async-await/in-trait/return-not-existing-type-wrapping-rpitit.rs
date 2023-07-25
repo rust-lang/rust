@@ -1,4 +1,4 @@
-// edition:2021
+//@edition:2021
 
 #![feature(return_position_impl_trait_in_trait)]
 

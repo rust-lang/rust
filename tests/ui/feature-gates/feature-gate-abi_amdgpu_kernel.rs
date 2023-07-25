@@ -1,4 +1,4 @@
-// compile-flags: --crate-type=rlib
+//@compile-flags: --crate-type=rlib
 #![no_core]
 #![feature(no_core, lang_items)]
 #[lang="sized"]

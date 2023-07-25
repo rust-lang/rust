@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 #[inline(always)]
 fn main() {}

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 // Regression test for #47096.
 

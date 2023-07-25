@@ -1,6 +1,6 @@
-// run-pass
-// revisions: mir thir
-// [thir]compile-flags: -Zthir-unsafeck
+//@run
+//@revisions: mir thir
+//@[thir] compile-flags: -Zthir-unsafeck
 
 #![allow(stable_features)]
 // ignore-windows - this is a unix-specific test

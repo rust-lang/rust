@@ -1,4 +1,4 @@
-// run-pass
+//@run
 use std::ptr;
 
 #[repr(C)]

@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 
 trait T {
     unsafe fn foo(a: &usize, b: &usize) -> usize;

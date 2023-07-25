@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 #[repr(align(4))]
 struct Foo;

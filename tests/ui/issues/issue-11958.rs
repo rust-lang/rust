@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 // We shouldn't need to rebind a moved upvar as mut if it's already
 // marked as mut

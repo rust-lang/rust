@@ -1,7 +1,7 @@
 #![allow(unreachable_code)]
 
 // run-fail
-// error-pattern:One
+//@error-pattern:One
 // ignore-emscripten no processes
 
 fn main() {

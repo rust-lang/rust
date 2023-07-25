@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(path_statements)]
 // pretty-expanded FIXME #23616
 

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![feature(rustc_private)]
 
 extern crate libc;

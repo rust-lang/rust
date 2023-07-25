@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // ignore-windows
 // ignore-emscripten no threads support
 

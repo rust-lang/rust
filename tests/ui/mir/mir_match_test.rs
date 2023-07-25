@@ -1,6 +1,6 @@
 #![feature(exclusive_range_pattern)]
 
-// run-pass
+//@run
 
 fn main() {
     let incl_range = |x, b| {

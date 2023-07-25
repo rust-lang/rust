@@ -1,5 +1,5 @@
 // ignore-windows
-// aux-build:cfg-target-thread-local.rs
+//@aux-build:cfg-target-thread-local.rs
 
 #![feature(thread_local)]
 

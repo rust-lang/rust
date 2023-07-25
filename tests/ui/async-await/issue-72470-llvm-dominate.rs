@@ -1,6 +1,6 @@
-// compile-flags: -C opt-level=3
-// aux-build: issue-72470-lib.rs
-// edition:2018
+//@compile-flags: -C opt-level=3
+//@aux-build: issue-72470-lib.rs
+//@edition:2018
 // build-pass
 
 // Regression test for issue #72470, using the minimization

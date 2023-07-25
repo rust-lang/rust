@@ -1,8 +1,8 @@
-// run-pass
+//@run
 
 #![allow(deprecated)]
-// aux-build:typeid-intrinsic-aux1.rs
-// aux-build:typeid-intrinsic-aux2.rs
+//@aux-build:typeid-intrinsic-aux1.rs
+//@aux-build:typeid-intrinsic-aux2.rs
 
 #![feature(core_intrinsics)]
 

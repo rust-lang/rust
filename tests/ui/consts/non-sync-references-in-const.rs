@@ -1,4 +1,4 @@
-// check-pass
+//@check-pass
 // known-bug: #49206
 
 // Should fail. Compiles and prints 2 identical addresses, which shows 2 threads

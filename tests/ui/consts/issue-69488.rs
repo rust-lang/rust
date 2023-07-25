@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 #![feature(const_ptr_write)]
 #![feature(const_mut_refs)]

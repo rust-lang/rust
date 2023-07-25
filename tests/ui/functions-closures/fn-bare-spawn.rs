@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // This is what the signature to spawn should look like with bare functions
 
 

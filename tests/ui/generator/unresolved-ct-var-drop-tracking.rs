@@ -1,6 +1,6 @@
 // incremental
-// edition:2021
-// compile-flags: -Zdrop-tracking
+//@edition:2021
+//@compile-flags: -Zdrop-tracking
 
 fn main() {
     let _ = async {

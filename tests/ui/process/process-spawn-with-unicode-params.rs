@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // no-prefer-dynamic
 
 // The test copies itself into a subdirectory with a non-ASCII name and then

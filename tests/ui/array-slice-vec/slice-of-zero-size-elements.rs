@@ -1,7 +1,7 @@
-// run-pass
+//@run
 #![allow(stable_features)]
 
-// compile-flags: -C debug-assertions
+//@compile-flags: -C debug-assertions
 
 #![feature(iter_to_slice)]
 

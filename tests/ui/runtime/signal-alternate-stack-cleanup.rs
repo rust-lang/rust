@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Previously memory for alternate signal stack have been unmapped during
 // main thread exit while still being in use by signal handlers. This test
 // triggers this situation by sending signal from atexit handler.

@@ -1,5 +1,5 @@
 // run-fail
-// error-pattern:squirrelcupcake
+//@error-pattern:squirrelcupcake
 // ignore-emscripten no processes
 
 fn cmp() -> isize {

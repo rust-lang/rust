@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(dead_code)]
 // Regression test for #20582. This test caused an ICE related to
 // inconsistent region erasure in codegen.

@@ -1,7 +1,7 @@
-// revisions: noopt opt opt_with_overflow_checks
-//[noopt]compile-flags: -C opt-level=0
-//[opt]compile-flags: -O
-//[opt_with_overflow_checks]compile-flags: -C overflow-checks=on -O
+//@revisions: noopt opt opt_with_overflow_checks
+//@[noopt] compile-flags: -C opt-level=0
+//@[opt] compile-flags: -O
+//@[opt_with_overflow_checks] compile-flags: -C overflow-checks=on -O
 // build-pass
 // ignore-pass (test emits codegen-time warnings and verifies that they are not errors)
 // normalize-stderr-test "shift left by `(64|32)_usize`, which" -> "shift left by `%BITS%`, which"

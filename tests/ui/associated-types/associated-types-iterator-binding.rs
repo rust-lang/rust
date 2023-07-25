@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 fn pairwise_sub<T:DoubleEndedIterator<Item=isize>>(mut t: T) -> isize {
     let mut result = 0;

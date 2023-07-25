@@ -1,5 +1,5 @@
-// edition:2018
-// run-rustfix
+//@edition:2018
+//@run-rustfix
 
 trait WithType<T> {}
 trait WithRegion<'a> { }

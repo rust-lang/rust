@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:custom-attr-only-one-derive.rs
+//@run
+//@aux-build:custom-attr-only-one-derive.rs
 
 #![feature(rust_2018_preview)]
 

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #[repr(C)]
 pub enum CPOption<T> {
     PSome(T),

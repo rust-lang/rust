@@ -1,4 +1,4 @@
-// run-pass
+//@run
 pub fn main() {
   let mut i = 0_usize;
   loop {

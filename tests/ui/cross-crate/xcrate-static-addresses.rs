@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:xcrate_static_addresses.rs
+//@run
+//@aux-build:xcrate_static_addresses.rs
 
 // pretty-expanded FIXME #23616
 

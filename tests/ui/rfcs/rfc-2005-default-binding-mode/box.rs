@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(unreachable_patterns)]
 #![feature(box_patterns)]
 

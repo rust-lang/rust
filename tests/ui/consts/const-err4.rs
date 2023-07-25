@@ -1,4 +1,4 @@
-// stderr-per-bitwidth
+//@stderr-per-bitwidth
 #[derive(Copy, Clone)]
 union Foo {
     a: isize,

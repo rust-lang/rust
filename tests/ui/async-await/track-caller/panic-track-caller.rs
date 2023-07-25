@@ -1,6 +1,6 @@
-// run-pass
-// edition:2021
-// revisions: feat nofeat
+//@run
+//@edition:2021
+//@revisions: feat nofeat
 // needs-unwind
 #![feature(async_closure, stmt_expr_attributes)]
 #![cfg_attr(feat, feature(closure_track_caller))]

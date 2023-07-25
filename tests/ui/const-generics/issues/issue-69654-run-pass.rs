@@ -1,4 +1,4 @@
-// run-pass
+//@run
 trait Bar<T> {}
 impl<T> Bar<T> for [u8; 7] {}
 

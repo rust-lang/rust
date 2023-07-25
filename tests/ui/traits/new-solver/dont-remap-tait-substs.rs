@@ -1,5 +1,5 @@
-// compile-flags: -Ztrait-solver=next
-// check-pass
+//@compile-flags: -Ztrait-solver=next
+//@check-pass
 
 // Makes sure we don't prepopulate the MIR typeck of `define`
 // with `Foo<T, U> = T`, but instead, `Foo<B, A> = B`, so that

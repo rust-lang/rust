@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #[derive(PartialEq, Debug)]
 pub struct Partial<T> { x: T, y: T }
 

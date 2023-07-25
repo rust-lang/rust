@@ -1,4 +1,4 @@
-// run-pass
+//@run
 trait Bar<const N: usize> {}
 
 trait Foo<const N: usize> {

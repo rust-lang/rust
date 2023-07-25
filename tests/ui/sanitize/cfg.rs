@@ -8,14 +8,14 @@
 // needs-sanitizer-leak
 // needs-sanitizer-memory
 // needs-sanitizer-thread
-// check-pass
-// revisions: address leak memory thread
-//[address]compile-flags: -Zsanitizer=address --cfg address
-//[cfi]compile-flags:     -Zsanitizer=cfi     --cfg cfi
-//[kcfi]compile-flags:    -Zsanitizer=kcfi    --cfg kcfi
-//[leak]compile-flags:    -Zsanitizer=leak    --cfg leak
-//[memory]compile-flags:  -Zsanitizer=memory  --cfg memory
-//[thread]compile-flags:  -Zsanitizer=thread  --cfg thread
+//@check-pass
+//@revisions: address leak memory thread
+//@[address] compile-flags: -Zsanitizer=address --cfg address
+//@[cfi] compile-flags:     -Zsanitizer=cfi     --cfg cfi
+//@[kcfi] compile-flags:    -Zsanitizer=kcfi    --cfg kcfi
+//@[leak] compile-flags:    -Zsanitizer=leak    --cfg leak
+//@[memory] compile-flags:  -Zsanitizer=memory  --cfg memory
+//@[thread] compile-flags:  -Zsanitizer=thread  --cfg thread
 
 #![feature(cfg_sanitize)]
 

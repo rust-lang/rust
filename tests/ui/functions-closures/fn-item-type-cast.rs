@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(dead_code)]
 #![allow(unused_variables)]
 // Test explicit coercions from a fn item type to a fn pointer type.

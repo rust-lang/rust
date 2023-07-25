@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(non_camel_case_types)]
 enum wrapper<T> { wrapped(#[allow(unused_tuple_struct_fields)] T), }
 

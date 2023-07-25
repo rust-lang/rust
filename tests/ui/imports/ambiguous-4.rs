@@ -1,5 +1,5 @@
 // check-pass
-// aux-build: ../ambiguous-4-extern.rs
+//@aux-build: ../ambiguous-4-extern.rs
 
 extern crate ambiguous_4_extern;
 

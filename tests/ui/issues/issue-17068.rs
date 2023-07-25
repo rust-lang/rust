@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Test that regionck creates the right region links in the pattern
 // binding of a for loop
 

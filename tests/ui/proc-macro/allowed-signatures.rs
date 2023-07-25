@@ -1,4 +1,4 @@
-// check-pass
+//@check-pass
 // force-host
 // no-prefer-dynamic
 

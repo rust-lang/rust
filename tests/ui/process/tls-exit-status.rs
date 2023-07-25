@@ -1,5 +1,5 @@
 // run-fail
-// error-pattern:nonzero
+//@error-pattern:nonzero
 // exec-env:RUST_NEWRT=1
 // ignore-emscripten no processes
 

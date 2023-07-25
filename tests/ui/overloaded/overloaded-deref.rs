@@ -1,4 +1,4 @@
-// run-pass
+//@run
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::string::String;

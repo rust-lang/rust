@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 fn hrtb(f: impl for<'a> Fn(&'a u32) -> &'a u32) -> u32 {
     f(&22) + f(&44)

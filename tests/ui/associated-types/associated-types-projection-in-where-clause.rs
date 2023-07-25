@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(dead_code)]
 #![allow(unused_variables)]
 // Test a where clause that uses a non-normalized projection type.

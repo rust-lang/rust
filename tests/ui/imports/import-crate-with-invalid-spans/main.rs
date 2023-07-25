@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:crate_with_invalid_spans.rs
+//@run
+//@aux-build:crate_with_invalid_spans.rs
 
 // pretty-expanded FIXME #23616
 

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 pub fn main() {
     assert_eq!(format!(concat!("foo", "bar", "{}"), "baz"), "foobarbaz".to_string());

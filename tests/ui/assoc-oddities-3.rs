@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 fn that_odd_parse(c: bool, n: usize) -> u32 {
     let x = 2;

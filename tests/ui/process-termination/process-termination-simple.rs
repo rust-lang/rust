@@ -1,6 +1,6 @@
 // program should terminate when std::process::exit is called from any thread
 
-// run-pass
+//@run
 // ignore-emscripten no threads support
 
 use std::{process, thread};

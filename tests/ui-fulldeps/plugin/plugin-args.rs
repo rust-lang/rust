@@ -1,4 +1,4 @@
-// aux-build:empty-plugin.rs
+//@aux-build:empty-plugin.rs
 // ignore-stage1
 
 #![feature(plugin)]

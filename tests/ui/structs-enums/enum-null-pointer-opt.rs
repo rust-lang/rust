@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![feature(transparent_unions)]
 
 use std::mem::size_of;

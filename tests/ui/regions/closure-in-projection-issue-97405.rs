@@ -3,7 +3,7 @@
 // but we should be able to prove `<Gen<T> as Iterator>::Item: 'static` without
 // requiring `T: 'static`
 
-// edition:2018
+//@edition:2018
 // check-fail
 
 fn opaque<F>(_: F) -> impl Iterator { b"".iter() }

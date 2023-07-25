@@ -1,6 +1,6 @@
 // build-pass
-// compile-flags: -Zvalidate-mir
-// edition: 2021
+//@compile-flags: -Zvalidate-mir
+//@edition: 2021
 
 #![crate_type = "lib"]
 

@@ -1,6 +1,6 @@
-// compile-flags: -Zdrop-tracking
+//@compile-flags: -Zdrop-tracking
 // incremental
-// edition: 2021
+//@edition: 2021
 
 use std::future::*;
 use std::marker::PhantomData;

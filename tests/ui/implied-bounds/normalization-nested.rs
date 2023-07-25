@@ -2,8 +2,8 @@
 // (versus those that appear directly in the input types).
 // Both revisions should pass. `lifetime` revision is a bug.
 //
-// revisions: param_ty lifetime
-// [param_ty] check-pass
+//@revisions: param_ty lifetime
+//@[param_ty] check-pass
 // [lifetime] check-fail
 // [lifetime] known-bug: #109799
 

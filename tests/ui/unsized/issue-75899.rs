@@ -1,4 +1,4 @@
-// check-pass
+//@check-pass
 
 trait Trait {}
 impl<T> Trait for T {}

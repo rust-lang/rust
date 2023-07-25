@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 #![allow(unused_parens)]
 // pretty-expanded FIXME #23616

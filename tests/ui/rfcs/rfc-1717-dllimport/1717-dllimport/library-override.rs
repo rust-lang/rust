@@ -1,6 +1,6 @@
-// run-pass
+//@run
 // ignore-wasm32-bare no libc to test ffi with
-// compile-flags: -lstatic=wronglibrary:rust_test_helpers
+//@compile-flags: -lstatic=wronglibrary:rust_test_helpers
 
 #[link(name = "wronglibrary", kind = "dylib")]
 extern "C" {

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(dead_code)]
 // Test an edge case in region inference: the lifetime of the borrow
 // of `*x` must be extended to at least 'a.

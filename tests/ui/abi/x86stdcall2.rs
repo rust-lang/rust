@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // only-windows
 
 #![allow(non_camel_case_types)]

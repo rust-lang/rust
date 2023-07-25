@@ -1,4 +1,4 @@
-// compile-flags: -Ztrait-solver=next
+//@compile-flags: -Ztrait-solver=next
 
 fn require_fn(_: impl Fn() -> i32) {}
 

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 use std::cmp::Ordering::{Less,Equal,Greater};
 
 #[derive(PartialEq, Eq, PartialOrd, Ord)]

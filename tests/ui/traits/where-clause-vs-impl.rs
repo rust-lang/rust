@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(dead_code)]
 #![allow(unused_variables)]
 // Test that when there is a conditional (but blanket) impl and a

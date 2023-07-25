@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 #![feature(test)]
 #![deny(overflowing_literals)]

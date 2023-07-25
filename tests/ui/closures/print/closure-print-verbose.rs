@@ -1,4 +1,4 @@
-// compile-flags: -Zverbose
+//@compile-flags: -Zverbose
 
 // Same as closure-coerce-fn-1.rs
 

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 fn main() {
     let mut t = [1; 2];
     t = [t[1] * 2, t[0] * 2];

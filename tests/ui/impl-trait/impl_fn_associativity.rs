@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![feature(impl_trait_in_fn_trait_return)]
 use std::fmt::Debug;
 

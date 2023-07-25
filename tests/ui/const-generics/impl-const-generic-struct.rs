@@ -1,4 +1,4 @@
-// run-pass
+//@run
 struct S<const X: u32>;
 
 impl<const X: u32> S<X> {

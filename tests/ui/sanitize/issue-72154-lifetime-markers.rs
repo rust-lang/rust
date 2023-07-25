@@ -7,8 +7,8 @@
 // needs-sanitizer-address
 // ignore-cross-compile
 //
-// compile-flags: -Copt-level=0 -Zsanitizer=address
-// run-pass
+//@compile-flags: -Copt-level=0 -Zsanitizer=address
+//@run
 
 pub struct Wrap {
     pub t: [usize; 1]

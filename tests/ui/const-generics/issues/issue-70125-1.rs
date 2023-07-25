@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 const L: usize = 4;
 

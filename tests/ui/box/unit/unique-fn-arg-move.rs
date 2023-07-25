@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 fn f(i: Box<isize>) {
     assert_eq!(*i, 100);

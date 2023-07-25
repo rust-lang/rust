@@ -1,4 +1,4 @@
-// needs-asm-support
+//@needs-asm-support
 // build-pass
 
 #![feature(asm_const)]

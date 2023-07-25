@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(unused_variables)]
 // Test that you can supply `&F` where `F: Fn()`.
 

@@ -1,4 +1,4 @@
-// compile-flags: -Ztrait-solver=next
+//@compile-flags: -Ztrait-solver=next
 // check-pass
 
 trait Eq<'a, 'b, T> {}

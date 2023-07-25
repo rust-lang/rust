@@ -1,7 +1,7 @@
 // note that these aux-build directives must be in this order
-// aux-build:svh-uta-base.rs
-// aux-build:svh-utb.rs
-// aux-build:svh-uta-change-use-trait.rs
+//@aux-build:svh-uta-base.rs
+//@aux-build:svh-utb.rs
+//@aux-build:svh-uta-change-use-trait.rs
 // normalize-stderr-test: "(crate `(\w+)`:) .*" -> "$1 $$PATH_$2"
 
 //! "svh-uta-trait.rs" is checking that we detect a

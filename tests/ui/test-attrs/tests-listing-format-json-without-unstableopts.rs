@@ -1,5 +1,5 @@
 // no-prefer-dynamic
-// compile-flags: --test
+//@compile-flags: --test
 // run-flags: --list --format json
 // run-fail
 // check-run-results

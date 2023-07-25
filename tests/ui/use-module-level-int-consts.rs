@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 // Make sure the module level constants are still there and accessible even after
 // the corresponding associated constants have been added, and later stabilized.

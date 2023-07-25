@@ -1,6 +1,6 @@
-// revisions: current next
-//[next] compile-flags: -Ztrait-solver=next
-// run-pass
+//@revisions: current next
+//@[next] compile-flags: -Ztrait-solver=next
+//@run
 
 #![feature(generators, generator_trait)]
 #![allow(dropping_copy_types)]

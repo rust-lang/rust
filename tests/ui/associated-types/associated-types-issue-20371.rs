@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Test that we are able to have an impl that defines an associated type
 // before the actual trait.
 

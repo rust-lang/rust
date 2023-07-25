@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:inner_static.rs
+//@run
+//@aux-build:inner_static.rs
 
 
 extern crate inner_static;

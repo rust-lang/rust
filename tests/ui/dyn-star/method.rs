@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 #![feature(dyn_star)]
 #![allow(incomplete_features)]

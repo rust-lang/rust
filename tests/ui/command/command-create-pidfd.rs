@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // only-linux - pidfds are a linux-specific concept
 
 #![feature(linux_pidfd)]

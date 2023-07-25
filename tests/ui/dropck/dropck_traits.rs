@@ -1,4 +1,4 @@
-// run-pass
+//@run
 //! Regression test for #34426, regarding HRTB in drop impls
 
 // All of this Drop impls should compile.

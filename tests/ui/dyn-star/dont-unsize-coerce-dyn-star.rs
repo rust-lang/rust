@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // check-run-results
 
 #![feature(dyn_star)]

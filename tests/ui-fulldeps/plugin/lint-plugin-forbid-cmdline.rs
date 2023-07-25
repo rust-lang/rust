@@ -1,6 +1,6 @@
-// aux-build:lint-plugin-test.rs
+//@aux-build:lint-plugin-test.rs
 // ignore-stage1
-// compile-flags: -F test-lint
+//@compile-flags: -F test-lint
 
 #![feature(plugin)]
 #![plugin(lint_plugin_test)]

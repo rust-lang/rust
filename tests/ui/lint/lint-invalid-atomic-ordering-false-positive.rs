@@ -1,5 +1,5 @@
 // only-x86_64
-// check-pass
+//@check-pass
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 trait Foo {

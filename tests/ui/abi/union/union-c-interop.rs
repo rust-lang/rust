@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(non_snake_case)]
 
 // ignore-wasm32-bare no libc to test ffi with

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 trait Lattice {
     const BOTTOM: Self;
 }

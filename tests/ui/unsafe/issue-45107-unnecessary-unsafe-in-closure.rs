@@ -1,5 +1,5 @@
-// revisions: mir thir
-// [thir]compile-flags: -Zthir-unsafeck
+//@revisions: mir thir
+//@[thir] compile-flags: -Zthir-unsafeck
 
 #[deny(unused_unsafe)]
 fn main() {

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 fn f(x: *const isize) {
     unsafe {

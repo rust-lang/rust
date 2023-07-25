@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(dead_code)]
 // Check that we do not report ambiguities when equivalent predicates
 // (modulo bound lifetime names) appears in the environment

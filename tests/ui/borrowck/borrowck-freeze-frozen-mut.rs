@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Test that a `&mut` inside of an `&` is freezable.
 
 

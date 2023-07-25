@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![feature(generators)]
 #![feature(generator_trait)]
 use std::cell::Cell;

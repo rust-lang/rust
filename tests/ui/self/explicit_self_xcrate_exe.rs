@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:explicit_self_xcrate.rs
+//@run
+//@aux-build:explicit_self_xcrate.rs
 
 // pretty-expanded FIXME #23616
 

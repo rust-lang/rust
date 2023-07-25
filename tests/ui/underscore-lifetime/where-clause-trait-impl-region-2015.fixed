@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 
 trait WithType<T> {}
 trait WithRegion<'a> { }

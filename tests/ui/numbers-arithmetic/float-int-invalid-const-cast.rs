@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 // Forces evaluation of constants, triggering hard error
 fn force<T>(_: T) {}

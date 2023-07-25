@@ -1,4 +1,4 @@
-// run-pass
+//@run
 fn main() {
     let x: (isize, &[isize]) = (2, &[1, 2]);
     assert_eq!(match x {

@@ -1,4 +1,4 @@
-// compile-flags:--emit=metadata,obj
+//@compile-flags:--emit=metadata,obj
 // build-pass
 
 // A test for the emission of metadata + obj and other metadata + non-link

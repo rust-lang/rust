@@ -1,2 +1,2 @@
-// run-pass
+//@run
 pub fn foo() -> isize { 10 }

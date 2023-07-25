@@ -1,5 +1,5 @@
 // no-prefer-dynamic
-// compile-flags: --test -Cpanic=abort -Zpanic_abort_tests
+//@compile-flags: --test -Cpanic=abort -Zpanic_abort_tests
 // run-flags: --test-threads=1 --nocapture
 // run-fail
 // check-run-results

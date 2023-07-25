@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(dead_code)]
 
 trait Foo { fn f(&self) -> isize; }

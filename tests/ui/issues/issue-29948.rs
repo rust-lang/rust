@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // needs-unwind
 
 use std::panic;

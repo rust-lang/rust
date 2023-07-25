@@ -1,7 +1,7 @@
 // This test verifies that we do not ICE due to MIR inlining in case of normalization failure
 // in a projection.
 //
-// compile-flags: --crate-type lib -C opt-level=3
+//@compile-flags: --crate-type lib -C opt-level=3
 // build-pass
 
 pub trait Trait {

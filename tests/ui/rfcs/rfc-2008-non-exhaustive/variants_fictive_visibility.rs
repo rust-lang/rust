@@ -1,5 +1,5 @@
 // build-pass (FIXME(62277): could be check-pass?)
-// aux-build:variants.rs
+//@aux-build:variants.rs
 
 extern crate variants;
 

@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:weak-lang-items.rs
+//@run
+//@aux-build:weak-lang-items.rs
 
 // ignore-emscripten no threads support
 // pretty-expanded FIXME #23616

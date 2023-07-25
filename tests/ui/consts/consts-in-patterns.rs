@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 const FOO: isize = 10;
 const BAR: isize = 3;

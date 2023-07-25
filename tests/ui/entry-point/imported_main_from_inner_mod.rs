@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![feature(imported_main)]
 
 pub mod foo {

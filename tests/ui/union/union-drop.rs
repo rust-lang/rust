@@ -1,6 +1,6 @@
-// run-pass
-// revisions: mirunsafeck thirunsafeck
-// [thirunsafeck]compile-flags: -Z thir-unsafeck
+//@run
+//@revisions: mirunsafeck thirunsafeck
+//@[thirunsafeck] compile-flags: -Z thir-unsafeck
 
 #![allow(dead_code)]
 #![allow(unused_variables)]

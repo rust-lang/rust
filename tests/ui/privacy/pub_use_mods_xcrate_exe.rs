@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:pub_use_mods_xcrate.rs
+//@run
+//@aux-build:pub_use_mods_xcrate.rs
 
 // pretty-expanded FIXME #23616
 

@@ -1,6 +1,6 @@
-// run-pass
-// revisions: current next
-//[next] compile-flags: -Ztrait-solver=next
+//@run
+//@revisions: current next
+//@[next] compile-flags: -Ztrait-solver=next
 
 use std::ops::Index;
 

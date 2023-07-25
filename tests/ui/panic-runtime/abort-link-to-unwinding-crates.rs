@@ -1,7 +1,7 @@
-// run-pass
+//@run
 #![allow(unused_variables)]
-// compile-flags:-C panic=abort
-// aux-build:exit-success-if-unwind.rs
+//@compile-flags:-C panic=abort
+//@aux-build:exit-success-if-unwind.rs
 // no-prefer-dynamic
 // ignore-emscripten no processes
 // ignore-sgx no processes

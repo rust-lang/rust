@@ -1,4 +1,4 @@
-// run-pass
+//@run
 fn main() {
     println!("{}", 0E+10);
     println!("{}", 0e+10);

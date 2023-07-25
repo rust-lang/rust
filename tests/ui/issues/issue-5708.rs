@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(unused_variables)]
 /*
 # ICE when returning struct with reference to trait

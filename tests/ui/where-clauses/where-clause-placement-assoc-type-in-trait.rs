@@ -1,5 +1,5 @@
-// check-pass
-// run-rustfix
+//@check-pass
+//@run-rustfix
 
 #![feature(associated_type_defaults)]
 

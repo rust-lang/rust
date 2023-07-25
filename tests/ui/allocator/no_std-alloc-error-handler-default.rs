@@ -1,11 +1,11 @@
-// run-pass
+//@run
 // ignore-android no libc
 // ignore-emscripten no libc
 // ignore-sgx no libc
 // ignore-wasm32 no libc
 // only-linux
-// compile-flags:-C panic=abort
-// aux-build:helper.rs
+//@compile-flags:-C panic=abort
+//@aux-build:helper.rs
 
 #![feature(rustc_private, lang_items)]
 #![no_std]

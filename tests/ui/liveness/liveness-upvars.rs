@@ -1,5 +1,5 @@
-// edition:2018
-// check-pass
+//@edition:2018
+//@check-pass
 #![feature(generators)]
 #![warn(unused)]
 #![allow(unreachable_code)]

@@ -1,5 +1,5 @@
-// check-pass
-// aux-build:api/mod.rs
+//@check-pass
+//@aux-build:api/mod.rs
 
 //! This is for everything that *would* be a #[test] inside of libproc_macro,
 //! except for the fact that proc_macro objects are not capable of existing

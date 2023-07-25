@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(dead_code)]
 // Test that the compiler considers the 'static bound declared in the
 // trait. Issue #20890.

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // unset-rustc-env:RUSTC_LOG_COLOR
 
 // Regression test for https://github.com/rust-lang/rust/issues/73431.

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 trait TraitWithSend: Send {}
 trait IndirectTraitWithSend: TraitWithSend {}
 

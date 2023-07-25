@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // needs-unwind
 
 #![allow(non_camel_case_types)]

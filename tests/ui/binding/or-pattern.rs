@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(non_camel_case_types)]
 
 enum blah { a(isize, isize, #[allow(unused_tuple_struct_fields)] usize), b(isize, isize), c, }

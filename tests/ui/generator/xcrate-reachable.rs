@@ -1,6 +1,6 @@
-// run-pass
+//@run
 
-// aux-build:xcrate-reachable.rs
+//@aux-build:xcrate-reachable.rs
 
 #![feature(generator_trait)]
 

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 static FOO : &'static str = concat!(concat!("hel", "lo"), "world");
 

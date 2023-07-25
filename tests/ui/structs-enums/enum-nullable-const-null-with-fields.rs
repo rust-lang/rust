@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 use std::result::Result;
 use std::result::Result::Ok;

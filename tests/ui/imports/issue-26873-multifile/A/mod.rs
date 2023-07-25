@@ -1,4 +1,4 @@
-// run-pass
+//@run
 pub mod B;
 pub mod C;
 

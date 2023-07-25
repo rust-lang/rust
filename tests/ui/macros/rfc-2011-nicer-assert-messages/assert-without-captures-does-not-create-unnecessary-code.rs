@@ -1,6 +1,6 @@
-// aux-build:common.rs
+//@aux-build:common.rs
 // only-x86_64
-// run-pass
+//@run
 // needs-unwind Asserting on contents of error message
 
 #![feature(core_intrinsics, generic_assert)]

@@ -1,6 +1,6 @@
-// run-pass
-// compile-flags:-C debuginfo=2
-// edition:2018
+//@run
+//@compile-flags:-C debuginfo=2
+//@edition:2018
 
 use core::marker::PhantomData;
 

@@ -1,10 +1,10 @@
-// revisions: no_drop_tracking drop_tracking drop_tracking_mir
-// [drop_tracking] compile-flags: -Zdrop-tracking
-// [drop_tracking_mir] compile-flags: -Zdrop-tracking-mir
+//@revisions: no_drop_tracking drop_tracking drop_tracking_mir
+//@[drop_tracking] compile-flags: -Zdrop-tracking
+//@[drop_tracking_mir] compile-flags: -Zdrop-tracking-mir
 // Provoke an unresolved type error (T).
 // Error message should pinpoint the type parameter T as needing to be bound
 // (rather than give a general error message)
-// edition:2018
+//@edition:2018
 
 async fn bar<T>() -> () {}
 

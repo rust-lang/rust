@@ -1,6 +1,6 @@
-// run-pass
+//@run
 #![allow(unused_imports)]
-// aux-build:coherence_lib.rs
+//@aux-build:coherence_lib.rs
 
 // pretty-expanded FIXME #23616
 

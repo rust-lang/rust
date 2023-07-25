@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 pub fn main() {
     assert!(("hello".to_string() < "hellr".to_string()));

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(path_statements)]
 #![allow(unused_variables)]
 // Regression test for issue #19499. Due to incorrect caching of trait

@@ -1,4 +1,4 @@
-// compile-flags: --test
+//@compile-flags: --test
 // run-fail
 // run-flags: --test-threads=1
 // check-run-results

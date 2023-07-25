@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Test structs with always-unsized fields.
 
 #![allow(warnings)]

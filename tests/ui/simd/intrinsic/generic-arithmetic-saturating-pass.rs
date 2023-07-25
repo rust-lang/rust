@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // ignore-emscripten
 
 #![allow(non_camel_case_types)]

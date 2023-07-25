@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![feature(const_extern_fn)]
 
 const extern "C" fn foo1(val: u8) -> u8 {

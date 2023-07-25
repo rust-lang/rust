@@ -1,6 +1,6 @@
-// run-pass
+//@run
 
-// compile-flags: -Z thinlto -C codegen-units=8 -O
+//@compile-flags: -Z thinlto -C codegen-units=8 -O
 // ignore-emscripten can't inspect instructions on emscripten
 
 // We want to assert here that ThinLTO will inline across codegen units. There's

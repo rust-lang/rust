@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(unused_must_use)]
 // Tests that a heterogeneous list of existential `dyn` types can be put inside an Arc
 // and shared between threads as long as all types fulfill Send.

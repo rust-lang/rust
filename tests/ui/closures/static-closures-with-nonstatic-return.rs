@@ -1,4 +1,4 @@
-// check-pass
+//@check-pass
 // known-bug: #84366
 
 // Should fail. Associated types of 'static types should be `'static`, but

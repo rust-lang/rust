@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 const HASH_LEN: usize = 20;
 struct Hash(#[allow(unused_tuple_struct_fields)] [u8; HASH_LEN]);

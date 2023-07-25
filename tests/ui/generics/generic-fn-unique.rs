@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 fn f<T>(x: Box<T>) -> Box<T> { return x; }
 

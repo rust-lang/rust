@@ -1,5 +1,5 @@
-// edition:2021
-// run-pass
+//@edition:2021
+//@run
 
 // Test that move closures compile properly with `capture_disjoint_fields` enabled.
 

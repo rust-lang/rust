@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(unused_variables)]
 // Test implicit coercions from a fn item type to a fn pointer type.
 

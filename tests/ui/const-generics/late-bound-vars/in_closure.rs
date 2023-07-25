@@ -1,6 +1,6 @@
 // failure-status: 101
 // known-bug: unknown
-// error-pattern:internal compiler error
+//@error-pattern:internal compiler error
 // normalize-stderr-test "internal compiler error.*" -> ""
 // normalize-stderr-test "DefId\([^)]*\)" -> "..."
 // normalize-stderr-test "\nerror: internal compiler error.*\n\n" -> ""

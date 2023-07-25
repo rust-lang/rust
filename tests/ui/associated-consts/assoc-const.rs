@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![feature(associated_const_equality)]
 #![allow(unused)]
 

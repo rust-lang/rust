@@ -1,4 +1,4 @@
-// compile-flags: --crate-type=lib
+//@compile-flags: --crate-type=lib
 // normalize-stderr-32bit: "8 bytes" -> "$$TWO_WORDS bytes"
 // normalize-stderr-64bit: "16 bytes" -> "$$TWO_WORDS bytes"
 // normalize-stderr-32bit: "size 4" -> "size $$WORD"

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 #![allow(stable_features)]
 // pretty-expanded FIXME #23616

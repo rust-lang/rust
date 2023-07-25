@@ -1,3 +1,3 @@
-// run-pass
+//@run
 #[path = "test.rs"]
 pub mod test;

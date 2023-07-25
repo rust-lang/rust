@@ -1,6 +1,6 @@
 // Check that we can manually implement an object-unsafe trait for its trait object.
 
-// run-pass
+//@run
 
 #![feature(object_safe_for_dispatch)]
 

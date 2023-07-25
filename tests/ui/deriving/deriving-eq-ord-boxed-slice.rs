@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #[derive(PartialEq, PartialOrd, Eq, Ord, Debug)]
 struct Foo(Box<[u8]>);
 

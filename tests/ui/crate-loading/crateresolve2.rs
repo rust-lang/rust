@@ -1,8 +1,8 @@
 // check-fail
 
-// aux-build:crateresolve2-1.rs
-// aux-build:crateresolve2-2.rs
-// aux-build:crateresolve2-3.rs
+//@aux-build:crateresolve2-1.rs
+//@aux-build:crateresolve2-2.rs
+//@aux-build:crateresolve2-3.rs
 
 // normalize-stderr-test: "\.nll/" -> "/"
 // normalize-stderr-test: "\\\?\\" -> ""

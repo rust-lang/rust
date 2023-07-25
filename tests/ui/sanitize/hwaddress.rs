@@ -5,10 +5,10 @@
 // ignore-aarch64-unknown-linux-gnu
 //
 // FIXME(#83989): codegen-units=1 triggers linker errors on aarch64-gnu
-// compile-flags: -Z sanitizer=hwaddress -O -g -C codegen-units=16
+//@compile-flags: -Z sanitizer=hwaddress -O -g -C codegen-units=16
 //
 // run-fail
-// error-pattern: HWAddressSanitizer: tag-mismatch
+//@error-pattern: HWAddressSanitizer: tag-mismatch
 
 use std::hint::black_box;
 

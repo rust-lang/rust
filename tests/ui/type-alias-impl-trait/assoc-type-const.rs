@@ -1,6 +1,6 @@
 // Tests that we properly detect defining usages when using
 // const generics in an associated opaque type
-// check-pass
+//@check-pass
 
 #![feature(impl_trait_in_assoc_type)]
 

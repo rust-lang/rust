@@ -1,5 +1,5 @@
-// check-pass
-// compile-flags: -Zhir-stats
+//@check-pass
+//@compile-flags: -Zhir-stats
 // only-x86_64
 
 // Type layouts sometimes change. When that happens, until the next bootstrap

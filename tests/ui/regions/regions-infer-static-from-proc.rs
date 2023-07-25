@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(non_upper_case_globals)]
 
 // Check that the 'static bound on a proc influences lifetimes of

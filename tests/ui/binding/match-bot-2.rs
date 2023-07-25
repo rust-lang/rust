@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(unreachable_code)]
 // n.b. This was only ever failing with optimization disabled.
 

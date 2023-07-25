@@ -1,7 +1,7 @@
 // check-pass
-// aux-build:lint-tool-test.rs
+//@aux-build:lint-tool-test.rs
 // ignore-stage1
-// compile-flags: -A test-lint
+//@compile-flags: -A test-lint
 
 #![feature(plugin)]
 #![plugin(lint_tool_test)] //~ WARNING compiler plugins are deprecated

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![feature(generic_arg_infer)]
 
 // test that we dont use defaults to aide in type inference

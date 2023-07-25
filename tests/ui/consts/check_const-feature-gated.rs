@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 const ARR: [usize; 1] = [2];
 

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // needs-unwind
 
 // Check that values are not leaked when a dtor panics (#14875)

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 fn f<T>(t: T) -> T {
     let t1 = t;

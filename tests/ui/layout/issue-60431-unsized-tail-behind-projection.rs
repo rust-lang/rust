@@ -7,7 +7,7 @@
 // the compiler would ICE when trying to figure out if `Ref<Obstack>` is a
 // dynamically-sized type (DST).
 
-// run-pass
+//@run
 
 use std::mem;
 

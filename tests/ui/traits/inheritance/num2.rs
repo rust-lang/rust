@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // A more complex example of numeric extensions
 
 pub trait TypeExt {}

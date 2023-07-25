@@ -1,5 +1,5 @@
-// run-pass
-// compile-flags: --cfg fooA --cfg fooB
+//@run
+//@compile-flags: --cfg fooA --cfg fooB
 
 // fooA AND !bar
 

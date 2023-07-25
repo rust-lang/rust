@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(unused_variables)]
 // `#[cfg]` on struct field permits empty unusable struct
 

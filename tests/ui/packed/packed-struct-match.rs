@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 #[repr(packed)]
 struct Foo1 {

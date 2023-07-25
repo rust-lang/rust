@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:newtype_struct_xc.rs
+//@run
+//@aux-build:newtype_struct_xc.rs
 
 // pretty-expanded FIXME #23616
 

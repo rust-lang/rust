@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 pub trait MyNum {
     fn from_int(_: isize) -> Self;

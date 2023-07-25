@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 fn test1() {
     // from issue 6338

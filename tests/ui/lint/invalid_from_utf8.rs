@@ -1,4 +1,4 @@
-// check-pass
+//@check-pass
 
 #![feature(concat_bytes)]
 #![warn(invalid_from_utf8_unchecked)]

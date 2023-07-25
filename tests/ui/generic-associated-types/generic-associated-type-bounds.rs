@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 pub trait X {
     type Y<'a> where Self: 'a;

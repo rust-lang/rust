@@ -1,5 +1,5 @@
 // build-fail
-// compile-flags: -C symbol-mangling-version=v0 --crate-name=c
+//@compile-flags: -C symbol-mangling-version=v0 --crate-name=c
 
 // normalize-stderr-test: "c\[[0-9a-f]+\]" -> "c[HASH]"
 

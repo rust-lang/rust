@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // ignore-wasm32-bare can't block the thread
 // ignore-sgx not supported
 #![allow(deprecated)]

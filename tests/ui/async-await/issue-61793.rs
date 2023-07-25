@@ -4,7 +4,7 @@
 // That is, memory ordering of `(X, ())`, but offsets of `((), X)`.
 
 // build-pass
-// edition:2018
+//@edition:2018
 
 async fn foo<F>(_: &(), _: F) {}
 

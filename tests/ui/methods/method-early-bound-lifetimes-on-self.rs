@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Check that we successfully handle methods where the `self` type has
 // an early-bound lifetime. Issue #18208.
 

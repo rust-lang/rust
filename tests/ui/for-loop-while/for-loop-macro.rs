@@ -1,4 +1,4 @@
-// run-pass
+//@run
 macro_rules! var {
     ( $name:ident ) => ( $name );
 }

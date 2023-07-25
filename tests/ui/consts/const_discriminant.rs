@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![feature(const_discriminant)]
 #![allow(dead_code)]
 

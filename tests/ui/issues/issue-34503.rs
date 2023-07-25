@@ -1,4 +1,4 @@
-// run-pass
+//@run
 fn main() {
     struct X;
     trait Foo<T> {

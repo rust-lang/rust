@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Test view items inside non-file-level mods
 
 // This is a regression test for an issue where we were failing to

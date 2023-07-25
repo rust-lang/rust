@@ -1,5 +1,5 @@
 // build-pass
-// compile-flags: -C panic=unwind
+//@compile-flags: -C panic=unwind
 // needs-unwind
 
 

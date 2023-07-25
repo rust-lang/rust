@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // needs-unwind
 
 // Checks that nested panics work correctly.

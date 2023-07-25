@@ -1,5 +1,5 @@
-// run-pass
-// compile-flags:-g
+//@run
+//@compile-flags:-g
 // ignore-asmjs wasm2js does not support source maps yet
 
 // In this test we just want to make sure that the code below does not lead to

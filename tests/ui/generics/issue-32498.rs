@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(dead_code)]
 
 // Making sure that no overflow occurs.

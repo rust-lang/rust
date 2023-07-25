@@ -1,5 +1,5 @@
 // only-wasm32
-// compile-flags: --crate-type=lib -Copt-level=2
+//@compile-flags: --crate-type=lib -Copt-level=2
 // build-pass
 #![feature(repr_simd)]
 

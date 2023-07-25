@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 const X1: &'static [u8] = &[b'1'];
 const X2: &'static [u8] = b"1";

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 struct Foo<const N: usize, T = [u8; N]>(T);
 
 impl<const N: usize> Foo<N> {

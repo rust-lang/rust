@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 fn get<T>(opt: &Option<T>) -> &T {
     match *opt {

@@ -1,5 +1,5 @@
 // only-wasm32
-// compile-flags: -C opt-level=2
+//@compile-flags: -C opt-level=2
 // build-pass
 
 // Regression test for #76281.

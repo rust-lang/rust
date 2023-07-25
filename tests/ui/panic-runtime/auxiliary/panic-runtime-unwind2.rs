@@ -1,4 +1,4 @@
-// compile-flags:-C panic=unwind
+//@compile-flags:-C panic=unwind
 // no-prefer-dynamic
 
 #![feature(panic_runtime)]

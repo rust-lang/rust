@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 pub enum T {
     T1(()),

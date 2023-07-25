@@ -1,4 +1,4 @@
-// edition:2018
+//@edition:2018
 // build-pass
 // aux-crate:issue_80074=issue-80074-macro.rs
 

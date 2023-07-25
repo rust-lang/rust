@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 // Ensure that `dyn $($AutoTrait)+ ObjSafe` is well-formed.
 

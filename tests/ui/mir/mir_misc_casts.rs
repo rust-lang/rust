@@ -1,4 +1,4 @@
-// run-pass
+//@run
 fn func(){}
 
 const STR: &'static str = "hello";

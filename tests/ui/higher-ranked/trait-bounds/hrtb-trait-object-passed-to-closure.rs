@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(dead_code)]
 // Test that `&PrinterSupport`, which is really short for `&'a
 // PrinterSupport<'b>`, gets properly expanded when it appears in a

@@ -1,7 +1,7 @@
 // Warn about unused aliased for the crate
 
-// edition:2018
-// check-pass
+//@edition:2018
+//@check-pass
 // aux-crate:bar=bar.rs
 // aux-crate:barbar=bar.rs
 

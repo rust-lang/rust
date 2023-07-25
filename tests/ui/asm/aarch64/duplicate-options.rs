@@ -1,6 +1,6 @@
 // only-aarch64
-// needs-asm-support
-// run-rustfix
+//@needs-asm-support
+//@run-rustfix
 
 use std::arch::asm;
 

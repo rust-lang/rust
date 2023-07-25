@@ -1,4 +1,4 @@
-// edition:2021
+//@edition:2021
 
 // RPITIT is not enough to allow use of async functions
 #![allow(incomplete_features)]

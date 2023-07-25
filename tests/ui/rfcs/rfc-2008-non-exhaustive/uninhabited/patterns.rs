@@ -1,4 +1,4 @@
-// aux-build:uninhabited.rs
+//@aux-build:uninhabited.rs
 // build-pass (FIXME(62277): could be check-pass?)
 #![deny(unreachable_patterns)]
 #![feature(exhaustive_patterns)]

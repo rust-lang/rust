@@ -1,6 +1,6 @@
-// run-pass
+//@run
 
-// aux-build:xcrate.rs
+//@aux-build:xcrate.rs
 
 extern crate xcrate;
 

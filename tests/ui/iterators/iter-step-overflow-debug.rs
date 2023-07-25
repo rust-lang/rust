@@ -1,6 +1,6 @@
-// run-pass
+//@run
 // needs-unwind
-// compile-flags: -C debug_assertions=yes
+//@compile-flags: -C debug_assertions=yes
 
 use std::panic;
 

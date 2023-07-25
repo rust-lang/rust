@@ -1,5 +1,5 @@
 // run-fail
-// error-pattern:test
+//@error-pattern:test
 // ignore-emscripten no processes
 
 fn f() {

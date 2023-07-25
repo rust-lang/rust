@@ -2,7 +2,7 @@
 // rust-lang/rust#2329), that starts passing with this feature in
 // place.
 
-// run-pass
+//@run
 
 use std::sync::mpsc::channel;
 

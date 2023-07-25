@@ -1,4 +1,4 @@
-// run-pass
+//@run
 use std::cmp::PartialEq;
 use std::ops::{Add, Sub, Mul};
 

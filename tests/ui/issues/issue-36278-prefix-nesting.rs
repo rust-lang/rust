@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Issue 36278: On an unsized struct with >1 level of nontrivial
 // nesting, ensure we are computing dynamic size of prefix correctly.
 

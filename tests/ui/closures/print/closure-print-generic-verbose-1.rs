@@ -1,4 +1,4 @@
-// compile-flags: -Zverbose
+//@compile-flags: -Zverbose
 
 fn to_fn_once<F:FnOnce()>(f: F) -> F { f }
 

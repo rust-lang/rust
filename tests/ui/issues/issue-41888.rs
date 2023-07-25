@@ -1,4 +1,4 @@
-// run-pass
+//@run
 fn main() { let _ = g(Some(E::F(K))); }
 
 type R = Result<(), ()>;

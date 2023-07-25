@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 
 fn one() -> i32 { 1 }

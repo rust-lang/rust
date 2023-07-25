@@ -1,4 +1,4 @@
-// compile-flags:-C panic=abort
+//@compile-flags:-C panic=abort
 // no-prefer-dynamic
 
 #![feature(panic_runtime)]

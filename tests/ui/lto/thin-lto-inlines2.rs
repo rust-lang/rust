@@ -1,7 +1,7 @@
-// run-pass
+//@run
 
-// compile-flags: -C codegen-units=8 -O -C lto=thin
-// aux-build:thin-lto-inlines-aux.rs
+//@compile-flags: -C codegen-units=8 -O -C lto=thin
+//@aux-build:thin-lto-inlines-aux.rs
 // no-prefer-dynamic
 // ignore-emscripten can't inspect instructions on emscripten
 

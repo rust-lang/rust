@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 // Test that you can list the more specific impl before the more general one.
 

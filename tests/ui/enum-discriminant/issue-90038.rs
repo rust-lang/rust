@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 #[repr(u32)]
 pub enum Foo {

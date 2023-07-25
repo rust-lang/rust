@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(unused_variables)]
 struct Leak<'a> {
     dropped: &'a mut bool

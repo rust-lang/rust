@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:attr-on-trait.rs
+//@run
+//@aux-build:attr-on-trait.rs
 
 extern crate attr_on_trait;
 

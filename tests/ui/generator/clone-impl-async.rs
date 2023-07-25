@@ -1,4 +1,4 @@
-// edition:2021
+//@edition:2021
 // gate-test-generator_clone
 // Verifies that feature(generator_clone) doesn't allow async blocks to be cloned/copied.
 

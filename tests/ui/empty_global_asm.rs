@@ -1,5 +1,5 @@
-// needs-asm-support
-// run-pass
+//@needs-asm-support
+//@run
 
 use std::arch::global_asm;
 

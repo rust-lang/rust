@@ -1,7 +1,7 @@
 // run-pass
-// aux-build:lto-syntax-extension-lib.rs
-// aux-build:lto-syntax-extension-plugin.rs
-// compile-flags:-C lto
+//@aux-build:lto-syntax-extension-lib.rs
+//@aux-build:lto-syntax-extension-plugin.rs
+//@compile-flags:-C lto
 // ignore-stage1
 // no-prefer-dynamic
 

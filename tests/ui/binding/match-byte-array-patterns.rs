@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 fn main() {
     let buf = &[0u8; 4];

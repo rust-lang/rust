@@ -1,8 +1,8 @@
-// revisions: no_drop_tracking drop_tracking drop_tracking_mir
-// [drop_tracking] compile-flags: -Zdrop-tracking
-// [drop_tracking_mir] compile-flags: -Zdrop-tracking-mir
+//@revisions: no_drop_tracking drop_tracking drop_tracking_mir
+//@[drop_tracking] compile-flags: -Zdrop-tracking
+//@[drop_tracking_mir] compile-flags: -Zdrop-tracking-mir
 // Derived from an ICE found in tokio-xmpp during a crater run.
-// edition:2021
+//@edition:2021
 
 #![allow(dead_code)]
 

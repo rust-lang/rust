@@ -1,5 +1,5 @@
-// check-pass
-// compile-flags: -Ztrait-solver=next
+//@check-pass
+//@compile-flags: -Ztrait-solver=next
 // Issue 94358
 
 fn foo<C>(_: C)

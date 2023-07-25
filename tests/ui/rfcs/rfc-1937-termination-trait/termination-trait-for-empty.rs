@@ -1,2 +1,2 @@
-// run-pass
+//@run
 fn main() {}

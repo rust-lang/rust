@@ -1,5 +1,5 @@
 // build-pass
-// compile-flags: -Zdrop-tracking
+//@compile-flags: -Zdrop-tracking
 
 // A test to ensure generators capture values that were conditionally dropped,
 // and also that values that are dropped along all paths to a yield do not get

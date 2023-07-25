@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![feature(trait_alias)]
 
 trait Svc<Req> { type Res; }

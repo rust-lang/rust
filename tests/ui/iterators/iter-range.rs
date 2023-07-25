@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 
 fn range_<F>(a: isize, b: isize, mut it: F) where F: FnMut(isize) {

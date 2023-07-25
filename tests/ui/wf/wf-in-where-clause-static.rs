@@ -1,4 +1,4 @@
-// check-pass
+//@check-pass
 // known-bug: #98117
 
 // Should fail. Functions are responsible for checking the well-formedness of

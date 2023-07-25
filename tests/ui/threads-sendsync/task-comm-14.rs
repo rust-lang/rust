@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(unused_parens)]
 // ignore-emscripten no threads support
 

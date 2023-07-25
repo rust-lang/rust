@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 #![feature(as_array_of_cells)]
 

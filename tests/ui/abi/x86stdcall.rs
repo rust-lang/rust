@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // only-windows
 // GetLastError doesn't seem to work with stack switching
 

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(unused_variables)]
 pub trait Parameters { type SelfRef; }
 

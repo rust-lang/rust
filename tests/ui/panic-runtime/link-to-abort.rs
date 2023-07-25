@@ -1,6 +1,6 @@
-// run-pass
+//@run
 
-// compile-flags:-C panic=abort
+//@compile-flags:-C panic=abort
 // no-prefer-dynamic
 // ignore-macos
 

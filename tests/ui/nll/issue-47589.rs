@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 pub struct DescriptorSet<'a> {
     pub slots: Vec<AttachInfo<'a, Resources>>

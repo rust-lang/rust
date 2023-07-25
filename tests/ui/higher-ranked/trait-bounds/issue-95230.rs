@@ -1,6 +1,6 @@
-// revisions: old next
-//[next] compile-flags: -Ztrait-solver=next
-//[old] check-pass
+//@revisions: old next
+//@[next] compile-flags: -Ztrait-solver=next
+//@[old] check-pass
 //[next] known-bug: #109764
 
 

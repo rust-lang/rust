@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Checks a complicated usage of unordered params
 #![allow(dead_code)]
 

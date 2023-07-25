@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 static FOO: [isize; 3] = [1, 2, 3];
 

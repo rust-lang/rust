@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![feature(test)]
 #![allow(invalid_nan_comparisons)]
 

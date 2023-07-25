@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 mod m {
     pub fn r#for() {}

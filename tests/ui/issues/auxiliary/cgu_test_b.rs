@@ -1,5 +1,5 @@
 // no-prefer-dynamic
-// compile-flags: -Ccodegen-units=2 --crate-type=lib
+//@compile-flags: -Ccodegen-units=2 --crate-type=lib
 
 extern crate cgu_test;
 

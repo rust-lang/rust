@@ -1,4 +1,4 @@
-// check-pass
+//@check-pass
 // known-bug: #84591
 
 // Should fail. Subtrait can incorrectly extend supertrait lifetimes even when

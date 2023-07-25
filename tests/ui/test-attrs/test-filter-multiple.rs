@@ -1,5 +1,5 @@
-// run-pass
-// compile-flags: --test
+//@run
+//@compile-flags: --test
 // run-flags: --test-threads=1 test1 test2
 // check-run-results
 // normalize-stdout-test "finished in \d+\.\d+s" -> "finished in $$TIME"

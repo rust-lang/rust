@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(stable_features)]
 
 // Test to see that the element type of .cloned() can be inferred

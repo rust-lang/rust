@@ -10,7 +10,7 @@
 // ICEs as tracked by #86193. So we also use the transparent wrapper to verify proper validation
 // errors are emitted instead of ICEs.
 
-// stderr-per-bitwidth
+//@stderr-per-bitwidth
 // normalize-stderr-test "alloc\d+" -> "allocN"
 
 trait Trait {}

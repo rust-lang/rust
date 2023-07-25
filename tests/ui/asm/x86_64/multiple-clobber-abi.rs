@@ -1,5 +1,5 @@
-// run-pass
-// needs-asm-support
+//@run
+//@needs-asm-support
 // only-x86_64
 
 // Checks that multiple clobber_abi options can be used

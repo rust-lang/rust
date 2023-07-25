@@ -1,4 +1,4 @@
-// compile-flags: -Z print-type-sizes
+//@compile-flags: -Z print-type-sizes
 // build-pass
 
 // All of the types that occur in this function are uninteresting, in

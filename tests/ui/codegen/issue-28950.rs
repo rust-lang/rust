@@ -1,6 +1,6 @@
-// run-pass
+//@run
 // ignore-emscripten no threads
-// compile-flags: -O
+//@compile-flags: -O
 
 // Tests that the `vec!` macro does not overflow the stack when it is
 // given data larger than the stack.

@@ -3,7 +3,7 @@
 // See https://github.com/rust-lang/rust/issues/58375
 
 // build-pass
-// compile-flags:-C link-dead-code
+//@compile-flags:-C link-dead-code
 
 #![crate_type = "rlib"]
 

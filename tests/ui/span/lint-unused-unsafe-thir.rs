@@ -3,7 +3,7 @@
 //
 // Exercise the unused_unsafe attribute in some positive and negative cases
 
-// compile-flags: -Zthir-unsafeck
+//@compile-flags: -Zthir-unsafeck
 
 #![allow(dead_code)]
 #![deny(unused_unsafe)]

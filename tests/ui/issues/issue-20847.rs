@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![feature(fn_traits)]
 
 use std::ops::Fn;

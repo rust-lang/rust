@@ -1,4 +1,4 @@
-// check-pass
+//@check-pass
 #![allow(improper_ctypes_definitions)]
 #![crate_type = "lib"]
 

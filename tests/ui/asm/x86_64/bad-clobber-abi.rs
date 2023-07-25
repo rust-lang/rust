@@ -1,4 +1,4 @@
-// needs-asm-support
+//@needs-asm-support
 // only-x86_64
 
 use std::arch::asm;

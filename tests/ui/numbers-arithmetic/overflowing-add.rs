@@ -1,6 +1,6 @@
 // run-fail
-// error-pattern:thread 'main' panicked at 'attempt to add with overflow'
-// compile-flags: -C debug-assertions
+//@error-pattern:thread 'main' panicked at 'attempt to add with overflow'
+//@compile-flags: -C debug-assertions
 // ignore-emscripten no processes
 
 #![allow(arithmetic_overflow)]

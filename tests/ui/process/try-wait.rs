@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 #![allow(stable_features)]
 // ignore-emscripten no processes

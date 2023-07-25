@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Regression test for issue #762
 
 // pretty-expanded FIXME #23616

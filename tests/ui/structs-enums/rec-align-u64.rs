@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(dead_code)]
 #![allow(unused_unsafe)]
 // ignore-wasm32-bare seems unimportant to test

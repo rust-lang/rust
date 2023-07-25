@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // This test ensures that vec.into_iter does not overconstrain element lifetime.
 
 pub fn main() {

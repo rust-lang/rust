@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 // check-only
 
 #[derive(Debug)]

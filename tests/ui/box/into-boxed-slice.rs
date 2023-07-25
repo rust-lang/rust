@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![feature(box_into_boxed_slice)]
 
 use std::boxed::Box;

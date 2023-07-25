@@ -3,7 +3,7 @@
 //! Unfortunately we don't even reach opaque type collection, as we ICE in typeck before that.
 // known-bug: #109281
 // failure-status: 101
-// error-pattern:internal compiler error
+//@error-pattern:internal compiler error
 // normalize-stderr-test "internal compiler error.*" -> ""
 // normalize-stderr-test "DefId\([^)]*\)" -> "..."
 // normalize-stderr-test "\nerror: internal compiler error.*\n\n" -> ""
@@ -18,7 +18,7 @@
 // normalize-stderr-test ".*note: Some details.*\n" -> ""
 // normalize-stderr-test "\n\n[ ]*\n" -> ""
 // normalize-stderr-test "compiler/.*: projection" -> "projection"
-// edition:2018
+//@edition:2018
 
 #![feature(type_alias_impl_trait)]
 #![allow(incomplete_features)]

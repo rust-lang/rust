@@ -1,8 +1,8 @@
-// run-pass
+//@run
 #![allow(dead_code)]
 #![allow(non_upper_case_globals)]
 
-// aux-build:issue-8259.rs
+//@aux-build:issue-8259.rs
 
 // pretty-expanded FIXME #23616
 

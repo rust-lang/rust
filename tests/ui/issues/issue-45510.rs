@@ -1,5 +1,5 @@
 // Test overloaded resolution of fn_traits.
-// run-pass
+//@run
 
 #![feature(fn_traits)]
 #![feature(unboxed_closures)]

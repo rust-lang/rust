@@ -1,4 +1,4 @@
-// check-pass
+//@check-pass
 // known-bug: #25860
 
 // Should fail. The combination of variance and implied bounds for nested

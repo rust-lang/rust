@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 struct F { f: Vec<isize> }
 

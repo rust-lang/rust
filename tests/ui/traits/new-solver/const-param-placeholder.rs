@@ -1,6 +1,6 @@
-// compile-flags: -Ztrait-solver=next
-// revisions: pass fail
-//[pass] check-pass
+//@compile-flags: -Ztrait-solver=next
+//@revisions: pass fail
+//@[pass] check-pass
 
 struct Wrapper<T, const N: usize>([T; N]);
 

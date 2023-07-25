@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(unused_variables)]
 use std::collections::BinaryHeap;
 use std::iter::Iterator;

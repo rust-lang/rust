@@ -1,6 +1,6 @@
-// run-pass
-// aux-build:xc.rs
-// aux-build:xc_2.rs
+//@run
+//@aux-build:xc.rs
+//@aux-build:xc_2.rs
 
 
 

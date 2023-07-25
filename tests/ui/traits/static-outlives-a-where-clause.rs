@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 trait Foo<'a> {
     fn xyz(self);

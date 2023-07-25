@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // ignore-emscripten no threads support
 
 pub fn main() {

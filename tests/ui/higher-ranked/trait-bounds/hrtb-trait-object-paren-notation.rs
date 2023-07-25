@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // A basic test of using a higher-ranked trait bound.
 
 trait FnLike<A,R> {

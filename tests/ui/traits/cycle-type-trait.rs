@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(dead_code)]
 // Test a case where a supertrait references a type that references
 // the original trait. This poses no problem at the moment.

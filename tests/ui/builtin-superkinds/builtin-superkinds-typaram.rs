@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Tests correct implementation of traits with super-builtin-kinds
 // using a bounded type parameter.
 

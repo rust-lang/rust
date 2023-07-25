@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 #[derive(PartialEq, Eq, Copy, Clone)]
 #[repr(packed)]

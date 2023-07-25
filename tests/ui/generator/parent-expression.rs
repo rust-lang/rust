@@ -1,6 +1,6 @@
-// revisions: no_drop_tracking drop_tracking drop_tracking_mir
-// [drop_tracking] compile-flags: -Zdrop-tracking
-// [drop_tracking_mir] compile-flags: -Zdrop-tracking-mir
+//@revisions: no_drop_tracking drop_tracking drop_tracking_mir
+//@[drop_tracking] compile-flags: -Zdrop-tracking
+//@[drop_tracking_mir] compile-flags: -Zdrop-tracking-mir
 
 #![feature(generators, negative_impls, rustc_attrs)]
 

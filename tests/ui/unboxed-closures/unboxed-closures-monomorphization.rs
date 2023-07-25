@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Test that unboxed closures in contexts with free type parameters
 // monomorphize correctly (issue #16791)
 

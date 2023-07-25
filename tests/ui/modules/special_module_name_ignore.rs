@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 #[path = "auxiliary/dummy_lib.rs"]
 mod lib;

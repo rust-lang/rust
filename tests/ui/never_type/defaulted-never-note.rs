@@ -1,5 +1,5 @@
-// revisions: nofallback fallback
-//[nofallback] run-pass
+//@revisions: nofallback fallback
+//@[nofallback] run
 //[fallback] check-fail
 
 // We need to opt into the `never_type_fallback` feature

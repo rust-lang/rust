@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 fn foo(x: &usize) -> usize {
     *x

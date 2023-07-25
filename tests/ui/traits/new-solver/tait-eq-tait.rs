@@ -1,5 +1,5 @@
-// compile-flags: -Ztrait-solver=next
-// check-pass
+//@compile-flags: -Ztrait-solver=next
+//@check-pass
 
 // Not exactly sure if this is the inference behavior we *want*,
 // but it is a side-effect of the lazy normalization of TAITs.

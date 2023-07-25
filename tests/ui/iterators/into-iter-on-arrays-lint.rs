@@ -1,5 +1,5 @@
-// run-pass
-// run-rustfix
+//@run
+//@run-rustfix
 // rustfix-only-machine-applicable
 
 #[allow(unused_must_use, unused_allocation)]

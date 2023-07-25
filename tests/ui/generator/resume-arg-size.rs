@@ -1,7 +1,7 @@
 #![feature(generators)]
 #![allow(dropping_copy_types)]
 
-// run-pass
+//@run
 
 use std::mem::size_of_val;
 

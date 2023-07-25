@@ -1,4 +1,4 @@
-// compile-flags: -Z print-type-sizes --crate-type=lib
+//@compile-flags: -Z print-type-sizes --crate-type=lib
 // build-pass
 
 // This file illustrates how padding is handled: alignment

@@ -1,7 +1,7 @@
-// run-pass
-// aux-build:issue-13872-1.rs
-// aux-build:issue-13872-2.rs
-// aux-build:issue-13872-3.rs
+//@run
+//@aux-build:issue-13872-1.rs
+//@aux-build:issue-13872-2.rs
+//@aux-build:issue-13872-3.rs
 
 // pretty-expanded FIXME #23616
 

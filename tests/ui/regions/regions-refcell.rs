@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // This is a regression test for something that only came up while
 // attempting to bootstrap librustc with new destructor lifetime
 // semantics.

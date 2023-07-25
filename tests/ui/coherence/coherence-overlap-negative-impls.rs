@@ -1,4 +1,4 @@
-// check-pass
+//@check-pass
 // known-bug: #74629
 
 // Should fail. The `0` and `1` impls overlap, violating coherence. Eg, with

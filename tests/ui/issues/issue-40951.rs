@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(unused_variables)]
 // Regression test for #40951.
 

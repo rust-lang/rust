@@ -1,5 +1,5 @@
 // build-fail
-// compile-flags:-C overflow-checks=off
+//@compile-flags:-C overflow-checks=off
 // normalize-stderr-test: ".nll/" -> "/"
 
 enum Nil {NilValue}

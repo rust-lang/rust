@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Test that `Box<Test>` is equivalent to `Box<Test+'static>`, both in
 // fields and fn arguments.
 

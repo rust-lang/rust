@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 trait Foo: Iterator<Item = i32> {}
 trait Bar: Foo {}

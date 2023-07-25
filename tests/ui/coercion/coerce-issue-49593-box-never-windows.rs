@@ -1,6 +1,6 @@
-// revisions: nofallback fallback
+//@revisions: nofallback fallback
 // only-windows - the number of `Error` impls is platform-dependent
-//[fallback] check-pass
+//@[fallback] check-pass
 //[nofallback] check-fail
 
 #![feature(never_type)]

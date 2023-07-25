@@ -1,4 +1,4 @@
-// aux-build:foreign-priv-aux.rs
+//@aux-build:foreign-priv-aux.rs
 // build-pass
 
 #![crate_type = "lib"]

@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:default_type_params_xc.rs
+//@run
+//@aux-build:default_type_params_xc.rs
 
 // pretty-expanded FIXME #23616
 

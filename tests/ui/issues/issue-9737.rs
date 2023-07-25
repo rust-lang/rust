@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(unused_variables)]
 macro_rules! f {
     (v: $x:expr) => ( println!("{}", $x) )

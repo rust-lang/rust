@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(dead_code)]
 
 // Test that a borrow that occurs after a yield in the same

@@ -3,7 +3,7 @@
 
 // ignore-test FIXME(81658, 83171)
 
-// check-pass
+//@check-pass
 #![allow(unused_assignments)]
 #![warn(dead_code)]
 

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // only-x86
 
 #![feature(abi_thiscall)]

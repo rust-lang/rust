@@ -1,4 +1,4 @@
-// aux-build:rlib-crate-test.rs
+//@aux-build:rlib-crate-test.rs
 // ignore-stage1
 // ignore-cross-compile gives a different error message
 

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(non_snake_case)]
 
 

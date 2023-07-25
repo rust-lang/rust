@@ -1,7 +1,7 @@
-// compile-flags: -Ztrait-solver=next
-// edition: 2021
-// revisions: pass fail
-//[pass] check-pass
+//@compile-flags: -Ztrait-solver=next
+//@edition: 2021
+//@revisions: pass fail
+//@[pass] check-pass
 
 #![feature(generator_trait, generators)]
 

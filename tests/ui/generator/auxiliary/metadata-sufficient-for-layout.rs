@@ -1,4 +1,4 @@
-// compile-flags: --emit metadata
+//@compile-flags: --emit metadata
 #![feature(generators, generator_trait)]
 
 use std::marker::Unpin;

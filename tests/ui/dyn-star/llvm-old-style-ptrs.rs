@@ -1,5 +1,5 @@
-// run-pass
-// compile-flags: -Copt-level=0 -Cllvm-args=-opaque-pointers=0
+//@run
+//@compile-flags: -Copt-level=0 -Cllvm-args=-opaque-pointers=0
 
 // (the ability to disable opaque pointers has been removed in LLVM 17)
 // ignore-llvm-version: 17 - 99

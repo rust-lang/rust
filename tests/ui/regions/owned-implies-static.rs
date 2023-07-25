@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // pretty-expanded FIXME #23616
 
 fn f<T: 'static>(_x: T) {}

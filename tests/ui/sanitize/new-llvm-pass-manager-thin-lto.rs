@@ -7,12 +7,12 @@
 // ignore-cross-compile
 //
 // no-prefer-dynamic
-// revisions: opt0 opt1
-// compile-flags: -Zsanitizer=address -Clto=thin
-//[opt0]compile-flags: -Copt-level=0
-//[opt1]compile-flags: -Copt-level=1
+//@revisions: opt0 opt1
+//@compile-flags: -Zsanitizer=address -Clto=thin
+//@[opt0] compile-flags: -Copt-level=0
+//@[opt1] compile-flags: -Copt-level=1
 // run-fail
-// error-pattern: ERROR: AddressSanitizer: stack-use-after-scope
+//@error-pattern: ERROR: AddressSanitizer: stack-use-after-scope
 
 static mut P: *mut usize = std::ptr::null_mut();
 

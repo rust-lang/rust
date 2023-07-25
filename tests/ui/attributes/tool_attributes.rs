@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Scoped attributes should not trigger an unused attributes lint.
 
 #![deny(unused_attributes)]

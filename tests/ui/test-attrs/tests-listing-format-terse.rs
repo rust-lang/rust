@@ -1,7 +1,7 @@
 // no-prefer-dynamic
-// compile-flags: --test
+//@compile-flags: --test
 // run-flags: --list --format terse
-// run-pass
+//@run
 // check-run-results
 
 // Checks the listing of tests with --format terse.

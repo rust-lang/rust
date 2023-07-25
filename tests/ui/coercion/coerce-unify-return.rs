@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Check that coercions unify the expected return type of a polymorphic
 // function call, instead of leaving the type variables as they were.
 

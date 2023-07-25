@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:static_fn_inline_xc_aux.rs
+//@run
+//@aux-build:static_fn_inline_xc_aux.rs
 
 // pretty-expanded FIXME #23616
 

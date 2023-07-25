@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(dead_code)]
 type MyType<'a, T> = &'a T;
 

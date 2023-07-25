@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // ignore-tidy-cr
 
 // nondoc comment with bare CR: ''

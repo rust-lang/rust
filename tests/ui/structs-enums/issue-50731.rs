@@ -1,4 +1,4 @@
-// run-pass
+//@run
 enum Void {}
 fn foo(_: Result<(Void, u32), (Void, String)>) {}
 fn main() {

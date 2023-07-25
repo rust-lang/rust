@@ -1,9 +1,9 @@
 // Regression test for issue #76202
 // Tests that we don't ICE when we have a trait impl on a TAIT.
 
-// revisions: current next
-//[next] compile-flags: -Ztrait-solver=next
-// check-pass
+//@revisions: current next
+//@[next] compile-flags: -Ztrait-solver=next
+//@check-pass
 
 #![feature(type_alias_impl_trait)]
 

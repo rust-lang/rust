@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Test that param substitutions from the correct environment are
 // used when codegenning unboxed closure calls.
 

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![feature(box_patterns)]
 
 use std::ops::{Deref, DerefMut};

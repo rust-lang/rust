@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // needs-unwind
 #![allow(unused_imports)]
 // Ideally, any macro call with a trailing comma should behave
@@ -11,8 +11,8 @@
 //
 // There is a companion failing test.
 
-// compile-flags: --test -C debug_assertions=yes
-// revisions: std core
+//@compile-flags: --test -C debug_assertions=yes
+//@revisions: std core
 
 #![cfg_attr(core, no_std)]
 

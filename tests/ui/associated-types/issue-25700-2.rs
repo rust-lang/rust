@@ -1,4 +1,4 @@
-// run-pass
+//@run
 pub trait Parser {
     type Input;
 }

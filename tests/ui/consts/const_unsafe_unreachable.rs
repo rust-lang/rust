@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 const unsafe fn foo(x: bool) -> bool {
     match x {

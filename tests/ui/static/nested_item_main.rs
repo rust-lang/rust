@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:nested_item.rs
+//@run
+//@aux-build:nested_item.rs
 
 
 extern crate nested_item;

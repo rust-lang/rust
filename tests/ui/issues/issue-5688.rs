@@ -1,4 +1,4 @@
-// run-pass
+//@run
 /*
 # Corrupted initialization in the static struct
 

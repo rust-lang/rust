@@ -1,5 +1,5 @@
-// revisions: mirunsafeck thirunsafeck
-// [thirunsafeck]compile-flags: -Z thir-unsafeck
+//@revisions: mirunsafeck thirunsafeck
+//@[thirunsafeck] compile-flags: -Z thir-unsafeck
 
 //! Test the behavior of moving out of non-`Copy` union fields.
 //! Avoid types that `Drop`, we want to focus on moving.

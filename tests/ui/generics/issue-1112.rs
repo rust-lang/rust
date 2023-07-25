@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(dead_code)]
 // Issue #1112
 // Alignment of interior pointers to dynamic-size types

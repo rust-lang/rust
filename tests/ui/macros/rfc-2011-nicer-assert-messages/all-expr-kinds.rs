@@ -1,7 +1,7 @@
-// edition:2021
+//@edition:2021
 // ignore-tidy-linelength
 // only-x86_64
-// run-pass
+//@run
 // needs-unwind Asserting on contents of error message
 
 #![allow(path_statements, unused_allocation)]

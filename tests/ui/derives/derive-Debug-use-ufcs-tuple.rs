@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(warnings)]
 
 #[derive(Debug)]

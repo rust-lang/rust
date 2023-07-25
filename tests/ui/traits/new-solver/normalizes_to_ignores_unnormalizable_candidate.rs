@@ -1,6 +1,6 @@
-// [no_self_infer] check-pass
-// compile-flags: -Ztrait-solver=next
-// revisions: self_infer no_self_infer
+//@[no_self_infer] check-pass
+//@compile-flags: -Ztrait-solver=next
+//@revisions: self_infer no_self_infer
 
 // checks that the new solver is smart enough to infer `?0 = U` when solving:
 // `normalizes-to(<Vec<?0> as Trait>::Assoc, u8)`

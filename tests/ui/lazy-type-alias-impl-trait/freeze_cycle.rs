@@ -1,4 +1,4 @@
-// check-pass
+//@check-pass
 
 #![feature(generator_trait, negative_impls)]
 

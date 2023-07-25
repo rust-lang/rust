@@ -1,4 +1,4 @@
-// aux-build:issue-94287-aux.rs
+//@aux-build:issue-94287-aux.rs
 // build-fail
 
 extern crate issue_94287_aux;

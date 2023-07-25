@@ -1,5 +1,5 @@
-// compile-flags: -Z oom=panic
-// run-pass
+//@compile-flags: -Z oom=panic
+//@run
 // no-prefer-dynamic
 // needs-unwind
 // only-linux

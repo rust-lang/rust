@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(dead_code)]
 fn with_u8() {
     let s = 5u8;

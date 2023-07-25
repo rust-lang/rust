@@ -1,6 +1,6 @@
-// revisions: mir thir
-// [thir]compile-flags: -Z thir-unsafeck
-// needs-asm-support
+//@revisions: mir thir
+//@[thir] compile-flags: -Z thir-unsafeck
+//@needs-asm-support
 
 use std::arch::asm;
 

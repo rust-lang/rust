@@ -1,4 +1,4 @@
-// compile-flags:-Cstrip=none
+//@compile-flags:-Cstrip=none
 // run-fail
 // check-run-results
 // exec-env:RUST_BACKTRACE=1

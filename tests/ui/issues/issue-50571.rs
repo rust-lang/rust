@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 
 trait Foo {
     fn foo([a, b]: [i32; 2]) {}

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 //
 // Test that we can handle unsized types with an extern type tail part.
 // Regression test for issue #91827.

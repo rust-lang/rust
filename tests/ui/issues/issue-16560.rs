@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(unused_variables)]
 // ignore-emscripten no threads support
 

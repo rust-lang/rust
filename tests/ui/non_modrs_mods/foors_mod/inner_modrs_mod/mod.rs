@@ -1,3 +1,3 @@
-// run-pass
+//@run
 
 pub mod innest;

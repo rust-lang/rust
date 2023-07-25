@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Tests for the new |args| expr lambda syntax
 
 

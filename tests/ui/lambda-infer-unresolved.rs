@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 #![allow(unused_mut)]
 // This should typecheck even though the type of e is not fully

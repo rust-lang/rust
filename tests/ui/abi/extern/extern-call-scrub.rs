@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(unused_must_use)]
 // This time we're testing repeatedly going up and down both stacks to
 // make sure the stack pointers are maintained properly in both

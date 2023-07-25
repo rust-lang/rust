@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // ignore-wasm32 issue 42629
 
 #[inline(never)]

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // no-prefer-dynamic
 // ignore-wasm32-bare no libc
 // ignore-windows

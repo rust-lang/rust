@@ -1,5 +1,5 @@
-// edition:2021
-// check-pass
+//@edition:2021
+//@check-pass
 
 // Checks that test_type_match code doesn't ICE when predicates have late-bound types
 

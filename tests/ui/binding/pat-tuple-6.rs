@@ -1,4 +1,4 @@
-// run-pass
+//@run
 fn tuple() {
     let x = (1, 2, 3, 4, 5);
     match x {

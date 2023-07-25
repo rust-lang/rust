@@ -1,4 +1,4 @@
-// run-pass
+//@run
 use std::rc::Rc;
 
 struct Foo<'r>(&'r mut i32);

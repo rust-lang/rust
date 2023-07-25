@@ -1,7 +1,8 @@
 // build-fail
-// aux-build:rmeta-meta.rs
+//@aux-build:rmeta-meta.rs
 // no-prefer-dynamic
-// error-pattern: crate `rmeta_meta` required to be available in rlib format, but was not found
+// ignore-tidy-linelength
+//@error-pattern: crate `rmeta_meta` required to be available in rlib format, but was not found
 
 // Check that building a non-metadata crate fails if a dependent crate is
 // metadata-only.

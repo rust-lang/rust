@@ -1,6 +1,6 @@
-// aux-build:lint-group-plugin-test.rs
+//@aux-build:lint-group-plugin-test.rs
 // ignore-stage1
-// compile-flags: -D lint-me
+//@compile-flags: -D lint-me
 
 #![feature(plugin)]
 

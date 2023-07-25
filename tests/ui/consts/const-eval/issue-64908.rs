@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 // This test verifies that the `ConstProp` pass doesn't cause an ICE when evaluating polymorphic
 // promoted MIR.

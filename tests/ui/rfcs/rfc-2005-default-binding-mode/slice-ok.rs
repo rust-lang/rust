@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 fn slice_pat() {
     let sl: &[u8] = b"foo";

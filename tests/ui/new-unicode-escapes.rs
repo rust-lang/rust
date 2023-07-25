@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 pub fn main() {
     let s = "\u{2603}";

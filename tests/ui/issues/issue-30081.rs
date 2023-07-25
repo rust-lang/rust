@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // This used to segfault #30081
 
 pub enum Instruction {

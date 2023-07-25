@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Test direct calls to extern fns.
 
 

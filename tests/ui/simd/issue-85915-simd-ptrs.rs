@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // ignore-emscripten
 
 // Short form of the generic gather/scatter tests,

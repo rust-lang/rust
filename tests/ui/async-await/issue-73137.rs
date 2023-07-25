@@ -1,10 +1,10 @@
 // Regression test for <https://github.com/rust-lang/rust/issues/73137>
 
-// run-pass
-// edition:2018
-// revisions: normal drop-tracking
-// [normal]compile-flags: -Zdrop-tracking=no
-// [drop-tracking]compile-flags: -Zdrop-tracking
+//@run
+//@edition:2018
+//@revisions: normal drop-tracking
+//@[normal] compile-flags: -Zdrop-tracking=no
+//@[drop-tracking] compile-flags: -Zdrop-tracking
 
 #![allow(dead_code)]
 use std::future::Future;

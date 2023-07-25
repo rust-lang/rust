@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 fn test_fn() {
     fn ten() -> isize { return 10; }

@@ -1,7 +1,7 @@
 // ignore-test This is currently broken
-// check-pass
-// revisions: mir thir
-// [thir]compile-flags: -Z thir-unsafeck
+//@check-pass
+//@revisions: mir thir
+//@[thir] compile-flags: -Z thir-unsafeck
 
 #![allow(incomplete_features)]
 #![warn(unused_unsafe)]

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 fn main() {
     // We shouldn't promote this

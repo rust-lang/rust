@@ -1,5 +1,5 @@
-// revisions: nofallback fallback
-// run-pass
+//@revisions: nofallback fallback
+//@run
 
 #![allow(dead_code)]
 #![allow(unused_assignments)]

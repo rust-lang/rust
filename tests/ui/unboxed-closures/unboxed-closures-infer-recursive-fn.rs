@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![feature(fn_traits, unboxed_closures)]
 
 use std::marker::PhantomData;

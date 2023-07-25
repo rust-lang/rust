@@ -1,7 +1,7 @@
-// revisions: classic coherence next
-//[next] compile-flags: -Ztrait-solver=next
-//[coherence] compile-flags: -Ztrait-solver=next-coherence
-//[classic] check-pass
+//@revisions: classic coherence next
+//@[next] compile-flags: -Ztrait-solver=next
+//@[coherence] compile-flags: -Ztrait-solver=next-coherence
+//@[classic] check-pass
 //[classic] known-bug: #105782
 
 // Should fail. Default items completely drop candidates instead of ambiguity,

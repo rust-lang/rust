@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // pretty-expanded FIXME #23616
 #![allow(illegal_floating_point_literal_pattern)] // FIXME #41620
 

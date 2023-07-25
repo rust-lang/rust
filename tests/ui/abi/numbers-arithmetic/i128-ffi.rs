@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(improper_ctypes)]
 
 // MSVC doesn't support 128 bit integers, and other Windows

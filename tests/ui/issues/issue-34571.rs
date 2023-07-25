@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #[repr(u8)]
 enum Foo {
     Foo(#[allow(unused_tuple_struct_fields)] u8),

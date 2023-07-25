@@ -1,5 +1,5 @@
 // check-fail
-// run-rustfix
+//@run-rustfix
 
 enum FakeResult<T> {
     Ok(T)

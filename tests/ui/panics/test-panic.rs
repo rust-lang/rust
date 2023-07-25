@@ -1,6 +1,6 @@
 // run-fail
 // check-stdout
-// compile-flags: --test
+//@compile-flags: --test
 // ignore-emscripten
 
 #[test]

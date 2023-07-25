@@ -1,7 +1,7 @@
 // WF check for impl Trait in associated type position.
 //
-// revisions: pass fail
-// [pass] check-pass
+//@revisions: pass fail
+//@[pass] check-pass
 // [fail] check-fail
 
 #![feature(impl_trait_in_assoc_type)]

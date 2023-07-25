@@ -1,6 +1,6 @@
 // Regression test for https://github.com/rust-lang/rust/issues/70673.
 
-// run-pass
+//@run
 
 #![feature(thread_local)]
 

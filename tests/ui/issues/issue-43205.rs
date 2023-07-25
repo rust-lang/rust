@@ -1,4 +1,4 @@
-// run-pass
+//@run
 fn main() {
    let _ = &&[()][0];
    println!("{:?}", &[(),()][1]);

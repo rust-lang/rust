@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 // Tests for match as expressions resulting in boxed types
 fn test_box() {

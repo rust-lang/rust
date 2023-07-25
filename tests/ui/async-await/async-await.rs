@@ -1,13 +1,13 @@
-// run-pass
+//@run
 
-// revisions: default nomiropt thirunsafeck
-//[nomiropt]compile-flags: -Z mir-opt-level=0
-//[thirunsafeck]compile-flags: -Zthir-unsafeck
+//@revisions: default nomiropt thirunsafeck
+//@[nomiropt] compile-flags: -Z mir-opt-level=0
+//@[thirunsafeck] compile-flags: -Zthir-unsafeck
 
 #![allow(unused)]
 
-// edition: 2018
-// aux-build:arc_wake.rs
+//@edition: 2018
+//@aux-build:arc_wake.rs
 
 extern crate arc_wake;
 

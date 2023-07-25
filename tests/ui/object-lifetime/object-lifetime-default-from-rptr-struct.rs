@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Test that the lifetime from the enclosing `&` is "inherited"
 // through the `MyBox` struct.
 

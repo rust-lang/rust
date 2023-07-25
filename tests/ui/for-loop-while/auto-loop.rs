@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 pub fn main() {
     let mut sum = 0;

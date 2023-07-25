@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(dead_code)]
 
 struct X { x: isize, y: isize, z: isize }

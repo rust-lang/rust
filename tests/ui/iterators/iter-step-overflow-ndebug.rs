@@ -1,5 +1,5 @@
-// run-pass
-// compile-flags: -C debug_assertions=no
+//@run
+//@compile-flags: -C debug_assertions=no
 
 fn main() {
     let mut it = u8::MAX..;

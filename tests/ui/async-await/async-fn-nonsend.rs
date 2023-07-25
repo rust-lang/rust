@@ -1,8 +1,8 @@
-// revisions: no_drop_tracking drop_tracking drop_tracking_mir
-// [drop_tracking] compile-flags: -Zdrop-tracking
-// [drop_tracking_mir] compile-flags: -Zdrop-tracking-mir
-// edition:2018
-// compile-flags: --crate-type lib
+//@revisions: no_drop_tracking drop_tracking drop_tracking_mir
+//@[drop_tracking] compile-flags: -Zdrop-tracking
+//@[drop_tracking_mir] compile-flags: -Zdrop-tracking-mir
+//@edition:2018
+//@compile-flags: --crate-type lib
 
 use std::{cell::RefCell, fmt::Debug, rc::Rc};
 

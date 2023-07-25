@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Test that even with prior inferred parameters, object lifetimes of objects after are still
 // valid.
 

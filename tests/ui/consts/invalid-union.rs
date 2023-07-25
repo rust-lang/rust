@@ -7,7 +7,7 @@
 // remove the test case.
 //
 // build-fail
-// stderr-per-bitwidth
+//@stderr-per-bitwidth
 #![feature(const_mut_refs)]
 
 use std::cell::Cell;

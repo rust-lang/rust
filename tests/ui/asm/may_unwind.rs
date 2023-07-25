@@ -1,5 +1,5 @@
-// run-pass
-// needs-asm-support
+//@run
+//@needs-asm-support
 
 #![feature(asm_unwind)]
 

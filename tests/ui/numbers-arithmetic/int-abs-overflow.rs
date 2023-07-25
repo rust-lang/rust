@@ -1,5 +1,5 @@
-// run-pass
-// compile-flags: -C overflow-checks=on
+//@run
+//@compile-flags: -C overflow-checks=on
 // ignore-emscripten no threads support
 // needs-unwind
 

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 #[derive(Copy, Clone)]
 pub struct Foo {

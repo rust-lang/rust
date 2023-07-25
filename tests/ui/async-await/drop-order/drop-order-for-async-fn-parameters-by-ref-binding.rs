@@ -1,6 +1,6 @@
-// aux-build:arc_wake.rs
-// edition:2018
-// run-pass
+//@aux-build:arc_wake.rs
+//@edition:2018
+//@run
 
 #![allow(unused_variables)]
 

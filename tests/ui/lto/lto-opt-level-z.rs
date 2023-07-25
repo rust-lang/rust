@@ -1,4 +1,4 @@
-// compile-flags: -Clinker-plugin-lto -Copt-level=z
+//@compile-flags: -Clinker-plugin-lto -Copt-level=z
 // build-pass
 // no-prefer-dynamic
 

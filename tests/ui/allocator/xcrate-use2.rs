@@ -1,8 +1,8 @@
-// run-pass
+//@run
 
-// aux-build:custom.rs
-// aux-build:custom-as-global.rs
-// aux-build:helper.rs
+//@aux-build:custom.rs
+//@aux-build:custom-as-global.rs
+//@aux-build:helper.rs
 // no-prefer-dynamic
 
 #![feature(allocator_api)]

@@ -1,5 +1,5 @@
 // build-fail
-// compile-flags: -Zpolymorphize=on
+//@compile-flags: -Zpolymorphize=on
 #![crate_type = "lib"]
 #![feature(rustc_attrs)]
 

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #[repr(packed)]
 struct Packed<T: Copy>(#[allow(unused_tuple_struct_fields)] T);
 

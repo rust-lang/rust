@@ -1,4 +1,4 @@
-// compile-flags: -Clinker-plugin-lto
+//@compile-flags: -Clinker-plugin-lto
 // no-prefer-dynamic
 
 #![crate_type = "rlib"]

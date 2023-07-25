@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Test inclusive range syntax.
 #![allow(unused_braces)]
 #![allow(unused_comparisons)]

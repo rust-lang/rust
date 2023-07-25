@@ -1,7 +1,7 @@
-// run-pass
+//@run
 // ignore-emscripten FIXME(#45351) hits an LLVM assert
-// revisions: mir thir
-// [thir]compile-flags: -Zthir-unsafeck
+//@revisions: mir thir
+//@[thir] compile-flags: -Zthir-unsafeck
 
 #![feature(repr_simd, platform_intrinsics, concat_idents)]
 #![allow(non_camel_case_types)]

@@ -1,9 +1,9 @@
 // Compiletest meta test checking that rustc-env and unset-rustc-env directives
 // can be used to configure environment for rustc.
 //
-// run-pass
-// aux-build:env.rs
-// rustc-env:COMPILETEST_FOO=foo
+//@run
+//@aux-build:env.rs
+//@rustc-env:COMPILETEST_FOO=foo
 //
 // An environment variable that is likely to be set, but should be safe to unset.
 // unset-rustc-env:PWD

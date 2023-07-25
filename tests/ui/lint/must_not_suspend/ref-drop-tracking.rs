@@ -1,5 +1,5 @@
-// edition:2018
-// compile-flags: -Zdrop-tracking
+//@edition:2018
+//@compile-flags: -Zdrop-tracking
 #![feature(must_not_suspend)]
 #![deny(must_not_suspend)]
 

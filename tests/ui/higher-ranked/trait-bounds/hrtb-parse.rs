@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Test that we can parse all the various places that a `for` keyword
 // can appear representing universal quantification.
 

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Issue #34183
 
 macro_rules! foo {

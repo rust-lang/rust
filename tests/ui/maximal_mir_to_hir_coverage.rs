@@ -1,5 +1,5 @@
-// compile-flags: -Zmaximal-hir-to-mir-coverage
-// run-pass
+//@compile-flags: -Zmaximal-hir-to-mir-coverage
+//@run
 
 // Just making sure this flag is accepted and doesn't crash the compiler
 

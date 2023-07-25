@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(dead_code)]
 // Test that wrapping an unsized struct in an enum which gets optimised does
 // not ICE.

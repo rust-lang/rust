@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Checks that type param defaults are allowed after const params.
 #![allow(dead_code)]
 

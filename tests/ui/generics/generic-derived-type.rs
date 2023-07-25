@@ -1,4 +1,4 @@
-// run-pass
+//@run
 fn g<X>(x: X) -> X { return x; }
 
 #[derive(Clone)]

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Test that the call operator autoderefs when calling a bounded type parameter.
 
 use std::ops::FnMut;

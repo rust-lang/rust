@@ -1,4 +1,4 @@
-// edition:2018
+//@edition:2018
 // gate-test-impl_trait_projections
 
 // This test checks that `Self` is prohibited as a return type. See #61949 for context.

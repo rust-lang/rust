@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:foreign_lib.rs
+//@run
+//@aux-build:foreign_lib.rs
 // ignore-wasm32-bare no libc to test ffi with
 
 // Check that we can still call duplicated extern (imported) functions

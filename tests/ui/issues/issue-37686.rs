@@ -1,4 +1,4 @@
-// run-pass
+//@run
 fn main() {
     match (0, 0) {
         (usize::MIN, usize::MAX) => {}

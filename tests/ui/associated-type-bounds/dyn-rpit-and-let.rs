@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 // FIXME: uncomment let binding types below when `impl_trait_in_bindings` feature is fixed.
 

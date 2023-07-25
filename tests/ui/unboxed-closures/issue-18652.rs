@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Tests multiple free variables being passed by value into an unboxed
 // once closure as an optimization by codegen.  This used to hit an
 // incorrect assert.

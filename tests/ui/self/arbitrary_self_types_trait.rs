@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(unused_allocation)]
 
 use std::rc::Rc;

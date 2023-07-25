@@ -1,5 +1,5 @@
-// run-pass
-// compile-flags: -C opt-level=3 -Zvalidate-mir
+//@run
+//@compile-flags: -C opt-level=3 -Zvalidate-mir
 
 
 

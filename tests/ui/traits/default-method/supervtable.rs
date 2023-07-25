@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 
 // Tests that we can call a function bounded over a supertrait from

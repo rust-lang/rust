@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 fn test(foo: Box<Vec<isize>> ) { assert_eq!((*foo)[0], 10); }
 

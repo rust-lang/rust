@@ -1,5 +1,5 @@
-// revisions: mirunsafeck thirunsafeck
-// [thirunsafeck]compile-flags: -Z thir-unsafeck
+//@revisions: mirunsafeck thirunsafeck
+//@[thirunsafeck] compile-flags: -Z thir-unsafeck
 
 #![feature(rustc_attrs)]
 #![allow(unused,dead_code)]

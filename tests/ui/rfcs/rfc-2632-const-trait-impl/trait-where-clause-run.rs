@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 #![feature(const_trait_impl)]
 

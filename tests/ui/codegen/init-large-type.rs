@@ -1,5 +1,5 @@
-// compile-flags: -O
-// run-pass
+//@compile-flags: -O
+//@run
 
 #![allow(unused_must_use)]
 // Makes sure that zero-initializing large types is reasonably fast,

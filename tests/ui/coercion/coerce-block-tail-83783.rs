@@ -1,5 +1,5 @@
 // check-fail
-// edition:2018
+//@edition:2018
 fn _consume_reference<T: ?Sized>(_: &T) {}
 
 async fn _foo() {

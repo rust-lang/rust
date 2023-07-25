@@ -1,5 +1,5 @@
 // run-fail
-// error-pattern:explicit panic
+//@error-pattern:explicit panic
 // ignore-emscripten no processes
 
 #![allow(unreachable_code)]

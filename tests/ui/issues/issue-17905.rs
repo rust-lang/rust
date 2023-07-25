@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 #[derive(Debug)]
 #[allow(unused_tuple_struct_fields)]

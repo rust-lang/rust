@@ -1,7 +1,7 @@
 // no-prefer-dynamic
-// compile-flags: --test
+//@compile-flags: --test
 // run-flags: --list --format json -Zunstable-options
-// run-pass
+//@run
 // check-run-results
 // only-nightly
 // normalize-stdout-test: "fake-test-src-base/test-attrs/" -> "$$DIR/"

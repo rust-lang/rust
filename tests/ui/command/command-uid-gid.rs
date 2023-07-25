@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // ignore-android
 // ignore-emscripten
 // ignore-sgx

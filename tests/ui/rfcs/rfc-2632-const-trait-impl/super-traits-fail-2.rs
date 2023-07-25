@@ -1,6 +1,6 @@
 #![feature(const_trait_impl)]
 // known-bug: #110395
-// revisions: yy yn ny nn
+//@revisions: yy yn ny nn
 
 #[cfg_attr(any(yy, yn), const_trait)]
 trait Foo {

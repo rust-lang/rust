@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Regression test for issue #10682
 // Nested `proc` usage can't use outer owned data
 

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(dead_code)]
 // General test that function items in static blocks
 // can be generated with a macro.

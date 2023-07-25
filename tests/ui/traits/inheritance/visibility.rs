@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 mod traits {
     pub trait Foo { fn f(&self) -> isize; }

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(non_camel_case_types)]
 
 // Tests that type assignability is used to search for instances when

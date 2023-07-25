@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Test that static methods can be invoked on `type` aliases
 
 #![allow(unused_variables)]

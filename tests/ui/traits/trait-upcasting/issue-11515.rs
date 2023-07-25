@@ -1,5 +1,5 @@
-// revisions: current next
-//[next] compile-flags: -Ztrait-solver=next
+//@revisions: current next
+//@[next] compile-flags: -Ztrait-solver=next
 
 struct Test {
     func: Box<dyn FnMut() + 'static>,

@@ -3,7 +3,7 @@
 // only-gnu
 // only-windows
 // needs-dlltool
-// compile-flags: --crate-type lib --emit link
+//@compile-flags: --crate-type lib --emit link
 // normalize-stderr-test: "[^ ']*/dlltool.exe" -> "$$DLLTOOL"
 // normalize-stderr-test: "[^ ]*/foo.def" -> "$$DEF_FILE"
 // normalize-stderr-test: "[^ ]*/foo.lib" -> "$$LIB_FILE"

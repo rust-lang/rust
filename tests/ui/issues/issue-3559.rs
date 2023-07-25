@@ -1,4 +1,4 @@
-// run-pass
+//@run
 use std::collections::HashMap;
 
 fn check_strs(actual: &str, expected: &str) -> bool {

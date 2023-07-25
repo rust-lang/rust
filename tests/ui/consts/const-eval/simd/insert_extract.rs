@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![feature(repr_simd)]
 #![feature(platform_intrinsics)]
 #![feature(staged_api)]

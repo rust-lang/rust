@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 struct Struct<S, T> {
     a: S,

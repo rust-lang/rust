@@ -3,7 +3,7 @@
 //! indirectly mentioned in a struct field.
 
 #![feature(impl_trait_in_assoc_type)]
-// check-pass
+//@check-pass
 
 struct Bar;
 

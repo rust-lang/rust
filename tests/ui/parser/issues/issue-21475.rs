@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(unused_imports, overlapping_range_endpoints)]
 // pretty-expanded FIXME #23616
 

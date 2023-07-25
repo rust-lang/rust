@@ -1,4 +1,4 @@
-// run-pass
+//@run
 pub trait Test { type T; }
 
 impl Test for u32 {

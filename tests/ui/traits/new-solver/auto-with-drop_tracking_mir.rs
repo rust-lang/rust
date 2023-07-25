@@ -1,7 +1,7 @@
-// compile-flags: -Ztrait-solver=next -Zdrop-tracking-mir
-// edition: 2021
-// revisions: pass fail
-//[pass] check-pass
+//@compile-flags: -Ztrait-solver=next -Zdrop-tracking-mir
+//@edition: 2021
+//@revisions: pass fail
+//@[pass] check-pass
 
 #![feature(negative_impls)]
 

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 #![feature(inline_const)]
 #![allow(unused)]

@@ -1,6 +1,6 @@
-// revisions: classic next
-//[next] compile-flags: -Ztrait-solver=next
-//[next] check-pass
+//@revisions: classic next
+//@[next] compile-flags: -Ztrait-solver=next
+//@[next] check-pass
 
 fn ice()
 where

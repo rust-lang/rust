@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 // Test that vec is now covariant in its argument type.
 

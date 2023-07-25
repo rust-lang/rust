@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 #![warn(rust_2021_incompatible_closure_captures)]
 #![allow(dropping_references, dropping_copy_types)]

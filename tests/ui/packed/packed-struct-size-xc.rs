@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:packed.rs
+//@run
+//@aux-build:packed.rs
 
 
 extern crate packed;

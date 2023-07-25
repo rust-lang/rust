@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Test that overloaded calls work with zero arity closures
 
 // pretty-expanded FIXME #23616

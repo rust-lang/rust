@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![feature(arbitrary_self_types)]
 
 use std::ptr;

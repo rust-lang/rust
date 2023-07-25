@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // exec-env:TEST_EXEC_ENV=22
 // ignore-emscripten FIXME: issue #31622
 // ignore-sgx unsupported

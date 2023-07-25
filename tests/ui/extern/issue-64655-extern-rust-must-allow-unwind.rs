@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // needs-unwind
 // ignore-emscripten no threads support
 
@@ -34,20 +34,20 @@
 // setting; pnkfelix observed three differing behaviors at opt-levels
 // 0/1/2+3 for this test, so it seems prudent to be thorough.
 
-// revisions: no0 no1 no2 no3 thin0 thin1 thin2 thin3 fat0 fat1 fat2  fat3
+//@revisions: no0 no1 no2 no3 thin0 thin1 thin2 thin3 fat0 fat1 fat2  fat3
 
-//[no0]compile-flags: -C opt-level=0 -C lto=no
-//[no1]compile-flags: -C opt-level=1 -C lto=no
-//[no2]compile-flags: -C opt-level=2 -C lto=no
-//[no3]compile-flags: -C opt-level=3 -C lto=no
-//[thin0]compile-flags: -C opt-level=0 -C lto=thin
-//[thin1]compile-flags: -C opt-level=1 -C lto=thin
-//[thin2]compile-flags: -C opt-level=2 -C lto=thin
-//[thin3]compile-flags: -C opt-level=3 -C lto=thin
-//[fat0]compile-flags: -C opt-level=0 -C lto=fat
-//[fat1]compile-flags: -C opt-level=1 -C lto=fat
-//[fat2]compile-flags: -C opt-level=2 -C lto=fat
-//[fat3]compile-flags: -C opt-level=3 -C lto=fat
+//@[no0] compile-flags: -C opt-level=0 -C lto=no
+//@[no1] compile-flags: -C opt-level=1 -C lto=no
+//@[no2] compile-flags: -C opt-level=2 -C lto=no
+//@[no3] compile-flags: -C opt-level=3 -C lto=no
+//@[thin0] compile-flags: -C opt-level=0 -C lto=thin
+//@[thin1] compile-flags: -C opt-level=1 -C lto=thin
+//@[thin2] compile-flags: -C opt-level=2 -C lto=thin
+//@[thin3] compile-flags: -C opt-level=3 -C lto=thin
+//@[fat0] compile-flags: -C opt-level=0 -C lto=fat
+//@[fat1] compile-flags: -C opt-level=1 -C lto=fat
+//@[fat2] compile-flags: -C opt-level=2 -C lto=fat
+//@[fat3] compile-flags: -C opt-level=3 -C lto=fat
 
 fn main() {
     use std::sync::atomic::{AtomicUsize, Ordering};

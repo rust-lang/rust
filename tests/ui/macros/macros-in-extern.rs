@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // ignore-wasm32
 
 #![feature(decl_macro)]

@@ -1,4 +1,4 @@
-// compile-flags: -Ztrim-diagnostic-paths=off -Zverbose
+//@compile-flags: -Ztrim-diagnostic-paths=off -Zverbose
 
 mod mod1 {
     pub fn f<T: std::fmt::Display>(t: T)

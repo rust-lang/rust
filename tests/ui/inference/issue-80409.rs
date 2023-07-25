@@ -1,4 +1,4 @@
-// check-pass
+//@check-pass
 
 #![allow(unreachable_code, unused)]
 

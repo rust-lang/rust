@@ -1,4 +1,4 @@
-// compile-flags: -Zdeduplicate-diagnostics=yes
+//@compile-flags: -Zdeduplicate-diagnostics=yes
 extern crate rustc_data_structures;
 //~^ use of unstable library feature 'rustc_private'
 extern crate rustc_macros;

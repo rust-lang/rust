@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(dead_code)]
 
 fn foo<T>(t: T) -> impl Into<[T; { const FOO: usize = 1; FOO }]> {

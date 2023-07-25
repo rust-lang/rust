@@ -2,10 +2,11 @@
 // when they are required.
 //
 // only-x86_64-pc-windows-msvc
-// compile-flags: -C force-unwind-tables=no
+//@compile-flags: -C force-unwind-tables=no
 //
 // dont-check-compiler-stderr
-// error-pattern: target requires unwind tables, they cannot be disabled with `-C force-unwind-tables=no`
+// ignore-tidy-linelength
+//@error-pattern: target requires unwind tables, they cannot be disabled with `-C force-unwind-tables=no`
 
 pub fn main() {
 }

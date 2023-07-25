@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 #![feature(intrinsics)]
 #![feature(rustc_attrs)]

@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:cfg_inner_static.rs
+//@run
+//@aux-build:cfg_inner_static.rs
 
 // pretty-expanded FIXME #23616
 

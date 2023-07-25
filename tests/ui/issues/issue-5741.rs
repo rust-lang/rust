@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // pretty-expanded FIXME #23616
 #![allow(while_true)]
 #![allow(unreachable_code)]

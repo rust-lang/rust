@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Test that in a by-ref once closure we move some variables even as
 // we capture others by mutable reference.
 

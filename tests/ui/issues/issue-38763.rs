@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // ignore-emscripten
 
 #[repr(C)]

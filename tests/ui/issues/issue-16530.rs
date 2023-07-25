@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(deprecated)]
 
 use std::hash::{SipHasher, Hasher, Hash};

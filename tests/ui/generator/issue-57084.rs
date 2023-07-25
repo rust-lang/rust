@@ -1,7 +1,7 @@
 // This issue reproduces an ICE on compile (E.g. fails on 2018-12-19 nightly).
 // "cannot relate bound region: ReLateBound(DebruijnIndex(1), BrAnon(1)) <= '?1"
-// run-pass
-// edition:2018
+//@run
+//@edition:2018
 #![feature(generators,generator_trait)]
 use std::ops::Generator;
 

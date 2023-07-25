@@ -1,6 +1,6 @@
-// check-pass
-// revisions: mir thir
-// [thir]compile-flags: -Z thir-unsafeck
+//@check-pass
+//@revisions: mir thir
+//@[thir] compile-flags: -Z thir-unsafeck
 
 #[derive(Copy, Clone)]
 pub struct Foo { a: bool }

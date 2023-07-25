@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:namespaced_enums.rs
+//@run
+//@aux-build:namespaced_enums.rs
 
 // pretty-expanded FIXME #23616
 

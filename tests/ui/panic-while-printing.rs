@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // needs-unwind
 
 #![feature(internal_output_capture)]

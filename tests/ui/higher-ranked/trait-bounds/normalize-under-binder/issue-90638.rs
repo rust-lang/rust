@@ -1,4 +1,4 @@
-//check-pass
+//@check-pass
 
 trait Yokeable<'a>: 'static {
     type Output: 'a;

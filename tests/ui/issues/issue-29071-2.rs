@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(dead_code)]
 fn t1() -> u32 {
     let x;

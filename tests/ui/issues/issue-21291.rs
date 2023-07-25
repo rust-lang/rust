@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // ignore-emscripten no threads support
 
 // Regression test for unwrapping the result of `join`, issue #21291

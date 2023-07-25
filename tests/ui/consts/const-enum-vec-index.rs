@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #[derive(Copy, Clone)]
 enum E { V1(isize), V0 }
 

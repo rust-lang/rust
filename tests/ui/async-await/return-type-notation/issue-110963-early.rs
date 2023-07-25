@@ -1,4 +1,4 @@
-// edition: 2021
+//@edition: 2021
 // known-bug: #110963
 
 #![feature(return_type_notation)]

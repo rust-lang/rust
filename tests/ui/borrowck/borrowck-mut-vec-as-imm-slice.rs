@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 
 fn want_slice(v: &[isize]) -> isize {

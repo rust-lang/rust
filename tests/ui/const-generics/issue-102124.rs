@@ -1,5 +1,5 @@
-// run-pass
-// compile-flags: -Zmir-opt-level=3
+//@run
+//@compile-flags: -Zmir-opt-level=3
 
 // regression test for #102124
 

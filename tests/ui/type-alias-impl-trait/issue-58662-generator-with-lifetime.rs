@@ -1,4 +1,4 @@
-// check-pass
+//@check-pass
 
 #![feature(generators, generator_trait)]
 #![feature(type_alias_impl_trait)]

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 const NEGATIVE_A: bool = (-10i32).is_negative();
 const NEGATIVE_B: bool = 10i32.is_negative();

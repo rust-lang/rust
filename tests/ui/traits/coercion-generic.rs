@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(dead_code)]
 trait Trait<T> {
     fn f(&self, x: T);

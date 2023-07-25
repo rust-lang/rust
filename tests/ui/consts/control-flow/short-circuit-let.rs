@@ -1,6 +1,6 @@
 // `&&` and `||` were previously forbidden in constants alongside let bindings.
 
-// run-pass
+//@run
 
 const X: i32 = {
     let mut x = 0;

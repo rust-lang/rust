@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(stable_features)]
 
 // Test overloaded indexing combined with autoderef.

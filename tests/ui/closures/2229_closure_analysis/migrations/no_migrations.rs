@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 // Set of test cases that don't need migrations
 

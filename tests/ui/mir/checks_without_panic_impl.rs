@@ -3,7 +3,7 @@
 // See rust-lang/rust#109996
 
 // build-pass
-// compile-flags: -Cdebug-assertions=yes
+//@compile-flags: -Cdebug-assertions=yes
 
 #![crate_type = "lib"]
 

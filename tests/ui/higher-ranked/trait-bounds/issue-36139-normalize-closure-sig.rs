@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Previously the closure's argument would be inferred to
 // <S as ITrait<'a>>::Item, causing an error in MIR type
 // checking

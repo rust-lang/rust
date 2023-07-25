@@ -1,5 +1,5 @@
-// compile-flags: -Ztrait-solver=next
-// check-pass
+//@compile-flags: -Ztrait-solver=next
+//@check-pass
 
 // This tests checks that we update results in the provisional cache when
 // we pop a goal from the stack.

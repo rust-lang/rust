@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 // nb: does not impl Default
 #[derive(Debug, PartialEq)]

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // ignore-wasm32-bare no libc to test ffi with
 
 #[link(name = "rust_test_helpers", kind = "static")]

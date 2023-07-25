@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 #![feature(let_chains)]
 #![allow(irrefutable_let_patterns)]

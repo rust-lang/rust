@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 #[derive(Debug)]
 enum Numbers {

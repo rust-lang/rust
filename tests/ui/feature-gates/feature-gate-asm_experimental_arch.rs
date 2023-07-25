@@ -1,4 +1,4 @@
-// compile-flags: --target mips-unknown-linux-gnu
+//@compile-flags: --target mips-unknown-linux-gnu
 // needs-llvm-components: mips
 
 #![feature(no_core, lang_items, rustc_attrs)]

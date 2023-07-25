@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 pub fn main() {
   let nan: f64 = f64::NAN;

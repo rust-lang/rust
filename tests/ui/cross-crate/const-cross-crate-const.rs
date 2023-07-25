@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:cci_const.rs
+//@run
+//@aux-build:cci_const.rs
 #![allow(non_upper_case_globals)]
 
 extern crate cci_const;

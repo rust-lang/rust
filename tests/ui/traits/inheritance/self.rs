@@ -1,4 +1,4 @@
-// run-pass
+//@run
 trait Foo<T> {
     fn f(&self, x: &T);
 }

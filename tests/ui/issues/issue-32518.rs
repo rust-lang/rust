@@ -1,8 +1,8 @@
-// run-pass
+//@run
 // no-prefer-dynamic
-// aux-build:cgu_test.rs
-// aux-build:cgu_test_a.rs
-// aux-build:cgu_test_b.rs
+//@aux-build:cgu_test.rs
+//@aux-build:cgu_test_a.rs
+//@aux-build:cgu_test_b.rs
 
 extern crate cgu_test_a;
 extern crate cgu_test_b;

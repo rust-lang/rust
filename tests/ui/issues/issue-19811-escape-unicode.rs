@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 fn main() {
     let mut escaped = String::from("");

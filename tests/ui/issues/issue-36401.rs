@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #[derive(Debug)]
 pub enum Event {
     Key(u8),

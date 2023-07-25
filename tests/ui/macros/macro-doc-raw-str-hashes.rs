@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // The number of `#`s used to wrap the documentation comment should differ regarding the content.
 //
 // Related issue: #27489

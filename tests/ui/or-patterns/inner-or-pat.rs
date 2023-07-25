@@ -1,7 +1,7 @@
-// revisions: or1 or2 or3 or4 or5
-// [or1] run-pass
-// [or2] run-pass
-// [or5] run-pass
+//@revisions: or1 or2 or3 or4 or5
+//@[or1] run
+//@[or2] run
+//@[or5] run
 
 #![allow(unreachable_patterns)]
 #![allow(unused_variables)]

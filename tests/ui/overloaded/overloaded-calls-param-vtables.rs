@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Tests that nested vtables work with overloaded calls.
 
 // pretty-expanded FIXME #23616

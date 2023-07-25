@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // ignore-wasm32-bare no libc for ffi testing
 
 // Test a call to a function that takes/returns a u64.

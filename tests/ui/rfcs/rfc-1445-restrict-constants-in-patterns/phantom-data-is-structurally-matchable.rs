@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 // This file checks that `PhantomData` is considered structurally matchable.
 

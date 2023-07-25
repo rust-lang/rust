@@ -1,5 +1,5 @@
-// run-pass
-// compile-flags:--test -O
+//@run
+//@compile-flags:--test -O
 
 // needs-unwind
 

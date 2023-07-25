@@ -1,6 +1,6 @@
-// compile-flags: -Ztreat-err-as-bug=1
+//@compile-flags: -Ztreat-err-as-bug=1
 // failure-status: 101
-// rustc-env:RUST_BACKTRACE=1
+//@rustc-env:RUST_BACKTRACE=1
 // normalize-stderr-test "\nerror: .*unexpectedly panicked.*\n\n" -> ""
 // normalize-stderr-test "note: we would appreciate a bug report.*\n\n" -> ""
 // normalize-stderr-test "note: compiler flags.*\n\n" -> ""

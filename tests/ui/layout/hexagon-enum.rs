@@ -1,4 +1,4 @@
-// compile-flags: --target hexagon-unknown-linux-musl
+//@compile-flags: --target hexagon-unknown-linux-musl
 // needs-llvm-components: hexagon
 //
 // Verify that the hexagon targets implement the repr(C) for enums correctly.

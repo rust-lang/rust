@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 
 trait GatTrait {
     type Gat<'a> where Self: 'a;

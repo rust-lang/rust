@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Testing guarantees provided by once functions.
 
 

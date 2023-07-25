@@ -1,4 +1,4 @@
-// run-pass
+//@run
 trait ToRef<'a> {
     type Ref: 'a;
 }

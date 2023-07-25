@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 // needs-unwind
 
 #![deny(rust_2021_incompatible_closure_captures)]

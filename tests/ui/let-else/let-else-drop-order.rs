@@ -1,5 +1,5 @@
-// run-pass
-// edition:2021
+//@run
+//@edition:2021
 // check-run-results
 //
 // Drop order tests for let else

@@ -1,5 +1,5 @@
-// check-pass
-// compile-flags: --crate-type=lib
+//@check-pass
+//@compile-flags: --crate-type=lib
 
 #![feature(inherent_associated_types)]
 #![allow(incomplete_features)]

@@ -1,4 +1,4 @@
-// check-pass
+//@check-pass
 // known-bug: #100041
 
 // Should fail. Normalization can bypass well-formedness checking.

@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 
 pub mod a {
     pub use self::b::Trait;

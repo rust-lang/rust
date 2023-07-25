@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 
 struct A { a: u8, b: u8 }

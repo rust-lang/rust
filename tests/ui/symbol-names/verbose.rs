@@ -4,7 +4,7 @@
 // arguments equal to defaults of their respective parameters).
 //
 // build-pass
-// compile-flags: -Zverbose
+//@compile-flags: -Zverbose
 
 pub fn error(msg: String) -> Box<dyn std::error::Error> {
   msg.into()

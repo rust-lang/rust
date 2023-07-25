@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(dead_code)]
 // Testing that supertrait methods can be called on subtrait object types
 

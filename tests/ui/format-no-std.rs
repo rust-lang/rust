@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // ignore-emscripten no no_std executables
 
 #![feature(lang_items, start)]

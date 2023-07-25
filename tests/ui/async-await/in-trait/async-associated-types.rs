@@ -1,5 +1,5 @@
-// check-pass
-// edition: 2021
+//@check-pass
+//@edition: 2021
 
 #![feature(async_fn_in_trait)]
 #![feature(impl_trait_projections)]

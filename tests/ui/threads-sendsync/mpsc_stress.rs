@@ -1,5 +1,5 @@
-// run-pass
-// compile-flags:--test
+//@run
+//@compile-flags:--test
 // ignore-emscripten
 
 use std::sync::mpsc::channel;

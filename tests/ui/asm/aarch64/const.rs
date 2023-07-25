@@ -1,8 +1,8 @@
 // only-aarch64
-// run-pass
-// needs-asm-support
-// revisions: mirunsafeck thirunsafeck
-// [thirunsafeck]compile-flags: -Z thir-unsafeck
+//@run
+//@needs-asm-support
+//@revisions: mirunsafeck thirunsafeck
+//@[thirunsafeck] compile-flags: -Z thir-unsafeck
 
 #![feature(asm_const)]
 

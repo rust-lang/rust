@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 #![feature(marker_trait_attr)]
 #![feature(specialization)] //~ WARN the feature `specialization` is incomplete

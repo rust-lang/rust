@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(unused_variables)]
 pub fn main() {
     let x = (0, 2);

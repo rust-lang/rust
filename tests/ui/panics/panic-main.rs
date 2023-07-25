@@ -1,5 +1,5 @@
 // run-fail
-// error-pattern:moop
+//@error-pattern:moop
 // ignore-emscripten no processes
 
 fn main() {

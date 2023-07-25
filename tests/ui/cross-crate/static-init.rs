@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:static_init_aux.rs
+//@run
+//@aux-build:static_init_aux.rs
 extern crate static_init_aux as aux;
 
 static V: &u32 = aux::V;

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Test for using an object with an associated type binding as the
 // instantiation for a generic type with a bound.
 

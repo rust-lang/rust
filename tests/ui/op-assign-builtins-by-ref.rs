@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 fn main() {
     // test compound assignment operators with ref as right-hand side,

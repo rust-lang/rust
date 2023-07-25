@@ -1,4 +1,4 @@
-// edition: 2021
+//@edition: 2021
 
 #![feature(return_type_notation, async_fn_in_trait)]
 //~^ WARN the feature `return_type_notation` is incomplete

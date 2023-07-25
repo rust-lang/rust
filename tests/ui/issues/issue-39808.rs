@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(unreachable_code)]
 
 // Regression test for #39808. The type parameter of `Owned` was

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 // Test that we do not ICE when pattern matching an array against a slice.
 

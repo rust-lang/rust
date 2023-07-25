@@ -5,7 +5,7 @@
 //
 // See https://github.com/rust-lang/rust/issues/46541 for more details.
 
-// run-pass
+//@run
 
 #![allow(dead_code)]
 

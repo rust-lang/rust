@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(unused_macros)]
 // Check the macro follow sets (see corresponding cfail test).
 

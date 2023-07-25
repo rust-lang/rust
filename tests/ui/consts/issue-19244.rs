@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 struct MyStruct { field: usize }
 struct Nested { nested: MyStruct }

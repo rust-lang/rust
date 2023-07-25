@@ -1,6 +1,6 @@
-// run-pass
+//@run
 
-// compile-flags: -Clto=thin
+//@compile-flags: -Clto=thin
 // no-prefer-dynamic
 
 fn main() {

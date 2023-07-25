@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(unused_macro_rules)]
 
 /// A compile-time map from identifiers to arbitrary (heterogeneous) expressions

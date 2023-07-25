@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 fn destructure(x: Option<isize>) -> isize {
     match x {

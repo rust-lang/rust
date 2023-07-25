@@ -1,9 +1,9 @@
-// run-pass
+//@run
 // ignore-android
 // ignore-emscripten no processes
 // ignore-sgx no processes
-// revisions: mir thir
-// [thir]compile-flags: -Zthir-unsafeck
+//@revisions: mir thir
+//@[thir] compile-flags: -Zthir-unsafeck
 
 #![feature(rustc_private)]
 

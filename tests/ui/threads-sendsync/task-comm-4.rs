@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(unused_assignments)]
 
 use std::sync::mpsc::channel;

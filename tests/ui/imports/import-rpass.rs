@@ -1,4 +1,4 @@
-// run-pass
+//@run
 mod foo {
     pub fn x(y: isize) { println!("{}", y); }
 }

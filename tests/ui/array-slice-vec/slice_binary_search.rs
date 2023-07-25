@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 // Test binary_search_by_key lifetime. Issue #34683
 

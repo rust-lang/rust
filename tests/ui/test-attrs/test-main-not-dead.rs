@@ -1,5 +1,5 @@
-// run-pass
-// compile-flags: --test
+//@run
+//@compile-flags: --test
 
 #![deny(dead_code)]
 

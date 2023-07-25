@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 #[derive(Debug)]
 struct Foo(#[allow(unused_tuple_struct_fields)] Box<[u8]>);

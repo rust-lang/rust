@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 #![allow(deprecated)]
 // ignore-wasm32-bare no files or I/O

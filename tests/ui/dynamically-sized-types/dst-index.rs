@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(unused_variables)]
 // Test that overloaded index expressions with DST result types
 // work and don't ICE.

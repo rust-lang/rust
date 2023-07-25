@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 unsafe fn call_unsafe(func: unsafe fn() -> ()) -> () {
     func()

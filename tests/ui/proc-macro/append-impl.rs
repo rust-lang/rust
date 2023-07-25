@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:append-impl.rs
+//@run
+//@aux-build:append-impl.rs
 
 #![allow(warnings)]
 

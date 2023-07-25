@@ -1,6 +1,6 @@
 // gate-test-abi_thiscall
 // needs-llvm-components: x86
-// compile-flags: --target=i686-pc-windows-msvc --crate-type=rlib
+//@compile-flags: --target=i686-pc-windows-msvc --crate-type=rlib
 #![no_core]
 #![feature(no_core, lang_items)]
 #[lang="sized"]

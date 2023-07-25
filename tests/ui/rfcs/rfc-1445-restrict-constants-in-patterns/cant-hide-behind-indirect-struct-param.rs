@@ -5,7 +5,7 @@
 //
 // See discussion on rust-lang/rust#62307 and rust-lang/rust#62339
 #![warn(indirect_structural_match)]
-// run-pass
+//@run
 
 struct NoDerive(#[allow(unused_tuple_struct_fields)] i32);
 

@@ -1,5 +1,5 @@
-// compile-flags:--test
-// run-pass
+//@compile-flags:--test
+//@run
 // needs-unwind
 
 use std::fmt;

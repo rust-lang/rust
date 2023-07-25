@@ -1,6 +1,6 @@
 // Test that niche finding works with captured generator upvars.
 
-// run-pass
+//@run
 
 #![feature(generators)]
 

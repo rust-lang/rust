@@ -1,4 +1,4 @@
-// revisions: local alias
+//@revisions: local alias
 
 #![feature(inherent_associated_types)]
 #![allow(incomplete_features)]

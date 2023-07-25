@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 mod inner {
     pub mod inner2 {

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(dead_code)]
 const fn f() -> usize {
     5

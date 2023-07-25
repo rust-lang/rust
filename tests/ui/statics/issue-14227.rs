@@ -1,5 +1,5 @@
-// revisions: mir thir
-// [thir]compile-flags: -Z thir-unsafeck
+//@revisions: mir thir
+//@[thir] compile-flags: -Z thir-unsafeck
 
 extern "C" {
     pub static symbol: u32;

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(unreachable_code)]
 #![allow(unused_labels)]
 

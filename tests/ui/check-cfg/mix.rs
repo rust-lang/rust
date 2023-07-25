@@ -2,8 +2,9 @@
 // the usage of values(), and that no implicit is done with --cfg while also testing that
 // we correctly lint on the `cfg!` macro and `cfg_attr` attribute.
 //
-// check-pass
-// compile-flags: --check-cfg=names() --check-cfg=values(feature,"foo") --cfg feature="bar" --cfg unknown_name -Z unstable-options
+//@check-pass
+//@compile-flags: --check-cfg=names() --check-cfg=values(feature,"foo") --cfg feature="bar"
+//@compile-flags: --cfg unknown_name -Z unstable-options
 
 #[cfg(windows)]
 fn do_windows_stuff() {}

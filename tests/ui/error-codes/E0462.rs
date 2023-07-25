@@ -1,4 +1,4 @@
-// aux-build:found-staticlib.rs
+//@aux-build:found-staticlib.rs
 
 // normalize-stderr-test: "\.nll/" -> "/"
 // normalize-stderr-test: "\\\?\\" -> ""

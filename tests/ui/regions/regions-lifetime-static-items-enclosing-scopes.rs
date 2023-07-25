@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(dead_code)]
 // This test verifies that temporary lifetime is correctly computed
 // for static objects in enclosing scopes.

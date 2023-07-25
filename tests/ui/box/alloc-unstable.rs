@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![feature(allocator_api)]
 
 use std::boxed::Box;

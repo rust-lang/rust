@@ -1,4 +1,4 @@
-// compile-flags: -Zunpretty=hir
+//@compile-flags: -Zunpretty=hir
 // check-fail
 
 // In #100948 this caused an ICE with -Zunpretty=hir.

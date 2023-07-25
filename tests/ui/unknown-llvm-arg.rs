@@ -1,4 +1,4 @@
-// compile-flags: -Cllvm-args=-not-a-real-llvm-arg
+//@compile-flags: -Cllvm-args=-not-a-real-llvm-arg
 // normalize-stderr-test "--help" -> "-help"
 // normalize-stderr-test "\n(\n|.)*" -> ""
 

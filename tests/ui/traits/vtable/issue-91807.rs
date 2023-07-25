@@ -1,4 +1,4 @@
-// check-pass
+//@check-pass
 // incremental
 
 struct Struct<T>(T);

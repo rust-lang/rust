@@ -4,8 +4,8 @@
 // never) and an uninferred variable (here the argument to `From`) it
 // doesn't fallback to `()` but rather `!`.
 //
-// revisions: nofallback fallback
-//[fallback] run-pass
+//@revisions: nofallback fallback
+//@[fallback] run
 //[nofallback] check-fail
 
 #![feature(never_type)]

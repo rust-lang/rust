@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(illegal_floating_point_literal_pattern)] // FIXME #41620
 
 pub fn main() {

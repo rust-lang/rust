@@ -2,7 +2,7 @@
 // normalize-stderr-test "(the raw bytes of the constant) \(size: [0-9]*, align: [0-9]*\)" -> "$1 (size: $$SIZE, align: $$ALIGN)"
 // normalize-stderr-test "([0-9a-f][0-9a-f] |╾─*a(lloc)?[0-9]+(\+[a-z0-9]+)?─*╼ )+ *│.*" -> "HEX_DUMP"
 // normalize-stderr-test "alloc\d+" -> "allocN"
-// error-pattern: could not evaluate static initializer
+//@error-pattern: could not evaluate static initializer
 #![feature(
     slice_from_ptr_range,
     const_slice_from_ptr_range,

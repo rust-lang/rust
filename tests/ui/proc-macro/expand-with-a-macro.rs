@@ -1,6 +1,6 @@
-// run-pass
+//@run
 // needs-unwind
-// aux-build:expand-with-a-macro.rs
+//@aux-build:expand-with-a-macro.rs
 
 
 #![deny(warnings)]

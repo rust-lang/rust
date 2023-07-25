@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 pub fn main() {
     // Test that these type check correctly.

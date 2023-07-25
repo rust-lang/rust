@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Test that non-static methods can be assigned to local variables as
 // function pointers.
 

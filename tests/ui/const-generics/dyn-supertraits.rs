@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 trait Foo<const N: usize> {
     fn myfun(&self) -> usize;

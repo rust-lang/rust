@@ -1,4 +1,4 @@
-// run-pass
+//@run
 use std::ops::AddAssign;
 
 struct Int(#[allow(unused_tuple_struct_fields)] i32);

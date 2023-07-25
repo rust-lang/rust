@@ -1,5 +1,5 @@
-// compile-flags: --emit=metadata
-// aux-build:rmeta-rlib.rs
+//@compile-flags: --emit=metadata
+//@aux-build:rmeta-rlib.rs
 // no-prefer-dynamic
 // build-pass (FIXME(62277): could be check-pass?)
 

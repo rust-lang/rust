@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(dead_code)]
 // A basic test of using a higher-ranked trait bound.
 

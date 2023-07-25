@@ -1,5 +1,5 @@
-// check-pass
-// aux-build:offset-of-staged-api.rs
+//@check-pass
+//@aux-build:offset-of-staged-api.rs
 
 #![feature(offset_of, unstable_test_feature)]
 

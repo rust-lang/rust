@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:cci_const.rs
+//@run
+//@aux-build:cci_const.rs
 
 // pretty-expanded FIXME #23616
 

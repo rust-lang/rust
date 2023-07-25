@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 fn quux<T>(x: T) -> T { let f = id::<T>; return f(x); }
 

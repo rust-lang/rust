@@ -1,4 +1,4 @@
-// run-pass
+//@run
 use std::mem;
 
 const FOO: fn(u8) -> u8 = |v: u8| { v };

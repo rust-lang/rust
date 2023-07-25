@@ -1,4 +1,4 @@
-// compile-flags:-Z verbose
+//@compile-flags:-Z verbose
 
 fn main() {
     let x = [1,2];

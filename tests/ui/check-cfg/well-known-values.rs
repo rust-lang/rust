@@ -1,8 +1,8 @@
 // This test check that we lint on non well known values and that we don't lint on well known
 // values
 //
-// check-pass
-// compile-flags: --check-cfg=values() -Z unstable-options
+//@check-pass
+//@compile-flags: --check-cfg=values() -Z unstable-options
 
 #[cfg(target_os = "linuz")]
 //~^ WARNING unexpected `cfg` condition value

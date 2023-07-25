@@ -1,4 +1,4 @@
-// run-pass
+//@run
 use std::fmt::Display;
 
 static BYTE: u8 = 33;

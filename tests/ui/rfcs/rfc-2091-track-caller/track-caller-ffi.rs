@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 use std::panic::Location;
 

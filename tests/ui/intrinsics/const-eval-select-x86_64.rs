@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // only-x86_64
 
 #![feature(const_eval_select)]

@@ -1,11 +1,11 @@
 error[E0458]: unknown link kind `link-arg`, expected one of: static, dylib, framework, raw-dylib
-  --> $DIR/link-arg-from-rs.rs:6:15
+  --> $DIR/link-arg-from-rs.rs:7:15
    |
 LL | #[link(kind = "link-arg")]
    |               ^^^^^^^^^^ unknown link kind
 
 error[E0459]: `#[link]` attribute requires a `name = "string"` argument
-  --> $DIR/link-arg-from-rs.rs:6:1
+  --> $DIR/link-arg-from-rs.rs:7:1
    |
 LL | #[link(kind = "link-arg")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `name` argument

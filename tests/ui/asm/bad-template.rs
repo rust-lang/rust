@@ -1,9 +1,9 @@
-// revisions: x86_64_mirunsafeck aarch64_mirunsafeck x86_64_thirunsafeck aarch64_thirunsafeck
+//@revisions: x86_64_mirunsafeck aarch64_mirunsafeck x86_64_thirunsafeck aarch64_thirunsafeck
 
-// [x86_64_thirunsafeck] compile-flags: -Z thir-unsafeck --target x86_64-unknown-linux-gnu
-// [aarch64_thirunsafeck] compile-flags: -Z thir-unsafeck --target aarch64-unknown-linux-gnu
-// [x86_64_mirunsafeck] compile-flags: --target x86_64-unknown-linux-gnu
-// [aarch64_mirunsafeck] compile-flags: --target aarch64-unknown-linux-gnu
+//@[x86_64_thirunsafeck] compile-flags: -Z thir-unsafeck --target x86_64-unknown-linux-gnu
+//@[aarch64_thirunsafeck] compile-flags: -Z thir-unsafeck --target aarch64-unknown-linux-gnu
+//@[x86_64_mirunsafeck] compile-flags: --target x86_64-unknown-linux-gnu
+//@[aarch64_mirunsafeck] compile-flags: --target aarch64-unknown-linux-gnu
 
 // [x86_64_thirunsafeck] needs-llvm-components: x86
 // [x86_64_mirunsafeck] needs-llvm-components: x86

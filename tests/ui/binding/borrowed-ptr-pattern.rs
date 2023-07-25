@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 fn foo<T:Clone>(x: &T) -> T{
     match x {

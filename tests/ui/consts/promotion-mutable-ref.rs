@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![feature(const_mut_refs)]
 
 static mut TEST: i32 = {

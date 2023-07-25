@@ -1,4 +1,4 @@
-// aux-build:issue-92755.rs
+//@aux-build:issue-92755.rs
 // build-pass
 
 // Thank you @tmiasko for providing the content of this test!

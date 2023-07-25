@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 fn two_bindings(x: &((bool, bool), u8)) -> u8 {
     match x {

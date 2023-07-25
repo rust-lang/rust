@@ -1,6 +1,6 @@
-// run-pass
+//@run
 // only-32bit too impatient for 2⁶⁴ items
-// compile-flags: -C debug_assertions=no -C opt-level=3
+//@compile-flags: -C debug_assertions=no -C opt-level=3
 
 fn main() {
     let n = usize::MAX as u64;

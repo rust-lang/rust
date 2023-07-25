@@ -1,5 +1,5 @@
 // run-fail
-// error-pattern:index out of bounds
+//@error-pattern:index out of bounds
 // ignore-emscripten no processes
 
 use std::mem;

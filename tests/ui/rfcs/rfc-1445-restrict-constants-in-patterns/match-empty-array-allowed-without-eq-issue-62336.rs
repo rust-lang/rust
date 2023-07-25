@@ -4,7 +4,7 @@
 //
 // See rust-lang/rust#62336.
 
-// run-pass
+//@run
 
 #[derive(PartialEq, Debug)]
 struct B(i32);

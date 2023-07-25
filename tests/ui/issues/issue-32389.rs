@@ -1,4 +1,4 @@
-// run-pass
+//@run
 fn foo<T>() -> T { loop {} }
 
 fn test() {

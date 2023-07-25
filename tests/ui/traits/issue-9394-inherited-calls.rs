@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 trait Base: Base2 + Base3{
     fn foo(&self) -> String;

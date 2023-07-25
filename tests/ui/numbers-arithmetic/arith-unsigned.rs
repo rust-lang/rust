@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(unused_comparisons)]
 
 // Unsigned integer operations

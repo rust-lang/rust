@@ -1,9 +1,9 @@
 // Test-only use OK
 
-// edition:2018
-// check-pass
+//@edition:2018
+//@check-pass
 // aux-crate:bar=bar.rs
-// compile-flags:--test
+//@compile-flags:--test
 
 #![deny(unused_crate_dependencies)]
 

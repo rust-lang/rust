@@ -1,5 +1,5 @@
-// run-pass
-// needs-asm-support
+//@run
+//@needs-asm-support
 
 #![feature(naked_functions)]
 #![allow(dead_code)]

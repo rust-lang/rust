@@ -1,6 +1,6 @@
-// run-pass
+//@run
 
-// aux-build:dylib.rs
+//@aux-build:dylib.rs
 
 extern crate dylib;
 

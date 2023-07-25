@@ -1,4 +1,4 @@
-// compile-flags: -C debuginfo=2
+//@compile-flags: -C debuginfo=2
 
 // no-prefer-dynamic
 #![crate_type = "rlib"]

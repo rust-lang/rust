@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 #![feature(associated_type_bounds)]
 #![allow(dead_code)]

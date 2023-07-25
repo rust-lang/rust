@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Make sure the destructor is run for newtype structs.
 
 use std::cell::Cell;

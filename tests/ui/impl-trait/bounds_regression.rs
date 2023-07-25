@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 pub trait FakeGenerator {
     type Yield;

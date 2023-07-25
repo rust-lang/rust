@@ -2,9 +2,9 @@
 // patterns, the test passes. See all `revision-bad.rs`.
 
 // run-fail
-// revisions: foo bar
-//[foo] error-pattern:foo
-//[bar] error-pattern:bar
+//@revisions: foo bar
+//@[foo] error-pattern:foo
+//@[bar] error-pattern:bar
 // ignore-emscripten no processes
 
 #[cfg(foo)]

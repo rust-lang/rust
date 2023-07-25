@@ -2,7 +2,7 @@
 // which were not being considered during the contraction phase.
 
 // run-fail
-// error-pattern:explicit panic
+//@error-pattern:explicit panic
 // ignore-emscripten no processes
 
 struct Parser<'i: 't, 't>(&'i u8, &'t u8);

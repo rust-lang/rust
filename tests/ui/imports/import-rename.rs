@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(unused_variables)]
 use foo::{x, y as fooy};
 use Maybe::{Yes as MaybeYes};

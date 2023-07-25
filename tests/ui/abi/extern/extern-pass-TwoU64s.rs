@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(improper_ctypes)]
 
 // ignore-wasm32-bare no libc for ffi testing

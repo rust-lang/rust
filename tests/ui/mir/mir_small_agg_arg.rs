@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(unused_variables)]
 fn foo((x, y): (i8, i8)) {
 }

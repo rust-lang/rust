@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // A test where we (successfully) close over a reference into
 // an object.
 

@@ -1,5 +1,5 @@
 // Enormous types are allowed if they are never actually instantiated.
-// run-pass
+//@run
 trait Foo {
     type Assoc;
 }

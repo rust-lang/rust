@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Test that we are able to infer that the type of `x` is `isize` based
 // on the expected type from the object.
 

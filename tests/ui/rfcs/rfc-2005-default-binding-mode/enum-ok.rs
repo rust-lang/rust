@@ -1,4 +1,4 @@
-// run-pass
+//@run
 enum Wrapper {
     Wrap(i32),
 }

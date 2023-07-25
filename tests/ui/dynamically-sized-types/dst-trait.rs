@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 struct Fat<T: ?Sized> {
     f1: isize,

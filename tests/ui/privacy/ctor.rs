@@ -3,8 +3,8 @@
 // shadowed and cannot be named directly, while their constructors are
 // reexported. Regression test for issue #96934.
 //
-// aux-build:ctor_aux.rs
-// edition:2021
+//@aux-build:ctor_aux.rs
+//@edition:2021
 // build-pass
 
 extern crate ctor_aux;

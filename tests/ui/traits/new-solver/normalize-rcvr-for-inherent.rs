@@ -1,5 +1,5 @@
-// compile-flags: -Ztrait-solver=next
-// check-pass
+//@compile-flags: -Ztrait-solver=next
+//@check-pass
 
 // Verify that we can assemble inherent impl candidates on a possibly
 // unnormalized self type.

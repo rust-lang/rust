@@ -1,6 +1,6 @@
 // gate-test-c_str_literals
 // known-bug: #113333
-// edition: 2021
+//@edition: 2021
 
 macro_rules! m {
     ($t:tt) => {}

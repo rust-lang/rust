@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 fn vec() {
     let mut _x = vec!['c'];

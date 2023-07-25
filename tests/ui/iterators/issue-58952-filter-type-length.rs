@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // ignore-compare-mode-next-solver (hangs)
 
 //! This snippet causes the type length to blowup exponentially,

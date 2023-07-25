@@ -1,7 +1,7 @@
 // A quick test of 'unsafe const fn' functionality
 
-// revisions: mir thir
-// [thir]compile-flags: -Z thir-unsafeck
+//@revisions: mir thir
+//@[thir] compile-flags: -Z thir-unsafeck
 
 const unsafe fn dummy(v: u32) -> u32 {
     !v

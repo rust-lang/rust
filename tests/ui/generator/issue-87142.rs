@@ -1,4 +1,4 @@
-// compile-flags: -Cdebuginfo=2
+//@compile-flags: -Cdebuginfo=2
 // build-pass
 
 // Regression test for #87142

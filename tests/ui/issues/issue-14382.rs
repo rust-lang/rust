@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #[derive(Debug)]
 struct Matrix4<S>(#[allow(unused_tuple_struct_fields)] S);
 trait POrd<S> {}

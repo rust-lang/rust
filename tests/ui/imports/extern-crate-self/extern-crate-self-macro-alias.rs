@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 // Test that a macro can correctly expand the alias
 // in an `extern crate self as ALIAS` item.

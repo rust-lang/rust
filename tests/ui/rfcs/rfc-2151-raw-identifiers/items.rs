@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #[derive(Debug, PartialEq, Eq)]
 struct IntWrapper(u32);
 

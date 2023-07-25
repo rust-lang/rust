@@ -1,4 +1,4 @@
-// run-pass
+//@run
 fn const_u32_identity<const X: u32>() -> u32 {
     X
 }

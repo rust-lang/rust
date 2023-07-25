@@ -1,7 +1,7 @@
-// run-pass
+//@run
 #![allow(non_snake_case)]
 
-// aux-build:issue-14422.rs
+//@aux-build:issue-14422.rs
 
 // pretty-expanded FIXME #23616
 

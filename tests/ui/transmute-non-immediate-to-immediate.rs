@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Issue #7988
 // Transmuting non-immediate type to immediate type
 

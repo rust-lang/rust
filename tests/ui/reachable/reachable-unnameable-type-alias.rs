@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 #![feature(staged_api)]
 #![stable(feature = "a", since = "b")]

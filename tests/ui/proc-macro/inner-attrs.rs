@@ -1,7 +1,7 @@
 // gate-test-custom_inner_attributes
-// compile-flags: -Z span-debug --error-format human
-// aux-build:test-macros.rs
-// edition:2018
+//@compile-flags: -Z span-debug --error-format human
+//@aux-build:test-macros.rs
+//@edition:2018
 
 #![feature(custom_inner_attributes)]
 #![feature(proc_macro_hygiene)]

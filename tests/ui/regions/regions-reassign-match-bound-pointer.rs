@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(unused_assignments)]
 #![allow(unused_variables)]
 // Check that the type checker permits us to reassign `z` which

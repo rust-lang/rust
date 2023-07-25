@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // ignore-wasm32-bare no libc to test with
 // ignore-sgx no libc
 

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 const S: &str = "foo";
 pub const B: &[u8] = S.as_bytes();

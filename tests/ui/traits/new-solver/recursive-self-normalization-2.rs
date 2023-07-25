@@ -1,5 +1,5 @@
 //~ ERROR overflow
-// compile-flags: -Ztrait-solver=next
+//@compile-flags: -Ztrait-solver=next
 
 trait Foo1 {
     type Assoc1;

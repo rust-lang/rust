@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 fn assert_repr_eq<T: std::fmt::Debug>(obj : T, expected : String) {
     assert_eq!(expected, format!("{:?}", obj));

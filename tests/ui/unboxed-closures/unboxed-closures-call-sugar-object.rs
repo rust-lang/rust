@@ -1,4 +1,4 @@
-// run-pass
+//@run
 use std::ops::FnMut;
 
 fn make_adder(x: isize) -> Box<dyn FnMut(isize)->isize + 'static> {

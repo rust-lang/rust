@@ -1,4 +1,4 @@
-// run-pass
+//@run
 use std::ops::{AddAssign, SubAssign, MulAssign, DivAssign, RemAssign};
 use std::ops::{BitAndAssign, BitOrAssign, BitXorAssign, ShlAssign, ShrAssign};
 

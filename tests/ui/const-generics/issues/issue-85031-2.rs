@@ -1,4 +1,4 @@
-// check-pass
+//@check-pass
 // known-bug: unknown
 
 // This should not compile, as the compiler should not know

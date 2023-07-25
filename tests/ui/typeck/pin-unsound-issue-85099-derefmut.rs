@@ -1,4 +1,4 @@
-// check-pass
+//@check-pass
 // known-bug: #85099
 
 // Should fail. Can coerce `Pin<T>` into `Pin<U>` where

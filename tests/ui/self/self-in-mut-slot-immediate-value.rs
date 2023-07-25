@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Assert that `mut self` on an immediate value doesn't
 // allow mutating the original - issue #10615.
 

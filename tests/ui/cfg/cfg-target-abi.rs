@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![feature(cfg_target_abi)]
 
 #[cfg(target_abi = "eabihf")]

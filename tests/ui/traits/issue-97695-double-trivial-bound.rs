@@ -1,4 +1,4 @@
-// compile-flags: -Zinline-mir --emit=mir
+//@compile-flags: -Zinline-mir --emit=mir
 // build-pass
 
 pub trait Associate {

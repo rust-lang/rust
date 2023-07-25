@@ -1,9 +1,9 @@
-// run-pass
+//@run
 // ignore-fuchsia Test must be run out-of-process
 
 #![feature(test)]
 
-// compile-flags: --test
+//@compile-flags: --test
 extern crate test;
 
 #[bench]

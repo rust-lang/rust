@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 fn match_on_local() {
     let mut foo: Option<Box<_>> = Some(Box::new(5));

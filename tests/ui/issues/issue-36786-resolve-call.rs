@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Ensure that types that rely on obligations are autoderefed
 // correctly
 

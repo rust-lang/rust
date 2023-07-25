@@ -1,4 +1,4 @@
-// run-pass
+//@run
 use std::collections::BTreeMap;
 use std::borrow::Cow;
 

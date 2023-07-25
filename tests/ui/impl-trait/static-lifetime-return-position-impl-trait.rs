@@ -1,4 +1,4 @@
-// check-pass
+//@check-pass
 
 #![allow(incomplete_features)]
 #![feature(adt_const_params, return_position_impl_trait_in_trait)]

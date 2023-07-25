@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 #![allow(dead_code)]
 // Tests that even when a type parameter doesn't implement a required

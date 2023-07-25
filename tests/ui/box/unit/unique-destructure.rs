@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![feature(box_patterns)]
 
 struct Foo { a: isize, b: isize }

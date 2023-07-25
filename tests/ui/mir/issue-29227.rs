@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // ignore-tidy-linelength
 
 // Regression test for #29227. The problem here was that MIR

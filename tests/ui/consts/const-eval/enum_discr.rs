@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 enum Foo {
     X = 42,

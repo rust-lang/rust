@@ -3,7 +3,7 @@
 // due to incorrect assumption that a current thread is not panicking when
 // entering the catch_unwind.
 //
-// run-pass
+//@run
 
 use std::panic::catch_unwind;
 

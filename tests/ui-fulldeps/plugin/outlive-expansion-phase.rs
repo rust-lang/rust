@@ -1,5 +1,5 @@
 // run-pass
-// aux-build:outlive-expansion-phase.rs
+//@aux-build:outlive-expansion-phase.rs
 // ignore-stage1
 
 #![feature(plugin)]

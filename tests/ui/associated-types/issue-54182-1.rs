@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 // Tests that the return type of trait methods is correctly normalized when
 // checking that a method in an impl matches the trait definition when the

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 const fn foo() -> i64 {
     3

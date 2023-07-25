@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 #![allow(path_statements)]
 #![allow(dead_code)]

@@ -1,4 +1,4 @@
-// aux-build:private-inferred-type.rs
+//@aux-build:private-inferred-type.rs
 
 extern crate private_inferred_type as ext;
 

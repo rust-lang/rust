@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 #![allow(unused_imports)]
 // ignore-emscripten can't run commands

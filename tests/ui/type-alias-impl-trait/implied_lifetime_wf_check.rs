@@ -2,7 +2,7 @@
 
 // known-bug: #99840
 // this should not compile
-// check-pass
+//@check-pass
 
 type Alias = impl Sized;
 

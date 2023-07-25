@@ -1,5 +1,5 @@
 // run-fail
-// error-pattern:panicked at 'test-assert-static'
+//@error-pattern:panicked at 'test-assert-static'
 // ignore-emscripten no processes
 
 fn main() {

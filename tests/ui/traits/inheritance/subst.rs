@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 pub trait Add<RHS,Result> {
     fn add(&self, rhs: &RHS) -> Result;

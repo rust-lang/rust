@@ -1,10 +1,10 @@
-// run-pass
+//@run
 
-// revisions: default nomiropt
-//[nomiropt]compile-flags: -Z mir-opt-level=0
+//@revisions: default nomiropt
+//@[nomiropt] compile-flags: -Z mir-opt-level=0
 
 // ignore-emscripten no threads support
-// compile-flags: --test
+//@compile-flags: --test
 
 #![feature(generators, generator_trait)]
 

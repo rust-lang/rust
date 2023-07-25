@@ -1,4 +1,4 @@
-// compile-flags: -Zdrop-tracking
+//@compile-flags: -Zdrop-tracking
 
 #![feature(generators, generator_trait)]
 

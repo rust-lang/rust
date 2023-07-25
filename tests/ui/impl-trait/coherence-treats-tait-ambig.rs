@@ -1,5 +1,5 @@
-// revisions: current next
-//[next] compile-flags: -Ztrait-solver=next
+//@revisions: current next
+//@[next] compile-flags: -Ztrait-solver=next
 
 #![feature(type_alias_impl_trait)]
 

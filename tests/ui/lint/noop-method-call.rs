@@ -1,5 +1,5 @@
-// check-pass
-// run-rustfix
+//@check-pass
+//@run-rustfix
 
 #![allow(unused)]
 
@@ -25,7 +25,6 @@ fn main() {
 
     let clone_type_ref = &CloneType(1u32);
     let clone_type_ref_clone: CloneType<u32> = clone_type_ref.clone();
-
 
     let non_deref_type = &PlainType(1u32);
     let non_deref_type_deref: &PlainType<u32> = non_deref_type.deref();

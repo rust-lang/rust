@@ -1,4 +1,4 @@
-// check-pass
+//@check-pass
 // pretty-expanded FIXME #23616
 
 #![no_implicit_prelude]

@@ -1,5 +1,5 @@
 // check-fail
-//[next] compile-flags: -Ztrait-solver=next
+//@[next] compile-flags: -Ztrait-solver=next
 
 #![feature(transmutability)]
 mod assert {

@@ -1,5 +1,5 @@
-// compile-flags: -Zdrop-tracking-mir
-// edition:2021
+//@compile-flags: -Zdrop-tracking-mir
+//@edition:2021
 
 use std::future::Future;
 

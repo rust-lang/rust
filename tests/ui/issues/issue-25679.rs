@@ -1,4 +1,4 @@
-// run-pass
+//@run
 trait Device {
     type Resources;
 }

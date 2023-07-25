@@ -1,4 +1,4 @@
-// check-pass
+//@check-pass
 // known-bug: #100051
 
 // Should fail. Implied bounds from projections in impl headers can create

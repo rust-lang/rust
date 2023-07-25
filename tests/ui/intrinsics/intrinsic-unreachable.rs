@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![feature(core_intrinsics)]
 
 use std::intrinsics;

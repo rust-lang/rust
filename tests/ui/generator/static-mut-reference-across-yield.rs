@@ -1,8 +1,8 @@
 // build-pass
-// revisions: mir thir drop_tracking drop_tracking_mir
-// [thir]compile-flags: -Zthir-unsafeck
-// [drop_tracking] compile-flags: -Zdrop-tracking
-// [drop_tracking_mir] compile-flags: -Zdrop-tracking-mir
+//@revisions: mir thir drop_tracking drop_tracking_mir
+//@[thir] compile-flags: -Zthir-unsafeck
+//@[drop_tracking] compile-flags: -Zdrop-tracking
+//@[drop_tracking_mir] compile-flags: -Zdrop-tracking-mir
 
 #![feature(generators)]
 

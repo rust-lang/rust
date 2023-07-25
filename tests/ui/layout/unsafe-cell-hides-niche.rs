@@ -3,8 +3,8 @@
 // test checks that an `Option<UnsafeCell<NonZeroU32>>` has the same
 // size in memory as an `Option<UnsafeCell<u32>>` (namely, 8 bytes).
 
-// check-pass
-// compile-flags: --crate-type=lib
+//@check-pass
+//@compile-flags: --crate-type=lib
 // only-x86
 
 #![feature(repr_simd)]

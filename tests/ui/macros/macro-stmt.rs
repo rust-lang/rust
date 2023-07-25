@@ -1,4 +1,4 @@
-// run-pass
+//@run
 macro_rules! myfn {
     ( $f:ident, ( $( $x:ident ),* ), $body:block ) => (
         fn $f( $( $x : isize),* ) -> isize $body

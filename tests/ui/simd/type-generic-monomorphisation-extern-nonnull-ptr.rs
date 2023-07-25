@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // ignore-emscripten
 
 #![feature(extern_types)]

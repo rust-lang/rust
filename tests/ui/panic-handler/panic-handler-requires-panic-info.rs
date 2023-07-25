@@ -1,5 +1,5 @@
-// compile-flags:-C panic=abort
-// error-pattern: language item required, but not found: `panic_info`
+//@compile-flags:-C panic=abort
+//@error-pattern: language item required, but not found: `panic_info`
 
 #![feature(lang_items)]
 #![feature(no_core)]

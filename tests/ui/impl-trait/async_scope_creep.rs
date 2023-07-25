@@ -1,6 +1,6 @@
 #![feature(type_alias_impl_trait)]
-// edition:2021
-// check-pass
+//@edition:2021
+//@check-pass
 
 struct Pending {}
 

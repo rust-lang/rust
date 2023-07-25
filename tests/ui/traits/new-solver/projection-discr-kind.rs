@@ -1,4 +1,4 @@
-// compile-flags: -Ztrait-solver=next
+//@compile-flags: -Ztrait-solver=next
 
 // Check that `<T::Assoc as DiscriminantKind>::Discriminant` doesn't normalize
 // to itself and cause overflow/ambiguity.

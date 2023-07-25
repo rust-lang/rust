@@ -1,8 +1,8 @@
 // This used to compile the future down to ud2, due to uninhabited types being
 // handled incorrectly in generators.
-// compile-flags: -Copt-level=z -Cdebuginfo=2 --edition=2018
+//@compile-flags: -Copt-level=z -Cdebuginfo=2 --edition=2018
 
-// run-pass
+//@run
 // ignore-asmjs wasm2js does not support source maps yet
 
 use std::future::Future;

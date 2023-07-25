@@ -1,4 +1,4 @@
-// run-pass
+//@run
 macro_rules! gen {
     ($name:ident ( $($dol:tt $var:ident)* ) $($body:tt)*) => {
         macro_rules! $name {

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Test that we can infer the "kind" of an unboxed closure based on
 // the expected type.
 

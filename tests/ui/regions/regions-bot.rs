@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(dead_code)]
 // A very limited test of the "bottom" region
 

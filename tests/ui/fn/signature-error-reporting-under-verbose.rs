@@ -1,4 +1,4 @@
-// compile-flags: -Zverbose
+//@compile-flags: -Zverbose
 
 fn foo(_: i32, _: i32) {}
 

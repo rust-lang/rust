@@ -1,4 +1,4 @@
-// compile-flags: -Z mir-opt-level=3
+//@compile-flags: -Z mir-opt-level=3
 // build-pass
 
 use std::fs::File;

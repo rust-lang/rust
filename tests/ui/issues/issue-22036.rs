@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 trait DigitCollection: Sized {
     type Iter: Iterator<Item = u8>;

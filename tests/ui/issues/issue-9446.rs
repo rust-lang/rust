@@ -1,4 +1,4 @@
-// run-pass
+//@run
 struct Wrapper(String);
 
 impl Wrapper {

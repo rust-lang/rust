@@ -1,6 +1,6 @@
-// run-pass
+//@run
 // needs-unwind
-// compile-flags: --test
+//@compile-flags: --test
 #[test]
 #[should_panic(expected = "foo")]
 pub fn test_foo() {

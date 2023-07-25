@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Test for issue #112204 -- make sure this goes through the entire compilation pipeline,
 // similar to why `offset-of-unsized.rs` is also build-pass
 

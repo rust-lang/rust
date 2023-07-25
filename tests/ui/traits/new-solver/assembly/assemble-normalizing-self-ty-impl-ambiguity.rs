@@ -1,5 +1,5 @@
-// compile-flags: -Ztrait-solver=next
-// check-pass
+//@compile-flags: -Ztrait-solver=next
+//@check-pass
 
 // Checks that we do not get ambiguity by considering an impl
 // multiple times if we're able to normalize the self type.

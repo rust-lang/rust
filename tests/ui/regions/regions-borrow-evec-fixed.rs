@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 fn foo(x: &[isize]) -> isize {
     x[0]

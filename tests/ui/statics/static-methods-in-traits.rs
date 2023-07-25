@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 mod a {
     pub trait Foo {

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![feature(extern_types)]
 
 use std::mem::{align_of_val, size_of_val};

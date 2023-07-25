@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // check-run-results
 
 // Tests ensuring that `dbg!(expr)` has the expected run-time behavior.

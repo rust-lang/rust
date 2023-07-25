@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:xcrate_unit_struct.rs
+//@run
+//@aux-build:xcrate_unit_struct.rs
 // pretty-expanded FIXME #23616
 #![allow(non_upper_case_globals)]
 

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 trait Foo {
     fn f(self: Box<Self>);

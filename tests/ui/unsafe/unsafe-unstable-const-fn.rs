@@ -1,5 +1,5 @@
-// revisions: mir thir
-// [thir]compile-flags: -Z thir-unsafeck
+//@revisions: mir thir
+//@[thir] compile-flags: -Z thir-unsafeck
 
 #![stable(feature = "foo", since = "1.33.0")]
 #![feature(staged_api)]

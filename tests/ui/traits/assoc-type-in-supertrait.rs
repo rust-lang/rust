@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Test case where an associated type is referenced from within the
 // supertrait definition. Issue #20220.
 

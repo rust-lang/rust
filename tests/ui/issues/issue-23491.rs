@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(unused_variables)]
 
 struct Node<T: ?Sized>(#[allow(unused_tuple_struct_fields)] T);

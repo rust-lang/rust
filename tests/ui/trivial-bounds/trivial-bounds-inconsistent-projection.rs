@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Check that global bounds result in the expected choice of associated type
 
 #![feature(trivial_bounds)]

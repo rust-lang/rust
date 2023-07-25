@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 // Iota-reduction is a rule in the Calculus of (Co-)Inductive Constructions,
 // which "says that a destructor applied to an object built from a constructor

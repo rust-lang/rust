@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Test that empty type parameter list (<>) is synonymous with
 // no type parameters at all
 

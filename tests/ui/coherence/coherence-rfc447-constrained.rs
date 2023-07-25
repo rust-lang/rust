@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // check that trait matching can handle impls whose types are only
 // constrained by a projection.
 

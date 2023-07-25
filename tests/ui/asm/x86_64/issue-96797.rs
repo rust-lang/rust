@@ -1,6 +1,6 @@
 // build-pass
-// compile-flags: -O
-// needs-asm-support
+//@compile-flags: -O
+//@needs-asm-support
 // only-x86_64
 // only-linux
 

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 struct Parser<'a>(#[allow(unused_tuple_struct_fields)] Box<dyn FnMut(Parser) + 'a>);
 
 fn main() {

@@ -1,6 +1,6 @@
-// run-pass
+//@run
 // ignore-wasm32-bare: No panic messages
-// compile-flags: -C debug-assertions
+//@compile-flags: -C debug-assertions
 
 struct Misalignment {
     a: u32,

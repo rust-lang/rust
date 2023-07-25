@@ -1,5 +1,5 @@
 #![feature(thin_box)]
-// run-pass
+//@run
 use std::boxed::ThinBox;
 use std::error::Error;
 use std::ops::Deref;

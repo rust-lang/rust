@@ -1,4 +1,4 @@
-// run-pass
+//@run
 trait Foo<'a> {
     fn bar<'b>(&self, x: &'b u8) -> u8 where 'a: 'b { *x+7 }
 }

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 use foo::x;
 use foo::x as z;

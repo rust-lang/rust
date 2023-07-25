@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Ignore this test on Android, because it segfaults there.
 
 // ignore-android

@@ -1,8 +1,9 @@
 // This test checks that we don't lint values defined by a custom target (target json)
 //
-// check-pass
+//@check-pass
 // needs-llvm-components: x86
-// compile-flags: --crate-type=lib --check-cfg=values() --target={{src-base}}/check-cfg/my-awesome-platform.json -Z unstable-options
+//@compile-flags: --crate-type=lib --check-cfg=values()
+//@compile-flags: --target={{src-base}}/check-cfg/my-awesome-platform.json -Z unstable-options
 
 #![feature(lang_items, no_core, auto_traits)]
 #![no_core]

@@ -1,5 +1,5 @@
-// compile-flags: -Zunleash-the-miri-inside-of-you
-// run-pass
+//@compile-flags: -Zunleash-the-miri-inside-of-you
+//@run
 
 #![feature(const_raw_ptr_comparison)]
 

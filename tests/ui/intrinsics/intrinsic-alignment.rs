@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // ignore-wasm32-bare seems not important to test here
 
 #![feature(intrinsics)]

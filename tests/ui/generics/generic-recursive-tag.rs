@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(non_camel_case_types)]
 
 enum list<T> { #[allow(unused_tuple_struct_fields)] cons(Box<T>, Box<list<T>>), nil, }

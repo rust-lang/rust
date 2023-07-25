@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 // Make sure we don't crash with a cycle error during coherence.
 

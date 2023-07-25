@@ -1,4 +1,4 @@
-// run-pass
+//@run
 macro_rules! id {
     ($s: pat) => ($s);
 }

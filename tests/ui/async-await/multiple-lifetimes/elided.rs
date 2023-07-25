@@ -1,5 +1,5 @@
-// edition:2018
-// run-pass
+//@edition:2018
+//@run
 
 // Test that we can use async fns with multiple arbitrary lifetimes.
 

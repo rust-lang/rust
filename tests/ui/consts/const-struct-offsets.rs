@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(dead_code)]
 // pretty-expanded FIXME #23616
 #![allow(non_upper_case_globals)]

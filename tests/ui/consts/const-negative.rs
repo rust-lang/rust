@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Issue #358
 #![allow(non_upper_case_globals)]
 

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Check that constant expressions can be used for declaring the
 // type of a fixed length vector.
 

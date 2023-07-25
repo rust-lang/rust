@@ -1,5 +1,5 @@
 // run-fail
-// error-pattern:quux
+//@error-pattern:quux
 // ignore-emscripten no processes
 
 fn f() -> ! {

@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 // Check that item-less traits do not cause dropck to inject extra
 // region constraints.

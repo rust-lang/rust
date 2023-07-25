@@ -1,5 +1,5 @@
-// compile-flags: -Ztrait-solver=next
-// check-pass
+//@compile-flags: -Ztrait-solver=next
+//@check-pass
 #![feature(ptr_metadata)]
 
 use std::ptr::{DynMetadata, Pointee};

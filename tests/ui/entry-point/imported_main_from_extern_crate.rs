@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:main_functions.rs
+//@run
+//@aux-build:main_functions.rs
 
 #![feature(imported_main)]
 

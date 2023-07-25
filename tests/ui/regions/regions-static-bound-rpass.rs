@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 #![warn(unused_lifetimes)]
 

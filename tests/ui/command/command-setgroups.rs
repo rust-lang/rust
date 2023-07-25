@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // ignore-windows - this is a unix-specific test
 // ignore-emscripten
 // ignore-sgx

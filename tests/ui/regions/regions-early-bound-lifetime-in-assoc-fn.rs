@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(unused_imports)]
 // Test that we are able to compile calls to associated fns like
 // `decode()` where the bound on the `Self` parameter references a

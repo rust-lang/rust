@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(dead_code)]
 // test for issue #30244
 

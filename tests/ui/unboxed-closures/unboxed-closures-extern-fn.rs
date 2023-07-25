@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Checks that extern fn pointers implement the full range of Fn traits.
 
 use std::ops::{Fn,FnMut,FnOnce};

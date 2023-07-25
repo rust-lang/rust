@@ -1,4 +1,4 @@
-// edition: 2021
+//@edition: 2021
 // check-pass
 // https://github.com/rust-lang/rust/issues/105235#issue-1474295873
 

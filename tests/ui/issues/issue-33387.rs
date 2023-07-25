@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![feature(rustc_attrs)]
 
 use std::sync::Arc;

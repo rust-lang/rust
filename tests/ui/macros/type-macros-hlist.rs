@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(unused_macro_rules)]
 
 use std::ops::*;

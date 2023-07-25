@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Regression test for incorrect DropAndReplace behavior introduced in #60840
 // and fixed in #61373. When combined with the optimization implemented in
 // #60187, this produced incorrect code for generators when a saved local was

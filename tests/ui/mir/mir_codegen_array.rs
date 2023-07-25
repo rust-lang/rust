@@ -1,4 +1,4 @@
-// run-pass
+//@run
 #![allow(unused_mut)]
 fn into_inner() -> [u64; 1024] {
     let mut x = 10 + 20;

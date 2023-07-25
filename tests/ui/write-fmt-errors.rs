@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 #![feature(io_error_uncategorized)]
 

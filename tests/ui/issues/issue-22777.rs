@@ -1,4 +1,4 @@
-// check-pass
+//@check-pass
 // This test is reduced from librustc_ast.  It is just checking that we
 // can successfully deal with a "deep" structure, which the drop-check
 // was hitting a recursion limit on at one point.

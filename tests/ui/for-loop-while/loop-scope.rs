@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 pub fn main() {
     let x = vec![10, 20, 30];

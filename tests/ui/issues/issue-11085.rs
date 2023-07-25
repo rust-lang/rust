@@ -1,6 +1,6 @@
-// run-pass
+//@run
 #![allow(dead_code)]
-// compile-flags: --cfg foo
+//@compile-flags: --cfg foo
 
 // pretty-expanded FIXME #23616
 

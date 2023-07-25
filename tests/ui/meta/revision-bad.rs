@@ -2,11 +2,11 @@
 // patterns, the test fails.
 
 // run-fail
-// revisions: foo bar
+//@revisions: foo bar
 // should-fail
 // needs-run-enabled
-//[foo] error-pattern:bar
-//[bar] error-pattern:foo
+//@[foo] error-pattern:bar
+//@[bar] error-pattern:foo
 
 #[cfg(foo)]
 fn die() {

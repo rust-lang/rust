@@ -1,4 +1,4 @@
-// run-pass
+//@run
 struct Wrapper<'a, T: ?Sized>(&'a mut i32, #[allow(unused_tuple_struct_fields)] T);
 
 impl<'a, T: ?Sized> Drop for Wrapper<'a, T> {

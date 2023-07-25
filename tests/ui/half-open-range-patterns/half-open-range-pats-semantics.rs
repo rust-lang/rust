@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 // Test half-open range patterns against their expression equivalents
 // via `.contains(...)` and make sure the dynamic semantics match.

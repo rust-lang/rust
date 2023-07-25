@@ -1,7 +1,7 @@
-// run-pass
+//@run
 // Regression test for #42210.
 
-// compile-flags: -g
+//@compile-flags: -g
 // ignore-asmjs wasm2js does not support source maps yet
 
 trait Foo {

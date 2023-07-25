@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Test equality constraints on associated types inside of an object type
 
 // pretty-expanded FIXME #23616

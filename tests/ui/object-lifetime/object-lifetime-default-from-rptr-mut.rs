@@ -1,4 +1,4 @@
-// run-pass
+//@run
 // Test that the lifetime of the enclosing `&` is used for the object
 // lifetime bound.
 

@@ -1,7 +1,7 @@
-// run-pass
+//@run
 
-// compile-flags:-Cstrip=none
-// compile-flags:-g -Csplit-debuginfo=unpacked
+//@compile-flags:-Cstrip=none
+//@compile-flags:-g -Csplit-debuginfo=unpacked
 // only-macos
 
 use std::process::Command;

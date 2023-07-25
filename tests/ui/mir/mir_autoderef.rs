@@ -1,4 +1,4 @@
-// run-pass
+//@run
 use std::ops::{Deref, DerefMut};
 
 pub struct MyRef(u32);

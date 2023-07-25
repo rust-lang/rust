@@ -1,4 +1,4 @@
-// run-pass
+//@run
 
 use std::borrow::{Cow, ToOwned};
 use std::default::Default;
