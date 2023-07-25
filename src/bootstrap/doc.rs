@@ -894,19 +894,10 @@ tool_doc!(
         "-p",
         "cargo-credential",
         "-p",
-        "cargo-credential-1password",
-        "-p",
         "mdman",
         // FIXME: this trips a license check in tidy.
         // "-p",
         // "resolver-tests",
-        // FIXME: we should probably document these, but they're different per-platform so we can't use `tool_doc`.
-        // "-p",
-        // "cargo-credential-gnome-secret",
-        // "-p",
-        // "cargo-credential-macos-keychain",
-        // "-p",
-        // "cargo-credential-wincred",
     ]
 );
 tool_doc!(Tidy, "tidy", "src/tools/tidy", rustc_tool = false, ["-p", "tidy"]);
