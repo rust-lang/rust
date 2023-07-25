@@ -232,6 +232,11 @@ jobs:
     - name: Install toolchain
       run: rustup show active-toolchain
 
+    - name: Set LD_LIBRARY_PATH
+      run: |
+        SYSROOT=$(rustc --print sysroot)
+        echo "LD_LIBRARY_PATH=${SYSROOT}/lib${LD_LIBRARY_PATH+:${LD_LIBRARY_PATH}}" >> $GITHUB_ENV
+
     # Download
     - name: Download target dir
       uses: actions/download-artifact@v3
@@ -246,7 +251,7 @@ jobs:
     - name: Test ${{ matrix.integration }}
       run: |
         RUSTUP_TOOLCHAIN="$(rustup show active-toolchain | grep -o -E "nightly-[0-9]{4}-[0-9]{2}-[0-9]{2}")" \
-          $CARGO_TARGET_DIR/debug/integration
+          $CARGO_TARGET_DIR/debug/integration --show-output
       env:
         INTEGRATION: ${{ matrix.integration }}
 
