@@ -1189,7 +1189,7 @@ impl FieldsShape {
             }
             FieldsShape::Array { stride, count } => {
                 let i = u64::try_from(i).unwrap();
-                assert!(i < count);
+                assert!(i < count, "tried to access field {} of array with {} fields", i, count);
                 stride * i
             }
             FieldsShape::Arbitrary { ref offsets, .. } => offsets[FieldIdx::from_usize(i)],

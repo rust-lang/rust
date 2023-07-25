@@ -413,13 +413,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 Ok(())
             }
         }
-        impl<'ecx, 'mir, 'tcx> MutValueVisitor<'mir, 'tcx, MiriMachine<'mir, 'tcx>>
+        impl<'ecx, 'mir, 'tcx> ValueVisitor<'mir, 'tcx, MiriMachine<'mir, 'tcx>>
             for RetagVisitor<'ecx, 'mir, 'tcx>
         {
             type V = PlaceTy<'tcx, Provenance>;
 
             #[inline(always)]
-            fn ecx(&mut self) -> &mut MiriInterpCx<'mir, 'tcx> {
+            fn ecx(&self) -> &MiriInterpCx<'mir, 'tcx> {
                 self.ecx
             }
 
@@ -578,14 +578,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 /// I.e. input is what you get from the visitor upon encountering an `adt` that is `Unique`,
 /// and output can be used by `retag_ptr_inplace`.
 fn inner_ptr_of_unique<'tcx>(
-    ecx: &mut MiriInterpCx<'_, 'tcx>,
+    ecx: &MiriInterpCx<'_, 'tcx>,
     place: &PlaceTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, PlaceTy<'tcx, Provenance>> {
     // Follows the same layout as `interpret/visitor.rs:walk_value` for `Box` in
     // `rustc_const_eval`, just with one fewer layer.
     // Here we have a `Unique(NonNull(*mut), PhantomData)`
     assert_eq!(place.layout.fields.count(), 2, "Unique must have exactly 2 fields");
-    let (nonnull, phantom) = (ecx.place_field(place, 0)?, ecx.place_field(place, 1)?);
+    let (nonnull, phantom) = (ecx.project_field(place, 0)?, ecx.project_field(place, 1)?);
     assert!(
         phantom.layout.ty.ty_adt_def().is_some_and(|adt| adt.is_phantom_data()),
         "2nd field of `Unique` should be `PhantomData` but is `{:?}`",
@@ -593,7 +593,7 @@ fn inner_ptr_of_unique<'tcx>(
     );
     // Now down to `NonNull(*mut)`
     assert_eq!(nonnull.layout.fields.count(), 1, "NonNull must have exactly 1 field");
-    let ptr = ecx.place_field(&nonnull, 0)?;
+    let ptr = ecx.project_field(&nonnull, 0)?;
     // Finally a plain `*mut`
     Ok(ptr)
 }

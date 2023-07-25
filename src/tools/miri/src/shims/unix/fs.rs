@@ -1141,7 +1141,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 ("tv_sec", access_sec.into()),
                 ("tv_nsec", access_nsec.into()),
             ],
-            &this.mplace_field_named(&statxbuf, "stx_atime")?,
+            &this.project_field_named(&statxbuf, "stx_atime")?,
         )?;
         #[rustfmt::skip]
         this.write_int_fields_named(
@@ -1149,7 +1149,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 ("tv_sec", created_sec.into()),
                 ("tv_nsec", created_nsec.into()),
             ],
-            &this.mplace_field_named(&statxbuf, "stx_btime")?,
+            &this.project_field_named(&statxbuf, "stx_btime")?,
         )?;
         #[rustfmt::skip]
         this.write_int_fields_named(
@@ -1157,7 +1157,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 ("tv_sec", 0.into()),
                 ("tv_nsec", 0.into()),
             ],
-            &this.mplace_field_named(&statxbuf, "stx_ctime")?,
+            &this.project_field_named(&statxbuf, "stx_ctime")?,
         )?;
         #[rustfmt::skip]
         this.write_int_fields_named(
@@ -1165,7 +1165,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 ("tv_sec", modified_sec.into()),
                 ("tv_nsec", modified_nsec.into()),
             ],
-            &this.mplace_field_named(&statxbuf, "stx_mtime")?,
+            &this.project_field_named(&statxbuf, "stx_mtime")?,
         )?;
 
         Ok(0)
@@ -1421,7 +1421,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 // }
 
                 let entry_place = this.deref_operand_as(entry_op, this.libc_ty_layout("dirent"))?;
-                let name_place = this.mplace_field(&entry_place, 5)?;
+                let name_place = this.project_field(&entry_place, 5)?;
 
                 let file_name = dir_entry.file_name(); // not a Path as there are no separators!
                 let (name_fits, file_name_buf_len) = this.write_os_str_to_c_str(

@@ -1014,9 +1014,12 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> std::fmt::Debug
 {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.place {
-            Place::Local { frame, local } => {
+            Place::Local { frame, local, offset } => {
                 let mut allocs = Vec::new();
                 write!(fmt, "{:?}", local)?;
+                if let Some(offset) = offset {
+                    write!(fmt, "+{:#x}", offset.bytes())?;
+                }
                 if frame != self.ecx.frame_idx() {
                     write!(fmt, " ({} frames up)", self.ecx.frame_idx() - frame)?;
                 }

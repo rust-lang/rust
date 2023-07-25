@@ -1,6 +1,6 @@
 //! Functions for reading and writing discriminants of multi-variant layouts (enums and generators).
 
-use rustc_middle::ty::layout::{LayoutOf, PrimitiveExt};
+use rustc_middle::ty::layout::{LayoutOf, PrimitiveExt, TyAndLayout};
 use rustc_middle::{mir, ty};
 use rustc_target::abi::{self, TagEncoding};
 use rustc_target::abi::{VariantIdx, Variants};
@@ -22,7 +22,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // When evaluating we will always error before even getting here, but ConstProp 'executes'
         // dead code, so we cannot ICE here.
         if dest.layout.for_variant(self, variant_index).abi.is_uninhabited() {
-            throw_ub!(UninhabitedEnumVariantWritten)
+            throw_ub!(UninhabitedEnumVariantWritten(variant_index))
         }
 
         match dest.layout.variants {
@@ -47,7 +47,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let size = tag_layout.size(self);
                 let tag_val = size.truncate(discr_val);
 
-                let tag_dest = self.place_field(dest, tag_field)?;
+                let tag_dest = self.project_field(dest, tag_field)?;
                 self.write_scalar(Scalar::from_uint(tag_val, size), &tag_dest)?;
             }
             abi::Variants::Multiple {
@@ -78,7 +78,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         &niche_start_val,
                     )?;
                     // Write result.
-                    let niche_dest = self.place_field(dest, tag_field)?;
+                    let niche_dest = self.project_field(dest, tag_field)?;
                     self.write_immediate(*tag_val, &niche_dest)?;
                 }
             }
@@ -93,7 +93,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn read_discriminant(
         &self,
         op: &OpTy<'tcx, M::Provenance>,
-    ) -> InterpResult<'tcx, (Scalar<M::Provenance>, VariantIdx)> {
+    ) -> InterpResult<'tcx, VariantIdx> {
         trace!("read_discriminant_value {:#?}", op.layout);
         // Get type and layout of the discriminant.
         let discr_layout = self.layout_of(op.layout.ty.discriminant_ty(*self.tcx))?;
@@ -106,19 +106,22 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // straight-forward (`TagEncoding::Direct`) or with a niche (`TagEncoding::Niche`).
         let (tag_scalar_layout, tag_encoding, tag_field) = match op.layout.variants {
             Variants::Single { index } => {
-                let discr = match op.layout.ty.discriminant_for_variant(*self.tcx, index) {
-                    Some(discr) => {
-                        // This type actually has discriminants.
-                        assert_eq!(discr.ty, discr_layout.ty);
-                        Scalar::from_uint(discr.val, discr_layout.size)
+                // Do some extra checks on enums.
+                if op.layout.ty.is_enum() {
+                    // Hilariously, `Single` is used even for 0-variant enums.
+                    // (See https://github.com/rust-lang/rust/issues/89765).
+                    if matches!(op.layout.ty.kind(), ty::Adt(def, ..) if def.variants().is_empty())
+                    {
+                        throw_ub!(UninhabitedEnumVariantRead(index))
                     }
-                    None => {
-                        // On a type without actual discriminants, variant is 0.
-                        assert_eq!(index.as_u32(), 0);
-                        Scalar::from_uint(index.as_u32(), discr_layout.size)
+                    // For consisteny with `write_discriminant`, and to make sure that
+                    // `project_downcast` cannot fail due to strange layouts, we declare immediate UB
+                    // for uninhabited variants.
+                    if op.layout.for_variant(self, index).abi.is_uninhabited() {
+                        throw_ub!(UninhabitedEnumVariantRead(index))
                     }
-                };
-                return Ok((discr, index));
+                }
+                return Ok(index);
             }
             Variants::Multiple { tag, ref tag_encoding, tag_field, .. } => {
                 (tag, tag_encoding, tag_field)
@@ -138,13 +141,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let tag_layout = self.layout_of(tag_scalar_layout.primitive().to_int_ty(*self.tcx))?;
 
         // Read tag and sanity-check `tag_layout`.
-        let tag_val = self.read_immediate(&self.operand_field(op, tag_field)?)?;
+        let tag_val = self.read_immediate(&self.project_field(op, tag_field)?)?;
         assert_eq!(tag_layout.size, tag_val.layout.size);
         assert_eq!(tag_layout.abi.is_signed(), tag_val.layout.abi.is_signed());
         trace!("tag value: {}", tag_val);
 
         // Figure out which discriminant and variant this corresponds to.
-        Ok(match *tag_encoding {
+        let index = match *tag_encoding {
             TagEncoding::Direct => {
                 let scalar = tag_val.to_scalar();
                 // Generate a specific error if `tag_val` is not an integer.
@@ -172,7 +175,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
                 .ok_or_else(|| err_ub!(InvalidTag(Scalar::from_uint(tag_bits, tag_layout.size))))?;
                 // Return the cast value, and the index.
-                (discr_val, index.0)
+                index.0
             }
             TagEncoding::Niche { untagged_variant, ref niche_variants, niche_start } => {
                 let tag_val = tag_val.to_scalar();
@@ -230,7 +233,32 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // Compute the size of the scalar we need to return.
                 // No need to cast, because the variant index directly serves as discriminant and is
                 // encoded in the tag.
-                (Scalar::from_uint(variant.as_u32(), discr_layout.size), variant)
+                variant
+            }
+        };
+        // For consisteny with `write_discriminant`, and to make sure that `project_downcast` cannot fail due to strange layouts, we declare immediate UB for uninhabited variants.
+        if op.layout.for_variant(self, index).abi.is_uninhabited() {
+            throw_ub!(UninhabitedEnumVariantRead(index))
+        }
+        Ok(index)
+    }
+
+    pub fn discriminant_for_variant(
+        &self,
+        layout: TyAndLayout<'tcx>,
+        variant: VariantIdx,
+    ) -> InterpResult<'tcx, Scalar<M::Provenance>> {
+        let discr_layout = self.layout_of(layout.ty.discriminant_ty(*self.tcx))?;
+        Ok(match layout.ty.discriminant_for_variant(*self.tcx, variant) {
+            Some(discr) => {
+                // This type actually has discriminants.
+                assert_eq!(discr.ty, discr_layout.ty);
+                Scalar::from_uint(discr.val, discr_layout.size)
+            }
+            None => {
+                // On a type without actual discriminants, variant is 0.
+                assert_eq!(variant.as_u32(), 0);
+                Scalar::from_uint(variant.as_u32(), discr_layout.size)
             }
         })
     }

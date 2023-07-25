@@ -26,9 +26,10 @@ pub use self::machine::{compile_time_machine, AllocMap, Machine, MayLeak, StackP
 pub use self::memory::{AllocKind, AllocRef, AllocRefMut, FnVal, Memory, MemoryKind};
 pub use self::operand::{ImmTy, Immediate, OpTy, Operand};
 pub use self::place::{MPlaceTy, MemPlace, MemPlaceMeta, Place, PlaceTy};
+pub use self::projection::Projectable;
 pub use self::terminator::FnArg;
 pub use self::validity::{CtfeValidationMode, RefTracking};
-pub use self::visitor::{MutValueVisitor, Value, ValueVisitor};
+pub use self::visitor::ValueVisitor;
 
 pub(crate) use self::intrinsics::eval_nullary_intrinsic;
 use eval_context::{from_known_layout, mir_assign_valid_types};

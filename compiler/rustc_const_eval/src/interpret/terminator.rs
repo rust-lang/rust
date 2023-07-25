@@ -60,13 +60,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     pub fn fn_arg_field(
-        &mut self,
+        &self,
         arg: &FnArg<'tcx, M::Provenance>,
         field: usize,
     ) -> InterpResult<'tcx, FnArg<'tcx, M::Provenance>> {
         Ok(match arg {
-            FnArg::Copy(op) => FnArg::Copy(self.operand_field(op, field)?),
-            FnArg::InPlace(place) => FnArg::InPlace(self.place_field(place, field)?),
+            FnArg::Copy(op) => FnArg::Copy(self.project_field(op, field)?),
+            FnArg::InPlace(place) => FnArg::InPlace(self.project_field(place, field)?),
         })
     }
 
@@ -239,7 +239,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     /// Evaluate the arguments of a function call
     pub(super) fn eval_fn_call_arguments(
-        &mut self,
+        &self,
         ops: &[mir::Operand<'tcx>],
     ) -> InterpResult<'tcx, Vec<FnArg<'tcx, M::Provenance>>> {
         ops.iter()
@@ -382,12 +382,16 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // This all has to be in memory, there are no immediate unsized values.
             let src = caller_arg_copy.assert_mem_place();
             // The destination cannot be one of these "spread args".
-            let (dest_frame, dest_local) = callee_arg.assert_local();
+            let (dest_frame, dest_local, dest_offset) = callee_arg
+                .as_mplace_or_local()
+                .right()
+                .expect("callee fn arguments must be locals");
             // We are just initializing things, so there can't be anything here yet.
             assert!(matches!(
                 *self.local_to_op(&self.stack()[dest_frame], dest_local, None)?,
                 Operand::Immediate(Immediate::Uninit)
             ));
+            assert_eq!(dest_offset, None);
             // Allocate enough memory to hold `src`.
             let Some((size, align)) = self.size_and_align_of_mplace(&src)? else {
                 span_bug!(
@@ -595,7 +599,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         if Some(local) == body.spread_arg {
                             // Must be a tuple
                             for i in 0..dest.layout.fields.count() {
-                                let dest = self.place_field(&dest, i)?;
+                                let dest = self.project_field(&dest, i)?;
                                 let callee_abi = callee_args_abis.next().unwrap();
                                 self.pass_argument(&mut caller_args, callee_abi, &dest)?;
                             }
@@ -677,7 +681,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             // Not there yet, search for the only non-ZST field.
                             let mut non_zst_field = None;
                             for i in 0..receiver.layout.fields.count() {
-                                let field = self.operand_field(&receiver, i)?;
+                                let field = self.project_field(&receiver, i)?;
                                 let zst =
                                     field.layout.is_zst() && field.layout.align.abi.bytes() == 1;
                                 if !zst {
@@ -703,12 +707,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let (vptr, dyn_ty, adjusted_receiver) = if let ty::Dynamic(data, _, ty::DynStar) =
                     receiver_place.layout.ty.kind()
                 {
-                    let (recv, vptr) = self.unpack_dyn_star(&receiver_place.into())?;
+                    let (recv, vptr) = self.unpack_dyn_star(&receiver_place)?;
                     let (dyn_ty, dyn_trait) = self.get_ptr_vtable(vptr)?;
                     if dyn_trait != data.principal() {
                         throw_ub_custom!(fluent::const_eval_dyn_star_call_vtable_mismatch);
                     }
-                    let recv = recv.assert_mem_place(); // we passed an MPlaceTy to `unpack_dyn_star` so we definitely still have one
 
                     (vptr, dyn_ty, recv.ptr)
                 } else {
@@ -836,7 +839,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
             ty::Dynamic(_, _, ty::DynStar) => {
                 // Dropping a `dyn*`. Need to find actual drop fn.
-                self.unpack_dyn_star(&place.into())?.0.assert_mem_place()
+                self.unpack_dyn_star(&place)?.0
             }
             _ => {
                 debug_assert_eq!(
