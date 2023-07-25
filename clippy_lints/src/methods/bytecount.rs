@@ -45,7 +45,7 @@ pub(super) fn check<'tcx>(
             let haystack = if let ExprKind::MethodCall(path, receiver, [], _) =
                     filter_recv.kind {
                 let p = path.ident.name;
-                if p == sym::iter || p == sym!(iter_mut) {
+                if p == sym::iter || p == sym::iter_mut {
                     receiver
                 } else {
                     filter_recv
