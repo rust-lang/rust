@@ -35,7 +35,7 @@ impl Symbol {
         // Fast-path: check if this is a valid ASCII identifier
         if Self::is_valid_ascii_ident(string.as_bytes()) {
             if is_raw && !Self::can_be_raw(string) {
-                panic!("`{}` cannot be a raw identifier", string);
+                panic!("`{string}` cannot be a raw identifier");
             }
             return Self::new(string);
         }
@@ -49,7 +49,7 @@ impl Symbol {
         } else {
             client::Symbol::normalize_and_validate_ident(string)
         }
-        .unwrap_or_else(|_| panic!("`{:?}` is not a valid identifier", string))
+        .unwrap_or_else(|_| panic!("`{string:?}` is not a valid identifier"))
     }
 
     /// Run a callback with the symbol's string value.

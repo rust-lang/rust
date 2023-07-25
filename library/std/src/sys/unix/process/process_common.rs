@@ -569,7 +569,7 @@ impl fmt::Debug for Command {
             write!(f, "{:?}", self.args[0])?;
 
             for arg in &self.args[1..] {
-                write!(f, " {:?}", arg)?;
+                write!(f, " {arg:?}")?;
             }
             Ok(())
         }

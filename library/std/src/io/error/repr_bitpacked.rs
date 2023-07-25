@@ -194,8 +194,7 @@ impl Repr {
         // only run in std's tests, unless the user uses -Zbuild-std)
         debug_assert!(
             matches!(res.data(), ErrorData::Simple(k) if k == kind),
-            "repr(simple) encoding failed {:?}",
-            kind,
+            "repr(simple) encoding failed {kind:?}",
         );
         res
     }
@@ -256,7 +255,7 @@ where
         TAG_SIMPLE => {
             let kind_bits = (bits >> 32) as u32;
             let kind = kind_from_prim(kind_bits).unwrap_or_else(|| {
-                debug_assert!(false, "Invalid io::error::Repr bits: `Repr({:#018x})`", bits);
+                debug_assert!(false, "Invalid io::error::Repr bits: `Repr({bits:#018x})`");
                 // This means the `ptr` passed in was not valid, which violates
                 // the unsafe contract of `decode_repr`.
                 //

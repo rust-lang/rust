@@ -35,7 +35,7 @@ fn str_to_cdata(s: &str) -> String {
     let escaped_output = escaped_output.replace('\n', "]]>&#xA;<![CDATA[");
     // Prune empty CDATA blocks resulting from any escaping
     let escaped_output = escaped_output.replace("<![CDATA[]]>", "");
-    format!("<![CDATA[{}]]>", escaped_output)
+    format!("<![CDATA[{escaped_output}]]>")
 }
 
 impl<T: Write> OutputFormatter for JunitFormatter<T> {

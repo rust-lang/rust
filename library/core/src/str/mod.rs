@@ -111,14 +111,7 @@ fn slice_error_fail_rt(s: &str, begin: usize, end: usize) -> ! {
     }
 
     // 2. begin <= end
-    assert!(
-        begin <= end,
-        "begin <= end ({} <= {}) when slicing `{}`{}",
-        begin,
-        end,
-        s_trunc,
-        ellipsis
-    );
+    assert!((begin <= end), "begin ({begin}) <= end ({end}) when slicing `{s_trunc}`{ellipsis}");
 
     // 3. character boundary
     let index = if !s.is_char_boundary(begin) { begin } else { end };

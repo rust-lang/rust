@@ -1434,8 +1434,7 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
 
     assert!(
         (2..=36).contains(&radix),
-        "from_str_radix_int: must lie in the range `[2, 36]` - found {}",
-        radix
+        "from_str_radix_int: must lie in the range `[2, 36]` - found {radix}"
     );
 
     if src.is_empty() {

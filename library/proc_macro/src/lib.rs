@@ -947,7 +947,7 @@ impl Punct {
             ':', '#', '$', '?', '\'',
         ];
         if !LEGAL_CHARS.contains(&ch) {
-            panic!("unsupported character `{:?}`", ch);
+            panic!("unsupported character `{ch:?}`");
         }
         Punct(bridge::Punct {
             ch: ch as u8,
@@ -1310,7 +1310,7 @@ impl Literal {
     /// String literal.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn string(string: &str) -> Literal {
-        let quoted = format!("{:?}", string);
+        let quoted = format!("{string:?}");
         assert!(quoted.starts_with('"') && quoted.ends_with('"'));
         let symbol = &quoted[1..quoted.len() - 1];
         Literal::new(bridge::LitKind::Str, symbol, None)
@@ -1319,7 +1319,7 @@ impl Literal {
     /// Character literal.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn character(ch: char) -> Literal {
-        let quoted = format!("{:?}", ch);
+        let quoted = format!("{ch:?}");
         assert!(quoted.starts_with('\'') && quoted.ends_with('\''));
         let symbol = &quoted[1..quoted.len() - 1];
         Literal::new(bridge::LitKind::Char, symbol, None)

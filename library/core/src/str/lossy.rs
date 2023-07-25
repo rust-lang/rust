@@ -100,7 +100,7 @@ impl fmt::Debug for Debug<'_> {
 
             // Broken parts of string as hex escape.
             for &b in chunk.invalid() {
-                write!(f, "\\x{:02X}", b)?;
+                write!(f, "\\x{b:02X}")?;
             }
         }
 

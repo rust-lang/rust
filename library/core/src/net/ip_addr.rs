@@ -1863,7 +1863,7 @@ impl fmt::Display for Ipv6Addr {
             } else if self.is_loopback() {
                 f.write_str("::1")
             } else if let Some(ipv4) = self.to_ipv4_mapped() {
-                write!(f, "::ffff:{}", ipv4)
+                write!(f, "::ffff:{ipv4}")
             } else {
                 #[derive(Copy, Clone, Default)]
                 struct Span {
@@ -1899,10 +1899,10 @@ impl fmt::Display for Ipv6Addr {
                 #[inline]
                 fn fmt_subslice(f: &mut fmt::Formatter<'_>, chunk: &[u16]) -> fmt::Result {
                     if let Some((first, tail)) = chunk.split_first() {
-                        write!(f, "{:x}", first)?;
+                        write!(f, "{first:x}")?;
                         for segment in tail {
                             f.write_char(':')?;
-                            write!(f, "{:x}", segment)?;
+                            write!(f, "{segment:x}")?;
                         }
                     }
                     Ok(())
@@ -1921,7 +1921,7 @@ impl fmt::Display for Ipv6Addr {
 
             let mut buf = DisplayBuffer::<{ LONGEST_IPV6_ADDR.len() }>::new();
             // Buffer is long enough for the longest possible IPv6 address, so this should never fail.
-            write!(buf, "{}", self).unwrap();
+            write!(buf, "{self}").unwrap();
 
             f.pad(buf.as_str())
         }
