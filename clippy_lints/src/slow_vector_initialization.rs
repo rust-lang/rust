@@ -1,6 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::sugg::Sugg;
-use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{
     get_enclosing_block, is_expr_path_def_path, is_integer_literal, is_path_diagnostic_item, path_to_local,
     path_to_local_id, paths, SpanlessEq,
@@ -8,7 +7,7 @@ use clippy_utils::{
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_block, walk_expr, walk_stmt, Visitor};
-use rustc_hir::{BindingAnnotation, Block, Expr, ExprKind, HirId, PatKind, QPath, Stmt, StmtKind};
+use rustc_hir::{BindingAnnotation, Block, Expr, ExprKind, HirId, PatKind, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::symbol::sym;
@@ -133,29 +132,20 @@ impl<'tcx> LateLintPass<'tcx> for SlowVectorInit {
 }
 
 impl SlowVectorInit {
+    /// Looks for `Vec::with_capacity(size)` or `Vec::new()` calls and returns the initialized size,
+    /// if any. More specifically, it returns:
+    /// - `Some(InitializedSize::Initialized(size))` for `Vec::with_capacity(size)`
+    /// - `Some(InitializedSize::Uninitialized)` for `Vec::new()`
+    /// - `None` for other, unrelated kinds of expressions
     fn as_vec_initializer<'tcx>(cx: &LateContext<'_>, expr: &'tcx Expr<'tcx>) -> Option<InitializedSize<'tcx>> {
-        if let Some(len_expr) = Self::is_vec_with_capacity(cx, expr) {
+        if let ExprKind::Call(func, [len_expr]) = expr.kind
+            && is_expr_path_def_path(cx, func, &paths::VEC_WITH_CAPACITY)
+        {
             Some(InitializedSize::Initialized(len_expr))
         } else if matches!(expr.kind, ExprKind::Call(func, _) if is_expr_path_def_path(cx, func, &paths::VEC_NEW)) {
             Some(InitializedSize::Uninitialized)
         } else {
             None
-        }
-    }
-
-    /// Checks if the given expression is `Vec::with_capacity(..)`. It will return the expression
-    /// of the first argument of `with_capacity` call if it matches or `None` if it does not.
-    fn is_vec_with_capacity<'tcx>(cx: &LateContext<'_>, expr: &Expr<'tcx>) -> Option<&'tcx Expr<'tcx>> {
-        if_chain! {
-            if let ExprKind::Call(func, [arg]) = expr.kind;
-            if let ExprKind::Path(QPath::TypeRelative(ty, name)) = func.kind;
-            if name.ident.as_str() == "with_capacity";
-            if is_type_diagnostic_item(cx, cx.typeck_results().node_type(ty.hir_id), sym::Vec);
-            then {
-                Some(arg)
-            } else {
-                None
-            }
         }
     }
 
