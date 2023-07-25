@@ -1,4 +1,4 @@
-# From MIR to Binaries
+# Part 5: From MIR to Binaries
 
 All of the preceding chapters of this guide have one thing in common:
 we never generated any executable machine code at all!
