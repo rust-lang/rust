@@ -1,4 +1,3 @@
-// compile-flags: -Zwrite-long-types-to-disk=yes
 trait Trait { type AssociatedType; }
 
 fn foo<T>(t: T) where T: Trait<AssociatedType=u32> {

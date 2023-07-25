@@ -1,4 +1,3 @@
-// compile-flags: -Zwrite-long-types-to-disk=yes
 // normalize-stderr-test: "long-type-\d+" -> "long-type-hash"
 
 // Fixes #110131

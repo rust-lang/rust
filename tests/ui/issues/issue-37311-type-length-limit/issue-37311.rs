@@ -1,5 +1,4 @@
 // build-fail
-// compile-flags: -Zwrite-long-types-to-disk=yes
 // normalize-stderr-test: ".nll/" -> "/"
 // ignore-compare-mode-next-solver (hangs)
 
