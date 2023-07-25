@@ -1584,6 +1584,7 @@ fn first_non_private<'tcx>(
                 if let Some(use_def_id) = reexp.id() &&
                     let Some(local_use_def_id) = use_def_id.as_local() &&
                     let Some(hir::Node::Item(item)) = hir.find_by_def_id(local_use_def_id) &&
+                    !item.ident.name.is_empty() &&
                     let hir::ItemKind::Use(path, _) = item.kind
                 {
                     for res in &path.res {
