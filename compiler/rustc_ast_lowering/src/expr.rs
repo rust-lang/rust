@@ -100,7 +100,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         ParamMode::Optional,
                         ParenthesizedGenericArgs::Err,
                         &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
-                        None
+                        None,
                     ));
                     let receiver = self.lower_expr(receiver);
                     let args =
@@ -309,7 +309,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             &se.path,
                             ParamMode::Optional,
                             &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
-                            None
+                            None,
                         )),
                         self.arena
                             .alloc_from_iter(se.fields.iter().map(|x| self.lower_expr_field(x))),
@@ -1202,7 +1202,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         path,
                         ParamMode::Optional,
                         &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
-                        None
+                        None,
                     );
                     // Destructure like a unit struct.
                     let unit_struct_pat = hir::PatKind::Path(qpath);

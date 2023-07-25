@@ -142,7 +142,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         obligation: &PolyTraitObligation<'tcx>,
         idx: usize,
-        host_effect_param: Option<ty::Const<'tcx>>
+        host_effect_param: Option<ty::Const<'tcx>>,
     ) -> Result<Vec<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
         let tcx = self.tcx();
 

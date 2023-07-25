@@ -1243,10 +1243,7 @@ impl<'tcx> ToPredicate<'tcx> for TraitRef<'tcx> {
 impl<'tcx> ToPredicate<'tcx, TraitPredicate<'tcx>> for TraitRef<'tcx> {
     #[inline(always)]
     fn to_predicate(self, _tcx: TyCtxt<'tcx>) -> TraitPredicate<'tcx> {
-        TraitPredicate {
-            trait_ref: self,
-            polarity: ImplPolarity::Positive,
-        }
+        TraitPredicate { trait_ref: self, polarity: ImplPolarity::Positive }
     }
 }
 

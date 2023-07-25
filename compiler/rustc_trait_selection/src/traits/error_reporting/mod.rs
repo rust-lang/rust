@@ -372,7 +372,11 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
                     span: DUMMY_SP,
                     kind: TypeVariableOriginKind::MiscVariable,
                 });
-                let trait_ref = ty::TraitRef::new(self.tcx, trait_def_id, [ty.skip_binder().into(), ty::GenericArg::from(var), host.into()]);
+                let trait_ref = ty::TraitRef::new(
+                    self.tcx,
+                    trait_def_id,
+                    [ty.skip_binder().into(), ty::GenericArg::from(var), host.into()],
+                );
                 let obligation = Obligation::new(
                     self.tcx,
                     ObligationCause::dummy(),
@@ -3104,14 +3108,25 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         span: Span,
     ) -> UnsatisfiedConst {
         let mut unsatisfied_const = UnsatisfiedConst(false);
-        if trait_ref.skip_binder().args.host_effect_param().is_some() && obligation.param_env.is_const() {
+        if trait_ref.skip_binder().args.host_effect_param().is_some()
+            && obligation.param_env.is_const()
+        {
             let unconst_pred = trait_predicate.map_bound(|mut x| {
-                x.trait_ref = ty::TraitRef::new(self.tcx, x.trait_ref.def_id, x.trait_ref.args.iter().map(|arg| {
-                    match arg.unpack() {
-                        ty::GenericArgKind::Const(c) if matches!(c.kind(), ty::ConstKind::Param(ty::ParamConst { name: sym::host, .. })) => self.tcx.consts.true_.into(),
+                x.trait_ref = ty::TraitRef::new(
+                    self.tcx,
+                    x.trait_ref.def_id,
+                    x.trait_ref.args.iter().map(|arg| match arg.unpack() {
+                        ty::GenericArgKind::Const(c)
+                            if matches!(
+                                c.kind(),
+                                ty::ConstKind::Param(ty::ParamConst { name: sym::host, .. })
+                            ) =>
+                        {
+                            self.tcx.consts.true_.into()
+                        }
                         _ => arg,
-                    }
-                }));
+                    }),
+                );
                 x
             });
             let non_const_obligation = Obligation {

@@ -1352,7 +1352,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // TODO: check if this is always good to be infer var
                         let is_host = param.name == sym::host;
                         if !infer_args && has_default && !is_host {
-                            tcx.const_param_default(param.def_id).instantiate(tcx, args.unwrap()).into()
+                            tcx.const_param_default(param.def_id)
+                                .instantiate(tcx, args.unwrap())
+                                .into()
                         } else {
                             self.fcx.var_for_def(self.span, param)
                         }
@@ -1466,7 +1468,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // N.B. We are remapping all predicates to non-const since we don't know if we just
             // want them as function pointers or we are calling them from a const-context. The
             // actual checking will occur in `rustc_const_eval::transform::check_consts`.
-            // TODO: HMM?
             self.register_predicate(obligation);
         }
     }

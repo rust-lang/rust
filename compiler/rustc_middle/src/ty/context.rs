@@ -1985,17 +1985,9 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn is_const_trait_impl_raw(self, def_id: DefId) -> bool {
         let Some(local_def_id) = def_id.as_local() else { return false };
         let hir_id = self.local_def_id_to_hir_id(local_def_id);
-        let node = self.hir().get(hir_id);
+        let node = self.hir().attrs(hir_id);
 
-        // TODO
-        false
-        /*matches!(
-            node,
-            hir::Node::Item(hir::Item {
-                kind: hir::ItemKind::Impl(hir::Impl { constness: hir::Constness::Const, .. }),
-                ..
-            })
-        )*/
+        node.iter().any(|attr: &Attribute| {})
     }
 
     pub fn local_def_id_to_hir_id(self, local_def_id: LocalDefId) -> HirId {

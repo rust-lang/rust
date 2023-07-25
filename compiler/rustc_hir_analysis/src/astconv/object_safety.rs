@@ -62,10 +62,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             match bound_pred.skip_binder() {
                 ty::ClauseKind::Trait(trait_pred) => {
                     assert_eq!(trait_pred.polarity, ty::ImplPolarity::Positive);
-                    trait_bounds.push((
-                        bound_pred.rebind(trait_pred.trait_ref),
-                        span,
-                    ));
+                    trait_bounds.push((bound_pred.rebind(trait_pred.trait_ref), span));
                 }
                 ty::ClauseKind::Projection(proj) => {
                     projection_bounds.push((bound_pred.rebind(proj), span));

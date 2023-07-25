@@ -76,11 +76,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         parenthesized_generic_args,
                         itctx,
                         // if this is the last segment, add constness to the trait path
-                        if i == proj_start - 1 {
-                            constness
-                        } else {
-                            None
-                        }
+                        if i == proj_start - 1 { constness } else { None },
                     )
                 },
             )),

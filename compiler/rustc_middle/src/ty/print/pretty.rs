@@ -17,7 +17,7 @@ use rustc_hir::LangItem;
 use rustc_session::config::TrimmedDefPaths;
 use rustc_session::cstore::{ExternCrate, ExternCrateSource};
 use rustc_session::Limit;
-use rustc_span::symbol::{sym, kw, Ident, Symbol};
+use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::FileNameDisplayPreference;
 use rustc_target::abi::Size;
 use rustc_target::spec::abi::Abi;
@@ -2020,12 +2020,22 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
         let tcx = self.tcx;
 
         // skip host param as those are printed as `~const`
-        let mut args = args.iter().copied().filter(|arg| {
-            match arg.unpack() {
-                GenericArgKind::Const(c) if tcx.features().effects && matches!(c.kind(), ty::ConstKind::Param(ty::ParamConst { name: sym::host, .. })) => tcx.sess.verbose(),
-                _ => true
-            }
-        }).peekable();
+        let mut args = args
+            .iter()
+            .copied()
+            .filter(|arg| match arg.unpack() {
+                GenericArgKind::Const(c)
+                    if tcx.features().effects
+                        && matches!(
+                            c.kind(),
+                            ty::ConstKind::Param(ty::ParamConst { name: sym::host, .. })
+                        ) =>
+                {
+                    tcx.sess.verbose()
+                }
+                _ => true,
+            })
+            .peekable();
 
         if args.peek().is_some() {
             if self.in_value {

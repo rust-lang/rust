@@ -769,8 +769,7 @@ pub(super) fn type_param_predicates(
                     if param_id == item_hir_id {
                         let identity_trait_ref =
                             ty::TraitRef::identity(tcx, item_def_id.to_def_id());
-                        extend =
-                            Some((identity_trait_ref.to_predicate(tcx), item.span));
+                        extend = Some((identity_trait_ref.to_predicate(tcx), item.span));
                     }
                     generics
                 }
