@@ -7,7 +7,7 @@
 use crate::infer::outlives::env::OutlivesEnvironment;
 use crate::infer::InferOk;
 use crate::traits::outlives_bounds::InferCtxtExt as _;
-use crate::traits::select::IntercrateAmbiguityCause;
+use crate::traits::select::{IntercrateAmbiguityCause, TreatInductiveCycleAs};
 use crate::traits::util::impl_subject_and_oblig;
 use crate::traits::SkipLeakCheck;
 use crate::traits::{
@@ -210,16 +210,53 @@ fn overlap<'tcx>(
     let equate_obligations = equate_impl_headers(selcx.infcx, &impl1_header, &impl2_header)?;
     debug!("overlap: unification check succeeded");
 
-    if overlap_mode.use_implicit_negative()
-        && impl_intersection_has_impossible_obligation(
-            selcx,
-            param_env,
-            &impl1_header,
-            impl2_header,
-            equate_obligations,
-        )
-    {
-        return None;
+    if overlap_mode.use_implicit_negative() {
+        for mode in [TreatInductiveCycleAs::Ambig, TreatInductiveCycleAs::Recur] {
+            if let Some(failing_obligation) = selcx.with_treat_inductive_cycle_as(mode, |selcx| {
+                impl_intersection_has_impossible_obligation(
+                    selcx,
+                    param_env,
+                    &impl1_header,
+                    &impl2_header,
+                    &equate_obligations,
+                )
+            }) {
+                if matches!(mode, TreatInductiveCycleAs::Recur) {
+                    let first_local_impl = impl1_header
+                        .impl_def_id
+                        .as_local()
+                        .or(impl2_header.impl_def_id.as_local())
+                        .expect("expected one of the impls to be local");
+                    infcx.tcx.struct_span_lint_hir(
+                        COINDUCTIVE_OVERLAP_IN_COHERENCE,
+                        infcx.tcx.local_def_id_to_hir_id(first_local_impl),
+                        infcx.tcx.def_span(first_local_impl),
+                        "impls that are not considered to overlap may be considered to \
+                overlap in the future",
+                        |lint| {
+                            lint.span_label(
+                                infcx.tcx.def_span(impl1_header.impl_def_id),
+                                "the first impl is here",
+                            )
+                            .span_label(
+                                infcx.tcx.def_span(impl2_header.impl_def_id),
+                                "the second impl is here",
+                            );
+                            if !failing_obligation.cause.span.is_dummy() {
+                                lint.span_label(
+                                    failing_obligation.cause.span,
+                                    "this where-clause causes a cycle, but it may be treated \
+                            as possibly holding in the future, causing the impls to overlap",
+                                );
+                            }
+                            lint
+                        },
+                    );
+                }
+
+                return None;
+            }
+        }
     }
 
     // We toggle the `leak_check` by using `skip_leak_check` when constructing the
@@ -287,78 +324,30 @@ fn impl_intersection_has_impossible_obligation<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     impl1_header: &ty::ImplHeader<'tcx>,
-    impl2_header: ty::ImplHeader<'tcx>,
-    obligations: PredicateObligations<'tcx>,
-) -> bool {
+    impl2_header: &ty::ImplHeader<'tcx>,
+    obligations: &PredicateObligations<'tcx>,
+) -> Option<PredicateObligation<'tcx>> {
     let infcx = selcx.infcx;
 
-    let obligation_guaranteed_to_fail = |obligation: &PredicateObligation<'tcx>| {
-        if infcx.next_trait_solver() {
-            infcx.evaluate_obligation(obligation).map_or(false, |result| !result.may_apply())
-        } else {
-            // We use `evaluate_root_obligation` to correctly track intercrate
-            // ambiguity clauses. We cannot use this in the new solver.
-            selcx.evaluate_root_obligation(obligation).map_or(
-                false, // Overflow has occurred, and treat the obligation as possibly holding.
-                |result| !result.may_apply(),
-            )
-        }
-    };
-
-    let opt_failing_obligation = [&impl1_header.predicates, &impl2_header.predicates]
+    [&impl1_header.predicates, &impl2_header.predicates]
         .into_iter()
         .flatten()
         .map(|&(predicate, span)| {
             Obligation::new(infcx.tcx, ObligationCause::dummy_with_span(span), param_env, predicate)
         })
-        .chain(obligations)
-        .find(obligation_guaranteed_to_fail);
-
-    if let Some(failing_obligation) = opt_failing_obligation {
-        // Check the failing obligation once again, treating inductive cycles as
-        // ambiguous instead of error.
-        if !infcx.next_trait_solver()
-            && SelectionContext::with_treat_inductive_cycle_as_ambiguous(infcx)
-                .evaluate_root_obligation(&failing_obligation)
-                .map_or(true, |result| result.may_apply())
-        {
-            let first_local_impl = impl1_header
-                .impl_def_id
-                .as_local()
-                .or(impl2_header.impl_def_id.as_local())
-                .expect("expected one of the impls to be local");
-            infcx.tcx.struct_span_lint_hir(
-                COINDUCTIVE_OVERLAP_IN_COHERENCE,
-                infcx.tcx.local_def_id_to_hir_id(first_local_impl),
-                infcx.tcx.def_span(first_local_impl),
-                "impls that are not considered to overlap may be considered to \
-                overlap in the future",
-                |lint| {
-                    lint.span_label(
-                        infcx.tcx.def_span(impl1_header.impl_def_id),
-                        "the first impl is here",
-                    )
-                    .span_label(
-                        infcx.tcx.def_span(impl2_header.impl_def_id),
-                        "the second impl is here",
-                    );
-                    if !failing_obligation.cause.span.is_dummy() {
-                        lint.span_label(
-                            failing_obligation.cause.span,
-                            "this where-clause causes a cycle, but it may be treated \
-                            as possibly holding in the future, causing the impls to overlap",
-                        );
-                    }
-                    lint
-                },
-            );
-        }
-
-        debug!("overlap: obligation unsatisfiable {:?}", failing_obligation);
-        true
-    } else {
-        false
-    }
+        .chain(obligations.into_iter().cloned())
+        .find(|obligation: &PredicateObligation<'tcx>| {
+            if infcx.next_trait_solver() {
+                infcx.evaluate_obligation(obligation).map_or(false, |result| !result.may_apply())
+            } else {
+                // We use `evaluate_root_obligation` to correctly track intercrate
+                // ambiguity clauses. We cannot use this in the new solver.
+                selcx.evaluate_root_obligation(obligation).map_or(
+                    false, // Overflow has occurred, and treat the obligation as possibly holding.
+                    |result| !result.may_apply(),
+                )
+            }
+        })
 }
 
 /// Check if both impls can be satisfied by a common type by considering whether

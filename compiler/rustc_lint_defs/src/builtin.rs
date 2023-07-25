@@ -4431,6 +4431,8 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust,compile_fail
+    /// #![deny(coinductive_overlap_in_coherence)]
+    ///
     /// use std::borrow::Borrow;
     /// use std::cmp::Ordering;
     /// use std::marker::PhantomData;

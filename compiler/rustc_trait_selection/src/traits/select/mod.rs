@@ -200,7 +200,8 @@ enum BuiltinImplConditions<'tcx> {
     Ambiguous,
 }
 
-enum TreatInductiveCycleAs {
+#[derive(Copy, Clone)]
+pub enum TreatInductiveCycleAs {
     Recur,
     Ambig,
 }
@@ -216,17 +217,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
     }
 
-    pub fn with_treat_inductive_cycle_as_ambiguous(
-        infcx: &'cx InferCtxt<'tcx>,
-    ) -> SelectionContext<'cx, 'tcx> {
-        assert!(infcx.intercrate, "this doesn't do caching yet, so don't use it out of intercrate");
-        SelectionContext {
-            infcx,
-            freshener: infcx.freshener(),
-            intercrate_ambiguity_causes: None,
-            query_mode: TraitQueryMode::Standard,
-            treat_inductive_cycle: TreatInductiveCycleAs::Ambig,
-        }
+    // Sets the `TreatInductiveCycleAs` mode temporarily in the selection context
+    pub fn with_treat_inductive_cycle_as<T>(
+        &mut self,
+        treat_inductive_cycle: TreatInductiveCycleAs,
+        f: impl FnOnce(&mut Self) -> T,
+    ) -> T {
+        let treat_inductive_cycle =
+            std::mem::replace(&mut self.treat_inductive_cycle, treat_inductive_cycle);
+        let value = f(self);
+        self.treat_inductive_cycle = treat_inductive_cycle;
+        value
     }
 
     pub fn with_query_mode(
