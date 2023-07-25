@@ -12,11 +12,11 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::map::associated_body;
 use rustc_middle::hir::nested_filter::OnlyBodies;
 use rustc_middle::mir::FakeReadCause;
-use rustc_middle::ty::{self, Ty, UpvarId, UpvarPath};
+use rustc_middle::ty::{self, Ty, TyCtxt, UpvarId, UpvarPath};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::def_id::LocalDefId;
+use rustc_span::def_id::{LocalDefId, CRATE_DEF_ID};
 use rustc_span::symbol::kw;
-use rustc_span::Span;
+use rustc_span::{sym, Span};
 use rustc_target::spec::abi::Abi;
 
 declare_clippy_lint! {
@@ -91,6 +91,16 @@ fn should_skip<'tcx>(
 
     // All spans generated from a proc-macro invocation are the same...
     is_from_proc_macro(cx, &input)
+}
+
+fn inherits_cfg(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
+    if def_id == CRATE_DEF_ID {
+        false
+    } else if tcx.has_attr(def_id, sym::cfg) {
+        true
+    } else {
+        inherits_cfg(tcx, tcx.parent_module_from_def_id(def_id))
+    }
 }
 
 impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
@@ -192,10 +202,12 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
             let show_semver_warning =
                 self.avoid_breaking_exported_api && cx.effective_visibilities.is_exported(*fn_def_id);
 
+            let mut is_cfged = None;
             for input in unused {
                 // If the argument is never used mutably, we emit the warning.
                 let sp = input.span;
                 if let rustc_hir::TyKind::Ref(_, inner_ty) = input.kind {
+                    let is_cfged = is_cfged.get_or_insert_with(|| inherits_cfg(cx.tcx, *fn_def_id));
                     span_lint_hir_and_then(
                         cx,
                         NEEDLESS_PASS_BY_REF_MUT,
@@ -211,6 +223,9 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
                             );
                             if show_semver_warning {
                                 diag.warn("changing this function will impact semver compatibility");
+                            }
+                            if *is_cfged {
+                                diag.note("this is cfg-gated and may require further changes");
                             }
                         },
                     );

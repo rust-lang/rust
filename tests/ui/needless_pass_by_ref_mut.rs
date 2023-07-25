@@ -184,6 +184,16 @@ fn used_as_path(s: &mut u32) {}
 #[expect(clippy::needless_pass_by_ref_mut)]
 fn lint_attr(s: &mut u32) {}
 
+#[cfg(not(feature = "a"))]
+// Should warn with note.
+fn cfg_warn(s: &mut u32) {}
+
+#[cfg(not(feature = "a"))]
+mod foo {
+    // Should warn with note.
+    fn cfg_warn(s: &mut u32) {}
+}
+
 fn main() {
     let mut u = 0;
     let mut v = vec![0];
