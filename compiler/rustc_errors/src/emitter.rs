@@ -62,30 +62,11 @@ impl HumanReadableErrorType {
     pub fn new_emitter(
         self,
         dst: Box<dyn Write + Send>,
-        source_map: Option<Lrc<SourceMap>>,
-        bundle: Option<Lrc<FluentBundle>>,
         fallback_bundle: LazyFallbackBundle,
-        teach: bool,
-        diagnostic_width: Option<usize>,
-        macro_backtrace: bool,
-        track_diagnostics: bool,
-        terminal_url: TerminalUrl,
     ) -> EmitterWriter {
         let (short, color_config) = self.unzip();
         let color = color_config.suggests_using_colors();
-        EmitterWriter::new(
-            dst,
-            source_map,
-            bundle,
-            fallback_bundle,
-            short,
-            teach,
-            color,
-            diagnostic_width,
-            macro_backtrace,
-            track_diagnostics,
-            terminal_url,
-        )
+        EmitterWriter::new(dst, fallback_bundle, color).short_message(short)
     }
 }
 
@@ -668,6 +649,10 @@ pub struct FileWithAnnotatedLines {
 impl EmitterWriter {
     pub fn stderr(color_config: ColorConfig, fallback_bundle: LazyFallbackBundle) -> EmitterWriter {
         let dst = Destination::from_stderr(color_config);
+        Self::create(dst, fallback_bundle)
+    }
+
+    fn create(dst: Destination, fallback_bundle: LazyFallbackBundle) -> EmitterWriter {
         EmitterWriter {
             dst,
             sm: None,
@@ -685,30 +670,10 @@ impl EmitterWriter {
 
     pub fn new(
         dst: Box<dyn Write + Send>,
-        source_map: Option<Lrc<SourceMap>>,
-        fluent_bundle: Option<Lrc<FluentBundle>>,
         fallback_bundle: LazyFallbackBundle,
-        short_message: bool,
-        teach: bool,
         colored: bool,
-        diagnostic_width: Option<usize>,
-        macro_backtrace: bool,
-        track_diagnostics: bool,
-        terminal_url: TerminalUrl,
     ) -> EmitterWriter {
-        EmitterWriter {
-            dst: Raw(dst, colored),
-            sm: source_map,
-            fluent_bundle,
-            fallback_bundle,
-            short_message,
-            teach,
-            ui_testing: false,
-            diagnostic_width,
-            macro_backtrace,
-            track_diagnostics,
-            terminal_url,
-        }
+        Self::create(Raw(dst, colored), fallback_bundle)
     }
 
     fn maybe_anonymized(&self, line_num: usize) -> Cow<'static, str> {

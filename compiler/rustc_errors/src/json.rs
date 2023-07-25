@@ -359,17 +359,13 @@ impl Diagnostic {
         let buf = BufWriter::default();
         let output = buf.clone();
         je.json_rendered
-            .new_emitter(
-                Box::new(buf),
-                Some(je.sm.clone()),
-                je.fluent_bundle.clone(),
-                je.fallback_bundle.clone(),
-                false,
-                je.diagnostic_width,
-                je.macro_backtrace,
-                je.track_diagnostics,
-                je.terminal_url,
-            )
+            .new_emitter(Box::new(buf), je.fallback_bundle.clone())
+            .sm(Some(je.sm.clone()))
+            .fluent_bundle(je.fluent_bundle.clone())
+            .diagnostic_width(je.diagnostic_width)
+            .macro_backtrace(je.macro_backtrace)
+            .track_diagnostics(je.track_diagnostics)
+            .terminal_url(je.terminal_url)
             .ui_testing(je.ui_testing)
             .emit_diagnostic(diag);
         let output = Arc::try_unwrap(output.0).unwrap().into_inner().unwrap();

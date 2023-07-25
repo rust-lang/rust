@@ -8,7 +8,7 @@ use rustc_span::{BytePos, Span};
 
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::emitter::EmitterWriter;
-use rustc_errors::{Handler, MultiSpan, PResult, TerminalUrl};
+use rustc_errors::{Handler, MultiSpan, PResult};
 
 use std::io;
 use std::io::prelude::*;
@@ -29,19 +29,10 @@ fn create_test_handler() -> (Handler, Lrc<SourceMap>, Arc<Mutex<Vec<u8>>>) {
         vec![crate::DEFAULT_LOCALE_RESOURCE, rustc_parse::DEFAULT_LOCALE_RESOURCE],
         false,
     );
-    let emitter = EmitterWriter::new(
-        Box::new(Shared { data: output.clone() }),
-        Some(source_map.clone()),
-        None,
-        fallback_bundle,
-        false,
-        false,
-        false,
-        Some(140),
-        false,
-        false,
-        TerminalUrl::No,
-    );
+    let emitter =
+        EmitterWriter::new(Box::new(Shared { data: output.clone() }), fallback_bundle, false)
+            .sm(Some(source_map.clone()))
+            .diagnostic_width(Some(140));
     let handler = Handler::with_emitter(Box::new(emitter));
     (handler, source_map, output)
 }
