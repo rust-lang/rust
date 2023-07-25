@@ -553,7 +553,7 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
         }
 
         let is_const = self.tcx.is_const_fn(def_id.to_def_id())
-            || self.tcx.is_const_trait_impl_raw(def_id.to_def_id());
+            || self.tcx.is_const_trait_impl_raw(def_id);
         let is_stable =
             self.tcx.lookup_stability(def_id).is_some_and(|stability| stability.level.is_stable());
         let missing_const_stability_attribute = self.tcx.lookup_const_stability(def_id).is_none();
@@ -736,7 +736,6 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                 of_trait: Some(ref t),
                 self_ty,
                 items,
-                constness,
                 ..
             }) => {
                 let features = self.tcx.features();
@@ -769,7 +768,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                     // `#![feature(const_trait_impl)]` is unstable, so any impl declared stable
                     // needs to have an error emitted.
                     if features.const_trait_impl
-                        && *constness == hir::Constness::Const
+                        && self.tcx.is_const_trait_impl_raw(item.owner_id.def_id)
                         && const_stab.is_some_and(|(stab, _)| stab.is_const_stable())
                     {
                         self.tcx.sess.emit_err(errors::TraitImplConstStable { span: item.span });

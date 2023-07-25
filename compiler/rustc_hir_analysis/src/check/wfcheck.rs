@@ -196,7 +196,7 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) {
             // We match on both `ty::ImplPolarity` and `ast::ImplPolarity` just to get the `!` span.
             match (tcx.impl_polarity(def_id), impl_.polarity) {
                 (ty::ImplPolarity::Positive, _) => {
-                    check_impl(tcx, item, impl_.self_ty, &impl_.of_trait, impl_.constness);
+                    check_impl(tcx, item, impl_.self_ty, &impl_.of_trait);
                 }
                 (ty::ImplPolarity::Negative, ast::ImplPolarity::Negative(span)) => {
                     // FIXME(#27579): what amount of WF checking do we need for neg impls?
@@ -1179,7 +1179,6 @@ fn check_impl<'tcx>(
     item: &'tcx hir::Item<'tcx>,
     ast_self_ty: &hir::Ty<'_>,
     ast_trait_ref: &Option<hir::TraitRef<'_>>,
-    constness: hir::Constness,
 ) {
     enter_wf_checking_ctxt(tcx, item.span, item.owner_id.def_id, |wfcx| {
         match ast_trait_ref {

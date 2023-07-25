@@ -238,7 +238,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             )
         };
 
-        if let Some(constness) = constness {
+        if let Some(constness) = constness && self.tcx.features().effects {
             generic_args.push_constness(self, constness);
         }
 

@@ -2745,6 +2745,7 @@ impl<'hir> GenericArgsCtor<'hir> {
         });
         let def_id =
             lcx.create_def(lcx.current_hir_id_owner.def_id, id, DefPathData::AnonConst, span);
+        lcx.children.push((def_id, hir::MaybeOwner::NonOwner(hir_id)));
         self.args.push(hir::GenericArg::Const(hir::ConstArg {
             value: hir::AnonConst { def_id, hir_id, body },
             span,

@@ -356,7 +356,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         &self,
         param_env: ty::ParamEnv<'tcx>,
         ty: ty::Binder<'tcx, Ty<'tcx>>,
-        host: ty::Const<'tcx>,
+        _host: ty::Const<'tcx>,
         polarity: ty::ImplPolarity,
     ) -> Result<(ty::ClosureKind, ty::Binder<'tcx, Ty<'tcx>>), ()> {
         self.commit_if_ok(|_| {
@@ -375,7 +375,8 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
                 let trait_ref = ty::TraitRef::new(
                     self.tcx,
                     trait_def_id,
-                    [ty.skip_binder().into(), ty::GenericArg::from(var), host.into()],
+                    // FIXME(effects): host param but we need core to be compiled with effects as well
+                    [ty.skip_binder().into(), ty::GenericArg::from(var)],
                 );
                 let obligation = Obligation::new(
                     self.tcx,

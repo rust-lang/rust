@@ -1364,12 +1364,14 @@ fn impl_trait_ref(
             icx.astconv().instantiate_mono_trait_ref(
                 ast_trait_ref,
                 selfty,
-                check_impl_constness(tcx, impl_.constness, ast_trait_ref),
+                // TODO maybe incorrect
+                ty::BoundConstness::NotConst,
             )
         })
         .map(ty::EarlyBinder::bind)
 }
 
+/* TODO this dosen't seem to be needed once we just desugar `impl const`
 fn check_impl_constness(
     tcx: TyCtxt<'_>,
     constness: hir::Constness,
@@ -1394,7 +1396,7 @@ fn check_impl_constness(
         hir::Constness::NotConst => ty::BoundConstness::NotConst,
     }
 }
-
+ */
 fn impl_polarity(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::ImplPolarity {
     let is_rustc_reservation = tcx.has_attr(def_id, sym::rustc_reservation_impl);
     let item = tcx.hir().expect_item(def_id);
