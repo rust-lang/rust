@@ -501,10 +501,8 @@ impl<'a> Parser<'a> {
         // Special-case "expected `;`" errors
         if expected.contains(&TokenType::Token(token::Semi)) {
             if self.prev_token.kind == token::Question {
-                self.maybe_ternary_lo = Some(self.prev_token.span.lo());
-                let result = self.maybe_recover_from_ternary_operator().map(|_| true);
-                self.maybe_ternary_lo = None;
-                return result;
+                self.maybe_recover_from_ternary_operator();
+                return Ok(true);
             }
 
             if self.token.span == DUMMY_SP || self.prev_token.span == DUMMY_SP {
@@ -1339,7 +1337,7 @@ impl<'a> Parser<'a> {
 
     /// Rust has no ternary operator (`cond ? then : else`). Parse it and try
     /// to recover from it if `then` and `else` are valid expressions.
-    pub(super) fn maybe_recover_from_ternary_operator(&mut self) -> PResult<'a, ()> {
+    pub(super) fn maybe_recover_from_ternary_operator(&mut self) {
         let snapshot = self.create_snapshot_for_diagnostic();
         let lo = self.prev_token.span.lo();
 
@@ -1368,8 +1366,6 @@ impl<'a> Parser<'a> {
         } else {
             self.restore_snapshot(snapshot);
         };
-
-        Ok(())
     }
 
     pub(super) fn maybe_recover_from_bad_type_plus(&mut self, ty: &Ty) -> PResult<'a, ()> {

@@ -37,7 +37,6 @@ use rustc_errors::{
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::{Span, DUMMY_SP};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::BytePos;
 use std::ops::Range;
 use std::{cmp, mem, slice};
 use thin_vec::ThinVec;
@@ -158,17 +157,12 @@ pub struct Parser<'a> {
     /// Whether the parser is allowed to do recovery.
     /// This is disabled when parsing macro arguments, see #103534
     pub recovery: Recovery,
-    /// The low part of a ternary operator (`cond ? then : else`).
-    /// FIXME(Centri3): This is currently only used so that type ascription is
-    /// not mentioned in the error. Once the error in `stmt.rs` is removed, this
-    /// can be removed.
-    maybe_ternary_lo: Option<BytePos>,
 }
 
 // This type is used a lot, e.g. it's cloned when matching many declarative macro rules with nonterminals. Make sure
 // it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Parser<'_>, 280);
+rustc_data_structures::static_assert_size!(Parser<'_>, 272);
 
 /// Stores span information about a closure.
 #[derive(Clone)]
@@ -481,7 +475,6 @@ impl<'a> Parser<'a> {
             },
             current_closure: None,
             recovery: Recovery::Allowed,
-            maybe_ternary_lo: None,
         };
 
         // Make parser point to the first token.
