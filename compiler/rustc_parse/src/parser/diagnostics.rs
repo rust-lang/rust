@@ -500,8 +500,7 @@ impl<'a> Parser<'a> {
 
         // Special-case "expected `;`" errors
         if expected.contains(&TokenType::Token(token::Semi)) {
-            if self.prev_token.kind == token::Question {
-                self.maybe_recover_from_ternary_operator();
+            if self.prev_token == token::Question && self.maybe_recover_from_ternary_operator() {
                 return Ok(true);
             }
 
@@ -1336,26 +1335,30 @@ impl<'a> Parser<'a> {
     }
 
     /// Rust has no ternary operator (`cond ? then : else`). Parse it and try
-    /// to recover from it if `then` and `else` are valid expressions.
-    pub(super) fn maybe_recover_from_ternary_operator(&mut self) {
-        let snapshot = self.create_snapshot_for_diagnostic();
-        let lo = self.prev_token.span.lo();
+    /// to recover from it if `then` and `else` are valid expressions. Returns
+    /// whether it was a ternary operator.
+    pub(super) fn maybe_recover_from_ternary_operator(&mut self) -> bool {
+        if self.prev_token != token::Question {
+            return false;
+        }
 
-        if self.prev_token == token::Question
-            && match self.parse_expr() {
-                Ok(_) => true,
-                Err(err) => {
-                    err.cancel();
-                    // The colon can sometimes be mistaken for type
-                    // ascription. Catch when this happens and continue.
-                    self.token == token::Colon
-                }
+        let lo = self.prev_token.span.lo();
+        let snapshot = self.create_snapshot_for_diagnostic();
+
+        if match self.parse_expr() {
+            Ok(_) => true,
+            Err(err) => {
+                err.cancel();
+                // The colon can sometimes be mistaken for type
+                // ascription. Catch when this happens and continue.
+                self.token == token::Colon
             }
-        {
+        } {
             if self.eat_noexpect(&token::Colon) {
                 match self.parse_expr() {
                     Ok(_) => {
                         self.sess.emit_err(TernaryOperator { span: self.token.span.with_lo(lo) });
+                        return true;
                     }
                     Err(err) => {
                         err.cancel();
@@ -1366,6 +1369,8 @@ impl<'a> Parser<'a> {
         } else {
             self.restore_snapshot(snapshot);
         };
+
+        false
     }
 
     pub(super) fn maybe_recover_from_bad_type_plus(&mut self, ty: &Ty) -> PResult<'a, ()> {
