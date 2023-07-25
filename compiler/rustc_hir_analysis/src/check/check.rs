@@ -545,7 +545,7 @@ fn sanity_check_found_hidden_type<'tcx>(
 /// }
 /// fn func<'a>(x: &'a ()) -> impl Id<Assoc = impl Sized + 'a> { x }
 /// // desugared to
-/// fn func<'a>(x: &'a () -> Outer<'a, Assoc = Inner<'a>> {
+/// fn func<'a>(x: &'a () -> Outer<'a> where <Outer<'a> as Id>::Assoc = Inner<'a> {
 ///     // Note that in contrast to other nested items, RPIT type aliases can
 ///     // access their parents' generics.
 ///
