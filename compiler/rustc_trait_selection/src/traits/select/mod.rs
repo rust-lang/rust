@@ -741,7 +741,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 return Ok(EvaluatedToOk);
                             } else {
                                 match self.treat_inductive_cycle {
-                                    TreatInductiveCycleAs::Ambig => return Ok(EvaluatedToAmbig),
+                                    TreatInductiveCycleAs::Ambig => return Ok(EvaluatedToUnknown),
                                     TreatInductiveCycleAs::Recur => return Ok(EvaluatedToRecur),
                                 }
                             }
@@ -862,7 +862,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         }
                         ProjectAndUnifyResult::FailedNormalization => Ok(EvaluatedToAmbig),
                         ProjectAndUnifyResult::Recursive => match self.treat_inductive_cycle {
-                            TreatInductiveCycleAs::Ambig => return Ok(EvaluatedToAmbig),
+                            TreatInductiveCycleAs::Ambig => return Ok(EvaluatedToUnknown),
                             TreatInductiveCycleAs::Recur => return Ok(EvaluatedToRecur),
                         },
                         ProjectAndUnifyResult::MismatchedProjectionTypes(_) => Ok(EvaluatedToErr),
@@ -1179,7 +1179,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             } else {
                 debug!("evaluate_stack --> recursive, inductive");
                 match self.treat_inductive_cycle {
-                    TreatInductiveCycleAs::Ambig => Some(EvaluatedToAmbig),
+                    TreatInductiveCycleAs::Ambig => Some(EvaluatedToUnknown),
                     TreatInductiveCycleAs::Recur => Some(EvaluatedToRecur),
                 }
             }

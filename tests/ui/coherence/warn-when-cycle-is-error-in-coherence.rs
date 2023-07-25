@@ -9,7 +9,7 @@ pub(crate) struct Interval<T>(PhantomData<T>);
 
 // This impl overlaps with the `derive` unless we reject the nested
 // `Interval<?1>: PartialOrd<Interval<?1>>` candidate which results
-// in an inductive cycle right now.
+// in a - currently inductive - cycle.
 impl<T, Q> PartialEq<Q> for Interval<T>
 //~^ ERROR impls that are not considered to overlap may be considered to overlap in the future
 //~| WARN this was previously accepted by the compiler but is being phased out

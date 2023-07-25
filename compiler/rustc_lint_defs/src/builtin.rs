@@ -4463,7 +4463,10 @@ declare_lint! {
     ///
     /// The manual impl of `PartialEq` impl overlaps with the `derive`, since
     /// if we replace `Q = Interval<T>`, then the second impl leads to a cycle:
-    /// `PartialOrd for Interval<T> where Interval<T>: Partial`.
+    /// `PartialOrd for Interval<T> where Interval<T>: PartialOrd`. This cycle
+    /// currently causes the compiler to consider `Interval<T>: PartialOrd` to not
+    /// hold, causing the two implementations to be disjoint. This will change in
+    /// a future release.
     pub COINDUCTIVE_OVERLAP_IN_COHERENCE,
     Warn,
     "impls that are not considered to overlap may be considered to \
