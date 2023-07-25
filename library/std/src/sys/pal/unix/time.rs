@@ -1,5 +1,5 @@
-use crate::fmt;
 use crate::time::Duration;
+use crate::{fmt, io};
 
 const NSEC_PER_SEC: u64 = 1_000_000_000;
 pub const UNIX_EPOCH: SystemTime = SystemTime { t: Timespec::zero() };
@@ -34,8 +34,8 @@ pub(crate) struct Timespec {
 
 impl SystemTime {
     #[cfg_attr(any(target_os = "horizon", target_os = "hurd"), allow(unused))]
-    pub fn new(tv_sec: i64, tv_nsec: i64) -> SystemTime {
-        SystemTime { t: Timespec::new(tv_sec, tv_nsec) }
+    pub fn new(tv_sec: i64, tv_nsec: i64) -> Result<SystemTime, io::Error> {
+        Ok(SystemTime { t: Timespec::new(tv_sec, tv_nsec)? })
     }
 
     pub fn now() -> SystemTime {
@@ -55,12 +55,6 @@ impl SystemTime {
     }
 }
 
-impl From<libc::timespec> for SystemTime {
-    fn from(t: libc::timespec) -> SystemTime {
-        SystemTime { t: Timespec::from(t) }
-    }
-}
-
 impl fmt::Debug for SystemTime {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("SystemTime")
@@ -71,11 +65,15 @@ impl fmt::Debug for SystemTime {
 }
 
 impl Timespec {
-    pub const fn zero() -> Timespec {
-        Timespec::new(0, 0)
+    const unsafe fn new_unchecked(tv_sec: i64, tv_nsec: i64) -> Timespec {
+        Timespec { tv_sec, tv_nsec: unsafe { Nanoseconds(tv_nsec as u32) } }
     }
 
-    const fn new(tv_sec: i64, tv_nsec: i64) -> Timespec {
+    pub const fn zero() -> Timespec {
+        unsafe { Self::new_unchecked(0, 0) }
+    }
+
+    const fn new(tv_sec: i64, tv_nsec: i64) -> Result<Timespec, io::Error> {
         // On Apple OS, dates before epoch are represented differently than on other
         // Unix platforms: e.g. 1/10th of a second before epoch is represented as `seconds=-1`
         // and `nanoseconds=100_000_000` on other platforms, but is `seconds=0` and
@@ -100,9 +98,11 @@ impl Timespec {
             } else {
                 (tv_sec, tv_nsec)
             };
-        assert!(tv_nsec >= 0 && tv_nsec < NSEC_PER_SEC as i64);
-        // SAFETY: The assert above checks tv_nsec is within the valid range
-        Timespec { tv_sec, tv_nsec: unsafe { Nanoseconds(tv_nsec as u32) } }
+        if tv_nsec >= 0 && tv_nsec < NSEC_PER_SEC as i64 {
+            Ok(unsafe { Self::new_unchecked(tv_sec, tv_nsec) })
+        } else {
+            Err(io::const_io_error!(io::ErrorKind::InvalidData, "Invalid timestamp"))
+        }
     }
 
     pub fn now(clock: libc::clockid_t) -> Timespec {
@@ -126,13 +126,15 @@ impl Timespec {
             if let Some(clock_gettime64) = __clock_gettime64.get() {
                 let mut t = MaybeUninit::uninit();
                 cvt(unsafe { clock_gettime64(clock, t.as_mut_ptr()) }).unwrap();
-                return Timespec::from(unsafe { t.assume_init() });
+                let t = unsafe { t.assume_init() };
+                return Timespec::new(t.tv_sec as i64, t.tv_nsec as i64).unwrap();
             }
         }
 
         let mut t = MaybeUninit::uninit();
         cvt(unsafe { libc::clock_gettime(clock, t.as_mut_ptr()) }).unwrap();
-        Timespec::from(unsafe { t.assume_init() })
+        let t = unsafe { t.assume_init() };
+        Timespec::new(t.tv_sec as i64, t.tv_nsec as i64).unwrap()
     }
 
     pub fn sub_timespec(&self, other: &Timespec) -> Result<Duration, Duration> {
@@ -178,7 +180,7 @@ impl Timespec {
             nsec -= NSEC_PER_SEC as u32;
             secs = secs.checked_add(1)?;
         }
-        Some(Timespec::new(secs, nsec.into()))
+        Some(unsafe { Timespec::new_unchecked(secs, nsec.into()) })
     }
 
     pub fn checked_sub_duration(&self, other: &Duration) -> Option<Timespec> {
@@ -190,7 +192,7 @@ impl Timespec {
             nsec += NSEC_PER_SEC as i32;
             secs = secs.checked_sub(1)?;
         }
-        Some(Timespec::new(secs, nsec.into()))
+        Some(unsafe { Timespec::new_unchecked(secs, nsec.into()) })
     }
 
     #[allow(dead_code)]
@@ -226,12 +228,6 @@ impl Timespec {
     }
 }
 
-impl From<libc::timespec> for Timespec {
-    fn from(t: libc::timespec) -> Timespec {
-        Timespec::new(t.tv_sec as i64, t.tv_nsec as i64)
-    }
-}
-
 #[cfg(all(
     target_os = "linux",
     target_env = "gnu",
@@ -257,18 +253,6 @@ pub(crate) struct __timespec64 {
 impl __timespec64 {
     pub(crate) fn new(tv_sec: i64, tv_nsec: i32) -> Self {
         Self { tv_sec, tv_nsec, _padding: 0 }
-    }
-}
-
-#[cfg(all(
-    target_os = "linux",
-    target_env = "gnu",
-    target_pointer_width = "32",
-    not(target_arch = "riscv32")
-))]
-impl From<__timespec64> for Timespec {
-    fn from(t: __timespec64) -> Timespec {
-        Timespec::new(t.tv_sec, t.tv_nsec.into())
     }
 }
 
