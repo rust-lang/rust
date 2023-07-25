@@ -4,6 +4,7 @@ fn main() {
     resize_vector();
     extend_vector();
     mixed_extend_resize_vector();
+    from_empty_vec();
 }
 
 fn extend_vector() {
@@ -56,6 +57,21 @@ fn resize_vector() {
 
     // Reinitialization should be warned
     vec1 = Vec::with_capacity(10);
+    vec1.resize(10, 0);
+}
+
+fn from_empty_vec() {
+    // Resize with constant expression
+    let len = 300;
+    let mut vec1 = Vec::new();
+    vec1.resize(len, 0);
+
+    // Resize with len expression
+    let mut vec3 = Vec::new();
+    vec3.resize(len - 10, 0);
+
+    // Reinitialization should be warned
+    vec1 = Vec::new();
     vec1.resize(10, 0);
 }
 

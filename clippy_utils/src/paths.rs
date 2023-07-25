@@ -149,6 +149,7 @@ pub const VEC_AS_SLICE: [&str; 4] = ["alloc", "vec", "Vec", "as_slice"];
 pub const VEC_DEQUE_ITER: [&str; 5] = ["alloc", "collections", "vec_deque", "VecDeque", "iter"];
 pub const VEC_FROM_ELEM: [&str; 3] = ["alloc", "vec", "from_elem"];
 pub const VEC_NEW: [&str; 4] = ["alloc", "vec", "Vec", "new"];
+pub const VEC_WITH_CAPACITY: [&str; 4] = ["alloc", "vec", "Vec", "with_capacity"];
 pub const VEC_RESIZE: [&str; 4] = ["alloc", "vec", "Vec", "resize"];
 pub const WEAK_ARC: [&str; 3] = ["alloc", "sync", "Weak"];
 pub const WEAK_RC: [&str; 3] = ["alloc", "rc", "Weak"];
