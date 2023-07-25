@@ -1963,9 +1963,9 @@ impl<'tcx> TyCtxt<'tcx> {
         matches!(
             node,
             hir::Node::Item(hir::Item {
-                kind: hir::ItemKind::Impl(hir::Impl { constness: hir::Constness::Const, .. }),
+                kind: hir::ItemKind::Impl(hir::Impl { generics, .. }),
                 ..
-            })
+            }) if generics.params.iter().any(|p| self.has_attr(p.def_id, sym::rustc_host))
         )
     }
 

@@ -1358,38 +1358,29 @@ fn impl_trait_ref(
         .of_trait
         .as_ref()
         .map(|ast_trait_ref| {
-            let selfty = tcx.type_of(def_id).instantiate_identity();
-            icx.astconv().instantiate_mono_trait_ref(
+            check_impl_constness(
+                tcx,
+                tcx.is_const_trait_impl_raw(def_id.to_def_id()),
                 ast_trait_ref,
-                selfty,
-                check_impl_constness(tcx, impl_.constness, ast_trait_ref),
-            )
+            );
+            let selfty = tcx.type_of(def_id).instantiate_identity();
+            icx.astconv().instantiate_mono_trait_ref(ast_trait_ref, selfty)
         })
         .map(ty::EarlyBinder::bind)
 }
 
-fn check_impl_constness(
-    tcx: TyCtxt<'_>,
-    constness: hir::Constness,
-    ast_trait_ref: &hir::TraitRef<'_>,
-) -> ty::BoundConstness {
-    match constness {
-        hir::Constness::Const => {
-            if let Some(trait_def_id) = ast_trait_ref.trait_def_id() && !tcx.has_attr(trait_def_id, sym::const_trait) {
-                let trait_name = tcx.item_name(trait_def_id).to_string();
-                tcx.sess.emit_err(errors::ConstImplForNonConstTrait {
-                    trait_ref_span: ast_trait_ref.path.span,
-                    trait_name,
-                    local_trait_span: trait_def_id.as_local().map(|_| tcx.def_span(trait_def_id).shrink_to_lo()),
-                    marking: (),
-                    adding: (),
-                });
-                ty::BoundConstness::NotConst
-            } else {
-                ty::BoundConstness::ConstIfConst
-            }
-        },
-        hir::Constness::NotConst => ty::BoundConstness::NotConst,
+fn check_impl_constness(tcx: TyCtxt<'_>, is_const: bool, ast_trait_ref: &hir::TraitRef<'_>) {
+    if is_const {
+        if let Some(trait_def_id) = ast_trait_ref.trait_def_id() && !tcx.has_attr(trait_def_id, sym::const_trait) {
+            let trait_name = tcx.item_name(trait_def_id).to_string();
+            tcx.sess.emit_err(errors::ConstImplForNonConstTrait {
+                trait_ref_span: ast_trait_ref.path.span,
+                trait_name,
+                local_trait_span: trait_def_id.as_local().map(|_| tcx.def_span(trait_def_id).shrink_to_lo()),
+                marking: (),
+                adding: (),
+            });
+        }
     }
 }
 

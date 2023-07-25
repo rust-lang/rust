@@ -320,7 +320,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                     bug!("parent also has host effect param? index: {idx}, def: {def_id:?}");
                 }
 
-                host_effect_index = Some(parent_count + index as usize);
+                host_effect_index = Some(index as usize);
             }
 
             Some(ty::GenericParamDef {

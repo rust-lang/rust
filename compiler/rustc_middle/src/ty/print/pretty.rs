@@ -2841,6 +2841,11 @@ define_print_and_forward_display! {
 
     ty::TraitPredicate<'tcx> {
         p!(print(self.trait_ref.self_ty()), ": ");
+        if let Some(idx) = cx.tcx().generics_of(self.trait_ref.def_id).host_effect_index {
+            if self.trait_ref.args.const_at(idx) != cx.tcx().consts.true_ {
+                p!("~const ");
+            }
+        }
         // FIXME(effects) print `~const` here
         if let ty::ImplPolarity::Negative = self.polarity {
             p!("!");
