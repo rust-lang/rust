@@ -391,7 +391,6 @@ use std::backtrace::{Backtrace, BacktraceStatus};
 /// Certain errors (fatal, bug, unimpl) may cause immediate exit,
 /// others log errors for later reporting.
 pub struct Handler {
-    flags: HandlerFlags,
     inner: Lock<HandlerInner>,
 }
 
@@ -589,7 +588,6 @@ impl Handler {
         ice_file: Option<PathBuf>,
     ) -> Self {
         Self {
-            flags,
             inner: Lock::new(HandlerInner {
                 flags,
                 lint_err_count: 0,
@@ -637,7 +635,7 @@ impl Handler {
     // This is here to not allow mutation of flags;
     // as of this writing it's only used in tests in librustc_middle.
     pub fn can_emit_warnings(&self) -> bool {
-        self.flags.can_emit_warnings
+        self.inner.lock().flags.can_emit_warnings
     }
 
     /// Resets the diagnostic error count as well as the cached emitted diagnostics.
