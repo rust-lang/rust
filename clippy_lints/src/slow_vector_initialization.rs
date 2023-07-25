@@ -61,11 +61,24 @@ struct VecAllocation<'tcx> {
 
     /// Reference to the expression used as argument on `with_capacity` call. This is used
     /// to only match slow zero-filling idioms of the same length than vector initialization.
-    ///
-    /// Initially set to `None` if initialized with `Vec::new()`, but will always be `Some(_)` by
-    /// the time the visitor has looked through the enclosing block and found a slow
-    /// initialization, so it is safe to unwrap later at lint time.
-    size_expr: Option<&'tcx Expr<'tcx>>,
+    size_expr: InitializedSize<'tcx>,
+}
+
+/// Initializer for the creation of the vector.
+///
+/// When `Vec::with_capacity(size)` is found, the `size` expression will be in
+/// `InitializedSize::Initialized`.
+///
+/// Otherwise, for `Vec::new()` calls, there is no allocation initializer yet, so
+/// `InitializedSize::Uninitialized` is used.
+/// Later, when a call to `.resize(size, 0)` or similar is found, it's set
+/// to `InitializedSize::Initialized(size)`.
+///
+/// Since it will be set to `InitializedSize::Initialized(size)` when a slow initialization is
+/// found, it is always safe to "unwrap" it at lint time.
+enum InitializedSize<'tcx> {
+    Initialized(&'tcx Expr<'tcx>),
+    Uninitialized,
 }
 
 /// Type of slow initialization
@@ -120,20 +133,11 @@ impl<'tcx> LateLintPass<'tcx> for SlowVectorInit {
 }
 
 impl SlowVectorInit {
-    /// Given an expression, returns:
-    /// - `Some(Some(size))` if it is a function call to `Vec::with_capacity(size)`
-    /// - `Some(None)` if it is a call to `Vec::new()`
-    /// - `None` if it is neither
-    #[allow(
-        clippy::option_option,
-        reason = "outer option is immediately removed at call site and the inner option is kept around, \
-            so extracting into a dedicated enum seems unnecessarily complicated"
-    )]
-    fn as_vec_initializer<'tcx>(cx: &LateContext<'_>, expr: &'tcx Expr<'tcx>) -> Option<Option<&'tcx Expr<'tcx>>> {
+    fn as_vec_initializer<'tcx>(cx: &LateContext<'_>, expr: &'tcx Expr<'tcx>) -> Option<InitializedSize<'tcx>> {
         if let Some(len_expr) = Self::is_vec_with_capacity(cx, expr) {
-            Some(Some(len_expr))
-        } else if Self::is_vec_new(cx, expr) {
-            Some(None)
+            Some(InitializedSize::Initialized(len_expr))
+        } else if matches!(expr.kind, ExprKind::Call(func, _) if is_expr_path_def_path(cx, func, &paths::VEC_NEW)) {
+            Some(InitializedSize::Uninitialized)
         } else {
             None
         }
@@ -153,14 +157,6 @@ impl SlowVectorInit {
                 None
             }
         }
-    }
-
-    /// Checks if the given expression is `Vec::new()`
-    fn is_vec_new(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-        matches!(
-            expr.kind,
-            ExprKind::Call(func, _) if is_expr_path_def_path(cx, func, &paths::VEC_NEW)
-        )
     }
 
     /// Search initialization for the given vector
@@ -200,9 +196,10 @@ impl SlowVectorInit {
     fn emit_lint(cx: &LateContext<'_>, slow_fill: &Expr<'_>, vec_alloc: &VecAllocation<'_>, msg: &str) {
         let len_expr = Sugg::hir(
             cx,
-            vec_alloc
-                .size_expr
-                .expect("length expression must be set by this point"),
+            match vec_alloc.size_expr {
+                InitializedSize::Initialized(expr) => expr,
+                InitializedSize::Uninitialized => unreachable!("size expression must be set by this point"),
+            },
             "len",
         );
 
@@ -257,12 +254,12 @@ impl<'a, 'tcx> VectorInitializationVisitor<'a, 'tcx> {
             // Check that is filled with 0
             && is_integer_literal(fill_arg, 0)
         {
-            let is_matching_resize = if let Some(size_expr) = self.vec_alloc.size_expr {
+            let is_matching_resize = if let InitializedSize::Initialized(size_expr) = self.vec_alloc.size_expr {
                 // If we have a size expression, check that it is equal to what's passed to `resize`
                 SpanlessEq::new(self.cx).eq_expr(len_arg, size_expr)
                     || matches!(len_arg.kind, ExprKind::MethodCall(path, ..) if path.ident.as_str() == "capacity")
             } else {
-                self.vec_alloc.size_expr = Some(len_arg);
+                self.vec_alloc.size_expr = InitializedSize::Initialized(len_arg);
                 true
             };
 
@@ -280,13 +277,13 @@ impl<'a, 'tcx> VectorInitializationVisitor<'a, 'tcx> {
             // Check that take is applied to `repeat(0)`
             if self.is_repeat_zero(recv);
             then {
-                if let Some(size_expr) = self.vec_alloc.size_expr {
+                if let InitializedSize::Initialized(size_expr) = self.vec_alloc.size_expr {
                     // Check that len expression is equals to `with_capacity` expression
                     return SpanlessEq::new(self.cx).eq_expr(len_arg, size_expr)
                         || matches!(len_arg.kind, ExprKind::MethodCall(path, ..) if path.ident.as_str() == "capacity")
                 }
 
-                self.vec_alloc.size_expr = Some(len_arg);
+                self.vec_alloc.size_expr = InitializedSize::Initialized(len_arg);
                 return true;
             }
         }
