@@ -87,8 +87,8 @@ impl<'tcx> EnvVars<'tcx> {
             ecx.deallocate_ptr(ptr, None, MiriMemoryKind::Runtime.into())?;
         }
         // Deallocate environ var list.
-        let environ = ecx.machine.env_vars.environ.unwrap();
-        let old_vars_ptr = ecx.read_pointer(&environ)?;
+        let environ = ecx.machine.env_vars.environ.as_ref().unwrap();
+        let old_vars_ptr = ecx.read_pointer(environ)?;
         ecx.deallocate_ptr(old_vars_ptr, None, MiriMemoryKind::Runtime.into())?;
         Ok(())
     }
@@ -431,8 +431,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn update_environ(&mut self) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         // Deallocate the old environ list, if any.
-        if let Some(environ) = this.machine.env_vars.environ {
-            let old_vars_ptr = this.read_pointer(&environ)?;
+        if let Some(environ) = this.machine.env_vars.environ.as_ref() {
+            let old_vars_ptr = this.read_pointer(environ)?;
             this.deallocate_ptr(old_vars_ptr, None, MiriMemoryKind::Runtime.into())?;
         } else {
             // No `environ` allocated yet, let's do that.
@@ -459,7 +459,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             let place = this.project_field(&vars_place, idx)?;
             this.write_pointer(var, &place)?;
         }
-        this.write_pointer(vars_place.ptr, &this.machine.env_vars.environ.unwrap())?;
+        this.write_pointer(vars_place.ptr, &this.machine.env_vars.environ.clone().unwrap())?;
 
         Ok(())
     }

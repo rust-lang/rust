@@ -600,14 +600,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     /// necessary.
     fn last_error_place(&mut self) -> InterpResult<'tcx, MPlaceTy<'tcx, Provenance>> {
         let this = self.eval_context_mut();
-        if let Some(errno_place) = this.active_thread_ref().last_error {
-            Ok(errno_place)
+        if let Some(errno_place) = this.active_thread_ref().last_error.as_ref() {
+            Ok(errno_place.clone())
         } else {
             // Allocate new place, set initial value to 0.
             let errno_layout = this.machine.layouts.u32;
             let errno_place = this.allocate(errno_layout, MiriMemoryKind::Machine.into())?;
             this.write_scalar(Scalar::from_u32(0), &errno_place)?;
-            this.active_thread_mut().last_error = Some(errno_place);
+            this.active_thread_mut().last_error = Some(errno_place.clone());
             Ok(errno_place)
         }
     }
@@ -725,7 +725,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         let mplace = MPlaceTy::from_aligned_ptr(ptr, layout);
 
-        this.check_mplace(mplace)?;
+        this.check_mplace(&mplace)?;
 
         Ok(mplace)
     }

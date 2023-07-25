@@ -668,7 +668,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
                 Self::add_extern_static(
                     this,
                     "environ",
-                    this.machine.env_vars.environ.unwrap().ptr,
+                    this.machine.env_vars.environ.as_ref().unwrap().ptr,
                 );
                 // A couple zero-initialized pointer-sized extern statics.
                 // Most of them are for weak symbols, which we all set to null (indicating that the
@@ -685,7 +685,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
                 Self::add_extern_static(
                     this,
                     "environ",
-                    this.machine.env_vars.environ.unwrap().ptr,
+                    this.machine.env_vars.environ.as_ref().unwrap().ptr,
                 );
             }
             "android" => {

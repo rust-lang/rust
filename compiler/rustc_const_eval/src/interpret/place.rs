@@ -81,7 +81,7 @@ pub struct MemPlace<Prov: Provenance = AllocId> {
 }
 
 /// A MemPlace with its layout. Constructing it is only possible in this module.
-#[derive(Copy, Clone, Hash, Eq, PartialEq, Debug)]
+#[derive(Clone, Hash, Eq, PartialEq, Debug)]
 pub struct MPlaceTy<'tcx, Prov: Provenance = AllocId> {
     mplace: MemPlace<Prov>,
     pub layout: TyAndLayout<'tcx>,
@@ -452,7 +452,7 @@ where
         }
 
         let mplace = self.ref_to_mplace(&val)?;
-        self.check_mplace(mplace)?;
+        self.check_mplace(&mplace)?;
         Ok(mplace)
     }
 
@@ -483,7 +483,7 @@ where
     }
 
     /// Check if this mplace is dereferenceable and sufficiently aligned.
-    pub fn check_mplace(&self, mplace: MPlaceTy<'tcx, M::Provenance>) -> InterpResult<'tcx> {
+    pub fn check_mplace(&self, mplace: &MPlaceTy<'tcx, M::Provenance>) -> InterpResult<'tcx> {
         let (size, _align) = self
             .size_and_align_of_mplace(&mplace)?
             .unwrap_or((mplace.layout.size, mplace.layout.align.abi));

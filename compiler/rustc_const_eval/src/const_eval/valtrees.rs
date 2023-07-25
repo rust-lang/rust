@@ -21,7 +21,7 @@ fn branches<'tcx>(
 ) -> ValTreeCreationResult<'tcx> {
     let place = match variant {
         Some(variant) => ecx.project_downcast(place, variant).unwrap(),
-        None => *place,
+        None => place.clone(),
     };
     let variant = variant.map(|variant| Some(ty::ValTree::Leaf(ScalarInt::from(variant.as_u32()))));
     debug!(?place, ?variant);
@@ -290,7 +290,7 @@ pub fn valtree_to_const_value<'tcx>(
             debug!(?place);
 
             valtree_into_mplace(&mut ecx, &mut place, valtree);
-            dump_place(&ecx, place.into());
+            dump_place(&ecx, place.clone().into());
             intern_const_alloc_recursive(&mut ecx, InternKind::Constant, &place).unwrap();
 
             match ty.kind() {
@@ -352,7 +352,7 @@ fn valtree_into_mplace<'tcx>(
             debug!(?pointee_place);
 
             valtree_into_mplace(ecx, &mut pointee_place, valtree);
-            dump_place(ecx, pointee_place.into());
+            dump_place(ecx, pointee_place.clone().into());
             intern_const_alloc_recursive(ecx, InternKind::Constant, &pointee_place).unwrap();
 
             let imm = match inner_ty.kind() {
@@ -389,7 +389,7 @@ fn valtree_into_mplace<'tcx>(
                         Some(variant_idx),
                     )
                 }
-                _ => (*place, branches, None),
+                _ => (place.clone(), branches, None),
             };
             debug!(?place_adjusted, ?branches);
 

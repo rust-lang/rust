@@ -136,19 +136,19 @@ pub struct RefTracking<T, PATH = ()> {
     pub todo: Vec<(T, PATH)>,
 }
 
-impl<T: Copy + Eq + Hash + std::fmt::Debug, PATH: Default> RefTracking<T, PATH> {
+impl<T: Clone + Eq + Hash + std::fmt::Debug, PATH: Default> RefTracking<T, PATH> {
     pub fn empty() -> Self {
         RefTracking { seen: FxHashSet::default(), todo: vec![] }
     }
     pub fn new(op: T) -> Self {
         let mut ref_tracking_for_consts =
-            RefTracking { seen: FxHashSet::default(), todo: vec![(op, PATH::default())] };
+            RefTracking { seen: FxHashSet::default(), todo: vec![(op.clone(), PATH::default())] };
         ref_tracking_for_consts.seen.insert(op);
         ref_tracking_for_consts
     }
 
     pub fn track(&mut self, op: T, path: impl FnOnce() -> PATH) {
-        if self.seen.insert(op) {
+        if self.seen.insert(op.clone()) {
             trace!("Recursing below ptr {:#?}", op);
             let path = path();
             // Remember to come back to this later.

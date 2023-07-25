@@ -358,7 +358,7 @@ pub fn intern_const_alloc_recursive<
         Some(ret.layout.ty),
     );
 
-    ref_tracking.track((*ret, base_intern_mode), || ());
+    ref_tracking.track((ret.clone(), base_intern_mode), || ());
 
     while let Some(((mplace, mode), _)) = ref_tracking.todo.pop() {
         let res = InternVisitor {
@@ -464,7 +464,7 @@ impl<'mir, 'tcx: 'mir, M: super::intern::CompileTimeMachine<'mir, 'tcx, !>>
         ) -> InterpResult<'tcx, ()>,
     ) -> InterpResult<'tcx, ConstAllocation<'tcx>> {
         let dest = self.allocate(layout, MemoryKind::Stack)?;
-        f(self, &dest.into())?;
+        f(self, &dest.clone().into())?;
         let mut alloc = self.memory.alloc_map.remove(&dest.ptr.provenance.unwrap()).unwrap().1;
         alloc.mutability = Mutability::Not;
         Ok(self.tcx.mk_const_alloc(alloc))
