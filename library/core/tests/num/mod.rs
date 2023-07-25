@@ -214,6 +214,16 @@ fn test_infallible_try_from_int_error() {
     assert!(func(0).is_ok());
 }
 
+const _TEST_CONST_PARSE: () = {
+    let Ok(-0x8000) = i16::from_str_radix("-8000", 16) else { panic!() };
+    let Ok(12345) = u64::from_str_radix("12345", 10) else { panic!() };
+    if let Err(e) = i8::from_str_radix("+", 10) {
+        let IntErrorKind::InvalidDigit = e.kind() else { panic!() };
+    } else {
+        panic!()
+    }
+};
+
 macro_rules! test_impl_from {
     ($fn_name:ident, bool, $target: ty) => {
         #[test]
