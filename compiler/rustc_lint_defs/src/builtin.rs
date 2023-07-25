@@ -3366,6 +3366,7 @@ declare_lint_pass! {
         BYTE_SLICE_IN_PACKED_STRUCT_WITH_DERIVE,
         CENUM_IMPL_DROP_CAST,
         COHERENCE_LEAK_CHECK,
+        COINDUCTIVE_OVERLAP_IN_COHERENCE,
         CONFLICTING_REPR_HINTS,
         CONST_EVALUATABLE_UNCHECKED,
         CONST_ITEM_MUTATION,
@@ -4420,6 +4421,56 @@ declare_lint! {
     Allow,
     "effective visibility of a type is larger than the area in which it can be named",
     @feature_gate = sym::type_privacy_lints;
+}
+
+declare_lint! {
+    /// The `coinductive_overlap_in_coherence` lint detects impls which are currently
+    /// considered not overlapping, but may be considered to overlap if support for
+    /// coinduction is added to the trait solver.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// use std::borrow::Borrow;
+    /// use std::cmp::Ordering;
+    /// use std::marker::PhantomData;
+    ///
+    /// #[derive(PartialEq, Default)]
+    /// pub(crate) struct Interval<T>(T);
+    ///
+    /// impl<T, Q> PartialEq<Q> for Interval<T>
+    /// where
+    ///     Q: PartialOrd,
+    /// {
+    ///     fn eq(&self, other: &Q) -> bool {
+    ///         todo!()
+    ///     }
+    /// }
+    ///
+    /// impl<T, Q> PartialOrd<Q> for Interval<T>
+    /// where
+    ///     Q: PartialOrd,
+    /// {
+    ///     fn partial_cmp(&self, other: &Q) -> Option<Ordering> {
+    ///         todo!()
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// The manual impl of `PartialEq` impl overlaps with the `derive`, since
+    /// if we replace `Q = Interval<T>`, then the second impl leads to a cycle:
+    /// `PartialOrd for Interval<T> where Interval<T>: Partial`.
+    pub COINDUCTIVE_OVERLAP_IN_COHERENCE,
+    Warn,
+    "impls that are not considered to overlap may be considered to \
+    overlap in the future",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #114040 <https://github.com/rust-lang/rust/issues/114040>",
+    };
 }
 
 declare_lint! {

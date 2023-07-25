@@ -118,6 +118,8 @@ pub struct SelectionContext<'cx, 'tcx> {
     /// policy. In essence, canonicalized queries need their errors propagated
     /// rather than immediately reported because we do not have accurate spans.
     query_mode: TraitQueryMode,
+
+    treat_inductive_cycle: TreatInductiveCycleAs,
 }
 
 // A stack that walks back up the stack frame.
@@ -198,6 +200,11 @@ enum BuiltinImplConditions<'tcx> {
     Ambiguous,
 }
 
+enum TreatInductiveCycleAs {
+    Recur,
+    Ambig,
+}
+
 impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     pub fn new(infcx: &'cx InferCtxt<'tcx>) -> SelectionContext<'cx, 'tcx> {
         SelectionContext {
@@ -205,6 +212,20 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             freshener: infcx.freshener(),
             intercrate_ambiguity_causes: None,
             query_mode: TraitQueryMode::Standard,
+            treat_inductive_cycle: TreatInductiveCycleAs::Recur,
+        }
+    }
+
+    pub fn with_treat_inductive_cycle_as_ambiguous(
+        infcx: &'cx InferCtxt<'tcx>,
+    ) -> SelectionContext<'cx, 'tcx> {
+        assert!(infcx.intercrate, "this doesn't do caching yet, so don't use it out of intercrate");
+        SelectionContext {
+            infcx,
+            freshener: infcx.freshener(),
+            intercrate_ambiguity_causes: None,
+            query_mode: TraitQueryMode::Standard,
+            treat_inductive_cycle: TreatInductiveCycleAs::Ambig,
         }
     }
 
@@ -719,7 +740,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 stack.update_reached_depth(stack_arg.1);
                                 return Ok(EvaluatedToOk);
                             } else {
-                                return Ok(EvaluatedToRecur);
+                                match self.treat_inductive_cycle {
+                                    TreatInductiveCycleAs::Ambig => return Ok(EvaluatedToAmbig),
+                                    TreatInductiveCycleAs::Recur => return Ok(EvaluatedToRecur),
+                                }
                             }
                         }
                         return Ok(EvaluatedToOk);
@@ -837,7 +861,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             }
                         }
                         ProjectAndUnifyResult::FailedNormalization => Ok(EvaluatedToAmbig),
-                        ProjectAndUnifyResult::Recursive => Ok(EvaluatedToRecur),
+                        ProjectAndUnifyResult::Recursive => match self.treat_inductive_cycle {
+                            TreatInductiveCycleAs::Ambig => return Ok(EvaluatedToAmbig),
+                            TreatInductiveCycleAs::Recur => return Ok(EvaluatedToRecur),
+                        },
                         ProjectAndUnifyResult::MismatchedProjectionTypes(_) => Ok(EvaluatedToErr),
                     }
                 }
@@ -1151,7 +1178,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Some(EvaluatedToOk)
             } else {
                 debug!("evaluate_stack --> recursive, inductive");
-                Some(EvaluatedToRecur)
+                match self.treat_inductive_cycle {
+                    TreatInductiveCycleAs::Ambig => Some(EvaluatedToAmbig),
+                    TreatInductiveCycleAs::Recur => Some(EvaluatedToRecur),
+                }
             }
         } else {
             None

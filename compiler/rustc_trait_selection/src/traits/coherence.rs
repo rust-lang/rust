@@ -24,6 +24,7 @@ use rustc_middle::traits::DefiningAnchor;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::visit::{TypeVisitable, TypeVisitableExt};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitor};
+use rustc_session::lint::builtin::COINDUCTIVE_OVERLAP_IN_COHERENCE;
 use rustc_span::symbol::sym;
 use rustc_span::DUMMY_SP;
 use std::fmt::Debug;
@@ -295,9 +296,8 @@ fn impl_intersection_has_impossible_obligation<'cx, 'tcx>(
         if infcx.next_trait_solver() {
             infcx.evaluate_obligation(obligation).map_or(false, |result| !result.may_apply())
         } else {
-            // We use `evaluate_root_obligation` to correctly track
-            // intercrate ambiguity clauses. We do not need this in the
-            // new solver.
+            // We use `evaluate_root_obligation` to correctly track intercrate
+            // ambiguity clauses. We cannot use this in the new solver.
             selcx.evaluate_root_obligation(obligation).map_or(
                 false, // Overflow has occurred, and treat the obligation as possibly holding.
                 |result| !result.may_apply(),
@@ -315,6 +315,45 @@ fn impl_intersection_has_impossible_obligation<'cx, 'tcx>(
         .find(obligation_guaranteed_to_fail);
 
     if let Some(failing_obligation) = opt_failing_obligation {
+        // Check the failing obligation once again, treating inductive cycles as
+        // ambiguous instead of error.
+        if !infcx.next_trait_solver()
+            && SelectionContext::with_treat_inductive_cycle_as_ambiguous(infcx)
+                .evaluate_root_obligation(&failing_obligation)
+                .map_or(true, |result| result.may_apply())
+        {
+            let first_local_impl = impl1_header
+                .impl_def_id
+                .as_local()
+                .or(impl2_header.impl_def_id.as_local())
+                .expect("expected one of the impls to be local");
+            infcx.tcx.struct_span_lint_hir(
+                COINDUCTIVE_OVERLAP_IN_COHERENCE,
+                infcx.tcx.local_def_id_to_hir_id(first_local_impl),
+                infcx.tcx.def_span(first_local_impl),
+                "impls that are not considered to overlap may be considered to \
+                overlap in the future",
+                |lint| {
+                    lint.span_label(
+                        infcx.tcx.def_span(impl1_header.impl_def_id),
+                        "the first impl is here",
+                    )
+                    .span_label(
+                        infcx.tcx.def_span(impl2_header.impl_def_id),
+                        "the second impl is here",
+                    );
+                    if !failing_obligation.cause.span.is_dummy() {
+                        lint.span_label(
+                            failing_obligation.cause.span,
+                            "this where-clause causes a cycle, but it may be treated \
+                            as possibly holding in the future, causing the impls to overlap",
+                        );
+                    }
+                    lint
+                },
+            );
+        }
+
         debug!("overlap: obligation unsatisfiable {:?}", failing_obligation);
         true
     } else {
