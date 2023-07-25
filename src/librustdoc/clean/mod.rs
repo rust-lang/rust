@@ -1545,7 +1545,7 @@ fn first_non_private<'tcx>(
     if let Some((segments, span)) = saved_path {
         return Some(first_non_private_clean_path(cx, path, segments, span));
     }
-    let (parent_def_id, mut ident) = match &path.segments[..] {
+    let (parent_def_id, ident) = match &path.segments[..] {
         [] => return None,
         // Relative paths are available in the same scope as the owner.
         [leaf] => (cx.tcx.local_parent(hir_id.owner.def_id), leaf.ident),
@@ -1569,6 +1569,7 @@ fn first_non_private<'tcx>(
         // Absolute paths are not. We start from the parent of the item.
         [.., parent, leaf] => (parent.res.opt_def_id()?.as_local()?, leaf.ident),
     };
+    let hir = cx.tcx.hir();
     // First we try to get the `DefId` of the item.
     for child in
         cx.tcx.module_children_local(parent_def_id).iter().filter(move |c| c.ident == ident)
@@ -1581,29 +1582,24 @@ fn first_non_private<'tcx>(
             let mut last_path_res = None;
             'reexps: for reexp in child.reexport_chain.iter() {
                 if let Some(use_def_id) = reexp.id() &&
-                    let Some(local_use_def_id) = use_def_id.as_local()
+                    let Some(local_use_def_id) = use_def_id.as_local() &&
+                    let Some(hir::Node::Item(item)) = hir.find_by_def_id(local_use_def_id) &&
+                    let hir::ItemKind::Use(path, _) = item.kind
                 {
-                    let hir = cx.tcx.hir();
-                    for item_id in hir.module_items(cx.tcx.local_parent(local_use_def_id)) {
-                        let item = hir.item(item_id);
-                        if item.ident == ident && let hir::ItemKind::Use(path, _) = item.kind {
-                            for res in &path.res {
-                                if let Res::Def(DefKind::Ctor(..), _) | Res::SelfCtor(..) = res {
-                                    continue;
-                                }
-                                if (cx.render_options.document_hidden ||
-                                    !cx.tcx.is_doc_hidden(use_def_id)) &&
-                                    // We never check for "cx.render_options.document_private"
-                                    // because if a re-export is not fully public, it's never
-                                    // documented.
-                                    cx.tcx.local_visibility(local_use_def_id).is_public() {
-                                    break 'reexps;
-                                }
-                                ident = path.segments.last().unwrap().ident;
-                                last_path_res = Some((path, res));
-                                continue 'reexps;
-                            }
+                    for res in &path.res {
+                        if let Res::Def(DefKind::Ctor(..), _) | Res::SelfCtor(..) = res {
+                            continue;
                         }
+                        if (cx.render_options.document_hidden ||
+                            !cx.tcx.is_doc_hidden(use_def_id)) &&
+                            // We never check for "cx.render_options.document_private"
+                            // because if a re-export is not fully public, it's never
+                            // documented.
+                            cx.tcx.local_visibility(local_use_def_id).is_public() {
+                            break 'reexps;
+                        }
+                        last_path_res = Some((path, res));
+                        continue 'reexps;
                     }
                 }
             }
