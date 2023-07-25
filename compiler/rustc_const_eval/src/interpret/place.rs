@@ -577,7 +577,7 @@ where
         src: Immediate<M::Provenance>,
         dest: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
-        assert!(dest.layout.is_sized(), "Cannot write unsized data");
+        assert!(dest.layout.is_sized(), "Cannot write unsized immediate data");
         trace!("write_immediate: {:?} <- {:?}: {}", *dest, src, dest.layout.ty);
 
         // See if we can avoid an allocation. This is the counterpart to `read_immediate_raw`,
@@ -591,9 +591,34 @@ where
                     *self.force_allocation(dest)?
                 } else {
                     match M::access_local_mut(self, frame, local)? {
-                        Operand::Immediate(local) => {
+                        Operand::Immediate(local_val) => {
                             // Local can be updated in-place.
-                            *local = src;
+                            *local_val = src;
+                            // Double-check that the value we are storing and the local fit to each other.
+                            // (*After* doing the update for borrow checker reasons.)
+                            if cfg!(debug_assertions) {
+                                let local_layout =
+                                    self.layout_of_local(&self.stack()[frame], local, None)?;
+                                match (src, local_layout.abi) {
+                                    (Immediate::Scalar(scalar), Abi::Scalar(s)) => {
+                                        assert_eq!(scalar.size(), s.size(self))
+                                    }
+                                    (
+                                        Immediate::ScalarPair(a_val, b_val),
+                                        Abi::ScalarPair(a, b),
+                                    ) => {
+                                        assert_eq!(a_val.size(), a.size(self));
+                                        assert_eq!(b_val.size(), b.size(self));
+                                    }
+                                    (Immediate::Uninit, _) => {}
+                                    (src, abi) => {
+                                        bug!(
+                                            "value {src:?} cannot be written into local with type {} (ABI {abi:?})",
+                                            local_layout.ty
+                                        )
+                                    }
+                                };
+                            }
                             return Ok(());
                         }
                         Operand::Indirect(mplace) => {

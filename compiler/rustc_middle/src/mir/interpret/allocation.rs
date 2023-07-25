@@ -571,7 +571,7 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
         assert!(self.mutability == Mutability::Mut);
 
         // `to_bits_or_ptr_internal` is the right method because we just want to store this data
-        // as-is into memory.
+        // as-is into memory. This also double-checks that `val.size()` matches `range.size`.
         let (bytes, provenance) = match val.to_bits_or_ptr_internal(range.size)? {
             Right(ptr) => {
                 let (provenance, offset) = ptr.into_parts();
