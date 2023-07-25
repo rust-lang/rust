@@ -1,7 +1,7 @@
 use super::needless_pass_by_value::requires_exact_signature;
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::source::snippet;
-use clippy_utils::{get_parent_node, is_from_proc_macro, is_self};
+use clippy_utils::{get_parent_node, inherits_cfg, is_from_proc_macro, is_self};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_qpath, FnKind, Visitor};
@@ -192,10 +192,12 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
             let show_semver_warning =
                 self.avoid_breaking_exported_api && cx.effective_visibilities.is_exported(*fn_def_id);
 
+            let mut is_cfged = None;
             for input in unused {
                 // If the argument is never used mutably, we emit the warning.
                 let sp = input.span;
                 if let rustc_hir::TyKind::Ref(_, inner_ty) = input.kind {
+                    let is_cfged = is_cfged.get_or_insert_with(|| inherits_cfg(cx.tcx, *fn_def_id));
                     span_lint_hir_and_then(
                         cx,
                         NEEDLESS_PASS_BY_REF_MUT,
@@ -211,6 +213,9 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
                             );
                             if show_semver_warning {
                                 diag.warn("changing this function will impact semver compatibility");
+                            }
+                            if *is_cfged {
+                                diag.note("this is cfg-gated and may require further changes");
                             }
                         },
                     );
