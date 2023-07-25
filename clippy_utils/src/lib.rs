@@ -2451,6 +2451,17 @@ pub fn is_in_cfg_test(tcx: TyCtxt<'_>, id: hir::HirId) -> bool {
         .any(is_cfg_test)
 }
 
+/// Checks if the item of any of its parents has `#[cfg(...)]` attribute applied.
+pub fn inherits_cfg(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
+    let hir = tcx.hir();
+
+    tcx.has_attr(def_id, sym::cfg)
+        || hir
+            .parent_iter(hir.local_def_id_to_hir_id(def_id))
+            .flat_map(|(parent_id, _)| hir.attrs(parent_id))
+            .any(|attr| attr.has_name(sym::cfg))
+}
+
 /// Checks whether item either has `test` attribute applied, or
 /// is a module with `test` in its name.
 ///

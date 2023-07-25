@@ -1,7 +1,7 @@
 use super::needless_pass_by_value::requires_exact_signature;
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::source::snippet;
-use clippy_utils::{get_parent_node, is_from_proc_macro, is_self};
+use clippy_utils::{get_parent_node, inherits_cfg, is_from_proc_macro, is_self};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_qpath, FnKind, Visitor};
@@ -12,11 +12,11 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::map::associated_body;
 use rustc_middle::hir::nested_filter::OnlyBodies;
 use rustc_middle::mir::FakeReadCause;
-use rustc_middle::ty::{self, Ty, TyCtxt, UpvarId, UpvarPath};
+use rustc_middle::ty::{self, Ty, UpvarId, UpvarPath};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::def_id::{LocalDefId, CRATE_DEF_ID};
+use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::kw;
-use rustc_span::{sym, Span};
+use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 
 declare_clippy_lint! {
@@ -91,16 +91,6 @@ fn should_skip<'tcx>(
 
     // All spans generated from a proc-macro invocation are the same...
     is_from_proc_macro(cx, &input)
-}
-
-fn inherits_cfg(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
-    if def_id == CRATE_DEF_ID {
-        false
-    } else if tcx.has_attr(def_id, sym::cfg) {
-        true
-    } else {
-        inherits_cfg(tcx, tcx.parent_module_from_def_id(def_id))
-    }
 }
 
 impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
