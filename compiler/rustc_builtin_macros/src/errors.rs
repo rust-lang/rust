@@ -440,43 +440,43 @@ pub(crate) struct EnvTakesArgs {
     pub(crate) span: Span,
 }
 
-//#[derive(Diagnostic)]
-//#[diag(builtin_macros_env_not_defined)]
-pub(crate) struct EnvNotDefined {
+pub(crate) struct EnvNotDefinedWithUserMessage {
     pub(crate) span: Span,
-    pub(crate) msg: Option<Symbol>,
-    pub(crate) var: Symbol,
-    pub(crate) help: Option<EnvNotDefinedHelp>,
+    pub(crate) msg_from_user: Symbol,
 }
 
-// Hand-written implementation to support custom user messages
-impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for EnvNotDefined {
+// Hand-written implementation to support custom user messages.
+impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for EnvNotDefinedWithUserMessage {
     #[track_caller]
     fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, G> {
-        let mut diag = if let Some(msg) = self.msg {
-            #[expect(
-                rustc::untranslatable_diagnostic,
-                reason = "cannot translate user-provided messages"
-            )]
-            handler.struct_diagnostic(msg.to_string())
-        } else {
-            handler.struct_diagnostic(crate::fluent_generated::builtin_macros_env_not_defined)
-        };
-        diag.set_arg("var", self.var);
+        #[expect(
+            rustc::untranslatable_diagnostic,
+            reason = "cannot translate user-provided messages"
+        )]
+        let mut diag = handler.struct_diagnostic(self.msg_from_user.to_string());
         diag.set_span(self.span);
-        if let Some(help) = self.help {
-            diag.subdiagnostic(help);
-        }
         diag
     }
 }
 
-#[derive(Subdiagnostic)]
-pub(crate) enum EnvNotDefinedHelp {
+#[derive(Diagnostic)]
+pub(crate) enum EnvNotDefined<'a> {
+    #[diag(builtin_macros_env_not_defined)]
     #[help(builtin_macros_cargo)]
-    CargoVar,
-    #[help(builtin_macros_other)]
-    Other,
+    CargoEnvVar {
+        #[primary_span]
+        span: Span,
+        var: Symbol,
+        var_expr: &'a rustc_ast::Expr,
+    },
+    #[diag(builtin_macros_env_not_defined)]
+    #[help(builtin_macros_custom)]
+    CustomEnvVar {
+        #[primary_span]
+        span: Span,
+        var: Symbol,
+        var_expr: &'a rustc_ast::Expr,
+    },
 }
 
 #[derive(Diagnostic)]

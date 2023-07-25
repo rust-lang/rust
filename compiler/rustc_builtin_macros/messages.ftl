@@ -109,8 +109,8 @@ builtin_macros_derive_path_args_value = traits in `#[derive(...)]` don't accept 
     .suggestion = remove the value
 
 builtin_macros_env_not_defined = environment variable `{$var}` not defined at compile time
-    .cargo = Cargo sets build script variables at run time. Use `std::env::var("{$var}")` instead
-    .other = use `std::env::var("{$var}")` to read the variable at run time
+    .cargo = Cargo sets build script variables at run time. Use `std::env::var({$var_expr})` instead
+    .custom = use `std::env::var({$var_expr})` to read the variable at run time
 
 builtin_macros_env_takes_args = `env!()` takes 1 or 2 arguments
 
