@@ -254,33 +254,38 @@ struct TokenCursor {
 }
 
 impl TokenCursor {
-    fn next(&mut self, desugar_doc_comments: bool) -> (Token, Spacing) {
-        self.inlined_next(desugar_doc_comments)
+    fn next(&mut self) -> (Token, Spacing) {
+        self.inlined_next()
     }
 
     /// This always-inlined version should only be used on hot code paths.
     #[inline(always)]
-    fn inlined_next(&mut self, desugar_doc_comments: bool) -> (Token, Spacing) {
+    fn inlined_next(&mut self) -> (Token, Spacing) {
         loop {
             // FIXME: we currently don't return `Delimiter` open/close delims. To fix #67062 we will
             // need to, whereupon the `delim != Delimiter::Invisible` conditions below can be
             // removed.
             if let Some(tree) = self.tree_cursor.next_ref() {
                 match tree {
-                    &TokenTree::Token(ref token, spacing) => match (desugar_doc_comments, token) {
-                        (true, &Token { kind: token::DocComment(_, attr_style, data), span }) => {
-                            let desugared = self.desugar(attr_style, data, span);
-                            self.tree_cursor.replace_prev_and_rewind(desugared);
-                            // Continue to get the first token of the desugared doc comment.
+                    &TokenTree::Token(ref token, spacing) => {
+                        match (self.desugar_doc_comments, token) {
+                            (
+                                true,
+                                &Token { kind: token::DocComment(_, attr_style, data), span },
+                            ) => {
+                                let desugared = self.desugar(attr_style, data, span);
+                                self.tree_cursor.replace_prev_and_rewind(desugared);
+                                // Continue to get the first token of the desugared doc comment.
+                            }
+                            _ => {
+                                debug_assert!(!matches!(
+                                    token.kind,
+                                    token::OpenDelim(_) | token::CloseDelim(_)
+                                ));
+                                return (token.clone(), spacing);
+                            }
                         }
-                        _ => {
-                            debug_assert!(!matches!(
-                                token.kind,
-                                token::OpenDelim(_) | token::CloseDelim(_)
-                            ));
-                            return (token.clone(), spacing);
-                        }
-                    },
+                    }
                     &TokenTree::Delimited(sp, delim, ref tts) => {
                         let trees = tts.clone().into_trees();
                         self.stack.push((mem::replace(&mut self.tree_cursor, trees), delim, sp));
@@ -1105,7 +1110,7 @@ impl<'a> Parser<'a> {
     pub fn bump(&mut self) {
         // Note: destructuring here would give nicer code, but it was found in #96210 to be slower
         // than `.0`/`.1` access.
-        let mut next = self.token_cursor.inlined_next(self.token_cursor.desugar_doc_comments);
+        let mut next = self.token_cursor.inlined_next();
         self.token_cursor.num_next_calls += 1;
         // We've retrieved an token from the underlying
         // cursor, so we no longer need to worry about
@@ -1155,7 +1160,7 @@ impl<'a> Parser<'a> {
         let mut i = 0;
         let mut token = Token::dummy();
         while i < dist {
-            token = cursor.next(cursor.desugar_doc_comments).0;
+            token = cursor.next().0;
             if matches!(
                 token.kind,
                 token::OpenDelim(Delimiter::Invisible) | token::CloseDelim(Delimiter::Invisible)
