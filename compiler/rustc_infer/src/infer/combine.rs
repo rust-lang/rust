@@ -177,7 +177,7 @@ impl<'tcx> InferCtxt<'tcx> {
             self.tcx.check_tys_might_be_eq(canonical).map_err(|_| {
                 self.tcx.sess.delay_span_bug(
                     DUMMY_SP,
-                    format!("cannot relate consts of different types (a={:?}, b={:?})", a, b,),
+                    format!("cannot relate consts of different types (a={a:?}, b={b:?})",),
                 )
             })
         });

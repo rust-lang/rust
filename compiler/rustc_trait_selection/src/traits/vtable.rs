@@ -195,11 +195,7 @@ fn dump_vtable_entries<'tcx>(
     trait_ref: ty::PolyTraitRef<'tcx>,
     entries: &[VtblEntry<'tcx>],
 ) {
-    tcx.sess.emit_err(DumpVTableEntries {
-        span: sp,
-        trait_ref,
-        entries: format!("{:#?}", entries),
-    });
+    tcx.sess.emit_err(DumpVTableEntries { span: sp, trait_ref, entries: format!("{entries:#?}") });
 }
 
 fn has_own_existential_vtable_entries(tcx: TyCtxt<'_>, trait_def_id: DefId) -> bool {

@@ -575,12 +575,12 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     if param_hir.pat.span == param_hir.ty_span {
                         // for `|x|`, `|_|`, `|x: impl Foo|`
                         let Ok(pat) = self.tcx.sess.source_map().span_to_snippet(param_hir.pat.span) else { return; };
-                        suggestion += &format!("{}: &_", pat);
+                        suggestion += &format!("{pat}: &_");
                     } else {
                         // for `|x: ty|`, `|_: ty|`
                         let Ok(pat) = self.tcx.sess.source_map().span_to_snippet(param_hir.pat.span) else { return; };
                         let Ok(ty) = self.tcx.sess.source_map().span_to_snippet(param_hir.ty_span) else { return; };
-                        suggestion += &format!("{}: &{}", pat, ty);
+                        suggestion += &format!("{pat}: &{ty}");
                     }
                     has_suggestion = true;
                 } else {

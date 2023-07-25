@@ -908,7 +908,7 @@ pub fn list_file_metadata(
     let flavor = get_flavor_from_path(path);
     match get_metadata_section(target, flavor, path, metadata_loader) {
         Ok(metadata) => metadata.list_crate_metadata(out),
-        Err(msg) => write!(out, "{}\n", msg),
+        Err(msg) => write!(out, "{msg}\n"),
     }
 }
 

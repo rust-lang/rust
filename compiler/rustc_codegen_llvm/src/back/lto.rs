@@ -332,7 +332,7 @@ fn fat_lto(
             let _timer = cgcx
                 .prof
                 .generic_activity_with_arg_recorder("LLVM_fat_lto_link_module", |recorder| {
-                    recorder.record_arg(format!("{:?}", name))
+                    recorder.record_arg(format!("{name:?}"))
                 });
             info!("linking {:?}", name);
             let data = bc_decoded.data();
@@ -787,7 +787,7 @@ impl ThinLTOKeysMap {
         let file = File::create(path)?;
         let mut writer = io::BufWriter::new(file);
         for (module, key) in &self.keys {
-            writeln!(writer, "{} {}", module, key)?;
+            writeln!(writer, "{module} {key}")?;
         }
         Ok(())
     }
@@ -801,7 +801,7 @@ impl ThinLTOKeysMap {
             let mut split = line.split(' ');
             let module = split.next().unwrap();
             let key = split.next().unwrap();
-            assert_eq!(split.next(), None, "Expected two space-separated values, found {:?}", line);
+            assert_eq!(split.next(), None, "Expected two space-separated values, found {line:?}");
             keys.insert(module.to_string(), key.to_string());
         }
         Ok(Self { keys })

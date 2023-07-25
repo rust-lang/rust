@@ -1445,12 +1445,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     let name_str = if name == kw::PathRoot {
                         "crate root".to_string()
                     } else {
-                        format!("`{}`", name)
+                        format!("`{name}`")
                     };
                     let label = if segment_idx == 1 && path[0].ident.name == kw::PathRoot {
-                        format!("global paths cannot start with {}", name_str)
+                        format!("global paths cannot start with {name_str}")
                     } else {
-                        format!("{} in paths can only be used in start position", name_str)
+                        format!("{name_str} in paths can only be used in start position")
                     };
                     (label, None)
                 });

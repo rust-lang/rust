@@ -420,10 +420,10 @@ pub(crate) fn i686_decorated_name(
             DllCallingConvention::C => {}
             DllCallingConvention::Stdcall(arg_list_size)
             | DllCallingConvention::Fastcall(arg_list_size) => {
-                write!(&mut decorated_name, "@{}", arg_list_size).unwrap();
+                write!(&mut decorated_name, "@{arg_list_size}").unwrap();
             }
             DllCallingConvention::Vectorcall(arg_list_size) => {
-                write!(&mut decorated_name, "@@{}", arg_list_size).unwrap();
+                write!(&mut decorated_name, "@@{arg_list_size}").unwrap();
             }
         }
     }

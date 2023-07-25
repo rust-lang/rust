@@ -259,7 +259,7 @@ pub(crate) fn save_temp_bitcode(
         return;
     }
     unsafe {
-        let ext = format!("{}.bc", name);
+        let ext = format!("{name}.bc");
         let cgu = Some(&module.name[..]);
         let path = cgcx.output_filenames.temp_path_ext(&ext, cgu);
         let cstr = path_to_c_string(&path);
@@ -713,7 +713,7 @@ pub(crate) unsafe fn codegen(
 
                 let Ok(demangled) = rustc_demangle::try_demangle(input) else { return 0 };
 
-                if write!(cursor, "{:#}", demangled).is_err() {
+                if write!(cursor, "{demangled:#}").is_err() {
                     // Possible only if provided buffer is not big enough
                     return 0;
                 }
@@ -834,7 +834,7 @@ pub(crate) unsafe fn codegen(
 }
 
 fn create_section_with_flags_asm(section_name: &str, section_flags: &str, data: &[u8]) -> Vec<u8> {
-    let mut asm = format!(".section {},\"{}\"\n", section_name, section_flags).into_bytes();
+    let mut asm = format!(".section {section_name},\"{section_flags}\"\n").into_bytes();
     asm.extend_from_slice(b".ascii \"");
     asm.reserve(data.len());
     for &byte in data {

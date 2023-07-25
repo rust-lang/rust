@@ -512,7 +512,7 @@ impl<'tcx> Stable<'tcx> for mir::InlineAsmOperand<'tcx> {
             | InlineAsmOperand::SymStatic { .. } => (None, None),
         };
 
-        stable_mir::mir::InlineAsmOperand { in_value, out_place, raw_rpr: format!("{:?}", self) }
+        stable_mir::mir::InlineAsmOperand { in_value, out_place, raw_rpr: format!("{self:?}") }
     }
 }
 
@@ -561,10 +561,10 @@ impl<'tcx> Stable<'tcx> for mir::Terminator<'tcx> {
             },
             InlineAsm { template, operands, options, line_spans, destination, unwind } => {
                 Terminator::InlineAsm {
-                    template: format!("{:?}", template),
+                    template: format!("{template:?}"),
                     operands: operands.iter().map(|operand| operand.stable(tables)).collect(),
-                    options: format!("{:?}", options),
-                    line_spans: format!("{:?}", line_spans),
+                    options: format!("{options:?}"),
+                    line_spans: format!("{line_spans:?}"),
                     destination: destination.map(|d| d.as_usize()),
                     unwind: unwind.stable(tables),
                 }

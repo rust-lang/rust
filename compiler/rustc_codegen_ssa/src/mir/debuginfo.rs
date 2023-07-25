@@ -337,7 +337,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         } else {
             Some(match whole_local_var.or(fallback_var.clone()) {
                 Some(var) if var.name != kw::Empty => var.name.to_string(),
-                _ => format!("{:?}", local),
+                _ => format!("{local:?}"),
             })
         };
 

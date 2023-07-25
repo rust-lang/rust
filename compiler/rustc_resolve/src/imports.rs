@@ -1153,18 +1153,18 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     ModuleOrUniformRoot::Module(module) => {
                         let module_str = module_to_string(module);
                         if let Some(module_str) = module_str {
-                            format!("no `{}` in `{}`", ident, module_str)
+                            format!("no `{ident}` in `{module_str}`")
                         } else {
-                            format!("no `{}` in the root", ident)
+                            format!("no `{ident}` in the root")
                         }
                     }
                     _ => {
                         if !ident.is_path_segment_keyword() {
-                            format!("no external crate `{}`", ident)
+                            format!("no external crate `{ident}`")
                         } else {
                             // HACK(eddyb) this shows up for `self` & `super`, which
                             // should work instead - for now keep the same error message.
-                            format!("no `{}` in the root", ident)
+                            format!("no `{ident}` in the root")
                         }
                     }
                 };
@@ -1212,10 +1212,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             let (ns, binding) = reexport_error.unwrap();
             if pub_use_of_private_extern_crate_hack(import, binding) {
                 let msg = format!(
-                    "extern crate `{}` is private, and cannot be \
+                    "extern crate `{ident}` is private, and cannot be \
                                    re-exported (error E0365), consider declaring with \
-                                   `pub`",
-                    ident
+                                   `pub`"
                 );
                 self.lint_buffer.buffer_lint(
                     PUB_USE_OF_PRIVATE_EXTERN_CRATE,
@@ -1355,7 +1354,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 UNUSED_IMPORTS,
                 id,
                 import.span,
-                format!("the item `{}` is imported redundantly", ident),
+                format!("the item `{ident}` is imported redundantly"),
                 BuiltinLintDiagnostics::RedundantImport(redundant_spans, ident),
             );
         }
