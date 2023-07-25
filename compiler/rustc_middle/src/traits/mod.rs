@@ -649,43 +649,31 @@ pub enum ImplSource<'tcx, N> {
     /// for some type parameter. The `Vec<N>` represents the
     /// obligations incurred from normalizing the where-clause (if
     /// any).
-    Param(Vec<N>, ty::BoundConstness),
+    Param(ty::BoundConstness, Vec<N>),
 
-    /// Virtual calls through an object.
-    Object(ImplSourceObjectData<N>),
-
-    /// Successful resolution for a builtin trait.
-    Builtin(Vec<N>),
-
-    /// ImplSource for trait upcasting coercion
-    TraitUpcasting(ImplSourceTraitUpcastingData<N>),
+    /// Successful resolution for a builtin impl.
+    Builtin(BuiltinImplSource, Vec<N>),
 }
 
 impl<'tcx, N> ImplSource<'tcx, N> {
     pub fn nested_obligations(self) -> Vec<N> {
         match self {
             ImplSource::UserDefined(i) => i.nested,
-            ImplSource::Param(n, _) | ImplSource::Builtin(n) => n,
-            ImplSource::Object(d) => d.nested,
-            ImplSource::TraitUpcasting(d) => d.nested,
+            ImplSource::Param(_, n) | ImplSource::Builtin(_, n) => n,
         }
     }
 
     pub fn borrow_nested_obligations(&self) -> &[N] {
         match self {
             ImplSource::UserDefined(i) => &i.nested,
-            ImplSource::Param(n, _) | ImplSource::Builtin(n) => &n,
-            ImplSource::Object(d) => &d.nested,
-            ImplSource::TraitUpcasting(d) => &d.nested,
+            ImplSource::Param(_, n) | ImplSource::Builtin(_, n) => &n,
         }
     }
 
     pub fn borrow_nested_obligations_mut(&mut self) -> &mut [N] {
         match self {
             ImplSource::UserDefined(i) => &mut i.nested,
-            ImplSource::Param(n, _) | ImplSource::Builtin(n) => n,
-            ImplSource::Object(d) => &mut d.nested,
-            ImplSource::TraitUpcasting(d) => &mut d.nested,
+            ImplSource::Param(_, n) | ImplSource::Builtin(_, n) => n,
         }
     }
 
@@ -699,17 +687,9 @@ impl<'tcx, N> ImplSource<'tcx, N> {
                 args: i.args,
                 nested: i.nested.into_iter().map(f).collect(),
             }),
-            ImplSource::Param(n, ct) => ImplSource::Param(n.into_iter().map(f).collect(), ct),
-            ImplSource::Builtin(n) => ImplSource::Builtin(n.into_iter().map(f).collect()),
-            ImplSource::Object(o) => ImplSource::Object(ImplSourceObjectData {
-                vtable_base: o.vtable_base,
-                nested: o.nested.into_iter().map(f).collect(),
-            }),
-            ImplSource::TraitUpcasting(d) => {
-                ImplSource::TraitUpcasting(ImplSourceTraitUpcastingData {
-                    vtable_vptr_slot: d.vtable_vptr_slot,
-                    nested: d.nested.into_iter().map(f).collect(),
-                })
+            ImplSource::Param(ct, n) => ImplSource::Param(ct, n.into_iter().map(f).collect()),
+            ImplSource::Builtin(source, n) => {
+                ImplSource::Builtin(source, n.into_iter().map(f).collect())
             }
         }
     }
@@ -733,29 +713,31 @@ pub struct ImplSourceUserDefinedData<'tcx, N> {
     pub nested: Vec<N>,
 }
 
-#[derive(Clone, PartialEq, Eq, TyEncodable, TyDecodable, HashStable, Lift)]
-#[derive(TypeFoldable, TypeVisitable)]
-pub struct ImplSourceTraitUpcastingData<N> {
-    /// The vtable is formed by concatenating together the method lists of
-    /// the base object trait and all supertraits, pointers to supertrait vtable will
-    /// be provided when necessary; this is the position of `upcast_trait_ref`'s vtable
-    /// within that vtable.
-    pub vtable_vptr_slot: Option<usize>,
-
-    pub nested: Vec<N>,
-}
-
-#[derive(PartialEq, Eq, Clone, TyEncodable, TyDecodable, HashStable, Lift)]
-#[derive(TypeFoldable, TypeVisitable)]
-pub struct ImplSourceObjectData<N> {
+#[derive(Copy, Clone, PartialEq, Eq, TyEncodable, TyDecodable, HashStable, Debug)]
+pub enum BuiltinImplSource {
+    /// Some builtin impl we don't need to differentiate. This should be used
+    /// unless more specific information is necessary.
+    Misc,
+    /// A builtin impl for trait objects.
+    ///
     /// The vtable is formed by concatenating together the method lists of
     /// the base object trait and all supertraits, pointers to supertrait vtable will
     /// be provided when necessary; this is the start of `upcast_trait_ref`'s methods
     /// in that vtable.
-    pub vtable_base: usize,
-
-    pub nested: Vec<N>,
+    Object { vtable_base: usize },
+    /// The vtable is formed by concatenating together the method lists of
+    /// the base object trait and all supertraits, pointers to supertrait vtable will
+    /// be provided when necessary; this is the position of `upcast_trait_ref`'s vtable
+    /// within that vtable.
+    TraitUpcasting { vtable_vptr_slot: Option<usize> },
+    /// Unsizing a tuple like `(A, B, ..., X)` to `(A, B, ..., Y)` if `X` unsizes to `Y`.
+    ///
+    /// This needs to be a separate variant as it is still unstable and we need to emit
+    /// a feature error when using it on stable.
+    TupleUnsizing,
 }
+
+TrivialTypeTraversalAndLiftImpls! { BuiltinImplSource }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, HashStable, PartialOrd, Ord)]
 pub enum ObjectSafetyViolation {

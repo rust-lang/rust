@@ -2,7 +2,7 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::query::Providers;
-use rustc_middle::traits::CodegenObligationError;
+use rustc_middle::traits::{BuiltinImplSource, CodegenObligationError};
 use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{self, Instance, TyCtxt, TypeVisitableExt};
 use rustc_span::sym;
@@ -177,12 +177,15 @@ fn resolve_associated_item<'tcx>(
 
             Some(ty::Instance::new(leaf_def.item.def_id, args))
         }
-        traits::ImplSource::Object(ref data) => {
-            traits::get_vtable_index_of_object_method(tcx, data, trait_item_id).map(|index| {
-                Instance { def: ty::InstanceDef::Virtual(trait_item_id, index), args: rcvr_args }
-            })
+        traits::ImplSource::Builtin(BuiltinImplSource::Object { vtable_base }, _) => {
+            traits::get_vtable_index_of_object_method(tcx, *vtable_base, trait_item_id).map(
+                |index| Instance {
+                    def: ty::InstanceDef::Virtual(trait_item_id, index),
+                    args: rcvr_args,
+                },
+            )
         }
-        traits::ImplSource::Builtin(..) => {
+        traits::ImplSource::Builtin(BuiltinImplSource::Misc, _) => {
             let lang_items = tcx.lang_items();
             if Some(trait_ref.def_id) == lang_items.clone_trait() {
                 // FIXME(eddyb) use lang items for methods instead of names.
@@ -290,7 +293,9 @@ fn resolve_associated_item<'tcx>(
                 None
             }
         }
-        traits::ImplSource::Param(..) | traits::ImplSource::TraitUpcasting(_) => None,
+        traits::ImplSource::Param(..)
+        | traits::ImplSource::Builtin(BuiltinImplSource::TraitUpcasting { .. }, _)
+        | traits::ImplSource::Builtin(BuiltinImplSource::TupleUnsizing, _) => None,
     })
 }
 

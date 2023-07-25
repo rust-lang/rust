@@ -46,6 +46,7 @@ use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKi
 use rustc_infer::infer::{Coercion, DefineOpaqueTypes, InferOk, InferResult};
 use rustc_infer::traits::{Obligation, PredicateObligation};
 use rustc_middle::lint::in_external_macro;
+use rustc_middle::traits::BuiltinImplSource;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCoercion,
 };
@@ -636,22 +637,6 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 Some(ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_pred)))
                     if traits.contains(&trait_pred.def_id()) =>
                 {
-                    let trait_pred = self.resolve_vars_if_possible(trait_pred);
-                    if unsize_did == trait_pred.def_id() {
-                        let self_ty = trait_pred.self_ty();
-                        let unsize_ty = trait_pred.trait_ref.args[1].expect_ty();
-                        if let (ty::Dynamic(ref data_a, ..), ty::Dynamic(ref data_b, ..)) =
-                            (self_ty.kind(), unsize_ty.kind())
-                            && data_a.principal_def_id() != data_b.principal_def_id()
-                        {
-                            debug!("coerce_unsized: found trait upcasting coercion");
-                            has_trait_upcasting_coercion = Some((self_ty, unsize_ty));
-                        }
-                        if let ty::Tuple(..) = unsize_ty.kind() {
-                            debug!("coerce_unsized: found unsized tuple coercion");
-                            has_unsized_tuple_coercion = true;
-                        }
-                    }
                     trait_pred
                 }
                 _ => {
@@ -659,6 +644,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     continue;
                 }
             };
+            let trait_pred = self.resolve_vars_if_possible(trait_pred);
             match selcx.select(&obligation.with(selcx.tcx(), trait_pred)) {
                 // Uncertain or unimplemented.
                 Ok(None) => {
@@ -701,18 +687,26 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     // be silent, as it causes a type mismatch later.
                 }
 
-                Ok(Some(impl_source)) => queue.extend(impl_source.nested_obligations()),
+                Ok(Some(impl_source)) => {
+                    // Some builtin coercions are still unstable so we detect
+                    // these here and emit a feature error if coercion doesn't fail
+                    // due to another reason.
+                    match impl_source {
+                        traits::ImplSource::Builtin(
+                            BuiltinImplSource::TraitUpcasting { .. },
+                            _,
+                        ) => {
+                            has_trait_upcasting_coercion =
+                                Some((trait_pred.self_ty(), trait_pred.trait_ref.args.type_at(1)));
+                        }
+                        traits::ImplSource::Builtin(BuiltinImplSource::TupleUnsizing, _) => {
+                            has_unsized_tuple_coercion = true;
+                        }
+                        _ => {}
+                    }
+                    queue.extend(impl_source.nested_obligations())
+                }
             }
-        }
-
-        if has_unsized_tuple_coercion && !self.tcx.features().unsized_tuple_coercion {
-            feature_err(
-                &self.tcx.sess.parse_sess,
-                sym::unsized_tuple_coercion,
-                self.cause.span,
-                "unsized tuple coercion is not stable enough for use and is subject to change",
-            )
-            .emit();
         }
 
         if let Some((sub, sup)) = has_trait_upcasting_coercion
@@ -728,6 +722,16 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             );
             err.note(format!("required when coercing `{source}` into `{target}`"));
             err.emit();
+        }
+
+        if has_unsized_tuple_coercion && !self.tcx.features().unsized_tuple_coercion {
+            feature_err(
+                &self.tcx.sess.parse_sess,
+                sym::unsized_tuple_coercion,
+                self.cause.span,
+                "unsized tuple coercion is not stable enough for use and is subject to change",
+            )
+            .emit();
         }
 
         Ok(coercion)

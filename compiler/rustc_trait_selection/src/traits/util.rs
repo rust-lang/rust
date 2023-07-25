@@ -241,9 +241,9 @@ pub fn upcast_choices<'tcx>(
 /// Given an upcast trait object described by `object`, returns the
 /// index of the method `method_def_id` (which should be part of
 /// `object.upcast_trait_ref`) within the vtable for `object`.
-pub fn get_vtable_index_of_object_method<'tcx, N>(
+pub fn get_vtable_index_of_object_method<'tcx>(
     tcx: TyCtxt<'tcx>,
-    object: &super::ImplSourceObjectData<N>,
+    vtable_base: usize,
     method_def_id: DefId,
 ) -> Option<usize> {
     // Count number of methods preceding the one we are selecting and
@@ -252,7 +252,7 @@ pub fn get_vtable_index_of_object_method<'tcx, N>(
         .iter()
         .copied()
         .position(|def_id| def_id == method_def_id)
-        .map(|index| object.vtable_base + index)
+        .map(|index| vtable_base + index)
 }
 
 pub fn closure_trait_ref_and_return_type<'tcx>(
