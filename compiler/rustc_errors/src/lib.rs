@@ -553,28 +553,12 @@ impl Handler {
         sm: Option<Lrc<SourceMap>>,
         fallback_bundle: LazyFallbackBundle,
     ) -> Self {
-        Self::with_tty_emitter_and_flags(
+        let flags =
+            HandlerFlags { can_emit_warnings, treat_err_as_bug: None, ..Default::default() };
+        let emitter = Box::new(EmitterWriter::stderr(
             ColorConfig::Auto,
             sm,
             None,
-            fallback_bundle,
-            HandlerFlags { can_emit_warnings, treat_err_as_bug: None, ..Default::default() },
-            None,
-        )
-    }
-
-    pub fn with_tty_emitter_and_flags(
-        color_config: ColorConfig,
-        sm: Option<Lrc<SourceMap>>,
-        fluent_bundle: Option<Lrc<FluentBundle>>,
-        fallback_bundle: LazyFallbackBundle,
-        flags: HandlerFlags,
-        ice_file: Option<PathBuf>,
-    ) -> Self {
-        let emitter = Box::new(EmitterWriter::stderr(
-            color_config,
-            sm,
-            fluent_bundle,
             fallback_bundle,
             false,
             false,
@@ -583,7 +567,7 @@ impl Handler {
             flags.track_diagnostics,
             TerminalUrl::No,
         ));
-        Self::with_emitter_and_flags(emitter, flags, ice_file)
+        Self::with_emitter_and_flags(emitter, flags, None)
     }
 
     pub fn with_emitter(
