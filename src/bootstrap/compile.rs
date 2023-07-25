@@ -323,6 +323,10 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
         cargo.env("MACOSX_DEPLOYMENT_TARGET", target);
     }
 
+    if let Some(path) = builder.config.profiler_path(target) {
+        cargo.env("LLVM_PROFILER_RT_LIB", path);
+    }
+
     // Determine if we're going to compile in optimized C intrinsics to
     // the `compiler-builtins` crate. These intrinsics live in LLVM's
     // `compiler-rt` repository, but our `src/llvm-project` submodule isn't
