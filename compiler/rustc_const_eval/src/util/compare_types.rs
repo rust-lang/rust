@@ -56,8 +56,13 @@ pub fn is_subtype<'tcx>(
     // With `Reveal::All`, opaque types get normalized away, with `Reveal::UserFacing`
     // we would get unification errors because we're unable to look into opaque types,
     // even if they're constrained in our current function.
-    //
-    // It seems very unlikely that this hides any bugs.
-    let _ = infcx.take_opaque_types();
+    for (key, ty) in infcx.take_opaque_types() {
+        span_bug!(
+            ty.hidden_type.span,
+            "{}, {}",
+            tcx.type_of(key.def_id).instantiate(tcx, key.args),
+            ty.hidden_type.ty
+        );
+    }
     errors.is_empty()
 }

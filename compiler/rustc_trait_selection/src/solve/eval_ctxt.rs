@@ -272,6 +272,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         // assertions against dropping an `InferCtxt` without taking opaques.
         // FIXME: Once we remove support for the old impl we can remove this.
         if input.anchor != DefiningAnchor::Error {
+            // This seems ok, but fragile.
             let _ = infcx.take_opaque_types();
         }
 
