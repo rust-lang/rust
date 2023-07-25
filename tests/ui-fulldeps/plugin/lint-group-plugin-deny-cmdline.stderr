@@ -13,6 +13,7 @@ LL | fn lintme() { }
    | ^^^^^^^^^^^^^^^
    |
    = note: `-D test-lint` implied by `-D lint-me`
+   = help: to override `-D lint-me` add `#[allow(test_lint)]`
 
 error: item is named 'pleaselintme'
   --> $DIR/lint-group-plugin-deny-cmdline.rs:12:1
@@ -21,6 +22,7 @@ LL | fn pleaselintme() { }
    | ^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D please-lint` implied by `-D lint-me`
+   = help: to override `-D lint-me` add `#[allow(please_lint)]`
 
 error: aborting due to 2 previous errors; 1 warning emitted
 
