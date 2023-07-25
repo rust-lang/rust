@@ -20,4 +20,12 @@ fn main() {
     expect::<Result<String, ()>>(x);
     //~^ ERROR mismatched types
     //~| HELP use `Result::cloned` to clone the value inside the `Result`
+
+    let s = String::new();
+    let x = Some(s.clone());
+    let y = Some(&s);
+    println!("{}", x == y);
+    //~^ ERROR mismatched types
+    //~| HELP use `Option::as_ref()` to convert `Option<String>` to `Option<&String>`
+
 }

@@ -6,7 +6,7 @@ pub fn foo<I: Iterator>(mut iter: I, value: &I::Item)
 where
     I::Item: Eq + Debug,
 {
-    debug_assert_eq!(iter.next(), Some(value));
+    debug_assert_eq!(iter.next().as_ref(), Some(value));
     //~^ ERROR mismatched types
 }
 

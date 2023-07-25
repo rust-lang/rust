@@ -1085,12 +1085,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         false
     }
 
-    pub(crate) fn suggest_copied_or_cloned(
+    pub(crate) fn suggest_copied_cloned_or_as_ref(
         &self,
         diag: &mut Diagnostic,
         expr: &hir::Expr<'_>,
         expr_ty: Ty<'tcx>,
         expected_ty: Ty<'tcx>,
+        expected_ty_expr: Option<&'tcx hir::Expr<'tcx>>,
     ) -> bool {
         let ty::Adt(adt_def, args) = expr_ty.kind() else {
             return false;
@@ -1102,7 +1103,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return false;
         }
 
-        let mut suggest_copied_or_cloned = || {
+        let mut suggest_copied_cloned_or_as_ref = || {
             let expr_inner_ty = args.type_at(0);
             let expected_inner_ty = expected_args.type_at(0);
             if let &ty::Ref(_, ty, hir::Mutability::Not) = expr_inner_ty.kind()
@@ -1116,6 +1117,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             "use `{def_path}::copied` to copy the value inside the `{def_path}`"
                         ),
                         ".copied()",
+                        Applicability::MachineApplicable,
+                    );
+                    return true;
+                } else if let Some(expected_ty_expr) = expected_ty_expr {
+                    diag.span_suggestion_verbose(
+                        expected_ty_expr.span.shrink_to_hi(),
+                        format!(
+                            "use `{def_path}::as_ref()` to convert `{expected_ty}` to `{expr_ty}`"
+                        ),
+                        ".as_ref()",
                         Applicability::MachineApplicable,
                     );
                     return true;
@@ -1146,11 +1157,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Check that the error types are equal
             && self.can_eq(self.param_env, args.type_at(1), expected_args.type_at(1))
         {
-            return suggest_copied_or_cloned();
+            return suggest_copied_cloned_or_as_ref();
         } else if let Some(option_did) = self.tcx.get_diagnostic_item(sym::Option)
             && adt_def.did() == option_did
         {
-            return suggest_copied_or_cloned();
+            return suggest_copied_cloned_or_as_ref();
         }
 
         false
