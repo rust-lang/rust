@@ -328,7 +328,7 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
                     {
                         // Don't lint. Byte strings produce `&[u8; N]` whereas `as_bytes()` produces
                         // `&[u8]`. This change would prevent matching with different sized slices.
-                    } else {
+                    } else if !callsite.starts_with("env!") {
                         span_lint_and_sugg(
                             cx,
                             STRING_LIT_AS_BYTES,
