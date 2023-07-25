@@ -689,7 +689,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         );
                         err.span_label(
                             full_call_span,
-                            format!("arguments to this {} are incorrect", call_name),
+                            format!("arguments to this {call_name} are incorrect"),
                         );
                     } else {
                         err = tcx.sess.struct_span_err_with_code(
@@ -796,10 +796,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 None,
                 None,
             );
-            err.span_label(
-                full_call_span,
-                format!("arguments to this {} are incorrect", call_name),
-            );
+            err.span_label(full_call_span, format!("arguments to this {call_name} are incorrect"));
 
             if let hir::ExprKind::MethodCall(_, rcvr, _, _) = call_expr.kind
                 && provided_idx.as_usize() == expected_idx.as_usize()
@@ -874,7 +871,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if ty.is_unit() {
                 "()".to_string()
             } else if ty.is_suggestable(tcx, false) {
-                format!("/* {} */", ty)
+                format!("/* {ty} */")
             } else if let Some(fn_def_id) = fn_def_id
                 && self.tcx.def_kind(fn_def_id).is_fn_like()
                 && let self_implicit =
@@ -931,12 +928,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let (provided_ty, provided_span) = provided_arg_tys[arg_idx];
                     let provided_ty_name = if !has_error_or_infer([provided_ty]) {
                         // FIXME: not suggestable, use something else
-                        format!(" of type `{}`", provided_ty)
+                        format!(" of type `{provided_ty}`")
                     } else {
                         "".to_string()
                     };
-                    labels
-                        .push((provided_span, format!("unexpected argument{}", provided_ty_name)));
+                    labels.push((provided_span, format!("unexpected argument{provided_ty_name}")));
                     let mut span = provided_span;
                     if span.can_be_used_for_suggestions() {
                         if arg_idx.index() > 0
@@ -1009,11 +1005,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 args_span
                             };
                             let rendered = if !has_error_or_infer([input_ty]) {
-                                format!(" of type `{}`", input_ty)
+                                format!(" of type `{input_ty}`")
                             } else {
                                 "".to_string()
                             };
-                            labels.push((span, format!("an argument{} is missing", rendered)));
+                            labels.push((span, format!("an argument{rendered} is missing")));
                             suggestion_text = match suggestion_text {
                                 SuggestionText::None => SuggestionText::Provide(false),
                                 SuggestionText::Provide(_) => SuggestionText::Provide(true),
@@ -1034,13 +1030,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             let rendered =
                                 if !has_error_or_infer([first_expected_ty, second_expected_ty]) {
                                     format!(
-                                        " of type `{}` and `{}`",
-                                        first_expected_ty, second_expected_ty
+                                        " of type `{first_expected_ty}` and `{second_expected_ty}`"
                                     )
                                 } else {
                                     "".to_string()
                                 };
-                            labels.push((span, format!("two arguments{} are missing", rendered)));
+                            labels.push((span, format!("two arguments{rendered} are missing")));
                             suggestion_text = match suggestion_text {
                                 SuggestionText::None | SuggestionText::Provide(_) => {
                                     SuggestionText::Provide(true)
@@ -1066,13 +1061,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 third_expected_ty,
                             ]) {
                                 format!(
-                                    " of type `{}`, `{}`, and `{}`",
-                                    first_expected_ty, second_expected_ty, third_expected_ty
+                                    " of type `{first_expected_ty}`, `{second_expected_ty}`, and `{third_expected_ty}`"
                                 )
                             } else {
                                 "".to_string()
                             };
-                            labels.push((span, format!("three arguments{} are missing", rendered)));
+                            labels.push((span, format!("three arguments{rendered} are missing")));
                             suggestion_text = match suggestion_text {
                                 SuggestionText::None | SuggestionText::Provide(_) => {
                                     SuggestionText::Provide(true)
@@ -1113,25 +1107,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let (first_provided_ty, first_span) = provided_arg_tys[first_provided_idx];
                     let (_, first_expected_ty) = formal_and_expected_inputs[first_expected_idx];
                     let first_provided_ty_name = if !has_error_or_infer([first_provided_ty]) {
-                        format!(", found `{}`", first_provided_ty)
+                        format!(", found `{first_provided_ty}`")
                     } else {
                         String::new()
                     };
                     labels.push((
                         first_span,
-                        format!("expected `{}`{}", first_expected_ty, first_provided_ty_name),
+                        format!("expected `{first_expected_ty}`{first_provided_ty_name}"),
                     ));
 
                     let (second_provided_ty, second_span) = provided_arg_tys[second_provided_idx];
                     let (_, second_expected_ty) = formal_and_expected_inputs[second_expected_idx];
                     let second_provided_ty_name = if !has_error_or_infer([second_provided_ty]) {
-                        format!(", found `{}`", second_provided_ty)
+                        format!(", found `{second_provided_ty}`")
                     } else {
                         String::new()
                     };
                     labels.push((
                         second_span,
-                        format!("expected `{}`{}", second_expected_ty, second_provided_ty_name),
+                        format!("expected `{second_expected_ty}`{second_provided_ty_name}"),
                     ));
 
                     suggestion_text = match suggestion_text {
@@ -1144,13 +1138,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let (_, expected_ty) = formal_and_expected_inputs[dst_arg];
                         let (provided_ty, provided_span) = provided_arg_tys[dest_input];
                         let provided_ty_name = if !has_error_or_infer([provided_ty]) {
-                            format!(", found `{}`", provided_ty)
+                            format!(", found `{provided_ty}`")
                         } else {
                             String::new()
                         };
                         labels.push((
                             provided_span,
-                            format!("expected `{}`{}", expected_ty, provided_ty_name),
+                            format!("expected `{expected_ty}`{provided_ty_name}"),
                         ));
                     }
 
@@ -2031,7 +2025,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             } else {
                 ("closure", self.tcx.def_span(def_id))
             };
-            err.span_note(span, format!("{} defined here", kind));
+            err.span_note(span, format!("{kind} defined here"));
         } else {
             err.span_note(
                 self.tcx.def_span(def_id),

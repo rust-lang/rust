@@ -175,16 +175,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             debug_assert_ne!(
                                 target_blocks[idx.index()],
                                 otherwise_block,
-                                "no candidates for tested discriminant: {:?}",
-                                discr,
+                                "no candidates for tested discriminant: {discr:?}",
                             );
                             Some((discr.val, target_blocks[idx.index()]))
                         } else {
                             debug_assert_eq!(
                                 target_blocks[idx.index()],
                                 otherwise_block,
-                                "found candidates for untested discriminant: {:?}",
-                                discr,
+                                "found candidates for untested discriminant: {discr:?}",
                             );
                             None
                         }

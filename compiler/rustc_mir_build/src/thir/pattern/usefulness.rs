@@ -459,7 +459,7 @@ impl<'p, 'tcx> fmt::Debug for PatStack<'p, 'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "+")?;
         for pat in self.iter() {
-            write!(f, " {:?} +", pat)?;
+            write!(f, " {pat:?} +")?;
         }
         Ok(())
     }
@@ -530,7 +530,7 @@ impl<'p, 'tcx> fmt::Debug for Matrix<'p, 'tcx> {
 
         let Matrix { patterns: m, .. } = self;
         let pretty_printed_matrix: Vec<Vec<String>> =
-            m.iter().map(|row| row.iter().map(|pat| format!("{:?}", pat)).collect()).collect();
+            m.iter().map(|row| row.iter().map(|pat| format!("{pat:?}")).collect()).collect();
 
         let column_count = m.iter().map(|row| row.len()).next().unwrap_or(0);
         assert!(m.iter().all(|row| row.len() == column_count));

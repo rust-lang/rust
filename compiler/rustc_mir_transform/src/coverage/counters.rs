@@ -282,7 +282,7 @@ impl<'a> BcbCounters<'a> {
             branching_counter_operand,
             Op::Subtract,
             sumup_counter_operand,
-            || Some(format!("{:?}", expression_branch)),
+            || Some(format!("{expression_branch:?}")),
         );
         debug!("{:?} gets an expression: {}", expression_branch, self.format_counter(&expression));
         let bcb = expression_branch.target_bcb;
@@ -324,7 +324,7 @@ impl<'a> BcbCounters<'a> {
         // program results in a tight infinite loop, but it should still compile.
         let one_path_to_target = self.bcb_has_one_path_to_target(bcb);
         if one_path_to_target || self.bcb_predecessors(bcb).contains(&bcb) {
-            let counter_kind = self.coverage_counters.make_counter(|| Some(format!("{:?}", bcb)));
+            let counter_kind = self.coverage_counters.make_counter(|| Some(format!("{bcb:?}")));
             if one_path_to_target {
                 debug!(
                     "{}{:?} gets a new counter: {}",
@@ -392,7 +392,7 @@ impl<'a> BcbCounters<'a> {
             first_edge_counter_operand,
             Op::Add,
             some_sumup_edge_counter_operand.unwrap(),
-            || Some(format!("{:?}", bcb)),
+            || Some(format!("{bcb:?}")),
         );
         debug!(
             "{}{:?} gets a new counter (sum of predecessor counters): {}",
@@ -449,7 +449,7 @@ impl<'a> BcbCounters<'a> {
 
         // Make a new counter to count this edge.
         let counter_kind =
-            self.coverage_counters.make_counter(|| Some(format!("{:?}->{:?}", from_bcb, to_bcb)));
+            self.coverage_counters.make_counter(|| Some(format!("{from_bcb:?}->{to_bcb:?}")));
         debug!(
             "{}Edge {:?}->{:?} gets a new counter: {}",
             NESTED_INDENT.repeat(debug_indent_level),

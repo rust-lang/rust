@@ -217,7 +217,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 // When encountering `return [0][0]` outside of a `fn` body we can encounter a base
                 // that isn't in the type table. We assume more relevant errors have already been
                 // emitted, so we delay an ICE if none have. (#64638)
-                self.tcx().sess.delay_span_bug(e.span, format!("bad base: `{:?}`", base));
+                self.tcx().sess.delay_span_bug(e.span, format!("bad base: `{base:?}`"));
             }
             if let Some(base_ty) = base_ty
                 && let ty::Ref(_, base_ty_inner, _) = *base_ty.kind()
@@ -231,7 +231,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                         Ty::new_error_with_message(
                             self.fcx.tcx,
                             e.span,
-                            format!("bad index {:?} for base: `{:?}`", index, base),
+                            format!("bad index {index:?} for base: `{base:?}`"),
                         )
                     });
                 if self.is_builtin_index(e, base_ty_inner, index_ty) {
@@ -488,10 +488,8 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                     let span = self.tcx().hir().span(hir_id);
                     // We need to buffer the errors in order to guarantee a consistent
                     // order when emitting them.
-                    let err = self
-                        .tcx()
-                        .sess
-                        .struct_span_err(span, format!("user args: {:?}", user_args));
+                    let err =
+                        self.tcx().sess.struct_span_err(span, format!("user args: {user_args:?}"));
                     err.buffer(&mut errors_buffer);
                 }
             }

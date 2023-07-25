@@ -516,7 +516,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn endpoint_has_type(&self, err: &mut Diagnostic, span: Span, ty: Ty<'_>) {
         if !ty.references_error() {
-            err.span_label(span, format!("this is of type `{}`", ty));
+            err.span_label(span, format!("this is of type `{ty}`"));
         }
     }
 
@@ -540,7 +540,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
         let msg = |ty| {
             let ty = self.resolve_vars_if_possible(ty);
-            format!("this is of type `{}` but it should be `char` or numeric", ty)
+            format!("this is of type `{ty}` but it should be `char` or numeric")
         };
         let mut one_side_err = |first_span, first_ty, second: Option<(bool, Ty<'tcx>, Span)>| {
             err.span_label(first_span, msg(first_ty));
@@ -653,7 +653,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 )
             });
             let pre = if in_match { "in the same arm, " } else { "" };
-            err.note(format!("{}a binding must have the same type in all alternatives", pre));
+            err.note(format!("{pre}a binding must have the same type in all alternatives"));
             self.suggest_adding_missing_ref_or_removing_ref(
                 &mut err,
                 span,
@@ -1710,7 +1710,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             err.span_suggestion_verbose(
                 qpath.span().shrink_to_hi().to(pat.span.shrink_to_hi()),
                 "use the tuple variant pattern syntax instead",
-                format!("({})", sugg),
+                format!("({sugg})"),
                 appl,
             );
             return Some(err);
@@ -1812,7 +1812,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             const LIMIT: usize = 3;
             match witnesses {
                 [] => bug!(),
-                [witness] => format!("`{}`", witness),
+                [witness] => format!("`{witness}`"),
                 [head @ .., tail] if head.len() < LIMIT => {
                     let head: Vec<_> = head.iter().map(<_>::to_string).collect();
                     format!("`{}` and `{}`", head.join("`, `"), tail)
@@ -1834,8 +1834,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             "ensure that all fields are mentioned explicitly by adding the suggested fields",
         );
         lint.note(format!(
-            "the pattern is of type `{}` and the `non_exhaustive_omitted_patterns` attribute was found",
-            ty,
+            "the pattern is of type `{ty}` and the `non_exhaustive_omitted_patterns` attribute was found",
         ));
 
         lint
@@ -1864,10 +1863,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else {
             let fields = unmentioned_fields
                 .iter()
-                .map(|(_, name)| format!("`{}`", name))
+                .map(|(_, name)| format!("`{name}`"))
                 .collect::<Vec<String>>()
                 .join(", ");
-            format!("fields {}{}", fields, inaccessible)
+            format!("fields {fields}{inaccessible}")
         };
         let mut err = struct_span_err!(
             self.tcx.sess,
@@ -1876,7 +1875,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             "pattern does not mention {}",
             field_names
         );
-        err.span_label(pat.span, format!("missing {}", field_names));
+        err.span_label(pat.span, format!("missing {field_names}"));
         let len = unmentioned_fields.len();
         let (prefix, postfix, sp) = match fields {
             [] => match &pat.kind {
@@ -1909,11 +1908,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .iter()
                     .map(|(_, name)| {
                         let field_name = name.to_string();
-                        if is_number(&field_name) {
-                            format!("{}: _", field_name)
-                        } else {
-                            field_name
-                        }
+                        if is_number(&field_name) { format!("{field_name}: _") } else { field_name }
                     })
                     .collect::<Vec<_>>()
                     .join(", "),
@@ -1930,7 +1925,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 s = pluralize!(len),
                 them = if len == 1 { "it" } else { "them" },
             ),
-            format!("{}..{}", prefix, postfix),
+            format!("{prefix}..{postfix}"),
             Applicability::MachineApplicable,
         );
         err

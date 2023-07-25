@@ -118,7 +118,7 @@ fn run_passes_inner<'tcx>(
                 dump_mir_for_pass(tcx, body, &name, false);
             }
             if validate {
-                validate_body(tcx, body, format!("before pass {}", name));
+                validate_body(tcx, body, format!("before pass {name}"));
             }
 
             tcx.sess.time(name, || pass.run_pass(tcx, body));
@@ -127,7 +127,7 @@ fn run_passes_inner<'tcx>(
                 dump_mir_for_pass(tcx, body, &name, true);
             }
             if validate {
-                validate_body(tcx, body, format!("after pass {}", name));
+                validate_body(tcx, body, format!("after pass {name}"));
             }
 
             body.pass_count += 1;

@@ -89,9 +89,8 @@ impl<'a, 'hir> HirIdValidator<'a, 'hir> {
 
             self.error(|| {
                 format!(
-                    "ItemLocalIds not assigned densely in {}. \
-                Max ItemLocalId = {}, missing IDs = {:#?}; seen IDs = {:#?}",
-                    pretty_owner, max, missing_items, seen_items
+                    "ItemLocalIds not assigned densely in {pretty_owner}. \
+                Max ItemLocalId = {max}, missing IDs = {missing_items:#?}; seen IDs = {seen_items:#?}"
                 )
             });
         }

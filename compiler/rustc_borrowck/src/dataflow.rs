@@ -360,7 +360,7 @@ impl<'tcx> rustc_mir_dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
                         return;
                     }
                     let index = self.borrow_set.get_index_of(&location).unwrap_or_else(|| {
-                        panic!("could not find BorrowIndex for location {:?}", location);
+                        panic!("could not find BorrowIndex for location {location:?}");
                     });
 
                     trans.gen(index);

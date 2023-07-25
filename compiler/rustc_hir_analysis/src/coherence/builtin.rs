@@ -171,8 +171,7 @@ fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: LocalDef
                 create_err(&format!(
                     "the trait `DispatchFromDyn` may only be implemented \
                             for a coercion between structures with the same \
-                            definition; expected `{}`, found `{}`",
-                    source_path, target_path,
+                            definition; expected `{source_path}`, found `{target_path}`",
                 ))
                 .emit();
 

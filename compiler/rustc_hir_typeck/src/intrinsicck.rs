@@ -85,7 +85,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Ok(SizeSkeleton::Pointer { tail, .. }) => format!("pointer to `{tail}`"),
             Ok(SizeSkeleton::Known(size)) => {
                 if let Some(v) = u128::from(size.bytes()).checked_mul(8) {
-                    format!("{} bits", v)
+                    format!("{v} bits")
                 } else {
                     // `u128` should definitely be able to hold the size of different architectures
                     // larger sizes should be reported as error `are too big for the current architecture`

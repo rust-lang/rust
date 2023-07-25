@@ -1744,7 +1744,7 @@ fn compare_generic_param_kinds<'tcx>(
                         tcx.type_of(param.def_id).instantiate_identity()
                     )
                 }
-                Type { .. } => format!("{} type parameter", prefix),
+                Type { .. } => format!("{prefix} type parameter"),
                 Lifetime { .. } => unreachable!(),
             };
 
