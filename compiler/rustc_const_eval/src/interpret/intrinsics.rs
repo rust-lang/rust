@@ -226,7 +226,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
             sym::discriminant_value => {
                 let place = self.deref_operand(&args[0])?;
-                let variant = self.read_discriminant(&place.into())?;
+                let variant = self.read_discriminant(&place)?;
                 let discr = self.discriminant_for_variant(place.layout, variant)?;
                 self.write_scalar(discr, dest)?;
             }
@@ -445,7 +445,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     input_len
                 );
                 self.copy_op(
-                    &self.project_index(&input, index)?.into(),
+                    &self.project_index(&input, index)?,
                     dest,
                     /*allow_transmute*/ false,
                 )?;
@@ -610,7 +610,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         count: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::Provenance>,
         nonoverlapping: bool,
     ) -> InterpResult<'tcx> {
-        let count = self.read_target_usize(&count)?;
+        let count = self.read_target_usize(count)?;
         let layout = self.layout_of(src.layout.ty.builtin_deref(true).unwrap().ty)?;
         let (size, align) = (layout.size, layout.align.abi);
         // `checked_mul` enforces a too small bound (the correct one would probably be target_isize_max),
@@ -622,8 +622,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             )
         })?;
 
-        let src = self.read_pointer(&src)?;
-        let dst = self.read_pointer(&dst)?;
+        let src = self.read_pointer(src)?;
+        let dst = self.read_pointer(dst)?;
 
         self.mem_copy(src, align, dst, align, size, nonoverlapping)
     }
@@ -636,9 +636,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx> {
         let layout = self.layout_of(dst.layout.ty.builtin_deref(true).unwrap().ty)?;
 
-        let dst = self.read_pointer(&dst)?;
-        let byte = self.read_scalar(&byte)?.to_u8()?;
-        let count = self.read_target_usize(&count)?;
+        let dst = self.read_pointer(dst)?;
+        let byte = self.read_scalar(byte)?.to_u8()?;
+        let count = self.read_target_usize(count)?;
 
         // `checked_mul` enforces a too small bound (the correct one would probably be target_isize_max),
         // but no actual allocation can be big enough for the difference to be noticeable.

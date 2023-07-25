@@ -74,9 +74,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             let event = this.deref_operand_as(event, this.libc_ty_layout("epoll_event"))?;
 
             let events = this.project_field(&event, 0)?;
-            let events = this.read_scalar(&events.into())?.to_u32()?;
+            let events = this.read_scalar(&events)?.to_u32()?;
             let data = this.project_field(&event, 1)?;
-            let data = this.read_scalar(&data.into())?;
+            let data = this.read_scalar(&data)?;
             let event = EpollEvent { events, data };
 
             if let Some(epfd) = this.machine.file_handler.handles.get_mut(&epfd) {

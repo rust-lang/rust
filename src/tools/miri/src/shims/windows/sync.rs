@@ -323,7 +323,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let layout = this.machine.layouts.uint(size).unwrap();
         let futex_val = this
             .read_scalar_atomic(&MPlaceTy::from_aligned_ptr(ptr, layout), AtomicReadOrd::Relaxed)?;
-        let compare_val = this.read_scalar(&MPlaceTy::from_aligned_ptr(compare, layout).into())?;
+        let compare_val = this.read_scalar(&MPlaceTy::from_aligned_ptr(compare, layout))?;
 
         if futex_val == compare_val {
             // If the values are the same, we have to block.

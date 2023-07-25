@@ -5,8 +5,7 @@ use rustc_middle::{mir, ty};
 use rustc_target::abi::{self, TagEncoding};
 use rustc_target::abi::{VariantIdx, Variants};
 
-use super::place::Writeable;
-use super::{ImmTy, InterpCx, InterpResult, Machine, OpTy, Scalar};
+use super::{ImmTy, InterpCx, InterpResult, Machine, Readable, Scalar, Writeable};
 
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Writes the discriminant of the given variant.
@@ -97,11 +96,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     #[instrument(skip(self), level = "trace")]
     pub fn read_discriminant(
         &self,
-        op: &OpTy<'tcx, M::Provenance>,
+        op: &impl Readable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, VariantIdx> {
-        trace!("read_discriminant_value {:#?}", op.layout);
+        let ty = op.layout().ty;
+        trace!("read_discriminant_value {:#?}", op.layout());
         // Get type and layout of the discriminant.
-        let discr_layout = self.layout_of(op.layout.ty.discriminant_ty(*self.tcx))?;
+        let discr_layout = self.layout_of(ty.discriminant_ty(*self.tcx))?;
         trace!("discriminant type: {:?}", discr_layout.ty);
 
         // We use "discriminant" to refer to the value associated with a particular enum variant.
@@ -109,20 +109,19 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // declared list of variants -- they can differ with explicitly assigned discriminants.
         // We use "tag" to refer to how the discriminant is encoded in memory, which can be either
         // straight-forward (`TagEncoding::Direct`) or with a niche (`TagEncoding::Niche`).
-        let (tag_scalar_layout, tag_encoding, tag_field) = match op.layout.variants {
+        let (tag_scalar_layout, tag_encoding, tag_field) = match op.layout().variants {
             Variants::Single { index } => {
                 // Do some extra checks on enums.
-                if op.layout.ty.is_enum() {
+                if ty.is_enum() {
                     // Hilariously, `Single` is used even for 0-variant enums.
                     // (See https://github.com/rust-lang/rust/issues/89765).
-                    if matches!(op.layout.ty.kind(), ty::Adt(def, ..) if def.variants().is_empty())
-                    {
+                    if matches!(ty.kind(), ty::Adt(def, ..) if def.variants().is_empty()) {
                         throw_ub!(UninhabitedEnumVariantRead(index))
                     }
                     // For consisteny with `write_discriminant`, and to make sure that
                     // `project_downcast` cannot fail due to strange layouts, we declare immediate UB
                     // for uninhabited variants.
-                    if op.layout.for_variant(self, index).abi.is_uninhabited() {
+                    if op.layout().for_variant(self, index).abi.is_uninhabited() {
                         throw_ub!(UninhabitedEnumVariantRead(index))
                     }
                 }
@@ -168,7 +167,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     self.cast_from_int_like(scalar, tag_val.layout, discr_layout.ty).unwrap();
                 let discr_bits = discr_val.assert_bits(discr_layout.size);
                 // Convert discriminant to variant index, and catch invalid discriminants.
-                let index = match *op.layout.ty.kind() {
+                let index = match *ty.kind() {
                     ty::Adt(adt, _) => {
                         adt.discriminants(*self.tcx).find(|(_, var)| var.val == discr_bits)
                     }
@@ -222,12 +221,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                                     .checked_add(variant_index_relative)
                                     .expect("overflow computing absolute variant idx"),
                             );
-                            let variants = op
-                                .layout
-                                .ty
-                                .ty_adt_def()
-                                .expect("tagged layout for non adt")
-                                .variants();
+                            let variants =
+                                ty.ty_adt_def().expect("tagged layout for non adt").variants();
                             assert!(variant_index < variants.next_index());
                             variant_index
                         } else {
@@ -242,7 +237,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
         };
         // For consisteny with `write_discriminant`, and to make sure that `project_downcast` cannot fail due to strange layouts, we declare immediate UB for uninhabited variants.
-        if op.layout.for_variant(self, index).abi.is_uninhabited() {
+        if op.layout().for_variant(self, index).abi.is_uninhabited() {
             throw_ub!(UninhabitedEnumVariantRead(index))
         }
         Ok(index)

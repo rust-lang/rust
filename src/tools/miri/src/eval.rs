@@ -246,7 +246,7 @@ impl MainThreadState {
                     this.machine.main_fn_ret_place.unwrap().ptr,
                     this.machine.layouts.isize,
                 );
-                let exit_code = this.read_target_isize(&ret_place.into())?;
+                let exit_code = this.read_target_isize(&ret_place)?;
                 // Need to call this ourselves since we are not going to return to the scheduler
                 // loop, and we want the main thread TLS to not show up as memory leaks.
                 this.terminate_active_thread()?;

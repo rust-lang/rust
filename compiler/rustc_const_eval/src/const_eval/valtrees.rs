@@ -86,7 +86,7 @@ pub(crate) fn const_to_valtree_inner<'tcx>(
             Ok(ty::ValTree::zst())
         }
         ty::Bool | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Char => {
-            let Ok(val) = ecx.read_immediate(&place.into()) else {
+            let Ok(val) = ecx.read_immediate(place) else {
                 return Err(ValTreeCreationError::Other);
             };
             let val = val.to_scalar();
@@ -102,7 +102,7 @@ pub(crate) fn const_to_valtree_inner<'tcx>(
         ty::FnPtr(_) | ty::RawPtr(_) => Err(ValTreeCreationError::NonSupportedType),
 
         ty::Ref(_, _, _)  => {
-            let Ok(derefd_place)= ecx.deref_operand(&place.into()) else {
+            let Ok(derefd_place)= ecx.deref_operand(place) else {
                 return Err(ValTreeCreationError::Other);
             };
             debug!(?derefd_place);
@@ -130,7 +130,7 @@ pub(crate) fn const_to_valtree_inner<'tcx>(
                 bug!("uninhabited types should have errored and never gotten converted to valtree")
             }
 
-            let Ok(variant) = ecx.read_discriminant(&place.into()) else {
+            let Ok(variant) = ecx.read_discriminant(place) else {
                 return Err(ValTreeCreationError::Other);
             };
             branches(ecx, place, def.variant(variant).fields.len(), def.is_enum().then_some(variant), num_nodes)

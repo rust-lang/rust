@@ -472,7 +472,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
         // This is fine with StackedBorrow and race checks because they don't concern metadata on
         // the *value* (including the associated provenance if this is an AtomicPtr) at this location.
         // Only metadata on the location itself is used.
-        let scalar = this.allow_data_races_ref(move |this| this.read_scalar(&place.into()))?;
+        let scalar = this.allow_data_races_ref(move |this| this.read_scalar(place))?;
         this.validate_overlapping_atomic(place)?;
         this.buffered_atomic_read(place, atomic, scalar, || {
             this.validate_atomic_load(place, atomic)
@@ -513,7 +513,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
         this.atomic_access_check(place)?;
 
         this.validate_overlapping_atomic(place)?;
-        let old = this.allow_data_races_mut(|this| this.read_immediate(&place.into()))?;
+        let old = this.allow_data_races_mut(|this| this.read_immediate(place))?;
 
         // Atomics wrap around on overflow.
         let val = this.binary_op(op, &old, rhs)?;
@@ -538,7 +538,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
         this.atomic_access_check(place)?;
 
         this.validate_overlapping_atomic(place)?;
-        let old = this.allow_data_races_mut(|this| this.read_scalar(&place.into()))?;
+        let old = this.allow_data_races_mut(|this| this.read_scalar(place))?;
         this.allow_data_races_mut(|this| this.write_scalar(new, place))?;
 
         this.validate_atomic_rmw(place, atomic)?;
@@ -560,7 +560,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
         this.atomic_access_check(place)?;
 
         this.validate_overlapping_atomic(place)?;
-        let old = this.allow_data_races_mut(|this| this.read_immediate(&place.into()))?;
+        let old = this.allow_data_races_mut(|this| this.read_immediate(place))?;
         let lt = this.binary_op(mir::BinOp::Lt, &old, &rhs)?.to_scalar().to_bool()?;
 
         let new_val = if min {
@@ -603,7 +603,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
         // to read with the failure ordering and if successful then try again with the success
         // read ordering and write in the success case.
         // Read as immediate for the sake of `binary_op()`
-        let old = this.allow_data_races_mut(|this| this.read_immediate(&(place.into())))?;
+        let old = this.allow_data_races_mut(|this| this.read_immediate(place))?;
         // `binary_op` will bail if either of them is not a scalar.
         let eq = this.binary_op(mir::BinOp::Eq, &old, expect_old)?;
         // If the operation would succeed, but is "weak", fail some portion

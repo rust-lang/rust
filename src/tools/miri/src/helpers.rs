@@ -166,7 +166,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let const_val = this.eval_global(cid, None).unwrap_or_else(|err| {
             panic!("failed to evaluate required Rust item: {path:?}\n{err:?}")
         });
-        this.read_scalar(&const_val.into())
+        this.read_scalar(&const_val)
             .unwrap_or_else(|err| panic!("failed to read required Rust item: {path:?}\n{err:?}"))
     }
 
@@ -623,7 +623,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn get_last_error(&mut self) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_mut();
         let errno_place = this.last_error_place()?;
-        this.read_scalar(&errno_place.into())
+        this.read_scalar(&errno_place)
     }
 
     /// This function tries to produce the most similar OS error from the `std::io::ErrorKind`
@@ -772,7 +772,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_ref();
         let value_place = this.deref_operand_and_offset(op, offset, base_layout, value_layout)?;
-        this.read_scalar(&value_place.into())
+        this.read_scalar(&value_place)
     }
 
     fn write_scalar_at_offset(
@@ -797,10 +797,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, Option<Duration>> {
         let this = self.eval_context_mut();
         let seconds_place = this.project_field(tp, 0)?;
-        let seconds_scalar = this.read_scalar(&seconds_place.into())?;
+        let seconds_scalar = this.read_scalar(&seconds_place)?;
         let seconds = seconds_scalar.to_target_isize(this)?;
         let nanoseconds_place = this.project_field(tp, 1)?;
-        let nanoseconds_scalar = this.read_scalar(&nanoseconds_place.into())?;
+        let nanoseconds_scalar = this.read_scalar(&nanoseconds_place)?;
         let nanoseconds = nanoseconds_scalar.to_target_isize(this)?;
 
         Ok(try {

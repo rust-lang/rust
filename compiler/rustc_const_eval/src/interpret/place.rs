@@ -18,7 +18,7 @@ use rustc_target::abi::{self, Abi, Align, FieldIdx, HasDataLayout, Size, FIRST_V
 use super::{
     alloc_range, mir_assign_valid_types, AllocId, AllocRef, AllocRefMut, CheckInAllocMsg,
     ConstAlloc, ImmTy, Immediate, InterpCx, InterpResult, Machine, MemoryKind, OpTy, Operand,
-    Pointer, Projectable, Provenance, Scalar,
+    Pointer, Projectable, Provenance, Readable, Scalar,
 };
 
 #[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
@@ -246,7 +246,7 @@ impl<'tcx, Prov: Provenance + 'static> Projectable<'tcx, Prov> for MPlaceTy<'tcx
         &self,
         _ecx: &InterpCx<'mir, 'tcx, M>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
-        Ok(self.into())
+        Ok(self.clone().into())
     }
 }
 
@@ -442,7 +442,7 @@ where
     #[instrument(skip(self), level = "debug")]
     pub fn deref_operand(
         &self,
-        src: &OpTy<'tcx, M::Provenance>,
+        src: &impl Readable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {
         let val = self.read_immediate(src)?;
         trace!("deref to {} on {:?}", val.layout.ty, *val);
@@ -766,7 +766,7 @@ where
     #[instrument(skip(self), level = "debug")]
     pub fn copy_op(
         &mut self,
-        src: &OpTy<'tcx, M::Provenance>,
+        src: &impl Readable<'tcx, M::Provenance>,
         dest: &impl Writeable<'tcx, M::Provenance>,
         allow_transmute: bool,
     ) -> InterpResult<'tcx> {
@@ -787,19 +787,19 @@ where
     #[instrument(skip(self), level = "debug")]
     fn copy_op_no_validate(
         &mut self,
-        src: &OpTy<'tcx, M::Provenance>,
+        src: &impl Readable<'tcx, M::Provenance>,
         dest: &impl Writeable<'tcx, M::Provenance>,
         allow_transmute: bool,
     ) -> InterpResult<'tcx> {
         // We do NOT compare the types for equality, because well-typed code can
         // actually "transmute" `&mut T` to `&T` in an assignment without a cast.
         let layout_compat =
-            mir_assign_valid_types(*self.tcx, self.param_env, src.layout, dest.layout());
+            mir_assign_valid_types(*self.tcx, self.param_env, src.layout(), dest.layout());
         if !allow_transmute && !layout_compat {
             span_bug!(
                 self.cur_span(),
                 "type mismatch when copying!\nsrc: {:?},\ndest: {:?}",
-                src.layout.ty,
+                src.layout().ty,
                 dest.layout().ty,
             );
         }
@@ -813,13 +813,13 @@ where
                 // actually sized, due to a trivially false where-clause
                 // predicate like `where Self: Sized` with `Self = dyn Trait`.
                 // See #102553 for an example of such a predicate.
-                if src.layout.is_unsized() {
-                    throw_inval!(SizeOfUnsizedType(src.layout.ty));
+                if src.layout().is_unsized() {
+                    throw_inval!(SizeOfUnsizedType(src.layout().ty));
                 }
                 if dest.layout().is_unsized() {
                     throw_inval!(SizeOfUnsizedType(dest.layout().ty));
                 }
-                assert_eq!(src.layout.size, dest.layout().size);
+                assert_eq!(src.layout().size, dest.layout().size);
                 // Yay, we got a value that we can write directly.
                 return if layout_compat {
                     self.write_immediate_no_validate(*src_val, dest)
@@ -831,7 +831,7 @@ where
                     let dest_mem = dest.force_mplace(self)?;
                     self.write_immediate_to_mplace_no_validate(
                         *src_val,
-                        src.layout,
+                        src.layout(),
                         dest_mem.align,
                         *dest_mem,
                     )

@@ -88,7 +88,7 @@ impl<'tcx> EnvVars<'tcx> {
         }
         // Deallocate environ var list.
         let environ = ecx.machine.env_vars.environ.unwrap();
-        let old_vars_ptr = ecx.read_pointer(&environ.into())?;
+        let old_vars_ptr = ecx.read_pointer(&environ)?;
         ecx.deallocate_ptr(old_vars_ptr, None, MiriMemoryKind::Runtime.into())?;
         Ok(())
     }
@@ -432,7 +432,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_mut();
         // Deallocate the old environ list, if any.
         if let Some(environ) = this.machine.env_vars.environ {
-            let old_vars_ptr = this.read_pointer(&environ.into())?;
+            let old_vars_ptr = this.read_pointer(&environ)?;
             this.deallocate_ptr(old_vars_ptr, None, MiriMemoryKind::Runtime.into())?;
         } else {
             // No `environ` allocated yet, let's do that.

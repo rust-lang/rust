@@ -180,37 +180,9 @@ impl<'tcx, Prov: Provenance> From<MPlaceTy<'tcx, Prov>> for OpTy<'tcx, Prov> {
     }
 }
 
-impl<'tcx, Prov: Provenance> From<&'_ MPlaceTy<'tcx, Prov>> for OpTy<'tcx, Prov> {
-    #[inline(always)]
-    fn from(mplace: &MPlaceTy<'tcx, Prov>) -> Self {
-        OpTy { op: Operand::Indirect(**mplace), layout: mplace.layout, align: Some(mplace.align) }
-    }
-}
-
-impl<'tcx, Prov: Provenance> From<&'_ mut MPlaceTy<'tcx, Prov>> for OpTy<'tcx, Prov> {
-    #[inline(always)]
-    fn from(mplace: &mut MPlaceTy<'tcx, Prov>) -> Self {
-        OpTy { op: Operand::Indirect(**mplace), layout: mplace.layout, align: Some(mplace.align) }
-    }
-}
-
 impl<'tcx, Prov: Provenance> From<ImmTy<'tcx, Prov>> for OpTy<'tcx, Prov> {
     #[inline(always)]
     fn from(val: ImmTy<'tcx, Prov>) -> Self {
-        OpTy { op: Operand::Immediate(val.imm), layout: val.layout, align: None }
-    }
-}
-
-impl<'tcx, Prov: Provenance> From<&'_ ImmTy<'tcx, Prov>> for OpTy<'tcx, Prov> {
-    #[inline(always)]
-    fn from(val: &ImmTy<'tcx, Prov>) -> Self {
-        OpTy { op: Operand::Immediate(val.imm), layout: val.layout, align: None }
-    }
-}
-
-impl<'tcx, Prov: Provenance> From<&'_ mut ImmTy<'tcx, Prov>> for OpTy<'tcx, Prov> {
-    #[inline(always)]
-    fn from(val: &mut ImmTy<'tcx, Prov>) -> Self {
         OpTy { op: Operand::Immediate(val.imm), layout: val.layout, align: None }
     }
 }
@@ -341,7 +313,7 @@ impl<'tcx, Prov: Provenance> Projectable<'tcx, Prov> for ImmTy<'tcx, Prov> {
         &self,
         _ecx: &InterpCx<'mir, 'tcx, M>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
-        Ok(self.into())
+        Ok(self.clone().into())
     }
 }
 
@@ -397,6 +369,31 @@ impl<'tcx, Prov: Provenance + 'static> Projectable<'tcx, Prov> for OpTy<'tcx, Pr
         _ecx: &InterpCx<'mir, 'tcx, M>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
         Ok(self.clone())
+    }
+}
+
+pub trait Readable<'tcx, Prov: Provenance>: Projectable<'tcx, Prov> {
+    fn as_mplace_or_imm(&self) -> Either<MPlaceTy<'tcx, Prov>, ImmTy<'tcx, Prov>>;
+}
+
+impl<'tcx, Prov: Provenance + 'static> Readable<'tcx, Prov> for OpTy<'tcx, Prov> {
+    #[inline(always)]
+    fn as_mplace_or_imm(&self) -> Either<MPlaceTy<'tcx, Prov>, ImmTy<'tcx, Prov>> {
+        self.as_mplace_or_imm()
+    }
+}
+
+impl<'tcx, Prov: Provenance + 'static> Readable<'tcx, Prov> for MPlaceTy<'tcx, Prov> {
+    #[inline(always)]
+    fn as_mplace_or_imm(&self) -> Either<MPlaceTy<'tcx, Prov>, ImmTy<'tcx, Prov>> {
+        Left(self.clone())
+    }
+}
+
+impl<'tcx, Prov: Provenance> Readable<'tcx, Prov> for ImmTy<'tcx, Prov> {
+    #[inline(always)]
+    fn as_mplace_or_imm(&self) -> Either<MPlaceTy<'tcx, Prov>, ImmTy<'tcx, Prov>> {
+        Right(self.clone())
     }
 }
 
@@ -472,7 +469,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// ConstProp needs it, though.
     pub fn read_immediate_raw(
         &self,
-        src: &OpTy<'tcx, M::Provenance>,
+        src: &impl Readable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, Either<MPlaceTy<'tcx, M::Provenance>, ImmTy<'tcx, M::Provenance>>> {
         Ok(match src.as_mplace_or_imm() {
             Left(ref mplace) => {
@@ -492,14 +489,18 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     #[inline(always)]
     pub fn read_immediate(
         &self,
-        op: &OpTy<'tcx, M::Provenance>,
+        op: &impl Readable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, ImmTy<'tcx, M::Provenance>> {
         if !matches!(
-            op.layout.abi,
+            op.layout().abi,
             Abi::Scalar(abi::Scalar::Initialized { .. })
                 | Abi::ScalarPair(abi::Scalar::Initialized { .. }, abi::Scalar::Initialized { .. })
         ) {
-            span_bug!(self.cur_span(), "primitive read not possible for type: {:?}", op.layout.ty);
+            span_bug!(
+                self.cur_span(),
+                "primitive read not possible for type: {:?}",
+                op.layout().ty
+            );
         }
         let imm = self.read_immediate_raw(op)?.right().unwrap();
         if matches!(*imm, Immediate::Uninit) {
@@ -511,7 +512,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Read a scalar from a place
     pub fn read_scalar(
         &self,
-        op: &OpTy<'tcx, M::Provenance>,
+        op: &impl Readable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, Scalar<M::Provenance>> {
         Ok(self.read_immediate(op)?.to_scalar())
     }
@@ -522,16 +523,22 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Read a pointer from a place.
     pub fn read_pointer(
         &self,
-        op: &OpTy<'tcx, M::Provenance>,
+        op: &impl Readable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, Pointer<Option<M::Provenance>>> {
         self.read_scalar(op)?.to_pointer(self)
     }
     /// Read a pointer-sized unsigned integer from a place.
-    pub fn read_target_usize(&self, op: &OpTy<'tcx, M::Provenance>) -> InterpResult<'tcx, u64> {
+    pub fn read_target_usize(
+        &self,
+        op: &impl Readable<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx, u64> {
         self.read_scalar(op)?.to_target_usize(self)
     }
     /// Read a pointer-sized signed integer from a place.
-    pub fn read_target_isize(&self, op: &OpTy<'tcx, M::Provenance>) -> InterpResult<'tcx, i64> {
+    pub fn read_target_isize(
+        &self,
+        op: &impl Readable<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx, i64> {
         self.read_scalar(op)?.to_target_isize(self)
     }
 

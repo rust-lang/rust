@@ -133,7 +133,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let (written, size_needed) = this.write_path_to_c_str(
                     &path,
                     buf_ptr,
-                    this.read_scalar(&bufsize.into())?.to_u32()?.into(),
+                    this.read_scalar(&bufsize)?.to_u32()?.into(),
                 )?;
 
                 if written {
