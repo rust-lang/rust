@@ -2169,7 +2169,8 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                         let all = args
                             .as_generator()
                             .upvar_tys()
-                            .chain(iter::once(args.as_generator().witness()))
+                            .iter()
+                            .chain([args.as_generator().witness()])
                             .collect::<Vec<_>>();
                         Where(obligation.predicate.rebind(all))
                     }
@@ -2210,7 +2211,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                     // Not yet resolved.
                     Ambiguous
                 } else {
-                    Where(obligation.predicate.rebind(args.as_closure().upvar_tys().collect()))
+                    Where(obligation.predicate.rebind(args.as_closure().upvar_tys().to_vec()))
                 }
             }
 
