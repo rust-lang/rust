@@ -151,14 +151,16 @@ fn with_fresh_ty_vars<'cx, 'tcx>(
             .predicates_of(impl_def_id)
             .instantiate(tcx, impl_args)
             .iter()
-            .map(|(c, _)| c.as_predicate())
+            .map(|(c, s)| (c.as_predicate(), s))
             .collect(),
     };
 
-    let InferOk { value: mut header, obligations } =
-        selcx.infcx.at(&ObligationCause::dummy(), param_env).normalize(header);
+    let InferOk { value: mut header, obligations } = selcx
+        .infcx
+        .at(&ObligationCause::dummy_with_span(tcx.def_span(impl_def_id)), param_env)
+        .normalize(header);
 
-    header.predicates.extend(obligations.into_iter().map(|o| o.predicate));
+    header.predicates.extend(obligations.into_iter().map(|o| (o.predicate, o.cause.span)));
     header
 }
 
@@ -289,7 +291,7 @@ fn impl_intersection_has_impossible_obligation<'cx, 'tcx>(
 ) -> bool {
     let infcx = selcx.infcx;
 
-    let obligation_guaranteed_to_fail = move |obligation: &PredicateObligation<'tcx>| {
+    let obligation_guaranteed_to_fail = |obligation: &PredicateObligation<'tcx>| {
         if infcx.next_trait_solver() {
             infcx.evaluate_obligation(obligation).map_or(false, |result| !result.may_apply())
         } else {
@@ -306,8 +308,8 @@ fn impl_intersection_has_impossible_obligation<'cx, 'tcx>(
     let opt_failing_obligation = [&impl1_header.predicates, &impl2_header.predicates]
         .into_iter()
         .flatten()
-        .map(|&predicate| {
-            Obligation::new(infcx.tcx, ObligationCause::dummy(), param_env, predicate)
+        .map(|&(predicate, span)| {
+            Obligation::new(infcx.tcx, ObligationCause::dummy_with_span(span), param_env, predicate)
         })
         .chain(obligations)
         .find(obligation_guaranteed_to_fail);
