@@ -581,6 +581,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         callee_ty: Ty<'tcx>,
         arg_exprs: &'tcx [hir::Expr<'tcx>],
     ) -> ErrorGuaranteed {
+        // Callee probe fails when APIT references errors, so suppress those
+        // errors here.
+        if let Some((_, _, args)) = self.extract_callable_info(callee_ty)
+            && let Err(err) = args.error_reported()
+        {
+            return err;
+        }
+
         let mut unit_variant = None;
         if let hir::ExprKind::Path(qpath) = &callee_expr.kind
             && let Res::Def(def::DefKind::Ctor(kind, CtorKind::Const), _)
