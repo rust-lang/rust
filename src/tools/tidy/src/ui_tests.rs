@@ -116,7 +116,9 @@ pub fn check(path: &Path, bad: &mut bool) {
                 // must strip all of them.
                 let testname =
                     file_path.file_name().unwrap().to_str().unwrap().split_once('.').unwrap().0;
-                if !file_path.with_file_name(testname).with_extension("rs").exists() {
+                if !file_path.with_file_name(testname).with_extension("rs").exists()
+                    && !testname.contains("ignore-tidy")
+                {
                     tidy_error!(bad, "Stray file with UI testing output: {:?}", file_path);
                 }
 
