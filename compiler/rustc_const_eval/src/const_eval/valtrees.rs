@@ -345,7 +345,7 @@ fn valtree_into_mplace<'tcx>(
         ty::Bool | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Char => {
             let scalar_int = valtree.unwrap_leaf();
             debug!("writing trivial valtree {:?} to place {:?}", scalar_int, place);
-            ecx.write_immediate(Immediate::Scalar(scalar_int.into()), &place.into()).unwrap();
+            ecx.write_immediate(Immediate::Scalar(scalar_int.into()), place).unwrap();
         }
         ty::Ref(_, inner_ty, _) => {
             let mut pointee_place = create_pointee_place(ecx, *inner_ty, valtree);
@@ -369,7 +369,7 @@ fn valtree_into_mplace<'tcx>(
             };
             debug!(?imm);
 
-            ecx.write_immediate(imm, &place.into()).unwrap();
+            ecx.write_immediate(imm, place).unwrap();
         }
         ty::Adt(_, _) | ty::Tuple(_) | ty::Array(_, _) | ty::Str | ty::Slice(_) => {
             let branches = valtree.unwrap_branch();
@@ -452,11 +452,11 @@ fn valtree_into_mplace<'tcx>(
 
             if let Some(variant_idx) = variant_idx {
                 // don't forget filling the place with the discriminant of the enum
-                ecx.write_discriminant(variant_idx, &place.into()).unwrap();
+                ecx.write_discriminant(variant_idx, place).unwrap();
             }
 
             debug!("dump of place after writing discriminant:");
-            dump_place(ecx, place.into());
+            dump_place(ecx, place.clone().into());
         }
         _ => bug!("shouldn't have created a ValTree for {:?}", ty),
     }

@@ -248,8 +248,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let sv1 = fh.insert_fd(Box::new(SocketPair));
         let sv1 = ScalarInt::try_from_int(sv1, sv.layout.size).unwrap();
 
-        this.write_scalar(sv0, &sv.into())?;
-        this.write_scalar(sv1, &sv.offset(sv.layout.size, sv.layout, this)?.into())?;
+        this.write_scalar(sv0, &sv)?;
+        this.write_scalar(sv1, &sv.offset(sv.layout.size, sv.layout, this)?)?;
 
         Ok(Scalar::from_i32(0))
     }

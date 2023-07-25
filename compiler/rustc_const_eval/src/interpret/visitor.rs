@@ -13,9 +13,7 @@ use super::{InterpCx, MPlaceTy, Machine, Projectable};
 
 /// How to traverse a value and what to do when we are at the leaves.
 pub trait ValueVisitor<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>>: Sized {
-    type V: Projectable<'mir, 'tcx, M::Provenance>
-        + From<MPlaceTy<'tcx, M::Provenance>>
-        + std::fmt::Debug;
+    type V: Projectable<'tcx, M::Provenance> + From<MPlaceTy<'tcx, M::Provenance>>;
 
     /// The visitor must have an `InterpCx` in it.
     fn ecx(&self) -> &InterpCx<'mir, 'tcx, M>;

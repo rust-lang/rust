@@ -651,7 +651,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
         val: ImmTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx> {
         let place = this.allocate(val.layout, MiriMemoryKind::ExternStatic.into())?;
-        this.write_immediate(*val, &place.into())?;
+        this.write_immediate(*val, &place)?;
         Self::add_extern_static(this, name, place.ptr);
         Ok(())
     }

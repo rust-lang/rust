@@ -432,7 +432,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     } else {
                         self.project_index(&input, i)?.into()
                     };
-                    self.copy_op(&value, &place.into(), /*allow_transmute*/ false)?;
+                    self.copy_op(&value, &place, /*allow_transmute*/ false)?;
                 }
             }
             sym::simd_extract => {

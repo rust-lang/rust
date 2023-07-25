@@ -312,13 +312,13 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
     }
 }
 
-impl<'mir, 'tcx: 'mir, Prov: Provenance> Projectable<'mir, 'tcx, Prov> for ImmTy<'tcx, Prov> {
+impl<'tcx, Prov: Provenance> Projectable<'tcx, Prov> for ImmTy<'tcx, Prov> {
     #[inline(always)]
     fn layout(&self) -> TyAndLayout<'tcx> {
         self.layout
     }
 
-    fn meta<M: Machine<'mir, 'tcx, Provenance = Prov>>(
+    fn meta<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
         &self,
         _ecx: &InterpCx<'mir, 'tcx, M>,
     ) -> InterpResult<'tcx, MemPlaceMeta<M::Provenance>> {
@@ -337,7 +337,7 @@ impl<'mir, 'tcx: 'mir, Prov: Provenance> Projectable<'mir, 'tcx, Prov> for ImmTy
         Ok(self.offset_(offset, layout, cx))
     }
 
-    fn to_op<M: Machine<'mir, 'tcx, Provenance = Prov>>(
+    fn to_op<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
         &self,
         _ecx: &InterpCx<'mir, 'tcx, M>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
@@ -362,15 +362,13 @@ impl<'tcx, Prov: Provenance> OpTy<'tcx, Prov> {
     }
 }
 
-impl<'mir, 'tcx: 'mir, Prov: Provenance + 'static> Projectable<'mir, 'tcx, Prov>
-    for OpTy<'tcx, Prov>
-{
+impl<'tcx, Prov: Provenance + 'static> Projectable<'tcx, Prov> for OpTy<'tcx, Prov> {
     #[inline(always)]
     fn layout(&self) -> TyAndLayout<'tcx> {
         self.layout
     }
 
-    fn meta<M: Machine<'mir, 'tcx, Provenance = Prov>>(
+    fn meta<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
         &self,
         _ecx: &InterpCx<'mir, 'tcx, M>,
     ) -> InterpResult<'tcx, MemPlaceMeta<M::Provenance>> {
@@ -394,7 +392,7 @@ impl<'mir, 'tcx: 'mir, Prov: Provenance + 'static> Projectable<'mir, 'tcx, Prov>
         }
     }
 
-    fn to_op<M: Machine<'mir, 'tcx, Provenance = Prov>>(
+    fn to_op<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
         &self,
         _ecx: &InterpCx<'mir, 'tcx, M>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {

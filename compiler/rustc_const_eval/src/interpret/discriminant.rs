@@ -5,7 +5,8 @@ use rustc_middle::{mir, ty};
 use rustc_target::abi::{self, TagEncoding};
 use rustc_target::abi::{VariantIdx, Variants};
 
-use super::{ImmTy, InterpCx, InterpResult, Machine, OpTy, PlaceTy, Scalar};
+use super::place::Writeable;
+use super::{ImmTy, InterpCx, InterpResult, Machine, OpTy, Scalar};
 
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Writes the discriminant of the given variant.
@@ -13,7 +14,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn write_discriminant(
         &mut self,
         variant_index: VariantIdx,
-        dest: &PlaceTy<'tcx, M::Provenance>,
+        dest: &impl Writeable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
         // Layout computation excludes uninhabited variants from consideration
         // therefore there's no way to represent those variants in the given layout.
@@ -21,11 +22,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // discriminant, so we cannot do anything here.
         // When evaluating we will always error before even getting here, but ConstProp 'executes'
         // dead code, so we cannot ICE here.
-        if dest.layout.for_variant(self, variant_index).abi.is_uninhabited() {
+        if dest.layout().for_variant(self, variant_index).abi.is_uninhabited() {
             throw_ub!(UninhabitedEnumVariantWritten(variant_index))
         }
 
-        match dest.layout.variants {
+        match dest.layout().variants {
             abi::Variants::Single { index } => {
                 assert_eq!(index, variant_index);
             }
@@ -38,8 +39,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // No need to validate that the discriminant here because the
                 // `TyAndLayout::for_variant()` call earlier already checks the variant is valid.
 
-                let discr_val =
-                    dest.layout.ty.discriminant_for_variant(*self.tcx, variant_index).unwrap().val;
+                let discr_val = dest
+                    .layout()
+                    .ty
+                    .discriminant_for_variant(*self.tcx, variant_index)
+                    .unwrap()
+                    .val;
 
                 // raw discriminants for enums are isize or bigger during
                 // their computation, but the in-memory tag is the smallest possible

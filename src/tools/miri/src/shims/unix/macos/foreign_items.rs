@@ -141,7 +141,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 } else {
                     this.write_scalar(
                         Scalar::from_u32(size_needed.try_into().unwrap()),
-                        &bufsize.into(),
+                        &bufsize,
                     )?;
                     this.write_int(-1, dest)?;
                 }

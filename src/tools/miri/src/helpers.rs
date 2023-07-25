@@ -231,7 +231,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     }
 
     /// Project to the given *named* field (which must be a struct or union type).
-    fn project_field_named<P: Projectable<'mir, 'tcx, Provenance>>(
+    fn project_field_named<P: Projectable<'tcx, Provenance>>(
         &self,
         base: &P,
         name: &str,
@@ -252,13 +252,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn write_int(
         &mut self,
         i: impl Into<i128>,
-        dest: &PlaceTy<'tcx, Provenance>,
+        dest: &impl Writeable<'tcx, Provenance>,
     ) -> InterpResult<'tcx> {
-        assert!(dest.layout.abi.is_scalar(), "write_int on non-scalar type {}", dest.layout.ty);
-        let val = if dest.layout.abi.is_signed() {
-            Scalar::from_int(i, dest.layout.size)
+        assert!(dest.layout().abi.is_scalar(), "write_int on non-scalar type {}", dest.layout().ty);
+        let val = if dest.layout().abi.is_signed() {
+            Scalar::from_int(i, dest.layout().size)
         } else {
-            Scalar::from_uint(u64::try_from(i.into()).unwrap(), dest.layout.size)
+            Scalar::from_uint(u64::try_from(i.into()).unwrap(), dest.layout().size)
         };
         self.eval_context_mut().write_scalar(val, dest)
     }
@@ -267,12 +267,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn write_int_fields(
         &mut self,
         values: &[i128],
-        dest: &MPlaceTy<'tcx, Provenance>,
+        dest: &impl Writeable<'tcx, Provenance>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         for (idx, &val) in values.iter().enumerate() {
             let field = this.project_field(dest, idx)?;
-            this.write_int(val, &field.into())?;
+            this.write_int(val, &field)?;
         }
         Ok(())
     }
@@ -281,18 +281,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn write_int_fields_named(
         &mut self,
         values: &[(&str, i128)],
-        dest: &MPlaceTy<'tcx, Provenance>,
+        dest: &impl Writeable<'tcx, Provenance>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         for &(name, val) in values.iter() {
             let field = this.project_field_named(dest, name)?;
-            this.write_int(val, &field.into())?;
+            this.write_int(val, &field)?;
         }
         Ok(())
     }
 
     /// Write a 0 of the appropriate size to `dest`.
-    fn write_null(&mut self, dest: &PlaceTy<'tcx, Provenance>) -> InterpResult<'tcx> {
+    fn write_null(&mut self, dest: &impl Writeable<'tcx, Provenance>) -> InterpResult<'tcx> {
         self.write_int(0, dest)
     }
 
@@ -606,7 +606,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             // Allocate new place, set initial value to 0.
             let errno_layout = this.machine.layouts.u32;
             let errno_place = this.allocate(errno_layout, MiriMemoryKind::Machine.into())?;
-            this.write_scalar(Scalar::from_u32(0), &errno_place.into())?;
+            this.write_scalar(Scalar::from_u32(0), &errno_place)?;
             this.active_thread_mut().last_error = Some(errno_place);
             Ok(errno_place)
         }
@@ -616,7 +616,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn set_last_error(&mut self, scalar: Scalar<Provenance>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let errno_place = this.last_error_place()?;
-        this.write_scalar(scalar, &errno_place.into())
+        this.write_scalar(scalar, &errno_place)
     }
 
     /// Gets the last error variable.
@@ -785,7 +785,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, ()> {
         let this = self.eval_context_mut();
         let value_place = this.deref_operand_and_offset(op, offset, base_layout, value_layout)?;
-        this.write_scalar(value, &value_place.into())
+        this.write_scalar(value, &value_place)
     }
 
     /// Parse a `timespec` struct and return it as a `std::time::Duration`. It returns `None`

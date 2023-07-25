@@ -104,7 +104,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
                         }
                     };
-                    this.write_scalar(val, &dest.into())?;
+                    this.write_scalar(val, &dest)?;
                 }
             }
             #[rustfmt::skip]
@@ -217,7 +217,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                             fmin_op(&left, &right)?
                         }
                     };
-                    this.write_scalar(val, &dest.into())?;
+                    this.write_scalar(val, &dest)?;
                 }
             }
             "fma" => {
@@ -258,7 +258,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                             Scalar::from_u64(res.to_bits())
                         }
                     };
-                    this.write_scalar(val, &dest.into())?;
+                    this.write_scalar(val, &dest)?;
                 }
             }
             #[rustfmt::skip]
@@ -378,7 +378,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     let dest = this.project_index(&dest, i)?;
 
                     let val = if simd_element_to_bool(mask)? { yes } else { no };
-                    this.write_immediate(*val, &dest.into())?;
+                    this.write_immediate(*val, &dest)?;
                 }
             }
             "select_bitmask" => {
@@ -408,7 +408,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     let dest = this.project_index(&dest, i.into())?;
 
                     let val = if mask != 0 { yes } else { no };
-                    this.write_immediate(*val, &dest.into())?;
+                    this.write_immediate(*val, &dest)?;
                 }
                 for i in dest_len..bitmask_len {
                     // If the mask is "padded", ensure that padding is all-zero.
@@ -472,7 +472,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                                 to_ty = dest.layout.ty,
                             ),
                     };
-                    this.write_immediate(val, &dest.into())?;
+                    this.write_immediate(val, &dest)?;
                 }
             }
             "shuffle" => {
@@ -513,7 +513,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                             "simd_shuffle index {src_index} is out of bounds for 2 vectors of size {left_len}",
                         );
                     };
-                    this.write_immediate(*val, &dest.into())?;
+                    this.write_immediate(*val, &dest)?;
                 }
             }
             "gather" => {
@@ -539,7 +539,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     } else {
                         passthru
                     };
-                    this.write_immediate(*val, &dest.into())?;
+                    this.write_immediate(*val, &dest)?;
                 }
             }
             "scatter" => {
@@ -558,7 +558,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
                     if simd_element_to_bool(mask)? {
                         let place = this.deref_operand(&ptr.into())?;
-                        this.write_immediate(*value, &place.into())?;
+                        this.write_immediate(*value, &place)?;
                     }
                 }
             }
@@ -588,7 +588,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 // We have to force the place type to be an int so that we can write `res` into it.
                 let mut dest = this.force_allocation(dest)?;
                 dest.layout = this.machine.layouts.uint(dest.layout.size).unwrap();
-                this.write_int(res, &dest.into())?;
+                this.write_int(res, &dest)?;
             }
 
             name => throw_unsup_format!("unimplemented intrinsic: `simd_{name}`"),
