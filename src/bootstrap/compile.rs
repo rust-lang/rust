@@ -261,7 +261,7 @@ fn copy_self_contained_objects(
     // to using gcc from a glibc-targeting toolchain for linking.
     // To do that we have to distribute musl startup objects as a part of Rust toolchain
     // and link with them manually in the self-contained mode.
-    if target.contains("musl") {
+    if target.contains("musl") && !target.contains("unikraft") {
         let srcdir = builder.musl_libdir(target).unwrap_or_else(|| {
             panic!("Target {:?} does not have a \"musl-libdir\" key", target.triple)
         });
