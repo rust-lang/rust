@@ -212,7 +212,7 @@ impl<'tcx> Const<'tcx> {
                 Err(e) => {
                     tcx.sess.delay_span_bug(
                         expr.span,
-                        format!("Const::from_anon_const: couldn't lit_to_const {:?}", e),
+                        format!("Const::from_anon_const: couldn't lit_to_const {e:?}"),
                     );
                 }
             }
@@ -267,7 +267,7 @@ impl<'tcx> Const<'tcx> {
     pub fn from_bits(tcx: TyCtxt<'tcx>, bits: u128, ty: ParamEnvAnd<'tcx, Ty<'tcx>>) -> Self {
         let size = tcx
             .layout_of(ty)
-            .unwrap_or_else(|e| panic!("could not compute layout for {:?}: {:?}", ty, e))
+            .unwrap_or_else(|e| panic!("could not compute layout for {ty:?}: {e:?}"))
             .size;
         ty::Const::new_value(
             tcx,

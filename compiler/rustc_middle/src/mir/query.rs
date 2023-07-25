@@ -198,7 +198,7 @@ impl Debug for GeneratorLayout<'_> {
                 if fmt.alternate() {
                     write!(fmt, "{:9}({:?})", variant_name, self.0)
                 } else {
-                    write!(fmt, "{}", variant_name)
+                    write!(fmt, "{variant_name}")
                 }
             }
         }

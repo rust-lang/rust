@@ -156,7 +156,7 @@ impl Display for MatcherLoc {
             MatcherLoc::MetaVarDecl { bind, kind, .. } => {
                 write!(f, "meta-variable `${bind}")?;
                 if let Some(kind) = kind {
-                    write!(f, ":{}", kind)?;
+                    write!(f, ":{kind}")?;
                 }
                 write!(f, "`")?;
                 Ok(())
@@ -723,7 +723,7 @@ impl TtParser {
             .iter()
             .map(|mp| match &matcher[mp.idx] {
                 MatcherLoc::MetaVarDecl { bind, kind: Some(kind), .. } => {
-                    format!("{} ('{}')", kind, bind)
+                    format!("{kind} ('{bind}')")
                 }
                 _ => unreachable!(),
             })
@@ -736,8 +736,8 @@ impl TtParser {
                 "local ambiguity when calling macro `{}`: multiple parsing options: {}",
                 self.macro_name,
                 match self.next_mps.len() {
-                    0 => format!("built-in NTs {}.", nts),
-                    n => format!("built-in NTs {} or {n} other option{s}.", nts, s = pluralize!(n)),
+                    0 => format!("built-in NTs {nts}."),
+                    n => format!("built-in NTs {nts} or {n} other option{s}.", s = pluralize!(n)),
                 }
             ),
         )
@@ -757,7 +757,7 @@ impl TtParser {
                     match ret_val.entry(MacroRulesNormalizedIdent::new(bind)) {
                         Vacant(spot) => spot.insert(res.next().unwrap()),
                         Occupied(..) => {
-                            return Error(span, format!("duplicated bind name: {}", bind));
+                            return Error(span, format!("duplicated bind name: {bind}"));
                         }
                     };
                 } else {

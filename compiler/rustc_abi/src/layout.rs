@@ -260,8 +260,7 @@ pub trait LayoutCalculator {
                 }
                 _ => assert!(
                     start == Bound::Unbounded && end == Bound::Unbounded,
-                    "nonscalar layout for layout_scalar_valid_range type: {:#?}",
-                    st,
+                    "nonscalar layout for layout_scalar_valid_range type: {st:#?}",
                 ),
             }
 
@@ -463,7 +462,7 @@ pub trait LayoutCalculator {
             min = 0;
             max = 0;
         }
-        assert!(min <= max, "discriminant range is {}...{}", min, max);
+        assert!(min <= max, "discriminant range is {min}...{max}");
         let (min_ity, signed) = discr_range_of_repr(min, max); //Integer::repr_discr(tcx, ty, &repr, min, max);
 
         let mut align = dl.aggregate_align;
@@ -537,8 +536,7 @@ pub trait LayoutCalculator {
             // space necessary to represent would have to be discarded (or layout is wrong
             // on thinking it needs 16 bits)
             panic!(
-                "layout decided on a larger discriminant type ({:?}) than typeck ({:?})",
-                min_ity, typeck_ity
+                "layout decided on a larger discriminant type ({min_ity:?}) than typeck ({typeck_ity:?})"
             );
             // However, it is fine to make discr type however large (as an optimisation)
             // after this point – we’ll just truncate the value we load in codegen.

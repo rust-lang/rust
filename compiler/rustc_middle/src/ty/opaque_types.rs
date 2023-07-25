@@ -124,7 +124,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReverseMapper<'tcx> {
 
         match self.map.get(&r.into()).map(|k| k.unpack()) {
             Some(GenericArgKind::Lifetime(r1)) => r1,
-            Some(u) => panic!("region mapped to unexpected kind: {:?}", u),
+            Some(u) => panic!("region mapped to unexpected kind: {u:?}"),
             None if self.do_not_error => self.tcx.lifetimes.re_static,
             None => {
                 let e = self
@@ -134,9 +134,8 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReverseMapper<'tcx> {
                     .span_label(
                         self.span,
                         format!(
-                            "lifetime `{}` is part of concrete type but not used in \
-                             parameter list of the `impl Trait` type alias",
-                            r
+                            "lifetime `{r}` is part of concrete type but not used in \
+                             parameter list of the `impl Trait` type alias"
                         ),
                     )
                     .emit();
@@ -169,7 +168,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReverseMapper<'tcx> {
                     // Found it in the substitution list; replace with the parameter from the
                     // opaque type.
                     Some(GenericArgKind::Type(t1)) => t1,
-                    Some(u) => panic!("type mapped to unexpected kind: {:?}", u),
+                    Some(u) => panic!("type mapped to unexpected kind: {u:?}"),
                     None => {
                         debug!(?param, ?self.map);
                         if !self.ignore_errors {
@@ -178,9 +177,8 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReverseMapper<'tcx> {
                                 .struct_span_err(
                                     self.span,
                                     format!(
-                                        "type parameter `{}` is part of concrete type but not \
-                                          used in parameter list for the `impl Trait` type alias",
-                                        ty
+                                        "type parameter `{ty}` is part of concrete type but not \
+                                          used in parameter list for the `impl Trait` type alias"
                                     ),
                                 )
                                 .emit();
@@ -205,7 +203,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReverseMapper<'tcx> {
                     // Found it in the substitution list, replace with the parameter from the
                     // opaque type.
                     Some(GenericArgKind::Const(c1)) => c1,
-                    Some(u) => panic!("const mapped to unexpected kind: {:?}", u),
+                    Some(u) => panic!("const mapped to unexpected kind: {u:?}"),
                     None => {
                         let guar = self
                             .tcx

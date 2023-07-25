@@ -619,7 +619,7 @@ impl<D: TyDecoder, T: Decodable<D>> Decodable<D> for ClearCrossCrate<T> {
                 let val = T::decode(d);
                 ClearCrossCrate::Set(val)
             }
-            tag => panic!("Invalid tag for ClearCrossCrate: {:?}", tag),
+            tag => panic!("Invalid tag for ClearCrossCrate: {tag:?}"),
         }
     }
 }
@@ -1046,12 +1046,12 @@ pub enum VarDebugInfoContents<'tcx> {
 impl<'tcx> Debug for VarDebugInfoContents<'tcx> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            VarDebugInfoContents::Const(c) => write!(fmt, "{}", c),
-            VarDebugInfoContents::Place(p) => write!(fmt, "{:?}", p),
+            VarDebugInfoContents::Const(c) => write!(fmt, "{c}"),
+            VarDebugInfoContents::Place(p) => write!(fmt, "{p:?}"),
             VarDebugInfoContents::Composite { ty, fragments } => {
-                write!(fmt, "{:?}{{ ", ty)?;
+                write!(fmt, "{ty:?}{{ ")?;
                 for f in fragments.iter() {
-                    write!(fmt, "{:?}, ", f)?;
+                    write!(fmt, "{f:?}, ")?;
                 }
                 write!(fmt, "}}")
             }
@@ -1315,55 +1315,47 @@ impl<O> AssertKind<O> {
         match self {
             BoundsCheck { ref len, ref index } => write!(
                 f,
-                "\"index out of bounds: the length is {{}} but the index is {{}}\", {:?}, {:?}",
-                len, index
+                "\"index out of bounds: the length is {{}} but the index is {{}}\", {len:?}, {index:?}"
             ),
 
             OverflowNeg(op) => {
-                write!(f, "\"attempt to negate `{{}}`, which would overflow\", {:?}", op)
+                write!(f, "\"attempt to negate `{{}}`, which would overflow\", {op:?}")
             }
-            DivisionByZero(op) => write!(f, "\"attempt to divide `{{}}` by zero\", {:?}", op),
+            DivisionByZero(op) => write!(f, "\"attempt to divide `{{}}` by zero\", {op:?}"),
             RemainderByZero(op) => write!(
                 f,
-                "\"attempt to calculate the remainder of `{{}}` with a divisor of zero\", {:?}",
-                op
+                "\"attempt to calculate the remainder of `{{}}` with a divisor of zero\", {op:?}"
             ),
             Overflow(BinOp::Add, l, r) => write!(
                 f,
-                "\"attempt to compute `{{}} + {{}}`, which would overflow\", {:?}, {:?}",
-                l, r
+                "\"attempt to compute `{{}} + {{}}`, which would overflow\", {l:?}, {r:?}"
             ),
             Overflow(BinOp::Sub, l, r) => write!(
                 f,
-                "\"attempt to compute `{{}} - {{}}`, which would overflow\", {:?}, {:?}",
-                l, r
+                "\"attempt to compute `{{}} - {{}}`, which would overflow\", {l:?}, {r:?}"
             ),
             Overflow(BinOp::Mul, l, r) => write!(
                 f,
-                "\"attempt to compute `{{}} * {{}}`, which would overflow\", {:?}, {:?}",
-                l, r
+                "\"attempt to compute `{{}} * {{}}`, which would overflow\", {l:?}, {r:?}"
             ),
             Overflow(BinOp::Div, l, r) => write!(
                 f,
-                "\"attempt to compute `{{}} / {{}}`, which would overflow\", {:?}, {:?}",
-                l, r
+                "\"attempt to compute `{{}} / {{}}`, which would overflow\", {l:?}, {r:?}"
             ),
             Overflow(BinOp::Rem, l, r) => write!(
                 f,
-                "\"attempt to compute the remainder of `{{}} % {{}}`, which would overflow\", {:?}, {:?}",
-                l, r
+                "\"attempt to compute the remainder of `{{}} % {{}}`, which would overflow\", {l:?}, {r:?}"
             ),
             Overflow(BinOp::Shr, _, r) => {
-                write!(f, "\"attempt to shift right by `{{}}`, which would overflow\", {:?}", r)
+                write!(f, "\"attempt to shift right by `{{}}`, which would overflow\", {r:?}")
             }
             Overflow(BinOp::Shl, _, r) => {
-                write!(f, "\"attempt to shift left by `{{}}`, which would overflow\", {:?}", r)
+                write!(f, "\"attempt to shift left by `{{}}`, which would overflow\", {r:?}")
             }
             MisalignedPointerDereference { required, found } => {
                 write!(
                     f,
-                    "\"misaligned pointer dereference: address must be a multiple of {{}} but is {{}}\", {:?}, {:?}",
-                    required, found
+                    "\"misaligned pointer dereference: address must be a multiple of {{}} but is {{}}\", {required:?}, {found:?}"
                 )
             }
             _ => write!(f, "\"{}\"", self.description()),
@@ -1459,9 +1451,9 @@ impl Debug for Statement<'_> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         use self::StatementKind::*;
         match self.kind {
-            Assign(box (ref place, ref rv)) => write!(fmt, "{:?} = {:?}", place, rv),
+            Assign(box (ref place, ref rv)) => write!(fmt, "{place:?} = {rv:?}"),
             FakeRead(box (ref cause, ref place)) => {
-                write!(fmt, "FakeRead({:?}, {:?})", cause, place)
+                write!(fmt, "FakeRead({cause:?}, {place:?})")
             }
             Retag(ref kind, ref place) => write!(
                 fmt,
@@ -1474,20 +1466,20 @@ impl Debug for Statement<'_> {
                 },
                 place,
             ),
-            StorageLive(ref place) => write!(fmt, "StorageLive({:?})", place),
-            StorageDead(ref place) => write!(fmt, "StorageDead({:?})", place),
+            StorageLive(ref place) => write!(fmt, "StorageLive({place:?})"),
+            StorageDead(ref place) => write!(fmt, "StorageDead({place:?})"),
             SetDiscriminant { ref place, variant_index } => {
-                write!(fmt, "discriminant({:?}) = {:?}", place, variant_index)
+                write!(fmt, "discriminant({place:?}) = {variant_index:?}")
             }
-            Deinit(ref place) => write!(fmt, "Deinit({:?})", place),
+            Deinit(ref place) => write!(fmt, "Deinit({place:?})"),
             PlaceMention(ref place) => {
-                write!(fmt, "PlaceMention({:?})", place)
+                write!(fmt, "PlaceMention({place:?})")
             }
             AscribeUserType(box (ref place, ref c_ty), ref variance) => {
-                write!(fmt, "AscribeUserType({:?}, {:?}, {:?})", place, variance, c_ty)
+                write!(fmt, "AscribeUserType({place:?}, {variance:?}, {c_ty:?})")
             }
             Coverage(box self::Coverage { ref kind, code_region: Some(ref rgn) }) => {
-                write!(fmt, "Coverage::{:?} for {:?}", kind, rgn)
+                write!(fmt, "Coverage::{kind:?} for {rgn:?}")
             }
             Coverage(box ref coverage) => write!(fmt, "Coverage::{:?}", coverage.kind),
             Intrinsic(box ref intrinsic) => write!(fmt, "{intrinsic}"),
@@ -1767,13 +1759,13 @@ impl Debug for Place<'_> {
         for elem in self.projection.iter() {
             match elem {
                 ProjectionElem::OpaqueCast(ty) => {
-                    write!(fmt, " as {})", ty)?;
+                    write!(fmt, " as {ty})")?;
                 }
                 ProjectionElem::Downcast(Some(name), _index) => {
-                    write!(fmt, " as {})", name)?;
+                    write!(fmt, " as {name})")?;
                 }
                 ProjectionElem::Downcast(None, index) => {
-                    write!(fmt, " as variant#{:?})", index)?;
+                    write!(fmt, " as variant#{index:?})")?;
                 }
                 ProjectionElem::Deref => {
                     write!(fmt, ")")?;
@@ -1782,25 +1774,25 @@ impl Debug for Place<'_> {
                     write!(fmt, ".{:?}: {:?})", field.index(), ty)?;
                 }
                 ProjectionElem::Index(ref index) => {
-                    write!(fmt, "[{:?}]", index)?;
+                    write!(fmt, "[{index:?}]")?;
                 }
                 ProjectionElem::ConstantIndex { offset, min_length, from_end: false } => {
-                    write!(fmt, "[{:?} of {:?}]", offset, min_length)?;
+                    write!(fmt, "[{offset:?} of {min_length:?}]")?;
                 }
                 ProjectionElem::ConstantIndex { offset, min_length, from_end: true } => {
-                    write!(fmt, "[-{:?} of {:?}]", offset, min_length)?;
+                    write!(fmt, "[-{offset:?} of {min_length:?}]")?;
                 }
                 ProjectionElem::Subslice { from, to, from_end: true } if to == 0 => {
-                    write!(fmt, "[{:?}:]", from)?;
+                    write!(fmt, "[{from:?}:]")?;
                 }
                 ProjectionElem::Subslice { from, to, from_end: true } if from == 0 => {
-                    write!(fmt, "[:-{:?}]", to)?;
+                    write!(fmt, "[:-{to:?}]")?;
                 }
                 ProjectionElem::Subslice { from, to, from_end: true } => {
-                    write!(fmt, "[{:?}:-{:?}]", from, to)?;
+                    write!(fmt, "[{from:?}:-{to:?}]")?;
                 }
                 ProjectionElem::Subslice { from, to, from_end: false } => {
-                    write!(fmt, "[{:?}..{:?}]", from, to)?;
+                    write!(fmt, "[{from:?}..{to:?}]")?;
                 }
             }
         }
@@ -1894,9 +1886,9 @@ impl<'tcx> Debug for Operand<'tcx> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         use self::Operand::*;
         match *self {
-            Constant(ref a) => write!(fmt, "{:?}", a),
-            Copy(ref place) => write!(fmt, "{:?}", place),
-            Move(ref place) => write!(fmt, "move {:?}", place),
+            Constant(ref a) => write!(fmt, "{a:?}"),
+            Copy(ref place) => write!(fmt, "{place:?}"),
+            Move(ref place) => write!(fmt, "move {place:?}"),
         }
     }
 }
@@ -1935,11 +1927,11 @@ impl<'tcx> Operand<'tcx> {
             let param_env_and_ty = ty::ParamEnv::empty().and(ty);
             let type_size = tcx
                 .layout_of(param_env_and_ty)
-                .unwrap_or_else(|e| panic!("could not compute layout for {:?}: {:?}", ty, e))
+                .unwrap_or_else(|e| panic!("could not compute layout for {ty:?}: {e:?}"))
                 .size;
             let scalar_size = match val {
                 Scalar::Int(int) => int.size(),
-                _ => panic!("Invalid scalar type {:?}", val),
+                _ => panic!("Invalid scalar type {val:?}"),
             };
             scalar_size == type_size
         });
@@ -2055,26 +2047,26 @@ impl<'tcx> Debug for Rvalue<'tcx> {
         use self::Rvalue::*;
 
         match *self {
-            Use(ref place) => write!(fmt, "{:?}", place),
+            Use(ref place) => write!(fmt, "{place:?}"),
             Repeat(ref a, b) => {
-                write!(fmt, "[{:?}; ", a)?;
+                write!(fmt, "[{a:?}; ")?;
                 pretty_print_const(b, fmt, false)?;
                 write!(fmt, "]")
             }
-            Len(ref a) => write!(fmt, "Len({:?})", a),
+            Len(ref a) => write!(fmt, "Len({a:?})"),
             Cast(ref kind, ref place, ref ty) => {
-                write!(fmt, "{:?} as {:?} ({:?})", place, ty, kind)
+                write!(fmt, "{place:?} as {ty:?} ({kind:?})")
             }
-            BinaryOp(ref op, box (ref a, ref b)) => write!(fmt, "{:?}({:?}, {:?})", op, a, b),
+            BinaryOp(ref op, box (ref a, ref b)) => write!(fmt, "{op:?}({a:?}, {b:?})"),
             CheckedBinaryOp(ref op, box (ref a, ref b)) => {
-                write!(fmt, "Checked{:?}({:?}, {:?})", op, a, b)
+                write!(fmt, "Checked{op:?}({a:?}, {b:?})")
             }
-            UnaryOp(ref op, ref a) => write!(fmt, "{:?}({:?})", op, a),
-            Discriminant(ref place) => write!(fmt, "discriminant({:?})", place),
+            UnaryOp(ref op, ref a) => write!(fmt, "{op:?}({a:?})"),
+            Discriminant(ref place) => write!(fmt, "discriminant({place:?})"),
             NullaryOp(ref op, ref t) => match op {
-                NullOp::SizeOf => write!(fmt, "SizeOf({:?})", t),
-                NullOp::AlignOf => write!(fmt, "AlignOf({:?})", t),
-                NullOp::OffsetOf(fields) => write!(fmt, "OffsetOf({:?}, {:?})", t, fields),
+                NullOp::SizeOf => write!(fmt, "SizeOf({t:?})"),
+                NullOp::AlignOf => write!(fmt, "AlignOf({t:?})"),
+                NullOp::OffsetOf(fields) => write!(fmt, "OffsetOf({t:?}, {fields:?})"),
             },
             ThreadLocalRef(did) => ty::tls::with(|tcx| {
                 let muta = tcx.static_mutability(did).unwrap().prefix_str();
@@ -2101,10 +2093,10 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                     // Do not even print 'static
                     String::new()
                 };
-                write!(fmt, "&{}{}{:?}", region, kind_str, place)
+                write!(fmt, "&{region}{kind_str}{place:?}")
             }
 
-            CopyForDeref(ref place) => write!(fmt, "deref_copy {:#?}", place),
+            CopyForDeref(ref place) => write!(fmt, "deref_copy {place:#?}"),
 
             AddressOf(mutability, ref place) => {
                 let kind_str = match mutability {
@@ -2112,7 +2104,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                     Mutability::Not => "const",
                 };
 
-                write!(fmt, "&raw {} {:?}", kind_str, place)
+                write!(fmt, "&raw {kind_str} {place:?}")
             }
 
             Aggregate(ref kind, ref places) => {
@@ -2125,7 +2117,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                 };
 
                 match **kind {
-                    AggregateKind::Array(_) => write!(fmt, "{:?}", places),
+                    AggregateKind::Array(_) => write!(fmt, "{places:?}"),
 
                     AggregateKind::Tuple => {
                         if places.is_empty() {
@@ -2211,7 +2203,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             }
 
             ShallowInitBox(ref place, ref ty) => {
-                write!(fmt, "ShallowInitBox({:?}, {:?})", place, ty)
+                write!(fmt, "ShallowInitBox({place:?}, {ty:?})")
             }
         }
     }
@@ -2755,7 +2747,7 @@ rustc_index::newtype_index! {
 
 impl<'tcx> Debug for Constant<'tcx> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        write!(fmt, "{}", self)
+        write!(fmt, "{self}")
     }
 }
 
@@ -2831,7 +2823,7 @@ fn pretty_print_const_value<'tcx>(
         let ty = tcx.lift(ty).unwrap();
 
         if tcx.sess.verbose() {
-            fmt.write_str(&format!("ConstValue({:?}: {})", ct, ty))?;
+            fmt.write_str(&format!("ConstValue({ct:?}: {ty})"))?;
             return Ok(());
         }
 
@@ -2901,7 +2893,7 @@ fn pretty_print_const_value<'tcx>(
                             fmt.write_str(")")?;
                         }
                         ty::Adt(def, _) if def.variants().is_empty() => {
-                            fmt.write_str(&format!("{{unreachable(): {}}}", ty))?;
+                            fmt.write_str(&format!("{{unreachable(): {ty}}}"))?;
                         }
                         ty::Adt(def, args) => {
                             let variant_idx = contents
