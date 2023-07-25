@@ -1390,7 +1390,7 @@ impl HandlerInner {
                 debug!(?self.emitted_diagnostics);
                 let already_emitted_sub = |sub: &mut SubDiagnostic| {
                     debug!(?sub);
-                    if sub.level != Level::OnceNote {
+                    if sub.level != Level::OnceNote && sub.level != Level::OnceHelp {
                         return false;
                     }
                     let mut hasher = StableHasher::new();
@@ -1792,6 +1792,8 @@ pub enum Level {
     /// A note that is only emitted once.
     OnceNote,
     Help,
+    /// A help that is only emitted once.
+    OnceHelp,
     FailureNote,
     Allow,
     Expect(LintExpectationId),
@@ -1816,7 +1818,7 @@ impl Level {
             Note | OnceNote => {
                 spec.set_fg(Some(Color::Green)).set_intense(true);
             }
-            Help => {
+            Help | OnceHelp => {
                 spec.set_fg(Some(Color::Cyan)).set_intense(true);
             }
             FailureNote => {}
@@ -1831,7 +1833,7 @@ impl Level {
             Fatal | Error { .. } => "error",
             Warning(_) => "warning",
             Note | OnceNote => "note",
-            Help => "help",
+            Help | OnceHelp => "help",
             FailureNote => "failure-note",
             Allow => panic!("Shouldn't call on allowed error"),
             Expect(_) => panic!("Shouldn't call on expected error"),
