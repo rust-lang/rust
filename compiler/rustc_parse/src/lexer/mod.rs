@@ -166,10 +166,7 @@ impl<'a> StringReader<'a> {
                     continue;
                 }
                 rustc_lexer::TokenKind::Ident => {
-                    let sym = nfc_normalize(self.str_from(start));
-                    let span = self.mk_sp(start, self.pos);
-                    self.sess.symbol_gallery.insert(sym, span);
-                    token::Ident(sym, false)
+                    self.ident(start)
                 }
                 rustc_lexer::TokenKind::RawIdent => {
                     let sym = nfc_normalize(self.str_from(start + BytePos(2)));
@@ -183,10 +180,7 @@ impl<'a> StringReader<'a> {
                 }
                 rustc_lexer::TokenKind::UnknownPrefix => {
                     self.report_unknown_prefix(start);
-                    let sym = nfc_normalize(self.str_from(start));
-                    let span = self.mk_sp(start, self.pos);
-                    self.sess.symbol_gallery.insert(sym, span);
-                    token::Ident(sym, false)
+                    self.ident(start)
                 }
                 rustc_lexer::TokenKind::InvalidIdent
                     // Do not recover an identifier with emoji if the codepoint is a confusable
@@ -222,10 +216,8 @@ impl<'a> StringReader<'a> {
                     self.cursor = Cursor::new(&str_before[prefix_len as usize..]);
 
                     self.report_unknown_prefix(start);
-                    let sym = nfc_normalize(self.str_from(start));
                     let prefix_span = self.mk_sp(start, lit_start);
-                    self.sess.symbol_gallery.insert(sym, prefix_span);
-                    return (Token::new(token::Ident(sym, false), prefix_span), preceded_by_whitespace);
+                    return (Token::new(self.ident(start), prefix_span), preceded_by_whitespace);
                 }
                 rustc_lexer::TokenKind::Literal { kind, suffix_start } => {
                     let suffix_start = start + BytePos(suffix_start);
@@ -339,6 +331,13 @@ impl<'a> StringReader<'a> {
             let span = self.mk_sp(start, self.pos);
             return (Token::new(kind, span), preceded_by_whitespace);
         }
+    }
+
+    fn ident(&self, start: BytePos) -> TokenKind {
+        let sym = nfc_normalize(self.str_from(start));
+        let span = self.mk_sp(start, self.pos);
+        self.sess.symbol_gallery.insert(sym, span);
+        token::Ident(sym, false)
     }
 
     fn struct_fatal_span_char(
