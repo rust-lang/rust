@@ -549,21 +549,17 @@ impl Drop for HandlerInner {
 
 impl Handler {
     pub fn with_tty_emitter(
-        color_config: ColorConfig,
         can_emit_warnings: bool,
-        treat_err_as_bug: Option<NonZeroUsize>,
         sm: Option<Lrc<SourceMap>>,
-        fluent_bundle: Option<Lrc<FluentBundle>>,
         fallback_bundle: LazyFallbackBundle,
-        ice_file: Option<PathBuf>,
     ) -> Self {
         Self::with_tty_emitter_and_flags(
-            color_config,
+            ColorConfig::Auto,
             sm,
-            fluent_bundle,
+            None,
             fallback_bundle,
-            HandlerFlags { can_emit_warnings, treat_err_as_bug, ..Default::default() },
-            ice_file,
+            HandlerFlags { can_emit_warnings, treat_err_as_bug: None, ..Default::default() },
+            None,
         )
     }
 
