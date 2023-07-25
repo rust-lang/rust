@@ -38,12 +38,6 @@ error: diagnostic slug must be first argument of a `#[label(...)]` attribute
 LL | #[label(bug = "...")]
    | ^^^^^^^^^^^^^^^^^^^^^
 
-error: unexpected literal in nested attribute, expected ident
-  --> $DIR/subdiagnostic-derive.rs:97:9
-   |
-LL | #[label("...")]
-   |         ^^^^^
-
 error: only `no_span` is a valid nested attribute
   --> $DIR/subdiagnostic-derive.rs:106:9
    |
@@ -68,11 +62,11 @@ error: diagnostic slug must be first argument of a `#[label(...)]` attribute
 LL | #[label(slug("..."))]
    | ^^^^^^^^^^^^^^^^^^^^^
 
-error: unexpected end of input, unexpected token in nested attribute, expected ident
-  --> $DIR/subdiagnostic-derive.rs:136:9
+error: diagnostic slug must be first argument of a `#[label(...)]` attribute
+  --> $DIR/subdiagnostic-derive.rs:136:1
    |
 LL | #[label()]
-   |         ^
+   | ^^^^^^^^^^
 
 error: only `no_span` is a valid nested attribute
   --> $DIR/subdiagnostic-derive.rs:145:27
@@ -173,16 +167,6 @@ LL |     #[bar("...")]
    |     ^^^^^^^^^^^^^
    |
    = help: only `primary_span`, `applicability` and `skip_arg` are valid field attributes
-
-error: unexpected unsupported untagged union
-  --> $DIR/subdiagnostic-derive.rs:312:1
-   |
-LL | / union AC {
-LL | |
-LL | |     span: u32,
-LL | |     b: u64,
-LL | | }
-   | |_^
 
 error: a diagnostic slug must be the first argument to the attribute
   --> $DIR/subdiagnostic-derive.rs:327:44
@@ -331,11 +315,11 @@ error: `#[suggestion_part(...)]` attribute without `code = "..."`
 LL |     #[suggestion_part]
    |     ^^^^^^^^^^^^^^^^^^
 
-error: unexpected end of input, unexpected token in nested attribute, expected ident
-  --> $DIR/subdiagnostic-derive.rs:558:23
+error: `#[suggestion_part(...)]` attribute without `code = "..."`
+  --> $DIR/subdiagnostic-derive.rs:558:5
    |
 LL |     #[suggestion_part()]
-   |                       ^
+   |     ^^^^^^^^^^^^^^^^^^^^
 
 error: `#[primary_span]` is not a valid attribute
   --> $DIR/subdiagnostic-derive.rs:567:5
@@ -363,6 +347,12 @@ error: `#[suggestion_part(...)]` attribute without `code = "..."`
 LL |     #[suggestion_part]
    |     ^^^^^^^^^^^^^^^^^^
 
+error: `#[suggestion_part(...)]` attribute without `code = "..."`
+  --> $DIR/subdiagnostic-derive.rs:578:5
+   |
+LL |     #[suggestion_part()]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
 error: `code` is the only valid nested attribute
   --> $DIR/subdiagnostic-derive.rs:581:23
    |
@@ -380,18 +370,6 @@ error: the `#[suggestion_part(...)]` attribute can only be applied to fields of 
    |
 LL |     #[suggestion_part()]
    |     ^^^^^^^^^^^^^^^^^^^^
-
-error: unexpected end of input, unexpected token in nested attribute, expected ident
-  --> $DIR/subdiagnostic-derive.rs:578:23
-   |
-LL |     #[suggestion_part()]
-   |                       ^
-
-error: expected `,`
-  --> $DIR/subdiagnostic-derive.rs:581:27
-   |
-LL |     #[suggestion_part(foo = "bar")]
-   |                           ^
 
 error: specified multiple times
   --> $DIR/subdiagnostic-derive.rs:596:37
@@ -417,23 +395,11 @@ error: expected exactly one string literal for `code = ...`
 LL |     #[suggestion_part(code("foo"))]
    |                                  ^
 
-error: unexpected token
-  --> $DIR/subdiagnostic-derive.rs:673:28
-   |
-LL |     #[suggestion_part(code("foo"))]
-   |                            ^^^^^
-
 error: expected exactly one string literal for `code = ...`
   --> $DIR/subdiagnostic-derive.rs:683:41
    |
 LL |     #[suggestion_part(code("foo", "bar"))]
    |                                         ^
-
-error: unexpected token
-  --> $DIR/subdiagnostic-derive.rs:683:28
-   |
-LL |     #[suggestion_part(code("foo", "bar"))]
-   |                            ^^^^^
 
 error: expected exactly one string literal for `code = ...`
   --> $DIR/subdiagnostic-derive.rs:693:30
@@ -441,23 +407,11 @@ error: expected exactly one string literal for `code = ...`
 LL |     #[suggestion_part(code(3))]
    |                              ^
 
-error: unexpected token
-  --> $DIR/subdiagnostic-derive.rs:693:28
-   |
-LL |     #[suggestion_part(code(3))]
-   |                            ^
-
 error: expected exactly one string literal for `code = ...`
   --> $DIR/subdiagnostic-derive.rs:703:29
    |
 LL |     #[suggestion_part(code())]
    |                             ^
-
-error: expected string literal
-  --> $DIR/subdiagnostic-derive.rs:715:30
-   |
-LL |     #[suggestion_part(code = 3)]
-   |                              ^
 
 error: specified multiple times
   --> $DIR/subdiagnostic-derive.rs:757:1
@@ -513,12 +467,6 @@ error: expected `= "xxx"`
 LL | #[suggestion(no_crate_example, code = "", style("foo"))]
    |                                                ^
 
-error: expected `,`
-  --> $DIR/subdiagnostic-derive.rs:806:48
-   |
-LL | #[suggestion(no_crate_example, code = "", style("foo"))]
-   |                                                ^
-
 error: `#[primary_span]` is not a valid attribute
   --> $DIR/subdiagnostic-derive.rs:818:5
    |
@@ -539,6 +487,54 @@ LL | |     #[primary_span]
 LL | |     sub: Vec<Span>,
 LL | | }
    | |_^
+
+error[E0433]: failed to resolve: maybe a missing crate `core`?
+  --> $DIR/subdiagnostic-derive.rs:97:9
+   |
+LL | #[label("...")]
+   |         ^^^^^ maybe a missing crate `core`?
+
+error[E0433]: failed to resolve: maybe a missing crate `core`?
+  --> $DIR/subdiagnostic-derive.rs:312:1
+   |
+LL | union AC {
+   | ^^^^^ maybe a missing crate `core`?
+
+error[E0433]: failed to resolve: maybe a missing crate `core`?
+  --> $DIR/subdiagnostic-derive.rs:581:27
+   |
+LL |     #[suggestion_part(foo = "bar")]
+   |                           ^ maybe a missing crate `core`?
+
+error[E0433]: failed to resolve: maybe a missing crate `core`?
+  --> $DIR/subdiagnostic-derive.rs:673:28
+   |
+LL |     #[suggestion_part(code("foo"))]
+   |                            ^^^^^ maybe a missing crate `core`?
+
+error[E0433]: failed to resolve: maybe a missing crate `core`?
+  --> $DIR/subdiagnostic-derive.rs:683:28
+   |
+LL |     #[suggestion_part(code("foo", "bar"))]
+   |                            ^^^^^ maybe a missing crate `core`?
+
+error[E0433]: failed to resolve: maybe a missing crate `core`?
+  --> $DIR/subdiagnostic-derive.rs:693:28
+   |
+LL |     #[suggestion_part(code(3))]
+   |                            ^ maybe a missing crate `core`?
+
+error[E0433]: failed to resolve: maybe a missing crate `core`?
+  --> $DIR/subdiagnostic-derive.rs:715:30
+   |
+LL |     #[suggestion_part(code = 3)]
+   |                              ^ maybe a missing crate `core`?
+
+error[E0433]: failed to resolve: maybe a missing crate `core`?
+  --> $DIR/subdiagnostic-derive.rs:806:48
+   |
+LL | #[suggestion(no_crate_example, code = "", style("foo"))]
+   |                                                ^ maybe a missing crate `core`?
 
 error: cannot find attribute `foo` in this scope
   --> $DIR/subdiagnostic-derive.rs:68:3
@@ -610,4 +606,5 @@ LL | #[derive(Subdiagnostic)]
 
 error: aborting due to 86 previous errors
 
-For more information about this error, try `rustc --explain E0425`.
+Some errors have detailed explanations: E0425, E0433.
+For more information about an error, try `rustc --explain E0425`.
