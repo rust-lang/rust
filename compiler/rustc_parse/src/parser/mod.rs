@@ -1155,7 +1155,7 @@ impl<'a> Parser<'a> {
         let mut i = 0;
         let mut token = Token::dummy();
         while i < dist {
-            token = cursor.next(/* desugar_doc_comments */ false).0;
+            token = cursor.next(cursor.desugar_doc_comments).0;
             if matches!(
                 token.kind,
                 token::OpenDelim(Delimiter::Invisible) | token::CloseDelim(Delimiter::Invisible)
