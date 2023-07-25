@@ -224,6 +224,9 @@ struct TokenCursor {
     // because it's the outermost token stream which never has delimiters.
     stack: Vec<(TokenTreeCursor, Delimiter, DelimSpan)>,
 
+    // We need to desugar doc comments from `/// foo` form into `#[doc =
+    // r"foo"]` form when parsing declarative macro inputs in `parse_tt`,
+    // because some declarative macros look for `doc` attributes.
     desugar_doc_comments: bool,
 
     // Counts the number of calls to `{,inlined_}next`.
