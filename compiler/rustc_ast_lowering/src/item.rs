@@ -85,6 +85,7 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
             allow_try_trait: Some([sym::try_trait_v2, sym::yeet_desugar_details][..].into()),
             allow_gen_future: Some([sym::gen_future, sym::closure_track_caller][..].into()),
             generics_def_id_map: Default::default(),
+            host_param_id: None,
         };
         lctx.with_hir_id_owner(owner, |lctx| f(lctx));
 
@@ -378,6 +379,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     self.lower_generics(ast_generics, *constness, id, &itctx, |this| {
                         let trait_ref = trait_ref.as_ref().map(|trait_ref| {
                             this.lower_trait_ref(
+                                *constness,
                                 trait_ref,
                                 &ImplTraitContext::Disallowed(ImplTraitPosition::Trait),
                             )
@@ -408,7 +410,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     polarity,
                     defaultness,
                     defaultness_span,
-                    constness: self.lower_constness(*constness),
                     generics,
                     of_trait: trait_ref,
                     self_ty: lowered_ty,

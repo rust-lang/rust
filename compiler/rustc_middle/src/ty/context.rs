@@ -1987,13 +1987,15 @@ impl<'tcx> TyCtxt<'tcx> {
         let hir_id = self.local_def_id_to_hir_id(local_def_id);
         let node = self.hir().get(hir_id);
 
-        matches!(
+        // TODO
+        false
+        /*matches!(
             node,
             hir::Node::Item(hir::Item {
                 kind: hir::ItemKind::Impl(hir::Impl { constness: hir::Constness::Const, .. }),
                 ..
             })
-        )
+        )*/
     }
 
     pub fn local_def_id_to_hir_id(self, local_def_id: LocalDefId) -> HirId {

@@ -622,7 +622,6 @@ impl<'a> State<'a> {
                 unsafety,
                 polarity,
                 defaultness,
-                constness,
                 defaultness_span: _,
                 generics,
                 ref of_trait,
@@ -637,10 +636,6 @@ impl<'a> State<'a> {
                 if !generics.params.is_empty() {
                     self.print_generic_params(generics.params);
                     self.space();
-                }
-
-                if constness == hir::Constness::Const {
-                    self.word_nbsp("const");
                 }
 
                 if let hir::ImplPolarity::Negative(_) = polarity {

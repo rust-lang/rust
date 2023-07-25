@@ -3357,7 +3357,8 @@ pub struct Impl<'hir> {
     // We do not put a `Span` in `Defaultness` because it breaks foreign crate metadata
     // decoding as `Span`s cannot be decoded when a `Session` is not available.
     pub defaultness_span: Option<Span>,
-    pub constness: Constness,
+    // TODO remove this comment
+    // pub constness: Constness,
     pub generics: &'hir Generics<'hir>,
 
     /// The trait being implemented, if any.
