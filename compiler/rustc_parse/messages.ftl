@@ -722,6 +722,10 @@ parse_sugg_wrap_pattern_in_parens = wrap the pattern in parentheses
 
 parse_switch_mut_let_order =
     switch the order of `mut` and `let`
+
+parse_ternary_operator = Rust has no ternary operator
+    .help = use an `if-else` expression instead
+
 parse_tilde_const_lifetime = `~const` may only modify trait bounds, not lifetime bounds
 
 parse_tilde_is_not_unary_operator = `~` cannot be used as a unary operator
