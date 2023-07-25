@@ -24,6 +24,7 @@ use crate::{
 };
 use rustc_lint_defs::pluralize;
 
+use derive_setters::Setters;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_data_structures::sync::Lrc;
 use rustc_error_messages::{FluentArgs, SpanLabel};
@@ -639,10 +640,13 @@ impl ColorConfig {
 }
 
 /// Handles the writing of `HumanReadableErrorType::Default` and `HumanReadableErrorType::Short`
+#[derive(Setters)]
 pub struct EmitterWriter {
+    #[setters(skip)]
     dst: Destination,
     sm: Option<Lrc<SourceMap>>,
     fluent_bundle: Option<Lrc<FluentBundle>>,
+    #[setters(skip)]
     fallback_bundle: LazyFallbackBundle,
     short_message: bool,
     teach: bool,
@@ -662,31 +666,20 @@ pub struct FileWithAnnotatedLines {
 }
 
 impl EmitterWriter {
-    pub fn stderr(
-        color_config: ColorConfig,
-        source_map: Option<Lrc<SourceMap>>,
-        fluent_bundle: Option<Lrc<FluentBundle>>,
-        fallback_bundle: LazyFallbackBundle,
-        short_message: bool,
-        teach: bool,
-        diagnostic_width: Option<usize>,
-        macro_backtrace: bool,
-        track_diagnostics: bool,
-        terminal_url: TerminalUrl,
-    ) -> EmitterWriter {
+    pub fn stderr(color_config: ColorConfig, fallback_bundle: LazyFallbackBundle) -> EmitterWriter {
         let dst = Destination::from_stderr(color_config);
         EmitterWriter {
             dst,
-            sm: source_map,
-            fluent_bundle,
+            sm: None,
+            fluent_bundle: None,
             fallback_bundle,
-            short_message,
-            teach,
+            short_message: false,
+            teach: false,
             ui_testing: false,
-            diagnostic_width,
-            macro_backtrace,
-            track_diagnostics,
-            terminal_url,
+            diagnostic_width: None,
+            macro_backtrace: false,
+            track_diagnostics: false,
+            terminal_url: TerminalUrl::No,
         }
     }
 
@@ -716,11 +709,6 @@ impl EmitterWriter {
             track_diagnostics,
             terminal_url,
         }
-    }
-
-    pub fn ui_testing(mut self, ui_testing: bool) -> Self {
-        self.ui_testing = ui_testing;
-        self
     }
 
     fn maybe_anonymized(&self, line_num: usize) -> Cow<'static, str> {

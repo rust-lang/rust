@@ -1350,18 +1350,15 @@ fn default_emitter(
                 );
                 Box::new(emitter.ui_testing(sopts.unstable_opts.ui_testing))
             } else {
-                let emitter = EmitterWriter::stderr(
-                    color_config,
-                    Some(source_map),
-                    bundle,
-                    fallback_bundle,
-                    short,
-                    sopts.unstable_opts.teach,
-                    sopts.diagnostic_width,
-                    macro_backtrace,
-                    track_diagnostics,
-                    terminal_url,
-                );
+                let emitter = EmitterWriter::stderr(color_config, fallback_bundle)
+                    .fluent_bundle(bundle)
+                    .sm(Some(source_map))
+                    .short_message(short)
+                    .teach(sopts.unstable_opts.teach)
+                    .diagnostic_width(sopts.diagnostic_width)
+                    .macro_backtrace(macro_backtrace)
+                    .track_diagnostics(track_diagnostics)
+                    .terminal_url(terminal_url);
                 Box::new(emitter.ui_testing(sopts.unstable_opts.ui_testing))
             }
         }
@@ -1794,18 +1791,7 @@ fn mk_emitter(output: ErrorOutputType) -> Box<dyn Emitter + sync::Send + 'static
     let emitter: Box<dyn Emitter + sync::Send> = match output {
         config::ErrorOutputType::HumanReadable(kind) => {
             let (short, color_config) = kind.unzip();
-            Box::new(EmitterWriter::stderr(
-                color_config,
-                None,
-                None,
-                fallback_bundle,
-                short,
-                false,
-                None,
-                false,
-                false,
-                TerminalUrl::No,
-            ))
+            Box::new(EmitterWriter::stderr(color_config, fallback_bundle).short_message(short))
         }
         config::ErrorOutputType::Json { pretty, json_rendered } => Box::new(JsonEmitter::basic(
             pretty,
