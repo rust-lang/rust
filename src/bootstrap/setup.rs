@@ -92,7 +92,7 @@ impl FromStr for Profile {
                 Ok(Profile::Tools)
             }
             "none" => Ok(Profile::None),
-            _ => Err(format!("unknown profile: '{}'", s)),
+            _ => Err(format!("unknown profile: '{s}'")),
         }
     }
 }
@@ -167,7 +167,7 @@ pub fn setup(config: &Config, profile: Profile) {
 
     println!("To get started, try one of the following commands:");
     for cmd in suggestions {
-        println!("- `x.py {}`", cmd);
+        println!("- `x.py {cmd}`");
     }
 
     if profile != Profile::Dist {
@@ -208,9 +208,8 @@ fn setup_config_toml(path: &PathBuf, profile: Profile, config: &Config) {
 
     let settings = format!(
         "# Includes one of the default files in src/bootstrap/defaults\n\
-    profile = \"{}\"\n\
-    changelog-seen = {}\n",
-        profile, VERSION
+    profile = \"{profile}\"\n\
+    changelog-seen = {VERSION}\n"
     );
 
     t!(fs::write(path, settings));
@@ -341,7 +340,7 @@ fn ensure_stage1_toolchain_placeholder_exists(stage_path: &str) -> bool {
         return false;
     };
 
-    let pathbuf = pathbuf.join(format!("rustc{}", EXE_SUFFIX));
+    let pathbuf = pathbuf.join(format!("rustc{EXE_SUFFIX}"));
 
     if pathbuf.exists() {
         return true;
@@ -394,7 +393,7 @@ pub fn interactive_path() -> io::Result<Profile> {
         break match parse_with_abbrev(&input) {
             Ok(profile) => profile,
             Err(err) => {
-                eprintln!("error: {}", err);
+                eprintln!("error: {err}");
                 eprintln!("note: press Ctrl+C to exit");
                 continue;
             }

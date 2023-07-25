@@ -64,7 +64,7 @@ impl Config {
         if self.dry_run() {
             return true;
         }
-        self.verbose(&format!("running: {:?}", cmd));
+        self.verbose(&format!("running: {cmd:?}"));
         check_run(cmd, self.is_verbose())
     }
 
@@ -206,7 +206,7 @@ impl Config {
     }
 
     fn download_http_with_retries(&self, tempfile: &Path, url: &str, help_on_error: &str) {
-        println!("downloading {}", url);
+        println!("downloading {url}");
         // Try curl. If that fails and we are on windows, fallback to PowerShell.
         let mut curl = Command::new("curl");
         curl.args(&[
@@ -248,7 +248,7 @@ impl Config {
                 }
             }
             if !help_on_error.is_empty() {
-                eprintln!("{}", help_on_error);
+                eprintln!("{help_on_error}");
             }
             crate::exit!(1);
         }
@@ -646,7 +646,7 @@ download-rustc = false
     fn download_ci_llvm(&self, llvm_sha: &str) {
         let llvm_assertions = self.llvm_assertions;
 
-        let cache_prefix = format!("llvm-{}-{}", llvm_sha, llvm_assertions);
+        let cache_prefix = format!("llvm-{llvm_sha}-{llvm_assertions}");
         let cache_dst = self.out.join("cache");
         let rustc_cache = cache_dst.join(cache_prefix);
         if !rustc_cache.exists() {

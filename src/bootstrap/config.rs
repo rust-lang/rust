@@ -356,7 +356,7 @@ impl FromStr for LlvmLibunwind {
             "no" => Ok(Self::No),
             "in-tree" => Ok(Self::InTree),
             "system" => Ok(Self::System),
-            invalid => Err(format!("Invalid value '{}' for rust.llvm-libunwind config.", invalid)),
+            invalid => Err(format!("Invalid value '{invalid}' for rust.llvm-libunwind config.")),
         }
     }
 }
@@ -420,7 +420,7 @@ impl std::str::FromStr for RustcLto {
             "thin" => Ok(RustcLto::Thin),
             "fat" => Ok(RustcLto::Fat),
             "off" => Ok(RustcLto::Off),
-            _ => Err(format!("Invalid value for rustc LTO: {}", s)),
+            _ => Err(format!("Invalid value for rustc LTO: {s}")),
         }
     }
 }
@@ -498,7 +498,7 @@ impl fmt::Display for TargetSelection {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.triple)?;
         if let Some(file) = self.file {
-            write!(f, "({})", file)?;
+            write!(f, "({file})")?;
         }
         Ok(())
     }
@@ -506,7 +506,7 @@ impl fmt::Display for TargetSelection {
 
 impl fmt::Debug for TargetSelection {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self)
+        write!(f, "{self}")
     }
 }
 
@@ -938,8 +938,7 @@ impl<'de> serde::de::Visitor<'de> for OptimizeVisitor {
 
 fn format_optimize_error_msg(v: impl std::fmt::Display) -> String {
     format!(
-        r#"unrecognized option for rust optimize: "{}", expected one of 0, 1, 2, 3, "s", "z", true, false"#,
-        v
+        r#"unrecognized option for rust optimize: "{v}", expected one of 0, 1, 2, 3, "s", "z", true, false"#
     )
 }
 
@@ -1226,7 +1225,7 @@ impl Config {
             include_path.push("src");
             include_path.push("bootstrap");
             include_path.push("defaults");
-            include_path.push(format!("config.{}.toml", include));
+            include_path.push(format!("config.{include}.toml"));
             let included_toml = get_toml(&include_path);
             toml.merge(included_toml, ReplaceOpt::IgnoreDuplicate);
         }
@@ -1516,7 +1515,7 @@ impl Config {
             let asserts = llvm_assertions.unwrap_or(false);
             config.llvm_from_ci = match llvm.download_ci_llvm {
                 Some(StringOrBool::String(s)) => {
-                    assert!(s == "if-available", "unknown option `{}` for download-ci-llvm", s);
+                    assert!(s == "if-available", "unknown option `{s}` for download-ci-llvm");
                     crate::llvm::is_ci_llvm_available(&config, asserts)
                 }
                 Some(StringOrBool::Bool(b)) => b,
@@ -1750,7 +1749,7 @@ impl Config {
         if self.dry_run() {
             return Ok(());
         }
-        self.verbose(&format!("running: {:?}", cmd));
+        self.verbose(&format!("running: {cmd:?}"));
         build_helper::util::try_run(cmd, self.is_verbose())
     }
 
@@ -1790,10 +1789,10 @@ impl Config {
     pub(crate) fn artifact_version_part(&self, commit: &str) -> String {
         let (channel, version) = if self.rust_info.is_managed_git_subrepository() {
             let mut channel = self.git();
-            channel.arg("show").arg(format!("{}:src/ci/channel", commit));
+            channel.arg("show").arg(format!("{commit}:src/ci/channel"));
             let channel = output(&mut channel);
             let mut version = self.git();
-            version.arg("show").arg(format!("{}:src/version", commit));
+            version.arg("show").arg(format!("{commit}:src/version"));
             let version = output(&mut version);
             (channel.trim().to_owned(), version.trim().to_owned())
         } else {
@@ -1810,10 +1809,10 @@ impl Config {
                         "help: consider using a git checkout or ensure these files are readable"
                     );
                     if let Err(channel) = channel {
-                        eprintln!("reading {}/src/ci/channel failed: {:?}", src, channel);
+                        eprintln!("reading {src}/src/ci/channel failed: {channel:?}");
                     }
                     if let Err(version) = version {
-                        eprintln!("reading {}/src/version failed: {:?}", src, version);
+                        eprintln!("reading {src}/src/version failed: {version:?}");
                     }
                     panic!();
                 }
@@ -1939,7 +1938,7 @@ impl Config {
 
     pub fn verbose(&self, msg: &str) {
         if self.verbose > 0 {
-            println!("{}", msg);
+            println!("{msg}");
         }
     }
 
@@ -2016,8 +2015,7 @@ impl Config {
         {
             let prev_version = format!("{}.{}.x", source_version.major, source_version.minor - 1);
             eprintln!(
-                "Unexpected rustc version: {}, we should use {}/{} to build source with {}",
-                rustc_version, prev_version, source_version, source_version
+                "Unexpected rustc version: {rustc_version}, we should use {prev_version}/{source_version} to build source with {source_version}"
             );
             exit!(1);
         }
@@ -2031,7 +2029,7 @@ impl Config {
             Some(StringOrBool::Bool(true)) => false,
             Some(StringOrBool::String(s)) if s == "if-unchanged" => true,
             Some(StringOrBool::String(other)) => {
-                panic!("unrecognized option for download-rustc: {}", other)
+                panic!("unrecognized option for download-rustc: {other}")
             }
         };
 

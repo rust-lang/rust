@@ -126,7 +126,7 @@ You can skip linkcheck with --exclude src/tools/linkchecker"
             );
         }
 
-        builder.info(&format!("Linkcheck ({})", host));
+        builder.info(&format!("Linkcheck ({host})"));
 
         // Test the linkchecker itself.
         let bootstrap_host = builder.config.build;
@@ -557,7 +557,7 @@ impl Miri {
         if builder.config.dry_run() {
             String::new()
         } else {
-            builder.verbose(&format!("running: {:?}", cargo));
+            builder.verbose(&format!("running: {cargo:?}"));
             let out =
                 cargo.output().expect("We already ran `cargo miri setup` before and that worked");
             assert!(out.status.success(), "`cargo miri setup` returned with non-0 exit code");
@@ -565,7 +565,7 @@ impl Miri {
             let stdout = String::from_utf8(out.stdout)
                 .expect("`cargo miri setup` stdout is not valid UTF-8");
             let sysroot = stdout.trim_end();
-            builder.verbose(&format!("`cargo miri setup --print-sysroot` said: {:?}", sysroot));
+            builder.verbose(&format!("`cargo miri setup --print-sysroot` said: {sysroot:?}"));
             sysroot.to_owned()
         }
     }
@@ -2580,7 +2580,7 @@ impl Step for RemoteCopyLibs {
 
         builder.ensure(compile::Std::new(compiler, target));
 
-        builder.info(&format!("REMOTE copy libs to emulator ({})", target));
+        builder.info(&format!("REMOTE copy libs to emulator ({target})"));
 
         let server = builder.ensure(tool::RemoteTestServer { compiler, target });
 
