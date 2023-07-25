@@ -763,7 +763,9 @@ pub trait LayoutCalculator {
         let mut size = Size::ZERO;
         let only_variant = &variants[FIRST_VARIANT];
         for field in only_variant {
-            assert!(field.0.is_sized());
+            if field.0.is_unsized() {
+                self.delay_bug("unsized field in union".to_string());
+            }
 
             align = align.max(field.align());
             max_repr_align = max_repr_align.max(field.max_repr_align());

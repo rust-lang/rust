@@ -2,7 +2,7 @@
 use crate::config::{CrateType, Input, OutFileName, OutputFilenames, OutputType};
 use crate::errors::{
     CrateNameDoesNotMatch, CrateNameEmpty, CrateNameInvalid, FileIsNotWriteable,
-    InvalidCharacterInCrateName,
+    InvalidCharacterInCrateName, InvalidCrateNameHelp,
 };
 use crate::Session;
 use rustc_ast::{self as ast, attr};
@@ -101,7 +101,16 @@ pub fn validate_crate_name(sess: &Session, s: Symbol, sp: Option<Span>) {
                 continue;
             }
             err_count += 1;
-            sess.emit_err(InvalidCharacterInCrateName { span: sp, character: c, crate_name: s });
+            sess.emit_err(InvalidCharacterInCrateName {
+                span: sp,
+                character: c,
+                crate_name: s,
+                crate_name_help: if sp.is_none() {
+                    Some(InvalidCrateNameHelp::AddCrateName)
+                } else {
+                    None
+                },
+            });
         }
     }
 

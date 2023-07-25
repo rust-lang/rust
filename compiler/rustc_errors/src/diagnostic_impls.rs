@@ -164,6 +164,12 @@ impl IntoDiagnosticArg for hir::ConstContext {
     }
 }
 
+impl IntoDiagnosticArg for ast::Expr {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Owned(pprust::expr_to_string(&self)))
+    }
+}
+
 impl IntoDiagnosticArg for ast::Path {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
         DiagnosticArgValue::Str(Cow::Owned(pprust::path_to_string(&self)))
