@@ -1345,7 +1345,6 @@ impl Abi {
 
     /// Discard validity range information and allow undef.
     pub fn to_union(&self) -> Self {
-        assert!(self.is_sized());
         match *self {
             Abi::Scalar(s) => Abi::Scalar(s.to_union()),
             Abi::ScalarPair(s1, s2) => Abi::ScalarPair(s1.to_union(), s2.to_union()),
