@@ -25,6 +25,7 @@ use std::io::Write;
 use std::ops::ControlFlow;
 
 use crate::traits::specialization_graph;
+use crate::traits::vtable::{count_own_vtable_entries, prepare_vtable_segments, VtblSegment};
 
 use super::inspect::ProofTreeBuilder;
 use super::search_graph::{self, OverflowHandler};
@@ -271,6 +272,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         // assertions against dropping an `InferCtxt` without taking opaques.
         // FIXME: Once we remove support for the old impl we can remove this.
         if input.anchor != DefiningAnchor::Error {
+            // This seems ok, but fragile.
             let _ = infcx.take_opaque_types();
         }
 
@@ -919,5 +921,40 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             Err(ErrorHandled::Reported(e)) => Some(ty::Const::new_error(self.tcx(), e.into(), ty)),
             Err(ErrorHandled::TooGeneric) => None,
         }
+    }
+
+    /// Walk through the vtable of a principal trait ref, executing a `supertrait_visitor`
+    /// for every trait ref encountered (including the principal). Passes both the vtable
+    /// base and the (optional) vptr slot.
+    pub(super) fn walk_vtable(
+        &mut self,
+        principal: ty::PolyTraitRef<'tcx>,
+        mut supertrait_visitor: impl FnMut(&mut Self, ty::PolyTraitRef<'tcx>, usize, Option<usize>),
+    ) {
+        let tcx = self.tcx();
+        let mut offset = 0;
+        prepare_vtable_segments::<()>(tcx, principal, |segment| {
+            match segment {
+                VtblSegment::MetadataDSA => {
+                    offset += TyCtxt::COMMON_VTABLE_ENTRIES.len();
+                }
+                VtblSegment::TraitOwnEntries { trait_ref, emit_vptr } => {
+                    let own_vtable_entries = count_own_vtable_entries(tcx, trait_ref);
+
+                    supertrait_visitor(
+                        self,
+                        trait_ref,
+                        offset,
+                        emit_vptr.then(|| offset + own_vtable_entries),
+                    );
+
+                    offset += own_vtable_entries;
+                    if emit_vptr {
+                        offset += 1;
+                    }
+                }
+            }
+            ControlFlow::Continue(())
+        });
     }
 }

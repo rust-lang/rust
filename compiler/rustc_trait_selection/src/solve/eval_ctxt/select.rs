@@ -1,25 +1,20 @@
-use std::ops::ControlFlow;
-
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, InferOk};
-use rustc_infer::traits::util::supertraits;
+use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt};
 use rustc_infer::traits::{
     Obligation, PolyTraitObligation, PredicateObligation, Selection, SelectionResult, TraitEngine,
 };
 use rustc_middle::traits::solve::{CanonicalInput, Certainty, Goal};
 use rustc_middle::traits::{
-    ImplSource, ImplSourceObjectData, ImplSourceTraitUpcastingData, ImplSourceUserDefinedData,
-    ObligationCause, SelectionError,
+    BuiltinImplSource, ImplSource, ImplSourceUserDefinedData, ObligationCause, SelectionError,
 };
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::DUMMY_SP;
 
-use crate::solve::assembly::{BuiltinImplSource, Candidate, CandidateSource};
+use crate::solve::assembly::{Candidate, CandidateSource};
 use crate::solve::eval_ctxt::{EvalCtxt, GenerateProofTree};
 use crate::solve::inspect::ProofTreeBuilder;
 use crate::solve::search_graph::OverflowHandler;
-use crate::traits::vtable::{count_own_vtable_entries, prepare_vtable_segments, VtblSegment};
 use crate::traits::StructurallyNormalizeExt;
 use crate::traits::TraitEngineExt;
 
@@ -105,38 +100,26 @@ impl<'tcx> InferCtxtSelectExt<'tcx> for InferCtxt<'tcx> {
                 rematch_impl(self, goal, def_id, nested_obligations)
             }
 
-            // Rematching the dyn upcast or object goal will instantiate the same nested
-            // goals that would have caused the ambiguity, so we can still make progress here
-            // regardless.
-            // FIXME: This doesn't actually check the object bounds hold here.
-            (
-                _,
-                CandidateSource::BuiltinImpl(
-                    BuiltinImplSource::Object | BuiltinImplSource::TraitUpcasting,
-                ),
-            ) => rematch_object(self, goal, nested_obligations),
-
-            (Certainty::Maybe(_), CandidateSource::BuiltinImpl(BuiltinImplSource::Misc))
+            (Certainty::Maybe(_), CandidateSource::BuiltinImpl(src))
                 if self.tcx.lang_items().unsize_trait() == Some(goal.predicate.def_id()) =>
             {
-                rematch_unsize(self, goal, nested_obligations)
+                rematch_unsize(self, goal, nested_obligations, src)
             }
 
             // Technically some builtin impls have nested obligations, but if
             // `Certainty::Yes`, then they should've all been verified and don't
             // need re-checking.
-            (Certainty::Yes, CandidateSource::BuiltinImpl(BuiltinImplSource::Misc)) => {
-                Ok(Some(ImplSource::Builtin(nested_obligations)))
+            (Certainty::Yes, CandidateSource::BuiltinImpl(src)) => {
+                Ok(Some(ImplSource::Builtin(src, nested_obligations)))
             }
 
             // It's fine not to do anything to rematch these, since there are no
             // nested obligations.
             (Certainty::Yes, CandidateSource::ParamEnv(_) | CandidateSource::AliasBound) => {
-                Ok(Some(ImplSource::Param(nested_obligations, ty::BoundConstness::NotConst)))
+                Ok(Some(ImplSource::Param(ty::BoundConstness::NotConst, nested_obligations)))
             }
 
-            (_, CandidateSource::BuiltinImpl(BuiltinImplSource::Ambiguity))
-            | (Certainty::Maybe(_), _) => Ok(None),
+            (Certainty::Maybe(_), _) => Ok(None),
         }
     }
 }
@@ -183,11 +166,12 @@ fn candidate_should_be_dropped_in_favor_of<'tcx>(
         }
         (_, CandidateSource::ParamEnv(_)) => true,
 
+        // FIXME: we could prefer earlier vtable bases perhaps...
         (
-            CandidateSource::BuiltinImpl(BuiltinImplSource::Object),
-            CandidateSource::BuiltinImpl(BuiltinImplSource::Object),
+            CandidateSource::BuiltinImpl(BuiltinImplSource::Object { .. }),
+            CandidateSource::BuiltinImpl(BuiltinImplSource::Object { .. }),
         ) => false,
-        (_, CandidateSource::BuiltinImpl(BuiltinImplSource::Object)) => true,
+        (_, CandidateSource::BuiltinImpl(BuiltinImplSource::Object { .. })) => true,
 
         (CandidateSource::Impl(victim_def_id), CandidateSource::Impl(other_def_id)) => {
             tcx.specializes((other_def_id, victim_def_id))
@@ -225,102 +209,6 @@ fn rematch_impl<'tcx>(
     Ok(Some(ImplSource::UserDefined(ImplSourceUserDefinedData { impl_def_id, args, nested })))
 }
 
-fn rematch_object<'tcx>(
-    infcx: &InferCtxt<'tcx>,
-    goal: Goal<'tcx, ty::TraitPredicate<'tcx>>,
-    mut nested: Vec<PredicateObligation<'tcx>>,
-) -> SelectionResult<'tcx, Selection<'tcx>> {
-    let a_ty = structurally_normalize(goal.predicate.self_ty(), infcx, goal.param_env, &mut nested);
-    let ty::Dynamic(data, _, source_kind) = *a_ty.kind() else { bug!() };
-    let source_trait_ref = data.principal().unwrap().with_self_ty(infcx.tcx, a_ty);
-
-    let (is_upcasting, target_trait_ref_unnormalized) =
-        if Some(goal.predicate.def_id()) == infcx.tcx.lang_items().unsize_trait() {
-            assert_eq!(source_kind, ty::Dyn, "cannot upcast dyn*");
-            let b_ty = structurally_normalize(
-                goal.predicate.trait_ref.args.type_at(1),
-                infcx,
-                goal.param_env,
-                &mut nested,
-            );
-            if let ty::Dynamic(data, _, ty::Dyn) = *b_ty.kind() {
-                // FIXME: We also need to ensure that the source lifetime outlives the
-                // target lifetime. This doesn't matter for codegen, though, and only
-                // *really* matters if the goal's certainty is ambiguous.
-                (true, data.principal().unwrap().with_self_ty(infcx.tcx, a_ty))
-            } else {
-                bug!()
-            }
-        } else {
-            (false, ty::Binder::dummy(goal.predicate.trait_ref))
-        };
-
-    let mut target_trait_ref = None;
-    for candidate_trait_ref in supertraits(infcx.tcx, source_trait_ref) {
-        let result = infcx.commit_if_ok(|_| {
-            infcx.at(&ObligationCause::dummy(), goal.param_env).eq(
-                DefineOpaqueTypes::No,
-                target_trait_ref_unnormalized,
-                candidate_trait_ref,
-            )
-
-            // FIXME: We probably should at least shallowly verify these...
-        });
-
-        match result {
-            Ok(InferOk { value: (), obligations }) => {
-                target_trait_ref = Some(candidate_trait_ref);
-                nested.extend(obligations);
-                break;
-            }
-            Err(_) => continue,
-        }
-    }
-
-    let target_trait_ref = target_trait_ref.unwrap();
-
-    let mut offset = 0;
-    let Some((vtable_base, vtable_vptr_slot)) =
-        prepare_vtable_segments(infcx.tcx, source_trait_ref, |segment| {
-            match segment {
-                VtblSegment::MetadataDSA => {
-                    offset += TyCtxt::COMMON_VTABLE_ENTRIES.len();
-                }
-                VtblSegment::TraitOwnEntries { trait_ref, emit_vptr } => {
-                    let own_vtable_entries = count_own_vtable_entries(infcx.tcx, trait_ref);
-
-                    if trait_ref == target_trait_ref {
-                        if emit_vptr {
-                            return ControlFlow::Break((
-                                offset,
-                                Some(offset + count_own_vtable_entries(infcx.tcx, trait_ref)),
-                            ));
-                        } else {
-                            return ControlFlow::Break((offset, None));
-                        }
-                    }
-
-                    offset += own_vtable_entries;
-                    if emit_vptr {
-                        offset += 1;
-                    }
-                }
-            }
-            ControlFlow::Continue(())
-        })
-    else {
-        bug!();
-    };
-
-    // If we're upcasting, get the offset of the vtable pointer, otherwise get
-    // the base of the vtable.
-    Ok(Some(if is_upcasting {
-        ImplSource::TraitUpcasting(ImplSourceTraitUpcastingData { vtable_vptr_slot, nested })
-    } else {
-        ImplSource::Object(ImplSourceObjectData { vtable_base, nested })
-    }))
-}
-
 /// The `Unsize` trait is particularly important to coercion, so we try rematch it.
 /// NOTE: This must stay in sync with `consider_builtin_unsize_candidate` in trait
 /// goal assembly in the solver, both for soundness and in order to avoid ICEs.
@@ -328,11 +216,16 @@ fn rematch_unsize<'tcx>(
     infcx: &InferCtxt<'tcx>,
     goal: Goal<'tcx, ty::TraitPredicate<'tcx>>,
     mut nested: Vec<PredicateObligation<'tcx>>,
+    source: BuiltinImplSource,
 ) -> SelectionResult<'tcx, Selection<'tcx>> {
     let tcx = infcx.tcx;
-    let a_ty = goal.predicate.self_ty();
-    let b_ty = goal.predicate.trait_ref.args.type_at(1);
-
+    let a_ty = structurally_normalize(goal.predicate.self_ty(), infcx, goal.param_env, &mut nested);
+    let b_ty = structurally_normalize(
+        goal.predicate.trait_ref.args.type_at(1),
+        infcx,
+        goal.param_env,
+        &mut nested,
+    );
     match (a_ty.kind(), b_ty.kind()) {
         (_, &ty::Dynamic(data, region, ty::Dyn)) => {
             // Check that the type implements all of the predicates of the def-id.
@@ -360,6 +253,8 @@ fn rematch_unsize<'tcx>(
                 goal.param_env,
                 ty::Binder::dummy(ty::OutlivesPredicate(a_ty, region)),
             ));
+
+            Ok(Some(ImplSource::Builtin(source, nested)))
         }
         // `[T; n]` -> `[T]` unsizing
         (&ty::Array(a_elem_ty, ..), &ty::Slice(b_elem_ty)) => {
@@ -370,6 +265,8 @@ fn rematch_unsize<'tcx>(
                     .expect("expected rematch to succeed")
                     .into_obligations(),
             );
+
+            Ok(Some(ImplSource::Builtin(source, nested)))
         }
         // Struct unsizing `Struct<T>` -> `Struct<U>` where `T: Unsize<U>`
         (&ty::Adt(a_def, a_args), &ty::Adt(b_def, b_args))
@@ -420,6 +317,8 @@ fn rematch_unsize<'tcx>(
                 goal.param_env,
                 ty::TraitRef::new(tcx, goal.predicate.def_id(), [a_tail_ty, b_tail_ty]),
             ));
+
+            Ok(Some(ImplSource::Builtin(source, nested)))
         }
         // Tuple unsizing `(.., T)` -> `(.., U)` where `T: Unsize<U>`
         (&ty::Tuple(a_tys), &ty::Tuple(b_tys))
@@ -446,14 +345,20 @@ fn rematch_unsize<'tcx>(
                 goal.param_env,
                 ty::TraitRef::new(tcx, goal.predicate.def_id(), [*a_last_ty, *b_last_ty]),
             ));
+
+            // We need to be able to detect tuple unsizing to require its feature gate.
+            assert_eq!(
+                source,
+                BuiltinImplSource::TupleUnsizing,
+                "compiler-errors wants to know if this can ever be triggered..."
+            );
+            Ok(Some(ImplSource::Builtin(source, nested)))
         }
         // FIXME: We *could* ICE here if either:
         // 1. the certainty is `Certainty::Yes`,
         // 2. we're in codegen (which should mean `Certainty::Yes`).
-        _ => return Ok(None),
+        _ => Ok(None),
     }
-
-    Ok(Some(ImplSource::Builtin(nested)))
 }
 
 fn structurally_normalize<'tcx>(

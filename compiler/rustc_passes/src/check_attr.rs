@@ -878,6 +878,44 @@ impl CheckAttrVisitor<'_> {
         }
     }
 
+    fn check_doc_masked(
+        &self,
+        attr: &Attribute,
+        meta: &NestedMetaItem,
+        hir_id: HirId,
+        target: Target,
+    ) -> bool {
+        if target != Target::ExternCrate {
+            self.tcx.emit_spanned_lint(
+                INVALID_DOC_ATTRIBUTES,
+                hir_id,
+                meta.span(),
+                errors::DocMaskedOnlyExternCrate {
+                    attr_span: meta.span(),
+                    item_span: (attr.style == AttrStyle::Outer)
+                        .then(|| self.tcx.hir().span(hir_id)),
+                },
+            );
+            return false;
+        }
+
+        if self.tcx.extern_mod_stmt_cnum(hir_id.owner).is_none() {
+            self.tcx.emit_spanned_lint(
+                INVALID_DOC_ATTRIBUTES,
+                hir_id,
+                meta.span(),
+                errors::DocMaskedNotExternCrateSelf {
+                    attr_span: meta.span(),
+                    item_span: (attr.style == AttrStyle::Outer)
+                        .then(|| self.tcx.hir().span(hir_id)),
+                },
+            );
+            return false;
+        }
+
+        true
+    }
+
     /// Checks that an attribute is *not* used at the crate level. Returns `true` if valid.
     fn check_attr_not_crate_level(
         &self,
@@ -1043,6 +1081,17 @@ impl CheckAttrVisitor<'_> {
                                 hir_id,
                                 target,
                                 specified_inline,
+                            ) =>
+                        {
+                            is_valid = false;
+                        }
+
+                        sym::masked
+                            if !self.check_doc_masked(
+                                attr,
+                                meta,
+                                hir_id,
+                                target,
                             ) =>
                         {
                             is_valid = false;

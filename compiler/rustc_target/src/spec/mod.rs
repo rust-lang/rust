@@ -85,6 +85,7 @@ mod solaris_base;
 mod solid_base;
 mod thumb_base;
 mod uefi_msvc_base;
+mod unikraft_linux_musl_base;
 mod vxworks_base;
 mod wasm_base;
 mod windows_gnu_base;
@@ -1418,7 +1419,10 @@ supported_targets! {
     ("msp430-none-elf", msp430_none_elf),
 
     ("aarch64-unknown-hermit", aarch64_unknown_hermit),
+    ("riscv64gc-unknown-hermit", riscv64gc_unknown_hermit),
     ("x86_64-unknown-hermit", x86_64_unknown_hermit),
+
+    ("x86_64-unikraft-linux-musl", x86_64_unikraft_linux_musl),
 
     ("riscv32i-unknown-none-elf", riscv32i_unknown_none_elf),
     ("riscv32im-unknown-none-elf", riscv32im_unknown_none_elf),

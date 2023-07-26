@@ -45,6 +45,7 @@ session_int_literal_too_large = integer literal is too large
     .note = value exceeds limit of `{$limit}`
 
 session_invalid_character_in_create_name = invalid character `{$character}` in crate name: `{$crate_name}`
+session_invalid_character_in_create_name_help = you can either pass `--crate-name` on the command line or add `#![crate_name="…"]` to set the crate name
 
 session_invalid_float_literal_suffix = invalid suffix `{$suffix}` for float literal
     .label = invalid suffix `{$suffix}`

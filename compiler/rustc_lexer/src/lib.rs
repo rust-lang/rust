@@ -367,6 +367,13 @@ impl Cursor<'_> {
                 Some(|terminated| Byte { terminated }),
             ),
 
+            // c-string literal, raw c-string literal or identifier.
+            'c' => self.c_or_byte_string(
+                |terminated| CStr { terminated },
+                |n_hashes| RawCStr { n_hashes },
+                None,
+            ),
+
             // Identifier (this should be checked after other variant that can
             // start as identifier).
             c if is_id_start(c) => self.ident_or_unknown_prefix(),

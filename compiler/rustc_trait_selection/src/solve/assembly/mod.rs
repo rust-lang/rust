@@ -3,17 +3,16 @@
 use super::search_graph::OverflowHandler;
 use super::{EvalCtxt, SolverMode};
 use crate::traits::coherence;
-use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::def_id::DefId;
 use rustc_infer::traits::query::NoSolution;
-use rustc_infer::traits::util::elaborate;
 use rustc_infer::traits::Reveal;
 use rustc_middle::traits::solve::inspect::CandidateKind;
 use rustc_middle::traits::solve::{CanonicalResponse, Certainty, Goal, MaybeCause, QueryResult};
+use rustc_middle::traits::BuiltinImplSource;
 use rustc_middle::ty::fast_reject::{SimplifiedType, TreatParams};
-use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{fast_reject, TypeFoldable};
+use rustc_middle::ty::{ToPredicate, TypeVisitableExt};
 use rustc_span::ErrorGuaranteed;
 use std::fmt::Debug;
 
@@ -87,16 +86,6 @@ pub(super) enum CandidateSource {
     /// }
     /// ```
     AliasBound,
-}
-
-/// Records additional information about what kind of built-in impl this is.
-/// This should only be used by selection.
-#[derive(Debug, Clone, Copy)]
-pub(super) enum BuiltinImplSource {
-    TraitUpcasting,
-    Object,
-    Misc,
-    Ambiguity,
 }
 
 /// Methods used to assemble candidates for either trait or projection goals.
@@ -281,21 +270,6 @@ pub(super) trait GoalKind<'tcx>:
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
 
-    /// The most common forms of unsizing are array to slice, and concrete (Sized)
-    /// type into a `dyn Trait`. ADTs and Tuples can also have their final field
-    /// unsized if it's generic.
-    fn consider_builtin_unsize_candidate(
-        ecx: &mut EvalCtxt<'_, 'tcx>,
-        goal: Goal<'tcx, Self>,
-    ) -> QueryResult<'tcx>;
-
-    /// `dyn Trait1` can be unsized to `dyn Trait2` if they are the same trait, or
-    /// if `Trait2` is a (transitive) supertrait of `Trait2`.
-    fn consider_builtin_dyn_upcast_candidates(
-        ecx: &mut EvalCtxt<'_, 'tcx>,
-        goal: Goal<'tcx, Self>,
-    ) -> Vec<CanonicalResponse<'tcx>>;
-
     fn consider_builtin_discriminant_kind_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
@@ -310,6 +284,25 @@ pub(super) trait GoalKind<'tcx>:
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
+
+    /// Consider (possibly several) candidates to upcast or unsize a type to another
+    /// type.
+    ///
+    /// The most common forms of unsizing are array to slice, and concrete (Sized)
+    /// type into a `dyn Trait`. ADTs and Tuples can also have their final field
+    /// unsized if it's generic.
+    ///
+    /// `dyn Trait1` can be unsized to `dyn Trait2` if they are the same trait, or
+    /// if `Trait2` is a (transitive) supertrait of `Trait2`.
+    ///
+    /// We return the `BuiltinImplSource` for each candidate as it is needed
+    /// for unsize coercion in hir typeck and because it is difficult to
+    /// otherwise recompute this for codegen. This is a bit of a mess but the
+    /// easiest way to maintain the existing behavior for now.
+    fn consider_builtin_unsize_and_upcast_candidates(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> Vec<(CanonicalResponse<'tcx>, BuiltinImplSource)>;
 }
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {
@@ -343,7 +336,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     ) -> Option<Vec<Candidate<'tcx>>> {
         goal.predicate.self_ty().is_ty_var().then(|| {
             vec![Candidate {
-                source: CandidateSource::BuiltinImpl(BuiltinImplSource::Ambiguity),
+                source: CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
                 result: self
                     .evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
                     .unwrap(),
@@ -412,7 +405,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                             Certainty::Maybe(MaybeCause::Overflow),
                         )?;
                         Ok(vec![Candidate {
-                            source: CandidateSource::BuiltinImpl(BuiltinImplSource::Ambiguity),
+                            source: CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
                             result,
                         }])
                     },
@@ -610,8 +603,6 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             G::consider_builtin_future_candidate(self, goal)
         } else if lang_items.gen_trait() == Some(trait_def_id) {
             G::consider_builtin_generator_candidate(self, goal)
-        } else if lang_items.unsize_trait() == Some(trait_def_id) {
-            G::consider_builtin_unsize_candidate(self, goal)
         } else if lang_items.discriminant_kind_trait() == Some(trait_def_id) {
             G::consider_builtin_discriminant_kind_candidate(self, goal)
         } else if lang_items.destruct_trait() == Some(trait_def_id) {
@@ -633,11 +624,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         // There may be multiple unsize candidates for a trait with several supertraits:
         // `trait Foo: Bar<A> + Bar<B>` and `dyn Foo: Unsize<dyn Bar<_>>`
         if lang_items.unsize_trait() == Some(trait_def_id) {
-            for result in G::consider_builtin_dyn_upcast_candidates(self, goal) {
-                candidates.push(Candidate {
-                    source: CandidateSource::BuiltinImpl(BuiltinImplSource::TraitUpcasting),
-                    result,
-                });
+            for (result, source) in G::consider_builtin_unsize_and_upcast_candidates(self, goal) {
+                candidates.push(Candidate { source: CandidateSource::BuiltinImpl(source), result });
             }
         }
     }
@@ -853,29 +841,47 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             ty::Dynamic(bounds, ..) => bounds,
         };
 
-        let own_bounds: FxIndexSet<_> =
-            bounds.iter().map(|bound| bound.with_self_ty(tcx, self_ty)).collect();
-        for assumption in elaborate(tcx, own_bounds.iter().copied())
-            // we only care about bounds that match the `Self` type
-            .filter_only_self()
-        {
-            // FIXME: Predicates are fully elaborated in the object type's existential bounds
-            // list. We want to only consider these pre-elaborated projections, and not other
-            // projection predicates that we reach by elaborating the principal trait ref,
-            // since that'll cause ambiguity.
-            //
-            // We can remove this when we have implemented lifetime intersections in responses.
-            if assumption.as_projection_clause().is_some() && !own_bounds.contains(&assumption) {
-                continue;
+        // Consider all of the auto-trait and projection bounds, which don't
+        // need to be recorded as a `BuiltinImplSource::Object` since they don't
+        // really have a vtable base...
+        for bound in bounds {
+            match bound.skip_binder() {
+                ty::ExistentialPredicate::Trait(_) => {
+                    // Skip principal
+                }
+                ty::ExistentialPredicate::Projection(_)
+                | ty::ExistentialPredicate::AutoTrait(_) => {
+                    match G::consider_object_bound_candidate(
+                        self,
+                        goal,
+                        bound.with_self_ty(tcx, self_ty),
+                    ) {
+                        Ok(result) => candidates.push(Candidate {
+                            source: CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
+                            result,
+                        }),
+                        Err(NoSolution) => (),
+                    }
+                }
             }
+        }
 
-            match G::consider_object_bound_candidate(self, goal, assumption) {
-                Ok(result) => candidates.push(Candidate {
-                    source: CandidateSource::BuiltinImpl(BuiltinImplSource::Object),
-                    result,
-                }),
-                Err(NoSolution) => (),
-            }
+        // FIXME: We only need to do *any* of this if we're considering a trait goal,
+        // since we don't need to look at any supertrait or anything if we are doing
+        // a projection goal.
+        if let Some(principal) = bounds.principal() {
+            let principal_trait_ref = principal.with_self_ty(tcx, self_ty);
+            self.walk_vtable(principal_trait_ref, |ecx, assumption, vtable_base, _| {
+                match G::consider_object_bound_candidate(ecx, goal, assumption.to_predicate(tcx)) {
+                    Ok(result) => candidates.push(Candidate {
+                        source: CandidateSource::BuiltinImpl(BuiltinImplSource::Object {
+                            vtable_base,
+                        }),
+                        result,
+                    }),
+                    Err(NoSolution) => (),
+                }
+            });
         }
     }
 
@@ -895,7 +901,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                         .evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
                     {
                         Ok(result) => candidates.push(Candidate {
-                            source: CandidateSource::BuiltinImpl(BuiltinImplSource::Ambiguity),
+                            source: CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
                             result,
                         }),
                         // FIXME: This will be reachable at some point if we're in

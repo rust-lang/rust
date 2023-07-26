@@ -3,14 +3,16 @@
 //! - there are no stray `.stderr` files
 
 use ignore::Walk;
-use std::collections::HashMap;
+use lazy_static::lazy_static;
+use regex::Regex;
+use std::collections::{HashMap, HashSet};
 use std::ffi::OsStr;
 use std::fs;
 use std::path::{Path, PathBuf};
 
 const ENTRY_LIMIT: usize = 900;
 // FIXME: The following limits should be reduced eventually.
-const ISSUES_ENTRY_LIMIT: usize = 1894;
+const ISSUES_ENTRY_LIMIT: usize = 1893;
 const ROOT_ENTRY_LIMIT: usize = 870;
 
 const EXPECTED_TEST_FILE_EXTENSIONS: &[&str] = &[
@@ -88,6 +90,12 @@ fn check_entries(tests_path: &Path, bad: &mut bool) {
 
 pub fn check(path: &Path, bad: &mut bool) {
     check_entries(&path, bad);
+
+    // the list of files in ui tests that are allowed to start with `issue-XXXX`
+    let mut allowed_issue_filenames: HashSet<String> = HashSet::from(
+        include!("issues.txt").map(|path| path.replace("/", std::path::MAIN_SEPARATOR_STR)),
+    );
+
     let (ui, ui_fulldeps) = (path.join("ui"), path.join("ui-fulldeps"));
     let paths = [ui.as_path(), ui_fulldeps.as_path()];
     crate::walk::walk_no_read(&paths, |_, _| false, &mut |entry| {
@@ -100,6 +108,11 @@ pub fn check(path: &Path, bad: &mut bool) {
             {
                 tidy_error!(bad, "file {} has unexpected extension {}", file_path.display(), ext);
             }
+
+            // NB: We do not use file_stem() as some file names have multiple `.`s and we
+            // must strip all of them.
+            let testname =
+                file_path.file_name().unwrap().to_str().unwrap().split_once('.').unwrap().0;
             if ext == "stderr" || ext == "stdout" {
                 // Test output filenames have one of the formats:
                 // ```
@@ -111,12 +124,10 @@ pub fn check(path: &Path, bad: &mut bool) {
                 //
                 // For now, just make sure that there is a corresponding
                 // `$testname.rs` file.
-                //
-                // NB: We do not use file_stem() as some file names have multiple `.`s and we
-                // must strip all of them.
-                let testname =
-                    file_path.file_name().unwrap().to_str().unwrap().split_once('.').unwrap().0;
-                if !file_path.with_file_name(testname).with_extension("rs").exists() {
+
+                if !file_path.with_file_name(testname).with_extension("rs").exists()
+                    && !testname.contains("ignore-tidy")
+                {
                     tidy_error!(bad, "Stray file with UI testing output: {:?}", file_path);
                 }
 
@@ -126,6 +137,38 @@ pub fn check(path: &Path, bad: &mut bool) {
                     }
                 }
             }
+
+            if ext == "rs" {
+                lazy_static! {
+                    static ref ISSUE_NAME_REGEX: Regex =
+                        Regex::new(r"^issues?[-_]?\d{3,}").unwrap();
+                }
+
+                if ISSUE_NAME_REGEX.is_match(testname) {
+                    // these paths are always relative to the passed `path` and always UTF8
+                    let stripped_path = file_path.strip_prefix(path).unwrap().to_str().unwrap();
+                    if !allowed_issue_filenames.remove(stripped_path) {
+                        tidy_error!(
+                            bad,
+                            "UI test `{}` should use a name that describes the test and link the issue in a comment instead.",
+                            file_path.display(),
+                        );
+                    }
+                }
+            }
         }
     });
+
+    // if an excluded file is renamed, it must be removed from this list
+    if allowed_issue_filenames.len() > 0 {
+        for file_name in allowed_issue_filenames {
+            let mut p = PathBuf::from(path);
+            p.push(file_name);
+            tidy_error!(
+                bad,
+                "file `{}` no longer exists and should be removed from the exclusions in `src/tools/tidy/src/issues.txt`",
+                p.display()
+            );
+        }
+    }
 }

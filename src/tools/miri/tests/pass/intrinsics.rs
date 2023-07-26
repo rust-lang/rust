@@ -3,7 +3,7 @@
 //! Tests for various intrinsics that do not fit anywhere else.
 
 use std::intrinsics;
-use std::mem::{size_of, size_of_val, size_of_val_raw};
+use std::mem::{size_of, size_of_val, size_of_val_raw, discriminant};
 
 struct Bomb;
 
@@ -39,4 +39,7 @@ fn main() {
     let _v = intrinsics::discriminant_value(&0);
     let _v = intrinsics::discriminant_value(&true);
     let _v = intrinsics::discriminant_value(&vec![1, 2, 3]);
+    // Make sure that even if the discriminant is stored together with data, the intrinsic returns
+    // only the discriminant, nothing about the data.
+    assert_eq!(discriminant(&Some(false)), discriminant(&Some(true)));
 }

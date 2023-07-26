@@ -57,8 +57,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 };
 
                 for i in 0..dest_len {
-                    let op = this.read_immediate(&this.mplace_index(&op, i)?.into())?;
-                    let dest = this.mplace_index(&dest, i)?;
+                    let op = this.read_immediate(&this.project_index(&op, i)?.into())?;
+                    let dest = this.project_index(&dest, i)?;
                     let val = match which {
                         Op::MirOp(mir_op) => this.unary_op(mir_op, &op)?.to_scalar(),
                         Op::Abs => {
@@ -172,9 +172,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 };
 
                 for i in 0..dest_len {
-                    let left = this.read_immediate(&this.mplace_index(&left, i)?.into())?;
-                    let right = this.read_immediate(&this.mplace_index(&right, i)?.into())?;
-                    let dest = this.mplace_index(&dest, i)?;
+                    let left = this.read_immediate(&this.project_index(&left, i)?.into())?;
+                    let right = this.read_immediate(&this.project_index(&right, i)?.into())?;
+                    let dest = this.project_index(&dest, i)?;
                     let val = match which {
                         Op::MirOp(mir_op) => {
                             let (val, overflowed, ty) = this.overflowing_binary_op(mir_op, &left, &right)?;
@@ -232,10 +232,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 assert_eq!(dest_len, c_len);
 
                 for i in 0..dest_len {
-                    let a = this.read_scalar(&this.mplace_index(&a, i)?.into())?;
-                    let b = this.read_scalar(&this.mplace_index(&b, i)?.into())?;
-                    let c = this.read_scalar(&this.mplace_index(&c, i)?.into())?;
-                    let dest = this.mplace_index(&dest, i)?;
+                    let a = this.read_scalar(&this.project_index(&a, i)?.into())?;
+                    let b = this.read_scalar(&this.project_index(&b, i)?.into())?;
+                    let c = this.read_scalar(&this.project_index(&c, i)?.into())?;
+                    let dest = this.project_index(&dest, i)?;
 
                     // Works for f32 and f64.
                     // FIXME: using host floats to work around https://github.com/rust-lang/miri/issues/2468.
@@ -295,13 +295,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 };
 
                 // Initialize with first lane, then proceed with the rest.
-                let mut res = this.read_immediate(&this.mplace_index(&op, 0)?.into())?;
+                let mut res = this.read_immediate(&this.project_index(&op, 0)?.into())?;
                 if matches!(which, Op::MirOpBool(_)) {
                     // Convert to `bool` scalar.
                     res = imm_from_bool(simd_element_to_bool(res)?);
                 }
                 for i in 1..op_len {
-                    let op = this.read_immediate(&this.mplace_index(&op, i)?.into())?;
+                    let op = this.read_immediate(&this.project_index(&op, i)?.into())?;
                     res = match which {
                         Op::MirOp(mir_op) => {
                             this.binary_op(mir_op, &res, &op)?
@@ -355,7 +355,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
                 let mut res = init;
                 for i in 0..op_len {
-                    let op = this.read_immediate(&this.mplace_index(&op, i)?.into())?;
+                    let op = this.read_immediate(&this.project_index(&op, i)?.into())?;
                     res = this.binary_op(mir_op, &res, &op)?;
                 }
                 this.write_immediate(*res, dest)?;
@@ -372,10 +372,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 assert_eq!(dest_len, no_len);
 
                 for i in 0..dest_len {
-                    let mask = this.read_immediate(&this.mplace_index(&mask, i)?.into())?;
-                    let yes = this.read_immediate(&this.mplace_index(&yes, i)?.into())?;
-                    let no = this.read_immediate(&this.mplace_index(&no, i)?.into())?;
-                    let dest = this.mplace_index(&dest, i)?;
+                    let mask = this.read_immediate(&this.project_index(&mask, i)?.into())?;
+                    let yes = this.read_immediate(&this.project_index(&yes, i)?.into())?;
+                    let no = this.read_immediate(&this.project_index(&no, i)?.into())?;
+                    let dest = this.project_index(&dest, i)?;
 
                     let val = if simd_element_to_bool(mask)? { yes } else { no };
                     this.write_immediate(*val, &dest.into())?;
@@ -403,9 +403,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                         & 1u64
                             .checked_shl(simd_bitmask_index(i, dest_len, this.data_layout().endian))
                             .unwrap();
-                    let yes = this.read_immediate(&this.mplace_index(&yes, i.into())?.into())?;
-                    let no = this.read_immediate(&this.mplace_index(&no, i.into())?.into())?;
-                    let dest = this.mplace_index(&dest, i.into())?;
+                    let yes = this.read_immediate(&this.project_index(&yes, i.into())?.into())?;
+                    let no = this.read_immediate(&this.project_index(&no, i.into())?.into())?;
+                    let dest = this.project_index(&dest, i.into())?;
 
                     let val = if mask != 0 { yes } else { no };
                     this.write_immediate(*val, &dest.into())?;
@@ -435,8 +435,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let from_exposed_cast = intrinsic_name == "from_exposed_addr";
 
                 for i in 0..dest_len {
-                    let op = this.read_immediate(&this.mplace_index(&op, i)?.into())?;
-                    let dest = this.mplace_index(&dest, i)?;
+                    let op = this.read_immediate(&this.project_index(&op, i)?.into())?;
+                    let dest = this.project_index(&dest, i)?;
 
                     let val = match (op.layout.ty.kind(), dest.layout.ty.kind()) {
                         // Int-to-(int|float): always safe
@@ -496,17 +496,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
                 for i in 0..dest_len {
                     let src_index: u64 = this
-                        .read_immediate(&this.operand_index(index, i)?)?
+                        .read_immediate(&this.project_index(index, i)?)?
                         .to_scalar()
                         .to_u32()?
                         .into();
-                    let dest = this.mplace_index(&dest, i)?;
+                    let dest = this.project_index(&dest, i)?;
 
                     let val = if src_index < left_len {
-                        this.read_immediate(&this.mplace_index(&left, src_index)?.into())?
+                        this.read_immediate(&this.project_index(&left, src_index)?.into())?
                     } else if src_index < left_len.checked_add(right_len).unwrap() {
                         let right_idx = src_index.checked_sub(left_len).unwrap();
-                        this.read_immediate(&this.mplace_index(&right, right_idx)?.into())?
+                        this.read_immediate(&this.project_index(&right, right_idx)?.into())?
                     } else {
                         span_bug!(
                             this.cur_span(),
@@ -528,10 +528,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 assert_eq!(dest_len, mask_len);
 
                 for i in 0..dest_len {
-                    let passthru = this.read_immediate(&this.mplace_index(&passthru, i)?.into())?;
-                    let ptr = this.read_immediate(&this.mplace_index(&ptrs, i)?.into())?;
-                    let mask = this.read_immediate(&this.mplace_index(&mask, i)?.into())?;
-                    let dest = this.mplace_index(&dest, i)?;
+                    let passthru = this.read_immediate(&this.project_index(&passthru, i)?.into())?;
+                    let ptr = this.read_immediate(&this.project_index(&ptrs, i)?.into())?;
+                    let mask = this.read_immediate(&this.project_index(&mask, i)?.into())?;
+                    let dest = this.project_index(&dest, i)?;
 
                     let val = if simd_element_to_bool(mask)? {
                         let place = this.deref_operand(&ptr.into())?;
@@ -552,9 +552,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 assert_eq!(ptrs_len, mask_len);
 
                 for i in 0..ptrs_len {
-                    let value = this.read_immediate(&this.mplace_index(&value, i)?.into())?;
-                    let ptr = this.read_immediate(&this.mplace_index(&ptrs, i)?.into())?;
-                    let mask = this.read_immediate(&this.mplace_index(&mask, i)?.into())?;
+                    let value = this.read_immediate(&this.project_index(&value, i)?.into())?;
+                    let ptr = this.read_immediate(&this.project_index(&ptrs, i)?.into())?;
+                    let mask = this.read_immediate(&this.project_index(&mask, i)?.into())?;
 
                     if simd_element_to_bool(mask)? {
                         let place = this.deref_operand(&ptr.into())?;
@@ -578,7 +578,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
                 let mut res = 0u64;
                 for i in 0..op_len {
-                    let op = this.read_immediate(&this.mplace_index(&op, i.into())?.into())?;
+                    let op = this.read_immediate(&this.project_index(&op, i.into())?.into())?;
                     if simd_element_to_bool(op)? {
                         res |= 1u64
                             .checked_shl(simd_bitmask_index(i, op_len, this.data_layout().endian))

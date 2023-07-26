@@ -104,8 +104,8 @@ pub fn encode_and_write_metadata(tcx: TyCtxt<'_>) -> (EncodedMetadata, bool) {
     };
 
     // Load metadata back to memory: codegen may need to include it in object files.
-    let metadata = EncodedMetadata::from_path(metadata_filename.clone(), metadata_tmpdir)
-        .unwrap_or_else(|err| {
+    let metadata =
+        EncodedMetadata::from_path(metadata_filename, metadata_tmpdir).unwrap_or_else(|err| {
             tcx.sess.emit_fatal(FailedCreateEncodedMetadata { err });
         });
 

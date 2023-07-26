@@ -1,13 +1,13 @@
-/// Canonicalization is used to separate some goal from its context,
-/// throwing away unnecessary information in the process.
-///
-/// This is necessary to cache goals containing inference variables
-/// and placeholders without restricting them to the current `InferCtxt`.
-///
-/// Canonicalization is fairly involved, for more details see the relevant
-/// section of the [rustc-dev-guide][c].
-///
-/// [c]: https://rustc-dev-guide.rust-lang.org/solve/canonicalization.html
+//! Canonicalization is used to separate some goal from its context,
+//! throwing away unnecessary information in the process.
+//!
+//! This is necessary to cache goals containing inference variables
+//! and placeholders without restricting them to the current `InferCtxt`.
+//!
+//! Canonicalization is fairly involved, for more details see the relevant
+//! section of the [rustc-dev-guide][c].
+//!
+//! [c]: https://rustc-dev-guide.rust-lang.org/solve/canonicalization.html
 use super::{CanonicalInput, Certainty, EvalCtxt, Goal};
 use crate::solve::canonicalize::{CanonicalizeMode, Canonicalizer};
 use crate::solve::{CanonicalResponse, QueryResult, Response};
@@ -135,6 +135,13 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         )
     }
 
+    /// Computes the region constraints and *new* opaque types registered when
+    /// proving a goal.
+    ///
+    /// If an opaque was already constrained before proving this goal, then the
+    /// external constraints do not need to record that opaque, since if it is
+    /// further constrained by inference, that will be passed back in the var
+    /// values.
     #[instrument(level = "debug", skip(self), ret)]
     fn compute_external_query_constraints(&self) -> Result<ExternalConstraints<'tcx>, NoSolution> {
         // We only check for leaks from universes which were entered inside

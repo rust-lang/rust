@@ -36,25 +36,26 @@ impl CiEnv {
 }
 
 pub mod gha {
-    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::Mutex;
 
-    static GROUP_ACTIVE: AtomicBool = AtomicBool::new(false);
+    static ACTIVE_GROUPS: Mutex<Vec<String>> = Mutex::new(Vec::new());
 
     /// All github actions log messages from this call to the Drop of the return value
-    /// will be grouped and hidden by default in logs. Note that nesting these does
-    /// not really work.
+    /// will be grouped and hidden by default in logs. Note that since github actions doesn't
+    /// support group nesting, any active group will be first finished when a subgroup is started,
+    /// and then re-started when the subgroup finishes.
     #[track_caller]
     pub fn group(name: impl std::fmt::Display) -> Group {
-        if std::env::var_os("GITHUB_ACTIONS").is_some() {
-            eprintln!("::group::{name}");
-        } else {
-            eprintln!("{name}")
+        let mut groups = ACTIVE_GROUPS.lock().unwrap();
+
+        // A group is currently active. End it first to avoid nesting.
+        if !groups.is_empty() {
+            end_group();
         }
-        // https://github.com/actions/toolkit/issues/1001
-        assert!(
-            !GROUP_ACTIVE.swap(true, Ordering::Relaxed),
-            "nested groups are not supported by GHA!"
-        );
+
+        let name = name.to_string();
+        start_group(&name);
+        groups.push(name);
         Group(())
     }
 
@@ -64,13 +65,36 @@ pub mod gha {
 
     impl Drop for Group {
         fn drop(&mut self) {
-            if std::env::var_os("GITHUB_ACTIONS").is_some() {
-                eprintln!("::endgroup::");
+            end_group();
+
+            let mut groups = ACTIVE_GROUPS.lock().unwrap();
+            // Remove the current group
+            groups.pop();
+
+            // If there was some previous group, restart it
+            if is_in_gha() {
+                if let Some(name) = groups.last() {
+                    start_group(format!("{name} (continued)"));
+                }
             }
-            assert!(
-                GROUP_ACTIVE.swap(false, Ordering::Relaxed),
-                "group dropped but no group active!"
-            );
         }
+    }
+
+    fn start_group(name: impl std::fmt::Display) {
+        if is_in_gha() {
+            eprintln!("::group::{name}");
+        } else {
+            eprintln!("{name}")
+        }
+    }
+
+    fn end_group() {
+        if is_in_gha() {
+            eprintln!("::endgroup::");
+        }
+    }
+
+    fn is_in_gha() -> bool {
+        std::env::var_os("GITHUB_ACTIONS").is_some()
     }
 }

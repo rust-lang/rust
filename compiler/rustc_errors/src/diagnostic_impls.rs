@@ -102,7 +102,7 @@ impl IntoDiagnosticArg for bool {
 
 impl IntoDiagnosticArg for char {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
-        DiagnosticArgValue::Str(Cow::Owned(format!("{:?}", self)))
+        DiagnosticArgValue::Str(Cow::Owned(format!("{self:?}")))
     }
 }
 
@@ -161,6 +161,12 @@ impl IntoDiagnosticArg for hir::ConstContext {
             hir::ConstContext::Static(_) => "static",
             hir::ConstContext::Const => "const",
         }))
+    }
+}
+
+impl IntoDiagnosticArg for ast::Expr {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Owned(pprust::expr_to_string(&self)))
     }
 }
 

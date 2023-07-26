@@ -227,10 +227,8 @@ impl CodeStats {
     }
 
     pub fn print_vtable_sizes(&self, crate_name: &str) {
-        let mut infos = std::mem::take(&mut *self.vtable_sizes.lock())
-            .into_iter()
-            .map(|(_did, stats)| stats)
-            .collect::<Vec<_>>();
+        let mut infos =
+            std::mem::take(&mut *self.vtable_sizes.lock()).into_values().collect::<Vec<_>>();
 
         // Primary sort: cost % in reverse order (from largest to smallest)
         // Secondary sort: trait_name

@@ -42,6 +42,8 @@
     - [sparc-unknown-none-elf](./platform-support/sparc-unknown-none-elf.md)
     - [*-pc-windows-gnullvm](platform-support/pc-windows-gnullvm.md)
     - [\*-nto-qnx-\*](platform-support/nto-qnx.md)
+    - [*-unikraft-linux-musl](platform-support/unikraft-linux-musl.md)
+    - [*-unknown-hermit](platform-support/hermit.md)
     - [\*-unknown-netbsd\*](platform-support/netbsd.md)
     - [*-unknown-openbsd](platform-support/openbsd.md)
     - [\*-unknown-uefi](platform-support/unknown-uefi.md)

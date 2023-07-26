@@ -16,7 +16,8 @@ use triomphe::Arc;
 use crate::{
     db::HirDatabase, infer::InferenceContext, lower::ParamLoweringMode,
     mir::monomorphize_mir_body_bad, to_placeholder_idx, utils::Generics, Const, ConstData,
-    ConstScalar, ConstValue, GenericArg, Interner, MemoryMap, Substitution, Ty, TyBuilder,
+    ConstScalar, ConstValue, GenericArg, Interner, MemoryMap, Substitution, TraitEnvironment, Ty,
+    TyBuilder,
 };
 
 use super::mir::{interpret_mir, lower_to_mir, pad16, MirEvalError, MirLowerError};
@@ -135,7 +136,7 @@ pub fn intern_const_ref(
     ty: Ty,
     krate: CrateId,
 ) -> Const {
-    let layout = db.layout_of_ty(ty.clone(), krate);
+    let layout = db.layout_of_ty(ty.clone(), Arc::new(TraitEnvironment::empty(krate)));
     let bytes = match value {
         LiteralConstRef::Int(i) => {
             // FIXME: We should handle failure of layout better.
@@ -173,7 +174,7 @@ pub fn try_const_usize(db: &dyn HirDatabase, c: &Const) -> Option<u128> {
         chalk_ir::ConstValue::Concrete(c) => match &c.interned {
             ConstScalar::Bytes(it, _) => Some(u128::from_le_bytes(pad16(&it, false))),
             ConstScalar::UnevaluatedConst(c, subst) => {
-                let ec = db.const_eval(*c, subst.clone()).ok()?;
+                let ec = db.const_eval(*c, subst.clone(), None).ok()?;
                 try_const_usize(db, &ec)
             }
             _ => None,
@@ -186,6 +187,7 @@ pub(crate) fn const_eval_recover(
     _: &[String],
     _: &GeneralConstId,
     _: &Substitution,
+    _: &Option<Arc<TraitEnvironment>>,
 ) -> Result<Const, ConstEvalError> {
     Err(ConstEvalError::MirLowerError(MirLowerError::Loop))
 }
@@ -210,6 +212,7 @@ pub(crate) fn const_eval_query(
     db: &dyn HirDatabase,
     def: GeneralConstId,
     subst: Substitution,
+    trait_env: Option<Arc<TraitEnvironment>>,
 ) -> Result<Const, ConstEvalError> {
     let body = match def {
         GeneralConstId::ConstId(c) => {
@@ -228,7 +231,7 @@ pub(crate) fn const_eval_query(
         }
         GeneralConstId::InTypeConstId(c) => db.mir_body(c.into())?,
     };
-    let c = interpret_mir(db, body, false).0?;
+    let c = interpret_mir(db, body, false, trait_env).0?;
     Ok(c)
 }
 
@@ -241,7 +244,7 @@ pub(crate) fn const_eval_static_query(
         Substitution::empty(Interner),
         db.trait_environment_for_body(def.into()),
     )?;
-    let c = interpret_mir(db, body, false).0?;
+    let c = interpret_mir(db, body, false, None).0?;
     Ok(c)
 }
 
@@ -268,7 +271,7 @@ pub(crate) fn const_eval_discriminant_variant(
         Substitution::empty(Interner),
         db.trait_environment_for_body(def),
     )?;
-    let c = interpret_mir(db, mir_body, false).0?;
+    let c = interpret_mir(db, mir_body, false, None).0?;
     let c = try_const_usize(db, &c).unwrap() as i128;
     Ok(c)
 }
@@ -293,7 +296,7 @@ pub(crate) fn eval_to_const(
     }
     let infer = ctx.clone().resolve_all();
     if let Ok(mir_body) = lower_to_mir(ctx.db, ctx.owner, &ctx.body, &infer, expr) {
-        if let Ok(result) = interpret_mir(db, Arc::new(mir_body), true).0 {
+        if let Ok(result) = interpret_mir(db, Arc::new(mir_body), true, None).0 {
             return result;
         }
     }

@@ -593,7 +593,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 #[allow(deprecated)]
                 let home_dir = std::env::home_dir().unwrap();
                 let (written, _) = this.write_path_to_c_str(&home_dir, buf, buflen)?;
-                let pw_dir = this.mplace_field_named(&pwd, "pw_dir")?;
+                let pw_dir = this.project_field_named(&pwd, "pw_dir")?;
                 this.write_pointer(buf, &pw_dir.into())?;
 
                 if written {

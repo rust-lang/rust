@@ -2,11 +2,11 @@ use super::eval_queries::{mk_eval_cx, op_to_const};
 use super::machine::CompileTimeEvalContext;
 use super::{ValTreeCreationError, ValTreeCreationResult, VALTREE_MAX_NODES};
 use crate::const_eval::CanAccessStatics;
+use crate::interpret::MPlaceTy;
 use crate::interpret::{
     intern_const_alloc_recursive, ConstValue, ImmTy, Immediate, InternKind, MemPlaceMeta,
-    MemoryKind, PlaceTy, Scalar,
+    MemoryKind, PlaceTy, Projectable, Scalar,
 };
-use crate::interpret::{MPlaceTy, Value};
 use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt};
 use rustc_span::source_map::DUMMY_SP;
 use rustc_target::abi::{Align, FieldIdx, VariantIdx, FIRST_VARIANT};
@@ -20,7 +20,7 @@ fn branches<'tcx>(
     num_nodes: &mut usize,
 ) -> ValTreeCreationResult<'tcx> {
     let place = match variant {
-        Some(variant) => ecx.mplace_downcast(&place, variant).unwrap(),
+        Some(variant) => ecx.project_downcast(place, variant).unwrap(),
         None => *place,
     };
     let variant = variant.map(|variant| Some(ty::ValTree::Leaf(ScalarInt::from(variant.as_u32()))));
@@ -28,7 +28,7 @@ fn branches<'tcx>(
 
     let mut fields = Vec::with_capacity(n);
     for i in 0..n {
-        let field = ecx.mplace_field(&place, i).unwrap();
+        let field = ecx.project_field(&place, i).unwrap();
         let valtree = const_to_valtree_inner(ecx, &field, num_nodes)?;
         fields.push(Some(valtree));
     }
@@ -55,13 +55,11 @@ fn slice_branches<'tcx>(
     place: &MPlaceTy<'tcx>,
     num_nodes: &mut usize,
 ) -> ValTreeCreationResult<'tcx> {
-    let n = place
-        .len(&ecx.tcx.tcx)
-        .unwrap_or_else(|_| panic!("expected to use len of place {:?}", place));
+    let n = place.len(ecx).unwrap_or_else(|_| panic!("expected to use len of place {:?}", place));
 
     let mut elems = Vec::with_capacity(n as usize);
     for i in 0..n {
-        let place_elem = ecx.mplace_index(place, i).unwrap();
+        let place_elem = ecx.project_index(place, i).unwrap();
         let valtree = const_to_valtree_inner(ecx, &place_elem, num_nodes)?;
         elems.push(valtree);
     }
@@ -132,7 +130,7 @@ pub(crate) fn const_to_valtree_inner<'tcx>(
                 bug!("uninhabited types should have errored and never gotten converted to valtree")
             }
 
-            let Ok((_, variant)) = ecx.read_discriminant(&place.into()) else {
+            let Ok(variant) = ecx.read_discriminant(&place.into()) else {
                 return Err(ValTreeCreationError::Other);
             };
             branches(ecx, place, def.variant(variant).fields.len(), def.is_enum().then_some(variant), num_nodes)
@@ -386,7 +384,7 @@ fn valtree_into_mplace<'tcx>(
                     debug!(?variant);
 
                     (
-                        place.project_downcast(ecx, variant_idx).unwrap(),
+                        ecx.project_downcast(place, variant_idx).unwrap(),
                         &branches[1..],
                         Some(variant_idx),
                     )
@@ -401,7 +399,7 @@ fn valtree_into_mplace<'tcx>(
                 debug!(?i, ?inner_valtree);
 
                 let mut place_inner = match ty.kind() {
-                    ty::Str | ty::Slice(_) => ecx.mplace_index(&place, i as u64).unwrap(),
+                    ty::Str | ty::Slice(_) => ecx.project_index(place, i as u64).unwrap(),
                     _ if !ty.is_sized(*ecx.tcx, ty::ParamEnv::empty())
                         && i == branches.len() - 1 =>
                     {
@@ -441,7 +439,7 @@ fn valtree_into_mplace<'tcx>(
                             )
                             .unwrap()
                     }
-                    _ => ecx.mplace_field(&place_adjusted, i).unwrap(),
+                    _ => ecx.project_field(&place_adjusted, i).unwrap(),
                 };
 
                 debug!(?place_inner);

@@ -14,7 +14,7 @@ use rustc_hir::def::{DefKind, Namespace, PerNS};
 use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
 use rustc_hir::Mutability;
 use rustc_middle::ty::{Ty, TyCtxt};
-use rustc_middle::{bug, ty};
+use rustc_middle::{bug, span_bug, ty};
 use rustc_resolve::rustdoc::{has_primitive_or_keyword_docs, prepare_to_doc_link_resolution};
 use rustc_resolve::rustdoc::{strip_generics_from_path, MalformedGenerics};
 use rustc_session::lint::Lint;
@@ -402,7 +402,12 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             // `doc_link_resolutions` is missing a `path_str`, that means that there are valid links
             // that are being missed. To fix the ICE, change
             // `rustc_resolve::rustdoc::attrs_to_preprocessed_links` to cache the link.
-            .unwrap_or_else(|| panic!("no resolution for {:?} {:?} {:?}", path_str, ns, module_id))
+            .unwrap_or_else(|| {
+                span_bug!(
+                    self.cx.tcx.def_span(item_id),
+                    "no resolution for {path_str:?} {ns:?} {module_id:?}",
+                )
+            })
             .and_then(|res| res.try_into().ok())
             .or_else(|| resolve_primitive(path_str, ns));
         debug!("{} resolved to {:?} in namespace {:?}", path_str, result, ns);
@@ -963,6 +968,7 @@ fn preprocessed_markdown_links(s: &str) -> Vec<PreprocessedMarkdownLink> {
 }
 
 impl LinkCollector<'_, '_> {
+    #[instrument(level = "debug", skip_all)]
     fn resolve_links(&mut self, item: &Item) {
         if !self.cx.render_options.document_private
             && let Some(def_id) = item.item_id.as_def_id()

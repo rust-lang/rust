@@ -11,7 +11,7 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::LateBoundRegionConversionTime::HigherRankedType;
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
-use rustc_middle::traits::SelectionOutputTypeParameterMismatch;
+use rustc_middle::traits::{BuiltinImplSource, SelectionOutputTypeParameterMismatch};
 use rustc_middle::ty::{
     self, Binder, GenericArgs, GenericArgsRef, GenericParamDefKind, ToPolyTraitRef, ToPredicate,
     TraitPredicate, TraitRef, Ty, TyCtxt, TypeVisitableExt,
@@ -26,9 +26,9 @@ use crate::traits::vtable::{
 };
 use crate::traits::{
     BuiltinDerivedObligation, ImplDerivedObligation, ImplDerivedObligationCause, ImplSource,
-    ImplSourceObjectData, ImplSourceTraitUpcastingData, ImplSourceUserDefinedData, Normalized,
-    Obligation, ObligationCause, OutputTypeParameterMismatch, PolyTraitObligation,
-    PredicateObligation, Selection, SelectionError, TraitNotObjectSafe, Unimplemented,
+    ImplSourceUserDefinedData, Normalized, Obligation, ObligationCause,
+    OutputTypeParameterMismatch, PolyTraitObligation, PredicateObligation, Selection,
+    SelectionError, TraitNotObjectSafe, Unimplemented,
 };
 
 use super::BuiltinImplConditions;
@@ -48,18 +48,18 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let mut impl_src = match candidate {
             BuiltinCandidate { has_nested } => {
                 let data = self.confirm_builtin_candidate(obligation, has_nested);
-                ImplSource::Builtin(data)
+                ImplSource::Builtin(BuiltinImplSource::Misc, data)
             }
 
             TransmutabilityCandidate => {
                 let data = self.confirm_transmutability_candidate(obligation)?;
-                ImplSource::Builtin(data)
+                ImplSource::Builtin(BuiltinImplSource::Misc, data)
             }
 
             ParamCandidate(param) => {
                 let obligations =
                     self.confirm_param_candidate(obligation, param.map_bound(|t| t.trait_ref));
-                ImplSource::Param(obligations, param.skip_binder().constness)
+                ImplSource::Param(param.skip_binder().constness, obligations)
             }
 
             ImplCandidate(impl_def_id) => {
@@ -68,64 +68,57 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             AutoImplCandidate => {
                 let data = self.confirm_auto_impl_candidate(obligation)?;
-                ImplSource::Builtin(data)
+                ImplSource::Builtin(BuiltinImplSource::Misc, data)
             }
 
             ProjectionCandidate(idx, constness) => {
                 let obligations = self.confirm_projection_candidate(obligation, idx)?;
-                ImplSource::Param(obligations, constness)
+                ImplSource::Param(constness, obligations)
             }
 
-            ObjectCandidate(idx) => {
-                let data = self.confirm_object_candidate(obligation, idx)?;
-                ImplSource::Object(data)
-            }
+            ObjectCandidate(idx) => self.confirm_object_candidate(obligation, idx)?,
 
             ClosureCandidate { .. } => {
                 let vtable_closure = self.confirm_closure_candidate(obligation)?;
-                ImplSource::Builtin(vtable_closure)
+                ImplSource::Builtin(BuiltinImplSource::Misc, vtable_closure)
             }
 
             GeneratorCandidate => {
                 let vtable_generator = self.confirm_generator_candidate(obligation)?;
-                ImplSource::Builtin(vtable_generator)
+                ImplSource::Builtin(BuiltinImplSource::Misc, vtable_generator)
             }
 
             FutureCandidate => {
                 let vtable_future = self.confirm_future_candidate(obligation)?;
-                ImplSource::Builtin(vtable_future)
+                ImplSource::Builtin(BuiltinImplSource::Misc, vtable_future)
             }
 
             FnPointerCandidate { is_const } => {
                 let data = self.confirm_fn_pointer_candidate(obligation, is_const)?;
-                ImplSource::Builtin(data)
+                ImplSource::Builtin(BuiltinImplSource::Misc, data)
             }
 
             TraitAliasCandidate => {
                 let data = self.confirm_trait_alias_candidate(obligation);
-                ImplSource::Builtin(data)
+                ImplSource::Builtin(BuiltinImplSource::Misc, data)
             }
 
             BuiltinObjectCandidate => {
                 // This indicates something like `Trait + Send: Send`. In this case, we know that
                 // this holds because that's what the object type is telling us, and there's really
                 // no additional obligations to prove and no types in particular to unify, etc.
-                ImplSource::Builtin(Vec::new())
+                ImplSource::Builtin(BuiltinImplSource::Misc, Vec::new())
             }
 
-            BuiltinUnsizeCandidate => {
-                let data = self.confirm_builtin_unsize_candidate(obligation)?;
-                ImplSource::Builtin(data)
-            }
+            BuiltinUnsizeCandidate => self.confirm_builtin_unsize_candidate(obligation)?,
 
             TraitUpcastingUnsizeCandidate(idx) => {
-                let data = self.confirm_trait_upcasting_unsize_candidate(obligation, idx)?;
-                ImplSource::TraitUpcasting(data)
+                self.confirm_trait_upcasting_unsize_candidate(obligation, idx)?
             }
 
             ConstDestructCandidate(def_id) => {
                 let data = self.confirm_const_destruct_candidate(obligation, def_id)?;
-                ImplSource::Builtin(data)
+                ImplSource::Builtin(BuiltinImplSource::Misc, data)
             }
         };
 
@@ -484,7 +477,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         obligation: &PolyTraitObligation<'tcx>,
         index: usize,
-    ) -> Result<ImplSourceObjectData<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
+    ) -> Result<ImplSource<'tcx, PredicateObligation<'tcx>>, SelectionError<'tcx>> {
         let tcx = self.tcx();
         debug!(?obligation, ?index, "confirm_object_candidate");
 
@@ -648,7 +641,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             (unnormalized_upcast_trait_ref, ty::Binder::dummy(object_trait_ref)),
         );
 
-        Ok(ImplSourceObjectData { vtable_base, nested })
+        Ok(ImplSource::Builtin(BuiltinImplSource::Object { vtable_base: vtable_base }, nested))
     }
 
     fn confirm_fn_pointer_candidate(
@@ -897,7 +890,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         obligation: &PolyTraitObligation<'tcx>,
         idx: usize,
-    ) -> Result<ImplSourceTraitUpcastingData<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
+    ) -> Result<ImplSource<'tcx, PredicateObligation<'tcx>>, SelectionError<'tcx>> {
         let tcx = self.tcx();
 
         // `assemble_candidates_for_unsizing` should ensure there are no late-bound
@@ -994,13 +987,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let vtable_vptr_slot =
             prepare_vtable_segments(tcx, source_trait_ref, vtable_segment_callback).unwrap();
 
-        Ok(ImplSourceTraitUpcastingData { vtable_vptr_slot, nested })
+        Ok(ImplSource::Builtin(BuiltinImplSource::TraitUpcasting { vtable_vptr_slot }, nested))
     }
 
     fn confirm_builtin_unsize_candidate(
         &mut self,
         obligation: &PolyTraitObligation<'tcx>,
-    ) -> Result<Vec<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
+    ) -> Result<ImplSource<'tcx, PredicateObligation<'tcx>>, SelectionError<'tcx>> {
         let tcx = self.tcx();
 
         // `assemble_candidates_for_unsizing` should ensure there are no late-bound
@@ -1008,10 +1001,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let source = self.infcx.shallow_resolve(obligation.self_ty().no_bound_vars().unwrap());
         let target = obligation.predicate.skip_binder().trait_ref.args.type_at(1);
         let target = self.infcx.shallow_resolve(target);
-
         debug!(?source, ?target, "confirm_builtin_unsize_candidate");
 
         let mut nested = vec![];
+        let src;
         match (source.kind(), target.kind()) {
             // Trait+Kx+'a -> Trait+Ky+'b (auto traits and lifetime subtyping).
             (&ty::Dynamic(ref data_a, r_a, dyn_a), &ty::Dynamic(ref data_b, r_b, dyn_b))
@@ -1055,6 +1048,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     obligation.param_env,
                     obligation.predicate.rebind(outlives),
                 ));
+
+                src = BuiltinImplSource::Misc;
             }
 
             // `T` -> `Trait`
@@ -1101,6 +1096,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 nested.push(predicate_to_obligation(
                     ty::Binder::dummy(ty::ClauseKind::TypeOutlives(outlives)).to_predicate(tcx),
                 ));
+
+                src = BuiltinImplSource::Misc;
             }
 
             // `[T; n]` -> `[T]`
@@ -1111,6 +1108,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     .eq(DefineOpaqueTypes::No, b, a)
                     .map_err(|_| Unimplemented)?;
                 nested.extend(obligations);
+
+                src = BuiltinImplSource::Misc;
             }
 
             // `Struct<T>` -> `Struct<U>`
@@ -1167,6 +1166,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     ),
                 );
                 nested.push(tail_unsize_obligation);
+
+                src = BuiltinImplSource::Misc;
             }
 
             // `(.., T)` -> `(.., U)`
@@ -1194,12 +1195,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     ty::TraitRef::new(tcx, obligation.predicate.def_id(), [a_last, b_last]),
                 );
                 nested.push(last_unsize_obligation);
+
+                src = BuiltinImplSource::TupleUnsizing;
             }
 
             _ => bug!("source: {source}, target: {target}"),
         };
 
-        Ok(nested)
+        Ok(ImplSource::Builtin(src, nested))
     }
 
     fn confirm_const_destruct_candidate(

@@ -1145,7 +1145,7 @@ mod parse {
         }
 
         // 2. Parse a list of enabled and disabled components.
-        for comp in s.split(",") {
+        for comp in s.split(',') {
             if slot.handle_cli_component(comp).is_err() {
                 return false;
             }
@@ -1878,6 +1878,8 @@ written to standard error output)"),
         Requires `-Clto[=[fat,yes]]`"),
     wasi_exec_model: Option<WasiExecModel> = (None, parse_wasi_exec_model, [TRACKED],
         "whether to build a wasi command or reactor"),
+    write_long_types_to_disk: bool = (true, parse_bool, [UNTRACKED],
+        "whether long type names should be written to files instead of being printed in errors"),
     // tidy-alphabetical-end
 
     // If you add a new option, please update:

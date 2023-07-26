@@ -493,3 +493,7 @@ pub fn lld_flag_no_threads(is_windows: bool) -> &'static str {
     });
     if is_windows { windows } else { other }
 }
+
+pub fn dir_is_empty(dir: &Path) -> bool {
+    t!(std::fs::read_dir(dir)).next().is_none()
+}

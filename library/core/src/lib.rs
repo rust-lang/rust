@@ -418,7 +418,7 @@ pub mod arch;
 // set up in such a way that directly pulling it here works such that the
 // crate uses this crate as its core.
 #[path = "../../portable-simd/crates/core_simd/src/mod.rs"]
-#[allow(missing_debug_implementations, dead_code, unsafe_op_in_unsafe_fn, unused_unsafe)]
+#[allow(missing_debug_implementations, dead_code, unsafe_op_in_unsafe_fn)]
 #[allow(rustdoc::bare_urls)]
 #[unstable(feature = "portable_simd", issue = "86656")]
 mod core_simd;

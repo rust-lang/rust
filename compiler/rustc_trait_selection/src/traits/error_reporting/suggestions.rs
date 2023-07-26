@@ -777,18 +777,14 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 real_trait_pred = parent_trait_pred;
             }
 
-            let real_ty = real_trait_pred.self_ty();
             // We `erase_late_bound_regions` here because `make_subregion` does not handle
             // `ReLateBound`, and we don't particularly care about the regions.
-            if !self.can_eq(
-                obligation.param_env,
-                self.tcx.erase_late_bound_regions(real_ty),
-                arg_ty,
-            ) {
+            let real_ty = self.tcx.erase_late_bound_regions(real_trait_pred.self_ty());
+            if !self.can_eq(obligation.param_env, real_ty, arg_ty) {
                 continue;
             }
 
-            if let ty::Ref(region, base_ty, mutbl) = *real_ty.skip_binder().kind() {
+            if let ty::Ref(region, base_ty, mutbl) = *real_ty.kind() {
                 let autoderef = (self.autoderef_steps)(base_ty);
                 if let Some(steps) =
                     autoderef.into_iter().enumerate().find_map(|(steps, (ty, obligations))| {
@@ -1471,7 +1467,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
                         let span = if needs_parens { span } else { span.shrink_to_lo() };
                         let suggestions = if !needs_parens {
-                            vec![(span.shrink_to_lo(), format!("{}", sugg_prefix))]
+                            vec![(span.shrink_to_lo(), sugg_prefix)]
                         } else {
                             vec![
                                 (span.shrink_to_lo(), format!("{}(", sugg_prefix)),

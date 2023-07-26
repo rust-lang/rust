@@ -49,7 +49,7 @@ impl<'a> Parser<'a> {
             && self.check_ident()
         // `Const` followed by IDENT
         {
-            return Ok(self.recover_const_param_with_mistyped_const(preceding_attrs, ident)?);
+            return self.recover_const_param_with_mistyped_const(preceding_attrs, ident);
         }
 
         // Parse optional colon and param bounds.

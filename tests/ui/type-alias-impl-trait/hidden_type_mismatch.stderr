@@ -1,0 +1,14 @@
+error: concrete type differs from previous defining opaque type use
+  --> $DIR/hidden_type_mismatch.rs:11:20
+   |
+LL |     pub type Sep = impl Sized + std::fmt::Display;
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `i32`, got `String`
+   |
+note: previous use here
+  --> $DIR/hidden_type_mismatch.rs:37:21
+   |
+LL |     pub type Tait = impl Copy + From<Bar<()>> + Into<Bar<()>>;
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

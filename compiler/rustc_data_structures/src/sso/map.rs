@@ -268,11 +268,7 @@ impl<K: Eq + Hash, V> SsoHashMap<K, V> {
     pub fn remove_entry(&mut self, key: &K) -> Option<(K, V)> {
         match self {
             SsoHashMap::Array(array) => {
-                if let Some(index) = array.iter().position(|(k, _v)| k == key) {
-                    Some(array.swap_remove(index))
-                } else {
-                    None
-                }
+                array.iter().position(|(k, _v)| k == key).map(|index| array.swap_remove(index))
             }
             SsoHashMap::Map(map) => map.remove_entry(key),
         }

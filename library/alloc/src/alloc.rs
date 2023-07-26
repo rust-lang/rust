@@ -392,7 +392,6 @@ pub mod __alloc_error_handler {
             static __rust_alloc_error_handler_should_panic: u8;
         }
 
-        #[allow(unused_unsafe)]
         if unsafe { __rust_alloc_error_handler_should_panic != 0 } {
             panic!("memory allocation of {size} bytes failed")
         } else {

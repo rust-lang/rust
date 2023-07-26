@@ -474,11 +474,14 @@ fn subst_and_check_impossible_predicates<'tcx>(
     result
 }
 
-/// Checks whether a trait's method is impossible to call on a given impl.
+/// Checks whether a trait's associated item is impossible to reference on a given impl.
 ///
 /// This only considers predicates that reference the impl's generics, and not
 /// those that reference the method's generics.
-fn is_impossible_method(tcx: TyCtxt<'_>, (impl_def_id, trait_item_def_id): (DefId, DefId)) -> bool {
+fn is_impossible_associated_item(
+    tcx: TyCtxt<'_>,
+    (impl_def_id, trait_item_def_id): (DefId, DefId),
+) -> bool {
     struct ReferencesOnlyParentGenerics<'tcx> {
         tcx: TyCtxt<'tcx>,
         generics: &'tcx ty::Generics,
@@ -556,7 +559,7 @@ pub fn provide(providers: &mut Providers) {
         specializes: specialize::specializes,
         subst_and_check_impossible_predicates,
         check_tys_might_be_eq: misc::check_tys_might_be_eq,
-        is_impossible_method,
+        is_impossible_associated_item,
         ..*providers
     };
 }

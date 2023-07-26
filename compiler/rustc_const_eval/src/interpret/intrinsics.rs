@@ -226,8 +226,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
             sym::discriminant_value => {
                 let place = self.deref_operand(&args[0])?;
-                let discr_val = self.read_discriminant(&place.into())?.0;
-                self.write_scalar(discr_val, dest)?;
+                let variant = self.read_discriminant(&place.into())?;
+                let discr = self.discriminant_for_variant(place.layout, variant)?;
+                self.write_scalar(discr, dest)?;
             }
             sym::exact_div => {
                 let l = self.read_immediate(&args[0])?;
@@ -425,11 +426,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 );
 
                 for i in 0..dest_len {
-                    let place = self.mplace_index(&dest, i)?;
+                    let place = self.project_index(&dest, i)?;
                     let value = if i == index {
                         elem.clone()
                     } else {
-                        self.mplace_index(&input, i)?.into()
+                        self.project_index(&input, i)?.into()
                     };
                     self.copy_op(&value, &place.into(), /*allow_transmute*/ false)?;
                 }
@@ -444,7 +445,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     input_len
                 );
                 self.copy_op(
-                    &self.mplace_index(&input, index)?.into(),
+                    &self.project_index(&input, index)?.into(),
                     dest,
                     /*allow_transmute*/ false,
                 )?;

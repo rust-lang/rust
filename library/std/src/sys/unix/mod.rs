@@ -110,6 +110,11 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
             while libc::poll(pfds.as_mut_ptr(), 3, 0) == -1 {
                 match errno() {
                     libc::EINTR => continue,
+                    #[cfg(target_vendor = "unikraft")]
+                    libc::ENOSYS => {
+                        // Not all configurations of Unikraft enable `LIBPOSIX_EVENT`.
+                        break 'poll;
+                    }
                     libc::EINVAL | libc::EAGAIN | libc::ENOMEM => {
                         // RLIMIT_NOFILE or temporary allocation failures
                         // may be preventing use of poll(), fall back to fcntl
@@ -165,7 +170,14 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
     }
 
     unsafe fn reset_sigpipe(#[allow(unused_variables)] sigpipe: u8) {
-        #[cfg(not(any(target_os = "emscripten", target_os = "fuchsia", target_os = "horizon")))]
+        #[cfg(not(any(
+            target_os = "emscripten",
+            target_os = "fuchsia",
+            target_os = "horizon",
+            // Unikraft's `signal` implementation is currently broken:
+            // https://github.com/unikraft/lib-musl/issues/57
+            target_vendor = "unikraft",
+        )))]
         {
             // We don't want to add this as a public type to std, nor do we
             // want to `include!` a file from the compiler (which would break

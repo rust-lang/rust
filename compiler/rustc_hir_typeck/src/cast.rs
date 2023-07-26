@@ -705,10 +705,10 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 )
             }),
             |lint| {
-                lint.help(format!(
+                lint.help(
                     "cast can be replaced by coercion; this might \
-                     require a temporary variable"
-                ))
+                     require a temporary variable",
+                )
             },
         );
     }

@@ -14,13 +14,12 @@ mod case_conv;
 
 use std::fmt;
 
-use base_db::CrateId;
 use hir_def::{
     data::adt::VariantData,
     hir::{Pat, PatId},
     src::HasSource,
-    AdtId, AttrDefId, ConstId, EnumId, FunctionId, ItemContainerId, Lookup, ModuleDefId, StaticId,
-    StructId,
+    AdtId, AttrDefId, ConstId, DefWithBodyId, EnumId, EnumVariantId, FunctionId, ItemContainerId,
+    Lookup, ModuleDefId, StaticId, StructId,
 };
 use hir_expand::{
     name::{AsName, Name},
@@ -44,13 +43,9 @@ mod allow {
     pub(super) const NON_CAMEL_CASE_TYPES: &str = "non_camel_case_types";
 }
 
-pub fn incorrect_case(
-    db: &dyn HirDatabase,
-    krate: CrateId,
-    owner: ModuleDefId,
-) -> Vec<IncorrectCase> {
+pub fn incorrect_case(db: &dyn HirDatabase, owner: ModuleDefId) -> Vec<IncorrectCase> {
     let _p = profile::span("validate_module_item");
-    let mut validator = DeclValidator::new(db, krate);
+    let mut validator = DeclValidator::new(db);
     validator.validate_item(owner);
     validator.sink
 }
@@ -120,7 +115,6 @@ pub struct IncorrectCase {
 
 pub(super) struct DeclValidator<'a> {
     db: &'a dyn HirDatabase,
-    krate: CrateId,
     pub(super) sink: Vec<IncorrectCase>,
 }
 
@@ -132,8 +126,8 @@ struct Replacement {
 }
 
 impl<'a> DeclValidator<'a> {
-    pub(super) fn new(db: &'a dyn HirDatabase, krate: CrateId) -> DeclValidator<'a> {
-        DeclValidator { db, krate, sink: Vec::new() }
+    pub(super) fn new(db: &'a dyn HirDatabase) -> DeclValidator<'a> {
+        DeclValidator { db, sink: Vec::new() }
     }
 
     pub(super) fn validate_item(&mut self, item: ModuleDefId) {
@@ -195,8 +189,7 @@ impl<'a> DeclValidator<'a> {
                 AttrDefId::TypeAliasId(_) => None,
                 AttrDefId::GenericParamId(_) => None,
             }
-            .map(|mid| self.allowed(mid, allow_name, true))
-            .unwrap_or(false)
+            .is_some_and(|mid| self.allowed(mid, allow_name, true))
     }
 
     fn validate_func(&mut self, func: FunctionId) {
@@ -206,17 +199,7 @@ impl<'a> DeclValidator<'a> {
             return;
         }
 
-        let body = self.db.body(func.into());
-
-        // Recursively validate inner scope items, such as static variables and constants.
-        for (_, block_def_map) in body.blocks(self.db.upcast()) {
-            for (_, module) in block_def_map.modules() {
-                for def_id in module.scope.declarations() {
-                    let mut validator = DeclValidator::new(self.db, self.krate);
-                    validator.validate_item(def_id);
-                }
-            }
-        }
+        self.validate_body_inner_items(func.into());
 
         // Check whether non-snake case identifiers are allowed for this function.
         if self.allowed(func.into(), allow::NON_SNAKE_CASE, false) {
@@ -230,6 +213,8 @@ impl<'a> DeclValidator<'a> {
             suggested_text: new_name,
             expected_case: CaseType::LowerSnakeCase,
         });
+
+        let body = self.db.body(func.into());
 
         // Check the patterns inside the function body.
         // This includes function parameters.
@@ -496,6 +481,11 @@ impl<'a> DeclValidator<'a> {
     fn validate_enum(&mut self, enum_id: EnumId) {
         let data = self.db.enum_data(enum_id);
 
+        for (local_id, _) in data.variants.iter() {
+            let variant_id = EnumVariantId { parent: enum_id, local_id };
+            self.validate_body_inner_items(variant_id.into());
+        }
+
         // Check whether non-camel case names are allowed for this enum.
         if self.allowed(enum_id.into(), allow::NON_CAMEL_CASE_TYPES, false) {
             return;
@@ -512,13 +502,11 @@ impl<'a> DeclValidator<'a> {
         // Check the field names.
         let enum_fields_replacements = data
             .variants
-            .iter()
-            .filter_map(|(_, variant)| {
+            .values()
+            .filter_map(|variant| {
                 Some(Replacement {
                     current_name: variant.name.clone(),
-                    suggested_text: to_camel_case(
-                        &variant.name.display(self.db.upcast()).to_string(),
-                    )?,
+                    suggested_text: to_camel_case(&variant.name.to_smol_str())?,
                     expected_case: CaseType::UpperCamelCase,
                 })
             })
@@ -622,6 +610,8 @@ impl<'a> DeclValidator<'a> {
     fn validate_const(&mut self, const_id: ConstId) {
         let data = self.db.const_data(const_id);
 
+        self.validate_body_inner_items(const_id.into());
+
         if self.allowed(const_id.into(), allow::NON_UPPER_CASE_GLOBAL, false) {
             return;
         }
@@ -631,7 +621,7 @@ impl<'a> DeclValidator<'a> {
             None => return,
         };
 
-        let const_name = name.display(self.db.upcast()).to_string();
+        let const_name = name.to_smol_str();
         let replacement = if let Some(new_name) = to_upper_snake_case(&const_name) {
             Replacement {
                 current_name: name.clone(),
@@ -670,13 +660,15 @@ impl<'a> DeclValidator<'a> {
             return;
         }
 
+        self.validate_body_inner_items(static_id.into());
+
         if self.allowed(static_id.into(), allow::NON_UPPER_CASE_GLOBAL, false) {
             return;
         }
 
         let name = &data.name;
 
-        let static_name = name.display(self.db.upcast()).to_string();
+        let static_name = name.to_smol_str();
         let replacement = if let Some(new_name) = to_upper_snake_case(&static_name) {
             Replacement {
                 current_name: name.clone(),
@@ -706,5 +698,18 @@ impl<'a> DeclValidator<'a> {
         };
 
         self.sink.push(diagnostic);
+    }
+
+    // FIXME: We don't currently validate names within `DefWithBodyId::InTypeConstId`.
+    /// Recursively validates inner scope items, such as static variables and constants.
+    fn validate_body_inner_items(&mut self, body_id: DefWithBodyId) {
+        let body = self.db.body(body_id);
+        for (_, block_def_map) in body.blocks(self.db.upcast()) {
+            for (_, module) in block_def_map.modules() {
+                for def_id in module.scope.declarations() {
+                    self.validate_item(def_id);
+                }
+            }
+        }
     }
 }
