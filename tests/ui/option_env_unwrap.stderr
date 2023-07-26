@@ -18,8 +18,8 @@ LL |     let _ = option_env!("PATH").expect("environment variable PATH isn't set
 error: this will panic at run-time if the environment variable doesn't exist at compile-time
   --> $DIR/option_env_unwrap.rs:12:13
    |
-LL |     let _ = option_env!("Y").unwrap(); // This test only works if you don't have a __Y__do_not_use env variable in your environment.
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     let _ = option_env!("__Y__do_not_use").unwrap(); // This test only works if you don't have a __Y__do_not_use env variable in your env...
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: consider using the `env!` macro instead
 
