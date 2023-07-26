@@ -294,9 +294,7 @@ fn ttdelim_span() {
         .unwrap();
 
         let ast::ExprKind::MacCall(mac) = &expr.kind else { panic!("not a macro") };
-        let tts: Vec<_> = mac.args.tokens.clone().into_trees().collect();
-
-        let span = tts.iter().rev().next().unwrap().span();
+        let span = mac.args.tokens.trees().last().unwrap().span();
 
         match sess.source_map().span_to_snippet(span) {
             Ok(s) => assert_eq!(&s[..], "{ body }"),
