@@ -1,3 +1,4 @@
+// #13507: Fixed hashing of DefId for ty_enum
 pub mod testtypes {
     use std::any::TypeId;
 
@@ -18,7 +19,7 @@ pub mod testtypes {
             TypeId::of::<FooTuple>(),
             TypeId::of::<FooTrait>(),
             TypeId::of::<FooStruct>(),
-            TypeId::of::<FooEnum>()
+            TypeId::of::<FooEnum>(),
         ]
     }
 
@@ -66,13 +67,13 @@ pub mod testtypes {
     // Tests struct
     pub struct FooStruct {
         pub pub_foo_field: usize,
-        foo_field: usize
+        foo_field: usize,
     }
 
     // Tests enum
     pub enum FooEnum {
         VarA(usize),
-        VarB(usize, usize)
+        VarB(usize, usize),
     }
 
     // Tests Tuple

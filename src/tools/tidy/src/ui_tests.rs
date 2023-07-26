@@ -10,8 +10,10 @@ use std::path::{Path, PathBuf};
 
 const ENTRY_LIMIT: usize = 900;
 // FIXME: The following limits should be reduced eventually.
-const ISSUES_ENTRY_LIMIT: usize = 1893;
-const ROOT_ENTRY_LIMIT: usize = 872;
+// Max number of files under "./ui/issues"
+const ISSUES_ENTRY_LIMIT: usize = 1892;
+// Max number of files under "./ui"
+const ROOT_ENTRY_LIMIT: usize = 871;
 
 const EXPECTED_TEST_FILE_EXTENSIONS: &[&str] = &[
     "rs",     // test source files

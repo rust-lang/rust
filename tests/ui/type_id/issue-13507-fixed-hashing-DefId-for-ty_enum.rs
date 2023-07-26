@@ -1,3 +1,4 @@
+// #13507: Fixed hashing of DefId for ty_enum
 // run-pass
 #![allow(unused_imports)]
 // aux-build:issue-13507.rs
@@ -25,7 +26,7 @@ pub fn type_ids() -> Vec<TypeId> {
         TypeId::of::<FooTuple>(),
         TypeId::of::<dyn FooTrait>(),
         TypeId::of::<FooStruct>(),
-        TypeId::of::<FooEnum>()
+        TypeId::of::<FooEnum>(),
     ]
 }
 
