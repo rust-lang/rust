@@ -2350,7 +2350,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             &p.path,
             ParamMode::Explicit,
             itctx,
-            Some(constness),
+            self.tcx.features().effects.then(|| constness),
         ) {
             hir::QPath::Resolved(None, path) => path,
             qpath => panic!("lower_trait_ref: unexpected QPath `{qpath:?}`"),

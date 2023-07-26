@@ -405,6 +405,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     ImplPolarity::Positive => ImplPolarity::Positive,
                     ImplPolarity::Negative(s) => ImplPolarity::Negative(self.lower_span(*s)),
                 };
+                // TODO add an error here if this is const impl for non-`#[const_trait]` trait
                 hir::ItemKind::Impl(self.arena.alloc(hir::Impl {
                     unsafety: self.lower_unsafety(*unsafety),
                     polarity,
@@ -1293,6 +1294,21 @@ impl<'hir> LoweringContext<'_, 'hir> {
         debug_assert!(self.impl_trait_defs.is_empty());
         debug_assert!(self.impl_trait_bounds.is_empty());
 
+        // lowering any generic bounds would require the def_id of the `host` generic
+        // param to refer to it.
+        let host_param_parts = if self.tcx.features().effects && let Const::Yes(span) = constness
+            // FIXME(effects) do not add host param if it already has it (manually specified)
+        {
+            let param_node_id = self.next_node_id();
+            let def_id = self.create_def(self.local_def_id(parent_node_id), param_node_id, DefPathData::TypeNs(sym::host), span);
+
+            // FIXME(effects) get this id also for manually specified host param
+            self.host_param_id = Some(def_id);
+            Some((span, def_id))
+        } else {
+            None
+        };
+
         // Error if `?Trait` bounds in where clauses don't refer directly to type parameters.
         // Note: we used to clone these bounds directly onto the type parameter (and avoid lowering
         // these into hir when we lower thee where clauses), but this makes it quite difficult to
@@ -1375,24 +1391,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let has_where_clause_predicates = !generics.where_clause.predicates.is_empty();
         let where_clause_span = self.lower_span(generics.where_clause.span);
         let span = self.lower_span(generics.span);
-
-        let host_param_parts = if let Const::Yes(span) = constness && self.tcx.features().effects
-            // Do not add host param if it already has it (manually specified)
-            && !params.iter().any(|x| {
-                self.attrs.get(&x.hir_id.local_id).map_or(false, |attrs| {
-                    attrs.iter().any(|x| x.has_name(sym::rustc_host))
-                })
-            })
-        {
-            let param_node_id = self.next_node_id();
-            let def_id = self.create_def(self.local_def_id(parent_node_id), param_node_id, DefPathData::TypeNs(sym::host), span);
-
-            // FIXME(effects) get this id also for manually specified host param
-            self.host_param_id = Some(def_id);
-            Some((span, def_id))
-        } else {
-            None
-        };
 
         let res = f(self);
 

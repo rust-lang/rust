@@ -24,7 +24,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         param_mode: ParamMode,
         itctx: &ImplTraitContext,
         // constness of the impl/bound if this is a trait path
-        constness: Option<ast::Const>,
+        mut constness: Option<ast::Const>,
     ) -> hir::QPath<'hir> {
         let qself_position = qself.as_ref().map(|q| q.position);
         let qself = qself.as_ref().map(|q| self.lower_ty(&q.ty, itctx));
@@ -36,8 +36,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         let path_span_lo = p.span.shrink_to_lo();
         let proj_start = p.segments.len() - unresolved_segments;
+
+        let res = self.lower_res(base_res);
+
+        // FIXME(effects) it looks like we don't need an option here
+        if let Some(ast::Const::No) = constness {
+            constness = None;
+        }
+
         let path = self.arena.alloc(hir::Path {
-            res: self.lower_res(base_res),
+            res,
             segments: self.arena.alloc_from_iter(p.segments[..proj_start].iter().enumerate().map(
                 |(i, segment)| {
                     let param_mode = match (qself_position, param_mode) {
