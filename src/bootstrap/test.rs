@@ -430,6 +430,10 @@ impl Step for Rustfmt {
             &[],
         );
 
+        if builder.config.cmd.bless() {
+            cargo.env("BLESS", "1");
+        }
+
         let dir = testdir(builder, compiler.host);
         t!(fs::create_dir_all(&dir));
         cargo.env("RUSTFMT_TEST_DIR", dir);
