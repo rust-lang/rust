@@ -3619,6 +3619,7 @@ dependencies = [
  "rustc_session",
  "rustc_span",
  "smallvec",
+ "termcolor",
  "thin-vec",
  "tracing",
 ]

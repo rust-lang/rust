@@ -719,7 +719,6 @@ fn check_code(cx: &LateContext<'_>, text: &str, edition: Edition, span: Span) {
                 let emitter = EmitterWriter::new(
                     Box::new(io::sink()),
                     fallback_bundle,
-                    false,
                 );
                 let handler = Handler::with_emitter(Box::new(emitter)).disable_warnings();
                 let sess = ParseSess::with_span_handler(handler, sm);

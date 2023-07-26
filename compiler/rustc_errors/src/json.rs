@@ -10,6 +10,7 @@
 // FIXME: spec the JSON output properly.
 
 use rustc_span::source_map::{FilePathMapping, SourceMap};
+use termcolor::{ColorSpec, WriteColor};
 
 use crate::emitter::{Emitter, HumanReadableErrorType};
 use crate::registry::Registry;
@@ -354,6 +355,19 @@ impl Diagnostic {
             }
             fn flush(&mut self) -> io::Result<()> {
                 self.0.lock().unwrap().flush()
+            }
+        }
+        impl WriteColor for BufWriter {
+            fn supports_color(&self) -> bool {
+                false
+            }
+
+            fn set_color(&mut self, _spec: &ColorSpec) -> io::Result<()> {
+                Ok(())
+            }
+
+            fn reset(&mut self) -> io::Result<()> {
+                Ok(())
             }
         }
         let buf = BufWriter::default();

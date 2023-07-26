@@ -61,12 +61,15 @@ impl HumanReadableErrorType {
     }
     pub fn new_emitter(
         self,
-        dst: Box<dyn Write + Send>,
+        mut dst: Box<dyn WriteColor + Send>,
         fallback_bundle: LazyFallbackBundle,
     ) -> EmitterWriter {
         let (short, color_config) = self.unzip();
         let color = color_config.suggests_using_colors();
-        EmitterWriter::new(dst, fallback_bundle, color).short_message(short)
+        if !dst.supports_color() && color {
+            dst = Box::new(Ansi::new(dst));
+        }
+        EmitterWriter::new(dst, fallback_bundle).short_message(short)
     }
 }
 
@@ -669,11 +672,10 @@ impl EmitterWriter {
     }
 
     pub fn new(
-        dst: Box<dyn Write + Send>,
+        dst: Box<dyn WriteColor + Send>,
         fallback_bundle: LazyFallbackBundle,
-        colored: bool,
     ) -> EmitterWriter {
-        Self::create(Raw(dst, colored), fallback_bundle)
+        Self::create(Raw(dst), fallback_bundle)
     }
 
     fn maybe_anonymized(&self, line_num: usize) -> Cow<'static, str> {
@@ -2603,15 +2605,13 @@ fn emit_to_destination(
 pub enum Destination {
     Terminal(StandardStream),
     Buffered(BufferWriter),
-    // The bool denotes whether we should be emitting ansi color codes or not
-    Raw(Box<(dyn Write + Send)>, bool),
+    Raw(Box<(dyn WriteColor + Send)>),
 }
 
 pub enum WritableDst<'a> {
     Terminal(&'a mut StandardStream),
     Buffered(&'a mut BufferWriter, Buffer),
-    Raw(&'a mut (dyn Write + Send)),
-    ColoredRaw(Ansi<&'a mut (dyn Write + Send)>),
+    Raw(&'a mut (dyn WriteColor + Send)),
 }
 
 impl Destination {
@@ -2637,8 +2637,7 @@ impl Destination {
                 let buf = t.buffer();
                 WritableDst::Buffered(t, buf)
             }
-            Destination::Raw(ref mut t, false) => WritableDst::Raw(t),
-            Destination::Raw(ref mut t, true) => WritableDst::ColoredRaw(Ansi::new(t)),
+            Destination::Raw(ref mut t) => WritableDst::Raw(t),
         }
     }
 
@@ -2646,7 +2645,7 @@ impl Destination {
         match *self {
             Self::Terminal(ref stream) => stream.supports_color(),
             Self::Buffered(ref buffer) => buffer.buffer().supports_color(),
-            Self::Raw(_, supports_color) => supports_color,
+            Self::Raw(ref writer) => writer.supports_color(),
         }
     }
 }
@@ -2706,8 +2705,7 @@ impl<'a> WritableDst<'a> {
         match *self {
             WritableDst::Terminal(ref mut t) => t.set_color(color),
             WritableDst::Buffered(_, ref mut t) => t.set_color(color),
-            WritableDst::ColoredRaw(ref mut t) => t.set_color(color),
-            WritableDst::Raw(_) => Ok(()),
+            WritableDst::Raw(ref mut t) => t.set_color(color),
         }
     }
 
@@ -2715,8 +2713,7 @@ impl<'a> WritableDst<'a> {
         match *self {
             WritableDst::Terminal(ref mut t) => t.reset(),
             WritableDst::Buffered(_, ref mut t) => t.reset(),
-            WritableDst::ColoredRaw(ref mut t) => t.reset(),
-            WritableDst::Raw(_) => Ok(()),
+            WritableDst::Raw(ref mut t) => t.reset(),
         }
     }
 }
@@ -2727,7 +2724,6 @@ impl<'a> Write for WritableDst<'a> {
             WritableDst::Terminal(ref mut t) => t.write(bytes),
             WritableDst::Buffered(_, ref mut buf) => buf.write(bytes),
             WritableDst::Raw(ref mut w) => w.write(bytes),
-            WritableDst::ColoredRaw(ref mut t) => t.write(bytes),
         }
     }
 
@@ -2736,7 +2732,6 @@ impl<'a> Write for WritableDst<'a> {
             WritableDst::Terminal(ref mut t) => t.flush(),
             WritableDst::Buffered(_, ref mut buf) => buf.flush(),
             WritableDst::Raw(ref mut w) => w.flush(),
-            WritableDst::ColoredRaw(ref mut w) => w.flush(),
         }
     }
 }

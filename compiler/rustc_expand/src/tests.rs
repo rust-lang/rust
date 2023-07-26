@@ -9,6 +9,7 @@ use rustc_span::{BytePos, Span};
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::emitter::EmitterWriter;
 use rustc_errors::{Handler, MultiSpan, PResult};
+use termcolor::WriteColor;
 
 use std::io;
 use std::io::prelude::*;
@@ -29,10 +30,9 @@ fn create_test_handler() -> (Handler, Lrc<SourceMap>, Arc<Mutex<Vec<u8>>>) {
         vec![crate::DEFAULT_LOCALE_RESOURCE, rustc_parse::DEFAULT_LOCALE_RESOURCE],
         false,
     );
-    let emitter =
-        EmitterWriter::new(Box::new(Shared { data: output.clone() }), fallback_bundle, false)
-            .sm(Some(source_map.clone()))
-            .diagnostic_width(Some(140));
+    let emitter = EmitterWriter::new(Box::new(Shared { data: output.clone() }), fallback_bundle)
+        .sm(Some(source_map.clone()))
+        .diagnostic_width(Some(140));
     let handler = Handler::with_emitter(Box::new(emitter));
     (handler, source_map, output)
 }
@@ -154,6 +154,20 @@ struct SpanLabel {
 
 pub(crate) struct Shared<T: Write> {
     pub data: Arc<Mutex<T>>,
+}
+
+impl<T: Write> WriteColor for Shared<T> {
+    fn supports_color(&self) -> bool {
+        false
+    }
+
+    fn set_color(&mut self, _spec: &termcolor::ColorSpec) -> io::Result<()> {
+        Ok(())
+    }
+
+    fn reset(&mut self) -> io::Result<()> {
+        Ok(())
+    }
 }
 
 impl<T: Write> Write for Shared<T> {
