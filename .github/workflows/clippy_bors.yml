@@ -217,6 +217,7 @@ jobs:
         - 'rust-itertools/itertools'
         - 'rust-lang-nursery/failure'
         - 'rust-lang/log'
+        - 'matthiaskrgr/clippy_ci_panic_test'
 
     runs-on: ubuntu-latest
 
