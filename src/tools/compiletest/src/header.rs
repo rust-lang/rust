@@ -6,7 +6,6 @@ use std::io::BufReader;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use build_helper::ci::CiEnv;
 use tracing::*;
 
 use crate::common::{Config, Debugger, FailMode, Mode, PassMode};
@@ -298,13 +297,6 @@ impl TestProps {
     /// `//[foo]`), then the property is ignored unless `cfg` is
     /// `Some("foo")`.
     fn load_from(&mut self, testfile: &Path, cfg: Option<&str>, config: &Config) {
-        // In CI, we've sometimes encountered non-determinism related to truncating very long paths.
-        // Set a consistent (short) prefix to avoid issues, but only in CI to avoid regressing the
-        // contributor experience.
-        if CiEnv::is_ci() {
-            self.remap_src_base = config.mode == Mode::Ui && !config.suite.contains("rustdoc");
-        }
-
         let mut has_edition = false;
         if !testfile.is_dir() {
             let file = File::open(testfile).unwrap();
