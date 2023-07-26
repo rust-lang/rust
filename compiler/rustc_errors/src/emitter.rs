@@ -2158,7 +2158,7 @@ impl EmitterWriter {
             Err(e) => panic!("failed to emit error: {e}"),
         }
 
-        let mut dst = self.dst.writable();
+        let dst = self.dst.writable();
         match writeln!(dst) {
             Err(e) => panic!("failed to emit error: {e}"),
             _ => {
@@ -2573,7 +2573,7 @@ fn emit_to_destination(
 ) -> io::Result<()> {
     use crate::lock;
 
-    let mut dst = dst.writable();
+    let dst = dst.writable();
 
     // In order to prevent error message interleaving, where multiple error lines get intermixed
     // when multiple compiler processes error simultaneously, we emit errors with additional
@@ -2606,10 +2606,6 @@ fn emit_to_destination(
 pub enum Destination {
     Terminal(StandardStream),
     Raw(Box<(dyn WriteColor + Send)>),
-}
-
-pub enum WritableDst<'a> {
-    Raw(&'a mut (dyn WriteColor + Send)),
 }
 
 struct Buffy {
@@ -2661,10 +2657,10 @@ impl Destination {
         }
     }
 
-    fn writable(&mut self) -> WritableDst<'_> {
+    fn writable(&mut self) -> &mut dyn WriteColor {
         match *self {
-            Destination::Terminal(ref mut t) => WritableDst::Raw(t),
-            Destination::Raw(ref mut t) => WritableDst::Raw(t),
+            Destination::Terminal(ref mut t) => t,
+            Destination::Raw(ref mut t) => t,
         }
     }
 
@@ -2725,40 +2721,6 @@ impl Style {
             }
         }
         spec
-    }
-}
-
-impl<'a> WritableDst<'a> {
-    fn set_color(&mut self, color: &ColorSpec) -> io::Result<()> {
-        match *self {
-            WritableDst::Raw(ref mut t) => t.set_color(color),
-        }
-    }
-
-    fn reset(&mut self) -> io::Result<()> {
-        match *self {
-            WritableDst::Raw(ref mut t) => t.reset(),
-        }
-    }
-}
-
-impl<'a> Write for WritableDst<'a> {
-    fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
-        match *self {
-            WritableDst::Raw(ref mut w) => w.write(bytes),
-        }
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
-        match *self {
-            WritableDst::Raw(ref mut w) => w.flush(),
-        }
-    }
-}
-
-impl<'a> Drop for WritableDst<'a> {
-    fn drop(&mut self) {
-        self.flush().unwrap()
     }
 }
 
