@@ -15,7 +15,8 @@ make -j$(nproc) \
     CC="$bin/clang" \
     NM="$bin/llvm-nm" \
     AR="$bin/llvm-ar" \
-    INSTALL_DIR=/wasm32-wasi \
+    THREAD_MODEL=posix \
+    INSTALL_DIR=/wasm32-wasi-preview1-threads \
     install
 
 cd ..
