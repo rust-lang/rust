@@ -4,6 +4,7 @@ stack backtrace:
    1: short_ice_remove_middle_frames::seven
    2: short_ice_remove_middle_frames::sixth
    3: short_ice_remove_middle_frames::fifth::{{closure}}
+      [... omitted 4 frames ...]
    4: short_ice_remove_middle_frames::second
    5: short_ice_remove_middle_frames::first::{{closure}}
    6: short_ice_remove_middle_frames::first
