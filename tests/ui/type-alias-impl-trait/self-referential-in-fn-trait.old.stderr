@@ -1,0 +1,10 @@
+error: unconstrained opaque type
+  --> $DIR/self-referential-in-fn-trait.rs:13:16
+   |
+LL | type Foo<'a> = impl Fn() -> Foo<'a>;
+   |                ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `Foo` must be used in combination with a concrete type within the same module
+
+error: aborting due to previous error
+

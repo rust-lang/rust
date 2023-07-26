@@ -1,5 +1,5 @@
 error: unconstrained opaque type
-  --> $DIR/self-referential-in-fn-trait.rs:3:16
+  --> $DIR/self-referential-in-fn-trait.rs:13:16
    |
 LL | type Foo<'a> = impl Fn() -> Foo<'a>;
    |                ^^^^^^^^^^^^^^^^^^^^
