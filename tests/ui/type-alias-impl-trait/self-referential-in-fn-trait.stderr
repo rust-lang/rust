@@ -1,0 +1,9 @@
+error[E0275]: overflow evaluating the requirement `<Foo<'a> as FnOnce<()>>::Output == Foo<'a>`
+  --> $DIR/self-referential-in-fn-trait.rs:5:40
+   |
+LL | fn crash<'a>(_: &'a (), x: Foo<'a>) -> Foo<'a> {
+   |                                        ^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0275`.
