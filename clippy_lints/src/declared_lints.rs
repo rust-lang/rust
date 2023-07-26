@@ -337,6 +337,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::methods::EXPECT_USED_INFO,
     crate::methods::EXTEND_WITH_DRAIN_INFO,
     crate::methods::FILETYPE_IS_FILE_INFO,
+    crate::methods::FILTER_MAP_BOOL_THEN_INFO,
     crate::methods::FILTER_MAP_IDENTITY_INFO,
     crate::methods::FILTER_MAP_NEXT_INFO,
     crate::methods::FILTER_NEXT_INFO,
