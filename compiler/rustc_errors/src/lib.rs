@@ -1871,6 +1871,22 @@ pub fn add_elided_lifetime_in_path_suggestion(
     });
 }
 
+pub fn report_ambiguity_error<'a, G: EmissionGuarantee>(
+    db: &mut DiagnosticBuilder<'a, G>,
+    ambiguity: rustc_lint_defs::AmbiguityErrorDiag,
+) {
+    db.span_label(ambiguity.label_span, ambiguity.label_msg);
+    db.note(ambiguity.note_msg);
+    db.span_note(ambiguity.b1_span, ambiguity.b1_note_msg);
+    for help_msg in ambiguity.b1_help_msgs {
+        db.help(help_msg);
+    }
+    db.span_note(ambiguity.b2_span, ambiguity.b2_note_msg);
+    for help_msg in ambiguity.b2_help_msgs {
+        db.help(help_msg);
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Hash, Debug)]
 pub enum TerminalUrl {
     No,
