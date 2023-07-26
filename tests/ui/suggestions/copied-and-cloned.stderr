@@ -86,7 +86,7 @@ LL |     println!("{}", x == y);
    |
    = note: expected enum `Option<String>`
               found enum `Option<&String>`
-help: use `Option::as_ref()` to convert `Option<String>` to `Option<&String>`
+help: use `Option::as_ref` to convert `Option<String>` to `Option<&String>`
    |
 LL |     println!("{}", x.as_ref() == y);
    |                     +++++++++

@@ -26,6 +26,6 @@ fn main() {
     let y = Some(&s);
     println!("{}", x == y);
     //~^ ERROR mismatched types
-    //~| HELP use `Option::as_ref()` to convert `Option<String>` to `Option<&String>`
+    //~| HELP use `Option::as_ref` to convert `Option<String>` to `Option<&String>`
 
 }
