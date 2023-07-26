@@ -649,7 +649,7 @@ pub struct FileWithAnnotatedLines {
 
 impl EmitterWriter {
     pub fn stderr(color_config: ColorConfig, fallback_bundle: LazyFallbackBundle) -> EmitterWriter {
-        let dst = Destination::from_stderr(color_config);
+        let dst = from_stderr(color_config);
         Self::create(dst, fallback_bundle)
     }
 
@@ -673,7 +673,7 @@ impl EmitterWriter {
         dst: Box<dyn WriteColor + Send>,
         fallback_bundle: LazyFallbackBundle,
     ) -> EmitterWriter {
-        Self::create(Destination(dst), fallback_bundle)
+        Self::create(dst, fallback_bundle)
     }
 
     fn maybe_anonymized(&self, line_num: usize) -> Cow<'static, str> {
@@ -2156,11 +2156,10 @@ impl EmitterWriter {
             Err(e) => panic!("failed to emit error: {e}"),
         }
 
-        let dst = self.dst.writable();
-        match writeln!(dst) {
+        match writeln!(self.dst) {
             Err(e) => panic!("failed to emit error: {e}"),
             _ => {
-                if let Err(e) = dst.flush() {
+                if let Err(e) = self.dst.flush() {
                     panic!("failed to emit error: {e}")
                 }
             }
@@ -2571,8 +2570,6 @@ fn emit_to_destination(
 ) -> io::Result<()> {
     use crate::lock;
 
-    let dst = dst.writable();
-
     // In order to prevent error message interleaving, where multiple error lines get intermixed
     // when multiple compiler processes error simultaneously, we emit errors with additional
     // steps.
@@ -2601,7 +2598,7 @@ fn emit_to_destination(
     Ok(())
 }
 
-pub struct Destination(pub(crate) Box<(dyn WriteColor + Send)>);
+pub type Destination = Box<(dyn WriteColor + Send)>;
 
 struct Buffy {
     buffer_writer: BufferWriter,
@@ -2634,30 +2631,20 @@ impl WriteColor for Buffy {
     }
 }
 
-impl Destination {
-    fn from_stderr(color: ColorConfig) -> Destination {
-        let choice = color.to_color_choice();
-        // On Windows we'll be performing global synchronization on the entire
-        // system for emitting rustc errors, so there's no need to buffer
-        // anything.
-        //
-        // On non-Windows we rely on the atomicity of `write` to ensure errors
-        // don't get all jumbled up.
-        if cfg!(windows) {
-            Destination(Box::new(StandardStream::stderr(choice)))
-        } else {
-            let buffer_writer = BufferWriter::stderr(choice);
-            let buffer = buffer_writer.buffer();
-            Destination(Box::new(Buffy { buffer_writer, buffer }))
-        }
-    }
-
-    fn writable(&mut self) -> &mut dyn WriteColor {
-        &mut self.0
-    }
-
-    fn supports_color(&self) -> bool {
-        self.0.supports_color()
+fn from_stderr(color: ColorConfig) -> Destination {
+    let choice = color.to_color_choice();
+    // On Windows we'll be performing global synchronization on the entire
+    // system for emitting rustc errors, so there's no need to buffer
+    // anything.
+    //
+    // On non-Windows we rely on the atomicity of `write` to ensure errors
+    // don't get all jumbled up.
+    if cfg!(windows) {
+        Box::new(StandardStream::stderr(choice))
+    } else {
+        let buffer_writer = BufferWriter::stderr(choice);
+        let buffer = buffer_writer.buffer();
+        Box::new(Buffy { buffer_writer, buffer })
     }
 }
 
