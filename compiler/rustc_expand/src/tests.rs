@@ -161,7 +161,7 @@ fn test_harness(file_text: &str, span_labels: Vec<SpanLabel>, expected_output: &
             false,
             TerminalUrl::No,
         );
-        let handler = Handler::with_emitter(true, None, Box::new(emitter), None);
+        let handler = Handler::with_emitter(Box::new(emitter));
         #[allow(rustc::untranslatable_diagnostic)]
         handler.span_err(msp, "foo");
 

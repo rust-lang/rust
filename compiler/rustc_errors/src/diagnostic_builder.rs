@@ -536,7 +536,9 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
             }
         };
 
-        if handler.flags.dont_buffer_diagnostics || handler.flags.treat_err_as_bug.is_some() {
+        if handler.inner.lock().flags.dont_buffer_diagnostics
+            || handler.inner.lock().flags.treat_err_as_bug.is_some()
+        {
             self.emit();
             return None;
         }
