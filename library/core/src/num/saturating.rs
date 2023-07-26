@@ -4,7 +4,7 @@ use crate::fmt;
 use crate::ops::{Add, AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign};
 use crate::ops::{BitXor, BitXorAssign, Div, DivAssign};
 use crate::ops::{Mul, MulAssign, Neg, Not, Rem, RemAssign};
-use crate::ops::{Shl, ShlAssign, Shr, ShrAssign, Sub, SubAssign};
+use crate::ops::{Sub, SubAssign};
 
 /// Provides intentionally-saturating arithmetic on `T`.
 ///
@@ -79,129 +79,132 @@ impl<T: fmt::UpperHex> fmt::UpperHex for Saturating<T> {
         self.0.fmt(f)
     }
 }
-#[allow(unused_macros)]
-macro_rules! sh_impl_signed {
-    ($t:ident, $f:ident) => {
-        // FIXME what is the correct implementation here? see discussion https://github.com/rust-lang/rust/pull/87921#discussion_r695870065
-        //
-        // #[unstable(feature = "saturating_int_impl", issue = "87920")]
-        // impl Shl<$f> for Saturating<$t> {
-        //     type Output = Saturating<$t>;
-        //
-        //     #[inline]
-        //     fn shl(self, other: $f) -> Saturating<$t> {
-        //         if other < 0 {
-        //             Saturating(self.0.shr((-other & self::shift_max::$t as $f) as u32))
-        //         } else {
-        //             Saturating(self.0.shl((other & self::shift_max::$t as $f) as u32))
-        //         }
-        //     }
-        // }
-        // forward_ref_binop! { impl Shl, shl for Saturating<$t>, $f,
-        // #[unstable(feature = "saturating_int_impl", issue = "87920")] }
-        //
-        // #[unstable(feature = "saturating_int_impl", issue = "87920")]
-        // impl ShlAssign<$f> for Saturating<$t> {
-        //     #[inline]
-        //     fn shl_assign(&mut self, other: $f) {
-        //         *self = *self << other;
-        //     }
-        // }
-        // forward_ref_op_assign! { impl ShlAssign, shl_assign for Saturating<$t>, $f }
 
-        #[unstable(feature = "saturating_int_impl", issue = "87920")]
-        impl Shr<$f> for Saturating<$t> {
-            type Output = Saturating<$t>;
-
-            #[inline]
-            fn shr(self, other: $f) -> Saturating<$t> {
-                if other < 0 {
-                    Saturating(self.0.shl((-other & self::shift_max::$t as $f) as u32))
-                } else {
-                    Saturating(self.0.shr((other & self::shift_max::$t as $f) as u32))
-                }
-            }
-        }
-        forward_ref_binop! { impl Shr, shr for Saturating<$t>, $f,
-        #[unstable(feature = "saturating_int_impl", issue = "87920")] }
-
-        #[unstable(feature = "saturating_int_impl", issue = "87920")]
-        impl ShrAssign<$f> for Saturating<$t> {
-            #[inline]
-            fn shr_assign(&mut self, other: $f) {
-                *self = *self >> other;
-            }
-        }
-        forward_ref_op_assign! { impl ShrAssign, shr_assign for Saturating<$t>, $f }
-    };
-}
-
-macro_rules! sh_impl_unsigned {
-    ($t:ident, $f:ident) => {
-        #[unstable(feature = "saturating_int_impl", issue = "87920")]
-        impl Shl<$f> for Saturating<$t> {
-            type Output = Saturating<$t>;
-
-            #[inline]
-            fn shl(self, other: $f) -> Saturating<$t> {
-                Saturating(self.0.wrapping_shl(other as u32))
-            }
-        }
-        forward_ref_binop! { impl Shl, shl for Saturating<$t>, $f,
-        #[unstable(feature = "saturating_int_impl", issue = "87920")] }
-
-        #[unstable(feature = "saturating_int_impl", issue = "87920")]
-        impl ShlAssign<$f> for Saturating<$t> {
-            #[inline]
-            fn shl_assign(&mut self, other: $f) {
-                *self = *self << other;
-            }
-        }
-        forward_ref_op_assign! { impl ShlAssign, shl_assign for Saturating<$t>, $f }
-
-        #[unstable(feature = "saturating_int_impl", issue = "87920")]
-        impl Shr<$f> for Saturating<$t> {
-            type Output = Saturating<$t>;
-
-            #[inline]
-            fn shr(self, other: $f) -> Saturating<$t> {
-                Saturating(self.0.wrapping_shr(other as u32))
-            }
-        }
-        forward_ref_binop! { impl Shr, shr for Saturating<$t>, $f,
-        #[unstable(feature = "saturating_int_impl", issue = "87920")] }
-
-        #[unstable(feature = "saturating_int_impl", issue = "87920")]
-        impl ShrAssign<$f> for Saturating<$t> {
-            #[inline]
-            fn shr_assign(&mut self, other: $f) {
-                *self = *self >> other;
-            }
-        }
-        forward_ref_op_assign! { impl ShrAssign, shr_assign for Saturating<$t>, $f }
-    };
-}
-
-// FIXME (#23545): uncomment the remaining impls
-macro_rules! sh_impl_all {
-    ($($t:ident)*) => ($(
-        //sh_impl_unsigned! { $t, u8 }
-        //sh_impl_unsigned! { $t, u16 }
-        //sh_impl_unsigned! { $t, u32 }
-        //sh_impl_unsigned! { $t, u64 }
-        //sh_impl_unsigned! { $t, u128 }
-        sh_impl_unsigned! { $t, usize }
-
-        //sh_impl_signed! { $t, i8 }
-        //sh_impl_signed! { $t, i16 }
-        //sh_impl_signed! { $t, i32 }
-        //sh_impl_signed! { $t, i64 }
-        //sh_impl_signed! { $t, i128 }
-        //sh_impl_signed! { $t, isize }
-    )*)
-}
-
-sh_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }
+// FIXME the correct implementation is not clear. Waiting for a real world use case at https://github.com/rust-lang/libs-team/issues/230
+//
+// #[allow(unused_macros)]
+// macro_rules! sh_impl_signed {
+//     ($t:ident, $f:ident) => {
+//         // FIXME what is the correct implementation here? see discussion https://github.com/rust-lang/rust/pull/87921#discussion_r695870065
+//         //
+//         // #[unstable(feature = "saturating_int_impl", issue = "87920")]
+//         // impl Shl<$f> for Saturating<$t> {
+//         //     type Output = Saturating<$t>;
+//         //
+//         //     #[inline]
+//         //     fn shl(self, other: $f) -> Saturating<$t> {
+//         //         if other < 0 {
+//         //             Saturating(self.0.shr((-other & self::shift_max::$t as $f) as u32))
+//         //         } else {
+//         //             Saturating(self.0.shl((other & self::shift_max::$t as $f) as u32))
+//         //         }
+//         //     }
+//         // }
+//         // forward_ref_binop! { impl Shl, shl for Saturating<$t>, $f,
+//         // #[unstable(feature = "saturating_int_impl", issue = "87920")] }
+//         //
+//         // #[unstable(feature = "saturating_int_impl", issue = "87920")]
+//         // impl ShlAssign<$f> for Saturating<$t> {
+//         //     #[inline]
+//         //     fn shl_assign(&mut self, other: $f) {
+//         //         *self = *self << other;
+//         //     }
+//         // }
+//         // forward_ref_op_assign! { impl ShlAssign, shl_assign for Saturating<$t>, $f }
+//
+//         #[unstable(feature = "saturating_int_impl", issue = "87920")]
+//         impl Shr<$f> for Saturating<$t> {
+//             type Output = Saturating<$t>;
+//
+//             #[inline]
+//             fn shr(self, other: $f) -> Saturating<$t> {
+//                 if other < 0 {
+//                     Saturating(self.0.shl((-other & self::shift_max::$t as $f) as u32))
+//                 } else {
+//                     Saturating(self.0.shr((other & self::shift_max::$t as $f) as u32))
+//                 }
+//             }
+//         }
+//         forward_ref_binop! { impl Shr, shr for Saturating<$t>, $f,
+//         #[unstable(feature = "saturating_int_impl", issue = "87920")] }
+//
+//         #[unstable(feature = "saturating_int_impl", issue = "87920")]
+//         impl ShrAssign<$f> for Saturating<$t> {
+//             #[inline]
+//             fn shr_assign(&mut self, other: $f) {
+//                 *self = *self >> other;
+//             }
+//         }
+//         forward_ref_op_assign! { impl ShrAssign, shr_assign for Saturating<$t>, $f }
+//     };
+// }
+//
+// macro_rules! sh_impl_unsigned {
+//     ($t:ident, $f:ident) => {
+//         #[unstable(feature = "saturating_int_impl", issue = "87920")]
+//         impl Shl<$f> for Saturating<$t> {
+//             type Output = Saturating<$t>;
+//
+//             #[inline]
+//             fn shl(self, other: $f) -> Saturating<$t> {
+//                 Saturating(self.0.wrapping_shl(other as u32))
+//             }
+//         }
+//         forward_ref_binop! { impl Shl, shl for Saturating<$t>, $f,
+//         #[unstable(feature = "saturating_int_impl", issue = "87920")] }
+//
+//         #[unstable(feature = "saturating_int_impl", issue = "87920")]
+//         impl ShlAssign<$f> for Saturating<$t> {
+//             #[inline]
+//             fn shl_assign(&mut self, other: $f) {
+//                 *self = *self << other;
+//             }
+//         }
+//         forward_ref_op_assign! { impl ShlAssign, shl_assign for Saturating<$t>, $f }
+//
+//         #[unstable(feature = "saturating_int_impl", issue = "87920")]
+//         impl Shr<$f> for Saturating<$t> {
+//             type Output = Saturating<$t>;
+//
+//             #[inline]
+//             fn shr(self, other: $f) -> Saturating<$t> {
+//                 Saturating(self.0.wrapping_shr(other as u32))
+//             }
+//         }
+//         forward_ref_binop! { impl Shr, shr for Saturating<$t>, $f,
+//         #[unstable(feature = "saturating_int_impl", issue = "87920")] }
+//
+//         #[unstable(feature = "saturating_int_impl", issue = "87920")]
+//         impl ShrAssign<$f> for Saturating<$t> {
+//             #[inline]
+//             fn shr_assign(&mut self, other: $f) {
+//                 *self = *self >> other;
+//             }
+//         }
+//         forward_ref_op_assign! { impl ShrAssign, shr_assign for Saturating<$t>, $f }
+//     };
+// }
+//
+// // FIXME (#23545): uncomment the remaining impls
+// macro_rules! sh_impl_all {
+//     ($($t:ident)*) => ($(
+//         //sh_impl_unsigned! { $t, u8 }
+//         //sh_impl_unsigned! { $t, u16 }
+//         //sh_impl_unsigned! { $t, u32 }
+//         //sh_impl_unsigned! { $t, u64 }
+//         //sh_impl_unsigned! { $t, u128 }
+//         sh_impl_unsigned! { $t, usize }
+//
+//         //sh_impl_signed! { $t, i8 }
+//         //sh_impl_signed! { $t, i16 }
+//         //sh_impl_signed! { $t, i32 }
+//         //sh_impl_signed! { $t, i64 }
+//         //sh_impl_signed! { $t, i128 }
+//         //sh_impl_signed! { $t, isize }
+//     )*)
+// }
+//
+// sh_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }
 
 // FIXME(30524): impl Op<T> for Saturating<T>, impl OpAssign<T> for Saturating<T>
 macro_rules! saturating_impl {
