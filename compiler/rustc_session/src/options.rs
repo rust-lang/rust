@@ -1433,8 +1433,6 @@ options! {
     dep_tasks: bool = (false, parse_bool, [UNTRACKED],
         "print tasks that execute and the color their dep node gets (requires debug build) \
         (default: no)"),
-    diagnostic_width: Option<usize> = (None, parse_opt_number, [UNTRACKED],
-        "set the current output width for diagnostic truncation"),
     dont_buffer_diagnostics: bool = (false, parse_bool, [UNTRACKED],
         "emit diagnostics rather than buffering (breaks NLL error downgrading, sorting) \
         (default: no)"),
