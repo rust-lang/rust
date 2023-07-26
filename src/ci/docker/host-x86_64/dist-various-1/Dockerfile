@@ -74,8 +74,8 @@ RUN env \
     CXX=arm-linux-gnueabihf-g++ CXXFLAGS="-march=armv6 -marm -mfpu=vfp" \
     bash musl.sh armhf && \
     env \
-    CC=arm-linux-gnueabihf-gcc CFLAGS="-march=armv7-a -mfpu=vfp3" \
-    CXX=arm-linux-gnueabihf-g++ CXXFLAGS="-march=armv7-a -mfpu=vfp3" \
+    CC=arm-linux-gnueabihf-gcc CFLAGS="-march=armv7-a+fp" \
+    CXX=arm-linux-gnueabihf-g++ CXXFLAGS="-march=armv7-a+fp" \
     bash musl.sh armv7hf && \
     env \
     CC=mips-openwrt-linux-gcc \
@@ -148,7 +148,7 @@ ENV TARGETS=$TARGETS,armv7a-none-eabi
 ENV CFLAGS_armv5te_unknown_linux_musleabi="-march=armv5te -marm -mfloat-abi=soft" \
     CFLAGS_arm_unknown_linux_musleabi="-march=armv6 -marm" \
     CFLAGS_arm_unknown_linux_musleabihf="-march=armv6 -marm -mfpu=vfp" \
-    CFLAGS_armv7_unknown_linux_musleabihf="-march=armv7-a -mfpu=vfp3" \
+    CFLAGS_armv7_unknown_linux_musleabihf="-march=armv7-a+fp" \
     CC_mipsel_unknown_linux_musl=mipsel-openwrt-linux-gcc \
     CC_mips_unknown_linux_musl=mips-openwrt-linux-gcc \
     CC_mips64el_unknown_linux_muslabi64=mips64el-linux-gnuabi64-gcc \
