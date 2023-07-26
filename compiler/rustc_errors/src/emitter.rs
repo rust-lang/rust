@@ -2604,7 +2604,6 @@ fn emit_to_destination(
 }
 
 pub enum Destination {
-    Terminal(StandardStream),
     Raw(Box<(dyn WriteColor + Send)>),
 }
 
@@ -2649,7 +2648,7 @@ impl Destination {
         // On non-Windows we rely on the atomicity of `write` to ensure errors
         // don't get all jumbled up.
         if cfg!(windows) {
-            Terminal(StandardStream::stderr(choice))
+            Raw(Box::new(StandardStream::stderr(choice)))
         } else {
             let buffer_writer = BufferWriter::stderr(choice);
             let buffer = buffer_writer.buffer();
@@ -2659,14 +2658,12 @@ impl Destination {
 
     fn writable(&mut self) -> &mut dyn WriteColor {
         match *self {
-            Destination::Terminal(ref mut t) => t,
             Destination::Raw(ref mut t) => t,
         }
     }
 
     fn supports_color(&self) -> bool {
         match *self {
-            Self::Terminal(ref stream) => stream.supports_color(),
             Self::Raw(ref writer) => writer.supports_color(),
         }
     }
