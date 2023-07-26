@@ -528,7 +528,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 assert_eq!(dest_len, mask_len);
 
                 for i in 0..dest_len {
-                    let passthru = this.read_immediate(&this.project_index(&passthru, i)?.into())?;
+                    let passthru =
+                        this.read_immediate(&this.project_index(&passthru, i)?.into())?;
                     let ptr = this.read_immediate(&this.project_index(&ptrs, i)?.into())?;
                     let mask = this.read_immediate(&this.project_index(&mask, i)?.into())?;
                     let dest = this.project_index(&dest, i)?;
