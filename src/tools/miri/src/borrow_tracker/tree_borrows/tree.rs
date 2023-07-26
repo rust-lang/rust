@@ -456,9 +456,9 @@ impl<'tcx> Tree {
                         if protected
                             // Can't trigger Protector on uninitialized locations
                             && old_state.initialized
-                            && !transition.is_allowed_by_protector()
+                            && transition.produces_disabled()
                         {
-                            return Err(TransitionError::ProtectedTransition(transition));
+                            return Err(TransitionError::ProtectedDisabled(old_perm));
                         }
                         // Record the event as part of the history
                         if !transition.is_noop() {
