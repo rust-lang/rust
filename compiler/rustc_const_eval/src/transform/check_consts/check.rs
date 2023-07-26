@@ -798,16 +798,6 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                         }
                         Ok(Some(ImplSource::UserDefined(data))) => {
                             let callee_name = tcx.item_name(callee);
-                            if let Some(&did) = tcx
-                                .associated_item_def_ids(data.impl_def_id)
-                                .iter()
-                                .find(|did| tcx.item_name(**did) == callee_name)
-                            {
-                                // using internal args is ok here, since this is only
-                                // used for the `resolve` call below
-                                fn_args = GenericArgs::identity_for_item(tcx, did);
-                                callee = did;
-                            }
 
                             if let hir::Constness::NotConst = tcx.constness(data.impl_def_id) {
                                 self.check_op(ops::FnCallNonConst {
@@ -819,6 +809,17 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                                     feature: None,
                                 });
                                 return;
+                            }
+
+                            if let Some(&did) = tcx
+                                .associated_item_def_ids(data.impl_def_id)
+                                .iter()
+                                .find(|did| tcx.item_name(**did) == callee_name)
+                            {
+                                // using internal args is ok here, since this is only
+                                // used for the `resolve` call below
+                                fn_args = GenericArgs::identity_for_item(tcx, did);
+                                callee = did;
                             }
                         }
                         _ if !tcx.is_const_fn_raw(callee) => {
