@@ -36,8 +36,8 @@ use std::io::prelude::*;
 use std::io::{self, IsTerminal};
 use std::iter;
 use std::path::Path;
-use termcolor::{Ansi, BufferWriter, ColorChoice, ColorSpec, StandardStream};
-use termcolor::{Buffer, Color, WriteColor};
+use termcolor::{Ansi, Buffer, BufferWriter, ColorChoice, ColorSpec, StandardStream};
+use termcolor::{Color, WriteColor};
 
 /// Default column width, used in tests and when terminal dimensions cannot be determined.
 const DEFAULT_COLUMN_WIDTH: usize = 140;
@@ -2604,13 +2604,42 @@ fn emit_to_destination(
 
 pub enum Destination {
     Terminal(StandardStream),
-    Buffered(BufferWriter),
     Raw(Box<(dyn WriteColor + Send)>),
 }
 
 pub enum WritableDst<'a> {
-    Buffered(&'a mut BufferWriter, Buffer),
     Raw(&'a mut (dyn WriteColor + Send)),
+}
+
+struct Buffy {
+    buffer_writer: BufferWriter,
+    buffer: Buffer,
+}
+
+impl Write for Buffy {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        self.buffer.write(buf)
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        self.buffer_writer.print(&self.buffer)?;
+        self.buffer.clear();
+        Ok(())
+    }
+}
+
+impl WriteColor for Buffy {
+    fn supports_color(&self) -> bool {
+        self.buffer.supports_color()
+    }
+
+    fn set_color(&mut self, spec: &ColorSpec) -> io::Result<()> {
+        self.buffer.set_color(spec)
+    }
+
+    fn reset(&mut self) -> io::Result<()> {
+        self.buffer.reset()
+    }
 }
 
 impl Destination {
@@ -2625,17 +2654,15 @@ impl Destination {
         if cfg!(windows) {
             Terminal(StandardStream::stderr(choice))
         } else {
-            Buffered(BufferWriter::stderr(choice))
+            let buffer_writer = BufferWriter::stderr(choice);
+            let buffer = buffer_writer.buffer();
+            Raw(Box::new(Buffy { buffer_writer, buffer }))
         }
     }
 
     fn writable(&mut self) -> WritableDst<'_> {
         match *self {
             Destination::Terminal(ref mut t) => WritableDst::Raw(t),
-            Destination::Buffered(ref mut t) => {
-                let buf = t.buffer();
-                WritableDst::Buffered(t, buf)
-            }
             Destination::Raw(ref mut t) => WritableDst::Raw(t),
         }
     }
@@ -2643,7 +2670,6 @@ impl Destination {
     fn supports_color(&self) -> bool {
         match *self {
             Self::Terminal(ref stream) => stream.supports_color(),
-            Self::Buffered(ref buffer) => buffer.buffer().supports_color(),
             Self::Raw(ref writer) => writer.supports_color(),
         }
     }
@@ -2702,14 +2728,12 @@ impl<'a> WritableDst<'a> {
 
     fn set_color(&mut self, color: &ColorSpec) -> io::Result<()> {
         match *self {
-            WritableDst::Buffered(_, ref mut t) => t.set_color(color),
             WritableDst::Raw(ref mut t) => t.set_color(color),
         }
     }
 
     fn reset(&mut self) -> io::Result<()> {
         match *self {
-            WritableDst::Buffered(_, ref mut t) => t.reset(),
             WritableDst::Raw(ref mut t) => t.reset(),
         }
     }
@@ -2718,14 +2742,12 @@ impl<'a> WritableDst<'a> {
 impl<'a> Write for WritableDst<'a> {
     fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
         match *self {
-            WritableDst::Buffered(_, ref mut buf) => buf.write(bytes),
             WritableDst::Raw(ref mut w) => w.write(bytes),
         }
     }
 
     fn flush(&mut self) -> io::Result<()> {
         match *self {
-            WritableDst::Buffered(_, ref mut buf) => buf.flush(),
             WritableDst::Raw(ref mut w) => w.flush(),
         }
     }
@@ -2733,9 +2755,7 @@ impl<'a> Write for WritableDst<'a> {
 
 impl<'a> Drop for WritableDst<'a> {
     fn drop(&mut self) {
-        if let WritableDst::Buffered(ref mut dst, ref mut buf) = self {
-            drop(dst.print(buf));
-        }
+        self.flush().unwrap()
     }
 }
 
