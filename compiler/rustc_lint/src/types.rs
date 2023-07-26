@@ -985,39 +985,43 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     ) -> FfiResult<'tcx> {
         use FfiResult::*;
 
-        let transparent_safety = def.repr().transparent().then(|| {
-            // Can assume that at most one field is not a ZST, so only check
-            // that field's type for FFI-safety.
+        let transparent_with_all_zst_fields = if def.repr().transparent() {
             if let Some(field) = transparent_newtype_field(self.cx.tcx, variant) {
-                return self.check_field_type_for_ffi(cache, field, args);
+                // Transparent newtypes have at most one non-ZST field which needs to be checked..
+                match self.check_field_type_for_ffi(cache, field, args) {
+                    FfiUnsafe { ty, .. } if ty.is_unit() => (),
+                    r => return r,
+                }
+
+                false
             } else {
-                // All fields are ZSTs; this means that the type should behave
-                // like (), which is FFI-unsafe... except if all fields are PhantomData,
-                // which is tested for below
-                FfiUnsafe { ty, reason: fluent::lint_improper_ctypes_struct_zst, help: None }
+                // ..or have only ZST fields, which is FFI-unsafe (unless those fields are all
+                // `PhantomData`).
+                true
             }
-        });
-        // We can't completely trust repr(C) markings; make sure the fields are
-        // actually safe.
+        } else {
+            false
+        };
+
+        // We can't completely trust `repr(C)` markings, so make sure the fields are actually safe.
         let mut all_phantom = !variant.fields.is_empty();
         for field in &variant.fields {
-            match self.check_field_type_for_ffi(cache, &field, args) {
-                FfiSafe => {
-                    all_phantom = false;
-                }
-                FfiPhantom(..) if !def.repr().transparent() && def.is_enum() => {
-                    return FfiUnsafe {
-                        ty,
-                        reason: fluent::lint_improper_ctypes_enum_phantomdata,
-                        help: None,
-                    };
-                }
-                FfiPhantom(..) => {}
-                r => return transparent_safety.unwrap_or(r),
+            all_phantom &= match self.check_field_type_for_ffi(cache, &field, args) {
+                FfiSafe => false,
+                // `()` fields are FFI-safe!
+                FfiUnsafe { ty, .. } if ty.is_unit() => false,
+                FfiPhantom(..) => true,
+                r @ FfiUnsafe { .. } => return r,
             }
         }
 
-        if all_phantom { FfiPhantom(ty) } else { transparent_safety.unwrap_or(FfiSafe) }
+        if all_phantom {
+            FfiPhantom(ty)
+        } else if transparent_with_all_zst_fields {
+            FfiUnsafe { ty, reason: fluent::lint_improper_ctypes_struct_zst, help: None }
+        } else {
+            FfiSafe
+        }
     }
 
     /// Checks if the given type is "ffi-safe" (has a stable, well-defined
@@ -1220,25 +1224,19 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 }
 
                 let sig = tcx.erase_late_bound_regions(sig);
-                if !sig.output().is_unit() {
-                    let r = self.check_type_for_ffi(cache, sig.output());
-                    match r {
-                        FfiSafe => {}
-                        _ => {
-                            return r;
-                        }
-                    }
-                }
                 for arg in sig.inputs() {
-                    let r = self.check_type_for_ffi(cache, *arg);
-                    match r {
+                    match self.check_type_for_ffi(cache, *arg) {
                         FfiSafe => {}
-                        _ => {
-                            return r;
-                        }
+                        r => return r,
                     }
                 }
-                FfiSafe
+
+                let ret_ty = sig.output();
+                if ret_ty.is_unit() {
+                    return FfiSafe;
+                }
+
+                self.check_type_for_ffi(cache, ret_ty)
             }
 
             ty::Foreign(..) => FfiSafe,
@@ -1354,7 +1352,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         }
 
         // Don't report FFI errors for unit return types. This check exists here, and not in
-        // `check_foreign_fn` (where it would make more sense) so that normalization has definitely
+        // the caller (where it would make more sense) so that normalization has definitely
         // happened.
         if is_return_type && ty.is_unit() {
             return;
@@ -1370,9 +1368,6 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                     None,
                 );
             }
-            // If `ty` is a `repr(transparent)` newtype, and the non-zero-sized type is a generic
-            // argument, which after substitution, is `()`, then this branch can be hit.
-            FfiResult::FfiUnsafe { ty, .. } if is_return_type && ty.is_unit() => {}
             FfiResult::FfiUnsafe { ty, reason, help } => {
                 self.emit_ffi_unsafe_type_lint(ty, sp, reason, help);
             }
