@@ -7,8 +7,6 @@
 //!
 //! The output types are defined in `rustc_session::config::ErrorOutputType`.
 
-use Destination::*;
-
 use rustc_span::source_map::SourceMap;
 use rustc_span::{FileLines, SourceFile, Span};
 
@@ -675,7 +673,7 @@ impl EmitterWriter {
         dst: Box<dyn WriteColor + Send>,
         fallback_bundle: LazyFallbackBundle,
     ) -> EmitterWriter {
-        Self::create(Raw(dst), fallback_bundle)
+        Self::create(Destination(dst), fallback_bundle)
     }
 
     fn maybe_anonymized(&self, line_num: usize) -> Cow<'static, str> {
@@ -2603,9 +2601,7 @@ fn emit_to_destination(
     Ok(())
 }
 
-pub enum Destination {
-    Raw(Box<(dyn WriteColor + Send)>),
-}
+pub struct Destination(pub(crate) Box<(dyn WriteColor + Send)>);
 
 struct Buffy {
     buffer_writer: BufferWriter,
@@ -2648,24 +2644,20 @@ impl Destination {
         // On non-Windows we rely on the atomicity of `write` to ensure errors
         // don't get all jumbled up.
         if cfg!(windows) {
-            Raw(Box::new(StandardStream::stderr(choice)))
+            Destination(Box::new(StandardStream::stderr(choice)))
         } else {
             let buffer_writer = BufferWriter::stderr(choice);
             let buffer = buffer_writer.buffer();
-            Raw(Box::new(Buffy { buffer_writer, buffer }))
+            Destination(Box::new(Buffy { buffer_writer, buffer }))
         }
     }
 
     fn writable(&mut self) -> &mut dyn WriteColor {
-        match *self {
-            Destination::Raw(ref mut t) => t,
-        }
+        &mut self.0
     }
 
     fn supports_color(&self) -> bool {
-        match *self {
-            Self::Raw(ref writer) => writer.supports_color(),
-        }
+        self.0.supports_color()
     }
 }
 
