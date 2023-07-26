@@ -141,6 +141,7 @@ pub(crate) fn try_inline_glob(
     current_mod: LocalDefId,
     visited: &mut DefIdSet,
     inlined_names: &mut FxHashSet<(ItemType, Symbol)>,
+    import: &hir::Item<'_>,
 ) -> Option<Vec<clean::Item>> {
     let did = res.opt_def_id()?;
     if did.is_local() {
@@ -158,7 +159,15 @@ pub(crate) fn try_inline_glob(
                 .filter(|child| !child.reexport_chain.is_empty())
                 .filter_map(|child| child.res.opt_def_id())
                 .collect();
-            let mut items = build_module_items(cx, did, visited, inlined_names, Some(&reexports));
+            let attrs = cx.tcx.hir().attrs(import.hir_id());
+            let mut items = build_module_items(
+                cx,
+                did,
+                visited,
+                inlined_names,
+                Some(&reexports),
+                Some((attrs, Some(import.owner_id.def_id.to_def_id()))),
+            );
             items.retain(|item| {
                 if let Some(name) = item.name {
                     // If an item with the same type and name already exists,
@@ -549,7 +558,7 @@ pub(crate) fn build_impl(
 }
 
 fn build_module(cx: &mut DocContext<'_>, did: DefId, visited: &mut DefIdSet) -> clean::Module {
-    let items = build_module_items(cx, did, visited, &mut FxHashSet::default(), None);
+    let items = build_module_items(cx, did, visited, &mut FxHashSet::default(), None, None);
 
     let span = clean::Span::new(cx.tcx.def_span(did));
     clean::Module { items, span }
@@ -561,6 +570,7 @@ fn build_module_items(
     visited: &mut DefIdSet,
     inlined_names: &mut FxHashSet<(ItemType, Symbol)>,
     allowed_def_ids: Option<&DefIdSet>,
+    attrs: Option<(&[ast::Attribute], Option<DefId>)>,
 ) -> Vec<clean::Item> {
     let mut items = Vec::new();
 
@@ -615,7 +625,7 @@ fn build_module_items(
                     cfg: None,
                     inline_stmt_id: None,
                 });
-            } else if let Some(i) = try_inline(cx, res, item.ident.name, None, visited) {
+            } else if let Some(i) = try_inline(cx, res, item.ident.name, attrs, visited) {
                 items.extend(i)
             }
         }
