@@ -143,7 +143,7 @@ struct LoweringContext<'a, 'hir> {
     /// field from the original parameter 'a to the new parameter 'a1.
     generics_def_id_map: Vec<FxHashMap<LocalDefId, LocalDefId>>,
 
-    host_param_id: Option<hir::HirId>,
+    host_param_id: Option<LocalDefId>,
 }
 
 trait ResolverAstLoweringExt {
@@ -2723,25 +2723,28 @@ struct GenericArgsCtor<'hir> {
 impl<'hir> GenericArgsCtor<'hir> {
     fn push_constness(&mut self, lcx: &mut LoweringContext<'_, 'hir>, constness: ast::Const) {
         let span = if let ast::Const::Yes(sp) = constness { sp } else { DUMMY_SP };
+        let span = lcx.lower_span(span);
         let id = lcx.next_node_id();
         let hir_id = lcx.next_id();
+        let expr_kind = match constness {
+            ast::Const::Yes(_) => {
+                let hir_id = lcx.next_id();
+                let res = Res::Def(DefKind::ConstParam, lcx.host_param_id.unwrap().to_def_id());
+                hir::ExprKind::Path(hir::QPath::Resolved(
+                    None,
+                    lcx.arena.alloc(hir::Path {
+                        span,
+                        res,
+                        segments: arena_vec![lcx; hir::PathSegment::new(Ident { name: sym::host, span }, hir_id, res)],
+                    }),
+                ))
+            }
+            ast::Const::No => hir::ExprKind::Lit(
+                lcx.arena.alloc(hir::Lit { span, node: ast::LitKind::Bool(true) }),
+            ),
+        };
         let body = lcx.lower_body(|lcx| {
-            (
-                &[],
-                match constness {
-                    ast::Const::Yes(_) => lcx.expr_ident_mut(
-                        span,
-                        Ident { name: sym::host, span },
-                        lcx.host_param_id.unwrap(),
-                    ),
-                    ast::Const::No => lcx.expr(
-                        span,
-                        hir::ExprKind::Lit(
-                            lcx.arena.alloc(hir::Lit { span, node: ast::LitKind::Bool(true) }),
-                        ),
-                    ),
-                },
-            )
+            (&[], lcx.expr(span, expr_kind))
         });
         let def_id =
             lcx.create_def(lcx.current_hir_id_owner.def_id, id, DefPathData::AnonConst, span);

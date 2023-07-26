@@ -1983,8 +1983,12 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Whether the trait impl is marked const. This does not consider stability or feature gates.
     pub fn is_const_trait_impl_raw(self, def_id: LocalDefId) -> bool {
-        let Some(generics) = self.hir().get_generics(def_id) else { return false };
-        generics.params.iter().any(|param| self.has_attr(param.def_id, sym::rustc_host))
+        match self.hir().get_by_def_id(def_id) {
+            hir::Node::Item(hir::Item { kind: hir::ItemKind::Impl(hir::Impl { generics, .. }), .. }) => {
+                generics.params.iter().any(|param| self.has_attr(param.def_id, sym::rustc_host))
+            }
+            _ => false
+        }
     }
 
     pub fn local_def_id_to_hir_id(self, local_def_id: LocalDefId) -> HirId {

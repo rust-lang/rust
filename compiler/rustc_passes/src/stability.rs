@@ -552,8 +552,8 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
             return;
         }
 
-        let is_const = self.tcx.is_const_fn(def_id.to_def_id())
-            || self.tcx.is_const_trait_impl_raw(def_id);
+        let is_const =
+            self.tcx.is_const_fn(def_id.to_def_id()) || self.tcx.is_const_trait_impl_raw(def_id);
         let is_stable =
             self.tcx.lookup_stability(def_id).is_some_and(|stability| stability.level.is_stable());
         let missing_const_stability_attribute = self.tcx.lookup_const_stability(def_id).is_none();
@@ -732,12 +732,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
             // For implementations of traits, check the stability of each item
             // individually as it's possible to have a stable trait with unstable
             // items.
-            hir::ItemKind::Impl(hir::Impl {
-                of_trait: Some(ref t),
-                self_ty,
-                items,
-                ..
-            }) => {
+            hir::ItemKind::Impl(hir::Impl { of_trait: Some(ref t), self_ty, items, .. }) => {
                 let features = self.tcx.features();
                 if features.staged_api {
                     let attrs = self.tcx.hir().attrs(item.hir_id());

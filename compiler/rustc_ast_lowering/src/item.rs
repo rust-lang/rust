@@ -1375,6 +1375,25 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let has_where_clause_predicates = !generics.where_clause.predicates.is_empty();
         let where_clause_span = self.lower_span(generics.where_clause.span);
         let span = self.lower_span(generics.span);
+
+        let host_param_parts = if let Const::Yes(span) = constness && self.tcx.features().effects
+            // Do not add host param if it already has it (manually specified)
+            && !params.iter().any(|x| {
+                self.attrs.get(&x.hir_id.local_id).map_or(false, |attrs| {
+                    attrs.iter().any(|x| x.has_name(sym::rustc_host))
+                })
+            })
+        {
+            let param_node_id = self.next_node_id();
+            let def_id = self.create_def(self.local_def_id(parent_node_id), param_node_id, DefPathData::TypeNs(sym::host), span);
+
+            // FIXME(effects) get this id also for manually specified host param
+            self.host_param_id = Some(def_id);
+            Some((span, def_id))
+        } else {
+            None
+        };
+
         let res = f(self);
 
         let impl_trait_defs = std::mem::take(&mut self.impl_trait_defs);
@@ -1385,18 +1404,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         // Desugar `~const` bound in generics into an additional `const host: bool` param
         // if the effects feature is enabled.
-        if let Const::Yes(span) = constness && self.tcx.features().effects
-            // Do not add host param if it already has it (manually specified)
-            && !params.iter().any(|x| {
-                self.attrs.get(&x.hir_id.local_id).map_or(false, |attrs| {
-                    attrs.iter().any(|x| x.has_name(sym::rustc_host))
-                })
-            })
-        {
-            let param_node_id = self.next_node_id();
+
+        if let Some((span, def_id)) = host_param_parts {
             let const_node_id = self.next_node_id();
-            let def_id = self.create_def(self.local_def_id(parent_node_id), param_node_id, DefPathData::TypeNs(sym::host), span);
-            let anon_const: LocalDefId = self.create_def(def_id, const_node_id, DefPathData::AnonConst, span);
+            let anon_const: LocalDefId =
+                self.create_def(def_id, const_node_id, DefPathData::AnonConst, span);
 
             let hir_id = self.next_id();
             let const_id = self.next_id();
@@ -1408,14 +1420,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
             let attr_id = self.tcx.sess.parse_sess.attr_id_generator.mk_attr_id();
 
-            let attrs = self.arena.alloc_from_iter([
-                Attribute {
-                    kind: AttrKind::Normal(P(NormalAttr::from_ident(Ident::new(sym::rustc_host, span)))),
+            let attrs = self.arena.alloc_from_iter([Attribute {
+                kind: AttrKind::Normal(P(NormalAttr::from_ident(Ident::new(
+                    sym::rustc_host,
                     span,
-                    id: attr_id,
-                    style: AttrStyle::Outer,
-                },
-            ]);
+                )))),
+                span,
+                id: attr_id,
+                style: AttrStyle::Outer,
+            }]);
             self.attrs.insert(hir_id.local_id, attrs);
 
             let const_body = self.lower_body(|this| {
@@ -1454,7 +1467,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             }),
                         )),
                     )),
-                    default: Some(hir::AnonConst { def_id: anon_const, hir_id: const_id, body: const_body }),
+                    default: Some(hir::AnonConst {
+                        def_id: anon_const,
+                        hir_id: const_id,
+                        body: const_body,
+                    }),
                 },
                 colon_span: None,
                 pure_wrt_drop: false,
