@@ -5,7 +5,7 @@ use crate::const_eval::CanAccessStatics;
 use crate::interpret::MPlaceTy;
 use crate::interpret::{
     intern_const_alloc_recursive, ConstValue, ImmTy, Immediate, InternKind, MemPlaceMeta,
-    MemoryKind, PlaceTy, Projectable, Scalar,
+    MemoryKind, Place, Projectable, Scalar,
 };
 use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt};
 use rustc_span::source_map::DUMMY_SP;
@@ -280,7 +280,7 @@ pub fn valtree_to_const_value<'tcx>(
             ),
         },
         ty::Ref(_, _, _) | ty::Tuple(_) | ty::Array(_, _) | ty::Adt(..) => {
-            let mut place = match ty.kind() {
+            let place = match ty.kind() {
                 ty::Ref(_, inner_ty, _) => {
                     // Need to create a place for the pointee to fill for Refs
                     create_pointee_place(&mut ecx, *inner_ty, valtree)
@@ -289,8 +289,8 @@ pub fn valtree_to_const_value<'tcx>(
             };
             debug!(?place);
 
-            valtree_into_mplace(&mut ecx, &mut place, valtree);
-            dump_place(&ecx, place.clone().into());
+            valtree_into_mplace(&mut ecx, &place, valtree);
+            dump_place(&ecx, &place);
             intern_const_alloc_recursive(&mut ecx, InternKind::Constant, &place).unwrap();
 
             match ty.kind() {
@@ -329,7 +329,7 @@ pub fn valtree_to_const_value<'tcx>(
 #[instrument(skip(ecx), level = "debug")]
 fn valtree_into_mplace<'tcx>(
     ecx: &mut CompileTimeEvalContext<'tcx, 'tcx>,
-    place: &mut MPlaceTy<'tcx>,
+    place: &MPlaceTy<'tcx>,
     valtree: ty::ValTree<'tcx>,
 ) {
     // This will match on valtree and write the value(s) corresponding to the ValTree
@@ -348,11 +348,11 @@ fn valtree_into_mplace<'tcx>(
             ecx.write_immediate(Immediate::Scalar(scalar_int.into()), place).unwrap();
         }
         ty::Ref(_, inner_ty, _) => {
-            let mut pointee_place = create_pointee_place(ecx, *inner_ty, valtree);
+            let pointee_place = create_pointee_place(ecx, *inner_ty, valtree);
             debug!(?pointee_place);
 
-            valtree_into_mplace(ecx, &mut pointee_place, valtree);
-            dump_place(ecx, pointee_place.clone().into());
+            valtree_into_mplace(ecx, &pointee_place, valtree);
+            dump_place(ecx, &pointee_place);
             intern_const_alloc_recursive(ecx, InternKind::Constant, &pointee_place).unwrap();
 
             let imm = match inner_ty.kind() {
@@ -398,7 +398,7 @@ fn valtree_into_mplace<'tcx>(
             for (i, inner_valtree) in branches.iter().enumerate() {
                 debug!(?i, ?inner_valtree);
 
-                let mut place_inner = match ty.kind() {
+                let place_inner = match ty.kind() {
                     ty::Str | ty::Slice(_) => ecx.project_index(place, i as u64).unwrap(),
                     _ if !ty.is_sized(*ecx.tcx, ty::ParamEnv::empty())
                         && i == branches.len() - 1 =>
@@ -443,12 +443,12 @@ fn valtree_into_mplace<'tcx>(
                 };
 
                 debug!(?place_inner);
-                valtree_into_mplace(ecx, &mut place_inner, *inner_valtree);
-                dump_place(&ecx, place_inner.into());
+                valtree_into_mplace(ecx, &place_inner, *inner_valtree);
+                dump_place(&ecx, &place_inner);
             }
 
             debug!("dump of place_adjusted:");
-            dump_place(ecx, place_adjusted.into());
+            dump_place(ecx, &place_adjusted);
 
             if let Some(variant_idx) = variant_idx {
                 // don't forget filling the place with the discriminant of the enum
@@ -456,12 +456,12 @@ fn valtree_into_mplace<'tcx>(
             }
 
             debug!("dump of place after writing discriminant:");
-            dump_place(ecx, place.clone().into());
+            dump_place(ecx, place);
         }
         _ => bug!("shouldn't have created a ValTree for {:?}", ty),
     }
 }
 
-fn dump_place<'tcx>(ecx: &CompileTimeEvalContext<'tcx, 'tcx>, place: PlaceTy<'tcx>) {
-    trace!("{:?}", ecx.dump_place(*place));
+fn dump_place<'tcx>(ecx: &CompileTimeEvalContext<'tcx, 'tcx>, place: &MPlaceTy<'tcx>) {
+    trace!("{:?}", ecx.dump_place(Place::Ptr(**place)));
 }
