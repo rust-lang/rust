@@ -2590,7 +2590,8 @@ fn emit_to_destination(
     let _buffer_lock = lock::acquire_global_lock("rustc_errors");
     for (pos, line) in rendered_buffer.iter().enumerate() {
         for part in line {
-            dst.apply_style(*lvl, part.style)?;
+            let style = part.style.color_spec(*lvl);
+            dst.set_color(&style)?;
             write!(dst, "{}", part.text)?;
             dst.reset()?;
         }
@@ -2675,10 +2676,10 @@ impl Destination {
     }
 }
 
-impl<'a> WritableDst<'a> {
-    fn apply_style(&mut self, lvl: Level, style: Style) -> io::Result<()> {
+impl Style {
+    fn color_spec(&self, lvl: Level) -> ColorSpec {
         let mut spec = ColorSpec::new();
-        match style {
+        match self {
             Style::Addition => {
                 spec.set_fg(Some(Color::Green)).set_intense(true);
             }
@@ -2723,9 +2724,11 @@ impl<'a> WritableDst<'a> {
                 spec.set_bold(true);
             }
         }
-        self.set_color(&spec)
+        spec
     }
+}
 
+impl<'a> WritableDst<'a> {
     fn set_color(&mut self, color: &ColorSpec) -> io::Result<()> {
         match *self {
             WritableDst::Raw(ref mut t) => t.set_color(color),
