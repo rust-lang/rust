@@ -559,6 +559,8 @@ fn configure_cmake(
 
         if target.contains("netbsd") {
             cfg.define("CMAKE_SYSTEM_NAME", "NetBSD");
+        } else if target.contains("dragonfly") {
+            cfg.define("CMAKE_SYSTEM_NAME", "DragonFly");
         } else if target.contains("freebsd") {
             cfg.define("CMAKE_SYSTEM_NAME", "FreeBSD");
         } else if target.contains("windows") {
@@ -569,7 +571,12 @@ fn configure_cmake(
             cfg.define("CMAKE_SYSTEM_NAME", "SunOS");
         } else if target.contains("linux") {
             cfg.define("CMAKE_SYSTEM_NAME", "Linux");
+        } else {
+            builder.info(
+                "could not determine CMAKE_SYSTEM_NAME from the target `{target}`, build may fail",
+            );
         }
+
         // When cross-compiling we should also set CMAKE_SYSTEM_VERSION, but in
         // that case like CMake we cannot easily determine system version either.
         //
