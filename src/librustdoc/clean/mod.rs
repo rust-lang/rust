@@ -835,7 +835,6 @@ fn clean_ty_generics<'tcx>(
                         .into_iter()
                         .flatten()
                         .cloned()
-                        .filter(|b| !b.is_sized_bound(cx)),
                 );
 
                 if let Some(proj) = projection
@@ -862,8 +861,27 @@ fn clean_ty_generics<'tcx>(
         .collect::<Vec<_>>();
 
     for (param, mut bounds) in impl_trait {
+        let mut has_sized = false;
+        bounds.retain(|b| {
+            if b.is_sized_bound(cx) {
+                has_sized = true;
+                false
+            } else {
+                true
+            }
+        });
+        if !has_sized {
+            bounds.push(GenericBound::maybe_sized(cx));
+        }
+
         // Move trait bounds to the front.
-        bounds.sort_by_key(|b| !matches!(b, GenericBound::TraitBound(..)));
+        bounds.sort_by_key(|b| !b.is_trait_bound());
+
+        // Add back a `Sized` bound if there are no *trait* bounds remaining (incl. `?Sized`).
+        // Since all potential trait bounds are at the front we can just check the first bound.
+        if bounds.first().map_or(true, |b| !b.is_trait_bound()) {
+            bounds.insert(0, GenericBound::sized(cx));
+        }
 
         let crate::core::ImplTraitParam::ParamIndex(idx) = param else { unreachable!() };
         if let Some(proj) = impl_trait_proj.remove(&idx) {
@@ -2107,7 +2125,6 @@ fn clean_middle_opaque_bounds<'tcx>(
     cx: &mut DocContext<'tcx>,
     bounds: Vec<ty::Clause<'tcx>>,
 ) -> Type {
-    let mut regions = vec![];
     let mut has_sized = false;
     let mut bounds = bounds
         .iter()
@@ -2116,10 +2133,7 @@ fn clean_middle_opaque_bounds<'tcx>(
             let trait_ref = match bound_predicate.skip_binder() {
                 ty::ClauseKind::Trait(tr) => bound_predicate.rebind(tr.trait_ref),
                 ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(_ty, reg)) => {
-                    if let Some(r) = clean_middle_region(reg) {
-                        regions.push(GenericBound::Outlives(r));
-                    }
-                    return None;
+                    return clean_middle_region(reg).map(GenericBound::Outlives);
                 }
                 _ => return None,
             };
@@ -2155,10 +2169,20 @@ fn clean_middle_opaque_bounds<'tcx>(
             Some(clean_poly_trait_ref_with_bindings(cx, trait_ref, bindings))
         })
         .collect::<Vec<_>>();
-    bounds.extend(regions);
-    if !has_sized && !bounds.is_empty() {
-        bounds.insert(0, GenericBound::maybe_sized(cx));
+
+    if !has_sized {
+        bounds.push(GenericBound::maybe_sized(cx));
     }
+
+    // Move trait bounds to the front.
+    bounds.sort_by_key(|b| !b.is_trait_bound());
+
+    // Add back a `Sized` bound if there are no *trait* bounds remaining (incl. `?Sized`).
+    // Since all potential trait bounds are at the front we can just check the first bound.
+    if bounds.first().map_or(true, |b| !b.is_trait_bound()) {
+        bounds.insert(0, GenericBound::sized(cx));
+    }
+
     ImplTrait(bounds)
 }
 
