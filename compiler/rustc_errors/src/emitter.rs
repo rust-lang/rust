@@ -2617,6 +2617,15 @@ impl Write for Buffy {
     }
 }
 
+impl Drop for Buffy {
+    fn drop(&mut self) {
+        if !self.buffer.is_empty() {
+            self.flush().unwrap();
+            panic!("buffers need to be flushed in order to print their contents");
+        }
+    }
+}
+
 impl WriteColor for Buffy {
     fn supports_color(&self) -> bool {
         self.buffer.supports_color()
