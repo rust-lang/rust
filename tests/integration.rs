@@ -65,6 +65,10 @@ fn integration_test() {
         .expect("unable to run clippy");
 
     let stderr = String::from_utf8_lossy(&output.stderr);
+
+    // debug:
+    eprintln!("{stderr}");
+
     if let Some(backtrace_start) = stderr.find("error: internal compiler error") {
         static BACKTRACE_END_MSG: &str = "end of query stack";
         let backtrace_end = stderr[backtrace_start..]
