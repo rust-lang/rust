@@ -31,7 +31,6 @@ LL | pub struct Filter<S, F> {
 LL |     let count = filter.countx();
    |                        ^^^^^^ method cannot be called due to unsatisfied trait bounds
    |
-   = note: the full type name has been written to '$TEST_BUILD_DIR/higher-ranked/trait-bounds/issue-30786/issue-30786.long-type-hash.txt'
 note: the following trait bounds were not satisfied:
       `&'a mut &Filter<Map<Repeat, for<'a> fn(&'a u64) -> &'a u64 {identity::<u64>}>, [closure@$DIR/issue-30786.rs:131:30: 131:37]>: Stream`
       `&'a mut &mut Filter<Map<Repeat, for<'a> fn(&'a u64) -> &'a u64 {identity::<u64>}>, [closure@$DIR/issue-30786.rs:131:30: 131:37]>: Stream`

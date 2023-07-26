@@ -2330,6 +2330,7 @@ impl<'test> TestCx<'test> {
                 // Hide line numbers to reduce churn
                 rustc.arg("-Zui-testing");
                 rustc.arg("-Zdeduplicate-diagnostics=no");
+                rustc.arg("-Zwrite-long-types-to-disk=no");
                 // FIXME: use this for other modes too, for perf?
                 rustc.arg("-Cstrip=debuginfo");
             }
