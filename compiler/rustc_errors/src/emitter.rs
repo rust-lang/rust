@@ -2609,7 +2609,6 @@ pub enum Destination {
 }
 
 pub enum WritableDst<'a> {
-    Terminal(&'a mut StandardStream),
     Buffered(&'a mut BufferWriter, Buffer),
     Raw(&'a mut (dyn WriteColor + Send)),
 }
@@ -2632,7 +2631,7 @@ impl Destination {
 
     fn writable(&mut self) -> WritableDst<'_> {
         match *self {
-            Destination::Terminal(ref mut t) => WritableDst::Terminal(t),
+            Destination::Terminal(ref mut t) => WritableDst::Raw(t),
             Destination::Buffered(ref mut t) => {
                 let buf = t.buffer();
                 WritableDst::Buffered(t, buf)
@@ -2703,7 +2702,6 @@ impl<'a> WritableDst<'a> {
 
     fn set_color(&mut self, color: &ColorSpec) -> io::Result<()> {
         match *self {
-            WritableDst::Terminal(ref mut t) => t.set_color(color),
             WritableDst::Buffered(_, ref mut t) => t.set_color(color),
             WritableDst::Raw(ref mut t) => t.set_color(color),
         }
@@ -2711,7 +2709,6 @@ impl<'a> WritableDst<'a> {
 
     fn reset(&mut self) -> io::Result<()> {
         match *self {
-            WritableDst::Terminal(ref mut t) => t.reset(),
             WritableDst::Buffered(_, ref mut t) => t.reset(),
             WritableDst::Raw(ref mut t) => t.reset(),
         }
@@ -2721,7 +2718,6 @@ impl<'a> WritableDst<'a> {
 impl<'a> Write for WritableDst<'a> {
     fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
         match *self {
-            WritableDst::Terminal(ref mut t) => t.write(bytes),
             WritableDst::Buffered(_, ref mut buf) => buf.write(bytes),
             WritableDst::Raw(ref mut w) => w.write(bytes),
         }
@@ -2729,7 +2725,6 @@ impl<'a> Write for WritableDst<'a> {
 
     fn flush(&mut self) -> io::Result<()> {
         match *self {
-            WritableDst::Terminal(ref mut t) => t.flush(),
             WritableDst::Buffered(_, ref mut buf) => buf.flush(),
             WritableDst::Raw(ref mut w) => w.flush(),
         }
