@@ -1,3 +1,16 @@
+//! Implements the `AliasRelate` goal, which is used when unifying aliases.
+//! Doing this via a separate goal is called "deferred alias relation" and part
+//! of our more general approach to "lazy normalization".
+//!
+//! This goal, e.g. `A alias-relate B`, may be satisfied by one of three branches:
+//! * normalizes-to: If `A` is a projection, we can prove the equivalent
+//!   projection predicate with B as the right-hand side of the projection.
+//!   This goal is computed in both directions, if both are aliases.
+//! * subst-relate: Equate `A` and `B` by their substs, if they're both
+//!   aliases with the same def-id.
+//! * bidirectional-normalizes-to: If `A` and `B` are both projections, and both
+//!   may apply, then we can compute the "intersection" of both normalizes-to by
+//!   performing them together. This is used specifically to resolve ambiguities.
 use super::{EvalCtxt, SolverMode};
 use rustc_infer::traits::query::NoSolution;
 use rustc_middle::traits::solve::{Certainty, Goal, QueryResult};
@@ -118,6 +131,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         })
     }
 
+    // Computes the normalizes-to branch, with side-effects. This must be performed
+    // in a probe in order to not taint the evaluation context.
     fn normalizes_to_inner(
         &mut self,
         param_env: ty::ParamEnv<'tcx>,
@@ -127,9 +142,13 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         invert: Invert,
     ) -> Result<(), NoSolution> {
         let other = match direction {
-            // This is purely an optimization.
+            // This is purely an optimization. No need to instantiate a new
+            // infer var and equate the RHS to it.
             ty::AliasRelationDirection::Equate => other,
 
+            // Instantiate an infer var and subtype our RHS to it, so that we
+            // properly represent a subtype relation between the LHS and RHS
+            // of the goal.
             ty::AliasRelationDirection::Subtype => {
                 let fresh = self.next_term_infer_of_kind(other);
                 let (sub, sup) = match invert {

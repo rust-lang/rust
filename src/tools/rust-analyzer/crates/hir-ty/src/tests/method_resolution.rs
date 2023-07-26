@@ -1237,6 +1237,27 @@ fn main() {
 }
 
 #[test]
+fn inherent_method_ref_self_deref_raw() {
+    check_types(
+        r#"
+struct Val;
+
+impl Val {
+    pub fn method(&self) -> u32 {
+        0
+    }
+}
+
+fn main() {
+    let foo: *const Val;
+    foo.method();
+ // ^^^^^^^^^^^^ {unknown}
+}
+"#,
+    );
+}
+
+#[test]
 fn trait_method_deref_raw() {
     check_types(
         r#"

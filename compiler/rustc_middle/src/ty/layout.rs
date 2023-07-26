@@ -741,9 +741,9 @@ where
 
                 let fields = match this.ty.kind() {
                     ty::Adt(def, _) if def.variants().is_empty() =>
-                        bug!("for_variant called on zero-variant enum"),
+                        bug!("for_variant called on zero-variant enum {}", this.ty),
                     ty::Adt(def, _) => def.variant(variant_index).fields.len(),
-                    _ => bug!(),
+                    _ => bug!("`ty_and_layout_for_variant` on unexpected type {}", this.ty),
                 };
                 tcx.mk_layout(LayoutS {
                     variants: Variants::Single { index: variant_index },

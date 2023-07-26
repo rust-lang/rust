@@ -8,7 +8,7 @@ use rustc_middle::mir;
 use rustc_middle::mir::interpret::{InterpResult, Scalar};
 use rustc_middle::ty::layout::LayoutOf;
 
-use super::{ImmTy, InterpCx, Machine};
+use super::{ImmTy, InterpCx, Machine, Projectable};
 use crate::util;
 
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
@@ -197,7 +197,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     self.get_place_alloc_mut(&dest)?;
                 } else {
                     // Write the src to the first element.
-                    let first = self.mplace_field(&dest, 0)?;
+                    let first = self.project_index(&dest, 0)?;
                     self.copy_op(&src, &first.into(), /*allow_transmute*/ false)?;
 
                     // This is performance-sensitive code for big static/const arrays! So we
@@ -302,8 +302,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             Discriminant(place) => {
                 let op = self.eval_place_to_op(place, None)?;
-                let discr_val = self.read_discriminant(&op)?.0;
-                self.write_scalar(discr_val, &dest)?;
+                let variant = self.read_discriminant(&op)?;
+                let discr = self.discriminant_for_variant(op.layout, variant)?;
+                self.write_scalar(discr, &dest)?;
             }
         }
 

@@ -177,6 +177,7 @@ impl FromStr for TokenStream {
 
 // N.B., the bridge only provides `to_string`, implement `fmt::Display`
 // based on it (the reverse of the usual relationship between the two).
+#[doc(hidden)]
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl ToString for TokenStream {
     fn to_string(&self) -> String {
@@ -738,6 +739,7 @@ impl From<Literal> for TokenTree {
 
 // N.B., the bridge only provides `to_string`, implement `fmt::Display`
 // based on it (the reverse of the usual relationship between the two).
+#[doc(hidden)]
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl ToString for TokenTree {
     fn to_string(&self) -> String {
@@ -872,6 +874,7 @@ impl Group {
 
 // N.B., the bridge only provides `to_string`, implement `fmt::Display`
 // based on it (the reverse of the usual relationship between the two).
+#[doc(hidden)]
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl ToString for Group {
     fn to_string(&self) -> String {
@@ -981,6 +984,7 @@ impl Punct {
     }
 }
 
+#[doc(hidden)]
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl ToString for Punct {
     fn to_string(&self) -> String {
@@ -1083,8 +1087,7 @@ impl Ident {
     }
 }
 
-/// Converts the identifier to a string that should be losslessly convertible
-/// back into the same identifier.
+#[doc(hidden)]
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl ToString for Ident {
     fn to_string(&self) -> String {
@@ -1423,6 +1426,7 @@ impl FromStr for Literal {
     }
 }
 
+#[doc(hidden)]
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl ToString for Literal {
     fn to_string(&self) -> String {

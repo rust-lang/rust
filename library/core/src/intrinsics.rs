@@ -2524,12 +2524,14 @@ pub(crate) use assert_unsafe_precondition;
 
 /// Checks whether `ptr` is properly aligned with respect to
 /// `align_of::<T>()`.
+#[inline]
 pub(crate) fn is_aligned_and_not_null<T>(ptr: *const T) -> bool {
     !ptr.is_null() && ptr.is_aligned()
 }
 
 /// Checks whether an allocation of `len` instances of `T` exceeds
 /// the maximum allowed allocation size.
+#[inline]
 pub(crate) fn is_valid_allocation_size<T>(len: usize) -> bool {
     let max_len = const {
         let size = crate::mem::size_of::<T>();
@@ -2540,6 +2542,7 @@ pub(crate) fn is_valid_allocation_size<T>(len: usize) -> bool {
 
 /// Checks whether the regions of memory starting at `src` and `dst` of size
 /// `count * size_of::<T>()` do *not* overlap.
+#[inline]
 pub(crate) fn is_nonoverlapping<T>(src: *const T, dst: *const T, count: usize) -> bool {
     let src_usize = src.addr();
     let dst_usize = dst.addr();

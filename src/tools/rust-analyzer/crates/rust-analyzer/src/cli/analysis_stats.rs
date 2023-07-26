@@ -8,7 +8,7 @@ use std::{
 
 use hir::{
     db::{DefDatabase, ExpandDatabase, HirDatabase},
-    Adt, AssocItem, Crate, DefWithBody, HasCrate, HasSource, HirDisplay, ModuleDef, Name,
+    Adt, AssocItem, Crate, DefWithBody, HasSource, HirDisplay, ModuleDef, Name,
 };
 use hir_def::{
     body::{BodySourceMap, SyntheticSyntax},
@@ -277,7 +277,7 @@ impl flags::AnalysisStats {
             let Err(e) = db.layout_of_adt(
                 hir_def::AdtId::from(a).into(),
                 Substitution::empty(Interner),
-                a.krate(db).into(),
+                db.trait_environment(a.into()),
             ) else {
                 continue;
             };

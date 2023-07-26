@@ -697,15 +697,15 @@ pub fn reconstruct_format_args_template_string(pieces: &[FormatArgsPiece]) -> St
                 write!(template, "{n}").unwrap();
                 if p.format_options != Default::default() || p.format_trait != FormatTrait::Display
                 {
-                    template.push_str(":");
+                    template.push(':');
                 }
                 if let Some(fill) = p.format_options.fill {
                     template.push(fill);
                 }
                 match p.format_options.alignment {
-                    Some(FormatAlignment::Left) => template.push_str("<"),
-                    Some(FormatAlignment::Right) => template.push_str(">"),
-                    Some(FormatAlignment::Center) => template.push_str("^"),
+                    Some(FormatAlignment::Left) => template.push('<'),
+                    Some(FormatAlignment::Right) => template.push('>'),
+                    Some(FormatAlignment::Center) => template.push('^'),
                     None => {}
                 }
                 match p.format_options.sign {

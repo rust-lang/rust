@@ -320,6 +320,14 @@ impl<Prov> Scalar<Prov> {
             }
         })
     }
+
+    #[inline]
+    pub fn size(self) -> Size {
+        match self {
+            Scalar::Int(int) => int.size(),
+            Scalar::Ptr(_ptr, sz) => Size::from_bytes(sz),
+        }
+    }
 }
 
 impl<'tcx, Prov: Provenance> Scalar<Prov> {

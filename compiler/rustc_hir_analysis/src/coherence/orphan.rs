@@ -352,7 +352,7 @@ fn emit_orphan_check_error<'tcx>(
 
                 let this = |name: &str| {
                     if !trait_ref.def_id.is_local() && !is_target_ty {
-                        msg("this", &format!(" because this is a foreign trait"))
+                        msg("this", " because this is a foreign trait")
                     } else {
                         msg("this", &format!(" because {name} are always foreign"))
                     }

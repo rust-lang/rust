@@ -932,7 +932,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         var_hir_id: hir::HirId,
         closure_clause: hir::CaptureBy,
     ) -> Option<FxIndexMap<UpvarMigrationInfo, UnordSet<&'static str>>> {
-        let auto_traits_def_id = vec![
+        let auto_traits_def_id = [
             self.tcx.lang_items().clone_trait(),
             self.tcx.lang_items().sync_trait(),
             self.tcx.get_diagnostic_item(sym::Send),

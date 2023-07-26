@@ -1678,11 +1678,11 @@ fn render_impl(
         rendering_params: ImplRenderingParameters,
     ) {
         for trait_item in &t.items {
-            // Skip over any default trait items that are impossible to call
+            // Skip over any default trait items that are impossible to reference
             // (e.g. if it has a `Self: Sized` bound on an unsized type).
             if let Some(impl_def_id) = parent.item_id.as_def_id()
                 && let Some(trait_item_def_id) = trait_item.item_id.as_def_id()
-                && cx.tcx().is_impossible_method((impl_def_id, trait_item_def_id))
+                && cx.tcx().is_impossible_associated_item((impl_def_id, trait_item_def_id))
             {
                 continue;
             }

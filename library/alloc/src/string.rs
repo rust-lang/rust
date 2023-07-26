@@ -2527,6 +2527,7 @@ impl<T: fmt::Display + ?Sized> ToString for T {
     }
 }
 
+#[doc(hidden)]
 #[cfg(not(no_global_oom_handling))]
 #[unstable(feature = "ascii_char", issue = "110998")]
 impl ToString for core::ascii::Char {
@@ -2536,6 +2537,7 @@ impl ToString for core::ascii::Char {
     }
 }
 
+#[doc(hidden)]
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "char_to_string_specialization", since = "1.46.0")]
 impl ToString for char {
@@ -2545,6 +2547,7 @@ impl ToString for char {
     }
 }
 
+#[doc(hidden)]
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "bool_to_string_specialization", since = "1.68.0")]
 impl ToString for bool {
@@ -2554,6 +2557,7 @@ impl ToString for bool {
     }
 }
 
+#[doc(hidden)]
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "u8_to_string_specialization", since = "1.54.0")]
 impl ToString for u8 {
@@ -2574,6 +2578,7 @@ impl ToString for u8 {
     }
 }
 
+#[doc(hidden)]
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "i8_to_string_specialization", since = "1.54.0")]
 impl ToString for i8 {
@@ -2597,6 +2602,7 @@ impl ToString for i8 {
     }
 }
 
+#[doc(hidden)]
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "str_to_string_specialization", since = "1.9.0")]
 impl ToString for str {
@@ -2606,6 +2612,7 @@ impl ToString for str {
     }
 }
 
+#[doc(hidden)]
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "cow_str_to_string_specialization", since = "1.17.0")]
 impl ToString for Cow<'_, str> {
@@ -2615,6 +2622,7 @@ impl ToString for Cow<'_, str> {
     }
 }
 
+#[doc(hidden)]
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "string_to_string_specialization", since = "1.17.0")]
 impl ToString for String {
@@ -2624,6 +2632,7 @@ impl ToString for String {
     }
 }
 
+#[doc(hidden)]
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "fmt_arguments_to_string_specialization", since = "1.71.0")]
 impl ToString for fmt::Arguments<'_> {

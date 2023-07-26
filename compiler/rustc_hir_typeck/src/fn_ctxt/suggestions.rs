@@ -1085,12 +1085,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         false
     }
 
-    pub(crate) fn suggest_copied_or_cloned(
+    pub(crate) fn suggest_copied_cloned_or_as_ref(
         &self,
         diag: &mut Diagnostic,
         expr: &hir::Expr<'_>,
         expr_ty: Ty<'tcx>,
         expected_ty: Ty<'tcx>,
+        expected_ty_expr: Option<&'tcx hir::Expr<'tcx>>,
     ) -> bool {
         let ty::Adt(adt_def, args) = expr_ty.kind() else {
             return false;
@@ -1102,7 +1103,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return false;
         }
 
-        let mut suggest_copied_or_cloned = || {
+        let mut suggest_copied_cloned_or_as_ref = || {
             let expr_inner_ty = args.type_at(0);
             let expected_inner_ty = expected_args.type_at(0);
             if let &ty::Ref(_, ty, hir::Mutability::Not) = expr_inner_ty.kind()
@@ -1116,6 +1117,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             "use `{def_path}::copied` to copy the value inside the `{def_path}`"
                         ),
                         ".copied()",
+                        Applicability::MachineApplicable,
+                    );
+                    return true;
+                } else if let Some(expected_ty_expr) = expected_ty_expr {
+                    diag.span_suggestion_verbose(
+                        expected_ty_expr.span.shrink_to_hi(),
+                        format!(
+                            "use `{def_path}::as_ref()` to convert `{expected_ty}` to `{expr_ty}`"
+                        ),
+                        ".as_ref()",
                         Applicability::MachineApplicable,
                     );
                     return true;
@@ -1146,11 +1157,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Check that the error types are equal
             && self.can_eq(self.param_env, args.type_at(1), expected_args.type_at(1))
         {
-            return suggest_copied_or_cloned();
+            return suggest_copied_cloned_or_as_ref();
         } else if let Some(option_did) = self.tcx.get_diagnostic_item(sym::Option)
             && adt_def.did() == option_did
         {
-            return suggest_copied_or_cloned();
+            return suggest_copied_cloned_or_as_ref();
         }
 
         false
@@ -1512,9 +1523,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         found_ty: Ty<'tcx>,
         expr: &hir::Expr<'_>,
     ) {
+        // When `expr` is `x` in something like `let x = foo.clone(); x`, need to recurse up to get
+        // `foo` and `clone`.
+        let expr = self.note_type_is_not_clone_inner_expr(expr);
+
+        // If we've recursed to an `expr` of `foo.clone()`, get `foo` and `clone`.
         let hir::ExprKind::MethodCall(segment, callee_expr, &[], _) = expr.kind else {
             return;
         };
+
         let Some(clone_trait_did) = self.tcx.lang_items().clone_trait() else {
             return;
         };
@@ -1564,6 +1581,84 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             } else {
                 self.suggest_derive(diag, &[(trait_ref.to_predicate(self.tcx), None, None)]);
             }
+        }
+    }
+
+    /// Given a type mismatch error caused by `&T` being cloned instead of `T`, and
+    /// the `expr` as the source of this type mismatch, try to find the method call
+    /// as the source of this error and return that instead. Otherwise, return the
+    /// original expression.
+    fn note_type_is_not_clone_inner_expr<'b>(
+        &'b self,
+        expr: &'b hir::Expr<'b>,
+    ) -> &'b hir::Expr<'b> {
+        match expr.peel_blocks().kind {
+            hir::ExprKind::Path(hir::QPath::Resolved(
+                None,
+                hir::Path { segments: [_], res: crate::Res::Local(binding), .. },
+            )) => {
+                let Some(hir::Node::Pat(hir::Pat { hir_id, .. })) = self.tcx.hir().find(*binding)
+                else {
+                    return expr;
+                };
+                let Some(parent) = self.tcx.hir().find(self.tcx.hir().parent_id(*hir_id)) else {
+                    return expr;
+                };
+
+                match parent {
+                    // foo.clone()
+                    hir::Node::Local(hir::Local { init: Some(init), .. }) => {
+                        self.note_type_is_not_clone_inner_expr(init)
+                    }
+                    // When `expr` is more complex like a tuple
+                    hir::Node::Pat(hir::Pat {
+                        hir_id: pat_hir_id,
+                        kind: hir::PatKind::Tuple(pats, ..),
+                        ..
+                    }) => {
+                        let Some(hir::Node::Local(hir::Local { init: Some(init), .. })) =
+                                self.tcx.hir().find(self.tcx.hir().parent_id(*pat_hir_id)) else {
+                            return expr;
+                        };
+
+                        match init.peel_blocks().kind {
+                            ExprKind::Tup(init_tup) => {
+                                if let Some(init) = pats
+                                    .iter()
+                                    .enumerate()
+                                    .filter(|x| x.1.hir_id == *hir_id)
+                                    .map(|(i, _)| init_tup.get(i).unwrap())
+                                    .next()
+                                {
+                                    self.note_type_is_not_clone_inner_expr(init)
+                                } else {
+                                    expr
+                                }
+                            }
+                            _ => expr,
+                        }
+                    }
+                    _ => expr,
+                }
+            }
+            // If we're calling into a closure that may not be typed recurse into that call. no need
+            // to worry if it's a call to a typed function or closure as this would ne handled
+            // previously.
+            hir::ExprKind::Call(Expr { kind: call_expr_kind, .. }, _) => {
+                if let hir::ExprKind::Path(hir::QPath::Resolved(None, call_expr_path)) = call_expr_kind
+                    && let hir::Path { segments: [_], res: crate::Res::Local(binding), .. } = call_expr_path
+                    && let Some(hir::Node::Pat(hir::Pat { hir_id, .. })) = self.tcx.hir().find(*binding)
+                    && let Some(closure) = self.tcx.hir().find(self.tcx.hir().parent_id(*hir_id))
+                    && let hir::Node::Local(hir::Local { init: Some(init), .. }) = closure
+                    && let Expr { kind: hir::ExprKind::Closure(hir::Closure { body: body_id, .. }), ..} = init
+                {
+                    let hir::Body { value: body_expr, .. } = self.tcx.hir().body(*body_id);
+                    self.note_type_is_not_clone_inner_expr(body_expr)
+                } else {
+                    expr
+                }
+            }
+            _ => expr,
         }
     }
 

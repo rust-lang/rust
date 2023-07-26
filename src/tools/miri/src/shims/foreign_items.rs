@@ -942,9 +942,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 #[allow(clippy::arithmetic_side_effects)] // it's a u128, we can shift by 64
                 let (c_out, sum) = ((wide_sum >> 64).truncate::<u8>(), wide_sum.truncate::<u64>());
 
-                let c_out_field = this.place_field(dest, 0)?;
+                let c_out_field = this.project_field(dest, 0)?;
                 this.write_scalar(Scalar::from_u8(c_out), &c_out_field)?;
-                let sum_field = this.place_field(dest, 1)?;
+                let sum_field = this.project_field(dest, 1)?;
                 this.write_scalar(Scalar::from_u64(sum), &sum_field)?;
             }
             "llvm.x86.sse2.pause"

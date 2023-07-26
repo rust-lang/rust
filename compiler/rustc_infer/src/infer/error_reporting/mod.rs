@@ -264,11 +264,11 @@ fn msg_span_from_named_region<'tcx>(
         ty::RePlaceholder(ty::PlaceholderRegion {
             bound: ty::BoundRegion { kind: ty::BoundRegionKind::BrAnon(Some(span)), .. },
             ..
-        }) => (format!("the anonymous lifetime defined here"), Some(span)),
+        }) => ("the anonymous lifetime defined here".to_owned(), Some(span)),
         ty::RePlaceholder(ty::PlaceholderRegion {
             bound: ty::BoundRegion { kind: ty::BoundRegionKind::BrAnon(None), .. },
             ..
-        }) => (format!("an anonymous lifetime"), None),
+        }) => ("an anonymous lifetime".to_owned(), None),
         _ => bug!("{:?}", region),
     }
 }
@@ -2354,7 +2354,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                                     if let Ok(snip) = self.tcx.sess.source_map().span_to_next_source(p.span)
                                         && snip.starts_with(' ')
                                     {
-                                        format!("{new_lt}")
+                                        new_lt.to_string()
                                     } else {
                                         format!("{new_lt} ")
                                     }

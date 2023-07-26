@@ -51,7 +51,7 @@ fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'
             // assumed_wf_types should include those of `Opaque<T>`, `Opaque<T>` itself
             // and `&'static T`.
             DefKind::OpaqueTy => bug!("unimplemented implied bounds for nested opaque types"),
-            def_kind @ _ => {
+            def_kind => {
                 bug!("unimplemented implied bounds for opaque types with parent {def_kind:?}")
             }
         },

@@ -53,7 +53,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             || self.suggest_no_capture_closure(err, expected, expr_ty)
             || self.suggest_boxing_when_appropriate(err, expr.span, expr.hir_id, expected, expr_ty)
             || self.suggest_block_to_brackets_peeling_refs(err, expr, expr_ty, expected)
-            || self.suggest_copied_or_cloned(err, expr, expr_ty, expected)
+            || self.suggest_copied_cloned_or_as_ref(err, expr, expr_ty, expected, expected_ty_expr)
             || self.suggest_clone_for_ref(err, expr, expr_ty, expected)
             || self.suggest_into(err, expr, expr_ty, expected)
             || self.suggest_floating_point_literal(err, expr, expected)
@@ -621,7 +621,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // is in a different line, so we point at both.
                     err.span_label(secondary_span, "expected due to the type of this binding");
                     err.span_label(primary_span, format!("expected due to this{post_message}"));
-                } else if post_message == "" {
+                } else if post_message.is_empty() {
                     // We are pointing at either the assignment lhs or the binding def pattern.
                     err.span_label(primary_span, "expected due to the type of this binding");
                 } else {

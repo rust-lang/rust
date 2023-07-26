@@ -10,6 +10,7 @@ use log::trace;
 
 use rustc_hir::def::{DefKind, Namespace};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
+use rustc_index::IndexVec;
 use rustc_middle::mir;
 use rustc_middle::ty::{
     self,
@@ -17,7 +18,7 @@ use rustc_middle::ty::{
     List, TyCtxt,
 };
 use rustc_span::{def_id::CrateNum, sym, Span, Symbol};
-use rustc_target::abi::{Align, FieldsShape, Size, Variants};
+use rustc_target::abi::{Align, FieldIdx, FieldsShape, Size, Variants};
 use rustc_target::spec::abi::Abi;
 
 use rand::RngCore;
@@ -229,20 +230,20 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         this.layout_of(ty).unwrap()
     }
 
-    /// Project to the given *named* field of the mplace (which must be a struct or union type).
-    fn mplace_field_named(
+    /// Project to the given *named* field (which must be a struct or union type).
+    fn project_field_named<P: Projectable<'mir, 'tcx, Provenance>>(
         &self,
-        mplace: &MPlaceTy<'tcx, Provenance>,
+        base: &P,
         name: &str,
-    ) -> InterpResult<'tcx, MPlaceTy<'tcx, Provenance>> {
+    ) -> InterpResult<'tcx, P> {
         let this = self.eval_context_ref();
-        let adt = mplace.layout.ty.ty_adt_def().unwrap();
+        let adt = base.layout().ty.ty_adt_def().unwrap();
         for (idx, field) in adt.non_enum_variant().fields.iter().enumerate() {
             if field.name.as_str() == name {
-                return this.mplace_field(mplace, idx);
+                return this.project_field(base, idx);
             }
         }
-        bug!("No field named {} in type {}", name, mplace.layout.ty);
+        bug!("No field named {} in type {}", name, base.layout().ty);
     }
 
     /// Write an int of the appropriate size to `dest`. The target type may be signed or unsigned,
@@ -270,7 +271,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         for (idx, &val) in values.iter().enumerate() {
-            let field = this.mplace_field(dest, idx)?;
+            let field = this.project_field(dest, idx)?;
             this.write_int(val, &field.into())?;
         }
         Ok(())
@@ -284,7 +285,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         for &(name, val) in values.iter() {
-            let field = this.mplace_field_named(dest, name)?;
+            let field = this.project_field_named(dest, name)?;
             this.write_int(val, &field.into())?;
         }
         Ok(())
@@ -301,8 +302,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     }
 
     /// Get the `Place` for a local
-    fn local_place(&mut self, local: mir::Local) -> InterpResult<'tcx, PlaceTy<'tcx, Provenance>> {
-        let this = self.eval_context_mut();
+    fn local_place(&self, local: mir::Local) -> InterpResult<'tcx, PlaceTy<'tcx, Provenance>> {
+        let this = self.eval_context_ref();
         let place = mir::Place { local, projection: List::empty() };
         this.eval_place(place)
     }
@@ -479,6 +480,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 self.ecx
             }
 
+            fn aggregate_field_order(memory_index: &IndexVec<FieldIdx, u32>, idx: usize) -> usize {
+                // We need to do an *inverse* lookup: find the field that has position `idx` in memory order.
+                for (src_field, &mem_pos) in memory_index.iter_enumerated() {
+                    if mem_pos as usize == idx {
+                        return src_field.as_usize();
+                    }
+                }
+                panic!("invalid `memory_index`, could not find {}-th field in memory order", idx);
+            }
+
             // Hook to detect `UnsafeCell`.
             fn visit_value(&mut self, v: &MPlaceTy<'tcx, Provenance>) -> InterpResult<'tcx> {
                 trace!("UnsafeCellVisitor: {:?} {:?}", *v, v.layout.ty);
@@ -520,33 +531,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                             // is hiding.
                             self.walk_value(v)
                         }
-                    }
-                }
-            }
-
-            // Make sure we visit aggregates in increasing offset order.
-            fn visit_aggregate(
-                &mut self,
-                place: &MPlaceTy<'tcx, Provenance>,
-                fields: impl Iterator<Item = InterpResult<'tcx, MPlaceTy<'tcx, Provenance>>>,
-            ) -> InterpResult<'tcx> {
-                match place.layout.fields {
-                    FieldsShape::Array { .. } => {
-                        // For the array layout, we know the iterator will yield sorted elements so
-                        // we can avoid the allocation.
-                        self.walk_aggregate(place, fields)
-                    }
-                    FieldsShape::Arbitrary { .. } => {
-                        // Gather the subplaces and sort them before visiting.
-                        let mut places = fields
-                            .collect::<InterpResult<'tcx, Vec<MPlaceTy<'tcx, Provenance>>>>()?;
-                        // we just compare offsets, the abs. value never matters
-                        places.sort_by_key(|place| place.ptr.addr());
-                        self.walk_aggregate(place, places.into_iter().map(Ok))
-                    }
-                    FieldsShape::Union { .. } | FieldsShape::Primitive => {
-                        // Uh, what?
-                        bug!("unions/primitives are not aggregates we should ever visit")
                     }
                 }
             }
@@ -746,7 +730,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         Ok(mplace)
     }
 
-    fn deref_pointer_as(
+    /// Deref' a pointer *without* checking that the place is dereferenceable.
+    fn deref_pointer_unchecked(
         &self,
         val: &ImmTy<'tcx, Provenance>,
         layout: TyAndLayout<'tcx>,
@@ -811,10 +796,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         tp: &MPlaceTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx, Option<Duration>> {
         let this = self.eval_context_mut();
-        let seconds_place = this.mplace_field(tp, 0)?;
+        let seconds_place = this.project_field(tp, 0)?;
         let seconds_scalar = this.read_scalar(&seconds_place.into())?;
         let seconds = seconds_scalar.to_target_isize(this)?;
-        let nanoseconds_place = this.mplace_field(tp, 1)?;
+        let nanoseconds_place = this.project_field(tp, 1)?;
         let nanoseconds_scalar = this.read_scalar(&nanoseconds_place.into())?;
         let nanoseconds = nanoseconds_scalar.to_target_isize(this)?;
 

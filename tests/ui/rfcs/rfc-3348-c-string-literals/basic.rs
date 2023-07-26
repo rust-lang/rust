@@ -1,5 +1,4 @@
-// FIXME(c_str_literals): This should be `run-pass`
-// known-bug: #113333
+// run-pass
 // edition: 2021
 
 #![feature(c_str_literals)]

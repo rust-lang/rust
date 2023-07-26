@@ -29,6 +29,7 @@ pub enum HlTag {
     Comment,
     EscapeSequence,
     FormatSpecifier,
+    InvalidEscapeSequence,
     Keyword,
     NumericLiteral,
     Operator(HlOperator),
@@ -166,6 +167,7 @@ impl HlTag {
             HlTag::CharLiteral => "char_literal",
             HlTag::Comment => "comment",
             HlTag::EscapeSequence => "escape_sequence",
+            HlTag::InvalidEscapeSequence => "invalid_escape_sequence",
             HlTag::FormatSpecifier => "format_specifier",
             HlTag::Keyword => "keyword",
             HlTag::Punctuation(punct) => match punct {

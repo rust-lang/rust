@@ -1069,7 +1069,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else if let ExprKind::MethodCall(..) = rcvr.kind {
             err.span_note(
                 sp,
-                modifies_rcvr_note.clone() + ", it is not meant to be used in method chains.",
+                modifies_rcvr_note + ", it is not meant to be used in method chains.",
             );
         } else {
             err.span_note(sp, modifies_rcvr_note);

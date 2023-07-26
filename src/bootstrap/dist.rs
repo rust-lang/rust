@@ -1085,13 +1085,6 @@ impl Step for Cargo {
         tarball.add_dir(etc.join("man"), "share/man/man1");
         tarball.add_legal_and_readme_to("share/doc/cargo");
 
-        for dirent in fs::read_dir(cargo.parent().unwrap()).expect("read_dir") {
-            let dirent = dirent.expect("read dir entry");
-            if dirent.file_name().to_str().expect("utf8").starts_with("cargo-credential-") {
-                tarball.add_file(&dirent.path(), "libexec", 0o755);
-            }
-        }
-
         Some(tarball.generate())
     }
 }

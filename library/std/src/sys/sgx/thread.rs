@@ -121,8 +121,16 @@ impl Thread {
         rtassert!(wait_error.kind() == io::ErrorKind::WouldBlock);
     }
 
+    /// SGX should protect in-enclave data from the outside (attacker),
+    /// so there should be no data leakage to the OS,
+    /// and therefore also no 1-1 mapping between SGX thread names and OS thread names.
+    ///
+    /// This is why the method is intentionally No-Op.
     pub fn set_name(_name: &CStr) {
-        // FIXME: could store this pointer in TLS somewhere
+        // Note that the internally visible SGX thread name is already provided
+        // by the platform-agnostic (target-agnostic) Rust thread code.
+        // This can be observed in the [`std::thread::tests::test_named_thread`] test,
+        // which succeeds as-is with the SGX target.
     }
 
     pub fn sleep(dur: Duration) {

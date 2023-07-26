@@ -206,7 +206,7 @@ than building it.
         }
 
         // Make sure musl-root is valid
-        if target.contains("musl") {
+        if target.contains("musl") && !target.contains("unikraft") {
             // If this is a native target (host is also musl) and no musl-root is given,
             // fall back to the system toolchain in /usr before giving up
             if build.musl_root(*target).is_none() && build.config.build == *target {

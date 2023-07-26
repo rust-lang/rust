@@ -85,7 +85,8 @@ pub fn futex<'tcx>(
                 return Ok(());
             }
 
-            let timeout = this.deref_pointer_as(
+            // `read_timespec` will check the place when it is not null.
+            let timeout = this.deref_pointer_unchecked(
                 &this.read_immediate(&args[3])?,
                 this.libc_ty_layout("timespec"),
             )?;

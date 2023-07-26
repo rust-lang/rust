@@ -28,7 +28,8 @@ pub(crate) fn deeply_normalize<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
 /// its input to be already fully resolved.
 ///
 /// Additionally takes a list of universes which represents the binders which have been
-/// entered before passing `value` to the function.
+/// entered before passing `value` to the function. This is currently needed for
+/// `normalize_erasing_regions`, which skips binders as it walks through a type.
 pub(crate) fn deeply_normalize_with_skipped_universes<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
     at: At<'_, 'tcx>,
     value: T,
@@ -194,7 +195,7 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for NormalizationFolder<'_, 'tcx> {
                 mapped_regions,
                 mapped_types,
                 mapped_consts,
-                &mut self.universes,
+                &self.universes,
                 result,
             ))
         } else {
@@ -224,7 +225,7 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for NormalizationFolder<'_, 'tcx> {
                 mapped_regions,
                 mapped_types,
                 mapped_consts,
-                &mut self.universes,
+                &self.universes,
                 result,
             ))
         } else {

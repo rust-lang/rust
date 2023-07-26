@@ -25,6 +25,8 @@ union Data<T, F> {
 ///
 /// # Examples
 ///
+/// Initialize static variables with `LazyLock`.
+///
 /// ```
 /// #![feature(lazy_cell)]
 ///
@@ -54,6 +56,24 @@ union Data<T, F> {
 ///     //   Some("Hoyten")
 /// }
 /// ```
+/// Initialize fields with `LazyLock`.
+/// ```
+/// #![feature(lazy_cell)]
+///
+/// use std::sync::LazyLock;
+///
+/// #[derive(Debug)]
+/// struct UseCellLock {
+///     number: LazyLock<u32>,
+/// }
+/// fn main() {
+///     let lock: LazyLock<u32> = LazyLock::new(|| 0u32);
+///
+///     let data = UseCellLock { number: lock };
+///     println!("{}", *data.number);
+/// }
+/// ```
+
 #[unstable(feature = "lazy_cell", issue = "109736")]
 pub struct LazyLock<T, F = fn() -> T> {
     once: Once,

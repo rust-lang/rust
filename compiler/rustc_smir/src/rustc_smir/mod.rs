@@ -258,6 +258,72 @@ impl<'tcx> Stable<'tcx> for ty::AliasTy<'tcx> {
     }
 }
 
+impl<'tcx> Stable<'tcx> for ty::DynKind {
+    type T = stable_mir::ty::DynKind;
+
+    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
+        use ty::DynKind;
+        match self {
+            DynKind::Dyn => stable_mir::ty::DynKind::Dyn,
+            DynKind::DynStar => stable_mir::ty::DynKind::DynStar,
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for ty::ExistentialPredicate<'tcx> {
+    type T = stable_mir::ty::ExistentialPredicate;
+
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        use stable_mir::ty::ExistentialPredicate::*;
+        match self {
+            ty::ExistentialPredicate::Trait(existential_trait_ref) => {
+                Trait(existential_trait_ref.stable(tables))
+            }
+            ty::ExistentialPredicate::Projection(existential_projection) => {
+                Projection(existential_projection.stable(tables))
+            }
+            ty::ExistentialPredicate::AutoTrait(def_id) => AutoTrait(tables.trait_def(*def_id)),
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for ty::ExistentialTraitRef<'tcx> {
+    type T = stable_mir::ty::ExistentialTraitRef;
+
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        let ty::ExistentialTraitRef { def_id, args } = self;
+        stable_mir::ty::ExistentialTraitRef {
+            def_id: tables.trait_def(*def_id),
+            generic_args: args.stable(tables),
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for ty::TermKind<'tcx> {
+    type T = stable_mir::ty::TermKind;
+
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        use stable_mir::ty::TermKind;
+        match self {
+            ty::TermKind::Ty(ty) => TermKind::Type(tables.intern_ty(*ty)),
+            ty::TermKind::Const(const_) => TermKind::Const(opaque(const_)),
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for ty::ExistentialProjection<'tcx> {
+    type T = stable_mir::ty::ExistentialProjection;
+
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        let ty::ExistentialProjection { def_id, args, term } = self;
+        stable_mir::ty::ExistentialProjection {
+            def_id: tables.trait_def(*def_id),
+            generic_args: args.stable(tables),
+            term: term.unpack().stable(tables),
+        }
+    }
+}
+
 impl<'tcx> Stable<'tcx> for ty::adjustment::PointerCoercion {
     type T = stable_mir::mir::PointerCoercion;
     fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
@@ -509,29 +575,36 @@ impl<'tcx> Stable<'tcx> for mir::Terminator<'tcx> {
 impl<'tcx> Stable<'tcx> for ty::GenericArgs<'tcx> {
     type T = stable_mir::ty::GenericArgs;
     fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
-        use stable_mir::ty::{GenericArgKind, GenericArgs};
+        use stable_mir::ty::GenericArgs;
 
-        GenericArgs(
-            self.iter()
-                .map(|arg| match arg.unpack() {
-                    ty::GenericArgKind::Lifetime(region) => {
-                        GenericArgKind::Lifetime(opaque(&region))
-                    }
-                    ty::GenericArgKind::Type(ty) => GenericArgKind::Type(tables.intern_ty(ty)),
-                    ty::GenericArgKind::Const(const_) => GenericArgKind::Const(opaque(&const_)),
-                })
-                .collect(),
-        )
+        GenericArgs(self.iter().map(|arg| arg.unpack().stable(tables)).collect())
     }
 }
 
-impl<'tcx> Stable<'tcx> for ty::PolyFnSig<'tcx> {
-    type T = stable_mir::ty::PolyFnSig;
+impl<'tcx> Stable<'tcx> for ty::GenericArgKind<'tcx> {
+    type T = stable_mir::ty::GenericArgKind;
+
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        use stable_mir::ty::GenericArgKind;
+        match self {
+            ty::GenericArgKind::Lifetime(region) => GenericArgKind::Lifetime(opaque(region)),
+            ty::GenericArgKind::Type(ty) => GenericArgKind::Type(tables.intern_ty(*ty)),
+            ty::GenericArgKind::Const(const_) => GenericArgKind::Const(opaque(&const_)),
+        }
+    }
+}
+
+impl<'tcx, S, V> Stable<'tcx> for ty::Binder<'tcx, S>
+where
+    S: Stable<'tcx, T = V>,
+{
+    type T = stable_mir::ty::Binder<V>;
+
     fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
         use stable_mir::ty::Binder;
 
         Binder {
-            value: self.skip_binder().stable(tables),
+            value: self.as_ref().skip_binder().stable(tables),
             bound_vars: self
                 .bound_vars()
                 .iter()
@@ -589,33 +662,105 @@ impl<'tcx> Stable<'tcx> for ty::FnSig<'tcx> {
     }
 }
 
+impl<'tcx> Stable<'tcx> for ty::BoundTyKind {
+    type T = stable_mir::ty::BoundTyKind;
+
+    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
+        use stable_mir::ty::BoundTyKind;
+
+        match self {
+            ty::BoundTyKind::Anon => BoundTyKind::Anon,
+            ty::BoundTyKind::Param(def_id, symbol) => {
+                BoundTyKind::Param(rustc_internal::param_def(*def_id), symbol.to_string())
+            }
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for ty::BoundRegionKind {
+    type T = stable_mir::ty::BoundRegionKind;
+
+    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
+        use stable_mir::ty::BoundRegionKind;
+
+        match self {
+            ty::BoundRegionKind::BrAnon(option_span) => {
+                BoundRegionKind::BrAnon(option_span.map(|span| opaque(&span)))
+            }
+            ty::BoundRegionKind::BrNamed(def_id, symbol) => {
+                BoundRegionKind::BrNamed(rustc_internal::br_named_def(*def_id), symbol.to_string())
+            }
+            ty::BoundRegionKind::BrEnv => BoundRegionKind::BrEnv,
+        }
+    }
+}
+
 impl<'tcx> Stable<'tcx> for ty::BoundVariableKind {
     type T = stable_mir::ty::BoundVariableKind;
-    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
-        use stable_mir::ty::{BoundRegionKind, BoundTyKind, BoundVariableKind};
+
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        use stable_mir::ty::BoundVariableKind;
 
         match self {
             ty::BoundVariableKind::Ty(bound_ty_kind) => {
-                BoundVariableKind::Ty(match bound_ty_kind {
-                    ty::BoundTyKind::Anon => BoundTyKind::Anon,
-                    ty::BoundTyKind::Param(def_id, symbol) => {
-                        BoundTyKind::Param(rustc_internal::param_def(*def_id), symbol.to_string())
-                    }
-                })
+                BoundVariableKind::Ty(bound_ty_kind.stable(tables))
             }
             ty::BoundVariableKind::Region(bound_region_kind) => {
-                BoundVariableKind::Region(match bound_region_kind {
-                    ty::BoundRegionKind::BrAnon(option_span) => {
-                        BoundRegionKind::BrAnon(option_span.map(|span| opaque(&span)))
-                    }
-                    ty::BoundRegionKind::BrNamed(def_id, symbol) => BoundRegionKind::BrNamed(
-                        rustc_internal::br_named_def(*def_id),
-                        symbol.to_string(),
-                    ),
-                    ty::BoundRegionKind::BrEnv => BoundRegionKind::BrEnv,
-                })
+                BoundVariableKind::Region(bound_region_kind.stable(tables))
             }
             ty::BoundVariableKind::Const => BoundVariableKind::Const,
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for ty::IntTy {
+    type T = IntTy;
+
+    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
+        match self {
+            ty::IntTy::Isize => IntTy::Isize,
+            ty::IntTy::I8 => IntTy::I8,
+            ty::IntTy::I16 => IntTy::I16,
+            ty::IntTy::I32 => IntTy::I32,
+            ty::IntTy::I64 => IntTy::I64,
+            ty::IntTy::I128 => IntTy::I128,
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for ty::UintTy {
+    type T = UintTy;
+
+    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
+        match self {
+            ty::UintTy::Usize => UintTy::Usize,
+            ty::UintTy::U8 => UintTy::U8,
+            ty::UintTy::U16 => UintTy::U16,
+            ty::UintTy::U32 => UintTy::U32,
+            ty::UintTy::U64 => UintTy::U64,
+            ty::UintTy::U128 => UintTy::U128,
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for ty::FloatTy {
+    type T = FloatTy;
+
+    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
+        match self {
+            ty::FloatTy::F32 => FloatTy::F32,
+            ty::FloatTy::F64 => FloatTy::F64,
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for hir::Movability {
+    type T = Movability;
+
+    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
+        match self {
+            hir::Movability::Static => Movability::Static,
+            hir::Movability::Movable => Movability::Movable,
         }
     }
 }
@@ -626,26 +771,9 @@ impl<'tcx> Stable<'tcx> for Ty<'tcx> {
         match self.kind() {
             ty::Bool => TyKind::RigidTy(RigidTy::Bool),
             ty::Char => TyKind::RigidTy(RigidTy::Char),
-            ty::Int(int_ty) => match int_ty {
-                ty::IntTy::Isize => TyKind::RigidTy(RigidTy::Int(IntTy::Isize)),
-                ty::IntTy::I8 => TyKind::RigidTy(RigidTy::Int(IntTy::I8)),
-                ty::IntTy::I16 => TyKind::RigidTy(RigidTy::Int(IntTy::I16)),
-                ty::IntTy::I32 => TyKind::RigidTy(RigidTy::Int(IntTy::I32)),
-                ty::IntTy::I64 => TyKind::RigidTy(RigidTy::Int(IntTy::I64)),
-                ty::IntTy::I128 => TyKind::RigidTy(RigidTy::Int(IntTy::I128)),
-            },
-            ty::Uint(uint_ty) => match uint_ty {
-                ty::UintTy::Usize => TyKind::RigidTy(RigidTy::Uint(UintTy::Usize)),
-                ty::UintTy::U8 => TyKind::RigidTy(RigidTy::Uint(UintTy::U8)),
-                ty::UintTy::U16 => TyKind::RigidTy(RigidTy::Uint(UintTy::U16)),
-                ty::UintTy::U32 => TyKind::RigidTy(RigidTy::Uint(UintTy::U32)),
-                ty::UintTy::U64 => TyKind::RigidTy(RigidTy::Uint(UintTy::U64)),
-                ty::UintTy::U128 => TyKind::RigidTy(RigidTy::Uint(UintTy::U128)),
-            },
-            ty::Float(float_ty) => match float_ty {
-                ty::FloatTy::F32 => TyKind::RigidTy(RigidTy::Float(FloatTy::F32)),
-                ty::FloatTy::F64 => TyKind::RigidTy(RigidTy::Float(FloatTy::F64)),
-            },
+            ty::Int(int_ty) => TyKind::RigidTy(RigidTy::Int(int_ty.stable(tables))),
+            ty::Uint(uint_ty) => TyKind::RigidTy(RigidTy::Uint(uint_ty.stable(tables))),
+            ty::Float(float_ty) => TyKind::RigidTy(RigidTy::Float(float_ty.stable(tables))),
             ty::Adt(adt_def, generic_args) => TyKind::RigidTy(RigidTy::Adt(
                 rustc_internal::adt_def(adt_def.did()),
                 generic_args.stable(tables),
@@ -671,7 +799,16 @@ impl<'tcx> Stable<'tcx> for Ty<'tcx> {
                 generic_args.stable(tables),
             )),
             ty::FnPtr(poly_fn_sig) => TyKind::RigidTy(RigidTy::FnPtr(poly_fn_sig.stable(tables))),
-            ty::Dynamic(_, _, _) => todo!(),
+            ty::Dynamic(existential_predicates, region, dyn_kind) => {
+                TyKind::RigidTy(RigidTy::Dynamic(
+                    existential_predicates
+                        .iter()
+                        .map(|existential_predicate| existential_predicate.stable(tables))
+                        .collect(),
+                    opaque(region),
+                    dyn_kind.stable(tables),
+                ))
+            }
             ty::Closure(def_id, generic_args) => TyKind::RigidTy(RigidTy::Closure(
                 rustc_internal::closure_def(*def_id),
                 generic_args.stable(tables),
@@ -679,10 +816,7 @@ impl<'tcx> Stable<'tcx> for Ty<'tcx> {
             ty::Generator(def_id, generic_args, movability) => TyKind::RigidTy(RigidTy::Generator(
                 rustc_internal::generator_def(*def_id),
                 generic_args.stable(tables),
-                match movability {
-                    hir::Movability::Static => Movability::Static,
-                    hir::Movability::Movable => Movability::Movable,
-                },
+                movability.stable(tables),
             )),
             ty::Never => TyKind::RigidTy(RigidTy::Never),
             ty::Tuple(fields) => TyKind::RigidTy(RigidTy::Tuple(

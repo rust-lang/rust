@@ -7,6 +7,7 @@ use rustc_hir::LangItem;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir;
 use rustc_middle::mir::*;
+use rustc_middle::traits::BuiltinImplSource;
 use rustc_middle::ty::{self, AdtDef, GenericArgsRef, Ty};
 use rustc_trait_selection::traits::{
     self, ImplSource, Obligation, ObligationCause, ObligationCtxt, SelectionContext,
@@ -172,7 +173,8 @@ impl Qualif for NeedsNonConstDrop {
 
         if !matches!(
             impl_src,
-            ImplSource::Builtin(_) | ImplSource::Param(_, ty::BoundConstness::ConstIfConst)
+            ImplSource::Builtin(BuiltinImplSource::Misc, _)
+                | ImplSource::Param(ty::BoundConstness::ConstIfConst, _)
         ) {
             // If our const destruct candidate is not ConstDestruct or implied by the param env,
             // then it's bad

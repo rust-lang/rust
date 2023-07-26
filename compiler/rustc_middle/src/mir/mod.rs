@@ -706,9 +706,7 @@ pub enum BindingForm<'tcx> {
     RefForGuard,
 }
 
-TrivialTypeTraversalAndLiftImpls! {
-    BindingForm<'tcx>,
-}
+TrivialTypeTraversalAndLiftImpls! { BindingForm<'tcx> }
 
 mod binding_form_impl {
     use rustc_data_structures::stable_hasher::{HashStable, StableHasher};

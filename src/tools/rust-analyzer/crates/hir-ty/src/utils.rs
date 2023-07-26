@@ -28,14 +28,15 @@ use intern::Interned;
 use rustc_hash::FxHashSet;
 use smallvec::{smallvec, SmallVec};
 use stdx::never;
+use triomphe::Arc;
 
 use crate::{
     consteval::unknown_const,
     db::HirDatabase,
     layout::{Layout, TagEncoding},
     mir::pad16,
-    ChalkTraitId, Const, ConstScalar, GenericArg, Interner, Substitution, TraitRef, TraitRefExt,
-    Ty, WhereClause,
+    ChalkTraitId, Const, ConstScalar, GenericArg, Interner, Substitution, TraitEnvironment,
+    TraitRef, TraitRefExt, Ty, WhereClause,
 };
 
 pub(crate) fn fn_traits(
@@ -417,7 +418,7 @@ impl FallibleTypeFolder<Interner> for UnevaluatedConstEvaluatorFolder<'_> {
     ) -> Result<Const, Self::Error> {
         if let chalk_ir::ConstValue::Concrete(c) = &constant.data(Interner).value {
             if let ConstScalar::UnevaluatedConst(id, subst) = &c.interned {
-                if let Ok(eval) = self.db.const_eval(*id, subst.clone()) {
+                if let Ok(eval) = self.db.const_eval(*id, subst.clone(), None) {
                     return Ok(eval);
                 } else {
                     return Ok(unknown_const(constant.data(Interner).ty.clone()));
@@ -431,10 +432,11 @@ impl FallibleTypeFolder<Interner> for UnevaluatedConstEvaluatorFolder<'_> {
 pub(crate) fn detect_variant_from_bytes<'a>(
     layout: &'a Layout,
     db: &dyn HirDatabase,
-    krate: CrateId,
+    trait_env: Arc<TraitEnvironment>,
     b: &[u8],
     e: EnumId,
 ) -> Option<(LocalEnumVariantId, &'a Layout)> {
+    let krate = trait_env.krate;
     let (var_id, var_layout) = match &layout.variants {
         hir_def::layout::Variants::Single { index } => (index.0, &*layout),
         hir_def::layout::Variants::Multiple { tag, tag_encoding, variants, .. } => {

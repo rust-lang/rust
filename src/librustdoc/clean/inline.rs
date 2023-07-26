@@ -216,6 +216,7 @@ pub(crate) fn build_external_trait(cx: &mut DocContext<'_>, did: DefId) -> clean
         .tcx
         .associated_items(did)
         .in_definition_order()
+        .filter(|item| !item.is_impl_trait_in_trait())
         .map(|item| clean_middle_assoc_item(item, cx))
         .collect();
 
@@ -459,6 +460,7 @@ pub(crate) fn build_impl(
         None => (
             tcx.associated_items(did)
                 .in_definition_order()
+                .filter(|item| !item.is_impl_trait_in_trait())
                 .filter(|item| {
                     // If this is a trait impl, filter out associated items whose corresponding item
                     // in the associated trait is marked `doc(hidden)`.

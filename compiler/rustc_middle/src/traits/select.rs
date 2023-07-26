@@ -304,9 +304,7 @@ impl From<ErrorGuaranteed> for OverflowError {
     }
 }
 
-TrivialTypeTraversalAndLiftImpls! {
-    OverflowError,
-}
+TrivialTypeTraversalAndLiftImpls! { OverflowError }
 
 impl<'tcx> From<OverflowError> for SelectionError<'tcx> {
     fn from(overflow_error: OverflowError) -> SelectionError<'tcx> {

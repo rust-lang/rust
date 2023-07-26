@@ -372,7 +372,7 @@ where
         callback(start..end, EscapeError::MultipleSkippedLinesWarning);
     }
     let tail = &tail[first_non_space..];
-    if let Some(c) = tail.chars().nth(0) {
+    if let Some(c) = tail.chars().next() {
         if c.is_whitespace() {
             // For error reporting, we would like the span to contain the character that was not
             // skipped. The +1 is necessary to account for the leading \ that started the escape.

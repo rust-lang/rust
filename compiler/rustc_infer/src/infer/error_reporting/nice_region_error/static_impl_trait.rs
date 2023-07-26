@@ -333,11 +333,7 @@ pub fn suggest_new_region_bound(
                     } else {
                         None
                     };
-                    let name = if let Some(name) = &existing_lt_name {
-                        format!("{}", name)
-                    } else {
-                        format!("'a")
-                    };
+                    let name = if let Some(name) = &existing_lt_name { name } else { "'a" };
                     // if there are more than one elided lifetimes in inputs, the explicit `'_` lifetime cannot be used.
                     // introducing a new lifetime `'a` or making use of one from existing named lifetimes if any
                     if let Some(id) = scope_def_id
@@ -350,7 +346,7 @@ pub fn suggest_new_region_bound(
                                   if p.span.hi() - p.span.lo() == rustc_span::BytePos(1) { // Ampersand (elided without '_)
                                       (p.span.shrink_to_hi(),format!("{name} "))
                                   } else { // Underscore (elided with '_)
-                                      (p.span, format!("{name}"))
+                                      (p.span, name.to_string())
                                   }
                             )
                             .collect::<Vec<_>>()

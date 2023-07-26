@@ -10,6 +10,7 @@ use rustc_infer::traits::specialization_graph::LeafDef;
 use rustc_infer::traits::Reveal;
 use rustc_middle::traits::solve::inspect::CandidateKind;
 use rustc_middle::traits::solve::{CanonicalResponse, Certainty, Goal, QueryResult};
+use rustc_middle::traits::BuiltinImplSource;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::ProjectionPredicate;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -502,17 +503,10 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
         )
     }
 
-    fn consider_builtin_unsize_candidate(
+    fn consider_builtin_unsize_and_upcast_candidates(
         _ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
-    ) -> QueryResult<'tcx> {
-        bug!("`Unsize` does not have an associated type: {:?}", goal);
-    }
-
-    fn consider_builtin_dyn_upcast_candidates(
-        _ecx: &mut EvalCtxt<'_, 'tcx>,
-        goal: Goal<'tcx, Self>,
-    ) -> Vec<CanonicalResponse<'tcx>> {
+    ) -> Vec<(CanonicalResponse<'tcx>, BuiltinImplSource)> {
         bug!("`Unsize` does not have an associated type: {:?}", goal);
     }
 

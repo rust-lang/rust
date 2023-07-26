@@ -35,9 +35,12 @@
         "build-base": "esbuild ./src/main.ts --bundle --outfile=out/main.js --external:vscode --format=cjs --platform=node --target=node16",
         "build": "npm run build-base -- --sourcemap",
         "watch": "npm run build-base -- --sourcemap --watch",
-        "lint": "prettier --check . && eslint -c .eslintrc.js --ext ts ./src ./tests",
-        "fix": "prettier --write . && eslint -c .eslintrc.js --ext ts ./src ./tests --fix",
-        "pretest": "tsc && npm run build",
+        "format": "prettier --write .",
+        "format:check": "prettier --check .",
+        "lint": "eslint -c .eslintrc.js --ext ts ./src ./tests",
+        "lint:fix": "npm run lint -- --fix",
+        "typecheck": "tsc",
+        "pretest": "npm run typecheck && npm run build",
         "test": "node ./out/tests/runTests.js"
     },
     "dependencies": {
@@ -1801,11 +1804,15 @@
             },
             {
                 "id": "escapeSequence",
-                "description": "Style for char escapes in strings"
+                "description": "Style for char or byte escapes in strings"
             },
             {
                 "id": "formatSpecifier",
                 "description": "Style for {} placeholders in format strings"
+            },
+            {
+                "id": "invalidEscapeSequence",
+                "description": "Style for invalid char or byte escapes in strings"
             },
             {
                 "id": "label",

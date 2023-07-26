@@ -1189,7 +1189,7 @@ impl FieldsShape {
             }
             FieldsShape::Array { stride, count } => {
                 let i = u64::try_from(i).unwrap();
-                assert!(i < count);
+                assert!(i < count, "tried to access field {} of array with {} fields", i, count);
                 stride * i
             }
             FieldsShape::Arbitrary { ref offsets, .. } => offsets[FieldIdx::from_usize(i)],
@@ -1345,7 +1345,6 @@ impl Abi {
 
     /// Discard validity range information and allow undef.
     pub fn to_union(&self) -> Self {
-        assert!(self.is_sized());
         match *self {
             Abi::Scalar(s) => Abi::Scalar(s.to_union()),
             Abi::ScalarPair(s1, s2) => Abi::ScalarPair(s1.to_union(), s2.to_union()),
