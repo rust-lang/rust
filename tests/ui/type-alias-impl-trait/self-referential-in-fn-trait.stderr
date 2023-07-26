@@ -1,9 +1,10 @@
-error[E0275]: overflow evaluating the requirement `<Foo<'a> as FnOnce<()>>::Output == Foo<'a>`
-  --> $DIR/self-referential-in-fn-trait.rs:5:40
+error: unconstrained opaque type
+  --> $DIR/self-referential-in-fn-trait.rs:3:16
    |
-LL | fn crash<'a>(_: &'a (), x: Foo<'a>) -> Foo<'a> {
-   |                                        ^^^^^^^
+LL | type Foo<'a> = impl Fn() -> Foo<'a>;
+   |                ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `Foo` must be used in combination with a concrete type within the same module
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0275`.

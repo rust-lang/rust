@@ -24,6 +24,8 @@ LL |     take_u32(x.await)
 error[E0308]: mismatched types
   --> $DIR/suggest-missing-await.rs:22:5
    |
+LL | async fn suggest_await_in_async_fn_return() {
+   |                                             - expected `()` because of return type
 LL |     dummy()
    |     ^^^^^^^ expected `()`, found future
    |

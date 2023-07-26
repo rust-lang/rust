@@ -508,7 +508,7 @@ impl<'tcx> InferCtxt<'tcx> {
     ) -> InferResult<'tcx, ()> {
         let mut obligations = Vec::new();
 
-        self.insert_hidden_type(
+        let already_had_hidden_ty = self.insert_hidden_type(
             opaque_type_key,
             &cause,
             param_env,
@@ -517,14 +517,21 @@ impl<'tcx> InferCtxt<'tcx> {
             &mut obligations,
         )?;
 
-        self.add_item_bounds_for_hidden_type(
-            opaque_type_key.def_id.to_def_id(),
-            opaque_type_key.args,
-            cause,
-            param_env,
-            hidden_ty,
-            &mut obligations,
-        );
+        // If we already had a hidden type, that hidden type will
+        // have already gone through `add_item_bounds_for_hidden_type`.
+        // Since all the bounds must already hold for the previous hidden type
+        // and the new hidden type must be equal to the previous hidden type,
+        // we can conclude that the bounds must already hold.
+        if !already_had_hidden_ty {
+            self.add_item_bounds_for_hidden_type(
+                opaque_type_key.def_id.to_def_id(),
+                opaque_type_key.args,
+                cause,
+                param_env,
+                hidden_ty,
+                &mut obligations,
+            );
+        }
 
         Ok(InferOk { value: (), obligations })
     }
@@ -544,7 +551,7 @@ impl<'tcx> InferCtxt<'tcx> {
         hidden_ty: Ty<'tcx>,
         a_is_expected: bool,
         obligations: &mut Vec<PredicateObligation<'tcx>>,
-    ) -> Result<(), TypeError<'tcx>> {
+    ) -> Result<bool, TypeError<'tcx>> {
         // Ideally, we'd get the span where *this specific `ty` came
         // from*, but right now we just use the span from the overall
         // value being folded. In simple cases like `-> impl Foo`,
@@ -560,7 +567,8 @@ impl<'tcx> InferCtxt<'tcx> {
                 cause.clone(),
                 param_env,
                 ty::PredicateKind::Ambiguous,
-            ))
+            ));
+            Ok(false)
         } else {
             let prev = self
                 .inner
@@ -573,10 +581,11 @@ impl<'tcx> InferCtxt<'tcx> {
                         .eq_exp(DefineOpaqueTypes::Yes, a_is_expected, prev, hidden_ty)?
                         .obligations,
                 );
+                Ok(true)
+            } else {
+                Ok(false)
             }
-        };
-
-        Ok(())
+        }
     }
 
     pub fn add_item_bounds_for_hidden_type(

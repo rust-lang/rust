@@ -1,9 +1,20 @@
-error[E0275]: overflow evaluating the requirement `<i32 as std::ops::Add>::Output == issue10041::X`
-  --> $DIR/new_ret_no_self_overflow.rs:20:25
+error: methods called `new` usually return `Self`
+  --> $DIR/new_ret_no_self_overflow.rs:9:9
    |
-LL |         pub fn new() -> X {
-   |                         ^
+LL | /         pub fn new() -> impl PartialOrd {
+LL | |             0i32
+LL | |         }
+   | |_________^
+   |
+   = note: `-D clippy::new-ret-no-self` implied by `-D warnings`
 
-error: aborting due to previous error
+error: methods called `new` usually return `Self`
+  --> $DIR/new_ret_no_self_overflow.rs:20:9
+   |
+LL | /         pub fn new() -> X {
+LL | |             0i32
+LL | |         }
+   | |_________^
 
-For more information about this error, try `rustc --explain E0275`.
+error: aborting due to 2 previous errors
+
