@@ -958,6 +958,24 @@ pub(crate) fn anchor<'a, 'cx: 'a>(
     })
 }
 
+fn fmt_slice<'cx>(
+    f: &mut fmt::Formatter<'_>,
+    t: &clean::Type,
+    extra: &str,
+    cx: &'cx Context<'_>,
+) -> fmt::Result {
+    match *t {
+        clean::Generic(name) => {
+            primitive_link(f, PrimitiveType::Slice, &format!("{extra}[{name}]"), cx)
+        }
+        _ => {
+            write!(f, "{extra}[")?;
+            fmt::Display::fmt(&t.print(cx), f)?;
+            f.write_str("]")
+        }
+    }
+}
+
 fn fmt_type<'cx>(
     t: &clean::Type,
     f: &mut fmt::Formatter<'_>,
@@ -1008,55 +1026,25 @@ fn fmt_type<'cx>(
             match &typs[..] {
                 &[] => primitive_link(f, PrimitiveType::Unit, "()", cx),
                 [one] => {
-                    if let clean::Generic(name) = one {
-                        primitive_link(f, PrimitiveType::Tuple, &format!("({name},)"), cx)
-                    } else {
-                        write!(f, "(")?;
-                        // Carry `f.alternate()` into this display w/o branching manually.
-                        fmt::Display::fmt(&one.print(cx), f)?;
-                        write!(f, ",)")
-                    }
+                    write!(f, "(")?;
+                    // Carry `f.alternate()` into this display w/o branching manually.
+                    fmt::Display::fmt(&one.print(cx), f)?;
+                    write!(f, ",)")
                 }
                 many => {
-                    let generic_names: Vec<Symbol> = many
-                        .iter()
-                        .filter_map(|t| match t {
-                            clean::Generic(name) => Some(*name),
-                            _ => None,
-                        })
-                        .collect();
-                    let is_generic = generic_names.len() == many.len();
-                    if is_generic {
-                        primitive_link(
-                            f,
-                            PrimitiveType::Tuple,
-                            &format!("({})", generic_names.iter().map(|s| s.as_str()).join(", ")),
-                            cx,
-                        )
-                    } else {
-                        write!(f, "(")?;
-                        for (i, item) in many.iter().enumerate() {
-                            if i != 0 {
-                                write!(f, ", ")?;
-                            }
-                            // Carry `f.alternate()` into this display w/o branching manually.
-                            fmt::Display::fmt(&item.print(cx), f)?;
+                    write!(f, "(")?;
+                    for (i, item) in many.iter().enumerate() {
+                        if i != 0 {
+                            write!(f, ", ")?;
                         }
-                        write!(f, ")")
+                        // Carry `f.alternate()` into this display w/o branching manually.
+                        fmt::Display::fmt(&item.print(cx), f)?;
                     }
+                    write!(f, ")")
                 }
             }
         }
-        clean::Slice(ref t) => match **t {
-            clean::Generic(name) => {
-                primitive_link(f, PrimitiveType::Slice, &format!("[{name}]"), cx)
-            }
-            _ => {
-                write!(f, "[")?;
-                fmt::Display::fmt(&t.print(cx), f)?;
-                write!(f, "]")
-            }
-        },
+        clean::Slice(ref t) => fmt_slice(f, &**t, "", cx),
         clean::Array(ref t, ref n) => match **t {
             clean::Generic(name) if !f.alternate() => primitive_link(
                 f,
@@ -1070,10 +1058,9 @@ fn fmt_type<'cx>(
                 if f.alternate() {
                     write!(f, "; {n}")?;
                 } else {
-                    write!(f, "; ")?;
-                    primitive_link(f, PrimitiveType::Array, &format!("{n}", n = Escape(n)), cx)?;
+                    write!(f, "; {}", Escape(n))?;
                 }
-                write!(f, "]")
+                f.write_str("]")
             }
         },
         clean::RawPointer(m, ref t) => {
@@ -1082,36 +1069,34 @@ fn fmt_type<'cx>(
                 hir::Mutability::Not => "const",
             };
 
-            if matches!(**t, clean::Generic(_)) || t.is_assoc_ty() {
-                let text = if f.alternate() {
-                    format!("*{m} {ty:#}", ty = t.print(cx))
-                } else {
-                    format!("*{m} {ty}", ty = t.print(cx))
-                };
-                primitive_link(f, clean::PrimitiveType::RawPointer, &text, cx)
-            } else {
-                primitive_link(f, clean::PrimitiveType::RawPointer, &format!("*{m} "), cx)?;
-                fmt::Display::fmt(&t.print(cx), f)
-            }
+            primitive_link(f, clean::PrimitiveType::RawPointer, &format!("*{m} "), cx)?;
+            fmt::Display::fmt(&t.print(cx), f)
         }
         clean::BorrowedRef { lifetime: ref l, mutability, type_: ref ty } => {
-            let lt = match l {
+            let lifetime = match l {
                 Some(l) => format!("{} ", l.print()),
                 _ => String::new(),
             };
             let m = mutability.print_with_space();
             let amp = if f.alternate() { "&" } else { "&amp;" };
 
-            if let clean::Generic(name) = **ty {
-                return primitive_link(
-                    f,
-                    PrimitiveType::Reference,
-                    &format!("{amp}{lt}{m}{name}"),
-                    cx,
-                );
+            match **ty {
+                clean::Generic(name) => {
+                    primitive_link(
+                        f,
+                        PrimitiveType::Reference,
+                        &format!("{amp}{lifetime}{m}"),
+                        cx,
+                    )?;
+                    return write!(f, "{name}");
+                }
+                clean::Slice(ref t) => {
+                    return fmt_slice(f, &**t, &format!("{amp}{lifetime}{m}"), cx);
+                }
+                _ => {}
             }
 
-            write!(f, "{amp}{lt}{m}")?;
+            write!(f, "{amp}{lifetime}{m}")?;
 
             let needs_parens = match **ty {
                 clean::DynTrait(ref bounds, ref trait_lt)
@@ -1192,7 +1177,7 @@ fn fmt_type<'cx>(
                     write!(
                         f,
                         "<a class=\"associatedtype\" href=\"{url}#{shortty}.{name}\" \
-                                    title=\"type {path}::{name}\">{name}</a>",
+                            title=\"type {path}::{name}\">{name}</a>",
                         shortty = ItemType::AssocType,
                         name = assoc.name,
                         path = join_with_double_colon(&path),
