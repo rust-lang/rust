@@ -634,7 +634,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     // Ensure the return place is aligned and dereferenceable, and protect it for
                     // in-place return value passing.
                     if let Either::Left(mplace) = destination.as_mplace_or_local() {
-                        self.check_mplace(mplace)?;
+                        self.check_mplace(&mplace)?;
                     } else {
                         // Nothing to do for locals, they are always properly allocated and aligned.
                     }

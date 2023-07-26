@@ -85,7 +85,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 for (i, ptr) in ptrs.into_iter().enumerate() {
                     let place = this.project_index(&alloc, i as u64)?;
 
-                    this.write_pointer(ptr, &place.into())?;
+                    this.write_pointer(ptr, &place)?;
                 }
 
                 this.write_immediate(
@@ -106,7 +106,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
                     let op_place = buf_place.offset(offset, ptr_layout, this)?;
 
-                    this.write_pointer(ptr, &op_place.into())?;
+                    this.write_pointer(ptr, &op_place)?;
                 }
             }
             _ => throw_unsup_format!("unknown `miri_get_backtrace` flags {}", flags),
@@ -196,33 +196,33 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
                 this.write_immediate(
                     name_alloc.to_ref(this),
-                    &this.project_field(&dest, 0)?.into(),
+                    &this.project_field(&dest, 0)?,
                 )?;
                 this.write_immediate(
                     filename_alloc.to_ref(this),
-                    &this.project_field(&dest, 1)?.into(),
+                    &this.project_field(&dest, 1)?,
                 )?;
             }
             1 => {
                 this.write_scalar(
                     Scalar::from_target_usize(name.len().try_into().unwrap(), this),
-                    &this.project_field(&dest, 0)?.into(),
+                    &this.project_field(&dest, 0)?,
                 )?;
                 this.write_scalar(
                     Scalar::from_target_usize(filename.len().try_into().unwrap(), this),
-                    &this.project_field(&dest, 1)?.into(),
+                    &this.project_field(&dest, 1)?,
                 )?;
             }
             _ => throw_unsup_format!("unknown `miri_resolve_frame` flags {}", flags),
         }
 
-        this.write_scalar(Scalar::from_u32(lineno), &this.project_field(&dest, 2)?.into())?;
-        this.write_scalar(Scalar::from_u32(colno), &this.project_field(&dest, 3)?.into())?;
+        this.write_scalar(Scalar::from_u32(lineno), &this.project_field(&dest, 2)?)?;
+        this.write_scalar(Scalar::from_u32(colno), &this.project_field(&dest, 3)?)?;
 
         // Support a 4-field struct for now - this is deprecated
         // and slated for removal.
         if num_fields == 5 {
-            this.write_pointer(fn_ptr, &this.project_field(&dest, 4)?.into())?;
+            this.write_pointer(fn_ptr, &this.project_field(&dest, 4)?)?;
         }
 
         Ok(())

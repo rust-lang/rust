@@ -834,7 +834,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         if let Some(thread_info_place) = thread {
             this.write_scalar(
                 Scalar::from_uint(new_thread_id.to_u32(), thread_info_place.layout.size),
-                &thread_info_place.into(),
+                &thread_info_place,
             )?;
         }
 

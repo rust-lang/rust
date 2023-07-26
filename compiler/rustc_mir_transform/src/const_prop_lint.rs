@@ -494,7 +494,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         trace!("assertion on {:?} should be {:?}", value, expected);
 
         let expected = Scalar::from_bool(expected);
-        let value_const = self.use_ecx(location, |this| this.ecx.read_scalar(&value))?;
+        let value_const = self.use_ecx(location, |this| this.ecx.read_scalar(value))?;
 
         if expected != value_const {
             // Poison all places this operand references so that further code
@@ -664,7 +664,7 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
             }
             TerminatorKind::SwitchInt { ref discr, ref targets } => {
                 if let Some(ref value) = self.eval_operand(&discr, location)
-                  && let Some(value_const) = self.use_ecx(location, |this| this.ecx.read_scalar(&value))
+                  && let Some(value_const) = self.use_ecx(location, |this| this.ecx.read_scalar(value))
                   && let Ok(constant) = value_const.try_to_int()
                   && let Ok(constant) = constant.to_bits(constant.size())
                 {
