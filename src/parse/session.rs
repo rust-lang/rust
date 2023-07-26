@@ -152,15 +152,13 @@ fn default_handler(
             TerminalUrl::No,
         ))
     };
-    Handler::with_emitter(
-        Box::new(SilentOnIgnoredFilesEmitter {
-            has_non_ignorable_parser_errors: false,
-            source_map,
-            emitter,
-            ignore_path_set,
-            can_reset,
-        }),
-    )
+    Handler::with_emitter(Box::new(SilentOnIgnoredFilesEmitter {
+        has_non_ignorable_parser_errors: false,
+        source_map,
+        emitter,
+        ignore_path_set,
+        can_reset,
+    }))
 }
 
 impl ParseSess {
