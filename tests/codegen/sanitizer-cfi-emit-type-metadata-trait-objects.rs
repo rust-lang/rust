@@ -53,6 +53,18 @@ impl<'a, T, U> Trait4<'a, U> for T {
     }
 }
 
+pub trait Trait5<T, const N: usize> {
+    fn quux(&self, _: &[T; N]);
+}
+
+#[derive(Copy, Clone)]
+pub struct Type5;
+
+impl<T, U, const N: usize> Trait5<U, N> for T {
+    fn quux(&self, _: &[U; N]) {
+    }
+}
+
 pub fn foo1(a: &dyn Trait1) {
     a.foo();
     // CHECK-LABEL: define{{.*}}4foo1{{.*}}!type !{{[0-9]+}}
@@ -114,7 +126,24 @@ pub fn bar4<'a>() {
     // CHECK:       call i1 @llvm.type.test({{i8\*|ptr}} {{%f|%[0-9]}}, metadata !"[[TYPE4:[[:print:]]+]]")
 }
 
+pub fn foo5(a: &dyn Trait5<Type5, 32>) {
+    let b = &[Type5; 32];
+    a.quux(&b);
+    // CHECK-LABEL: define{{.*}}4foo5{{.*}}!type !{{[0-9]+}}
+    // CHECK:       call i1 @llvm.type.test({{i8\*|ptr}} {{%f|%[0-9]}}, metadata !"[[TYPE5:[[:print:]]+]]")
+}
+
+pub fn bar5() {
+    let a = &[Type5; 32];
+    foo5(&a);
+    let b = &a as &dyn Trait5<Type5, 32>;
+    b.quux(&a);
+    // CHECK-LABEL: define{{.*}}4bar5{{.*}}!type !{{[0-9]+}}
+    // CHECK:       call i1 @llvm.type.test({{i8\*|ptr}} {{%f|%[0-9]}}, metadata !"[[TYPE5:[[:print:]]+]]")
+}
+
 // CHECK: !{{[0-9]+}} = !{i64 0, !"[[TYPE1]]"}
 // CHECK: !{{[0-9]+}} = !{i64 0, !"[[TYPE2]]"}
 // CHECK: !{{[0-9]+}} = !{i64 0, !"[[TYPE3]]"}
 // CHECK: !{{[0-9]+}} = !{i64 0, !"[[TYPE4]]"}
+// CHECK: !{{[0-9]+}} = !{i64 0, !"[[TYPE5]]"}

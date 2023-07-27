@@ -362,7 +362,7 @@ pub struct CodegenContext<B: WriteBackendMethods> {
 
 impl<B: WriteBackendMethods> CodegenContext<B> {
     pub fn create_diag_handler(&self) -> Handler {
-        Handler::with_emitter(true, None, Box::new(self.diag_emitter.clone()), None)
+        Handler::with_emitter(Box::new(self.diag_emitter.clone()))
     }
 
     pub fn config(&self, kind: ModuleKind) -> &ModuleConfig {

@@ -16,21 +16,20 @@ use rustc_target::abi::HasDataLayout;
 use rustc_target::abi::Size;
 use rustc_target::abi::{self, VariantIdx};
 
-use super::MPlaceTy;
-use super::{InterpCx, InterpResult, Machine, MemPlaceMeta, OpTy, Provenance, Scalar};
+use super::{InterpCx, InterpResult, MPlaceTy, Machine, MemPlaceMeta, OpTy, Provenance, Scalar};
 
 /// A thing that we can project into, and that has a layout.
-pub trait Projectable<'mir, 'tcx: 'mir, Prov: Provenance>: Sized {
+pub trait Projectable<'tcx, Prov: Provenance>: Sized + std::fmt::Debug {
     /// Get the layout.
     fn layout(&self) -> TyAndLayout<'tcx>;
 
     /// Get the metadata of a wide value.
-    fn meta<M: Machine<'mir, 'tcx, Provenance = Prov>>(
+    fn meta<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
         &self,
         ecx: &InterpCx<'mir, 'tcx, M>,
     ) -> InterpResult<'tcx, MemPlaceMeta<M::Provenance>>;
 
-    fn len<M: Machine<'mir, 'tcx, Provenance = Prov>>(
+    fn len<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
         &self,
         ecx: &InterpCx<'mir, 'tcx, M>,
     ) -> InterpResult<'tcx, u64> {
@@ -67,7 +66,7 @@ pub trait Projectable<'mir, 'tcx: 'mir, Prov: Provenance>: Sized {
 
     /// Convert this to an `OpTy`. This might be an irreversible transformation, but is useful for
     /// reading from this thing.
-    fn to_op<M: Machine<'mir, 'tcx, Provenance = Prov>>(
+    fn to_op<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
         &self,
         ecx: &InterpCx<'mir, 'tcx, M>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>>;
@@ -85,7 +84,7 @@ where
     ///
     /// This also works for arrays, but then the `usize` index type is restricting.
     /// For indexing into arrays, use `mplace_index`.
-    pub fn project_field<P: Projectable<'mir, 'tcx, M::Provenance>>(
+    pub fn project_field<P: Projectable<'tcx, M::Provenance>>(
         &self,
         base: &P,
         field: usize,
@@ -128,7 +127,7 @@ where
     }
 
     /// Downcasting to an enum variant.
-    pub fn project_downcast<P: Projectable<'mir, 'tcx, M::Provenance>>(
+    pub fn project_downcast<P: Projectable<'tcx, M::Provenance>>(
         &self,
         base: &P,
         variant: VariantIdx,
@@ -149,7 +148,7 @@ where
     }
 
     /// Compute the offset and field layout for accessing the given index.
-    pub fn project_index<P: Projectable<'mir, 'tcx, M::Provenance>>(
+    pub fn project_index<P: Projectable<'tcx, M::Provenance>>(
         &self,
         base: &P,
         index: u64,
@@ -178,7 +177,7 @@ where
         base.offset(offset, field_layout, self)
     }
 
-    fn project_constant_index<P: Projectable<'mir, 'tcx, M::Provenance>>(
+    fn project_constant_index<P: Projectable<'tcx, M::Provenance>>(
         &self,
         base: &P,
         offset: u64,
@@ -204,7 +203,7 @@ where
 
     /// Iterates over all fields of an array. Much more efficient than doing the
     /// same by repeatedly calling `operand_index`.
-    pub fn project_array_fields<'a, P: Projectable<'mir, 'tcx, M::Provenance>>(
+    pub fn project_array_fields<'a, P: Projectable<'tcx, M::Provenance>>(
         &self,
         base: &'a P,
     ) -> InterpResult<'tcx, impl Iterator<Item = InterpResult<'tcx, P>> + 'a>
@@ -224,7 +223,7 @@ where
     }
 
     /// Subslicing
-    fn project_subslice<P: Projectable<'mir, 'tcx, M::Provenance>>(
+    fn project_subslice<P: Projectable<'tcx, M::Provenance>>(
         &self,
         base: &P,
         from: u64,
@@ -284,9 +283,7 @@ where
     #[instrument(skip(self), level = "trace")]
     pub fn project<P>(&self, base: &P, proj_elem: mir::PlaceElem<'tcx>) -> InterpResult<'tcx, P>
     where
-        P: Projectable<'mir, 'tcx, M::Provenance>
-            + From<MPlaceTy<'tcx, M::Provenance>>
-            + std::fmt::Debug,
+        P: Projectable<'tcx, M::Provenance> + From<MPlaceTy<'tcx, M::Provenance>> + std::fmt::Debug,
     {
         use rustc_middle::mir::ProjectionElem::*;
         Ok(match proj_elem {

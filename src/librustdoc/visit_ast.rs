@@ -282,7 +282,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             // made reachable by cross-crate inlining which we're checking here.
             // (this is done here because we need to know this upfront).
             crate::visit_lib::lib_embargo_visit_item(self.cx, ori_res_did);
-            if is_hidden {
+            if is_hidden || glob {
                 return false;
             }
             // We store inlined foreign items otherwise, it'd mean that the `use` item would be kept
@@ -376,7 +376,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             return true;
         }
         let tcx = self.cx.tcx;
-        let item_def_id = reexport_chain(tcx, import_def_id, target_def_id)
+        let item_def_id = reexport_chain(tcx, import_def_id, target_def_id.to_def_id())
             .iter()
             .flat_map(|reexport| reexport.id())
             .map(|id| id.expect_local())

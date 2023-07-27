@@ -267,8 +267,6 @@ lint_improper_ctypes_char_help = consider using `u32` or `libc::wchar_t` instead
 lint_improper_ctypes_char_reason = the `char` type has no C equivalent
 lint_improper_ctypes_dyn = trait objects have no C equivalent
 
-lint_improper_ctypes_enum_phantomdata = this enum contains a PhantomData field
-
 lint_improper_ctypes_enum_repr_help =
     consider adding a `#[repr(C)]`, `#[repr(transparent)]`, or integer `#[repr(...)]` attribute to this enum
 

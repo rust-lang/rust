@@ -9,7 +9,7 @@ use crate::lint::{
 use rustc_ast::node_id::NodeId;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::sync::{AppendOnlyVec, AtomicBool, Lock, Lrc};
-use rustc_errors::{emitter::SilentEmitter, ColorConfig, Handler};
+use rustc_errors::{emitter::SilentEmitter, Handler};
 use rustc_errors::{
     fallback_fluent_bundle, Diagnostic, DiagnosticBuilder, DiagnosticId, DiagnosticMessage,
     EmissionGuarantee, ErrorGuaranteed, IntoDiagnostic, MultiSpan, Noted, StashKey,
@@ -224,15 +224,7 @@ impl ParseSess {
     pub fn new(locale_resources: Vec<&'static str>, file_path_mapping: FilePathMapping) -> Self {
         let fallback_bundle = fallback_fluent_bundle(locale_resources, false);
         let sm = Lrc::new(SourceMap::new(file_path_mapping));
-        let handler = Handler::with_tty_emitter(
-            ColorConfig::Auto,
-            true,
-            None,
-            Some(sm.clone()),
-            None,
-            fallback_bundle,
-            None,
-        );
+        let handler = Handler::with_tty_emitter(Some(sm.clone()), fallback_bundle);
         ParseSess::with_span_handler(handler, sm)
     }
 
@@ -262,21 +254,9 @@ impl ParseSess {
     pub fn with_silent_emitter(fatal_note: Option<String>) -> Self {
         let fallback_bundle = fallback_fluent_bundle(Vec::new(), false);
         let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-        let fatal_handler = Handler::with_tty_emitter(
-            ColorConfig::Auto,
-            false,
-            None,
-            None,
-            None,
-            fallback_bundle,
-            None,
-        );
-        let handler = Handler::with_emitter(
-            false,
-            None,
-            Box::new(SilentEmitter { fatal_handler, fatal_note }),
-            None,
-        );
+        let fatal_handler = Handler::with_tty_emitter(None, fallback_bundle).disable_warnings();
+        let handler = Handler::with_emitter(Box::new(SilentEmitter { fatal_handler, fatal_note }))
+            .disable_warnings();
         ParseSess::with_span_handler(handler, sm)
     }
 

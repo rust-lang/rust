@@ -132,25 +132,31 @@ pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<
     });
 
     let kind = ModuleItem(Module { items, span });
-    generate_item_with_correct_attrs(cx, kind, doc.def_id, doc.name, doc.import_id, doc.renamed)
+    generate_item_with_correct_attrs(
+        cx,
+        kind,
+        doc.def_id.to_def_id(),
+        doc.name,
+        doc.import_id,
+        doc.renamed,
+    )
 }
 
 fn generate_item_with_correct_attrs(
     cx: &mut DocContext<'_>,
     kind: ItemKind,
-    local_def_id: LocalDefId,
+    def_id: DefId,
     name: Symbol,
     import_id: Option<LocalDefId>,
     renamed: Option<Symbol>,
 ) -> Item {
-    let def_id = local_def_id.to_def_id();
     let target_attrs = inline::load_attrs(cx, def_id);
     let attrs = if let Some(import_id) = import_id {
         let is_inline = inline::load_attrs(cx, import_id.to_def_id())
             .lists(sym::doc)
             .get_word_attr(sym::inline)
             .is_some();
-        let mut attrs = get_all_import_attributes(cx, import_id, local_def_id, is_inline);
+        let mut attrs = get_all_import_attributes(cx, import_id, def_id, is_inline);
         add_without_unwanted_attributes(&mut attrs, target_attrs, is_inline, None);
         attrs
     } else {
@@ -2308,10 +2314,10 @@ fn clean_bare_fn_ty<'tcx>(
 pub(crate) fn reexport_chain<'tcx>(
     tcx: TyCtxt<'tcx>,
     import_def_id: LocalDefId,
-    target_def_id: LocalDefId,
+    target_def_id: DefId,
 ) -> &'tcx [Reexport] {
     for child in tcx.module_children_local(tcx.local_parent(import_def_id)) {
-        if child.res.opt_def_id() == Some(target_def_id.to_def_id())
+        if child.res.opt_def_id() == Some(target_def_id)
             && child.reexport_chain.first().and_then(|r| r.id()) == Some(import_def_id.to_def_id())
         {
             return &child.reexport_chain;
@@ -2324,7 +2330,7 @@ pub(crate) fn reexport_chain<'tcx>(
 fn get_all_import_attributes<'hir>(
     cx: &mut DocContext<'hir>,
     import_def_id: LocalDefId,
-    target_def_id: LocalDefId,
+    target_def_id: DefId,
     is_inline: bool,
 ) -> Vec<(Cow<'hir, ast::Attribute>, Option<DefId>)> {
     let mut attrs = Vec::new();
@@ -2541,7 +2547,7 @@ fn clean_maybe_renamed_item<'tcx>(
         vec![generate_item_with_correct_attrs(
             cx,
             kind,
-            item.owner_id.def_id,
+            item.owner_id.def_id.to_def_id(),
             name,
             import_id,
             renamed,
@@ -2691,6 +2697,7 @@ fn clean_use_statement_inner<'tcx>(
     let inline_attr = attrs.lists(sym::doc).get_word_attr(sym::inline);
     let pub_underscore = visibility.is_public() && name == kw::Underscore;
     let current_mod = cx.tcx.parent_module_from_def_id(import.owner_id.def_id);
+    let import_def_id = import.owner_id.def_id.to_def_id();
 
     // The parent of the module in which this import resides. This
     // is the same as `current_mod` if that's already the top
@@ -2741,9 +2748,14 @@ fn clean_use_statement_inner<'tcx>(
     let inner = if kind == hir::UseKind::Glob {
         if !denied {
             let mut visited = DefIdSet::default();
-            if let Some(items) =
-                inline::try_inline_glob(cx, path.res, current_mod, &mut visited, inlined_names)
-            {
+            if let Some(items) = inline::try_inline_glob(
+                cx,
+                path.res,
+                current_mod,
+                &mut visited,
+                inlined_names,
+                import,
+            ) {
                 return items;
             }
         }
@@ -2759,7 +2771,6 @@ fn clean_use_statement_inner<'tcx>(
             denied = true;
         }
         if !denied {
-            let import_def_id = import.owner_id.to_def_id();
             if let Some(mut items) = inline::try_inline(
                 cx,
                 path.res,
@@ -2779,7 +2790,7 @@ fn clean_use_statement_inner<'tcx>(
         Import::new_simple(name, resolve_use_source(cx, path), true)
     };
 
-    vec![Item::from_def_id_and_parts(import.owner_id.to_def_id(), None, ImportItem(inner), cx)]
+    vec![Item::from_def_id_and_parts(import_def_id, None, ImportItem(inner), cx)]
 }
 
 fn clean_maybe_renamed_foreign_item<'tcx>(

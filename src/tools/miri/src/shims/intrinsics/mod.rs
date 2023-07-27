@@ -97,12 +97,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             "volatile_load" => {
                 let [place] = check_arg_count(args)?;
                 let place = this.deref_operand(place)?;
-                this.copy_op(&place.into(), dest, /*allow_transmute*/ false)?;
+                this.copy_op(&place, dest, /*allow_transmute*/ false)?;
             }
             "volatile_store" => {
                 let [place, dest] = check_arg_count(args)?;
                 let place = this.deref_operand(place)?;
-                this.copy_op(dest, &place.into(), /*allow_transmute*/ false)?;
+                this.copy_op(dest, &place, /*allow_transmute*/ false)?;
             }
 
             "write_bytes" | "volatile_set_memory" => {

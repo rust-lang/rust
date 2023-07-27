@@ -86,7 +86,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             "_NSGetEnviron" => {
                 let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 this.write_pointer(
-                    this.machine.env_vars.environ.expect("machine must be initialized").ptr,
+                    this.machine
+                        .env_vars
+                        .environ
+                        .as_ref()
+                        .expect("machine must be initialized")
+                        .ptr,
                     dest,
                 )?;
             }
@@ -133,16 +138,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let (written, size_needed) = this.write_path_to_c_str(
                     &path,
                     buf_ptr,
-                    this.read_scalar(&bufsize.into())?.to_u32()?.into(),
+                    this.read_scalar(&bufsize)?.to_u32()?.into(),
                 )?;
 
                 if written {
                     this.write_null(dest)?;
                 } else {
-                    this.write_scalar(
-                        Scalar::from_u32(size_needed.try_into().unwrap()),
-                        &bufsize.into(),
-                    )?;
+                    this.write_scalar(Scalar::from_u32(size_needed.try_into().unwrap()), &bufsize)?;
                     this.write_int(-1, dest)?;
                 }
             }

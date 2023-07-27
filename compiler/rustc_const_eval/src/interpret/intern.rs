@@ -170,7 +170,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx, const_eval::Memory
         let tcx = self.ecx.tcx;
         let ty = mplace.layout.ty;
         if let ty::Ref(_, referenced_ty, ref_mutability) = *ty.kind() {
-            let value = self.ecx.read_immediate(&mplace.into())?;
+            let value = self.ecx.read_immediate(mplace)?;
             let mplace = self.ecx.ref_to_mplace(&value)?;
             assert_eq!(mplace.layout.ty, referenced_ty);
             // Handle trait object vtables.
@@ -358,7 +358,7 @@ pub fn intern_const_alloc_recursive<
         Some(ret.layout.ty),
     );
 
-    ref_tracking.track((*ret, base_intern_mode), || ());
+    ref_tracking.track((ret.clone(), base_intern_mode), || ());
 
     while let Some(((mplace, mode), _)) = ref_tracking.todo.pop() {
         let res = InternVisitor {
@@ -464,7 +464,7 @@ impl<'mir, 'tcx: 'mir, M: super::intern::CompileTimeMachine<'mir, 'tcx, !>>
         ) -> InterpResult<'tcx, ()>,
     ) -> InterpResult<'tcx, ConstAllocation<'tcx>> {
         let dest = self.allocate(layout, MemoryKind::Stack)?;
-        f(self, &dest.into())?;
+        f(self, &dest.clone().into())?;
         let mut alloc = self.memory.alloc_map.remove(&dest.ptr.provenance.unwrap()).unwrap().1;
         alloc.mutability = Mutability::Not;
         Ok(self.tcx.mk_const_alloc(alloc))

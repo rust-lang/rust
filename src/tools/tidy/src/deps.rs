@@ -46,6 +46,7 @@ const EXCEPTIONS: &[(&str, &str)] = &[
     ("instant", "BSD-3-Clause"),                             // rustc_driver/tracing-subscriber/parking_lot
     ("mdbook", "MPL-2.0"),                                   // mdbook
     ("openssl", "Apache-2.0"),                               // opt-dist
+    ("rustc_apfloat", "Apache-2.0 WITH LLVM-exception"),     // rustc (license is the same as LLVM uses)
     ("ryu", "Apache-2.0 OR BSL-1.0"),                        // cargo/... (because of serde)
     ("self_cell", "Apache-2.0"),                             // rustc (fluent translations)
     ("snap", "BSD-3-Clause"),                                // rustc
@@ -224,6 +225,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "rustc-hash",
     "rustc-rayon",
     "rustc-rayon-core",
+    "rustc_apfloat",
     "rustc_version",
     "rustix",
     "ruzstd", // via object in thorin-dwp

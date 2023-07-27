@@ -156,10 +156,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let qpc = i64::try_from(duration.as_nanos()).map_err(|_| {
             err_unsup_format!("programs running longer than 2^63 nanoseconds are not supported")
         })?;
-        this.write_scalar(
-            Scalar::from_i64(qpc),
-            &this.deref_operand(lpPerformanceCount_op)?.into(),
-        )?;
+        this.write_scalar(Scalar::from_i64(qpc), &this.deref_operand(lpPerformanceCount_op)?)?;
         Ok(Scalar::from_i32(-1)) // return non-zero on success
     }
 
@@ -179,7 +176,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // and thus 10^9 counts per second.
         this.write_scalar(
             Scalar::from_i64(1_000_000_000),
-            &this.deref_operand_as(lpFrequency_op, this.machine.layouts.u64)?.into(),
+            &this.deref_operand_as(lpFrequency_op, this.machine.layouts.u64)?,
         )?;
         Ok(Scalar::from_i32(-1)) // Return non-zero on success
     }

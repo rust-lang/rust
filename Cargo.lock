@@ -3135,7 +3135,9 @@ dependencies = [
 
 [[package]]
 name = "rustc_apfloat"
-version = "0.0.0"
+version = "0.2.0+llvm-462a31f5a5ab"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "465187772033a5ee566f69fe008df03628fce549a0899aae76f0a0c2e34696be"
 dependencies = [
  "bitflags 1.3.2",
  "smallvec",
@@ -4725,9 +4727,9 @@ dependencies = [
 
 [[package]]
 name = "smallvec"
-version = "1.10.0"
+version = "1.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a507befe795404456341dfab10cef66ead4c041f62b8b11bbb92bffe5d0953e0"
+checksum = "62bb4feee49fdd9f707ef802e22365a35de4b7b299de4763d44bfea899442ff9"
 
 [[package]]
 name = "snap"

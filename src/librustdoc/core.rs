@@ -173,11 +173,8 @@ pub(crate) fn new_handler(
         }
     };
 
-    rustc_errors::Handler::with_emitter_and_flags(
-        emitter,
-        unstable_opts.diagnostic_handler_flags(true),
-        None,
-    )
+    rustc_errors::Handler::with_emitter(emitter)
+        .with_flags(unstable_opts.diagnostic_handler_flags(true))
 }
 
 /// Parse, resolve, and typecheck the given crate.

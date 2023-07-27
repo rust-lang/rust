@@ -74,9 +74,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             let event = this.deref_operand_as(event, this.libc_ty_layout("epoll_event"))?;
 
             let events = this.project_field(&event, 0)?;
-            let events = this.read_scalar(&events.into())?.to_u32()?;
+            let events = this.read_scalar(&events)?.to_u32()?;
             let data = this.project_field(&event, 1)?;
-            let data = this.read_scalar(&data.into())?;
+            let data = this.read_scalar(&data)?;
             let event = EpollEvent { events, data };
 
             if let Some(epfd) = this.machine.file_handler.handles.get_mut(&epfd) {
@@ -248,8 +248,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let sv1 = fh.insert_fd(Box::new(SocketPair));
         let sv1 = ScalarInt::try_from_int(sv1, sv.layout.size).unwrap();
 
-        this.write_scalar(sv0, &sv.into())?;
-        this.write_scalar(sv1, &sv.offset(sv.layout.size, sv.layout, this)?.into())?;
+        this.write_scalar(sv0, &sv)?;
+        this.write_scalar(sv1, &sv.offset(sv.layout.size, sv.layout, this)?)?;
 
         Ok(Scalar::from_i32(0))
     }
