@@ -8,7 +8,7 @@ pub fn test() {
     let a = 0u8;
     &a; // keep variable in an alloca
 
-// CHECK: call void @llvm.lifetime.start{{.*}}(i{{[0-9 ]+}}, {{i8\*|ptr}} %a)
+// CHECK: call void @llvm.lifetime.start{{.*}}(i{{[0-9 ]+}}, ptr %a)
 
     {
         let b = &Some(a);
@@ -26,9 +26,9 @@ pub fn test() {
     let c = 1u8;
     &c; // keep variable in an alloca
 
-// CHECK: call void @llvm.lifetime.start{{.*}}(i{{[0-9 ]+}}, {{i8\*|ptr}} %c)
+// CHECK: call void @llvm.lifetime.start{{.*}}(i{{[0-9 ]+}}, ptr %c)
 
-// CHECK: call void @llvm.lifetime.end{{.*}}(i{{[0-9 ]+}}, {{i8\*|ptr}} %c)
+// CHECK: call void @llvm.lifetime.end{{.*}}(i{{[0-9 ]+}}, ptr %c)
 
-// CHECK: call void @llvm.lifetime.end{{.*}}(i{{[0-9 ]+}}, {{i8\*|ptr}} %a)
+// CHECK: call void @llvm.lifetime.end{{.*}}(i{{[0-9 ]+}}, ptr %a)
 }

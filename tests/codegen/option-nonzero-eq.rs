@@ -32,7 +32,7 @@ pub fn non_zero_signed_eq(l: Option<NonZeroI64>, r: Option<NonZeroI64>) -> bool 
 #[no_mangle]
 pub fn non_null_eq(l: Option<NonNull<u8>>, r: Option<NonNull<u8>>) -> bool {
     // CHECK: start:
-    // CHECK-NEXT: icmp eq {{(i8\*|ptr)}}
+    // CHECK-NEXT: icmp eq ptr
     // CHECK-NEXT: ret i1
     l == r
 }
