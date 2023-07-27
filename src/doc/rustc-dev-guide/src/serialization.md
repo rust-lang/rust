@@ -130,7 +130,7 @@ some deserialization needs to be deferred from the initial loading of metadata.
 The [`LazyValue<T>`] type wraps the (relative) offset in the crate metadata where a
 `T` has been serialized. There are also some variants, [`LazyArray<T>`] and [`LazyTable<I, T>`].
 
-The `Lazy<[T]>` and `LazyTable<I, T>` type provide some functionality over
+The `Lazy<[T]>` and `LazyTable<I, T>` types provide some functionality over
 `Lazy<Vec<T>>` and `Lazy<HashMap<I, T>>`:
 
 - It's possible to encode a `LazyArray<T>` directly from an iterator, without
