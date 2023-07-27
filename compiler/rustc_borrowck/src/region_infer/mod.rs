@@ -259,7 +259,7 @@ fn sccs_info<'cx, 'tcx>(
 
     let mut reg_vars_to_origins_str = "region variables to origins:\n".to_string();
     for (reg_var, origin) in var_to_origin_sorted.into_iter() {
-        reg_vars_to_origins_str.push_str(&format!("{:?}: {:?}\n", reg_var, origin));
+        reg_vars_to_origins_str.push_str(&format!("{reg_var:?}: {origin:?}\n"));
     }
     debug!("{}", reg_vars_to_origins_str);
 

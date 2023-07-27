@@ -1817,8 +1817,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 }
 
                 ProjectionElem::Subslice { .. } => {
-                    panic!("we don't allow assignments to subslices, location: {:?}",
-                           location);
+                    panic!("we don't allow assignments to subslices, location: {location:?}");
                 }
 
                 ProjectionElem::Field(..) => {
@@ -2017,8 +2016,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     self.infcx.tcx.sess.delay_span_bug(
                         span,
                         format!(
-                            "Accessing `{:?}` with the kind `{:?}` shouldn't be possible",
-                            place, kind,
+                            "Accessing `{place:?}` with the kind `{kind:?}` shouldn't be possible",
                         ),
                     );
                 }

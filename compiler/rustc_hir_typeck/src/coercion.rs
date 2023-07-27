@@ -1797,8 +1797,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
             err.span_note(
                 sp,
                 format!(
-                    "return type inferred to be `{}` here",
-                    expected
+                    "return type inferred to be `{expected}` here"
                 ),
             );
         }

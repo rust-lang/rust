@@ -112,7 +112,7 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
                     self.fcx
                         .tcx
                         .sess
-                        .delay_span_bug(span, format!("Encountered var {:?}", unresolved_term));
+                        .delay_span_bug(span, format!("Encountered var {unresolved_term:?}"));
                 } else {
                     let note = format!(
                         "the type is part of the {} because of this {}",

@@ -202,7 +202,7 @@ trait FactCell {
 
 impl<A: Debug> FactCell for A {
     default fn to_string(&self, _location_table: &LocationTable) -> String {
-        format!("{:?}", self)
+        format!("{self:?}")
     }
 }
 

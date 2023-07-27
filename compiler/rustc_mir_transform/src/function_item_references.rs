@@ -168,15 +168,15 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
             }
         };
         let ident = self.tcx.item_name(fn_id).to_ident_string();
-        let ty_params = fn_args.types().map(|ty| format!("{}", ty));
-        let const_params = fn_args.consts().map(|c| format!("{}", c));
+        let ty_params = fn_args.types().map(|ty| format!("{ty}"));
+        let const_params = fn_args.consts().map(|c| format!("{c}"));
         let params = ty_params.chain(const_params).join(", ");
         let num_args = fn_sig.inputs().map_bound(|inputs| inputs.len()).skip_binder();
         let variadic = if fn_sig.c_variadic() { ", ..." } else { "" };
         let ret = if fn_sig.output().skip_binder().is_unit() { "" } else { " -> _" };
         let sugg = format!(
             "{} as {}{}fn({}{}){}",
-            if params.is_empty() { ident.clone() } else { format!("{}::<{}>", ident, params) },
+            if params.is_empty() { ident.clone() } else { format!("{ident}::<{params}>") },
             unsafety,
             abi,
             vec!["_"; num_args].join(", "),

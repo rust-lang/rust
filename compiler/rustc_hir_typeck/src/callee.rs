@@ -402,7 +402,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             .sess
                             .struct_span_err(
                                 callee_expr.span,
-                                format!("evaluate({:?}) = {:?}", predicate, result),
+                                format!("evaluate({predicate:?}) = {result:?}"),
                             )
                             .span_label(predicate_span, "predicate")
                             .emit();

@@ -345,7 +345,7 @@ pub(super) fn check_opaque_for_inheriting_lifetimes(
                 err.span_suggestion(
                     span,
                     "consider spelling out the type instead",
-                    name.unwrap_or_else(|| format!("{:?}", ty)),
+                    name.unwrap_or_else(|| format!("{ty:?}")),
                     Applicability::MaybeIncorrect,
                 );
             }
@@ -797,7 +797,7 @@ fn check_item_type(tcx: TyCtxt<'_>, id: hir::ItemId) {
                                     "replace the {} parameters with concrete {}{}",
                                     kinds,
                                     kinds_pl,
-                                    egs.map(|egs| format!(" like `{}`", egs)).unwrap_or_default(),
+                                    egs.map(|egs| format!(" like `{egs}`")).unwrap_or_default(),
                                 ),
                             )
                             .emit();
@@ -882,7 +882,7 @@ pub(super) fn check_specialization_validity<'tcx>(
         } else {
             tcx.sess.delay_span_bug(
                 DUMMY_SP,
-                format!("parent item: {:?} not marked as default", parent_impl),
+                format!("parent item: {parent_impl:?} not marked as default"),
             );
         }
     }

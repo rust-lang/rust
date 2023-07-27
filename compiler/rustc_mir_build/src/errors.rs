@@ -454,17 +454,13 @@ impl<'a> IntoDiagnostic<'a> for NonExhaustivePatternsTypeNotEmpty<'_, '_, '_> {
         if self.span.eq_ctxt(self.expr_span) {
             // Get the span for the empty match body `{}`.
             let (indentation, more) = if let Some(snippet) = sm.indentation_before(self.span) {
-                (format!("\n{}", snippet), "    ")
+                (format!("\n{snippet}"), "    ")
             } else {
                 (" ".to_string(), "")
             };
             suggestion = Some((
                 self.span.shrink_to_hi().with_hi(self.expr_span.hi()),
-                format!(
-                    " {{{indentation}{more}_ => todo!(),{indentation}}}",
-                    indentation = indentation,
-                    more = more,
-                ),
+                format!(" {{{indentation}{more}_ => todo!(),{indentation}}}",),
             ));
         }
 

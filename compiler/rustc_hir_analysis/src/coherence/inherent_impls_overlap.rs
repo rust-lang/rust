@@ -77,8 +77,8 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
                         "duplicate definitions with name `{}`",
                         ident,
                     );
-                    err.span_label(span, format!("duplicate definitions for `{}`", ident));
-                    err.span_label(*former, format!("other definition for `{}`", ident));
+                    err.span_label(span, format!("duplicate definitions for `{ident}`"));
+                    err.span_label(*former, format!("other definition for `{ident}`"));
 
                     err.emit();
                 }
@@ -114,11 +114,11 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
                 );
                 err.span_label(
                     self.tcx.def_span(item1.def_id),
-                    format!("duplicate definitions for `{}`", name),
+                    format!("duplicate definitions for `{name}`"),
                 );
                 err.span_label(
                     self.tcx.def_span(item2.def_id),
-                    format!("other definition for `{}`", name),
+                    format!("other definition for `{name}`"),
                 );
 
                 for cause in &overlap.intercrate_ambiguity_causes {
