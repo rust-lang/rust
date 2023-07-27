@@ -344,7 +344,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
             Ok(response) => response,
         };
 
-        let has_changed = !canonical_response.value.var_values.is_identity()
+        let has_changed = !canonical_response.value.var_values.is_identity_modulo_regions()
             || !canonical_response.value.external_constraints.opaque_types.is_empty();
         let (certainty, nested_goals) = match self.instantiate_and_apply_query_response(
             goal.param_env,
