@@ -539,11 +539,11 @@ macro_rules! impl_float_tests {
                         }
                         let mut result_scalar_flush = [Scalar::default(); LANES];
                         for i in 0..LANES {
-                            let mut value = flush_in(value[i]);
-                            if value < flush_in(min[i]) {
+                            let mut value = value[i];
+                            if flush_in(value) < flush_in(min[i]) {
                                 value = min[i];
                             }
-                            if value > flush_in(max[i]) {
+                            if flush_in(value) > flush_in(max[i]) {
                                 value = max[i];
                             }
                             result_scalar_flush[i] = value
