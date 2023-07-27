@@ -173,8 +173,8 @@ impl ArgumentList {
             .join("\n")
     }
 
-    /// Creates a line for each argument that initalizes the argument from an array [arg]_vals at
-    /// an offset i using a load intrinsic, in C.
+    /// Creates a line for each argument that initializes the argument from an array `[arg]_vals` at
+    /// an offset `i` using a load intrinsic, in C.
     /// e.g `uint8x8_t a = vld1_u8(&a_vals[i]);`
     pub fn load_values_c(&self, p64_armv7_workaround: bool) -> String {
         self.iter()
@@ -214,8 +214,8 @@ impl ArgumentList {
             .join("\n        ")
     }
 
-    /// Creates a line for each argument that initalizes the argument from array [ARG]_VALS at
-    /// an offset i using a load intrinsic, in Rust.
+    /// Creates a line for each argument that initializes the argument from array `[ARG]_VALS` at
+    /// an offset `i` using a load intrinsic, in Rust.
     /// e.g `let a = vld1_u8(A_VALS.as_ptr().offset(i));`
     pub fn load_values_rust(&self) -> String {
         self.iter()

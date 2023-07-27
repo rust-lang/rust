@@ -851,7 +851,7 @@ fn check_patterndead4(pos: &Pos, sd: Side) -> i32 {
     n
 }
 
-/// Check <b>-OOO-, -OO-O-, -O-OO-</br>
+/// Check <b>-OOO-, -OO-O-, -O-OO-</b>
 fn check_patternlive3(pos: &Pos, sd: Side) -> i32 {
     let mut n: i32 = 0;
 
