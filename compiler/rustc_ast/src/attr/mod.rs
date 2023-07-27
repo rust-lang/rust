@@ -285,12 +285,12 @@ impl MetaItem {
         self.kind.value_str()
     }
 
-    fn from_tokens<I>(tokens: &mut iter::Peekable<I>) -> Option<MetaItem>
+    fn from_tokens<'a, I>(tokens: &mut iter::Peekable<I>) -> Option<MetaItem>
     where
-        I: Iterator<Item = TokenTree>,
+        I: Iterator<Item = &'a TokenTree>,
     {
         // FIXME: Share code with `parse_path`.
-        let path = match tokens.next().map(TokenTree::uninterpolate) {
+        let path = match tokens.next().map(|tt| TokenTree::uninterpolate(tt.clone())) {
             Some(TokenTree::Token(
                 Token { kind: kind @ (token::Ident(..) | token::ModSep), span },
                 _,
@@ -309,7 +309,7 @@ impl MetaItem {
                 };
                 loop {
                     if let Some(TokenTree::Token(Token { kind: token::Ident(name, _), span }, _)) =
-                        tokens.next().map(TokenTree::uninterpolate)
+                        tokens.next().map(|tt| TokenTree::uninterpolate(tt.clone()))
                     {
                         segments.push(PathSegment::from_ident(Ident::new(name, span)));
                     } else {
@@ -354,7 +354,7 @@ impl MetaItemKind {
     }
 
     fn list_from_tokens(tokens: TokenStream) -> Option<ThinVec<NestedMetaItem>> {
-        let mut tokens = tokens.into_trees().peekable();
+        let mut tokens = tokens.trees().peekable();
         let mut result = ThinVec::new();
         while tokens.peek().is_some() {
             let item = NestedMetaItem::from_tokens(&mut tokens)?;
@@ -367,12 +367,12 @@ impl MetaItemKind {
         Some(result)
     }
 
-    fn name_value_from_tokens(
-        tokens: &mut impl Iterator<Item = TokenTree>,
+    fn name_value_from_tokens<'a>(
+        tokens: &mut impl Iterator<Item = &'a TokenTree>,
     ) -> Option<MetaItemKind> {
         match tokens.next() {
             Some(TokenTree::Delimited(_, Delimiter::Invisible, inner_tokens)) => {
-                MetaItemKind::name_value_from_tokens(&mut inner_tokens.into_trees())
+                MetaItemKind::name_value_from_tokens(&mut inner_tokens.trees())
             }
             Some(TokenTree::Token(token, _)) => {
                 MetaItemLit::from_token(&token).map(MetaItemKind::NameValue)
@@ -381,8 +381,8 @@ impl MetaItemKind {
         }
     }
 
-    fn from_tokens(
-        tokens: &mut iter::Peekable<impl Iterator<Item = TokenTree>>,
+    fn from_tokens<'a>(
+        tokens: &mut iter::Peekable<impl Iterator<Item = &'a TokenTree>>,
     ) -> Option<MetaItemKind> {
         match tokens.peek() {
             Some(TokenTree::Delimited(_, Delimiter::Parenthesis, inner_tokens)) => {
@@ -501,9 +501,9 @@ impl NestedMetaItem {
         self.meta_item().is_some()
     }
 
-    fn from_tokens<I>(tokens: &mut iter::Peekable<I>) -> Option<NestedMetaItem>
+    fn from_tokens<'a, I>(tokens: &mut iter::Peekable<I>) -> Option<NestedMetaItem>
     where
-        I: Iterator<Item = TokenTree>,
+        I: Iterator<Item = &'a TokenTree>,
     {
         match tokens.peek() {
             Some(TokenTree::Token(token, _))
@@ -513,9 +513,8 @@ impl NestedMetaItem {
                 return Some(NestedMetaItem::Lit(lit));
             }
             Some(TokenTree::Delimited(_, Delimiter::Invisible, inner_tokens)) => {
-                let inner_tokens = inner_tokens.clone();
                 tokens.next();
-                return NestedMetaItem::from_tokens(&mut inner_tokens.into_trees().peekable());
+                return NestedMetaItem::from_tokens(&mut inner_tokens.trees().peekable());
             }
             _ => {}
         }
