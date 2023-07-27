@@ -63,9 +63,8 @@ fn bad_path_expr_1() {
 #[test]
 fn string_to_tts_macro() {
     create_default_session_globals_then(|| {
-        let tts: Vec<_> =
-            string_to_stream("macro_rules! zip (($a)=>($a))".to_string()).into_trees().collect();
-        let tts: &[TokenTree] = &tts[..];
+        let stream = string_to_stream("macro_rules! zip (($a)=>($a))".to_string());
+        let tts = &stream.trees().collect::<Vec<_>>()[..];
 
         match tts {
             [
