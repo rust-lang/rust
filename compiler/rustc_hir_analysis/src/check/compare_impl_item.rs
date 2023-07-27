@@ -760,7 +760,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     );
     ocx.resolve_regions_and_report_errors(impl_m_def_id, &outlives_env)?;
 
-    let mut collected_tys = FxHashMap::default();
+    let mut remapped_types = FxHashMap::default();
     for (def_id, (ty, args)) in collected_types {
         match infcx.fully_resolve((ty, args)) {
             Ok((ty, args)) => {
@@ -810,19 +810,37 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
                     Ok(ty) => ty,
                     Err(guar) => Ty::new_error(tcx, guar),
                 };
-                collected_tys.insert(def_id, ty::EarlyBinder::bind(ty));
+                remapped_types.insert(def_id, ty::EarlyBinder::bind(ty));
             }
             Err(err) => {
                 let reported = tcx.sess.delay_span_bug(
                     return_span,
                     format!("could not fully resolve: {ty} => {err:?}"),
                 );
-                collected_tys.insert(def_id, ty::EarlyBinder::bind(Ty::new_error(tcx, reported)));
+                remapped_types.insert(def_id, ty::EarlyBinder::bind(Ty::new_error(tcx, reported)));
             }
         }
     }
 
-    Ok(&*tcx.arena.alloc(collected_tys))
+    // We may not collect all RPITITs that we see in the HIR for a trait signature
+    // because an RPITIT was located within a missing item. Like if we have a sig
+    // returning `-> Missing<impl Sized>`, that gets converted to `-> [type error]`,
+    // and when walking through the signature we end up never collecting the def id
+    // of the `impl Sized`. Insert that here, so we don't ICE later.
+    for assoc_item in tcx.associated_types_for_impl_traits_in_associated_fn(trait_m.def_id) {
+        if !remapped_types.contains_key(assoc_item) {
+            remapped_types.insert(
+                *assoc_item,
+                ty::EarlyBinder::bind(Ty::new_error_with_message(
+                    tcx,
+                    return_span,
+                    "missing synthetic item for RPITIT",
+                )),
+            );
+        }
+    }
+
+    Ok(&*tcx.arena.alloc(remapped_types))
 }
 
 struct ImplTraitInTraitCollector<'a, 'tcx> {
