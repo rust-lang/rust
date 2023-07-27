@@ -427,9 +427,21 @@ impl Builder {
         let insert_text = self.insert_text.unwrap_or_else(|| label.to_string());
 
         if !self.doc_aliases.is_empty() {
-            let doc_aliases = self.doc_aliases.into_iter().join(", ");
+            let doc_aliases = self.doc_aliases.iter().join(", ");
             label = SmolStr::from(format!("{label} (alias {doc_aliases})"));
-            lookup = SmolStr::from(format!("{lookup} {doc_aliases}"));
+            let lookup_doc_aliases = (self.doc_aliases.iter())
+                // Don't include aliases in `lookup` that aren't valid identifiers as including
+                // them results in weird completion filtering behavior e.g. `Partial>` matching
+                // `PartialOrd` because it has an alias of ">".
+                .filter(|alias| {
+                    let mut chars = alias.chars();
+                    chars.next().map(unicode_ident::is_xid_start).unwrap_or(false)
+                        && chars.all(unicode_ident::is_xid_continue)
+                })
+                .join(", ");
+            if !lookup_doc_aliases.is_empty() {
+                lookup = SmolStr::from(format!("{lookup} {lookup_doc_aliases}"));
+            }
         }
         if let [import_edit] = &*self.imports_to_add {
             // snippets can have multiple imports, but normal completions only have up to one
@@ -553,8 +565,11 @@ impl Builder {
 
 #[cfg(test)]
 mod tests {
+    use ide_db::SymbolKind;
     use itertools::Itertools;
     use test_utils::assert_eq_text;
+
+    use crate::{CompletionItem, CompletionItemKind};
 
     use super::{
         CompletionRelevance, CompletionRelevancePostfixMatch, CompletionRelevanceTypeMatch,
@@ -629,5 +644,20 @@ mod tests {
         ];
 
         check_relevance_score_ordered(expected_relevance_order);
+    }
+
+    #[test]
+    fn exclude_non_identifier_aliases_from_lookup() {
+        let mut item = CompletionItem::new(
+            CompletionItemKind::SymbolKind(SymbolKind::Trait),
+            Default::default(),
+            "PartialOrd",
+        );
+        let aliases = [">", "<", "<=", ">="];
+        item.doc_aliases(aliases.iter().map(|&alias| alias.into()).collect());
+        let item = item.build(&Default::default());
+        for alias in aliases {
+            assert!(!item.lookup().contains(alias));
+        }
     }
 }

@@ -17,6 +17,7 @@ itertools = "0.10.5"
 
 once_cell = "1.17.0"
 smallvec.workspace = true
+unicode-ident = "1.0.0"
 
 
 # local deps

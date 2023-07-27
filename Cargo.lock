@@ -715,6 +715,7 @@ dependencies = [
  "syntax",
  "test-utils",
  "text-edit",
+ "unicode-ident",
 ]
 
 [[package]]
