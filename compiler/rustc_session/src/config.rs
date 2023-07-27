@@ -834,9 +834,10 @@ impl OutFileName {
     }
 
     pub fn is_tty(&self) -> bool {
+        use std::io::IsTerminal;
         match *self {
             OutFileName::Real(_) => false,
-            OutFileName::Stdout => atty::is(atty::Stream::Stdout),
+            OutFileName::Stdout => std::io::stdout().is_terminal(),
         }
     }
 

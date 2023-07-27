@@ -3734,7 +3734,6 @@ dependencies = [
 name = "rustc_interface"
 version = "0.0.0"
 dependencies = [
- "atty",
  "libloading",
  "rustc-rayon",
  "rustc-rayon-core",
@@ -4198,7 +4197,6 @@ dependencies = [
 name = "rustc_session"
 version = "0.0.0"
 dependencies = [
- "atty",
  "bitflags 1.3.2",
  "getopts",
  "libc",
