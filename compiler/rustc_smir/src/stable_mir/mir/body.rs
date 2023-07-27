@@ -218,6 +218,9 @@ pub enum Rvalue {
     /// nature of this operation?
     ThreadLocalRef(stable_mir::CrateItem),
 
+    /// Computes a value as described by the operation.
+    NullaryOp(NullOp, Ty),
+
     /// Exactly like `BinaryOp`, but less operands.
     ///
     /// Also does two's-complement arithmetic. Negation requires a signed integer or a float;
