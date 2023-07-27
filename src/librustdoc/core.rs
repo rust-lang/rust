@@ -8,7 +8,7 @@ use rustc_feature::UnstableFeatures;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{HirId, Path, UsePath};
+use rustc_hir::{HirId, Path};
 use rustc_interface::interface;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
@@ -63,8 +63,6 @@ pub(crate) struct DocContext<'tcx> {
     pub(crate) output_format: OutputFormat,
     /// Used by `strip_private`.
     pub(crate) show_coverage: bool,
-    /// Used by `first_non_private` to prevent computing the same path more than once.
-    pub(crate) updated_qpath: RefCell<FxHashMap<HirId, UsePath<'tcx>>>,
 }
 
 impl<'tcx> DocContext<'tcx> {
@@ -354,7 +352,6 @@ pub(crate) fn run_global_ctxt(
         output_format,
         render_options,
         show_coverage,
-        updated_qpath: Default::default(),
     };
 
     for cnum in tcx.crates(()) {

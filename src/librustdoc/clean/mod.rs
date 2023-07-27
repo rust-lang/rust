@@ -1499,31 +1499,25 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
 fn first_non_private_clean_path<'tcx>(
     cx: &mut DocContext<'tcx>,
     path: &hir::Path<'tcx>,
-    mut new_path_segments: Vec<hir::PathSegment<'tcx>>,
+    new_path_segments: &'tcx [hir::PathSegment<'tcx>],
     new_path_span: rustc_span::Span,
 ) -> Path {
-    use std::mem::transmute;
-
+    let new_hir_path =
+        hir::Path { segments: new_path_segments, res: path.res, span: new_path_span };
+    let mut new_clean_path = clean_path(&new_hir_path, cx);
     // In here we need to play with the path data one last time to provide it the
     // missing `args` and `res` of the final `Path` we get, which, since it comes
     // from a re-export, doesn't have the generics that were originally there, so
     // we add them by hand.
-    if let Some(last) = new_path_segments.last_mut() {
-        // `transmute` is needed because we are using a wrong lifetime. Since
-        // `segments` will be dropped at the end of this block, it's fine.
-        last.args = unsafe { transmute(path.segments.last().as_ref().unwrap().args.clone()) };
-        last.res = path.res;
+    if let Some(path_last) = path.segments.last().as_ref()
+        && let Some(new_path_last) = new_clean_path.segments[..].last_mut()
+        && let Some(path_last_args) = path_last.args.as_ref()
+        && path_last.args.is_some()
+    {
+        assert!(new_path_last.args.is_empty());
+        new_path_last.args = clean_generic_args(path_last_args, cx);
     }
-    // `transmute` is needed because we are using a wrong lifetime. Since
-    // `segments` will be dropped at the end of this block, it's fine.
-    let path = unsafe {
-        hir::Path {
-            segments: transmute(new_path_segments.as_slice()),
-            res: path.res,
-            span: new_path_span,
-        }
-    };
-    clean_path(&path, cx)
+    new_clean_path
 }
 
 /// The goal of this function is to return the first `Path` which is not private (ie not private
@@ -1535,16 +1529,7 @@ fn first_non_private<'tcx>(
     hir_id: hir::HirId,
     path: &hir::Path<'tcx>,
 ) -> Option<Path> {
-    let use_id = path.segments.last().map(|seg| seg.hir_id)?;
     let target_def_id = path.res.opt_def_id()?;
-    let saved_path = cx
-        .updated_qpath
-        .borrow()
-        .get(&use_id)
-        .map(|saved_path| (saved_path.segments.to_vec(), saved_path.span));
-    if let Some((segments, span)) = saved_path {
-        return Some(first_non_private_clean_path(cx, path, segments, span));
-    }
     let (parent_def_id, ident) = match &path.segments[..] {
         [] => return None,
         // Relative paths are available in the same scope as the owner.
@@ -1611,9 +1596,7 @@ fn first_non_private<'tcx>(
                 // 1. We found a public reexport.
                 // 2. We didn't find a public reexport so it's the "end type" path.
                 if let Some((new_path, _)) = last_path_res {
-                    cx.updated_qpath.borrow_mut().insert(use_id, new_path.clone());
-                    let new_path_segments = new_path.segments.to_vec();
-                    return Some(first_non_private_clean_path(cx, path, new_path_segments, new_path.span));
+                    return Some(first_non_private_clean_path(cx, path, new_path.segments, new_path.span));
                 }
                 // If `last_path_res` is `None`, it can mean two things:
                 //
