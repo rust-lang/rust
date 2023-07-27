@@ -1673,11 +1673,11 @@ impl HandlerInner {
         let backtrace = std::env::var_os("RUST_BACKTRACE").map_or(true, |x| &x != "0");
         for bug in bugs {
             if let Some(file) = self.ice_file.as_ref()
-                && let Ok(mut out) = std::fs::File::options().append(true).open(file)
+                && let Ok(mut out) = std::fs::File::options().create(true).append(true).open(file)
             {
                 let _ = write!(
                     &mut out,
-                    "\n\ndelayed span bug: {}\n{}",
+                    "delayed span bug: {}\n{}\n",
                     bug.inner.styled_message().iter().filter_map(|(msg, _)| msg.as_str()).collect::<String>(),
                     &bug.note
                 );
