@@ -3536,7 +3536,7 @@ declare_clippy_lint! {
     #[clippy::version = "1.73.0"]
     pub READONLY_WRITE_LOCK,
     nursery,
-    "acquiring a writer lock when a reader lock would work"
+    "acquiring a write lock when a read lock would work"
 }
 
 pub struct Methods {
