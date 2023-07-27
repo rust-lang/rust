@@ -1057,7 +1057,14 @@ impl Evaluator<'_> {
         _span: MirSpan,
     ) -> Result<()> {
         // We are a single threaded runtime with no UB checking and no optimization, so
-        // we can implement these as normal functions.
+        // we can implement atomic intrinsics as normal functions.
+
+        if name.starts_with("singlethreadfence_") || name.starts_with("fence_") {
+            return Ok(());
+        }
+
+        // The rest of atomic intrinsics have exactly one generic arg
+
         let Some(ty) = generic_args.as_slice(Interner).get(0).and_then(|it| it.ty(Interner)) else {
             return Err(MirEvalError::TypeError("atomic intrinsic generic arg is not provided"));
         };

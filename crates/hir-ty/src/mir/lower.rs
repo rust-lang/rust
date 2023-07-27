@@ -660,6 +660,11 @@ impl<'ctx> MirLowerCtx<'ctx> {
                             expr_id.into(),
                         )
                     }
+                    TyKind::Closure(_, _) => {
+                        not_supported!(
+                            "method resolution not emitted for closure (Are Fn traits available?)"
+                        );
+                    }
                     TyKind::Error => {
                         return Err(MirLowerError::MissingFunctionDefinition(self.owner, expr_id))
                     }

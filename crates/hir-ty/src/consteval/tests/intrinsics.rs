@@ -438,6 +438,8 @@ fn atomic() {
             pub fn atomic_nand_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
             pub fn atomic_or_release<T: Copy>(dst: *mut T, src: T) -> T;
             pub fn atomic_xor_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
+            pub fn atomic_fence_seqcst();
+            pub fn atomic_singlethreadfence_acqrel();
         }
 
         fn should_not_reach() {
@@ -452,6 +454,7 @@ fn atomic() {
             if (30, true) != atomic_cxchg_release_seqcst(&mut y, 30, 40) {
                 should_not_reach();
             }
+            atomic_fence_seqcst();
             if (40, false) != atomic_cxchg_release_seqcst(&mut y, 30, 50) {
                 should_not_reach();
             }
@@ -459,6 +462,7 @@ fn atomic() {
                 should_not_reach();
             }
             let mut z = atomic_xsub_seqcst(&mut x, -200);
+            atomic_singlethreadfence_acqrel();
             atomic_xor_seqcst(&mut x, 1024);
             atomic_load_seqcst(&x) + z * 3 + atomic_load_seqcst(&y) * 2
         };

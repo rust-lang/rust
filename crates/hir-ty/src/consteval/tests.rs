@@ -2521,12 +2521,16 @@ fn const_trait_assoc() {
     );
     check_number(
         r#"
-    //- minicore: size_of
+    //- minicore: size_of, fn
     //- /a/lib.rs crate:a
     use core::mem::size_of;
     pub struct S<T>(T);
     impl<T> S<T> {
-        pub const X: usize = core::mem::size_of::<T>();
+        pub const X: usize = {
+            let k: T;
+            let f = || core::mem::size_of::<T>();
+            f()
+        };
     }
     //- /main.rs crate:main deps:a
     use a::{S};

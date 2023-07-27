@@ -702,9 +702,7 @@ impl Evaluator<'_> {
     }
 
     fn layout_adt(&self, adt: AdtId, subst: Substitution) -> Result<Arc<Layout>> {
-        self.db.layout_of_adt(adt, subst.clone(), self.trait_env.clone()).map_err(|e| {
-            MirEvalError::LayoutError(e, TyKind::Adt(chalk_ir::AdtId(adt), subst).intern(Interner))
-        })
+        self.layout(&TyKind::Adt(chalk_ir::AdtId(adt), subst).intern(Interner))
     }
 
     fn place_ty<'a>(&'a self, p: &Place, locals: &'a Locals) -> Result<Ty> {
