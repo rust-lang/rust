@@ -188,7 +188,6 @@ jobs:
           # - powerpc64-unknown-linux-gnu
         target_feature: [default]
         include:
-          - { target: powerpc64-unknown-linux-gnu, target_feature: "+vsx" }
           - { target: powerpc64le-unknown-linux-gnu, target_feature: "+vsx" }
           # Fails due to QEMU floating point errors, probably handling subnormals incorrectly.
           # This target is somewhat redundant, since ppc64le has altivec as well.
