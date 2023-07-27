@@ -75,12 +75,10 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
             self.body_def_id,
             ObligationCauseCode::WellFormed(loc),
         );
-        // for a type to be WF, we do not need to check if const trait predicates satisfy.
-        let param_env = self.param_env.without_const();
         self.ocx.register_obligation(traits::Obligation::new(
             self.tcx(),
             cause,
-            param_env,
+            self.param_env,
             ty::Binder::dummy(ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(arg))),
         ));
     }
@@ -504,7 +502,7 @@ fn augment_param_env<'tcx>(
     );
     // FIXME(compiler-errors): Perhaps there is a case where we need to normalize this
     // i.e. traits::normalize_param_env_or_error
-    ty::ParamEnv::new(bounds, param_env.reveal(), param_env.constness())
+    ty::ParamEnv::new(bounds, param_env.reveal())
 }
 
 /// We use the following trait as an example throughout this function.
@@ -1415,7 +1413,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
     let wf_obligations = predicates.into_iter().flat_map(|(p, sp)| {
         traits::wf::predicate_obligations(
             infcx,
-            wfcx.param_env.without_const(),
+            wfcx.param_env,
             wfcx.body_def_id,
             p.as_predicate(),
             sp,

@@ -409,18 +409,12 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
             }
 
             if let ty::FnDef(def_id, args) = *constant.literal.ty().kind() {
-                // const_trait_impl: use a non-const param env when checking that a FnDef type is well formed.
-                // this is because the well-formedness of the function does not need to be proved to have `const`
-                // impls for trait bounds.
                 let instantiated_predicates = tcx.predicates_of(def_id).instantiate(tcx, args);
-                let prev = self.cx.param_env;
-                self.cx.param_env = prev.without_const();
                 self.cx.normalize_and_prove_instantiated_predicates(
                     def_id,
                     instantiated_predicates,
                     locations,
                 );
-                self.cx.param_env = prev;
             }
         }
     }

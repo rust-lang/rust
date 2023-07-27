@@ -1000,13 +1000,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         let stack = self.push_stack(previous_stack, &obligation);
-        let mut fresh_trait_pred = stack.fresh_trait_pred;
-        let mut param_env = obligation.param_env;
-
-        fresh_trait_pred = fresh_trait_pred.map_bound(|mut pred| {
-            pred.remap_constness(&mut param_env);
-            pred
-        });
+        let fresh_trait_pred = stack.fresh_trait_pred;
+        let param_env = obligation.param_env;
 
         debug!(?fresh_trait_pred);
 
@@ -1386,8 +1381,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         (result, dep_node)
     }
 
-    /// filter_impls filters constant trait obligations and candidates that have a positive impl
-    /// for a negative goal and a negative impl for a positive goal
+    /// filter_impls filters candidates that have a positive impl for a negative
+    /// goal and a negative impl for a positive goal
     #[instrument(level = "debug", skip(self, candidates))]
     fn filter_impls(
         &mut self,
@@ -1399,42 +1394,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let mut result = Vec::with_capacity(candidates.len());
 
         for candidate in candidates {
-            // Respect const trait obligations
-            if obligation.is_const() {
-                match candidate {
-                    // const impl
-                    ImplCandidate(def_id) if tcx.constness(def_id) == hir::Constness::Const => {}
-                    // const param
-                    ParamCandidate(trait_pred) if trait_pred.is_const_if_const() => {}
-                    // const projection
-                    ProjectionCandidate(_, ty::BoundConstness::ConstIfConst)
-                    // auto trait impl
-                    | AutoImplCandidate
-                    // generator / future, this will raise error in other places
-                    // or ignore error with const_async_blocks feature
-                    | GeneratorCandidate
-                    | FutureCandidate
-                    // FnDef where the function is const
-                    | FnPointerCandidate { is_const: true }
-                    | ConstDestructCandidate(_)
-                    | ClosureCandidate { is_const: true } => {}
-
-                    FnPointerCandidate { is_const: false } => {
-                        if let ty::FnDef(def_id, _) = obligation.self_ty().skip_binder().kind() && tcx.trait_of_item(*def_id).is_some() {
-                            // Trait methods are not seen as const unless the trait is implemented as const.
-                            // We do not filter that out in here, but nested obligations will be needed to confirm this.
-                        } else {
-                            continue
-                        }
-                    }
-
-                    _ => {
-                        // reject all other types of candidates
-                        continue;
-                    }
-                }
-            }
-
             if let ImplCandidate(def_id) = candidate {
                 if ty::ImplPolarity::Reservation == tcx.impl_polarity(def_id)
                     || obligation.polarity() == tcx.impl_polarity(def_id)
@@ -1528,7 +1487,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     fn check_candidate_cache(
         &mut self,
-        mut param_env: ty::ParamEnv<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
         cache_fresh_trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> Option<SelectionResult<'tcx, SelectionCandidate<'tcx>>> {
         // Neither the global nor local cache is aware of intercrate
@@ -1539,8 +1498,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return None;
         }
         let tcx = self.tcx();
-        let mut pred = cache_fresh_trait_pred.skip_binder();
-        pred.remap_constness(&mut param_env);
+        let pred = cache_fresh_trait_pred.skip_binder();
 
         if self.can_use_global_caches(param_env) {
             if let Some(res) = tcx.selection_cache.get(&(param_env, pred), tcx) {
@@ -1586,15 +1544,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     #[instrument(skip(self, param_env, cache_fresh_trait_pred, dep_node), level = "debug")]
     fn insert_candidate_cache(
         &mut self,
-        mut param_env: ty::ParamEnv<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
         cache_fresh_trait_pred: ty::PolyTraitPredicate<'tcx>,
         dep_node: DepNodeIndex,
         candidate: SelectionResult<'tcx, SelectionCandidate<'tcx>>,
     ) {
         let tcx = self.tcx();
-        let mut pred = cache_fresh_trait_pred.skip_binder();
-
-        pred.remap_constness(&mut param_env);
+        let pred = cache_fresh_trait_pred.skip_binder();
 
         if !self.can_cache_candidate(&candidate) {
             debug!(?pred, ?candidate, "insert_candidate_cache - candidate is not cacheable");

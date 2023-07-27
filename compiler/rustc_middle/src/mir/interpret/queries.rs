@@ -139,7 +139,6 @@ impl<'tcx> TyCtxt<'tcx> {
         cid: GlobalId<'tcx>,
         span: Option<Span>,
     ) -> EvalToConstValueResult<'tcx> {
-        let param_env = param_env.with_const();
         // Const-eval shouldn't depend on lifetimes at all, so we can erase them, which should
         // improve caching of queries.
         let inputs = self.erase_regions(param_env.and(cid));
@@ -158,8 +157,6 @@ impl<'tcx> TyCtxt<'tcx> {
         cid: GlobalId<'tcx>,
         span: Option<Span>,
     ) -> EvalToValTreeResult<'tcx> {
-        let param_env = param_env.with_const();
-        debug!(?param_env);
         // Const-eval shouldn't depend on lifetimes at all, so we can erase them, which should
         // improve caching of queries.
         let inputs = self.erase_regions(param_env.and(cid));
@@ -204,7 +201,6 @@ impl<'tcx> TyCtxtAt<'tcx> {
         gid: GlobalId<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> Result<mir::ConstAllocation<'tcx>, ErrorHandled> {
-        let param_env = param_env.with_const();
         trace!("eval_to_allocation: Need to compute {:?}", gid);
         let raw_const = self.eval_to_allocation_raw(param_env.and(gid))?;
         Ok(self.global_alloc(raw_const.alloc_id).unwrap_memory())
@@ -224,8 +220,7 @@ impl<'tcx> TyCtxtEnsure<'tcx> {
         let args = GenericArgs::identity_for_item(self.tcx, def_id);
         let instance = ty::Instance::new(def_id, args);
         let cid = GlobalId { instance, promoted: None };
-        let param_env =
-            self.tcx.param_env(def_id).with_reveal_all_normalized(self.tcx).with_const();
+        let param_env = self.tcx.param_env(def_id).with_reveal_all_normalized(self.tcx);
         // Const-eval shouldn't depend on lifetimes at all, so we can erase them, which should
         // improve caching of queries.
         let inputs = self.tcx.erase_regions(param_env.and(cid));
@@ -238,7 +233,7 @@ impl<'tcx> TyCtxtEnsure<'tcx> {
         assert!(self.tcx.is_static(def_id));
         let instance = ty::Instance::mono(self.tcx, def_id);
         let gid = GlobalId { instance, promoted: None };
-        let param_env = ty::ParamEnv::reveal_all().with_const();
+        let param_env = ty::ParamEnv::reveal_all();
         trace!("eval_to_allocation: Need to compute {:?}", gid);
         self.eval_to_allocation_raw(param_env.and(gid))
     }

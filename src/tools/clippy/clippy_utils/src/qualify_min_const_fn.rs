@@ -399,7 +399,7 @@ fn is_ty_const_destruct<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, body: &Body<'tcx>
     let obligation = Obligation::new(
         tcx,
         ObligationCause::dummy_with_span(body.span),
-        ConstCx::new(tcx, body).param_env.with_const(),
+        ConstCx::new(tcx, body).param_env,
         TraitRef::from_lang_item(tcx, LangItem::Destruct, body.span, [ty]).with_constness(BoundConstness::ConstIfConst),
     );
 
