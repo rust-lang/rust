@@ -327,6 +327,16 @@ macro_rules! impl_unsigned_tests {
                 }
             }
 
+            test_helpers::test_lanes! {
+                fn wrapping_neg<const LANES: usize>() {
+                    test_helpers::test_unary_elementwise(
+                        &Vector::<LANES>::wrapping_neg,
+                        &Scalar::wrapping_neg,
+                        &|_| true,
+                    );
+                }
+            }
+
             impl_binary_op_test!(Scalar, Add::add, AddAssign::add_assign, Scalar::wrapping_add);
             impl_binary_op_test!(Scalar, Sub::sub, SubAssign::sub_assign, Scalar::wrapping_sub);
             impl_binary_op_test!(Scalar, Mul::mul, MulAssign::mul_assign, Scalar::wrapping_mul);

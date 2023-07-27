@@ -16,6 +16,12 @@ pub trait SimdUint: Copy + Sealed {
     #[must_use]
     fn cast<T: SimdCast>(self) -> Self::Cast<T>;
 
+    /// Wrapping negation.
+    ///
+    /// Like [`u32::wrapping_neg`], all applications of this function will wrap, with the exception
+    /// of `-0`.
+    fn wrapping_neg(self) -> Self;
+
     /// Lanewise saturating add.
     ///
     /// # Examples
@@ -74,7 +80,7 @@ pub trait SimdUint: Copy + Sealed {
 }
 
 macro_rules! impl_trait {
-    { $($ty:ty),* } => {
+    { $($ty:ident ($signed:ident)),* } => {
         $(
         impl<const LANES: usize> Sealed for Simd<$ty, LANES>
         where
@@ -93,6 +99,12 @@ macro_rules! impl_trait {
             fn cast<T: SimdCast>(self) -> Self::Cast<T> {
                 // Safety: supported types are guaranteed by SimdCast
                 unsafe { intrinsics::simd_as(self) }
+            }
+
+            #[inline]
+            fn wrapping_neg(self) -> Self {
+                use crate::simd::SimdInt;
+                (-self.cast::<$signed>()).cast()
             }
 
             #[inline]
@@ -153,4 +165,4 @@ macro_rules! impl_trait {
     }
 }
 
-impl_trait! { u8, u16, u32, u64, usize }
+impl_trait! { u8 (i8), u16 (i16), u32 (i32), u64 (i64), usize (isize) }
