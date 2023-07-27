@@ -597,24 +597,19 @@ impl<'t> Iterator for RefTokenTreeCursor<'t> {
     }
 }
 
-/// Owning by-value iterator over a [`TokenStream`], that produces `TokenTree`
+/// Owning by-value iterator over a [`TokenStream`], that produces `&TokenTree`
 /// items.
-// FIXME: Many uses of this can be replaced with by-reference iterator to avoid clones.
+///
+/// Doesn't impl `Iterator` because Rust doesn't permit an owning iterator to
+/// return `&T` from `next`; the need for an explicit lifetime in the `Item`
+/// associated type gets in the way. Instead, use `next_ref` (which doesn't
+/// involve associated types) for getting individual elements, or
+/// `RefTokenTreeCursor` if you really want an `Iterator`, e.g. in a `for`
+/// loop.
 #[derive(Clone)]
 pub struct TokenTreeCursor {
     pub stream: TokenStream,
     index: usize,
-}
-
-impl Iterator for TokenTreeCursor {
-    type Item = TokenTree;
-
-    fn next(&mut self) -> Option<TokenTree> {
-        self.stream.0.get(self.index).map(|tree| {
-            self.index += 1;
-            tree.clone()
-        })
-    }
 }
 
 impl TokenTreeCursor {
