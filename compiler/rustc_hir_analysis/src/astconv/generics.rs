@@ -81,7 +81,7 @@ fn generic_arg_mismatch_err(
                         err.span_suggestion(
                             tcx.def_span(src_def_id),
                             "consider changing this type parameter to a const parameter",
-                            format!("const {}: {}", param_name, param_type),
+                            format!("const {param_name}: {param_type}"),
                             Applicability::MaybeIncorrect,
                         );
                     };
@@ -102,7 +102,7 @@ fn generic_arg_mismatch_err(
                 err.span_suggestion(
                     arg.span(),
                     "array type provided where a `usize` was expected, try",
-                    format!("{{ {} }}", snippet),
+                    format!("{{ {snippet} }}"),
                     Applicability::MaybeIncorrect,
                 );
             }
@@ -130,7 +130,7 @@ fn generic_arg_mismatch_err(
         } else {
             (arg.descr(), param.kind.descr())
         };
-        err.note(format!("{} arguments must be provided before {} arguments", first, last));
+        err.note(format!("{first} arguments must be provided before {last} arguments"));
         if let Some(help) = help {
             err.help(help);
         }
@@ -304,7 +304,7 @@ pub fn create_args_for_parent_generic_args<'tcx, 'a>(
                                         "reorder the arguments: {}: `<{}>`",
                                         param_types_present
                                             .into_iter()
-                                            .map(|ord| format!("{}s", ord))
+                                            .map(|ord| format!("{ord}s"))
                                             .collect::<Vec<String>>()
                                             .join(", then "),
                                         ordered_params

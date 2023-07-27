@@ -229,9 +229,7 @@ impl<'tcx> Cx<'tcx> {
             let param_env_ty = self.param_env.and(discr_ty);
             let size = tcx
                 .layout_of(param_env_ty)
-                .unwrap_or_else(|e| {
-                    panic!("could not compute layout for {:?}: {:?}", param_env_ty, e)
-                })
+                .unwrap_or_else(|e| panic!("could not compute layout for {param_env_ty:?}: {e:?}"))
                 .size;
 
             let lit = ScalarInt::try_from_uint(discr_offset as u128, size).unwrap();

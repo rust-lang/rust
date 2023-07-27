@@ -216,7 +216,7 @@ impl<'a> IntoDiagnostic<'a> for MissingTypeParams {
             "parameters",
             self.missing_type_params
                 .iter()
-                .map(|n| format!("`{}`", n))
+                .map(|n| format!("`{n}`"))
                 .collect::<Vec<_>>()
                 .join(", "),
         );

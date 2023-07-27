@@ -394,17 +394,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         // For *all* intrinsics we first check `is_uninhabited` to give a more specific
                         // error message.
                         _ if layout.abi.is_uninhabited() => format!(
-                            "aborted execution: attempted to instantiate uninhabited type `{}`",
-                            ty
+                            "aborted execution: attempted to instantiate uninhabited type `{ty}`"
                         ),
                         ValidityRequirement::Inhabited => bug!("handled earlier"),
                         ValidityRequirement::Zero => format!(
-                            "aborted execution: attempted to zero-initialize type `{}`, which is invalid",
-                            ty
+                            "aborted execution: attempted to zero-initialize type `{ty}`, which is invalid"
                         ),
                         ValidityRequirement::UninitMitigated0x01Fill => format!(
-                            "aborted execution: attempted to leave type `{}` uninitialized, which is invalid",
-                            ty
+                            "aborted execution: attempted to leave type `{ty}` uninitialized, which is invalid"
                         ),
                         ValidityRequirement::Uninit => bug!("assert_uninit_valid doesn't exist"),
                     };
@@ -420,9 +417,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 assert_eq!(input_len, dest_len, "Return vector length must match input length");
                 assert!(
                     index < dest_len,
-                    "Index `{}` must be in bounds of vector with length {}",
-                    index,
-                    dest_len
+                    "Index `{index}` must be in bounds of vector with length {dest_len}"
                 );
 
                 for i in 0..dest_len {
@@ -440,9 +435,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let (input, input_len) = self.operand_to_simd(&args[0])?;
                 assert!(
                     index < input_len,
-                    "index `{}` must be in bounds of vector with length {}",
-                    index,
-                    input_len
+                    "index `{index}` must be in bounds of vector with length {input_len}"
                 );
                 self.copy_op(
                     &self.project_index(&input, index)?,

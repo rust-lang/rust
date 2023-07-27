@@ -414,7 +414,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
             match path {
                 MustUsePath::Suppressed => {}
                 MustUsePath::Boxed(path) => {
-                    let descr_pre = &format!("{}boxed ", descr_pre);
+                    let descr_pre = &format!("{descr_pre}boxed ");
                     emit_must_use_untranslated(
                         cx,
                         path,
@@ -426,7 +426,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                     );
                 }
                 MustUsePath::Opaque(path) => {
-                    let descr_pre = &format!("{}implementer{} of ", descr_pre, plural_suffix);
+                    let descr_pre = &format!("{descr_pre}implementer{plural_suffix} of ");
                     emit_must_use_untranslated(
                         cx,
                         path,
@@ -438,7 +438,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                     );
                 }
                 MustUsePath::TraitObject(path) => {
-                    let descr_post = &format!(" trait object{}{}", plural_suffix, descr_post);
+                    let descr_post = &format!(" trait object{plural_suffix}{descr_post}");
                     emit_must_use_untranslated(
                         cx,
                         path,
@@ -451,7 +451,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                 }
                 MustUsePath::TupleElement(elems) => {
                     for (index, path) in elems {
-                        let descr_post = &format!(" in tuple element {}", index);
+                        let descr_post = &format!(" in tuple element {index}");
                         emit_must_use_untranslated(
                             cx,
                             path,
@@ -464,7 +464,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                     }
                 }
                 MustUsePath::Array(path, len) => {
-                    let descr_pre = &format!("{}array{} of ", descr_pre, plural_suffix);
+                    let descr_pre = &format!("{descr_pre}array{plural_suffix} of ");
                     emit_must_use_untranslated(
                         cx,
                         path,

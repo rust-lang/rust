@@ -24,8 +24,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         debug_assert_eq!(
             Ty::new_tup(self.tcx.tcx, &[ty, self.tcx.types.bool]),
             dest.layout.ty,
-            "type mismatch for result of {:?}",
-            op,
+            "type mismatch for result of {op:?}",
         );
         // Write the result to `dest`.
         if let Abi::ScalarPair(..) = dest.layout.abi {
@@ -56,7 +55,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         dest: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
         let (val, _overflowed, ty) = self.overflowing_binary_op(op, left, right)?;
-        assert_eq!(ty, dest.layout.ty, "type mismatch for result of {:?}", op);
+        assert_eq!(ty, dest.layout.ty, "type mismatch for result of {op:?}");
         self.write_scalar(val, dest)
     }
 }

@@ -102,7 +102,7 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
         let op_ty = operand.ty(self.local_decls, self.tcx);
         if self.known_to_be_zst(op_ty)
             && self.tcx.consider_optimizing(|| {
-                format!("RemoveZsts - Operand: {:?} Location: {:?}", operand, loc)
+                format!("RemoveZsts - Operand: {operand:?} Location: {loc:?}")
             })
         {
             *operand = Operand::Constant(Box::new(self.make_zst(op_ty)))

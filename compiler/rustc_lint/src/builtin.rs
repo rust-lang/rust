@@ -1716,7 +1716,7 @@ impl EarlyLintPass for EllipsisInclusiveRangePatterns {
                 let end = expr_to_string(&end);
                 let replace = match start {
                     Some(start) => format!("&({}..={})", expr_to_string(&start), end),
-                    None => format!("&(..={})", end),
+                    None => format!("&(..={end})"),
                 };
                 if join.edition() >= Edition::Edition2021 {
                     cx.sess().emit_err(BuiltinEllipsisInclusiveRangePatterns {

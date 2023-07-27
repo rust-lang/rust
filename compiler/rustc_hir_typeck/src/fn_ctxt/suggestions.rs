@@ -397,7 +397,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let struct_pat_shorthand_field =
                         self.tcx.hir().maybe_get_struct_pattern_shorthand_field(expr);
                     if let Some(name) = struct_pat_shorthand_field {
-                        sugg.insert(0, (expr.span.shrink_to_lo(), format!("{}: ", name)));
+                        sugg.insert(0, (expr.span.shrink_to_lo(), format!("{name}: ")));
                     }
                     Some(sugg)
                 })
@@ -558,7 +558,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .take(4)
                     .map(|(var_hir_id, upvar)| {
                         let var_name = self.tcx.hir().name(*var_hir_id).to_string();
-                        let msg = format!("`{}` captured here", var_name);
+                        let msg = format!("`{var_name}` captured here");
                         (upvar.span, msg)
                     })
                     .collect::<Vec<_>>();
@@ -931,7 +931,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err.span_suggestion(
             fn_return.span(),
             "consider using an impl return type",
-            format!("impl {}", all_bounds_str),
+            format!("impl {all_bounds_str}"),
             Applicability::MaybeIncorrect,
         );
     }
@@ -1070,7 +1070,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .must_apply_modulo_regions()
           {
             let suggestion = match self.tcx.hir().maybe_get_struct_pattern_shorthand_field(expr) {
-                Some(ident) => format!(": {}.clone()", ident),
+                Some(ident) => format!(": {ident}.clone()"),
                 None => ".clone()".to_string()
             };
 
@@ -1259,7 +1259,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let suggestion = match self.tcx.hir().maybe_get_struct_pattern_shorthand_field(expr) {
-            Some(ident) => format!(": {}.is_some()", ident),
+            Some(ident) => format!(": {ident}.is_some()"),
             None => ".is_some()".to_string(),
         };
 
