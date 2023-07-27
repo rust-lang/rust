@@ -290,12 +290,12 @@ impl MetaItem {
         I: Iterator<Item = &'a TokenTree>,
     {
         // FIXME: Share code with `parse_path`.
-        let path = match tokens.next().map(|tt| TokenTree::uninterpolate(tt.clone())) {
-            Some(TokenTree::Token(
-                Token { kind: kind @ (token::Ident(..) | token::ModSep), span },
+        let path = match tokens.next().map(|tt| TokenTree::uninterpolate(tt)).as_deref() {
+            Some(&TokenTree::Token(
+                Token { kind: ref kind @ (token::Ident(..) | token::ModSep), span },
                 _,
             )) => 'arm: {
-                let mut segments = if let token::Ident(name, _) = kind {
+                let mut segments = if let &token::Ident(name, _) = kind {
                     if let Some(TokenTree::Token(Token { kind: token::ModSep, .. }, _)) =
                         tokens.peek()
                     {
@@ -308,8 +308,8 @@ impl MetaItem {
                     thin_vec![PathSegment::path_root(span)]
                 };
                 loop {
-                    if let Some(TokenTree::Token(Token { kind: token::Ident(name, _), span }, _)) =
-                        tokens.next().map(|tt| TokenTree::uninterpolate(tt.clone()))
+                    if let Some(&TokenTree::Token(Token { kind: token::Ident(name, _), span }, _)) =
+                        tokens.next().map(|tt| TokenTree::uninterpolate(tt)).as_deref()
                     {
                         segments.push(PathSegment::from_ident(Ident::new(name, span)));
                     } else {
@@ -326,7 +326,7 @@ impl MetaItem {
                 let span = span.with_hi(segments.last().unwrap().ident.span.hi());
                 Path { span, segments, tokens: None }
             }
-            Some(TokenTree::Token(Token { kind: token::Interpolated(nt), .. }, _)) => match &*nt {
+            Some(TokenTree::Token(Token { kind: token::Interpolated(nt), .. }, _)) => match &**nt {
                 token::Nonterminal::NtMeta(item) => return item.meta(item.path.span),
                 token::Nonterminal::NtPath(path) => (**path).clone(),
                 _ => return None,

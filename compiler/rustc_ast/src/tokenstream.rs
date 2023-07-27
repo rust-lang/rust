@@ -25,6 +25,7 @@ use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_span::{Span, DUMMY_SP};
 use smallvec::{smallvec, SmallVec};
 
+use std::borrow::Cow;
 use std::{fmt, iter, mem};
 
 /// When the main Rust parser encounters a syntax-extension invocation, it
@@ -98,12 +99,13 @@ impl TokenTree {
         TokenTree::Token(Token::new(kind, span), Spacing::Joint)
     }
 
-    pub fn uninterpolate(self) -> TokenTree {
+    pub fn uninterpolate(&self) -> Cow<'_, TokenTree> {
         match self {
-            TokenTree::Token(token, spacing) => {
-                TokenTree::Token(token.uninterpolate().into_owned(), spacing)
-            }
-            tt => tt,
+            TokenTree::Token(token, spacing) => match token.uninterpolate() {
+                Cow::Owned(token) => Cow::Owned(TokenTree::Token(token, *spacing)),
+                Cow::Borrowed(_) => Cow::Borrowed(self),
+            },
+            _ => Cow::Borrowed(self),
         }
     }
 }
