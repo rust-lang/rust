@@ -203,6 +203,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::if_let_mutex::IF_LET_MUTEX_INFO,
     crate::if_not_else::IF_NOT_ELSE_INFO,
     crate::if_then_some_else_none::IF_THEN_SOME_ELSE_NONE_INFO,
+    crate::ignored_unit_patterns::IGNORED_UNIT_PATTERNS_INFO,
     crate::implicit_hasher::IMPLICIT_HASHER_INFO,
     crate::implicit_return::IMPLICIT_RETURN_INFO,
     crate::implicit_saturating_add::IMPLICIT_SATURATING_ADD_INFO,
