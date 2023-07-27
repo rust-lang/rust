@@ -99,4 +99,5 @@ impl const Drop for D {
 }
 
 // Lint this, since it can be dropped in const contexts
+// FIXME(effects)
 fn d(this: D) {}
