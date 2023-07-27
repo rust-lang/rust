@@ -100,6 +100,11 @@ pub(crate) fn inherits_doc_hidden(
     false
 }
 
+#[inline]
+pub(crate) fn should_ignore_res(res: Res) -> bool {
+    matches!(res, Res::Def(DefKind::Ctor(..), _) | Res::SelfCtor(..))
+}
+
 pub(crate) struct RustdocVisitor<'a, 'tcx> {
     cx: &'a mut core::DocContext<'tcx>,
     view_item_stack: LocalDefIdSet,
@@ -466,7 +471,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 for &res in &path.res {
                     // Struct and variant constructors and proc macro stubs always show up alongside
                     // their definitions, we've already processed them so just discard these.
-                    if let Res::Def(DefKind::Ctor(..), _) | Res::SelfCtor(..) = res {
+                    if should_ignore_res(res) {
                         continue;
                     }
 

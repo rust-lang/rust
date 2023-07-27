@@ -41,7 +41,7 @@ use thin_vec::ThinVec;
 
 use crate::core::{self, DocContext, ImplTraitParam};
 use crate::formats::item_type::ItemType;
-use crate::visit_ast::Module as DocModule;
+use crate::visit_ast::{should_ignore_res, Module as DocModule};
 
 use utils::*;
 
@@ -2679,7 +2679,7 @@ fn clean_use_statement_inner<'tcx>(
     cx: &mut DocContext<'tcx>,
     inlined_names: &mut FxHashSet<(ItemType, Symbol)>,
 ) -> Vec<Item> {
-    if let Res::Def(DefKind::Ctor(..), _) | Res::SelfCtor(..) = path.res {
+    if should_ignore_res(path.res) {
         return Vec::new();
     }
     // We need this comparison because some imports (for std types for example)
