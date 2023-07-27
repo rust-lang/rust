@@ -65,7 +65,7 @@ pub mod token_id {
     }
     impl TokenTree {
         pub const fn empty() -> Self {
-            Self::Subtree(Subtree { delimiter: Delimiter::unspecified(), token_trees: vec![] })
+            Self::Subtree(Subtree::empty())
         }
     }
 
