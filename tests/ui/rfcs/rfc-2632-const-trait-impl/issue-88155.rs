@@ -1,3 +1,5 @@
+// known-bug: #110395
+
 #![feature(const_trait_impl)]
 
 pub trait A {
@@ -6,8 +8,8 @@ pub trait A {
 
 pub const fn foo<T: A>() -> bool {
     T::assoc()
-    //~^ ERROR the trait bound
-    //~| ERROR cannot call non-const fn
+    //FIXME ~^ ERROR the trait bound
+    //FIXME ~| ERROR cannot call non-const fn
 }
 
 fn main() {}

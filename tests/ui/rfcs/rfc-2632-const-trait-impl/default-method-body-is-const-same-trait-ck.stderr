@@ -1,15 +1,11 @@
-error[E0277]: the trait bound `(): ~const Tr` is not satisfied
-  --> $DIR/default-method-body-is-const-same-trait-ck.rs:8:12
+error[E0015]: cannot call non-const fn `<() as Tr>::a` in constant functions
+  --> $DIR/default-method-body-is-const-same-trait-ck.rs:9:12
    |
 LL |         ().a()
-   |            ^ the trait `~const Tr` is not implemented for `()`
+   |            ^^^
    |
-note: the trait `Tr` is implemented for `()`, but that implementation is not `const`
-  --> $DIR/default-method-body-is-const-same-trait-ck.rs:8:9
-   |
-LL |         ().a()
-   |         ^^
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0277`.
+For more information about this error, try `rustc --explain E0015`.
