@@ -867,9 +867,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         cond_get_clock_id(this, cond_op)?;
 
         // This might lead to false positives, see comment in pthread_mutexattr_destroy
-        this.write_uninit(
-            &this.deref_operand_as(cond_op, this.libc_ty_layout("pthread_cond_t"))?,
-        )?;
+        this.write_uninit(&this.deref_operand_as(cond_op, this.libc_ty_layout("pthread_cond_t"))?)?;
         // FIXME: delete interpreter state associated with this condvar.
 
         Ok(0)
