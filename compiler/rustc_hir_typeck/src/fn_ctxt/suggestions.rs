@@ -1110,7 +1110,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         {
             let expr_inner_ty = args.type_at(0);
             let expected_inner_ty = expected_args.type_at(0);
-            if let &ty::Ref(_, ty, hir::Mutability::Not) = expr_inner_ty.kind()
+            if let &ty::Ref(_, ty, mutability) = expr_inner_ty.kind()
                     && self.can_eq(self.param_env, ty, expected_inner_ty)
                 {
                     let def_path = self.tcx.def_path_str(adt_def.did());
@@ -1119,7 +1119,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         errors::OptionResultRefMismatch::Copied {
                             span, def_path
                         }
-                    } else if let Some(expected_ty_expr) = expected_ty_expr {
+                    } else if let Some(expected_ty_expr) = expected_ty_expr
+                            // FIXME: suggest changes to both expressions to convert both to
+                            // Option/Result<&T>
+                            && mutability.is_not()
+                        {
                         errors::OptionResultRefMismatch::AsRef {
                             span: expected_ty_expr.span.shrink_to_hi(), expected_ty, expr_ty, def_path
                         }
