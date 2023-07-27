@@ -175,20 +175,24 @@ jobs:
       matrix:
         target:
           - armv7-unknown-linux-gnueabihf
-          - thumbv7neon-unknown-linux-gnueabihf
-          - aarch64-unknown-linux-gnu
+          - thumbv7neon-unknown-linux-gnueabihf # includes neon by default
+          - aarch64-unknown-linux-gnu           # includes neon by default
           - powerpc-unknown-linux-gnu
-          - powerpc64-unknown-linux-gnu
-          - powerpc64le-unknown-linux-gnu
+          - powerpc64le-unknown-linux-gnu       # includes altivec by default
           - riscv64gc-unknown-linux-gnu
           # MIPS uses a nonstandard binary representation for NaNs which makes it worth testing
+          # non-nightly since https://github.com/rust-lang/rust/pull/113274
           # - mips-unknown-linux-gnu
           # - mips64-unknown-linux-gnuabi64
+          # Lots of errors in QEMU and no real hardware to test on. Not clear if it's QEMU or bad codegen.
+          # - powerpc64-unknown-linux-gnu
         target_feature: [default]
         include:
-          - { target: powerpc-unknown-linux-gnu, target_feature: "+altivec" }
           - { target: powerpc64-unknown-linux-gnu, target_feature: "+vsx" }
           - { target: powerpc64le-unknown-linux-gnu, target_feature: "+vsx" }
+          # Fails due to QEMU floating point errors, probably handling subnormals incorrectly.
+          # This target is somewhat redundant, since ppc64le has altivec as well.
+          # - { target: powerpc-unknown-linux-gnu, target_feature: "+altivec" }
           # We should test this, but cross currently can't run it
           # - { target: riscv64gc-unknown-linux-gnu, target_feature: "+v,+zvl128b" }
 
