@@ -2347,19 +2347,19 @@ fn get_all_import_attributes<'hir>(
 }
 
 fn filter_tokens_from_list(
-    args_tokens: TokenStream,
+    args_tokens: &TokenStream,
     should_retain: impl Fn(&TokenTree) -> bool,
 ) -> Vec<TokenTree> {
     let mut tokens = Vec::with_capacity(args_tokens.len());
     let mut skip_next_comma = false;
-    for token in args_tokens.into_trees() {
+    for token in args_tokens.trees() {
         match token {
             TokenTree::Token(Token { kind: TokenKind::Comma, .. }, _) if skip_next_comma => {
                 skip_next_comma = false;
             }
-            token if should_retain(&token) => {
+            token if should_retain(token) => {
                 skip_next_comma = false;
-                tokens.push(token);
+                tokens.push(token.clone());
             }
             _ => {
                 skip_next_comma = true;
@@ -2417,7 +2417,7 @@ fn add_without_unwanted_attributes<'hir>(
                     match normal.item.args {
                         ast::AttrArgs::Delimited(ref mut args) => {
                             let tokens =
-                                filter_tokens_from_list(args.tokens.clone(), |token| {
+                                filter_tokens_from_list(&args.tokens, |token| {
                                     !matches!(
                                         token,
                                         TokenTree::Token(
