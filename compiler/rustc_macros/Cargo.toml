@@ -8,7 +8,6 @@ proc-macro = true
 
 [dependencies]
 synstructure = "0.13.0"
-# FIXME(Nilstrieb): Updating this causes changes in the diagnostics output.
-syn = { version = "=2.0.8", features = ["full"] }
+syn = { version = "2.0.9", features = ["full"] }
 proc-macro2 = "1"
 quote = "1"
