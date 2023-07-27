@@ -201,14 +201,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     this.write_int(einval, dest)?;
                 } else {
                     if size == 0 {
-                        this.write_null(&ret.into())?;
+                        this.write_null(&ret)?;
                     } else {
                         let ptr = this.allocate_ptr(
                             Size::from_bytes(size),
                             Align::from_bytes(align).unwrap(),
                             MiriMemoryKind::C.into(),
                         )?;
-                        this.write_pointer(ptr, &ret.into())?;
+                        this.write_pointer(ptr, &ret)?;
                     }
                     this.write_null(dest)?;
                 }
@@ -293,7 +293,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
                 // Create key and write it into the memory where `key_ptr` wants it.
                 let key = this.machine.tls.create_tls_key(dtor, key_layout.size)?;
-                this.write_scalar(Scalar::from_uint(key, key_layout.size), &key_place.into())?;
+                this.write_scalar(Scalar::from_uint(key, key_layout.size), &key_place)?;
 
                 // Return success (`0`).
                 this.write_null(dest)?;
@@ -508,7 +508,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let [_attr, guard_size] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let guard_size = this.deref_operand(guard_size)?;
                 let guard_size_layout = this.libc_ty_layout("size_t");
-                this.write_scalar(Scalar::from_uint(this.machine.page_size, guard_size_layout.size), &guard_size.into())?;
+                this.write_scalar(Scalar::from_uint(this.machine.page_size, guard_size_layout.size), &guard_size)?;
 
                 // Return success (`0`).
                 this.write_null(dest)?;
@@ -538,11 +538,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
                 this.write_scalar(
                     Scalar::from_uint(this.machine.stack_addr, this.pointer_size()),
-                    &addr_place.into(),
+                    &addr_place,
                 )?;
                 this.write_scalar(
                     Scalar::from_uint(this.machine.stack_size, this.pointer_size()),
-                    &size_place.into(),
+                    &size_place,
                 )?;
 
                 // Return success (`0`).
@@ -587,20 +587,20 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
                 // Reset all fields to `uninit` to make sure nobody reads them.
                 // (This is a std-only shim so we are okay with such hacks.)
-                this.write_uninit(&pwd.into())?;
+                this.write_uninit(&pwd)?;
 
                 // We only set the home_dir field.
                 #[allow(deprecated)]
                 let home_dir = std::env::home_dir().unwrap();
                 let (written, _) = this.write_path_to_c_str(&home_dir, buf, buflen)?;
                 let pw_dir = this.project_field_named(&pwd, "pw_dir")?;
-                this.write_pointer(buf, &pw_dir.into())?;
+                this.write_pointer(buf, &pw_dir)?;
 
                 if written {
-                    this.write_pointer(pwd.ptr, &result.into())?;
+                    this.write_pointer(pwd.ptr, &result)?;
                     this.write_null(dest)?;
                 } else {
-                    this.write_null(&result.into())?;
+                    this.write_null(&result)?;
                     this.write_scalar(this.eval_libc("ERANGE"), dest)?;
                 }
             }

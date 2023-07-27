@@ -198,7 +198,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 } else {
                     // Write the src to the first element.
                     let first = self.project_index(&dest, 0)?;
-                    self.copy_op(&src, &first.into(), /*allow_transmute*/ false)?;
+                    self.copy_op(&src, &first, /*allow_transmute*/ false)?;
 
                     // This is performance-sensitive code for big static/const arrays! So we
                     // avoid writing each operand individually and instead just make many copies

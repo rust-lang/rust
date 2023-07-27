@@ -56,7 +56,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             CastKind::FnPtrToPtr | CastKind::PtrToPtr => {
-                let src = self.read_immediate(&src)?;
+                let src = self.read_immediate(src)?;
                 let res = self.ptr_to_ptr(&src, cast_ty)?;
                 self.write_immediate(res, dest)?;
             }

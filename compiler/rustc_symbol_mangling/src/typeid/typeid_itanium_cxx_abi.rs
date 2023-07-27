@@ -7,10 +7,10 @@
 ///
 /// For more information about LLVM CFI and cross-language LLVM CFI support for the Rust compiler,
 /// see design document in the tracking issue #89653.
-use core::fmt::Display;
 use rustc_data_structures::base_n;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
+use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{
     self, Const, ExistentialPredicate, FloatTy, FnSig, Instance, IntTy, List, Region, RegionKind,
     TermKind, Ty, TyCtxt, UintTy,
@@ -19,6 +19,7 @@ use rustc_middle::ty::{GenericArg, GenericArgKind, GenericArgsRef};
 use rustc_span::def_id::DefId;
 use rustc_span::sym;
 use rustc_target::abi::call::{Conv, FnAbi};
+use rustc_target::abi::Integer;
 use rustc_target::spec::abi::Abi;
 use std::fmt::Write as _;
 
@@ -93,44 +94,54 @@ fn encode_const<'tcx>(
     dict: &mut FxHashMap<DictKey<'tcx>, usize>,
     options: EncodeTyOptions,
 ) -> String {
-    // L<element-type>[n]<element-value>E as literal argument
+    // L<element-type>[n][<element-value>]E as literal argument
     let mut s = String::from('L');
 
-    // Element type
-    s.push_str(&encode_ty(tcx, c.ty(), dict, options));
+    match c.kind() {
+        // Const parameters
+        ty::ConstKind::Param(..) => {
+            // L<element-type>E as literal argument
 
-    // The only allowed types of const parameters are bool, u8, u16, u32, u64, u128, usize i8, i16,
-    // i32, i64, i128, isize, and char. The bool value false is encoded as 0 and true as 1.
-    fn push_signed_value<T: Display + PartialOrd>(s: &mut String, value: T, zero: T) {
-        if value < zero {
-            s.push('n')
-        };
-        let _ = write!(s, "{value}");
-    }
+            // Element type
+            s.push_str(&encode_ty(tcx, c.ty(), dict, options));
+        }
 
-    fn push_unsigned_value<T: Display>(s: &mut String, value: T) {
-        let _ = write!(s, "{value}");
-    }
+        // Literal arguments
+        ty::ConstKind::Value(..) => {
+            // L<element-type>[n]<element-value>E as literal argument
 
-    if let Some(scalar_int) = c.try_to_scalar_int() {
-        let signed = c.ty().is_signed();
-        match scalar_int.size().bits() {
-            8 if signed => push_signed_value(&mut s, scalar_int.try_to_i8().unwrap(), 0),
-            16 if signed => push_signed_value(&mut s, scalar_int.try_to_i16().unwrap(), 0),
-            32 if signed => push_signed_value(&mut s, scalar_int.try_to_i32().unwrap(), 0),
-            64 if signed => push_signed_value(&mut s, scalar_int.try_to_i64().unwrap(), 0),
-            128 if signed => push_signed_value(&mut s, scalar_int.try_to_i128().unwrap(), 0),
-            8 => push_unsigned_value(&mut s, scalar_int.try_to_u8().unwrap()),
-            16 => push_unsigned_value(&mut s, scalar_int.try_to_u16().unwrap()),
-            32 => push_unsigned_value(&mut s, scalar_int.try_to_u32().unwrap()),
-            64 => push_unsigned_value(&mut s, scalar_int.try_to_u64().unwrap()),
-            128 => push_unsigned_value(&mut s, scalar_int.try_to_u128().unwrap()),
-            _ => {
-                bug!("encode_const: unexpected size `{:?}`", scalar_int.size().bits());
+            // Element type
+            s.push_str(&encode_ty(tcx, c.ty(), dict, options));
+
+            // The only allowed types of const values are bool, u8, u16, u32,
+            // u64, u128, usize i8, i16, i32, i64, i128, isize, and char. The
+            // bool value false is encoded as 0 and true as 1.
+            match c.ty().kind() {
+                ty::Int(ity) => {
+                    let bits = c.eval_bits(tcx, ty::ParamEnv::reveal_all(), c.ty());
+                    let val = Integer::from_int_ty(&tcx, *ity).size().sign_extend(bits) as i128;
+                    if val < 0 {
+                        s.push('n');
+                    }
+                    let _ = write!(s, "{val}");
+                }
+                ty::Uint(_) => {
+                    let val = c.eval_bits(tcx, ty::ParamEnv::reveal_all(), c.ty());
+                    let _ = write!(s, "{val}");
+                }
+                ty::Bool => {
+                    let val = c.try_eval_bool(tcx, ty::ParamEnv::reveal_all()).unwrap();
+                    let _ = write!(s, "{val}");
+                }
+                _ => {
+                    bug!("encode_const: unexpected type `{:?}`", c.ty());
+                }
             }
-        };
-    } else {
-        bug!("encode_const: unexpected type `{:?}`", c.ty());
+        }
+
+        _ => {
+            bug!("encode_const: unexpected kind `{:?}`", c.kind());
+        }
     }
 
     // Close the "L..E" pair

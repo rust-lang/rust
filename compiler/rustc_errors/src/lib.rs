@@ -391,7 +391,6 @@ use std::backtrace::{Backtrace, BacktraceStatus};
 /// Certain errors (fatal, bug, unimpl) may cause immediate exit,
 /// others log errors for later reporting.
 pub struct Handler {
-    flags: HandlerFlags,
     inner: Lock<HandlerInner>,
 }
 
@@ -549,69 +548,47 @@ impl Drop for HandlerInner {
 
 impl Handler {
     pub fn with_tty_emitter(
-        color_config: ColorConfig,
-        can_emit_warnings: bool,
-        treat_err_as_bug: Option<NonZeroUsize>,
         sm: Option<Lrc<SourceMap>>,
-        fluent_bundle: Option<Lrc<FluentBundle>>,
         fallback_bundle: LazyFallbackBundle,
-        ice_file: Option<PathBuf>,
-    ) -> Self {
-        Self::with_tty_emitter_and_flags(
-            color_config,
-            sm,
-            fluent_bundle,
-            fallback_bundle,
-            HandlerFlags { can_emit_warnings, treat_err_as_bug, ..Default::default() },
-            ice_file,
-        )
-    }
-
-    pub fn with_tty_emitter_and_flags(
-        color_config: ColorConfig,
-        sm: Option<Lrc<SourceMap>>,
-        fluent_bundle: Option<Lrc<FluentBundle>>,
-        fallback_bundle: LazyFallbackBundle,
-        flags: HandlerFlags,
-        ice_file: Option<PathBuf>,
     ) -> Self {
         let emitter = Box::new(EmitterWriter::stderr(
-            color_config,
+            ColorConfig::Auto,
             sm,
-            fluent_bundle,
+            None,
             fallback_bundle,
             false,
             false,
             None,
-            flags.macro_backtrace,
-            flags.track_diagnostics,
+            false,
+            false,
             TerminalUrl::No,
         ));
-        Self::with_emitter_and_flags(emitter, flags, ice_file)
+        Self::with_emitter(emitter)
+    }
+    pub fn disable_warnings(mut self) -> Self {
+        self.inner.get_mut().flags.can_emit_warnings = false;
+        self
     }
 
-    pub fn with_emitter(
-        can_emit_warnings: bool,
-        treat_err_as_bug: Option<NonZeroUsize>,
-        emitter: Box<dyn Emitter + sync::Send>,
-        ice_file: Option<PathBuf>,
-    ) -> Self {
-        Handler::with_emitter_and_flags(
-            emitter,
-            HandlerFlags { can_emit_warnings, treat_err_as_bug, ..Default::default() },
-            ice_file,
-        )
+    pub fn treat_err_as_bug(mut self, treat_err_as_bug: NonZeroUsize) -> Self {
+        self.inner.get_mut().flags.treat_err_as_bug = Some(treat_err_as_bug);
+        self
     }
 
-    pub fn with_emitter_and_flags(
-        emitter: Box<dyn Emitter + sync::Send>,
-        flags: HandlerFlags,
-        ice_file: Option<PathBuf>,
-    ) -> Self {
+    pub fn with_flags(mut self, flags: HandlerFlags) -> Self {
+        self.inner.get_mut().flags = flags;
+        self
+    }
+
+    pub fn with_ice_file(mut self, ice_file: PathBuf) -> Self {
+        self.inner.get_mut().ice_file = Some(ice_file);
+        self
+    }
+
+    pub fn with_emitter(emitter: Box<dyn Emitter + sync::Send>) -> Self {
         Self {
-            flags,
             inner: Lock::new(HandlerInner {
-                flags,
+                flags: HandlerFlags { can_emit_warnings: true, ..Default::default() },
                 lint_err_count: 0,
                 err_count: 0,
                 warn_count: 0,
@@ -629,7 +606,7 @@ impl Handler {
                 check_unstable_expect_diagnostics: false,
                 unstable_expect_diagnostics: Vec::new(),
                 fulfilled_expectations: Default::default(),
-                ice_file,
+                ice_file: None,
             }),
         }
     }
@@ -657,7 +634,7 @@ impl Handler {
     // This is here to not allow mutation of flags;
     // as of this writing it's only used in tests in librustc_middle.
     pub fn can_emit_warnings(&self) -> bool {
-        self.flags.can_emit_warnings
+        self.inner.lock().flags.can_emit_warnings
     }
 
     /// Resets the diagnostic error count as well as the cached emitted diagnostics.

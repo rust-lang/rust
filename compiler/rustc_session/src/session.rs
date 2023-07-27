@@ -1442,11 +1442,11 @@ pub fn build_session(
     );
     let emitter = default_emitter(&sopts, registry, source_map.clone(), bundle, fallback_bundle);
 
-    let span_diagnostic = rustc_errors::Handler::with_emitter_and_flags(
-        emitter,
-        sopts.unstable_opts.diagnostic_handler_flags(can_emit_warnings),
-        ice_file,
-    );
+    let mut span_diagnostic = rustc_errors::Handler::with_emitter(emitter)
+        .with_flags(sopts.unstable_opts.diagnostic_handler_flags(can_emit_warnings));
+    if let Some(ice_file) = ice_file {
+        span_diagnostic = span_diagnostic.with_ice_file(ice_file);
+    }
 
     let self_profiler = if let SwitchWithOptPath::Enabled(ref d) = sopts.unstable_opts.self_profile
     {
@@ -1737,7 +1737,7 @@ pub struct EarlyErrorHandler {
 impl EarlyErrorHandler {
     pub fn new(output: ErrorOutputType) -> Self {
         let emitter = mk_emitter(output);
-        Self { handler: rustc_errors::Handler::with_emitter(true, None, emitter, None) }
+        Self { handler: rustc_errors::Handler::with_emitter(emitter) }
     }
 
     pub fn abort_if_errors(&self) {
@@ -1751,7 +1751,7 @@ impl EarlyErrorHandler {
         self.handler.abort_if_errors();
 
         let emitter = mk_emitter(output);
-        self.handler = Handler::with_emitter(true, None, emitter, None);
+        self.handler = Handler::with_emitter(emitter);
     }
 
     #[allow(rustc::untranslatable_diagnostic)]

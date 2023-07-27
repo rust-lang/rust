@@ -587,7 +587,7 @@ pub(crate) fn make_test(
             );
 
             // FIXME(misdreavus): pass `-Z treat-err-as-bug` to the doctest parser
-            let handler = Handler::with_emitter(false, None, Box::new(emitter), None);
+            let handler = Handler::with_emitter(Box::new(emitter)).disable_warnings();
             let sess = ParseSess::with_span_handler(handler, sm);
 
             let mut found_main = false;
@@ -774,7 +774,7 @@ fn check_if_attr_is_complete(source: &str, edition: Edition) -> bool {
                 TerminalUrl::No,
             );
 
-            let handler = Handler::with_emitter(false, None, Box::new(emitter), None);
+            let handler = Handler::with_emitter(Box::new(emitter)).disable_warnings();
             let sess = ParseSess::with_span_handler(handler, sm);
             let mut parser =
                 match maybe_new_parser_from_source_str(&sess, filename, source.to_owned()) {

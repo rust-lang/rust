@@ -125,7 +125,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                         this.project_field_named(&io_status_block, "Information")?;
                     this.write_scalar(
                         Scalar::from_target_usize(n.into(), this),
-                        &io_status_information.into(),
+                        &io_status_information,
                     )?;
                 }
                 // Return whether this was a success. >= 0 is success.

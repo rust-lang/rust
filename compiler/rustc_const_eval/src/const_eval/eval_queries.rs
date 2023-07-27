@@ -58,7 +58,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     ecx.push_stack_frame(
         cid.instance,
         body,
-        &ret.into(),
+        &ret.clone().into(),
         StackPopCleanup::Root { cleanup: false },
     )?;
 
@@ -356,7 +356,7 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
             // Since evaluation had no errors, validate the resulting constant.
             // This is a separate `try` block to provide more targeted error reporting.
             let validation: Result<_, InterpErrorInfo<'_>> = try {
-                let mut ref_tracking = RefTracking::new(mplace);
+                let mut ref_tracking = RefTracking::new(mplace.clone());
                 let mut inner = false;
                 while let Some((mplace, path)) = ref_tracking.todo.pop() {
                     let mode = match tcx.static_mutability(cid.instance.def_id()) {

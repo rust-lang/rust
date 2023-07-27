@@ -1415,7 +1415,7 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str, extra_info:
         false,
         TerminalUrl::No,
     ));
-    let handler = rustc_errors::Handler::with_emitter(true, None, emitter, None);
+    let handler = rustc_errors::Handler::with_emitter(emitter);
 
     // a .span_bug or .bug call has already printed what
     // it wants to print.

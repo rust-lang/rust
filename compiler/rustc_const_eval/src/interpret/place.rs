@@ -18,7 +18,7 @@ use rustc_target::abi::{self, Abi, Align, FieldIdx, HasDataLayout, Size, FIRST_V
 use super::{
     alloc_range, mir_assign_valid_types, AllocId, AllocRef, AllocRefMut, CheckInAllocMsg,
     ConstAlloc, ImmTy, Immediate, InterpCx, InterpResult, Machine, MemoryKind, OpTy, Operand,
-    Pointer, Projectable, Provenance, Scalar,
+    Pointer, Projectable, Provenance, Readable, Scalar,
 };
 
 #[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
@@ -81,7 +81,7 @@ pub struct MemPlace<Prov: Provenance = AllocId> {
 }
 
 /// A MemPlace with its layout. Constructing it is only possible in this module.
-#[derive(Copy, Clone, Hash, Eq, PartialEq, Debug)]
+#[derive(Clone, Hash, Eq, PartialEq, Debug)]
 pub struct MPlaceTy<'tcx, Prov: Provenance = AllocId> {
     mplace: MemPlace<Prov>,
     pub layout: TyAndLayout<'tcx>,
@@ -90,6 +90,14 @@ pub struct MPlaceTy<'tcx, Prov: Provenance = AllocId> {
     /// So we represent this here with a separate field that "overwrites" `layout.align`.
     /// This means `layout.align` should never be used for a `MPlaceTy`!
     pub align: Align,
+}
+
+impl<'tcx, Prov: Provenance> std::ops::Deref for MPlaceTy<'tcx, Prov> {
+    type Target = MemPlace<Prov>;
+    #[inline(always)]
+    fn deref(&self) -> &MemPlace<Prov> {
+        &self.mplace
+    }
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -125,32 +133,10 @@ impl<'tcx, Prov: Provenance> std::ops::Deref for PlaceTy<'tcx, Prov> {
     }
 }
 
-impl<'tcx, Prov: Provenance> std::ops::Deref for MPlaceTy<'tcx, Prov> {
-    type Target = MemPlace<Prov>;
-    #[inline(always)]
-    fn deref(&self) -> &MemPlace<Prov> {
-        &self.mplace
-    }
-}
-
 impl<'tcx, Prov: Provenance> From<MPlaceTy<'tcx, Prov>> for PlaceTy<'tcx, Prov> {
     #[inline(always)]
     fn from(mplace: MPlaceTy<'tcx, Prov>) -> Self {
         PlaceTy { place: Place::Ptr(*mplace), layout: mplace.layout, align: mplace.align }
-    }
-}
-
-impl<'tcx, Prov: Provenance> From<&'_ MPlaceTy<'tcx, Prov>> for PlaceTy<'tcx, Prov> {
-    #[inline(always)]
-    fn from(mplace: &MPlaceTy<'tcx, Prov>) -> Self {
-        PlaceTy { place: Place::Ptr(**mplace), layout: mplace.layout, align: mplace.align }
-    }
-}
-
-impl<'tcx, Prov: Provenance> From<&'_ mut MPlaceTy<'tcx, Prov>> for PlaceTy<'tcx, Prov> {
-    #[inline(always)]
-    fn from(mplace: &mut MPlaceTy<'tcx, Prov>) -> Self {
-        PlaceTy { place: Place::Ptr(**mplace), layout: mplace.layout, align: mplace.align }
     }
 }
 
@@ -229,15 +215,13 @@ impl<'tcx, Prov: Provenance> MPlaceTy<'tcx, Prov> {
     }
 }
 
-impl<'mir, 'tcx: 'mir, Prov: Provenance + 'static> Projectable<'mir, 'tcx, Prov>
-    for MPlaceTy<'tcx, Prov>
-{
+impl<'tcx, Prov: Provenance + 'static> Projectable<'tcx, Prov> for MPlaceTy<'tcx, Prov> {
     #[inline(always)]
     fn layout(&self) -> TyAndLayout<'tcx> {
         self.layout
     }
 
-    fn meta<M: Machine<'mir, 'tcx, Provenance = Prov>>(
+    fn meta<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
         &self,
         _ecx: &InterpCx<'mir, 'tcx, M>,
     ) -> InterpResult<'tcx, MemPlaceMeta<M::Provenance>> {
@@ -258,11 +242,59 @@ impl<'mir, 'tcx: 'mir, Prov: Provenance + 'static> Projectable<'mir, 'tcx, Prov>
         })
     }
 
-    fn to_op<M: Machine<'mir, 'tcx, Provenance = Prov>>(
+    fn to_op<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
         &self,
         _ecx: &InterpCx<'mir, 'tcx, M>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
-        Ok(self.into())
+        Ok(self.clone().into())
+    }
+}
+
+impl<'tcx, Prov: Provenance + 'static> Projectable<'tcx, Prov> for PlaceTy<'tcx, Prov> {
+    #[inline(always)]
+    fn layout(&self) -> TyAndLayout<'tcx> {
+        self.layout
+    }
+
+    fn meta<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
+        &self,
+        ecx: &InterpCx<'mir, 'tcx, M>,
+    ) -> InterpResult<'tcx, MemPlaceMeta<M::Provenance>> {
+        ecx.place_meta(self)
+    }
+
+    fn offset_with_meta(
+        &self,
+        offset: Size,
+        meta: MemPlaceMeta<Prov>,
+        layout: TyAndLayout<'tcx>,
+        cx: &impl HasDataLayout,
+    ) -> InterpResult<'tcx, Self> {
+        Ok(match self.as_mplace_or_local() {
+            Left(mplace) => mplace.offset_with_meta(offset, meta, layout, cx)?.into(),
+            Right((frame, local, old_offset)) => {
+                assert_matches!(meta, MemPlaceMeta::None); // we couldn't store it anyway...
+                let new_offset = cx
+                    .data_layout()
+                    .offset(old_offset.unwrap_or(Size::ZERO).bytes(), offset.bytes())?;
+                PlaceTy {
+                    place: Place::Local {
+                        frame,
+                        local,
+                        offset: Some(Size::from_bytes(new_offset)),
+                    },
+                    align: self.align.restrict_for_offset(offset),
+                    layout,
+                }
+            }
+        })
+    }
+
+    fn to_op<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
+        &self,
+        ecx: &InterpCx<'mir, 'tcx, M>,
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
+        ecx.place_to_op(self)
     }
 }
 
@@ -314,53 +346,51 @@ impl<'tcx, Prov: Provenance + 'static> PlaceTy<'tcx, Prov> {
     }
 }
 
-impl<'mir, 'tcx: 'mir, Prov: Provenance + 'static> Projectable<'mir, 'tcx, Prov>
-    for PlaceTy<'tcx, Prov>
-{
+pub trait Writeable<'tcx, Prov: Provenance>: Projectable<'tcx, Prov> {
+    fn as_mplace_or_local(
+        &self,
+    ) -> Either<MPlaceTy<'tcx, Prov>, (usize, mir::Local, Option<Size>, Align, TyAndLayout<'tcx>)>;
+
+    fn force_mplace<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
+        &self,
+        ecx: &mut InterpCx<'mir, 'tcx, M>,
+    ) -> InterpResult<'tcx, MPlaceTy<'tcx, Prov>>;
+}
+
+impl<'tcx, Prov: Provenance + 'static> Writeable<'tcx, Prov> for PlaceTy<'tcx, Prov> {
     #[inline(always)]
-    fn layout(&self) -> TyAndLayout<'tcx> {
-        self.layout
+    fn as_mplace_or_local(
+        &self,
+    ) -> Either<MPlaceTy<'tcx, Prov>, (usize, mir::Local, Option<Size>, Align, TyAndLayout<'tcx>)>
+    {
+        self.as_mplace_or_local()
+            .map_right(|(frame, local, offset)| (frame, local, offset, self.align, self.layout))
     }
 
-    fn meta<M: Machine<'mir, 'tcx, Provenance = Prov>>(
+    #[inline(always)]
+    fn force_mplace<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
         &self,
-        ecx: &InterpCx<'mir, 'tcx, M>,
-    ) -> InterpResult<'tcx, MemPlaceMeta<M::Provenance>> {
-        ecx.place_meta(self)
+        ecx: &mut InterpCx<'mir, 'tcx, M>,
+    ) -> InterpResult<'tcx, MPlaceTy<'tcx, Prov>> {
+        ecx.force_allocation(self)
+    }
+}
+
+impl<'tcx, Prov: Provenance + 'static> Writeable<'tcx, Prov> for MPlaceTy<'tcx, Prov> {
+    #[inline(always)]
+    fn as_mplace_or_local(
+        &self,
+    ) -> Either<MPlaceTy<'tcx, Prov>, (usize, mir::Local, Option<Size>, Align, TyAndLayout<'tcx>)>
+    {
+        Left(self.clone())
     }
 
-    fn offset_with_meta(
+    #[inline(always)]
+    fn force_mplace<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
         &self,
-        offset: Size,
-        meta: MemPlaceMeta<Prov>,
-        layout: TyAndLayout<'tcx>,
-        cx: &impl HasDataLayout,
-    ) -> InterpResult<'tcx, Self> {
-        Ok(match self.as_mplace_or_local() {
-            Left(mplace) => mplace.offset_with_meta(offset, meta, layout, cx)?.into(),
-            Right((frame, local, old_offset)) => {
-                assert_matches!(meta, MemPlaceMeta::None); // we couldn't store it anyway...
-                let new_offset = cx
-                    .data_layout()
-                    .offset(old_offset.unwrap_or(Size::ZERO).bytes(), offset.bytes())?;
-                PlaceTy {
-                    place: Place::Local {
-                        frame,
-                        local,
-                        offset: Some(Size::from_bytes(new_offset)),
-                    },
-                    align: self.align.restrict_for_offset(offset),
-                    layout,
-                }
-            }
-        })
-    }
-
-    fn to_op<M: Machine<'mir, 'tcx, Provenance = Prov>>(
-        &self,
-        ecx: &InterpCx<'mir, 'tcx, M>,
-    ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
-        ecx.place_to_op(self)
+        _ecx: &mut InterpCx<'mir, 'tcx, M>,
+    ) -> InterpResult<'tcx, MPlaceTy<'tcx, Prov>> {
+        Ok(self.clone())
     }
 }
 
@@ -412,7 +442,7 @@ where
     #[instrument(skip(self), level = "debug")]
     pub fn deref_operand(
         &self,
-        src: &OpTy<'tcx, M::Provenance>,
+        src: &impl Readable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {
         let val = self.read_immediate(src)?;
         trace!("deref to {} on {:?}", val.layout.ty, *val);
@@ -422,7 +452,7 @@ where
         }
 
         let mplace = self.ref_to_mplace(&val)?;
-        self.check_mplace(mplace)?;
+        self.check_mplace(&mplace)?;
         Ok(mplace)
     }
 
@@ -453,7 +483,7 @@ where
     }
 
     /// Check if this mplace is dereferenceable and sufficiently aligned.
-    pub fn check_mplace(&self, mplace: MPlaceTy<'tcx, M::Provenance>) -> InterpResult<'tcx> {
+    pub fn check_mplace(&self, mplace: &MPlaceTy<'tcx, M::Provenance>) -> InterpResult<'tcx> {
         let (size, _align) = self
             .size_and_align_of_mplace(&mplace)?
             .unwrap_or((mplace.layout.size, mplace.layout.align.abi));
@@ -537,13 +567,13 @@ where
     pub fn write_immediate(
         &mut self,
         src: Immediate<M::Provenance>,
-        dest: &PlaceTy<'tcx, M::Provenance>,
+        dest: &impl Writeable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
         self.write_immediate_no_validate(src, dest)?;
 
-        if M::enforce_validity(self, dest.layout) {
+        if M::enforce_validity(self, dest.layout()) {
             // Data got changed, better make sure it matches the type!
-            self.validate_operand(&self.place_to_op(dest)?)?;
+            self.validate_operand(&dest.to_op(self)?)?;
         }
 
         Ok(())
@@ -554,7 +584,7 @@ where
     pub fn write_scalar(
         &mut self,
         val: impl Into<Scalar<M::Provenance>>,
-        dest: &PlaceTy<'tcx, M::Provenance>,
+        dest: &impl Writeable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
         self.write_immediate(Immediate::Scalar(val.into()), dest)
     }
@@ -564,7 +594,7 @@ where
     pub fn write_pointer(
         &mut self,
         ptr: impl Into<Pointer<Option<M::Provenance>>>,
-        dest: &PlaceTy<'tcx, M::Provenance>,
+        dest: &impl Writeable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
         self.write_scalar(Scalar::from_maybe_pointer(ptr.into(), self), dest)
     }
@@ -575,20 +605,19 @@ where
     fn write_immediate_no_validate(
         &mut self,
         src: Immediate<M::Provenance>,
-        dest: &PlaceTy<'tcx, M::Provenance>,
+        dest: &impl Writeable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
-        assert!(dest.layout.is_sized(), "Cannot write unsized immediate data");
-        trace!("write_immediate: {:?} <- {:?}: {}", *dest, src, dest.layout.ty);
+        assert!(dest.layout().is_sized(), "Cannot write unsized immediate data");
 
         // See if we can avoid an allocation. This is the counterpart to `read_immediate_raw`,
         // but not factored as a separate function.
-        let mplace = match dest.place {
-            Place::Local { frame, local, offset } => {
+        let mplace = match dest.as_mplace_or_local() {
+            Right((frame, local, offset, align, layout)) => {
                 if offset.is_some() {
                     // This has been projected to a part of this local. We could have complicated
                     // logic to still keep this local as an `Operand`... but it's much easier to
                     // just fall back to the indirect path.
-                    *self.force_allocation(dest)?
+                    dest.force_mplace(self)?
                 } else {
                     match M::access_local_mut(self, frame, local)? {
                         Operand::Immediate(local_val) => {
@@ -623,16 +652,16 @@ where
                         }
                         Operand::Indirect(mplace) => {
                             // The local is in memory, go on below.
-                            *mplace
+                            MPlaceTy { mplace: *mplace, align, layout }
                         }
                     }
                 }
             }
-            Place::Ptr(mplace) => mplace, // already referring to memory
+            Left(mplace) => mplace, // already referring to memory
         };
 
         // This is already in memory, write there.
-        self.write_immediate_to_mplace_no_validate(src, dest.layout, dest.align, mplace)
+        self.write_immediate_to_mplace_no_validate(src, mplace.layout, mplace.align, mplace.mplace)
     }
 
     /// Write an immediate to memory.
@@ -696,16 +725,19 @@ where
         }
     }
 
-    pub fn write_uninit(&mut self, dest: &PlaceTy<'tcx, M::Provenance>) -> InterpResult<'tcx> {
+    pub fn write_uninit(
+        &mut self,
+        dest: &impl Writeable<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx> {
         let mplace = match dest.as_mplace_or_local() {
             Left(mplace) => mplace,
-            Right((frame, local, offset)) => {
+            Right((frame, local, offset, align, layout)) => {
                 if offset.is_some() {
                     // This has been projected to a part of this local. We could have complicated
                     // logic to still keep this local as an `Operand`... but it's much easier to
                     // just fall back to the indirect path.
                     // FIXME: share the logic with `write_immediate_no_validate`.
-                    self.force_allocation(dest)?
+                    dest.force_mplace(self)?
                 } else {
                     match M::access_local_mut(self, frame, local)? {
                         Operand::Immediate(local) => {
@@ -714,7 +746,7 @@ where
                         }
                         Operand::Indirect(mplace) => {
                             // The local is in memory, go on below.
-                            MPlaceTy { mplace: *mplace, layout: dest.layout, align: dest.align }
+                            MPlaceTy { mplace: *mplace, layout, align }
                         }
                     }
                 }
@@ -734,15 +766,15 @@ where
     #[instrument(skip(self), level = "debug")]
     pub fn copy_op(
         &mut self,
-        src: &OpTy<'tcx, M::Provenance>,
-        dest: &PlaceTy<'tcx, M::Provenance>,
+        src: &impl Readable<'tcx, M::Provenance>,
+        dest: &impl Writeable<'tcx, M::Provenance>,
         allow_transmute: bool,
     ) -> InterpResult<'tcx> {
         self.copy_op_no_validate(src, dest, allow_transmute)?;
 
-        if M::enforce_validity(self, dest.layout) {
+        if M::enforce_validity(self, dest.layout()) {
             // Data got changed, better make sure it matches the type!
-            self.validate_operand(&self.place_to_op(dest)?)?;
+            self.validate_operand(&dest.to_op(self)?)?;
         }
 
         Ok(())
@@ -755,20 +787,20 @@ where
     #[instrument(skip(self), level = "debug")]
     fn copy_op_no_validate(
         &mut self,
-        src: &OpTy<'tcx, M::Provenance>,
-        dest: &PlaceTy<'tcx, M::Provenance>,
+        src: &impl Readable<'tcx, M::Provenance>,
+        dest: &impl Writeable<'tcx, M::Provenance>,
         allow_transmute: bool,
     ) -> InterpResult<'tcx> {
         // We do NOT compare the types for equality, because well-typed code can
         // actually "transmute" `&mut T` to `&T` in an assignment without a cast.
         let layout_compat =
-            mir_assign_valid_types(*self.tcx, self.param_env, src.layout, dest.layout);
+            mir_assign_valid_types(*self.tcx, self.param_env, src.layout(), dest.layout());
         if !allow_transmute && !layout_compat {
             span_bug!(
                 self.cur_span(),
                 "type mismatch when copying!\nsrc: {:?},\ndest: {:?}",
-                src.layout.ty,
-                dest.layout.ty,
+                src.layout().ty,
+                dest.layout().ty,
             );
         }
 
@@ -781,13 +813,13 @@ where
                 // actually sized, due to a trivially false where-clause
                 // predicate like `where Self: Sized` with `Self = dyn Trait`.
                 // See #102553 for an example of such a predicate.
-                if src.layout.is_unsized() {
-                    throw_inval!(SizeOfUnsizedType(src.layout.ty));
+                if src.layout().is_unsized() {
+                    throw_inval!(SizeOfUnsizedType(src.layout().ty));
                 }
-                if dest.layout.is_unsized() {
-                    throw_inval!(SizeOfUnsizedType(dest.layout.ty));
+                if dest.layout().is_unsized() {
+                    throw_inval!(SizeOfUnsizedType(dest.layout().ty));
                 }
-                assert_eq!(src.layout.size, dest.layout.size);
+                assert_eq!(src.layout().size, dest.layout().size);
                 // Yay, we got a value that we can write directly.
                 return if layout_compat {
                     self.write_immediate_no_validate(*src_val, dest)
@@ -796,10 +828,10 @@ where
                     // loaded using the offsets defined by `src.layout`. When we put this back into
                     // the destination, we have to use the same offsets! So (a) we make sure we
                     // write back to memory, and (b) we use `dest` *with the source layout*.
-                    let dest_mem = self.force_allocation(dest)?;
+                    let dest_mem = dest.force_mplace(self)?;
                     self.write_immediate_to_mplace_no_validate(
                         *src_val,
-                        src.layout,
+                        src.layout(),
                         dest_mem.align,
                         *dest_mem,
                     )
@@ -808,9 +840,9 @@ where
             Left(mplace) => mplace,
         };
         // Slow path, this does not fit into an immediate. Just memcpy.
-        trace!("copy_op: {:?} <- {:?}: {}", *dest, src, dest.layout.ty);
+        trace!("copy_op: {:?} <- {:?}: {}", *dest, src, dest.layout().ty);
 
-        let dest = self.force_allocation(&dest)?;
+        let dest = dest.force_mplace(self)?;
         let Some((dest_size, _)) = self.size_and_align_of_mplace(&dest)? else {
             span_bug!(self.cur_span(), "copy_op needs (dynamically) sized values")
         };
@@ -928,7 +960,7 @@ where
         operands: &IndexSlice<FieldIdx, mir::Operand<'tcx>>,
         dest: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
-        self.write_uninit(&dest)?;
+        self.write_uninit(dest)?;
         let (variant_index, variant_dest, active_field_index) = match *kind {
             mir::AggregateKind::Adt(_, variant_index, _, _, active_field_index) => {
                 let variant_dest = self.project_downcast(dest, variant_index)?;
@@ -945,7 +977,7 @@ where
             let op = self.eval_operand(operand, Some(field_dest.layout))?;
             self.copy_op(&op, &field_dest, /*allow_transmute*/ false)?;
         }
-        self.write_discriminant(variant_index, &dest)
+        self.write_discriminant(variant_index, dest)
     }
 
     pub fn raw_const_to_mplace(
@@ -983,7 +1015,7 @@ where
 
     /// Turn a `dyn* Trait` type into an value with the actual dynamic type.
     /// Also returns the vtable.
-    pub(super) fn unpack_dyn_star<P: Projectable<'mir, 'tcx, M::Provenance>>(
+    pub(super) fn unpack_dyn_star<P: Projectable<'tcx, M::Provenance>>(
         &self,
         val: &P,
     ) -> InterpResult<'tcx, (P, Pointer<Option<M::Provenance>>)> {
