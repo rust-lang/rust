@@ -11,7 +11,10 @@ use std::iter;
 pub fn provide(providers: &mut Providers) {
     *providers = Providers {
         assumed_wf_types,
-        assumed_wf_types_for_rpitit: |tcx, def_id| tcx.assumed_wf_types(def_id),
+        assumed_wf_types_for_rpitit: |tcx, def_id| {
+            assert!(tcx.is_impl_trait_in_trait(def_id.to_def_id()));
+            tcx.assumed_wf_types(def_id)
+        },
         ..*providers
     };
 }
@@ -52,6 +55,15 @@ fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'
             ty::ImplTraitInTraitData::Trait { fn_def_id, opaque_def_id } => {
                 let hir::OpaqueTy { lifetime_mapping, .. } =
                     *tcx.hir().expect_item(opaque_def_id.expect_local()).expect_opaque_ty();
+                // We need to remap all of the late-bound lifetimes in theassumed wf types
+                // of the fn (which are represented as ReFree) to the early-bound lifetimes
+                // of the RPITIT (which are represented by ReEarlyBound owned by the opaque).
+                // Luckily, this is very easy to do because we already have that mapping
+                // stored in the HIR of this RPITIT.
+                //
+                // Side-note: We don't really need to do this remapping for early-bound
+                // lifetimes because they're already "linked" by the bidirectional outlives
+                // predicates we insert in the `explicit_predicates_of` query for RPITITs.
                 let mut mapping = FxHashMap::default();
                 let generics = tcx.generics_of(def_id);
                 for &(lifetime, new_early_bound_def_id) in
@@ -81,14 +93,24 @@ fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'
                         );
                     }
                 }
-                let a = tcx.fold_regions(
+                // FIXME: This could use a real folder, I guess.
+                let remapped_wf_tys = tcx.fold_regions(
                     tcx.assumed_wf_types(fn_def_id.expect_local()).to_vec(),
-                    |re, _| {
-                        if let Some(re) = mapping.get(&re) { *re } else { re }
+                    |region, _| {
+                        // If `region` is a `ReFree` that is captured by the
+                        // opaque, remap it to its corresponding the early-
+                        // bound region.
+                        if let Some(remapped_region) = mapping.get(&region) {
+                            *remapped_region
+                        } else {
+                            region
+                        }
                     },
                 );
-                tcx.arena.alloc_from_iter(a)
+                tcx.arena.alloc_from_iter(remapped_wf_tys)
             }
+            // Assumed wf types for RPITITs in an impl just inherit (and instantiate)
+            // the assumed wf types of the trait's RPITIT GAT.
             ty::ImplTraitInTraitData::Impl { .. } => {
                 let impl_def_id = tcx.local_parent(def_id);
                 let rpitit_def_id = tcx.associated_item(def_id).trait_item_def_id.unwrap();
