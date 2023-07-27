@@ -168,7 +168,7 @@ belongs to, in addition to the other keys.
 ```rust,ignore
 ///This is going to be the definition of the `ast` query in the `Parser` trait.
 ///So, when the query `ast` is invoked, and it needs to be recomputed, Salsa is going to call this function
-///and it's is going to give it the database as `impl Parser`.
+///and it's going to give it the database as `impl Parser`.
 ///The function doesn't need to be aware of all the queries of all the query groups
 fn ast(db: &impl Parser, name: String) -> String {
     //! Note, `impl Parser` is used here but `dyn Parser` works just as well
