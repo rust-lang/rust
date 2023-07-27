@@ -4,7 +4,7 @@ error: expected one of `->`, `where`, or `{`, found `<eof>`
 LL | fn wrong()
    |          ^ expected one of `->`, `where`, or `{`
 
-thread 'rustc' panicked at compiler/rustc_errors/src/lib.rs:1711:30:
+
 aborting due to `-Z treat-err-as-bug=1`
 stack backtrace:
 
