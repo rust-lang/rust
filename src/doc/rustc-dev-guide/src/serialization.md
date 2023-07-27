@@ -109,7 +109,7 @@ and `Encodable`.
   only allow decoding by [`rustc_metadata::rmeta::encoder::EncodeContext`] and
   [`rustc_metadata::rmeta::decoder::DecodeContext`]. These are used for types
   that contain `rustc_metadata::rmeta::Lazy`.
-- `TyEncodable` and `TyDecoder` generate implementation that apply to any
+- `TyEncodable` and `TyDecodable` generate implementation that apply to any
   `TyEncoder` or `TyDecoder`. These should be used for types that are only
   serialized in crate metadata and/or the incremental cache, which is most
   serializable types in `rustc_middle`.
