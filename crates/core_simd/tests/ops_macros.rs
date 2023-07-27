@@ -539,6 +539,7 @@ macro_rules! impl_float_tests {
                         }
                         let mut result_scalar_flush = [Scalar::default(); LANES];
                         for i in 0..LANES {
+                            // Comparisons flush-to-zero, but return value selection is _not_ flushed.
                             let mut value = value[i];
                             if flush_in(value) < flush_in(min[i]) {
                                 value = min[i];
