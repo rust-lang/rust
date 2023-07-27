@@ -920,11 +920,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         a_data.projection_bounds().filter(|source_projection| {
                             // Eager normalization means that we can just use can_eq
                             // here instead of equating and processing obligations.
-                            self.infcx.can_eq(
-                                obligation.param_env,
-                                *source_projection,
-                                target_projection,
-                            )
+                            source_projection.item_def_id() == target_projection.item_def_id()
+                                && self.infcx.can_eq(
+                                    obligation.param_env,
+                                    *source_projection,
+                                    target_projection,
+                                )
                         });
                     let Some(source_projection) = matching_projections.next() else {
                         return Err(SelectionError::Unimplemented);

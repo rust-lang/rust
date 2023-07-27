@@ -625,15 +625,20 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         // in b_ty's bound. Use this to first determine *which* apply without
         // having any inference side-effects. We process obligations because
         // unification may initially succeed due to deferred projection equality.
-        let projection_may_match = |ecx: &mut Self, source_projection, target_projection| {
-            ecx.probe(|_| CandidateKind::UpcastProbe)
-                .enter(|ecx| -> Result<(), NoSolution> {
-                    ecx.eq(param_env, source_projection, target_projection)?;
-                    let _ = ecx.try_evaluate_added_goals()?;
-                    Ok(())
-                })
-                .is_ok()
-        };
+        let projection_may_match =
+            |ecx: &mut Self,
+             source_projection: ty::PolyExistentialProjection<'tcx>,
+             target_projection: ty::PolyExistentialProjection<'tcx>| {
+                source_projection.item_def_id() == target_projection.item_def_id()
+                    && ecx
+                        .probe(|_| CandidateKind::UpcastProbe)
+                        .enter(|ecx| -> Result<(), NoSolution> {
+                            ecx.eq(param_env, source_projection, target_projection)?;
+                            let _ = ecx.try_evaluate_added_goals()?;
+                            Ok(())
+                        })
+                        .is_ok()
+            };
 
         for bound in b_data {
             match bound.skip_binder() {
