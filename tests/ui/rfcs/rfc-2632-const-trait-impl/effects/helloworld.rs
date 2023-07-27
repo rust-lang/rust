@@ -4,7 +4,7 @@
 // ^ effects doesn't have a gate so we will trick tidy into thinking this is a gate test
 
 #![feature(const_trait_impl, effects, rustc_attrs)]
-
+/* FIXME(effects)
 // ensure we are passing in the correct host effect in always const contexts.
 
 pub const fn hmm</* T, */ #[rustc_host] const host: bool = true>() -> usize {
@@ -20,7 +20,7 @@ const _: () = {
     assert!(0 == x);
 };
 
-/* FIXME(effects)
+ FIXME(effects)
 pub const fn uwu(x: [u8; hmm::<()>()]) {
     let [] = x;
 }

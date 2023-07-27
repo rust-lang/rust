@@ -10,5 +10,12 @@ note: this function is not `const`, so it cannot have `~const` trait bounds
 LL | fn bar<A: ~const Add42, const N: usize>(_: Foo<N>) -> Foo<{ A::add(N) }> {
    |    ^^^
 
-error: aborting due to previous error
+error[E0080]: evaluation of `bar::<(), 0>::{constant#0}` failed
+  --> $DIR/tilde-const-and-const-params.rs:25:61
+   |
+LL | fn bar<A: ~const Add42, const N: usize>(_: Foo<N>) -> Foo<{ A::add(N) }> {
+   |                                                             ^^^^^^^^^ calling non-const function `<() as Add42>::add`
 
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

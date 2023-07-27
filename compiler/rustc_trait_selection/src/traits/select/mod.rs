@@ -1393,10 +1393,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let tcx = self.tcx();
         let mut result = Vec::with_capacity(candidates.len());
 
-        let host_effect_idx = tcx.generics_of(obligation.predicate.def_id()).host_effect_index;
-
         for candidate in candidates {
             // Respect const trait obligations
+            /* TODO delete?
             if let Some(idx) = host_effect_idx {
                 match candidate {
                     // const impl
@@ -1430,7 +1429,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         continue;
                     }
                 }
-            }
+            } */
 
             if let ImplCandidate(def_id) = candidate {
                 if ty::ImplPolarity::Reservation == tcx.impl_polarity(def_id)

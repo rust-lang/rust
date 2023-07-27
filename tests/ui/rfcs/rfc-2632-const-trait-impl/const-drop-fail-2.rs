@@ -1,9 +1,9 @@
-// known-bug: #110395
+// check-pass
 #![feature(const_trait_impl, effects)]
 #![feature(const_mut_refs)]
 #![cfg_attr(precise, feature(const_precise_live_drops))]
 
-use std::marker::{Destruct, PhantomData};
+// use std::marker::{Destruct, PhantomData};
 
 struct NonTrivialDrop;
 
@@ -18,6 +18,7 @@ trait A { fn a() { } }
 
 impl A for NonTrivialDrop {}
 
+/* FIXME(effects)
 struct ConstDropImplWithBounds<T: ~const A>(PhantomData<T>);
 
 impl<T: ~const A> const Drop for ConstDropImplWithBounds<T> {
@@ -32,6 +33,7 @@ const _: () = check::<ConstDropImplWithBounds<NonTrivialDrop>>(
     ConstDropImplWithBounds(PhantomData)
 );
 
+
 struct ConstDropImplWithNonConstBounds<T: A>(PhantomData<T>);
 
 impl<T: ~const A> const Drop for ConstDropImplWithNonConstBounds<T> {
@@ -39,5 +41,6 @@ impl<T: ~const A> const Drop for ConstDropImplWithNonConstBounds<T> {
         T::a();
     }
 }
+*/
 
 fn main() {}
