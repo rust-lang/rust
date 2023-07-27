@@ -1,4 +1,4 @@
-//@aux-build:proc_macros.rs:proc-macro
+//@aux-build:proc_macros.rs
 #![allow(unused)]
 #![warn(clippy::manual_slice_size_calculation)]
 

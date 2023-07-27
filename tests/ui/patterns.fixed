@@ -1,4 +1,4 @@
-//@aux-build:proc_macros.rs:proc-macro
+//@aux-build:proc_macros.rs
 #![warn(clippy::all)]
 #![allow(unused)]
 #![allow(clippy::uninlined_format_args)]

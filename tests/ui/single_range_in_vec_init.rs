@@ -1,4 +1,4 @@
-//@aux-build:proc_macros.rs:proc-macro
+//@aux-build:proc_macros.rs
 //@no-rustfix: overlapping suggestions
 #![allow(clippy::no_effect, clippy::useless_vec, unused)]
 #![warn(clippy::single_range_in_vec_init)]

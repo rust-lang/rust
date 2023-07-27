@@ -1,4 +1,4 @@
-//@aux-build:proc_macros.rs:proc-macro
+//@aux-build:proc_macros.rs
 #![feature(if_let_guard)]
 #![allow(clippy::no_effect, unused)]
 #![warn(clippy::redundant_guards)]

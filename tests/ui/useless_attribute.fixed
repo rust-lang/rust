@@ -1,4 +1,4 @@
-//@aux-build:proc_macro_derive.rs:proc-macro
+//@aux-build:proc_macro_derive.rs
 
 #![allow(unused)]
 #![warn(clippy::useless_attribute)]

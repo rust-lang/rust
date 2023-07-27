@@ -1,4 +1,4 @@
-//@aux-build:proc_macros.rs:proc-macro
+//@aux-build:proc_macros.rs
 
 #![warn(clippy::must_use_unit)]
 #![allow(clippy::unused_unit)]

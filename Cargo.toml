@@ -27,7 +27,7 @@ tempfile = { version = "3.2", optional = true }
 termize = "0.1"
 
 [dev-dependencies]
-ui_test = "0.12"
+ui_test = "0.13"
 tester = "0.9"
 regex = "1.5"
 toml = "0.7.3"

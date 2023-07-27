@@ -1,4 +1,4 @@
-//@aux-build:proc_macros.rs:proc-macro
+//@aux-build:proc_macros.rs
 #![allow(clippy::eq_op, clippy::needless_raw_string_hashes, clippy::no_effect, unused)]
 #![warn(clippy::string_lit_chars_any)]
 

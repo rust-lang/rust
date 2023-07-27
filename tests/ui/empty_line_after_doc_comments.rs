@@ -1,4 +1,4 @@
-//@aux-build:proc_macro_attr.rs:proc-macro
+//@aux-build:proc_macro_attr.rs
 #![warn(clippy::empty_line_after_doc_comments)]
 #![allow(clippy::assertions_on_constants)]
 #![feature(custom_inner_attributes)]

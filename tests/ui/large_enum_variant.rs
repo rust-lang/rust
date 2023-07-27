@@ -1,4 +1,4 @@
-//@aux-build:proc_macros.rs:proc-macro
+//@aux-build:proc_macros.rs
 //@no-rustfix
 #![allow(dead_code)]
 #![allow(unused_variables)]

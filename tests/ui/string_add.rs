@@ -1,4 +1,4 @@
-//@aux-build:proc_macros.rs:proc-macro
+//@aux-build:proc_macros.rs
 //@no-rustfix
 extern crate proc_macros;
 use proc_macros::external;

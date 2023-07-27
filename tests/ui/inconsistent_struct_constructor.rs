@@ -1,4 +1,4 @@
-//@aux-build:proc_macros.rs:proc-macro
+//@aux-build:proc_macros.rs
 
 #![warn(clippy::inconsistent_struct_constructor)]
 #![allow(clippy::redundant_field_names)]

@@ -1,5 +1,5 @@
 //@edition:2018
-//@aux-build:proc_macros.rs:proc-macro
+//@aux-build:proc_macros.rs
 
 #![feature(exclusive_range_pattern)]
 #![feature(stmt_expr_attributes)]

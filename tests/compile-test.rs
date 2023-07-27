@@ -113,7 +113,7 @@ const RUN_INTERNAL_TESTS: bool = cfg!(feature = "internal");
 fn base_config(test_dir: &str) -> (compiletest::Config, Args) {
     let args = Args::test();
     let mut config = compiletest::Config {
-        mode: TestMode::Yolo,
+        mode: TestMode::Yolo { rustfix: true },
         stderr_filters: vec![],
         stdout_filters: vec![],
         output_conflict_handling: if var_os("GITHUB_ACTION").is_none()
@@ -124,7 +124,10 @@ fn base_config(test_dir: &str) -> (compiletest::Config, Args) {
             OutputConflictHandling::Error("cargo uibless".into())
         },
         target: None,
-        out_dir: PathBuf::from(std::env::var_os("CARGO_TARGET_DIR").unwrap_or("target".into())).join("ui_test"),
+        out_dir: PathBuf::from(std::env::var_os("CARGO_TARGET_DIR").unwrap_or("target".into()))
+            .join("ui_test")
+            .canonicalize()
+            .unwrap(),
         ..compiletest::Config::rustc(Path::new("tests").join(test_dir))
     };
     let current_exe_path = env::current_exe().unwrap();
@@ -188,12 +191,18 @@ fn run_ui() {
 
     let test_filter = test_filter();
 
+    let quiet = args.quiet;
+
     compiletest::run_tests_generic(
         config,
         args,
         move |path, args| compiletest::default_file_filter(path, args) && test_filter(path),
         compiletest::default_per_file_config,
-        status_emitter::Text::verbose(),
+        if quiet {
+            status_emitter::Text::quiet()
+        } else {
+            status_emitter::Text::verbose()
+        },
     )
     .unwrap();
 }
@@ -208,13 +217,18 @@ fn run_internal_tests() {
         *err = "cargo uitest --features internal".into();
     }
     let test_filter = test_filter();
+    let quiet = args.quiet;
 
     compiletest::run_tests_generic(
         config,
         args,
         move |path, args| compiletest::default_file_filter(path, args) && test_filter(path),
         compiletest::default_per_file_config,
-        status_emitter::Text::verbose(),
+        if quiet {
+            status_emitter::Text::quiet()
+        } else {
+            status_emitter::Text::verbose()
+        },
     )
     .unwrap();
 }
@@ -236,6 +250,7 @@ fn run_ui_toml() {
     );
 
     let test_filter = test_filter();
+    let quiet = args.quiet;
 
     ui_test::run_tests_generic(
         config,
@@ -249,7 +264,11 @@ fn run_ui_toml() {
                 .push(("CLIPPY_CONF_DIR".into(), Some(path.parent().unwrap().into())));
             Some(config)
         },
-        status_emitter::Text::verbose(),
+        if quiet {
+            status_emitter::Text::quiet()
+        } else {
+            status_emitter::Text::verbose()
+        },
     )
     .unwrap();
 }
@@ -291,6 +310,7 @@ fn run_ui_cargo() {
     );
 
     let test_filter = test_filter();
+    let quiet = args.quiet;
 
     ui_test::run_tests_generic(
         config,
@@ -301,7 +321,11 @@ fn run_ui_cargo() {
             config.out_dir = PathBuf::from("target/ui_test_cargo/").join(path.parent().unwrap());
             Some(config)
         },
-        status_emitter::Text::verbose(),
+        if quiet {
+            status_emitter::Text::quiet()
+        } else {
+            status_emitter::Text::verbose()
+        },
     )
     .unwrap();
 }

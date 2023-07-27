@@ -1,4 +1,4 @@
-//@aux-build:proc_macros.rs:proc-macro
+//@aux-build:proc_macros.rs
 
 #![warn(clippy::manual_rem_euclid)]
 #![allow(clippy::let_with_type_underscore)]

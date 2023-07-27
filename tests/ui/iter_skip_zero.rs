@@ -1,4 +1,4 @@
-//@aux-build:proc_macros.rs:proc-macro
+//@aux-build:proc_macros.rs
 #![allow(clippy::useless_vec, unused)]
 #![warn(clippy::iter_skip_zero)]
 

@@ -1,5 +1,5 @@
 
-//@aux-build:proc_macros.rs:proc-macro
+//@aux-build:proc_macros.rs
 #![feature(custom_inner_attributes)]
 #![allow(clippy::needless_pub_self, unused)]
 #![warn(clippy::pub_with_shorthand)]

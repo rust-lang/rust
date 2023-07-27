@@ -1,4 +1,4 @@
-//@aux-build:../auxiliary/proc_macros.rs:proc-macro
+//@aux-build:../auxiliary/proc_macros.rs
 //@no-rustfix
 extern crate proc_macros;
 

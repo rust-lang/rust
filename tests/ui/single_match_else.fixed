@@ -1,4 +1,4 @@
-//@aux-build: proc_macros.rs:proc-macro
+//@aux-build: proc_macros.rs
 #![warn(clippy::single_match_else)]
 #![allow(unused, clippy::needless_return, clippy::no_effect, clippy::uninlined_format_args)]
 extern crate proc_macros;

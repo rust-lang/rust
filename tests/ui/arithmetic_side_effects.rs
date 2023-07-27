@@ -1,4 +1,4 @@
-//@aux-build:proc_macro_derive.rs:proc-macro
+//@aux-build:proc_macro_derive.rs
 
 #![allow(
     clippy::assign_op_pattern,

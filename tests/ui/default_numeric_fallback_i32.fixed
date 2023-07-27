@@ -1,4 +1,4 @@
-//@aux-build:proc_macros.rs:proc-macro
+//@aux-build:proc_macros.rs
 
 #![feature(lint_reasons)]
 #![warn(clippy::default_numeric_fallback)]

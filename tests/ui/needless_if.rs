@@ -1,4 +1,4 @@
-//@aux-build:proc_macros.rs:proc-macro
+//@aux-build:proc_macros.rs
 #![feature(let_chains)]
 #![allow(
     clippy::blocks_in_if_conditions,

@@ -1,72 +1,72 @@
 error: use of a def path to a diagnostic item
-  --> $DIR/unnecessary_def_path.rs:37:13
+  --> $DIR/unnecessary_def_path.rs:36:13
    |
 LL |     let _ = match_type(cx, ty, &OPTION);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `is_type_diagnostic_item(cx, ty, sym::Option)`
    |
 note: the lint level is defined here
-  --> $DIR/unnecessary_def_path.rs:3:9
+  --> $DIR/unnecessary_def_path.rs:2:9
    |
 LL | #![deny(clippy::internal)]
    |         ^^^^^^^^^^^^^^^^
    = note: `#[deny(clippy::unnecessary_def_path)]` implied by `#[deny(clippy::internal)]`
 
 error: use of a def path to a diagnostic item
-  --> $DIR/unnecessary_def_path.rs:38:13
+  --> $DIR/unnecessary_def_path.rs:37:13
    |
 LL |     let _ = match_type(cx, ty, RESULT);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `is_type_diagnostic_item(cx, ty, sym::Result)`
 
 error: use of a def path to a diagnostic item
-  --> $DIR/unnecessary_def_path.rs:39:13
+  --> $DIR/unnecessary_def_path.rs:38:13
    |
 LL |     let _ = match_type(cx, ty, &["core", "result", "Result"]);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `is_type_diagnostic_item(cx, ty, sym::Result)`
 
 error: use of a def path to a diagnostic item
-  --> $DIR/unnecessary_def_path.rs:43:13
+  --> $DIR/unnecessary_def_path.rs:42:13
    |
 LL |     let _ = clippy_utils::ty::match_type(cx, ty, rc_path);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `is_type_diagnostic_item(cx, ty, sym::Rc)`
 
 error: use of a def path to a diagnostic item
-  --> $DIR/unnecessary_def_path.rs:45:13
+  --> $DIR/unnecessary_def_path.rs:44:13
    |
 LL |     let _ = match_type(cx, ty, &paths::OPTION);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `is_type_diagnostic_item(cx, ty, sym::Option)`
 
 error: use of a def path to a diagnostic item
-  --> $DIR/unnecessary_def_path.rs:46:13
+  --> $DIR/unnecessary_def_path.rs:45:13
    |
 LL |     let _ = match_type(cx, ty, paths::RESULT);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `is_type_diagnostic_item(cx, ty, sym::Result)`
 
 error: use of a def path to a `LangItem`
-  --> $DIR/unnecessary_def_path.rs:48:13
+  --> $DIR/unnecessary_def_path.rs:47:13
    |
 LL |     let _ = match_type(cx, ty, &["alloc", "boxed", "Box"]);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `is_type_lang_item(cx, ty, LangItem::OwnedBox)`
 
 error: use of a def path to a diagnostic item
-  --> $DIR/unnecessary_def_path.rs:49:13
+  --> $DIR/unnecessary_def_path.rs:48:13
    |
 LL |     let _ = match_type(cx, ty, &["core", "mem", "maybe_uninit", "MaybeUninit", "uninit"]);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `is_type_diagnostic_item(cx, ty, sym::maybe_uninit_uninit)`
 
 error: use of a def path to a `LangItem`
-  --> $DIR/unnecessary_def_path.rs:51:13
+  --> $DIR/unnecessary_def_path.rs:50:13
    |
 LL |     let _ = match_def_path(cx, did, &["alloc", "boxed", "Box"]);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `cx.tcx.lang_items().get(LangItem::OwnedBox) == Some(did)`
 
 error: use of a def path to a diagnostic item
-  --> $DIR/unnecessary_def_path.rs:52:13
+  --> $DIR/unnecessary_def_path.rs:51:13
    |
 LL |     let _ = match_def_path(cx, did, &["core", "option", "Option"]);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `cx.tcx.is_diagnostic_item(sym::Option, did)`
 
 error: use of a def path to a `LangItem`
-  --> $DIR/unnecessary_def_path.rs:53:13
+  --> $DIR/unnecessary_def_path.rs:52:13
    |
 LL |     let _ = match_def_path(cx, did, &["core", "option", "Option", "Some"]);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `cx.tcx.lang_items().get(LangItem::OptionSome) == Some(did)`
@@ -74,25 +74,25 @@ LL |     let _ = match_def_path(cx, did, &["core", "option", "Option", "Some"]);
    = help: if this `DefId` came from a constructor expression or pattern then the parent `DefId` should be used instead
 
 error: use of a def path to a diagnostic item
-  --> $DIR/unnecessary_def_path.rs:55:13
+  --> $DIR/unnecessary_def_path.rs:54:13
    |
 LL |     let _ = match_trait_method(cx, expr, &["core", "convert", "AsRef"]);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `is_trait_method(cx, expr, sym::AsRef)`
 
 error: use of a def path to a diagnostic item
-  --> $DIR/unnecessary_def_path.rs:57:13
+  --> $DIR/unnecessary_def_path.rs:56:13
    |
 LL |     let _ = is_expr_path_def_path(cx, expr, &["core", "option", "Option"]);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `is_path_diagnostic_item(cx, expr, sym::Option)`
 
 error: use of a def path to a `LangItem`
-  --> $DIR/unnecessary_def_path.rs:58:13
+  --> $DIR/unnecessary_def_path.rs:57:13
    |
 LL |     let _ = is_expr_path_def_path(cx, expr, &["core", "iter", "traits", "Iterator", "next"]);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `path_res(cx, expr).opt_def_id().map_or(false, |id| cx.tcx.lang_items().get(LangItem::IteratorNext) == Some(id))`
 
 error: use of a def path to a `LangItem`
-  --> $DIR/unnecessary_def_path.rs:59:13
+  --> $DIR/unnecessary_def_path.rs:58:13
    |
 LL |     let _ = is_expr_path_def_path(cx, expr, &["core", "option", "Option", "Some"]);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `is_res_lang_ctor(cx, path_res(cx, expr), LangItem::OptionSome)`
