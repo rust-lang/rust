@@ -112,6 +112,13 @@ pub struct Env {
     iter: vec::IntoIter<(OsString, OsString)>,
 }
 
+impl fmt::Debug for Env {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let Self { iter } = self;
+        f.debug_list().entries(iter.as_slice()).finish()
+    }
+}
+
 impl !Send for Env {}
 impl !Sync for Env {}
 
