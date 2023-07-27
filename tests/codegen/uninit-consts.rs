@@ -1,5 +1,4 @@
 // compile-flags: -C no-prepopulate-passes
-// min-llvm-version: 15.0 (for opaque pointers)
 
 // Check that we use undef (and not zero) for uninitialized bytes in constants.
 
