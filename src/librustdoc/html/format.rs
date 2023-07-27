@@ -1102,22 +1102,35 @@ fn fmt_type<'cx>(
             };
             let m = mutability.print_with_space();
             let amp = if f.alternate() { "&" } else { "&amp;" };
-            match **ty {
+
+            if let clean::Generic(name) = **ty {
+                return primitive_link(
+                    f,
+                    PrimitiveType::Reference,
+                    &format!("{amp}{lt}{m}{name}"),
+                    cx,
+                );
+            }
+
+            write!(f, "{amp}{lt}{m}")?;
+
+            let needs_parens = match **ty {
                 clean::DynTrait(ref bounds, ref trait_lt)
                     if bounds.len() > 1 || trait_lt.is_some() =>
                 {
-                    write!(f, "{}{}{}(", amp, lt, m)?;
-                    fmt_type(ty, f, use_absolute, cx)?;
-                    write!(f, ")")
+                    true
                 }
-                clean::Generic(name) => {
-                    primitive_link(f, PrimitiveType::Reference, &format!("{amp}{lt}{m}{name}"), cx)
-                }
-                _ => {
-                    write!(f, "{}{}{}", amp, lt, m)?;
-                    fmt_type(ty, f, use_absolute, cx)
-                }
+                clean::ImplTrait(ref bounds) if bounds.len() > 1 => true,
+                _ => false,
+            };
+            if needs_parens {
+                f.write_str("(")?;
             }
+            fmt_type(ty, f, use_absolute, cx)?;
+            if needs_parens {
+                f.write_str(")")?;
+            }
+            Ok(())
         }
         clean::ImplTrait(ref bounds) => {
             if f.alternate() {

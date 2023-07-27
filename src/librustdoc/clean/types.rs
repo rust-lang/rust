@@ -1219,15 +1219,24 @@ pub(crate) enum GenericBound {
 }
 
 impl GenericBound {
+    pub(crate) fn sized(cx: &mut DocContext<'_>) -> GenericBound {
+        Self::sized_with(cx, hir::TraitBoundModifier::None)
+    }
+
     pub(crate) fn maybe_sized(cx: &mut DocContext<'_>) -> GenericBound {
+        Self::sized_with(cx, hir::TraitBoundModifier::Maybe)
+    }
+
+    fn sized_with(cx: &mut DocContext<'_>, modifier: hir::TraitBoundModifier) -> GenericBound {
         let did = cx.tcx.require_lang_item(LangItem::Sized, None);
         let empty = ty::Binder::dummy(ty::GenericArgs::empty());
         let path = external_path(cx, did, false, ThinVec::new(), empty);
         inline::record_extern_fqn(cx, did, ItemType::Trait);
-        GenericBound::TraitBound(
-            PolyTrait { trait_: path, generic_params: Vec::new() },
-            hir::TraitBoundModifier::Maybe,
-        )
+        GenericBound::TraitBound(PolyTrait { trait_: path, generic_params: Vec::new() }, modifier)
+    }
+
+    pub(crate) fn is_trait_bound(&self) -> bool {
+        matches!(self, Self::TraitBound(..))
     }
 
     pub(crate) fn is_sized_bound(&self, cx: &DocContext<'_>) -> bool {

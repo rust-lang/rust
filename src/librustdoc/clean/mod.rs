@@ -804,10 +804,10 @@ fn clean_ty_generics<'tcx>(
     let where_predicates = preds
         .predicates
         .iter()
-        .flat_map(|(p, _)| {
+        .flat_map(|(pred, _)| {
             let mut projection = None;
             let param_idx = (|| {
-                let bound_p = p.kind();
+                let bound_p = pred.kind();
                 match bound_p.skip_binder() {
                     ty::ClauseKind::Trait(pred) => {
                         if let ty::Param(param) = pred.self_ty().kind() {
@@ -832,33 +832,26 @@ fn clean_ty_generics<'tcx>(
             })();
 
             if let Some(param_idx) = param_idx
-                && let Some(b) = impl_trait.get_mut(&param_idx.into())
+                && let Some(bounds) = impl_trait.get_mut(&param_idx.into())
             {
-                let p: WherePredicate = clean_predicate(*p, cx)?;
+                let pred = clean_predicate(*pred, cx)?;
 
-                b.extend(
-                    p.get_bounds()
+                bounds.extend(
+                    pred.get_bounds()
                         .into_iter()
                         .flatten()
                         .cloned()
-                        .filter(|b| !b.is_sized_bound(cx)),
                 );
 
-                let proj = projection.map(|p| {
-                    (
-                        clean_projection(p.map_bound(|p| p.projection_ty), cx, None),
-                        p.map_bound(|p| p.term),
-                    )
-                });
-                if let Some(((_, trait_did, name), rhs)) = proj
-                    .as_ref()
-                    .and_then(|(lhs, rhs): &(Type, _)| Some((lhs.projection()?, rhs)))
+                if let Some(proj) = projection
+                    && let lhs = clean_projection(proj.map_bound(|p| p.projection_ty), cx, None)
+                    && let Some((_, trait_did, name)) = lhs.projection()
                 {
                     impl_trait_proj.entry(param_idx).or_default().push((
                         trait_did,
                         name,
-                        *rhs,
-                        p.get_bound_params()
+                        proj.map_bound(|p| p.term),
+                        pred.get_bound_params()
                             .into_iter()
                             .flatten()
                             .cloned()
@@ -869,13 +862,32 @@ fn clean_ty_generics<'tcx>(
                 return None;
             }
 
-            Some(p)
+            Some(pred)
         })
         .collect::<Vec<_>>();
 
     for (param, mut bounds) in impl_trait {
+        let mut has_sized = false;
+        bounds.retain(|b| {
+            if b.is_sized_bound(cx) {
+                has_sized = true;
+                false
+            } else {
+                true
+            }
+        });
+        if !has_sized {
+            bounds.push(GenericBound::maybe_sized(cx));
+        }
+
         // Move trait bounds to the front.
-        bounds.sort_by_key(|b| !matches!(b, GenericBound::TraitBound(..)));
+        bounds.sort_by_key(|b| !b.is_trait_bound());
+
+        // Add back a `Sized` bound if there are no *trait* bounds remaining (incl. `?Sized`).
+        // Since all potential trait bounds are at the front we can just check the first bound.
+        if bounds.first().map_or(true, |b| !b.is_trait_bound()) {
+            bounds.insert(0, GenericBound::sized(cx));
+        }
 
         let crate::core::ImplTraitParam::ParamIndex(idx) = param else { unreachable!() };
         if let Some(proj) = impl_trait_proj.remove(&idx) {
@@ -897,7 +909,7 @@ fn clean_ty_generics<'tcx>(
     // implicit `Sized` bound unless removed with `?Sized`.
     // However, in the list of where-predicates below, `Sized` appears like a
     // normal bound: It's either present (the type is sized) or
-    // absent (the type is unsized) but never *maybe* (i.e. `?Sized`).
+    // absent (the type might be unsized) but never *maybe* (i.e. `?Sized`).
     //
     // This is unsuitable for rendering.
     // Thus, as a first step remove all `Sized` bounds that should be implicit.
@@ -908,8 +920,8 @@ fn clean_ty_generics<'tcx>(
     let mut sized_params = FxHashSet::default();
     where_predicates.retain(|pred| {
         if let WherePredicate::BoundPredicate { ty: Generic(g), bounds, .. } = pred
-        && *g != kw::SelfUpper
-        && bounds.iter().any(|b| b.is_sized_bound(cx))
+            && *g != kw::SelfUpper
+            && bounds.iter().any(|b| b.is_sized_bound(cx))
         {
             sized_params.insert(*g);
             false
@@ -2119,7 +2131,6 @@ fn clean_middle_opaque_bounds<'tcx>(
     cx: &mut DocContext<'tcx>,
     bounds: Vec<ty::Clause<'tcx>>,
 ) -> Type {
-    let mut regions = vec![];
     let mut has_sized = false;
     let mut bounds = bounds
         .iter()
@@ -2128,10 +2139,7 @@ fn clean_middle_opaque_bounds<'tcx>(
             let trait_ref = match bound_predicate.skip_binder() {
                 ty::ClauseKind::Trait(tr) => bound_predicate.rebind(tr.trait_ref),
                 ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(_ty, reg)) => {
-                    if let Some(r) = clean_middle_region(reg) {
-                        regions.push(GenericBound::Outlives(r));
-                    }
-                    return None;
+                    return clean_middle_region(reg).map(GenericBound::Outlives);
                 }
                 _ => return None,
             };
@@ -2167,10 +2175,20 @@ fn clean_middle_opaque_bounds<'tcx>(
             Some(clean_poly_trait_ref_with_bindings(cx, trait_ref, bindings))
         })
         .collect::<Vec<_>>();
-    bounds.extend(regions);
-    if !has_sized && !bounds.is_empty() {
-        bounds.insert(0, GenericBound::maybe_sized(cx));
+
+    if !has_sized {
+        bounds.push(GenericBound::maybe_sized(cx));
     }
+
+    // Move trait bounds to the front.
+    bounds.sort_by_key(|b| !b.is_trait_bound());
+
+    // Add back a `Sized` bound if there are no *trait* bounds remaining (incl. `?Sized`).
+    // Since all potential trait bounds are at the front we can just check the first bound.
+    if bounds.first().map_or(true, |b| !b.is_trait_bound()) {
+        bounds.insert(0, GenericBound::sized(cx));
+    }
+
     ImplTrait(bounds)
 }
 
