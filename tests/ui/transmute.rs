@@ -1,5 +1,5 @@
 #![allow(dead_code, clippy::borrow_as_ptr, clippy::needless_lifetimes)]
-
+//@no-rustfix
 extern crate core;
 
 use std::mem::transmute as my_transmute;

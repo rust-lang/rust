@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![allow(clippy::needless_raw_strings, clippy::needless_raw_string_hashes, unused_must_use)]
 
 use std::collections::HashSet;

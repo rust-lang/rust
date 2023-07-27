@@ -1,5 +1,5 @@
 error: used a field initializer for a tuple struct
-  --> $DIR/numbered_fields.rs:19:13
+  --> $DIR/numbered_fields.rs:18:13
    |
 LL |       let _ = TupleStruct {
    |  _____________^
@@ -12,7 +12,7 @@ LL | |     };
    = note: `-D clippy::init-numbered-fields` implied by `-D warnings`
 
 error: used a field initializer for a tuple struct
-  --> $DIR/numbered_fields.rs:26:13
+  --> $DIR/numbered_fields.rs:25:13
    |
 LL |       let _ = TupleStruct {
    |  _____________^

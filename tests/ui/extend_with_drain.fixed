@@ -1,4 +1,3 @@
-//@run-rustfix
 #![warn(clippy::extend_with_drain)]
 #![allow(clippy::iter_with_drain)]
 use std::collections::BinaryHeap;

@@ -8,7 +8,7 @@
     clippy::needless_if
 )]
 #![warn(clippy::manual_let_else)]
-
+//@no-rustfix
 enum Variant {
     A(usize, usize),
     B(usize),

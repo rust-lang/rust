@@ -1,4 +1,4 @@
-//@run-rustfix
+
 #![feature(stmt_expr_attributes)]
 
 #![allow(unused, clippy::no_effect, clippy::unnecessary_operation)]

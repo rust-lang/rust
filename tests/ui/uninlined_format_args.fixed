@@ -1,5 +1,5 @@
 //@aux-build:proc_macros.rs:proc-macro
-//@run-rustfix
+
 #![warn(clippy::uninlined_format_args)]
 #![allow(named_arguments_used_positionally, unused)]
 #![allow(

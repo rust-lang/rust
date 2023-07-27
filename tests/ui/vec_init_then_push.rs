@@ -1,6 +1,6 @@
 #![allow(unused_variables)]
 #![warn(clippy::vec_init_then_push)]
-
+//@no-rustfix
 fn main() {
     let mut def_err: Vec<u32> = Default::default();
     def_err.push(0);

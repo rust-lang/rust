@@ -1,3 +1,4 @@
+//@no-rustfix: overlapping suggestions
 #![feature(lint_reasons)]
 #![deny(clippy::panicking_unwrap, clippy::unnecessary_unwrap)]
 #![allow(

@@ -1,3 +1,5 @@
+//@no-rustfix
+
 #![feature(repr128)]
 #![allow(incomplete_features)]
 #![warn(

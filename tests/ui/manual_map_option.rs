@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![warn(clippy::manual_map)]
 #![allow(
     clippy::no_effect,

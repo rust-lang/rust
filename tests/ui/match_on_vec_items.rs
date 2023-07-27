@@ -1,6 +1,6 @@
 #![warn(clippy::match_on_vec_items)]
 #![allow(clippy::redundant_at_rest_pattern, clippy::useless_vec)]
-
+//@no-rustfix
 fn match_with_wildcard() {
     let arr = vec![0, 1, 2, 3];
     let range = 1..3;

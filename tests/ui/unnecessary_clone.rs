@@ -2,7 +2,7 @@
 #![warn(clippy::clone_on_ref_ptr)]
 #![allow(unused)]
 #![allow(clippy::redundant_clone, clippy::uninlined_format_args, clippy::unnecessary_wraps)]
-
+//@no-rustfix
 use std::cell::RefCell;
 use std::rc::{self, Rc};
 use std::sync::{self, Arc};

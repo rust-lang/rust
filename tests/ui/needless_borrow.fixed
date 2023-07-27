@@ -1,4 +1,3 @@
-//@run-rustfix
 #![feature(lint_reasons)]
 #![allow(
     unused,

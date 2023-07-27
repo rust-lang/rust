@@ -1,7 +1,7 @@
 #![deny(clippy::if_same_then_else, clippy::branches_sharing_code)]
 #![allow(dead_code)]
 #![allow(clippy::equatable_if_let, clippy::uninlined_format_args)]
-
+//@no-rustfix
 // This tests the branches_sharing_code lint at the end of blocks
 
 fn simple_examples() {

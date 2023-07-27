@@ -1,4 +1,5 @@
 //@aux-build: proc_macros.rs:proc-macro
+//@no-rustfix: overlapping suggestions
 #![warn(clippy::unit_arg)]
 #![allow(unused_must_use, unused_variables)]
 #![allow(

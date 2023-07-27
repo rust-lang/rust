@@ -1,4 +1,4 @@
-//@run-rustfix
+
 //@aux-build:proc_macros.rs:proc-macro
 #![feature(custom_inner_attributes)]
 #![allow(clippy::needless_pub_self, unused)]

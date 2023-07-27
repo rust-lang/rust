@@ -1,4 +1,3 @@
-//@run-rustfix
 #![warn(clippy::seek_from_current)]
 
 use std::fs::File;

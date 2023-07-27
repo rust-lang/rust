@@ -1,6 +1,6 @@
 #![warn(clippy::needless_range_loop, clippy::manual_memcpy)]
 #![allow(clippy::useless_vec)]
-
+//@no-rustfix
 const LOOP_OFFSET: usize = 5000;
 
 pub fn manual_copy(src: &[i32], dst: &mut [i32], dst2: &mut [i32]) {

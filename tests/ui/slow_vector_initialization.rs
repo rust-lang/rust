@@ -1,5 +1,5 @@
 use std::iter::repeat;
-
+//@no-rustfix
 fn main() {
     resize_vector();
     extend_vector();

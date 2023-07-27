@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![allow(
     clippy::deref_addrof,
     dead_code,

@@ -1,3 +1,4 @@
+//@no-rustfix: overlapping suggestions
 #![allow(unused)]
 #![warn(clippy::no_mangle_with_rust_abi)]
 

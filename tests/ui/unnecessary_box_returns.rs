@@ -1,5 +1,5 @@
 #![warn(clippy::unnecessary_box_returns)]
-
+//@no-rustfix
 trait Bar {
     // lint
     fn baz(&self) -> Box<usize>;

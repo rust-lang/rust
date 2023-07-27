@@ -5,7 +5,7 @@ use std::rc::Rc;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering::Relaxed;
 use std::sync::Arc;
-
+//@no-rustfix
 struct Key(AtomicUsize);
 
 impl Clone for Key {

@@ -4,7 +4,7 @@
     clippy::unnecessary_literal_unwrap,
     clippy::useless_vec
 )]
-
+//@no-rustfix
 static STATIC: [usize; 4] = [0, 1, 8, 16];
 const CONST: [usize; 4] = [0, 1, 8, 16];
 const MAX_LEN: usize = 42;

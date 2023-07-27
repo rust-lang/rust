@@ -1,5 +1,5 @@
 error: called `map(<f>).unwrap_or_else(<g>)` on an `Option` value. This can be done more directly by calling `map_or_else(<g>, <f>)` instead
-  --> $DIR/map_unwrap_or_fixable.rs:17:13
+  --> $DIR/map_unwrap_or_fixable.rs:16:13
    |
 LL |       let _ = opt.map(|x| x + 1)
    |  _____________^
@@ -10,7 +10,7 @@ LL | |         .unwrap_or_else(|| 0);
    = note: `-D clippy::map-unwrap-or` implied by `-D warnings`
 
 error: called `map(<f>).unwrap_or_else(<g>)` on a `Result` value. This can be done more directly by calling `.map_or_else(<g>, <f>)` instead
-  --> $DIR/map_unwrap_or_fixable.rs:47:13
+  --> $DIR/map_unwrap_or_fixable.rs:46:13
    |
 LL |       let _ = res.map(|x| x + 1)
    |  _____________^

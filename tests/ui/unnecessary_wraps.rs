@@ -1,3 +1,4 @@
+//@no-rustfix: overlapping suggestions
 #![warn(clippy::unnecessary_wraps)]
 #![allow(clippy::no_effect)]
 #![allow(clippy::needless_return)]

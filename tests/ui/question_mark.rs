@@ -1,4 +1,3 @@
-//@run-rustfix
 #![feature(try_blocks)]
 #![allow(unreachable_code)]
 #![allow(dead_code)]

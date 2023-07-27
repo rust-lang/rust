@@ -1,5 +1,5 @@
 //@aux-build:proc_macros.rs:proc-macro
-
+//@no-rustfix
 #![deny(clippy::implicit_hasher)]
 #![allow(unused)]
 

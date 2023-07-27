@@ -1,4 +1,3 @@
-//@run-rustfix
 //@aux-build:proc_macros.rs:proc-macro
 #![feature(if_let_guard)]
 #![allow(clippy::no_effect, unused)]

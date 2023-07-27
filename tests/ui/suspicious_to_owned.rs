@@ -1,3 +1,4 @@
+//@no-rustfix: overlapping suggestions
 #![warn(clippy::suspicious_to_owned)]
 #![warn(clippy::implicit_clone)]
 #![allow(clippy::redundant_clone)]

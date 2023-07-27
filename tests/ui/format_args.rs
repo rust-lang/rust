@@ -1,4 +1,3 @@
-//@run-rustfix
 #![warn(clippy::to_string_in_format_args)]
 #![allow(unused)]
 #![allow(

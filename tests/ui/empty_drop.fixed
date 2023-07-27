@@ -1,4 +1,3 @@
-//@run-rustfix
 #![warn(clippy::empty_drop)]
 #![allow(unused)]
 

@@ -1,5 +1,5 @@
 //@aux-build:proc_macros.rs:proc-macro
-
+//@no-rustfix
 extern crate proc_macros;
 use proc_macros::external;
 

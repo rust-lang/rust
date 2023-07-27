@@ -1,5 +1,5 @@
 fn main() {}
-
+//@no-rustfix
 fn no_panic<T>(slice: &[T]) {
     let mut iter = slice.iter();
     loop {

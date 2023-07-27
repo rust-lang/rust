@@ -1,5 +1,4 @@
 // FIXME: Ideally these suggestions would be fixed via rustfix. Blocked by rust-lang/rust#53934
-//
 
 #![allow(clippy::print_literal)]
 #![warn(clippy::print_with_newline)]

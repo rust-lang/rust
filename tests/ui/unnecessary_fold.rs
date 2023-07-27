@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![allow(dead_code)]
 
 /// Calls which should trigger the `UNNECESSARY_FOLD` lint

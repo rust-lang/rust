@@ -1,4 +1,3 @@
-//@run-rustfix
 #![warn(clippy::borrow_as_ptr)]
 #![feature(lang_items, start, libc)]
 #![no_std]

@@ -1,4 +1,3 @@
-//@run-rustfix
 //@aux-build:proc_macros.rs:proc-macro
 
 #![deny(clippy::try_err)]

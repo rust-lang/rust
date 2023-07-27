@@ -1,4 +1,3 @@
-//@run-rustfix
 #![warn(clippy::explicit_write)]
 #![allow(unused_imports)]
 #![allow(clippy::uninlined_format_args)]

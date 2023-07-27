@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![warn(clippy::needless_bitwise_bool)]
 
 fn returns_bool() -> bool {

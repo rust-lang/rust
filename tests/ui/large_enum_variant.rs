@@ -1,5 +1,5 @@
 //@aux-build:proc_macros.rs:proc-macro
-
+//@no-rustfix
 #![allow(dead_code)]
 #![allow(unused_variables)]
 #![warn(clippy::large_enum_variant)]

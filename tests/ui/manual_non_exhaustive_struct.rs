@@ -1,6 +1,6 @@
 #![warn(clippy::manual_non_exhaustive)]
 #![allow(unused)]
-
+//@no-rustfix
 mod structs {
     struct S {
         pub a: i32,

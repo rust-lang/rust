@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![warn(clippy::match_wildcard_for_single_variants)]
 #![allow(dead_code)]
 

@@ -1,3 +1,4 @@
+//@no-rustfix: overlapping suggestions
 // these are rustfixable, but run-rustfix tests cannot handle them
 
 const VAR_FIVE: &'static [&[&'static str]] = &[&["test"], &["other one"]]; // ERROR: Consider removing 'static

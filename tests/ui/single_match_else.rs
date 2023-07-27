@@ -1,4 +1,3 @@
-//@run-rustfix
 //@aux-build: proc_macros.rs:proc-macro
 #![warn(clippy::single_match_else)]
 #![allow(unused, clippy::needless_return, clippy::no_effect, clippy::uninlined_format_args)]

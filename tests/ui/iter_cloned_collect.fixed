@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![allow(unused)]
 #![allow(clippy::useless_vec)]
 

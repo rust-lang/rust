@@ -1,4 +1,3 @@
-//@run-rustfix
 //@aux-build:proc_macros.rs:proc-macro
 #![allow(
     clippy::clone_on_copy,

@@ -1,5 +1,5 @@
 error: manual implementation of `Option::filter`
-  --> $DIR/manual_filter.rs:7:5
+  --> $DIR/manual_filter.rs:5:5
    |
 LL | /     match Some(0) {
 LL | |         None => None,
@@ -13,7 +13,7 @@ LL | |     };
    = note: `-D clippy::manual-filter` implied by `-D warnings`
 
 error: manual implementation of `Option::filter`
-  --> $DIR/manual_filter.rs:18:5
+  --> $DIR/manual_filter.rs:16:5
    |
 LL | /     match Some(1) {
 LL | |         Some(x) => {
@@ -25,7 +25,7 @@ LL | |     };
    | |_____^ help: try: `Some(1).filter(|&x| x <= 0)`
 
 error: manual implementation of `Option::filter`
-  --> $DIR/manual_filter.rs:29:5
+  --> $DIR/manual_filter.rs:27:5
    |
 LL | /     match Some(2) {
 LL | |         Some(x) => {
@@ -37,7 +37,7 @@ LL | |     };
    | |_____^ help: try: `Some(2).filter(|&x| x <= 0)`
 
 error: manual implementation of `Option::filter`
-  --> $DIR/manual_filter.rs:40:5
+  --> $DIR/manual_filter.rs:38:5
    |
 LL | /     match Some(3) {
 LL | |         Some(x) => {
@@ -49,7 +49,7 @@ LL | |     };
    | |_____^ help: try: `Some(3).filter(|&x| x > 0)`
 
 error: manual implementation of `Option::filter`
-  --> $DIR/manual_filter.rs:52:5
+  --> $DIR/manual_filter.rs:50:5
    |
 LL | /     match y {
 LL | |         // Some(4)
@@ -61,7 +61,7 @@ LL | |     };
    | |_____^ help: try: `y.filter(|&x| x <= 0)`
 
 error: manual implementation of `Option::filter`
-  --> $DIR/manual_filter.rs:64:5
+  --> $DIR/manual_filter.rs:62:5
    |
 LL | /     match Some(5) {
 LL | |         Some(x) => {
@@ -73,7 +73,7 @@ LL | |     };
    | |_____^ help: try: `Some(5).filter(|&x| x > 0)`
 
 error: manual implementation of `Option::filter`
-  --> $DIR/manual_filter.rs:75:5
+  --> $DIR/manual_filter.rs:73:5
    |
 LL | /     match Some(6) {
 LL | |         Some(ref x) => {
@@ -85,7 +85,7 @@ LL | |     };
    | |_____^ help: try: `Some(6).as_ref().filter(|&x| x > &0)`
 
 error: manual implementation of `Option::filter`
-  --> $DIR/manual_filter.rs:87:5
+  --> $DIR/manual_filter.rs:85:5
    |
 LL | /     match Some(String::new()) {
 LL | |         Some(x) => {
@@ -97,7 +97,7 @@ LL | |     };
    | |_____^ help: try: `Some(String::new()).filter(|x| external_cond)`
 
 error: manual implementation of `Option::filter`
-  --> $DIR/manual_filter.rs:98:5
+  --> $DIR/manual_filter.rs:96:5
    |
 LL | /     if let Some(x) = Some(7) {
 LL | |         if external_cond { Some(x) } else { None }
@@ -107,7 +107,7 @@ LL | |     };
    | |_____^ help: try: `Some(7).filter(|&x| external_cond)`
 
 error: manual implementation of `Option::filter`
-  --> $DIR/manual_filter.rs:104:5
+  --> $DIR/manual_filter.rs:102:5
    |
 LL | /     match &Some(8) {
 LL | |         &Some(x) => {
@@ -119,7 +119,7 @@ LL | |     };
    | |_____^ help: try: `Some(8).filter(|&x| x != 0)`
 
 error: manual implementation of `Option::filter`
-  --> $DIR/manual_filter.rs:115:5
+  --> $DIR/manual_filter.rs:113:5
    |
 LL | /     match Some(9) {
 LL | |         Some(x) => {
@@ -131,7 +131,7 @@ LL | |     };
    | |_____^ help: try: `Some(9).filter(|&x| x > 10 && x < 100)`
 
 error: manual implementation of `Option::filter`
-  --> $DIR/manual_filter.rs:141:5
+  --> $DIR/manual_filter.rs:139:5
    |
 LL | /     match Some(11) {
 LL | |         // Lint, statement is preserved by `.filter`
@@ -151,7 +151,7 @@ LL ~             });
    |
 
 error: manual implementation of `Option::filter`
-  --> $DIR/manual_filter.rs:185:13
+  --> $DIR/manual_filter.rs:183:13
    |
 LL |       let _ = match Some(14) {
    |  _____________^
@@ -164,7 +164,7 @@ LL | |     };
    | |_____^ help: try: `Some(14).filter(|&x| unsafe { f(x) })`
 
 error: manual implementation of `Option::filter`
-  --> $DIR/manual_filter.rs:195:13
+  --> $DIR/manual_filter.rs:193:13
    |
 LL |       let _ = match Some(15) {
    |  _____________^
@@ -176,7 +176,7 @@ LL | |     };
    | |_____^ help: try: `Some(15).filter(|&x| unsafe { f(x) })`
 
 error: manual implementation of `Option::filter`
-  --> $DIR/manual_filter.rs:205:12
+  --> $DIR/manual_filter.rs:203:12
    |
 LL |       } else if let Some(x) = Some(16) {
    |  ____________^

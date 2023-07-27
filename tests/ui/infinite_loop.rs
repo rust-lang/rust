@@ -1,3 +1,5 @@
+//@no-rustfix
+
 fn fn_val(i: i32) -> i32 {
     unimplemented!()
 }

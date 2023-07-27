@@ -1,5 +1,5 @@
 #![allow(unused_variables, dead_code)]
-
+//@no-rustfix
 fn takes_an_immutable_reference(a: &i32) {}
 fn takes_a_mutable_reference(a: &mut i32) {}
 

@@ -1,4 +1,3 @@
-//@run-rustfix
 //@aux-build:proc_macro_derive.rs:proc-macro
 
 #![allow(unused)]

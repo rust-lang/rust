@@ -1,5 +1,5 @@
 //@aux-build:option_helpers.rs
-
+//@no-rustfix
 #![warn(clippy::map_unwrap_or)]
 #![allow(clippy::uninlined_format_args, clippy::unnecessary_lazy_evaluations)]
 

@@ -1,0 +1,12 @@
+#![warn(clippy::maybe_misused_cfg)]
+
+fn main() {
+    #[cfg(feature = "not-really-a-feature")]
+    let _ = 1 + 2;
+
+    #[cfg(all(feature = "right", feature = "wrong"))]
+    let _ = 1 + 2;
+
+    #[cfg(all(feature = "wrong1", any(feature = "right", feature = "wrong2", feature, features)))]
+    let _ = 1 + 2;
+}

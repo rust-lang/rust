@@ -1,3 +1,4 @@
+//@no-rustfix: overlapping suggestions
 #![allow(clippy::unused_unit, dead_code, unused)]
 #![no_main]
 

@@ -1,4 +1,3 @@
-//@run-rustfix
 //@aux-build:proc_macros.rs:proc-macro
 #![feature(stmt_expr_attributes)]
 #![deny(clippy::unneeded_wildcard_pattern)]

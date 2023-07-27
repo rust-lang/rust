@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![feature(lint_reasons)]
 #![feature(yeet_expr)]
 #![allow(unused)]

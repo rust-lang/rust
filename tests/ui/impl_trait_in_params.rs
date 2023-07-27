@@ -1,6 +1,6 @@
 #![allow(unused)]
 #![warn(clippy::impl_trait_in_params)]
-
+//@no-rustfix
 pub trait Trait {}
 pub trait AnotherTrait<T> {}
 

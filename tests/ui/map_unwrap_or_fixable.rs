@@ -1,4 +1,3 @@
-//@run-rustfix
 //@aux-build:option_helpers.rs
 
 #![warn(clippy::map_unwrap_or)]

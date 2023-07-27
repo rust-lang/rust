@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #[derive(Copy, Clone)]
 struct HasChars;
 

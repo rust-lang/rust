@@ -1,5 +1,5 @@
 #![warn(clippy::only_used_in_recursion)]
-
+//@no-rustfix
 fn _with_inner(flag: u32, a: u32, b: u32) -> usize {
     fn inner(flag: u32, a: u32) -> u32 {
         if flag == 0 { 0 } else { inner(flag, a) }

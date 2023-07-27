@@ -1,5 +1,5 @@
 error: an implementation of `From` is preferred since it gives you `Into<_>` for free where the reverse isn't true
-  --> $DIR/from_over_into.rs:10:1
+  --> $DIR/from_over_into.rs:8:1
    |
 LL | impl Into<StringWrapper> for String {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -13,7 +13,7 @@ LL ~         StringWrapper(val)
    |
 
 error: an implementation of `From` is preferred since it gives you `Into<_>` for free where the reverse isn't true
-  --> $DIR/from_over_into.rs:18:1
+  --> $DIR/from_over_into.rs:16:1
    |
 LL | impl Into<SelfType> for String {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -26,7 +26,7 @@ LL ~         SelfType(String::new())
    |
 
 error: an implementation of `From` is preferred since it gives you `Into<_>` for free where the reverse isn't true
-  --> $DIR/from_over_into.rs:33:1
+  --> $DIR/from_over_into.rs:31:1
    |
 LL | impl Into<SelfKeywords> for X {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -41,7 +41,7 @@ LL ~         let _: X = val;
    |
 
 error: an implementation of `From` is preferred since it gives you `Into<_>` for free where the reverse isn't true
-  --> $DIR/from_over_into.rs:45:1
+  --> $DIR/from_over_into.rs:43:1
    |
 LL | impl core::convert::Into<bool> for crate::ExplicitPaths {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -59,7 +59,7 @@ LL ~         val.0
    |
 
 error: an implementation of `From` is preferred since it gives you `Into<_>` for free where the reverse isn't true
-  --> $DIR/from_over_into.rs:65:1
+  --> $DIR/from_over_into.rs:63:1
    |
 LL | impl Into<String> for PathInExpansion {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -73,7 +73,7 @@ LL ~     fn from(val: PathInExpansion) -> Self {
    |
 
 error: an implementation of `From` is preferred since it gives you `Into<_>` for free where the reverse isn't true
-  --> $DIR/from_over_into.rs:87:5
+  --> $DIR/from_over_into.rs:85:5
    |
 LL |     impl<T> Into<FromOverInto<T>> for Vec<T> {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -1,4 +1,3 @@
-//@run-rustfix
 #![allow(unused_must_use)]
 #![warn(clippy::create_dir)]
 

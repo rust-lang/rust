@@ -1,3 +1,4 @@
+//@no-rustfix: overlapping suggestions
 #![allow(clippy::uninlined_format_args)]
 
 #[allow(unused_assignments)]

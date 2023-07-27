@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![warn(clippy::manual_bits)]
 #![allow(
     clippy::no_effect,

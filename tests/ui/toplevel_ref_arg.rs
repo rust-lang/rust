@@ -1,4 +1,3 @@
-//@run-rustfix
 //@aux-build:proc_macros.rs:proc-macro
 #![warn(clippy::toplevel_ref_arg)]
 #![allow(clippy::uninlined_format_args, unused, clippy::useless_vec)]

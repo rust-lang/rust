@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![warn(clippy::significant_drop_tightening)]
 
 use std::sync::Mutex;

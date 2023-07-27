@@ -1,7 +1,7 @@
 #![warn(clippy::result_map_unit_fn)]
 #![feature(never_type)]
 #![allow(unused)]
-
+//@no-rustfix
 struct HasResult {
     field: Result<usize, usize>,
 }

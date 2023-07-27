@@ -1,5 +1,5 @@
 use std::future::Future;
-
+//@no-rustfix
 async fn some_async_fn() {}
 
 fn sync_side_effects() {}

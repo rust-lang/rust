@@ -1,7 +1,7 @@
 #![warn(clippy::unnecessary_literal_unwrap)]
 #![allow(unreachable_code)]
 #![allow(clippy::unnecessary_lazy_evaluations, clippy::let_unit_value)]
-
+//@no-rustfix
 fn unwrap_option_some() {
     let val = Some(1);
     let _val2 = val.unwrap();

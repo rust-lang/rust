@@ -1,3 +1,4 @@
+//@no-rustfix: overlapping suggestions
 #![allow(unused_must_use)]
 #![warn(clippy::needless_raw_strings, clippy::write_literal)]
 

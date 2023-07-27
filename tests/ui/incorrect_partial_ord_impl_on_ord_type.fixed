@@ -1,4 +1,3 @@
-//@run-rustfix
 #![no_main]
 
 use std::cmp::Ordering;

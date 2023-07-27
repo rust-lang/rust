@@ -1,4 +1,3 @@
-//@run-rustfix
 #![warn(clippy::iter_next_slice)]
 #![allow(clippy::useless_vec)]
 

@@ -8,7 +8,7 @@
     clippy::uninlined_format_args,
     clippy::needless_pass_by_ref_mut
 )]
-
+//@no-rustfix
 #[derive(Copy, Clone)]
 struct Foo(u32);
 

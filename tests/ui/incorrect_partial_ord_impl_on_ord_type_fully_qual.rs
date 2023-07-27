@@ -2,7 +2,7 @@
 // is not in scope.
 #![no_main]
 #![no_implicit_prelude]
-
+//@no-rustfix
 extern crate std;
 
 use std::cmp::{self, Eq, Ordering, PartialEq, PartialOrd};

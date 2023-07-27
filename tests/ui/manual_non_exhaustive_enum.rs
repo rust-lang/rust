@@ -1,7 +1,7 @@
 #![feature(lint_reasons)]
 #![warn(clippy::manual_non_exhaustive)]
 #![allow(unused)]
-
+//@no-rustfix
 enum E {
     A,
     B,

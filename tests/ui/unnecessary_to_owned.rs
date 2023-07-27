@@ -1,5 +1,3 @@
-//@run-rustfix
-
 #![allow(clippy::needless_borrow, clippy::ptr_arg)]
 #![warn(clippy::unnecessary_to_owned, clippy::redundant_clone)]
 
