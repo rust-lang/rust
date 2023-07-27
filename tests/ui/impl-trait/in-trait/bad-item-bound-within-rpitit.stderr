@@ -13,10 +13,10 @@ LL |     where Self: 'b;
    |     ~~~~~~~~~~~~~~
 
 error[E0477]: the type `&'a I` does not fulfill the required lifetime
-  --> $DIR/bad-item-bound-within-rpitit.rs:19:5
+  --> $DIR/bad-item-bound-within-rpitit.rs:19:23
    |
 LL |     fn iter(&self) -> impl 'a + Iterator<Item = I::Item<'a>> {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: type must outlive the anonymous lifetime as defined here
   --> $DIR/bad-item-bound-within-rpitit.rs:10:28
