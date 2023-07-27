@@ -41,7 +41,7 @@ use thin_vec::ThinVec;
 
 use crate::core::{self, DocContext, ImplTraitParam};
 use crate::formats::item_type::ItemType;
-use crate::visit_ast::{should_ignore_res, Module as DocModule};
+use crate::visit_ast::Module as DocModule;
 
 use utils::*;
 

@@ -7,11 +7,11 @@
 
 use super::Pass;
 use crate::clean;
+use crate::clean::utils::inherits_doc_hidden;
 use crate::clean::*;
 use crate::core::DocContext;
 use crate::html::markdown::{find_testable_code, ErrorCodes, Ignore, LangString};
 use crate::visit::DocVisitor;
-use crate::visit_ast::inherits_doc_hidden;
 use rustc_hir as hir;
 use rustc_middle::lint::LintLevelSource;
 use rustc_session::lint;
