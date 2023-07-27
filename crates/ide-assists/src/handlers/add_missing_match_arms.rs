@@ -37,9 +37,9 @@ use crate::{utils, AssistContext, AssistId, AssistKind, Assists};
 pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let match_expr = ctx.find_node_at_offset_with_descend::<ast::MatchExpr>()?;
     let match_arm_list = match_expr.match_arm_list()?;
-    let target_range = ctx.sema.original_range(match_expr.syntax()).range;
+    let arm_list_range = ctx.sema.original_range_opt(match_arm_list.syntax())?;
 
-    if let None = cursor_at_trivial_match_arm_list(ctx, &match_expr, &match_arm_list) {
+    if cursor_at_trivial_match_arm_list(ctx, &match_expr, &match_arm_list).is_none() {
         let arm_list_range = ctx.sema.original_range(match_arm_list.syntax()).range;
         let cursor_in_range = arm_list_range.contains_range(ctx.selection_trimmed());
         if cursor_in_range {
@@ -198,7 +198,7 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
     acc.add(
         AssistId("add_missing_match_arms", AssistKind::QuickFix),
         "Fill match arms",
-        target_range,
+        ctx.sema.original_range(match_expr.syntax()).range,
         |edit| {
             let new_match_arm_list = match_arm_list.clone_for_update();
 
@@ -262,9 +262,8 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
             // Just replace the element that the original range came from
             let old_place = {
                 // Find the original element
-                let old_file_range = ctx.sema.original_range(match_arm_list.syntax());
-                let file = ctx.sema.parse(old_file_range.file_id);
-                let old_place = file.syntax().covering_element(old_file_range.range);
+                let file = ctx.sema.parse(arm_list_range.file_id);
+                let old_place = file.syntax().covering_element(arm_list_range.range);
 
                 // Make `old_place` mut
                 match old_place {
@@ -1920,6 +1919,26 @@ fn foo(t: E) {
         E::B => todo!(),
     }
 }"#,
+        );
+    }
+
+    #[test]
+    fn not_applicable_when_match_arm_list_cannot_be_upmapped() {
+        check_assist_not_applicable(
+            add_missing_match_arms,
+            r#"
+macro_rules! foo {
+    ($($t:tt)*) => {
+        $($t)* {}
+    }
+}
+
+enum E { A }
+
+fn main() {
+    foo!(match E::A$0);
+}
+"#,
         );
     }
 }
