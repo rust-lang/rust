@@ -887,9 +887,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let ty::Dynamic(b_data, b_region, ty::Dyn) = *b_ty.kind() else { bug!() };
 
         let source_principal = a_data.principal().unwrap().with_self_ty(tcx, a_ty);
-        let upcast_principal = util::supertraits(tcx, source_principal).nth(idx).unwrap();
+        let unnormalized_upcast_principal =
+            util::supertraits(tcx, source_principal).nth(idx).unwrap();
 
         let mut nested = vec![];
+        let upcast_principal = normalize_with_depth_to(
+            self,
+            obligation.param_env,
+            obligation.cause.clone(),
+            obligation.recursion_depth + 1,
+            unnormalized_upcast_principal,
+            &mut nested,
+        );
+
         for bound in b_data {
             match bound.skip_binder() {
                 // Check that a's supertrait (upcast_principal) is compatible
@@ -973,7 +983,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
                     VtblSegment::TraitOwnEntries { trait_ref, emit_vptr } => {
                         vptr_offset += count_own_vtable_entries(tcx, trait_ref);
-                        if trait_ref == upcast_principal {
+                        if trait_ref == unnormalized_upcast_principal {
                             if emit_vptr {
                                 return ControlFlow::Break(Some(vptr_offset));
                             } else {
