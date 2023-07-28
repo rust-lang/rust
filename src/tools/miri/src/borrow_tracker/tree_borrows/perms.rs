@@ -381,7 +381,7 @@ mod propagation_optimization_checks {
         pub use super::*;
         impl PermissionPriv {
             /// Enumerate all states
-            pub fn all() -> impl Iterator<Item = PermissionPriv> {
+            pub fn all() -> impl Iterator<Item = Self> {
                 vec![
                     Active,
                     Reserved { ty_is_freeze: true },
@@ -393,9 +393,15 @@ mod propagation_optimization_checks {
             }
         }
 
+        impl Permission {
+            pub fn all() -> impl Iterator<Item = Self> {
+                PermissionPriv::all().map(|inner| Self { inner })
+            }
+        }
+
         impl AccessKind {
             /// Enumerate all AccessKind.
-            pub fn all() -> impl Iterator<Item = AccessKind> {
+            pub fn all() -> impl Iterator<Item = Self> {
                 use AccessKind::*;
                 [Read, Write].into_iter()
             }
@@ -403,7 +409,7 @@ mod propagation_optimization_checks {
 
         impl AccessRelatedness {
             /// Enumerate all relative positions
-            pub fn all() -> impl Iterator<Item = AccessRelatedness> {
+            pub fn all() -> impl Iterator<Item = Self> {
                 use AccessRelatedness::*;
                 [This, StrictChildAccess, AncestorAccess, DistantAccess].into_iter()
             }
