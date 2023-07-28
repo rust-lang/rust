@@ -243,12 +243,18 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
             infer::CheckAssociatedTypeBounds { impl_item_def_id, trait_item_def_id, parent } => {
                 let mut err = self.report_concrete_failure(*parent, sub, sup);
-                let trait_item_span = self.tcx.def_span(trait_item_def_id);
-                let item_name = self.tcx.item_name(impl_item_def_id.to_def_id());
-                err.span_label(
-                    trait_item_span,
-                    format!("definition of `{}` from trait", item_name),
-                );
+
+                // Don't mention the item name if it's an RPITIT, since that'll just confuse
+                // folks.
+                if !self.tcx.is_impl_trait_in_trait(impl_item_def_id.to_def_id()) {
+                    let trait_item_span = self.tcx.def_span(trait_item_def_id);
+                    let item_name = self.tcx.item_name(impl_item_def_id.to_def_id());
+                    err.span_label(
+                        trait_item_span,
+                        format!("definition of `{}` from trait", item_name),
+                    );
+                }
+
                 self.suggest_copy_trait_method_bounds(
                     trait_item_def_id,
                     impl_item_def_id,
