@@ -6,7 +6,7 @@ use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{walk_expr, walk_fn, walk_item, FnKind, Visitor};
 use rustc_hir::{
-    self as hir, BlockCheckMode, BodyId, Constness, Expr, ExprKind, FnDecl, Impl, Item, ItemKind, UnsafeSource,
+    self as hir, BlockCheckMode, BodyId, Expr, ExprKind, FnDecl, Impl, Item, ItemKind, UnsafeSource,
     Unsafety,
 };
 use rustc_lint::{LateContext, LateLintPass};
@@ -526,6 +526,5 @@ fn param_env_for_derived_eq(tcx: TyCtxt<'_>, did: DefId, eq_trait_id: DefId) -> 
             }),
         )),
         Reveal::UserFacing,
-        Constness::NotConst,
     )
 }

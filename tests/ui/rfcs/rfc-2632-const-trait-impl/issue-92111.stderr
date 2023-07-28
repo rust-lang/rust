@@ -1,7 +1,7 @@
 error[E0493]: destructor of `T` cannot be evaluated at compile-time
-  --> $DIR/const-block-const-bound.rs:8:32
+  --> $DIR/issue-92111.rs:20:32
    |
-LL | const fn f<T: ~const Destruct>(x: T) {}
+LL | const fn a<T: ~const Destruct>(t: T) {}
    |                                ^      - value is dropped here
    |                                |
    |                                the destructor for this type cannot be evaluated in constant functions

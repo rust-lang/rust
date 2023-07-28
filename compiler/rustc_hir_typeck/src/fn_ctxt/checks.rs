@@ -45,12 +45,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         debug!("FnCtxt::check_casts: {} deferred checks", deferred_cast_checks.len());
         for cast in deferred_cast_checks.drain(..) {
-            let prev_env = self.param_env;
-            self.param_env = self.param_env.with_constness(cast.constness);
-
             cast.check(self);
-
-            self.param_env = prev_env;
         }
 
         *self.deferred_cast_checks.borrow_mut() = deferred_cast_checks;

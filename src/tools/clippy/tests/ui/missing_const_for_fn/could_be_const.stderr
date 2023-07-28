@@ -89,11 +89,5 @@ LL | |     46
 LL | | }
    | |_^
 
-error: this could be a `const fn`
-  --> $DIR/could_be_const.rs:102:1
-   |
-LL | fn d(this: D) {}
-   | ^^^^^^^^^^^^^^^^
-
-error: aborting due to 12 previous errors
+error: aborting due to 11 previous errors
 

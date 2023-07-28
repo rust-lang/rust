@@ -13,8 +13,8 @@ use rustc_infer::infer::LateBoundRegionConversionTime::HigherRankedType;
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
 use rustc_middle::traits::{BuiltinImplSource, SelectionOutputTypeParameterMismatch};
 use rustc_middle::ty::{
-    self, Binder, GenericArgs, GenericArgsRef, GenericParamDefKind, ToPolyTraitRef, ToPredicate,
-    TraitPredicate, TraitRef, Ty, TyCtxt, TypeVisitableExt,
+    self, GenericArgs, GenericArgsRef, GenericParamDefKind, ToPolyTraitRef, ToPredicate,
+    TraitPredicate, Ty, TyCtxt, TypeVisitableExt,
 };
 use rustc_span::def_id::DefId;
 
@@ -647,7 +647,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn confirm_fn_pointer_candidate(
         &mut self,
         obligation: &PolyTraitObligation<'tcx>,
-        is_const: bool,
+        // FIXME(effects)
+        _is_const: bool,
     ) -> Result<Vec<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
         debug!(?obligation, "confirm_fn_pointer_candidate");
 
@@ -673,16 +674,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let mut nested = self.confirm_poly_trait_refs(obligation, trait_ref)?;
         let cause = obligation.derived_cause(BuiltinDerivedObligation);
-
-        if obligation.is_const() && !is_const {
-            // function is a trait method
-            if let ty::FnDef(def_id, args) = self_ty.kind() && let Some(trait_id) = tcx.trait_of_item(*def_id) {
-                let trait_ref = TraitRef::from_method(tcx, trait_id, *args);
-                let poly_trait_pred = Binder::dummy(trait_ref).with_constness(ty::BoundConstness::ConstIfConst);
-                let obligation = Obligation::new(tcx, cause.clone(), obligation.param_env, poly_trait_pred);
-                nested.push(obligation);
-            }
-        }
 
         // Confirm the `type Output: Sized;` bound that is present on `FnOnce`
         let output_ty = self.infcx.instantiate_binder_with_placeholders(sig.output());
@@ -1211,7 +1202,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         impl_def_id: Option<DefId>,
     ) -> Result<Vec<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
         // `~const Destruct` in a non-const environment is always trivially true, since our type is `Drop`
-        if !obligation.is_const() {
+        // FIXME(effects)
+        if true {
             return Ok(vec![]);
         }
 

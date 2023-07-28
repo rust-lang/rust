@@ -449,14 +449,11 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             return Err(NoSolution);
         }
 
-        if !goal.param_env.is_const() {
-            // `Destruct` is automatically implemented for every type in
-            // non-const environments.
-            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-        } else {
-            // FIXME(-Ztrait-solver=next): Implement this when we get const working in the new solver
-            Err(NoSolution)
-        }
+        // FIXME(-Ztrait-solver=next): Implement this when we get const working in the new solver
+
+        // `Destruct` is automatically implemented for every type in
+        // non-const environments.
+        ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
 
     fn consider_builtin_transmute_candidate(

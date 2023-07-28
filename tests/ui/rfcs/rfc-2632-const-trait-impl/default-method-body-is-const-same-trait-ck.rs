@@ -1,3 +1,4 @@
+// known-bug: #110395
 #![feature(const_trait_impl)]
 
 #[const_trait]
@@ -6,7 +7,7 @@ pub trait Tr {
 
     fn b(&self) {
         ().a()
-        //~^ ERROR the trait bound
+        //FIXME ~^ ERROR the trait bound
     }
 }
 

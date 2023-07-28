@@ -79,7 +79,6 @@ impl<'tcx> PredicateObligation<'tcx> {
     }
 
     pub fn without_const(mut self, tcx: TyCtxt<'tcx>) -> PredicateObligation<'tcx> {
-        self.param_env = self.param_env.without_const();
         if let ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_pred)) = self.predicate.kind().skip_binder() && trait_pred.is_const_if_const() {
             self.predicate = tcx.mk_predicate(self.predicate.kind().map_bound(|_| ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_pred.without_const()))));
         }
@@ -88,14 +87,6 @@ impl<'tcx> PredicateObligation<'tcx> {
 }
 
 impl<'tcx> PolyTraitObligation<'tcx> {
-    /// Returns `true` if the trait predicate is considered `const` in its ParamEnv.
-    pub fn is_const(&self) -> bool {
-        matches!(
-            (self.predicate.skip_binder().constness, self.param_env.constness()),
-            (ty::BoundConstness::ConstIfConst, hir::Constness::Const)
-        )
-    }
-
     pub fn derived_cause(
         &self,
         variant: impl FnOnce(DerivedObligationCause<'tcx>) -> ObligationCauseCode<'tcx>,
