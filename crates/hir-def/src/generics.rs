@@ -21,6 +21,7 @@ use crate::{
     db::DefDatabase,
     dyn_map::{keys, DynMap},
     expander::Expander,
+    item_tree::ItemTree,
     lower::LowerCtx,
     nameres::{DefMap, MacroSubNs},
     src::{HasChildSource, HasSource},
@@ -154,12 +155,28 @@ impl GenericParams {
         def: GenericDefId,
     ) -> Interned<GenericParams> {
         let _p = profile::span("generic_params_query");
+
+        let krate = def.module(db).krate;
+        let cfg_options = db.crate_graph();
+        let cfg_options = &cfg_options[krate].cfg_options;
+        let enabled_params = |params: &GenericParams, item_tree: &ItemTree| {
+            let enabled = |param| item_tree.attrs(db, krate, param).is_cfg_enabled(cfg_options);
+            Interned::new(GenericParams {
+                type_or_consts: (params.type_or_consts.iter())
+                    .filter_map(|(idx, param)| enabled(idx.into()).then(|| param.clone()))
+                    .collect(),
+                lifetimes: (params.lifetimes.iter())
+                    .filter_map(|(idx, param)| enabled(idx.into()).then(|| param.clone()))
+                    .collect(),
+                where_predicates: params.where_predicates.clone(),
+            })
+        };
         macro_rules! id_to_generics {
             ($id:ident) => {{
                 let id = $id.lookup(db).id;
                 let tree = id.item_tree(db);
                 let item = &tree[id.value];
-                item.generic_params.clone()
+                enabled_params(&item.generic_params, &tree)
             }};
         }
 

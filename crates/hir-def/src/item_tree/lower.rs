@@ -605,6 +605,41 @@ impl<'a> Ctx<'a> {
         generics.fill(&self.body_ctx, node);
 
         generics.shrink_to_fit();
+
+        if let Some(params) = node.generic_param_list() {
+            let params_by_name: FxHashMap<_, _> = params
+                .generic_params()
+                .filter_map(|param| {
+                    let name = match &param {
+                        ast::GenericParam::ConstParam(param) => param.name()?.as_name(),
+                        ast::GenericParam::LifetimeParam(param) => {
+                            Name::new_lifetime(&param.lifetime()?)
+                        }
+                        ast::GenericParam::TypeParam(param) => param.name()?.as_name(),
+                    };
+                    Some((name, param))
+                })
+                .collect();
+            for (idx, param) in generics.type_or_consts.iter() {
+                if let Some(name) = param.name() {
+                    if let Some(param) = params_by_name.get(name) {
+                        self.add_attrs(
+                            idx.into(),
+                            RawAttrs::new(self.db.upcast(), param, self.hygiene()),
+                        );
+                    }
+                }
+            }
+            for (idx, param) in generics.lifetimes.iter() {
+                if let Some(param) = params_by_name.get(&param.name) {
+                    self.add_attrs(
+                        idx.into(),
+                        RawAttrs::new(self.db.upcast(), param, self.hygiene()),
+                    );
+                }
+            }
+        }
+
         Interned::new(generics)
     }
 

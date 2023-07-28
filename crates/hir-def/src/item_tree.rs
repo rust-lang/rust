@@ -64,7 +64,7 @@ use triomphe::Arc;
 use crate::{
     attr::Attrs,
     db::DefDatabase,
-    generics::GenericParams,
+    generics::{GenericParams, LifetimeParamData, TypeOrConstParamData},
     path::{path, AssociatedTypeBinding, GenericArgs, ImportAlias, ModPath, Path, PathKind},
     type_ref::{Mutability, TraitRef, TypeBound, TypeRef},
     visibility::RawVisibility,
@@ -296,10 +296,12 @@ pub enum AttrOwner {
     Variant(Idx<Variant>),
     Field(Idx<Field>),
     Param(Idx<Param>),
+    TypeOrConstParamData(Idx<TypeOrConstParamData>),
+    LifetimeParamData(Idx<LifetimeParamData>),
 }
 
 macro_rules! from_attrs {
-    ( $( $var:ident($t:ty) ),+ ) => {
+    ( $( $var:ident($t:ty) ),+ $(,)? ) => {
         $(
             impl From<$t> for AttrOwner {
                 fn from(t: $t) -> AttrOwner {
@@ -310,7 +312,14 @@ macro_rules! from_attrs {
     };
 }
 
-from_attrs!(ModItem(ModItem), Variant(Idx<Variant>), Field(Idx<Field>), Param(Idx<Param>));
+from_attrs!(
+    ModItem(ModItem),
+    Variant(Idx<Variant>),
+    Field(Idx<Field>),
+    Param(Idx<Param>),
+    TypeOrConstParamData(Idx<TypeOrConstParamData>),
+    LifetimeParamData(Idx<LifetimeParamData>),
+);
 
 /// Trait implemented by all item nodes in the item tree.
 pub trait ItemTreeNode: Clone {
