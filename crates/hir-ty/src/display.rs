@@ -885,6 +885,13 @@ impl HirDisplay for Ty {
             TyKind::FnDef(def, parameters) => {
                 let def = from_chalk(db, *def);
                 let sig = db.callable_item_signature(def).substitute(Interner, parameters);
+
+                if f.display_target.is_source_code() {
+                    // `FnDef` is anonymous and there's no surface syntax for it. Show it as a
+                    // function pointer type.
+                    return sig.hir_fmt(f);
+                }
+
                 f.start_location_link(def.into());
                 match def {
                     CallableDefId::FunctionId(ff) => {
