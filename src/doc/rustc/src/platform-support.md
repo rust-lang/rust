@@ -138,10 +138,10 @@ target | std | notes
 `arm-unknown-linux-musleabihf` | ✓ | ARMv6 Linux with MUSL, hardfloat
 `armebv7r-none-eabi` | * | Bare ARMv7-R, Big Endian
 `armebv7r-none-eabihf` | * | Bare ARMv7-R, Big Endian, hardfloat
-`armv5te-unknown-linux-gnueabi` | ✓ | ARMv5TE Linux (kernel 4.4, glibc 2.23)
+`armv5te-unknown-linux-gnueabi` | ✓ | ARMv5TE Linux (kernel 5.15, glibc 2.35) [^target-glibc]
 `armv5te-unknown-linux-musleabi` | ✓ | ARMv5TE Linux with MUSL
 [`armv7-linux-androideabi`](platform-support/android.md) | ✓ | ARMv7-A Android
-`armv7-unknown-linux-gnueabi` | ✓ | ARMv7-A Linux (kernel 4.15, glibc 2.27)
+`armv7-unknown-linux-gnueabi` | ✓ | ARMv7-A Linux (kernel 5.15, glibc 2.35) [^target-glibc]
 `armv7-unknown-linux-musleabi` | ✓ | ARMv7-A Linux with MUSL
 `armv7-unknown-linux-musleabihf` | ✓ | ARMv7-A Linux with MUSL, hardfloat
 `armv7a-none-eabi` | * | Bare ARMv7-A
@@ -149,7 +149,7 @@ target | std | notes
 `armv7r-none-eabihf` | * | Bare ARMv7-R, hardfloat
 `asmjs-unknown-emscripten` | ✓ | asm.js via Emscripten
 `i586-pc-windows-msvc` | * | 32-bit Windows w/o SSE
-`i586-unknown-linux-gnu` | ✓ | 32-bit Linux w/o SSE (kernel 3.2, glibc 2.17)
+`i586-unknown-linux-gnu` | ✓ | 32-bit Linux w/o SSE (kernel 3.2, glibc 2.17) [^target-glibc]
 `i586-unknown-linux-musl` | ✓ | 32-bit Linux w/o SSE, MUSL
 [`i686-linux-android`](platform-support/android.md) | ✓ | 32-bit x86 Android
 `i686-unknown-freebsd` | ✓ | 32-bit FreeBSD
@@ -165,14 +165,14 @@ target | std | notes
 `riscv32imc-unknown-none-elf` | * | Bare RISC-V (RV32IMC ISA)
 `riscv64gc-unknown-none-elf` | * | Bare RISC-V (RV64IMAFDC ISA)
 `riscv64imac-unknown-none-elf` | * | Bare RISC-V (RV64IMAC ISA)
-`sparc64-unknown-linux-gnu` | ✓ | SPARC Linux (kernel 4.4, glibc 2.23)
+`sparc64-unknown-linux-gnu` | ✓ | SPARC Linux (kernel 5.15, glibc 2.35) [^target-glibc]
 `sparcv9-sun-solaris` | ✓ | SPARC Solaris 10/11, illumos
 `thumbv6m-none-eabi` | * | Bare ARMv6-M
 `thumbv7em-none-eabi` | * | Bare ARMv7E-M
 `thumbv7em-none-eabihf` | * | Bare ARMV7E-M, hardfloat
 `thumbv7m-none-eabi` | * | Bare ARMv7-M
 [`thumbv7neon-linux-androideabi`](platform-support/android.md) | ✓ | Thumb2-mode ARMv7-A Android with NEON
-`thumbv7neon-unknown-linux-gnueabihf` | ✓ | Thumb2-mode ARMv7-A Linux with NEON (kernel 4.4, glibc 2.23)
+`thumbv7neon-unknown-linux-gnueabihf` | ✓ | Thumb2-mode ARMv7-A Linux with NEON (kernel 5.15, glibc 2.35) [^target-glibc]
 `thumbv8m.base-none-eabi` | * | Bare ARMv8-M Baseline
 `thumbv8m.main-none-eabi` | * | Bare ARMv8-M Mainline
 `thumbv8m.main-none-eabihf` | * | Bare ARMv8-M Mainline, hardfloat
@@ -186,10 +186,16 @@ target | std | notes
 `x86_64-unknown-fuchsia` | ✓ | 64-bit Fuchsia
 [`x86_64-linux-android`](platform-support/android.md) | ✓ | 64-bit x86 Android
 `x86_64-pc-solaris` | ✓ | 64-bit Solaris 10/11, illumos
-`x86_64-unknown-linux-gnux32` | ✓ | 64-bit Linux (x32 ABI) (kernel 4.15, glibc 2.27)
+`x86_64-unknown-linux-gnux32` | ✓ | 64-bit Linux (x32 ABI) (kernel 5.15, glibc 2.35) [^target-glibc]
 [`x86_64-unknown-none`](platform-support/x86_64-unknown-none.md) | * | Freestanding/bare-metal x86_64, softfloat
 `x86_64-unknown-redox` | ✓ | Redox OS
 [`x86_64-unknown-uefi`](platform-support/unknown-uefi.md) | * | 64-bit UEFI
+
+[^target-glibc]: For non-host `linux-gnu` targets, the listed kernel and glibc
+  versions only apply to use of the rustup-distributed dynamic library
+  `libstd.so`, when building with `-C prefer-dynamic`. The default use of
+  static `libstd.rlib` will generally be compatible with the oldest baseline
+  available, currently kernel 3.2 and glibc 2.17.
 
 [Fortanix ABI]: https://edp.fortanix.com/
 
