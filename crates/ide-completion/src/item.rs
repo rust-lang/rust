@@ -429,7 +429,9 @@ impl Builder {
         if !self.doc_aliases.is_empty() {
             let doc_aliases = self.doc_aliases.iter().join(", ");
             label = SmolStr::from(format!("{label} (alias {doc_aliases})"));
-            let lookup_doc_aliases = (self.doc_aliases.iter())
+            let lookup_doc_aliases = self
+                .doc_aliases
+                .iter()
                 // Don't include aliases in `lookup` that aren't valid identifiers as including
                 // them results in weird completion filtering behavior e.g. `Partial>` matching
                 // `PartialOrd` because it has an alias of ">".
