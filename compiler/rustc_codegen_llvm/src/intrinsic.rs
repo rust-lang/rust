@@ -2074,7 +2074,8 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         simd_neg: Int => neg, Float => fneg;
     }
 
-    if name == sym::simd_bswap {
+    // Unary integer intrinsics
+    if matches!(name, sym::simd_bswap | sym::simd_bitreverse | sym::simd_ctlz | sym::simd_cttz) {
         let vec_ty = bx.cx.type_vector(
             match *in_elem.kind() {
                 ty::Int(i) => bx.cx.type_int_from_ty(i),
@@ -2088,12 +2089,29 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             },
             in_len as u64,
         );
-        let llvm_intrinsic =
-            &format!("llvm.bswap.v{}i{}", in_len, in_elem.int_size_and_signed(bx.tcx()).0.bits(),);
-        let fn_ty = bx.type_func(&[vec_ty], vec_ty);
-        let f = bx.declare_cfn(llvm_intrinsic, llvm::UnnamedAddr::No, fn_ty);
-        let v = bx.call(fn_ty, None, None, f, &[args[0].immediate()], None);
-        return Ok(v);
+        let intrinsic_name = match name {
+            sym::simd_bswap => "bswap",
+            sym::simd_bitreverse => "bitreverse",
+            sym::simd_ctlz => "ctlz",
+            sym::simd_cttz => "cttz",
+            _ => unreachable!(),
+        };
+        let llvm_intrinsic = &format!(
+            "llvm.{}.v{}i{}",
+            intrinsic_name,
+            in_len,
+            in_elem.int_size_and_signed(bx.tcx()).0.bits(),
+        );
+
+        return Ok(if matches!(name, sym::simd_ctlz | sym::simd_cttz) {
+            let fn_ty = bx.type_func(&[vec_ty, bx.type_bool()], vec_ty);
+            let f = bx.declare_cfn(llvm_intrinsic, llvm::UnnamedAddr::No, fn_ty);
+            bx.call(fn_ty, None, None, f, &[args[0].immediate(), bx.const_bool(false)], None)
+        } else {
+            let fn_ty = bx.type_func(&[vec_ty], vec_ty);
+            let f = bx.declare_cfn(llvm_intrinsic, llvm::UnnamedAddr::No, fn_ty);
+            bx.call(fn_ty, None, None, f, &[args[0].immediate()], None)
+        });
     }
 
     if name == sym::simd_arith_offset {

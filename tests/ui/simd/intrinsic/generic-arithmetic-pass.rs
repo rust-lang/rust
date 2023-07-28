@@ -48,6 +48,9 @@ extern "platform-intrinsic" {
 
     fn simd_neg<T>(x: T) -> T;
     fn simd_bswap<T>(x: T) -> T;
+    fn simd_bitreverse<T>(x: T) -> T;
+    fn simd_ctlz<T>(x: T) -> T;
+    fn simd_cttz<T>(x: T) -> T;
 }
 
 fn main() {
@@ -136,5 +139,13 @@ fn main() {
         all_eq!(simd_bswap(x1), i32x4(0x01000000, 0x02000000, 0x03000000, 0x04000000));
         all_eq_!(simd_bswap(y1), U32::<4>([0x01000000, 0x02000000, 0x03000000, 0x04000000]));
 
+        all_eq!(simd_bitreverse(x1), i32x4(0x80000000u32 as i32, 0x40000000, 0xc0000000u32 as i32, 0x20000000));
+        all_eq_!(simd_bitreverse(y1), U32::<4>([0x80000000, 0x40000000, 0xc0000000, 0x20000000]));
+
+        all_eq!(simd_ctlz(x1), i32x4(31, 30, 30, 29));
+        all_eq_!(simd_ctlz(y1), U32::<4>([31, 30, 30, 29]));
+
+        all_eq!(simd_cttz(x1), i32x4(0, 1, 0, 2));
+        all_eq_!(simd_cttz(y1), U32::<4>([0, 1, 0, 2]));
     }
 }
