@@ -16,6 +16,7 @@ use rustc_span::Span;
 
 use std::mem;
 
+use crate::clean::utils::{inherits_doc_hidden, should_ignore_res};
 use crate::clean::{cfg::Cfg, reexport_chain, AttributesExt, NestedAttributesExt};
 use crate::core;
 
@@ -71,33 +72,6 @@ fn def_id_to_path(tcx: TyCtxt<'_>, did: DefId) -> Vec<Symbol> {
     let crate_name = tcx.crate_name(did.krate);
     let relative = tcx.def_path(did).data.into_iter().filter_map(|elem| elem.data.get_opt_name());
     std::iter::once(crate_name).chain(relative).collect()
-}
-
-pub(crate) fn inherits_doc_hidden(
-    tcx: TyCtxt<'_>,
-    mut def_id: LocalDefId,
-    stop_at: Option<LocalDefId>,
-) -> bool {
-    let hir = tcx.hir();
-    while let Some(id) = tcx.opt_local_parent(def_id) {
-        if let Some(stop_at) = stop_at && id == stop_at {
-            return false;
-        }
-        def_id = id;
-        if tcx.is_doc_hidden(def_id.to_def_id()) {
-            return true;
-        } else if let Some(node) = hir.find_by_def_id(def_id) &&
-            matches!(
-                node,
-                hir::Node::Item(hir::Item { kind: hir::ItemKind::Impl(_), .. }),
-            )
-        {
-            // `impl` blocks stand a bit on their own: unless they have `#[doc(hidden)]` directly
-            // on them, they don't inherit it from the parent context.
-            return false;
-        }
-    }
-    false
 }
 
 pub(crate) struct RustdocVisitor<'a, 'tcx> {
@@ -466,7 +440,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 for &res in &path.res {
                     // Struct and variant constructors and proc macro stubs always show up alongside
                     // their definitions, we've already processed them so just discard these.
-                    if let Res::Def(DefKind::Ctor(..), _) | Res::SelfCtor(..) = res {
+                    if should_ignore_res(res) {
                         continue;
                     }
 
