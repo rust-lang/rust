@@ -236,7 +236,7 @@ impl<'tcx> ReachableContext<'tcx> {
                     // Reachable constants will be inlined into other crates
                     // unconditionally, so we need to make sure that their
                     // contents are also reachable.
-                    hir::ItemKind::Const(_, init) | hir::ItemKind::Static(_, _, init) => {
+                    hir::ItemKind::Const(_, _, init) | hir::ItemKind::Static(_, _, init) => {
                         self.visit_nested_body(init);
                     }
 

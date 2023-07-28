@@ -171,6 +171,7 @@ impl FromWithTcx<clean::GenericArg> for GenericArg {
 }
 
 impl FromWithTcx<clean::Constant> for Constant {
+    // FIXME(generic_const_items): Add support for generic const items.
     fn from_tcx(constant: clean::Constant, tcx: TyCtxt<'_>) -> Self {
         let expr = constant.expr(tcx);
         let value = constant.value(tcx);
@@ -321,8 +322,12 @@ fn from_clean_item(item: clean::Item, tcx: TyCtxt<'_>) -> ItemEnum {
                 impls: Vec::new(), // Added in JsonRenderer::item
             })
         }
-        TyAssocConstItem(ty) => ItemEnum::AssocConst { type_: ty.into_tcx(tcx), default: None },
-        AssocConstItem(ty, default) => {
+        // FIXME(generic_const_items): Add support for generic associated consts.
+        TyAssocConstItem(_generics, ty) => {
+            ItemEnum::AssocConst { type_: ty.into_tcx(tcx), default: None }
+        }
+        // FIXME(generic_const_items): Add support for generic associated consts.
+        AssocConstItem(_generics, ty, default) => {
             ItemEnum::AssocConst { type_: ty.into_tcx(tcx), default: Some(default.expr(tcx)) }
         }
         TyAssocTypeItem(g, b) => ItemEnum::AssocType {

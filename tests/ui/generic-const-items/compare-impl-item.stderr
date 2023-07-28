@@ -1,0 +1,66 @@
+error[E0049]: const `A` has 1 type parameter but its trait declaration has 0 type parameters
+  --> $DIR/compare-impl-item.rs:15:13
+   |
+LL |     const A: ();
+   |            - expected 0 type parameters
+...
+LL |     const A<T>: () = ();
+   |             ^ found 1 type parameter
+
+error[E0049]: const `B` has 1 const parameter but its trait declaration has 2 const parameters
+  --> $DIR/compare-impl-item.rs:17:13
+   |
+LL |     const B<const K: u64, const Q: u64>: u64;
+   |             ------------  ------------
+   |             |
+   |             expected 2 const parameters
+...
+LL |     const B<const K: u64>: u64 = 0;
+   |             ^^^^^^^^^^^^ found 1 const parameter
+
+error[E0049]: const `C` has 0 type parameters but its trait declaration has 1 type parameter
+  --> $DIR/compare-impl-item.rs:19:13
+   |
+LL |     const C<T>: T;
+   |             - expected 1 type parameter
+...
+LL |     const C<'a>: &'a str = "";
+   |             ^^ found 0 type parameters
+
+error[E0053]: const `D` has an incompatible generic parameter for trait `Trait`
+  --> $DIR/compare-impl-item.rs:21:13
+   |
+LL | trait Trait<P> {
+   |       -----
+...
+LL |     const D<const N: usize>: usize;
+   |             -------------- expected const parameter of type `usize`
+...
+LL | impl<P> Trait<P> for () {
+   | -----------------------
+...
+LL |     const D<const N: u16>: u16 = N;
+   |             ^^^^^^^^^^^^ found const parameter of type `u16`
+
+error[E0276]: impl has stricter requirements than trait
+  --> $DIR/compare-impl-item.rs:26:12
+   |
+LL |     const E: usize;
+   |     -------------- definition of `E` from trait
+...
+LL |         P: Copy;
+   |            ^^^^ impl has extra requirement `P: Copy`
+
+error[E0276]: impl has stricter requirements than trait
+  --> $DIR/compare-impl-item.rs:27:16
+   |
+LL |     const F<T: PartialEq>: ();
+   |     ------------------------- definition of `F` from trait
+...
+LL |     const F<T: Eq>: () = ();
+   |                ^^ impl has extra requirement `T: Eq`
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0049, E0053, E0276.
+For more information about an error, try `rustc --explain E0049`.

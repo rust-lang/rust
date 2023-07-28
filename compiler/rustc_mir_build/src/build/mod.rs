@@ -570,7 +570,7 @@ fn construct_const<'a, 'tcx>(
     // Figure out what primary body this item has.
     let (span, const_ty_span) = match tcx.hir().get(hir_id) {
         Node::Item(hir::Item {
-            kind: hir::ItemKind::Static(ty, _, _) | hir::ItemKind::Const(ty, _),
+            kind: hir::ItemKind::Static(ty, _, _) | hir::ItemKind::Const(ty, _, _),
             span,
             ..
         })

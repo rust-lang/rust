@@ -24,7 +24,7 @@ pub fn associated_body(node: Node<'_>) -> Option<(LocalDefId, BodyId)> {
     match node {
         Node::Item(Item {
             owner_id,
-            kind: ItemKind::Const(_, body) | ItemKind::Static(.., body) | ItemKind::Fn(.., body),
+            kind: ItemKind::Const(_, _, body) | ItemKind::Static(.., body) | ItemKind::Fn(.., body),
             ..
         })
         | Node::TraitItem(TraitItem {

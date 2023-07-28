@@ -783,6 +783,7 @@ symbols! {
         generic_associated_types,
         generic_associated_types_extended,
         generic_const_exprs,
+        generic_const_items,
         generic_param_attrs,
         get_context,
         global_allocator,

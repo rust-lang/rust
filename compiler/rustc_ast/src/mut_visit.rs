@@ -1149,10 +1149,11 @@ pub fn noop_flat_map_assoc_item<T: MutVisitor>(
 }
 
 fn visit_const_item<T: MutVisitor>(
-    ConstItem { defaultness, ty, expr }: &mut ConstItem,
+    ConstItem { defaultness, generics, ty, expr }: &mut ConstItem,
     visitor: &mut T,
 ) {
     visit_defaultness(defaultness, visitor);
+    visitor.visit_generics(generics);
     visitor.visit_ty(ty);
     visit_opt(expr, |expr| visitor.visit_expr(expr));
 }

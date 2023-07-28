@@ -301,15 +301,17 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
         (
             Const(box ast::ConstItem {
                 defaultness: ld,
+                generics: lg,
                 ty: lt,
                 expr: le,
             }),
             Const(box ast::ConstItem {
                 defaultness: rd,
+                generics: rg,
                 ty: rt,
                 expr: re,
             }),
-        ) => eq_defaultness(*ld, *rd) && eq_ty(lt, rt) && eq_expr_opt(le, re),
+        ) => eq_defaultness(*ld, *rd) && eq_generics(lg, rg) && eq_ty(lt, rt) && eq_expr_opt(le, re),
         (
             Fn(box ast::Fn {
                 defaultness: ld,
@@ -476,15 +478,17 @@ pub fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
         (
             Const(box ast::ConstItem {
                 defaultness: ld,
+                generics: lg,
                 ty: lt,
                 expr: le,
             }),
             Const(box ast::ConstItem {
                 defaultness: rd,
+                generics: rg,
                 ty: rt,
                 expr: re,
             }),
-        ) => eq_defaultness(*ld, *rd) && eq_ty(lt, rt) && eq_expr_opt(le, re),
+        ) => eq_defaultness(*ld, *rd) && eq_generics(lg, rg) && eq_ty(lt, rt) && eq_expr_opt(le, re),
         (
             Fn(box ast::Fn {
                 defaultness: ld,
