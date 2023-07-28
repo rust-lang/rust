@@ -740,7 +740,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             Ty::new_tup_from_iter(tcx, a_rest_tys.iter().copied().chain([b_last_ty]));
         self.eq(goal.param_env, unsized_a_ty, b_ty)?;
 
-        // Similar to ADTs, require that the rest of the fields are equal.
+        // Similar to ADTs, require that we can unsize the tail.
         self.add_goal(goal.with(
             tcx,
             ty::TraitRef::new(
