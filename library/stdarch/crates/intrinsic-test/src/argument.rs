@@ -1,5 +1,6 @@
 use std::ops::Range;
 
+use crate::format::Indentation;
 use crate::json_parser::ArgPrep;
 use crate::types::{IntrinsicType, TypeKind};
 use crate::Language;
@@ -169,15 +170,15 @@ impl ArgumentList {
     /// Creates a line for each argument that initializes an array for C from which `loads` argument
     /// values can be loaded  as a sliding window.
     /// e.g `const int32x2_t a_vals = {0x3effffff, 0x3effffff, 0x3f7fffff}`, if loads=2.
-    pub fn gen_arglists_c(&self, loads: u32) -> String {
+    pub fn gen_arglists_c(&self, indentation: Indentation, loads: u32) -> String {
         self.iter()
             .filter_map(|arg| {
                 (!arg.has_constraint()).then(|| {
                     format!(
-                        "const {ty} {name}_vals[] = {values};",
+                        "{indentation}const {ty} {name}_vals[] = {values};",
                         ty = arg.ty.c_scalar_type(),
                         name = arg.name,
-                        values = arg.ty.populate_random(loads, &Language::C)
+                        values = arg.ty.populate_random(indentation, loads, &Language::C)
                     )
                 })
             })
@@ -187,17 +188,17 @@ impl ArgumentList {
 
     /// Creates a line for each argument that initializes an array for Rust from which `loads` argument
     /// values can be loaded as a sliding window, e.g `const A_VALS: [u32; 20]  = [...];`
-    pub fn gen_arglists_rust(&self, loads: u32) -> String {
+    pub fn gen_arglists_rust(&self, indentation: Indentation, loads: u32) -> String {
         self.iter()
             .filter_map(|arg| {
                 (!arg.has_constraint()).then(|| {
                     format!(
-                        "{bind} {name}: [{ty}; {load_size}] = {values};",
+                        "{indentation}{bind} {name}: [{ty}; {load_size}] = {values};",
                         bind = arg.rust_vals_array_binding(),
                         name = arg.rust_vals_array_name(),
                         ty = arg.ty.rust_scalar_type(),
                         load_size = arg.ty.num_lanes() * arg.ty.num_vectors() + loads - 1,
-                        values = arg.ty.populate_random(loads, &Language::Rust)
+                        values = arg.ty.populate_random(indentation, loads, &Language::Rust)
                     )
                 })
             })
@@ -208,7 +209,7 @@ impl ArgumentList {
     /// Creates a line for each argument that initializes the argument from an array `[arg]_vals` at
     /// an offset `i` using a load intrinsic, in C.
     /// e.g `uint8x8_t a = vld1_u8(&a_vals[i]);`
-    pub fn load_values_c(&self, p64_armv7_workaround: bool) -> String {
+    pub fn load_values_c(&self, indentation: Indentation, p64_armv7_workaround: bool) -> String {
         self.iter()
             .filter_map(|arg| {
                 // The ACLE doesn't support 64-bit polynomial loads on Armv7
@@ -221,7 +222,7 @@ impl ArgumentList {
 
                 (!arg.has_constraint()).then(|| {
                     format!(
-                        "{ty} {name} = {open_cast}{load}(&{name}_vals[i]){close_cast};",
+                        "{indentation}{ty} {name} = {open_cast}{load}(&{name}_vals[i]){close_cast};\n",
                         ty = arg.to_c_type(),
                         name = arg.name,
                         load = if arg.is_simd() {
@@ -242,19 +243,18 @@ impl ArgumentList {
                     )
                 })
             })
-            .collect::<Vec<_>>()
-            .join("\n        ")
+            .collect()
     }
 
     /// Creates a line for each argument that initializes the argument from array `[ARG]_VALS` at
     /// an offset `i` using a load intrinsic, in Rust.
     /// e.g `let a = vld1_u8(A_VALS.as_ptr().offset(i));`
-    pub fn load_values_rust(&self) -> String {
+    pub fn load_values_rust(&self, indentation: Indentation) -> String {
         self.iter()
             .filter_map(|arg| {
                 (!arg.has_constraint()).then(|| {
                     format!(
-                        "let {name} = {load}({vals_name}.as_ptr().offset(i));",
+                        "{indentation}let {name} = {load}({vals_name}.as_ptr().offset(i));\n",
                         name = arg.name,
                         vals_name = arg.rust_vals_array_name(),
                         load = if arg.is_simd() {
@@ -265,8 +265,7 @@ impl ArgumentList {
                     )
                 })
             })
-            .collect::<Vec<_>>()
-            .join("\n            ")
+            .collect()
     }
 
     pub fn iter(&self) -> std::slice::Iter<'_, Argument> {

@@ -13,9 +13,11 @@ use rayon::prelude::*;
 use types::TypeKind;
 
 use crate::argument::Argument;
+use crate::format::Indentation;
 use crate::json_parser::get_neon_intrinsics;
 
 mod argument;
+mod format;
 mod intrinsic;
 mod json_parser;
 mod types;
@@ -31,6 +33,7 @@ pub enum Language {
 }
 
 fn gen_code_c(
+    indentation: Indentation,
     intrinsic: &Intrinsic,
     constraints: &[&Argument],
     name: String,
@@ -43,17 +46,19 @@ fn gen_code_c(
             .map(|c| c.to_range())
             .flat_map(|r| r.into_iter());
 
+        let body_indentation = indentation.nested();
         range
             .map(|i| {
                 format!(
-                    r#"  {{
-  {ty} {name} = {val};
-{pass}
-  }}"#,
+                    "{indentation}{{\n\
+                        {body_indentation}{ty} {name} = {val};\n\
+                        {pass}\n\
+                    {indentation}}}",
                     name = current.name,
                     ty = current.ty.c_type(),
                     val = i,
                     pass = gen_code_c(
+                        body_indentation,
                         intrinsic,
                         constraints,
                         format!("{name}-{i}"),
@@ -61,9 +66,9 @@ fn gen_code_c(
                     )
                 )
             })
-            .collect()
+            .join("\n")
     } else {
-        intrinsic.generate_loop_c(&name, PASSES, p64_armv7_workaround)
+        intrinsic.generate_loop_c(indentation, &name, PASSES, p64_armv7_workaround)
     }
 }
 
@@ -79,6 +84,7 @@ fn generate_c_program(
         .filter(|i| i.has_constraint())
         .collect_vec();
 
+    let indentation = Indentation::default();
     format!(
         r#"{notices}{header_files}
 #include <iostream>
@@ -119,8 +125,9 @@ int main(int argc, char **argv) {{
             .map(|header| format!("#include <{header}>"))
             .collect::<Vec<_>>()
             .join("\n"),
-        arglists = intrinsic.arguments.gen_arglists_c(PASSES),
+        arglists = intrinsic.arguments.gen_arglists_c(indentation, PASSES),
         passes = gen_code_c(
+            indentation.nested(),
             intrinsic,
             constraints.as_slice(),
             Default::default(),
@@ -129,7 +136,12 @@ int main(int argc, char **argv) {{
     )
 }
 
-fn gen_code_rust(intrinsic: &Intrinsic, constraints: &[&Argument], name: String) -> String {
+fn gen_code_rust(
+    indentation: Indentation,
+    intrinsic: &Intrinsic,
+    constraints: &[&Argument],
+    name: String,
+) -> String {
     if let Some((current, constraints)) = constraints.split_last() {
         let range = current
             .constraints
@@ -137,22 +149,28 @@ fn gen_code_rust(intrinsic: &Intrinsic, constraints: &[&Argument], name: String)
             .map(|c| c.to_range())
             .flat_map(|r| r.into_iter());
 
+        let body_indentation = indentation.nested();
         range
             .map(|i| {
                 format!(
-                    r#"  {{
-    const {name}: {ty} = {val};
-{pass}
-  }}"#,
+                    "{indentation}{{\n\
+                        {body_indentation}const {name}: {ty} = {val};\n\
+                        {pass}\n\
+                    {indentation}}}",
                     name = current.name,
                     ty = current.ty.rust_type(),
                     val = i,
-                    pass = gen_code_rust(intrinsic, constraints, format!("{name}-{i}"))
+                    pass = gen_code_rust(
+                        body_indentation,
+                        intrinsic,
+                        constraints,
+                        format!("{name}-{i}")
+                    )
                 )
             })
-            .collect()
+            .join("\n")
     } else {
-        intrinsic.generate_loop_rust(&name, PASSES)
+        intrinsic.generate_loop_rust(indentation, &name, PASSES)
     }
 }
 
@@ -163,6 +181,7 @@ fn generate_rust_program(notices: &str, intrinsic: &Intrinsic, a32: bool) -> Str
         .filter(|i| i.has_constraint())
         .collect_vec();
 
+    let indentation = Indentation::default();
     format!(
         r#"{notices}#![feature(simd_ffi)]
 #![feature(link_llvm_intrinsics)]
@@ -183,8 +202,15 @@ fn main() {{
 }}
 "#,
         target_arch = if a32 { "arm" } else { "aarch64" },
-        arglists = intrinsic.arguments.gen_arglists_rust(PASSES),
-        passes = gen_code_rust(intrinsic, &constraints, Default::default())
+        arglists = intrinsic
+            .arguments
+            .gen_arglists_rust(indentation.nested(), PASSES),
+        passes = gen_code_rust(
+            indentation.nested(),
+            intrinsic,
+            &constraints,
+            Default::default()
+        )
     )
 }
 

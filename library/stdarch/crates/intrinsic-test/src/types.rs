@@ -3,6 +3,7 @@ use std::str::FromStr;
 
 use itertools::Itertools as _;
 
+use crate::format::Indentation;
 use crate::values::value_for_array;
 use crate::Language;
 
@@ -301,9 +302,14 @@ impl IntrinsicType {
     /// Returns a string such as
     /// * `{0x1, 0x7F, 0xFF}` if `language` is `Language::C`
     /// * `[0x1 as _, 0x7F as _, 0xFF as _]` if `language` is `Language::Rust`
-    pub fn populate_random(&self, loads: u32, language: &Language) -> String {
+    pub fn populate_random(
+        &self,
+        indentation: Indentation,
+        loads: u32,
+        language: &Language,
+    ) -> String {
         match self {
-            IntrinsicType::Ptr { child, .. } => child.populate_random(loads, language),
+            IntrinsicType::Ptr { child, .. } => child.populate_random(indentation, loads, language),
             IntrinsicType::Type {
                 bit_len: Some(bit_len @ (8 | 16 | 32 | 64)),
                 kind: kind @ (TypeKind::Int | TypeKind::UInt | TypeKind::Poly),
@@ -315,10 +321,11 @@ impl IntrinsicType {
                     &Language::Rust => ("[", "]"),
                     &Language::C => ("{", "}"),
                 };
+                let body_indentation = indentation.nested();
                 format!(
-                    "{prefix}{body}{suffix}",
+                    "{prefix}\n{body}\n{indentation}{suffix}",
                     body = (0..(simd_len.unwrap_or(1) * vec_len.unwrap_or(1) + loads - 1))
-                        .format_with(", ", |i, fmt| {
+                        .format_with(",\n", |i, fmt| {
                             let src = value_for_array(*bit_len, i);
                             assert!(src == 0 || src.ilog2() < *bit_len);
                             if *kind == TypeKind::Int && (src >> (*bit_len - 1)) != 0 {
@@ -329,12 +336,12 @@ impl IntrinsicType {
                                 if (twos_compl == src) && (language == &Language::C) {
                                     // `src` is INT*_MIN. C requires `-0x7fffffff - 1` to avoid
                                     // undefined literal overflow behaviour.
-                                    fmt(&format_args!("-{ones_compl:#x} - 1"))
+                                    fmt(&format_args!("{body_indentation}-{ones_compl:#x} - 1"))
                                 } else {
-                                    fmt(&format_args!("-{twos_compl:#x}"))
+                                    fmt(&format_args!("{body_indentation}-{twos_compl:#x}"))
                                 }
                             } else {
-                                fmt(&format_args!("{src:#x}"))
+                                fmt(&format_args!("{body_indentation}{src:#x}"))
                             }
                         })
                 )
@@ -354,10 +361,11 @@ impl IntrinsicType {
                     _ => unreachable!(),
                 };
                 format!(
-                    "{prefix}{body}{suffix}",
+                    "{prefix}\n{body}\n{indentation}{suffix}",
                     body = (0..(simd_len.unwrap_or(1) * vec_len.unwrap_or(1) + loads - 1))
-                        .format_with(", ", |i, fmt| fmt(&format_args!(
-                            "{cast_prefix}{src:#x}{cast_suffix}",
+                        .format_with(",\n", |i, fmt| fmt(&format_args!(
+                            "{indentation}{cast_prefix}{src:#x}{cast_suffix}",
+                            indentation = indentation.nested(),
                             src = value_for_array(*bit_len, i)
                         )))
                 )
