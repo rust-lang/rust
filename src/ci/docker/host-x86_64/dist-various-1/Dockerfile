@@ -1,6 +1,7 @@
-FROM ubuntu:20.04
+FROM ubuntu:22.04
 
-RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+ARG DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends \
   g++ \
   automake \
   bison \
@@ -73,8 +74,8 @@ RUN env \
     CXX=arm-linux-gnueabihf-g++ CXXFLAGS="-march=armv6 -marm -mfpu=vfp" \
     bash musl.sh armhf && \
     env \
-    CC=arm-linux-gnueabihf-gcc CFLAGS="-march=armv7-a" \
-    CXX=arm-linux-gnueabihf-g++ CXXFLAGS="-march=armv7-a" \
+    CC=arm-linux-gnueabihf-gcc CFLAGS="-march=armv7-a+fp" \
+    CXX=arm-linux-gnueabihf-g++ CXXFLAGS="-march=armv7-a+fp" \
     bash musl.sh armv7hf && \
     env \
     CC=mips-openwrt-linux-gcc \
@@ -147,7 +148,7 @@ ENV TARGETS=$TARGETS,armv7a-none-eabi
 ENV CFLAGS_armv5te_unknown_linux_musleabi="-march=armv5te -marm -mfloat-abi=soft" \
     CFLAGS_arm_unknown_linux_musleabi="-march=armv6 -marm" \
     CFLAGS_arm_unknown_linux_musleabihf="-march=armv6 -marm -mfpu=vfp" \
-    CFLAGS_armv7_unknown_linux_musleabihf="-march=armv7-a" \
+    CFLAGS_armv7_unknown_linux_musleabihf="-march=armv7-a+fp" \
     CC_mipsel_unknown_linux_musl=mipsel-openwrt-linux-gcc \
     CC_mips_unknown_linux_musl=mips-openwrt-linux-gcc \
     CC_mips64el_unknown_linux_muslabi64=mips64el-linux-gnuabi64-gcc \
@@ -185,9 +186,6 @@ ENV RUST_CONFIGURE_ARGS \
 ENV SCRIPT \
       python3 ../x.py --stage 2 test --host='' --target $RUN_MAKE_TARGETS tests/run-make && \
       python3 ../x.py dist --host='' --target $TARGETS
-
-COPY scripts/cmake.sh /scripts/
-RUN /scripts/cmake.sh
 
 # sccache
 COPY scripts/sccache.sh /scripts/
