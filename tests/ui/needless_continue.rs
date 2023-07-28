@@ -28,6 +28,7 @@ fn main() {
             let i = 0;
             println!("bar {} ", i);
         } else {
+            //~^ ERROR: this `else` block is redundant
             continue;
         }
 
@@ -43,6 +44,7 @@ fn main() {
         }
 
         if (zero!(i % 2) || nonzero!(i % 5)) && i % 3 != 0 {
+            //~^ ERROR: there is no need for an explicit `else` block for this `if` expression
             continue;
         } else {
             println!("Blabber");
@@ -56,6 +58,7 @@ fn main() {
 fn simple_loop() {
     loop {
         continue;
+        //~^ ERROR: this `continue` expression is redundant
     }
 }
 
@@ -63,6 +66,7 @@ fn simple_loop2() {
     loop {
         println!("bleh");
         continue;
+        //~^ ERROR: this `continue` expression is redundant
     }
 }
 
@@ -70,6 +74,7 @@ fn simple_loop2() {
 fn simple_loop3() {
     loop {
         continue
+        //~^ ERROR: this `continue` expression is redundant
     }
 }
 
@@ -78,6 +83,7 @@ fn simple_loop4() {
     loop {
         println!("bleh");
         continue
+        //~^ ERROR: this `continue` expression is redundant
     }
 }
 
@@ -128,12 +134,14 @@ mod issue_2329 {
                 if condition() {
                     println!("bar-3");
                 } else {
+                    //~^ ERROR: this `else` block is redundant
                     continue 'inner;
                 }
                 println!("bar-4");
 
                 update_condition();
                 if condition() {
+                    //~^ ERROR: there is no need for an explicit `else` block for this `if` ex
                     continue;
                 } else {
                     println!("bar-5");

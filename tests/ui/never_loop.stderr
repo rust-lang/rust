@@ -2,9 +2,9 @@ error: this loop never actually loops
   --> $DIR/never_loop.rs:12:5
    |
 LL | /     loop {
+LL | |
+LL | |
 LL | |         // clippy::never_loop
-LL | |         x += 1;
-LL | |         if x == 1 {
 ...  |
 LL | |         break;
 LL | |     }
@@ -13,9 +13,10 @@ LL | |     }
    = note: `#[deny(clippy::never_loop)]` on by default
 
 error: this loop never actually loops
-  --> $DIR/never_loop.rs:34:5
+  --> $DIR/never_loop.rs:36:5
    |
 LL | /     loop {
+LL | |
 LL | |         // never loops
 LL | |         x += 1;
 LL | |         break;
@@ -23,55 +24,57 @@ LL | |     }
    | |_____^
 
 error: this loop never actually loops
-  --> $DIR/never_loop.rs:54:5
+  --> $DIR/never_loop.rs:57:5
    |
 LL | /     loop {
+LL | |
 LL | |         // never loops
 LL | |         while i == 0 {
-LL | |             // never loops
 ...  |
 LL | |         return;
 LL | |     }
    | |_____^
 
 error: this loop never actually loops
-  --> $DIR/never_loop.rs:56:9
+  --> $DIR/never_loop.rs:60:9
    |
 LL | /         while i == 0 {
+LL | |
 LL | |             // never loops
 LL | |             break;
 LL | |         }
    | |_________^
 
 error: this loop never actually loops
-  --> $DIR/never_loop.rs:68:9
+  --> $DIR/never_loop.rs:73:9
    |
 LL | /         loop {
+LL | |
 LL | |             // never loops
 LL | |             if x == 5 {
-LL | |                 break;
-LL | |             }
+...  |
 LL | |             continue 'outer;
 LL | |         }
    | |_________^
 
 error: this loop never actually loops
-  --> $DIR/never_loop.rs:104:5
+  --> $DIR/never_loop.rs:110:5
    |
 LL | /     while let Some(y) = x {
+LL | |
 LL | |         // never loops
 LL | |         return;
 LL | |     }
    | |_____^
 
 error: this loop never actually loops
-  --> $DIR/never_loop.rs:111:5
+  --> $DIR/never_loop.rs:118:5
    |
 LL | /     for x in 0..10 {
+LL | |
 LL | |         // never loops
 LL | |         match x {
-LL | |             1 => break,
-LL | |             _ => return,
+...  |
 LL | |         }
 LL | |     }
    | |_____^
@@ -82,52 +85,53 @@ LL |     if let Some(x) = (0..10).next() {
    |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: this loop never actually loops
-  --> $DIR/never_loop.rs:159:5
+  --> $DIR/never_loop.rs:167:5
    |
 LL | /     'outer: while a {
+LL | |
 LL | |         // never loops
 LL | |         while a {
-LL | |             if a {
 ...  |
 LL | |         break 'outer;
 LL | |     }
    | |_____^
 
 error: this loop never actually loops
-  --> $DIR/never_loop.rs:174:9
+  --> $DIR/never_loop.rs:183:9
    |
 LL | /         while false {
+LL | |
 LL | |             break 'label;
 LL | |         }
    | |_________^
 
 error: this loop never actually loops
-  --> $DIR/never_loop.rs:225:13
+  --> $DIR/never_loop.rs:235:13
    |
 LL |       let _ = loop {
    |  _____________^
+LL | |
 LL | |         let Some(x) = x else {
 LL | |             return;
-LL | |         };
-LL | |
+...  |
 LL | |         break x;
 LL | |     };
    | |_____^
 
 error: this loop never actually loops
-  --> $DIR/never_loop.rs:246:5
+  --> $DIR/never_loop.rs:257:5
    |
 LL | /     'a: loop {
+LL | |
 LL | |         'b: {
 LL | |             break 'b 'c: {
-LL | |                 break 'a;
-LL | |             };
+...  |
 LL | |         }
 LL | |     }
    | |_____^
 
 error: sub-expression diverges
-  --> $DIR/never_loop.rs:249:17
+  --> $DIR/never_loop.rs:261:17
    |
 LL |                 break 'a;
    |                 ^^^^^^^^
@@ -135,9 +139,10 @@ LL |                 break 'a;
    = note: `-D clippy::diverging-sub-expression` implied by `-D warnings`
 
 error: this loop never actually loops
-  --> $DIR/never_loop.rs:280:13
+  --> $DIR/never_loop.rs:294:13
    |
 LL | /             for _ in 0..20 {
+LL | |
 LL | |                 break 'block;
 LL | |             }
    | |_____________^
@@ -148,12 +153,12 @@ LL |             if let Some(_) = (0..20).next() {
    |             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: this loop never actually loops
-  --> $DIR/never_loop.rs:324:5
+  --> $DIR/never_loop.rs:339:5
    |
 LL | /     loop {
+LL | |
 LL | |         'label: {
 LL | |             let x = true;
-LL | |             // Lints because we cannot prove it's always `true`
 ...  |
 LL | |         }
 LL | |     }

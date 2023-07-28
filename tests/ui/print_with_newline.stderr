@@ -12,7 +12,7 @@ LL +     println!("Hello");
    |
 
 error: using `print!()` with a format string that ends in a single newline
-  --> $DIR/print_with_newline.rs:8:5
+  --> $DIR/print_with_newline.rs:10:5
    |
 LL |     print!("Hello {}\n", "world");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -24,7 +24,7 @@ LL +     println!("Hello {}", "world");
    |
 
 error: using `print!()` with a format string that ends in a single newline
-  --> $DIR/print_with_newline.rs:9:5
+  --> $DIR/print_with_newline.rs:12:5
    |
 LL |     print!("Hello {} {}\n", "world", "#2");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -36,7 +36,7 @@ LL +     println!("Hello {} {}", "world", "#2");
    |
 
 error: using `print!()` with a format string that ends in a single newline
-  --> $DIR/print_with_newline.rs:10:5
+  --> $DIR/print_with_newline.rs:14:5
    |
 LL |     print!("{}\n", 1265);
    |     ^^^^^^^^^^^^^^^^^^^^
@@ -48,7 +48,7 @@ LL +     println!("{}", 1265);
    |
 
 error: using `print!()` with a format string that ends in a single newline
-  --> $DIR/print_with_newline.rs:11:5
+  --> $DIR/print_with_newline.rs:16:5
    |
 LL |     print!("\n");
    |     ^^^^^^^^^^^^
@@ -60,7 +60,7 @@ LL +     println!();
    |
 
 error: using `print!()` with a format string that ends in a single newline
-  --> $DIR/print_with_newline.rs:33:5
+  --> $DIR/print_with_newline.rs:39:5
    |
 LL |     print!("\\\n");
    |     ^^^^^^^^^^^^^^
@@ -72,9 +72,10 @@ LL +     println!("\\");
    |
 
 error: using `print!()` with a format string that ends in a single newline
-  --> $DIR/print_with_newline.rs:41:5
+  --> $DIR/print_with_newline.rs:48:5
    |
 LL | /     print!(
+LL | |
 LL | |         "
 LL | | "
 LL | |     );
@@ -83,13 +84,15 @@ LL | |     );
 help: use `println!` instead
    |
 LL ~     println!(
+LL |
 LL ~         
    |
 
 error: using `print!()` with a format string that ends in a single newline
-  --> $DIR/print_with_newline.rs:45:5
+  --> $DIR/print_with_newline.rs:53:5
    |
 LL | /     print!(
+LL | |
 LL | |         r"
 LL | | "
 LL | |     );
@@ -98,11 +101,12 @@ LL | |     );
 help: use `println!` instead
    |
 LL ~     println!(
+LL |
 LL ~         
    |
 
 error: using `print!()` with a format string that ends in a single newline
-  --> $DIR/print_with_newline.rs:54:5
+  --> $DIR/print_with_newline.rs:63:5
    |
 LL |     print!("\\r\n");
    |     ^^^^^^^^^^^^^^^

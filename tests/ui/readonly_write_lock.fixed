@@ -14,11 +14,14 @@ fn main() {
 
     {
         let writer = lock.read().unwrap();
+        //~^ ERROR: this write lock is used only for reading
+        //~| NOTE: `-D clippy::readonly-write-lock` implied by `-D warnings`
         dbg!(&writer);
     }
 
     {
         let writer = lock.read().unwrap();
+        //~^ ERROR: this write lock is used only for reading
         accept_i32(*writer);
     }
 

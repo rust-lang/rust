@@ -17,11 +17,18 @@ macro_rules! macro_test_inside {
 fn main() {
     // Should warn:
     let _ = 2 ^ 5;
+    //~^ ERROR: `^` is not the exponentiation operator
+    //~| NOTE: `-D clippy::suspicious-xor-used-as-pow` implied by `-D warnings`
     let _ = 2i32 ^ 9i32;
+    //~^ ERROR: `^` is not the exponentiation operator
     let _ = 2i32 ^ 2i32;
+    //~^ ERROR: `^` is not the exponentiation operator
     let _ = 50i32 ^ 3i32;
+    //~^ ERROR: `^` is not the exponentiation operator
     let _ = 5i32 ^ 8i32;
+    //~^ ERROR: `^` is not the exponentiation operator
     let _ = 2i32 ^ 32i32;
+    //~^ ERROR: `^` is not the exponentiation operator
     macro_test_inside!();
 
     // Should not warn:

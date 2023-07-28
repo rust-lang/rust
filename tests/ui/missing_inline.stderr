@@ -7,31 +7,31 @@ LL | pub fn pub_foo() {}
    = note: `-D clippy::missing-inline-in-public-items` implied by `-D warnings`
 
 error: missing `#[inline]` for a default trait method
-  --> $DIR/missing_inline.rs:37:5
+  --> $DIR/missing_inline.rs:39:5
    |
 LL |     fn PubBar_b() {}
    |     ^^^^^^^^^^^^^^^^
 
 error: missing `#[inline]` for a method
-  --> $DIR/missing_inline.rs:52:5
+  --> $DIR/missing_inline.rs:55:5
    |
 LL |     fn PubBar_a() {}
    |     ^^^^^^^^^^^^^^^^
 
 error: missing `#[inline]` for a method
-  --> $DIR/missing_inline.rs:54:5
+  --> $DIR/missing_inline.rs:58:5
    |
 LL |     fn PubBar_b() {}
    |     ^^^^^^^^^^^^^^^^
 
 error: missing `#[inline]` for a method
-  --> $DIR/missing_inline.rs:56:5
+  --> $DIR/missing_inline.rs:61:5
    |
 LL |     fn PubBar_c() {}
    |     ^^^^^^^^^^^^^^^^
 
 error: missing `#[inline]` for a method
-  --> $DIR/missing_inline.rs:67:5
+  --> $DIR/missing_inline.rs:73:5
    |
 LL |     pub fn PubFooImpl() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^

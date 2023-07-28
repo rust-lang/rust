@@ -2,6 +2,7 @@ error: all variants have the same prefix: `Työ`
   --> $DIR/ice-7869.rs:1:1
    |
 LL | / enum Tila {
+LL | |
 LL | |     TyöAlkoi,
 LL | |     TyöKeskeytyi,
 LL | |     TyöValmis,

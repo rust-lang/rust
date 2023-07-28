@@ -7,6 +7,7 @@ mod std_mutex {
 
     pub async fn bad(x: &Mutex<u32>) -> u32 {
         let guard = x.lock().unwrap();
+        //~^ ERROR: this `MutexGuard` is held across an `await` point
         baz().await
     }
 
@@ -22,11 +23,13 @@ mod std_mutex {
 
     pub async fn bad_rw(x: &RwLock<u32>) -> u32 {
         let guard = x.read().unwrap();
+        //~^ ERROR: this `MutexGuard` is held across an `await` point
         baz().await
     }
 
     pub async fn bad_rw_write(x: &RwLock<u32>) -> u32 {
         let mut guard = x.write().unwrap();
+        //~^ ERROR: this `MutexGuard` is held across an `await` point
         baz().await
     }
 
@@ -48,6 +51,7 @@ mod std_mutex {
         let first = baz().await;
 
         let guard = x.lock().unwrap();
+        //~^ ERROR: this `MutexGuard` is held across an `await` point
 
         let second = baz().await;
 
@@ -61,6 +65,7 @@ mod std_mutex {
 
         let second = {
             let guard = x.lock().unwrap();
+            //~^ ERROR: this `MutexGuard` is held across an `await` point
             baz().await
         };
 
@@ -73,6 +78,7 @@ mod std_mutex {
     pub fn block_bad(x: &Mutex<u32>) -> impl std::future::Future<Output = u32> + '_ {
         async move {
             let guard = x.lock().unwrap();
+            //~^ ERROR: this `MutexGuard` is held across an `await` point
             baz().await
         }
     }
@@ -85,6 +91,7 @@ mod parking_lot_mutex {
 
     pub async fn bad(x: &Mutex<u32>) -> u32 {
         let guard = x.lock();
+        //~^ ERROR: this `MutexGuard` is held across an `await` point
         baz().await
     }
 
@@ -100,11 +107,13 @@ mod parking_lot_mutex {
 
     pub async fn bad_rw(x: &RwLock<u32>) -> u32 {
         let guard = x.read();
+        //~^ ERROR: this `MutexGuard` is held across an `await` point
         baz().await
     }
 
     pub async fn bad_rw_write(x: &RwLock<u32>) -> u32 {
         let mut guard = x.write();
+        //~^ ERROR: this `MutexGuard` is held across an `await` point
         baz().await
     }
 
@@ -126,6 +135,7 @@ mod parking_lot_mutex {
         let first = baz().await;
 
         let guard = x.lock();
+        //~^ ERROR: this `MutexGuard` is held across an `await` point
 
         let second = baz().await;
 
@@ -139,6 +149,7 @@ mod parking_lot_mutex {
 
         let second = {
             let guard = x.lock();
+            //~^ ERROR: this `MutexGuard` is held across an `await` point
             baz().await
         };
 
@@ -151,6 +162,7 @@ mod parking_lot_mutex {
     pub fn block_bad(x: &Mutex<u32>) -> impl std::future::Future<Output = u32> + '_ {
         async move {
             let guard = x.lock();
+            //~^ ERROR: this `MutexGuard` is held across an `await` point
             baz().await
         }
     }
@@ -171,6 +183,7 @@ async fn no_await(x: std::sync::Mutex<u32>) {
 // `*guard += 1` is removed it is picked up.
 async fn dropped_before_await(x: std::sync::Mutex<u32>) {
     let mut guard = x.lock().unwrap();
+    //~^ ERROR: this `MutexGuard` is held across an `await` point
     *guard += 1;
     drop(guard);
     baz().await;

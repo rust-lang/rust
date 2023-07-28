@@ -5,22 +5,27 @@ fn main() {
     let mut vec = vec![1, 2, 3, 4];
     let mut _index = 0;
     for _v in &vec {
+        //~^ ERROR: the variable `_index` is used as a loop counter
+        //~| NOTE: `-D clippy::explicit-counter-loop` implied by `-D warnings`
         _index += 1
     }
 
     let mut _index = 1;
     _index = 0;
     for _v in &vec {
+        //~^ ERROR: the variable `_index` is used as a loop counter
         _index += 1
     }
 
     let mut _index = 0;
     for _v in &mut vec {
+        //~^ ERROR: the variable `_index` is used as a loop counter
         _index += 1;
     }
 
     let mut _index = 0;
     for _v in vec {
+        //~^ ERROR: the variable `_index` is used as a loop counter
         _index += 1;
     }
 
@@ -108,6 +113,7 @@ mod issue_1219 {
         let text = "banana";
         let mut count = 0;
         for ch in text.chars() {
+            //~^ ERROR: the variable `count` is used as a loop counter
             println!("{}", count);
             count += 1;
             if ch == 'a' {
@@ -119,6 +125,7 @@ mod issue_1219 {
         let text = "banana";
         let mut count = 0;
         for ch in text.chars() {
+            //~^ ERROR: the variable `count` is used as a loop counter
             println!("{}", count);
             count += 1;
             for i in 0..2 {
@@ -177,6 +184,7 @@ mod issue_1670 {
     pub fn test() {
         let mut count = 0;
         for _i in 3..10 {
+            //~^ ERROR: the variable `count` is used as a loop counter
             count += 1;
         }
     }
@@ -217,6 +225,7 @@ mod issue_7920 {
 
         // should suggest `enumerate`
         for _item in slice {
+            //~^ ERROR: the variable `idx_usize` is used as a loop counter
             if idx_usize == index_usize {
                 break;
             }
@@ -229,6 +238,8 @@ mod issue_7920 {
 
         // should suggest `zip`
         for _item in slice {
+            //~^ ERROR: the variable `idx_u32` is used as a loop counter
+            //~| NOTE: `idx_u32` is of type `u32`, making it ineligible for `Iterator::enumera
             if idx_u32 == index_u32 {
                 break;
             }

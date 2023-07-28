@@ -11,7 +11,7 @@ LL | #![deny(clippy::disallowed_script_idents)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: identifier `カウンタ` has a Unicode script that is not allowed by configuration: Katakana
-  --> $DIR/disallowed_script_idents.rs:13:9
+  --> $DIR/disallowed_script_idents.rs:14:9
    |
 LL |     let カウンタ = 10;
    |         ^^^^^^^^

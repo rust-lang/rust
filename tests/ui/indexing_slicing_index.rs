@@ -12,7 +12,9 @@
 
 const ARR: [i32; 2] = [1, 2];
 const REF: &i32 = &ARR[idx()]; // This should be linted, since `suppress-restriction-lint-in-const` default is false.
+//~^ ERROR: indexing may panic
 const REF_ERR: &i32 = &ARR[idx4()]; // Ok, let rustc handle const contexts.
+//~^ ERROR: indexing may panic
 
 const fn idx() -> usize {
     1
@@ -25,6 +27,7 @@ fn main() {
     let x = [1, 2, 3, 4];
     let index: usize = 1;
     x[index];
+    //~^ ERROR: indexing may panic
     // Ok, let rustc's `unconditional_panic` lint handle `usize` indexing on arrays.
     x[4];
     // Ok, let rustc's `unconditional_panic` lint handle `usize` indexing on arrays.
@@ -40,8 +43,10 @@ fn main() {
     x[const { idx4() }];
     // This should be linted, since `suppress-restriction-lint-in-const` default is false.
     const { &ARR[idx()] };
+    //~^ ERROR: indexing may panic
     // This should be linted, since `suppress-restriction-lint-in-const` default is false.
     const { &ARR[idx4()] };
+    //~^ ERROR: indexing may panic
 
     let y = &x;
     // Ok, referencing shouldn't affect this lint. See the issue 6021
@@ -51,8 +56,11 @@ fn main() {
 
     let v = vec![0; 5];
     v[0];
+    //~^ ERROR: indexing may panic
     v[10];
+    //~^ ERROR: indexing may panic
     v[1 << 3];
+    //~^ ERROR: indexing may panic
 
     // Out of bounds
     const N: usize = 15;
@@ -63,5 +71,7 @@ fn main() {
     // Ok, should not produce stderr.
     x[M];
     v[N];
+    //~^ ERROR: indexing may panic
     v[M];
+    //~^ ERROR: indexing may panic
 }

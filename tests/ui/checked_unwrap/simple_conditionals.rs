@@ -45,20 +45,26 @@ fn main() {
     if x.is_some() {
         // unnecessary
         x.unwrap();
+        //~^ ERROR: called `unwrap` on `x` after checking its variant with `is_some`
         // unnecessary
         x.expect("an error message");
+        //~^ ERROR: called `expect` on `x` after checking its variant with `is_some`
     } else {
         // will panic
         x.unwrap();
+        //~^ ERROR: this call to `unwrap()` will always panic
         // will panic
         x.expect("an error message");
+        //~^ ERROR: this call to `expect()` will always panic
     }
     if x.is_none() {
         // will panic
         x.unwrap();
+        //~^ ERROR: this call to `unwrap()` will always panic
     } else {
         // unnecessary
         x.unwrap();
+        //~^ ERROR: called `unwrap` on `x` after checking its variant with `is_none`
     }
     m!(x);
     // ok
@@ -71,28 +77,38 @@ fn main() {
     if x.is_ok() {
         // unnecessary
         x.unwrap();
+        //~^ ERROR: called `unwrap` on `x` after checking its variant with `is_ok`
         // unnecessary
         x.expect("an error message");
+        //~^ ERROR: called `expect` on `x` after checking its variant with `is_ok`
         // will panic
         x.unwrap_err();
+        //~^ ERROR: this call to `unwrap_err()` will always panic
     } else {
         // will panic
         x.unwrap();
+        //~^ ERROR: this call to `unwrap()` will always panic
         // will panic
         x.expect("an error message");
+        //~^ ERROR: this call to `expect()` will always panic
         // unnecessary
         x.unwrap_err();
+        //~^ ERROR: called `unwrap_err` on `x` after checking its variant with `is_ok`
     }
     if x.is_err() {
         // will panic
         x.unwrap();
+        //~^ ERROR: this call to `unwrap()` will always panic
         // unnecessary
         x.unwrap_err();
+        //~^ ERROR: called `unwrap_err` on `x` after checking its variant with `is_err`
     } else {
         // unnecessary
         x.unwrap();
+        //~^ ERROR: called `unwrap` on `x` after checking its variant with `is_err`
         // will panic
         x.unwrap_err();
+        //~^ ERROR: this call to `unwrap_err()` will always panic
     }
     if x.is_ok() {
         x = Err(());

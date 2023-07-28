@@ -19,29 +19,36 @@ fn test() -> io::Result<()> {
     // should lint
     let mut data = Vec::with_capacity(20);
     f.read_exact(&mut data).unwrap();
+    //~^ ERROR: reading zero byte data to `Vec`
+    //~| NOTE: `-D clippy::read-zero-byte-vec` implied by `-D warnings`
 
     // should lint
     let mut data2 = Vec::with_capacity(cap);
     f.read_exact(&mut data2)?;
+    //~^ ERROR: reading zero byte data to `Vec`
 
     // should lint
     let mut data3 = Vec::new();
     f.read_exact(&mut data3)?;
+    //~^ ERROR: reading zero byte data to `Vec`
 
     // should lint
     let mut data4 = vec![];
     let _ = f.read(&mut data4)?;
+    //~^ ERROR: reading zero byte data to `Vec`
 
     // should lint
     let _ = {
         let mut data5 = Vec::new();
         f.read(&mut data5)
+        //~^ ERROR: reading zero byte data to `Vec`
     };
 
     // should lint
     let _ = {
         let mut data6: Vec<u8> = Default::default();
         f.read(&mut data6)
+        //~^ ERROR: reading zero byte data to `Vec`
     };
 
     // should not lint
@@ -72,20 +79,24 @@ async fn test_futures<R: AsyncRead + Unpin>(r: &mut R) {
     // should lint
     let mut data = Vec::new();
     r.read(&mut data).await.unwrap();
+    //~^ ERROR: reading zero byte data to `Vec`
 
     // should lint
     let mut data2 = Vec::new();
     r.read_exact(&mut data2).await.unwrap();
+    //~^ ERROR: reading zero byte data to `Vec`
 }
 
 async fn test_tokio<R: TokioAsyncRead + Unpin>(r: &mut R) {
     // should lint
     let mut data = Vec::new();
     r.read(&mut data).await.unwrap();
+    //~^ ERROR: reading zero byte data to `Vec`
 
     // should lint
     let mut data2 = Vec::new();
     r.read_exact(&mut data2).await.unwrap();
+    //~^ ERROR: reading zero byte data to `Vec`
 }
 
 fn main() {}

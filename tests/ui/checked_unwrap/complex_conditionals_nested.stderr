@@ -14,7 +14,7 @@ LL | #![deny(clippy::panicking_unwrap, clippy::unnecessary_unwrap)]
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this call to `unwrap()` will always panic
-  --> $DIR/complex_conditionals_nested.rs:16:13
+  --> $DIR/complex_conditionals_nested.rs:17:13
    |
 LL |         if x.is_some() {
    |            ----------- because of this check

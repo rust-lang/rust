@@ -7,43 +7,43 @@ LL |     match arr[idx] {
    = note: `-D clippy::match-on-vec-items` implied by `-D warnings`
 
 error: indexing into a vector may panic
-  --> $DIR/match_on_vec_items.rs:17:11
+  --> $DIR/match_on_vec_items.rs:19:11
    |
 LL |     match arr[range] {
    |           ^^^^^^^^^^ help: try: `arr.get(range)`
 
 error: indexing into a vector may panic
-  --> $DIR/match_on_vec_items.rs:30:11
+  --> $DIR/match_on_vec_items.rs:33:11
    |
 LL |     match arr[idx] {
    |           ^^^^^^^^ help: try: `arr.get(idx)`
 
 error: indexing into a vector may panic
-  --> $DIR/match_on_vec_items.rs:37:11
+  --> $DIR/match_on_vec_items.rs:41:11
    |
 LL |     match arr[range] {
    |           ^^^^^^^^^^ help: try: `arr.get(range)`
 
 error: indexing into a vector may panic
-  --> $DIR/match_on_vec_items.rs:50:11
+  --> $DIR/match_on_vec_items.rs:55:11
    |
 LL |     match arr[idx] {
    |           ^^^^^^^^ help: try: `arr.get(idx)`
 
 error: indexing into a vector may panic
-  --> $DIR/match_on_vec_items.rs:57:11
+  --> $DIR/match_on_vec_items.rs:63:11
    |
 LL |     match arr[range] {
    |           ^^^^^^^^^^ help: try: `arr.get(range)`
-
-error: indexing into a vector may panic
-  --> $DIR/match_on_vec_items.rs:70:11
-   |
-LL |     match arr[idx] {
-   |           ^^^^^^^^ help: try: `arr.get(idx)`
 
 error: indexing into a vector may panic
   --> $DIR/match_on_vec_items.rs:77:11
+   |
+LL |     match arr[idx] {
+   |           ^^^^^^^^ help: try: `arr.get(idx)`
+
+error: indexing into a vector may panic
+  --> $DIR/match_on_vec_items.rs:85:11
    |
 LL |     match arr[range] {
    |           ^^^^^^^^^^ help: try: `arr.get(range)`

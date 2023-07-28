@@ -13,6 +13,7 @@ impl<'a> Foo for Baz<'a> {}
 
 impl Bar {
     fn baz(&self) -> impl Foo + '_ {
+        //~^ ERROR: the following explicit lifetimes could be elided: 'a
         Baz { bar: self }
     }
 }
