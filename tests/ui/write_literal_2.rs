@@ -30,6 +30,8 @@ fn main() {
     writeln!(v, r#"{}"#, "\\");
     writeln!(v, "{}", r"\");
     writeln!(v, "{}", "\r");
-    writeln!(v, r#"{}{}"#, '#', '"'); // hard mode
-    writeln!(v, r"{}", "\r"); // should not lint
+    // hard mode
+    writeln!(v, r#"{}{}"#, '#', '"');
+    // should not lint
+    writeln!(v, r"{}", "\r");
 }

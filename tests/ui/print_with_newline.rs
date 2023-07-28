@@ -22,16 +22,20 @@ fn main() {
     print!("\n\n");
     print!("like eof\n\n");
     print!("Hello {} {}\n\n", "world", "#2");
-    println!("\ndon't\nwarn\nfor\nmultiple\nnewlines\n"); // #3126
-    println!("\nbla\n\n"); // #3126
+    // #3126
+    println!("\ndon't\nwarn\nfor\nmultiple\nnewlines\n");
+    // #3126
+    println!("\nbla\n\n");
 
     // Escaping
-    print!("\\n"); // #3514
-    print!("\\\n"); // should fail
+    // #3514
+    print!("\\n");
+    print!("\\\n");
     print!("\\\\n");
 
     // Raw strings
-    print!(r"\n"); // #3778
+    // #3778
+    print!(r"\n");
 
     // Literal newlines should also fail
     print!(
@@ -46,7 +50,8 @@ fn main() {
     // Don't warn on CRLF (#4208)
     print!("\r\n");
     print!("foo\r\n");
-    print!("\\r\n"); // should fail
+    // should fail
+    print!("\\r\n");
     print!("foo\rbar\n");
 
     // Ignore expanded format strings

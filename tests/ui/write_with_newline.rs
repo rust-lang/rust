@@ -27,16 +27,20 @@ fn main() {
     write!(v, "\n\n");
     write!(v, "like eof\n\n");
     write!(v, "Hello {} {}\n\n", "world", "#2");
-    writeln!(v, "\ndon't\nwarn\nfor\nmultiple\nnewlines\n"); // #3126
-    writeln!(v, "\nbla\n\n"); // #3126
+    // #3126
+    writeln!(v, "\ndon't\nwarn\nfor\nmultiple\nnewlines\n");
+    // #3126
+    writeln!(v, "\nbla\n\n");
 
     // Escaping
-    write!(v, "\\n"); // #3514
-    write!(v, "\\\n"); // should fail
+    // #3514
+    write!(v, "\\n");
+    write!(v, "\\\n");
     write!(v, "\\\\n");
 
     // Raw strings
-    write!(v, r"\n"); // #3778
+    // #3778
+    write!(v, r"\n");
 
     // Literal newlines should also fail
     write!(

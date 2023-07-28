@@ -16,7 +16,8 @@ mod module {} // ok
 pub mod pub_module {} // ok
 
 fn foo() {}
-pub fn pub_foo() {} // missing #[inline]
+// missing #[inline]
+pub fn pub_foo() {}
 #[inline]
 pub fn pub_foo_inline() {} // ok
 #[inline(always)]
@@ -32,7 +33,8 @@ trait Bar {
 
 pub trait PubBar {
     fn PubBar_a(); // ok
-    fn PubBar_b() {} // missing #[inline]
+    // missing #[inline]
+    fn PubBar_b() {}
     #[inline]
     fn PubBar_c() {} // ok
 }
@@ -46,9 +48,12 @@ impl PubBar for Foo {
 
 // all of these need inline because PubFoo is exported
 impl PubBar for PubFoo {
-    fn PubBar_a() {} // missing #[inline]
-    fn PubBar_b() {} // missing #[inline]
-    fn PubBar_c() {} // missing #[inline]
+    // missing #[inline]
+    fn PubBar_a() {}
+    // missing #[inline]
+    fn PubBar_b() {}
+    // missing #[inline]
+    fn PubBar_c() {}
 }
 
 // do not need inline because Foo is not exported
@@ -58,7 +63,8 @@ impl Foo {
 
 // need inline because PubFoo is exported
 impl PubFoo {
-    pub fn PubFooImpl() {} // missing #[inline]
+    // missing #[inline]
+    pub fn PubFooImpl() {}
 }
 
 // do not lint this since users cannot control the external code

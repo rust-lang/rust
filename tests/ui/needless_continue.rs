@@ -55,21 +55,21 @@ fn main() {
 
 fn simple_loop() {
     loop {
-        continue; // should lint here
+        continue;
     }
 }
 
 fn simple_loop2() {
     loop {
         println!("bleh");
-        continue; // should lint here
+        continue;
     }
 }
 
 #[rustfmt::skip]
 fn simple_loop3() {
     loop {
-        continue // should lint here
+        continue
     }
 }
 
@@ -77,7 +77,7 @@ fn simple_loop3() {
 fn simple_loop4() {
     loop {
         println!("bleh");
-        continue // should lint here
+        continue
     }
 }
 
@@ -128,13 +128,13 @@ mod issue_2329 {
                 if condition() {
                     println!("bar-3");
                 } else {
-                    continue 'inner; // should lint here
+                    continue 'inner;
                 }
                 println!("bar-4");
 
                 update_condition();
                 if condition() {
-                    continue; // should lint here
+                    continue;
                 } else {
                     println!("bar-5");
                 }

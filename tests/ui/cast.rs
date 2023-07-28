@@ -43,14 +43,22 @@ fn main() {
     1u32 as i32;
     1u64 as i64;
     1usize as isize;
-    1usize as i8; // should not wrap, usize is never 8 bits
-    1usize as i16; // wraps on 16 bit ptr size
-    1usize as i32; // wraps on 32 bit ptr size
-    1usize as i64; // wraps on 64 bit ptr size
-    1u8 as isize; // should not wrap, isize is never 8 bits
-    1u16 as isize; // wraps on 16 bit ptr size
-    1u32 as isize; // wraps on 32 bit ptr size
-    1u64 as isize; // wraps on 64 bit ptr size
+    // should not wrap, usize is never 8 bits
+    1usize as i8;
+    // wraps on 16 bit ptr size
+    1usize as i16;
+    // wraps on 32 bit ptr size
+    1usize as i32;
+    // wraps on 64 bit ptr size
+    1usize as i64;
+    // should not wrap, isize is never 8 bits
+    1u8 as isize;
+    // wraps on 16 bit ptr size
+    1u16 as isize;
+    // wraps on 32 bit ptr size
+    1u32 as isize;
+    // wraps on 64 bit ptr size
+    1u64 as isize;
     // Test clippy::cast_sign_loss
     1i32 as u32;
     -1i32 as u32;
@@ -122,7 +130,8 @@ fn main() {
     let _ = s as i32;
 
     // Test for signed min
-    (-99999999999i64).min(1) as i8; // should be linted because signed
+    // should be linted because signed
+    (-99999999999i64).min(1) as i8;
 
     // Test for various operations that remove enough bits for the result to fit
     (999999u64 & 1) as u8;
@@ -134,7 +143,8 @@ fn main() {
         x.min(1)
     }) as u8;
     999999u64.clamp(0, 255) as u8;
-    999999u64.clamp(0, 256) as u8; // should still be linted
+    // should still be linted
+    999999u64.clamp(0, 256) as u8;
 
     #[derive(Clone, Copy)]
     enum E1 {
@@ -144,7 +154,8 @@ fn main() {
     }
     impl E1 {
         fn test(self) {
-            let _ = self as u8; // Don't lint. `0..=2` fits in u8
+            // Don't lint. `0..=2` fits in u8
+            let _ = self as u8;
         }
     }
 
@@ -157,8 +168,10 @@ fn main() {
         fn test(self) {
             let _ = self as u8;
             let _ = Self::B as u8;
-            let _ = self as i16; // Don't lint. `255..=256` fits in i16
-            let _ = Self::A as u8; // Don't lint.
+            // Don't lint. `255..=256` fits in i16
+            let _ = self as i16;
+            // Don't lint.
+            let _ = Self::A as u8;
         }
     }
 
@@ -170,7 +183,8 @@ fn main() {
     }
     impl E3 {
         fn test(self) {
-            let _ = self as i8; // Don't lint. `-1..=50` fits in i8
+            // Don't lint. `-1..=50` fits in i8
+            let _ = self as i8;
         }
     }
 
@@ -181,7 +195,8 @@ fn main() {
     }
     impl E4 {
         fn test(self) {
-            let _ = self as i8; // Don't lint. `-128..=-127` fits in i8
+            // Don't lint. `-128..=-127` fits in i8
+            let _ = self as i8;
         }
     }
 
@@ -194,8 +209,10 @@ fn main() {
         fn test(self) {
             let _ = self as i8;
             let _ = Self::A as i8;
-            let _ = self as i16; // Don't lint. `-129..=127` fits in i16
-            let _ = Self::B as u8; // Don't lint.
+            // Don't lint. `-129..=127` fits in i16
+            let _ = self as i16;
+            // Don't lint.
+            let _ = Self::B as u8;
         }
     }
 
@@ -208,9 +225,12 @@ fn main() {
     impl E6 {
         fn test(self) {
             let _ = self as i16;
-            let _ = Self::A as u16; // Don't lint. `2^16-1` fits in u16
-            let _ = self as u32; // Don't lint. `2^16-1..=2^16` fits in u32
-            let _ = Self::A as u16; // Don't lint.
+            // Don't lint. `2^16-1` fits in u16
+            let _ = Self::A as u16;
+            // Don't lint. `2^16-1..=2^16` fits in u32
+            let _ = self as u32;
+            // Don't lint.
+            let _ = Self::A as u16;
         }
     }
 
@@ -223,8 +243,10 @@ fn main() {
     impl E7 {
         fn test(self) {
             let _ = self as usize;
-            let _ = Self::A as usize; // Don't lint.
-            let _ = self as u64; // Don't lint. `2^32-1..=2^32` fits in u64
+            // Don't lint.
+            let _ = Self::A as usize;
+            // Don't lint. `2^32-1..=2^32` fits in u64
+            let _ = self as u64;
         }
     }
 
@@ -238,7 +260,8 @@ fn main() {
     }
     impl E8 {
         fn test(self) {
-            let _ = self as i128; // Don't lint. `-(2^127)..=2^127-1` fits it i128
+            // Don't lint. `-(2^127)..=2^127-1` fits it i128
+            let _ = self as i128;
         }
     }
 
@@ -250,8 +273,10 @@ fn main() {
     }
     impl E9 {
         fn test(self) {
-            let _ = Self::A as u8; // Don't lint.
-            let _ = self as u128; // Don't lint. `0..=2^128-1` fits in u128
+            // Don't lint.
+            let _ = Self::A as u8;
+            // Don't lint. `0..=2^128-1` fits in u128
+            let _ = self as u128;
         }
     }
 
@@ -264,8 +289,10 @@ fn main() {
     impl E10 {
         fn test(self) {
             let _ = self as u16;
-            let _ = Self::B as u32; // Don't lint.
-            let _ = self as u64; // Don't lint.
+            // Don't lint.
+            let _ = Self::B as u32;
+            // Don't lint.
+            let _ = self as u64;
         }
     }
 }

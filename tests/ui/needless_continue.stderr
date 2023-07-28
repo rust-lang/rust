@@ -57,7 +57,7 @@ LL | |         }
 error: this `continue` expression is redundant
   --> $DIR/needless_continue.rs:58:9
    |
-LL |         continue; // should lint here
+LL |         continue;
    |         ^^^^^^^^^
    |
    = help: consider dropping the `continue` expression
@@ -65,7 +65,7 @@ LL |         continue; // should lint here
 error: this `continue` expression is redundant
   --> $DIR/needless_continue.rs:65:9
    |
-LL |         continue; // should lint here
+LL |         continue;
    |         ^^^^^^^^^
    |
    = help: consider dropping the `continue` expression
@@ -73,7 +73,7 @@ LL |         continue; // should lint here
 error: this `continue` expression is redundant
   --> $DIR/needless_continue.rs:72:9
    |
-LL |         continue // should lint here
+LL |         continue
    |         ^^^^^^^^
    |
    = help: consider dropping the `continue` expression
@@ -81,7 +81,7 @@ LL |         continue // should lint here
 error: this `continue` expression is redundant
   --> $DIR/needless_continue.rs:80:9
    |
-LL |         continue // should lint here
+LL |         continue
    |         ^^^^^^^^
    |
    = help: consider dropping the `continue` expression
@@ -91,7 +91,7 @@ error: this `else` block is redundant
    |
 LL |                   } else {
    |  ________________________^
-LL | |                     continue 'inner; // should lint here
+LL | |                     continue 'inner;
 LL | |                 }
    | |_________________^
    |
@@ -102,7 +102,7 @@ LL | |                 }
                                println!("bar-4");
                                update_condition();
                                if condition() {
-                                   continue; // should lint here
+                                   continue;
                                } else {
                                    println!("bar-5");
                                }
@@ -113,7 +113,7 @@ error: there is no need for an explicit `else` block for this `if` expression
   --> $DIR/needless_continue.rs:136:17
    |
 LL | /                 if condition() {
-LL | |                     continue; // should lint here
+LL | |                     continue;
 LL | |                 } else {
 LL | |                     println!("bar-5");
 LL | |                 }
@@ -121,7 +121,7 @@ LL | |                 }
    |
    = help: consider dropping the `else` clause
                            if condition() {
-                               continue; // should lint here
+                               continue;
                            }
                            {
                                println!("bar-5");

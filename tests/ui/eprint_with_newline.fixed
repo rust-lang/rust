@@ -20,16 +20,20 @@ fn main() {
     eprint!("\n\n");
     eprint!("like eof\n\n");
     eprint!("Hello {} {}\n\n", "world", "#2");
-    eprintln!("\ndon't\nwarn\nfor\nmultiple\nnewlines\n"); // #3126
-    eprintln!("\nbla\n\n"); // #3126
+    // #3126
+    eprintln!("\ndon't\nwarn\nfor\nmultiple\nnewlines\n");
+    // #3126
+    eprintln!("\nbla\n\n");
 
     // Escaping
-    eprint!("\\n"); // #3514
-    eprintln!("\\"); // should fail
+    // #3514
+    eprint!("\\n");
+    eprintln!("\\");
     eprint!("\\\\n");
 
     // Raw strings
-    eprint!(r"\n"); // #3778
+    // #3778
+    eprint!(r"\n");
 
     // Literal newlines should also fail
     eprintln!(

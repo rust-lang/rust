@@ -60,19 +60,19 @@ LL +     writeln!(v);
    |
 
 error: using `write!()` with a format string that ends in a single newline
-  --> $DIR/write_with_newline.rs:35:5
+  --> $DIR/write_with_newline.rs:38:5
    |
-LL |     write!(v, "\\\n"); // should fail
+LL |     write!(v, "\\\n");
    |     ^^^^^^^^^^^^^^^^^
    |
 help: use `writeln!` instead
    |
-LL -     write!(v, "\\\n"); // should fail
-LL +     writeln!(v, "\\"); // should fail
+LL -     write!(v, "\\\n");
+LL +     writeln!(v, "\\");
    |
 
 error: using `write!()` with a format string that ends in a single newline
-  --> $DIR/write_with_newline.rs:42:5
+  --> $DIR/write_with_newline.rs:46:5
    |
 LL | /     write!(
 LL | |         v,
@@ -88,7 +88,7 @@ LL ~         v
    |
 
 error: using `write!()` with a format string that ends in a single newline
-  --> $DIR/write_with_newline.rs:47:5
+  --> $DIR/write_with_newline.rs:51:5
    |
 LL | /     write!(
 LL | |         v,
@@ -104,7 +104,7 @@ LL ~         v
    |
 
 error: using `write!()` with a format string that ends in a single newline
-  --> $DIR/write_with_newline.rs:56:5
+  --> $DIR/write_with_newline.rs:60:5
    |
 LL |     write!(v, "\\r\n");
    |     ^^^^^^^^^^^^^^^^^^

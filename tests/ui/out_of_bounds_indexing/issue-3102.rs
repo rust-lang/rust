@@ -6,6 +6,6 @@ fn main() {
 
     // issue 3102
     let num = 1;
-    &x[num..10]; // should trigger out of bounds error
-    &x[10..num]; // should trigger out of bounds error
+    &x[num..10];
+    &x[10..num];
 }

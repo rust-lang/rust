@@ -1,4 +1,4 @@
-error: this argument (N byte) is passed by reference, but would be more efficient if passed by value (limit: N byte)
+error: this argument (N byte) is passed by reference, but would be more efficient if passed by value (limit: 8 byte)
   --> $DIR/trivially_copy_pass_by_ref.rs:52:11
    |
 LL | fn bad(x: &u32, y: &Foo, z: &Baz) {}
@@ -10,13 +10,13 @@ note: the lint level is defined here
 LL | #![deny(clippy::trivially_copy_pass_by_ref)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: this argument (N byte) is passed by reference, but would be more efficient if passed by value (limit: N byte)
+error: this argument (N byte) is passed by reference, but would be more efficient if passed by value (limit: 8 byte)
   --> $DIR/trivially_copy_pass_by_ref.rs:52:20
    |
 LL | fn bad(x: &u32, y: &Foo, z: &Baz) {}
    |                    ^^^^ help: consider passing by value instead: `Foo`
 
-error: this argument (N byte) is passed by reference, but would be more efficient if passed by value (limit: N byte)
+error: this argument (N byte) is passed by reference, but would be more efficient if passed by value (limit: 8 byte)
   --> $DIR/trivially_copy_pass_by_ref.rs:52:29
    |
 LL | fn bad(x: &u32, y: &Foo, z: &Baz) {}

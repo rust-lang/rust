@@ -26,7 +26,7 @@ LL |     &x[index_from..index_to];
 error: slicing may panic
   --> $DIR/indexing_slicing_slice.rs:15:6
    |
-LL |     &x[index_from..][..index_to]; // Two lint reports, one for [index_from..] and another for [..index_to].
+LL |     &x[index_from..][..index_to];
    |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: consider using `.get(..n)`or `.get_mut(..n)` instead
@@ -34,7 +34,7 @@ LL |     &x[index_from..][..index_to]; // Two lint reports, one for [index_from.
 error: slicing may panic
   --> $DIR/indexing_slicing_slice.rs:15:6
    |
-LL |     &x[index_from..][..index_to]; // Two lint reports, one for [index_from..] and another for [..index_to].
+LL |     &x[index_from..][..index_to];
    |      ^^^^^^^^^^^^^^^
    |
    = help: consider using `.get(n..)` or .get_mut(n..)` instead
@@ -42,7 +42,7 @@ LL |     &x[index_from..][..index_to]; // Two lint reports, one for [index_from.
 error: slicing may panic
   --> $DIR/indexing_slicing_slice.rs:16:6
    |
-LL |     &x[5..][..10]; // Two lint reports, one for out of bounds [5..] and another for slicing [..10].
+LL |     &x[5..][..10];
    |      ^^^^^^^^^^^^
    |
    = help: consider using `.get(..n)`or `.get_mut(..n)` instead
@@ -50,7 +50,7 @@ LL |     &x[5..][..10]; // Two lint reports, one for out of bounds [5..] and ano
 error: range is out of bounds
   --> $DIR/indexing_slicing_slice.rs:16:8
    |
-LL |     &x[5..][..10]; // Two lint reports, one for out of bounds [5..] and another for slicing [..10].
+LL |     &x[5..][..10];
    |        ^
    |
    = note: `-D clippy::out-of-bounds-indexing` implied by `-D warnings`
@@ -94,7 +94,7 @@ LL |     &v[10..100];
 error: slicing may panic
   --> $DIR/indexing_slicing_slice.rs:32:6
    |
-LL |     &x[10..][..100]; // Two lint reports, one for [10..] and another for [..100].
+LL |     &x[10..][..100];
    |      ^^^^^^^^^^^^^^
    |
    = help: consider using `.get(..n)`or `.get_mut(..n)` instead
@@ -102,7 +102,7 @@ LL |     &x[10..][..100]; // Two lint reports, one for [10..] and another for [.
 error: range is out of bounds
   --> $DIR/indexing_slicing_slice.rs:32:8
    |
-LL |     &x[10..][..100]; // Two lint reports, one for [10..] and another for [..100].
+LL |     &x[10..][..100];
    |        ^^
 
 error: slicing may panic

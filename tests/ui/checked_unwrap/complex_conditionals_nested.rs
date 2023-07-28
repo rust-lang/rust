@@ -9,9 +9,11 @@ fn test_nested() {
     fn nested() {
         let x = Some(());
         if x.is_some() {
-            x.unwrap(); // unnecessary
+            // unnecessary
+            x.unwrap();
         } else {
-            x.unwrap(); // will panic
+            // will panic
+            x.unwrap();
         }
     }
 }

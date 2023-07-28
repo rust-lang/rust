@@ -60,19 +60,19 @@ LL +     println!();
    |
 
 error: using `print!()` with a format string that ends in a single newline
-  --> $DIR/print_with_newline.rs:30:5
+  --> $DIR/print_with_newline.rs:33:5
    |
-LL |     print!("\\\n"); // should fail
+LL |     print!("\\\n");
    |     ^^^^^^^^^^^^^^
    |
 help: use `println!` instead
    |
-LL -     print!("\\\n"); // should fail
-LL +     println!("\\"); // should fail
+LL -     print!("\\\n");
+LL +     println!("\\");
    |
 
 error: using `print!()` with a format string that ends in a single newline
-  --> $DIR/print_with_newline.rs:37:5
+  --> $DIR/print_with_newline.rs:41:5
    |
 LL | /     print!(
 LL | |         "
@@ -87,7 +87,7 @@ LL ~
    |
 
 error: using `print!()` with a format string that ends in a single newline
-  --> $DIR/print_with_newline.rs:41:5
+  --> $DIR/print_with_newline.rs:45:5
    |
 LL | /     print!(
 LL | |         r"
@@ -102,15 +102,15 @@ LL ~
    |
 
 error: using `print!()` with a format string that ends in a single newline
-  --> $DIR/print_with_newline.rs:49:5
+  --> $DIR/print_with_newline.rs:54:5
    |
-LL |     print!("\\r\n"); // should fail
+LL |     print!("\\r\n");
    |     ^^^^^^^^^^^^^^^
    |
 help: use `println!` instead
    |
-LL -     print!("\\r\n"); // should fail
-LL +     println!("\\r"); // should fail
+LL -     print!("\\r\n");
+LL +     println!("\\r");
    |
 
 error: aborting due to 9 previous errors

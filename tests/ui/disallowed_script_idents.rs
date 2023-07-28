@@ -2,9 +2,13 @@
 #![allow(dead_code)]
 
 fn main() {
-    let counter = 10; // OK, latin is allowed.
-    let zähler = 10; // OK, it's still latin.
+    // OK, latin is allowed.
+    let counter = 10;
+    // OK, it's still latin.
+    let zähler = 10;
 
-    let счётчик = 10; // Cyrillic is not allowed by default.
-    let カウンタ = 10; // Same for japanese.
+    // Cyrillic is not allowed by default.
+    let счётчик = 10;
+    // Same for japanese.
+    let カウンタ = 10;
 }

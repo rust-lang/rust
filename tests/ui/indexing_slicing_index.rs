@@ -25,29 +25,43 @@ fn main() {
     let x = [1, 2, 3, 4];
     let index: usize = 1;
     x[index];
-    x[4]; // Ok, let rustc's `unconditional_panic` lint handle `usize` indexing on arrays.
-    x[1 << 3]; // Ok, let rustc's `unconditional_panic` lint handle `usize` indexing on arrays.
+    // Ok, let rustc's `unconditional_panic` lint handle `usize` indexing on arrays.
+    x[4];
+    // Ok, let rustc's `unconditional_panic` lint handle `usize` indexing on arrays.
+    x[1 << 3];
 
-    x[0]; // Ok, should not produce stderr.
-    x[3]; // Ok, should not produce stderr.
-    x[const { idx() }]; // Ok, should not produce stderr.
-    x[const { idx4() }]; // Ok, let rustc's `unconditional_panic` lint handle `usize` indexing on arrays.
-    const { &ARR[idx()] }; // This should be linted, since `suppress-restriction-lint-in-const` default is false.
-    const { &ARR[idx4()] }; // This should be linted, since `suppress-restriction-lint-in-const` default is false.
+    // Ok, should not produce stderr.
+    x[0];
+    // Ok, should not produce stderr.
+    x[3];
+    // Ok, should not produce stderr.
+    x[const { idx() }];
+    // Ok, let rustc's `unconditional_panic` lint handle `usize` indexing on arrays.
+    x[const { idx4() }];
+    // This should be linted, since `suppress-restriction-lint-in-const` default is false.
+    const { &ARR[idx()] };
+    // This should be linted, since `suppress-restriction-lint-in-const` default is false.
+    const { &ARR[idx4()] };
 
     let y = &x;
-    y[0]; // Ok, referencing shouldn't affect this lint. See the issue 6021
-    y[4]; // Ok, rustc will handle references too.
+    // Ok, referencing shouldn't affect this lint. See the issue 6021
+    y[0];
+    // Ok, rustc will handle references too.
+    y[4];
 
     let v = vec![0; 5];
     v[0];
     v[10];
     v[1 << 3];
 
-    const N: usize = 15; // Out of bounds
-    const M: usize = 3; // In bounds
-    x[N]; // Ok, let rustc's `unconditional_panic` lint handle `usize` indexing on arrays.
-    x[M]; // Ok, should not produce stderr.
+    // Out of bounds
+    const N: usize = 15;
+    // In bounds
+    const M: usize = 3;
+    // Ok, let rustc's `unconditional_panic` lint handle `usize` indexing on arrays.
+    x[N];
+    // Ok, should not produce stderr.
+    x[M];
     v[N];
     v[M];
 }

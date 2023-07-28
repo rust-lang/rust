@@ -10,7 +10,8 @@
 macro_rules! m {
     ($a:expr) => {
         if $a.is_some() {
-            $a.unwrap(); // unnecessary
+            // unnecessary
+            $a.unwrap();
         }
     };
 }
@@ -42,37 +43,56 @@ macro_rules! checks_some {
 fn main() {
     let x = Some(());
     if x.is_some() {
-        x.unwrap(); // unnecessary
-        x.expect("an error message"); // unnecessary
+        // unnecessary
+        x.unwrap();
+        // unnecessary
+        x.expect("an error message");
     } else {
-        x.unwrap(); // will panic
-        x.expect("an error message"); // will panic
+        // will panic
+        x.unwrap();
+        // will panic
+        x.expect("an error message");
     }
     if x.is_none() {
-        x.unwrap(); // will panic
+        // will panic
+        x.unwrap();
     } else {
-        x.unwrap(); // unnecessary
+        // unnecessary
+        x.unwrap();
     }
     m!(x);
-    checks_in_param!(x.is_some(), x.unwrap()); // ok
-    checks_unwrap!(x, x.unwrap()); // ok
-    checks_some!(x.is_some(), x); // ok
+    // ok
+    checks_in_param!(x.is_some(), x.unwrap());
+    // ok
+    checks_unwrap!(x, x.unwrap());
+    // ok
+    checks_some!(x.is_some(), x);
     let mut x: Result<(), ()> = Ok(());
     if x.is_ok() {
-        x.unwrap(); // unnecessary
-        x.expect("an error message"); // unnecessary
-        x.unwrap_err(); // will panic
+        // unnecessary
+        x.unwrap();
+        // unnecessary
+        x.expect("an error message");
+        // will panic
+        x.unwrap_err();
     } else {
-        x.unwrap(); // will panic
-        x.expect("an error message"); // will panic
-        x.unwrap_err(); // unnecessary
+        // will panic
+        x.unwrap();
+        // will panic
+        x.expect("an error message");
+        // unnecessary
+        x.unwrap_err();
     }
     if x.is_err() {
-        x.unwrap(); // will panic
-        x.unwrap_err(); // unnecessary
+        // will panic
+        x.unwrap();
+        // unnecessary
+        x.unwrap_err();
     } else {
-        x.unwrap(); // unnecessary
-        x.unwrap_err(); // will panic
+        // unnecessary
+        x.unwrap();
+        // will panic
+        x.unwrap_err();
     }
     if x.is_ok() {
         x = Err(());
@@ -88,20 +108,25 @@ fn main() {
         x.unwrap_err();
     }
 
-    assert!(x.is_ok(), "{:?}", x.unwrap_err()); // ok, it's a common test pattern
+    // ok, it's a common test pattern
+    assert!(x.is_ok(), "{:?}", x.unwrap_err());
 }
 
 fn check_expect() {
     let x = Some(());
     if x.is_some() {
         #[expect(clippy::unnecessary_unwrap)]
-        x.unwrap(); // unnecessary
+        // unnecessary
+        x.unwrap();
         #[expect(clippy::unnecessary_unwrap)]
-        x.expect("an error message"); // unnecessary
+        // unnecessary
+        x.expect("an error message");
     } else {
         #[expect(clippy::panicking_unwrap)]
-        x.unwrap(); // will panic
+        // will panic
+        x.unwrap();
         #[expect(clippy::panicking_unwrap)]
-        x.expect("an error message"); // will panic
+        // will panic
+        x.expect("an error message");
     }
 }

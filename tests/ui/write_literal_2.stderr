@@ -183,15 +183,15 @@ LL +     writeln!(v, "\r");
    |
 
 error: literal with an empty format string
-  --> $DIR/write_literal_2.rs:33:28
+  --> $DIR/write_literal_2.rs:34:28
    |
-LL |     writeln!(v, r#"{}{}"#, '#', '"'); // hard mode
+LL |     writeln!(v, r#"{}{}"#, '#', '"');
    |                            ^^^
 
 error: literal with an empty format string
-  --> $DIR/write_literal_2.rs:33:33
+  --> $DIR/write_literal_2.rs:34:33
    |
-LL |     writeln!(v, r#"{}{}"#, '#', '"'); // hard mode
+LL |     writeln!(v, r#"{}{}"#, '#', '"');
    |                                 ^^^
 
 error: aborting due to 18 previous errors

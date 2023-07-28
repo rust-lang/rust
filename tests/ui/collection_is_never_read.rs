@@ -18,7 +18,7 @@ fn no_access_at_all() {
 
 fn write_without_read() {
     // The main use case for `collection_is_never_read`.
-    let mut x = HashMap::new(); // WARNING
+    let mut x = HashMap::new();
     x.insert(1, 2);
 }
 
@@ -57,7 +57,7 @@ fn read_in_closure() {
 }
 
 fn write_in_closure() {
-    let mut x = vec![1, 2, 3]; // WARNING
+    let mut x = vec![1, 2, 3];
     let _ = || {
         x.push(4);
     };
@@ -72,12 +72,12 @@ fn read_in_format() {
 fn shadowing_1() {
     let x = HashMap::<usize, usize>::new(); // Ok
     let _ = x.len();
-    let mut x = HashMap::new(); // WARNING
+    let mut x = HashMap::new();
     x.insert(1, 2);
 }
 
 fn shadowing_2() {
-    let mut x = HashMap::new(); // WARNING
+    let mut x = HashMap::new();
     x.insert(1, 2);
     let x = HashMap::<usize, usize>::new(); // Ok
     let _ = x.len();
@@ -85,26 +85,26 @@ fn shadowing_2() {
 
 #[allow(clippy::let_unit_value)]
 fn fake_read_1() {
-    let mut x = vec![1, 2, 3]; // WARNING
+    let mut x = vec![1, 2, 3];
     x.reverse();
     let _: () = x.clear();
 }
 
 fn fake_read_2() {
-    let mut x = vec![1, 2, 3]; // WARNING
+    let mut x = vec![1, 2, 3];
     x.reverse();
     println!("{:?}", x.push(5));
 }
 
 fn assignment() {
-    let mut x = vec![1, 2, 3]; // WARNING
+    let mut x = vec![1, 2, 3];
     let y = vec![4, 5, 6]; // Ok
     x = y;
 }
 
 #[allow(clippy::self_assignment)]
 fn self_assignment() {
-    let mut x = vec![1, 2, 3]; // WARNING
+    let mut x = vec![1, 2, 3];
     x = x;
 }
 
@@ -121,7 +121,7 @@ fn method_argument_but_not_target() {
 }
 
 fn insert_is_not_a_read() {
-    let mut x = HashSet::new(); // WARNING
+    let mut x = HashSet::new();
     x.insert(5);
 }
 
@@ -135,7 +135,7 @@ fn insert_is_a_read() {
 fn not_read_if_return_value_not_used() {
     // `is_empty` does not modify the set, so it's a query. But since the return value is not used, the
     // lint does not consider it a read here.
-    let x = vec![1, 2, 3]; // WARNING
+    let x = vec![1, 2, 3];
     x.is_empty();
 }
 
@@ -170,34 +170,34 @@ fn function_argument() {
 }
 
 fn supported_types() {
-    let mut x = std::collections::BTreeMap::new(); // WARNING
+    let mut x = std::collections::BTreeMap::new();
     x.insert(true, 1);
 
-    let mut x = std::collections::BTreeSet::new(); // WARNING
+    let mut x = std::collections::BTreeSet::new();
     x.insert(1);
 
-    let mut x = std::collections::BinaryHeap::new(); // WARNING
+    let mut x = std::collections::BinaryHeap::new();
     x.push(1);
 
-    let mut x = std::collections::HashMap::new(); // WARNING
+    let mut x = std::collections::HashMap::new();
     x.insert(1, 2);
 
-    let mut x = std::collections::HashSet::new(); // WARNING
+    let mut x = std::collections::HashSet::new();
     x.insert(1);
 
-    let mut x = std::collections::LinkedList::new(); // WARNING
+    let mut x = std::collections::LinkedList::new();
     x.push_front(1);
 
-    let mut x = Some(true); // WARNING
+    let mut x = Some(true);
     x.insert(false);
 
-    let mut x = String::from("hello"); // WARNING
+    let mut x = String::from("hello");
     x.push('!');
 
-    let mut x = Vec::new(); // WARNING
+    let mut x = Vec::new();
     x.clear();
     x.push(1);
 
-    let mut x = std::collections::VecDeque::new(); // WARNING
+    let mut x = std::collections::VecDeque::new();
     x.push_front(1);
 }

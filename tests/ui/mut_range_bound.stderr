@@ -34,23 +34,23 @@ LL |         n = 7;
 error: attempt to mutate range bound within loop
   --> $DIR/mut_range_bound.rs:38:22
    |
-LL |         let n = &mut m; // warning
+LL |         let n = &mut m;
    |                      ^
    |
    = note: the range of the loop is unchanged
 
 error: attempt to mutate range bound within loop
-  --> $DIR/mut_range_bound.rs:70:9
+  --> $DIR/mut_range_bound.rs:71:9
    |
-LL |         m = 2; // warning because it is not immediately followed by break
+LL |         m = 2;
    |         ^
    |
    = note: the range of the loop is unchanged
 
 error: attempt to mutate range bound within loop
-  --> $DIR/mut_range_bound.rs:79:13
+  --> $DIR/mut_range_bound.rs:81:13
    |
-LL |             n = 1; // FIXME: warning because it is not immediately followed by break
+LL |             n = 1;
    |             ^
    |
    = note: the range of the loop is unchanged

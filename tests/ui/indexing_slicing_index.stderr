@@ -18,15 +18,15 @@ LL | const REF_ERR: &i32 = &ARR[idx4()]; // Ok, let rustc handle const contexts.
    = note: the suggestion might not be applicable in constant blocks
 
 error[E0080]: evaluation of `main::{constant#3}` failed
-  --> $DIR/indexing_slicing_index.rs:36:14
+  --> $DIR/indexing_slicing_index.rs:44:14
    |
-LL |     const { &ARR[idx4()] }; // This should be linted, since `suppress-restriction-lint-in-const` default is false.
+LL |     const { &ARR[idx4()] };
    |              ^^^^^^^^^^^ index out of bounds: the length is 2 but the index is 4
 
 note: erroneous constant used
-  --> $DIR/indexing_slicing_index.rs:36:5
+  --> $DIR/indexing_slicing_index.rs:44:5
    |
-LL |     const { &ARR[idx4()] }; // This should be linted, since `suppress-restriction-lint-in-const` default is false.
+LL |     const { &ARR[idx4()] };
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
 error: indexing may panic
@@ -38,25 +38,25 @@ LL |     x[index];
    = help: consider using `.get(n)` or `.get_mut(n)` instead
 
 error: indexing may panic
-  --> $DIR/indexing_slicing_index.rs:35:14
+  --> $DIR/indexing_slicing_index.rs:42:14
    |
-LL |     const { &ARR[idx()] }; // This should be linted, since `suppress-restriction-lint-in-const` default is false.
+LL |     const { &ARR[idx()] };
    |              ^^^^^^^^^^
    |
    = help: consider using `.get(n)` or `.get_mut(n)` instead
    = note: the suggestion might not be applicable in constant blocks
 
 error: indexing may panic
-  --> $DIR/indexing_slicing_index.rs:36:14
+  --> $DIR/indexing_slicing_index.rs:44:14
    |
-LL |     const { &ARR[idx4()] }; // This should be linted, since `suppress-restriction-lint-in-const` default is false.
+LL |     const { &ARR[idx4()] };
    |              ^^^^^^^^^^^
    |
    = help: consider using `.get(n)` or `.get_mut(n)` instead
    = note: the suggestion might not be applicable in constant blocks
 
 error: indexing may panic
-  --> $DIR/indexing_slicing_index.rs:43:5
+  --> $DIR/indexing_slicing_index.rs:53:5
    |
 LL |     v[0];
    |     ^^^^
@@ -64,7 +64,7 @@ LL |     v[0];
    = help: consider using `.get(n)` or `.get_mut(n)` instead
 
 error: indexing may panic
-  --> $DIR/indexing_slicing_index.rs:44:5
+  --> $DIR/indexing_slicing_index.rs:54:5
    |
 LL |     v[10];
    |     ^^^^^
@@ -72,7 +72,7 @@ LL |     v[10];
    = help: consider using `.get(n)` or `.get_mut(n)` instead
 
 error: indexing may panic
-  --> $DIR/indexing_slicing_index.rs:45:5
+  --> $DIR/indexing_slicing_index.rs:55:5
    |
 LL |     v[1 << 3];
    |     ^^^^^^^^^
@@ -80,7 +80,7 @@ LL |     v[1 << 3];
    = help: consider using `.get(n)` or `.get_mut(n)` instead
 
 error: indexing may panic
-  --> $DIR/indexing_slicing_index.rs:51:5
+  --> $DIR/indexing_slicing_index.rs:65:5
    |
 LL |     v[N];
    |     ^^^^
@@ -88,7 +88,7 @@ LL |     v[N];
    = help: consider using `.get(n)` or `.get_mut(n)` instead
 
 error: indexing may panic
-  --> $DIR/indexing_slicing_index.rs:52:5
+  --> $DIR/indexing_slicing_index.rs:66:5
    |
 LL |     v[M];
    |     ^^^^

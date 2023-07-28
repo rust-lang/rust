@@ -6,14 +6,14 @@ fn mut_range_bound_upper() {
     let mut m = 4;
     for i in 0..m {
         m = 5;
-    } // warning
+    }
 }
 
 fn mut_range_bound_lower() {
     let mut m = 4;
     for i in m..10 {
         m *= 2;
-    } // warning
+    }
 }
 
 fn mut_range_bound_both() {
@@ -22,7 +22,7 @@ fn mut_range_bound_both() {
     for i in m..n {
         m = 5;
         n = 7;
-    } // warning (1 for each mutated bound)
+    }
 }
 
 fn mut_range_bound_no_mutation() {
@@ -35,7 +35,7 @@ fn mut_range_bound_no_mutation() {
 fn mut_borrow_range_bound() {
     let mut m = 4;
     for i in 0..m {
-        let n = &mut m; // warning
+        let n = &mut m;
         *n += 1;
     }
 }
@@ -43,7 +43,7 @@ fn mut_borrow_range_bound() {
 fn immut_borrow_range_bound() {
     let mut m = 4;
     for i in 0..m {
-        let n = &m; // should be no warning?
+        let n = &m;
     }
 }
 
@@ -67,7 +67,8 @@ fn mut_range_bound_break() {
 fn mut_range_bound_no_immediate_break() {
     let mut m = 4;
     for i in 0..m {
-        m = 2; // warning because it is not immediately followed by break
+        // warning because it is not immediately followed by break
+        m = 2;
         if m == 4 {
             break;
         }
@@ -76,7 +77,8 @@ fn mut_range_bound_no_immediate_break() {
     let mut n = 3;
     for i in n..10 {
         if n == 4 {
-            n = 1; // FIXME: warning because it is not immediately followed by break
+            // FIXME: warning because it is not immediately followed by break
+            n = 1;
             let _ = 2;
             break;
         }

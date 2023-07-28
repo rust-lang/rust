@@ -60,19 +60,19 @@ LL +     eprintln!();
    |
 
 error: using `eprint!()` with a format string that ends in a single newline
-  --> $DIR/eprint_with_newline.rs:28:5
+  --> $DIR/eprint_with_newline.rs:31:5
    |
-LL |     eprint!("\\\n"); // should fail
+LL |     eprint!("\\\n");
    |     ^^^^^^^^^^^^^^^
    |
 help: use `eprintln!` instead
    |
-LL -     eprint!("\\\n"); // should fail
-LL +     eprintln!("\\"); // should fail
+LL -     eprint!("\\\n");
+LL +     eprintln!("\\");
    |
 
 error: using `eprint!()` with a format string that ends in a single newline
-  --> $DIR/eprint_with_newline.rs:35:5
+  --> $DIR/eprint_with_newline.rs:39:5
    |
 LL | /     eprint!(
 LL | |         "
@@ -87,7 +87,7 @@ LL ~
    |
 
 error: using `eprint!()` with a format string that ends in a single newline
-  --> $DIR/eprint_with_newline.rs:39:5
+  --> $DIR/eprint_with_newline.rs:43:5
    |
 LL | /     eprint!(
 LL | |         r"
@@ -102,7 +102,7 @@ LL ~
    |
 
 error: using `eprint!()` with a format string that ends in a single newline
-  --> $DIR/eprint_with_newline.rs:47:5
+  --> $DIR/eprint_with_newline.rs:51:5
    |
 LL |     eprint!("\\r\n");
    |     ^^^^^^^^^^^^^^^^

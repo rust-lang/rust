@@ -216,133 +216,133 @@ LL |     1usize as isize;
    |     ^^^^^^^^^^^^^^^
 
 error: casting `usize` to `i8` may truncate the value
-  --> $DIR/cast.rs:46:5
+  --> $DIR/cast.rs:47:5
    |
-LL |     1usize as i8; // should not wrap, usize is never 8 bits
+LL |     1usize as i8;
    |     ^^^^^^^^^^^^
    |
    = help: if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...
 help: ... or use `try_from` and handle the error accordingly
    |
-LL |     i8::try_from(1usize); // should not wrap, usize is never 8 bits
+LL |     i8::try_from(1usize);
    |     ~~~~~~~~~~~~~~~~~~~~
 
 error: casting `usize` to `i16` may truncate the value
-  --> $DIR/cast.rs:47:5
+  --> $DIR/cast.rs:49:5
    |
-LL |     1usize as i16; // wraps on 16 bit ptr size
+LL |     1usize as i16;
    |     ^^^^^^^^^^^^^
    |
    = help: if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...
 help: ... or use `try_from` and handle the error accordingly
    |
-LL |     i16::try_from(1usize); // wraps on 16 bit ptr size
+LL |     i16::try_from(1usize);
    |     ~~~~~~~~~~~~~~~~~~~~~
 
 error: casting `usize` to `i16` may wrap around the value on targets with 16-bit wide pointers
-  --> $DIR/cast.rs:47:5
+  --> $DIR/cast.rs:49:5
    |
-LL |     1usize as i16; // wraps on 16 bit ptr size
+LL |     1usize as i16;
    |     ^^^^^^^^^^^^^
    |
    = note: `usize` and `isize` may be as small as 16 bits on some platforms
    = note: for more information see https://doc.rust-lang.org/reference/types/numeric.html#machine-dependent-integer-types
 
 error: casting `usize` to `i32` may truncate the value on targets with 64-bit wide pointers
-  --> $DIR/cast.rs:48:5
+  --> $DIR/cast.rs:51:5
    |
-LL |     1usize as i32; // wraps on 32 bit ptr size
+LL |     1usize as i32;
    |     ^^^^^^^^^^^^^
    |
    = help: if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...
 help: ... or use `try_from` and handle the error accordingly
    |
-LL |     i32::try_from(1usize); // wraps on 32 bit ptr size
+LL |     i32::try_from(1usize);
    |     ~~~~~~~~~~~~~~~~~~~~~
 
 error: casting `usize` to `i32` may wrap around the value on targets with 32-bit wide pointers
-  --> $DIR/cast.rs:48:5
+  --> $DIR/cast.rs:51:5
    |
-LL |     1usize as i32; // wraps on 32 bit ptr size
+LL |     1usize as i32;
    |     ^^^^^^^^^^^^^
 
 error: casting `usize` to `i64` may wrap around the value on targets with 64-bit wide pointers
-  --> $DIR/cast.rs:49:5
+  --> $DIR/cast.rs:53:5
    |
-LL |     1usize as i64; // wraps on 64 bit ptr size
+LL |     1usize as i64;
    |     ^^^^^^^^^^^^^
 
 error: casting `u16` to `isize` may wrap around the value on targets with 16-bit wide pointers
-  --> $DIR/cast.rs:51:5
+  --> $DIR/cast.rs:57:5
    |
-LL |     1u16 as isize; // wraps on 16 bit ptr size
+LL |     1u16 as isize;
    |     ^^^^^^^^^^^^^
    |
    = note: `usize` and `isize` may be as small as 16 bits on some platforms
    = note: for more information see https://doc.rust-lang.org/reference/types/numeric.html#machine-dependent-integer-types
 
 error: casting `u32` to `isize` may wrap around the value on targets with 32-bit wide pointers
-  --> $DIR/cast.rs:52:5
+  --> $DIR/cast.rs:59:5
    |
-LL |     1u32 as isize; // wraps on 32 bit ptr size
+LL |     1u32 as isize;
    |     ^^^^^^^^^^^^^
 
 error: casting `u64` to `isize` may truncate the value on targets with 32-bit wide pointers
-  --> $DIR/cast.rs:53:5
+  --> $DIR/cast.rs:61:5
    |
-LL |     1u64 as isize; // wraps on 64 bit ptr size
+LL |     1u64 as isize;
    |     ^^^^^^^^^^^^^
    |
    = help: if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...
 help: ... or use `try_from` and handle the error accordingly
    |
-LL |     isize::try_from(1u64); // wraps on 64 bit ptr size
+LL |     isize::try_from(1u64);
    |     ~~~~~~~~~~~~~~~~~~~~~
 
 error: casting `u64` to `isize` may wrap around the value on targets with 64-bit wide pointers
-  --> $DIR/cast.rs:53:5
+  --> $DIR/cast.rs:61:5
    |
-LL |     1u64 as isize; // wraps on 64 bit ptr size
+LL |     1u64 as isize;
    |     ^^^^^^^^^^^^^
 
 error: casting `i32` to `u32` may lose the sign of the value
-  --> $DIR/cast.rs:56:5
+  --> $DIR/cast.rs:64:5
    |
 LL |     -1i32 as u32;
    |     ^^^^^^^^^^^^
 
 error: casting `isize` to `usize` may lose the sign of the value
-  --> $DIR/cast.rs:58:5
+  --> $DIR/cast.rs:66:5
    |
 LL |     -1isize as usize;
    |     ^^^^^^^^^^^^^^^^
 
 error: casting `i64` to `i8` may truncate the value
-  --> $DIR/cast.rs:125:5
+  --> $DIR/cast.rs:134:5
    |
-LL |     (-99999999999i64).min(1) as i8; // should be linted because signed
+LL |     (-99999999999i64).min(1) as i8;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...
 help: ... or use `try_from` and handle the error accordingly
    |
-LL |     i8::try_from((-99999999999i64).min(1)); // should be linted because signed
+LL |     i8::try_from((-99999999999i64).min(1));
    |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: casting `u64` to `u8` may truncate the value
-  --> $DIR/cast.rs:137:5
+  --> $DIR/cast.rs:147:5
    |
-LL |     999999u64.clamp(0, 256) as u8; // should still be linted
+LL |     999999u64.clamp(0, 256) as u8;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...
 help: ... or use `try_from` and handle the error accordingly
    |
-LL |     u8::try_from(999999u64.clamp(0, 256)); // should still be linted
+LL |     u8::try_from(999999u64.clamp(0, 256));
    |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: casting `main::E2` to `u8` may truncate the value
-  --> $DIR/cast.rs:158:21
+  --> $DIR/cast.rs:169:21
    |
 LL |             let _ = self as u8;
    |                     ^^^^^^^^^^
@@ -354,7 +354,7 @@ LL |             let _ = u8::try_from(self);
    |                     ~~~~~~~~~~~~~~~~~~
 
 error: casting `main::E2::B` to `u8` will truncate the value
-  --> $DIR/cast.rs:159:21
+  --> $DIR/cast.rs:170:21
    |
 LL |             let _ = Self::B as u8;
    |                     ^^^^^^^^^^^^^
@@ -362,7 +362,7 @@ LL |             let _ = Self::B as u8;
    = note: `-D clippy::cast-enum-truncation` implied by `-D warnings`
 
 error: casting `main::E5` to `i8` may truncate the value
-  --> $DIR/cast.rs:195:21
+  --> $DIR/cast.rs:210:21
    |
 LL |             let _ = self as i8;
    |                     ^^^^^^^^^^
@@ -374,13 +374,13 @@ LL |             let _ = i8::try_from(self);
    |                     ~~~~~~~~~~~~~~~~~~
 
 error: casting `main::E5::A` to `i8` will truncate the value
-  --> $DIR/cast.rs:196:21
+  --> $DIR/cast.rs:211:21
    |
 LL |             let _ = Self::A as i8;
    |                     ^^^^^^^^^^^^^
 
 error: casting `main::E6` to `i16` may truncate the value
-  --> $DIR/cast.rs:210:21
+  --> $DIR/cast.rs:227:21
    |
 LL |             let _ = self as i16;
    |                     ^^^^^^^^^^^
@@ -392,7 +392,7 @@ LL |             let _ = i16::try_from(self);
    |                     ~~~~~~~~~~~~~~~~~~~
 
 error: casting `main::E7` to `usize` may truncate the value on targets with 32-bit wide pointers
-  --> $DIR/cast.rs:225:21
+  --> $DIR/cast.rs:245:21
    |
 LL |             let _ = self as usize;
    |                     ^^^^^^^^^^^^^
@@ -404,7 +404,7 @@ LL |             let _ = usize::try_from(self);
    |                     ~~~~~~~~~~~~~~~~~~~~~
 
 error: casting `main::E10` to `u16` may truncate the value
-  --> $DIR/cast.rs:266:21
+  --> $DIR/cast.rs:291:21
    |
 LL |             let _ = self as u16;
    |                     ^^^^^^^^^^^
@@ -416,7 +416,7 @@ LL |             let _ = u16::try_from(self);
    |                     ~~~~~~~~~~~~~~~~~~~
 
 error: casting `u32` to `u8` may truncate the value
-  --> $DIR/cast.rs:274:13
+  --> $DIR/cast.rs:301:13
    |
 LL |     let c = (q >> 16) as u8;
    |             ^^^^^^^^^^^^^^^
@@ -428,7 +428,7 @@ LL |     let c = u8::try_from(q >> 16);
    |             ~~~~~~~~~~~~~~~~~~~~~
 
 error: casting `u32` to `u8` may truncate the value
-  --> $DIR/cast.rs:277:13
+  --> $DIR/cast.rs:304:13
    |
 LL |     let c = (q / 1000) as u8;
    |             ^^^^^^^^^^^^^^^^

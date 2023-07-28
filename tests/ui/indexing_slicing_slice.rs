@@ -12,8 +12,8 @@ fn main() {
     &x[index..];
     &x[..index];
     &x[index_from..index_to];
-    &x[index_from..][..index_to]; // Two lint reports, one for [index_from..] and another for [..index_to].
-    &x[5..][..10]; // Two lint reports, one for out of bounds [5..] and another for slicing [..10].
+    &x[index_from..][..index_to];
+    &x[5..][..10];
     &x[0..][..3];
     &x[1..][..5];
 
@@ -29,7 +29,7 @@ fn main() {
 
     let v = vec![0; 5];
     &v[10..100];
-    &x[10..][..100]; // Two lint reports, one for [10..] and another for [..100].
+    &x[10..][..100];
     &v[10..];
     &v[..100];
 
