@@ -154,7 +154,7 @@ fn is_value_unfrozen_raw<'tcx>(
             ty::Adt(def, ..) if def.is_union() => false,
             ty::Array(ty, _) => val.unwrap_branch().iter().any(|field| inner(cx, *field, ty)),
             ty::Adt(def, _) if def.is_union() => false,
-            ty::Adt(def, substs) if def.is_enum() => {
+            ty::Adt(def, args) if def.is_enum() => {
                 let (&variant_index, fields) = val.unwrap_branch().split_first().unwrap();
                 let variant_index = VariantIdx::from_u32(variant_index.unwrap_leaf().try_to_u32().ok().unwrap());
                 fields
@@ -164,19 +164,14 @@ fn is_value_unfrozen_raw<'tcx>(
                         def.variants()[variant_index]
                             .fields
                             .iter()
-                            .map(|field| field.ty(cx.tcx, substs)),
+                            .map(|field| field.ty(cx.tcx, args)),
                     )
                     .any(|(field, ty)| inner(cx, field, ty))
             },
-            ty::Adt(def, substs) => val
+            ty::Adt(def, args) => val
                 .unwrap_branch()
                 .iter()
-                .zip(
-                    def.non_enum_variant()
-                        .fields
-                        .iter()
-                        .map(|field| field.ty(cx.tcx, substs)),
-                )
+                .zip(def.non_enum_variant().fields.iter().map(|field| field.ty(cx.tcx, args)))
                 .any(|(field, ty)| inner(cx, *field, ty)),
             ty::Tuple(tys) => val
                 .unwrap_branch()
@@ -217,8 +212,8 @@ fn is_value_unfrozen_raw<'tcx>(
 
 fn is_value_unfrozen_poly<'tcx>(cx: &LateContext<'tcx>, body_id: BodyId, ty: Ty<'tcx>) -> bool {
     let def_id = body_id.hir_id.owner.to_def_id();
-    let substs = ty::InternalSubsts::identity_for_item(cx.tcx, def_id);
-    let instance = ty::Instance::new(def_id, substs);
+    let args = ty::GenericArgs::identity_for_item(cx.tcx, def_id);
+    let instance = ty::Instance::new(def_id, args);
     let cid = rustc_middle::mir::interpret::GlobalId {
         instance,
         promoted: None,
@@ -229,9 +224,9 @@ fn is_value_unfrozen_poly<'tcx>(cx: &LateContext<'tcx>, body_id: BodyId, ty: Ty<
 }
 
 fn is_value_unfrozen_expr<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId, def_id: DefId, ty: Ty<'tcx>) -> bool {
-    let substs = cx.typeck_results().node_substs(hir_id);
+    let args = cx.typeck_results().node_args(hir_id);
 
-    let result = const_eval_resolve(cx.tcx, cx.param_env, ty::UnevaluatedConst::new(def_id, substs), None);
+    let result = const_eval_resolve(cx.tcx, cx.param_env, ty::UnevaluatedConst::new(def_id, args), None);
     is_value_unfrozen_raw(cx, result, ty)
 }
 
@@ -241,7 +236,7 @@ pub fn const_eval_resolve<'tcx>(
     ct: ty::UnevaluatedConst<'tcx>,
     span: Option<Span>,
 ) -> EvalToValTreeResult<'tcx> {
-    match ty::Instance::resolve(tcx, param_env, ct.def, ct.substs) {
+    match ty::Instance::resolve(tcx, param_env, ct.def, ct.args) {
         Ok(Some(instance)) => {
             let cid = GlobalId {
                 instance,
@@ -363,7 +358,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst {
                                 // and, in that case, the definition is *not* generic.
                                 cx.tcx.normalize_erasing_regions(
                                     cx.tcx.param_env(of_trait_def_id),
-                                    cx.tcx.type_of(of_assoc_item).subst_identity(),
+                                    cx.tcx.type_of(of_assoc_item).instantiate_identity(),
                                 ),
                             ))
                             .is_err();

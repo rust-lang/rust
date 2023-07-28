@@ -729,7 +729,7 @@ fn check_code(cx: &LateContext<'_>, text: &str, edition: Edition, span: Span) {
                     false,
                     TerminalUrl::No,
                 );
-                let handler = Handler::with_emitter(false, None, Box::new(emitter));
+                let handler = Handler::with_emitter(Box::new(emitter)).disable_warnings();
                 let sess = ParseSess::with_span_handler(handler, sm);
 
                 let mut parser = match maybe_new_parser_from_source_str(&sess, filename, code) {

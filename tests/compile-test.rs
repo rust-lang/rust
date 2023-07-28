@@ -115,7 +115,9 @@ fn base_config(test_dir: &str) -> compiletest::Config {
         mode: TestMode::Yolo,
         stderr_filters: vec![],
         stdout_filters: vec![],
-        output_conflict_handling: if var_os("BLESS").is_some() || env::args().any(|arg| arg == "--bless") {
+        output_conflict_handling: if var_os("RUSTC_BLESS").is_some_and(|v| v != "0")
+            || env::args().any(|arg| arg == "--bless")
+        {
             OutputConflictHandling::Bless
         } else {
             OutputConflictHandling::Error("cargo uibless".into())

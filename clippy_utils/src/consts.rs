@@ -10,7 +10,7 @@ use rustc_hir::{BinOp, BinOpKind, Block, ConstBlock, Expr, ExprKind, HirId, Item
 use rustc_lexer::tokenize;
 use rustc_lint::LateContext;
 use rustc_middle::mir::interpret::Scalar;
-use rustc_middle::ty::{self, EarlyBinder, FloatTy, List, ScalarInt, SubstsRef, Ty, TyCtxt};
+use rustc_middle::ty::{self, EarlyBinder, FloatTy, GenericArgsRef, List, ScalarInt, Ty, TyCtxt};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::SyntaxContext;
@@ -325,7 +325,7 @@ pub struct ConstEvalLateContext<'a, 'tcx> {
     typeck_results: &'a ty::TypeckResults<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     source: ConstantSource,
-    substs: SubstsRef<'tcx>,
+    args: GenericArgsRef<'tcx>,
 }
 
 impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
@@ -335,7 +335,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
             typeck_results,
             param_env: lcx.param_env,
             source: ConstantSource::Local,
-            substs: List::empty(),
+            args: List::empty(),
         }
     }
 
@@ -471,16 +471,16 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
                     return None;
                 }
 
-                let substs = self.typeck_results.node_substs(id);
-                let substs = if self.substs.is_empty() {
-                    substs
+                let args = self.typeck_results.node_args(id);
+                let args = if self.args.is_empty() {
+                    args
                 } else {
-                    EarlyBinder::bind(substs).subst(self.lcx.tcx, self.substs)
+                    EarlyBinder::bind(args).instantiate(self.lcx.tcx, self.args)
                 };
                 let result = self
                     .lcx
                     .tcx
-                    .const_eval_resolve(self.param_env, mir::UnevaluatedConst::new(def_id, substs), None)
+                    .const_eval_resolve(self.param_env, mir::UnevaluatedConst::new(def_id, args), None)
                     .ok()
                     .map(|val| rustc_middle::mir::ConstantKind::from_value(val, ty))?;
                 let result = miri_to_const(self.lcx, result)?;

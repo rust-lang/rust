@@ -11,8 +11,7 @@ use rustc_hir::{
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty::subst::GenericArgKind;
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, GenericArgKind, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map::Span;
@@ -406,7 +405,7 @@ fn last_statement_borrows<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) 
             && cx
                 .tcx
                 .fn_sig(def_id)
-                .subst_identity()
+                .instantiate_identity()
                 .skip_binder()
                 .output()
                 .walk()

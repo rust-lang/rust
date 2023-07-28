@@ -14,10 +14,9 @@ use rustc_middle::mir::{
     Body, CastKind, NonDivergingIntrinsic, NullOp, Operand, Place, ProjectionElem, Rvalue, Statement, StatementKind,
     Terminator, TerminatorKind,
 };
-use rustc_middle::traits::{ImplSource, ObligationCause};
+use rustc_middle::traits::{BuiltinImplSource, ImplSource, ObligationCause};
 use rustc_middle::ty::adjustment::PointerCoercion;
-use rustc_middle::ty::subst::GenericArgKind;
-use rustc_middle::ty::{self, BoundConstness, TraitRef, Ty, TyCtxt};
+use rustc_middle::ty::{self, BoundConstness, GenericArgKind, TraitRef, Ty, TyCtxt};
 use rustc_semver::RustcVersion;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
@@ -35,7 +34,7 @@ pub fn is_min_const_fn<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, msrv: &Msrv) 
     // impl trait is gone in MIR, so check the return type manually
     check_ty(
         tcx,
-        tcx.fn_sig(def_id).subst_identity().output().skip_binder(),
+        tcx.fn_sig(def_id).instantiate_identity().output().skip_binder(),
         body.local_decls.iter().next().unwrap().source_info.span,
     )?;
 
@@ -412,7 +411,7 @@ fn is_ty_const_destruct<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, body: &Body<'tcx>
 
     if !matches!(
         impl_src,
-        ImplSource::Builtin(_) | ImplSource::Param(_, ty::BoundConstness::ConstIfConst)
+        ImplSource::Builtin(BuiltinImplSource::Misc, _) | ImplSource::Param(ty::BoundConstness::ConstIfConst, _)
     ) {
         return false;
     }

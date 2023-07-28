@@ -52,12 +52,12 @@ pub(super) fn check<'tcx>(
 
         let output_type_implements_default = |fun| {
             let fun_ty = cx.typeck_results().expr_ty(fun);
-            if let ty::FnDef(def_id, substs) = fun_ty.kind() {
-                let output_ty = cx.tcx.fn_sig(def_id).subst(cx.tcx, substs).skip_binder().output();
+            if let ty::FnDef(def_id, args) = fun_ty.kind() {
+                let output_ty = cx.tcx.fn_sig(def_id).instantiate(cx.tcx, args).skip_binder().output();
                 cx.tcx
                     .get_diagnostic_item(sym::Default)
                     .map_or(false, |default_trait_id| {
-                        implements_trait(cx, output_ty, default_trait_id, substs)
+                        implements_trait(cx, output_ty, default_trait_id, args)
                     })
             } else {
                 false

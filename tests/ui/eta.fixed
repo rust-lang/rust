@@ -331,7 +331,7 @@ impl dyn TestTrait + '_ {
 }
 
 // https://github.com/rust-lang/rust-clippy/issues/7746
-fn angle_brackets_and_substs() {
+fn angle_brackets_and_args() {
     let array_opt: Option<&[u8; 3]> = Some(&[4, 8, 7]);
     array_opt.map(<[u8; 3]>::as_slice);
 

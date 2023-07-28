@@ -27,10 +27,10 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr:
             let input_ty = cx.typeck_results().expr_ty(ex);
 
             let cast = if_chain! {
-                if let ty::Adt(_, substs) = input_ty.kind();
-                let input_ty = substs.type_at(0);
-                if let ty::Adt(_, substs) = output_ty.kind();
-                let output_ty = substs.type_at(0);
+                if let ty::Adt(_, args) = input_ty.kind();
+                let input_ty = args.type_at(0);
+                if let ty::Adt(_, args) = output_ty.kind();
+                let output_ty = args.type_at(0);
                 if let ty::Ref(_, output_ty, _) = *output_ty.kind();
                 if input_ty != output_ty;
                 then {

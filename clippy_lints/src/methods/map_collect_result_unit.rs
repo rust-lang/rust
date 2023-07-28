@@ -15,8 +15,8 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, iter: &hir::Expr
     let collect_ret_ty = cx.typeck_results().expr_ty(expr);
     if_chain! {
         if is_type_diagnostic_item(cx, collect_ret_ty, sym::Result);
-        if let ty::Adt(_, substs) = collect_ret_ty.kind();
-        if let Some(result_t) = substs.types().next();
+        if let ty::Adt(_, args) = collect_ret_ty.kind();
+        if let Some(result_t) = args.types().next();
         if result_t.is_unit();
         // get parts for snippet
         then {

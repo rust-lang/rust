@@ -193,7 +193,7 @@ impl LateLintPass<'_> for IncorrectImpls {
                     cx,
                     hir_ty_to_ty(cx.tcx, imp.self_ty),
                     *ord_def_id,
-                    trait_impl.substs,
+                    trait_impl.args,
                 )
         {
             // If the `cmp` call likely needs to be fully qualified in the suggestion
@@ -217,7 +217,7 @@ impl LateLintPass<'_> for IncorrectImpls {
             {} else {
                 // If `Self` and `Rhs` are not the same type, bail. This makes creating a valid
                 // suggestion tons more complex.
-                if let [lhs, rhs, ..] = trait_impl.substs.as_slice() && lhs != rhs {
+                if let [lhs, rhs, ..] = trait_impl.args.as_slice() && lhs != rhs {
                     return;
                 }
 
