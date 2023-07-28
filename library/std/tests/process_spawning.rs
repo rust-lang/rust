@@ -1,38 +1,17 @@
-// run-pass
-
-#![allow(unused_variables)]
-// no-prefer-dynamic
-// ignore-cross-compile
-
 use std::env;
-use std::ffi::OsStr;
 use std::fs;
-use std::path::PathBuf;
 use std::process;
 use std::str;
 
-fn main() {
-    // If we're the child, make sure we were invoked correctly
-    let args: Vec<String> = env::args().collect();
-    if args.len() > 1 && args[1] == "child" {
-        // FIXME: This should check the whole `args[0]` instead of just
-        // checking that it ends_with the executable name. This
-        // is needed because of Windows, which has a different behavior.
-        // See #15149 for more info.
-        let my_path = env::current_exe().unwrap();
-        return assert_eq!(my_path.file_stem(), Some(OsStr::new("mytest")));
-    }
+mod common;
 
-    test();
-}
-
-fn test() {
+#[test]
+fn issue_15149() {
     // If we're the parent, copy our own binary to a new directory.
     let my_path = env::current_exe().unwrap();
-    let my_dir = my_path.parent().unwrap();
 
-    let child_dir = PathBuf::from(env::var_os("RUST_TEST_TMPDIR").unwrap());
-    let child_dir = child_dir.join("issue-15140-child");
+    let temp = common::tmpdir();
+    let child_dir = temp.join("issue-15140-child");
     fs::create_dir_all(&child_dir).unwrap();
 
     let child_path = child_dir.join(&format!("mytest{}", env::consts::EXE_SUFFIX));

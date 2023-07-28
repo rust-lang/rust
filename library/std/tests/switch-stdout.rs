@@ -1,10 +1,9 @@
-// run-pass
-// ignore-wasm (needs file descriptors and env variables)
+#[cfg(any(target_family = "unix", target_family = "windows"))]
 
-use std::env;
 use std::fs::File;
 use std::io::{Read, Write};
-use std::path::PathBuf;
+
+mod common;
 
 #[cfg(unix)]
 fn switch_stdout_to(file: File) {
@@ -35,16 +34,18 @@ fn switch_stdout_to(file: File) {
     }
 }
 
-fn main() {
-    let path = PathBuf::from(env::var_os("RUST_TEST_TMPDIR").unwrap());
-    let path = path.join("switch-stdout-output");
+#[test]
+fn switch_stdout() {
+    let temp = common::tmpdir();
+    let path = temp.join("switch-stdout-output");
     let f = File::create(&path).unwrap();
 
-    println!("foo");
-    std::io::stdout().flush().unwrap();
+    let mut stdout = std::io::stdout();
+    stdout.write(b"foo\n").unwrap();
+    stdout.flush().unwrap();
     switch_stdout_to(f);
-    println!("bar");
-    std::io::stdout().flush().unwrap();
+    stdout.write(b"bar\n").unwrap();
+    stdout.flush().unwrap();
 
     let mut contents = String::new();
     File::open(&path).unwrap().read_to_string(&mut contents).unwrap();
