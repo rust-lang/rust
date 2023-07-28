@@ -48,22 +48,15 @@ use crate::{
 };
 
 pub trait HirWrite: fmt::Write {
-    fn start_location_link(&mut self, location: ModuleDefId);
-    fn end_location_link(&mut self);
+    fn start_location_link(&mut self, _location: ModuleDefId) {}
+    fn end_location_link(&mut self) {}
 }
 
 // String will ignore link metadata
-impl HirWrite for String {
-    fn start_location_link(&mut self, _: ModuleDefId) {}
-
-    fn end_location_link(&mut self) {}
-}
+impl HirWrite for String {}
 
 // `core::Formatter` will ignore metadata
-impl HirWrite for fmt::Formatter<'_> {
-    fn start_location_link(&mut self, _: ModuleDefId) {}
-    fn end_location_link(&mut self) {}
-}
+impl HirWrite for fmt::Formatter<'_> {}
 
 pub struct HirFormatter<'a> {
     pub db: &'a dyn HirDatabase,
