@@ -13,7 +13,7 @@ use std::collections::HashMap;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
 use rustc_ast::token::{BinOpToken, Delimiter, Token, TokenKind};
-use rustc_ast::tokenstream::{TokenStream, TokenTree, TokenTreeCursor};
+use rustc_ast::tokenstream::{RefTokenTreeCursor, TokenStream, TokenTree};
 use rustc_ast::{ast, ptr};
 use rustc_ast_pretty::pprust;
 use rustc_span::{
@@ -394,7 +394,7 @@ pub(crate) fn rewrite_macro_def(
     }
 
     let ts = def.body.tokens.clone();
-    let mut parser = MacroParser::new(ts.into_trees());
+    let mut parser = MacroParser::new(ts.trees());
     let parsed_def = match parser.parse() {
         Some(def) => def,
         None => return snippet,
@@ -736,9 +736,9 @@ impl MacroArgParser {
         self.buf.clear();
     }
 
-    fn add_meta_variable(&mut self, iter: &mut TokenTreeCursor) -> Option<()> {
+    fn add_meta_variable(&mut self, iter: &mut RefTokenTreeCursor<'_>) -> Option<()> {
         match iter.next() {
-            Some(TokenTree::Token(
+            Some(&TokenTree::Token(
                 Token {
                     kind: TokenKind::Ident(name, _),
                     ..
@@ -768,7 +768,7 @@ impl MacroArgParser {
         &mut self,
         inner: Vec<ParsedMacroArg>,
         delim: Delimiter,
-        iter: &mut TokenTreeCursor,
+        iter: &mut RefTokenTreeCursor<'_>,
     ) -> Option<()> {
         let mut buffer = String::new();
         let mut first = true;
@@ -868,11 +868,11 @@ impl MacroArgParser {
 
     /// Returns a collection of parsed macro def's arguments.
     fn parse(mut self, tokens: TokenStream) -> Option<Vec<ParsedMacroArg>> {
-        let mut iter = tokens.into_trees();
+        let mut iter = tokens.trees();
 
         while let Some(tok) = iter.next() {
             match tok {
-                TokenTree::Token(
+                &TokenTree::Token(
                     Token {
                         kind: TokenKind::Dollar,
                         span,
@@ -901,7 +901,7 @@ impl MacroArgParser {
                     self.add_meta_variable(&mut iter)?;
                 }
                 TokenTree::Token(ref t, _) => self.update_buffer(t),
-                TokenTree::Delimited(_delimited_span, delimited, ref tts) => {
+                &TokenTree::Delimited(_delimited_span, delimited, ref tts) => {
                     if !self.buf.is_empty() {
                         if next_space(&self.last_tok.kind) == SpaceState::Always {
                             self.add_separator();
@@ -1119,12 +1119,12 @@ pub(crate) fn macro_style(mac: &ast::MacCall, context: &RewriteContext<'_>) -> D
 
 // A very simple parser that just parses a macros 2.0 definition into its branches.
 // Currently we do not attempt to parse any further than that.
-struct MacroParser {
-    toks: TokenTreeCursor,
+struct MacroParser<'a> {
+    toks: RefTokenTreeCursor<'a>,
 }
 
-impl MacroParser {
-    const fn new(toks: TokenTreeCursor) -> Self {
+impl<'a> MacroParser<'a> {
+    const fn new(toks: RefTokenTreeCursor<'a>) -> Self {
         Self { toks }
     }
 
@@ -1143,9 +1143,9 @@ impl MacroParser {
         let tok = self.toks.next()?;
         let (lo, args_paren_kind) = match tok {
             TokenTree::Token(..) => return None,
-            TokenTree::Delimited(delimited_span, d, _) => (delimited_span.open.lo(), d),
+            &TokenTree::Delimited(delimited_span, d, _) => (delimited_span.open.lo(), d),
         };
-        let args = TokenStream::new(vec![tok]);
+        let args = TokenStream::new(vec![tok.clone()]);
         match self.toks.next()? {
             TokenTree::Token(
                 Token {
