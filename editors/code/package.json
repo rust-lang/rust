@@ -328,6 +328,15 @@
                             "items": {
                                 "type": "object",
                                 "properties": {
+                                    "platform": {
+                                        "type": [
+                                            "null",
+                                            "string",
+                                            "array"
+                                        ],
+                                        "default": null,
+                                        "markdownDescription": "Platform(s) filter like \"win32\" or [\"linux\", \"win32\"]. See [process.platform](https://nodejs.org/api/process.html#processplatform) values."
+                                    },
                                     "mask": {
                                         "type": "string",
                                         "description": "Runnable name mask"
