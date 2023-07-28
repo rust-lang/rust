@@ -1878,7 +1878,6 @@ where
 
     #[test]
     fn add_function_with_fn_arg() {
-        // FIXME: The argument in `bar` is wrong.
         check_assist(
             generate_function,
             r"
@@ -1899,7 +1898,7 @@ fn foo() {
     bar(Baz::new);
 }
 
-fn bar(new: fn) ${0:-> _} {
+fn bar(new: fn() -> Baz) ${0:-> _} {
     todo!()
 }
 ",
