@@ -155,8 +155,6 @@ lint_builtin_unused_doc_comment = unused doc comment
 lint_builtin_while_true = denote infinite loops with `loop {"{"} ... {"}"}`
     .suggestion = use `loop`
 
-lint_cast_ref_to_mut = casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
-
 lint_check_name_deprecated = lint name `{$lint_name}` is deprecated and does not have an effect anymore. Use: {$new_name}
 
 lint_check_name_unknown = unknown lint: `{$lint_name}`
@@ -319,6 +317,8 @@ lint_invalid_nan_comparisons_eq_ne = incorrect NaN comparison, NaN cannot be dir
     .suggestion = use `f32::is_nan()` or `f64::is_nan()` instead
 
 lint_invalid_nan_comparisons_lt_le_gt_ge = incorrect NaN comparison, NaN is not orderable
+
+lint_invalid_reference_casting = casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
 
 lint_lintpass_by_hand = implementing `LintPass` by hand
     .help = try using `declare_lint_pass!` or `impl_lint_pass!` instead

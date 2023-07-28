@@ -1,6 +1,7 @@
 // check-fail
 
 #![feature(ptr_from_ref)]
+#![deny(invalid_reference_casting)]
 
 extern "C" {
     // N.B., mutability can be easily incorrect in FFI calls -- as

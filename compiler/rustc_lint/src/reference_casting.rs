@@ -3,15 +3,16 @@ use rustc_hir::{Expr, ExprKind, MutTy, TyKind, UnOp};
 use rustc_middle::ty;
 use rustc_span::sym;
 
-use crate::{lints::CastRefToMutDiag, LateContext, LateLintPass, LintContext};
+use crate::{lints::InvalidReferenceCastingDiag, LateContext, LateLintPass, LintContext};
 
 declare_lint! {
-    /// The `cast_ref_to_mut` lint checks for casts of `&T` to `&mut T`
+    /// The `invalid_reference_casting` lint checks for casts of `&T` to `&mut T`
     /// without using interior mutability.
     ///
     /// ### Example
     ///
     /// ```rust,compile_fail
+    /// # #![deny(invalid_reference_casting)]
     /// fn x(r: &i32) {
     ///     unsafe {
     ///         *(r as *const i32 as *mut i32) += 1;
@@ -28,14 +29,14 @@ declare_lint! {
     ///
     /// `UnsafeCell` is the only way to obtain aliasable data that is considered
     /// mutable.
-    CAST_REF_TO_MUT,
-    Deny,
+    INVALID_REFERENCE_CASTING,
+    Allow,
     "casts of `&T` to `&mut T` without interior mutability"
 }
 
-declare_lint_pass!(CastRefToMut => [CAST_REF_TO_MUT]);
+declare_lint_pass!(InvalidReferenceCasting => [INVALID_REFERENCE_CASTING]);
 
-impl<'tcx> LateLintPass<'tcx> for CastRefToMut {
+impl<'tcx> LateLintPass<'tcx> for InvalidReferenceCasting {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         let ExprKind::Unary(UnOp::Deref, e) = &expr.kind else {
             return;
@@ -68,7 +69,7 @@ impl<'tcx> LateLintPass<'tcx> for CastRefToMut {
 
         let e = e.peel_blocks();
         if let ty::Ref(..) = cx.typeck_results().node_type(e.hir_id).kind() {
-            cx.emit_spanned_lint(CAST_REF_TO_MUT, expr.span, CastRefToMutDiag);
+            cx.emit_spanned_lint(INVALID_REFERENCE_CASTING, expr.span, InvalidReferenceCastingDiag);
         }
     }
 }
