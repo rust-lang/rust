@@ -20,7 +20,3 @@ OPTIONS:
 ARGS:
     <INPUT>    The input file containing the intrinsics
 ```
-
-The intrinsic.csv is the arm neon tracking google sheet (https://docs.google.com/spreadsheets/d/1MqW1g8c7tlhdRWQixgdWvR4uJHNZzCYAf4V0oHjZkwA/edit#gid=0)
-that contains the intrinsic list. The done percentage column should be renamed to "enabled".
-
