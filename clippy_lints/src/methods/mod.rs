@@ -76,6 +76,7 @@ mod or_then_unwrap;
 mod path_buf_push_overwrite;
 mod range_zip_with_len;
 mod read_line_without_trim;
+mod readonly_write_lock;
 mod repeat_once;
 mod search_is_some;
 mod seek_from_current;
@@ -3507,6 +3508,37 @@ declare_clippy_lint! {
     "checks for usage of `bool::then` in `Iterator::filter_map`"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Looks for calls to `RwLock::write` where the lock is only used for reading.
+    ///
+    /// ### Why is this bad?
+    /// The write portion of `RwLock` is exclusive, meaning that no other thread
+    /// can access the lock while this writer is active.
+    ///
+    /// ### Example
+    /// ```rust
+    /// use std::sync::RwLock;
+    /// fn assert_is_zero(lock: &RwLock<i32>) {
+    ///     let num = lock.write().unwrap();
+    ///     assert_eq!(*num, 0);
+    /// }
+    /// ```
+    ///
+    /// Use instead:
+    /// ```rust
+    /// use std::sync::RwLock;
+    /// fn assert_is_zero(lock: &RwLock<i32>) {
+    ///     let num = lock.read().unwrap();
+    ///     assert_eq!(*num, 0);
+    /// }
+    /// ```
+    #[clippy::version = "1.73.0"]
+    pub READONLY_WRITE_LOCK,
+    nursery,
+    "acquiring a write lock when a read lock would work"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Msrv,
@@ -3645,6 +3677,7 @@ impl_lint_pass!(Methods => [
     STRING_LIT_CHARS_ANY,
     ITER_SKIP_ZERO,
     FILTER_MAP_BOOL_THEN,
+    READONLY_WRITE_LOCK
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -4188,6 +4221,9 @@ impl Methods {
                         range_zip_with_len::check(cx, expr, iter_recv, arg);
                     }
                 },
+                ("write", []) => {
+                    readonly_write_lock::check(cx, expr, recv);
+                }
                 _ => {},
             }
         }

@@ -5181,6 +5181,7 @@ Released 2018-09-13
 [`rc_mutex`]: https://rust-lang.github.io/rust-clippy/master/index.html#rc_mutex
 [`read_line_without_trim`]: https://rust-lang.github.io/rust-clippy/master/index.html#read_line_without_trim
 [`read_zero_byte_vec`]: https://rust-lang.github.io/rust-clippy/master/index.html#read_zero_byte_vec
+[`readonly_write_lock`]: https://rust-lang.github.io/rust-clippy/master/index.html#readonly_write_lock
 [`recursive_format_impl`]: https://rust-lang.github.io/rust-clippy/master/index.html#recursive_format_impl
 [`redundant_allocation`]: https://rust-lang.github.io/rust-clippy/master/index.html#redundant_allocation
 [`redundant_async_block`]: https://rust-lang.github.io/rust-clippy/master/index.html#redundant_async_block
