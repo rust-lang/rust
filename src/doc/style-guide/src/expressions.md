@@ -663,7 +663,8 @@ never use a block (unless the block is empty).
 
 If the right-hand side consists of multiple statements, or has line comments,
 or the start of the line does not fit on the same line as the left-hand side,
-use a block.
+use a block. Do not flatten a right-hand side block containing a single macro call
+because its expanded form could contain a trailing semicolon.
 
 Block-indent the body of a block arm.
 
@@ -686,6 +687,10 @@ match foo {
     bar => {}
     // Trailing comma on last item.
     foo => bar,
+    baz => qux!(),
+    lorem => {
+        ipsum!()
+    }
 }
 ```
 
