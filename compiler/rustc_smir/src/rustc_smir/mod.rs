@@ -132,7 +132,7 @@ impl<'tcx> Stable<'tcx> for mir::Rvalue<'tcx> {
         use mir::Rvalue::*;
         match self {
             Use(op) => stable_mir::mir::Rvalue::Use(op.stable(tables)),
-            Repeat(_, _) => todo!(),
+            Repeat(op, len) => stable_mir::mir::Rvalue::Repeat(op.stable(tables), opaque(len)),
             Ref(region, kind, place) => stable_mir::mir::Rvalue::Ref(
                 opaque(region),
                 kind.stable(tables),
@@ -145,7 +145,11 @@ impl<'tcx> Stable<'tcx> for mir::Rvalue<'tcx> {
                 stable_mir::mir::Rvalue::AddressOf(mutability.stable(tables), place.stable(tables))
             }
             Len(place) => stable_mir::mir::Rvalue::Len(place.stable(tables)),
-            Cast(_, _, _) => todo!(),
+            Cast(cast_kind, op, ty) => stable_mir::mir::Rvalue::Cast(
+                cast_kind.stable(tables),
+                op.stable(tables),
+                tables.intern_ty(*ty),
+            ),
             BinaryOp(bin_op, ops) => stable_mir::mir::Rvalue::BinaryOp(
                 bin_op.stable(tables),
                 ops.0.stable(tables),
@@ -163,8 +167,13 @@ impl<'tcx> Stable<'tcx> for mir::Rvalue<'tcx> {
                 stable_mir::mir::Rvalue::UnaryOp(un_op.stable(tables), op.stable(tables))
             }
             Discriminant(place) => stable_mir::mir::Rvalue::Discriminant(place.stable(tables)),
-            Aggregate(_, _) => todo!(),
-            ShallowInitBox(_, _) => todo!(),
+            Aggregate(agg_kind, operands) => {
+                let operands = operands.iter().map(|op| op.stable(tables)).collect();
+                stable_mir::mir::Rvalue::Aggregate(agg_kind.stable(tables), operands)
+            }
+            ShallowInitBox(op, ty) => {
+                stable_mir::mir::Rvalue::ShallowInitBox(op.stable(tables), tables.intern_ty(*ty))
+            }
             CopyForDeref(place) => stable_mir::mir::Rvalue::CopyForDeref(place.stable(tables)),
         }
     }
@@ -474,6 +483,40 @@ impl<'tcx> Stable<'tcx> for mir::UnOp {
         match self {
             UnOp::Not => stable_mir::mir::UnOp::Not,
             UnOp::Neg => stable_mir::mir::UnOp::Neg,
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for mir::AggregateKind<'tcx> {
+    type T = stable_mir::mir::AggregateKind;
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        match self {
+            mir::AggregateKind::Array(ty) => {
+                stable_mir::mir::AggregateKind::Array(tables.intern_ty(*ty))
+            }
+            mir::AggregateKind::Tuple => stable_mir::mir::AggregateKind::Tuple,
+            mir::AggregateKind::Adt(def_id, var_idx, generic_arg, user_ty_index, field_idx) => {
+                stable_mir::mir::AggregateKind::Adt(
+                    rustc_internal::adt_def(*def_id),
+                    var_idx.index(),
+                    generic_arg.stable(tables),
+                    user_ty_index.map(|idx| idx.index()),
+                    field_idx.map(|idx| idx.index()),
+                )
+            }
+            mir::AggregateKind::Closure(def_id, generic_arg) => {
+                stable_mir::mir::AggregateKind::Closure(
+                    rustc_internal::closure_def(*def_id),
+                    generic_arg.stable(tables),
+                )
+            }
+            mir::AggregateKind::Generator(def_id, generic_arg, movability) => {
+                stable_mir::mir::AggregateKind::Generator(
+                    rustc_internal::generator_def(*def_id),
+                    generic_arg.stable(tables),
+                    movability.stable(tables),
+                )
+            }
         }
     }
 }
