@@ -24,9 +24,9 @@ pub(super) fn check(cx: &LateContext<'_>, receiver: &Expr<'_>, call_span: Span) 
 
     if let Some(Adjustment { target: recv_ty, .. }) = recv_adjusts.last()
         && let ty::Ref(_, ty, _) = recv_ty.kind()
-        && let ty::Adt(adt, substs) = ty.kind()
+        && let ty::Adt(adt, args) = ty.kind()
         && adt.is_box()
-        && is_dyn_any(cx, substs.type_at(0))
+        && is_dyn_any(cx, args.type_at(0))
     {
         span_lint_and_then(
             cx,

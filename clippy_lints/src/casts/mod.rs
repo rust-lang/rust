@@ -181,6 +181,14 @@ declare_clippy_lint! {
     /// ### Why is this bad?
     /// It's just unnecessary.
     ///
+    /// ### Known problems
+    /// When the expression on the left is a function call, the lint considers the return type to be
+    /// a type alias if it's aliased through a `use` statement
+    /// (like `use std::io::Result as IoResult`). It will not lint such cases.
+    ///
+    /// This check is also rather primitive. It will only work on primitive types without any
+    /// intermediate references, raw pointers and trait objects may or may not work.
+    ///
     /// ### Example
     /// ```rust
     /// let _ = 2i32 as i32;

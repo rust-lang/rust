@@ -16,12 +16,23 @@ fn unwrap_option_some() {
     Some(1).expect("this never happens");
 }
 
+#[rustfmt::skip] // force rustfmt not to remove braces in `|| { 234 }`
 fn unwrap_option_none() {
     let _val = None::<()>.unwrap();
     let _val = None::<()>.expect("this always happens");
+    let _val: String = None.unwrap_or_default();
+    let _val: u16 = None.unwrap_or(234);
+    let _val: u16 = None.unwrap_or_else(|| 234);
+    let _val: u16 = None.unwrap_or_else(|| { 234 });
+    let _val: u16 = None.unwrap_or_else(|| -> u16 { 234 });
 
     None::<()>.unwrap();
     None::<()>.expect("this always happens");
+    None::<String>.unwrap_or_default();
+    None::<u16>.unwrap_or(234);
+    None::<u16>.unwrap_or_else(|| 234);
+    None::<u16>.unwrap_or_else(|| { 234 });
+    None::<u16>.unwrap_or_else(|| -> u16 { 234 });
 }
 
 fn unwrap_result_ok() {

@@ -5,7 +5,6 @@
 )]
 #![warn(clippy::expl_impl_clone_on_copy)]
 
-
 #[derive(Copy)]
 struct Qux;
 

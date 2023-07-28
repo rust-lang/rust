@@ -52,6 +52,36 @@ fn main() {
         let v1: Vec<[u32; 2]> = t1.iter().map(|&(a, b)| [a, b]).collect();
         let t2: Vec<(u32, u32)> = v1.iter().map(|&[a, b]| (a, b)).collect();
     }
+    // FP #11082; needs discussion
+    let (a, b) = (1.0f64, 2.0f64);
+    let _: &[f64] = &[a, b];
+    // FP #11085; impossible to fix
+    let [src, dest]: [_; 2] = [1, 2];
+    (src, dest);
+    // FP #11100
+    fn issue_11100_array_to_tuple(this: [&mut i32; 2]) -> (&i32, &mut i32) {
+        let [input, output] = this;
+        (input, output)
+    }
+
+    fn issue_11100_tuple_to_array<'a>(this: (&'a mut i32, &'a mut i32)) -> [&'a i32; 2] {
+        let (input, output) = this;
+        [input, output]
+    }
+    // FP #11124
+    // tuple=>array
+    let (a, b) = (1, 2);
+    [a, b];
+    let x = a;
+    // array=>tuple
+    let [a, b] = [1, 2];
+    (a, b);
+    let x = a;
+    // FP #11144
+    let (a, (b, c)) = (1, (2, 3));
+    [a, c];
+    let [[a, b], [c, d]] = [[1, 2], [3, 4]];
+    (a, c);
 }
 
 #[clippy::msrv = "1.70.0"]

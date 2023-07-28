@@ -4,6 +4,11 @@ error: `filter(..).map(..)` can be simplified as `filter_map(..)`
 LL |     let _ = (0..).filter(|n| to_opt(*n).is_some()).map(|a| to_opt(a).unwrap());
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `filter_map(|a| to_opt(a))`
    |
+note: the suggestion might change the behavior of the program when merging `filter` and `map`, because this expression potentially contains side effects and will only execute once
+  --> $DIR/manual_filter_map.rs:9:30
+   |
+LL |     let _ = (0..).filter(|n| to_opt(*n).is_some()).map(|a| to_opt(a).unwrap());
+   |                              ^^^^^^^^^^
    = note: `-D clippy::manual-filter-map` implied by `-D warnings`
 
 error: `filter(..).map(..)` can be simplified as `filter_map(..)`
@@ -11,12 +16,24 @@ error: `filter(..).map(..)` can be simplified as `filter_map(..)`
    |
 LL |     let _ = (0..).filter(|&n| to_opt(n).is_some()).map(|a| to_opt(a).expect("hi"));
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `filter_map(|a| to_opt(a))`
+   |
+note: the suggestion might change the behavior of the program when merging `filter` and `map`, because this expression potentially contains side effects and will only execute once
+  --> $DIR/manual_filter_map.rs:12:31
+   |
+LL |     let _ = (0..).filter(|&n| to_opt(n).is_some()).map(|a| to_opt(a).expect("hi"));
+   |                               ^^^^^^^^^
 
 error: `filter(..).map(..)` can be simplified as `filter_map(..)`
   --> $DIR/manual_filter_map.rs:15:19
    |
 LL |     let _ = (0..).filter(|&n| to_res(n).is_ok()).map(|a| to_res(a).unwrap_or(1));
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `filter_map(|a| to_res(a).ok())`
+   |
+note: the suggestion might change the behavior of the program when merging `filter` and `map`, because this expression potentially contains side effects and will only execute once
+  --> $DIR/manual_filter_map.rs:15:31
+   |
+LL |     let _ = (0..).filter(|&n| to_res(n).is_ok()).map(|a| to_res(a).unwrap_or(1));
+   |                               ^^^^^^^^^
 
 error: `filter(..).map(..)` can be simplified as `filter_map(..)`
   --> $DIR/manual_filter_map.rs:18:10
@@ -25,6 +42,12 @@ LL |           .filter(|&x| to_ref(to_opt(x)).is_some())
    |  __________^
 LL | |         .map(|y| to_ref(to_opt(y)).unwrap());
    | |____________________________________________^ help: try: `filter_map(|y| *to_ref(to_opt(y)))`
+   |
+note: the suggestion might change the behavior of the program when merging `filter` and `map`, because this expression potentially contains side effects and will only execute once
+  --> $DIR/manual_filter_map.rs:18:22
+   |
+LL |         .filter(|&x| to_ref(to_opt(x)).is_some())
+   |                      ^^^^^^^^^^^^^^^^^
 
 error: `filter(..).map(..)` can be simplified as `filter_map(..)`
   --> $DIR/manual_filter_map.rs:21:10
@@ -33,6 +56,12 @@ LL |           .filter(|x| to_ref(to_opt(*x)).is_some())
    |  __________^
 LL | |         .map(|y| to_ref(to_opt(y)).unwrap());
    | |____________________________________________^ help: try: `filter_map(|y| *to_ref(to_opt(y)))`
+   |
+note: the suggestion might change the behavior of the program when merging `filter` and `map`, because this expression potentially contains side effects and will only execute once
+  --> $DIR/manual_filter_map.rs:21:21
+   |
+LL |         .filter(|x| to_ref(to_opt(*x)).is_some())
+   |                     ^^^^^^^^^^^^^^^^^^
 
 error: `filter(..).map(..)` can be simplified as `filter_map(..)`
   --> $DIR/manual_filter_map.rs:25:10
@@ -41,6 +70,12 @@ LL |           .filter(|&x| to_ref(to_res(x)).is_ok())
    |  __________^
 LL | |         .map(|y| to_ref(to_res(y)).unwrap());
    | |____________________________________________^ help: try: `filter_map(|y| to_ref(to_res(y)).ok())`
+   |
+note: the suggestion might change the behavior of the program when merging `filter` and `map`, because this expression potentially contains side effects and will only execute once
+  --> $DIR/manual_filter_map.rs:25:22
+   |
+LL |         .filter(|&x| to_ref(to_res(x)).is_ok())
+   |                      ^^^^^^^^^^^^^^^^^
 
 error: `filter(..).map(..)` can be simplified as `filter_map(..)`
   --> $DIR/manual_filter_map.rs:28:10
@@ -49,6 +84,12 @@ LL |           .filter(|x| to_ref(to_res(*x)).is_ok())
    |  __________^
 LL | |         .map(|y| to_ref(to_res(y)).unwrap());
    | |____________________________________________^ help: try: `filter_map(|y| to_ref(to_res(y)).ok())`
+   |
+note: the suggestion might change the behavior of the program when merging `filter` and `map`, because this expression potentially contains side effects and will only execute once
+  --> $DIR/manual_filter_map.rs:28:21
+   |
+LL |         .filter(|x| to_ref(to_res(*x)).is_ok())
+   |                     ^^^^^^^^^^^^^^^^^^
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
   --> $DIR/manual_filter_map.rs:34:27
@@ -75,6 +116,12 @@ error: `find(..).map(..)` can be simplified as `find_map(..)`
    |
 LL |     iter::<Option<&String>>().find(|&x| to_ref(x).is_some()).map(|y| to_ref(y).cloned().unwrap());
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|y| to_ref(y).cloned())`
+   |
+note: the suggestion might change the behavior of the program when merging `filter` and `map`, because this expression potentially contains side effects and will only execute once
+  --> $DIR/manual_filter_map.rs:37:41
+   |
+LL |     iter::<Option<&String>>().find(|&x| to_ref(x).is_some()).map(|y| to_ref(y).cloned().unwrap());
+   |                                         ^^^^^^^^^
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
   --> $DIR/manual_filter_map.rs:39:30
@@ -117,6 +164,12 @@ error: `find(..).map(..)` can be simplified as `find_map(..)`
    |
 LL |     iter::<Result<&String, ()>>().find(|&x| to_ref(x).is_ok()).map(|y| to_ref(y).cloned().unwrap());
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|y| to_ref(y).cloned().ok())`
+   |
+note: the suggestion might change the behavior of the program when merging `filter` and `map`, because this expression potentially contains side effects and will only execute once
+  --> $DIR/manual_filter_map.rs:45:45
+   |
+LL |     iter::<Result<&String, ()>>().find(|&x| to_ref(x).is_ok()).map(|y| to_ref(y).cloned().unwrap());
+   |                                             ^^^^^^^^^
 
 error: `filter(..).map(..)` can be simplified as `filter_map(..)`
   --> $DIR/manual_filter_map.rs:93:10
@@ -190,5 +243,23 @@ LL |           .filter(|f| f.result_field.is_ok())
 LL | |         .map(|f| f.result_field.to_owned().unwrap());
    | |____________________________________________________^ help: try: `filter_map(|f| f.result_field.to_owned().ok())`
 
-error: aborting due to 27 previous errors
+error: `filter(..).map(..)` can be simplified as `filter_map(..)`
+  --> $DIR/manual_filter_map.rs:146:27
+   |
+LL |       let _x = iter.clone().filter(|x| matches!(x, Enum::A(_))).map(|x| match x {
+   |  ___________________________^
+LL | |         Enum::A(s) => s,
+LL | |         _ => unreachable!(),
+LL | |     });
+   | |______^ help: try: `filter_map(|x| match x { Enum::A(s) => Some(s), _ => None })`
+
+error: `filter(..).map(..)` can be simplified as `filter_map(..)`
+  --> $DIR/manual_filter_map.rs:156:10
+   |
+LL |           .filter(|x| matches!(x, Enum::A(_)))
+   |  __________^
+LL | |         .map(|x| if let Enum::A(s) = x { s } else { unreachable!() });
+   | |_____________________________________________________________________^ help: try: `filter_map(|x| match x { Enum::A(s) => Some(s), _ => None })`
+
+error: aborting due to 29 previous errors
 

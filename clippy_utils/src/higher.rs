@@ -138,6 +138,7 @@ impl<'hir> IfLet<'hir> {
 }
 
 /// An `if let` or `match` expression. Useful for lints that trigger on one or the other.
+#[derive(Debug)]
 pub enum IfLetOrMatch<'hir> {
     /// Any `match` expression
     Match(&'hir Expr<'hir>, &'hir [Arm<'hir>], MatchSource),

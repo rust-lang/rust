@@ -1,21 +1,29 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::visitors::for_each_local_use_after_expr;
 use clippy_utils::{is_from_proc_macro, path_to_local};
+use itertools::Itertools;
 use rustc_ast::LitKind;
-use rustc_hir::{Expr, ExprKind, HirId, Node, Pat};
+use rustc_hir::{Expr, ExprKind, Node, PatKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty;
+use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use std::iter::once;
+use std::ops::ControlFlow;
 
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for tuple<=>array conversions that are not done with `.into()`.
     ///
     /// ### Why is this bad?
-    /// It may be unnecessary complexity. `.into()` works for converting tuples
-    /// <=> arrays of up to 12 elements and may convey intent more clearly.
+    /// It may be unnecessary complexity. `.into()` works for converting tuples<=> arrays of up to
+    /// 12 elements and conveys the intent more clearly, while also leaving less room for hard to
+    /// spot bugs!
+    ///
+    /// ### Known issues
+    /// The suggested code may hide potential asymmetry in some cases. See
+    /// [#11085](https://github.com/rust-lang/rust-clippy/issues/11085) for more info.
     ///
     /// ### Example
     /// ```rust,ignore
@@ -29,7 +37,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.72.0"]
     pub TUPLE_ARRAY_CONVERSIONS,
-    pedantic,
+    nursery,
     "checks for tuple<=>array conversions that are not done with `.into()`"
 }
 impl_lint_pass!(TupleArrayConversions => [TUPLE_ARRAY_CONVERSIONS]);
@@ -41,130 +49,152 @@ pub struct TupleArrayConversions {
 
 impl LateLintPass<'_> for TupleArrayConversions {
     fn check_expr<'tcx>(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
-        if !in_external_macro(cx.sess(), expr.span) && self.msrv.meets(msrvs::TUPLE_ARRAY_CONVERSIONS) {
-            match expr.kind {
-                ExprKind::Array(elements) if (1..=12).contains(&elements.len()) => check_array(cx, expr, elements),
-                ExprKind::Tup(elements) if (1..=12).contains(&elements.len()) => check_tuple(cx, expr, elements),
-                _ => {},
-            }
+        if in_external_macro(cx.sess(), expr.span) || !self.msrv.meets(msrvs::TUPLE_ARRAY_CONVERSIONS) {
+            return;
+        }
+
+        match expr.kind {
+            ExprKind::Array(elements) if (1..=12).contains(&elements.len()) => check_array(cx, expr, elements),
+            ExprKind::Tup(elements) if (1..=12).contains(&elements.len()) => check_tuple(cx, expr, elements),
+            _ => {},
         }
     }
 
     extract_msrv_attr!(LateContext);
 }
 
-#[expect(
-    clippy::blocks_in_if_conditions,
-    reason = "not a FP, but this is much easier to understand"
-)]
 fn check_array<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, elements: &'tcx [Expr<'tcx>]) {
-    if should_lint(
-        cx,
-        elements,
-        // This is cursed.
-        Some,
-        |(first_id, local)| {
-            if let Node::Pat(pat) = local
-                && let parent = parent_pat(cx, pat)
-                && parent.hir_id == first_id
-            {
-                return matches!(
-                    cx.typeck_results().pat_ty(parent).peel_refs().kind(),
-                    ty::Tuple(len) if len.len() == elements.len()
-                );
-            }
+    let (ty::Array(ty, _) | ty::Slice(ty)) = cx.typeck_results().expr_ty(expr).kind() else {
+        unreachable!("`expr` must be an array or slice due to `ExprKind::Array`");
+    };
 
-            false
-        },
-    ) || should_lint(
-        cx,
-        elements,
-        |(i, expr)| {
-            if let ExprKind::Field(path, field) = expr.kind && field.as_str() == i.to_string() {
-                return Some((i, path));
-            };
-
-            None
-        },
-        |(first_id, local)| {
-            if let Node::Pat(pat) = local
-                && let parent = parent_pat(cx, pat)
-                && parent.hir_id == first_id
-            {
-                return matches!(
-                    cx.typeck_results().pat_ty(parent).peel_refs().kind(),
-                    ty::Tuple(len) if len.len() == elements.len()
-                );
-            }
-
-            false
-        },
-    ) {
-        emit_lint(cx, expr, ToType::Array);
+    if let [first, ..] = elements
+        && let Some(locals) = (match first.kind {
+            ExprKind::Field(_, _) => elements
+                .iter()
+                .enumerate()
+                .map(|(i, f)| -> Option<&'tcx Expr<'tcx>> {
+                    let ExprKind::Field(lhs, ident) = f.kind else {
+                        return None;
+                    };
+                    (ident.name.as_str() == i.to_string()).then_some(lhs)
+                })
+                .collect::<Option<Vec<_>>>(),
+            ExprKind::Path(_) => Some(elements.iter().collect()),
+            _ => None,
+        })
+        && all_bindings_are_for_conv(cx, &[*ty], expr, elements, &locals, ToType::Array)
+        && !is_from_proc_macro(cx, expr)
+    {
+        span_lint_and_help(
+            cx,
+            TUPLE_ARRAY_CONVERSIONS,
+            expr.span,
+            "it looks like you're trying to convert a tuple to an array",
+            None,
+            "use `.into()` instead, or `<[T; N]>::from` if type annotations are needed",
+        );
     }
 }
 
-#[expect(
-    clippy::blocks_in_if_conditions,
-    reason = "not a FP, but this is much easier to understand"
-)]
-#[expect(clippy::cast_possible_truncation)]
 fn check_tuple<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, elements: &'tcx [Expr<'tcx>]) {
-    if should_lint(cx, elements, Some, |(first_id, local)| {
-        if let Node::Pat(pat) = local
-                && let parent = parent_pat(cx, pat)
-                && parent.hir_id == first_id
-            {
-                return matches!(
-                    cx.typeck_results().pat_ty(parent).peel_refs().kind(),
-                    ty::Array(_, len) if len.eval_target_usize(cx.tcx, cx.param_env) as usize == elements.len()
-                );
-            }
+    if let ty::Tuple(tys) = cx.typeck_results().expr_ty(expr).kind()
+        && let [first, ..] = elements
+        // Fix #11100
+        && tys.iter().all_equal()
+        && let Some(locals) = (match first.kind {
+            ExprKind::Index(_, _) => elements
+                .iter()
+                .enumerate()
+                .map(|(i, i_expr)| -> Option<&'tcx Expr<'tcx>> {
+                    if let ExprKind::Index(lhs, index) = i_expr.kind
+                        && let ExprKind::Lit(lit) = index.kind
+                        && let LitKind::Int(val, _) = lit.node
+                    {
+                        return (val == i as u128).then_some(lhs);
+                    };
 
-        false
-    }) || should_lint(
-        cx,
-        elements,
-        |(i, expr)| {
-            if let ExprKind::Index(path, index) = expr.kind
-                && let ExprKind::Lit(lit) = index.kind
-                && let LitKind::Int(val, _) = lit.node
-                && val as usize == i
-            {
-                return Some((i, path));
-            };
-
-            None
-        },
-        |(first_id, local)| {
-            if let Node::Pat(pat) = local
-                && let parent = parent_pat(cx, pat)
-                && parent.hir_id == first_id
-            {
-                return matches!(
-                    cx.typeck_results().pat_ty(parent).peel_refs().kind(),
-                    ty::Array(_, len) if len.eval_target_usize(cx.tcx, cx.param_env) as usize == elements.len()
-                );
-            }
-
-            false
-        },
-    ) {
-        emit_lint(cx, expr, ToType::Tuple);
+                    None
+                })
+                .collect::<Option<Vec<_>>>(),
+            ExprKind::Path(_) => Some(elements.iter().collect()),
+            _ => None,
+        })
+        && all_bindings_are_for_conv(cx, tys, expr, elements, &locals, ToType::Tuple)
+        && !is_from_proc_macro(cx, expr)
+    {
+        span_lint_and_help(
+            cx,
+            TUPLE_ARRAY_CONVERSIONS,
+            expr.span,
+            "it looks like you're trying to convert an array to a tuple",
+            None,
+            "use `.into()` instead, or `<(T0, T1, ..., Tn)>::from` if type annotations are needed",
+        );
     }
 }
 
-/// Walks up the `Pat` until it's reached the final containing `Pat`.
-fn parent_pat<'tcx>(cx: &LateContext<'tcx>, start: &'tcx Pat<'tcx>) -> &'tcx Pat<'tcx> {
-    let mut end = start;
-    for (_, node) in cx.tcx.hir().parent_iter(start.hir_id) {
-        if let Node::Pat(pat) = node {
-            end = pat;
-        } else {
-            break;
-        }
-    }
-    end
+/// Checks that every binding in `elements` comes from the same parent `Pat` with the kind if there
+/// is a parent `Pat`. Returns false in any of the following cases:
+/// * `kind` does not match `pat.kind`
+/// * one or more elements in `elements` is not a binding
+/// * one or more bindings does not have the same parent `Pat`
+/// * one or more bindings are used after `expr`
+/// * the bindings do not all have the same type
+#[expect(clippy::cast_possible_truncation)]
+fn all_bindings_are_for_conv<'tcx>(
+    cx: &LateContext<'tcx>,
+    final_tys: &[Ty<'tcx>],
+    expr: &Expr<'_>,
+    elements: &[Expr<'_>],
+    locals: &[&Expr<'_>],
+    kind: ToType,
+) -> bool {
+    let Some(locals) = locals.iter().map(|e| path_to_local(e)).collect::<Option<Vec<_>>>() else {
+        return false;
+    };
+    let Some(local_parents) = locals
+        .iter()
+        .map(|&l| cx.tcx.hir().find_parent(l))
+        .collect::<Option<Vec<_>>>()
+    else {
+        return false;
+    };
+
+    local_parents
+        .iter()
+        .map(|node| match node {
+            Node::Pat(pat) => kind.eq(&pat.kind).then_some(pat.hir_id),
+            Node::Local(l) => Some(l.hir_id),
+            _ => None,
+        })
+        .all_equal()
+        // Fix #11124, very convenient utils function! ❤️
+        && locals
+            .iter()
+            .all(|&l| for_each_local_use_after_expr(cx, l, expr.hir_id, |_| ControlFlow::Break::<()>(())).is_continue())
+        && local_parents.first().is_some_and(|node| {
+            let Some(ty) = match node {
+                Node::Pat(pat) => Some(pat.hir_id),
+                Node::Local(l) => Some(l.hir_id),
+                _ => None,
+            }
+            .map(|hir_id| cx.typeck_results().node_type(hir_id)) else {
+                return false;
+            };
+            match (kind, ty.kind()) {
+                // Ensure the final type and the original type have the same length, and that there
+                // is no implicit `&mut`<=>`&` anywhere (#11100). Bit ugly, I know, but it works.
+                (ToType::Array, ty::Tuple(tys)) => {
+                    tys.len() == elements.len() && tys.iter().chain(final_tys.iter().copied()).all_equal()
+                },
+                (ToType::Tuple, ty::Array(ty, len)) => {
+                    len.eval_target_usize(cx.tcx, cx.param_env) as usize == elements.len()
+                        && final_tys.iter().chain(once(ty)).all_equal()
+                },
+                _ => false,
+            }
+        })
 }
 
 #[derive(Clone, Copy)]
@@ -173,61 +203,11 @@ enum ToType {
     Tuple,
 }
 
-impl ToType {
-    fn msg(self) -> &'static str {
+impl PartialEq<PatKind<'_>> for ToType {
+    fn eq(&self, other: &PatKind<'_>) -> bool {
         match self {
-            ToType::Array => "it looks like you're trying to convert a tuple to an array",
-            ToType::Tuple => "it looks like you're trying to convert an array to a tuple",
+            ToType::Array => matches!(other, PatKind::Tuple(_, _)),
+            ToType::Tuple => matches!(other, PatKind::Slice(_, _, _)),
         }
     }
-
-    fn help(self) -> &'static str {
-        match self {
-            ToType::Array => "use `.into()` instead, or `<[T; N]>::from` if type annotations are needed",
-            ToType::Tuple => "use `.into()` instead, or `<(T0, T1, ..., Tn)>::from` if type annotations are needed",
-        }
-    }
-}
-
-fn emit_lint<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, to_type: ToType) -> bool {
-    if !is_from_proc_macro(cx, expr) {
-        span_lint_and_help(
-            cx,
-            TUPLE_ARRAY_CONVERSIONS,
-            expr.span,
-            to_type.msg(),
-            None,
-            to_type.help(),
-        );
-
-        return true;
-    }
-
-    false
-}
-
-fn should_lint<'tcx>(
-    cx: &LateContext<'tcx>,
-    elements: &'tcx [Expr<'tcx>],
-    map: impl FnMut((usize, &'tcx Expr<'tcx>)) -> Option<(usize, &Expr<'_>)>,
-    predicate: impl FnMut((HirId, &Node<'tcx>)) -> bool,
-) -> bool {
-    if let Some(elements) = elements
-            .iter()
-            .enumerate()
-            .map(map)
-            .collect::<Option<Vec<_>>>()
-        && let Some(locals) = elements
-            .iter()
-            .map(|(_, element)| path_to_local(element).and_then(|local| cx.tcx.hir().find(local)))
-            .collect::<Option<Vec<_>>>()
-        && let [first, rest @ ..] = &*locals
-        && let Node::Pat(first_pat) = first
-        && let parent = parent_pat(cx, first_pat).hir_id
-        && rest.iter().chain(once(first)).map(|i| (parent, i)).all(predicate)
-    {
-        return true;
-    }
-
-    false
 }

@@ -37,6 +37,23 @@ mod issue10459 {
     }
 }
 
+mod issue9695 {
+    use std::future::Future;
+
+    async fn f() {}
+    async fn f2() {}
+    async fn f3() {}
+
+    fn needs_async_fn<F: Future<Output = ()>>(_: fn() -> F) {}
+
+    fn test() {
+        let x = f;
+        needs_async_fn(x); // async needed in f
+        needs_async_fn(f2); // async needed in f2
+        f3(); // async not needed in f3
+    }
+}
+
 async fn foo() -> i32 {
     4
 }

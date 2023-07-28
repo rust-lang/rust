@@ -28,6 +28,9 @@ use std::iter;
 
 use crate::{match_def_path, path_res, paths};
 
+mod type_certainty;
+pub use type_certainty::expr_type_is_certain;
+
 /// Checks if the given type implements copy.
 pub fn is_copy<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
     ty.is_copy_modulo_regions(cx.tcx, cx.param_env)
@@ -739,7 +742,11 @@ fn sig_for_projection<'tcx>(cx: &LateContext<'tcx>, ty: AliasTy<'tcx>) -> Option
     let mut output = None;
     let lang_items = cx.tcx.lang_items();
 
-    for (pred, _) in cx.tcx.explicit_item_bounds(ty.def_id).iter_instantiated_copied(cx.tcx, ty.args) {
+    for (pred, _) in cx
+        .tcx
+        .explicit_item_bounds(ty.def_id)
+        .iter_instantiated_copied(cx.tcx, ty.args)
+    {
         match pred.kind().skip_binder() {
             ty::ClauseKind::Trait(p)
                 if (lang_items.fn_trait() == Some(p.def_id())

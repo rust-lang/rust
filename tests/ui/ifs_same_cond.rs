@@ -46,6 +46,10 @@ fn ifs_same_cond() {
         // ok, functions
     } else if v.len() == 42 {
     }
+
+    if let Some(env1) = option_env!("ENV1") {
+    } else if let Some(env2) = option_env!("ENV2") {
+    }
 }
 
 fn issue10272() {

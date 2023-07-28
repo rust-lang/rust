@@ -65,6 +65,7 @@ mod declared_lints;
 mod renamed_lints;
 
 // begin lints modules, do not remove this comment, it’s used in `update_lints`
+mod absolute_paths;
 mod allow_attributes;
 mod almost_complete_range;
 mod approx_const;
@@ -120,6 +121,7 @@ mod entry;
 mod enum_clike;
 mod enum_variants;
 mod equatable_if_let;
+mod error_impl_error;
 mod escape;
 mod eta_reduction;
 mod excessive_bools;
@@ -136,6 +138,7 @@ mod format_args;
 mod format_impl;
 mod format_push_string;
 mod formatting;
+mod four_forward_slashes;
 mod from_over_into;
 mod from_raw_with_void_ptr;
 mod from_str_radix_10;
@@ -272,6 +275,7 @@ mod redundant_clone;
 mod redundant_closure_call;
 mod redundant_else;
 mod redundant_field_names;
+mod redundant_locals;
 mod redundant_pub_crate;
 mod redundant_slicing;
 mod redundant_static_lifetimes;
@@ -909,7 +913,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(move |_| Box::new(if_then_some_else_none::IfThenSomeElseNone::new(msrv())));
     store.register_late_pass(|_| Box::new(bool_assert_comparison::BoolAssertComparison));
     store.register_early_pass(move || Box::new(module_style::ModStyle));
-    store.register_late_pass(|_| Box::new(unused_async::UnusedAsync));
+    store.register_late_pass(|_| Box::<unused_async::UnusedAsync>::default());
     let disallowed_types = conf.disallowed_types.clone();
     store.register_late_pass(move |_| Box::new(disallowed_types::DisallowedTypes::new(disallowed_types.clone())));
     let import_renames = conf.enforced_import_renames.clone();
@@ -1078,6 +1082,17 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(|| Box::new(visibility::Visibility));
     store.register_late_pass(move |_| Box::new(tuple_array_conversions::TupleArrayConversions { msrv: msrv() }));
     store.register_late_pass(|_| Box::new(manual_float_methods::ManualFloatMethods));
+    store.register_late_pass(|_| Box::new(four_forward_slashes::FourForwardSlashes));
+    store.register_late_pass(|_| Box::new(error_impl_error::ErrorImplError));
+    let absolute_paths_max_segments = conf.absolute_paths_max_segments;
+    let absolute_paths_allowed_crates = conf.absolute_paths_allowed_crates.clone();
+    store.register_late_pass(move |_| {
+        Box::new(absolute_paths::AbsolutePaths {
+            absolute_paths_max_segments,
+            absolute_paths_allowed_crates: absolute_paths_allowed_crates.clone(),
+        })
+    });
+    store.register_late_pass(|_| Box::new(redundant_locals::RedundantLocals));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
