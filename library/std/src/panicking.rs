@@ -300,7 +300,7 @@ pub fn panic_hook_with_disk_dump(info: &PanicInfo<'_>, path: Option<&crate::path
     };
 
     if let Some(path) = path
-        && let Ok(mut out) = crate::fs::File::options().create(true).write(true).open(&path)
+        && let Ok(mut out) = crate::fs::File::options().create(true).append(true).open(&path)
     {
         write(&mut out, BacktraceStyle::full());
     }
