@@ -531,8 +531,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return;
             }
 
-            let up_to_rcvr_span = segment.ident.span.until(callee_expr.span);
-            let rest_span = callee_expr.span.shrink_to_hi().to(call_expr.span.shrink_to_hi());
+            let Some(callee_expr_span) = callee_expr.span.find_ancestor_inside(call_expr.span)
+            else {
+                return;
+            };
+            let up_to_rcvr_span = segment.ident.span.until(callee_expr_span);
+            let rest_span = callee_expr_span.shrink_to_hi().to(call_expr.span.shrink_to_hi());
             let rest_snippet = if let Some(first) = rest.first() {
                 self.tcx
                     .sess
