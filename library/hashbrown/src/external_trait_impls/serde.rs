@@ -21,11 +21,12 @@ mod map {
 
     use super::size_hint;
 
-    impl<K, V, H> Serialize for HashMap<K, V, H>
+    impl<K, V, H, A> Serialize for HashMap<K, V, H, A>
     where
         K: Serialize + Eq + Hash,
         V: Serialize,
         H: BuildHasher,
+        A: crate::raw::Allocator + Clone,
     {
         #[cfg_attr(feature = "inline-more", inline)]
         fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
