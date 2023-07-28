@@ -32,7 +32,7 @@ fn array_try_from(x: &[usize]) -> Result<usize, TryFromSliceError> {
     Ok(a + b)
 }
 
-fn default() {
+fn destructuring_assignment() {
     let a: i32;
     let b;
     [a, b] = Default::default();
@@ -43,6 +43,18 @@ fn test_nested_array() {
     let b;
     //~^ ERROR type annotations needed
     [a, b] = Default::default();
+}
+
+fn test_nested_array_type_hint() {
+    let a: [_; 3];
+    let b;
+    [a, b] = Default::default();
+    let _: i32 = b[1];
+}
+
+fn test_working_nested_array() {
+    let a: i32;
+    [[a, _, _], _, _] = Default::default();
 }
 
 struct Foo<T>([T; 2]);
