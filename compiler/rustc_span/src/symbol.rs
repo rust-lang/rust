@@ -1369,6 +1369,7 @@ symbols! {
         simd_arith_offset,
         simd_as,
         simd_bitmask,
+        simd_bswap,
         simd_cast,
         simd_cast_ptr,
         simd_ceil,

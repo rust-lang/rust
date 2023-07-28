@@ -2074,6 +2074,28 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         simd_neg: Int => neg, Float => fneg;
     }
 
+    if name == sym::simd_bswap {
+        let vec_ty = bx.cx.type_vector(
+            match *in_elem.kind() {
+                ty::Int(i) => bx.cx.type_int_from_ty(i),
+                ty::Uint(i) => bx.cx.type_uint_from_ty(i),
+                _ => return_error!(InvalidMonomorphization::UnsupportedOperation {
+                    span,
+                    name,
+                    in_ty,
+                    in_elem
+                }),
+            },
+            in_len as u64,
+        );
+        let llvm_intrinsic =
+            &format!("llvm.bswap.v{}i{}", in_len, in_elem.int_size_and_signed(bx.tcx()).0.bits(),);
+        let fn_ty = bx.type_func(&[vec_ty], vec_ty);
+        let f = bx.declare_cfn(llvm_intrinsic, llvm::UnnamedAddr::No, fn_ty);
+        let v = bx.call(fn_ty, None, None, f, &[args[0].immediate()], None);
+        return Ok(v);
+    }
+
     if name == sym::simd_arith_offset {
         // This also checks that the first operand is a ptr type.
         let pointee = in_elem.builtin_deref(true).unwrap_or_else(|| {

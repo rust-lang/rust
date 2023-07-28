@@ -27,6 +27,7 @@ extern "platform-intrinsic" {
     fn simd_xor<T>(x: T, y: T) -> T;
 
     fn simd_neg<T>(x: T) -> T;
+    fn simd_bswap<T>(x: T) -> T;
 }
 
 fn main() {
@@ -64,6 +65,8 @@ fn main() {
 
         simd_neg(x);
         simd_neg(z);
+        simd_bswap(x);
+        simd_bswap(y);
 
 
         simd_add(0, 0);
@@ -87,6 +90,8 @@ fn main() {
 
         simd_neg(0);
         //~^ ERROR expected SIMD input type, found non-SIMD `i32`
+        simd_bswap(0);
+        //~^ ERROR expected SIMD input type, found non-SIMD `i32`
 
 
         simd_shl(z, z);
@@ -98,6 +103,8 @@ fn main() {
         simd_or(z, z);
 //~^ ERROR unsupported operation on `f32x4` with element `f32`
         simd_xor(z, z);
+//~^ ERROR unsupported operation on `f32x4` with element `f32`
+        simd_bswap(z);
 //~^ ERROR unsupported operation on `f32x4` with element `f32`
     }
 }

@@ -47,6 +47,7 @@ extern "platform-intrinsic" {
     fn simd_xor<T>(x: T, y: T) -> T;
 
     fn simd_neg<T>(x: T) -> T;
+    fn simd_bswap<T>(x: T) -> T;
 }
 
 fn main() {
@@ -131,6 +132,9 @@ fn main() {
         all_eq!(simd_neg(x2), i32x4(-2, -3, -4, -5));
         all_eq!(simd_neg(z1), f32x4(-1.0, -2.0, -3.0, -4.0));
         all_eq!(simd_neg(z2), f32x4(-2.0, -3.0, -4.0, -5.0));
+
+        all_eq!(simd_bswap(x1), i32x4(0x01000000, 0x02000000, 0x03000000, 0x04000000));
+        all_eq_!(simd_bswap(y1), U32::<4>([0x01000000, 0x02000000, 0x03000000, 0x04000000]));
 
     }
 }
