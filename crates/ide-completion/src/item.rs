@@ -435,7 +435,7 @@ impl Builder {
                 // `PartialOrd` because it has an alias of ">".
                 .filter(|alias| {
                     let mut chars = alias.chars();
-                    chars.next().map(unicode_ident::is_xid_start).unwrap_or(false)
+                    chars.next().is_some_and(unicode_ident::is_xid_start)
                         && chars.all(unicode_ident::is_xid_continue)
                 })
                 .join(", ");
