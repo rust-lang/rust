@@ -226,7 +226,9 @@ fn ident_can_begin_type(name: Symbol, span: Span, is_raw: bool) -> bool {
             .contains(&name)
 }
 
-#[derive(Clone, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
+// SAFETY: due to the `Clone` impl below, all fields of all variants other than
+// `Interpolated` must impl `Copy`.
+#[derive(PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub enum TokenKind {
     /* Expression-operator symbols. */
     Eq,
@@ -297,6 +299,19 @@ pub enum TokenKind {
     DocComment(CommentKind, ast::AttrStyle, Symbol),
 
     Eof,
+}
+
+impl Clone for TokenKind {
+    fn clone(&self) -> Self {
+        // `TokenKind` would impl `Copy` if it weren't for `Interpolated`. So
+        // for all other variants, this implementation of `clone` is just like
+        // a copy. This is faster than the `derive(Clone)` version which has a
+        // separate path for every variant.
+        match self {
+            Interpolated(nt) => Interpolated(nt.clone()),
+            _ => unsafe { std::ptr::read(self) },
+        }
+    }
 }
 
 #[derive(Clone, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
