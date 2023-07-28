@@ -29,12 +29,13 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, receiver
         && let Some((local, _)) = mir.local_decls.iter_enumerated().find(|(_, decl)| {
             local.span.contains(decl.source_info.span)
         })
-        && let Some(usage) = visit_local_usage(&[local], mir, Location {
+        && let Some(usages) = visit_local_usage(&[local], mir, Location {
             block: START_BLOCK,
             statement_index: 0,
         })
+        && let [usage] = usages.as_slice()
     {
-        let writer_never_mutated = usage[0].local_consume_or_mutate_locs.is_empty();
+        let writer_never_mutated = usage.local_consume_or_mutate_locs.is_empty();
 
         if writer_never_mutated {
             span_lint_and_sugg(
