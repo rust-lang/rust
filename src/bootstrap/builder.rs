@@ -2019,7 +2019,7 @@ impl<'a> Builder<'a> {
             let limit = match self.config.rust_thin_lto_import_instr_limit {
                 Some(limit) => Some(limit),
                 None if self.config.incremental => Some(10),
-                _ => None,
+                _ => Some(150),
             };
 
             if let Some(limit) = limit {
