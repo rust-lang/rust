@@ -250,6 +250,7 @@ impl<'a> ExtCtxt<'a> {
     pub fn expr_ident(&self, span: Span, id: Ident) -> P<ast::Expr> {
         self.expr_path(self.path_ident(span, id))
     }
+
     pub fn expr_self(&self, span: Span) -> P<ast::Expr> {
         self.expr_ident(span, Ident::with_dummy_span(kw::SelfLower))
     }
@@ -276,6 +277,10 @@ impl<'a> ExtCtxt<'a> {
         self.expr(sp, ast::ExprKind::AddrOf(ast::BorrowKind::Ref, ast::Mutability::Not, e))
     }
 
+    pub fn expr_index(&self, span: Span, val: P<ast::Expr>, index: P<ast::Expr>) -> P<ast::Expr> {
+        self.expr(span, ast::ExprKind::Index(val, index))
+    }
+
     pub fn expr_paren(&self, sp: Span, e: P<ast::Expr>) -> P<ast::Expr> {
         self.expr(sp, ast::ExprKind::Paren(e))
     }
@@ -288,6 +293,7 @@ impl<'a> ExtCtxt<'a> {
     ) -> P<ast::Expr> {
         self.expr(span, ast::ExprKind::Call(expr, args))
     }
+
     pub fn expr_call_ident(
         &self,
         span: Span,
@@ -296,6 +302,7 @@ impl<'a> ExtCtxt<'a> {
     ) -> P<ast::Expr> {
         self.expr(span, ast::ExprKind::Call(self.expr_ident(span, id), args))
     }
+
     pub fn expr_call_global(
         &self,
         sp: Span,
@@ -305,9 +312,19 @@ impl<'a> ExtCtxt<'a> {
         let pathexpr = self.expr_path(self.path_global(sp, fn_path));
         self.expr_call(sp, pathexpr, args)
     }
+
     pub fn expr_block(&self, b: P<ast::Block>) -> P<ast::Expr> {
         self.expr(b.span, ast::ExprKind::Block(b, None))
     }
+
+    pub fn expr_const(&self, span: Span, kind: ast::ExprKind) -> P<ast::Expr> {
+        self.expr(span, ast::ExprKind::ConstBlock(self.anon_const(span, kind)))
+    }
+
+    pub fn expr_const_block(&self, span: Span, b: P<ast::Block>) -> P<ast::Expr> {
+        self.expr_const(span, ast::ExprKind::Block(b, None))
+    }
+
     pub fn field_imm(&self, span: Span, ident: Ident, e: P<ast::Expr>) -> ast::ExprField {
         ast::ExprField {
             ident: ident.with_span_pos(span),
@@ -319,6 +336,7 @@ impl<'a> ExtCtxt<'a> {
             is_placeholder: false,
         }
     }
+
     pub fn expr_struct(
         &self,
         span: Span,
@@ -335,6 +353,7 @@ impl<'a> ExtCtxt<'a> {
             })),
         )
     }
+
     pub fn expr_struct_ident(
         &self,
         span: Span,

@@ -197,15 +197,18 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
 }
 
 /// Special case for enums with no fields. Builds:
+///
 /// ```text
-/// impl ::core::fmt::Debug for A {
+/// impl ::core::fmt::Debug for Fieldless {
 ///     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-///          ::core::fmt::Formatter::write_str(f,
-///             match self {
-///                 A::A => "A",
-///                 A::B() => "B",
-///                 A::C {} => "C",
-///             })
+///         ::core::fmt::Formatter::write_str(
+///             f,
+///             const { ["A", "B", "C"] }[match self {
+///                 Fieldless::A => 0usize,
+///                 Fieldless::B => 1usize,
+///                 Fieldless::C => 2usize,
+///             }],
+///         )
 ///     }
 /// }
 /// ```
@@ -216,10 +219,14 @@ fn show_fieldless_enum(
     substr: &Substructure<'_>,
 ) -> BlockOrExpr {
     let fmt = substr.nonselflike_args[0].clone();
+
+    let strs = def.variants.iter().map(|v| cx.expr_str(span, v.ident.name)).collect();
+    let array = cx.expr_const_block(span, cx.block_expr(cx.expr_array(span, strs)));
     let arms = def
         .variants
         .iter()
-        .map(|v| {
+        .enumerate()
+        .map(|(i, v)| {
             let variant_path = cx.path(span, vec![substr.type_ident, v.ident]);
             let pat = match &v.data {
                 ast::VariantData::Tuple(fields, _) => {
@@ -232,10 +239,12 @@ fn show_fieldless_enum(
                 }
                 ast::VariantData::Unit(_) => cx.pat_path(span, variant_path),
             };
-            cx.arm(span, pat, cx.expr_str(span, v.ident.name))
+            cx.arm(span, pat, cx.expr_usize(span, i))
         })
         .collect::<ThinVec<_>>();
-    let name = cx.expr_match(span, cx.expr_self(span), arms);
+    let match_expr = cx.expr_match(span, cx.expr_self(span), arms);
+    let name = cx.expr_index(span, array, match_expr);
+
     let fn_path_write_str = cx.std_path(&[sym::fmt, sym::Formatter, sym::write_str]);
     BlockOrExpr::new_expr(cx.expr_call_global(span, fn_path_write_str, thin_vec![fmt, name]))
 }
