@@ -1428,14 +1428,14 @@ fn builtin_derive_macro() {
     #[derive(Clone)]
     struct Y {
         field1: i32,
-        field2: u8,
+        field2: ((i32, u8), i64),
     }
 
     const GOAL: u8 = {
-        let x = X(2, Z::Foo(Y { field1: 4, field2: 5 }), 8);
+        let x = X(2, Z::Foo(Y { field1: 4, field2: ((32, 5), 12) }), 8);
         let x = x.clone();
         let Z::Foo(t) = x.1;
-        t.field2
+        t.field2.0 .1
     };
     "#,
         5,
@@ -1628,6 +1628,34 @@ const GOAL: i32 = {
     s(2, 3)
 };
 "#,
+        6,
+    );
+}
+
+#[test]
+fn closure_capture_unsized_type() {
+    check_number(
+        r#"
+    //- minicore: fn, copy, slice, index, coerce_unsized
+    fn f<T: A>(x: &<T as A>::Ty) -> &<T as A>::Ty {
+        let c = || &*x;
+        c()
+    }
+
+    trait A {
+        type Ty;
+    }
+
+    impl A for i32 {
+        type Ty = [u8];
+    }
+
+    const GOAL: u8 = {
+        let k: &[u8] = &[1, 2, 3];
+        let k = f::<i32>(k);
+        k[0] + k[1] + k[2]
+    }
+    "#,
         6,
     );
 }

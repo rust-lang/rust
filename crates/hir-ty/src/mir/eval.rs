@@ -313,6 +313,7 @@ pub enum MirEvalError {
     InvalidVTableId(usize),
     CoerceUnsizedError(Ty),
     LangItemNotFound(LangItem),
+    BrokenLayout(Layout),
 }
 
 impl MirEvalError {
@@ -399,6 +400,7 @@ impl MirEvalError {
             | MirEvalError::TargetDataLayoutNotAvailable
             | MirEvalError::CoerceUnsizedError(_)
             | MirEvalError::LangItemNotFound(_)
+            | MirEvalError::BrokenLayout(_)
             | MirEvalError::InvalidVTableId(_) => writeln!(f, "{:?}", err)?,
         }
         Ok(())
@@ -433,6 +435,7 @@ impl std::fmt::Debug for MirEvalError {
             Self::CoerceUnsizedError(arg0) => {
                 f.debug_tuple("CoerceUnsizedError").field(arg0).finish()
             }
+            Self::BrokenLayout(arg0) => f.debug_tuple("BrokenLayout").field(arg0).finish(),
             Self::InvalidVTableId(arg0) => f.debug_tuple("InvalidVTableId").field(arg0).finish(),
             Self::NotSupported(arg0) => f.debug_tuple("NotSupported").field(arg0).finish(),
             Self::InvalidConst(arg0) => {
@@ -1541,12 +1544,18 @@ impl Evaluator<'_> {
     ) -> Result<Vec<u8>> {
         let mut result = vec![0; size];
         if let Some((offset, size, value)) = tag {
-            result[offset..offset + size].copy_from_slice(&value.to_le_bytes()[0..size]);
+            match result.get_mut(offset..offset + size) {
+                Some(it) => it.copy_from_slice(&value.to_le_bytes()[0..size]),
+                None => return Err(MirEvalError::BrokenLayout(variant_layout.clone())),
+            }
         }
         for (i, op) in values.enumerate() {
             let offset = variant_layout.fields.offset(i).bytes_usize();
             let op = op.get(&self)?;
-            result[offset..offset + op.len()].copy_from_slice(op);
+            match result.get_mut(offset..offset + op.len()) {
+                Some(it) => it.copy_from_slice(op),
+                None => return Err(MirEvalError::BrokenLayout(variant_layout.clone())),
+            }
         }
         Ok(result)
     }

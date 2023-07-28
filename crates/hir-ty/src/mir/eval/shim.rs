@@ -124,7 +124,83 @@ impl Evaluator<'_> {
             destination.write_from_bytes(self, &result)?;
             return Ok(true);
         }
+        if let ItemContainerId::TraitId(t) = def.lookup(self.db.upcast()).container {
+            if self.db.lang_attr(t.into()) == Some(LangItem::Clone) {
+                let [self_ty] = generic_args.as_slice(Interner) else {
+                    not_supported!("wrong generic arg count for clone");
+                };
+                let Some(self_ty) = self_ty.ty(Interner) else {
+                    not_supported!("wrong generic arg kind for clone");
+                };
+                // Clone has special impls for tuples and function pointers
+                if matches!(self_ty.kind(Interner), TyKind::Function(_) | TyKind::Tuple(..)) {
+                    self.exec_clone(def, args, self_ty.clone(), locals, destination, span)?;
+                    return Ok(true);
+                }
+            }
+        }
         Ok(false)
+    }
+
+    /// Clone has special impls for tuples and function pointers
+    fn exec_clone(
+        &mut self,
+        def: FunctionId,
+        args: &[IntervalAndTy],
+        self_ty: Ty,
+        locals: &Locals,
+        destination: Interval,
+        span: MirSpan,
+    ) -> Result<()> {
+        match self_ty.kind(Interner) {
+            TyKind::Function(_) => {
+                let [arg] = args else {
+                    not_supported!("wrong arg count for clone");
+                };
+                let addr = Address::from_bytes(arg.get(self)?)?;
+                return destination
+                    .write_from_interval(self, Interval { addr, size: destination.size });
+            }
+            TyKind::Tuple(_, subst) => {
+                let [arg] = args else {
+                    not_supported!("wrong arg count for clone");
+                };
+                let addr = Address::from_bytes(arg.get(self)?)?;
+                let layout = self.layout(&self_ty)?;
+                for (i, ty) in subst.iter(Interner).enumerate() {
+                    let ty = ty.assert_ty_ref(Interner);
+                    let size = self.layout(ty)?.size.bytes_usize();
+                    let tmp = self.heap_allocate(self.ptr_size(), self.ptr_size())?;
+                    let arg = IntervalAndTy {
+                        interval: Interval { addr: tmp, size: self.ptr_size() },
+                        ty: TyKind::Ref(Mutability::Not, static_lifetime(), ty.clone())
+                            .intern(Interner),
+                    };
+                    let offset = layout.fields.offset(i).bytes_usize();
+                    self.write_memory(tmp, &addr.offset(offset).to_bytes())?;
+                    self.exec_clone(
+                        def,
+                        &[arg],
+                        ty.clone(),
+                        locals,
+                        destination.slice(offset..offset + size),
+                        span,
+                    )?;
+                }
+            }
+            _ => {
+                self.exec_fn_with_args(
+                    def,
+                    args,
+                    Substitution::from1(Interner, self_ty),
+                    locals,
+                    destination,
+                    None,
+                    span,
+                )?;
+            }
+        }
+        Ok(())
     }
 
     fn exec_alloc_fn(
