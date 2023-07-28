@@ -1,6 +1,6 @@
 use rustc_infer::infer::canonical::Canonical;
 use rustc_infer::traits::query::NoSolution;
-use rustc_middle::traits::solve::{Certainty, MaybeCause, QueryResult};
+use rustc_middle::traits::solve::{Certainty, QueryResult};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Limit;
 
@@ -115,6 +115,6 @@ impl<'tcx> SearchGraph<'tcx> {
         goal: Canonical<'tcx, impl Sized>,
     ) -> QueryResult<'tcx> {
         self.overflow_data.deal_with_overflow();
-        response_no_constraints(tcx, goal, Certainty::Maybe(MaybeCause::Overflow))
+        response_no_constraints(tcx, goal, Certainty::OVERFLOW)
     }
 }
