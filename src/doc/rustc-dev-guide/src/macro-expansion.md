@@ -48,7 +48,7 @@ iteration, this represents a compile error.  Here is the [algorithm][original]:
 [fef]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/expand/struct.MacroExpander.html#method.fully_expand_fragment
 [original]: https://github.com/rust-lang/rust/pull/53778#issuecomment-419224049
 
-1. Initialize an `queue` of unresolved macros.
+1. Initialize a `queue` of unresolved macros.
 2. Repeat until `queue` is empty (or we make no progress, which is an error):
    1. [Resolve](./name-resolution.md) imports in our partially built crate as
       much as possible.
