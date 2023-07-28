@@ -2104,9 +2104,16 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         );
 
         return Ok(if matches!(name, sym::simd_ctlz | sym::simd_cttz) {
-            let fn_ty = bx.type_func(&[vec_ty, bx.type_bool()], vec_ty);
+            let fn_ty = bx.type_func(&[vec_ty, bx.type_i1()], vec_ty);
             let f = bx.declare_cfn(llvm_intrinsic, llvm::UnnamedAddr::No, fn_ty);
-            bx.call(fn_ty, None, None, f, &[args[0].immediate(), bx.const_bool(false)], None)
+            bx.call(
+                fn_ty,
+                None,
+                None,
+                f,
+                &[args[0].immediate(), bx.const_int(bx.type_i1(), 0)],
+                None,
+            )
         } else {
             let fn_ty = bx.type_func(&[vec_ty], vec_ty);
             let f = bx.declare_cfn(llvm_intrinsic, llvm::UnnamedAddr::No, fn_ty);
