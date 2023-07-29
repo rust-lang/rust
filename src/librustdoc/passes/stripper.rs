@@ -3,10 +3,10 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::ty::{TyCtxt, Visibility};
 use std::mem;
 
+use crate::clean::utils::inherits_doc_hidden;
 use crate::clean::{self, Item, ItemId, ItemIdSet};
 use crate::fold::{strip_item, DocFolder};
 use crate::formats::cache::Cache;
-use crate::visit_ast::inherits_doc_hidden;
 use crate::visit_lib::RustdocEffectiveVisibilities;
 
 pub(crate) struct Stripper<'a, 'tcx> {
