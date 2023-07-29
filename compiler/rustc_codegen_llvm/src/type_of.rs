@@ -61,9 +61,6 @@ fn uncached_llvm_type<'a, 'tcx>(
             }
             Some(name)
         }
-        // Use identified structure types for ADT. Due to pointee types in LLVM IR their definition
-        // might be recursive. Other cases are non-recursive and we can use literal structure types.
-        ty::Adt(..) => Some(String::new()),
         _ => None,
     };
 
