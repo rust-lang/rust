@@ -69,14 +69,6 @@ impl<'ll> CodegenCx<'ll, '_> {
         unsafe { llvm::LLVMVectorType(ty, len as c_uint) }
     }
 
-    pub(crate) fn type_ptr(&self) -> &'ll Type {
-        self.type_ptr_ext(AddressSpace::DATA)
-    }
-
-    pub(crate) fn type_ptr_ext(&self, address_space: AddressSpace) -> &'ll Type {
-        unsafe { llvm::LLVMPointerTypeInContext(self.llcx, address_space.0) }
-    }
-
     pub(crate) fn func_params_types(&self, ty: &'ll Type) -> Vec<&'ll Type> {
         unsafe {
             let n_args = llvm::LLVMCountParamTypes(ty) as usize;
@@ -191,12 +183,12 @@ impl<'ll, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         unsafe { llvm::LLVMRustGetTypeKind(ty).to_generic() }
     }
 
-    fn type_ptr_to(&self, _ty: &'ll Type) -> &'ll Type {
-        self.type_ptr()
+    fn type_ptr(&self) -> &'ll Type {
+        self.type_ptr_ext(AddressSpace::DATA)
     }
 
-    fn type_ptr_to_ext(&self, _ty: &'ll Type, address_space: AddressSpace) -> &'ll Type {
-        self.type_ptr_ext(address_space)
+    fn type_ptr_ext(&self, address_space: AddressSpace) -> &'ll Type {
+        unsafe { llvm::LLVMPointerTypeInContext(self.llcx, address_space.0) }
     }
 
     fn element_type(&self, ty: &'ll Type) -> &'ll Type {

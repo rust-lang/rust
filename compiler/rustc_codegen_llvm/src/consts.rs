@@ -193,10 +193,6 @@ fn check_and_apply_linkage<'ll, 'tcx>(
     }
 }
 
-pub fn ptrcast<'ll>(val: &'ll Value, ty: &'ll Type) -> &'ll Value {
-    unsafe { llvm::LLVMConstPointerCast(val, ty) }
-}
-
 impl<'ll> CodegenCx<'ll, '_> {
     pub(crate) fn const_bitcast(&self, val: &'ll Value, ty: &'ll Type) -> &'ll Value {
         unsafe { llvm::LLVMConstBitCast(val, ty) }

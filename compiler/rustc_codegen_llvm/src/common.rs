@@ -1,6 +1,6 @@
 //! Code that is useful in various codegen modules.
 
-use crate::consts::{self, const_alloc_to_llvm};
+use crate::consts::const_alloc_to_llvm;
 pub use crate::context::CodegenCx;
 use crate::llvm::{self, BasicBlock, Bool, ConstantInt, False, OperandBundleDef, True};
 use crate::type_::Type;
@@ -302,10 +302,6 @@ impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
     fn const_data_from_alloc(&self, alloc: ConstAllocation<'tcx>) -> Self::Value {
         const_alloc_to_llvm(self, alloc)
-    }
-
-    fn const_ptrcast(&self, val: &'ll Value, ty: &'ll Type) -> &'ll Value {
-        consts::ptrcast(val, ty)
     }
 
     fn const_bitcast(&self, val: &'ll Value, ty: &'ll Type) -> &'ll Value {
