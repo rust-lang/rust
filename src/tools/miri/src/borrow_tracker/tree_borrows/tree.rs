@@ -29,17 +29,19 @@ use crate::*;
 /// Data for a single *location*.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) struct LocationState {
-    /// This pointer's current permission
-    permission: Permission,
-    /// A location is initialized when it is child accessed for the first time,
-    /// and it then stays initialized forever.
-    /// Before initialization we still apply some preemptive transitions on
-    /// `permission` to know what to do in case it ever gets initialized,
-    /// but these can never cause any immediate UB. There can however be UB
-    /// the moment we attempt to initialize (i.e. child-access) because some
-    /// foreign access done between the creation and the initialization is
-    /// incompatible with child accesses.
+    /// A location is initialized when it is child-accessed for the first time (and the initial
+    /// retag initializes the location for the range covered by the type), and it then stays
+    /// initialized forever.
+    /// For initialized locations, "permission" is the current permission. However, for
+    /// uninitialized locations, we still need to track the "future initial permission": this will
+    /// start out to be `default_initial_perm`, but foreign accesses need to be taken into account.
+    /// Crucially however, while transitions to `Disabled` would usually be UB if this location is
+    /// protected, that is *not* the case for uninitialized locations. Instead we just have a latent
+    /// "future initial permission" of `Disabled`, causing UB only if an access is ever actually
+    /// performed.
     initialized: bool,
+    /// This pointer's current permission / future initial permission.
+    permission: Permission,
     /// Strongest foreign access whose effects have already been applied to
     /// this node and all its children since the last child access.
     /// This is `None` if the most recent access is a child access,
@@ -84,11 +86,21 @@ impl LocationState {
         let old_perm = self.permission;
         let transition = Permission::perform_access(access_kind, rel_pos, old_perm, protected)
             .ok_or(TransitionError::ChildAccessForbidden(old_perm))?;
-        if protected
-            // Can't trigger Protector on uninitialized locations
-            && self.initialized
-            && transition.produces_disabled()
-        {
+        // Why do only initialized locations cause protector errors?
+        // Consider two mutable references `x`, `y` into disjoint parts of
+        // the same allocation. A priori, these may actually both be used to
+        // access the entire allocation, as long as only reads occur. However,
+        // a write to `y` needs to somehow record that `x` can no longer be used
+        // on that location at all. For these uninitialized locations (i.e., locations
+        // that haven't been accessed with `x` yet), we track the "future initial state":
+        // it defaults to whatever the initial state of the tag is,
+        // but the access to `y` moves that "future initial state" of `x` to `Disabled`.
+        // However, usually a `Reserved -> Disabled` transition would be UB due to the protector!
+        // So clearly protectors shouldn't fire for such "future initial state" transitions.
+        //
+        // See the test `two_mut_protected_same_alloc` in `tests/pass/tree_borrows/tree-borrows.rs`
+        // for an example of safe code that would be UB if we forgot to check `self.initialized`.
+        if protected && self.initialized && transition.produces_disabled() {
             return Err(TransitionError::ProtectedDisabled(old_perm));
         }
         self.permission = transition.applied(old_perm).unwrap();
@@ -96,13 +108,28 @@ impl LocationState {
         Ok(transition)
     }
 
-    // Optimize the tree traversal.
+    // Helper to optimize the tree traversal.
     // The optimization here consists of observing thanks to the tests
-    // `foreign_read_is_noop_after_write` and `all_transitions_idempotent`
-    // that if we apply twice in a row the effects of a foreign access
-    // we can skip some branches.
-    // "two foreign accesses in a row" occurs when `perm.latest_foreign_access` is `Some(_)`
-    // AND the `rel_pos` of the current access corresponds to a foreign access.
+    // `foreign_read_is_noop_after_write` and `all_transitions_idempotent`,
+    // that there are actually just three possible sequences of events that can occur
+    // in between two child accesses that produce different results.
+    //
+    // Indeed,
+    // - applying any number of foreign read accesses is the same as applying
+    //   exactly one foreign read,
+    // - applying any number of foreign read or write accesses is the same
+    //   as applying exactly one foreign write.
+    // therefore the three sequences of events that can produce different
+    // outcomes are
+    // - an empty sequence (`self.latest_foreign_access = None`)
+    // - a nonempty read-only sequence (`self.latest_foreign_access = Some(Read)`)
+    // - a nonempty sequence with at least one write (`self.latest_foreign_access = Some(Write)`)
+    //
+    // This function not only determines if skipping the propagation right now
+    // is possible, it also updates the internal state to keep track of whether
+    // the propagation can be skipped next time.
+    // It is a performance loss not to call this function when a foreign access occurs.
+    // It is unsound not to call this function when a child access occurs.
     fn skip_if_known_noop(
         &mut self,
         access_kind: AccessKind,
@@ -124,19 +151,24 @@ impl LocationState {
             if new_access_noop {
                 // Abort traversal if the new transition is indeed guaranteed
                 // to be noop.
-                return ContinueTraversal::SkipChildren;
+                // No need to update `self.latest_foreign_access`,
+                // the type of the current streak among nonempty read-only
+                // or nonempty with at least one write has not changed.
+                ContinueTraversal::SkipChildren
             } else {
                 // Otherwise propagate this time, and also record the
                 // access that just occurred so that we can skip the propagation
                 // next time.
                 self.latest_foreign_access = Some(access_kind);
+                ContinueTraversal::Recurse
             }
         } else {
-            // A child access occurred, this breaks the streak of "two foreign
-            // accesses in a row" and we reset this field.
+            // A child access occurred, this breaks the streak of foreign
+            // accesses in a row and the sequence since the previous child access
+            // is now empty.
             self.latest_foreign_access = None;
+            ContinueTraversal::Recurse
         }
-        ContinueTraversal::Recurse
     }
 }
 
