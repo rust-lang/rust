@@ -1,6 +1,7 @@
 //! Trait implementations for `str`.
 
 use crate::cmp::Ordering;
+#[cfg(debug_assertions)]
 use crate::intrinsics::assert_unsafe_precondition;
 use crate::ops;
 use crate::ptr;
@@ -194,18 +195,21 @@ unsafe impl SliceIndex<str> for ops::Range<usize> {
         // SAFETY: the caller guarantees that `self` is in bounds of `slice`
         // which satisfies all the conditions for `add`.
         let ptr = unsafe {
-            let this = ops::Range { ..self };
-            assert_unsafe_precondition!(
-                "str::get_unchecked requires that the range is within the string slice",
-                (this: ops::Range<usize>, slice: *const [u8]) =>
-                // We'd like to check that the bounds are on char boundaries,
-                // but there's not really a way to do so without reading
-                // behind the pointer, which has aliasing implications.
-                // It's also not possible to move this check up to
-                // `str::get_unchecked` without adding a special function
-                // to `SliceIndex` just for this.
-                this.end >= this.start && this.end <= slice.len()
-            );
+            #[cfg(debug_assertions)]
+            {
+                let this = ops::Range { ..self };
+                assert_unsafe_precondition!(
+                    "str::get_unchecked requires that the range is within the string slice",
+                    (this: ops::Range<usize>, slice: *const [u8]) =>
+                    // We'd like to check that the bounds are on char boundaries,
+                    // but there's not really a way to do so without reading
+                    // behind the pointer, which has aliasing implications.
+                    // It's also not possible to move this check up to
+                    // `str::get_unchecked` without adding a special function
+                    // to `SliceIndex` just for this.
+                    this.end >= this.start && this.end <= slice.len()
+                );
+            }
             slice.as_ptr().add(self.start)
         };
         let len = self.end - self.start;
@@ -216,12 +220,15 @@ unsafe impl SliceIndex<str> for ops::Range<usize> {
         let slice = slice as *mut [u8];
         // SAFETY: see comments for `get_unchecked`.
         let ptr = unsafe {
-            let this = ops::Range { ..self };
-            assert_unsafe_precondition!(
-                "str::get_unchecked_mut requires that the range is within the string slice",
-                (this: ops::Range<usize>, slice: *mut [u8]) =>
-                this.end >= this.start && this.end <= slice.len()
-            );
+            #[cfg(debug_assertions)]
+            {
+                let this = ops::Range { ..self };
+                assert_unsafe_precondition!(
+                    "str::get_unchecked_mut requires that the range is within the string slice",
+                    (this: ops::Range<usize>, slice: *mut [u8]) =>
+                    this.end >= this.start && this.end <= slice.len()
+                );
+            }
             slice.as_mut_ptr().add(self.start)
         };
         let len = self.end - self.start;

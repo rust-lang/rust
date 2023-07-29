@@ -1,4 +1,5 @@
 use crate::convert::{TryFrom, TryInto};
+#[cfg(debug_assertions)]
 use crate::intrinsics::assert_unsafe_precondition;
 use crate::num::NonZeroUsize;
 use crate::{cmp, fmt, hash, mem, num};
@@ -75,6 +76,7 @@ impl Alignment {
     #[rustc_const_unstable(feature = "ptr_alignment_type", issue = "102070")]
     #[inline]
     pub const unsafe fn new_unchecked(align: usize) -> Self {
+        #[cfg(debug_assertions)]
         // SAFETY: Precondition passed to the caller.
         unsafe {
             assert_unsafe_precondition!(

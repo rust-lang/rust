@@ -784,10 +784,11 @@ impl<T: ?Sized> *const T {
     where
         T: Sized,
     {
-        let this = self;
+        #[cfg(debug_assertions)]
         // SAFETY: The comparison has no side-effects, and the intrinsic
         // does this check internally in the CTFE implementation.
         unsafe {
+            let this = self;
             assert_unsafe_precondition!(
                 "ptr::sub_ptr requires `this >= origin`",
                 [T](this: *const T, origin: *const T) => this >= origin

@@ -56,6 +56,7 @@
 
 use crate::marker::DiscriminantKind;
 use crate::marker::Tuple;
+#[cfg(debug_assertions)]
 use crate::mem;
 
 pub mod mir;
@@ -2498,9 +2499,10 @@ extern "rust-intrinsic" {
 /// So in a sense it is UB if this macro is useful, but we expect callers of `unsafe fn` to make
 /// the occasional mistake, and this check should help them figure things out.
 #[allow_internal_unstable(const_eval_select)] // permit this to be called in stably-const fn
+#[cfg(debug_assertions)]
 macro_rules! assert_unsafe_precondition {
     ($name:expr, $([$($tt:tt)*])?($($i:ident:$ty:ty),*$(,)?) => $e:expr) => {
-        if cfg!(debug_assertions) {
+        {
             // allow non_snake_case to allow capturing const generics
             #[allow(non_snake_case)]
             #[inline(always)]
@@ -2512,19 +2514,25 @@ macro_rules! assert_unsafe_precondition {
                     );
                 }
             }
+
             #[allow(non_snake_case)]
             #[inline]
             const fn comptime$(<$($tt)*>)?($(_:$ty),*) {}
+
+            #[cfg(not(debug_assertions))]
+            compile_error!("Remember to only use this under a cfg");
 
             ::core::intrinsics::const_eval_select(($($i,)*), comptime, runtime);
         }
     };
 }
+#[cfg(debug_assertions)]
 pub(crate) use assert_unsafe_precondition;
 
 /// Checks whether `ptr` is properly aligned with respect to
 /// `align_of::<T>()`.
 #[inline]
+#[cfg(debug_assertions)]
 pub(crate) fn is_aligned_and_not_null<T>(ptr: *const T) -> bool {
     !ptr.is_null() && ptr.is_aligned()
 }
@@ -2532,6 +2540,7 @@ pub(crate) fn is_aligned_and_not_null<T>(ptr: *const T) -> bool {
 /// Checks whether an allocation of `len` instances of `T` exceeds
 /// the maximum allowed allocation size.
 #[inline]
+#[cfg(debug_assertions)]
 pub(crate) fn is_valid_allocation_size<T>(len: usize) -> bool {
     let max_len = const {
         let size = crate::mem::size_of::<T>();
@@ -2543,6 +2552,7 @@ pub(crate) fn is_valid_allocation_size<T>(len: usize) -> bool {
 /// Checks whether the regions of memory starting at `src` and `dst` of size
 /// `count * size_of::<T>()` do *not* overlap.
 #[inline]
+#[cfg(debug_assertions)]
 pub(crate) fn is_nonoverlapping<T>(src: *const T, dst: *const T, count: usize) -> bool {
     let src_usize = src.addr();
     let dst_usize = dst.addr();
@@ -2655,6 +2665,7 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
     // SAFETY: the safety contract for `copy_nonoverlapping` must be
     // upheld by the caller.
     unsafe {
+        #[cfg(debug_assertions)]
         assert_unsafe_precondition!(
             "ptr::copy_nonoverlapping requires that both pointer arguments are aligned and non-null \
             and the specified memory ranges do not overlap",
@@ -2745,6 +2756,7 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
 
     // SAFETY: the safety contract for `copy` must be upheld by the caller.
     unsafe {
+        #[cfg(debug_assertions)]
         assert_unsafe_precondition!(
             "ptr::copy requires that both pointer arguments are aligned and non-null",
             [T](src: *const T, dst: *mut T) =>
@@ -2818,6 +2830,7 @@ pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
 
     // SAFETY: the safety contract for `write_bytes` must be upheld by the caller.
     unsafe {
+        #[cfg(debug_assertions)]
         assert_unsafe_precondition!(
             "ptr::write_bytes requires that the destination pointer is aligned and non-null",
             [T](dst: *mut T) => is_aligned_and_not_null(dst)

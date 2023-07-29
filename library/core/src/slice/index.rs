@@ -1,5 +1,6 @@
 //! Indexing implementations for `[T]`.
 
+#[cfg(debug_assertions)]
 use crate::intrinsics::assert_unsafe_precondition;
 use crate::intrinsics::const_eval_select;
 use crate::intrinsics::unchecked_sub;
@@ -228,29 +229,35 @@ unsafe impl<T> SliceIndex<[T]> for usize {
 
     #[inline]
     unsafe fn get_unchecked(self, slice: *const [T]) -> *const T {
-        let this = self;
         // SAFETY: the caller guarantees that `slice` is not dangling, so it
         // cannot be longer than `isize::MAX`. They also guarantee that
         // `self` is in bounds of `slice` so `self` cannot overflow an `isize`,
         // so the call to `add` is safe.
         unsafe {
-            assert_unsafe_precondition!(
-                "slice::get_unchecked requires that the index is within the slice",
-                [T](this: usize, slice: *const [T]) => this < slice.len()
-            );
+            #[cfg(debug_assertions)]
+            {
+                let this = self;
+                assert_unsafe_precondition!(
+                    "slice::get_unchecked requires that the index is within the slice",
+                    [T](this: usize, slice: *const [T]) => this < slice.len()
+                );
+            }
             slice.as_ptr().add(self)
         }
     }
 
     #[inline]
     unsafe fn get_unchecked_mut(self, slice: *mut [T]) -> *mut T {
-        let this = self;
         // SAFETY: see comments for `get_unchecked` above.
         unsafe {
-            assert_unsafe_precondition!(
-                "slice::get_unchecked_mut requires that the index is within the slice",
-                [T](this: usize, slice: *mut [T]) => this < slice.len()
-            );
+            #[cfg(debug_assertions)]
+            {
+                let this = self;
+                assert_unsafe_precondition!(
+                    "slice::get_unchecked_mut requires that the index is within the slice",
+                    [T](this: usize, slice: *mut [T]) => this < slice.len()
+                );
+            }
             slice.as_mut_ptr().add(self)
         }
     }
@@ -296,30 +303,36 @@ unsafe impl<T> SliceIndex<[T]> for ops::IndexRange {
 
     #[inline]
     unsafe fn get_unchecked(self, slice: *const [T]) -> *const [T] {
-        let end = self.end();
         // SAFETY: the caller guarantees that `slice` is not dangling, so it
         // cannot be longer than `isize::MAX`. They also guarantee that
         // `self` is in bounds of `slice` so `self` cannot overflow an `isize`,
         // so the call to `add` is safe.
 
         unsafe {
-            assert_unsafe_precondition!(
-                "slice::get_unchecked requires that the index is within the slice",
-                [T](end: usize, slice: *const [T]) => end <= slice.len()
-            );
+            #[cfg(debug_assertions)]
+            {
+                let end = self.end();
+                assert_unsafe_precondition!(
+                    "slice::get_unchecked requires that the index is within the slice",
+                    [T](end: usize, slice: *const [T]) => end <= slice.len()
+                );
+            }
             ptr::slice_from_raw_parts(slice.as_ptr().add(self.start()), self.len())
         }
     }
 
     #[inline]
     unsafe fn get_unchecked_mut(self, slice: *mut [T]) -> *mut [T] {
-        let end = self.end();
         // SAFETY: see comments for `get_unchecked` above.
         unsafe {
-            assert_unsafe_precondition!(
-                "slice::get_unchecked_mut requires that the index is within the slice",
-                [T](end: usize, slice: *mut [T]) => end <= slice.len()
-            );
+            #[cfg(debug_assertions)]
+            {
+                let end = self.end();
+                assert_unsafe_precondition!(
+                    "slice::get_unchecked_mut requires that the index is within the slice",
+                    [T](end: usize, slice: *mut [T]) => end <= slice.len()
+                );
+            }
             ptr::slice_from_raw_parts_mut(slice.as_mut_ptr().add(self.start()), self.len())
         }
     }
@@ -372,17 +385,20 @@ unsafe impl<T> SliceIndex<[T]> for ops::Range<usize> {
 
     #[inline]
     unsafe fn get_unchecked(self, slice: *const [T]) -> *const [T] {
-        let this = ops::Range { ..self };
         // SAFETY: the caller guarantees that `slice` is not dangling, so it
         // cannot be longer than `isize::MAX`. They also guarantee that
         // `self` is in bounds of `slice` so `self` cannot overflow an `isize`,
         // so the call to `add` is safe and the length calculation cannot overflow.
         unsafe {
-            assert_unsafe_precondition!(
-                "slice::get_unchecked requires that the range is within the slice",
-                [T](this: ops::Range<usize>, slice: *const [T]) =>
-                this.end >= this.start && this.end <= slice.len()
-            );
+            #[cfg(debug_assertions)]
+            {
+                let this = ops::Range { ..self };
+                assert_unsafe_precondition!(
+                    "slice::get_unchecked requires that the range is within the slice",
+                    [T](this: ops::Range<usize>, slice: *const [T]) =>
+                    this.end >= this.start && this.end <= slice.len()
+                );
+            }
             let new_len = unchecked_sub(self.end, self.start);
             ptr::slice_from_raw_parts(slice.as_ptr().add(self.start), new_len)
         }
@@ -390,14 +406,17 @@ unsafe impl<T> SliceIndex<[T]> for ops::Range<usize> {
 
     #[inline]
     unsafe fn get_unchecked_mut(self, slice: *mut [T]) -> *mut [T] {
-        let this = ops::Range { ..self };
         // SAFETY: see comments for `get_unchecked` above.
         unsafe {
-            assert_unsafe_precondition!(
-                "slice::get_unchecked_mut requires that the range is within the slice",
-                [T](this: ops::Range<usize>, slice: *mut [T]) =>
-                this.end >= this.start && this.end <= slice.len()
-            );
+            #[cfg(debug_assertions)]
+            {
+                let this = ops::Range { ..self };
+                assert_unsafe_precondition!(
+                    "slice::get_unchecked_mut requires that the range is within the slice",
+                    [T](this: ops::Range<usize>, slice: *mut [T]) =>
+                    this.end >= this.start && this.end <= slice.len()
+                );
+            }
             let new_len = unchecked_sub(self.end, self.start);
             ptr::slice_from_raw_parts_mut(slice.as_mut_ptr().add(self.start), new_len)
         }

@@ -1,4 +1,6 @@
-use crate::intrinsics::{assert_unsafe_precondition, unchecked_add, unchecked_sub};
+#[cfg(debug_assertions)]
+use crate::intrinsics::assert_unsafe_precondition;
+use crate::intrinsics::{unchecked_add, unchecked_sub};
 use crate::iter::{FusedIterator, TrustedLen};
 use crate::num::NonZeroUsize;
 
@@ -19,6 +21,7 @@ impl IndexRange {
     /// - `start <= end`
     #[inline]
     pub const unsafe fn new_unchecked(start: usize, end: usize) -> Self {
+        #[cfg(debug_assertions)]
         // SAFETY: comparisons on usize are pure
         unsafe {
             assert_unsafe_precondition!(
