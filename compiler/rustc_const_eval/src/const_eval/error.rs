@@ -138,7 +138,10 @@ where
         err_inval!(Layout(LayoutError::Unknown(_))) | err_inval!(TooGeneric) => {
             ErrorHandled::TooGeneric
         }
-        err_inval!(AlreadyReported(error_reported)) => ErrorHandled::Reported(error_reported),
+        err_inval!(AlreadyReported(guar)) => ErrorHandled::Reported(guar),
+        err_inval!(Layout(LayoutError::ReferencesError(guar))) => {
+            ErrorHandled::Reported(guar.into())
+        }
         err_inval!(Layout(layout_error @ LayoutError::SizeOverflow(_))) => {
             // We must *always* hard error on these, even if the caller wants just a lint.
             // The `message` makes little sense here, this is a more serious error than the
