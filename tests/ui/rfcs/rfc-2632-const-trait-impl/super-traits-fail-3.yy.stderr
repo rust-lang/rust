@@ -1,0 +1,11 @@
+error[E0015]: cannot call non-const fn `<T as Foo>::a` in constant functions
+  --> $DIR/super-traits-fail-3.rs:19:7
+   |
+LL |     x.a();
+   |       ^^^
+   |
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0015`.

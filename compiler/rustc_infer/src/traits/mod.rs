@@ -77,13 +77,6 @@ impl<'tcx> PredicateObligation<'tcx> {
             recursion_depth: self.recursion_depth,
         })
     }
-
-    pub fn without_const(mut self, tcx: TyCtxt<'tcx>) -> PredicateObligation<'tcx> {
-        if let ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_pred)) = self.predicate.kind().skip_binder() && trait_pred.is_const_if_const() {
-            self.predicate = tcx.mk_predicate(self.predicate.kind().map_bound(|_| ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_pred.without_const()))));
-        }
-        self
-    }
 }
 
 impl<'tcx> PolyTraitObligation<'tcx> {

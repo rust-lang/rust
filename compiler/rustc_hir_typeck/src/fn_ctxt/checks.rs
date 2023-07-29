@@ -1856,17 +1856,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if self.adjust_fulfillment_error_for_expr_obligation(error)
                 || before_span != error.obligation.cause.span
             {
-                // Store both the predicate and the predicate *without constness*
-                // since sometimes we instantiate and check both of these in a
-                // method call, for example.
                 remap_cause.insert((
                     before_span,
                     error.obligation.predicate,
-                    error.obligation.cause.clone(),
-                ));
-                remap_cause.insert((
-                    before_span,
-                    error.obligation.predicate.without_const(self.tcx),
                     error.obligation.cause.clone(),
                 ));
             } else {

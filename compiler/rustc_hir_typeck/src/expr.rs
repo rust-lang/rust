@@ -2988,7 +2988,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ty::Binder::dummy(ty::TraitPredicate {
                             trait_ref: impl_trait_ref,
                             polarity: ty::ImplPolarity::Positive,
-                            constness: ty::BoundConstness::NotConst,
                         }),
                         |derived| {
                             traits::ImplDerivedObligation(Box::new(

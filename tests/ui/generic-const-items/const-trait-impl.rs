@@ -1,4 +1,5 @@
-// check-pass
+// known-bug: #110395
+// FIXME check-pass
 
 // Test that we can call methods from const trait impls inside of generic const items.
 

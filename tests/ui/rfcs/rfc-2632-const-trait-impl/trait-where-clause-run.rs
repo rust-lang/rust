@@ -1,4 +1,5 @@
-// run-pass
+// known-bug: #110395
+// FIXME run-pass
 
 #![feature(const_trait_impl)]
 

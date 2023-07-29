@@ -727,7 +727,6 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                     self.tcx(),
                     ty::TraitPredicate {
                         trait_ref: self_trait_ref,
-                        constness: ty::BoundConstness::NotConst,
                         polarity: ty::ImplPolarity::Positive,
                     },
                 );

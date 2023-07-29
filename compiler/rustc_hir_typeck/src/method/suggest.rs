@@ -94,7 +94,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             span,
                             self.body_id,
                             self.param_env,
-                            poly_trait_ref.without_const(),
+                            poly_trait_ref,
                         );
                         self.predicate_may_hold(&obligation)
                     })

@@ -370,9 +370,8 @@ fn clean_poly_trait_predicate<'tcx>(
     cx: &mut DocContext<'tcx>,
 ) -> Option<WherePredicate> {
     // `T: ~const Destruct` is hidden because `T: Destruct` is a no-op.
-    if pred.skip_binder().constness == ty::BoundConstness::ConstIfConst
-        && Some(pred.skip_binder().def_id()) == cx.tcx.lang_items().destruct_trait()
-    {
+    // FIXME(effects) check constness
+    if Some(pred.skip_binder().def_id()) == cx.tcx.lang_items().destruct_trait() {
         return None;
     }
 

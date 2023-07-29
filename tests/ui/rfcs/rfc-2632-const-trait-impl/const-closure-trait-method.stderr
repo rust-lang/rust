@@ -1,5 +1,5 @@
 error[E0015]: cannot call non-const closure in constant functions
-  --> $DIR/const-closure-trait-method-fail.rs:15:5
+  --> $DIR/const-closure-trait-method.rs:15:5
    |
 LL |     x(())
    |     ^^^^^
