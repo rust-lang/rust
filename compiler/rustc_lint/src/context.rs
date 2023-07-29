@@ -946,6 +946,9 @@ pub trait LintContext: Sized {
                         Applicability::MachineApplicable,
                     );
                 }
+                BuiltinLintDiagnostics::AmbiguousGlobImports { diag } => {
+                    rustc_errors::report_ambiguity_error(db, diag);
+                }
                 BuiltinLintDiagnostics::AmbiguousGlobReexports { name, namespace, first_reexport_span, duplicate_reexport_span } => {
                     db.span_label(first_reexport_span, format!("the name `{name}` in the {namespace} namespace is first re-exported here"));
                     db.span_label(duplicate_reexport_span, format!("but the name `{name}` in the {namespace} namespace is also re-exported here"));

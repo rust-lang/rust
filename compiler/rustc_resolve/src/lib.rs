@@ -658,6 +658,7 @@ impl<'a> fmt::Debug for Module<'a> {
 struct NameBindingData<'a> {
     kind: NameBindingKind<'a>,
     ambiguity: Option<(NameBinding<'a>, AmbiguityKind)>,
+    warn_ambiguity: bool,
     expansion: LocalExpnId,
     span: Span,
     vis: ty::Visibility<DefId>,
@@ -767,6 +768,7 @@ struct AmbiguityError<'a> {
     b2: NameBinding<'a>,
     misc1: AmbiguityErrorMisc,
     misc2: AmbiguityErrorMisc,
+    warning: bool,
 }
 
 impl<'a> NameBindingData<'a> {
@@ -790,6 +792,14 @@ impl<'a> NameBindingData<'a> {
         self.ambiguity.is_some()
             || match self.kind {
                 NameBindingKind::Import { binding, .. } => binding.is_ambiguity(),
+                _ => false,
+            }
+    }
+
+    fn is_warn_ambiguity(&self) -> bool {
+        self.warn_ambiguity
+            || match self.kind {
+                NameBindingKind::Import { binding, .. } => binding.is_warn_ambiguity(),
                 _ => false,
             }
     }
@@ -1322,6 +1332,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             dummy_binding: arenas.alloc_name_binding(NameBindingData {
                 kind: NameBindingKind::Res(Res::Err),
                 ambiguity: None,
+                warn_ambiguity: false,
                 expansion: LocalExpnId::ROOT,
                 span: DUMMY_SP,
                 vis: ty::Visibility::Public,
@@ -1685,6 +1696,16 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     }
 
     fn record_use(&mut self, ident: Ident, used_binding: NameBinding<'a>, is_lexical_scope: bool) {
+        self.record_use_inner(ident, used_binding, is_lexical_scope, used_binding.warn_ambiguity);
+    }
+
+    fn record_use_inner(
+        &mut self,
+        ident: Ident,
+        used_binding: NameBinding<'a>,
+        is_lexical_scope: bool,
+        warn_ambiguity: bool,
+    ) {
         if let Some((b2, kind)) = used_binding.ambiguity {
             let ambiguity_error = AmbiguityError {
                 kind,
@@ -1693,9 +1714,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 b2,
                 misc1: AmbiguityErrorMisc::None,
                 misc2: AmbiguityErrorMisc::None,
+                warning: warn_ambiguity,
             };
             if !self.matches_previous_ambiguity_error(&ambiguity_error) {
-                // avoid duplicated span information to be emitt out
+                // avoid duplicated span information to be emit out
                 self.ambiguity_errors.push(ambiguity_error);
             }
         }
@@ -1715,7 +1737,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 self.used_imports.insert(id);
             }
             self.add_to_glob_map(import, ident);
-            self.record_use(ident, binding, false);
+            self.record_use_inner(ident, binding, false, warn_ambiguity || binding.warn_ambiguity);
         }
     }
 

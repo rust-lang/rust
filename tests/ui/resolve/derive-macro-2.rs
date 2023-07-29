@@ -1,20 +1,18 @@
 // check-pass
 // aux-build:issue-112831-aux.rs
 
-mod zeroable {
+extern crate issue_112831_aux;
+use issue_112831_aux::Zeroable;
+
+mod z {
     pub trait Zeroable {}
 }
 
-use zeroable::*;
+use z::*;
 
 mod pod {
     use super::*;
     pub trait Pod: Zeroable {}
 }
-
-use pod::*;
-
-extern crate issue_112831_aux;
-use issue_112831_aux::Zeroable;
 
 fn main() {}
