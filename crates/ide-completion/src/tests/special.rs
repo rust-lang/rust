@@ -1280,3 +1280,28 @@ fn here_we_go() {
         "#]],
     );
 }
+
+#[test]
+fn completion_filtering_excludes_non_identifier_aliases() {
+    // Catch panic instead of using `#[should_panic]` as style check bans
+    // `#[should_panic]`. Making `check_edit` return a result would require
+    // a lot of test changes.
+    std::panic::catch_unwind(|| {
+        check_edit(
+            "Partial>",
+            r#"
+#[doc(alias = ">")]
+trait PartialOrd {}
+
+struct Foo<T: Partial$0
+"#,
+            r#"
+#[doc(alias = ">")]
+trait PartialOrd {}
+
+struct Foo<T: PartialOrd
+"#,
+        )
+    })
+    .unwrap_err();
+}

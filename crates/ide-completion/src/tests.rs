@@ -23,6 +23,8 @@ mod type_pos;
 mod use_tree;
 mod visibility;
 
+use std::ops::ControlFlow;
+
 use expect_test::Expect;
 use hir::PrefixKind;
 use ide_db::{
@@ -185,11 +187,29 @@ pub(crate) fn check_edit_with_config(
     let (db, position) = position(ra_fixture_before);
     let completions: Vec<CompletionItem> =
         crate::completions(&db, &config, position, None).unwrap();
-    let (completion,) = completions
+    let matching = completions
         .iter()
-        .filter(|it| it.lookup() == what)
-        .collect_tuple()
-        .unwrap_or_else(|| panic!("can't find {what:?} completion in {completions:#?}"));
+        // Match IDE behavior by considering completions as matching if `what` is a subsequence
+        // of the completion's lookup text.
+        .filter(|it| {
+            let mut lookup = it.lookup().chars();
+            what.chars().all(|c| lookup.contains(&c))
+        })
+        // Select the first exact match if one exists, or the first subsequence match if not
+        .try_fold(None, |first_match, completion| {
+            let exact_match = completion.lookup() == what;
+            if exact_match {
+                ControlFlow::Break(completion)
+            } else {
+                ControlFlow::Continue(first_match.or(Some(completion)))
+            }
+        });
+    let completion = match matching {
+        ControlFlow::Continue(first_match) => first_match
+            .unwrap_or_else(|| panic!("can't find {what:?} completion in {completions:#?}")),
+        ControlFlow::Break(exact_match) => exact_match,
+    };
+
     let mut actual = db.file_text(position.file_id).to_string();
 
     let mut combined_edit = completion.text_edit.clone();
