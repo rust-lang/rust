@@ -174,11 +174,11 @@ error: lint `clippy::zero_width_space` has been renamed to `clippy::invisible_ch
 LL | #![warn(clippy::zero_width_space)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::invisible_characters`
 
-error: lint `clippy::cast_ref_to_mut` has been renamed to `cast_ref_to_mut`
+error: lint `clippy::cast_ref_to_mut` has been renamed to `invalid_reference_casting`
   --> $DIR/rename.rs:82:9
    |
 LL | #![warn(clippy::cast_ref_to_mut)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `cast_ref_to_mut`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `invalid_reference_casting`
 
 error: lint `clippy::clone_double_ref` has been renamed to `suspicious_double_ref_op`
   --> $DIR/rename.rs:83:9
