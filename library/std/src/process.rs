@@ -280,6 +280,7 @@ impl Write for ChildStdin {
         io::Write::is_write_vectored(&&*self)
     }
 
+    #[inline]
     fn flush(&mut self) -> io::Result<()> {
         (&*self).flush()
     }
@@ -299,6 +300,7 @@ impl Write for &ChildStdin {
         self.inner.is_write_vectored()
     }
 
+    #[inline]
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
     }

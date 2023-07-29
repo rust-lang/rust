@@ -335,6 +335,7 @@ impl File {
         false
     }
 
+    #[inline]
     pub fn flush(&self) -> io::Result<()> {
         Ok(())
     }
