@@ -74,13 +74,15 @@ jobs:
         - aarch64-unknown-linux-gnu
         - riscv64gc-unknown-linux-gnu
         - powerpc64le-unknown-linux-gnu
-        - mips-unknown-linux-gnu
-        - mips64-unknown-linux-gnuabi64
-        - mips64el-unknown-linux-gnuabi64
+        # MIPS targets disabled since they are dropped to tier 3.
+        # See https://github.com/rust-lang/compiler-team/issues/648
+        #- mips-unknown-linux-gnu
+        #- mips64-unknown-linux-gnuabi64
+        #- mips64el-unknown-linux-gnuabi64
+        #- mipsel-unknown-linux-musl
         - s390x-unknown-linux-gnu
         - wasm32-wasi
         - i586-unknown-linux-gnu
-        - mipsel-unknown-linux-musl
         - nvptx64-nvidia-cuda
         - thumbv6m-none-eabi
         - thumbv7m-none-eabi
@@ -114,15 +116,20 @@ jobs:
           os: ubuntu-latest
         - target: armv7-unknown-linux-gnueabihf
           os: ubuntu-latest
-        - target: mips-unknown-linux-gnu
-          os: ubuntu-latest
-          norun: true
-        - target: mips64-unknown-linux-gnuabi64
-          os: ubuntu-latest
-          norun: true
-        - target: mips64el-unknown-linux-gnuabi64
-          os: ubuntu-latest
-          norun: true
+        # MIPS targets disabled since they are dropped to tier 3.
+        # See https://github.com/rust-lang/compiler-team/issues/648
+        #- target: mips-unknown-linux-gnu
+        #  os: ubuntu-latest
+        #  norun: true
+        #- target: mips64-unknown-linux-gnuabi64
+        #  os: ubuntu-latest
+        #  norun: true
+        #- target: mips64el-unknown-linux-gnuabi64
+        #  os: ubuntu-latest
+        #  norun: true
+        #- target: mipsel-unknown-linux-musl
+        #  os: ubuntu-latest
+        #  norun: 1
         - target: powerpc64le-unknown-linux-gnu
           os: ubuntu-latest
           disable_assert_instr: true
@@ -143,9 +150,6 @@ jobs:
           os: windows-latest
         - target: i586-unknown-linux-gnu
           os: ubuntu-latest
-        - target: mipsel-unknown-linux-musl
-          os: ubuntu-latest
-          norun: 1
         - target: nvptx64-nvidia-cuda
           os: ubuntu-latest
         - target: thumbv6m-none-eabi
