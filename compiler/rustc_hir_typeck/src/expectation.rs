@@ -46,7 +46,11 @@ impl<'a, 'tcx> Expectation<'tcx> {
         match *self {
             ExpectHasType(ety) => {
                 let ety = fcx.shallow_resolve(ety);
-                if !ety.is_ty_var() { ExpectHasType(ety) } else { NoExpectation }
+                if matches!(ety.kind(), ty::Infer(ty::TyVar(_)) | ty::Alias(ty::Opaque, _)) {
+                    NoExpectation
+                } else {
+                    ExpectHasType(ety)
+                }
             }
             ExpectRvalueLikeUnsized(ety) => ExpectRvalueLikeUnsized(ety),
             _ => NoExpectation,

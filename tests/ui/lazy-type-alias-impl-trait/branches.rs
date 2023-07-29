@@ -1,3 +1,5 @@
+// check-pass
+
 #![feature(type_alias_impl_trait)]
 
 type Foo = impl std::fmt::Debug;
@@ -17,7 +19,6 @@ fn bar(b: bool) -> Bar {
         vec![42_i32]
     } else {
         std::iter::empty().collect()
-        //~^ ERROR  a value of type `Bar` cannot be built from an iterator over elements of type `_`
     };
     x
 }

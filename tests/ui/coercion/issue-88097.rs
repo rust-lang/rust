@@ -2,6 +2,8 @@
 // a function pointer, which caused an unnecessary error. Check that this
 // behavior has been fixed.
 
+// revisions: current next
+//[next] compile-flags: -Ztrait-solver=next
 // check-pass
 
 fn peculiar() -> impl Fn(u8) -> u8 {
