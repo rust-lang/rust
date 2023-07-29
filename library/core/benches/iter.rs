@@ -473,6 +473,7 @@ fn bench_next_chunk_copied(b: &mut Bencher) {
 
 /// Exercises the TrustedRandomAccess specialization in ArrayChunks
 #[bench]
+#[allow(noop_method_call)]
 fn bench_next_chunk_trusted_random_access(b: &mut Bencher) {
     let v = vec![1u8; 1024];
 

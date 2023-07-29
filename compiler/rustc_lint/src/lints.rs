@@ -1231,8 +1231,9 @@ pub enum NonUpperCaseGlobalSub {
 #[note]
 pub struct NoopMethodCallDiag<'a> {
     pub method: Symbol,
-    pub receiver_ty: Ty<'a>,
-    #[label]
+    pub orig_ty: Ty<'a>,
+    pub trait_: Symbol,
+    #[suggestion(code = "", applicability = "machine-applicable")]
     pub label: Span,
 }
 
