@@ -72,7 +72,12 @@ mod transition {
             // accesses, since the data is not being mutated. Hence the `{ .. }`
             res @ Reserved { .. } if !protected => res,
             Reserved { .. } => Frozen, // protected reserved
-            Active => Frozen,
+            Active =>
+                if protected {
+                    Disabled
+                } else {
+                    Frozen
+                },
             non_writeable @ (Frozen | Disabled) => non_writeable,
         })
     }
@@ -189,34 +194,9 @@ impl PermTransition {
         Permission { inner: self.from }
     }
 
-    /// Determines whether a transition that occured is compatible with the presence
-    /// of a Protector. This is not included in the `transition` functions because
-    /// it would distract from the few places where the transition is modified
-    /// because of a protector, but not forbidden.
-    ///
-    /// Note: this is not in charge of checking that there *is* a protector,
-    /// it should be used as
-    /// ```
-    /// let no_protector_error = if is_protected(tag) {
-    ///     transition.is_allowed_by_protector()
-    /// };
-    /// ```
-    pub fn is_allowed_by_protector(&self) -> bool {
-        assert!(self.is_possible());
-        match (self.from, self.to) {
-            _ if self.from == self.to => true,
-            // It is always a protector violation to not be readable anymore
-            (_, Disabled) => false,
-            // In the case of a `Reserved` under a protector, both transitions
-            // `Reserved => Active` and `Reserved => Frozen` can legitimately occur.
-            // The first is standard (Child Write), the second is for Foreign Writes
-            // on protected Reserved where we must ensure that the pointer is not
-            // written to in the future.
-            (Reserved { .. }, Active) | (Reserved { .. }, Frozen) => true,
-            // This pointer should have stayed writeable for the whole function
-            (Active, Frozen) => false,
-            _ => unreachable!("Transition {} should never be possible", self),
-        }
+    /// Determines if this transition would disable the permission.
+    pub fn produces_disabled(self) -> bool {
+        self.to == Disabled
     }
 }
 
@@ -298,14 +278,15 @@ pub mod diagnostics {
         ///
         /// This function assumes that its arguments apply to the same location
         /// and that they were obtained during a normal execution. It will panic otherwise.
-        /// - `err` cannot be a `ProtectedTransition(_)` of a noop transition, as those
-        /// never trigger protectors;
         /// - all transitions involved in `self` and `err` should be increasing
         /// (Reserved < Active < Frozen < Disabled);
         /// - between `self` and `err` the permission should also be increasing,
         /// so all permissions inside `err` should be greater than `self.1`;
         /// - `Active` and `Reserved` cannot cause an error due to insufficient permissions,
         /// so `err` cannot be a `ChildAccessForbidden(_)` of either of them;
+        /// - `err` should not be `ProtectedDisabled(Disabled)`, because the protected
+        /// tag should not have been `Disabled` in the first place (if this occurs it means
+        /// we have unprotected tags that become protected)
         pub(in super::super) fn is_relevant(&self, err: TransitionError) -> bool {
             // NOTE: `super::super` is the visibility of `TransitionError`
             assert!(self.is_possible());
@@ -342,17 +323,16 @@ pub mod diagnostics {
                             unreachable!("permissions between self and err must be increasing"),
                     }
                 }
-                TransitionError::ProtectedTransition(forbidden) => {
-                    assert!(!forbidden.is_noop());
+                TransitionError::ProtectedDisabled(before_disabled) => {
                     // Show how we got to the starting point of the forbidden transition,
                     // but ignore what came before.
                     // This eliminates transitions like `Reserved -> Active`
                     // when the error is a `Frozen -> Disabled`.
-                    match (self.to, forbidden.from, forbidden.to) {
+                    match (self.to, before_disabled.inner) {
                         // We absolutely want to know where it was activated.
-                        (Active, Active, Frozen | Disabled) => true,
+                        (Active, Active) => true,
                         // And knowing where it became Frozen is also important.
-                        (Frozen, Frozen, Disabled) => true,
+                        (Frozen, Frozen) => true,
                         // If the error is a transition `Frozen -> Disabled`, then we don't really
                         // care whether before that was `Reserved -> Active -> Frozen` or
                         // `Reserved -> Frozen` or even `Frozen` directly.
@@ -360,27 +340,22 @@ pub mod diagnostics {
                         // - created as Frozen, then Frozen -> Disabled is forbidden
                         // - created as Reserved, later became Frozen, then Frozen -> Disabled is forbidden
                         // In both cases the `Reserved -> Active` part is inexistant or irrelevant.
-                        (Active, Frozen, Disabled) => false,
+                        (Active, Frozen) => false,
 
-                        // `Reserved -> Frozen` does not trigger protectors.
-                        (_, Reserved { .. }, Frozen) =>
-                            unreachable!("this transition cannot cause an error"),
+                        (_, Disabled) =>
+                            unreachable!(
+                                "permission that results in Disabled should not itself be Disabled in the first place"
+                            ),
                         // No transition has `Reserved` as its `.to` unless it's a noop.
-                        (Reserved { .. }, _, _) => unreachable!("self is a noop transition"),
-                        (_, Disabled, Disabled) | (_, Frozen, Frozen) | (_, Active, Active) =>
-                            unreachable!("err contains a noop transition"),
+                        (Reserved { .. }, _) => unreachable!("self is a noop transition"),
 
                         // Permissions only evolve in the order `Reserved -> Active -> Frozen -> Disabled`,
                         // so permissions found must be increasing in the order
                         // `self.from < self.to <= forbidden.from < forbidden.to`.
-                        (Disabled, Reserved { .. } | Active | Frozen, _)
-                        | (Frozen, Reserved { .. } | Active, _)
-                        | (Active, Reserved { .. }, _) =>
+                        (Disabled, Reserved { .. } | Active | Frozen)
+                        | (Frozen, Reserved { .. } | Active)
+                        | (Active, Reserved { .. }) =>
                             unreachable!("permissions between self and err must be increasing"),
-                        (_, Disabled, Reserved { .. } | Active | Frozen)
-                        | (_, Frozen, Reserved { .. } | Active)
-                        | (_, Active, Reserved { .. }) =>
-                            unreachable!("permissions within err must be increasing"),
                     }
                 }
                 // We don't care because protectors evolve independently from
@@ -406,7 +381,7 @@ mod propagation_optimization_checks {
         pub use super::*;
         impl PermissionPriv {
             /// Enumerate all states
-            pub fn all() -> impl Iterator<Item = PermissionPriv> {
+            pub fn all() -> impl Iterator<Item = Self> {
                 vec![
                     Active,
                     Reserved { ty_is_freeze: true },
@@ -418,9 +393,15 @@ mod propagation_optimization_checks {
             }
         }
 
+        impl Permission {
+            pub fn all() -> impl Iterator<Item = Self> {
+                PermissionPriv::all().map(|inner| Self { inner })
+            }
+        }
+
         impl AccessKind {
             /// Enumerate all AccessKind.
-            pub fn all() -> impl Iterator<Item = AccessKind> {
+            pub fn all() -> impl Iterator<Item = Self> {
                 use AccessKind::*;
                 [Read, Write].into_iter()
             }
@@ -428,7 +409,7 @@ mod propagation_optimization_checks {
 
         impl AccessRelatedness {
             /// Enumerate all relative positions
-            pub fn all() -> impl Iterator<Item = AccessRelatedness> {
+            pub fn all() -> impl Iterator<Item = Self> {
                 use AccessRelatedness::*;
                 [This, StrictChildAccess, AncestorAccess, DistantAccess].into_iter()
             }
