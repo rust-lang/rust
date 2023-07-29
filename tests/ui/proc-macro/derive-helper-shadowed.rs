@@ -1,4 +1,4 @@
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 // aux-build:test-macros.rs
 // aux-build:derive-helper-shadowed-2.rs
 
