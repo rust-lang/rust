@@ -246,6 +246,7 @@ provide! { tcx, def_id, other, cdata,
         debug_assert_eq!(tcx.def_kind(def_id), DefKind::OpaqueTy);
         cdata.root.tables.is_type_alias_impl_trait.get(cdata, def_id.index)
     }
+    assumed_wf_types_for_rpitit => { table }
     collect_return_position_impl_trait_in_trait_tys => {
         Ok(cdata
             .root

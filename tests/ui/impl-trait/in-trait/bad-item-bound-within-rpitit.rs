@@ -17,7 +17,6 @@ impl<'a, I: 'a + Iterable> Iterable for &'a I {
     //~^ ERROR impl has stricter requirements than trait
 
     fn iter(&self) -> impl 'a + Iterator<Item = I::Item<'a>> {
-        //~^ ERROR the type `&'a I` does not fulfill the required lifetime
         (*self).iter()
     }
 }

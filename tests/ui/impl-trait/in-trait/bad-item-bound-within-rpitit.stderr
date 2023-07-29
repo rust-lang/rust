@@ -12,19 +12,6 @@ help: copy the `where` clause predicates from the trait
 LL |     where Self: 'b;
    |     ~~~~~~~~~~~~~~
 
-error[E0477]: the type `&'a I` does not fulfill the required lifetime
-  --> $DIR/bad-item-bound-within-rpitit.rs:19:23
-   |
-LL |     fn iter(&self) -> impl 'a + Iterator<Item = I::Item<'a>> {
-   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-note: type must outlive the anonymous lifetime as defined here
-  --> $DIR/bad-item-bound-within-rpitit.rs:10:28
-   |
-LL |     fn iter(&self) -> impl '_ + Iterator<Item = Self::Item<'_>>;
-   |                            ^^
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-Some errors have detailed explanations: E0276, E0477.
-For more information about an error, try `rustc --explain E0276`.
+For more information about this error, try `rustc --explain E0276`.

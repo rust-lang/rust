@@ -1,13 +1,22 @@
+use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
+use rustc_middle::middle::resolve_bound_vars as rbv;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
 use std::iter;
 
 pub fn provide(providers: &mut Providers) {
-    *providers = Providers { assumed_wf_types, ..*providers };
+    *providers = Providers {
+        assumed_wf_types,
+        assumed_wf_types_for_rpitit: |tcx, def_id| {
+            assert!(tcx.is_impl_trait_in_trait(def_id.to_def_id()));
+            tcx.assumed_wf_types(def_id)
+        },
+        ..*providers
+    };
 }
 
 fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'tcx>, Span)] {
@@ -42,6 +51,81 @@ fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'
             let mut impl_spans = impl_spans(tcx, def_id);
             tcx.arena.alloc_from_iter(tys.into_iter().map(|ty| (ty, impl_spans.next().unwrap())))
         }
+        DefKind::AssocTy if let Some(data) = tcx.opt_rpitit_info(def_id.to_def_id()) => match data {
+            ty::ImplTraitInTraitData::Trait { fn_def_id, opaque_def_id } => {
+                let hir::OpaqueTy { lifetime_mapping, .. } =
+                    *tcx.hir().expect_item(opaque_def_id.expect_local()).expect_opaque_ty();
+                // We need to remap all of the late-bound lifetimes in theassumed wf types
+                // of the fn (which are represented as ReFree) to the early-bound lifetimes
+                // of the RPITIT (which are represented by ReEarlyBound owned by the opaque).
+                // Luckily, this is very easy to do because we already have that mapping
+                // stored in the HIR of this RPITIT.
+                //
+                // Side-note: We don't really need to do this remapping for early-bound
+                // lifetimes because they're already "linked" by the bidirectional outlives
+                // predicates we insert in the `explicit_predicates_of` query for RPITITs.
+                let mut mapping = FxHashMap::default();
+                let generics = tcx.generics_of(def_id);
+                for &(lifetime, new_early_bound_def_id) in
+                    lifetime_mapping.expect("expected lifetime mapping for RPITIT")
+                {
+                    if let Some(rbv::ResolvedArg::LateBound(_, _, def_id)) =
+                        tcx.named_bound_var(lifetime.hir_id)
+                    {
+                        let name = tcx.hir().name(lifetime.hir_id);
+                        let index = generics
+                            .param_def_id_to_index(tcx, new_early_bound_def_id.to_def_id())
+                            .unwrap();
+                        mapping.insert(
+                            ty::Region::new_free(
+                                tcx,
+                                fn_def_id,
+                                ty::BoundRegionKind::BrNamed(def_id, name),
+                            ),
+                            ty::Region::new_early_bound(
+                                tcx,
+                                ty::EarlyBoundRegion {
+                                    def_id: new_early_bound_def_id.to_def_id(),
+                                    index,
+                                    name,
+                                },
+                            ),
+                        );
+                    }
+                }
+                // FIXME: This could use a real folder, I guess.
+                let remapped_wf_tys = tcx.fold_regions(
+                    tcx.assumed_wf_types(fn_def_id.expect_local()).to_vec(),
+                    |region, _| {
+                        // If `region` is a `ReFree` that is captured by the
+                        // opaque, remap it to its corresponding the early-
+                        // bound region.
+                        if let Some(remapped_region) = mapping.get(&region) {
+                            *remapped_region
+                        } else {
+                            region
+                        }
+                    },
+                );
+                tcx.arena.alloc_from_iter(remapped_wf_tys)
+            }
+            // Assumed wf types for RPITITs in an impl just inherit (and instantiate)
+            // the assumed wf types of the trait's RPITIT GAT.
+            ty::ImplTraitInTraitData::Impl { .. } => {
+                let impl_def_id = tcx.local_parent(def_id);
+                let rpitit_def_id = tcx.associated_item(def_id).trait_item_def_id.unwrap();
+                let args = ty::GenericArgs::identity_for_item(tcx, def_id).rebase_onto(
+                    tcx,
+                    impl_def_id.to_def_id(),
+                    tcx.impl_trait_ref(impl_def_id).unwrap().instantiate_identity().args,
+                );
+                tcx.arena.alloc_from_iter(
+                    ty::EarlyBinder::bind(tcx.assumed_wf_types_for_rpitit(rpitit_def_id))
+                        .iter_instantiated_copied(tcx, args)
+                        .chain(tcx.assumed_wf_types(impl_def_id).into_iter().copied()),
+                )
+            }
+        },
         DefKind::AssocConst | DefKind::AssocTy => tcx.assumed_wf_types(tcx.local_parent(def_id)),
         DefKind::OpaqueTy => match tcx.def_kind(tcx.local_parent(def_id)) {
             DefKind::TyAlias => ty::List::empty(),
