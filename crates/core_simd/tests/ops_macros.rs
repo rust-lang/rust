@@ -94,6 +94,36 @@ macro_rules! impl_binary_checked_op_test {
 macro_rules! impl_common_integer_tests {
     { $vector:ident, $scalar:ident } => {
         test_helpers::test_lanes! {
+            fn shr<const LANES: usize>() {
+                use core::ops::Shr;
+                let shr = |x: $scalar, y: $scalar| x.wrapping_shr(y as _);
+                test_helpers::test_binary_elementwise(
+                    &<$vector::<LANES> as Shr<$vector::<LANES>>>::shr,
+                    &shr,
+                    &|_, _| true,
+                );
+                test_helpers::test_binary_scalar_rhs_elementwise(
+                    &<$vector::<LANES> as Shr<$scalar>>::shr,
+                    &shr,
+                    &|_, _| true,
+                );
+            }
+
+            fn shl<const LANES: usize>() {
+                use core::ops::Shl;
+                let shl = |x: $scalar, y: $scalar| x.wrapping_shl(y as _);
+                test_helpers::test_binary_elementwise(
+                    &<$vector::<LANES> as Shl<$vector::<LANES>>>::shl,
+                    &shl,
+                    &|_, _| true,
+                );
+                test_helpers::test_binary_scalar_rhs_elementwise(
+                    &<$vector::<LANES> as Shl<$scalar>>::shl,
+                    &shl,
+                    &|_, _| true,
+                );
+            }
+
             fn reduce_sum<const LANES: usize>() {
                 test_helpers::test_1(&|x| {
                     test_helpers::prop_assert_biteq! (
