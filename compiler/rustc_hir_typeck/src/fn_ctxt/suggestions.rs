@@ -1,8 +1,6 @@
 use super::FnCtxt;
 
-use crate::errors::{
-    AddReturnTypeSuggestion, ExpectedReturnTypeLabel, SuggestBoxing, SuggestConvertViaMethod,
-};
+use crate::errors;
 use crate::fluent_generated as fluent;
 use crate::method::probe::{IsSuggestion, Mode, ProbeScope};
 use rustc_ast::util::parser::{ExprPrecedence, PREC_POSTFIX};
@@ -434,7 +432,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // FIXME: This could/should be extended to suggest `as_mut` and `as_deref_mut`,
             // but those checks need to be a bit more delicate and the benefit is diminishing.
             if self.can_eq(self.param_env, found_ty_inner, peeled) && error_tys_equate_as_ref {
-                err.subdiagnostic(SuggestConvertViaMethod {
+                err.subdiagnostic(errors::SuggestConvertViaMethod {
                     span: expr.span.shrink_to_hi(),
                     sugg: ".as_ref()",
                     expected,
@@ -447,7 +445,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 && self.can_eq(self.param_env, deref_ty, peeled)
                 && error_tys_equate_as_ref
             {
-                err.subdiagnostic(SuggestConvertViaMethod {
+                err.subdiagnostic(errors::SuggestConvertViaMethod {
                     span: expr.span.shrink_to_hi(),
                     sugg: ".as_deref()",
                     expected,
@@ -521,7 +519,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if self.can_coerce(Ty::new_box(self.tcx, found), expected) {
             let suggest_boxing = match found.kind() {
                 ty::Tuple(tuple) if tuple.is_empty() => {
-                    SuggestBoxing::Unit { start: span.shrink_to_lo(), end: span }
+                    errors::SuggestBoxing::Unit { start: span.shrink_to_lo(), end: span }
                 }
                 ty::Generator(def_id, ..)
                     if matches!(
@@ -529,9 +527,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         Some(GeneratorKind::Async(AsyncGeneratorKind::Closure))
                     ) =>
                 {
-                    SuggestBoxing::AsyncBody
+                    errors::SuggestBoxing::AsyncBody
                 }
-                _ => SuggestBoxing::Other { start: span.shrink_to_lo(), end: span.shrink_to_hi() },
+                _ => errors::SuggestBoxing::Other {
+                    start: span.shrink_to_lo(),
+                    end: span.shrink_to_hi(),
+                },
             };
             err.subdiagnostic(suggest_boxing);
 
@@ -756,23 +757,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match &fn_decl.output {
             &hir::FnRetTy::DefaultReturn(span) if expected.is_unit() && !can_suggest => {
                 // `fn main()` must return `()`, do not suggest changing return type
-                err.subdiagnostic(ExpectedReturnTypeLabel::Unit { span });
+                err.subdiagnostic(errors::ExpectedReturnTypeLabel::Unit { span });
                 return true;
             }
             &hir::FnRetTy::DefaultReturn(span) if expected.is_unit() => {
                 if let Some(found) = found.make_suggestable(self.tcx, false) {
-                    err.subdiagnostic(AddReturnTypeSuggestion::Add { span, found: found.to_string() });
+                    err.subdiagnostic(errors::AddReturnTypeSuggestion::Add { span, found: found.to_string() });
                     return true;
                 } else if let ty::Closure(_, args) = found.kind()
                     // FIXME(compiler-errors): Get better at printing binders...
                     && let closure = args.as_closure()
                     && closure.sig().is_suggestable(self.tcx, false)
                 {
-                    err.subdiagnostic(AddReturnTypeSuggestion::Add { span, found: closure.print_as_impl_trait().to_string() });
+                    err.subdiagnostic(errors::AddReturnTypeSuggestion::Add { span, found: closure.print_as_impl_trait().to_string() });
                     return true;
                 } else {
                     // FIXME: if `found` could be `impl Iterator` we should suggest that.
-                    err.subdiagnostic(AddReturnTypeSuggestion::MissingHere { span });
+                    err.subdiagnostic(errors::AddReturnTypeSuggestion::MissingHere { span });
                     return true
                 }
             }
@@ -794,10 +795,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     debug!(?found);
                     if found.is_suggestable(self.tcx, false) {
                         if term.span.is_empty() {
-                            err.subdiagnostic(AddReturnTypeSuggestion::Add { span, found: found.to_string() });
+                            err.subdiagnostic(errors::AddReturnTypeSuggestion::Add { span, found: found.to_string() });
                             return true;
                         } else {
-                            err.subdiagnostic(ExpectedReturnTypeLabel::Other { span, expected });
+                            err.subdiagnostic(errors::ExpectedReturnTypeLabel::Other { span, expected });
                         }
                     }
                 }
@@ -813,7 +814,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let ty = self.normalize(span, ty);
                 let ty = self.tcx.erase_late_bound_regions(ty);
                 if self.can_coerce(expected, ty) {
-                    err.subdiagnostic(ExpectedReturnTypeLabel::Other { span, expected });
+                    err.subdiagnostic(errors::ExpectedReturnTypeLabel::Other { span, expected });
                     self.try_suggest_return_impl_trait(err, expected, ty, fn_id);
                     return true;
                 }
@@ -1103,65 +1104,46 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return false;
         }
 
-        let mut suggest_copied_cloned_or_as_ref = || {
+        if Some(adt_def.did()) == self.tcx.get_diagnostic_item(sym::Result)
+            && self.can_eq(self.param_env, args.type_at(1), expected_args.type_at(1))
+            || Some(adt_def.did()) == self.tcx.get_diagnostic_item(sym::Option)
+        {
             let expr_inner_ty = args.type_at(0);
             let expected_inner_ty = expected_args.type_at(0);
-            if let &ty::Ref(_, ty, hir::Mutability::Not) = expr_inner_ty.kind()
-                && self.can_eq(self.param_env, ty, expected_inner_ty)
-            {
-                let def_path = self.tcx.def_path_str(adt_def.did());
-                if self.type_is_copy_modulo_regions(self.param_env, ty) {
-                    diag.span_suggestion_verbose(
-                        expr.span.shrink_to_hi(),
-                        format!(
-                            "use `{def_path}::copied` to copy the value inside the `{def_path}`"
-                        ),
-                        ".copied()",
-                        Applicability::MachineApplicable,
-                    );
-                    return true;
-                } else if let Some(expected_ty_expr) = expected_ty_expr {
-                    diag.span_suggestion_verbose(
-                        expected_ty_expr.span.shrink_to_hi(),
-                        format!(
-                            "use `{def_path}::as_ref()` to convert `{expected_ty}` to `{expr_ty}`"
-                        ),
-                        ".as_ref()",
-                        Applicability::MachineApplicable,
-                    );
-                    return true;
-                } else if let Some(clone_did) = self.tcx.lang_items().clone_trait()
-                    && rustc_trait_selection::traits::type_known_to_meet_bound_modulo_regions(
-                        self,
-                        self.param_env,
-                        ty,
-                        clone_did,
-                    )
+            if let &ty::Ref(_, ty, mutability) = expr_inner_ty.kind()
+                    && self.can_eq(self.param_env, ty, expected_inner_ty)
                 {
-                    diag.span_suggestion_verbose(
-                        expr.span.shrink_to_hi(),
-                        format!(
-                            "use `{def_path}::cloned` to clone the value inside the `{def_path}`"
-                        ),
-                        ".cloned()",
-                        Applicability::MachineApplicable,
-                    );
+                    let def_path = self.tcx.def_path_str(adt_def.did());
+                    let span = expr.span.shrink_to_hi();
+                    let subdiag = if self.type_is_copy_modulo_regions(self.param_env, ty) {
+                        errors::OptionResultRefMismatch::Copied {
+                            span, def_path
+                        }
+                    } else if let Some(expected_ty_expr) = expected_ty_expr
+                            // FIXME: suggest changes to both expressions to convert both to
+                            // Option/Result<&T>
+                            && mutability.is_not()
+                        {
+                        errors::OptionResultRefMismatch::AsRef {
+                            span: expected_ty_expr.span.shrink_to_hi(), expected_ty, expr_ty, def_path
+                        }
+                    } else if let Some(clone_did) = self.tcx.lang_items().clone_trait()
+                        && rustc_trait_selection::traits::type_known_to_meet_bound_modulo_regions(
+                            self,
+                            self.param_env,
+                            ty,
+                            clone_did,
+                        )
+                    {
+                        errors::OptionResultRefMismatch::Cloned {
+                            span, def_path
+                        }
+                    } else {
+                        return false;
+                    };
+                    diag.subdiagnostic(subdiag);
                     return true;
                 }
-            }
-            false
-        };
-
-        if let Some(result_did) = self.tcx.get_diagnostic_item(sym::Result)
-            && adt_def.did() == result_did
-            // Check that the error types are equal
-            && self.can_eq(self.param_env, args.type_at(1), expected_args.type_at(1))
-        {
-            return suggest_copied_cloned_or_as_ref();
-        } else if let Some(option_did) = self.tcx.get_diagnostic_item(sym::Option)
-            && adt_def.did() == option_did
-        {
-            return suggest_copied_cloned_or_as_ref();
         }
 
         false
