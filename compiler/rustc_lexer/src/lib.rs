@@ -34,6 +34,7 @@ pub use crate::cursor::Cursor;
 use self::LiteralKind::*;
 use self::TokenKind::*;
 use crate::cursor::EOF_CHAR;
+use unicode_properties::UnicodeEmoji;
 
 /// Parsed token.
 /// It doesn't contain information about data that has been parsed,
@@ -428,9 +429,7 @@ impl Cursor<'_> {
                 Literal { kind, suffix_start }
             }
             // Identifier starting with an emoji. Only lexed for graceful error recovery.
-            c if !c.is_ascii() && unic_emoji_char::is_emoji(c) => {
-                self.fake_ident_or_unknown_prefix()
-            }
+            c if !c.is_ascii() && c.is_emoji_char() => self.fake_ident_or_unknown_prefix(),
             _ => Unknown,
         };
         let res = Token::new(token_kind, self.pos_within_token());
@@ -514,9 +513,7 @@ impl Cursor<'_> {
         // we see a prefix here, it is definitely an unknown prefix.
         match self.first() {
             '#' | '"' | '\'' => UnknownPrefix,
-            c if !c.is_ascii() && unic_emoji_char::is_emoji(c) => {
-                self.fake_ident_or_unknown_prefix()
-            }
+            c if !c.is_ascii() && c.is_emoji_char() => self.fake_ident_or_unknown_prefix(),
             _ => Ident,
         }
     }
@@ -525,7 +522,7 @@ impl Cursor<'_> {
         // Start is already eaten, eat the rest of identifier.
         self.eat_while(|c| {
             unicode_xid::UnicodeXID::is_xid_continue(c)
-                || (!c.is_ascii() && unic_emoji_char::is_emoji(c))
+                || (!c.is_ascii() && c.is_emoji_char())
                 || c == '\u{200d}'
         });
         // Known prefixes must have been handled earlier. So if
