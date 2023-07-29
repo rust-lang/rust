@@ -178,6 +178,8 @@ pub enum Abi {
     PlatformIntrinsic,
     Unadjusted,
     RustCold,
+    RiscvInterruptM,
+    RiscvInterruptS,
 }
 
 #[derive(Clone, Debug)]
