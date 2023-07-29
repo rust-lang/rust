@@ -225,7 +225,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
                 return llty;
             }
             let llty = match *self.ty.kind() {
-                ty::Ref(..) | ty::RawPtr(ty::TypeAndMut { .. }) => cx.type_ptr(),
+                ty::Ref(..) | ty::RawPtr(_) => cx.type_ptr(),
                 ty::Adt(def, _) if def.is_box() => cx.type_ptr(),
                 ty::FnPtr(sig) => {
                     cx.fn_ptr_backend_type(cx.fn_abi_of_fn_ptr(sig, ty::List::empty()))
