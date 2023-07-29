@@ -719,3 +719,40 @@ pub struct S;
         "#]],
     )
 }
+
+#[test]
+fn completes_const_and_type_generics_separately() {
+    check(
+        r#"
+struct Foo;
+const X: usize = 0;
+mod foo {
+    fn foo<T>() {}
+}
+fn main() {
+    self::foo::foo::<F$0>();
+}
+"#,
+        expect![[r#"
+            st Foo
+            bt u32
+            kw crate::
+            kw self::
+        "#]],
+    );
+    check(
+        r#"
+struct Foo;
+const X: usize = 0;
+fn foo<const X: usize>() {}
+fn main() {
+    foo::<F$0>();
+}
+"#,
+        expect![[r#"
+            ct X
+            kw crate::
+            kw self::
+        "#]],
+    );
+}

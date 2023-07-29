@@ -884,6 +884,16 @@ fn classify_name_ref(
     };
     let make_path_kind_type = |ty: ast::Type| {
         let location = type_location(ty.syntax());
+        if let Some(p) = ty.syntax().parent() {
+            if ast::GenericArg::can_cast(p.kind()) || ast::GenericArgList::can_cast(p.kind()) {
+                if let Some(p) = p.parent().and_then(|p| p.parent()) {
+                    if let Some(segment) = ast::PathSegment::cast(p) {
+                        let path = segment.parent_path().top_path();
+                        dbg!(sema.resolve_path(&path));
+                    }
+                }
+            }
+        }
         PathKind::Type { location: location.unwrap_or(TypeLocation::Other) }
     };
 
