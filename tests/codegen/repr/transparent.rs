@@ -1,9 +1,12 @@
 // compile-flags: -O -C no-prepopulate-passes
-
 // ignore-riscv64 riscv64 has an i128 type used with test_Vector
-// see codegen/riscv-abi for riscv functiona call tests
 // ignore-s390x s390x with default march passes vector types per reference
 // ignore-loongarch64 see codegen/loongarch-abi for loongarch function call tests
+
+// This codegen test embeds assumptions about how certain "C" psABIs are handled
+// so it doesn't apply to all architectures or even all OS
+// For RISCV: see codegen/riscv-abi
+// For LoongArch: see codegen/loongarch-abi
 
 #![crate_type="lib"]
 #![feature(repr_simd, transparent_unions)]
@@ -159,7 +162,7 @@ pub union UnionF32WithZsts {
 pub extern "C" fn test_UnionF32WithZsts(_: UnionF32WithZsts) -> UnionF32WithZsts { loop {} }
 
 
-// All that remains to be tested are aggregates. They are tested in separate files called repr-
+// All that remains to be tested are aggregates. They are tested in separate files called
 // transparent-*.rs  with `only-*` or `ignore-*` directives, because the expected LLVM IR
 // function signatures vary so much that it's not reasonably possible to cover all of them with a
 // single CHECK line.

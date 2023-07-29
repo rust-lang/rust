@@ -2,7 +2,7 @@
 //
 
 // only-mips64
-// See repr-transparent.rs
+// See ./transparent.rs
 
 #![feature(transparent_unions)]
 

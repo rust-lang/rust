@@ -1,16 +1,5 @@
-// ignore-arm
-// ignore-aarch64
-// ignore-wasm
-// ignore-emscripten
-// ignore-mips
-// ignore-mips64
-// ignore-powerpc
-// ignore-powerpc64
-// ignore-riscv64
-// ignore-sparc
-// ignore-sparc64
-// ignore-s390x
-// ignore-loongarch64
+// only-x86_64
+//
 // gate-test-sse4a_target_feature
 // gate-test-powerpc_target_feature
 // gate-test-avx512_target_feature

@@ -1,18 +1,16 @@
+// revisions: x32 x64 sparc sparc64
 // compile-flags: -O -C no-prepopulate-passes
 //
-
-// ignore-arm
-// ignore-aarch64
-// ignore-mips
-// ignore-mips64
-// ignore-powerpc
-// ignore-powerpc64
-// ignore-riscv64 see codegen/riscv-abi
-// ignore-s390x
+//[x32] only-x86
+//[x64] only-x86_64
+//[sparc] only-sparc
+//[sparc64] only-sparc64
 // ignore-windows
-// ignore-loongarch64
-// ignore-wasm32-bare
-// See repr-transparent.rs
+// See ./transparent.rs
+// Some platforms pass large aggregates using immediate arrays in LLVMIR
+// Other platforms pass large aggregates using struct pointer in LLVMIR
+// This covers the "struct pointer" case.
+
 
 #![feature(transparent_unions)]
 
