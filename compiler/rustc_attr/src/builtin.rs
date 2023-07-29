@@ -940,6 +940,7 @@ where
 #[derive(PartialEq, Debug, Encodable, Decodable, Copy, Clone)]
 pub enum ReprAttr {
     ReprInt(IntType),
+    ReprRust,
     ReprC,
     ReprPacked(u32),
     ReprSimd,
@@ -988,6 +989,7 @@ pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
             let mut recognised = false;
             if item.is_word() {
                 let hint = match item.name_or_empty() {
+                    sym::Rust => Some(ReprRust),
                     sym::C => Some(ReprC),
                     sym::packed => Some(ReprPacked(1)),
                     sym::simd => Some(ReprSimd),
