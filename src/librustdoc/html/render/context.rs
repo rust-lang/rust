@@ -162,7 +162,7 @@ impl<'tcx> Context<'tcx> {
         self.shared.tcx.sess
     }
 
-    pub(super) fn derive_id(&mut self, id: String) -> String {
+    pub(super) fn derive_id<S: AsRef<str> + ToString>(&mut self, id: S) -> String {
         self.id_map.derive(id)
     }
 
