@@ -652,7 +652,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         flags: MemFlags,
     ) -> &'ll Value {
         debug!("Store {:?} -> {:?} ({:?})", val, ptr, flags);
-        let ptr = self.check_store(ptr);
+        assert_eq!(self.cx.type_kind(self.cx.val_ty(ptr)), TypeKind::Pointer);
         unsafe {
             let store = llvm::LLVMBuildStore(self.llbuilder, val, ptr);
             let align =
@@ -682,7 +682,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         size: Size,
     ) {
         debug!("Store {:?} -> {:?}", val, ptr);
-        let ptr = self.check_store(ptr);
+        assert_eq!(self.cx.type_kind(self.cx.val_ty(ptr)), TypeKind::Pointer);
         unsafe {
             let store = llvm::LLVMRustBuildAtomicStore(
                 self.llbuilder,
@@ -1380,14 +1380,6 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
     pub fn catch_ret(&mut self, funclet: &Funclet<'ll>, unwind: &'ll BasicBlock) -> &'ll Value {
         let ret = unsafe { llvm::LLVMBuildCatchRet(self.llbuilder, funclet.cleanuppad(), unwind) };
         ret.expect("LLVM does not have support for catchret")
-    }
-
-    fn check_store(&mut self, ptr: &'ll Value) -> &'ll Value {
-        let dest_ptr_ty = self.cx.val_ty(ptr);
-
-        assert_eq!(self.cx.type_kind(dest_ptr_ty), TypeKind::Pointer);
-
-        ptr
     }
 
     fn check_call<'b>(
