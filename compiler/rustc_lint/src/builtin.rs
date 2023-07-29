@@ -1458,15 +1458,20 @@ impl TypeAliasBounds {
 
 impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &hir::Item<'_>) {
-        let hir::ItemKind::TyAlias(ty, type_alias_generics) = &item.kind else { return };
-        if cx.tcx.type_of(item.owner_id.def_id).skip_binder().has_opaque_types() {
-            // Bounds are respected for `type X = impl Trait` and `type X = (impl Trait, Y);`
+        let hir::ItemKind::TyAlias(hir_ty, type_alias_generics) = &item.kind else { return };
+
+        if cx.tcx.features().lazy_type_alias {
+            // Bounds of lazy type aliases are respected.
             return;
         }
-        if cx.tcx.type_of(item.owner_id).skip_binder().has_inherent_projections() {
-            // Bounds are respected for `type X = … Type::Inherent …`
+
+        let ty = cx.tcx.type_of(item.owner_id).skip_binder();
+        if ty.has_opaque_types() || ty.has_inherent_projections() {
+            // Bounds of type aliases that contain opaque types or inherent projections are respected.
+            // E.g: `type X = impl Trait;`, `type X = (impl Trait, Y);`, `type X = Type::Inherent;`.
             return;
         }
+
         // There must not be a where clause
         if type_alias_generics.predicates.is_empty() {
             return;
@@ -1491,7 +1496,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
         if !where_spans.is_empty() {
             let sub = (!suggested_changing_assoc_types).then(|| {
                 suggested_changing_assoc_types = true;
-                SuggestChangingAssocTypes { ty }
+                SuggestChangingAssocTypes { ty: hir_ty }
             });
             cx.emit_spanned_lint(
                 TYPE_ALIAS_BOUNDS,
@@ -1507,7 +1512,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
             let suggestion = BuiltinTypeAliasGenericBoundsSuggestion { suggestions: inline_sugg };
             let sub = (!suggested_changing_assoc_types).then(|| {
                 suggested_changing_assoc_types = true;
-                SuggestChangingAssocTypes { ty }
+                SuggestChangingAssocTypes { ty: hir_ty }
             });
             cx.emit_spanned_lint(
                 TYPE_ALIAS_BOUNDS,

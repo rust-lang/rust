@@ -246,8 +246,11 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) {
         // `ForeignItem`s are handled separately.
         hir::ItemKind::ForeignMod { .. } => {}
         hir::ItemKind::TyAlias(hir_ty, ..) => {
-            if tcx.type_of(item.owner_id.def_id).skip_binder().has_opaque_types() {
-                // Bounds are respected for `type X = impl Trait` and `type X = (impl Trait, Y);`
+            if tcx.features().lazy_type_alias
+                || tcx.type_of(item.owner_id).skip_binder().has_opaque_types()
+            {
+                // Bounds of lazy type aliases and of eager ones that contain opaque types are respected.
+                // E.g: `type X = impl Trait;`, `type X = (impl Trait, Y);`.
                 check_item_type(tcx, def_id, hir_ty.span, UnsizedHandling::Allow);
             }
         }
