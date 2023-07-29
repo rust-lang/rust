@@ -52,6 +52,9 @@ middle_drop_check_overflow =
     overflow while adding drop-check rules for {$ty}
     .note = overflowed on {$overflow_ty}
 
+middle_layout_references_error =
+    the type has an unknown layout
+
 middle_limit_invalid =
     `limit` must be a non-negative integer
     .label = {$error_str}

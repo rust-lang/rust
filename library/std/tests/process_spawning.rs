@@ -1,3 +1,5 @@
+#![cfg(not(target_env="sgx"))]
+
 use std::env;
 use std::fs;
 use std::process;

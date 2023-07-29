@@ -132,6 +132,9 @@ pub enum LayoutError<'tcx> {
 
     #[diag(middle_cycle)]
     Cycle,
+
+    #[diag(middle_layout_references_error)]
+    ReferencesError,
 }
 
 #[derive(Diagnostic)]

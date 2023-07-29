@@ -122,14 +122,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else {
             err.note(format!("source type: `{}` ({})", from, skeleton_string(from, sk_from)))
                 .note(format!("target type: `{}` ({})", to, skeleton_string(to, sk_to)));
-            let mut should_delay_as_bug = false;
-            if let Err(LayoutError::Unknown(bad_from)) = sk_from && bad_from.references_error() {
-                should_delay_as_bug = true;
-            }
-            if let Err(LayoutError::Unknown(bad_to)) = sk_to && bad_to.references_error() {
-                should_delay_as_bug = true;
-            }
-            if should_delay_as_bug {
+            if let Err(LayoutError::ReferencesError(_)) = sk_from {
+                err.delay_as_bug();
+            } else if let Err(LayoutError::ReferencesError(_)) = sk_to {
                 err.delay_as_bug();
             }
         }

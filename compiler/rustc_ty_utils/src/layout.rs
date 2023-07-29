@@ -96,6 +96,13 @@ fn layout_of_uncached<'tcx>(
     cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
     ty: Ty<'tcx>,
 ) -> Result<Layout<'tcx>, &'tcx LayoutError<'tcx>> {
+    // Types that reference `ty::Error` pessimistically don't have a meaningful layout.
+    // The only side-effect of this is possibly worse diagnostics in case the layout
+    // was actually computable (like if the `ty::Error` showed up only in a `PhantomData`).
+    if let Err(guar) = ty.error_reported() {
+        return Err(error(cx, LayoutError::ReferencesError(guar)));
+    }
+
     let tcx = cx.tcx;
     let param_env = cx.param_env;
     let dl = cx.data_layout();
@@ -564,11 +571,15 @@ fn layout_of_uncached<'tcx>(
             return Err(error(cx, LayoutError::Unknown(ty)));
         }
 
-        ty::Bound(..) | ty::GeneratorWitness(..) | ty::GeneratorWitnessMIR(..) | ty::Infer(_) => {
+        ty::Bound(..)
+        | ty::GeneratorWitness(..)
+        | ty::GeneratorWitnessMIR(..)
+        | ty::Infer(_)
+        | ty::Error(_) => {
             bug!("Layout::compute: unexpected type `{}`", ty)
         }
 
-        ty::Placeholder(..) | ty::Param(_) | ty::Error(_) => {
+        ty::Placeholder(..) | ty::Param(_) => {
             return Err(error(cx, LayoutError::Unknown(ty)));
         }
     })
