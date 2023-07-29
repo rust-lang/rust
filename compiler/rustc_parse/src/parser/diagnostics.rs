@@ -14,7 +14,7 @@ use crate::errors::{
     PatternMethodParamWithoutBody, QuestionMarkInType, QuestionMarkInTypeSugg, SelfParamNotFirst,
     StructLiteralBodyWithoutPath, StructLiteralBodyWithoutPathSugg, StructLiteralNeedingParens,
     StructLiteralNeedingParensSugg, SuggAddMissingLetStmt, SuggEscapeIdentifier, SuggRemoveComma,
-    UnexpectedConstInGenericParam, UnexpectedConstParamDeclaration,
+    TernaryOperator, UnexpectedConstInGenericParam, UnexpectedConstParamDeclaration,
     UnexpectedConstParamDeclarationSugg, UnmatchedAngleBrackets, UseEqInstead,
 };
 
@@ -500,6 +500,10 @@ impl<'a> Parser<'a> {
 
         // Special-case "expected `;`" errors
         if expected.contains(&TokenType::Token(token::Semi)) {
+            if self.prev_token == token::Question && self.maybe_recover_from_ternary_operator() {
+                return Ok(true);
+            }
+
             if self.token.span == DUMMY_SP || self.prev_token.span == DUMMY_SP {
                 // Likely inside a macro, can't provide meaningful suggestions.
             } else if !sm.is_multiline(self.prev_token.span.until(self.token.span)) {
@@ -1330,6 +1334,45 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Rust has no ternary operator (`cond ? then : else`). Parse it and try
+    /// to recover from it if `then` and `else` are valid expressions. Returns
+    /// whether it was a ternary operator.
+    pub(super) fn maybe_recover_from_ternary_operator(&mut self) -> bool {
+        if self.prev_token != token::Question {
+            return false;
+        }
+
+        let lo = self.prev_token.span.lo();
+        let snapshot = self.create_snapshot_for_diagnostic();
+
+        if match self.parse_expr() {
+            Ok(_) => true,
+            Err(err) => {
+                err.cancel();
+                // The colon can sometimes be mistaken for type
+                // ascription. Catch when this happens and continue.
+                self.token == token::Colon
+            }
+        } {
+            if self.eat_noexpect(&token::Colon) {
+                match self.parse_expr() {
+                    Ok(_) => {
+                        self.sess.emit_err(TernaryOperator { span: self.token.span.with_lo(lo) });
+                        return true;
+                    }
+                    Err(err) => {
+                        err.cancel();
+                        self.restore_snapshot(snapshot);
+                    }
+                };
+            }
+        } else {
+            self.restore_snapshot(snapshot);
+        };
+
+        false
+    }
+
     pub(super) fn maybe_recover_from_bad_type_plus(&mut self, ty: &Ty) -> PResult<'a, ()> {
         // Do not add `+` to expected tokens.
         if !self.token.is_like_plus() {
@@ -2111,7 +2154,7 @@ impl<'a> Parser<'a> {
             }
             _ => (
                 self.token.span,
-                format!("expected expression, found {}", super::token_descr(&self.token),),
+                format!("expected expression, found {}", super::token_descr(&self.token)),
             ),
         };
         let mut err = self.struct_span_err(span, msg);

@@ -365,6 +365,14 @@ pub(crate) enum IfExpressionMissingThenBlockSub {
     AddThenBlock(#[primary_span] Span),
 }
 
+#[derive(Diagnostic)]
+#[diag(parse_ternary_operator)]
+#[help]
+pub struct TernaryOperator {
+    #[primary_span]
+    pub span: Span,
+}
+
 #[derive(Subdiagnostic)]
 #[suggestion(parse_extra_if_in_let_else, applicability = "maybe-incorrect", code = "")]
 pub(crate) struct IfExpressionLetSomeSub {
