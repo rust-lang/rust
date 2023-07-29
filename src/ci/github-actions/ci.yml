@@ -323,7 +323,7 @@ jobs:
           - name: mingw-check-tidy
             <<: *job-linux-16c
 
-          - name: x86_64-gnu-llvm-14
+          - name: x86_64-gnu-llvm-15
             <<: *job-linux-16c
 
           - name: x86_64-gnu-tools
@@ -465,11 +465,6 @@ jobs:
             <<: *job-linux-8c
 
           - name: x86_64-gnu-llvm-15
-            env:
-              RUST_BACKTRACE: 1
-            <<: *job-linux-8c
-
-          - name: x86_64-gnu-llvm-14
             env:
               RUST_BACKTRACE: 1
             <<: *job-linux-8c

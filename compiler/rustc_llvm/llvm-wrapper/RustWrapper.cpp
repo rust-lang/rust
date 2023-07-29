@@ -277,12 +277,10 @@ static Attribute::AttrKind fromRust(LLVMRustAttribute Kind) {
     return Attribute::ShadowCallStack;
   case AllocSize:
     return Attribute::AllocSize;
-#if LLVM_VERSION_GE(15, 0)
   case AllocatedPointer:
     return Attribute::AllocatedPointer;
   case AllocAlign:
     return Attribute::AllocAlign;
-#endif
   case SanitizeSafeStack:
     return Attribute::SafeStack;
   }
@@ -340,20 +338,12 @@ extern "C" LLVMAttributeRef LLVMRustCreateStructRetAttr(LLVMContextRef C, LLVMTy
 }
 
 extern "C" LLVMAttributeRef LLVMRustCreateElementTypeAttr(LLVMContextRef C, LLVMTypeRef Ty) {
-#if LLVM_VERSION_GE(15, 0)
   return wrap(Attribute::get(*unwrap(C), Attribute::ElementType, unwrap(Ty)));
-#else
-  report_fatal_error("Should not be needed on LLVM < 15");
-#endif
 }
 
 extern "C" LLVMAttributeRef LLVMRustCreateUWTableAttr(LLVMContextRef C, bool Async) {
-#if LLVM_VERSION_LT(15, 0)
-  return wrap(Attribute::get(*unwrap(C), Attribute::UWTable));
-#else
   return wrap(Attribute::getWithUWTableKind(
       *unwrap(C), Async ? UWTableKind::Async : UWTableKind::Sync));
-#endif
 }
 
 extern "C" LLVMAttributeRef LLVMRustCreateAllocSizeAttr(LLVMContextRef C, uint32_t ElementSizeArg) {
@@ -365,8 +355,6 @@ extern "C" LLVMAttributeRef LLVMRustCreateAllocSizeAttr(LLVMContextRef C, uint32
 #endif
                                               ));
 }
-
-#if LLVM_VERSION_GE(15, 0)
 
 // These values **must** match ffi::AllocKindFlags.
 // It _happens_ to match the LLVM values of llvm::AllocFnKind,
@@ -411,16 +399,10 @@ static llvm::AllocFnKind allocKindFromRust(LLVMRustAllocKindFlags F) {
   }
   return AFK;
 }
-#endif
 
 extern "C" LLVMAttributeRef LLVMRustCreateAllocKindAttr(LLVMContextRef C, uint64_t AllocKindArg) {
-#if LLVM_VERSION_GE(15, 0)
   return wrap(Attribute::get(*unwrap(C), Attribute::AllocKind,
       static_cast<uint64_t>(allocKindFromRust(static_cast<LLVMRustAllocKindFlags>(AllocKindArg)))));
-#else
-  report_fatal_error(
-      "allockind attributes are new in LLVM 15 and should not be used on older LLVMs");
-#endif
 }
 
 // Simplified representation of `MemoryEffects` across the FFI boundary.
@@ -517,14 +499,9 @@ LLVMRustInlineAsm(LLVMTypeRef Ty, char *AsmString, size_t AsmStringLen,
 
 extern "C" bool LLVMRustInlineAsmVerify(LLVMTypeRef Ty, char *Constraints,
                                         size_t ConstraintsLen) {
-#if LLVM_VERSION_LT(15, 0)
-  return InlineAsm::Verify(unwrap<FunctionType>(Ty),
-                           StringRef(Constraints, ConstraintsLen));
-#else
   // llvm::Error converts to true if it is an error.
   return !llvm::errorToBool(InlineAsm::verify(
       unwrap<FunctionType>(Ty), StringRef(Constraints, ConstraintsLen)));
-#endif
 }
 
 typedef DIBuilder *LLVMRustDIBuilderRef;
@@ -1649,19 +1626,11 @@ extern "C" bool LLVMRustConstInt128Get(LLVMValueRef CV, bool sext, uint64_t *hig
     auto C = unwrap<llvm::ConstantInt>(CV);
     if (C->getBitWidth() > 128) { return false; }
     APInt AP;
-#if LLVM_VERSION_GE(15, 0)
     if (sext) {
         AP = C->getValue().sext(128);
     } else {
         AP = C->getValue().zext(128);
     }
-#else
-    if (sext) {
-        AP = C->getValue().sextOrSelf(128);
-    } else {
-        AP = C->getValue().zextOrSelf(128);
-    }
-#endif
     *low = AP.getLoBits(64).getZExtValue();
     *high = AP.getHiBits(64).getZExtValue();
     return true;
@@ -2037,16 +2006,7 @@ extern "C" void LLVMRustGetMangledName(LLVMValueRef V, RustStringRef Str) {
   Mangler().getNameWithPrefix(OS, GV, true);
 }
 
-// LLVMGetAggregateElement was added in LLVM 15. For earlier LLVM versions just
-// use its implementation.
-#if LLVM_VERSION_LT(15, 0)
-extern "C" LLVMValueRef LLVMGetAggregateElement(LLVMValueRef C, unsigned Idx) {
-    return wrap(unwrap<Constant>(C)->getAggregateElement(Idx));
-}
-#endif
-
 extern "C" int32_t LLVMRustGetElementTypeArgIndex(LLVMValueRef CallSite) {
-#if LLVM_VERSION_GE(15, 0)
     auto *CB = unwrap<CallBase>(CallSite);
     switch (CB->getIntrinsicID()) {
         case Intrinsic::arm_ldrex:
@@ -2054,7 +2014,6 @@ extern "C" int32_t LLVMRustGetElementTypeArgIndex(LLVMValueRef CallSite) {
         case Intrinsic::arm_strex:
             return 1;
     }
-#endif
     return -1;
 }
 

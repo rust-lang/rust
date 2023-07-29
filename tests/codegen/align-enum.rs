@@ -20,7 +20,7 @@ pub struct Nested64 {
 #[no_mangle]
 pub fn align64(a: u32) -> Align64 {
 // CHECK: %a64 = alloca %Align64, align 64
-// CHECK: call void @llvm.memcpy.{{.*}}({{i8\*|ptr}} align 64 %{{.*}}, {{i8\*|ptr}} align 64 %{{.*}}, i{{[0-9]+}} 64, i1 false)
+// CHECK: call void @llvm.memcpy.{{.*}}(ptr align 64 %{{.*}}, ptr align 64 %{{.*}}, i{{[0-9]+}} 64, i1 false)
     let a64 = Align64::A(a);
     a64
 }

@@ -55,7 +55,7 @@ jobs:
           - name: mingw-check-tidy
             os: ubuntu-20.04-16core-64gb
             env: {}
-          - name: x86_64-gnu-llvm-14
+          - name: x86_64-gnu-llvm-15
             os: ubuntu-20.04-16core-64gb
             env: {}
           - name: x86_64-gnu-tools
@@ -290,10 +290,6 @@ jobs:
               RUST_BACKTRACE: 1
             os: ubuntu-20.04-8core-32gb
           - name: x86_64-gnu-llvm-15
-            env:
-              RUST_BACKTRACE: 1
-            os: ubuntu-20.04-8core-32gb
-          - name: x86_64-gnu-llvm-14
             env:
               RUST_BACKTRACE: 1
             os: ubuntu-20.04-8core-32gb
