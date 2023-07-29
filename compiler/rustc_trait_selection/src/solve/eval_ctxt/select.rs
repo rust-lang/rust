@@ -100,10 +100,18 @@ impl<'tcx> InferCtxtSelectExt<'tcx> for InferCtxt<'tcx> {
                 rematch_impl(self, goal, def_id, nested_obligations)
             }
 
+            // If an unsize goal is ambiguous, then we can manually rematch it to make
+            // selection progress for coercion during HIR typeck. If it is *not* ambiguous,
+            // but is `BuiltinImplSource::Misc`, it may have nested `Unsize` goals,
+            // and we need to rematch those to detect tuple unsizing and trait upcasting.
+            // FIXME: This will be wrong if we have param-env or where-clause bounds
+            // with the unsize goal -- we may need to mark those with different impl
+            // sources.
             (Certainty::Maybe(_), CandidateSource::BuiltinImpl(src))
+            | (Certainty::Yes, CandidateSource::BuiltinImpl(src @ BuiltinImplSource::Misc))
                 if self.tcx.lang_items().unsize_trait() == Some(goal.predicate.def_id()) =>
             {
-                rematch_unsize(self, goal, nested_obligations, src)
+                rematch_unsize(self, goal, nested_obligations, src, certainty)
             }
 
             // Technically some builtin impls have nested obligations, but if
@@ -217,6 +225,7 @@ fn rematch_unsize<'tcx>(
     goal: Goal<'tcx, ty::TraitPredicate<'tcx>>,
     mut nested: Vec<PredicateObligation<'tcx>>,
     source: BuiltinImplSource,
+    certainty: Certainty,
 ) -> SelectionResult<'tcx, Selection<'tcx>> {
     let tcx = infcx.tcx;
     let a_ty = structurally_normalize(goal.predicate.self_ty(), infcx, goal.param_env, &mut nested);
@@ -227,6 +236,12 @@ fn rematch_unsize<'tcx>(
         &mut nested,
     );
     match (a_ty.kind(), b_ty.kind()) {
+        // Stall any ambiguous upcasting goals, since we can't rematch those
+        (ty::Dynamic(_, _, ty::Dyn), ty::Dynamic(_, _, ty::Dyn)) => match certainty {
+            Certainty::Yes => Ok(Some(ImplSource::Builtin(source, nested))),
+            _ => Ok(None),
+        },
+        // `T` -> `dyn Trait` upcasting
         (_, &ty::Dynamic(data, region, ty::Dyn)) => {
             // Check that the type implements all of the predicates of the def-id.
             // (i.e. the principal, all of the associated types match, and any auto traits)
@@ -354,10 +369,10 @@ fn rematch_unsize<'tcx>(
             );
             Ok(Some(ImplSource::Builtin(source, nested)))
         }
-        // FIXME: We *could* ICE here if either:
-        // 1. the certainty is `Certainty::Yes`,
-        // 2. we're in codegen (which should mean `Certainty::Yes`).
-        _ => Ok(None),
+        _ => {
+            assert_ne!(certainty, Certainty::Yes);
+            Ok(None)
+        }
     }
 }
 
