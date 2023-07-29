@@ -10,10 +10,7 @@ on:
     branches:
       - 'master'
   schedule:
-    - cron: '6 6 * * *' # At 6:06 UTC every day.
-
-env:
-  CARGO_UNSTABLE_SPARSE_REGISTRY: 'true'
+    - cron: '11 5 * * *' # At 5:11 UTC every day.
 
 defaults:
   run:
@@ -21,10 +18,6 @@ defaults:
 
 jobs:
   build:
-    runs-on: ${{ matrix.os }}
-    env:
-      RUST_BACKTRACE: 1
-      HOST_TARGET: ${{ matrix.host_target }}
     strategy:
       fail-fast: false
       matrix:
@@ -35,6 +28,10 @@ jobs:
             host_target: x86_64-apple-darwin
           - os: windows-latest
             host_target: i686-pc-windows-msvc
+    runs-on: ${{ matrix.os }}
+    env:
+      RUST_BACKTRACE: 1
+      HOST_TARGET: ${{ matrix.host_target }}
     steps:
       - uses: actions/checkout@v3
 

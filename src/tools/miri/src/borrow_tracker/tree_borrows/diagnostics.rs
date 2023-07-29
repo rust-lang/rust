@@ -227,10 +227,10 @@ pub(super) enum TransitionError {
     ChildAccessForbidden(Permission),
     /// A protector was triggered due to an invalid transition that loses
     /// too much permissions.
-    /// For example, if a protected tag goes from `Active` to `Frozen` due
-    /// to a foreign write this will produce a `ProtectedTransition(PermTransition(Active, Frozen))`.
+    /// For example, if a protected tag goes from `Active` to `Disabled` due
+    /// to a foreign write this will produce a `ProtectedDisabled(Active)`.
     /// This kind of error can only occur on foreign accesses.
-    ProtectedTransition(PermTransition),
+    ProtectedDisabled(Permission),
     /// Cannot deallocate because some tag in the allocation is strongly protected.
     /// This kind of error can only occur on deallocations.
     ProtectedDealloc,
@@ -302,7 +302,7 @@ impl TbError<'_> {
                 ));
                 (title, details, conflicting_tag_name)
             }
-            ProtectedTransition(transition) => {
+            ProtectedDisabled(before_disabled) => {
                 let conflicting_tag_name = "protected";
                 let access = cause.print_as_access(/* is_foreign */ true);
                 let details = vec![
@@ -310,12 +310,9 @@ impl TbError<'_> {
                         "the accessed tag {accessed} is foreign to the {conflicting_tag_name} tag {conflicting} (i.e., it is not a child)"
                     ),
                     format!(
-                        "this {access} would cause the {conflicting_tag_name} tag {conflicting} to transition {transition}"
+                        "this {access} would cause the {conflicting_tag_name} tag {conflicting} (currently {before_disabled}) to become Disabled"
                     ),
-                    format!(
-                        "this transition would be {loss}, which is not allowed for protected tags",
-                        loss = transition.summary(),
-                    ),
+                    format!("protected tags must never be Disabled"),
                 ];
                 (title, details, conflicting_tag_name)
             }

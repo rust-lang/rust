@@ -191,6 +191,8 @@ regexes! {
     // erase borrow tags
     "<[0-9]+>"                       => "<TAG>",
     "<[0-9]+="                       => "<TAG=",
+    // normalize width of Tree Borrows diagnostic borders (which otherwise leak borrow tag info)
+    "(─{50})─+"                      => "$1",
     // erase whitespace that differs between platforms
     r" +at (.*\.rs)"                 => " at $1",
     // erase generics in backtraces
