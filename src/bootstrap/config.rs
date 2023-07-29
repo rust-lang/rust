@@ -232,8 +232,8 @@ pub struct Config {
     pub llvm_profile_use: Option<String>,
     pub llvm_profile_generate: bool,
     pub llvm_libunwind_default: Option<LlvmLibunwind>,
-    pub llvm_bolt_profile_generate: bool,
-    pub llvm_bolt_profile_use: Option<String>,
+
+    pub reproducible_artifacts: Vec<String>,
 
     pub build: TargetSelection,
     pub hosts: Vec<TargetSelection>,
@@ -1461,6 +1461,8 @@ impl Config {
             config.rust_profile_use = flags.rust_profile_use;
             config.rust_profile_generate = flags.rust_profile_generate;
         }
+
+        config.reproducible_artifacts = flags.reproducible_artifact;
 
         // rust_info must be set before is_ci_llvm_available() is called.
         let default = config.channel == "dev";

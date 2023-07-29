@@ -95,7 +95,7 @@ fn execute_pipeline(
         Ok(profile)
     })?;
 
-    if env.supports_bolt() {
+    let llvm_bolt_profile = if env.supports_bolt() {
         // Stage 3: Build BOLT instrumented LLVM
         // We build a PGO optimized LLVM in this step, then instrument it with BOLT and gather BOLT profiles.
         // Note that we don't remove LLVM artifacts after this step, so that they are reused in the final dist build.
@@ -128,17 +128,23 @@ fn execute_pipeline(
             // the final dist build. However, when BOLT optimizes an artifact, it does so *in-place*,
             // therefore it will actually optimize all the hard links, which means that the final
             // packaged `libLLVM.so` file *will* be BOLT optimized.
-            bolt_optimize(&llvm_lib, profile).context("Could not optimize LLVM with BOLT")?;
+            bolt_optimize(&llvm_lib, &profile).context("Could not optimize LLVM with BOLT")?;
 
             // LLVM is not being cleared here, we want to use the BOLT-optimized LLVM
-            Ok(())
-        })?;
-    }
+            Ok(Some(profile))
+        })?
+    } else {
+        None
+    };
 
-    let dist = Bootstrap::dist(env, &dist_args)
+    let mut dist = Bootstrap::dist(env, &dist_args)
         .llvm_pgo_optimize(&llvm_pgo_profile)
         .rustc_pgo_optimize(&rustc_pgo_profile)
         .avoid_rustc_rebuild();
+
+    if let Some(llvm_bolt_profile) = llvm_bolt_profile {
+        dist = dist.with_bolt_profile(llvm_bolt_profile);
+    }
 
     // Final stage: Assemble the dist artifacts
     // The previous PGO optimized rustc build and PGO optimized LLVM builds should be reused.

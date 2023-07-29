@@ -74,21 +74,15 @@ pub fn find_file_in_dir(
     prefix: &str,
     suffix: &str,
 ) -> anyhow::Result<Utf8PathBuf> {
-    let mut files = glob::glob(&format!("{directory}/{prefix}*{suffix}"))?
+    let files = glob::glob(&format!("{directory}/{prefix}*{suffix}"))?
         .into_iter()
         .collect::<Result<Vec<_>, _>>()?;
-    match files.pop() {
-        Some(file) => {
-            if !files.is_empty() {
-                files.push(file);
-                Err(anyhow::anyhow!(
-                    "More than one file with prefix {prefix} found in {directory}: {:?}",
-                    files
-                ))
-            } else {
-                Ok(Utf8PathBuf::from_path_buf(file).unwrap())
-            }
-        }
-        None => Err(anyhow::anyhow!("No file with prefix {prefix} found in {directory}")),
+    match files.len() {
+        0 => Err(anyhow::anyhow!("No file with prefix {prefix} found in {directory}")),
+        1 => Ok(Utf8PathBuf::from_path_buf(files[0].clone()).unwrap()),
+        _ => Err(anyhow::anyhow!(
+            "More than one file with prefix {prefix} found in {directory}: {:?}",
+            files
+        )),
     }
 }

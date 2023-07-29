@@ -175,7 +175,7 @@ pub fn gather_llvm_bolt_profiles(env: &dyn Environment) -> anyhow::Result<LlvmBo
             .context("Cannot gather LLVM BOLT profiles")
     })?;
 
-    let merged_profile = env.opt_artifacts().join("bolt.profdata");
+    let merged_profile = env.opt_artifacts().join("llvm-bolt.profdata");
     let profile_root = Utf8PathBuf::from("/tmp/prof.fdata");
     log::info!("Merging LLVM BOLT profiles to {merged_profile}");
 

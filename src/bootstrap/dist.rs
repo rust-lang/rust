@@ -2265,8 +2265,8 @@ impl Step for ReproducibleArtifacts {
             tarball.add_file(path, ".", 0o644);
             added_anything = true;
         }
-        if let Some(path) = builder.config.llvm_bolt_profile_use.as_ref() {
-            tarball.add_file(path, ".", 0o644);
+        for profile in &builder.config.reproducible_artifacts {
+            tarball.add_file(profile, ".", 0o644);
             added_anything = true;
         }
         if added_anything { Some(tarball.generate()) } else { None }

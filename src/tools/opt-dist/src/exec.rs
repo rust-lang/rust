@@ -1,7 +1,7 @@
 use crate::environment::Environment;
 use crate::metrics::{load_metrics, record_metrics};
 use crate::timer::TimerSection;
-use crate::training::{LlvmPGOProfile, RustcPGOProfile};
+use crate::training::{LlvmBoltProfile, LlvmPGOProfile, RustcPGOProfile};
 use camino::{Utf8Path, Utf8PathBuf};
 use std::collections::BTreeMap;
 use std::fs::File;
@@ -156,6 +156,11 @@ impl Bootstrap {
 
     pub fn with_llvm_bolt_ldflags(mut self) -> Self {
         self.cmd = self.cmd.arg("--set").arg("llvm.ldflags=-Wl,-q");
+        self
+    }
+
+    pub fn with_bolt_profile(mut self, profile: LlvmBoltProfile) -> Self {
+        self.cmd = self.cmd.arg("--reproducible-artifact").arg(profile.0.as_str());
         self
     }
 
