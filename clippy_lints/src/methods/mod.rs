@@ -17,7 +17,6 @@ mod collapsible_str_replace;
 mod drain_collect;
 mod err_expect;
 mod expect_fun_call;
-mod expect_used;
 mod extend_with_drain;
 mod filetype_is_file;
 mod filter_map;
@@ -105,7 +104,7 @@ mod unnecessary_lazy_eval;
 mod unnecessary_literal_unwrap;
 mod unnecessary_sort_by;
 mod unnecessary_to_owned;
-mod unwrap_used;
+mod unwrap_expect_used;
 mod useless_asref;
 mod utils;
 mod vec_resize_to_zero;
@@ -3948,13 +3947,27 @@ impl Methods {
                     match method_call(recv) {
                         Some(("ok", recv, [], _, _)) => ok_expect::check(cx, expr, recv),
                         Some(("err", recv, [], err_span, _)) => err_expect::check(cx, expr, recv, span, err_span, &self.msrv),
-                        _ => expect_used::check(cx, expr, recv, false, self.allow_expect_in_tests),
+                        _ => unwrap_expect_used::check(
+                            cx,
+                            expr,
+                            recv,
+                            false,
+                            self.allow_expect_in_tests,
+                            unwrap_expect_used::Variant::Expect,
+                        ),
                     }
                     unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
                 },
                 ("expect_err", [_]) => {
                     unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
-                    expect_used::check(cx, expr, recv, true, self.allow_expect_in_tests);
+                    unwrap_expect_used::check(
+                        cx,
+                        expr,
+                        recv,
+                        true,
+                        self.allow_expect_in_tests,
+                        unwrap_expect_used::Variant::Expect,
+                    );
                 },
                 ("extend", [arg]) => {
                     string_extend_chars::check(cx, expr, recv, arg);
@@ -4180,11 +4193,25 @@ impl Methods {
                         _ => {},
                     }
                     unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
-                    unwrap_used::check(cx, expr, recv, false, self.allow_unwrap_in_tests);
+                    unwrap_expect_used::check(
+                        cx,
+                        expr,
+                        recv,
+                        false,
+                        self.allow_unwrap_in_tests,
+                        unwrap_expect_used::Variant::Unwrap,
+                    );
                 },
                 ("unwrap_err", []) => {
                     unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
-                    unwrap_used::check(cx, expr, recv, true, self.allow_unwrap_in_tests);
+                    unwrap_expect_used::check(
+                        cx,
+                        expr,
+                        recv,
+                        true,
+                        self.allow_unwrap_in_tests,
+                        unwrap_expect_used::Variant::Unwrap,
+                    );
                 },
                 ("unwrap_or", [u_arg]) => {
                     match method_call(recv) {
