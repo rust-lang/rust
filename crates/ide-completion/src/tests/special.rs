@@ -1282,26 +1282,24 @@ fn here_we_go() {
 }
 
 #[test]
-fn completion_filtering_excludes_non_identifier_aliases() {
-    // Catch panic instead of using `#[should_panic]` as style check bans
-    // `#[should_panic]`. Making `check_edit` return a result would require
-    // a lot of test changes.
-    std::panic::catch_unwind(|| {
-        check_edit(
-            "Partial>",
-            r#"
+fn completion_filtering_excludes_non_identifier_doc_aliases() {
+    check_edit(
+        "PartialOrdcmporder",
+        r#"
 #[doc(alias = ">")]
+#[doc(alias = "cmp")]
+#[doc(alias = "order")]
 trait PartialOrd {}
 
 struct Foo<T: Partial$0
 "#,
-            r#"
+        r#"
 #[doc(alias = ">")]
+#[doc(alias = "cmp")]
+#[doc(alias = "order")]
 trait PartialOrd {}
 
 struct Foo<T: PartialOrd
 "#,
-        )
-    })
-    .unwrap_err();
+    );
 }
