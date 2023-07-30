@@ -883,18 +883,25 @@ fn classify_name_ref(
         }
     };
     let make_path_kind_type = |ty: ast::Type| {
-        let location = type_location(ty.syntax());
-        if let Some(p) = ty.syntax().parent() {
-            if ast::GenericArg::can_cast(p.kind()) || ast::GenericArgList::can_cast(p.kind()) {
-                if let Some(p) = p.parent().and_then(|p| p.parent()) {
-                    if let Some(segment) = ast::PathSegment::cast(p) {
-                        let path = segment.parent_path().top_path();
-                        dbg!(sema.resolve_path(&path));
-                    }
+        let location = type_location(ty.syntax()).unwrap_or(TypeLocation::Other);
+        match &location {
+            TypeLocation::TupleField => (),
+            TypeLocation::TypeAscription(_) => (),
+            TypeLocation::GenericArgList(args) => {
+                dbg!(&args);
+                if let Some(segment) =
+                    args.as_ref().and_then(|args| ast::PathSegment::cast(args.syntax().parent()?))
+                {
+                    let path = dbg!(segment.parent_path().top_path());
+                    dbg!(sema.resolve_path(&path));
                 }
             }
+            TypeLocation::TypeBound => (),
+            TypeLocation::ImplTarget => (),
+            TypeLocation::ImplTrait => (),
+            TypeLocation::Other => (),
         }
-        PathKind::Type { location: location.unwrap_or(TypeLocation::Other) }
+        PathKind::Type { location }
     };
 
     let mut kind_macro_call = |it: ast::MacroCall| {
