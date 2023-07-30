@@ -515,6 +515,32 @@ impl Step for Llvm {
             }
         }
 
+        // When building LLVM as a shared library on linux, it can contain unexpected debuginfo:
+        // some can come from the C++ standard library. Unless we're explicitly requesting LLVM to
+        // be built with debuginfo, strip it away after the fact, to make dist artifacts smaller.
+        // FIXME: to make things simpler for now, limit this to the host and target where we know
+        // `strip -g` is both available and will fix the issue, i.e. on a x64 linux host that is not
+        // cross-compiling. Expand this to other appropriate targets in the future.
+        if builder.llvm_link_shared()
+            && builder.config.llvm_optimize
+            && !builder.config.llvm_release_debuginfo
+            && target == "x86_64-unknown-linux-gnu"
+            && target == builder.config.build
+        {
+            // Find the name of the LLVM shared library that we just built.
+            let lib_name = find_llvm_lib_name("so");
+
+            // If the shared library exists in LLVM's `/build/lib/` or `/lib/` folders, strip its
+            // debuginfo. Note: `output` will propagate any errors here.
+            let strip_if_possible = |path: PathBuf| {
+                if path.exists() {
+                    output(Command::new("strip").arg("--strip-debug").arg(path));
+                }
+            };
+            strip_if_possible(out_dir.join("lib").join(&lib_name));
+            strip_if_possible(out_dir.join("build").join("lib").join(&lib_name));
+        }
+
         t!(stamp.write());
 
         res
