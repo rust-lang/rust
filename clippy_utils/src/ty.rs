@@ -419,6 +419,11 @@ pub fn is_type_lang_item(cx: &LateContext<'_>, ty: Ty<'_>, lang_item: hir::LangI
     }
 }
 
+/// Gets the diagnostic name of the type, if it has one
+pub fn type_diagnostic_name(cx: &LateContext<'_>, ty: Ty<'_>) -> Option<Symbol> {
+    ty.ty_adt_def().and_then(|adt| cx.tcx.get_diagnostic_name(adt.did()))
+}
+
 /// Return `true` if the passed `typ` is `isize` or `usize`.
 pub fn is_isize_or_usize(typ: Ty<'_>) -> bool {
     matches!(typ.kind(), ty::Int(IntTy::Isize) | ty::Uint(UintTy::Usize))
