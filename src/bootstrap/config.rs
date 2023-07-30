@@ -173,6 +173,7 @@ pub struct Config {
     pub llvm_optimize: bool,
     pub llvm_thin_lto: bool,
     pub llvm_release_debuginfo: bool,
+    pub llvm_strip_debuginfo: bool,
     pub llvm_static_stdcpp: bool,
     /// `None` if `llvm_from_ci` is true and we haven't yet downloaded llvm.
     #[cfg(not(test))]
@@ -823,6 +824,7 @@ define_config! {
         optimize: Option<bool> = "optimize",
         thin_lto: Option<bool> = "thin-lto",
         release_debuginfo: Option<bool> = "release-debuginfo",
+        strip_debuginfo: Option<bool> = "strip-debuginfo",
         assertions: Option<bool> = "assertions",
         tests: Option<bool> = "tests",
         plugins: Option<bool> = "plugins",
@@ -1511,6 +1513,7 @@ impl Config {
             config.llvm_clang = llvm.clang.unwrap_or(false);
             config.llvm_enable_warnings = llvm.enable_warnings.unwrap_or(false);
             config.llvm_build_config = llvm.build_config.clone().unwrap_or(Default::default());
+            config.llvm_strip_debuginfo = llvm.strip_debuginfo.unwrap_or(false);
 
             let asserts = llvm_assertions.unwrap_or(false);
             config.llvm_from_ci = match llvm.download_ci_llvm {
@@ -1552,6 +1555,7 @@ impl Config {
                 check_ci_llvm!(llvm.clang);
                 check_ci_llvm!(llvm.build_config);
                 check_ci_llvm!(llvm.plugins);
+                check_ci_llvm!(llvm.strip_debuginfo);
             }
 
             // NOTE: can never be hit when downloading from CI, since we call `check_ci_llvm!(thin_lto)` above.
