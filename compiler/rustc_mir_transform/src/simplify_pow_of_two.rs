@@ -103,8 +103,11 @@ impl<'tcx> MirPass<'tcx> for SimplifyPowOfTwo {
                 );
 
                 let num_shl = tcx.mk_place_field(checked_mul.into(), FieldIdx::from_u32(0), exp_ty);
-                let mul_result =
-                    tcx.mk_place_field(checked_mul.into(), FieldIdx::from_u32(1), Ty::new_bool(tcx));
+                let mul_result = tcx.mk_place_field(
+                    checked_mul.into(),
+                    FieldIdx::from_u32(1),
+                    Ty::new_bool(tcx),
+                );
                 let shl_result = patch.new_temp(Ty::new_bool(tcx), span);
 
                 // Whether the shl will overflow, if so we return 0
@@ -118,7 +121,10 @@ impl<'tcx> MirPass<'tcx> for SimplifyPowOfTwo {
                             Operand::Constant(Box::new(Constant {
                                 span,
                                 user_ty: None,
-                                literal: ConstantKind::Val(ConstValue::from_u32(32), exp_ty),
+                                literal: ConstantKind::Val(
+                                    ConstValue::from_u32(recv_int.size().bits() as u32),
+                                    exp_ty,
+                                ),
                             })),
                         )),
                     ),
@@ -171,11 +177,7 @@ impl<'tcx> MirPass<'tcx> for SimplifyPowOfTwo {
                 patch.add_assign(
                     loc,
                     shl.into(),
-                    Rvalue::Cast(
-                        CastKind::IntToInt,
-                        Operand::Copy(shl_exp_ty.into()),
-                        recv_ty,
-                    ),
+                    Rvalue::Cast(CastKind::IntToInt, Operand::Copy(shl_exp_ty.into()), recv_ty),
                 );
 
                 patch.add_assign(
@@ -221,7 +223,10 @@ impl<'tcx> MirPass<'tcx> for SimplifyPowOfTwo {
                         overflowed.into(),
                         Rvalue::BinaryOp(
                             BinOp::BitAnd,
-                            Box::new((Operand::Copy(shl_eq_shr.into()), Operand::Copy(shl_result.into()))),
+                            Box::new((
+                                Operand::Copy(shl_eq_shr.into()),
+                                Operand::Copy(shl_result.into()),
+                            )),
                         ),
                     );
 
@@ -237,7 +242,10 @@ impl<'tcx> MirPass<'tcx> for SimplifyPowOfTwo {
                                 Operand::Constant(Box::new(Constant {
                                     span,
                                     user_ty: None,
-                                    literal: ConstantKind::Val(ConstValue::Scalar(Scalar::from_u32(1)), exp_ty),
+                                    literal: ConstantKind::Val(
+                                        ConstValue::Scalar(Scalar::from_u32(1)),
+                                        exp_ty,
+                                    ),
                                 })),
                                 Operand::Copy(num_shl.into()),
                             )),
