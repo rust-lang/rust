@@ -26,10 +26,15 @@ impl Step for CleanAll {
     }
 
     fn run(self, builder: &Builder<'_>) -> Self::Output {
-        let Subcommand::Clean { all, .. } = builder.config.cmd else {
+        let Subcommand::Clean { all, stage } = builder.config.cmd else {
             unreachable!("wrong subcommand?")
         };
-        clean_default(builder.build, all)
+
+        if all && stage.is_some() {
+            panic!("--all and --stage can't be used at the same time for `x clean`");
+        }
+
+        clean(builder.build, all, stage)
     }
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -86,35 +91,70 @@ clean_crate_tree! {
     Std, Mode::Std, "sysroot";
 }
 
-fn clean_default(build: &Build, all: bool) {
+fn clean(build: &Build, all: bool, stage: Option<u32>) {
     if build.config.dry_run() {
         return;
     }
 
     rm_rf("tmp".as_ref());
 
+    // Clean the entire build directory
     if all {
         rm_rf(&build.out);
-    } else {
-        rm_rf(&build.out.join("tmp"));
-        rm_rf(&build.out.join("dist"));
-        rm_rf(&build.out.join("bootstrap"));
-        rm_rf(&build.out.join("rustfmt.stamp"));
+        return;
+    }
 
-        for host in &build.hosts {
-            let entries = match build.out.join(host.triple).read_dir() {
-                Ok(iter) => iter,
-                Err(_) => continue,
-            };
+    // Clean the target stage artifacts
+    if let Some(stage) = stage {
+        clean_specific_stage(build, stage);
+        return;
+    }
 
-            for entry in entries {
-                let entry = t!(entry);
-                if entry.file_name().to_str() == Some("llvm") {
-                    continue;
-                }
-                let path = t!(entry.path().canonicalize());
-                rm_rf(&path);
+    // Follow the default behaviour
+    clean_default(build);
+}
+
+fn clean_specific_stage(build: &Build, stage: u32) {
+    for host in &build.hosts {
+        let entries = match build.out.join(host.triple).read_dir() {
+            Ok(iter) => iter,
+            Err(_) => continue,
+        };
+
+        for entry in entries {
+            let entry = t!(entry);
+            let stage_prefix = format!("stage{}", stage);
+
+            // if current entry is not related with the target stage, continue
+            if !entry.file_name().to_str().unwrap_or("").contains(&stage_prefix) {
+                continue;
             }
+
+            let path = t!(entry.path().canonicalize());
+            rm_rf(&path);
+        }
+    }
+}
+
+fn clean_default(build: &Build) {
+    rm_rf(&build.out.join("tmp"));
+    rm_rf(&build.out.join("dist"));
+    rm_rf(&build.out.join("bootstrap"));
+    rm_rf(&build.out.join("rustfmt.stamp"));
+
+    for host in &build.hosts {
+        let entries = match build.out.join(host.triple).read_dir() {
+            Ok(iter) => iter,
+            Err(_) => continue,
+        };
+
+        for entry in entries {
+            let entry = t!(entry);
+            if entry.file_name().to_str() == Some("llvm") {
+                continue;
+            }
+            let path = t!(entry.path().canonicalize());
+            rm_rf(&path);
         }
     }
 }
