@@ -93,6 +93,10 @@ impl<'tcx> ConstValue<'tcx> {
         ConstValue::Scalar(Scalar::from_bool(b))
     }
 
+    pub fn from_u32(i: u32) -> Self {
+        ConstValue::Scalar(Scalar::from_u32(i))
+    }
+
     pub fn from_u64(i: u64) -> Self {
         ConstValue::Scalar(Scalar::from_u64(i))
     }

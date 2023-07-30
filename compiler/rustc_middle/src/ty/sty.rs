@@ -1872,6 +1872,10 @@ impl<'tcx> Region<'tcx> {
 
 /// Constructors for `Ty`
 impl<'tcx> Ty<'tcx> {
+    pub fn new_bool(tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
+        Ty::new(tcx, TyKind::Bool)
+    }
+
     // Avoid this in favour of more specific `new_*` methods, where possible.
     #[allow(rustc::usage_of_ty_tykind)]
     #[inline]

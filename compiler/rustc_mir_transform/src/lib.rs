@@ -95,6 +95,7 @@ mod required_consts;
 mod reveal_all;
 mod separate_const_switch;
 mod shim;
+mod simplify_pow_of_two;
 mod ssa;
 // This pass is public to allow external drivers to perform MIR cleanup
 mod check_alignment;
@@ -546,6 +547,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &lower_slice_len::LowerSliceLenCalls, // has to be done before inlining, otherwise actual call will be almost always inlined. Also simple, so can just do first
             &unreachable_prop::UnreachablePropagation,
             &uninhabited_enum_branching::UninhabitedEnumBranching,
+            &simplify_pow_of_two::SimplifyPowOfTwo,
             &o1(simplify::SimplifyCfg::AfterUninhabitedEnumBranching),
             &inline::Inline,
             &remove_storage_markers::RemoveStorageMarkers,
