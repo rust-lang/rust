@@ -50,7 +50,8 @@ pub mod int;
     all(target_arch = "xtensa", target_os = "none"),
     all(target_arch = "mips", target_os = "none"),
     target_os = "xous",
-    all(target_vendor = "fortanix", target_env = "sgx")
+    all(target_vendor = "fortanix", target_env = "sgx"),
+    target_env = "msvc"
 ))]
 pub mod math;
 pub mod mem;
