@@ -1519,7 +1519,7 @@ pub unsafe fn _mm256_loadu_si256(mem_addr: *const __m256i) -> __m256i {
 }
 
 /// Stores 256-bits of integer data from `a` into memory.
-/// 	`mem_addr` does not need to be aligned on any particular boundary.
+/// `mem_addr` does not need to be aligned on any particular boundary.
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_storeu_si256)
 #[inline]

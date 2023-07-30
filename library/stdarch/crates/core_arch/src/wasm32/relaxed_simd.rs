@@ -307,7 +307,7 @@ mod tests {
     use super::super::simd128::*;
     use super::*;
     use core::ops::{Add, Div, Mul, Neg, Sub};
-    use std;
+
     use std::fmt::Debug;
     use std::mem::transmute;
     use std::num::Wrapping;

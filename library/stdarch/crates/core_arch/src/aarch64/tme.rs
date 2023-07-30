@@ -21,9 +21,9 @@ extern "unadjusted" {
     #[link_name = "llvm.aarch64.tstart"]
     fn aarch64_tstart() -> u64;
     #[link_name = "llvm.aarch64.tcommit"]
-    fn aarch64_tcommit() -> ();
+    fn aarch64_tcommit();
     #[link_name = "llvm.aarch64.tcancel"]
-    fn aarch64_tcancel(imm0: u64) -> ();
+    fn aarch64_tcancel(imm0: u64);
     #[link_name = "llvm.aarch64.ttest"]
     fn aarch64_ttest() -> u64;
 }

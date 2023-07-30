@@ -3202,7 +3202,7 @@ pub fn i32x4_shr(a: v128, amt: u32) -> v128 {
 #[doc(alias("i32x4.shr_u"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn u32x4_shr(a: v128, amt: u32) -> v128 {
-    unsafe { simd_shr(a.as_u32x4(), simd::u32x4::splat(amt as u32)).v128() }
+    unsafe { simd_shr(a.as_u32x4(), simd::u32x4::splat(amt)).v128() }
 }
 
 /// Adds two 128-bit vectors as if they were two packed four 32-bit integers.
@@ -4229,7 +4229,7 @@ pub fn f64x2_promote_low_f32x4(a: v128) -> v128 {
 mod tests {
     use super::*;
     use core::ops::{Add, Div, Mul, Neg, Sub};
-    use std;
+
     use std::fmt::Debug;
     use std::mem::transmute;
     use std::num::Wrapping;
@@ -4577,8 +4577,8 @@ mod tests {
                     u8::MAX.into(),
                 ),
                 i16x8(
-                    i16::MIN.into(),
-                    i16::MAX.into(),
+                    i16::MIN,
+                    i16::MAX,
                     u16::MIN as i16,
                     u16::MAX as i16,
                     0,
@@ -4603,8 +4603,8 @@ mod tests {
                     u8::MAX.into(),
                 ),
                 i16x8(
-                    i16::MIN.into(),
-                    i16::MAX.into(),
+                    i16::MIN,
+                    i16::MAX,
                     u16::MIN as i16,
                     u16::MAX as i16,
                     0,
@@ -4624,12 +4624,7 @@ mod tests {
         compare_bytes(
             i16x8_narrow_i32x4(
                 i32x4(0, -1, i16::MIN.into(), i16::MAX.into()),
-                i32x4(
-                    i32::MIN.into(),
-                    i32::MAX.into(),
-                    u32::MIN as i32,
-                    u32::MAX as i32,
-                ),
+                i32x4(i32::MIN, i32::MAX, u32::MIN as i32, u32::MAX as i32),
             ),
             i16x8(0, -1, i16::MIN, i16::MAX, i16::MIN, i16::MAX, 0, -1),
         );
@@ -4637,12 +4632,7 @@ mod tests {
         compare_bytes(
             u16x8_narrow_i32x4(
                 i32x4(u16::MAX.into(), -1, i16::MIN.into(), i16::MAX.into()),
-                i32x4(
-                    i32::MIN.into(),
-                    i32::MAX.into(),
-                    u32::MIN as i32,
-                    u32::MAX as i32,
-                ),
+                i32x4(i32::MIN, i32::MAX, u32::MIN as i32, u32::MAX as i32),
             ),
             i16x8(-1, 0, 0, i16::MAX, 0, -1, 0, 0),
         );
