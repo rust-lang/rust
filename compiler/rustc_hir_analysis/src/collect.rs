@@ -195,9 +195,9 @@ pub(crate) fn placeholder_type_error_diag<'tcx>(
             sugg.push((arg.span, (*type_name).to_string()));
         } else if let Some(span) = generics.span_for_param_suggestion() {
             // Account for bounds, we want `fn foo<T: E, K>(_: K)` not `fn foo<T, K: E>(_: K)`.
-            sugg.push((span, format!(", {}", type_name)));
+            sugg.push((span, format!(", {type_name}")));
         } else {
-            sugg.push((generics.span, format!("<{}>", type_name)));
+            sugg.push((generics.span, format!("<{type_name}>")));
         }
     }
 
@@ -329,7 +329,7 @@ fn bad_placeholder<'tcx>(
     mut spans: Vec<Span>,
     kind: &'static str,
 ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-    let kind = if kind.ends_with('s') { format!("{}es", kind) } else { format!("{}s", kind) };
+    let kind = if kind.ends_with('s') { format!("{kind}es") } else { format!("{kind}s") };
 
     spans.sort();
     tcx.sess.create_err(errors::PlaceholderNotAllowedItemSignatures { spans, kind })
@@ -425,10 +425,8 @@ impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
                         | hir::ItemKind::Union(_, generics) => {
                             let lt_name = get_new_lifetime_name(self.tcx, poly_trait_ref, generics);
                             let (lt_sp, sugg) = match generics.params {
-                                [] => (generics.span, format!("<{}>", lt_name)),
-                                [bound, ..] => {
-                                    (bound.span.shrink_to_lo(), format!("{}, ", lt_name))
-                                }
+                                [] => (generics.span, format!("<{lt_name}>")),
+                                [bound, ..] => (bound.span.shrink_to_lo(), format!("{lt_name}, ")),
                             };
                             mpart_sugg = Some(errors::AssociatedTypeTraitUninferredGenericParamsMultipartSuggestion {
                                 fspan: lt_sp,
@@ -1027,7 +1025,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
             } else {
                 tcx.sess.span_err(
                     meta.span(),
-                    format!("unknown meta item passed to `rustc_deny_explicit_impl` {:?}", meta),
+                    format!("unknown meta item passed to `rustc_deny_explicit_impl` {meta:?}"),
                 );
             }
         }
@@ -1505,7 +1503,7 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
                     .sess
                     .source_map()
                     .span_to_snippet(ast_ty.span)
-                    .map_or_else(|_| String::new(), |s| format!(" `{}`", s));
+                    .map_or_else(|_| String::new(), |s| format!(" `{s}`"));
                 tcx.sess.emit_err(errors::SIMDFFIHighlyExperimental { span: ast_ty.span, snip });
             }
         };

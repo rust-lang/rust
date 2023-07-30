@@ -149,7 +149,7 @@ impl<'a, 'tcx> CfgChecker<'a, 'tcx> {
                 }
             }
         } else {
-            self.fail(location, format!("encountered jump to invalid basic block {:?}", bb))
+            self.fail(location, format!("encountered jump to invalid basic block {bb:?}"))
         }
     }
 
@@ -222,8 +222,7 @@ impl<'a, 'tcx> CfgChecker<'a, 'tcx> {
                     self.fail(
                         Location { block: bb, statement_index: 0 },
                         format!(
-                            "Cleanup control flow violation: Cycle involving edge {:?} -> {:?}",
-                            bb, parent,
+                            "Cleanup control flow violation: Cycle involving edge {bb:?} -> {parent:?}",
                         ),
                     );
                     break;
@@ -257,7 +256,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
         if self.body.local_decls.get(local).is_none() {
             self.fail(
                 location,
-                format!("local {:?} has no corresponding declaration in `body.local_decls`", local),
+                format!("local {local:?} has no corresponding declaration in `body.local_decls`"),
             );
         }
 
@@ -272,7 +271,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
             self.storage_liveness.seek_after_primary_effect(location);
             let locals_with_storage = self.storage_liveness.get();
             if !locals_with_storage.contains(local) {
-                self.fail(location, format!("use of local {:?}, which has no storage here", local));
+                self.fail(location, format!("use of local {local:?}, which has no storage here"));
             }
         }
     }
@@ -323,7 +322,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                 // DropsLowered`. However, this causes ICEs with generation of drop shims, which
                 // seem to fail to set their `MirPhase` correctly.
                 if matches!(kind, RetagKind::Raw | RetagKind::TwoPhase) {
-                    self.fail(location, format!("explicit `{:?}` is forbidden", kind));
+                    self.fail(location, format!("explicit `{kind:?}` is forbidden"));
                 }
             }
             StatementKind::StorageLive(local) => {
@@ -556,7 +555,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 let ty = place.ty(&self.body.local_decls, self.tcx).ty;
 
                 if !ty.is_copy_modulo_regions(self.tcx, self.param_env) {
-                    self.fail(location, format!("`Operand::Copy` with non-`Copy` type {}", ty));
+                    self.fail(location, format!("`Operand::Copy` with non-`Copy` type {ty}"));
                 }
             }
         }
@@ -575,7 +574,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             ProjectionElem::Index(index) => {
                 let index_ty = self.body.local_decls[index].ty;
                 if index_ty != self.tcx.types.usize {
-                    self.fail(location, format!("bad index ({:?} != usize)", index_ty))
+                    self.fail(location, format!("bad index ({index_ty:?} != usize)"))
                 }
             }
             ProjectionElem::Deref
@@ -586,22 +585,21 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 if base_ty.is_box() {
                     self.fail(
                         location,
-                        format!("{:?} dereferenced after ElaborateBoxDerefs", base_ty),
+                        format!("{base_ty:?} dereferenced after ElaborateBoxDerefs"),
                     )
                 }
             }
             ProjectionElem::Field(f, ty) => {
                 let parent_ty = place_ref.ty(&self.body.local_decls, self.tcx);
                 let fail_out_of_bounds = |this: &mut Self, location| {
-                    this.fail(location, format!("Out of bounds field {:?} for {:?}", f, parent_ty));
+                    this.fail(location, format!("Out of bounds field {f:?} for {parent_ty:?}"));
                 };
                 let check_equal = |this: &mut Self, location, f_ty| {
                     if !this.mir_assign_valid_types(ty, f_ty) {
                         this.fail(
                             location,
                             format!(
-                                "Field projection `{:?}.{:?}` specified type `{:?}`, but actual type is `{:?}`",
-                                place_ref, f, ty, f_ty
+                                "Field projection `{place_ref:?}.{f:?}` specified type `{ty:?}`, but actual type is `{f_ty:?}`"
                             )
                         )
                     }
@@ -649,7 +647,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             let Some(layout) = gen_body.generator_layout() else {
                                 self.fail(
                                     location,
-                                    format!("No generator layout for {:?}", parent_ty),
+                                    format!("No generator layout for {parent_ty:?}"),
                                 );
                                 return;
                             };
@@ -662,7 +660,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             let Some(f_ty) = layout.field_tys.get(local) else {
                                 self.fail(
                                     location,
-                                    format!("Out of bounds local {:?} for {:?}", local, parent_ty),
+                                    format!("Out of bounds local {local:?} for {parent_ty:?}"),
                                 );
                                 return;
                             };
@@ -705,7 +703,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 if debuginfo.references != 0 && place.projection.last() == Some(&PlaceElem::Deref) {
                     self.fail(
                         START_BLOCK.start_location(),
-                        format!("debuginfo {:?}, has both ref and deref", debuginfo),
+                        format!("debuginfo {debuginfo:?}, has both ref and deref"),
                     );
                 }
             }
@@ -715,7 +713,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     if ty.is_union() || ty.is_enum() {
                         self.fail(
                             START_BLOCK.start_location(),
-                            format!("invalid type {:?} for composite debuginfo", ty),
+                            format!("invalid type {ty:?} for composite debuginfo"),
                         );
                     }
                     if f.projection.iter().any(|p| !matches!(p, PlaceElem::Field(..))) {
@@ -742,7 +740,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             && cntxt != PlaceContext::NonUse(NonUseContext::VarDebugInfo)
             && place.projection[1..].contains(&ProjectionElem::Deref)
         {
-            self.fail(location, format!("{:?}, has deref at the wrong place", place));
+            self.fail(location, format!("{place:?}, has deref at the wrong place"));
         }
 
         self.super_place(place, cntxt, location);
@@ -802,7 +800,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     Offset => {
                         check_kinds!(a, "Cannot offset non-pointer type {:?}", ty::RawPtr(..));
                         if b != self.tcx.types.isize && b != self.tcx.types.usize {
-                            self.fail(location, format!("Cannot offset by non-isize type {:?}", b));
+                            self.fail(location, format!("Cannot offset by non-isize type {b:?}"));
                         }
                     }
                     Eq | Lt | Le | Ne | Ge | Gt => {
@@ -867,13 +865,12 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             self.fail(
                                 location,
                                 format!(
-                                    "Cannot perform checked arithmetic on unequal types {:?} and {:?}",
-                                    a, b
+                                    "Cannot perform checked arithmetic on unequal types {a:?} and {b:?}"
                                 ),
                             );
                         }
                     }
-                    _ => self.fail(location, format!("There is no checked version of {:?}", op)),
+                    _ => self.fail(location, format!("There is no checked version of {op:?}")),
                 }
             }
             Rvalue::UnaryOp(op, operand) => {
@@ -1078,7 +1075,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 if !ty.is_bool() {
                     self.fail(
                         location,
-                        format!("`assume` argument must be `bool`, but got: `{}`", ty),
+                        format!("`assume` argument must be `bool`, but got: `{ty}`"),
                     );
                 }
             }
@@ -1091,7 +1088,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 } else {
                     self.fail(
                         location,
-                        format!("Expected src to be ptr in copy_nonoverlapping, got: {}", src_ty),
+                        format!("Expected src to be ptr in copy_nonoverlapping, got: {src_ty}"),
                     );
                     return;
                 };
@@ -1101,19 +1098,19 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 } else {
                     self.fail(
                         location,
-                        format!("Expected dst to be ptr in copy_nonoverlapping, got: {}", dst_ty),
+                        format!("Expected dst to be ptr in copy_nonoverlapping, got: {dst_ty}"),
                     );
                     return;
                 };
                 // since CopyNonOverlapping is parametrized by 1 type,
                 // we only need to check that they are equal and not keep an extra parameter.
                 if !self.mir_assign_valid_types(op_src_ty, op_dst_ty) {
-                    self.fail(location, format!("bad arg ({:?} != {:?})", op_src_ty, op_dst_ty));
+                    self.fail(location, format!("bad arg ({op_src_ty:?} != {op_dst_ty:?})"));
                 }
 
                 let op_cnt_ty = count.ty(&self.body.local_decls, self.tcx);
                 if op_cnt_ty != self.tcx.types.usize {
-                    self.fail(location, format!("bad arg ({:?} != usize)", op_cnt_ty))
+                    self.fail(location, format!("bad arg ({op_cnt_ty:?} != usize)"))
                 }
             }
             StatementKind::SetDiscriminant { place, .. } => {
@@ -1125,8 +1122,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     self.fail(
                         location,
                         format!(
-                            "`SetDiscriminant` is only allowed on ADTs and generators, not {:?}",
-                            pty
+                            "`SetDiscriminant` is only allowed on ADTs and generators, not {pty:?}"
                         ),
                     );
                 }
@@ -1141,7 +1137,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 // DropsLowered`. However, this causes ICEs with generation of drop shims, which
                 // seem to fail to set their `MirPhase` correctly.
                 if matches!(kind, RetagKind::Raw | RetagKind::TwoPhase) {
-                    self.fail(location, format!("explicit `{:?}` is forbidden", kind));
+                    self.fail(location, format!("explicit `{kind:?}` is forbidden"));
                 }
             }
             StatementKind::StorageLive(_)
@@ -1174,7 +1170,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     if Scalar::<()>::try_from_uint(value, size).is_none() {
                         self.fail(
                             location,
-                            format!("the value {:#x} is not a proper {:?}", value, switch_ty),
+                            format!("the value {value:#x} is not a proper {switch_ty:?}"),
                         )
                     }
                 }
@@ -1185,7 +1181,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     ty::FnPtr(..) | ty::FnDef(..) => {}
                     _ => self.fail(
                         location,
-                        format!("encountered non-callable type {} in `Call` terminator", func_ty),
+                        format!("encountered non-callable type {func_ty} in `Call` terminator"),
                     ),
                 }
             }
@@ -1195,8 +1191,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     self.fail(
                         location,
                         format!(
-                            "encountered non-boolean condition of type {} in `Assert` terminator",
-                            cond_ty
+                            "encountered non-boolean condition of type {cond_ty} in `Assert` terminator"
                         ),
                     );
                 }

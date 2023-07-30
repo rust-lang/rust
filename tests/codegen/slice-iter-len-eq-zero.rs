@@ -9,7 +9,7 @@ type Demo = [u8; 3];
 #[no_mangle]
 pub fn slice_iter_len_eq_zero(y: std::slice::Iter<'_, Demo>) -> bool {
     // CHECK-NOT: sub
-    // CHECK: %[[RET:.+]] = icmp eq {{i8\*|ptr}} {{%1|%0}}, {{%1|%0}}
+    // CHECK: %[[RET:.+]] = icmp eq ptr {{%1|%0}}, {{%1|%0}}
     // CHECK: ret i1 %[[RET]]
     y.len() == 0
 }

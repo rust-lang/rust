@@ -613,8 +613,6 @@ impl<K, V> BTreeMap<K, V> {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// use std::collections::BTreeMap;
     ///
@@ -635,8 +633,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// Clears the map, removing all elements.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// use std::collections::BTreeMap;
@@ -660,8 +656,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// Makes a new empty BTreeMap with a reasonable choice for B.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// # #![feature(allocator_api)]
@@ -687,8 +681,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// on the borrowed form *must* match the ordering on the key type.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// use std::collections::BTreeMap;
@@ -743,8 +735,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// The key in this pair is the minimum key in the map.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// use std::collections::BTreeMap;
@@ -829,8 +819,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// The key in this pair is the maximum key in the map.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// use std::collections::BTreeMap;
@@ -917,8 +905,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// use std::collections::BTreeMap;
     ///
@@ -942,8 +928,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// on the borrowed form *must* match the ordering on the key type.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// use std::collections::BTreeMap;
@@ -982,8 +966,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// use std::collections::BTreeMap;
     ///
@@ -1017,8 +999,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// #![feature(map_try_insert)]
     ///
@@ -1051,8 +1031,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// use std::collections::BTreeMap;
     ///
@@ -1077,8 +1055,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// on the borrowed form *must* match the ordering on the key type.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// use std::collections::BTreeMap;
@@ -1208,8 +1184,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// use std::collections::BTreeMap;
     /// use std::ops::Bound::Included;
@@ -1251,8 +1225,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// use std::collections::BTreeMap;
     ///
@@ -1282,8 +1254,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// Gets the given key's corresponding entry in the map for in-place manipulation.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// use std::collections::BTreeMap;
@@ -1335,8 +1305,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// including the key.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// use std::collections::BTreeMap;
@@ -2388,8 +2356,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// use std::collections::BTreeMap;
     ///
@@ -2419,8 +2385,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// Gets a mutable iterator over the entries of the map, sorted by key.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// use std::collections::BTreeMap;
@@ -2453,8 +2417,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// use std::collections::BTreeMap;
     ///
@@ -2474,8 +2436,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// use std::collections::BTreeMap;
     ///
@@ -2494,8 +2454,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// Gets a mutable iterator over the values of the map, in order by key.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// use std::collections::BTreeMap;
@@ -2521,8 +2479,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// use std::collections::BTreeMap;
     ///
@@ -2545,8 +2501,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// Returns `true` if the map contains no elements.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// use std::collections::BTreeMap;
@@ -2578,8 +2532,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// #![feature(btree_cursors)]
     ///
@@ -2591,6 +2543,8 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// a.insert(2, "b");
     /// a.insert(3, "c");
     /// a.insert(4, "c");
+    /// let cursor = a.lower_bound(Bound::Included(&2));
+    /// assert_eq!(cursor.key(), Some(&2));
     /// let cursor = a.lower_bound(Bound::Excluded(&2));
     /// assert_eq!(cursor.key(), Some(&3));
     /// ```
@@ -2619,8 +2573,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// #![feature(btree_cursors)]
     ///
@@ -2632,6 +2584,8 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// a.insert(2, "b");
     /// a.insert(3, "c");
     /// a.insert(4, "c");
+    /// let cursor = a.lower_bound_mut(Bound::Included(&2));
+    /// assert_eq!(cursor.key(), Some(&2));
     /// let cursor = a.lower_bound_mut(Bound::Excluded(&2));
     /// assert_eq!(cursor.key(), Some(&3));
     /// ```
@@ -2673,8 +2627,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// #![feature(btree_cursors)]
     ///
@@ -2686,6 +2638,8 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// a.insert(2, "b");
     /// a.insert(3, "c");
     /// a.insert(4, "c");
+    /// let cursor = a.upper_bound(Bound::Included(&3));
+    /// assert_eq!(cursor.key(), Some(&3));
     /// let cursor = a.upper_bound(Bound::Excluded(&3));
     /// assert_eq!(cursor.key(), Some(&2));
     /// ```
@@ -2714,8 +2668,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// #![feature(btree_cursors)]
     ///
@@ -2727,6 +2679,8 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// a.insert(2, "b");
     /// a.insert(3, "c");
     /// a.insert(4, "c");
+    /// let cursor = a.upper_bound_mut(Bound::Included(&3));
+    /// assert_eq!(cursor.key(), Some(&3));
     /// let cursor = a.upper_bound_mut(Bound::Excluded(&3));
     /// assert_eq!(cursor.key(), Some(&2));
     /// ```

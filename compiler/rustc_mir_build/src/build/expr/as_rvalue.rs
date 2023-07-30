@@ -774,8 +774,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         // Not in a closure
                         debug_assert!(
                             local == ty::CAPTURE_STRUCT_LOCAL,
-                            "Expected local to be Local(1), found {:?}",
-                            local
+                            "Expected local to be Local(1), found {local:?}"
                         );
                         // Not in a closure
                         debug_assert!(

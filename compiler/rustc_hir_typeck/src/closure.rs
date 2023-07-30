@@ -81,7 +81,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         debug!(?bound_sig, ?liberated_sig);
 
-        let mut fcx = FnCtxt::new(self, self.param_env.without_const(), closure.def_id);
+        let mut fcx = FnCtxt::new(self, self.param_env, closure.def_id);
         let generator_types = check_fn(
             &mut fcx,
             liberated_sig,

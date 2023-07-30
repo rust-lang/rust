@@ -26,6 +26,20 @@ fn main() {
     let y = Some(&s);
     println!("{}", x == y);
     //~^ ERROR mismatched types
-    //~| HELP use `Option::as_ref()` to convert `Option<String>` to `Option<&String>`
+    //~| HELP use `Option::as_ref` to convert `Option<String>` to `Option<&String>`
 
+
+    let mut s = ();
+    let x = Some(s);
+    let y = Some(&mut s);
+    println!("{}", x == y);
+    //~^ ERROR mismatched types
+    //~| HELP use `Option::copied` to copy the value inside the `Option`
+
+    let mut s = String::new();
+    let x = Some(s.clone());
+    let y = Some(&mut s);
+    println!("{}", x == y);
+    //~^ ERROR mismatched types
+    //~| HELP use `Option::cloned` to clone the value inside the `Option`
 }

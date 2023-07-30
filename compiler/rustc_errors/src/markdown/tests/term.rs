@@ -63,7 +63,7 @@ fn test_wrapping_write() {
 #[test]
 fn test_output() {
     // Capture `--bless` when run via ./x
-    let bless = std::env::var("RUSTC_BLESS").unwrap_or_default() == "1";
+    let bless = std::env::var_os("RUSTC_BLESS").is_some_and(|v| v != "0");
     let ast = MdStream::parse_str(INPUT);
     let bufwtr = BufferWriter::stderr(ColorChoice::Always);
     let mut buffer = bufwtr.buffer();

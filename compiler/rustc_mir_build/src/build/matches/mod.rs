@@ -1627,9 +1627,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // at least the first candidate ought to be tested
         assert!(
             total_candidate_count > candidates.len(),
-            "{}, {:#?}",
-            total_candidate_count,
-            candidates
+            "{total_candidate_count}, {candidates:#?}"
         );
         debug!("tested_candidates: {}", total_candidate_count - candidates.len());
         debug!("untested_candidates: {}", candidates.len());

@@ -365,6 +365,14 @@ pub(crate) enum IfExpressionMissingThenBlockSub {
     AddThenBlock(#[primary_span] Span),
 }
 
+#[derive(Diagnostic)]
+#[diag(parse_ternary_operator)]
+#[help]
+pub struct TernaryOperator {
+    #[primary_span]
+    pub span: Span,
+}
+
 #[derive(Subdiagnostic)]
 #[suggestion(parse_extra_if_in_let_else, applicability = "maybe-incorrect", code = "")]
 pub(crate) struct IfExpressionLetSomeSub {
@@ -2691,4 +2699,35 @@ pub(crate) struct UnknownBuiltinConstruct {
 pub(crate) struct ExpectedBuiltinIdent {
     #[primary_span]
     pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_static_with_generics)]
+pub(crate) struct StaticWithGenerics {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_where_clause_before_const_body)]
+pub(crate) struct WhereClauseBeforeConstBody {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[label(parse_name_label)]
+    pub name: Span,
+    #[label(parse_body_label)]
+    pub body: Span,
+    #[subdiagnostic]
+    pub sugg: Option<WhereClauseBeforeConstBodySugg>,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(parse_suggestion, applicability = "machine-applicable")]
+pub(crate) struct WhereClauseBeforeConstBodySugg {
+    #[suggestion_part(code = "= {snippet} ")]
+    pub left: Span,
+    pub snippet: String,
+    #[suggestion_part(code = "")]
+    pub right: Span,
 }

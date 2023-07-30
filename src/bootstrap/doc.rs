@@ -147,7 +147,7 @@ impl<P: Step> Step for RustbookSrc<P> {
 
         if !builder.config.dry_run() && !(up_to_date(&src, &index) || up_to_date(&rustbook, &index))
         {
-            builder.info(&format!("Rustbook ({}) - {}", target, name));
+            builder.info(&format!("Rustbook ({target}) - {name}"));
             let _ = fs::remove_dir_all(&out);
 
             builder.run(rustbook_cmd.arg("build").arg(&src).arg("-d").arg(out));
@@ -219,7 +219,7 @@ impl Step for TheBook {
         for edition in &["first-edition", "second-edition", "2018-edition"] {
             builder.ensure(RustbookSrc {
                 target,
-                name: INTERNER.intern_string(format!("book/{}", edition)),
+                name: INTERNER.intern_string(format!("book/{edition}")),
                 src: INTERNER.intern_path(absolute_path.join(edition)),
                 // There should only be one book that is marked as the parent for each target, so
                 // treat the other editions as not having a parent.
@@ -966,7 +966,7 @@ impl Step for UnstableBookGen {
     fn run(self, builder: &Builder<'_>) {
         let target = self.target;
 
-        builder.info(&format!("Generating unstable book md files ({})", target));
+        builder.info(&format!("Generating unstable book md files ({target})"));
         let out = builder.md_doc_out(target).join("unstable-book");
         builder.create_dir(&out);
         builder.remove_dir(&out);

@@ -155,8 +155,6 @@ lint_builtin_unused_doc_comment = unused doc comment
 lint_builtin_while_true = denote infinite loops with `loop {"{"} ... {"}"}`
     .suggestion = use `loop`
 
-lint_cast_ref_to_mut = casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
-
 lint_check_name_deprecated = lint name `{$lint_name}` is deprecated and does not have an effect anymore. Use: {$new_name}
 
 lint_check_name_unknown = unknown lint: `{$lint_name}`
@@ -320,6 +318,8 @@ lint_invalid_nan_comparisons_eq_ne = incorrect NaN comparison, NaN cannot be dir
 
 lint_invalid_nan_comparisons_lt_le_gt_ge = incorrect NaN comparison, NaN is not orderable
 
+lint_invalid_reference_casting = casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
+
 lint_lintpass_by_hand = implementing `LintPass` by hand
     .help = try using `declare_lint_pass!` or `impl_lint_pass!` instead
 
@@ -410,8 +410,8 @@ lint_non_upper_case_global = {$sort} `{$name}` should have an upper case name
     .label = should have an UPPER_CASE name
 
 lint_noop_method_call = call to `.{$method}()` on a reference in this situation does nothing
-    .label = unnecessary method call
-    .note = the type `{$receiver_ty}` which `{$method}` is being called on is the same as the type returned from `{$method}`, so the method call does not do anything and can be removed
+    .suggestion = remove this redundant call
+    .note = the type `{$orig_ty}` does not implement `{$trait_}`, so calling `{$method}` on `&{$orig_ty}` copies the reference, which does not do anything and can be removed
 
 lint_only_cast_u8_to_char = only `u8` can be cast into `char`
     .suggestion = use a `char` literal instead

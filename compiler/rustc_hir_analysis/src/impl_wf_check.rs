@@ -77,8 +77,7 @@ fn enforce_impl_params_are_constrained(tcx: TyCtxt<'_>, impl_def_id: LocalDefId)
         tcx.sess.delay_span_bug(
             tcx.def_span(impl_def_id),
             format!(
-                "potentially unconstrained type parameters weren't evaluated: {:?}",
-                impl_self_ty,
+                "potentially unconstrained type parameters weren't evaluated: {impl_self_ty:?}",
             ),
         );
         return;
@@ -180,7 +179,7 @@ fn report_unused_parameter(tcx: TyCtxt<'_>, span: Span, kind: &str, name: Symbol
         kind,
         name
     );
-    err.span_label(span, format!("unconstrained {} parameter", kind));
+    err.span_label(span, format!("unconstrained {kind} parameter"));
     if kind == "const" {
         err.note(
             "expressions using a const parameter must map each value to a distinct output value",

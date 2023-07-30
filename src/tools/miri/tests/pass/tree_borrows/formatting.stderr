@@ -1,4 +1,4 @@
-───────────────────────────────────────────────────────────────────────────────────────
+──────────────────────────────────────────────────
 Warning: this tree is indicative only. Some tags may have been hidden.
 0..  1..  2.. 10.. 11..100..101..1000..1001..1024
 | Act| Act| Act| Act| Act| Act|  Act|  Act|  Act|    └─┬──<TAG=root of the allocation>
@@ -7,8 +7,8 @@ Warning: this tree is indicative only. Some tags may have been hidden.
 |----|----|----| Act|----|?Dis| ----| ?Dis| ----|        ├────<TAG=data[10]>
 |----|----|----|----|----| Frz| ----| ?Dis| ----|        ├────<TAG=data[100]>
 |----|----|----|----|----|----| ----|  Act| ----|        └────<TAG=data[1000]>
-───────────────────────────────────────────────────────────────────────────────────────
-──────────────────────────────────────────────────────────────────────
+──────────────────────────────────────────────────
+──────────────────────────────────────────────────
 Warning: this tree is indicative only. Some tags may have been hidden.
 0..  1
 | Act|    └─┬──<TAG=root of the allocation>
@@ -28,4 +28,4 @@ Warning: this tree is indicative only. Some tags may have been hidden.
 | Frz|          └─┬──<TAG=xcb>
 | Frz|            ├────<TAG=xcba>
 | Frz|            └────<TAG=xcbb>
-──────────────────────────────────────────────────────────────────────
+──────────────────────────────────────────────────

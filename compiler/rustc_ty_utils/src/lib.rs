@@ -8,6 +8,7 @@
 #![feature(assert_matches)]
 #![feature(iterator_try_collect)]
 #![feature(let_chains)]
+#![feature(if_let_guard)]
 #![feature(never_type)]
 #![feature(box_patterns)]
 #![recursion_limit = "256"]

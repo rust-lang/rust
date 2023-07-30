@@ -159,7 +159,7 @@ impl Emitter for JsonEmitter {
         }
         .and_then(|_| self.dst.flush());
         if let Err(e) = result {
-            panic!("failed to print diagnostics: {:?}", e);
+            panic!("failed to print diagnostics: {e:?}");
         }
     }
 
@@ -172,7 +172,7 @@ impl Emitter for JsonEmitter {
         }
         .and_then(|_| self.dst.flush());
         if let Err(e) = result {
-            panic!("failed to print notification: {:?}", e);
+            panic!("failed to print notification: {e:?}");
         }
     }
 
@@ -194,7 +194,7 @@ impl Emitter for JsonEmitter {
         }
         .and_then(|_| self.dst.flush());
         if let Err(e) = result {
-            panic!("failed to print future breakage report: {:?}", e);
+            panic!("failed to print future breakage report: {e:?}");
         }
     }
 
@@ -208,7 +208,7 @@ impl Emitter for JsonEmitter {
         }
         .and_then(|_| self.dst.flush());
         if let Err(e) = result {
-            panic!("failed to print unused externs: {:?}", e);
+            panic!("failed to print unused externs: {e:?}");
         }
     }
 

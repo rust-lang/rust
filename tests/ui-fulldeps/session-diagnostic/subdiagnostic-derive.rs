@@ -95,7 +95,8 @@ struct G {
 
 #[derive(Subdiagnostic)]
 #[label("...")]
-//~^ ERROR unexpected literal in nested attribute, expected ident
+//~^ ERROR failed to resolve: maybe a missing crate `core`?
+//~| NOTE maybe a missing crate `core`?
 struct H {
     #[primary_span]
     span: Span,
@@ -134,7 +135,7 @@ struct L {
 
 #[derive(Subdiagnostic)]
 #[label()]
-//~^ ERROR unexpected end of input, unexpected token in nested attribute, expected ident
+//~^ ERROR diagnostic slug must be first argument of a `#[label(...)]` attribute
 struct M {
     #[primary_span]
     span: Span,
@@ -310,7 +311,8 @@ struct AB {
 
 #[derive(Subdiagnostic)]
 union AC {
-    //~^ ERROR unexpected unsupported untagged union
+    //~^ ERROR failed to resolve: maybe a missing crate `core`?
+    //~| NOTE maybe a missing crate `core`?
     span: u32,
     b: u64,
 }
@@ -556,7 +558,7 @@ struct BBb {
 #[multipart_suggestion(no_crate_example, applicability = "machine-applicable")]
 struct BBc {
     #[suggestion_part()]
-    //~^ ERROR unexpected end of input, unexpected token in nested attribute, expected ident
+    //~^ ERROR `#[suggestion_part(...)]` attribute without `code = "..."`
     span1: Span,
 }
 
@@ -576,11 +578,12 @@ struct BD {
     //~^ ERROR `#[suggestion_part(...)]` attribute without `code = "..."`
     span1: Span,
     #[suggestion_part()]
-    //~^ ERROR unexpected end of input, unexpected token in nested attribute, expected ident
+    //~^ ERROR `#[suggestion_part(...)]` attribute without `code = "..."`
     span2: Span,
     #[suggestion_part(foo = "bar")]
     //~^ ERROR `code` is the only valid nested attribute
-    //~| ERROR expected `,`
+    //~| ERROR failed to resolve: maybe a missing crate `core`?
+    //~| NOTE maybe a missing crate `core`?
     span4: Span,
     #[suggestion_part(code = "...")]
     //~^ ERROR the `#[suggestion_part(...)]` attribute can only be applied to fields of type `Span` or `MultiSpan`
@@ -672,7 +675,8 @@ enum BL {
 struct BM {
     #[suggestion_part(code("foo"))]
     //~^ ERROR expected exactly one string literal for `code = ...`
-    //~| ERROR unexpected token
+    //~| ERROR failed to resolve: maybe a missing crate `core`?
+    //~| NOTE maybe a missing crate `core`?
     span: Span,
     r#type: String,
 }
@@ -682,7 +686,8 @@ struct BM {
 struct BN {
     #[suggestion_part(code("foo", "bar"))]
     //~^ ERROR expected exactly one string literal for `code = ...`
-    //~| ERROR unexpected token
+    //~| ERROR failed to resolve: maybe a missing crate `core`?
+    //~| NOTE maybe a missing crate `core`?
     span: Span,
     r#type: String,
 }
@@ -692,7 +697,8 @@ struct BN {
 struct BO {
     #[suggestion_part(code(3))]
     //~^ ERROR expected exactly one string literal for `code = ...`
-    //~| ERROR unexpected token
+    //~| ERROR failed to resolve: maybe a missing crate `core`?
+    //~| NOTE maybe a missing crate `core`?
     span: Span,
     r#type: String,
 }
@@ -713,7 +719,8 @@ struct BP {
 #[multipart_suggestion(no_crate_example)]
 struct BQ {
     #[suggestion_part(code = 3)]
-    //~^ ERROR expected string literal
+    //~^ ERROR failed to resolve: maybe a missing crate `core`?
+    //~| NOTE maybe a missing crate `core`?
     span: Span,
     r#type: String,
 }
@@ -805,7 +812,8 @@ struct SuggestionStyleInvalid3 {
 #[derive(Subdiagnostic)]
 #[suggestion(no_crate_example, code = "", style("foo"))]
 //~^ ERROR expected `= "xxx"`
-//~| ERROr expected `,`
+//~| ERROR failed to resolve: maybe a missing crate `core`?
+//~| NOTE maybe a missing crate `core`?
 struct SuggestionStyleInvalid4 {
     #[primary_span]
     sub: Span,

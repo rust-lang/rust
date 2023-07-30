@@ -74,7 +74,7 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
             kind @ StmtKind::Let { pattern, .. } => {
                 return Err(ParseError {
                     span: pattern.span,
-                    item_description: format!("{:?}", kind),
+                    item_description: format!("{kind:?}"),
                     expected: "expression".to_string(),
                 });
             }

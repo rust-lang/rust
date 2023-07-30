@@ -41,7 +41,6 @@ use rustc_span::{BytePos, DesugaringKind, ExpnKind, MacroKind, Span, DUMMY_SP};
 use rustc_target::spec::abi;
 use std::borrow::Cow;
 use std::iter;
-use std::ops::Deref;
 
 use super::InferCtxtPrivExt;
 use crate::infer::InferCtxtExt as _;
@@ -655,6 +654,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         | hir::ItemKind::Impl(hir::Impl { generics, .. })
                         | hir::ItemKind::Fn(_, generics, _)
                         | hir::ItemKind::TyAlias(_, generics)
+                        | hir::ItemKind::Const(_, generics, _)
                         | hir::ItemKind::TraitAlias(generics, _)
                         | hir::ItemKind::OpaqueTy(hir::OpaqueTy { generics, .. }),
                     ..
@@ -720,6 +720,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         | hir::ItemKind::Impl(hir::Impl { generics, .. })
                         | hir::ItemKind::Fn(_, generics, _)
                         | hir::ItemKind::TyAlias(_, generics)
+                        | hir::ItemKind::Const(_, generics, _)
                         | hir::ItemKind::TraitAlias(generics, _)
                         | hir::ItemKind::OpaqueTy(hir::OpaqueTy { generics, .. }),
                     ..
@@ -3136,7 +3137,6 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             ObligationCauseCode::ImplDerivedObligation(ref data) => {
                 let mut parent_trait_pred =
                     self.resolve_vars_if_possible(data.derived.parent_trait_pred);
-                parent_trait_pred.remap_constness_diag(param_env);
                 let parent_def_id = parent_trait_pred.def_id();
                 let (self_ty, file) =
                     self.tcx.short_ty_string(parent_trait_pred.skip_binder().self_ty());
@@ -3576,7 +3576,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             // to an associated type (as seen from `trait_pred`) in the predicate. Like in
             // trait_pred `S: Sum<<Self as Iterator>::Item>` and predicate `i32: Sum<&()>`
             let mut type_diffs = vec![];
-            if let ObligationCauseCode::ExprBindingObligation(def_id, _, _, idx) = parent_code.deref()
+            if let ObligationCauseCode::ExprBindingObligation(def_id, _, _, idx) = parent_code
                 && let Some(node_args) = typeck_results.node_args_opt(call_hir_id)
                 && let where_clauses = self.tcx.predicates_of(def_id).instantiate(self.tcx, node_args)
                 && let Some(where_pred) = where_clauses.predicates.get(*idx)

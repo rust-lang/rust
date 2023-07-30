@@ -126,7 +126,7 @@ pub fn suggest_arbitrary_trait_bound<'tcx>(
         if constraint.ends_with('>') {
             constraint = format!("{}, {} = {}>", &constraint[..constraint.len() - 1], name, term);
         } else {
-            constraint.push_str(&format!("<{} = {}>", name, term));
+            constraint.push_str(&format!("<{name} = {term}>"));
         }
     }
 
@@ -274,9 +274,9 @@ pub fn suggest_constraining_type_params<'a>(
                 if span_to_replace.is_some() {
                     constraint.clone()
                 } else if bound_list_non_empty {
-                    format!(" + {}", constraint)
+                    format!(" + {constraint}")
                 } else {
-                    format!(" {}", constraint)
+                    format!(" {constraint}")
                 },
                 SuggestChangingConstraintsMessage::RestrictBoundFurther,
             ))
@@ -337,7 +337,7 @@ pub fn suggest_constraining_type_params<'a>(
                 generics.tail_span_for_predicate_suggestion(),
                 constraints
                     .iter()
-                    .map(|&(constraint, _)| format!(", {}: {}", param_name, constraint))
+                    .map(|&(constraint, _)| format!(", {param_name}: {constraint}"))
                     .collect::<String>(),
                 SuggestChangingConstraintsMessage::RestrictTypeFurther { ty: param_name },
             ));
@@ -358,7 +358,7 @@ pub fn suggest_constraining_type_params<'a>(
             // default (`<T=Foo>`), so we suggest adding `where T: Bar`.
             suggestions.push((
                 generics.tail_span_for_predicate_suggestion(),
-                format!(" where {}: {}", param_name, constraint),
+                format!(" where {param_name}: {constraint}"),
                 SuggestChangingConstraintsMessage::RestrictTypeFurther { ty: param_name },
             ));
             continue;
@@ -371,7 +371,7 @@ pub fn suggest_constraining_type_params<'a>(
         if let Some(colon_span) = param.colon_span {
             suggestions.push((
                 colon_span.shrink_to_hi(),
-                format!(" {}", constraint),
+                format!(" {constraint}"),
                 SuggestChangingConstraintsMessage::RestrictType { ty: param_name },
             ));
             continue;
@@ -383,7 +383,7 @@ pub fn suggest_constraining_type_params<'a>(
         //          - help: consider restricting this type parameter with `T: Foo`
         suggestions.push((
             param.span.shrink_to_hi(),
-            format!(": {}", constraint),
+            format!(": {constraint}"),
             SuggestChangingConstraintsMessage::RestrictType { ty: param_name },
         ));
     }
@@ -401,10 +401,10 @@ pub fn suggest_constraining_type_params<'a>(
                 Cow::from("consider further restricting this bound")
             }
             SuggestChangingConstraintsMessage::RestrictType { ty } => {
-                Cow::from(format!("consider restricting type parameter `{}`", ty))
+                Cow::from(format!("consider restricting type parameter `{ty}`"))
             }
             SuggestChangingConstraintsMessage::RestrictTypeFurther { ty } => {
-                Cow::from(format!("consider further restricting type parameter `{}`", ty))
+                Cow::from(format!("consider further restricting type parameter `{ty}`"))
             }
             SuggestChangingConstraintsMessage::RemoveMaybeUnsized => {
                 Cow::from("consider removing the `?Sized` bound to make the type parameter `Sized`")

@@ -179,7 +179,7 @@ fn make_format_args(
                     err.span_suggestion(
                         unexpanded_fmt_span.shrink_to_lo(),
                         "you might be missing a string literal to format with",
-                        format!("\"{}\", ", sugg_fmt),
+                        format!("\"{sugg_fmt}\", "),
                         Applicability::MaybeIncorrect,
                     );
                 }
@@ -668,7 +668,7 @@ fn report_invalid_references(
     let num_args_desc = match args.explicit_args().len() {
         0 => "no arguments were given".to_string(),
         1 => "there is 1 argument".to_string(),
-        n => format!("there are {} arguments", n),
+        n => format!("there are {n} arguments"),
     };
 
     let mut e;
@@ -780,7 +780,7 @@ fn report_invalid_references(
                         if num_placeholders == 1 {
                             "is 1 argument".to_string()
                         } else {
-                            format!("are {} arguments", num_placeholders)
+                            format!("are {num_placeholders} arguments")
                         },
                     ),
                 );
@@ -811,7 +811,7 @@ fn report_invalid_references(
         };
         e = ecx.struct_span_err(
             span,
-            format!("invalid reference to positional {} ({})", arg_list, num_args_desc),
+            format!("invalid reference to positional {arg_list} ({num_args_desc})"),
         );
         e.note("positional arguments are zero-based");
     }

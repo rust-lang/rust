@@ -399,7 +399,8 @@ pub mod primitive;
     missing_debug_implementations,
     dead_code,
     unused_imports,
-    unsafe_op_in_unsafe_fn
+    unsafe_op_in_unsafe_fn,
+    ambiguous_glob_reexports
 )]
 #[allow(rustdoc::bare_urls)]
 // FIXME: This annotation should be moved into rust-lang/stdarch after clashing_extern_declarations is

@@ -194,14 +194,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let filename_alloc =
                     this.allocate_str(&filename, MiriMemoryKind::Rust.into(), Mutability::Mut)?;
 
-                this.write_immediate(
-                    name_alloc.to_ref(this),
-                    &this.project_field(&dest, 0)?,
-                )?;
-                this.write_immediate(
-                    filename_alloc.to_ref(this),
-                    &this.project_field(&dest, 1)?,
-                )?;
+                this.write_immediate(name_alloc.to_ref(this), &this.project_field(&dest, 0)?)?;
+                this.write_immediate(filename_alloc.to_ref(this), &this.project_field(&dest, 1)?)?;
             }
             1 => {
                 this.write_scalar(

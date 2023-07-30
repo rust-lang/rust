@@ -11,7 +11,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::source_map::original_sp;
 use rustc_span::{BytePos, ExpnKind, MacroKind, Span, Symbol};
 
-use std::cell::RefCell;
+use std::cell::OnceCell;
 use std::cmp::Ordering;
 
 #[derive(Debug, Copy, Clone)]
@@ -67,7 +67,7 @@ impl CoverageStatement {
 pub(super) struct CoverageSpan {
     pub span: Span,
     pub expn_span: Span,
-    pub current_macro_or_none: RefCell<Option<Option<Symbol>>>,
+    pub current_macro_or_none: OnceCell<Option<Symbol>>,
     pub bcb: BasicCoverageBlock,
     pub coverage_statements: Vec<CoverageStatement>,
     pub is_closure: bool,
@@ -175,8 +175,7 @@ impl CoverageSpan {
     /// If the span is part of a macro, returns the macro name symbol.
     pub fn current_macro(&self) -> Option<Symbol> {
         self.current_macro_or_none
-            .borrow_mut()
-            .get_or_insert_with(|| {
+            .get_or_init(|| {
                 if let ExpnKind::Macro(MacroKind::Bang, current_macro) =
                     self.expn_span.ctxt().outer_expn_data().kind
                 {

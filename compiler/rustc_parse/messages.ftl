@@ -690,6 +690,8 @@ parse_single_colon_import_path = expected `::`, found `:`
 parse_single_colon_struct_type = found single colon in a struct field type path
     .suggestion = write a path separator here
 
+parse_static_with_generics = static items may not have generic parameters
+
 parse_struct_literal_body_without_path =
     struct literal body without path
     .suggestion = you might have forgotten to add the struct literal inside the block
@@ -722,6 +724,10 @@ parse_sugg_wrap_pattern_in_parens = wrap the pattern in parentheses
 
 parse_switch_mut_let_order =
     switch the order of `mut` and `let`
+
+parse_ternary_operator = Rust has no ternary operator
+    .help = use an `if-else` expression instead
+
 parse_tilde_const_lifetime = `~const` may only modify trait bounds, not lifetime bounds
 
 parse_tilde_is_not_unary_operator = `~` cannot be used as a unary operator
@@ -846,6 +852,12 @@ parse_use_let_not_var = write `let` instead of `var` to introduce a new variable
 parse_visibility_not_followed_by_item = visibility `{$vis}` is not followed by an item
     .label = the visibility
     .help = you likely meant to define an item, e.g., `{$vis} fn foo() {"{}"}`
+
+parse_where_clause_before_const_body = where clauses are not allowed before const item bodies
+    .label = unexpected where clause
+    .name_label = while parsing this const item
+    .body_label = the item body
+    .suggestion = move the body before the where clause
 
 parse_where_clause_before_tuple_struct_body = where clauses are not allowed before tuple struct bodies
     .label = unexpected where clause

@@ -10,7 +10,7 @@ use rustc_hir::def_id::DefId;
 use rustc_index::IndexVec;
 use rustc_session::config::OptLevel;
 use rustc_span::symbol::{sym, Symbol};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{ErrorGuaranteed, Span, DUMMY_SP};
 use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::*;
 use rustc_target::spec::{abi::Abi as SpecAbi, HasTargetSpec, PanicStrategy, Target};
@@ -212,6 +212,7 @@ pub enum LayoutError<'tcx> {
     Unknown(Ty<'tcx>),
     SizeOverflow(Ty<'tcx>),
     NormalizationFailure(Ty<'tcx>, NormalizationError<'tcx>),
+    ReferencesError(ErrorGuaranteed),
     Cycle,
 }
 
@@ -224,6 +225,7 @@ impl<'tcx> LayoutError<'tcx> {
             SizeOverflow(_) => middle_values_too_big,
             NormalizationFailure(_, _) => middle_cannot_be_normalized,
             Cycle => middle_cycle,
+            ReferencesError(_) => middle_layout_references_error,
         }
     }
 
@@ -237,6 +239,7 @@ impl<'tcx> LayoutError<'tcx> {
                 E::NormalizationFailure { ty, failure_ty: e.get_type_for_failure() }
             }
             Cycle => E::Cycle,
+            ReferencesError(_) => E::ReferencesError,
         }
     }
 }
@@ -246,9 +249,9 @@ impl<'tcx> LayoutError<'tcx> {
 impl<'tcx> fmt::Display for LayoutError<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            LayoutError::Unknown(ty) => write!(f, "the type `{}` has an unknown layout", ty),
+            LayoutError::Unknown(ty) => write!(f, "the type `{ty}` has an unknown layout"),
             LayoutError::SizeOverflow(ty) => {
-                write!(f, "values of the type `{}` are too big for the current architecture", ty)
+                write!(f, "values of the type `{ty}` are too big for the current architecture")
             }
             LayoutError::NormalizationFailure(t, e) => write!(
                 f,
@@ -257,6 +260,7 @@ impl<'tcx> fmt::Display for LayoutError<'tcx> {
                 e.get_type_for_failure()
             ),
             LayoutError::Cycle => write!(f, "a cycle occurred during layout computation"),
+            LayoutError::ReferencesError(_) => write!(f, "the type has an unknown layout"),
         }
     }
 }
@@ -323,7 +327,8 @@ impl<'tcx> SizeSkeleton<'tcx> {
             Err(
                 e @ LayoutError::Cycle
                 | e @ LayoutError::SizeOverflow(_)
-                | e @ LayoutError::NormalizationFailure(..),
+                | e @ LayoutError::NormalizationFailure(..)
+                | e @ LayoutError::ReferencesError(_),
             ) => return Err(e),
         };
 

@@ -1,0 +1,11 @@
+error[E0624]: method `private_method` is private
+  --> $DIR/multiple-files.rs:7:35
+   |
+LL |     other_file::WithPrivateMethod.private_method();
+   |                                   ^^^^^^^^^^^^^^ private method
+   |
+  ::: $DIR/auxiliary/other_file.rs:5:5
+   |
+LL |     fn private_method(&self) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ private method defined here
+   |

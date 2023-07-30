@@ -189,7 +189,7 @@ impl Flags {
             let build = Build::new(config);
             let paths = Builder::get_help(&build, subcommand);
             if let Some(s) = paths {
-                println!("{}", s);
+                println!("{s}");
             } else {
                 panic!("No paths available for subcommand `{}`", subcommand.as_str());
             }

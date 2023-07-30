@@ -302,7 +302,7 @@ declare_lint_pass!(NonCopyConst => [DECLARE_INTERIOR_MUTABLE_CONST, BORROW_INTER
 
 impl<'tcx> LateLintPass<'tcx> for NonCopyConst {
     fn check_item(&mut self, cx: &LateContext<'tcx>, it: &'tcx Item<'_>) {
-        if let ItemKind::Const(hir_ty, body_id) = it.kind {
+        if let ItemKind::Const(hir_ty, _generics, body_id) = it.kind {
             let ty = hir_ty_to_ty(cx.tcx, hir_ty);
             if !ignored_macro(cx, it) && is_unfrozen(cx, ty) && is_value_unfrozen_poly(cx, body_id, ty) {
                 lint(cx, Source::Item { item: it.span });

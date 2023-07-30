@@ -6,8 +6,8 @@ LL |     *y
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
    = help: the accessed tag <TAG> is foreign to the protected tag <TAG> (i.e., it is not a child)
-   = help: this foreign read access would cause the protected tag <TAG> to transition from Active to Frozen
-   = help: this transition would be a loss of write permissions, which is not allowed for protected tags
+   = help: this foreign read access would cause the protected tag <TAG> (currently Active) to become Disabled
+   = help: protected tags must never be Disabled
 help: the accessed tag <TAG> was created here
   --> $DIR/box_noalias_violation.rs:LL:CC
    |

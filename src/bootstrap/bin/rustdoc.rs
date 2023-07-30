@@ -62,7 +62,7 @@ fn main() {
     }
     if let Ok(no_threads) = env::var("RUSTDOC_LLD_NO_THREADS") {
         cmd.arg("-Clink-arg=-fuse-ld=lld");
-        cmd.arg(format!("-Clink-arg=-Wl,{}", no_threads));
+        cmd.arg(format!("-Clink-arg=-Wl,{no_threads}"));
     }
     // Cargo doesn't pass RUSTDOCFLAGS to proc_macros:
     // https://github.com/rust-lang/cargo/issues/4423
@@ -82,12 +82,12 @@ fn main() {
             env::join_paths(&dylib_path).unwrap(),
             cmd,
         );
-        eprintln!("sysroot: {:?}", sysroot);
-        eprintln!("libdir: {:?}", libdir);
+        eprintln!("sysroot: {sysroot:?}");
+        eprintln!("libdir: {libdir:?}");
     }
 
     std::process::exit(match cmd.status() {
         Ok(s) => s.code().unwrap_or(1),
-        Err(e) => panic!("\n\nfailed to run {:?}: {}\n\n", cmd, e),
+        Err(e) => panic!("\n\nfailed to run {cmd:?}: {e}\n\n"),
     })
 }

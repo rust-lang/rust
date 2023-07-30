@@ -443,9 +443,9 @@ impl<'a, 'tcx> Visitor<'tcx> for DropRangeVisitor<'a, 'tcx> {
                 // We add an edge to the hir_id of the expression/block we are breaking out of, and
                 // then in process_deferred_edges we will map this hir_id to its PostOrderId, which
                 // will refer to the end of the block due to the post order traversal.
-                self.find_target_expression_from_destination(destination).map_or((), |target| {
+                if let Ok(target) = self.find_target_expression_from_destination(destination) {
                     self.drop_ranges.add_control_edge_hir_id(self.expr_index, target)
-                });
+                }
 
                 if let Some(value) = value {
                     self.visit_expr(value);

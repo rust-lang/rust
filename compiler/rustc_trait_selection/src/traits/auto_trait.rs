@@ -347,14 +347,12 @@ impl<'tcx> AutoTraitFinder<'tcx> {
             new_env = ty::ParamEnv::new(
                 tcx.mk_clauses_from_iter(normalized_preds.filter_map(|p| p.as_clause())),
                 param_env.reveal(),
-                param_env.constness(),
             );
         }
 
         let final_user_env = ty::ParamEnv::new(
             tcx.mk_clauses_from_iter(user_computed_preds.into_iter().filter_map(|p| p.as_clause())),
             user_env.reveal(),
-            user_env.constness(),
         );
         debug!(
             "evaluate_nested_obligations(ty={:?}, trait_did={:?}): succeeded with '{:?}' \

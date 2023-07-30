@@ -82,7 +82,6 @@ fn relate_mir_and_user_args<'tcx>(
     def_id: DefId,
     user_args: UserArgs<'tcx>,
 ) -> Result<(), NoSolution> {
-    let param_env = param_env.without_const();
     let UserArgs { user_self_ty, args } = user_args;
     let tcx = ocx.infcx.tcx;
     let cause = ObligationCause::dummy_with_span(span);

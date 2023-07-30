@@ -4,11 +4,7 @@ error[E0277]: the trait bound `(): ~const Tr` is not satisfied
 LL |         ().a()
    |            ^ the trait `~const Tr` is not implemented for `()`
    |
-note: the trait `Tr` is implemented for `()`, but that implementation is not `const`
-  --> $DIR/default-method-body-is-const-same-trait-ck.rs:8:9
-   |
-LL |         ().a()
-   |         ^^
+   = help: the trait `Tr` is implemented for `()`
 
 error: aborting due to previous error
 

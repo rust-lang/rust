@@ -71,7 +71,7 @@ use rustc_middle::traits;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::config;
 use rustc_span::def_id::{DefId, LocalDefId};
-use rustc_span::{sym, Span};
+use rustc_span::Span;
 
 fluent_messages! { "../messages.ftl" }
 
@@ -101,7 +101,7 @@ fn primary_body_of(
 ) -> Option<(hir::BodyId, Option<&hir::Ty<'_>>, Option<&hir::FnSig<'_>>)> {
     match node {
         Node::Item(item) => match item.kind {
-            hir::ItemKind::Const(ty, body) | hir::ItemKind::Static(ty, _, body) => {
+            hir::ItemKind::Const(ty, _, body) | hir::ItemKind::Static(ty, _, body) => {
                 Some((body, Some(ty), None))
             }
             hir::ItemKind::Fn(ref sig, .., body) => Some((body, None, Some(sig))),
@@ -182,11 +182,7 @@ fn typeck_with_fallback<'tcx>(
     let body = tcx.hir().body(body_id);
 
     let param_env = tcx.param_env(def_id);
-    let param_env = if tcx.has_attr(def_id, sym::rustc_do_not_const_check) {
-        param_env.without_const()
-    } else {
-        param_env
-    };
+
     let inh = Inherited::new(tcx, def_id);
     let mut fcx = FnCtxt::new(&inh, param_env, def_id);
 
@@ -263,11 +259,7 @@ fn typeck_with_fallback<'tcx>(
 
     // Closure and generator analysis may run after fallback
     // because they don't constrain other type variables.
-    // Closure analysis only runs on closures. Therefore they only need to fulfill non-const predicates (as of now)
-    let prev_constness = fcx.param_env.constness();
-    fcx.param_env = fcx.param_env.without_const();
     fcx.closure_analyze(body);
-    fcx.param_env = fcx.param_env.with_constness(prev_constness);
     assert!(fcx.deferred_call_resolutions.borrow().is_empty());
     // Before the generator analysis, temporary scopes shall be marked to provide more
     // precise information on types to be captured.
