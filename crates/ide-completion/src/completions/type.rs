@@ -24,12 +24,23 @@ pub(crate) fn complete_type_path(
             // no values in type places
             ScopeDef::ModuleDef(Function(_) | Variant(_) | Static(_)) | ScopeDef::Local(_) => false,
             // unless its a constant in a generic arg list position
-            ScopeDef::ModuleDef(Const(_)) | ScopeDef::GenericParam(ConstParam(_)) => {
-                matches!(location, TypeLocation::GenericArgList(_))
-            }
-            ScopeDef::ImplSelfType(_) => {
-                !matches!(location, TypeLocation::ImplTarget | TypeLocation::ImplTrait)
-            }
+            ScopeDef::ModuleDef(Const(_)) | ScopeDef::GenericParam(ConstParam(_)) => match location
+            {
+                TypeLocation::GenericArgList(location) => match location {
+                    Some((_, Some(generic_param))) => {
+                        matches!(generic_param, ast::GenericParam::ConstParam(_))
+                    }
+                    _ => true,
+                },
+                _ => false,
+            },
+            ScopeDef::ImplSelfType(_) => match location {
+                TypeLocation::ImplTarget | TypeLocation::ImplTrait => false,
+                TypeLocation::GenericArgList(Some((_, Some(generic_param)))) => {
+                    matches!(generic_param, ast::GenericParam::TypeParam(_))
+                }
+                _ => true,
+            },
             // Don't suggest attribute macros and derives.
             ScopeDef::ModuleDef(Macro(mac)) => mac.is_fn_like(ctx.db),
             // Type things are fine
@@ -38,7 +49,12 @@ pub(crate) fn complete_type_path(
             )
             | ScopeDef::AdtSelfType(_)
             | ScopeDef::Unknown
-            | ScopeDef::GenericParam(TypeParam(_)) => true,
+            | ScopeDef::GenericParam(TypeParam(_)) => match location {
+                TypeLocation::GenericArgList(Some((_, Some(generic_param)))) => {
+                    matches!(generic_param, ast::GenericParam::TypeParam(_))
+                }
+                _ => true,
+            },
         }
     };
 
@@ -157,7 +173,7 @@ pub(crate) fn complete_type_path(
                     });
                     return;
                 }
-                TypeLocation::GenericArgList(Some(arg_list)) => {
+                TypeLocation::GenericArgList(Some((arg_list, generic_param))) => {
                     let in_assoc_type_arg = ctx
                         .original_token
                         .parent_ancestors()

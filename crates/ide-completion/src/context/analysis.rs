@@ -1,11 +1,11 @@
 //! Module responsible for analyzing the code surrounding the cursor for completion.
 use std::iter;
 
-use hir::{Semantics, Type, TypeInfo, Variant};
+use hir::{HasSource, Semantics, Type, TypeInfo, Variant};
 use ide_db::{active_parameter::ActiveParameter, RootDatabase};
 use syntax::{
     algo::{find_node_at_offset, non_trivia_sibling},
-    ast::{self, AttrKind, HasArgList, HasLoopBody, HasName, NameOrNameRef},
+    ast::{self, AttrKind, HasArgList, HasGenericParams, HasLoopBody, HasName, NameOrNameRef},
     match_ast, AstNode, AstToken, Direction, NodeOrToken, SyntaxElement, SyntaxKind, SyntaxNode,
     SyntaxToken, TextRange, TextSize, T,
 };
@@ -774,9 +774,40 @@ fn classify_name_ref(
                 ast::TypeBound(_) => TypeLocation::TypeBound,
                 // is this case needed?
                 ast::TypeBoundList(_) => TypeLocation::TypeBound,
-                ast::GenericArg(it) => TypeLocation::GenericArgList(find_opt_node_in_file_compensated(sema, original_file, it.syntax().parent().and_then(ast::GenericArgList::cast))),
+                ast::GenericArg(it) => {
+                    let location = find_opt_node_in_file_compensated(sema, original_file, it.syntax().parent().and_then(ast::GenericArgList::cast))
+                        .map(|args| {
+                            // Determine the index of the parameter in the `GenericArgList`
+                            // (subtract 1 because `siblings` includes the node itself)
+                            let param_idx = it.syntax().siblings(Direction::Prev).count() - 1;
+                            let param = args
+                                .syntax()
+                                .parent()
+                                .and_then(|p| ast::PathSegment::cast(p))
+                                .and_then(|segment| sema.resolve_path(&segment.parent_path().top_path()))
+                                .and_then(|resolved| {
+                                    match resolved {
+                                        hir::PathResolution::Def(def) => match def {
+                                            hir::ModuleDef::Function(func) => {
+                                                let src = func.source(sema.db)?;
+                                                let params = src.value.generic_param_list()?;
+                                                params.generic_params().nth(param_idx)
+                                            }
+                                            _ => None,
+                                        },
+                                        _ => None,
+                                    }
+                                });
+                            (args, param)
+                        });
+                    TypeLocation::GenericArgList(location)
+                },
                 // is this case needed?
-                ast::GenericArgList(it) => TypeLocation::GenericArgList(find_opt_node_in_file_compensated(sema, original_file, Some(it))),
+                ast::GenericArgList(it) => {
+                    let location = find_opt_node_in_file_compensated(sema, original_file, Some(it))
+                        .map(|node| (node, None));
+                    TypeLocation::GenericArgList(location)
+                },
                 ast::TupleField(_) => TypeLocation::TupleField,
                 _ => return None,
             }
@@ -883,25 +914,8 @@ fn classify_name_ref(
         }
     };
     let make_path_kind_type = |ty: ast::Type| {
-        let location = type_location(ty.syntax()).unwrap_or(TypeLocation::Other);
-        match &location {
-            TypeLocation::TupleField => (),
-            TypeLocation::TypeAscription(_) => (),
-            TypeLocation::GenericArgList(args) => {
-                dbg!(&args);
-                if let Some(segment) =
-                    args.as_ref().and_then(|args| ast::PathSegment::cast(args.syntax().parent()?))
-                {
-                    let path = dbg!(segment.parent_path().top_path());
-                    dbg!(sema.resolve_path(&path));
-                }
-            }
-            TypeLocation::TypeBound => (),
-            TypeLocation::ImplTarget => (),
-            TypeLocation::ImplTrait => (),
-            TypeLocation::Other => (),
-        }
-        PathKind::Type { location }
+        let location = type_location(ty.syntax());
+        PathKind::Type { location: location.unwrap_or(TypeLocation::Other) }
     };
 
     let mut kind_macro_call = |it: ast::MacroCall| {

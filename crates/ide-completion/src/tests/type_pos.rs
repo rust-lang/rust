@@ -726,15 +726,21 @@ fn completes_const_and_type_generics_separately() {
         r#"
 struct Foo;
 const X: usize = 0;
-mod foo {
-    fn foo<T>() {}
-}
+fn foo<T, const N: usize>() {}
 fn main() {
-    self::foo::foo::<F$0>();
+    foo::<F$0, _>();
 }
 "#,
         expect![[r#"
+            en Enum
+            ma makro!(…) macro_rules! makro
+            md module
             st Foo
+            st Record
+            st Tuple
+            st Unit
+            tt Trait
+            un Union
             bt u32
             kw crate::
             kw self::
@@ -744,13 +750,15 @@ fn main() {
         r#"
 struct Foo;
 const X: usize = 0;
-fn foo<const X: usize>() {}
+fn foo<T, const N: usize>() {}
 fn main() {
-    foo::<F$0>();
+    foo::<_, $0>();
 }
 "#,
         expect![[r#"
+            ct CONST
             ct X
+            ma makro!(…) macro_rules! makro
             kw crate::
             kw self::
         "#]],

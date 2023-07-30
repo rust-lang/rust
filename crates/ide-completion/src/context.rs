@@ -155,7 +155,7 @@ pub(crate) struct ExprCtx {
 pub(crate) enum TypeLocation {
     TupleField,
     TypeAscription(TypeAscriptionTarget),
-    GenericArgList(Option<ast::GenericArgList>),
+    GenericArgList(Option<(ast::GenericArgList, Option<ast::GenericParam>)>),
     TypeBound,
     ImplTarget,
     ImplTrait,
