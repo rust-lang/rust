@@ -1,5 +1,5 @@
 // edition:2021
-// known-bug: #108304
+// check-pass
 
 #![feature(async_fn_in_trait, return_position_impl_trait_in_trait)]
 #![allow(incomplete_features)]
