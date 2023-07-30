@@ -241,16 +241,16 @@ fn dump_graph(query: &DepGraphQuery) {
 
     {
         // dump a .txt file with just the edges:
-        let txt_path = format!("{}.txt", path);
+        let txt_path = format!("{path}.txt");
         let mut file = BufWriter::new(File::create(&txt_path).unwrap());
         for (source, target) in &edges {
-            write!(file, "{:?} -> {:?}\n", source, target).unwrap();
+            write!(file, "{source:?} -> {target:?}\n").unwrap();
         }
     }
 
     {
         // dump a .dot file in graphviz format:
-        let dot_path = format!("{}.dot", path);
+        let dot_path = format!("{path}.dot");
         let mut v = Vec::new();
         dot::render(&GraphvizDepGraph(nodes, edges), &mut v).unwrap();
         fs::write(dot_path, v).unwrap();
@@ -285,7 +285,7 @@ impl<'a> dot::Labeller<'a> for GraphvizDepGraph {
         dot::Id::new("DependencyGraph").unwrap()
     }
     fn node_id(&self, n: &DepKind) -> dot::Id<'_> {
-        let s: String = format!("{:?}", n)
+        let s: String = format!("{n:?}")
             .chars()
             .map(|c| if c == '_' || c.is_alphanumeric() { c } else { '_' })
             .collect();
@@ -293,7 +293,7 @@ impl<'a> dot::Labeller<'a> for GraphvizDepGraph {
         dot::Id::new(s).unwrap()
     }
     fn node_label(&self, n: &DepKind) -> dot::LabelText<'_> {
-        dot::LabelText::label(format!("{:?}", n))
+        dot::LabelText::label(format!("{n:?}"))
     }
 }
 

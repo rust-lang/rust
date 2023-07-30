@@ -397,8 +397,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ) -> OperandRef<'tcx, Bx::Value> {
         assert!(
             self.rvalue_creates_operand(rvalue, DUMMY_SP),
-            "cannot codegen {:?} to operand",
-            rvalue,
+            "cannot codegen {rvalue:?} to operand",
         );
 
         match *rvalue {

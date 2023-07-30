@@ -184,9 +184,7 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
             debug_assert_eq!(
                 (data_layout.pointer_size, data_layout.pointer_align.abi),
                 cx.size_and_align_of(ptr_type),
-                "ptr_type={}, pointee_type={}",
-                ptr_type,
-                pointee_type,
+                "ptr_type={ptr_type}, pointee_type={pointee_type}",
             );
 
             let di_node = unsafe {
@@ -521,7 +519,7 @@ fn recursion_marker_type_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) -> &'ll D
 fn hex_encode(data: &[u8]) -> String {
     let mut hex_string = String::with_capacity(data.len() * 2);
     for byte in data.iter() {
-        write!(&mut hex_string, "{:02x}", byte).unwrap();
+        write!(&mut hex_string, "{byte:02x}").unwrap();
     }
     hex_string
 }
@@ -766,7 +764,7 @@ fn build_param_type_di_node<'ll, 'tcx>(
     t: Ty<'tcx>,
 ) -> DINodeCreationResult<'ll> {
     debug!("build_param_type_di_node: {:?}", t);
-    let name = format!("{:?}", t);
+    let name = format!("{t:?}");
     DINodeCreationResult {
         di_node: unsafe {
             llvm::LLVMRustDIBuilderCreateBasicType(
@@ -814,7 +812,7 @@ pub fn build_compile_unit_di_node<'ll, 'tcx>(
     debug!("build_compile_unit_di_node: {:?}", name_in_debuginfo);
     let rustc_producer = format!("rustc version {}", tcx.sess.cfg_version);
     // FIXME(#41252) Remove "clang LLVM" if we can get GDB and LLVM to play nice.
-    let producer = format!("clang LLVM ({})", rustc_producer);
+    let producer = format!("clang LLVM ({rustc_producer})");
 
     let name_in_debuginfo = name_in_debuginfo.to_string_lossy();
     let work_dir = tcx.sess.opts.working_dir.to_string_lossy(FileNameDisplayPreference::Remapped);
@@ -1331,10 +1329,10 @@ fn build_vtable_type_di_node<'ll, 'tcx>(
                             // Note: This code does not try to give a proper name to each method
                             //       because their might be multiple methods with the same name
                             //       (coming from different traits).
-                            (format!("__method{}", index), void_pointer_type_di_node)
+                            (format!("__method{index}"), void_pointer_type_di_node)
                         }
                         ty::VtblEntry::TraitVPtr(_) => {
-                            (format!("__super_trait_ptr{}", index), void_pointer_type_di_node)
+                            (format!("__super_trait_ptr{index}"), void_pointer_type_di_node)
                         }
                         ty::VtblEntry::MetadataAlign => ("align".to_string(), usize_di_node),
                         ty::VtblEntry::MetadataSize => ("size".to_string(), usize_di_node),
@@ -1504,5 +1502,5 @@ pub fn tuple_field_name(field_index: usize) -> Cow<'static, str> {
     TUPLE_FIELD_NAMES
         .get(field_index)
         .map(|s| Cow::from(*s))
-        .unwrap_or_else(|| Cow::from(format!("__{}", field_index)))
+        .unwrap_or_else(|| Cow::from(format!("__{field_index}")))
 }

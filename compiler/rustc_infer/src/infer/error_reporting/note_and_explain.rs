@@ -47,7 +47,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             diag.span_suggestion(
                                 sp,
                                 "use a float literal",
-                                format!("{}.0", snippet),
+                                format!("{snippet}.0"),
                                 MachineApplicable,
                             );
                         }
@@ -134,7 +134,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
                             if matched_end_of_args {
                                 // Append suggestion to the end of our args
-                                let path = format!(", {}{} = {}",item_name, item_args, p);
+                                let path = format!(", {item_name}{item_args} = {p}");
                                 note = !suggest_constraining_type_param(
                                     tcx,
                                     generics,
@@ -148,7 +148,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                                 // Suggest adding a bound to an existing trait
                                 // or if the trait doesn't exist, add the trait
                                 // and the suggested bounds.
-                                let path = format!("<{}{} = {}>", item_name, item_args, p);
+                                let path = format!("<{item_name}{item_args} = {p}>");
                                 note = !suggest_constraining_type_param(
                                     tcx,
                                     generics,
@@ -213,8 +213,7 @@ impl<T> Trait<T> for X {
                         }
                         diag.help(format!(
                             "every closure has a distinct type and so could not always match the \
-                             caller-chosen type of parameter `{}`",
-                            p
+                             caller-chosen type of parameter `{p}`"
                         ));
                     }
                     (ty::Param(p), _) | (_, ty::Param(p)) => {
