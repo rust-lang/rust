@@ -717,7 +717,6 @@ fn object_ty_for_trait<'tcx>(
 // FIXME(mikeyhew) when unsized receivers are implemented as part of unsized rvalues, add this
 // fallback query: `Receiver: Unsize<Receiver[Self => U]>` to support receivers like
 // `self: Wrapper<Self>`.
-#[allow(dead_code)]
 fn receiver_is_dispatchable<'tcx>(
     tcx: TyCtxt<'tcx>,
     method: ty::AssocItem,
