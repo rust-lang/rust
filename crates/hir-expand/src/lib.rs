@@ -415,6 +415,24 @@ impl MacroDefId {
         )
     }
 
+    pub fn is_derive(&self) -> bool {
+        matches!(
+            self.kind,
+            MacroDefKind::BuiltInDerive(..)
+                | MacroDefKind::ProcMacro(_, ProcMacroKind::CustomDerive, _)
+        )
+    }
+
+    pub fn is_fn_like(&self) -> bool {
+        matches!(
+            self.kind,
+            MacroDefKind::BuiltIn(..)
+                | MacroDefKind::ProcMacro(_, ProcMacroKind::FuncLike, _)
+                | MacroDefKind::BuiltInEager(..)
+                | MacroDefKind::Declarative(..)
+        )
+    }
+
     pub fn is_attribute_derive(&self) -> bool {
         matches!(self.kind, MacroDefKind::BuiltInAttr(expander, ..) if expander.is_derive())
     }
