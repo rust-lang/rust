@@ -35,7 +35,7 @@ LL |     let _ = (0..4).find_map(|x| Some(x + 1));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this `.find_map` can be written more simply using `.find`
-  --> $DIR/unnecessary_find_map.rs:26:14
+  --> $DIR/unnecessary_find_map.rs:27:14
    |
 LL |     let _x = std::iter::once(1).find_map(|n| (n > 1).then_some(n));
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
