@@ -13,10 +13,11 @@
 // normalize-stderr-test "\s\d{1,}: .*\n" -> ""
 // normalize-stderr-test "\s at .*\n" -> ""
 // normalize-stderr-test ".*note: Some details.*\n" -> ""
-// normalize-stderr-test "\n\n[ ]*\n" -> ""
+// normalize-stderr-test "\n[ ]*\n" -> ""
 // normalize-stderr-test "compiler/.*: projection" -> "projection"
-// this should run-pass
 // normalize-stderr-test ".*omitted \d{1,} frame.*\n" -> ""
+// normalize-stderr-test "error: [\s\n]*query stack during panic:\n" -> ""
+// this should run-pass
 
 #![feature(generic_const_exprs)]
 #![allow(incomplete_features)]
