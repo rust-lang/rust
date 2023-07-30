@@ -56,6 +56,11 @@ changelog-seen = 2
 # Indicates whether an LLVM Release build should include debug info
 #release-debuginfo = false
 
+# When building LLVM as a dynamically linked library, and not explicitly
+# requesting debuginfo, strips the debuginfo it could contain (most often coming
+# from the C++ standard library).
+#strip-debuginfo = false
+
 # Indicates whether the LLVM assertions are enabled or not
 # NOTE: When assertions are disabled, bugs in the integration between rustc and LLVM can lead to
 # unsoundness (segfaults, etc.) in the rustc process itself, not just in the generated code.
