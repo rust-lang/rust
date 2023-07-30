@@ -1,4 +1,3 @@
-// min-llvm-version: 15.0
 // only-64bit llvm appears to use stores instead of memset on 32bit
 // compile-flags: -C opt-level=3 -Z merge-functions=disabled
 

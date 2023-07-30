@@ -500,7 +500,7 @@ pub fn compile_declarative_macro(
             .map(|m| {
                 if let MatchedTokenTree(tt) = m {
                     let tt = mbe::quoted::parse(
-                        TokenStream::new(vec![tt.clone()]),
+                        &TokenStream::new(vec![tt.clone()]),
                         true,
                         &sess.parse_sess,
                         def.id,
@@ -524,7 +524,7 @@ pub fn compile_declarative_macro(
             .map(|m| {
                 if let MatchedTokenTree(tt) = m {
                     return mbe::quoted::parse(
-                        TokenStream::new(vec![tt.clone()]),
+                        &TokenStream::new(vec![tt.clone()]),
                         false,
                         &sess.parse_sess,
                         def.id,

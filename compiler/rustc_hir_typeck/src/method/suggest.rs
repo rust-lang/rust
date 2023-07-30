@@ -153,7 +153,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     E0034,
                     "multiple applicable items in scope"
                 );
-                err.span_label(item_name.span, format!("multiple `{}` found", item_name));
+                err.span_label(item_name.span, format!("multiple `{item_name}` found"));
 
                 self.note_candidates_on_method_error(
                     rcvr_ty,
@@ -177,13 +177,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     kind,
                     item_name
                 );
-                err.span_label(item_name.span, format!("private {}", kind));
+                err.span_label(item_name.span, format!("private {kind}"));
                 let sp = self
                     .tcx
                     .hir()
                     .span_if_local(def_id)
                     .unwrap_or_else(|| self.tcx.def_span(def_id));
-                err.span_label(sp, format!("private {} defined here", kind));
+                err.span_label(sp, format!("private {kind} defined here"));
                 self.suggest_valid_traits(&mut err, out_of_scope_traits);
                 err.emit();
             }
@@ -218,7 +218,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             *region,
                             ty::TypeAndMut { ty: *t_type, mutbl: mutability.invert() },
                         );
-                        let msg = format!("you need `{}` instead of `{}`", trait_type, rcvr_ty);
+                        let msg = format!("you need `{trait_type}` instead of `{rcvr_ty}`");
                         let mut kind = &self_expr.kind;
                         while let hir::ExprKind::AddrOf(_, _, expr)
                         | hir::ExprKind::Unary(hir::UnOp::Deref, expr) = kind
@@ -637,7 +637,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                     // Point at the closure that couldn't satisfy the bound.
                     ty::Closure(def_id, _) => bound_spans
-                        .push((tcx.def_span(*def_id), format!("doesn't satisfy `{}`", quiet))),
+                        .push((tcx.def_span(*def_id), format!("doesn't satisfy `{quiet}`"))),
                     _ => {}
                 }
             };
@@ -659,7 +659,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                         let term = pred.skip_binder().term;
 
-                        let obligation = format!("{} = {}", projection_ty, term);
+                        let obligation = format!("{projection_ty} = {term}");
                         let quiet = with_forced_trimmed_paths!(format!(
                             "{} = {}",
                             quiet_projection_ty, term
@@ -672,7 +672,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let p = poly_trait_ref.trait_ref;
                         let self_ty = p.self_ty();
                         let path = p.print_only_trait_path();
-                        let obligation = format!("{}: {}", self_ty, path);
+                        let obligation = format!("{self_ty}: {path}");
                         let quiet = with_forced_trimmed_paths!(format!("_: {}", path));
                         bound_span_label(self_ty, &obligation, &quiet);
                         Some((obligation, self_ty))
@@ -825,12 +825,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let mut preds: Vec<_> = predicates
                     .iter()
                     .filter_map(|pred| format_pred(**pred))
-                    .map(|(p, _)| format!("`{}`", p))
+                    .map(|(p, _)| format!("`{p}`"))
                     .collect();
                 preds.sort();
                 preds.dedup();
                 let msg = if let [pred] = &preds[..] {
-                    format!("trait bound {} was not satisfied", pred)
+                    format!("trait bound {pred} was not satisfied")
                 } else {
                     format!("the following trait bounds were not satisfied:\n{}", preds.join("\n"),)
                 };
@@ -875,7 +875,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                                 suggested_bounds.insert(pred);
                                             }
                                         }
-                                        format!("`{}`\nwhich is required by `{}`", p, parent_p)
+                                        format!("`{p}`\nwhich is required by `{parent_p}`")
                                     }
                                 },
                             },
@@ -1034,8 +1034,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             "".to_string()
                         };
                         err.note(format!(
-                            "the {item_kind} was found for\n{}{}",
-                            type_candidates, additional_types
+                            "the {item_kind} was found for\n{type_candidates}{additional_types}"
                         ));
                     } else {
                         'outer: for inherent_impl_did in self.tcx.inherent_impls(adt.did()) {
@@ -1249,8 +1248,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     } else {
                         (
                             format!(
-                                "the candidate is defined in an impl{} for the type `{}`",
-                                insertion, impl_ty,
+                                "the candidate is defined in an impl{insertion} for the type `{impl_ty}`",
                             ),
                             None,
                         )
@@ -1452,11 +1450,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             err.span_suggestion(
                 sugg_span,
                 "use associated function syntax instead",
-                format!("{}::{}{}", ty_str, item_name, args),
+                format!("{ty_str}::{item_name}{args}"),
                 applicability,
             );
         } else {
-            err.help(format!("try with `{}::{}`", ty_str, item_name,));
+            err.help(format!("try with `{ty_str}::{item_name}`",));
         }
     }
 
@@ -1491,9 +1489,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let expr_span = expr.span.to(item_name.span);
                     err.multipart_suggestion(
                         format!(
-                            "to call the function stored in `{}`, \
+                            "to call the function stored in `{item_name}`, \
                                          surround the field access with parentheses",
-                            item_name,
                         ),
                         vec![
                             (expr_span.shrink_to_lo(), '('.to_string()),
@@ -1516,7 +1513,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
 
             let field_kind = if is_accessible { "field" } else { "private field" };
-            err.span_label(item_name.span, format!("{}, not a method", field_kind));
+            err.span_label(item_name.span, format!("{field_kind}, not a method"));
             return true;
         }
         false
@@ -1669,8 +1666,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         lit.span,
                         format!(
                             "you must specify a concrete type for this numeric value, \
-                                         like `{}`",
-                            concrete_type
+                                         like `{concrete_type}`"
                         ),
                         format!("{snippet}_{concrete_type}"),
                         Applicability::MaybeIncorrect,
@@ -1685,8 +1681,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let parent_node =
                             self.tcx.hir().get_parent(hir_id);
                         let msg = format!(
-                            "you must specify a type for this binding, like `{}`",
-                            concrete_type,
+                            "you must specify a type for this binding, like `{concrete_type}`",
                         );
 
                         match (filename, parent_node) {
@@ -2194,7 +2189,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if let Some((last_self_name, _, ref mut last_trait_names)) = derives_grouped.last_mut()
             {
                 if last_self_name == &self_name {
-                    last_trait_names.push_str(format!(", {}", trait_name).as_str());
+                    last_trait_names.push_str(format!(", {trait_name}").as_str());
                     continue;
                 }
             }
@@ -2226,8 +2221,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         for (self_name, self_span, traits) in &derives_grouped {
             err.span_suggestion_verbose(
                 self_span.shrink_to_lo(),
-                format!("consider annotating `{}` with `#[derive({})]`", self_name, traits),
-                format!("#[derive({})]\n", traits),
+                format!("consider annotating `{self_name}` with `#[derive({traits})]`"),
+                format!("#[derive({traits})]\n"),
                 Applicability::MaybeIncorrect,
             );
         }
@@ -2475,7 +2470,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if pick.autoderefs == 0 && !skip {
                             err.span_label(
                                 pick.item.ident(self.tcx).span,
-                                format!("the method is available for `{}` here", rcvr_ty),
+                                format!("the method is available for `{rcvr_ty}` here"),
                             );
                         }
                         break;
@@ -2521,13 +2516,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if pick.autoderefs == 0 && !skip {
                             err.span_label(
                                 pick.item.ident(self.tcx).span,
-                                format!("the method is available for `{}` here", new_rcvr_t),
+                                format!("the method is available for `{new_rcvr_t}` here"),
                             );
                             err.multipart_suggestion(
                                 "consider wrapping the receiver expression with the \
                                     appropriate type",
                                 vec![
-                                    (rcvr.span.shrink_to_lo(), format!("{}({}", pre, post)),
+                                    (rcvr.span.shrink_to_lo(), format!("{pre}({post}")),
                                     (rcvr.span.shrink_to_hi(), ")".to_string()),
                                 ],
                                 Applicability::MaybeIncorrect,
@@ -2767,7 +2762,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             };
                             err.span_suggestions(
                                 sp,
-                                message(format!("add {} supertrait for", article)),
+                                message(format!("add {article} supertrait for")),
                                 candidates.iter().map(|t| {
                                     format!("{} {}", sep, self.tcx.def_path_str(t.def_id),)
                                 }),
@@ -2836,7 +2831,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 trait_infos => {
                     let mut msg = message(param_type.map_or_else(
                         || "implement".to_string(), // FIXME: it might only need to be imported into scope, not implemented.
-                        |param| format!("restrict type parameter `{}` with", param),
+                        |param| format!("restrict type parameter `{param}` with"),
                     ));
                     for (i, trait_info) in trait_infos.iter().enumerate() {
                         msg.push_str(&format!(
@@ -2860,8 +2855,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 trait_infos => {
                     let mut msg = format!(
-                        "the following traits define an item `{}`, but are explicitly unimplemented:",
-                        item_name
+                        "the following traits define an item `{item_name}`, but are explicitly unimplemented:"
                     );
                     for trait_info in trait_infos {
                         msg.push_str(&format!("\n{}", self.tcx.def_path_str(trait_info.def_id)));
@@ -3027,13 +3021,13 @@ fn print_disambiguation_help<'tcx>(
                 .join(", "),
         );
         let trait_name = if !fn_has_self_parameter {
-            format!("<{} as {}>", rcvr_ty, trait_name)
+            format!("<{rcvr_ty} as {trait_name}>")
         } else {
             trait_name
         };
-        (span, format!("{}::{}{}", trait_name, item_name, args))
+        (span, format!("{trait_name}::{item_name}{args}"))
     } else {
-        (span.with_hi(item_name.span.lo()), format!("<{} as {}>::", rcvr_ty, trait_name))
+        (span.with_hi(item_name.span.lo()), format!("<{rcvr_ty} as {trait_name}>::"))
     };
     err.span_suggestion_verbose(
         span,
@@ -3041,7 +3035,7 @@ fn print_disambiguation_help<'tcx>(
             "disambiguate the {} for {}",
             def_kind_descr,
             if let Some(candidate) = candidate {
-                format!("candidate #{}", candidate)
+                format!("candidate #{candidate}")
             } else {
                 "the candidate".to_string()
             },

@@ -211,7 +211,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
         // register class is usable at all.
         if let Some(feature) = feature {
             if !target_features.contains(feature) {
-                let msg = format!("`{}` target feature is not enabled", feature);
+                let msg = format!("`{feature}` target feature is not enabled");
                 let mut err = self.tcx.sess.struct_span_err(expr.span, msg);
                 err.note(format!(
                     "this is required to use type `{}` with register class `{}`",

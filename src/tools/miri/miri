@@ -303,7 +303,7 @@ test|bless)
     $CARGO build $CARGO_EXTRA_FLAGS --manifest-path "$MIRIDIR"/Cargo.toml
     find_sysroot
     if [ "$COMMAND" = "bless" ]; then
-        export MIRI_BLESS="Gesundheit"
+        export RUSTC_BLESS="Gesundheit"
     fi
     # Then test, and let caller control flags.
     # Only in root project as `cargo-miri` has no tests.

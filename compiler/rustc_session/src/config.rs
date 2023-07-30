@@ -834,9 +834,10 @@ impl OutFileName {
     }
 
     pub fn is_tty(&self) -> bool {
+        use std::io::IsTerminal;
         match *self {
             OutFileName::Real(_) => false,
-            OutFileName::Stdout => atty::is(atty::Stream::Stdout),
+            OutFileName::Stdout => std::io::stdout().is_terminal(),
         }
     }
 
@@ -2151,6 +2152,12 @@ fn collect_print_requests(
     prints.extend(matches.opt_strs("print").into_iter().map(|req| {
         let (req, out) = split_out_file_name(&req);
 
+        if out.is_some() && !unstable_opts.unstable_options {
+            handler.early_error(
+                "the `-Z unstable-options` flag must also be passed to \
+                 enable the path print option",
+            );
+        }
         let kind = match PRINT_KINDS.iter().find(|&&(name, _)| name == req) {
             Some((_, PrintKind::TargetSpec)) => {
                 if unstable_opts.unstable_options {

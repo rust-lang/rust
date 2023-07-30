@@ -474,7 +474,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                 verb
             )
         } else {
-            format!("missing generics for {} `{}`", def_kind, def_path)
+            format!("missing generics for {def_kind} `{def_path}`")
         }
     }
 
@@ -599,7 +599,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                 let span = self.path_segment.ident.span;
 
                 // insert a suggestion of the form "Y<'a, 'b>"
-                let sugg = format!("<{}>", suggested_args);
+                let sugg = format!("<{suggested_args}>");
                 debug!("sugg: {:?}", sugg);
 
                 err.span_suggestion_verbose(
@@ -624,7 +624,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                 let sugg_suffix =
                     if is_first && (has_non_lt_args || has_bindings) { ", " } else { "" };
 
-                let sugg = format!("{}{}{}", sugg_prefix, suggested_args, sugg_suffix);
+                let sugg = format!("{sugg_prefix}{suggested_args}{sugg_suffix}");
                 debug!("sugg: {:?}", sugg);
 
                 err.span_suggestion_verbose(sugg_span, msg, sugg, Applicability::HasPlaceholders);
@@ -649,7 +649,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                 let span = self.path_segment.ident.span;
 
                 // insert a suggestion of the form "Y<T, U>"
-                let sugg = format!("<{}>", suggested_args);
+                let sugg = format!("<{suggested_args}>");
                 debug!("sugg: {:?}", sugg);
 
                 err.span_suggestion_verbose(
@@ -682,7 +682,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                 let sugg_suffix =
                     if is_first && !self.gen_args.bindings.is_empty() { ", " } else { "" };
 
-                let sugg = format!("{}{}{}", sugg_prefix, suggested_args, sugg_suffix);
+                let sugg = format!("{sugg_prefix}{suggested_args}{sugg_suffix}");
                 debug!("sugg: {:?}", sugg);
 
                 err.span_suggestion_verbose(sugg_span, msg, sugg, Applicability::HasPlaceholders);
@@ -1024,7 +1024,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                     .collect::<Vec<_>>()
                     .join(", ");
 
-                format!(": {}", params)
+                format!(": {params}")
             };
 
             format!(

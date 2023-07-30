@@ -379,6 +379,8 @@ declare_features! (
     (active, deprecated_safe, "1.61.0", Some(94978), None),
     /// Allows having using `suggestion` in the `#[deprecated]` attribute.
     (active, deprecated_suggestion, "1.61.0", Some(94785), None),
+    /// Allows using the `#[diagnostic]` attribute tool namespace
+    (active, diagnostic_namespace, "CURRENT_RUSTC_VERSION", Some(94785), None),
     /// Controls errors in trait implementations.
     (active, do_not_recommend, "1.67.0", Some(51992), None),
     /// Tells rustdoc to automatically generate `#[doc(cfg(...))]`.
@@ -422,6 +424,8 @@ declare_features! (
     (incomplete, generic_associated_types_extended, "1.61.0", Some(95451), None),
     /// Allows non-trivial generic constants which have to have wfness manually propagated to callers
     (incomplete, generic_const_exprs, "1.56.0", Some(76560), None),
+    /// Allows generic parameters and where-clauses on free & associated const items.
+    (incomplete, generic_const_items, "CURRENT_RUSTC_VERSION", Some(113521), None),
     /// Allows using `..=X` as a patterns in slices.
     (active, half_open_range_patterns_in_slices, "1.66.0", Some(67264), None),
     /// Allows `if let` guard in match arms.

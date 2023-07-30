@@ -1543,10 +1543,12 @@ fn item_constant(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, c: &cle
 
         write!(
             w,
-            "{vis}const {name}: {typ}",
+            "{vis}const {name}{generics}: {typ}{where_clause}",
             vis = visibility_print_with_space(it.visibility(tcx), it.item_id, cx),
             name = it.name.unwrap(),
+            generics = c.generics.print(cx),
             typ = c.type_.print(cx),
+            where_clause = print_where_clause(&c.generics, cx, 0, Ending::NoNewline),
         );
 
         // FIXME: The code below now prints

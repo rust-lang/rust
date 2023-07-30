@@ -5,10 +5,8 @@ use rustc_ast::{self as ast, Crate, ItemKind, ModKind, NodeId, Path, CRATE_NODE_
 use rustc_ast::{MetaItemKind, NestedMetaItem};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{
-    pluralize, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, MultiSpan,
-};
-use rustc_errors::{struct_span_err, SuggestionStyle};
+use rustc_errors::{pluralize, report_ambiguity_error, struct_span_err, SuggestionStyle};
+use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, MultiSpan};
 use rustc_feature::BUILTIN_ATTRIBUTES;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, CtorOf, DefKind, NonMacroAttrKind, PerNS};
@@ -17,8 +15,9 @@ use rustc_hir::PrimTy;
 use rustc_middle::bug;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::builtin::ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE;
+use rustc_session::lint::builtin::AMBIGUOUS_GLOB_IMPORTS;
 use rustc_session::lint::builtin::MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS;
-use rustc_session::lint::BuiltinLintDiagnostics;
+use rustc_session::lint::{AmbiguityErrorDiag, BuiltinLintDiagnostics};
 use rustc_session::Session;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
@@ -135,7 +134,23 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         for ambiguity_error in &self.ambiguity_errors {
-            self.report_ambiguity_error(ambiguity_error);
+            let diag = self.ambiguity_diagnostics(ambiguity_error);
+            if ambiguity_error.warning {
+                let NameBindingKind::Import { import, .. } = ambiguity_error.b1.0.kind else {
+                    unreachable!()
+                };
+                self.lint_buffer.buffer_lint_with_diagnostic(
+                    AMBIGUOUS_GLOB_IMPORTS,
+                    import.root_id,
+                    ambiguity_error.ident.span,
+                    diag.msg.to_string(),
+                    BuiltinLintDiagnostics::AmbiguousGlobImports { diag },
+                );
+            } else {
+                let mut err = struct_span_err!(self.tcx.sess, diag.span, E0659, "{}", &diag.msg);
+                report_ambiguity_error(&mut err, diag);
+                err.emit();
+            }
         }
 
         let mut reported_spans = FxHashSet::default();
@@ -1540,20 +1555,15 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
     }
 
-    fn report_ambiguity_error(&self, ambiguity_error: &AmbiguityError<'_>) {
-        let AmbiguityError { kind, ident, b1, b2, misc1, misc2 } = *ambiguity_error;
+    fn ambiguity_diagnostics(&self, ambiguity_error: &AmbiguityError<'_>) -> AmbiguityErrorDiag {
+        let AmbiguityError { kind, ident, b1, b2, misc1, misc2, .. } = *ambiguity_error;
         let (b1, b2, misc1, misc2, swapped) = if b2.span.is_dummy() && !b1.span.is_dummy() {
             // We have to print the span-less alternative first, otherwise formatting looks bad.
             (b2, b1, misc2, misc1, true)
         } else {
             (b1, b2, misc1, misc2, false)
         };
-
-        let mut err = struct_span_err!(self.tcx.sess, ident.span, E0659, "`{ident}` is ambiguous");
-        err.span_label(ident.span, "ambiguous name");
-        err.note(format!("ambiguous because of {}", kind.descr()));
-
-        let mut could_refer_to = |b: NameBinding<'_>, misc: AmbiguityErrorMisc, also: &str| {
+        let could_refer_to = |b: NameBinding<'_>, misc: AmbiguityErrorMisc, also: &str| {
             let what = self.binding_description(b, ident, misc == AmbiguityErrorMisc::FromPrelude);
             let note_msg = format!("`{ident}` could{also} refer to {what}");
 
@@ -1579,16 +1589,35 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 AmbiguityErrorMisc::FromPrelude | AmbiguityErrorMisc::None => {}
             }
 
-            err.span_note(b.span, note_msg);
-            for (i, help_msg) in help_msgs.iter().enumerate() {
-                let or = if i == 0 { "" } else { "or " };
-                err.help(format!("{}{}", or, help_msg));
-            }
+            (
+                b.span,
+                note_msg,
+                help_msgs
+                    .iter()
+                    .enumerate()
+                    .map(|(i, help_msg)| {
+                        let or = if i == 0 { "" } else { "or " };
+                        format!("{}{}", or, help_msg)
+                    })
+                    .collect::<Vec<_>>(),
+            )
         };
+        let (b1_span, b1_note_msg, b1_help_msgs) = could_refer_to(b1, misc1, "");
+        let (b2_span, b2_note_msg, b2_help_msgs) = could_refer_to(b2, misc2, " also");
 
-        could_refer_to(b1, misc1, "");
-        could_refer_to(b2, misc2, " also");
-        err.emit();
+        AmbiguityErrorDiag {
+            msg: format!("`{ident}` is ambiguous"),
+            span: ident.span,
+            label_span: ident.span,
+            label_msg: "ambiguous name".to_string(),
+            note_msg: format!("ambiguous because of {}", kind.descr()),
+            b1_span,
+            b1_note_msg,
+            b1_help_msgs,
+            b2_span,
+            b2_note_msg,
+            b2_help_msgs,
+        }
     }
 
     /// If the binding refers to a tuple struct constructor with fields,

@@ -68,7 +68,7 @@ impl<T, U, const N: usize> Trait5<U, N> for T {
 pub fn foo1(a: &dyn Trait1) {
     a.foo();
     // CHECK-LABEL: define{{.*}}4foo1{{.*}}!type !{{[0-9]+}}
-    // CHECK:       call i1 @llvm.type.test({{i8\*|ptr}} {{%f|%[0-9]}}, metadata !"[[TYPE1:[[:print:]]+]]")
+    // CHECK:       call i1 @llvm.type.test(ptr {{%f|%[0-9]}}, metadata !"[[TYPE1:[[:print:]]+]]")
 }
 
 pub fn bar1() {
@@ -76,13 +76,13 @@ pub fn bar1() {
     let b = &a as &dyn Trait1;
     b.foo();
     // CHECK-LABEL: define{{.*}}4bar1{{.*}}!type !{{[0-9]+}}
-    // CHECK:       call i1 @llvm.type.test({{i8\*|ptr}} {{%f|%[0-9]}}, metadata !"[[TYPE2:[[:print:]]+]]")
+    // CHECK:       call i1 @llvm.type.test(ptr {{%f|%[0-9]}}, metadata !"[[TYPE2:[[:print:]]+]]")
 }
 
 pub fn foo2<T>(a: &dyn Trait2<T>) {
     a.bar();
     // CHECK-LABEL: define{{.*}}4foo2{{.*}}!type !{{[0-9]+}}
-    // CHECK:       call i1 @llvm.type.test({{i8\*|ptr}} {{%f|%[0-9]}}, metadata !"[[TYPE2:[[:print:]]+]]")
+    // CHECK:       call i1 @llvm.type.test(ptr {{%f|%[0-9]}}, metadata !"[[TYPE2:[[:print:]]+]]")
 }
 
 pub fn bar2() {
@@ -91,14 +91,14 @@ pub fn bar2() {
     let b = &a as &dyn Trait2<i32>;
     b.bar();
     // CHECK-LABEL: define{{.*}}4bar2{{.*}}!type !{{[0-9]+}}
-    // CHECK:       call i1 @llvm.type.test({{i8\*|ptr}} {{%f|%[0-9]}}, metadata !"[[TYPE2:[[:print:]]+]]")
+    // CHECK:       call i1 @llvm.type.test(ptr {{%f|%[0-9]}}, metadata !"[[TYPE2:[[:print:]]+]]")
 }
 
 pub fn foo3(a: &dyn Trait3<Type3>) {
     let b = Type3;
     a.baz(&b);
     // CHECK-LABEL: define{{.*}}4foo3{{.*}}!type !{{[0-9]+}}
-    // CHECK:       call i1 @llvm.type.test({{i8\*|ptr}} {{%f|%[0-9]}}, metadata !"[[TYPE3:[[:print:]]+]]")
+    // CHECK:       call i1 @llvm.type.test(ptr {{%f|%[0-9]}}, metadata !"[[TYPE3:[[:print:]]+]]")
 }
 
 pub fn bar3() {
@@ -107,14 +107,14 @@ pub fn bar3() {
     let b = &a as &dyn Trait3<Type3>;
     b.baz(&a);
     // CHECK-LABEL: define{{.*}}4bar3{{.*}}!type !{{[0-9]+}}
-    // CHECK:       call i1 @llvm.type.test({{i8\*|ptr}} {{%f|%[0-9]}}, metadata !"[[TYPE3:[[:print:]]+]]")
+    // CHECK:       call i1 @llvm.type.test(ptr {{%f|%[0-9]}}, metadata !"[[TYPE3:[[:print:]]+]]")
 }
 
 pub fn foo4<'a>(a: &dyn Trait4<'a, Type4, Output = &'a i32>) {
     let b = Type4;
     a.qux(&b);
     // CHECK-LABEL: define{{.*}}4foo4{{.*}}!type !{{[0-9]+}}
-    // CHECK:       call i1 @llvm.type.test({{i8\*|ptr}} {{%f|%[0-9]}}, metadata !"[[TYPE4:[[:print:]]+]]")
+    // CHECK:       call i1 @llvm.type.test(ptr {{%f|%[0-9]}}, metadata !"[[TYPE4:[[:print:]]+]]")
 }
 
 pub fn bar4<'a>() {
@@ -123,14 +123,14 @@ pub fn bar4<'a>() {
     let b = &a as &dyn Trait4<'a, Type4, Output = &'a i32>;
     b.qux(&a);
     // CHECK-LABEL: define{{.*}}4bar4{{.*}}!type !{{[0-9]+}}
-    // CHECK:       call i1 @llvm.type.test({{i8\*|ptr}} {{%f|%[0-9]}}, metadata !"[[TYPE4:[[:print:]]+]]")
+    // CHECK:       call i1 @llvm.type.test(ptr {{%f|%[0-9]}}, metadata !"[[TYPE4:[[:print:]]+]]")
 }
 
 pub fn foo5(a: &dyn Trait5<Type5, 32>) {
     let b = &[Type5; 32];
     a.quux(&b);
     // CHECK-LABEL: define{{.*}}4foo5{{.*}}!type !{{[0-9]+}}
-    // CHECK:       call i1 @llvm.type.test({{i8\*|ptr}} {{%f|%[0-9]}}, metadata !"[[TYPE5:[[:print:]]+]]")
+    // CHECK:       call i1 @llvm.type.test(ptr {{%f|%[0-9]}}, metadata !"[[TYPE5:[[:print:]]+]]")
 }
 
 pub fn bar5() {
@@ -139,7 +139,7 @@ pub fn bar5() {
     let b = &a as &dyn Trait5<Type5, 32>;
     b.quux(&a);
     // CHECK-LABEL: define{{.*}}4bar5{{.*}}!type !{{[0-9]+}}
-    // CHECK:       call i1 @llvm.type.test({{i8\*|ptr}} {{%f|%[0-9]}}, metadata !"[[TYPE5:[[:print:]]+]]")
+    // CHECK:       call i1 @llvm.type.test(ptr {{%f|%[0-9]}}, metadata !"[[TYPE5:[[:print:]]+]]")
 }
 
 // CHECK: !{{[0-9]+}} = !{i64 0, !"[[TYPE1]]"}

@@ -630,7 +630,7 @@ pub(super) fn dump_coverage_spanview<'tcx>(
         .expect("Unexpected error creating MIR spanview HTML file");
     let crate_name = tcx.crate_name(def_id.krate);
     let item_name = tcx.def_path(def_id).to_filename_friendly_no_crate();
-    let title = format!("{}.{} - Coverage Spans", crate_name, item_name);
+    let title = format!("{crate_name}.{item_name} - Coverage Spans");
     spanview::write_document(tcx, body_span, span_viewables, &title, &mut file)
         .expect("Unexpected IO error dumping coverage spans as HTML");
 }
@@ -779,7 +779,7 @@ fn bcb_to_string_sections<'tcx>(
         ));
     }
     if let Some(counter_kind) = &bcb_data.counter_kind {
-        sections.push(format!("{:?}", counter_kind));
+        sections.push(format!("{counter_kind:?}"));
     }
     let non_term_blocks = bcb_data.basic_blocks[0..len - 1]
         .iter()

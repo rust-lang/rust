@@ -44,6 +44,11 @@
             <strong>Note:</strong> Encountered an error during type layout; {#+ #}
             the type was too big. {# #}
         </p> {# #}
+        {% when Err(LayoutError::ReferencesError(_)) %}
+        <p> {# #}
+            <strong>Note:</strong> Encountered an error during type layout; {#+ #}
+            the type references errors. {# #}
+        </p> {# #}
         {% when Err(LayoutError::NormalizationFailure(_, _)) %}
         <p> {# #}
             <strong>Note:</strong> Encountered an error during type layout; {#+ #}

@@ -156,7 +156,9 @@ impl<'tcx> Stable<'tcx> for mir::Rvalue<'tcx> {
                 ops.0.stable(tables),
                 ops.1.stable(tables),
             ),
-            NullaryOp(_, _) => todo!(),
+            NullaryOp(null_op, ty) => {
+                stable_mir::mir::Rvalue::NullaryOp(null_op.stable(tables), tables.intern_ty(*ty))
+            }
             UnaryOp(un_op, op) => {
                 stable_mir::mir::Rvalue::UnaryOp(un_op.stable(tables), op.stable(tables))
             }

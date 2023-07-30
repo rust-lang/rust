@@ -26,7 +26,7 @@ pub extern "C" fn test_F32(_: F32) -> F32 { loop {} }
 #[repr(transparent)]
 pub struct Ptr(*mut u8);
 
-// CHECK: define{{.*}}{{i8\*|ptr}} @test_Ptr({{i8\*|ptr}} noundef %_1)
+// CHECK: define{{.*}}ptr @test_Ptr(ptr noundef %_1)
 #[no_mangle]
 pub extern "C" fn test_Ptr(_: Ptr) -> Ptr { loop {} }
 
@@ -41,7 +41,7 @@ pub extern "C" fn test_WithZst(_: WithZst) -> WithZst { loop {} }
 pub struct WithZeroSizedArray(*const f32, [i8; 0]);
 
 // Apparently we use i32* when newtype-unwrapping f32 pointers. Whatever.
-// CHECK: define{{.*}}{{i32\*|ptr}} @test_WithZeroSizedArray({{i32\*|ptr}} noundef %_1)
+// CHECK: define{{.*}}ptr @test_WithZeroSizedArray(ptr noundef %_1)
 #[no_mangle]
 pub extern "C" fn test_WithZeroSizedArray(_: WithZeroSizedArray) -> WithZeroSizedArray { loop {} }
 
@@ -65,7 +65,7 @@ pub extern "C" fn test_Gpz(_: GenericPlusZst<Bool>) -> GenericPlusZst<Bool> { lo
 #[repr(transparent)]
 pub struct LifetimePhantom<'a, T: 'a>(*const T, PhantomData<&'a T>);
 
-// CHECK: define{{.*}}{{i16\*|ptr}} @test_LifetimePhantom({{i16\*|ptr}} noundef %_1)
+// CHECK: define{{.*}}ptr @test_LifetimePhantom(ptr noundef %_1)
 #[no_mangle]
 pub extern "C" fn test_LifetimePhantom(_: LifetimePhantom<i16>) -> LifetimePhantom<i16> { loop {} }
 

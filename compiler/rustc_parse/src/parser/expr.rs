@@ -2338,7 +2338,7 @@ impl<'a> Parser<'a> {
         let lo = self.token.span;
         let attrs = self.parse_outer_attributes()?;
         self.collect_tokens_trailing_token(attrs, ForceCollect::No, |this, attrs| {
-            let pat = this.parse_pat_no_top_alt(Some(Expected::ParameterName))?;
+            let pat = this.parse_pat_no_top_alt(Some(Expected::ParameterName), None)?;
             let ty = if this.eat(&token::Colon) {
                 this.parse_ty()?
             } else {
@@ -2781,7 +2781,7 @@ impl<'a> Parser<'a> {
                 return None;
             }
             let pre_pat_snapshot = self.create_snapshot_for_diagnostic();
-            match self.parse_pat_no_top_alt(None) {
+            match self.parse_pat_no_top_alt(None, None) {
                 Ok(_pat) => {
                     if self.token.kind == token::FatArrow {
                         // Reached arm end.

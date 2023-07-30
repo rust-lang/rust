@@ -1,7 +1,8 @@
-FROM ubuntu:20.04
+FROM ubuntu:22.04
 
 # Avoid interactive prompts while installing `tzdata` dependency with `DEBIAN_FRONTEND`.
-RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+ARG DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends \
   g++ \
   make \
   ninja-build \
@@ -17,9 +18,6 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-ins
   pkg-config \
   xz-utils \
   && rm -rf /var/lib/apt/lists/*
-
-COPY scripts/cmake.sh /scripts/
-RUN /scripts/cmake.sh
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh

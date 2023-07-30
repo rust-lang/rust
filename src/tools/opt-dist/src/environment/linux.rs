@@ -41,6 +41,10 @@ impl Environment for LinuxEnvironment {
         true
     }
 
+    fn supports_shared_llvm(&self) -> bool {
+        true
+    }
+
     fn executable_extension(&self) -> &'static str {
         ""
     }

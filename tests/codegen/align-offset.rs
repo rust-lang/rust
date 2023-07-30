@@ -1,5 +1,4 @@
 // compile-flags: -O
-// min-llvm-version: 15.0 (because we're using opaque pointers)
 // ignore-debug (debug assertions in `slice::from_raw_parts` block optimizations)
 
 #![crate_type = "lib"]

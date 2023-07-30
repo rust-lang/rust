@@ -3316,6 +3316,7 @@ declare_lint_pass! {
         // tidy-alphabetical-start
         ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
         AMBIGUOUS_ASSOCIATED_ITEMS,
+        AMBIGUOUS_GLOB_IMPORTS,
         AMBIGUOUS_GLOB_REEXPORTS,
         ARITHMETIC_OVERFLOW,
         ASM_SUB_REGISTER,
@@ -3400,6 +3401,7 @@ declare_lint_pass! {
         UNFULFILLED_LINT_EXPECTATIONS,
         UNINHABITED_STATIC,
         UNKNOWN_CRATE_TYPES,
+        UNKNOWN_DIAGNOSTIC_ATTRIBUTES,
         UNKNOWN_LINTS,
         UNNAMEABLE_TYPES,
         UNREACHABLE_CODE,
@@ -4052,12 +4054,12 @@ declare_lint! {
     ///
     /// The compiler disables the automatic implementation if an explicit one
     /// exists for given type constructor. The exact rules governing this
-    /// are currently unsound, quite subtle, and will be modified in the future.
-    /// This change will cause the automatic implementation to be disabled in more
+    /// were previously unsound, quite subtle, and have been recently modified.
+    /// This change caused the automatic implementation to be disabled in more
     /// cases, potentially breaking some code.
     pub SUSPICIOUS_AUTO_TRAIT_IMPLS,
     Warn,
-    "the rules governing auto traits will change in the future",
+    "the rules governing auto traits have recently changed resulting in potential breakage",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::FutureReleaseSemanticsChange,
         reference: "issue #93367 <https://github.com/rust-lang/rust/issues/93367>",
@@ -4379,4 +4381,71 @@ declare_lint! {
     Allow,
     "effective visibility of a type is larger than the area in which it can be named",
     @feature_gate = sym::type_privacy_lints;
+}
+
+declare_lint! {
+    /// The `unknown_diagnostic_attributes` lint detects unrecognized diagnostic attributes.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// #![feature(diagnostic_namespace)]
+    /// #[diagnostic::does_not_exist]
+    /// struct Foo;
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// It is usually a mistake to specify a diagnostic attribute that does not exist. Check
+    /// the spelling, and check the diagnostic attribute listing for the correct name. Also
+    /// consider if you are using an old version of the compiler, and the attribute
+    /// is only available in a newer version.
+    pub UNKNOWN_DIAGNOSTIC_ATTRIBUTES,
+    Warn,
+    "unrecognized diagnostic attribute"
+}
+
+declare_lint! {
+    /// The `ambiguous_glob_imports` lint detects glob imports that should report ambiguity
+    /// errors, but previously didn't do that due to rustc bugs.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    ///
+    /// #![deny(ambiguous_glob_imports)]
+    /// pub fn foo() -> u32 {
+    ///     use sub::*;
+    ///     C
+    /// }
+    ///
+    /// mod sub {
+    ///     mod mod1 { pub const C: u32 = 1; }
+    ///     mod mod2 { pub const C: u32 = 2; }
+    ///
+    ///     pub use mod1::*;
+    ///     pub use mod2::*;
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Previous versions of Rust compile it successfully because it
+    /// had lost the ambiguity error when resolve `use sub::mod2::*`.
+    ///
+    /// This is a [future-incompatible] lint to transition this to a
+    /// hard error in the future.
+    ///
+    /// [future-incompatible]: ../index.md#future-incompatible-lints
+    pub AMBIGUOUS_GLOB_IMPORTS,
+    Warn,
+    "detects certain glob imports that require reporting an ambiguity error",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::FutureReleaseError,
+        reference: "issue #114095 <https://github.com/rust-lang/rust/issues/114095>",
+    };
 }

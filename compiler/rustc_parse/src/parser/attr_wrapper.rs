@@ -107,7 +107,7 @@ impl ToAttrTokenStream for LazyAttrTokenStreamImpl {
         let tokens =
             std::iter::once((FlatToken::Token(self.start_token.0.clone()), self.start_token.1))
                 .chain((0..self.num_calls).map(|_| {
-                    let token = cursor_snapshot.next(cursor_snapshot.desugar_doc_comments);
+                    let token = cursor_snapshot.next();
                     (FlatToken::Token(token.0), token.1)
                 }))
                 .take(self.num_calls);

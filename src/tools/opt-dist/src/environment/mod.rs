@@ -60,6 +60,8 @@ pub trait Environment {
 
     fn supports_bolt(&self) -> bool;
 
+    fn supports_shared_llvm(&self) -> bool;
+
     /// What is the extension of binary executables in this environment?
     fn executable_extension(&self) -> &'static str;
 

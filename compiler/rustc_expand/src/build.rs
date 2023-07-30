@@ -643,7 +643,16 @@ impl<'a> ExtCtxt<'a> {
             span,
             name,
             AttrVec::new(),
-            ast::ItemKind::Const(ast::ConstItem { defaultness, ty, expr: Some(expr) }.into()),
+            ast::ItemKind::Const(
+                ast::ConstItem {
+                    defaultness,
+                    // FIXME(generic_const_items): Pass the generics as a parameter.
+                    generics: ast::Generics::default(),
+                    ty,
+                    expr: Some(expr),
+                }
+                .into(),
+            ),
         )
     }
 

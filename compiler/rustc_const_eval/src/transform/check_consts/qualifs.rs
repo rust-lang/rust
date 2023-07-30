@@ -23,7 +23,8 @@ pub fn in_any_value_of_ty<'tcx>(
     ConstQualifs {
         has_mut_interior: HasMutInterior::in_any_value_of_ty(cx, ty),
         needs_drop: NeedsDrop::in_any_value_of_ty(cx, ty),
-        needs_non_const_drop: NeedsNonConstDrop::in_any_value_of_ty(cx, ty),
+        // FIXME(effects)
+        needs_non_const_drop: NeedsDrop::in_any_value_of_ty(cx, ty),
         custom_eq: CustomEq::in_any_value_of_ty(cx, ty),
         tainted_by_errors,
     }

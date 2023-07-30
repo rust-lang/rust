@@ -8,7 +8,7 @@
 pub fn foo(f: fn(i32) -> i32, arg: i32) -> i32 {
     // CHECK-LABEL: define{{.*}}foo{{.*}}!type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
     // CHECK:       start:
-    // CHECK:       [[TT:%.+]] = call i1 @llvm.type.test({{i8\*|ptr}} {{%f|%0}}, metadata !"{{[[:print:]]+}}")
+    // CHECK:       [[TT:%.+]] = call i1 @llvm.type.test(ptr {{%f|%0}}, metadata !"{{[[:print:]]+}}")
     // CHECK-NEXT:  br i1 [[TT]], label %type_test.pass, label %type_test.fail
     // CHECK:       type_test.pass:
     // CHECK-NEXT:  {{%.+}} = call i32 %f(i32 %arg)

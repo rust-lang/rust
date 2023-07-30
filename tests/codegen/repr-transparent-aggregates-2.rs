@@ -37,19 +37,19 @@ pub enum TeBigS {
     Variant(BigS),
 }
 
-// CHECK: define void @test_BigS({{%BigS\*|ptr}} [[BIGS_RET_ATTRS1:.*]] sret(%BigS) [[BIGS_RET_ATTRS2:.*]], [16 x i32]
+// CHECK: define void @test_BigS(ptr [[BIGS_RET_ATTRS1:.*]] sret(%BigS) [[BIGS_RET_ATTRS2:.*]], [16 x i32]
 #[no_mangle]
 pub extern fn test_BigS(_: BigS) -> BigS { loop {} }
 
-// CHECK: define void @test_TsBigS({{%TsBigS\*|ptr}} [[BIGS_RET_ATTRS1]] sret(%TsBigS) [[BIGS_RET_ATTRS2]], [16 x i32]
+// CHECK: define void @test_TsBigS(ptr [[BIGS_RET_ATTRS1]] sret(%TsBigS) [[BIGS_RET_ATTRS2]], [16 x i32]
 #[no_mangle]
 pub extern fn test_TsBigS(_: TsBigS) -> TsBigS { loop {} }
 
-// CHECK: define void @test_TuBigS({{%TuBigS\*|ptr}} [[BIGS_RET_ATTRS1]] sret(%TuBigS) [[BIGS_RET_ATTRS2]], [16 x i32]
+// CHECK: define void @test_TuBigS(ptr [[BIGS_RET_ATTRS1]] sret(%TuBigS) [[BIGS_RET_ATTRS2]], [16 x i32]
 #[no_mangle]
 pub extern fn test_TuBigS(_: TuBigS) -> TuBigS { loop {} }
 
-// CHECK: define void @test_TeBigS({{%"TeBigS::Variant"\*|ptr}} [[BIGS_RET_ATTRS1]] sret(%"TeBigS::Variant") [[BIGS_RET_ATTRS2]], [16 x i32]
+// CHECK: define void @test_TeBigS(ptr [[BIGS_RET_ATTRS1]] sret(%"TeBigS::Variant") [[BIGS_RET_ATTRS2]], [16 x i32]
 #[no_mangle]
 pub extern fn test_TeBigS(_: TeBigS) -> TeBigS { loop {} }
 
@@ -73,18 +73,18 @@ pub enum TeBigU {
     Variant(BigU),
 }
 
-// CHECK: define void @test_BigU({{%BigU\*|ptr}} [[BIGU_RET_ATTRS1:.*]] sret(%BigU) [[BIGU_RET_ATTRS2:.*]], [16 x i32]
+// CHECK: define void @test_BigU(ptr [[BIGU_RET_ATTRS1:.*]] sret(%BigU) [[BIGU_RET_ATTRS2:.*]], [16 x i32]
 #[no_mangle]
 pub extern fn test_BigU(_: BigU) -> BigU { loop {} }
 
-// CHECK: define void @test_TsBigU({{%TsBigU\*|ptr}} [[BIGU_RET_ATTRS1]] sret(%TsBigU) [[BIGU_RET_ATTRS2]], [16 x i32]
+// CHECK: define void @test_TsBigU(ptr [[BIGU_RET_ATTRS1]] sret(%TsBigU) [[BIGU_RET_ATTRS2]], [16 x i32]
 #[no_mangle]
 pub extern fn test_TsBigU(_: TsBigU) -> TsBigU { loop {} }
 
-// CHECK: define void @test_TuBigU({{%TuBigU\*|ptr}} [[BIGU_RET_ATTRS1]] sret(%TuBigU) [[BIGU_RET_ATTRS2]], [16 x i32]
+// CHECK: define void @test_TuBigU(ptr [[BIGU_RET_ATTRS1]] sret(%TuBigU) [[BIGU_RET_ATTRS2]], [16 x i32]
 #[no_mangle]
 pub extern fn test_TuBigU(_: TuBigU) -> TuBigU { loop {} }
 
-// CHECK: define void @test_TeBigU({{%"TeBigU::Variant"\*|ptr}} [[BIGU_RET_ATTRS1]] sret(%"TeBigU::Variant") [[BIGU_RET_ATTRS2]], [16 x i32]
+// CHECK: define void @test_TeBigU(ptr [[BIGU_RET_ATTRS1]] sret(%"TeBigU::Variant") [[BIGU_RET_ATTRS2]], [16 x i32]
 #[no_mangle]
 pub extern fn test_TeBigU(_: TeBigU) -> TeBigU { loop {} }

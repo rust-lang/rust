@@ -1560,6 +1560,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
         if let Some(rpitit_info) = item.opt_rpitit_info {
             record!(self.tables.opt_rpitit_info[def_id] <- rpitit_info);
+            if matches!(rpitit_info, ty::ImplTraitInTraitData::Trait { .. }) {
+                record_array!(
+                    self.tables.assumed_wf_types_for_rpitit[def_id]
+                        <- self.tcx.assumed_wf_types_for_rpitit(def_id)
+                );
+            }
         }
     }
 

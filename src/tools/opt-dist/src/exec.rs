@@ -139,6 +139,16 @@ impl Bootstrap {
         self
     }
 
+    pub fn without_llvm_lto(mut self) -> Self {
+        self.cmd = self
+            .cmd
+            .arg("--set")
+            .arg("llvm.thin-lto=false")
+            .arg("--set")
+            .arg("llvm.link-shared=true");
+        self
+    }
+
     pub fn rustc_pgo_optimize(mut self, profile: &RustcPGOProfile) -> Self {
         self.cmd = self.cmd.arg("--rust-profile-use").arg(profile.0.as_str());
         self

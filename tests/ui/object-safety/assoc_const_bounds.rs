@@ -1,7 +1,12 @@
+#![feature(generic_const_items)]
+#![allow(incomplete_features, dead_code)]
+
+// check-pass
+
 trait Foo<T> {
     const BAR: bool
-        where //~ ERROR: expected one of `!`, `(`, `+`, `::`, `;`, `<`, or `=`, found keyword `where`
-            Self: Sized;
+    where
+        Self: Sized;
 }
 
 trait Cake {}

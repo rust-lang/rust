@@ -346,8 +346,16 @@ fn associated_type_for_impl_trait_in_impl(
 ) -> LocalDefId {
     let impl_local_def_id = tcx.local_parent(impl_fn_def_id);
 
-    // FIXME fix the span, we probably want the def_id of the return type of the function
-    let span = tcx.def_span(impl_fn_def_id);
+    let decl = tcx
+        .hir()
+        .find_by_def_id(impl_fn_def_id)
+        .expect("expected item")
+        .fn_decl()
+        .expect("expected decl");
+    let span = match decl.output {
+        hir::FnRetTy::DefaultReturn(_) => tcx.def_span(impl_fn_def_id),
+        hir::FnRetTy::Return(ty) => ty.span,
+    };
     let impl_assoc_ty = tcx.at(span).create_def(impl_local_def_id, DefPathData::ImplTraitAssocTy);
 
     let local_def_id = impl_assoc_ty.def_id();

@@ -195,7 +195,7 @@ pub(crate) mod rustc {
     impl<'tcx> From<&LayoutError<'tcx>> for Err {
         fn from(err: &LayoutError<'tcx>) -> Self {
             match err {
-                LayoutError::Unknown(..) => Self::UnknownLayout,
+                LayoutError::Unknown(..) | LayoutError::ReferencesError(..) => Self::UnknownLayout,
                 err => unimplemented!("{:?}", err),
             }
         }
