@@ -1,13 +1,13 @@
 // This test verifies the accuracy of emitted file and line debuginfo metadata for structs and
 // unions.
 //
-// compile-flags: -C debuginfo=2
+// compile-flags: -C debuginfo=2 -Z more-source-locations-in-debuginfo
 #![crate_type = "lib"]
 
 // ignore-tidy-linelength
 
-// NONMSVC: ![[#FILE:]] = !DIFile({{.*}}filename:{{.*}}/codegen/issue-98678-struct-union.rs{{".*}})
-// MSVC: ![[#FILE:]] = !DIFile({{.*}}filename:{{.*}}\\codegen\\issue-98678-struct-union.rs{{".*}})
+// NONMSVC: ![[#FILE:]] = !DIFile({{.*}}filename:{{.*}}/issue-98678-struct-union.rs{{".*}})
+// MSVC: ![[#FILE:]] = !DIFile({{.*}}filename:{{.*}}\\issue-98678-struct-union.rs{{".*}})
 
 // CHECK: !DICompositeType({{.*"}}MyType{{".*}}file: ![[#FILE]]{{.*}}line: [[# @LINE + 1]],
 pub struct MyType {

@@ -1,12 +1,12 @@
 // This test verifies the accuracy of emitted file and line debuginfo metadata enums.
 //
-// compile-flags: -C debuginfo=2
+// compile-flags: -C debuginfo=2 -Z more-source-locations-in-debuginfo
 #![crate_type = "lib"]
 
 // ignore-tidy-linelength
 
-// NONMSVC: ![[#FILE:]] = !DIFile({{.*}}filename:{{.*}}/codegen/issue-98678-enum.rs{{".*}})
-// MSVC: ![[#FILE:]] = !DIFile({{.*}}filename:{{.*}}\\codegen\\issue-98678-enum.rs{{".*}})
+// NONMSVC: ![[#FILE:]] = !DIFile({{.*}}filename:{{.*}}/issue-98678-enum.rs{{".*}})
+// MSVC: ![[#FILE:]] = !DIFile({{.*}}filename:{{.*}}\\issue-98678-enum.rs{{".*}})
 
 // NONMSVC: !DICompositeType({{.*"}}SingleCase{{".*}}file: ![[#FILE]]{{.*}}line: [[# @LINE + 2]],
 // MSVC: !DICompositeType({{.*"}}enum2$<issue_98678_enum::SingleCase>{{".*}}file: ![[#FILE]]{{.*}}line: [[# @LINE + 1]],

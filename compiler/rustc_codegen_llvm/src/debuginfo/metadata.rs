@@ -998,7 +998,12 @@ fn build_field_di_node<'ll, 'tcx>(
     type_di_node: &'ll DIType,
     def_id: Option<DefId>,
 ) -> &'ll DIType {
-    let (file_metadata, line_number) = file_metadata_from_def_id(cx, def_id);
+    let (file_metadata, line_number) =
+        if cx.sess().opts.unstable_opts.more_source_locations_in_debuginfo {
+            file_metadata_from_def_id(cx, def_id)
+        } else {
+            (unknown_file_metadata(cx), UNKNOWN_LINE_NUMBER)
+        };
     unsafe {
         llvm::LLVMRustDIBuilderCreateMemberType(
             DIB(cx),
@@ -1050,6 +1055,11 @@ fn build_struct_type_di_node<'ll, 'tcx>(
     let containing_scope = get_namespace_for_item(cx, adt_def.did());
     let struct_type_and_layout = cx.layout_of(struct_type);
     let variant_def = adt_def.non_enum_variant();
+    let def_location = if cx.sess().opts.unstable_opts.more_source_locations_in_debuginfo {
+        Some(file_metadata_from_def_id(cx, Some(adt_def.did())))
+    } else {
+        None
+    };
 
     type_map::build_type_with_children(
         cx,
@@ -1058,7 +1068,7 @@ fn build_struct_type_di_node<'ll, 'tcx>(
             Stub::Struct,
             unique_type_id,
             &compute_debuginfo_type_name(cx.tcx, struct_type, false),
-            Some(file_metadata_from_def_id(cx, Some(adt_def.did()))),
+            def_location,
             size_and_align_of(struct_type_and_layout),
             Some(containing_scope),
             visibility_di_flags(cx, adt_def.did(), adt_def.did()),
@@ -1078,6 +1088,12 @@ fn build_struct_type_di_node<'ll, 'tcx>(
                         Cow::Borrowed(f.name.as_str())
                     };
                     let field_layout = struct_type_and_layout.field(cx, i);
+                    let def_id = if cx.sess().opts.unstable_opts.more_source_locations_in_debuginfo
+                    {
+                        Some(f.did)
+                    } else {
+                        None
+                    };
                     build_field_di_node(
                         cx,
                         owner,
@@ -1086,7 +1102,7 @@ fn build_struct_type_di_node<'ll, 'tcx>(
                         struct_type_and_layout.fields.offset(i),
                         visibility_di_flags(cx, f.did, adt_def.did()),
                         type_di_node(cx, field_layout.ty),
-                        Some(f.did),
+                        def_id,
                     )
                 })
                 .collect()
@@ -1236,6 +1252,11 @@ fn build_union_type_di_node<'ll, 'tcx>(
     let containing_scope = get_namespace_for_item(cx, union_def_id);
     let union_ty_and_layout = cx.layout_of(union_type);
     let type_name = compute_debuginfo_type_name(cx.tcx, union_type, false);
+    let def_location = if cx.sess().opts.unstable_opts.more_source_locations_in_debuginfo {
+        Some(file_metadata_from_def_id(cx, Some(union_def_id)))
+    } else {
+        None
+    };
 
     type_map::build_type_with_children(
         cx,
@@ -1244,7 +1265,7 @@ fn build_union_type_di_node<'ll, 'tcx>(
             Stub::Union,
             unique_type_id,
             &type_name,
-            Some(file_metadata_from_def_id(cx, Some(union_def_id))),
+            def_location,
             size_and_align_of(union_ty_and_layout),
             Some(containing_scope),
             DIFlags::FlagZero,
@@ -1257,6 +1278,12 @@ fn build_union_type_di_node<'ll, 'tcx>(
                 .enumerate()
                 .map(|(i, f)| {
                     let field_layout = union_ty_and_layout.field(cx, i);
+                    let def_id = if cx.sess().opts.unstable_opts.more_source_locations_in_debuginfo
+                    {
+                        Some(f.did)
+                    } else {
+                        None
+                    };
                     build_field_di_node(
                         cx,
                         owner,
@@ -1265,7 +1292,7 @@ fn build_union_type_di_node<'ll, 'tcx>(
                         Size::ZERO,
                         DIFlags::FlagZero,
                         type_di_node(cx, field_layout.ty),
-                        Some(f.did),
+                        def_id,
                     )
                 })
                 .collect()

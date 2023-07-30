@@ -1,14 +1,14 @@
 // This test verifies the accuracy of emitted file and line debuginfo metadata for closures and
 // generators.
 //
-// compile-flags: -C debuginfo=2
+// compile-flags: -C debuginfo=2 -Z more-source-locations-in-debuginfo
 #![crate_type = "lib"]
 #![feature(generators, stmt_expr_attributes)]
 
 // ignore-tidy-linelength
 
-// NONMSVC: ![[#FILE:]] = !DIFile({{.*}}filename:{{.*}}/codegen/issue-98678-closure-generator.rs{{".*}})
-// MSVC: ![[#FILE:]] = !DIFile({{.*}}filename:{{.*}}\\codegen\\issue-98678-closure-generator.rs{{".*}})
+// NONMSVC: ![[#FILE:]] = !DIFile({{.*}}filename:{{.*}}/issue-98678-closure-generator.rs{{".*}})
+// MSVC: ![[#FILE:]] = !DIFile({{.*}}filename:{{.*}}\\issue-98678-closure-generator.rs{{".*}})
 
 pub fn foo() {
     // NONMSVC: !DICompositeType({{.*"}}{closure_env#0}{{".*}}file: ![[#FILE]]{{.*}}line: [[# @LINE + 2]],

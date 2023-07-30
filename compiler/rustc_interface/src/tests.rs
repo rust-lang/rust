@@ -709,6 +709,7 @@ fn test_unstable_options_tracking_hash() {
     untracked!(macro_backtrace, true);
     untracked!(meta_stats, true);
     untracked!(mir_include_spans, MirIncludeSpans::On);
+    untracked!(more_source_locations_in_debuginfo, true);
     untracked!(nll_facts, true);
     untracked!(no_analysis, true);
     untracked!(no_leak_check, true);

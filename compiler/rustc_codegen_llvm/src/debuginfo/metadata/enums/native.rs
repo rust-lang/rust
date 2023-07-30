@@ -140,6 +140,12 @@ pub(super) fn build_coroutine_di_node<'ll, 'tcx>(
 
     let coroutine_type_name = compute_debuginfo_type_name(cx.tcx, coroutine_type, false);
 
+    let def_location = if cx.sess().opts.unstable_opts.more_source_locations_in_debuginfo {
+        Some(file_metadata_from_def_id(cx, Some(coroutine_def_id)))
+    } else {
+        None
+    };
+
     type_map::build_type_with_children(
         cx,
         type_map::stub(
@@ -147,7 +153,7 @@ pub(super) fn build_coroutine_di_node<'ll, 'tcx>(
             Stub::Struct,
             unique_type_id,
             &coroutine_type_name,
-            Some(file_metadata_from_def_id(cx, Some(coroutine_def_id))),
+            def_location,
             size_and_align_of(coroutine_type_and_layout),
             Some(containing_scope),
             DIFlags::FlagZero,
@@ -245,7 +251,12 @@ fn build_enum_variant_part_di_node<'ll, 'tcx>(
     let variant_part_unique_type_id =
         UniqueTypeId::for_enum_variant_part(cx.tcx, enum_type_and_layout.ty);
 
-    let (file_metadata, line_number) = file_metadata_from_def_id(cx, Some(enum_type_def_id));
+    let (file_metadata, line_number) =
+        if cx.sess().opts.unstable_opts.more_source_locations_in_debuginfo {
+            file_metadata_from_def_id(cx, Some(enum_type_def_id))
+        } else {
+            (unknown_file_metadata(cx), UNKNOWN_LINE_NUMBER)
+        };
 
     let stub = StubInfo::new(
         cx,

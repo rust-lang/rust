@@ -2,17 +2,19 @@
 // async functions.
 //
 // edition: 2021
-// compile-flags: -C debuginfo=2
+// compile-flags: -C debuginfo=2 -Z more-source-locations-in-debuginfo=true
 #![crate_type = "lib"]
 
 // ignore-tidy-linelength
 
-// NONMSVC-DAG: ![[#FILE:]] = !DIFile({{.*}}filename:{{.*}}/codegen/issue-98678-async.rs{{".*}})
-// MSVC: ![[#FILE:]] = !DIFile({{.*}}filename:{{.*}}\\codegen\\issue-98678-async.rs{{".*}})
+// NONMSVC-DAG: ![[#FILE:]] = !DIFile({{.*}}filename:{{.*}}/issue-98678-async.rs{{".*}})
+// MSVC: ![[#FILE:]] = !DIFile({{.*}}filename:{{.*}}\\issue-98678-async.rs{{".*}})
 
 // NONMSVC-DAG: !DISubprogram(name: "foo",{{.*}}file: ![[#FILE]]{{.*}}line: [[# @LINE + 2]],
 // MSVC-DAG: !DISubprogram(name: "foo",{{.*}}file: ![[#FILE]]{{.*}}line: [[# @LINE + 1]],
-pub async fn foo() -> u8 { 5 }
+pub async fn foo() -> u8 {
+    5
+}
 
 pub fn bar() -> impl std::future::Future<Output = u8> {
     // NONMSVC: !DICompositeType({{.*"}}{async_block_env#0}{{".*}}file: ![[#FILE]]{{.*}}line: [[# @LINE + 2]],
@@ -21,5 +23,4 @@ pub fn bar() -> impl std::future::Future<Output = u8> {
         let x: u8 = foo().await;
         x + 5
     }
-
 }
