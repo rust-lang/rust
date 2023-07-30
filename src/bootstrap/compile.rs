@@ -815,7 +815,7 @@ impl Step for Rustc {
 
         let is_collecting = if let Some(path) = &builder.config.rust_profile_generate {
             if compiler.stage == 1 {
-                cargo.rustflag(&format!("-Cprofile-generate={}", path));
+                cargo.rustflag(&format!("-Cprofile-generate={path}"));
                 // Apparently necessary to avoid overflowing the counters during
                 // a Cargo build profile
                 cargo.rustflag("-Cllvm-args=-vp-counters-per-site=4");
@@ -825,7 +825,7 @@ impl Step for Rustc {
             }
         } else if let Some(path) = &builder.config.rust_profile_use {
             if compiler.stage == 1 {
-                cargo.rustflag(&format!("-Cprofile-use={}", path));
+                cargo.rustflag(&format!("-Cprofile-use={path}"));
                 cargo.rustflag("-Cllvm-args=-pgo-warn-missing-function");
                 true
             } else {
@@ -858,7 +858,7 @@ impl Step for Rustc {
                         RustcLto::Fat => "fat",
                         _ => unreachable!(),
                     };
-                    cargo.rustflag(&format!("-Clto={}", lto_type));
+                    cargo.rustflag(&format!("-Clto={lto_type}"));
                     cargo.rustflag("-Cembed-bitcode=yes");
                 }
                 RustcLto::ThinLocal => { /* Do nothing, this is the default */ }
@@ -1192,7 +1192,7 @@ impl Step for CodegenBackend {
         let mut cargo = builder.cargo(compiler, Mode::Codegen, SourceType::InTree, target, "build");
         cargo
             .arg("--manifest-path")
-            .arg(builder.src.join(format!("compiler/rustc_codegen_{}/Cargo.toml", backend)));
+            .arg(builder.src.join(format!("compiler/rustc_codegen_{backend}/Cargo.toml")));
         rustc_cargo_env(builder, &mut cargo, target, compiler.stage);
 
         let tmp_stamp = out_dir.join(".tmp.stamp");
@@ -1297,7 +1297,7 @@ fn codegen_backend_stamp(
 ) -> PathBuf {
     builder
         .cargo_out(compiler, Mode::Codegen, target)
-        .join(format!(".librustc_codegen_{}.stamp", backend))
+        .join(format!(".librustc_codegen_{backend}.stamp"))
 }
 
 pub fn compiler_file(
@@ -1312,7 +1312,7 @@ pub fn compiler_file(
     }
     let mut cmd = Command::new(compiler);
     cmd.args(builder.cflags(target, GitRepo::Rustc, c));
-    cmd.arg(format!("-print-file-name={}", file));
+    cmd.arg(format!("-print-file-name={file}"));
     let out = output(&mut cmd);
     PathBuf::from(out.trim())
 }
@@ -1836,10 +1836,10 @@ pub fn run_cargo(
         });
         let path_to_add = match max {
             Some(triple) => triple.0.to_str().unwrap(),
-            None => panic!("no output generated for {:?} {:?}", prefix, extension),
+            None => panic!("no output generated for {prefix:?} {extension:?}"),
         };
         if is_dylib(path_to_add) {
-            let candidate = format!("{}.lib", path_to_add);
+            let candidate = format!("{path_to_add}.lib");
             let candidate = PathBuf::from(candidate);
             if candidate.exists() {
                 deps.push((candidate, DependencyType::Target));
@@ -1891,10 +1891,10 @@ pub fn stream_cargo(
         cargo.arg(arg);
     }
 
-    builder.verbose(&format!("running: {:?}", cargo));
+    builder.verbose(&format!("running: {cargo:?}"));
     let mut child = match cargo.spawn() {
         Ok(child) => child,
-        Err(e) => panic!("failed to execute command: {:?}\nerror: {}", cargo, e),
+        Err(e) => panic!("failed to execute command: {cargo:?}\nerror: {e}"),
     };
 
     // Spawn Cargo slurping up its JSON output. We'll start building up the
@@ -1907,12 +1907,12 @@ pub fn stream_cargo(
             Ok(msg) => {
                 if builder.config.json_output {
                     // Forward JSON to stdout.
-                    println!("{}", line);
+                    println!("{line}");
                 }
                 cb(msg)
             }
             // If this was informational, just print it out and continue
-            Err(_) => println!("{}", line),
+            Err(_) => println!("{line}"),
         }
     }
 
@@ -1920,9 +1920,8 @@ pub fn stream_cargo(
     let status = t!(child.wait());
     if builder.is_verbose() && !status.success() {
         eprintln!(
-            "command did not execute successfully: {:?}\n\
-                  expected success, got: {}",
-            cargo, status
+            "command did not execute successfully: {cargo:?}\n\
+                  expected success, got: {status}"
         );
     }
     status.success()

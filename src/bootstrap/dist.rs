@@ -162,7 +162,7 @@ fn find_files(files: &[&str], path: &[PathBuf]) -> Vec<PathBuf> {
         if let Some(file_path) = file_path {
             found.push(file_path);
         } else {
-            panic!("Could not find '{}' in {:?}", file, path);
+            panic!("Could not find '{file}' in {path:?}");
         }
     }
 
@@ -1480,8 +1480,8 @@ impl Step for Extended {
         rtf.push('}');
 
         fn filter(contents: &str, marker: &str) -> String {
-            let start = format!("tool-{}-start", marker);
-            let end = format!("tool-{}-end", marker);
+            let start = format!("tool-{marker}-start");
+            let end = format!("tool-{marker}-end");
             let mut lines = Vec::new();
             let mut omitted = false;
             for line in contents.lines() {
@@ -1862,7 +1862,7 @@ impl Step for Extended {
             builder.install(&etc.join("gfx/banner.bmp"), &exe, 0o644);
             builder.install(&etc.join("gfx/dialogbg.bmp"), &exe, 0o644);
 
-            builder.info(&format!("building `msi` installer with {:?}", light));
+            builder.info(&format!("building `msi` installer with {light:?}"));
             let filename = format!("{}-{}.msi", pkgname(builder, "rust"), target.triple);
             let mut cmd = Command::new(&light);
             cmd.arg("-nologo")
@@ -1996,7 +1996,7 @@ fn maybe_install_llvm(builder: &Builder<'_>, target: TargetSelection, dst_libdir
     {
         let mut cmd = Command::new(llvm_config);
         cmd.arg("--libfiles");
-        builder.verbose(&format!("running {:?}", cmd));
+        builder.verbose(&format!("running {cmd:?}"));
         let files = if builder.config.dry_run() { "".into() } else { output(&mut cmd) };
         let build_llvm_out = &builder.llvm_out(builder.config.build);
         let target_llvm_out = &builder.llvm_out(target);
@@ -2175,7 +2175,7 @@ impl Step for LlvmTools {
         /* run only if llvm-config isn't used */
         if let Some(config) = builder.config.target_config.get(&target) {
             if let Some(ref _s) = config.llvm_config {
-                builder.info(&format!("Skipping LlvmTools ({}): external LLVM", target));
+                builder.info(&format!("Skipping LlvmTools ({target}): external LLVM"));
                 return None;
             }
         }
@@ -2231,7 +2231,7 @@ impl Step for RustDev {
         /* run only if llvm-config isn't used */
         if let Some(config) = builder.config.target_config.get(&target) {
             if let Some(ref _s) = config.llvm_config {
-                builder.info(&format!("Skipping RustDev ({}): external LLVM", target));
+                builder.info(&format!("Skipping RustDev ({target}): external LLVM"));
                 return None;
             }
         }
