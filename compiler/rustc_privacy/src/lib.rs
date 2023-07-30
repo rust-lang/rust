@@ -1941,7 +1941,7 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'tcx, '_> {
         let reexported_at_vis = effective_vis.at_level(Level::Reexported);
         let reachable_at_vis = effective_vis.at_level(Level::Reachable);
 
-        if reexported_at_vis != reachable_at_vis {
+        if reachable_at_vis.is_public() && reexported_at_vis != reachable_at_vis {
             let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
             let span = self.tcx.def_span(def_id.to_def_id());
             self.tcx.emit_spanned_lint(
@@ -1972,10 +1972,6 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'tcx, '_> {
             AssocItemKind::Const | AssocItemKind::Fn { .. } => (true, false),
             AssocItemKind::Type => (self.tcx.defaultness(def_id).has_value(), true),
         };
-
-        if is_assoc_ty {
-            self.check_unnameable(def_id, self.get(def_id));
-        }
 
         check.in_assoc_ty = is_assoc_ty;
         check.generics().predicates();
