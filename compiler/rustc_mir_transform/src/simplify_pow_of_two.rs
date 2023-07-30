@@ -222,7 +222,7 @@ impl<'tcx> MirPass<'tcx> for SimplifyPowOfTwo {
                         loc,
                         overflowed.into(),
                         Rvalue::BinaryOp(
-                            BinOp::BitAnd,
+                            BinOp::BitOr,
                             Box::new((
                                 Operand::Copy(shl_eq_shr.into()),
                                 Operand::Copy(shl_result.into()),
@@ -234,7 +234,7 @@ impl<'tcx> MirPass<'tcx> for SimplifyPowOfTwo {
                         i,
                         TerminatorKind::Assert {
                             cond: Operand::Copy(overflowed.into()),
-                            expected: true,
+                            expected: false,
                             msg: Box::new(AssertMessage::Overflow(
                                 // For consistency with the previous error message, though
                                 // it's technically incorrect

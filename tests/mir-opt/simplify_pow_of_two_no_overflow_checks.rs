@@ -1,4 +1,4 @@
-// compile-flags: -Coverflow-checks=false
+// compile-flags: -Cdebug-assertions=false
 
 // EMIT_MIR simplify_pow_of_two_no_overflow_checks.slow_2_u.SimplifyPowOfTwo.diff
 fn slow_2_u(a: u32) -> u32 {
