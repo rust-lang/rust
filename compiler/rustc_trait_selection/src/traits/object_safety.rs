@@ -379,12 +379,27 @@ fn object_safety_violation_for_assoc_item(
         }
         ty::AssocKind::Fn => virtual_call_violation_for_method(tcx, trait_def_id, item)
             .into_iter()
+            // Until `unsized_locals` is fully implemented, `self: Self` can't be dispatched on.
+            // However, this is already considered object-safe. We allow it as a special case here.
+            // FIXME(mikeyhew) get rid of this `filter` once `receiver_is_dispatchable` allows
+            // `Receiver: Unsize<Receiver[Self => dyn Trait]>`.
+            .filter(|violation| {
+                !matches!(
+                    violation,
+                    MethodViolationCode::UndispatchableReceiver { plain_self: true, .. }
+                )
+            })
             .map(|v| {
                 let node = tcx.hir().get_if_local(item.def_id);
                 // Get an accurate span depending on the violation.
                 let span = match (&v, node) {
                     (MethodViolationCode::ReferencesSelfInput(Some(span)), _) => *span,
-                    (MethodViolationCode::UndispatchableReceiver(Some(span)), _) => *span,
+                    (
+                        MethodViolationCode::UndispatchableReceiver {
+                            self_span: Some(span), ..
+                        },
+                        _,
+                    ) => *span,
                     (MethodViolationCode::ReferencesImplTraitInTrait(span), _) => *span,
                     (MethodViolationCode::ReferencesSelfOutput, Some(node)) => {
                         node.fn_decl().map_or(item.ident(tcx).span, |decl| decl.output.span())
@@ -481,13 +496,13 @@ fn virtual_call_violation_for_method<'tcx>(
 
     let receiver_ty = tcx.liberate_late_bound_regions(method.def_id, sig.input(0));
 
-    // Until `unsized_locals` is fully implemented, `self: Self` can't be dispatched on.
-    // However, this is already considered object-safe. We allow it as a special case here.
-    // FIXME(mikeyhew) get rid of this `if` statement once `receiver_is_dispatchable` allows
-    // `Receiver: Unsize<Receiver[Self => dyn Trait]>`.
-    if receiver_ty != tcx.types.self_param {
+    // Don't error on `self` methods if the trait is `FnOnce` or unsized locals are on
+    if receiver_ty != tcx.types.self_param
+        || (Some(trait_def_id) != tcx.lang_items().fn_once_trait()
+            && !tcx.features().unsized_locals)
+    {
         if !receiver_is_dispatchable(tcx, method, receiver_ty) {
-            let span = if let Some(hir::Node::TraitItem(hir::TraitItem {
+            let self_span = if let Some(hir::Node::TraitItem(hir::TraitItem {
                 kind: hir::TraitItemKind::Fn(sig, _),
                 ..
             })) = tcx.hir().get_if_local(method.def_id).as_ref()
@@ -496,7 +511,10 @@ fn virtual_call_violation_for_method<'tcx>(
             } else {
                 None
             };
-            errors.push(MethodViolationCode::UndispatchableReceiver(span));
+            errors.push(MethodViolationCode::UndispatchableReceiver {
+                self_span,
+                plain_self: receiver_ty == tcx.types.self_param,
+            });
         } else {
             // Do sanity check to make sure the receiver actually has the layout of a pointer.
 

@@ -811,7 +811,7 @@ impl ObjectSafetyViolation {
             }
             ObjectSafetyViolation::Method(
                 name,
-                MethodViolationCode::UndispatchableReceiver(_),
+                MethodViolationCode::UndispatchableReceiver { .. },
                 _,
             ) => format!("method `{}`'s `self` parameter cannot be dispatched on", name).into(),
             ObjectSafetyViolation::AssocConst(name, DUMMY_SP) => {
@@ -856,7 +856,7 @@ impl ObjectSafetyViolation {
             }
             ObjectSafetyViolation::Method(
                 name,
-                MethodViolationCode::UndispatchableReceiver(Some(span)),
+                MethodViolationCode::UndispatchableReceiver { self_span: Some(span), .. },
                 _,
             ) => {
                 err.span_suggestion(
@@ -918,7 +918,13 @@ pub enum MethodViolationCode {
     Generic,
 
     /// the method's receiver (`self` argument) can't be dispatched on
-    UndispatchableReceiver(Option<Span>),
+    UndispatchableReceiver {
+        /// Span of the `self` argument, including the type.
+        self_span: Option<Span>,
+
+        /// Does the `self` parameter have type `Self`?
+        plain_self: bool,
+    },
 }
 
 /// These are the error cases for `codegen_select_candidate`.
