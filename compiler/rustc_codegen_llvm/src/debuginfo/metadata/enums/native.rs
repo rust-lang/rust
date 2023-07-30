@@ -56,6 +56,12 @@ pub(super) fn build_enum_type_di_node<'ll, 'tcx>(
 
     assert!(!wants_c_like_enum_debuginfo(cx.tcx, enum_type_and_layout));
 
+    let def_location = if cx.sess().opts.unstable_opts.more_source_locations_in_debuginfo {
+        Some(file_metadata_from_def_id(cx, Some(enum_adt_def.did())))
+    } else {
+        None
+    };
+
     type_map::build_type_with_children(
         cx,
         type_map::stub(
@@ -63,7 +69,7 @@ pub(super) fn build_enum_type_di_node<'ll, 'tcx>(
             Stub::Struct,
             unique_type_id,
             &enum_type_name,
-            Some(file_metadata_from_def_id(cx, Some(enum_adt_def.did()))),
+            def_location,
             size_and_align_of(enum_type_and_layout),
             Some(containing_scope),
             visibility_flags,
@@ -86,18 +92,29 @@ pub(super) fn build_enum_type_di_node<'ll, 'tcx>(
                         enum_type_and_layout.for_variant(cx, variant_index),
                         visibility_flags,
                     ),
-                    source_info: Some(file_metadata_from_def_id(
-                        cx,
-                        Some(enum_adt_def.variant(variant_index).def_id),
-                    )),
+                    source_info: if cx.sess().opts.unstable_opts.more_source_locations_in_debuginfo
+                    {
+                        Some(file_metadata_from_def_id(
+                            cx,
+                            Some(enum_adt_def.variant(variant_index).def_id),
+                        ))
+                    } else {
+                        None
+                    },
                 })
                 .collect();
 
+            let enum_adt_def_id = if cx.sess().opts.unstable_opts.more_source_locations_in_debuginfo
+            {
+                Some(enum_adt_def.did())
+            } else {
+                None
+            };
             smallvec![build_enum_variant_part_di_node(
                 cx,
                 enum_type_and_layout,
                 enum_type_di_node,
-                enum_adt_def.did(),
+                enum_adt_def_id,
                 &variant_member_infos[..],
             )]
         },
@@ -210,6 +227,12 @@ pub(super) fn build_coroutine_di_node<'ll, 'tcx>(
                 })
                 .collect();
 
+            let generator_def_id =
+                if cx.sess().opts.unstable_opts.more_source_locations_in_debuginfo {
+                    Some(generator_def_id)
+                } else {
+                    None
+                };
             smallvec![build_enum_variant_part_di_node(
                 cx,
                 coroutine_type_and_layout,
@@ -242,7 +265,7 @@ fn build_enum_variant_part_di_node<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     enum_type_and_layout: TyAndLayout<'tcx>,
     enum_type_di_node: &'ll DIType,
-    enum_type_def_id: rustc_span::def_id::DefId,
+    enum_type_def_id: Option<rustc_span::def_id::DefId>,
     variant_member_infos: &[VariantMemberInfo<'_, 'll>],
 ) -> &'ll DIType {
     let tag_member_di_node =
@@ -253,7 +276,7 @@ fn build_enum_variant_part_di_node<'ll, 'tcx>(
 
     let (file_metadata, line_number) =
         if cx.sess().opts.unstable_opts.more_source_locations_in_debuginfo {
-            file_metadata_from_def_id(cx, Some(enum_type_def_id))
+            file_metadata_from_def_id(cx, enum_type_def_id)
         } else {
             (unknown_file_metadata(cx), UNKNOWN_LINE_NUMBER)
         };

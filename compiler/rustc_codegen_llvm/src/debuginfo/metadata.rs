@@ -1221,6 +1221,12 @@ fn build_closure_env_di_node<'ll, 'tcx>(
     let containing_scope = get_namespace_for_item(cx, def_id);
     let type_name = compute_debuginfo_type_name(cx.tcx, closure_env_type, false);
 
+    let def_location = if cx.sess().opts.unstable_opts.more_source_locations_in_debuginfo {
+        Some(file_metadata_from_def_id(cx, Some(def_id)))
+    } else {
+        None
+    };
+
     type_map::build_type_with_children(
         cx,
         type_map::stub(
@@ -1228,7 +1234,7 @@ fn build_closure_env_di_node<'ll, 'tcx>(
             Stub::Struct,
             unique_type_id,
             &type_name,
-            Some(file_metadata_from_def_id(cx, Some(def_id))),
+            def_location,
             cx.size_and_align_of(closure_env_type),
             Some(containing_scope),
             DIFlags::FlagZero,
