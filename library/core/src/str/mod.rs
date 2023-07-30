@@ -401,6 +401,31 @@ impl str {
     ///
     /// It is your responsibility to make sure that the string slice only gets
     /// modified in a way that it remains valid UTF-8.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// let mut data = vec![1, 2, 3, 4, 5];
+    ///
+    /// // Obtain a mutable raw pointer to the data in the vector
+    /// let ptr = data.as_mut_ptr();
+    ///
+    /// // Use the raw pointer to manipulate the data directly
+    /// unsafe {
+    ///     // Update the first and second elements through pointer arithmetic
+    ///     *ptr.offset(0) = 10; // Update the first element to 10
+    ///     *ptr.offset(1) = 20; // Update the second element to 20
+    /// 
+    ///     // Create a slice from the raw pointer and length to manipulate a range of elements
+    ///     let slice = std::slice::from_raw_parts_mut(ptr.offset(2), 3);
+    ///     slice[0] = 30; // Update the third element to 30
+    ///     slice[1] = 40; // Update the fourth element to 40
+    ///     slice[2] = 50; // Update the fifth element to 50
+    /// }
+    /// 
+    /// assert_eq!(data, vec![10, 20, 30, 40, 50]);
+    /// ```
+    /// 
     #[stable(feature = "str_as_mut_ptr", since = "1.36.0")]
     #[must_use]
     #[inline(always)]
