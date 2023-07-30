@@ -1565,6 +1565,25 @@ impl Config {
                 // the link step) with each stage.
                 config.llvm_link_shared.set(Some(true));
             }
+
+            // Stripping LLVM's debuginfo is only accepted when:
+            // - using a shared library
+            // - not explicitly requesting debuginfo
+            if config.llvm_strip_debuginfo {
+                if config.llvm_release_debuginfo {
+                    panic!(
+                        "enabling `llvm.strip-debuginfo` is incompatible \
+                        with setting `llvm.release-debuginfo`"
+                    );
+                }
+                let llvm_link_shared = config.llvm_link_shared.get().unwrap_or(false);
+                if !llvm_link_shared {
+                    panic!(
+                        "enabling `llvm.strip-debuginfo` is incompatible \
+                        with statically linking LLVM"
+                    );
+                }
+            }
         } else {
             config.llvm_from_ci =
                 config.channel == "dev" && crate::llvm::is_ci_llvm_available(&config, false);
