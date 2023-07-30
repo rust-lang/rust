@@ -605,7 +605,7 @@ impl Span {
         // FIXME: If this span comes from a `derive` macro but it points at code the user wrote,
         // the callsite span and the span will be pointing at different places. It also means that
         // we can safely provide suggestions on this span.
-            || (matches!(self.ctxt().outer_expn_data().kind, ExpnKind::Macro(MacroKind::Derive, _))
+            || (self.in_derive_expansion()
                 && self.parent_callsite().map(|p| (p.lo(), p.hi())) != Some((self.lo(), self.hi())))
     }
 
