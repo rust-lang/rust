@@ -205,17 +205,19 @@ fn eager_macro_recur(
                         let ExpandResult { value, err: err2 } =
                             db.parse_macro_expansion(call_id.as_macro_file());
 
-                        let call_tt_start =
-                            call.token_tree().unwrap().syntax().text_range().start();
-                        let call_start = apply_offset(call.syntax().text_range().start(), offset);
-                        if let Some((_, arg_map, _)) = db.macro_arg(call_id).value.as_deref() {
-                            mapping.extend(arg_map.entries().filter_map(|(tid, range)| {
-                                value
-                                    .1
-                                    .first_range_by_token(tid, syntax::SyntaxKind::TOMBSTONE)
-                                    .map(|r| (r + call_start, range + call_tt_start))
-                            }));
-                        };
+                        if let Some(tt) = call.token_tree() {
+                            let call_tt_start = tt.syntax().text_range().start();
+                            let call_start =
+                                apply_offset(call.syntax().text_range().start(), offset);
+                            if let Some((_, arg_map, _)) = db.macro_arg(call_id).value.as_deref() {
+                                mapping.extend(arg_map.entries().filter_map(|(tid, range)| {
+                                    value
+                                        .1
+                                        .first_range_by_token(tid, syntax::SyntaxKind::TOMBSTONE)
+                                        .map(|r| (r + call_start, range + call_tt_start))
+                                }));
+                            }
+                        }
 
                         ExpandResult {
                             value: Some(value.0.syntax_node().clone_for_update()),
@@ -250,22 +252,24 @@ fn eager_macro_recur(
                 )?;
                 let err = err.or(error);
 
-                let call_tt_start = call.token_tree().unwrap().syntax().text_range().start();
-                let call_start = apply_offset(call.syntax().text_range().start(), offset);
-                if let Some((_tt, arg_map, _)) = parse
-                    .file_id
-                    .macro_file()
-                    .and_then(|id| db.macro_arg(id.macro_call_id).value)
-                    .as_deref()
-                {
-                    mapping.extend(arg_map.entries().filter_map(|(tid, range)| {
-                        tm.first_range_by_token(
-                            decl_mac.as_ref().map(|it| it.map_id_down(tid)).unwrap_or(tid),
-                            syntax::SyntaxKind::TOMBSTONE,
-                        )
-                        .map(|r| (r + call_start, range + call_tt_start))
-                    }));
-                };
+                if let Some(tt) = call.token_tree() {
+                    let call_tt_start = tt.syntax().text_range().start();
+                    let call_start = apply_offset(call.syntax().text_range().start(), offset);
+                    if let Some((_tt, arg_map, _)) = parse
+                        .file_id
+                        .macro_file()
+                        .and_then(|id| db.macro_arg(id.macro_call_id).value)
+                        .as_deref()
+                    {
+                        mapping.extend(arg_map.entries().filter_map(|(tid, range)| {
+                            tm.first_range_by_token(
+                                decl_mac.as_ref().map(|it| it.map_id_down(tid)).unwrap_or(tid),
+                                syntax::SyntaxKind::TOMBSTONE,
+                            )
+                            .map(|r| (r + call_start, range + call_tt_start))
+                        }));
+                    }
+                }
                 // FIXME: Do we need to re-use _m here?
                 ExpandResult { value: value.map(|(n, _m)| n), err }
             }
