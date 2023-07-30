@@ -491,19 +491,24 @@ impl Step for Llvm {
 
         cfg.build();
 
+        // Helper to find the name of LLVM's shared library on darwin and linux.
+        let find_llvm_lib_name = |extension| {
+            let mut cmd = Command::new(&res.llvm_config);
+            let version = output(cmd.arg("--version"));
+            let major = version.split('.').next().unwrap();
+            let lib_name = match &llvm_version_suffix {
+                Some(version_suffix) => format!("libLLVM-{major}{version_suffix}.{extension}"),
+                None => format!("libLLVM-{major}.{extension}"),
+            };
+            lib_name
+        };
+
         // When building LLVM with LLVM_LINK_LLVM_DYLIB for macOS, an unversioned
         // libLLVM.dylib will be built. However, llvm-config will still look
         // for a versioned path like libLLVM-14.dylib. Manually create a symbolic
         // link to make llvm-config happy.
         if builder.llvm_link_shared() && target.contains("apple-darwin") {
-            let mut cmd = Command::new(&res.llvm_config);
-            let version = output(cmd.arg("--version"));
-            let major = version.split('.').next().unwrap();
-            let lib_name = match llvm_version_suffix {
-                Some(s) => format!("libLLVM-{major}{s}.dylib"),
-                None => format!("libLLVM-{major}.dylib"),
-            };
-
+            let lib_name = find_llvm_lib_name("dylib");
             let lib_llvm = out_dir.join("build").join("lib").join(lib_name);
             if !lib_llvm.exists() {
                 t!(builder.symlink_file("libLLVM.dylib", &lib_llvm));
