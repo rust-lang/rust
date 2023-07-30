@@ -1153,9 +1153,7 @@ fn render_assoc_items_inner(
             AssocItemRender::DerefFor { trait_, type_, deref_mut_ } => {
                 let id =
                     cx.derive_id(small_url_encode(format!("deref-methods-{:#}", type_.print(cx))));
-                if let Some(def_id) = type_.def_id(cx.cache()) {
-                    cx.deref_id_map.insert(def_id, id.clone());
-                }
+                let derived_id = cx.derive_id(&id);
                 write_impl_section_heading(
                     &mut tmp_buf,
                     &format!(
@@ -1165,11 +1163,10 @@ fn render_assoc_items_inner(
                     ),
                     &id,
                 );
-                (
-                    RenderMode::ForDeref { mut_: deref_mut_ },
-                    cx.derive_id(id),
-                    r#" class="impl-items""#,
-                )
+                if let Some(def_id) = type_.def_id(cx.cache()) {
+                    cx.deref_id_map.insert(def_id, id);
+                }
+                (RenderMode::ForDeref { mut_: deref_mut_ }, derived_id, r#" class="impl-items""#)
             }
         };
         let mut impls_buf = Buffer::html();
@@ -1579,7 +1576,7 @@ fn render_impl(
             kind @ (clean::TyAssocConstItem(generics, ty)
             | clean::AssocConstItem(generics, ty, _)) => {
                 let source_id = format!("{item_type}.{name}");
-                let id = cx.derive_id(source_id.clone());
+                let id = cx.derive_id(&source_id);
                 write!(w, "<section id=\"{id}\" class=\"{item_type}{in_trait_class}\">");
                 render_rightside(w, cx, item, containing_item, render_mode);
                 if trait_.is_some() {
@@ -1605,7 +1602,7 @@ fn render_impl(
             }
             clean::TyAssocTypeItem(generics, bounds) => {
                 let source_id = format!("{item_type}.{name}");
-                let id = cx.derive_id(source_id.clone());
+                let id = cx.derive_id(&source_id);
                 write!(w, "<section id=\"{id}\" class=\"{item_type}{in_trait_class}\">");
                 if trait_.is_some() {
                     // Anchors are only used on trait impls.
@@ -1626,7 +1623,7 @@ fn render_impl(
             }
             clean::AssocTypeItem(tydef, _bounds) => {
                 let source_id = format!("{item_type}.{name}");
-                let id = cx.derive_id(source_id.clone());
+                let id = cx.derive_id(&source_id);
                 write!(w, "<section id=\"{id}\" class=\"{item_type}{in_trait_class}\">");
                 if trait_.is_some() {
                     // Anchors are only used on trait impls.
