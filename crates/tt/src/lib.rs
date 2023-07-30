@@ -122,7 +122,6 @@ impl_from!(Literal<Span>, Punct<Span>, Ident<Span> for Leaf);
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Subtree<Span> {
-    // FIXME, this should not be Option
     pub delimiter: Delimiter<Span>,
     pub token_trees: Vec<TokenTree<Span>>,
 }
