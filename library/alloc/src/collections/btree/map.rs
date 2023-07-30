@@ -2543,6 +2543,8 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// a.insert(2, "b");
     /// a.insert(3, "c");
     /// a.insert(4, "c");
+    /// let cursor = a.lower_bound(Bound::Included(&2));
+    /// assert_eq!(cursor.key(), Some(&2));
     /// let cursor = a.lower_bound(Bound::Excluded(&2));
     /// assert_eq!(cursor.key(), Some(&3));
     /// ```
@@ -2582,6 +2584,8 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// a.insert(2, "b");
     /// a.insert(3, "c");
     /// a.insert(4, "c");
+    /// let cursor = a.lower_bound_mut(Bound::Included(&2));
+    /// assert_eq!(cursor.key(), Some(&2));
     /// let cursor = a.lower_bound_mut(Bound::Excluded(&2));
     /// assert_eq!(cursor.key(), Some(&3));
     /// ```
@@ -2634,6 +2638,8 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// a.insert(2, "b");
     /// a.insert(3, "c");
     /// a.insert(4, "c");
+    /// let cursor = a.upper_bound(Bound::Included(&3));
+    /// assert_eq!(cursor.key(), Some(&3));
     /// let cursor = a.upper_bound(Bound::Excluded(&3));
     /// assert_eq!(cursor.key(), Some(&2));
     /// ```
@@ -2673,6 +2679,8 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// a.insert(2, "b");
     /// a.insert(3, "c");
     /// a.insert(4, "c");
+    /// let cursor = a.upper_bound_mut(Bound::Included(&3));
+    /// assert_eq!(cursor.key(), Some(&3));
     /// let cursor = a.upper_bound_mut(Bound::Excluded(&3));
     /// assert_eq!(cursor.key(), Some(&2));
     /// ```
