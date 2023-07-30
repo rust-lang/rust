@@ -191,10 +191,29 @@ pub trait SimdInt: Copy + Sealed {
 
     /// Returns the cumulative bitwise "xor" across the lanes of the vector.
     fn reduce_xor(self) -> Self::Scalar;
+
+    /// Reverses the byte order of each element.
+    fn swap_bytes(self) -> Self;
+
+    /// Reverses the order of bits in each elemnent.
+    /// The least significant bit becomes the most significant bit, second least-significant bit becomes second most-significant bit, etc.
+    fn reverse_bits(self) -> Self;
+
+    /// Returns the number of leading zeros in the binary representation of each element.
+    fn leading_zeros(self) -> Self;
+
+    /// Returns the number of trailing zeros in the binary representation of each element.
+    fn trailing_zeros(self) -> Self;
+
+    /// Returns the number of leading ones in the binary representation of each element.
+    fn leading_ones(self) -> Self;
+
+    /// Returns the number of trailing ones in the binary representation of each element.
+    fn trailing_ones(self) -> Self;
 }
 
 macro_rules! impl_trait {
-    { $($ty:ty),* } => {
+    { $($ty:ident ($unsigned:ident)),* } => {
         $(
         impl<const LANES: usize> Sealed for Simd<$ty, LANES>
         where
@@ -307,9 +326,45 @@ macro_rules! impl_trait {
                 // Safety: `self` is an integer vector
                 unsafe { intrinsics::simd_reduce_xor(self) }
             }
+
+            #[inline]
+            fn swap_bytes(self) -> Self {
+                // Safety: `self` is an integer vector
+                unsafe { intrinsics::simd_bswap(self) }
+            }
+
+            #[inline]
+            fn reverse_bits(self) -> Self {
+                // Safety: `self` is an integer vector
+                unsafe { intrinsics::simd_bitreverse(self) }
+            }
+
+            #[inline]
+            fn leading_zeros(self) -> Self {
+                // Safety: `self` is an integer vector
+                unsafe { intrinsics::simd_ctlz(self) }
+            }
+
+            #[inline]
+            fn trailing_zeros(self) -> Self {
+                // Safety: `self` is an integer vector
+                unsafe { intrinsics::simd_cttz(self) }
+            }
+
+            #[inline]
+            fn leading_ones(self) -> Self {
+                use crate::simd::SimdUint;
+                self.cast::<$unsigned>().leading_ones().cast()
+            }
+
+            #[inline]
+            fn trailing_ones(self) -> Self {
+                use crate::simd::SimdUint;
+                self.cast::<$unsigned>().trailing_ones().cast()
+            }
         }
         )*
     }
 }
 
-impl_trait! { i8, i16, i32, i64, isize }
+impl_trait! { i8 (u8), i16 (u16), i32 (u32), i64 (u64), isize (usize) }

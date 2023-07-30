@@ -193,6 +193,54 @@ macro_rules! impl_common_integer_tests {
                     Ok(())
                 });
             }
+
+            fn swap_bytes<const LANES: usize>() {
+                test_helpers::test_unary_elementwise(
+                    &$vector::<LANES>::swap_bytes,
+                    &$scalar::swap_bytes,
+                    &|_| true,
+                )
+            }
+
+            fn reverse_bits<const LANES: usize>() {
+                test_helpers::test_unary_elementwise(
+                    &$vector::<LANES>::reverse_bits,
+                    &$scalar::reverse_bits,
+                    &|_| true,
+                )
+            }
+
+            fn leading_zeros<const LANES: usize>() {
+                test_helpers::test_unary_elementwise(
+                    &$vector::<LANES>::leading_zeros,
+                    &|x| x.leading_zeros() as $scalar,
+                    &|_| true,
+                )
+            }
+
+            fn trailing_zeros<const LANES: usize>() {
+                test_helpers::test_unary_elementwise(
+                    &$vector::<LANES>::leading_zeros,
+                    &|x| x.trailing_zeros() as $scalar,
+                    &|_| true,
+                )
+            }
+
+            fn leading_ones<const LANES: usize>() {
+                test_helpers::test_unary_elementwise(
+                    &$vector::<LANES>::leading_ones,
+                    &|x| x.leading_ones() as $scalar,
+                    &|_| true,
+                )
+            }
+
+            fn trailing_ones<const LANES: usize>() {
+                test_helpers::test_unary_elementwise(
+                    &$vector::<LANES>::leading_ones,
+                    &|x| x.trailing_ones() as $scalar,
+                    &|_| true,
+                )
+            }
         }
     }
 }
