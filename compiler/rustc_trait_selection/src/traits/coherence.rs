@@ -231,10 +231,29 @@ fn overlap<'tcx>(
                         COINDUCTIVE_OVERLAP_IN_COHERENCE,
                         infcx.tcx.local_def_id_to_hir_id(first_local_impl),
                         infcx.tcx.def_span(first_local_impl),
-                        "impls that are not considered to overlap may be considered to \
-                overlap in the future",
+                        format!(
+                            "implementations {} will conflict in the future",
+                            match impl1_header.trait_ref {
+                                Some(trait_ref) => {
+                                    let trait_ref = infcx.resolve_vars_if_possible(trait_ref);
+                                    format!(
+                                        "of `{}` for `{}`",
+                                        trait_ref.print_only_trait_path(),
+                                        trait_ref.self_ty()
+                                    )
+                                }
+                                None => format!(
+                                    "for `{}`",
+                                    infcx.resolve_vars_if_possible(impl1_header.self_ty)
+                                ),
+                            },
+                        ),
                         |lint| {
-                            lint.span_label(
+                            lint.note(
+                                "impls that are not considered to overlap may be considered to \
+                                overlap in the future",
+                            )
+                            .span_label(
                                 infcx.tcx.def_span(impl1_header.impl_def_id),
                                 "the first impl is here",
                             )
@@ -245,8 +264,12 @@ fn overlap<'tcx>(
                             if !failing_obligation.cause.span.is_dummy() {
                                 lint.span_label(
                                     failing_obligation.cause.span,
-                                    "this where-clause causes a cycle, but it may be treated \
-                            as possibly holding in the future, causing the impls to overlap",
+                                    format!(
+                                        "`{}` may be considered to hold in future releases, \
+                                        causing the impls to overlap",
+                                        infcx
+                                            .resolve_vars_if_possible(failing_obligation.predicate)
+                                    ),
                                 );
                             }
                             lint

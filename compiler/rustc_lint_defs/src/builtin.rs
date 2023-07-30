@@ -4433,42 +4433,25 @@ declare_lint! {
     /// ```rust,compile_fail
     /// #![deny(coinductive_overlap_in_coherence)]
     ///
-    /// use std::borrow::Borrow;
-    /// use std::cmp::Ordering;
-    /// use std::marker::PhantomData;
+    /// trait CyclicTrait {}
+    /// impl<T: CyclicTrait> CyclicTrait for T {}
     ///
-    /// #[derive(PartialEq, Default)]
-    /// pub(crate) struct Interval<T>(T);
-    ///
-    /// impl<T, Q> PartialEq<Q> for Interval<T>
-    /// where
-    ///     Q: PartialOrd,
-    /// {
-    ///     fn eq(&self, other: &Q) -> bool {
-    ///         todo!()
-    ///     }
-    /// }
-    ///
-    /// impl<T, Q> PartialOrd<Q> for Interval<T>
-    /// where
-    ///     Q: PartialOrd,
-    /// {
-    ///     fn partial_cmp(&self, other: &Q) -> Option<Ordering> {
-    ///         todo!()
-    ///     }
-    /// }
+    /// trait Trait {}
+    /// impl<T: CyclicTrait> Trait for T {}
+    /// // conflicting impl with the above
+    /// impl Trait for u8 {}
     /// ```
     ///
     /// {{produces}}
     ///
     /// ### Explanation
     ///
-    /// The manual impl of `PartialEq` impl overlaps with the `derive`, since
-    /// if we replace `Q = Interval<T>`, then the second impl leads to a cycle:
-    /// `PartialOrd for Interval<T> where Interval<T>: PartialOrd`. This cycle
-    /// currently causes the compiler to consider `Interval<T>: PartialOrd` to not
-    /// hold, causing the two implementations to be disjoint. This will change in
-    /// a future release.
+    /// We have two choices for impl which satisfy `u8: Trait`: the blanket impl
+    /// for generic `T`, and the direct impl for `u8`. These two impls nominally
+    /// overlap, since we can infer `T = u8` in the former impl, but since the where
+    /// clause `u8: CyclicTrait` would end up resulting in a cycle (since it depends
+    /// on itself), the blanket impl is not considered to hold for `u8`. This will
+    /// change in a future release.
     pub COINDUCTIVE_OVERLAP_IN_COHERENCE,
     Warn,
     "impls that are not considered to overlap may be considered to \
