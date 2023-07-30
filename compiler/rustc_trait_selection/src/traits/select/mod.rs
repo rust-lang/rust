@@ -720,7 +720,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 stack.update_reached_depth(stack_arg.1);
                                 return Ok(EvaluatedToOk);
                             } else {
-                                return Ok(EvaluatedToRecur);
+                                return Ok(EvaluatedToErr);
                             }
                         }
                         return Ok(EvaluatedToOk);
@@ -838,7 +838,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             }
                         }
                         ProjectAndUnifyResult::FailedNormalization => Ok(EvaluatedToAmbig),
-                        ProjectAndUnifyResult::Recursive => Ok(EvaluatedToRecur),
+                        ProjectAndUnifyResult::Recursive => Ok(EvaluatedToErr),
                         ProjectAndUnifyResult::MismatchedProjectionTypes(_) => Ok(EvaluatedToErr),
                     }
                 }
@@ -1157,7 +1157,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Some(EvaluatedToOk)
             } else {
                 debug!("evaluate_stack --> recursive, inductive");
-                Some(EvaluatedToRecur)
+                Some(EvaluatedToErr)
             }
         } else {
             None
@@ -1207,7 +1207,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             })
         {
             debug!("evaluate_stack --> unbound argument, recursive --> giving up",);
-            return Ok(EvaluatedToUnknown);
+            return Ok(EvaluatedToAmbig);
         }
 
         match self.candidate_from_obligation(stack) {
@@ -1306,12 +1306,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         dep_node: DepNodeIndex,
         result: EvaluationResult,
     ) {
-        // Avoid caching results that depend on more than just the trait-ref
-        // - the stack can create recursion.
-        if result.is_stack_dependent() {
-            return;
-        }
-
         // Neither the global nor local cache is aware of intercrate
         // mode, so don't do any caching. In particular, we might
         // re-use the same `InferCtxt` with both an intercrate
