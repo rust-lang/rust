@@ -1,31 +1,32 @@
+// unit-test: SimplifyPowOfTwo
 // compile-flags: -Cdebug-assertions=false
 
-// EMIT_MIR simplify_pow_of_two_no_overflow_checks.slow_2_u.SimplifyPowOfTwo.diff
+// EMIT_MIR simplify_pow_of_two_no_overflow_checks.slow_2_u.SimplifyPowOfTwo.after.mir
 fn slow_2_u(a: u32) -> u32 {
     2u32.pow(a)
 }
 
-// EMIT_MIR simplify_pow_of_two_no_overflow_checks.slow_2_i.SimplifyPowOfTwo.diff
+// EMIT_MIR simplify_pow_of_two_no_overflow_checks.slow_2_i.SimplifyPowOfTwo.after.mir
 fn slow_2_i(a: u32) -> i32 {
     2i32.pow(a)
 }
 
-// EMIT_MIR simplify_pow_of_two_no_overflow_checks.slow_4_u.SimplifyPowOfTwo.diff
+// EMIT_MIR simplify_pow_of_two_no_overflow_checks.slow_4_u.SimplifyPowOfTwo.after.mir
 fn slow_4_u(a: u32) -> u32 {
     4u32.pow(a)
 }
 
-// EMIT_MIR simplify_pow_of_two_no_overflow_checks.slow_4_i.SimplifyPowOfTwo.diff
+// EMIT_MIR simplify_pow_of_two_no_overflow_checks.slow_4_i.SimplifyPowOfTwo.after.mir
 fn slow_4_i(a: u32) -> i32 {
     4i32.pow(a)
 }
 
-// EMIT_MIR simplify_pow_of_two_no_overflow_checks.slow_256_u.SimplifyPowOfTwo.diff
+// EMIT_MIR simplify_pow_of_two_no_overflow_checks.slow_256_u.SimplifyPowOfTwo.after.mir
 fn slow_256_u(a: u32) -> u32 {
     256u32.pow(a)
 }
 
-// EMIT_MIR simplify_pow_of_two_no_overflow_checks.slow_256_i.SimplifyPowOfTwo.diff
+// EMIT_MIR simplify_pow_of_two_no_overflow_checks.slow_256_i.SimplifyPowOfTwo.after.mir
 fn slow_256_i(a: u32) -> i32 {
     256i32.pow(a)
 }

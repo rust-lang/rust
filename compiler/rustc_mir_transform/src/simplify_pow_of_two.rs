@@ -25,7 +25,6 @@ impl<'tcx> MirPass<'tcx> for SimplifyPowOfTwo {
                     args,
                     destination,
                     target: Some(target),
-                    unwind,
                     call_source: CallSource::Normal,
                     ..
                 } = &term.kind
@@ -199,7 +198,7 @@ impl<'tcx> MirPass<'tcx> for SimplifyPowOfTwo {
                                 Operand::Copy(num_shl.into()),
                             )),
                             target: *target,
-                            unwind: *unwind,
+                            unwind: UnwindAction::Continue,
                         },
                     );
                 } else {
