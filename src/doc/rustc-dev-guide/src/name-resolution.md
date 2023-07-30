@@ -117,7 +117,7 @@ fn do_something<T: Default>(val: T) { // <- New rib in both types and values (1)
     }; // End of (3)
     // `val` is accessible, `helper` variable shadows `helper` function
     fn helper() { // <- New rib in both types and values (4)
-        // `val` is not accessible here, (4) is not transparent for locals)
+        // `val` is not accessible here, (4) is not transparent for locals
         // `T` is not accessible here
     } // End of (4)
     let val = T::default(); // New rib (5)
