@@ -179,8 +179,7 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
                         == prev_item.path.segments[0].ident.name
                     {
                         format!(
-                            "only one `#[{}]` attribute is allowed on any given function",
-                            path_str,
+                            "only one `#[{path_str}]` attribute is allowed on any given function",
                         )
                     } else {
                         format!(

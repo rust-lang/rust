@@ -194,7 +194,7 @@ fn parse_tree<'a>(
                             Delimiter::Parenthesis => {}
                             _ => {
                                 let tok = pprust::token_kind_to_string(&token::OpenDelim(delim));
-                                let msg = format!("expected `(` or `{{`, found `{}`", tok);
+                                let msg = format!("expected `(` or `{{`, found `{tok}`");
                                 sess.span_diagnostic.span_err(delim_span.entire(), msg);
                             }
                         }

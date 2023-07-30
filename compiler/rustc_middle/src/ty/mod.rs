@@ -958,9 +958,9 @@ pub struct Term<'tcx> {
 impl Debug for Term<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let data = if let Some(ty) = self.ty() {
-            format!("Term::Ty({:?})", ty)
+            format!("Term::Ty({ty:?})")
         } else if let Some(ct) = self.ct() {
-            format!("Term::Ct({:?})", ct)
+            format!("Term::Ct({ct:?})")
         } else {
             unreachable!()
         };

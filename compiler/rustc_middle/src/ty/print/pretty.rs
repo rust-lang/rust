@@ -1498,7 +1498,7 @@ pub trait PrettyPrinter<'tcx>:
                 let data = int.assert_bits(self.tcx().data_layout.pointer_size);
                 self = self.typed_value(
                     |mut this| {
-                        write!(this, "0x{:x}", data)?;
+                        write!(this, "0x{data:x}")?;
                         Ok(this)
                     },
                     |this| this.print_type(ty),
@@ -1511,7 +1511,7 @@ pub trait PrettyPrinter<'tcx>:
                     if int.size() == Size::ZERO {
                         write!(this, "transmute(())")?;
                     } else {
-                        write!(this, "transmute(0x{:x})", int)?;
+                        write!(this, "transmute(0x{int:x})")?;
                     }
                     Ok(this)
                 };
@@ -2375,10 +2375,10 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
             } else {
                 cont
             };
-            let _ = write!(cx, "{}", w);
+            let _ = write!(cx, "{w}");
         };
         let do_continue = |cx: &mut Self, cont: Symbol| {
-            let _ = write!(cx, "{}", cont);
+            let _ = write!(cx, "{cont}");
         };
 
         define_scoped_cx!(self);
@@ -2414,7 +2414,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
         let (new_value, map) = if self.should_print_verbose() {
             for var in value.bound_vars().iter() {
                 start_or_continue(&mut self, "for<", ", ");
-                write!(self, "{:?}", var)?;
+                write!(self, "{var:?}")?;
             }
             start_or_continue(&mut self, "", "> ");
             (value.clone().skip_binder(), BTreeMap::default())

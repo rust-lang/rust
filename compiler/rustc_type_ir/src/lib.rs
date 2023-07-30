@@ -408,7 +408,7 @@ pub fn debug_bound_var<T: std::fmt::Write>(
     var: impl std::fmt::Debug,
 ) -> Result<(), std::fmt::Error> {
     if debruijn == INNERMOST {
-        write!(fmt, "^{:?}", var)
+        write!(fmt, "^{var:?}")
     } else {
         write!(fmt, "^{}_{:?}", debruijn.index(), var)
     }

@@ -173,7 +173,7 @@ fn encodable_substructure(
             for (i, &FieldInfo { name, ref self_expr, span, .. }) in fields.iter().enumerate() {
                 let name = match name {
                     Some(id) => id.name,
-                    None => Symbol::intern(&format!("_field{}", i)),
+                    None => Symbol::intern(&format!("_field{i}")),
                 };
                 let self_ref = cx.expr_addr_of(span, self_expr.clone());
                 let enc =

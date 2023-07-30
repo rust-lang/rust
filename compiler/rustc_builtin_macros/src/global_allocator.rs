@@ -72,7 +72,7 @@ impl AllocFnFactory<'_, '_> {
         let mut abi_args = ThinVec::new();
         let mut i = 0;
         let mut mk = || {
-            let name = Ident::from_str_and_span(&format!("arg{}", i), self.span);
+            let name = Ident::from_str_and_span(&format!("arg{i}"), self.span);
             i += 1;
             name
         };
