@@ -51,6 +51,9 @@ macro_rules! compile_error { () => {} }
 
   compile_error!("compile_error macro works");
 //^^^^^^^^^^^^^ error: compile_error macro works
+
+  compile_error! { "compile_error macro braced works" }
+//^^^^^^^^^^^^^ error: compile_error macro braced works
             "#,
         );
     }
