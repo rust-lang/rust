@@ -1,0 +1,44 @@
+error: vtable entries for `<u32 as RefNum<u32>>`: [
+           MetadataDropInPlace,
+           MetadataSize,
+           MetadataAlign,
+           Method(<u32 as std::ops::Add>::add - shim(vtable)),
+           Method(<u32 as std::ops::Sub>::sub - shim(vtable)),
+           TraitVPtr(<u32 as std::ops::Sub>),
+           Method(<u32 as std::ops::Mul>::mul - shim(vtable)),
+           TraitVPtr(<u32 as std::ops::Mul>),
+           Method(<u32 as std::ops::Div>::div - shim(vtable)),
+           TraitVPtr(<u32 as std::ops::Div>),
+           Method(<u32 as std::ops::Rem>::rem - shim(vtable)),
+           TraitVPtr(<u32 as std::ops::Rem>),
+           Method(<u32 as std::ops::Add<&u32>>::add - shim(vtable)),
+           TraitVPtr(for<'r> <u32 as std::ops::Add<&'r u32>>),
+           Method(<u32 as std::ops::Sub<&u32>>::sub - shim(vtable)),
+           TraitVPtr(for<'r> <u32 as std::ops::Sub<&'r u32>>),
+           Method(<u32 as std::ops::Mul<&u32>>::mul - shim(vtable)),
+           TraitVPtr(for<'r> <u32 as std::ops::Mul<&'r u32>>),
+           Method(<u32 as std::ops::Div<&u32>>::div - shim(vtable)),
+           TraitVPtr(for<'r> <u32 as std::ops::Div<&'r u32>>),
+           Method(<u32 as std::ops::Rem<&u32>>::rem - shim(vtable)),
+           TraitVPtr(for<'r> <u32 as std::ops::Rem<&'r u32>>),
+           TraitVPtr(for<'r> <u32 as NumOps<&'r u32>>),
+       ]
+  --> $DIR/plain-self.rs:23:1
+   |
+LL | pub trait RefNum<Base>: NumOps<Base, Base> + for<'r> NumOps<&'r Base, Base> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: vtable entries for `<() as Simple>`: [
+           MetadataDropInPlace,
+           MetadataSize,
+           MetadataAlign,
+           Method(<() as Simple>::f - shim(vtable)),
+           Method(<() as Simple>::g - shim(vtable)),
+       ]
+  --> $DIR/plain-self.rs:11:1
+   |
+LL | pub trait Simple {
+   | ^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
