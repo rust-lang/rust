@@ -97,6 +97,10 @@ fn check_is_object_safe(tcx: TyCtxt<'_>, trait_def_id: DefId) -> bool {
 /// object. Note that object-safe traits can have some
 /// non-vtable-safe methods, so long as they require `Self: Sized` or
 /// otherwise ensure that they cannot be used when `Self = Trait`.
+///
+/// [`MethodViolationCode::WhereClauseReferencesSelf`] is considered object safe due to backwards
+/// compatibility, see <https://github.com/rust-lang/rust/issues/51443> and
+/// [`WHERE_CLAUSES_OBJECT_SAFETY`](rustc_session::lint::builtin::WHERE_CLAUSES_OBJECT_SAFETY).
 pub fn is_vtable_safe_method(tcx: TyCtxt<'_>, trait_def_id: DefId, method: ty::AssocItem) -> bool {
     debug_assert!(tcx.generics_of(trait_def_id).has_self);
     debug!("is_vtable_safe_method({:?}, {:?})", trait_def_id, method);
