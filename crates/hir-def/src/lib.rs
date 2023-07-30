@@ -1155,18 +1155,22 @@ fn macro_call_as_call_id_(
     let def =
         resolver(call.path.clone()).ok_or_else(|| UnresolvedMacro { path: call.path.clone() })?;
 
-    let res = if let MacroDefKind::BuiltInEager(..) = def.kind {
-        let macro_call = InFile::new(call.ast_id.file_id, call.ast_id.to_node(db));
-        expand_eager_macro_input(db, krate, macro_call, def, &resolver)?
-    } else {
-        ExpandResult {
+    let res = match def.kind {
+        MacroDefKind::BuiltInEager(..) => {
+            let macro_call = InFile::new(call.ast_id.file_id, call.ast_id.to_node(db));
+            expand_eager_macro_input(db, krate, macro_call, def, &|path| {
+                resolver(path).filter(MacroDefId::is_fn_like)
+            })?
+        }
+        _ if def.is_fn_like() => ExpandResult {
             value: Some(def.as_lazy_macro(
                 db,
                 krate,
                 MacroCallKind::FnLike { ast_id: call.ast_id, expand_to },
             )),
             err: None,
-        }
+        },
+        _ => return Err(UnresolvedMacro { path: call.path.clone() }),
     };
     Ok(res)
 }
@@ -1251,6 +1255,7 @@ fn derive_macro_as_call_id(
     resolver: impl Fn(path::ModPath) -> Option<(MacroId, MacroDefId)>,
 ) -> Result<(MacroId, MacroDefId, MacroCallId), UnresolvedMacro> {
     let (macro_id, def_id) = resolver(item_attr.path.clone())
+        .filter(|(_, def_id)| def_id.is_derive())
         .ok_or_else(|| UnresolvedMacro { path: item_attr.path.clone() })?;
     let call_id = def_id.as_lazy_macro(
         db.upcast(),
