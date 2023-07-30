@@ -218,14 +218,12 @@ pub fn explain_lint_level_source(
             let hyphen_case_lint_name = name.replace('_', "-");
             if lint_flag_val.as_str() == name {
                 err.note_once(format!(
-                    "requested on the command line with `{} {}`",
-                    flag, hyphen_case_lint_name
+                    "requested on the command line with `{flag} {hyphen_case_lint_name}`"
                 ));
             } else {
                 let hyphen_case_flag_val = lint_flag_val.as_str().replace('_', "-");
                 err.note_once(format!(
-                    "`{} {}` implied by `{} {}`",
-                    flag, hyphen_case_lint_name, flag, hyphen_case_flag_val
+                    "`{flag} {hyphen_case_lint_name}` implied by `{flag} {hyphen_case_flag_val}`"
                 ));
             }
         }
@@ -237,8 +235,7 @@ pub fn explain_lint_level_source(
             if lint_attr_name.as_str() != name {
                 let level_str = level.as_str();
                 err.note_once(format!(
-                    "`#[{}({})]` implied by `#[{}({})]`",
-                    level_str, name, level_str, lint_attr_name
+                    "`#[{level_str}({name})]` implied by `#[{level_str}({lint_attr_name})]`"
                 ));
             }
         }
@@ -416,12 +413,11 @@ pub fn struct_lint_level(
                 FutureIncompatibilityReason::EditionError(edition) => {
                     let current_edition = sess.edition();
                     format!(
-                        "this is accepted in the current edition (Rust {}) but is a hard error in Rust {}!",
-                        current_edition, edition
+                        "this is accepted in the current edition (Rust {current_edition}) but is a hard error in Rust {edition}!"
                     )
                 }
                 FutureIncompatibilityReason::EditionSemanticsChange(edition) => {
-                    format!("this changes meaning in Rust {}", edition)
+                    format!("this changes meaning in Rust {edition}")
                 }
                 FutureIncompatibilityReason::Custom(reason) => reason.to_owned(),
             };

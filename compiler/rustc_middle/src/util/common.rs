@@ -17,7 +17,7 @@ pub fn to_readable_str(mut val: usize) -> String {
             groups.push(group.to_string());
             break;
         } else {
-            groups.push(format!("{:03}", group));
+            groups.push(format!("{group:03}"));
         }
     }
 

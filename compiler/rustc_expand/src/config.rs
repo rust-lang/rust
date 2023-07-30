@@ -369,7 +369,7 @@ impl<'a> StripUnconfigured<'a> {
         let TokenTree::Token(pound_token @ Token { kind: TokenKind::Pound, .. }, _) =
             orig_trees.next().unwrap().clone()
         else {
-            panic!("Bad tokens for attribute {:?}", attr);
+            panic!("Bad tokens for attribute {attr:?}");
         };
         let pound_span = pound_token.span;
 
@@ -379,7 +379,7 @@ impl<'a> StripUnconfigured<'a> {
             let TokenTree::Token(bang_token @ Token { kind: TokenKind::Not, .. }, _) =
                 orig_trees.next().unwrap().clone()
             else {
-                panic!("Bad tokens for attribute {:?}", attr);
+                panic!("Bad tokens for attribute {attr:?}");
             };
             trees.push(AttrTokenTree::Token(bang_token, Spacing::Alone));
         }
@@ -390,7 +390,7 @@ impl<'a> StripUnconfigured<'a> {
             Delimiter::Bracket,
             item.tokens
                 .as_ref()
-                .unwrap_or_else(|| panic!("Missing tokens for {:?}", item))
+                .unwrap_or_else(|| panic!("Missing tokens for {item:?}"))
                 .to_attr_token_stream(),
         );
         trees.push(bracket_group);

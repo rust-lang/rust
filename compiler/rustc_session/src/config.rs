@@ -1539,9 +1539,8 @@ pub(super) fn build_target_config(
     );
     let (target, target_warnings) = target_result.unwrap_or_else(|e| {
         handler.early_error(format!(
-            "Error loading target specification: {}. \
-                 Run `rustc --print target-list` for a list of built-in targets",
-            e
+            "Error loading target specification: {e}. \
+                 Run `rustc --print target-list` for a list of built-in targets"
         ))
     });
     for warning in target_warnings.warning_messages() {
@@ -1978,8 +1977,7 @@ pub fn parse_crate_edition(handler: &EarlyErrorHandler, matches: &getopts::Match
         let is_nightly = nightly_options::match_is_nightly_build(matches);
         let msg = if !is_nightly {
             format!(
-                "the crate requires edition {}, but the latest edition supported by this Rust version is {}",
-                edition, LATEST_STABLE_EDITION
+                "the crate requires edition {edition}, but the latest edition supported by this Rust version is {LATEST_STABLE_EDITION}"
             )
         } else {
             format!("edition {edition} is unstable and only available with -Z unstable-options")

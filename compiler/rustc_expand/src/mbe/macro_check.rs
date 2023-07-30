@@ -593,7 +593,7 @@ fn check_ops_is_prefix(
             return;
         }
     }
-    buffer_lint(sess, span.into(), node_id, format!("unknown macro variable `{}`", name));
+    buffer_lint(sess, span.into(), node_id, format!("unknown macro variable `{name}`"));
 }
 
 /// Returns whether `binder_ops` is a prefix of `occurrence_ops`.
@@ -626,7 +626,7 @@ fn ops_is_prefix(
         if i >= occurrence_ops.len() {
             let mut span = MultiSpan::from_span(span);
             span.push_span_label(binder.span, "expected repetition");
-            let message = format!("variable '{}' is still repeating at this depth", name);
+            let message = format!("variable '{name}' is still repeating at this depth");
             buffer_lint(sess, span, node_id, message);
             return;
         }

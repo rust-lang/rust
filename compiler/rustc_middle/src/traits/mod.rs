@@ -777,49 +777,48 @@ impl ObjectSafetyViolation {
                 "where clause cannot reference non-lifetime `for<...>` variables".into()
             }
             ObjectSafetyViolation::Method(name, MethodViolationCode::StaticMethod(_), _) => {
-                format!("associated function `{}` has no `self` parameter", name).into()
+                format!("associated function `{name}` has no `self` parameter").into()
             }
             ObjectSafetyViolation::Method(
                 name,
                 MethodViolationCode::ReferencesSelfInput(_),
                 DUMMY_SP,
-            ) => format!("method `{}` references the `Self` type in its parameters", name).into(),
+            ) => format!("method `{name}` references the `Self` type in its parameters").into(),
             ObjectSafetyViolation::Method(name, MethodViolationCode::ReferencesSelfInput(_), _) => {
-                format!("method `{}` references the `Self` type in this parameter", name).into()
+                format!("method `{name}` references the `Self` type in this parameter").into()
             }
             ObjectSafetyViolation::Method(name, MethodViolationCode::ReferencesSelfOutput, _) => {
-                format!("method `{}` references the `Self` type in its return type", name).into()
+                format!("method `{name}` references the `Self` type in its return type").into()
             }
             ObjectSafetyViolation::Method(
                 name,
                 MethodViolationCode::ReferencesImplTraitInTrait(_),
                 _,
-            ) => format!("method `{}` references an `impl Trait` type in its return type", name)
-                .into(),
+            ) => {
+                format!("method `{name}` references an `impl Trait` type in its return type").into()
+            }
             ObjectSafetyViolation::Method(name, MethodViolationCode::AsyncFn, _) => {
-                format!("method `{}` is `async`", name).into()
+                format!("method `{name}` is `async`").into()
             }
             ObjectSafetyViolation::Method(
                 name,
                 MethodViolationCode::WhereClauseReferencesSelf,
                 _,
-            ) => {
-                format!("method `{}` references the `Self` type in its `where` clause", name).into()
-            }
+            ) => format!("method `{name}` references the `Self` type in its `where` clause").into(),
             ObjectSafetyViolation::Method(name, MethodViolationCode::Generic, _) => {
-                format!("method `{}` has generic type parameters", name).into()
+                format!("method `{name}` has generic type parameters").into()
             }
             ObjectSafetyViolation::Method(
                 name,
                 MethodViolationCode::UndispatchableReceiver(_),
                 _,
-            ) => format!("method `{}`'s `self` parameter cannot be dispatched on", name).into(),
+            ) => format!("method `{name}`'s `self` parameter cannot be dispatched on").into(),
             ObjectSafetyViolation::AssocConst(name, DUMMY_SP) => {
-                format!("it contains associated `const` `{}`", name).into()
+                format!("it contains associated `const` `{name}`").into()
             }
             ObjectSafetyViolation::AssocConst(..) => "it contains this associated `const`".into(),
             ObjectSafetyViolation::GAT(name, _) => {
-                format!("it contains the generic associated type `{}`", name).into()
+                format!("it contains the generic associated type `{name}`").into()
             }
         }
     }
@@ -837,8 +836,7 @@ impl ObjectSafetyViolation {
                 err.span_suggestion(
                     add_self_sugg.1,
                     format!(
-                        "consider turning `{}` into a method by giving it a `&self` argument",
-                        name
+                        "consider turning `{name}` into a method by giving it a `&self` argument"
                     ),
                     add_self_sugg.0.to_string(),
                     Applicability::MaybeIncorrect,
@@ -846,9 +844,8 @@ impl ObjectSafetyViolation {
                 err.span_suggestion(
                     make_sized_sugg.1,
                     format!(
-                        "alternatively, consider constraining `{}` so it does not apply to \
-                             trait objects",
-                        name
+                        "alternatively, consider constraining `{name}` so it does not apply to \
+                             trait objects"
                     ),
                     make_sized_sugg.0.to_string(),
                     Applicability::MaybeIncorrect,
@@ -861,7 +858,7 @@ impl ObjectSafetyViolation {
             ) => {
                 err.span_suggestion(
                     *span,
-                    format!("consider changing method `{}`'s `self` parameter to be `&self`", name),
+                    format!("consider changing method `{name}`'s `self` parameter to be `&self`"),
                     "&Self",
                     Applicability::MachineApplicable,
                 );
@@ -869,7 +866,7 @@ impl ObjectSafetyViolation {
             ObjectSafetyViolation::AssocConst(name, _)
             | ObjectSafetyViolation::GAT(name, _)
             | ObjectSafetyViolation::Method(name, ..) => {
-                err.help(format!("consider moving `{}` to another trait", name));
+                err.help(format!("consider moving `{name}` to another trait"));
             }
         }
     }

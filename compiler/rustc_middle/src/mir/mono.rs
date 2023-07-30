@@ -223,7 +223,7 @@ impl<'tcx> MonoItem<'tcx> {
 impl<'tcx> fmt::Display for MonoItem<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            MonoItem::Fn(instance) => write!(f, "fn {}", instance),
+            MonoItem::Fn(instance) => write!(f, "fn {instance}"),
             MonoItem::Static(def_id) => {
                 write!(f, "static {}", Instance::new(def_id, GenericArgs::empty()))
             }
@@ -534,17 +534,17 @@ impl<'tcx> CodegenUnitNameBuilder<'tcx> {
             format!("{}.{:08x}{}", tcx.crate_name(cnum), stable_crate_id, local_crate_id)
         });
 
-        write!(cgu_name, "{}", crate_prefix).unwrap();
+        write!(cgu_name, "{crate_prefix}").unwrap();
 
         // Add the components
         for component in components {
-            write!(cgu_name, "-{}", component).unwrap();
+            write!(cgu_name, "-{component}").unwrap();
         }
 
         if let Some(special_suffix) = special_suffix {
             // We add a dot in here so it cannot clash with anything in a regular
             // Rust identifier
-            write!(cgu_name, ".{}", special_suffix).unwrap();
+            write!(cgu_name, ".{special_suffix}").unwrap();
         }
 
         Symbol::intern(&cgu_name)

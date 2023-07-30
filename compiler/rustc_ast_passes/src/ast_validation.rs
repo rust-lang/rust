@@ -659,7 +659,7 @@ fn validate_generic_param_order(
             GenericParamKind::Type { .. } => (ParamKindOrd::TypeOrConst, ident.to_string()),
             GenericParamKind::Const { ty, .. } => {
                 let ty = pprust::ty_to_string(ty);
-                (ParamKindOrd::TypeOrConst, format!("const {}: {}", ident, ty))
+                (ParamKindOrd::TypeOrConst, format!("const {ident}: {ty}"))
             }
         };
         param_idents.push((kind, ord_kind, bounds, idx, ident));
@@ -1463,15 +1463,12 @@ fn deny_equality_constraints(
                                             let Some(arg) = args.args.last() else {
                                                 continue;
                                             };
-                                            (
-                                                format!(", {} = {}", assoc, ty),
-                                                arg.span().shrink_to_hi(),
-                                            )
+                                            (format!(", {assoc} = {ty}"), arg.span().shrink_to_hi())
                                         }
                                         _ => continue,
                                     },
                                     None => (
-                                        format!("<{} = {}>", assoc, ty),
+                                        format!("<{assoc} = {ty}>"),
                                         trait_segment.span().shrink_to_hi(),
                                     ),
                                 };
