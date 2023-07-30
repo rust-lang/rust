@@ -515,6 +515,29 @@ impl Step for Llvm {
             }
         }
 
+        // When building LLVM as a shared library on linux, it can contain debuginfo even when
+        // `llvm.release-debuginfo` is false: some debuginfo can come from the C++ standard library.
+        // If we're asked to do so, strip this debuginfo away.
+        if builder.llvm_link_shared()
+            && target.contains("linux")
+            && builder.config.llvm_strip_debuginfo
+        {
+            // Find the name of the LLVM shared library that we just built.
+            let lib_name = find_llvm_lib_name("so");
+
+            // If the shared library exists in LLVM's `/build/lib/` or `/lib/` folders, strip its
+            // debuginfo. Note: `output` will propagate any errors here.
+            let strip_if_possible = |path: PathBuf| {
+                if path.exists() {
+                    let mut cmd = Command::new("strip");
+                    cmd.arg("--strip-debug").arg(path);
+                    output(&mut cmd);
+                }
+            };
+            strip_if_possible(out_dir.join("lib").join(&lib_name));
+            strip_if_possible(out_dir.join("build").join("lib").join(&lib_name));
+        }
+
         t!(stamp.write());
 
         res
