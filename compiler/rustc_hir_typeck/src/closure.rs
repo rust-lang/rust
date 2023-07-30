@@ -723,11 +723,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .iter_instantiated_copied(self.tcx, args)
                 .find_map(|(p, s)| get_future_output(p.as_predicate(), s))?,
             ty::Error(_) => return None,
-            ty::Alias(ty::Projection, proj) if self.tcx.is_impl_trait_in_trait(proj.def_id) => self
-                .tcx
-                .explicit_item_bounds(proj.def_id)
-                .iter_instantiated_copied(self.tcx, proj.args)
-                .find_map(|(p, s)| get_future_output(p.as_predicate(), s))?,
             _ => span_bug!(
                 self.tcx.def_span(expr_def_id),
                 "async fn generator return type not an inference variable: {ret_ty}"
