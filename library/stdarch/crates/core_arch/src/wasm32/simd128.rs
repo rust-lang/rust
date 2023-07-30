@@ -4226,7 +4226,7 @@ pub fn f64x2_promote_low_f32x4(a: v128) -> v128 {
 }
 
 #[cfg(test)]
-pub mod tests {
+mod tests {
     use super::*;
     use core::ops::{Add, Div, Mul, Neg, Sub};
     use std;

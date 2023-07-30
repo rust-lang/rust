@@ -1,15 +1,8 @@
 use crate::core_arch::arm_shared::neon::*;
-use crate::core_arch::simd::{f32x4, i32x4, u32x4};
-use crate::core_arch::simd_llvm::*;
 use crate::mem::{align_of, transmute};
 
 #[cfg(test)]
 use stdarch_test::assert_instr;
-
-#[allow(non_camel_case_types)]
-pub(crate) type p8 = u8;
-#[allow(non_camel_case_types)]
-pub(crate) type p16 = u16;
 
 #[allow(improper_ctypes)]
 extern "unadjusted" {
@@ -792,27 +785,6 @@ pub unsafe fn vtbx4_p8(a: poly8x8_t, b: poly8x8x4_t, c: uint8x8_t) -> poly8x8_t 
         transmute(b.3),
         transmute(c),
     ))
-}
-
-// These float-to-int implementations have undefined behaviour when `a` overflows
-// the destination type. Clang has the same problem: https://llvm.org/PR47510
-
-/// Floating-point Convert to Signed fixed-point, rounding toward Zero (vector)
-#[inline]
-#[target_feature(enable = "neon")]
-#[target_feature(enable = "v7")]
-#[cfg_attr(test, assert_instr("vcvt.s32.f32"))]
-pub unsafe fn vcvtq_s32_f32(a: float32x4_t) -> int32x4_t {
-    transmute(simd_cast::<_, i32x4>(transmute::<_, f32x4>(a)))
-}
-
-/// Floating-point Convert to Unsigned fixed-point, rounding toward Zero (vector)
-#[inline]
-#[target_feature(enable = "neon")]
-#[target_feature(enable = "v7")]
-#[cfg_attr(test, assert_instr("vcvt.u32.f32"))]
-pub unsafe fn vcvtq_u32_f32(a: float32x4_t) -> uint32x4_t {
-    transmute(simd_cast::<_, u32x4>(transmute::<_, f32x4>(a)))
 }
 
 /// Shift Left and Insert (immediate)

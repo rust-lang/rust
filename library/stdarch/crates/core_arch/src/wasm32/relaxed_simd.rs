@@ -303,7 +303,7 @@ pub fn i32x4_relaxed_dot_i8x16_i7x16_add(a: v128, b: v128, c: v128) -> v128 {
 }
 
 #[cfg(test)]
-pub mod tests {
+mod tests {
     use super::super::simd128::*;
     use super::*;
     use core::ops::{Add, Div, Mul, Neg, Sub};
