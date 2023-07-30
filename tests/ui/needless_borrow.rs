@@ -504,3 +504,16 @@ mod issue_10535 {
     {
     }
 }
+
+mod issue_10253 {
+    struct S;
+    trait X {
+        fn f<T>(&self);
+    }
+    impl X for &S {
+        fn f<T>(&self) {}
+    }
+    fn f() {
+        (&S).f::<()>();
+    }
+}

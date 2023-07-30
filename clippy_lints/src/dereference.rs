@@ -3,7 +3,7 @@ use clippy_utils::mir::{enclosing_mir, expr_local, local_assignments, used_exact
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::has_enclosing_paren;
-use clippy_utils::ty::{is_copy, peel_mid_ty_refs};
+use clippy_utils::ty::{implements_trait, is_copy, peel_mid_ty_refs};
 use clippy_utils::{
     expr_use_ctxt, get_parent_expr, get_parent_node, is_lint_allowed, path_to_local, DefinedTy, ExprUseNode,
 };
@@ -33,7 +33,6 @@ use rustc_middle::ty::{
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol};
-use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::{Obligation, ObligationCause};
 use std::collections::VecDeque;
@@ -452,13 +451,12 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                                         // Trait methods taking `self`
                                         arg_ty
                                     } && impl_ty.is_ref()
-                                    && cx.tcx.infer_ctxt().build()
-                                        .type_implements_trait(
-                                            trait_id,
-                                            [impl_ty.into()].into_iter().chain(args.iter().copied()),
-                                            cx.param_env,
-                                        )
-                                        .must_apply_modulo_regions()
+                                    && implements_trait(
+                                        cx,
+                                        impl_ty,
+                                        trait_id,
+                                        &args[..cx.tcx.generics_of(trait_id).params.len() - 1],
+                                    )
                                 {
                                     false
                                 } else {
