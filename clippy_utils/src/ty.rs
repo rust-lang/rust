@@ -3,6 +3,7 @@
 #![allow(clippy::module_name_repetitions)]
 
 use core::ops::ControlFlow;
+use itertools::Itertools;
 use rustc_ast::ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
@@ -13,17 +14,19 @@ use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKi
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
+use rustc_middle::traits::EvaluationResult;
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::{
-    self, AdtDef, AliasTy, AssocKind, Binder, BoundRegion, FnSig, GenericArg, GenericArgKind, GenericArgsRef, IntTy,
-    List, ParamEnv, Region, RegionKind, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
-    UintTy, VariantDef, VariantDiscr,
+    self, AdtDef, AliasTy, AssocKind, Binder, BoundRegion, FnSig, GenericArg, GenericArgKind, GenericArgsRef,
+    GenericParamDefKind, IntTy, List, ParamEnv, Region, RegionKind, ToPredicate, TraitRef, Ty, TyCtxt,
+    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, UintTy, VariantDef, VariantDiscr,
 };
 use rustc_span::symbol::Ident;
 use rustc_span::{sym, Span, Symbol, DUMMY_SP};
 use rustc_target::abi::{Size, VariantIdx};
-use rustc_trait_selection::infer::InferCtxtExt;
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::normalize::QueryNormalizeExt;
+use rustc_trait_selection::traits::{Obligation, ObligationCause};
 use std::iter;
 
 use crate::{match_def_path, path_res, paths};
@@ -207,15 +210,9 @@ pub fn implements_trait<'tcx>(
     cx: &LateContext<'tcx>,
     ty: Ty<'tcx>,
     trait_id: DefId,
-    ty_params: &[GenericArg<'tcx>],
+    args: &[GenericArg<'tcx>],
 ) -> bool {
-    implements_trait_with_env(
-        cx.tcx,
-        cx.param_env,
-        ty,
-        trait_id,
-        ty_params.iter().map(|&arg| Some(arg)),
-    )
+    implements_trait_with_env_from_iter(cx.tcx, cx.param_env, ty, trait_id, args.iter().map(|&x| Some(x)))
 }
 
 /// Same as `implements_trait` but allows using a `ParamEnv` different from the lint context.
@@ -224,7 +221,18 @@ pub fn implements_trait_with_env<'tcx>(
     param_env: ParamEnv<'tcx>,
     ty: Ty<'tcx>,
     trait_id: DefId,
-    ty_params: impl IntoIterator<Item = Option<GenericArg<'tcx>>>,
+    args: &[GenericArg<'tcx>],
+) -> bool {
+    implements_trait_with_env_from_iter(tcx, param_env, ty, trait_id, args.iter().map(|&x| Some(x)))
+}
+
+/// Same as `implements_trait_from_env` but takes the arguments as an iterator.
+pub fn implements_trait_with_env_from_iter<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ParamEnv<'tcx>,
+    ty: Ty<'tcx>,
+    trait_id: DefId,
+    args: impl IntoIterator<Item = impl Into<Option<GenericArg<'tcx>>>>,
 ) -> bool {
     // Clippy shouldn't have infer types
     assert!(!ty.has_infer());
@@ -233,19 +241,37 @@ pub fn implements_trait_with_env<'tcx>(
     if ty.has_escaping_bound_vars() {
         return false;
     }
+
     let infcx = tcx.infer_ctxt().build();
-    let orig = TypeVariableOrigin {
-        kind: TypeVariableOriginKind::MiscVariable,
-        span: DUMMY_SP,
-    };
-    let ty_params = tcx.mk_args_from_iter(
-        ty_params
+    let trait_ref = TraitRef::new(
+        tcx,
+        trait_id,
+        Some(GenericArg::from(ty))
             .into_iter()
-            .map(|arg| arg.unwrap_or_else(|| infcx.next_ty_var(orig).into())),
+            .chain(args.into_iter().map(|arg| {
+                arg.into().unwrap_or_else(|| {
+                    let orig = TypeVariableOrigin {
+                        kind: TypeVariableOriginKind::MiscVariable,
+                        span: DUMMY_SP,
+                    };
+                    infcx.next_ty_var(orig).into()
+                })
+            })),
     );
+
+    debug_assert_eq!(tcx.def_kind(trait_id), DefKind::Trait);
+    #[cfg(debug_assertions)]
+    assert_generic_args_match(tcx, trait_id, trait_ref.args);
+
+    let obligation = Obligation {
+        cause: ObligationCause::dummy(),
+        param_env,
+        recursion_depth: 0,
+        predicate: ty::Binder::dummy(trait_ref).without_const().to_predicate(tcx),
+    };
     infcx
-        .type_implements_trait(trait_id, [ty.into()].into_iter().chain(ty_params), param_env)
-        .must_apply_modulo_regions()
+        .evaluate_obligation(&obligation)
+        .is_ok_and(EvaluationResult::must_apply_modulo_regions)
 }
 
 /// Checks whether this type implements `Drop`.
@@ -391,6 +417,11 @@ pub fn is_type_lang_item(cx: &LateContext<'_>, ty: Ty<'_>, lang_item: hir::LangI
         ty::Adt(adt, _) => cx.tcx.lang_items().get(lang_item) == Some(adt.did()),
         _ => false,
     }
+}
+
+/// Gets the diagnostic name of the type, if it has one
+pub fn type_diagnostic_name(cx: &LateContext<'_>, ty: Ty<'_>) -> Option<Symbol> {
+    ty.ty_adt_def().and_then(|adt| cx.tcx.get_diagnostic_name(adt.did()))
 }
 
 /// Return `true` if the passed `typ` is `isize` or `usize`.
@@ -1014,12 +1045,60 @@ pub fn approx_ty_size<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> u64 {
     }
 }
 
+/// Asserts that the given arguments match the generic parameters of the given item.
+#[allow(dead_code)]
+fn assert_generic_args_match<'tcx>(tcx: TyCtxt<'tcx>, did: DefId, args: &[GenericArg<'tcx>]) {
+    let g = tcx.generics_of(did);
+    let parent = g.parent.map(|did| tcx.generics_of(did));
+    let count = g.parent_count + g.params.len();
+    let params = parent
+        .map_or([].as_slice(), |p| p.params.as_slice())
+        .iter()
+        .chain(&g.params)
+        .map(|x| &x.kind);
+
+    assert!(
+        count == args.len(),
+        "wrong number of arguments for `{did:?}`: expected `{count}`, found {}\n\
+            note: the expected arguments are: `[{}]`\n\
+            the given arguments are: `{args:#?}`",
+        args.len(),
+        params.clone().map(GenericParamDefKind::descr).format(", "),
+    );
+
+    if let Some((idx, (param, arg))) =
+        params
+            .clone()
+            .zip(args.iter().map(|&x| x.unpack()))
+            .enumerate()
+            .find(|(_, (param, arg))| match (param, arg) {
+                (GenericParamDefKind::Lifetime, GenericArgKind::Lifetime(_))
+                | (GenericParamDefKind::Type { .. }, GenericArgKind::Type(_))
+                | (GenericParamDefKind::Const { .. }, GenericArgKind::Const(_)) => false,
+                (
+                    GenericParamDefKind::Lifetime
+                    | GenericParamDefKind::Type { .. }
+                    | GenericParamDefKind::Const { .. },
+                    _,
+                ) => true,
+            })
+    {
+        panic!(
+            "incorrect argument for `{did:?}` at index `{idx}`: expected a {}, found `{arg:?}`\n\
+                note: the expected arguments are `[{}]`\n\
+                the given arguments are `{args:#?}`",
+            param.descr(),
+            params.clone().map(GenericParamDefKind::descr).format(", "),
+        );
+    }
+}
+
 /// Makes the projection type for the named associated type in the given impl or trait impl.
 ///
 /// This function is for associated types which are "known" to exist, and as such, will only return
 /// `None` when debug assertions are disabled in order to prevent ICE's. With debug assertions
 /// enabled this will check that the named associated type exists, the correct number of
-/// substitutions are given, and that the correct kinds of substitutions are given (lifetime,
+/// arguments are given, and that the correct kinds of arguments are given (lifetime,
 /// constant or type). This will not check if type normalization would succeed.
 pub fn make_projection<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -1043,49 +1122,7 @@ pub fn make_projection<'tcx>(
             return None;
         };
         #[cfg(debug_assertions)]
-        {
-            let generics = tcx.generics_of(assoc_item.def_id);
-            let generic_count = generics.parent_count + generics.params.len();
-            let params = generics
-                .parent
-                .map_or([].as_slice(), |id| &*tcx.generics_of(id).params)
-                .iter()
-                .chain(&generics.params)
-                .map(|x| &x.kind);
-
-            debug_assert!(
-                generic_count == args.len(),
-                "wrong number of args for `{:?}`: found `{}` expected `{generic_count}`.\n\
-                    note: the expected parameters are: {:#?}\n\
-                    the given arguments are: `{args:#?}`",
-                assoc_item.def_id,
-                args.len(),
-                params.map(ty::GenericParamDefKind::descr).collect::<Vec<_>>(),
-            );
-
-            if let Some((idx, (param, arg))) = params
-                .clone()
-                .zip(args.iter().map(GenericArg::unpack))
-                .enumerate()
-                .find(|(_, (param, arg))| {
-                    !matches!(
-                        (param, arg),
-                        (ty::GenericParamDefKind::Lifetime, GenericArgKind::Lifetime(_))
-                            | (ty::GenericParamDefKind::Type { .. }, GenericArgKind::Type(_))
-                            | (ty::GenericParamDefKind::Const { .. }, GenericArgKind::Const(_))
-                    )
-                })
-            {
-                debug_assert!(
-                    false,
-                    "mismatched subst type at index {idx}: expected a {}, found `{arg:?}`\n\
-                        note: the expected parameters are {:#?}\n\
-                        the given arguments are {args:#?}",
-                    param.descr(),
-                    params.map(ty::GenericParamDefKind::descr).collect::<Vec<_>>()
-                );
-            }
-        }
+        assert_generic_args_match(tcx, assoc_item.def_id, args);
 
         Some(tcx.mk_alias_ty(assoc_item.def_id, args))
     }
@@ -1100,7 +1137,7 @@ pub fn make_projection<'tcx>(
 /// Normalizes the named associated type in the given impl or trait impl.
 ///
 /// This function is for associated types which are "known" to be valid with the given
-/// substitutions, and as such, will only return `None` when debug assertions are disabled in order
+/// arguments, and as such, will only return `None` when debug assertions are disabled in order
 /// to prevent ICE's. With debug assertions enabled this will check that type normalization
 /// succeeds as well as everything checked by `make_projection`.
 pub fn make_normalized_projection<'tcx>(
@@ -1112,17 +1149,12 @@ pub fn make_normalized_projection<'tcx>(
 ) -> Option<Ty<'tcx>> {
     fn helper<'tcx>(tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>, ty: AliasTy<'tcx>) -> Option<Ty<'tcx>> {
         #[cfg(debug_assertions)]
-        if let Some((i, subst)) = ty
-            .args
-            .iter()
-            .enumerate()
-            .find(|(_, subst)| subst.has_late_bound_regions())
-        {
+        if let Some((i, arg)) = ty.args.iter().enumerate().find(|(_, arg)| arg.has_late_bound_regions()) {
             debug_assert!(
                 false,
                 "args contain late-bound region at index `{i}` which can't be normalized.\n\
                     use `TyCtxt::erase_late_bound_regions`\n\
-                    note: subst is `{subst:#?}`",
+                    note: arg is `{arg:#?}`",
             );
             return None;
         }
@@ -1190,17 +1222,12 @@ pub fn make_normalized_projection_with_regions<'tcx>(
 ) -> Option<Ty<'tcx>> {
     fn helper<'tcx>(tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>, ty: AliasTy<'tcx>) -> Option<Ty<'tcx>> {
         #[cfg(debug_assertions)]
-        if let Some((i, subst)) = ty
-            .args
-            .iter()
-            .enumerate()
-            .find(|(_, subst)| subst.has_late_bound_regions())
-        {
+        if let Some((i, arg)) = ty.args.iter().enumerate().find(|(_, arg)| arg.has_late_bound_regions()) {
             debug_assert!(
                 false,
                 "args contain late-bound region at index `{i}` which can't be normalized.\n\
                     use `TyCtxt::erase_late_bound_regions`\n\
-                    note: subst is `{subst:#?}`",
+                    note: arg is `{arg:#?}`",
             );
             return None;
         }
