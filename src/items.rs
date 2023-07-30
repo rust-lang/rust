@@ -2996,10 +2996,12 @@ fn rewrite_bounds_on_where_clause(
         DefinitiveListTactic::Vertical
     };
 
+    let preserve_newline = context.config.version() == Version::One;
+
     let fmt = ListFormatting::new(shape, context.config)
         .tactic(shape_tactic)
         .trailing_separator(comma_tactic)
-        .preserve_newline(true);
+        .preserve_newline(preserve_newline);
     write_list(&items.collect::<Vec<_>>(), &fmt)
 }
 
