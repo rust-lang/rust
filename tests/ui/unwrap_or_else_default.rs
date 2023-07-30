@@ -109,6 +109,10 @@ fn type_certainty(option: Option<Vec<u64>>) {
     // should not be changed: no type annotation, unconcretized initializer
     let option = None;
     option.unwrap_or_else(Vec::new).push(1);
+
+    type Alias = Option<Vec<u32>>;
+    let option: Alias = Option::<Vec<u32>>::Some(Vec::new());
+    option.unwrap_or_else(Vec::new).push(1);
 }
 
 fn method_call_with_deref() {

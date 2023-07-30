@@ -12,7 +12,7 @@
 //! be considered a bug.
 
 use crate::def_path_res;
-use rustc_hir::def::Res;
+use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{walk_qpath, walk_ty, Visitor};
 use rustc_hir::{self as hir, Expr, ExprKind, GenericArgs, HirId, Node, PathSegment, QPath, TyKind};
@@ -219,7 +219,12 @@ fn path_segment_certainty(
                 // See the comment preceding `qpath_certainty`. `def_id` could refer to a type or a value.
                 let certainty = lhs.join_clearing_def_ids(rhs);
                 if resolves_to_type {
-                    certainty.with_def_id(def_id)
+                    if cx.tcx.def_kind(def_id) == DefKind::TyAlias {
+                        adt_def_id(cx.tcx.type_of(def_id).instantiate_identity())
+                            .map_or(certainty, |def_id| certainty.with_def_id(def_id))
+                    } else {
+                        certainty.with_def_id(def_id)
+                    }
                 } else {
                     certainty
                 }
