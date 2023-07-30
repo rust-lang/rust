@@ -100,7 +100,7 @@ pub fn check(path: &Path, bad: &mut bool) {
             {
                 tidy_error!(bad, "file {} has unexpected extension {}", file_path.display(), ext);
             }
-            if ext == "stderr" || ext == "stdout" {
+            if ext == "stderr" || ext == "stdout" || ext == "fixed" {
                 // Test output filenames have one of the formats:
                 // ```
                 // $testname.stderr
