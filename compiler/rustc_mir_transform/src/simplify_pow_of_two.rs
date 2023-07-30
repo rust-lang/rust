@@ -3,7 +3,6 @@
 
 use crate::MirPass;
 use rustc_const_eval::interpret::{ConstValue, Scalar};
-use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt, UintTy};
@@ -33,18 +32,14 @@ impl<'tcx> MirPass<'tcx> for SimplifyPowOfTwo {
                 && let Some(def_id) = func.const_fn_def().map(|def| def.0)
                 && let def_path = tcx.def_path(def_id)
                 && tcx.crate_name(def_path.krate) == sym::core
-                // FIXME(Centri3): I feel like we should do this differently...
-                && let [
-                    DisambiguatedDefPathData { data: DefPathData::TypeNs(sym::num), disambiguator: 0 },
-                    DisambiguatedDefPathData { data: DefPathData::Impl, .. },
-                    DisambiguatedDefPathData { data: DefPathData::ValueNs(sym::pow), .. },
-                ] = &*def_path.data
                 && let [recv, exp] = args.as_slice()
                 && let Some(recv_const) = recv.constant()
                 && let ConstantKind::Val(
                     ConstValue::Scalar(Scalar::Int(recv_int)),
                     recv_ty,
                 ) = recv_const.literal
+                && recv_ty.is_integral()
+                && tcx.item_name(def_id) == sym::pow
                 && let Ok(recv_val) = match recv_ty.kind() {
                     ty::Int(_) => {
                         let result = recv_int.try_to_int(recv_int.size()).unwrap_or(-1).max(0);
@@ -63,8 +58,8 @@ impl<'tcx> MirPass<'tcx> for SimplifyPowOfTwo {
                 // `0` would be `1.pow()`, which we shouldn't try to optimize as it's
                 // already entirely optimized away
                 && power_used != 0.0
-                // Same here
-                && recv_val != 0
+                // `-inf` would be `0.pow()`
+                && power_used.is_finite()
             {
                 let power_used = power_used as u32;
                 let loc = Location { block: i, statement_index: bb.statements.len() };
@@ -110,7 +105,8 @@ impl<'tcx> MirPass<'tcx> for SimplifyPowOfTwo {
                 );
                 let shl_result = patch.new_temp(Ty::new_bool(tcx), span);
 
-                // Whether the shl will overflow, if so we return 0
+                // Whether the shl will overflow, if so we return 0. We can do this rather
+                // than doing a shr because only one bit is set on any power of two
                 patch.add_assign(
                     loc,
                     shl_result.into(),
@@ -130,12 +126,12 @@ impl<'tcx> MirPass<'tcx> for SimplifyPowOfTwo {
                     ),
                 );
 
-                let should_be_zero_bool = patch.new_temp(Ty::new_bool(tcx), span);
-                let should_be_zero = patch.new_temp(recv_ty, span);
+                let fine_bool = patch.new_temp(Ty::new_bool(tcx), span);
+                let fine = patch.new_temp(recv_ty, span);
 
                 patch.add_assign(
                     loc,
-                    should_be_zero_bool.into(),
+                    fine_bool.into(),
                     Rvalue::BinaryOp(
                         BinOp::BitOr,
                         Box::new((
@@ -147,27 +143,25 @@ impl<'tcx> MirPass<'tcx> for SimplifyPowOfTwo {
 
                 patch.add_assign(
                     loc,
-                    should_be_zero.into(),
-                    Rvalue::Cast(
-                        CastKind::IntToInt,
-                        Operand::Copy(should_be_zero_bool.into()),
-                        recv_ty,
-                    ),
+                    fine.into(),
+                    Rvalue::Cast(CastKind::IntToInt, Operand::Copy(fine_bool.into()), recv_ty),
                 );
 
-                let shl_exp_ty = patch.new_temp(exp_ty, span);
                 let shl = patch.new_temp(recv_ty, span);
 
                 patch.add_assign(
                     loc,
-                    shl_exp_ty.into(),
+                    shl.into(),
                     Rvalue::BinaryOp(
                         BinOp::Shl,
                         Box::new((
                             Operand::Constant(Box::new(Constant {
                                 span,
                                 user_ty: None,
-                                literal: ConstantKind::Val(ConstValue::from_u32(1), exp_ty),
+                                literal: ConstantKind::Val(
+                                    ConstValue::Scalar(Scalar::from_uint(1u128, recv_int.size())),
+                                    recv_ty,
+                                ),
                             })),
                             Operand::Copy(num_shl.into()),
                         )),
@@ -176,65 +170,20 @@ impl<'tcx> MirPass<'tcx> for SimplifyPowOfTwo {
 
                 patch.add_assign(
                     loc,
-                    shl.into(),
-                    Rvalue::Cast(CastKind::IntToInt, Operand::Copy(shl_exp_ty.into()), recv_ty),
-                );
-
-                patch.add_assign(
-                    loc,
                     *destination,
                     Rvalue::BinaryOp(
                         BinOp::MulUnchecked,
-                        Box::new((Operand::Copy(shl.into()), Operand::Copy(should_be_zero.into()))),
+                        Box::new((Operand::Copy(shl.into()), Operand::Copy(fine.into()))),
                     ),
                 );
 
-                // shl doesn't set the overflow flag on x86_64 or even in Rust, so shr to
-                // see if it overflowed. If it equals 1, it did not, but we also need to
-                // check `shl_result` to ensure that if this is a multiple of the type's
-                // size it won't wrap back over to 1
-                //
                 // FIXME(Centri3): Do we use `debug_assertions` or `overflow_checks` here?
                 if tcx.sess.opts.debug_assertions {
-                    let shr = patch.new_temp(recv_ty, span);
-                    let shl_eq_shr = patch.new_temp(Ty::new_bool(tcx), span);
-                    let overflowed = patch.new_temp(Ty::new_bool(tcx), span);
-
-                    patch.add_assign(
-                        loc,
-                        shr.into(),
-                        Rvalue::BinaryOp(
-                            BinOp::Shr,
-                            Box::new((Operand::Copy(shl.into()), Operand::Copy(num_shl.into()))),
-                        ),
-                    );
-
-                    patch.add_assign(
-                        loc,
-                        shl_eq_shr.into(),
-                        Rvalue::BinaryOp(
-                            BinOp::Eq,
-                            Box::new((Operand::Copy(shl.into()), Operand::Copy(shr.into()))),
-                        ),
-                    );
-
-                    patch.add_assign(
-                        loc,
-                        overflowed.into(),
-                        Rvalue::BinaryOp(
-                            BinOp::BitOr,
-                            Box::new((
-                                Operand::Copy(shl_eq_shr.into()),
-                                Operand::Copy(shl_result.into()),
-                            )),
-                        ),
-                    );
-
                     patch.patch_terminator(
                         i,
                         TerminatorKind::Assert {
-                            cond: Operand::Copy(overflowed.into()),
-                            expected: false,
+                            cond: Operand::Copy(fine_bool.into()),
+                            expected: true,
                             msg: Box::new(AssertMessage::Overflow(
                                 // For consistency with the previous error message, though
                                 // it's technically incorrect
