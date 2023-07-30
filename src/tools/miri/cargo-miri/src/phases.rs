@@ -538,8 +538,7 @@ pub fn phase_runner(mut binary_args: impl Iterator<Item = String>, phase: Runner
     }
     // Respect `MIRIFLAGS`.
     if let Ok(a) = env::var("MIRIFLAGS") {
-        // This code is taken from `RUSTFLAGS` handling in cargo.
-        let args = a.split(' ').map(str::trim).filter(|s| !s.is_empty()).map(str::to_string);
+        let args = flagsplit(&a);
         cmd.args(args);
     }
 

@@ -107,7 +107,7 @@ evaluation error was originally raised.
 ### UI testing
 
 We use ui-testing in Miri, meaning we generate `.stderr` and `.stdout` files for the output
-produced by Miri. You can use `./miri bless` to automatically (re)generate these files when
+produced by Miri. You can use `./miri test --bless` to automatically (re)generate these files when
 you add new tests or change how Miri presents certain output.
 
 Note that when you also use `MIRIFLAGS` to change optimizations and similar, the ui output
