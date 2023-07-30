@@ -614,6 +614,50 @@ fn main() {
 }
 
 #[test]
+fn self_with_capital_s() {
+    check_pass(
+        r#"
+//- minicore: fn, add, copy
+
+struct S1;
+
+impl S1 {
+    fn f() {
+        Self;
+    }
+}
+
+struct S2 {
+    f1: i32,
+}
+
+impl S2 {
+    fn f() {
+        Self { f1: 5 };
+    }
+}
+
+struct S3(i32);
+
+impl S3 {
+    fn f() {
+        Self(2);
+        Self;
+        let this = Self;
+        this(2);
+    }
+}
+
+fn main() {
+    S1::f();
+    S2::f();
+    S3::f();
+}
+        "#,
+    );
+}
+
+#[test]
 fn syscalls() {
     check_pass(
         r#"
