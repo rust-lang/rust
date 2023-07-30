@@ -755,7 +755,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             match binding_parent {
                 // Check that there is explicit type (ie this is not a closure param with inferred type)
                 // so we don't suggest moving something to the type that does not exist
-                hir::Node::Param(hir::Param { ty_span, .. }) if binding.span != *ty_span => {
+                hir::Node::Param(hir::Param { ty_span, pat, .. }) if pat.span != *ty_span => {
                     err.multipart_suggestion_verbose(
                         format!("to take parameter `{binding}` by reference, move `&{mutability}` to the type"),
                         vec![
