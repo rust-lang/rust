@@ -77,8 +77,7 @@ where
     let pre_obligations = infcx.take_registered_region_obligations();
     assert!(
         pre_obligations.is_empty(),
-        "scrape_region_constraints: incoming region obligations = {:#?}",
-        pre_obligations,
+        "scrape_region_constraints: incoming region obligations = {pre_obligations:#?}",
     );
 
     let value = infcx.commit_if_ok(|_| {
@@ -92,7 +91,7 @@ where
         } else {
             Err(infcx.tcx.sess.delay_span_bug(
                 DUMMY_SP,
-                format!("errors selecting obligation during MIR typeck: {:?}", errors),
+                format!("errors selecting obligation during MIR typeck: {errors:?}"),
             ))
         }
     })?;

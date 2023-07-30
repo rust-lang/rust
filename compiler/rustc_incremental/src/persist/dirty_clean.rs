@@ -300,7 +300,7 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
             },
             _ => self.tcx.sess.emit_fatal(errors::UndefinedCleanDirty {
                 span: attr.span,
-                kind: format!("{:?}", node),
+                kind: format!("{node:?}"),
             }),
         };
         let labels =

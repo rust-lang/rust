@@ -703,13 +703,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     with_no_trimmed_paths!({
                         if layout.abi.is_uninhabited() {
                             // Use this error even for the other intrinsics as it is more precise.
-                            format!("attempted to instantiate uninhabited type `{}`", ty)
+                            format!("attempted to instantiate uninhabited type `{ty}`")
                         } else if requirement == ValidityRequirement::Zero {
-                            format!("attempted to zero-initialize type `{}`, which is invalid", ty)
+                            format!("attempted to zero-initialize type `{ty}`, which is invalid")
                         } else {
                             format!(
-                                "attempted to leave type `{}` uninitialized, which is invalid",
-                                ty
+                                "attempted to leave type `{ty}` uninitialized, which is invalid"
                             )
                         }
                     })
@@ -1045,10 +1044,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             assert_eq!(
                 fn_abi.args.len(),
                 mir_args + 1,
-                "#[track_caller] fn's must have 1 more argument in their ABI than in their MIR: {:?} {:?} {:?}",
-                instance,
-                fn_span,
-                fn_abi,
+                "#[track_caller] fn's must have 1 more argument in their ABI than in their MIR: {instance:?} {fn_span:?} {fn_abi:?}",
             );
             let location =
                 self.get_caller_location(bx, mir::SourceInfo { span: fn_span, ..source_info });
@@ -1555,7 +1551,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     fn landing_pad_for_uncached(&mut self, bb: mir::BasicBlock) -> Bx::BasicBlock {
         let llbb = self.llbb(bb);
         if base::wants_new_eh_instructions(self.cx.sess()) {
-            let cleanup_bb = Bx::append_block(self.cx, self.llfn, &format!("funclet_{:?}", bb));
+            let cleanup_bb = Bx::append_block(self.cx, self.llfn, &format!("funclet_{bb:?}"));
             let mut cleanup_bx = Bx::build(self.cx, cleanup_bb);
             let funclet = cleanup_bx.cleanup_pad(None, &[]);
             cleanup_bx.br(llbb);
@@ -1675,7 +1671,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         match self.cached_llbbs[bb] {
             CachedLlbb::None => {
                 // FIXME(eddyb) only name the block if `fewer_names` is `false`.
-                let llbb = Bx::append_block(self.cx, self.llfn, &format!("{:?}", bb));
+                let llbb = Bx::append_block(self.cx, self.llfn, &format!("{bb:?}"));
                 self.cached_llbbs[bb] = CachedLlbb::Some(llbb);
                 Some(llbb)
             }

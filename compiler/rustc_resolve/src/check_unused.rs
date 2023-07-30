@@ -362,7 +362,7 @@ impl Resolver<'_, '_> {
             let mut span_snippets = spans
                 .iter()
                 .filter_map(|s| match tcx.sess.source_map().span_to_snippet(*s) {
-                    Ok(s) => Some(format!("`{}`", s)),
+                    Ok(s) => Some(format!("`{s}`")),
                     _ => None,
                 })
                 .collect::<Vec<String>>();

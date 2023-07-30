@@ -298,21 +298,21 @@ impl CodegenBackend for LlvmCodegenBackend {
                     "ropi-rwpi",
                     "default",
                 ] {
-                    writeln!(out, "    {}", name);
+                    writeln!(out, "    {name}");
                 }
                 writeln!(out);
             }
             PrintKind::CodeModels => {
                 writeln!(out, "Available code models:");
                 for name in &["tiny", "small", "kernel", "medium", "large"] {
-                    writeln!(out, "    {}", name);
+                    writeln!(out, "    {name}");
                 }
                 writeln!(out);
             }
             PrintKind::TlsModels => {
                 writeln!(out, "Available TLS models:");
                 for name in &["global-dynamic", "local-dynamic", "initial-exec", "local-exec"] {
-                    writeln!(out, "    {}", name);
+                    writeln!(out, "    {name}");
                 }
                 writeln!(out);
             }

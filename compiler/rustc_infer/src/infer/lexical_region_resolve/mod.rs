@@ -837,9 +837,8 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
             self.var_infos[node_idx].origin.span(),
             format!(
                 "collect_error_for_expanding_node() could not find \
-                 error for var {:?} in universe {:?}, lower_bounds={:#?}, \
-                 upper_bounds={:#?}",
-                node_idx, node_universe, lower_bounds, upper_bounds
+                 error for var {node_idx:?} in universe {node_universe:?}, lower_bounds={lower_bounds:#?}, \
+                 upper_bounds={upper_bounds:#?}"
             ),
         );
     }

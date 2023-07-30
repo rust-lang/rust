@@ -54,7 +54,7 @@ pub fn get_or_insert_gdb_debug_scripts_section_global<'ll>(cx: &CodegenCx<'ll, '
             // The initial byte `4` instructs GDB that the following pretty printer
             // is defined inline as opposed to in a standalone file.
             section_contents.extend_from_slice(b"\x04");
-            let vis_name = format!("pretty-printer-{}-{}\n", crate_name, index);
+            let vis_name = format!("pretty-printer-{crate_name}-{index}\n");
             section_contents.extend_from_slice(vis_name.as_bytes());
             section_contents.extend_from_slice(&visualizer.src);
 

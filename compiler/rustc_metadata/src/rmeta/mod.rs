@@ -51,7 +51,7 @@ mod encoder;
 mod table;
 
 pub(crate) fn rustc_version(cfg_version: &'static str) -> String {
-    format!("rustc {}", cfg_version)
+    format!("rustc {cfg_version}")
 }
 
 /// Metadata encoding version.
