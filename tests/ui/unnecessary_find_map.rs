@@ -21,3 +21,7 @@ fn main() {
 fn find_map_none_changes_item_type() -> Option<bool> {
     "".chars().find_map(|_| None)
 }
+
+fn issue11260() {
+    let _x = std::iter::once(1).find_map(|n| (n > 1).then_some(n));
+}
