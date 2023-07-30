@@ -79,13 +79,11 @@ impl Command {
             Command::Fmt { flags } => Self::fmt(flags),
             Command::Clippy { flags } => Self::clippy(flags),
             Command::Cargo { flags } => Self::cargo(flags),
-            Command::ManySeeds { command, seed_start, seeds } =>
-                Self::many_seeds(command, seed_start, seeds),
+            Command::ManySeeds { command } => Self::many_seeds(command),
             Command::Bench { benches } => Self::bench(benches),
             Command::Toolchain { flags } => Self::toolchain(flags),
             Command::RustcPull { commit } => Self::rustc_pull(commit.clone()),
-            Command::RustcPush { rustc_git, github_user, branch } =>
-                Self::rustc_push(rustc_git, github_user, branch),
+            Command::RustcPush { github_user, branch } => Self::rustc_push(github_user, branch),
         }
     }
 
@@ -178,7 +176,7 @@ impl Command {
         Ok(())
     }
 
-    fn rustc_push(rustc_git: Option<String>, github_user: String, branch: String) -> Result<()> {
+    fn rustc_push(github_user: String, branch: String) -> Result<()> {
         let sh = shell()?;
         sh.change_dir(miri_dir()?);
         let base = sh.read_file("rust-version")?.trim().to_owned();
@@ -188,7 +186,7 @@ impl Command {
         }
 
         // Find a repo we can do our preparation in.
-        if let Some(rustc_git) = rustc_git {
+        if let Ok(rustc_git) = env::var("RUSTC_GIT") {
             // If rustc_git is `Some`, we'll use an existing fork for the branch updates.
             sh.change_dir(rustc_git);
         } else {
@@ -254,7 +252,15 @@ impl Command {
         Ok(())
     }
 
-    fn many_seeds(command: Vec<OsString>, seed_start: u64, seed_count: u64) -> Result<()> {
+    fn many_seeds(command: Vec<OsString>) -> Result<()> {
+        let seed_start: u64 = env::var("MIRI_SEED_START")
+            .unwrap_or_else(|_| "0".into())
+            .parse()
+            .context("failed to parse MIRI_SEED_START")?;
+        let seed_count: u64 = env::var("MIRI_SEEDS")
+            .unwrap_or_else(|_| "256".into())
+            .parse()
+            .context("failed to parse MIRI_SEEDS")?;
         let seed_end = seed_start + seed_count;
         let Some((command_name, trailing_args)) = command.split_first() else {
             bail!("expected many-seeds command to be non-empty");

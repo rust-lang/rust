@@ -11,7 +11,6 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-clap = {version = "4.2", features = ["derive", "env"]}
 which = "4.4"
 walkdir = "2.3"
 itertools = "0.10"
