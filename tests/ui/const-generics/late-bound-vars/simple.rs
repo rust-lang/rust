@@ -15,6 +15,8 @@
 // normalize-stderr-test ".*note: Some details.*\n" -> ""
 // normalize-stderr-test "\n\n[ ]*\n" -> ""
 // normalize-stderr-test "compiler/.*: projection" -> "projection"
+// normalize-stderr-test ".*omitted \d{1,} frame.*\n" -> ""
+// normalize-stderr-test "error: [\s\n]*query stack" -> "error: query stack"
 
 #![feature(generic_const_exprs)]
 #![allow(incomplete_features)]

@@ -18,6 +18,9 @@
 // normalize-stderr-test ".*note: Some details.*\n" -> ""
 // normalize-stderr-test "\n\n[ ]*\n" -> ""
 // normalize-stderr-test "compiler/.*: projection" -> "projection"
+// normalize-stderr-test ".*omitted \d{1,} frame.*\n" -> ""
+// normalize-stderr-test "error: [\s\n]*query stack" -> "error: query stack"
+// normalize-stderr-test "[\n\s]*\nquery stack during panic:" -> "query stack during panic:"
 // edition:2018
 
 #![feature(type_alias_impl_trait)]
