@@ -62,6 +62,7 @@ use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::layout::{LayoutError, LayoutOf};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::GenericArgKind;
+use rustc_middle::ty::ToPredicate;
 use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt, VariantDef};
 use rustc_session::config::ExpectedValues;
@@ -72,6 +73,7 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, InnerSpan, Span};
 use rustc_target::abi::{Abi, FIRST_VARIANT};
 use rustc_trait_selection::infer::{InferCtxtExt, TyCtxtInferExt};
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::{self, misc::type_allowed_to_implement_copy};
 
 use crate::nonstandard_style::{method_context, MethodLateContext};
@@ -710,6 +712,9 @@ impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
         if ty.is_copy_modulo_regions(cx.tcx, param_env) {
             return;
         }
+        if type_implements_negative_copy_modulo_regions(cx.tcx, ty, param_env) {
+            return;
+        }
 
         // We shouldn't recommend implementing `Copy` on stateful things,
         // such as iterators.
@@ -743,6 +748,24 @@ impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
             cx.emit_spanned_lint(MISSING_COPY_IMPLEMENTATIONS, item.span, BuiltinMissingCopyImpl);
         }
     }
+}
+
+/// Check whether a `ty` has a negative `Copy` implementation, ignoring outlives constraints.
+fn type_implements_negative_copy_modulo_regions<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    ty: Ty<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+) -> bool {
+    let trait_ref = ty::TraitRef::new(tcx, tcx.require_lang_item(hir::LangItem::Copy, None), [ty]);
+    let pred = ty::TraitPredicate { trait_ref, polarity: ty::ImplPolarity::Negative };
+    let obligation = traits::Obligation {
+        cause: traits::ObligationCause::dummy(),
+        param_env,
+        recursion_depth: 0,
+        predicate: ty::Binder::dummy(pred).to_predicate(tcx),
+    };
+
+    tcx.infer_ctxt().build().predicate_must_hold_modulo_regions(&obligation)
 }
 
 declare_lint! {
