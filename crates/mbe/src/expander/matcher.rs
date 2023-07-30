@@ -742,7 +742,11 @@ fn match_meta_var(
     is_2021: bool,
 ) -> ExpandResult<Option<Fragment>> {
     let fragment = match kind {
-        MetaVarKind::Path => parser::PrefixEntryPoint::Path,
+        MetaVarKind::Path => {
+            return input
+                .expect_fragment(parser::PrefixEntryPoint::Path)
+                .map(|it| it.map(Fragment::Path));
+        }
         MetaVarKind::Ty => parser::PrefixEntryPoint::Ty,
         MetaVarKind::Pat if is_2021 => parser::PrefixEntryPoint::PatTop,
         MetaVarKind::Pat => parser::PrefixEntryPoint::Pat,
@@ -771,7 +775,7 @@ fn match_meta_var(
                 .expect_fragment(parser::PrefixEntryPoint::Expr)
                 .map(|tt| tt.map(Fragment::Expr));
         }
-        _ => {
+        MetaVarKind::Ident | MetaVarKind::Tt | MetaVarKind::Lifetime | MetaVarKind::Literal => {
             let tt_result = match kind {
                 MetaVarKind::Ident => input
                     .expect_ident()
@@ -799,7 +803,7 @@ fn match_meta_var(
                         })
                         .map_err(|()| ExpandError::binding_error("expected literal"))
                 }
-                _ => Err(ExpandError::UnexpectedToken),
+                _ => unreachable!(),
             };
             return tt_result.map(|it| Some(Fragment::Tokens(it))).into();
         }
