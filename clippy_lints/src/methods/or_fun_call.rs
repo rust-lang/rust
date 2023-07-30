@@ -57,7 +57,7 @@ pub(super) fn check<'tcx>(
                 cx.tcx
                     .get_diagnostic_item(sym::Default)
                     .map_or(false, |default_trait_id| {
-                        implements_trait(cx, output_ty, default_trait_id, args)
+                        implements_trait(cx, output_ty, default_trait_id, &[])
                     })
             } else {
                 false

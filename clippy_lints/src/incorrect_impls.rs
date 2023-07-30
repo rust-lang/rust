@@ -189,12 +189,8 @@ impl LateLintPass<'_> for IncorrectImpls {
                 .diagnostic_items(trait_impl.def_id.krate)
                 .name_to_id
                 .get(&sym::Ord)
-            && implements_trait(
-                    cx,
-                    hir_ty_to_ty(cx.tcx, imp.self_ty),
-                    *ord_def_id,
-                    trait_impl.args,
-                )
+            && trait_impl.self_ty() == trait_impl.args.type_at(1)
+            && implements_trait(cx, hir_ty_to_ty(cx.tcx, imp.self_ty), *ord_def_id, &[])
         {
             // If the `cmp` call likely needs to be fully qualified in the suggestion
             // (like `std::cmp::Ord::cmp`). It's unfortunate we must put this here but we can't
