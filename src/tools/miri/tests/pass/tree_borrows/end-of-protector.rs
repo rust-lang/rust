@@ -3,8 +3,8 @@
 // Check that a protector goes back to normal behavior when the function
 // returns.
 #[path = "../../utils/mod.rs"]
+#[macro_use]
 mod utils;
-use utils::macros::*;
 
 fn main() {
     unsafe {

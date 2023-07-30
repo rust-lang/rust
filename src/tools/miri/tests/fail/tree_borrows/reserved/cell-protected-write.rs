@@ -3,8 +3,8 @@
 // Check how a Reserved with interior mutability
 // responds to a Foreign Write under a Protector
 #[path = "../../../utils/mod.rs"]
+#[macro_use]
 mod utils;
-use utils::macros::*;
 
 use std::cell::UnsafeCell;
 

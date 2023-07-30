@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 #[repr(C)]
 /// Layout of the return value of `miri_resolve_frame`,
 /// with fields in the exact same order.
