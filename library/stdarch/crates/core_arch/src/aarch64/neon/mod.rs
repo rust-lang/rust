@@ -4127,11 +4127,11 @@ mod tests {
 
     #[simd_test(enable = "neon")]
     unsafe fn test_vpminq_s8() {
-        #[cfg_attr(rustfmt, skip)]
+        #[rustfmt::skip]
         let a = i8x16::new(1, -2, 3, -4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8);
-        #[cfg_attr(rustfmt, skip)]
+        #[rustfmt::skip]
         let b = i8x16::new(0, 3, 2, 5, 4, 7, 6, 9, 0, 3, 2, 5, 4, 7, 6, 9);
-        #[cfg_attr(rustfmt, skip)]
+        #[rustfmt::skip]
         let e = i8x16::new(-2, -4, 5, 7, 1, 3, 5, 7, 0, 2, 4, 6, 0, 2, 4, 6);
         let r: i8x16 = transmute(vpminq_s8(transmute(a), transmute(b)));
         assert_eq!(r, e);
@@ -4157,11 +4157,11 @@ mod tests {
 
     #[simd_test(enable = "neon")]
     unsafe fn test_vpminq_u8() {
-        #[cfg_attr(rustfmt, skip)]
+        #[rustfmt::skip]
         let a = u8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8);
-        #[cfg_attr(rustfmt, skip)]
+        #[rustfmt::skip]
         let b = u8x16::new(0, 3, 2, 5, 4, 7, 6, 9, 0, 3, 2, 5, 4, 7, 6, 9);
-        #[cfg_attr(rustfmt, skip)]
+        #[rustfmt::skip]
         let e = u8x16::new(1, 3, 5, 7, 1, 3, 5, 7, 0, 2, 4, 6, 0, 2, 4, 6);
         let r: u8x16 = transmute(vpminq_u8(transmute(a), transmute(b)));
         assert_eq!(r, e);
@@ -4205,11 +4205,11 @@ mod tests {
 
     #[simd_test(enable = "neon")]
     unsafe fn test_vpmaxq_s8() {
-        #[cfg_attr(rustfmt, skip)]
+        #[rustfmt::skip]
         let a = i8x16::new(1, -2, 3, -4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8);
-        #[cfg_attr(rustfmt, skip)]
+        #[rustfmt::skip]
         let b = i8x16::new(0, 3, 2, 5, 4, 7, 6, 9, 0, 3, 2, 5, 4, 7, 6, 9);
-        #[cfg_attr(rustfmt, skip)]
+        #[rustfmt::skip]
         let e = i8x16::new(1, 3, 6, 8, 2, 4, 6, 8, 3, 5, 7, 9, 3, 5, 7, 9);
         let r: i8x16 = transmute(vpmaxq_s8(transmute(a), transmute(b)));
         assert_eq!(r, e);
@@ -4235,11 +4235,11 @@ mod tests {
 
     #[simd_test(enable = "neon")]
     unsafe fn test_vpmaxq_u8() {
-        #[cfg_attr(rustfmt, skip)]
+        #[rustfmt::skip]
         let a = u8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8);
-        #[cfg_attr(rustfmt, skip)]
+        #[rustfmt::skip]
         let b = u8x16::new(0, 3, 2, 5, 4, 7, 6, 9, 0, 3, 2, 5, 4, 7, 6, 9);
-        #[cfg_attr(rustfmt, skip)]
+        #[rustfmt::skip]
         let e = u8x16::new(2, 4, 6, 8, 2, 4, 6, 8, 3, 5, 7, 9, 3, 5, 7, 9);
         let r: u8x16 = transmute(vpmaxq_u8(transmute(a), transmute(b)));
         assert_eq!(r, e);
