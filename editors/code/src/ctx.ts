@@ -449,7 +449,7 @@ export class Ctx {
                 return;
         }
         if (statusBar.tooltip.value) {
-            statusBar.tooltip.appendText("\n\n");
+            statusBar.tooltip.appendMarkdown("\n\n---\n\n");
         }
         statusBar.tooltip.appendMarkdown("\n\n[Open logs](command:rust-analyzer.openLogs)");
         statusBar.tooltip.appendMarkdown(
