@@ -40,7 +40,17 @@ fn execute_pipeline(
         let rustc_profile_dir_root = env.opt_artifacts().join("rustc-pgo");
 
         stage.section("Build PGO instrumented rustc and LLVM", |section| {
-            Bootstrap::build(env).rustc_pgo_instrument(&rustc_profile_dir_root).run(section)
+            let mut builder = Bootstrap::build(env).rustc_pgo_instrument(&rustc_profile_dir_root);
+
+            if env.supports_shared_llvm() {
+                // This first LLVM that we build will be thrown away after this stage, and it
+                // doesn't really need LTO. Without LTO, it builds in ~1 minute thanks to sccache,
+                // with LTO it takes almost 10 minutes. It makes the followup Rustc PGO
+                // instrumented/optimized build a bit slower, but it seems to be worth it.
+                builder = builder.without_llvm_lto();
+            }
+
+            builder.run(section)
         })?;
 
         let profile = stage

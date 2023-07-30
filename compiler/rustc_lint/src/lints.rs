@@ -743,10 +743,10 @@ pub enum InvalidFromUtf8Diag {
     },
 }
 
-// cast_ref_to_mut.rs
+// reference_casting.rs
 #[derive(LintDiagnostic)]
-#[diag(lint_cast_ref_to_mut)]
-pub struct CastRefToMutDiag;
+#[diag(lint_invalid_reference_casting)]
+pub struct InvalidReferenceCastingDiag;
 
 // hidden_unicode_codepoints.rs
 #[derive(LintDiagnostic)]
@@ -776,7 +776,7 @@ impl AddToDiagnostic for HiddenUnicodeCodepointsDiagLabels {
         ) -> rustc_errors::SubdiagnosticMessage,
     {
         for (c, span) in self.spans {
-            diag.span_label(span, format!("{:?}", c));
+            diag.span_label(span, format!("{c:?}"));
         }
     }
 }
@@ -808,7 +808,7 @@ impl AddToDiagnostic for HiddenUnicodeCodepointsDiagSub {
                     spans
                         .into_iter()
                         .map(|(c, span)| {
-                            let c = format!("{:?}", c);
+                            let c = format!("{c:?}");
                             (span, c[1..c.len() - 1].to_string())
                         })
                         .collect(),
@@ -823,7 +823,7 @@ impl AddToDiagnostic for HiddenUnicodeCodepointsDiagSub {
                     "escaped",
                     spans
                         .into_iter()
-                        .map(|(c, _)| format!("{:?}", c))
+                        .map(|(c, _)| format!("{c:?}"))
                         .collect::<Vec<String>>()
                         .join(", "),
                 );
@@ -1231,8 +1231,9 @@ pub enum NonUpperCaseGlobalSub {
 #[note]
 pub struct NoopMethodCallDiag<'a> {
     pub method: Symbol,
-    pub receiver_ty: Ty<'a>,
-    #[label]
+    pub orig_ty: Ty<'a>,
+    pub trait_: Symbol,
+    #[suggestion(code = "", applicability = "machine-applicable")]
     pub label: Span,
 }
 

@@ -69,9 +69,8 @@ fn bad_path_expr_1() {
 #[test]
 fn string_to_tts_macro() {
     create_default_session_globals_then(|| {
-        let tts: Vec<_> =
-            string_to_stream("macro_rules! zip (($a)=>($a))".to_string()).into_trees().collect();
-        let tts: &[TokenTree] = &tts[..];
+        let stream = string_to_stream("macro_rules! zip (($a)=>($a))".to_string());
+        let tts = &stream.trees().collect::<Vec<_>>()[..];
 
         match tts {
             [
@@ -300,9 +299,7 @@ fn ttdelim_span() {
         .unwrap();
 
         let ast::ExprKind::MacCall(mac) = &expr.kind else { panic!("not a macro") };
-        let tts: Vec<_> = mac.args.tokens.clone().into_trees().collect();
-
-        let span = tts.iter().rev().next().unwrap().span();
+        let span = mac.args.tokens.trees().last().unwrap().span();
 
         match sess.source_map().span_to_snippet(span) {
             Ok(s) => assert_eq!(&s[..], "{ body }"),

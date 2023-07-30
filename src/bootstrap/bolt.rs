@@ -49,6 +49,8 @@ pub fn optimize_with_bolt(path: &Path, profile_path: &Path, output_path: &Path) 
         .arg("-icf=1")
         // Update DWARF debug info in the final binary
         .arg("-update-debug-sections")
+        // Try to reuse old text segments to reduce binary size
+        .arg("--use-old-text")
         // Print optimization statistics
         .arg("-dyno-stats")
         .status()

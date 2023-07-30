@@ -65,6 +65,10 @@ impl Environment for WindowsEnvironment {
         false
     }
 
+    fn supports_shared_llvm(&self) -> bool {
+        false
+    }
+
     fn executable_extension(&self) -> &'static str {
         ".exe"
     }

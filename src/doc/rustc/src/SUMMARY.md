@@ -59,4 +59,6 @@
 - [Instrumentation-based Code Coverage](instrument-coverage.md)
 - [Linker-plugin-based LTO](linker-plugin-lto.md)
 - [Exploit Mitigations](exploit-mitigations.md)
+- [Symbol Mangling](symbol-mangling/index.md)
+    - [v0 Symbol Format](symbol-mangling/v0.md)
 - [Contributing to `rustc`](contributing.md)

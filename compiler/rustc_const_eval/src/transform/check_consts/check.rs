@@ -21,7 +21,7 @@ use std::mem;
 use std::ops::Deref;
 
 use super::ops::{self, NonConstOp, Status};
-use super::qualifs::{self, CustomEq, HasMutInterior, NeedsDrop, NeedsNonConstDrop};
+use super::qualifs::{self, CustomEq, HasMutInterior, NeedsDrop};
 use super::resolver::FlowSensitiveAnalysis;
 use super::{ConstCx, Qualif};
 use crate::const_eval::is_unstable_const_fn;
@@ -34,7 +34,7 @@ type QualifResults<'mir, 'tcx, Q> =
 pub struct Qualifs<'mir, 'tcx> {
     has_mut_interior: Option<QualifResults<'mir, 'tcx, HasMutInterior>>,
     needs_drop: Option<QualifResults<'mir, 'tcx, NeedsDrop>>,
-    needs_non_const_drop: Option<QualifResults<'mir, 'tcx, NeedsNonConstDrop>>,
+    // needs_non_const_drop: Option<QualifResults<'mir, 'tcx, NeedsNonConstDrop>>,
 }
 
 impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
@@ -77,15 +77,17 @@ impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
         local: Local,
         location: Location,
     ) -> bool {
+        // FIXME(effects) replace with `NeedsNonconstDrop` after const traits work again
+        /*
         let ty = ccx.body.local_decls[local].ty;
-        if !NeedsNonConstDrop::in_any_value_of_ty(ccx, ty) {
+        if !NeedsDrop::in_any_value_of_ty(ccx, ty) {
             return false;
         }
 
         let needs_non_const_drop = self.needs_non_const_drop.get_or_insert_with(|| {
             let ConstCx { tcx, body, .. } = *ccx;
 
-            FlowSensitiveAnalysis::new(NeedsNonConstDrop, ccx)
+            FlowSensitiveAnalysis::new(NeedsDrop, ccx)
                 .into_engine(tcx, &body)
                 .iterate_to_fixpoint()
                 .into_results_cursor(&body)
@@ -93,6 +95,9 @@ impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
 
         needs_non_const_drop.seek_before_primary_effect(location);
         needs_non_const_drop.get().contains(local)
+        */
+
+        self.needs_drop(ccx, local, location)
     }
 
     /// Returns `true` if `local` is `HasMutInterior` at the given `Location`.
@@ -798,16 +803,6 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                         }
                         Ok(Some(ImplSource::UserDefined(data))) => {
                             let callee_name = tcx.item_name(callee);
-                            if let Some(&did) = tcx
-                                .associated_item_def_ids(data.impl_def_id)
-                                .iter()
-                                .find(|did| tcx.item_name(**did) == callee_name)
-                            {
-                                // using internal args is ok here, since this is only
-                                // used for the `resolve` call below
-                                fn_args = GenericArgs::identity_for_item(tcx, did);
-                                callee = did;
-                            }
 
                             if let hir::Constness::NotConst = tcx.constness(data.impl_def_id) {
                                 self.check_op(ops::FnCallNonConst {
@@ -819,6 +814,17 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                                     feature: None,
                                 });
                                 return;
+                            }
+
+                            if let Some(&did) = tcx
+                                .associated_item_def_ids(data.impl_def_id)
+                                .iter()
+                                .find(|did| tcx.item_name(**did) == callee_name)
+                            {
+                                // using internal args is ok here, since this is only
+                                // used for the `resolve` call below
+                                fn_args = GenericArgs::identity_for_item(tcx, did);
+                                callee = did;
                             }
                         }
                         _ if !tcx.is_const_fn_raw(callee) => {
@@ -996,8 +1002,9 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 let mut err_span = self.span;
                 let ty_of_dropped_place = dropped_place.ty(self.body, self.tcx).ty;
 
+                // FIXME(effects) replace with `NeedsNonConstDrop` once we fix const traits
                 let ty_needs_non_const_drop =
-                    qualifs::NeedsNonConstDrop::in_any_value_of_ty(self.ccx, ty_of_dropped_place);
+                    qualifs::NeedsDrop::in_any_value_of_ty(self.ccx, ty_of_dropped_place);
 
                 debug!(?ty_of_dropped_place, ?ty_needs_non_const_drop);
 

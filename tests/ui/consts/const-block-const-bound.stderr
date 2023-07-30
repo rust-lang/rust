@@ -1,17 +1,11 @@
-error[E0277]: can't drop `UnconstDrop` in const contexts
-  --> $DIR/const-block-const-bound.rs:16:9
+error[E0493]: destructor of `T` cannot be evaluated at compile-time
+  --> $DIR/const-block-const-bound.rs:8:32
    |
-LL |         f(UnconstDrop);
-   |         ^^^^^^^^^^^^^^ the trait `~const Destruct` is not implemented for `UnconstDrop`
-   |
-   = note: the trait bound `UnconstDrop: ~const Destruct` is not satisfied
-help: consider borrowing here
-   |
-LL |         &f(UnconstDrop);
-   |         +
-LL |         &mut f(UnconstDrop);
-   |         ++++
+LL | const fn f<T: ~const Destruct>(x: T) {}
+   |                                ^      - value is dropped here
+   |                                |
+   |                                the destructor for this type cannot be evaluated in constant functions
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0277`.
+For more information about this error, try `rustc --explain E0493`.

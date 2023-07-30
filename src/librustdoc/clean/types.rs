@@ -824,9 +824,9 @@ pub(crate) enum ItemKind {
     ProcMacroItem(ProcMacro),
     PrimitiveItem(PrimitiveType),
     /// A required associated constant in a trait declaration.
-    TyAssocConstItem(Type),
+    TyAssocConstItem(Box<Generics>, Type),
     /// An associated constant in a trait impl or a provided one in a trait declaration.
-    AssocConstItem(Type, ConstantKind),
+    AssocConstItem(Box<Generics>, Type, ConstantKind),
     /// A required associated type in a trait declaration.
     ///
     /// The bounds may be non-empty if there is a `where` clause.
@@ -871,8 +871,8 @@ impl ItemKind {
             | MacroItem(_)
             | ProcMacroItem(_)
             | PrimitiveItem(_)
-            | TyAssocConstItem(_)
-            | AssocConstItem(_, _)
+            | TyAssocConstItem(..)
+            | AssocConstItem(..)
             | TyAssocTypeItem(..)
             | AssocTypeItem(..)
             | StrippedItem(_)
@@ -1219,15 +1219,24 @@ pub(crate) enum GenericBound {
 }
 
 impl GenericBound {
+    pub(crate) fn sized(cx: &mut DocContext<'_>) -> GenericBound {
+        Self::sized_with(cx, hir::TraitBoundModifier::None)
+    }
+
     pub(crate) fn maybe_sized(cx: &mut DocContext<'_>) -> GenericBound {
+        Self::sized_with(cx, hir::TraitBoundModifier::Maybe)
+    }
+
+    fn sized_with(cx: &mut DocContext<'_>, modifier: hir::TraitBoundModifier) -> GenericBound {
         let did = cx.tcx.require_lang_item(LangItem::Sized, None);
         let empty = ty::Binder::dummy(ty::GenericArgs::empty());
         let path = external_path(cx, did, false, ThinVec::new(), empty);
         inline::record_extern_fqn(cx, did, ItemType::Trait);
-        GenericBound::TraitBound(
-            PolyTrait { trait_: path, generic_params: Vec::new() },
-            hir::TraitBoundModifier::Maybe,
-        )
+        GenericBound::TraitBound(PolyTrait { trait_: path, generic_params: Vec::new() }, modifier)
+    }
+
+    pub(crate) fn is_trait_bound(&self) -> bool {
+        matches!(self, Self::TraitBound(..))
     }
 
     pub(crate) fn is_sized_bound(&self, cx: &DocContext<'_>) -> bool {
@@ -1269,7 +1278,7 @@ impl Lifetime {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub(crate) enum WherePredicate {
     BoundPredicate { ty: Type, bounds: Vec<GenericBound>, bound_params: Vec<GenericParamDef> },
     RegionPredicate { lifetime: Lifetime, bounds: Vec<GenericBound> },
@@ -1339,7 +1348,7 @@ impl GenericParamDef {
 }
 
 // maybe use a Generic enum and use Vec<Generic>?
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug, Default)]
 pub(crate) struct Generics {
     pub(crate) params: ThinVec<GenericParamDef>,
     pub(crate) where_predicates: ThinVec<WherePredicate>,
@@ -2203,6 +2212,17 @@ pub(crate) enum GenericArgs {
     Parenthesized { inputs: Box<[Type]>, output: Option<Box<Type>> },
 }
 
+impl GenericArgs {
+    pub(crate) fn is_empty(&self) -> bool {
+        match self {
+            GenericArgs::AngleBracketed { args, bindings } => {
+                args.is_empty() && bindings.is_empty()
+            }
+            GenericArgs::Parenthesized { inputs, output } => inputs.is_empty() && output.is_none(),
+        }
+    }
+}
+
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) struct PathSegment {
     pub(crate) name: Symbol,
@@ -2246,6 +2266,7 @@ pub(crate) struct Static {
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub(crate) struct Constant {
     pub(crate) type_: Type,
+    pub(crate) generics: Box<Generics>,
     pub(crate) kind: ConstantKind,
 }
 
@@ -2495,7 +2516,8 @@ mod size_asserts {
     static_assert_size!(GenericParamDef, 56);
     static_assert_size!(Generics, 16);
     static_assert_size!(Item, 56);
-    static_assert_size!(ItemKind, 64);
+    // FIXME(generic_const_items): Further reduce the size.
+    static_assert_size!(ItemKind, 72);
     static_assert_size!(PathSegment, 40);
     static_assert_size!(Type, 32);
     // tidy-alphabetical-end

@@ -94,10 +94,10 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
         // Estimate the capacity as `stream.len()` rounded up to the next power
         // of two to limit the number of required reallocations.
         let mut trees = Vec::with_capacity(stream.len().next_power_of_two());
-        let mut cursor = stream.into_trees();
+        let mut cursor = stream.trees();
 
         while let Some(tree) = cursor.next() {
-            let (Token { kind, span }, joint) = match tree {
+            let (Token { kind, span }, joint) = match tree.clone() {
                 tokenstream::TokenTree::Delimited(span, delim, tts) => {
                     let delimiter = pm::Delimiter::from_internal(delim);
                     trees.push(TokenTree::Group(Group {

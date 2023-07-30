@@ -1,18 +1,14 @@
 error: missing `~const` qualifier for specialization
-  --> $DIR/const-default-bound-non-const-specialized-bound.rs:32:8
+  --> $DIR/const-default-bound-non-const-specialized-bound.rs:33:8
+   |
+LL |     T: Foo, //FIXME ~ ERROR missing `~const` qualifier
+   |        ^^^
+
+error: missing `~const` qualifier for specialization
+  --> $DIR/const-default-bound-non-const-specialized-bound.rs:53:8
    |
 LL |     T: Foo,
    |        ^^^
 
-error[E0119]: conflicting implementations of trait `Baz`
-  --> $DIR/const-default-bound-non-const-specialized-bound.rs:50:1
-   |
-LL | impl<T> const Baz for T
-   | ----------------------- first implementation here
-...
-LL | impl<T> const Baz for T
-   | ^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation
-
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0119`.

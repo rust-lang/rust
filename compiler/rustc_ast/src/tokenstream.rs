@@ -25,6 +25,7 @@ use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_span::{Span, DUMMY_SP};
 use smallvec::{smallvec, SmallVec};
 
+use std::borrow::Cow;
 use std::{fmt, iter, mem};
 
 /// When the main Rust parser encounters a syntax-extension invocation, it
@@ -98,12 +99,13 @@ impl TokenTree {
         TokenTree::Token(Token::new(kind, span), Spacing::Joint)
     }
 
-    pub fn uninterpolate(self) -> TokenTree {
+    pub fn uninterpolate(&self) -> Cow<'_, TokenTree> {
         match self {
-            TokenTree::Token(token, spacing) => {
-                TokenTree::Token(token.uninterpolate().into_owned(), spacing)
-            }
-            tt => tt,
+            TokenTree::Token(token, spacing) => match token.uninterpolate() {
+                Cow::Owned(token) => Cow::Owned(TokenTree::Token(token, *spacing)),
+                Cow::Borrowed(_) => Cow::Borrowed(self),
+            },
+            _ => Cow::Borrowed(self),
         }
     }
 }
@@ -595,24 +597,19 @@ impl<'t> Iterator for RefTokenTreeCursor<'t> {
     }
 }
 
-/// Owning by-value iterator over a [`TokenStream`], that produces `TokenTree`
+/// Owning by-value iterator over a [`TokenStream`], that produces `&TokenTree`
 /// items.
-// FIXME: Many uses of this can be replaced with by-reference iterator to avoid clones.
+///
+/// Doesn't impl `Iterator` because Rust doesn't permit an owning iterator to
+/// return `&T` from `next`; the need for an explicit lifetime in the `Item`
+/// associated type gets in the way. Instead, use `next_ref` (which doesn't
+/// involve associated types) for getting individual elements, or
+/// `RefTokenTreeCursor` if you really want an `Iterator`, e.g. in a `for`
+/// loop.
 #[derive(Clone)]
 pub struct TokenTreeCursor {
     pub stream: TokenStream,
     index: usize,
-}
-
-impl Iterator for TokenTreeCursor {
-    type Item = TokenTree;
-
-    fn next(&mut self) -> Option<TokenTree> {
-        self.stream.0.get(self.index).map(|tree| {
-            self.index += 1;
-            tree.clone()
-        })
-    }
 }
 
 impl TokenTreeCursor {

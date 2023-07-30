@@ -23,7 +23,7 @@ pub fn zero_len_array() {
 // CHECK-LABEL: @byte_array
 #[no_mangle]
 pub fn byte_array() {
-    // CHECK: call void @llvm.memset.{{.+}}({{i8\*|ptr}} {{.*}}, i8 7, i{{[0-9]+}} 4
+    // CHECK: call void @llvm.memset.{{.+}}(ptr {{.*}}, i8 7, i{{[0-9]+}} 4
     // CHECK-NOT: br label %repeat_loop_header{{.*}}
     let x = [7u8; 4];
     opaque(&x);
@@ -39,7 +39,7 @@ enum Init {
 // CHECK-LABEL: @byte_enum_array
 #[no_mangle]
 pub fn byte_enum_array() {
-    // CHECK: call void @llvm.memset.{{.+}}({{i8\*|ptr}} {{.*}}, i8 {{.*}}, i{{[0-9]+}} 4
+    // CHECK: call void @llvm.memset.{{.+}}(ptr {{.*}}, i8 {{.*}}, i{{[0-9]+}} 4
     // CHECK-NOT: br label %repeat_loop_header{{.*}}
     let x = [Init::Memset; 4];
     opaque(&x);
@@ -48,7 +48,7 @@ pub fn byte_enum_array() {
 // CHECK-LABEL: @zeroed_integer_array
 #[no_mangle]
 pub fn zeroed_integer_array() {
-    // CHECK: call void @llvm.memset.{{.+}}({{i8\*|ptr}} {{.*}}, i8 0, i{{[0-9]+}} 16
+    // CHECK: call void @llvm.memset.{{.+}}(ptr {{.*}}, i8 0, i{{[0-9]+}} 16
     // CHECK-NOT: br label %repeat_loop_header{{.*}}
     let x = [0u32; 4];
     opaque(&x);

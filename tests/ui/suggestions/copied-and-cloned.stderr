@@ -86,11 +86,37 @@ LL |     println!("{}", x == y);
    |
    = note: expected enum `Option<String>`
               found enum `Option<&String>`
-help: use `Option::as_ref()` to convert `Option<String>` to `Option<&String>`
+help: use `Option::as_ref` to convert `Option<String>` to `Option<&String>`
    |
 LL |     println!("{}", x.as_ref() == y);
    |                     +++++++++
 
-error: aborting due to 5 previous errors
+error[E0308]: mismatched types
+  --> $DIR/copied-and-cloned.rs:35:25
+   |
+LL |     println!("{}", x == y);
+   |                         ^ expected `Option<()>`, found `Option<&mut ()>`
+   |
+   = note: expected enum `Option<()>`
+              found enum `Option<&mut ()>`
+help: use `Option::copied` to copy the value inside the `Option`
+   |
+LL |     println!("{}", x == y.copied());
+   |                          +++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/copied-and-cloned.rs:42:25
+   |
+LL |     println!("{}", x == y);
+   |                         ^ expected `Option<String>`, found `Option<&mut String>`
+   |
+   = note: expected enum `Option<String>`
+              found enum `Option<&mut String>`
+help: use `Option::cloned` to clone the value inside the `Option`
+   |
+LL |     println!("{}", x == y.cloned());
+   |                          +++++++++
+
+error: aborting due to 7 previous errors
 
 For more information about this error, try `rustc --explain E0308`.

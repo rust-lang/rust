@@ -644,6 +644,10 @@ pub(crate) fn print_inlined_const(tcx: TyCtxt<'_>, did: DefId) -> String {
 }
 
 fn build_const(cx: &mut DocContext<'_>, def_id: DefId) -> clean::Constant {
+    let mut generics =
+        clean_ty_generics(cx, cx.tcx.generics_of(def_id), cx.tcx.explicit_predicates_of(def_id));
+    clean::simplify::move_bounds_to_generic_parameters(&mut generics);
+
     clean::Constant {
         type_: clean_middle_ty(
             ty::Binder::dummy(cx.tcx.type_of(def_id).instantiate_identity()),
@@ -651,6 +655,7 @@ fn build_const(cx: &mut DocContext<'_>, def_id: DefId) -> clean::Constant {
             Some(def_id),
             None,
         ),
+        generics: Box::new(generics),
         kind: clean::ConstantKind::Extern { def_id },
     }
 }

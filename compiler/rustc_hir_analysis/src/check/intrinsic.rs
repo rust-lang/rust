@@ -134,7 +134,7 @@ pub fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: DefId) -> hir
 /// Remember to add all intrinsics here, in `compiler/rustc_codegen_llvm/src/intrinsic.rs`,
 /// and in `library/core/src/intrinsics.rs`.
 pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
-    let param = |n| Ty::new_param(tcx, n, Symbol::intern(&format!("P{}", n)));
+    let param = |n| Ty::new_param(tcx, n, Symbol::intern(&format!("P{n}")));
     let intrinsic_id = it.owner_id.to_def_id();
     let intrinsic_name = tcx.item_name(intrinsic_id);
     let name_str = intrinsic_name.as_str();
@@ -494,7 +494,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
 /// Type-check `extern "platform-intrinsic" { ... }` functions.
 pub fn check_platform_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
     let param = |n| {
-        let name = Symbol::intern(&format!("P{}", n));
+        let name = Symbol::intern(&format!("P{n}"));
         Ty::new_param(tcx, n, name)
     };
 
@@ -521,6 +521,10 @@ pub fn check_platform_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>)
         | sym::simd_saturating_sub => (1, vec![param(0), param(0)], param(0)),
         sym::simd_arith_offset => (2, vec![param(0), param(1)], param(0)),
         sym::simd_neg
+        | sym::simd_bswap
+        | sym::simd_bitreverse
+        | sym::simd_ctlz
+        | sym::simd_cttz
         | sym::simd_fsqrt
         | sym::simd_fsin
         | sym::simd_fcos

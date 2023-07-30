@@ -129,9 +129,8 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
     // We don't need to normalize this param-env or anything, since we're only
     // substituting it with free params, so no additional param-env normalization
     // can occur on top of what has been done in the param_env query itself.
-    let param_env = ty::EarlyBinder::bind(tcx.param_env(adt_def_id))
-        .instantiate(tcx, adt_to_impl_args)
-        .with_constness(tcx.constness(drop_impl_def_id));
+    let param_env =
+        ty::EarlyBinder::bind(tcx.param_env(adt_def_id)).instantiate(tcx, adt_to_impl_args);
 
     for (pred, span) in tcx.predicates_of(drop_impl_def_id).instantiate_identity(tcx) {
         let normalize_cause = traits::ObligationCause::misc(span, adt_def_id);

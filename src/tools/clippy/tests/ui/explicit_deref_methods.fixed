@@ -4,6 +4,7 @@
 #![allow(
     clippy::borrow_deref_ref,
     suspicious_double_ref_op,
+    noop_method_call,
     clippy::explicit_auto_deref,
     clippy::needless_borrow,
     clippy::no_effect,

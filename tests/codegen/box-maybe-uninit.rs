@@ -1,5 +1,4 @@
 // compile-flags: -O
-// min-llvm-version: 15.0
 #![crate_type = "lib"]
 
 use std::mem::MaybeUninit;

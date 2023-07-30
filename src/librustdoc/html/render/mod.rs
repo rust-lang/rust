@@ -748,20 +748,22 @@ fn assoc_href_attr(it: &clean::Item, link: AssocItemLink<'_>, cx: &Context<'_>) 
 fn assoc_const(
     w: &mut Buffer,
     it: &clean::Item,
+    generics: &clean::Generics,
     ty: &clean::Type,
     default: Option<&clean::ConstantKind>,
     link: AssocItemLink<'_>,
-    extra: &str,
+    indent: usize,
     cx: &Context<'_>,
 ) {
     let tcx = cx.tcx();
     write!(
         w,
-        "{extra}{vis}const <a{href} class=\"constant\">{name}</a>: {ty}",
-        extra = extra,
+        "{indent}{vis}const <a{href} class=\"constant\">{name}</a>{generics}: {ty}",
+        indent = " ".repeat(indent),
         vis = visibility_print_with_space(it.visibility(tcx), it.item_id, cx),
         href = assoc_href_attr(it, link, cx),
         name = it.name.as_ref().unwrap(),
+        generics = generics.print(cx),
         ty = ty.print(cx),
     );
     if let Some(default) = default {
@@ -774,6 +776,7 @@ fn assoc_const(
         //        Find a way to print constants here without all that jazz.
         write!(w, "{}", Escape(&default.value(tcx).unwrap_or_else(|| default.expr(tcx))));
     }
+    write!(w, "{}", print_where_clause(generics, cx, indent, Ending::NoNewline));
 }
 
 fn assoc_type(
@@ -986,19 +989,22 @@ fn render_assoc_item(
         clean::MethodItem(m, _) => {
             assoc_method(w, item, &m.generics, &m.decl, link, parent, cx, render_mode)
         }
-        kind @ (clean::TyAssocConstItem(ty) | clean::AssocConstItem(ty, _)) => assoc_const(
-            w,
-            item,
-            ty,
-            match kind {
-                clean::TyAssocConstItem(_) => None,
-                clean::AssocConstItem(_, default) => Some(default),
-                _ => unreachable!(),
-            },
-            link,
-            if parent == ItemType::Trait { "    " } else { "" },
-            cx,
-        ),
+        kind @ (clean::TyAssocConstItem(generics, ty) | clean::AssocConstItem(generics, ty, _)) => {
+            assoc_const(
+                w,
+                item,
+                generics,
+                ty,
+                match kind {
+                    clean::TyAssocConstItem(..) => None,
+                    clean::AssocConstItem(.., default) => Some(default),
+                    _ => unreachable!(),
+                },
+                link,
+                if parent == ItemType::Trait { 4 } else { 0 },
+                cx,
+            )
+        }
         clean::TyAssocTypeItem(ref generics, ref bounds) => assoc_type(
             w,
             item,
@@ -1565,7 +1571,8 @@ fn render_impl(
                     w.write_str("</section>");
                 }
             }
-            kind @ (clean::TyAssocConstItem(ty) | clean::AssocConstItem(ty, _)) => {
+            kind @ (clean::TyAssocConstItem(generics, ty)
+            | clean::AssocConstItem(generics, ty, _)) => {
                 let source_id = format!("{}.{}", item_type, name);
                 let id = cx.derive_id(source_id.clone());
                 write!(w, "<section id=\"{}\" class=\"{}{}\">", id, item_type, in_trait_class);
@@ -1578,14 +1585,15 @@ fn render_impl(
                 assoc_const(
                     w,
                     item,
+                    generics,
                     ty,
                     match kind {
-                        clean::TyAssocConstItem(_) => None,
-                        clean::AssocConstItem(_, default) => Some(default),
+                        clean::TyAssocConstItem(..) => None,
+                        clean::AssocConstItem(.., default) => Some(default),
                         _ => unreachable!(),
                     },
                     link.anchor(if trait_.is_some() { &source_id } else { &id }),
-                    "",
+                    0,
                     cx,
                 );
                 w.write_str("</h4>");

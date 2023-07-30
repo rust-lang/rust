@@ -3,7 +3,6 @@
 // in the operators for such a type all optimize away.
 
 // compile-flags: -C opt-level=1
-// min-llvm-version: 15.0
 
 #![crate_type = "lib"]
 

@@ -156,7 +156,7 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
             let Some(type_dependent_def) = tables.type_dependent_def_id(parent_node_id) else {
                 return Ty::new_error_with_message(tcx,
                     tcx.def_span(def_id),
-                    format!("unable to find type-dependent def for {:?}", parent_node_id),
+                    format!("unable to find type-dependent def for {parent_node_id:?}"),
                 );
             };
             let idx = segment
@@ -197,14 +197,14 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
                     } else {
                         return Ty::new_error_with_message(tcx,
                             tcx.def_span(def_id),
-                            format!("unable to find const parent for {} in pat {:?}", hir_id, pat),
+                            format!("unable to find const parent for {hir_id} in pat {pat:?}"),
                         );
                     }
                 }
                 _ => {
                     return Ty::new_error_with_message(tcx,
                         tcx.def_span(def_id),
-                        format!("unexpected const parent path {:?}", parent_node),
+                        format!("unexpected const parent path {parent_node:?}"),
                     );
                 }
             };
@@ -404,7 +404,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<Ty
                         icx.to_ty(ty)
                     }
                 }
-                ItemKind::Const(ty, body_id) => {
+                ItemKind::Const(ty, _, body_id) => {
                     if is_suggestable_infer_ty(ty) {
                         infer_placeholder_type(
                             tcx, def_id, body_id, ty.span, item.ident, "constant",
@@ -544,7 +544,7 @@ fn infer_placeholder_type<'a>(
                 if let Some(ty) = ty.make_suggestable(tcx, false) {
                     err.span_suggestion(
                         span,
-                        format!("provide a type for the {item}", item = kind),
+                        format!("provide a type for the {kind}"),
                         format!("{colon} {ty}"),
                         Applicability::MachineApplicable,
                     );

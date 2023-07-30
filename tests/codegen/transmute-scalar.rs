@@ -1,5 +1,4 @@
 // compile-flags: -C opt-level=0 -C no-prepopulate-passes
-// min-llvm-version: 15.0 # this test assumes `ptr`s and thus no `pointercast`s
 
 #![crate_type = "lib"]
 

@@ -569,13 +569,15 @@ for the purpose of generating object code and linking.
 
 Supported values for this option are:
 
-* `v0` — The "v0" mangling scheme. The specific format is not specified at
-  this time.
+* `v0` — The "v0" mangling scheme.
 
 The default, if not specified, will use a compiler-chosen default which may
 change in the future.
 
+See the [Symbol Mangling] chapter for details on symbol mangling and the mangling format.
+
 [name mangling]: https://en.wikipedia.org/wiki/Name_mangling
+[Symbol Mangling]: ../symbol-mangling/index.md
 
 ## target-cpu
 

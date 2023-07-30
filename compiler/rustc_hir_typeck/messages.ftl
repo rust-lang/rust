@@ -77,6 +77,10 @@ hir_typeck_note_edition_guide = for more on editions, read https://doc.rust-lang
 
 hir_typeck_op_trait_generic_params = `{$method_name}` must not have any generic parameters
 
+hir_typeck_option_result_asref = use `{$def_path}::as_ref` to convert `{$expected_ty}` to `{$expr_ty}`
+hir_typeck_option_result_cloned = use `{$def_path}::cloned` to clone the value inside the `{$def_path}`
+hir_typeck_option_result_copied = use `{$def_path}::copied` to copy the value inside the `{$def_path}`
+
 hir_typeck_return_stmt_outside_of_fn_body =
     {$statement_kind} statement outside of function body
     .encl_body_label = the {$statement_kind} is part of this body...

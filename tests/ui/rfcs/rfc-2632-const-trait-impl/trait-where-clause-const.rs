@@ -2,6 +2,8 @@
 // Checking the validity of traits' where clauses happen at a later stage.
 // (`rustc_const_eval` instead of `rustc_hir_analysis`) Therefore one file as a
 // test is not enough.
+// known-bug: #110395
+// check-pass
 #![feature(const_trait_impl)]
 
 #[const_trait]
@@ -17,9 +19,9 @@ trait Foo {
 const fn test1<T: ~const Foo + Bar>() {
     T::a();
     T::b();
-    //~^ ERROR the trait bound
+    //FIXME ~^ ERROR the trait bound
     T::c::<T>();
-    //~^ ERROR the trait bound
+    //FIXME ~^ ERROR the trait bound
 }
 
 const fn test2<T: ~const Foo + ~const Bar>() {

@@ -687,9 +687,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 match bound_predicate.skip_binder() {
                     ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_predicate)) => {
                         let trait_predicate = bound_predicate.rebind(trait_predicate);
-                        let mut trait_predicate = self.resolve_vars_if_possible(trait_predicate);
+                        let trait_predicate = self.resolve_vars_if_possible(trait_predicate);
 
-                        trait_predicate.remap_constness_diag(obligation.param_env);
                         let predicate_is_const = ty::BoundConstness::ConstIfConst
                             == trait_predicate.skip_binder().constness;
 
@@ -3108,11 +3107,11 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         span: Span,
     ) -> UnsatisfiedConst {
         let mut unsatisfied_const = UnsatisfiedConst(false);
-        if trait_predicate.is_const_if_const() && obligation.param_env.is_const() {
+        if trait_predicate.is_const_if_const() {
             let non_const_predicate = trait_ref.without_const();
             let non_const_obligation = Obligation {
                 cause: obligation.cause.clone(),
-                param_env: obligation.param_env.without_const(),
+                param_env: obligation.param_env,
                 predicate: non_const_predicate.to_predicate(self.tcx),
                 recursion_depth: obligation.recursion_depth,
             };

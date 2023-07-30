@@ -126,12 +126,12 @@ impl<'k> StatCollector<'k> {
 
         let total_size = nodes.iter().map(|(_, node)| node.stats.count * node.stats.size).sum();
 
-        eprintln!("{} {}", prefix, title);
+        eprintln!("{prefix} {title}");
         eprintln!(
             "{} {:<18}{:>18}{:>14}{:>14}",
             prefix, "Name", "Accumulated Size", "Count", "Item Size"
         );
-        eprintln!("{} ----------------------------------------------------------------", prefix);
+        eprintln!("{prefix} ----------------------------------------------------------------");
 
         let percent = |m, n| (m * 100) as f64 / n as f64;
 
@@ -163,9 +163,9 @@ impl<'k> StatCollector<'k> {
                 }
             }
         }
-        eprintln!("{} ----------------------------------------------------------------", prefix);
+        eprintln!("{prefix} ----------------------------------------------------------------");
         eprintln!("{} {:<18}{:>10}", prefix, "Total", to_readable_str(total_size));
-        eprintln!("{}", prefix);
+        eprintln!("{prefix}");
     }
 }
 

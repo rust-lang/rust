@@ -1,5 +1,4 @@
 // compile-flags: -O -C no-prepopulate-passes
-// min-llvm-version: 15.0 (for opaque pointers)
 // only-x86_64 (to not worry about usize differing)
 // ignore-debug (the debug assertions get in the way)
 

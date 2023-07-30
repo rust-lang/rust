@@ -20,12 +20,6 @@ LL |     Bar,
    |
    = help: specify the slug as the first argument to the `#[diag(...)]` attribute, such as `#[diag(hir_analysis_example_error)]`
 
-error: expected parentheses: #[diag(...)]
-  --> $DIR/diagnostic-derive.rs:55:8
-   |
-LL | #[diag = "E0123"]
-   |        ^
-
 error: `#[nonsense(...)]` is not a valid attribute
   --> $DIR/diagnostic-derive.rs:60:1
    |
@@ -477,18 +471,20 @@ LL | #[multipart_suggestion(no_crate_suggestion)]
    = help: consider creating a `Subdiagnostic` instead
 
 error: `#[multipart_suggestion(...)]` is not a valid attribute
+  --> $DIR/diagnostic-derive.rs:645:1
+   |
+LL | #[multipart_suggestion()]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider creating a `Subdiagnostic` instead
+
+error: `#[multipart_suggestion(...)]` is not a valid attribute
   --> $DIR/diagnostic-derive.rs:649:5
    |
 LL |     #[multipart_suggestion(no_crate_suggestion)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: consider creating a `Subdiagnostic` instead
-
-error: unexpected end of input, unexpected token in nested attribute, expected ident
-  --> $DIR/diagnostic-derive.rs:645:24
-   |
-LL | #[multipart_suggestion()]
-   |                        ^
 
 error: `#[suggestion(...)]` is not a valid attribute
   --> $DIR/diagnostic-derive.rs:657:1
@@ -550,18 +546,6 @@ error: `code(...)` must contain only string literals
 LL |     #[suggestion(code(foo))]
    |                       ^^^
 
-error: unexpected token
-  --> $DIR/diagnostic-derive.rs:798:23
-   |
-LL |     #[suggestion(code(foo))]
-   |                       ^^^
-
-error: expected string literal
-  --> $DIR/diagnostic-derive.rs:807:25
-   |
-LL |     #[suggestion(code = 3)]
-   |                         ^
-
 error: `#[suggestion(...)]` is not a valid attribute
   --> $DIR/diagnostic-derive.rs:822:5
    |
@@ -571,6 +555,24 @@ LL |     #[suggestion(no_crate_suggestion, code = "")]
    = note: `#[suggestion(...)]` applied to `Vec` field is ambiguous
    = help: to show a suggestion consisting of multiple parts, use a `Subdiagnostic` annotated with `#[multipart_suggestion(...)]`
    = help: to show a variable set of suggestions, use a `Vec` of `Subdiagnostic`s annotated with `#[suggestion(...)]`
+
+error[E0433]: failed to resolve: maybe a missing crate `core`?
+  --> $DIR/diagnostic-derive.rs:55:8
+   |
+LL | #[diag = "E0123"]
+   |        ^ maybe a missing crate `core`?
+
+error[E0433]: failed to resolve: maybe a missing crate `core`?
+  --> $DIR/diagnostic-derive.rs:798:23
+   |
+LL |     #[suggestion(code(foo))]
+   |                       ^^^ maybe a missing crate `core`?
+
+error[E0433]: failed to resolve: maybe a missing crate `core`?
+  --> $DIR/diagnostic-derive.rs:807:25
+   |
+LL |     #[suggestion(code = 3)]
+   |                         ^ maybe a missing crate `core`?
 
 error: cannot find attribute `nonsense` in this scope
   --> $DIR/diagnostic-derive.rs:60:3
@@ -656,5 +658,5 @@ note: required by a bound in `DiagnosticBuilder::<'a, G>::set_arg`
 
 error: aborting due to 84 previous errors
 
-Some errors have detailed explanations: E0277, E0425.
+Some errors have detailed explanations: E0277, E0425, E0433.
 For more information about an error, try `rustc --explain E0277`.

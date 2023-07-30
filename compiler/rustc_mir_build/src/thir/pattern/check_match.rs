@@ -691,7 +691,7 @@ fn non_exhaustive_match<'p, 'tcx>(
         err = create_e0004(
             cx.tcx.sess,
             sp,
-            format!("non-exhaustive patterns: {} not covered", joined_patterns),
+            format!("non-exhaustive patterns: {joined_patterns} not covered"),
         );
         err.span_label(sp, pattern_not_covered_label(&witnesses, &joined_patterns));
         patterns_len = witnesses.len();
@@ -721,15 +721,13 @@ fn non_exhaustive_match<'p, 'tcx>(
         && matches!(witnesses[0].ctor(), Constructor::NonExhaustive)
     {
         err.note(format!(
-            "`{}` does not have a fixed maximum value, so a wildcard `_` is necessary to match \
+            "`{scrut_ty}` does not have a fixed maximum value, so a wildcard `_` is necessary to match \
              exhaustively",
-            scrut_ty,
         ));
         if cx.tcx.sess.is_nightly_build() {
             err.help(format!(
                 "add `#![feature(precise_pointer_size_matching)]` to the crate attributes to \
-                 enable precise `{}` matching",
-                scrut_ty,
+                 enable precise `{scrut_ty}` matching",
             ));
         }
     }
@@ -745,18 +743,13 @@ fn non_exhaustive_match<'p, 'tcx>(
         [] if sp.eq_ctxt(expr_span) => {
             // Get the span for the empty match body `{}`.
             let (indentation, more) = if let Some(snippet) = sm.indentation_before(sp) {
-                (format!("\n{}", snippet), "    ")
+                (format!("\n{snippet}"), "    ")
             } else {
                 (" ".to_string(), "")
             };
             suggestion = Some((
                 sp.shrink_to_hi().with_hi(expr_span.hi()),
-                format!(
-                    " {{{indentation}{more}{pattern} => todo!(),{indentation}}}",
-                    indentation = indentation,
-                    more = more,
-                    pattern = pattern,
-                ),
+                format!(" {{{indentation}{more}{pattern} => todo!(),{indentation}}}",),
             ));
         }
         [only] => {
@@ -765,7 +758,7 @@ fn non_exhaustive_match<'p, 'tcx>(
                 && let Ok(with_trailing) = sm.span_extend_while(only.span, |c| c.is_whitespace() || c == ',')
                 && sm.is_multiline(with_trailing)
             {
-                (format!("\n{}", snippet), true)
+                (format!("\n{snippet}"), true)
             } else {
                 (" ".to_string(), false)
             };
@@ -780,7 +773,7 @@ fn non_exhaustive_match<'p, 'tcx>(
             };
             suggestion = Some((
                 only.span.shrink_to_hi(),
-                format!("{}{}{} => todo!()", comma, pre_indentation, pattern),
+                format!("{comma}{pre_indentation}{pattern} => todo!()"),
             ));
         }
         [.., prev, last] => {
@@ -803,7 +796,7 @@ fn non_exhaustive_match<'p, 'tcx>(
                 if let Some(spacing) = spacing {
                     suggestion = Some((
                         last.span.shrink_to_hi(),
-                        format!("{}{}{} => todo!()", comma, spacing, pattern),
+                        format!("{comma}{spacing}{pattern} => todo!()"),
                     ));
                 }
             }
@@ -900,7 +893,7 @@ fn adt_defined_here<'p, 'tcx>(
         for pat in spans {
             span.push_span_label(pat, "not covered");
         }
-        err.span_note(span, format!("`{}` defined here", ty));
+        err.span_note(span, format!("`{ty}` defined here"));
     }
 }
 

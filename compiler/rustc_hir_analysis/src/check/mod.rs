@@ -214,7 +214,7 @@ fn missing_items_err(
             trait_item,
             tcx.impl_trait_ref(impl_def_id).unwrap().instantiate_identity(),
         );
-        let code = format!("{}{}\n{}", padding, snippet, padding);
+        let code = format!("{padding}{snippet}\n{padding}");
         if let Some(span) = tcx.hir().span_if_local(trait_item.def_id) {
             missing_trait_item_label
                 .push(errors::MissingTraitItemLabel { span, item: trait_item.name });

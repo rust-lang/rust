@@ -2348,6 +2348,14 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             let mut should_continue = true;
             match rib.kind {
                 LifetimeRibKind::Generics { binder: _, span, kind } => {
+                    // Avoid suggesting placing lifetime parameters on constant items unless the relevant
+                    // feature is enabled. Suggest the parent item as a possible location if applicable.
+                    if let LifetimeBinderKind::ConstItem = kind
+                        && !self.r.tcx().features().generic_const_items
+                    {
+                        continue;
+                    }
+
                     if !span.can_be_used_for_suggestions() && suggest_note && let Some(name) = name {
                         suggest_note = false; // Avoid displaying the same help multiple times.
                         err.span_label(

@@ -8,8 +8,8 @@ and the working directory to contain the cargo-miri-test project.
 import difflib
 import os
 import re
-import sys
 import subprocess
+import sys
 
 CGREEN  = '\33[32m'
 CBOLD   = '\33[1m'
@@ -37,7 +37,8 @@ def normalize_stderr(str):
     return str
 
 def check_output(actual, path, name):
-    if 'MIRI_BLESS' in os.environ:
+    if os.environ.get("RUSTC_BLESS", "0") != "0":
+        # Write the output only if bless is set
         open(path, mode='w').write(actual)
         return True
     expected = open(path).read()

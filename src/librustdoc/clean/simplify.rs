@@ -138,3 +138,38 @@ fn trait_is_same_or_supertrait(cx: &DocContext<'_>, child: DefId, trait_: DefId)
         })
         .any(|did| trait_is_same_or_supertrait(cx, did, trait_))
 }
+
+/// Move bounds that are (likely) directly attached to generic parameters from the where-clause to
+/// the respective parameter.
+///
+/// There is no guarantee that this is what the user actually wrote but we have no way of knowing.
+// FIXME(fmease): It'd make a lot of sense to just incorporate this logic into `clean_ty_generics`
+// making every of its users benefit from it.
+pub(crate) fn move_bounds_to_generic_parameters(generics: &mut clean::Generics) {
+    use clean::types::*;
+
+    let mut where_predicates = ThinVec::new();
+    for mut pred in generics.where_predicates.drain(..) {
+        if let WherePredicate::BoundPredicate { ty: Generic(arg), bounds, .. } = &mut pred
+            && let Some(GenericParamDef {
+                kind: GenericParamDefKind::Type { bounds: param_bounds, .. },
+                ..
+            }) = generics.params.iter_mut().find(|param| &param.name == arg)
+        {
+            param_bounds.append(bounds);
+        } else if let WherePredicate::RegionPredicate { lifetime: Lifetime(arg), bounds } = &mut pred
+            && let Some(GenericParamDef {
+                kind: GenericParamDefKind::Lifetime { outlives: param_bounds },
+                ..
+            }) = generics.params.iter_mut().find(|param| &param.name == arg)
+        {
+            param_bounds.extend(bounds.drain(..).map(|bound| match bound {
+                GenericBound::Outlives(lifetime) => lifetime,
+                _ => unreachable!(),
+            }));
+        } else {
+            where_predicates.push(pred);
+        }
+    }
+    generics.where_predicates = where_predicates;
+}

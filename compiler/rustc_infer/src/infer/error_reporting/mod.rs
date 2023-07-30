@@ -2068,7 +2068,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 visitor.visit_body(body);
                 visitor.result.map(|r| &r.peel_refs().kind)
             }
-            Some(hir::Node::Item(hir::Item { kind: hir::ItemKind::Const(ty, _), .. })) => {
+            Some(hir::Node::Item(hir::Item { kind: hir::ItemKind::Const(ty, _, _), .. })) => {
                 Some(&ty.peel_refs().kind)
             }
             _ => None,

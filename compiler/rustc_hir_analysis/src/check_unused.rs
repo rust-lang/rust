@@ -36,7 +36,7 @@ fn check_unused_traits(tcx: TyCtxt<'_>, (): ()) {
         }
         let (path, _) = item.expect_use();
         let msg = if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(path.span) {
-            format!("unused import: `{}`", snippet)
+            format!("unused import: `{snippet}`")
         } else {
             "unused import".to_owned()
         };

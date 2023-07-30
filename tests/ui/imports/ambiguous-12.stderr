@@ -1,0 +1,25 @@
+warning: `b` is ambiguous
+  --> $DIR/ambiguous-12.rs:22:5
+   |
+LL |     b();
+   |     ^ ambiguous name
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `b` could refer to the function imported here
+  --> $DIR/ambiguous-12.rs:18:5
+   |
+LL | use crate::ciphertext::*;
+   |     ^^^^^^^^^^^^^^^^^^^^
+   = help: consider adding an explicit import of `b` to disambiguate
+note: `b` could also refer to the function imported here
+  --> $DIR/ambiguous-12.rs:19:5
+   |
+LL | use crate::public::*;
+   |     ^^^^^^^^^^^^^^^^
+   = help: consider adding an explicit import of `b` to disambiguate
+   = note: `#[warn(ambiguous_glob_imports)]` on by default
+
+warning: 1 warning emitted
+
