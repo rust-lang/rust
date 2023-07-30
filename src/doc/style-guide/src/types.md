@@ -1,6 +1,6 @@
-## Types and Bounds
+# Types and Bounds
 
-### Single line formatting
+## Single line formatting
 
 * `[T]` no spaces
 * `[T; expr]`, e.g., `[u32; 42]`, `[Vec<Foo>; 10 * 2 + foo()]` (space after colon, no spaces around square brackets)
@@ -16,8 +16,7 @@
 
 Do not put space around parentheses used in types, e.g., `(Foo)`
 
-
-### Line breaks
+## Line breaks
 
 Avoid breaking lines in types where possible. Prefer breaking at outermost scope, e.g., prefer
 

@@ -100,10 +100,12 @@ fn baz() {}
 ```
 
 ### [Module-level items](items.md)
-### [Statements](statements.md)
-### [Expressions](expressions.md)
-### [Types](types.md)
 
+### [Statements](statements.md)
+
+### [Expressions](expressions.md)
+
+### [Types](types.md)
 
 ### Comments
 
