@@ -14,31 +14,18 @@ where
     let start = data.partition_point(|x| key_fn(x) < *key);
     // At this point `start` either points at the first entry with equal or
     // greater key or is equal to `size` in case all elements have smaller keys
+    // Invariant: start == size || key_fn(&data[start]) >= *key
     if start == size || key_fn(&data[start]) != *key {
         return &[];
     };
+    // Invariant: start < size && key_fn(&data[start]) == *key
 
-    // Now search forward to find the *last* one.
-    let mut end = start;
-    let mut previous = start;
-    let mut step = 1;
-    loop {
-        end = end.saturating_add(step).min(size);
-        if end == size || key_fn(&data[end]) != *key {
-            break;
-        }
-        previous = end;
-        step *= 2;
-    }
-    step = end - previous;
-    while step > 1 {
-        let half = step / 2;
-        let mid = end - half;
-        if key_fn(&data[mid]) != *key {
-            end = mid;
-        }
-        step -= half;
-    }
+    // Find the first entry with key > `key`. Skip `start` entries since
+    // key_fn(&data[start]) == *key
+    // Invariant: offset == size ||  key_fn(&data[offset]) >= *key
+    let offset = start + 1;
+    let end = data[offset..].partition_point(|x| key_fn(x) <= *key) + offset;
+    // Invariant: end == size || key_fn(&data[end]) > *key
 
     &data[start..end]
 }
