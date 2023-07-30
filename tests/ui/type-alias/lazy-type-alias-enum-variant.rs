@@ -2,6 +2,7 @@
 // check-pass
 
 #![feature(lazy_type_alias)]
+//~^ WARN the feature `lazy_type_alias` is incomplete and may not be safe to use
 
 enum Enum {
     Unit,

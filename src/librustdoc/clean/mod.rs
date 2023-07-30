@@ -2809,7 +2809,7 @@ fn clean_use_statement_inner<'tcx>(
     cx: &mut DocContext<'tcx>,
     inlined_names: &mut FxHashSet<(ItemType, Symbol)>,
 ) -> Vec<Item> {
-    if let Res::Def(DefKind::Ctor(..), _) | Res::SelfCtor(..) = path.res {
+    if should_ignore_res(path.res) {
         return Vec::new();
     }
     // We need this comparison because some imports (for std types for example)
