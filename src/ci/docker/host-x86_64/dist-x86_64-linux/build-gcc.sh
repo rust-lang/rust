@@ -30,7 +30,8 @@ cd ../gcc-build
 hide_output ../gcc-$GCC/configure \
     --prefix=/rustroot \
     --enable-languages=c,c++ \
-    --disable-gnu-unique-object
+    --disable-gnu-unique-object \
+    --enable-cxx-flags='-fno-reorder-blocks-and-partition'
 hide_output make -j$(nproc)
 hide_output make install
 ln -s gcc /rustroot/bin/cc
