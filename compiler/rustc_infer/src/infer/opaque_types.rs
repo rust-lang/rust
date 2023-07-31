@@ -595,23 +595,8 @@ impl<'tcx> InferCtxt<'tcx> {
             let predicate = predicate.fold_with(&mut BottomUpFolder {
                 tcx,
                 ty_op: |ty| match *ty.kind() {
-                    // We can't normalize associated types from `rustc_infer`,
-                    // but we can eagerly register inference variables for them.
-                    // FIXME(RPITIT): Don't replace RPITITs with inference vars.
-                    // FIXME(inherent_associated_types): Extend this to support `ty::Inherent`, too.
-                    ty::Alias(ty::Projection, projection_ty)
-                        if !projection_ty.has_escaping_bound_vars()
-                            && !tcx.is_impl_trait_in_trait(projection_ty.def_id)
-                            && !self.next_trait_solver() =>
-                    {
-                        self.infer_projection(
-                            param_env,
-                            projection_ty,
-                            cause.clone(),
-                            0,
-                            obligations,
-                        )
-                    }
+                    // FIXME(inherent_associated_types): Do we need support here for `ty::Inherent`?
+
                     // Replace all other mentions of the same opaque type with the hidden type,
                     // as the bounds must hold on the hidden type after all.
                     ty::Alias(ty::Opaque, ty::AliasTy { def_id: def_id2, args: args2, .. })
