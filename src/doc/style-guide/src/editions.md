@@ -4,10 +4,12 @@ The default Rust style evolves over time, as Rust does. However, to avoid
 breaking established code style, and CI jobs checking code style, changes to
 the default Rust style only appear in *style editions*.
 
-Code written in a given Rust edition uses the corresponding Rust style edition
-by default. To make it easier to migrate code style separately from the
-semantic changes between Rust editions, formatting tools such as `rustfmt`
-allow updating the style edition separately from the Rust edition.
+Code written in a given
+[Rust edition](https://doc.rust-lang.org/edition-guide/)
+uses the corresponding Rust style edition by default. To make it easier to
+migrate code style separately from the semantic changes between Rust editions,
+formatting tools such as `rustfmt` allow updating the style edition separately
+from the Rust edition.
 
 The current version of the style guide describes the latest Rust style edition.
 Each distinct past style will have a corresponding archived version of the
