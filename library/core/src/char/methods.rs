@@ -19,7 +19,7 @@ impl char {
     /// ```
     /// #![feature(char_min)]
     /// let dist = u32::from(char::MAX) - u32::from(char::MIN);
-    /// let size = (char::MIN..=char::MAX).count();
+    /// let size = (char::MIN..=char::MAX).count() as u32;
     /// assert!(dist < size);
     /// ```
     ///
@@ -52,7 +52,7 @@ impl char {
     /// ```
     /// #![feature(char_min)]
     /// let dist = u32::from(char::MAX) - u32::from(char::MIN);
-    /// let size = (char::MIN..=char::MAX).count();
+    /// let size = (char::MIN..=char::MAX).count() as u32;
     /// assert!(dist < size);
     /// ```
     ///
