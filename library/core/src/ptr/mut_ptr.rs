@@ -781,9 +781,8 @@ impl<T: ?Sized> *mut T {
     /// Calculates the distance between two pointers. The returned value is in
     /// units of T: the distance in bytes divided by `mem::size_of::<T>()`.
     ///
-    /// This function is the inverse of [`offset`]: it is valid to call if and only if
-    /// `self` could have been computed as `origin.offset(n)` for some `n`, and it will
-    /// then return that `n`.
+    /// This function is the inverse of [`offset`]: it is valid to call and will return
+    /// `n` if and only if `origin.offset(n)` is valid to call and will return `self`.
     ///
     /// [`offset`]: pointer#method.offset-1
     ///
@@ -824,9 +823,10 @@ impl<T: ?Sized> *mut T {
     ///
     /// The requirement for pointers to be derived from the same allocated object is primarily
     /// needed for `const`-compatibility: at compile-time, pointers into *different* allocated
-    /// object do not have a known distance to each other. However, the requirement also exists at
-    /// runtime, and may be exploited by optimizations. You can use `(self as usize).sub(origin as
-    /// usize) / mem::size_of::<T>()` to avoid this requirement.
+    /// objects do not have a known distance to each other. However, the requirement also exists at
+    /// runtime and may be exploited by optimizations. If you wish to compute the difference between
+    /// pointers that are not guaranteed to be from the same allocation, use `(self as
+    /// usize).sub(origin as usize) / mem::size_of::<T>()`.
     ///
     /// [`add`]: #method.add
     /// [allocated object]: crate::ptr#allocated-object
