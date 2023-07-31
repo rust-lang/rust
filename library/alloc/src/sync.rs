@@ -2503,7 +2503,7 @@ impl<T> Weak<T> {
     /// ```
     #[inline]
     #[stable(feature = "downgraded_weak", since = "1.10.0")]
-    #[rustc_const_unstable(feature = "const_weak_new", issue = "95091", reason = "recently added")]
+    #[rustc_const_stable(feature = "const_weak_new", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
     pub const fn new() -> Weak<T> {
         Weak {
