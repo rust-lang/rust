@@ -33,20 +33,20 @@ call-function: (
     "check-logo",
     {
         "theme": "ayu",
-        "filter": "drop-shadow(rgb(255, 255, 255) 1px 0px 0px) " +
-            "drop-shadow(rgb(255, 255, 255) 0px 1px 0px) " +
-            "drop-shadow(rgb(255, 255, 255) -1px 0px 0px) " +
-            "drop-shadow(rgb(255, 255, 255) 0px -1px 0px)",
+        "filter": "drop-shadow(#fff 1px 0px 0px) " +
+            "drop-shadow(#fff 0px 1px 0px) " +
+            "drop-shadow(#fff -1px 0px 0px) " +
+            "drop-shadow(#fff 0px -1px 0px)",
     },
 )
 call-function: (
     "check-logo",
     {
         "theme": "dark",
-        "filter": "drop-shadow(rgb(255, 255, 255) 1px 0px 0px) " +
-            "drop-shadow(rgb(255, 255, 255) 0px 1px 0px) " +
-            "drop-shadow(rgb(255, 255, 255) -1px 0px 0px) " +
-            "drop-shadow(rgb(255, 255, 255) 0px -1px 0px)",
+        "filter": "drop-shadow(#fff 1px 0px 0px) " +
+            "drop-shadow(#fff 0px 1px 0px) " +
+            "drop-shadow(#fff -1px 0px 0px) " +
+            "drop-shadow(#fff 0px -1px 0px)",
     },
 )
 call-function: (
