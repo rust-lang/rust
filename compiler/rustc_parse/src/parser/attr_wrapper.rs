@@ -301,7 +301,7 @@ impl<'a> Parser<'a> {
         // then extend the range of captured tokens to include it, since the parser
         // was not actually bumped past it. When the `LazyAttrTokenStream` gets converted
         // into an `AttrTokenStream`, we will create the proper token.
-        if self.token_cursor.break_last_token {
+        if self.break_last_token {
             assert!(!captured_trailing, "Cannot set break_last_token and have trailing token");
             end_pos += 1;
         }
@@ -331,7 +331,7 @@ impl<'a> Parser<'a> {
             start_token,
             num_calls,
             cursor_snapshot,
-            break_last_token: self.token_cursor.break_last_token,
+            break_last_token: self.break_last_token,
             replace_ranges,
         });
 
@@ -362,10 +362,7 @@ impl<'a> Parser<'a> {
             let start_pos = if has_outer_attrs { attrs.start_pos } else { start_pos };
             let new_tokens = vec![(FlatToken::AttrTarget(attr_data), Spacing::Alone)];
 
-            assert!(
-                !self.token_cursor.break_last_token,
-                "Should not have unglued last token with cfg attr"
-            );
+            assert!(!self.break_last_token, "Should not have unglued last token with cfg attr");
             let range: Range<u32> = (start_pos.try_into().unwrap())..(end_pos.try_into().unwrap());
             self.capture_state.replace_ranges.push((range, new_tokens));
             self.capture_state.replace_ranges.extend(inner_attr_replace_ranges);
@@ -463,6 +460,6 @@ mod size_asserts {
     use rustc_data_structures::static_assert_size;
     // tidy-alphabetical-start
     static_assert_size!(AttrWrapper, 16);
-    static_assert_size!(LazyAttrTokenStreamImpl, 112);
+    static_assert_size!(LazyAttrTokenStreamImpl, 104);
     // tidy-alphabetical-end
 }

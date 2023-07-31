@@ -138,6 +138,21 @@ pub struct Parser<'a> {
     token_cursor: TokenCursor,
     // The number of calls to `bump`, i.e. the position in the token stream.
     num_bump_calls: usize,
+    // During parsing we may sometimes need to 'unglue' a glued token into two
+    // component tokens (e.g. '>>' into '>' and '>), so the parser can consume
+    // them one at a time. This process bypasses the normal capturing mechanism
+    // (e.g. `num_bump_calls` will not be incremented), since the 'unglued'
+    // tokens due not exist in the original `TokenStream`.
+    //
+    // If we end up consuming both unglued tokens, this is not an issue. We'll
+    // end up capturing the single 'glued' token.
+    //
+    // However, sometimes we may want to capture just the first 'unglued'
+    // token. For example, capturing the `Vec<u8>` in `Option<Vec<u8>>`
+    // requires us to unglue the trailing `>>` token. The `break_last_token`
+    // field is used to track this token. It gets appended to the captured
+    // stream when we evaluate a `LazyAttrTokenStream`.
+    break_last_token: bool,
     /// This field is used to keep track of how many left angle brackets we have seen. This is
     /// required in order to detect extra leading left angle brackets (`<` characters) and error
     /// appropriately.
@@ -161,7 +176,7 @@ pub struct Parser<'a> {
 // This type is used a lot, e.g. it's cloned when matching many declarative macro rules with nonterminals. Make sure
 // it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Parser<'_>, 272);
+rustc_data_structures::static_assert_size!(Parser<'_>, 264);
 
 /// Stores span information about a closure.
 #[derive(Clone)]
@@ -223,29 +238,6 @@ struct TokenCursor {
     // tokens are in `stack[n-1]`. `stack[0]` (when present) has no delimiters
     // because it's the outermost token stream which never has delimiters.
     stack: Vec<(TokenTreeCursor, Delimiter, DelimSpan)>,
-
-    // During parsing, we may sometimes need to 'unglue' a
-    // glued token into two component tokens
-    // (e.g. '>>' into '>' and '>), so that the parser
-    // can consume them one at a time. This process
-    // bypasses the normal capturing mechanism
-    // (e.g. `num_next_calls` will not be incremented),
-    // since the 'unglued' tokens due not exist in
-    // the original `TokenStream`.
-    //
-    // If we end up consuming both unglued tokens,
-    // then this is not an issue - we'll end up
-    // capturing the single 'glued' token.
-    //
-    // However, in certain circumstances, we may
-    // want to capture just the first 'unglued' token.
-    // For example, capturing the `Vec<u8>`
-    // in `Option<Vec<u8>>` requires us to unglue
-    // the trailing `>>` token. The `break_last_token`
-    // field is used to track this token - it gets
-    // appended to the captured stream when
-    // we evaluate a `LazyAttrTokenStream`.
-    break_last_token: bool,
 }
 
 impl TokenCursor {
@@ -396,12 +388,9 @@ impl<'a> Parser<'a> {
             capture_cfg: false,
             restrictions: Restrictions::empty(),
             expected_tokens: Vec::new(),
-            token_cursor: TokenCursor {
-                tree_cursor: stream.into_trees(),
-                stack: Vec::new(),
-                break_last_token: false,
-            },
+            token_cursor: TokenCursor { tree_cursor: stream.into_trees(), stack: Vec::new() },
             num_bump_calls: 0,
+            break_last_token: false,
             unmatched_angle_bracket_count: 0,
             max_angle_bracket_count: 0,
             last_unexpected_token_span: None,
@@ -704,7 +693,7 @@ impl<'a> Parser<'a> {
                 // If we consume any additional tokens, then this token
                 // is not needed (we'll capture the entire 'glued' token),
                 // and `bump` will set this field to `None`
-                self.token_cursor.break_last_token = true;
+                self.break_last_token = true;
                 // Use the spacing of the glued token as the spacing
                 // of the unglued second token.
                 self.bump_with((Token::new(second, second_span), self.token_spacing));
@@ -1050,7 +1039,7 @@ impl<'a> Parser<'a> {
         // We've retrieved an token from the underlying
         // cursor, so we no longer need to worry about
         // an unglued token. See `break_and_eat` for more details
-        self.token_cursor.break_last_token = false;
+        self.break_last_token = false;
         if next.0.span.is_dummy() {
             // Tweak the location for better diagnostics, but keep syntactic context intact.
             let fallback_span = self.token.span;
