@@ -2096,29 +2096,28 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             sym::simd_cttz => "cttz",
             _ => unreachable!(),
         };
-        let llvm_intrinsic = &format!(
-            "llvm.{}.v{}i{}",
-            intrinsic_name,
-            in_len,
-            in_elem.int_size_and_signed(bx.tcx()).0.bits(),
-        );
+        let int_size = in_elem.int_size_and_signed(bx.tcx()).0.bits();
+        let llvm_intrinsic = &format!("llvm.{}.v{}i{}", intrinsic_name, in_len, int_size,);
 
-        return Ok(if matches!(name, sym::simd_ctlz | sym::simd_cttz) {
+        return if name == sym::simd_bswap && int_size == 8 {
+            // byte swap is no-op for i8/u8
+            Ok(args[0].immediate())
+        } else if matches!(name, sym::simd_ctlz | sym::simd_cttz) {
             let fn_ty = bx.type_func(&[vec_ty, bx.type_i1()], vec_ty);
             let f = bx.declare_cfn(llvm_intrinsic, llvm::UnnamedAddr::No, fn_ty);
-            bx.call(
+            Ok(bx.call(
                 fn_ty,
                 None,
                 None,
                 f,
                 &[args[0].immediate(), bx.const_int(bx.type_i1(), 0)],
                 None,
-            )
+            ))
         } else {
             let fn_ty = bx.type_func(&[vec_ty], vec_ty);
             let f = bx.declare_cfn(llvm_intrinsic, llvm::UnnamedAddr::No, fn_ty);
-            bx.call(fn_ty, None, None, f, &[args[0].immediate()], None)
-        });
+            Ok(bx.call(fn_ty, None, None, f, &[args[0].immediate()], None))
+        };
     }
 
     if name == sym::simd_arith_offset {
