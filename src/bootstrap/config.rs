@@ -20,6 +20,7 @@ use std::str::FromStr;
 use crate::cache::{Interned, INTERNER};
 use crate::cc_detect::{ndk_compiler, Language};
 use crate::channel::{self, GitInfo};
+use crate::compile::CODEGEN_BACKEND_PREFIX;
 pub use crate::flags::Subcommand;
 use crate::flags::{Color, Flags, Warnings};
 use crate::util::{exe, output, t};
@@ -1452,8 +1453,21 @@ impl Config {
                 .map(|v| v.parse().expect("failed to parse rust.llvm-libunwind"));
 
             if let Some(ref backends) = rust.codegen_backends {
-                config.rust_codegen_backends =
-                    backends.iter().map(|s| INTERNER.intern_str(s)).collect();
+                let available_backends = vec!["llvm", "cranelift", "gcc"];
+
+                config.rust_codegen_backends = backends.iter().map(|s| {
+                    if let Some(backend) = s.strip_prefix(CODEGEN_BACKEND_PREFIX) {
+                        if available_backends.contains(&backend) {
+                            panic!("Invalid value '{s}' for 'rust.codegen-backends'. Instead, please use '{backend}'.");
+                        } else {
+                            println!("help: '{s}' for 'rust.codegen-backends' might fail. \
+                                Codegen backends are mostly defined without the '{CODEGEN_BACKEND_PREFIX}' prefix. \
+                                In this case, it would be referred to as '{backend}'.");
+                        }
+                    }
+
+                    INTERNER.intern_str(s)
+                }).collect();
             }
 
             config.rust_codegen_units = rust.codegen_units.map(threads_from_config);
