@@ -114,6 +114,11 @@ pub fn cargo() -> Command {
     Command::new(env::var_os("CARGO").unwrap_or_else(|| OsString::from("cargo")))
 }
 
+pub fn flagsplit(flags: &str) -> Vec<String> {
+    // This code is taken from `RUSTFLAGS` handling in cargo.
+    flags.split(' ').map(str::trim).filter(|s| !s.is_empty()).map(str::to_string).collect()
+}
+
 /// Execute the `Command`, where possible by replacing the current process with a new process
 /// described by the `Command`. Then exit this process with the exit code of the new process.
 pub fn exec(mut cmd: Command) -> ! {
