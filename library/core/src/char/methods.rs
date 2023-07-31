@@ -9,6 +9,21 @@ use crate::unicode::{self, conversions};
 use super::*;
 
 impl char {
+    /// The lowest valid code point a `char` can have, `'\0'`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn something_which_returns_char() -> char { 'a' }
+    /// let c: char = something_which_returns_char();
+    /// assert!(char::MIN <= c);
+    ///
+    /// let value_at_min = char::MIN as u32;
+    /// assert_eq!(char::from_u32(value_at_min), Some('\0'));
+    /// ```
+    #[unstable(feature = "char_min", issue = "114298")]
+    pub const MIN: char = '\0';
+
     /// The highest valid code point a `char` can have, `'\u{10FFFF}'`.
     ///
     /// # Examples
