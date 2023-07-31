@@ -478,9 +478,9 @@ example, `a::*` comes before `b::a` but `a::b` comes before `a::*`. E.g.,
 
 Tools must make the following normalisations, recursively:
 
-* `use a::self;` -> `use a;`
-* `use a::{};` -> (nothing)
-* `use a::{b};` -> `use a::b;`
+- `use a::self;` -> `use a;`
+- `use a::{};` -> (nothing)
+- `use a::{b};` -> `use a::b;`
 
 Tools must not otherwise merge or un-merge import lists or adjust glob imports
 (without an explicit option).
