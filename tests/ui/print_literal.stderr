@@ -96,5 +96,101 @@ LL -     println!("{bar} {foo}", foo = "hello", bar = "world");
 LL +     println!("world hello");
    |
 
-error: aborting due to 8 previous errors
+error: literal with an empty format string
+  --> $DIR/print_literal.rs:56:20
+   |
+LL |     println!("{}", "{} \x00 \u{ab123} \\\u{ab123} {:?}");
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -     println!("{}", "{} \x00 \u{ab123} \\\u{ab123} {:?}");
+LL +     println!("{{}} \x00 \u{ab123} \\\u{ab123} {{:?}}");
+   |
+
+error: literal with an empty format string
+  --> $DIR/print_literal.rs:57:20
+   |
+LL |     println!("{}", "\\\u{1234}");
+   |                    ^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -     println!("{}", "\\\u{1234}");
+LL +     println!("\\\u{1234}");
+   |
+
+error: literal with an empty format string
+  --> $DIR/print_literal.rs:61:20
+   |
+LL |     println!("{}", r"\u{ab123} \u{{");
+   |                    ^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -     println!("{}", r"\u{ab123} \u{{");
+LL +     println!("\\u{{ab123}} \\u{{{{");
+   |
+
+error: literal with an empty format string
+  --> $DIR/print_literal.rs:62:21
+   |
+LL |     println!(r"{}", r"\u{ab123} \u{{");
+   |                     ^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -     println!(r"{}", r"\u{ab123} \u{{");
+LL +     println!(r"\u{{ab123}} \u{{{{");
+   |
+
+error: literal with an empty format string
+  --> $DIR/print_literal.rs:63:20
+   |
+LL |     println!("{}", r"\{ab123} \u{{");
+   |                    ^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -     println!("{}", r"\{ab123} \u{{");
+LL +     println!("\\{{ab123}} \\u{{{{");
+   |
+
+error: literal with an empty format string
+  --> $DIR/print_literal.rs:64:20
+   |
+LL |     println!("{}", "\\u{ab123}");
+   |                    ^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -     println!("{}", "\\u{ab123}");
+LL +     println!("\\u{{ab123}}");
+   |
+
+error: literal with an empty format string
+  --> $DIR/print_literal.rs:65:20
+   |
+LL |     println!("{}", "\\\\u{1234}");
+   |                    ^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -     println!("{}", "\\\\u{1234}");
+LL +     println!("\\\\u{{1234}}");
+   |
+
+error: literal with an empty format string
+  --> $DIR/print_literal.rs:67:35
+   |
+LL |     println!("mixed: {} {world}", "{hello}");
+   |                                   ^^^^^^^^^
+   |
+help: try
+   |
+LL -     println!("mixed: {} {world}", "{hello}");
+LL +     println!("mixed: {{hello}} {world}");
+   |
+
+error: aborting due to 16 previous errors
 
