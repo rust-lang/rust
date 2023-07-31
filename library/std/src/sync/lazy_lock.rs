@@ -222,10 +222,12 @@ impl<T: Default> Default for LazyLock<T> {
 #[unstable(feature = "lazy_cell", issue = "109736")]
 impl<T: fmt::Debug, F> fmt::Debug for LazyLock<T, F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut d = f.debug_tuple("LazyLock");
         match self.get() {
-            Some(v) => f.debug_tuple("LazyLock").field(v).finish(),
-            None => f.write_str("LazyLock(Uninit)"),
-        }
+            Some(v) => d.field(v),
+            None => d.field(&format_args!("<uninit>")),
+        };
+        d.finish()
     }
 }
 
