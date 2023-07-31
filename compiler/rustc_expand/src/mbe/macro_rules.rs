@@ -456,8 +456,8 @@ pub fn compile_declarative_macro(
         match tt_parser.parse_tt(&mut Cow::Owned(parser), &argument_gram, &mut NoopTracker) {
             Success(m) => m,
             Failure(()) => {
-                // The fast `NoopTracker` doesn't have any info on failure, so we need to retry it with another one
-                // that gives us the information we need.
+                // The fast `NoopTracker` doesn't have any info on failure, so we need to retry it
+                // with another one that gives us the information we need.
                 // For this we need to reclone the macro body as the previous parser consumed it.
                 let retry_parser = create_parser();
 
