@@ -1,3 +1,12 @@
+Version 1.71.1 (2023-08-03)
+===========================
+
+- [Fix bash completion for users of Rustup](https://github.com/rust-lang/rust/pull/113579)
+- [Do not show `suspicious_double_ref_op` lint when calling `borrow()`](https://github.com/rust-lang/rust/pull/112517)
+- [Fix ICE: substitute types before checking inlining compatibility](https://github.com/rust-lang/rust/pull/113802)
+- [Fix ICE: don't use `can_eq` in `derive(..)` suggestion for missing method](https://github.com/rust-lang/rust/pull/111516)
+- [Fix building Rust 1.71.0 from the source tarball](https://github.com/rust-lang/rust/issues/113678)
+
 Version 1.71.0 (2023-07-13)
 ==========================
 
