@@ -790,7 +790,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
                     },
                 );
             }
-        };
+        }
     }
 
     ongoing_codegen.codegen_finished(tcx);
