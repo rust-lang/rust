@@ -1697,6 +1697,41 @@ impl<T> Option<T> {
         mem::replace(self, None)
     }
 
+    /// Takes the value out of the option, but only if the predicate evaluates to
+    /// `true` on a mutable reference to the value.
+    ///
+    /// In other words, replaces `self` with `None` if the predicate returns `true`.
+    /// This method operates similar to [`Option::take`] but conditional.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(option_take_if)]
+    ///
+    /// let mut x = Some(42);
+    ///
+    /// let prev = x.take_if(|v| if *v == 42 {
+    ///     *v += 1;
+    ///     false
+    /// } else {
+    ///     false
+    /// });
+    /// assert_eq!(x, Some(43));
+    /// assert_eq!(prev, None);
+    ///
+    /// let prev = x.take_if(|v| *v == 43);
+    /// assert_eq!(x, None);
+    /// assert_eq!(prev, Some(43));
+    /// ```
+    #[inline]
+    #[unstable(feature = "option_take_if", issue = "98934")]
+    pub fn take_if<P>(&mut self, predicate: P) -> Option<T>
+    where
+        P: FnOnce(&mut T) -> bool,
+    {
+        if self.as_mut().map_or(false, predicate) { self.take() } else { None }
+    }
+
     /// Replaces the actual value in the option by the value given in parameter,
     /// returning the old value if present,
     /// leaving a [`Some`] in its place without deinitializing either one.
