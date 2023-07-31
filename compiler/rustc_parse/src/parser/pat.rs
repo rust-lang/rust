@@ -592,7 +592,7 @@ impl<'a> Parser<'a> {
 
         // Make sure we don't allow e.g. `let mut $p;` where `$p:pat`.
         if let token::Interpolated(nt) = &self.token.kind {
-            if let token::NtPat(_) = **nt {
+            if let token::NtPat(..) = &nt.0 {
                 self.expected_ident_found_err().emit();
             }
         }

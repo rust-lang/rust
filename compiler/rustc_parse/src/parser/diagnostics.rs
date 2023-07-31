@@ -24,11 +24,12 @@ use crate::parser;
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Lit, LitKind, TokenKind};
+use rustc_ast::tokenstream::AttrTokenTree;
 use rustc_ast::util::parser::AssocOp;
 use rustc_ast::{
     AngleBracketedArg, AngleBracketedArgs, AnonConst, AttrVec, BinOpKind, BindingAnnotation, Block,
-    BlockCheckMode, Expr, ExprKind, GenericArg, Generics, Item, ItemKind, Param, Pat, PatKind,
-    Path, PathSegment, QSelf, Ty, TyKind,
+    BlockCheckMode, Expr, ExprKind, GenericArg, Generics, HasTokens, Item, ItemKind, Param, Pat,
+    PatKind, Path, PathSegment, QSelf, Ty, TyKind,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
@@ -2252,6 +2253,59 @@ impl<'a> Parser<'a> {
             err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
         }
         err.span_label(span, "expected expression");
+
+        // Walk the chain of macro expansions for the current token to point at how the original
+        // code was interpreted. This helps the user realize when a macro argument of one type is
+        // later reinterpreted as a different type, like `$x:expr` being reinterpreted as `$x:pat`
+        // in a subsequent macro invocation (#71039).
+        let mut tok = self.token.clone();
+        let mut labels = vec![];
+        while let TokenKind::Interpolated(node) = &tok.kind {
+            let tokens = node.0.tokens();
+            labels.push(node.clone());
+            if let Some(tokens) = tokens
+                && let tokens = tokens.to_attr_token_stream()
+                && let tokens = tokens.0.deref()
+                && let [AttrTokenTree::Token(token, _)] = &tokens[..]
+            {
+                tok = token.clone();
+            } else {
+                break;
+            }
+        }
+        let mut iter = labels.into_iter().peekable();
+        let mut show_link = false;
+        while let Some(node) = iter.next() {
+            let descr = node.0.descr();
+            if let Some(next) = iter.peek() {
+                let next_descr = next.0.descr();
+                if next_descr != descr {
+                    err.span_label(next.1, format!("this macro fragment matcher is {next_descr}"));
+                    err.span_label(node.1, format!("this macro fragment matcher is {descr}"));
+                    err.span_label(
+                        next.0.use_span(),
+                        format!("this is expected to be {next_descr}"),
+                    );
+                    err.span_label(
+                        node.0.use_span(),
+                        format!(
+                            "this is interpreted as {}, but it is expected to be {}",
+                            next_descr, descr,
+                        ),
+                    );
+                    show_link = true;
+                } else {
+                    err.span_label(node.1, "");
+                }
+            }
+        }
+        if show_link {
+            err.note(
+                "when forwarding a matched fragment to another macro-by-example, matchers in the \
+                 second macro will see an opaque AST of the fragment type, not the underlying \
+                 tokens",
+            );
+        }
         err
     }
 

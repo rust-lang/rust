@@ -825,7 +825,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             }
             token::Eof => "<eof>".into(),
 
-            token::Interpolated(ref nt) => self.nonterminal_to_string(nt).into(),
+            token::Interpolated(ref nt) => self.nonterminal_to_string(&nt.0).into(),
         }
     }
 

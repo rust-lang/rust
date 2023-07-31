@@ -46,7 +46,7 @@ use thin_vec::{thin_vec, ThinVec};
 macro_rules! maybe_whole_expr {
     ($p:expr) => {
         if let token::Interpolated(nt) = &$p.token.kind {
-            match &**nt {
+            match &nt.0 {
                 token::NtExpr(e) | token::NtLiteral(e) => {
                     let e = e.clone();
                     $p.bump();
@@ -1952,7 +1952,7 @@ impl<'a> Parser<'a> {
         mk_lit_char: impl FnOnce(Symbol, Span) -> L,
     ) -> PResult<'a, L> {
         if let token::Interpolated(nt) = &self.token.kind
-            && let token::NtExpr(e) | token::NtLiteral(e) = &**nt
+            && let token::NtExpr(e) | token::NtLiteral(e) = &nt.0
             && matches!(e.kind, ExprKind::Err)
         {
             let mut err = errors::InvalidInterpolatedExpression { span: self.token.span }

@@ -53,7 +53,7 @@ impl<'a> Parser<'a> {
         // Don't use `maybe_whole` so that we have precise control
         // over when we bump the parser
         if let token::Interpolated(nt) = &self.token.kind
-            && let token::NtStmt(stmt) = &**nt
+            && let token::NtStmt(stmt) = &nt.0
         {
             let mut stmt = stmt.clone();
             self.bump();
