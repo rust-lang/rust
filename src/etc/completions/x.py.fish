@@ -305,6 +305,7 @@ complete -c x.py -n "__fish_seen_subcommand_from bench" -l json-output -d 'use m
 complete -c x.py -n "__fish_seen_subcommand_from bench" -l llvm-profile-generate -d 'generate PGO profile with llvm built for rustc'
 complete -c x.py -n "__fish_seen_subcommand_from bench" -l llvm-bolt-profile-generate -d 'generate BOLT profile for LLVM build'
 complete -c x.py -n "__fish_seen_subcommand_from bench" -s h -l help -d 'Print help'
+complete -c x.py -n "__fish_seen_subcommand_from clean" -l stage -d 'Clean a specific stage without touching other artifacts. By default, every stage is cleaned if this option is not used' -r
 complete -c x.py -n "__fish_seen_subcommand_from clean" -l config -d 'TOML configuration file for build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from clean" -l build-dir -d 'Build directory, overrides `build.build-dir` in `config.toml`' -r -f -a "(__fish_complete_directories)"
 complete -c x.py -n "__fish_seen_subcommand_from clean" -l build -d 'build target of the stage0 compiler' -r -f
@@ -313,7 +314,6 @@ complete -c x.py -n "__fish_seen_subcommand_from clean" -l target -d 'target tar
 complete -c x.py -n "__fish_seen_subcommand_from clean" -l exclude -d 'build paths to exclude' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from clean" -l rustc-error-format -r -f
 complete -c x.py -n "__fish_seen_subcommand_from clean" -l on-fail -d 'command to run on failure' -r -f -a "(__fish_complete_command)"
-complete -c x.py -n "__fish_seen_subcommand_from clean" -l stage -d 'stage to build (indicates compiler to use/test, e.g., stage 0 uses the bootstrap compiler, stage 1 the stage 0 rustc artifacts, etc.)' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from clean" -l keep-stage -d 'stage(s) to keep without recompiling (pass multiple times to keep e.g., both stages 0 and 1)' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from clean" -l keep-stage-std -d 'stage(s) of the standard library to keep without recompiling (pass multiple times to keep e.g., both stages 0 and 1)' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from clean" -l src -d 'path to the root of the rust checkout' -r -f -a "(__fish_complete_directories)"
@@ -327,7 +327,7 @@ complete -c x.py -n "__fish_seen_subcommand_from clean" -l rust-profile-use -d '
 complete -c x.py -n "__fish_seen_subcommand_from clean" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from clean" -l llvm-bolt-profile-use -d 'use BOLT profile for LLVM build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from clean" -l set -d 'override options in config.toml' -r -f
-complete -c x.py -n "__fish_seen_subcommand_from clean" -l all
+complete -c x.py -n "__fish_seen_subcommand_from clean" -l all -d 'Clean the entire build directory (not used by default)'
 complete -c x.py -n "__fish_seen_subcommand_from clean" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
 complete -c x.py -n "__fish_seen_subcommand_from clean" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_seen_subcommand_from clean" -l include-default-paths -d 'include default paths in addition to the provided ones'

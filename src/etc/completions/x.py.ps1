@@ -391,6 +391,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             break
         }
         'x.py;clean' {
+            [CompletionResult]::new('--stage', 'stage', [CompletionResultType]::ParameterName, 'Clean a specific stage without touching other artifacts. By default, every stage is cleaned if this option is not used')
             [CompletionResult]::new('--config', 'config', [CompletionResultType]::ParameterName, 'TOML configuration file for build')
             [CompletionResult]::new('--build-dir', 'build-dir', [CompletionResultType]::ParameterName, 'Build directory, overrides `build.build-dir` in `config.toml`')
             [CompletionResult]::new('--build', 'build', [CompletionResultType]::ParameterName, 'build target of the stage0 compiler')
@@ -399,7 +400,6 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--exclude', 'exclude', [CompletionResultType]::ParameterName, 'build paths to exclude')
             [CompletionResult]::new('--rustc-error-format', 'rustc-error-format', [CompletionResultType]::ParameterName, 'rustc-error-format')
             [CompletionResult]::new('--on-fail', 'on-fail', [CompletionResultType]::ParameterName, 'command to run on failure')
-            [CompletionResult]::new('--stage', 'stage', [CompletionResultType]::ParameterName, 'stage to build (indicates compiler to use/test, e.g., stage 0 uses the bootstrap compiler, stage 1 the stage 0 rustc artifacts, etc.)')
             [CompletionResult]::new('--keep-stage', 'keep-stage', [CompletionResultType]::ParameterName, 'stage(s) to keep without recompiling (pass multiple times to keep e.g., both stages 0 and 1)')
             [CompletionResult]::new('--keep-stage-std', 'keep-stage-std', [CompletionResultType]::ParameterName, 'stage(s) of the standard library to keep without recompiling (pass multiple times to keep e.g., both stages 0 and 1)')
             [CompletionResult]::new('--src', 'src', [CompletionResultType]::ParameterName, 'path to the root of the rust checkout')
@@ -414,7 +414,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--llvm-profile-use', 'llvm-profile-use', [CompletionResultType]::ParameterName, 'use PGO profile for LLVM build')
             [CompletionResult]::new('--llvm-bolt-profile-use', 'llvm-bolt-profile-use', [CompletionResultType]::ParameterName, 'use BOLT profile for LLVM build')
             [CompletionResult]::new('--set', 'set', [CompletionResultType]::ParameterName, 'override options in config.toml')
-            [CompletionResult]::new('--all', 'all', [CompletionResultType]::ParameterName, 'all')
+            [CompletionResult]::new('--all', 'all', [CompletionResultType]::ParameterName, 'Clean the entire build directory (not used by default)')
             [CompletionResult]::new('-v', 'v', [CompletionResultType]::ParameterName, 'use verbose output (-vv for very verbose)')
             [CompletionResult]::new('--verbose', 'verbose', [CompletionResultType]::ParameterName, 'use verbose output (-vv for very verbose)')
             [CompletionResult]::new('-i', 'i', [CompletionResultType]::ParameterName, 'use incremental compilation')
