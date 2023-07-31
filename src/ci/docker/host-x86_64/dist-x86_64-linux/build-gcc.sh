@@ -27,10 +27,15 @@ sed -i'' 's|ftp://gcc\.gnu\.org/|https://gcc.gnu.org/|g' ./contrib/download_prer
 ./contrib/download_prerequisites
 mkdir ../gcc-build
 cd ../gcc-build
+
+# '-fno-reorder-blocks-and-partition' is required to
+# enable BOLT optimization of the C++ standard library,
+# which is included in librustc_driver.so
 hide_output ../gcc-$GCC/configure \
     --prefix=/rustroot \
     --enable-languages=c,c++ \
-    --disable-gnu-unique-object
+    --disable-gnu-unique-object \
+    --enable-cxx-flags='-fno-reorder-blocks-and-partition'
 hide_output make -j$(nproc)
 hide_output make install
 ln -s gcc /rustroot/bin/cc
