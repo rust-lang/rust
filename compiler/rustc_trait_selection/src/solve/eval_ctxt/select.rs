@@ -235,7 +235,10 @@ fn rematch_unsize<'tcx>(
         goal.param_env,
         &mut nested,
     );
+
     match (a_ty.kind(), b_ty.kind()) {
+        // Don't try to coerce `?0` to `dyn Trait`
+        (ty::Infer(ty::TyVar(_)), _) | (_, ty::Infer(ty::TyVar(_))) => Ok(None),
         // Stall any ambiguous upcasting goals, since we can't rematch those
         (ty::Dynamic(_, _, ty::Dyn), ty::Dynamic(_, _, ty::Dyn)) => match certainty {
             Certainty::Yes => Ok(Some(ImplSource::Builtin(source, nested))),
