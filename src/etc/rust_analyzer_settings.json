@@ -31,5 +31,8 @@
         "--json-output"
     ],
     "rust-analyzer.cargo.sysrootSrc": "./library",
-    "rust-analyzer.rustc.source": "./Cargo.toml"
+    "rust-analyzer.rustc.source": "./Cargo.toml",
+    "rust-analyzer.cargo.extraEnv": {
+        "RUSTC_BOOTSTRAP": "1"
+    }
 }
