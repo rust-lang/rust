@@ -619,13 +619,6 @@ impl<'tcx> InferCtxt<'tcx> {
                     {
                         hidden_ty
                     }
-                    // FIXME(RPITIT): This can go away when we move to associated types
-                    // FIXME(inherent_associated_types): Extend this to support `ty::Inherent`, too.
-                    ty::Alias(ty::Projection, ty::AliasTy { def_id: def_id2, args: args2, .. })
-                        if def_id == def_id2 && args == args2 =>
-                    {
-                        hidden_ty
-                    }
                     _ => ty,
                 },
                 lt_op: |lt| lt,

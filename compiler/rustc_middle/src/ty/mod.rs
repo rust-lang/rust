@@ -2625,19 +2625,6 @@ impl<'tcx> TyCtxt<'tcx> {
         matches!(self.trait_of_item(def_id), Some(trait_id) if self.has_attr(trait_id, sym::const_trait))
     }
 
-    pub fn impl_trait_in_trait_parent_fn(self, mut def_id: DefId) -> DefId {
-        match self.opt_rpitit_info(def_id) {
-            Some(ImplTraitInTraitData::Trait { fn_def_id, .. })
-            | Some(ImplTraitInTraitData::Impl { fn_def_id, .. }) => fn_def_id,
-            None => {
-                while let def_kind = self.def_kind(def_id) && def_kind != DefKind::AssocFn {
-                    def_id = self.parent(def_id);
-                }
-                def_id
-            }
-        }
-    }
-
     /// Returns the `DefId` of the item within which the `impl Trait` is declared.
     /// For type-alias-impl-trait this is the `type` alias.
     /// For impl-trait-in-assoc-type this is the assoc type.
