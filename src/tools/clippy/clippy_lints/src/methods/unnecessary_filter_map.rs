@@ -77,6 +77,16 @@ fn check_expression<'tcx>(cx: &LateContext<'tcx>, arg_id: hir::HirId, expr: &'tc
             }
             (true, true)
         },
+        hir::ExprKind::MethodCall(segment, recv, [arg], _) => {
+            if segment.ident.name == sym!(then_some)
+                && cx.typeck_results().expr_ty(recv).is_bool()
+                && path_to_local_id(arg, arg_id)
+            {
+                (false, true)
+            } else {
+                (true, true)
+            }
+        },
         hir::ExprKind::Block(block, _) => block
             .expr
             .as_ref()

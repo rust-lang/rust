@@ -1,4 +1,6 @@
-use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_note, span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::diagnostics::{
+    span_lint_and_help, span_lint_and_note, span_lint_and_sugg, span_lint_and_then,
+};
 use clippy_utils::ty::{implements_trait, implements_trait_with_env, is_copy};
 use clippy_utils::{is_lint_allowed, match_def_path, paths};
 use if_chain::if_chain;
@@ -6,15 +8,15 @@ use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{walk_expr, walk_fn, walk_item, FnKind, Visitor};
 use rustc_hir::{
-    self as hir, BlockCheckMode, BodyId, Expr, ExprKind, FnDecl, Impl, Item, ItemKind, UnsafeSource,
-    Unsafety,
+    self as hir, BlockCheckMode, BodyId, Expr, ExprKind, FnDecl, Impl, Item, ItemKind,
+    UnsafeSource, Unsafety,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::traits::Reveal;
 use rustc_middle::ty::{
-    self, BoundConstness, ClauseKind, GenericArgKind, GenericParamDefKind, ImplPolarity, ParamEnv, ToPredicate,
-    TraitPredicate, Ty, TyCtxt,
+    self, BoundConstness, ClauseKind, GenericArgKind, GenericParamDefKind, ImplPolarity, ParamEnv,
+    ToPredicate, TraitPredicate, Ty, TyCtxt,
 };
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::def_id::LocalDefId;
@@ -205,13 +207,10 @@ declare_lint_pass!(Derive => [
 
 impl<'tcx> LateLintPass<'tcx> for Derive {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        if let ItemKind::Impl(Impl {
-            of_trait: Some(ref trait_ref),
-            ..
-        }) = item.kind
-        {
+        if let ItemKind::Impl(Impl { of_trait: Some(ref trait_ref), .. }) = item.kind {
             let ty = cx.tcx.type_of(item.owner_id).instantiate_identity();
-            let is_automatically_derived = cx.tcx.has_attr(item.owner_id, sym::automatically_derived);
+            let is_automatically_derived =
+                cx.tcx.has_attr(item.owner_id, sym::automatically_derived);
 
             check_hash_peq(cx, item.span, trait_ref, ty, is_automatically_derived);
             check_ord_partial_ord(cx, item.span, trait_ref, ty, is_automatically_derived);
@@ -328,7 +327,12 @@ fn check_ord_partial_ord<'tcx>(
 }
 
 /// Implementation of the `EXPL_IMPL_CLONE_ON_COPY` lint.
-fn check_copy_clone<'tcx>(cx: &LateContext<'tcx>, item: &Item<'_>, trait_ref: &hir::TraitRef<'_>, ty: Ty<'tcx>) {
+fn check_copy_clone<'tcx>(
+    cx: &LateContext<'tcx>,
+    item: &Item<'_>,
+    trait_ref: &hir::TraitRef<'_>,
+    ty: Ty<'tcx>,
+) {
     let clone_id = match cx.tcx.lang_items().clone_trait() {
         Some(id) if trait_ref.trait_def_id() == Some(id) => id,
         _ => return,
@@ -427,7 +431,14 @@ struct UnsafeVisitor<'a, 'tcx> {
 impl<'tcx> Visitor<'tcx> for UnsafeVisitor<'_, 'tcx> {
     type NestedFilter = nested_filter::All;
 
-    fn visit_fn(&mut self, kind: FnKind<'tcx>, decl: &'tcx FnDecl<'_>, body_id: BodyId, _: Span, id: LocalDefId) {
+    fn visit_fn(
+        &mut self,
+        kind: FnKind<'tcx>,
+        decl: &'tcx FnDecl<'_>,
+        body_id: BodyId,
+        _: Span,
+        id: LocalDefId,
+    ) {
         if self.has_unsafe {
             return;
         }
@@ -463,7 +474,12 @@ impl<'tcx> Visitor<'tcx> for UnsafeVisitor<'_, 'tcx> {
 }
 
 /// Implementation of the `DERIVE_PARTIAL_EQ_WITHOUT_EQ` lint.
-fn check_partial_eq_without_eq<'tcx>(cx: &LateContext<'tcx>, span: Span, trait_ref: &hir::TraitRef<'_>, ty: Ty<'tcx>) {
+fn check_partial_eq_without_eq<'tcx>(
+    cx: &LateContext<'tcx>,
+    span: Span,
+    trait_ref: &hir::TraitRef<'_>,
+    ty: Ty<'tcx>,
+) {
     if_chain! {
         if let ty::Adt(adt, args) = ty.kind();
         if cx.tcx.visibility(adt.did()).is_public();
@@ -471,12 +487,12 @@ fn check_partial_eq_without_eq<'tcx>(cx: &LateContext<'tcx>, span: Span, trait_r
         if let Some(def_id) = trait_ref.trait_def_id();
         if cx.tcx.is_diagnostic_item(sym::PartialEq, def_id);
         let param_env = param_env_for_derived_eq(cx.tcx, adt.did(), eq_trait_def_id);
-        if !implements_trait_with_env(cx.tcx, param_env, ty, eq_trait_def_id, []);
+        if !implements_trait_with_env(cx.tcx, param_env, ty, eq_trait_def_id, &[]);
         // If all of our fields implement `Eq`, we can implement `Eq` too
         if adt
             .all_fields()
             .map(|f| f.ty(cx.tcx, args))
-            .all(|ty| implements_trait_with_env(cx.tcx, param_env, ty, eq_trait_def_id, []));
+            .all(|ty| implements_trait_with_env(cx.tcx, param_env, ty, eq_trait_def_id, &[]));
         then {
             span_lint_and_sugg(
                 cx,

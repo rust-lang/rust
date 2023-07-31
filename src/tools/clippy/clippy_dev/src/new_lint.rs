@@ -96,8 +96,7 @@ fn create_test(lint: &LintData<'_>) -> io::Result<()> {
 
         path.push("src");
         fs::create_dir(&path)?;
-        let header = format!("//@compile-flags: --crate-name={lint_name}");
-        write_file(path.join("main.rs"), get_test_file_contents(lint_name, Some(&header)))?;
+        write_file(path.join("main.rs"), get_test_file_contents(lint_name))?;
 
         Ok(())
     }
@@ -113,7 +112,7 @@ fn create_test(lint: &LintData<'_>) -> io::Result<()> {
         println!("Generated test directories: `{relative_test_dir}/pass`, `{relative_test_dir}/fail`");
     } else {
         let test_path = format!("tests/ui/{}.rs", lint.name);
-        let test_contents = get_test_file_contents(lint.name, None);
+        let test_contents = get_test_file_contents(lint.name);
         write_file(lint.project_root.join(&test_path), test_contents)?;
 
         println!("Generated test file: `{test_path}`");
@@ -195,23 +194,16 @@ pub(crate) fn get_stabilization_version() -> String {
     parse_manifest(&contents).expect("Unable to find package version in `Cargo.toml`")
 }
 
-fn get_test_file_contents(lint_name: &str, header_commands: Option<&str>) -> String {
-    let mut contents = formatdoc!(
+fn get_test_file_contents(lint_name: &str) -> String {
+    formatdoc!(
         r#"
-        #![allow(unused)]
         #![warn(clippy::{lint_name})]
 
         fn main() {{
             // test code goes here
         }}
     "#
-    );
-
-    if let Some(header) = header_commands {
-        contents = format!("{header}\n{contents}");
-    }
-
-    contents
+    )
 }
 
 fn get_manifest_contents(lint_name: &str, hint: &str) -> String {

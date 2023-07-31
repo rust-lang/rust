@@ -158,5 +158,11 @@ error: redundant closure
 LL |     dyn_opt.map(|d| d.method_on_dyn());
    |                 ^^^^^^^^^^^^^^^^^^^^^ help: replace the closure with the method itself: `<dyn TestTrait>::method_on_dyn`
 
-error: aborting due to 26 previous errors
+error: redundant closure
+  --> $DIR/eta.rs:389:19
+   |
+LL |     let _ = f(&0, |x, y| f2(x, y));
+   |                   ^^^^^^^^^^^^^^^ help: replace the closure with the function itself: `f2`
+
+error: aborting due to 27 previous errors
 
