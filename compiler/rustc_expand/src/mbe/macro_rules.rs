@@ -446,7 +446,7 @@ pub fn compile_declarative_macro(
 
     let create_parser = || {
         let body = macro_def.body.tokens.clone();
-        Parser::new(&sess.parse_sess, body, true, rustc_parse::MACRO_ARGUMENTS)
+        Parser::new(&sess.parse_sess, body, false, rustc_parse::MACRO_ARGUMENTS)
     };
 
     let parser = create_parser();
