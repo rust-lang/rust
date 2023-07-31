@@ -109,7 +109,7 @@ pub fn get_git_modified_files(
     if let Some(git_dir) = git_dir {
         git.current_dir(git_dir);
     }
-    let files = output_result(git.arg("diff-index").arg("--name-only").arg(merge_base.trim()))?
+    let files = output_result(git.args(["diff-index", "--name-only", merge_base.trim()]))?
         .lines()
         .map(|s| s.trim().to_owned())
         .filter(|f| {
