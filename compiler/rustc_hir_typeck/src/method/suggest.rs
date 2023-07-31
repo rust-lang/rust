@@ -2104,20 +2104,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     | sym::Hash
                     | sym::Debug => true,
                     _ => false,
-                } && match trait_pred.trait_ref.substs.as_slice() {
-                    // Only suggest deriving if lhs == rhs...
-                    [lhs, rhs] => {
-                        if let Some(lhs) = lhs.as_type()
-                            && let Some(rhs) = rhs.as_type()
-                        {
-                            self.can_eq(self.param_env, lhs, rhs)
-                        } else {
-                            false
-                        }
-                    },
-                    // Unary ops can always be derived
-                    [_] => true,
-                    _ => false,
                 };
                 if can_derive {
                     let self_name = trait_pred.self_ty().to_string();

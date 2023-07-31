@@ -1188,11 +1188,15 @@ pub struct NoopMethodCallDiag<'a> {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(lint_suspicious_double_ref_op)]
-pub struct SuspiciousDoubleRefDiag<'a> {
-    pub call: Symbol,
+#[diag(lint_suspicious_double_ref_deref)]
+pub struct SuspiciousDoubleRefDerefDiag<'a> {
     pub ty: Ty<'a>,
-    pub op: &'static str,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_suspicious_double_ref_clone)]
+pub struct SuspiciousDoubleRefCloneDiag<'a> {
+    pub ty: Ty<'a>,
 }
 
 // pass_by_value.rs
