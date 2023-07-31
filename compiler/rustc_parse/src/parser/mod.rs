@@ -1172,7 +1172,7 @@ impl<'a> Parser<'a> {
             }
             i += 1;
         }
-        return looker(&token);
+        looker(&token)
     }
 
     /// Returns whether any of the given keywords are `dist` tokens ahead of the current one.
