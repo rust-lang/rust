@@ -36,7 +36,7 @@ impl char {
     /// let c: char = something_which_returns_char();
     /// assert!(char::MIN <= c);
     ///
-    /// let value_at_min = char::MIN as u32;
+    /// let value_at_min = u32::from(char::MIN);
     /// assert_eq!(char::from_u32(value_at_min), Some('\0'));
     /// ```
     #[unstable(feature = "char_min", issue = "114298")]
@@ -68,7 +68,7 @@ impl char {
     /// let c: char = something_which_returns_char();
     /// assert!(c <= char::MAX);
     ///
-    /// let value_at_max = char::MAX as u32;
+    /// let value_at_max = u32::from(char::MAX);
     /// assert_eq!(char::from_u32(value_at_max), Some('\u{10FFFF}'));
     /// assert_eq!(char::from_u32(value_at_max + 1), None);
     /// ```
