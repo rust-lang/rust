@@ -714,15 +714,6 @@ impl TokenTreeCursor {
     pub fn look_ahead(&self, n: usize) -> Option<&TokenTree> {
         self.stream.0.get(self.index + n)
     }
-
-    // Replace the previously obtained token tree with `tts`, and rewind to
-    // just before them.
-    pub fn replace_prev_and_rewind(&mut self, tts: Vec<TokenTree>) {
-        assert!(self.index > 0);
-        self.index -= 1;
-        let stream = Lrc::make_mut(&mut self.stream.0);
-        stream.splice(self.index..self.index + 1, tts);
-    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Encodable, Decodable, HashStable_Generic)]
