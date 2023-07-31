@@ -120,5 +120,25 @@ LL +
 LL ~     impl<T> Foo<T> {
    |
 
-error: aborting due to 7 previous errors
+error: you should consider adding a `Default` implementation for `MyStruct<K, V>`
+  --> $DIR/new_without_default.rs:247:5
+   |
+LL | /     pub fn new() -> Self {
+LL | |         Self { _kv: None }
+LL | |     }
+   | |_____^
+   |
+help: try adding this
+   |
+LL + impl<K, V> Default for MyStruct<K, V>
+LL + where
+LL +     K: std::hash::Hash + Eq + PartialEq,
+LL +  {
+LL +     fn default() -> Self {
+LL +         Self::new()
+LL +     }
+LL + }
+   |
+
+error: aborting due to 8 previous errors
 

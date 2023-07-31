@@ -130,6 +130,11 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
                                 }
 
                                 let generics_sugg = snippet(cx, generics.span, "");
+                                let where_clause_sugg = if generics.has_where_clause_predicates {
+                                    format!("\n{}\n", snippet(cx, generics.where_clause_span, ""))
+                                } else {
+                                    String::new()
+                                };
                                 let self_ty_fmt = self_ty.to_string();
                                 let self_type_snip = snippet(cx, impl_self_ty.span, &self_ty_fmt);
                                 span_lint_hir_and_then(
@@ -145,7 +150,11 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
                                             cx,
                                             item.span,
                                             "try adding this",
-                                            &create_new_without_default_suggest_msg(&self_type_snip, &generics_sugg),
+                                            &create_new_without_default_suggest_msg(
+                                                &self_type_snip,
+                                                &generics_sugg,
+                                                &where_clause_sugg
+                                            ),
                                             Applicability::MaybeIncorrect,
                                         );
                                     },
@@ -159,10 +168,14 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
     }
 }
 
-fn create_new_without_default_suggest_msg(self_type_snip: &str, generics_sugg: &str) -> String {
+fn create_new_without_default_suggest_msg(
+    self_type_snip: &str,
+    generics_sugg: &str,
+    where_clause_sugg: &str,
+) -> String {
     #[rustfmt::skip]
     format!(
-"impl{generics_sugg} Default for {self_type_snip} {{
+"impl{generics_sugg} Default for {self_type_snip}{where_clause_sugg} {{
     fn default() -> Self {{
         Self::new()
     }}
