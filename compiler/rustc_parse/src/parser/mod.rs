@@ -135,9 +135,9 @@ pub struct Parser<'a> {
     pub capture_cfg: bool,
     restrictions: Restrictions,
     expected_tokens: Vec<TokenType>,
-    // Important: This must only be advanced from `bump` to ensure that
-    // `token_cursor.num_next_calls` is updated properly.
     token_cursor: TokenCursor,
+    // The number of calls to `bump`, i.e. the position in the token stream.
+    num_bump_calls: usize,
     /// This field is used to keep track of how many left angle brackets we have seen. This is
     /// required in order to detect extra leading left angle brackets (`<` characters) and error
     /// appropriately.
@@ -223,9 +223,6 @@ struct TokenCursor {
     // tokens are in `stack[n-1]`. `stack[0]` (when present) has no delimiters
     // because it's the outermost token stream which never has delimiters.
     stack: Vec<(TokenTreeCursor, Delimiter, DelimSpan)>,
-
-    // Counts the number of calls to `{,inlined_}next`.
-    num_next_calls: usize,
 
     // During parsing, we may sometimes need to 'unglue' a
     // glued token into two component tokens
@@ -402,9 +399,9 @@ impl<'a> Parser<'a> {
             token_cursor: TokenCursor {
                 tree_cursor: stream.into_trees(),
                 stack: Vec::new(),
-                num_next_calls: 0,
                 break_last_token: false,
             },
+            num_bump_calls: 0,
             unmatched_angle_bracket_count: 0,
             max_angle_bracket_count: 0,
             last_unexpected_token_span: None,
@@ -1049,7 +1046,7 @@ impl<'a> Parser<'a> {
         // Note: destructuring here would give nicer code, but it was found in #96210 to be slower
         // than `.0`/`.1` access.
         let mut next = self.token_cursor.inlined_next();
-        self.token_cursor.num_next_calls += 1;
+        self.num_bump_calls += 1;
         // We've retrieved an token from the underlying
         // cursor, so we no longer need to worry about
         // an unglued token. See `break_and_eat` for more details
@@ -1446,7 +1443,7 @@ impl<'a> Parser<'a> {
     }
 
     pub fn approx_token_stream_pos(&self) -> usize {
-        self.token_cursor.num_next_calls
+        self.num_bump_calls
     }
 }
 
