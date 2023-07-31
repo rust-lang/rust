@@ -18,6 +18,7 @@ mod unsafe_list;
 
 use crate::num::NonZeroUsize;
 use crate::ops::{Deref, DerefMut};
+use crate::panic::{self, AssertUnwindSafe};
 use crate::time::Duration;
 
 use super::abi::thread;
@@ -147,9 +148,8 @@ impl WaitQueue {
     /// Adds the calling thread to the `WaitVariable`'s wait queue, then wait
     /// until a wakeup event.
     ///
-    /// This function does not return until this thread has been awoken.
-    ///
-    /// Safety: `before_wait` must not panic
+    /// This function does not return until this thread has been awoken. When `before_wait` panics,
+    /// this function will abort.
     pub fn wait<T, F: FnOnce()>(mut guard: SpinMutexGuard<'_, WaitVariable<T>>, before_wait: F) {
         // very unsafe: check requirements of UnsafeList::push
         unsafe {
@@ -159,7 +159,9 @@ impl WaitQueue {
             }));
             let entry = guard.queue.inner.push(&mut entry);
             drop(guard);
-            before_wait();
+            if let Err(_e) = panic::catch_unwind(AssertUnwindSafe(|| before_wait())) {
+                rtabort!("Panic before wait on wakeup event")
+            }
             while !entry.lock().wake {
                 // `entry.wake` is only set in `notify_one` and `notify_all` functions. Both ensure
                 // the entry is removed from the queue _before_ setting this bool. There are no
@@ -174,7 +176,7 @@ impl WaitQueue {
     /// Adds the calling thread to the `WaitVariable`'s wait queue, then wait
     /// until a wakeup event or timeout. If event was observed, returns true.
     /// If not, it will remove the calling thread from the wait queue.
-    /// Safety: `before_wait` must not panic
+    /// When `before_wait` panics, this function will abort.
     pub fn wait_timeout<T, F: FnOnce()>(
         lock: &SpinMutex<WaitVariable<T>>,
         timeout: Duration,
@@ -187,7 +189,9 @@ impl WaitQueue {
                 wake: false,
             }));
             let entry_lock = lock.lock().queue.inner.push(&mut entry);
-            before_wait();
+            if let Err(_e) = panic::catch_unwind(AssertUnwindSafe(|| before_wait())) {
+                rtabort!("Panic before wait on wakeup event or timeout")
+            }
             usercalls::wait_timeout(EV_UNPARK, timeout, || entry_lock.lock().wake);
             // acquire the wait queue's lock first to avoid deadlock
             // and ensure no other function can simultaneously access the list
