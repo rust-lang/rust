@@ -1241,8 +1241,7 @@ impl<'a> Parser<'a> {
         match self.token.kind {
             token::OpenDelim(..) => {
                 // Grab the tokens within the delimiters.
-                let tree_cursor = &self.token_cursor.tree_cursor;
-                let stream = tree_cursor.stream.clone();
+                let stream = self.token_cursor.tree_cursor.stream.clone();
                 let (_, delim, span) = *self.token_cursor.stack.last().unwrap();
 
                 // Advance the token cursor through the entire delimited
