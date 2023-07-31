@@ -97,7 +97,7 @@ fn test_config(target: &str, path: &str, mode: Mode, with_dependencies: bool) ->
         output_conflict_handling,
         out_dir: PathBuf::from(std::env::var_os("CARGO_TARGET_DIR").unwrap()).join("ui"),
         edition: Some("2021".into()),
-        ..Config::rustc(path.into())
+        ..Config::rustc(path)
     };
 
     let use_std = env::var_os("MIRI_NO_STD").is_none();
@@ -123,49 +123,19 @@ fn run_tests(mode: Mode, path: &str, target: &str, with_dependencies: bool) -> R
     let config = test_config(target, path, mode, with_dependencies);
 
     // Handle command-line arguments.
-    let mut after_dashdash = false;
-    let mut quiet = false;
-    let filters = std::env::args()
-        .skip(1)
-        .filter(|arg| {
-            if after_dashdash {
-                // Just propagate everything.
-                return true;
-            }
-            match &**arg {
-                "--quiet" => {
-                    quiet = true;
-                    false
-                }
-                "--" => {
-                    after_dashdash = true;
-                    false
-                }
-                s if s.starts_with('-') => {
-                    panic!("unknown compiletest flag `{s}`");
-                }
-                _ => true,
-            }
-        })
-        .collect::<Vec<_>>();
+    let args = ui_test::Args::test();
+    let quiet = args.quiet;
     eprintln!("   Compiler: {}", config.program.display());
     ui_test::run_tests_generic(
-        config,
+        vec![config],
+        std::thread::available_parallelism().unwrap(),
+        args,
         // The files we're actually interested in (all `.rs` files).
-        |path| {
-            path.extension().is_some_and(|ext| ext == "rs")
-                && (filters.is_empty()
-                    || filters.iter().any(|f| path.display().to_string().contains(f)))
-        },
+        ui_test::default_file_filter,
         // This could be used to overwrite the `Config` on a per-test basis.
-        |_, _| None,
+        |_, _| {},
         (
-            if quiet {
-                Box::<status_emitter::Quiet>::default()
-                    as Box<dyn status_emitter::StatusEmitter + Send>
-            } else {
-                Box::new(status_emitter::Text)
-            },
+            if quiet { status_emitter::Text::quiet() } else { status_emitter::Text::verbose() },
             status_emitter::Gha::</* GHA Actions groups*/ false> {
                 name: format!("{mode:?} {path} ({target})"),
             },
@@ -269,11 +239,16 @@ fn main() -> Result<()> {
     ui(Mode::Pass, "tests/pass", &target, WithoutDependencies)?;
     ui(Mode::Pass, "tests/pass-dep", &target, WithDependencies)?;
     ui(Mode::Panic, "tests/panic", &target, WithDependencies)?;
-    ui(Mode::Fail { require_patterns: true }, "tests/fail", &target, WithDependencies)?;
+    ui(
+        Mode::Fail { require_patterns: true, rustfix: false },
+        "tests/fail",
+        &target,
+        WithDependencies,
+    )?;
     if cfg!(target_os = "linux") {
         ui(Mode::Pass, "tests/extern-so/pass", &target, WithoutDependencies)?;
         ui(
-            Mode::Fail { require_patterns: true },
+            Mode::Fail { require_patterns: true, rustfix: false },
             "tests/extern-so/fail",
             &target,
             WithoutDependencies,
@@ -285,11 +260,13 @@ fn main() -> Result<()> {
 
 fn run_dep_mode(target: String, mut args: impl Iterator<Item = OsString>) -> Result<()> {
     let path = args.next().expect("./miri run-dep must be followed by a file name");
-    let mut config = test_config(&target, "", Mode::Yolo, /* with dependencies */ true);
+    let mut config =
+        test_config(&target, "", Mode::Yolo { rustfix: false }, /* with dependencies */ true);
     config.program.args.clear(); // We want to give the user full control over flags
-    config.build_dependencies_and_link_them()?;
+    let dep_args = config.build_dependencies()?;
 
     let mut cmd = config.program.build(&config.out_dir);
+    cmd.args(dep_args);
 
     cmd.arg(path);
 
