@@ -152,6 +152,7 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
                 .map(|entry| {
                     entry.split(' ').nth(1).expect("every git status entry should list a path")
                 });
+            let mut untracked_count = 0;
             for untracked_path in untracked_paths {
                 println!("skip untracked path {untracked_path} during rustfmt invocations");
                 // The leading `/` makes it an exact match against the
@@ -159,6 +160,7 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
                 // have `foo.rs` in the repository root it will also match
                 // against anything like `compiler/rustc_foo/src/foo.rs`,
                 // preventing the latter from being formatted.
+                untracked_count += 1;
                 ignore_fmt.add(&format!("!/{untracked_path}")).expect(&untracked_path);
             }
             // Only check modified files locally to speed up runtime.
@@ -167,13 +169,28 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
             if !CiEnv::is_ci() && paths.is_empty() {
                 match get_modified_rs_files(build) {
                     Ok(Some(files)) => {
+                        eprintln!("Found {:?} modified files", files);
                         if files.len() <= 10 {
                             for file in &files {
                                 println!("formatting modified file {file}");
                             }
-                        } else {
-                            println!("formatting {} modified files", files.len());
                         }
+                        let pluralized = |count| if count > 1 { "files" } else { "file" };
+                        let untracked_msg = if untracked_count == 0 {
+                            "".to_string()
+                        } else {
+                            format!(
+                                ", skipped {} untracked {}",
+                                untracked_count,
+                                pluralized(untracked_count),
+                            )
+                        };
+                        println!(
+                            "formatting {} modified {}{}",
+                            files.len(),
+                            pluralized(files.len()),
+                            untracked_msg
+                        );
                         for file in files {
                             ignore_fmt.add(&format!("/{file}")).expect(&file);
                         }
