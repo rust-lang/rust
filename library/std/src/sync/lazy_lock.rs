@@ -89,6 +89,15 @@ impl<T, F: FnOnce() -> T> LazyLock<T, F> {
         LazyLock { once: Once::new(), data: UnsafeCell::new(Data { f: ManuallyDrop::new(f) }) }
     }
 
+    /// Creates a new lazy value that is already initialized.
+    #[inline]
+    #[cfg(test)]
+    pub(crate) fn preinit(value: T) -> LazyLock<T, F> {
+        let once = Once::new();
+        once.call_once(|| {});
+        LazyLock { once, data: UnsafeCell::new(Data { value: ManuallyDrop::new(value) }) }
+    }
+
     /// Consumes this `LazyLock` returning the stored value.
     ///
     /// Returns `Ok(value)` if `Lazy` is initialized and `Err(f)` otherwise.
