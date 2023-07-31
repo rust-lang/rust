@@ -209,7 +209,8 @@ pub struct ParseSess {
     /// Environment variables accessed during the build and their values when they exist.
     pub env_depinfo: Lock<FxHashSet<(Symbol, Option<Symbol>)>>,
     /// File paths accessed during the build.
-    pub file_depinfo: Lock<FxHashSet<Symbol>>,
+    /// Paths are relative to ???.
+    pub file_depinfo: Lock<FxHashSet<std::path::PathBuf>>,
     /// Whether cfg(version) should treat the current release as incomplete
     pub assume_incomplete_release: bool,
     /// Spans passed to `proc_macro::quote_span`. Each span has a numerical

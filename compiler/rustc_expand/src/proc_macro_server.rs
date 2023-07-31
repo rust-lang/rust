@@ -402,8 +402,8 @@ impl server::FreeFunctions for Rustc<'_, '_> {
             .insert((Symbol::intern(var), value.map(Symbol::intern)));
     }
 
-    fn track_path(&mut self, path: &str) {
-        self.sess().file_depinfo.borrow_mut().insert(Symbol::intern(path));
+    fn track_path(&mut self, path: std::path::PathBuf) {
+        self.sess().file_depinfo.borrow_mut().insert(path);
     }
 
     fn literal_from_str(&mut self, s: &str) -> Result<Literal<Self::Span, Self::Symbol>, ()> {

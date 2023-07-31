@@ -57,7 +57,7 @@ macro_rules! with_api {
             FreeFunctions {
                 fn drop($self: $S::FreeFunctions);
                 fn track_env_var(var: &str, value: Option<&str>);
-                fn track_path(path: &str);
+                fn track_path(path: std::path::PathBuf);
                 fn literal_from_str(s: &str) -> Result<Literal<$S::Span, $S::Symbol>, ()>;
                 fn emit_diagnostic(diagnostic: Diagnostic<$S::Span>);
             },

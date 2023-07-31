@@ -1476,18 +1476,14 @@ pub mod tracked {
     ///
     /// Commonly used for tracking asset preprocessing.
     #[unstable(feature = "proc_macro_tracked_path", issue = "73921")]
-    pub fn path<P: AsRef<Path>>(path: P) -> Result<(), ()> {
+    pub fn path<P: AsRef<Path>>(path: P) {
         let path: &Path = path.as_ref();
-        if let Some(path) = path.to_str() {
-            crate::bridge::client::FreeFunctions::track_path(path);
-            Ok(())
-        } else {
-            Err(())
-        }
+        crate::bridge::client::FreeFunctions::track_path(PathBuf::from(path));
     }
 
     use std::env::{self, VarError};
     use std::ffi::OsStr;
+    use std::path::PathBuf;
 
     /// Retrieve an environment variable and add it to build dependency info.
     /// The build system executing the compiler will know that the variable was accessed during

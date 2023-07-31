@@ -476,13 +476,12 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
         // (e.g. accessed in proc macros).
         let file_depinfo = sess.parse_sess.file_depinfo.borrow();
 
-        let normalize_path = |path: PathBuf| {
+        let normalize_path = |path: PathBuf| -> String {
             let file = FileName::from(path);
             escape_dep_filename(&file.prefer_local().to_string())
         };
 
-        let extra_tracked_files =
-            file_depinfo.iter().map(|path_sym| normalize_path(PathBuf::from(path_sym.as_str())));
+        let extra_tracked_files = file_depinfo.iter().map(|path| normalize_path(path.to_owned()));
         files.extend(extra_tracked_files);
 
         // We also need to track used PGO profile files
