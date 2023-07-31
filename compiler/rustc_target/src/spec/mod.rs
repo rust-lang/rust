@@ -1300,6 +1300,7 @@ supported_targets! {
     ("armv7-linux-androideabi", armv7_linux_androideabi),
     ("thumbv7neon-linux-androideabi", thumbv7neon_linux_androideabi),
     ("aarch64-linux-android", aarch64_linux_android),
+    ("riscv64-linux-android", riscv64_linux_android),
 
     ("aarch64-unknown-freebsd", aarch64_unknown_freebsd),
     ("armv6-unknown-freebsd", armv6_unknown_freebsd),
