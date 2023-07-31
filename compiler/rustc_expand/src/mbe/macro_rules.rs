@@ -257,7 +257,7 @@ fn expand_macro<'cx>(
 
             // Let the context choose how to interpret the result.
             // Weird, but useful for X-macros.
-            return Box::new(ParserAnyMacro {
+            Box::new(ParserAnyMacro {
                 parser: p,
 
                 // Pass along the original expansion site and the name of the macro
@@ -269,18 +269,17 @@ fn expand_macro<'cx>(
                 is_trailing_mac: cx.current_expansion.is_trailing_mac,
                 arm_span,
                 is_local,
-            });
+            })
         }
         Err(CanRetry::No(_)) => {
             debug!("Will not retry matching as an error was emitted already");
-            return DummyResult::any(sp);
+            DummyResult::any(sp)
         }
         Err(CanRetry::Yes) => {
-            // Retry and emit a better error below.
+            // Retry and emit a better error.
+            diagnostics::failed_to_match_macro(cx, sp, def_span, name, arg, lhses)
         }
     }
-
-    diagnostics::failed_to_match_macro(cx, sp, def_span, name, arg, lhses)
 }
 
 pub(super) enum CanRetry {
