@@ -1,19 +1,15 @@
+// revisions: arm mips thumb wasm32
 // compile-flags: -C no-prepopulate-passes
 //
-
-// ignore-aarch64
+//[arm] only-arm
+//[mips] only-mips
+//[thumb] only-thumb
+//[wasm32] only-wasm32
 // ignore-emscripten
-// ignore-mips64
-// ignore-powerpc
-// ignore-powerpc64
-// ignore-riscv64 see codegen/riscv-abi
-// ignore-s390x
-// ignore-sparc
-// ignore-sparc64
-// ignore-x86
-// ignore-x86_64
-// ignore-loongarch64
-// See repr-transparent.rs
+// See ./transparent.rs
+// Some platforms pass large aggregates using immediate arrays in LLVMIR
+// Other platforms pass large aggregates using struct pointer in LLVMIR
+// This covers the "immediate array" case.
 
 #![feature(transparent_unions)]
 
