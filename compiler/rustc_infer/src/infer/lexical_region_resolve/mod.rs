@@ -942,6 +942,10 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         generic_ty: Ty<'tcx>,
         min: ty::Region<'tcx>,
     ) -> bool {
+        if let ty::ReError(_) = *min {
+            return true;
+        }
+
         match bound {
             VerifyBound::IfEq(verify_if_eq_b) => {
                 let verify_if_eq_b = var_values.normalize(self.region_rels.tcx, *verify_if_eq_b);
