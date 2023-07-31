@@ -533,15 +533,15 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let indeterminate_imports = mem::take(&mut self.indeterminate_imports);
 
         for (is_indeterminate, import) in determined_imports
-            .into_iter()
+            .iter()
             .map(|i| (false, i))
-            .chain(indeterminate_imports.into_iter().map(|i| (true, i)))
+            .chain(indeterminate_imports.iter().map(|i| (true, i)))
         {
-            let unresolved_import_error = self.finalize_import(import);
+            let unresolved_import_error = self.finalize_import(*import);
 
             // If this import is unresolved then create a dummy import
             // resolution for it so that later resolve stages won't complain.
-            self.import_dummy_binding(import, is_indeterminate);
+            self.import_dummy_binding(*import, is_indeterminate);
 
             if let Some(err) = unresolved_import_error {
                 if let ImportKind::Single { source, ref source_bindings, .. } = import.kind {
@@ -563,27 +563,34 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     errors = vec![];
                 }
                 if seen_spans.insert(err.span) {
-                    errors.push((import, err));
+                    errors.push((*import, err));
                     prev_root_id = import.root_id;
                 }
-            } else if is_indeterminate {
-                let path = import_path_to_string(
-                    &import.module_path.iter().map(|seg| seg.ident).collect::<Vec<_>>(),
-                    &import.kind,
-                    import.span,
-                );
-                let err = UnresolvedImportError {
-                    span: import.span,
-                    label: None,
-                    note: None,
-                    suggestion: None,
-                    candidates: None,
-                };
-                // FIXME: there should be a better way of doing this than
-                // formatting this as a string then checking for `::`
-                if path.contains("::") {
-                    errors.push((import, err))
-                }
+            }
+        }
+
+        if !errors.is_empty() {
+            self.throw_unresolved_import_error(errors);
+            return;
+        }
+
+        for import in &indeterminate_imports {
+            let path = import_path_to_string(
+                &import.module_path.iter().map(|seg| seg.ident).collect::<Vec<_>>(),
+                &import.kind,
+                import.span,
+            );
+            let err = UnresolvedImportError {
+                span: import.span,
+                label: None,
+                note: None,
+                suggestion: None,
+                candidates: None,
+            };
+            // FIXME: there should be a better way of doing this than
+            // formatting this as a string then checking for `::`
+            if path.contains("::") {
+                errors.push((*import, err))
             }
         }
 
