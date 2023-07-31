@@ -8,7 +8,7 @@ fi
 
 if [ "$NO_CHANGE_USER" = "" ]; then
   if [ "$LOCAL_USER_ID" != "" ]; then
-    id -u $LOCAL_USER_ID &>/dev/null || useradd --shell /bin/bash -u $LOCAL_USER_ID -o -c "" -m user
+    id -u user &>/dev/null || useradd --shell /bin/bash -u $LOCAL_USER_ID -o -c "" -m user
     export HOME=/home/user
     unset LOCAL_USER_ID
 
