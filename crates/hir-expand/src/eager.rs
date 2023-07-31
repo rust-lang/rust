@@ -19,7 +19,7 @@
 //!
 //! See the full discussion : <https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler/topic/Eager.20expansion.20of.20built-in.20macros>
 use base_db::CrateId;
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::{ted, Parse, SyntaxNode, TextRange, TextSize, WalkEvent};
 use triomphe::Arc;
 
@@ -83,10 +83,11 @@ pub fn expand_eager_macro_input(
         mbe::syntax_node_to_token_tree(&expanded_eager_input);
 
     let og_tmap = if let Some(tt) = macro_call.value.token_tree() {
-        let og_tmap = mbe::syntax_node_to_token_map(tt.syntax());
+        let mut ids_used = FxHashSet::default();
+        let mut og_tmap = mbe::syntax_node_to_token_map(tt.syntax());
         // The tokenmap and ids of subtree point into the expanded syntax node, but that is inaccessible from the outside
         // so we need to remap them to the original input of the eager macro.
-        subtree.visit_ids(&|id| {
+        subtree.visit_ids(&mut |id| {
             // Note: we discard all token ids of braces and the like here, but that's not too bad and only a temporary fix
 
             if let Some(range) = expanded_eager_input_token_map
@@ -97,6 +98,7 @@ pub fn expand_eager_macro_input(
                     // remap from eager input expansion to original eager input
                     if let Some(&og_range) = ws_mapping.get(og_range) {
                         if let Some(og_token) = og_tmap.token_by_range(og_range) {
+                            ids_used.insert(id);
                             return og_token;
                         }
                     }
@@ -104,6 +106,7 @@ pub fn expand_eager_macro_input(
             }
             tt::TokenId::UNSPECIFIED
         });
+        og_tmap.filter(|id| ids_used.contains(&id));
         og_tmap
     } else {
         Default::default()
