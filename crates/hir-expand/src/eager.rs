@@ -79,33 +79,35 @@ pub fn expand_eager_macro_input(
         return Ok(ExpandResult { value: None, err });
     };
 
-    let og_tmap = mbe::syntax_node_to_token_map(
-        macro_call.value.token_tree().expect("macro_arg_text succeeded").syntax(),
-    );
-
     let (mut subtree, expanded_eager_input_token_map) =
         mbe::syntax_node_to_token_tree(&expanded_eager_input);
 
-    // The tokenmap and ids of subtree point into the expanded syntax node, but that is inaccessible from the outside
-    // so we need to remap them to the original input of the eager macro.
-    subtree.visit_ids(&|id| {
-        // Note: we discard all token ids of braces and the like here, but that's not too bad and only a temporary fix
+    let og_tmap = if let Some(tt) = macro_call.value.token_tree() {
+        let og_tmap = mbe::syntax_node_to_token_map(tt.syntax());
+        // The tokenmap and ids of subtree point into the expanded syntax node, but that is inaccessible from the outside
+        // so we need to remap them to the original input of the eager macro.
+        subtree.visit_ids(&|id| {
+            // Note: we discard all token ids of braces and the like here, but that's not too bad and only a temporary fix
 
-        if let Some(range) =
-            expanded_eager_input_token_map.first_range_by_token(id, syntax::SyntaxKind::TOMBSTONE)
-        {
-            // remap from expanded eager input to eager input expansion
-            if let Some(og_range) = mapping.get(&range) {
-                // remap from eager input expansion to original eager input
-                if let Some(&og_range) = ws_mapping.get(og_range) {
-                    if let Some(og_token) = og_tmap.token_by_range(og_range) {
-                        return og_token;
+            if let Some(range) = expanded_eager_input_token_map
+                .first_range_by_token(id, syntax::SyntaxKind::TOMBSTONE)
+            {
+                // remap from expanded eager input to eager input expansion
+                if let Some(og_range) = mapping.get(&range) {
+                    // remap from eager input expansion to original eager input
+                    if let Some(&og_range) = ws_mapping.get(og_range) {
+                        if let Some(og_token) = og_tmap.token_by_range(og_range) {
+                            return og_token;
+                        }
                     }
                 }
             }
-        }
-        tt::TokenId::UNSPECIFIED
-    });
+            tt::TokenId::UNSPECIFIED
+        });
+        og_tmap
+    } else {
+        Default::default()
+    };
     subtree.delimiter = crate::tt::Delimiter::unspecified();
 
     let loc = MacroCallLoc {
