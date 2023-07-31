@@ -281,16 +281,16 @@ unsafe impl SliceIndex<str> for (ops::Bound<usize>, ops::Bound<usize>) {
 
     #[inline]
     unsafe fn get_unchecked(self, slice: *const str) -> *const str {
+        let len = (slice as *const [u8]).len();
         // SAFETY: the caller has to uphold the safety contract for `get_unchecked`.
-        unsafe { crate::slice::index::into_range_unchecked(slice.len(), self).get_unchecked(slice) }
+        unsafe { crate::slice::index::into_range_unchecked(len, self).get_unchecked(slice) }
     }
 
     #[inline]
     unsafe fn get_unchecked_mut(self, slice: *mut str) -> *mut str {
+        let len = (slice as *mut [u8]).len();
         // SAFETY: the caller has to uphold the safety contract for `get_unchecked_mut`.
-        unsafe {
-            crate::slice::index::into_range_unchecked(slice.len(), self).get_unchecked_mut(slice)
-        }
+        unsafe { crate::slice::index::into_range_unchecked(len, self).get_unchecked_mut(slice) }
     }
 
     #[inline]
