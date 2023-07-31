@@ -10,7 +10,7 @@ impl Ty {
     }
 }
 
-type Const = Opaque;
+pub(crate) type Const = Opaque;
 pub(crate) type Region = Opaque;
 type Span = Opaque;
 
