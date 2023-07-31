@@ -100,7 +100,7 @@ impl SizeHint for Empty {
     }
 }
 
-#[stable(feature = "empty_write", since = "1.64.0")]
+#[stable(feature = "empty_write", since = "CURRENT_RUSTC_VERSION")]
 impl Write for Empty {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
@@ -124,7 +124,7 @@ impl Write for Empty {
     }
 }
 
-#[stable(feature = "empty_write", since = "1.64.0")]
+#[stable(feature = "empty_write", since = "CURRENT_RUSTC_VERSION")]
 impl Write for &Empty {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
