@@ -265,9 +265,9 @@ impl TokenCursor {
     #[inline(always)]
     fn inlined_next(&mut self) -> (Token, Spacing) {
         loop {
-            // FIXME: we currently don't return `Delimiter` open/close delims. To fix #67062 we will
-            // need to, whereupon the `delim != Delimiter::Invisible` conditions below can be
-            // removed.
+            // FIXME: we currently don't return `Delimiter::Invisible` open/close delims. To fix
+            // #67062 we will need to, whereupon the `delim != Delimiter::Invisible` conditions
+            // below can be removed.
             if let Some(tree) = self.tree_cursor.next_ref() {
                 match tree {
                     &TokenTree::Token(ref token, spacing) => {
