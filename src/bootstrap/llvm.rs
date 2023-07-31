@@ -342,12 +342,6 @@ impl Step for Llvm {
         if let Some(path) = builder.config.llvm_profile_use.as_ref() {
             cfg.define("LLVM_PROFDATA_FILE", &path);
         }
-        if builder.config.llvm_bolt_profile_generate
-            || builder.config.llvm_bolt_profile_use.is_some()
-        {
-            // Relocations are required for BOLT to work.
-            ldflags.push_all("-Wl,-q");
-        }
 
         // Disable zstd to avoid a dependency on libzstd.so.
         cfg.define("LLVM_ENABLE_ZSTD", "OFF");

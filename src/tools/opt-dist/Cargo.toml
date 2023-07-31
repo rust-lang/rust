@@ -20,3 +20,4 @@ xz = "0.1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 glob = "0.3"
+tempfile = "3.5"

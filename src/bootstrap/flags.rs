@@ -149,12 +149,9 @@ pub struct Flags {
     /// generate PGO profile with llvm built for rustc
     #[arg(global(true), long)]
     pub llvm_profile_generate: bool,
-    /// generate BOLT profile for LLVM build
+    /// Additional reproducible artifacts that should be added to the reproducible artifacts archive.
     #[arg(global(true), long)]
-    pub llvm_bolt_profile_generate: bool,
-    /// use BOLT profile for LLVM build
-    #[arg(global(true), value_hint = clap::ValueHint::FilePath, long, value_name = "PROFILE")]
-    pub llvm_bolt_profile_use: Option<String>,
+    pub reproducible_artifact: Vec<String>,
     #[arg(global(true))]
     /// paths for the subcommand
     pub paths: Vec<PathBuf>,

@@ -16,7 +16,7 @@ pub struct CmdBuilder {
 }
 
 impl CmdBuilder {
-    pub fn arg(mut self, arg: &str) -> Self {
+    pub fn arg<S: ToString>(mut self, arg: S) -> Self {
         self.args.push(arg.to_string());
         self
     }
@@ -154,13 +154,13 @@ impl Bootstrap {
         self
     }
 
-    pub fn llvm_bolt_instrument(mut self) -> Self {
-        self.cmd = self.cmd.arg("--llvm-bolt-profile-generate");
+    pub fn with_llvm_bolt_ldflags(mut self) -> Self {
+        self.cmd = self.cmd.arg("--set").arg("llvm.ldflags=-Wl,-q");
         self
     }
 
-    pub fn llvm_bolt_optimize(mut self, profile: &LlvmBoltProfile) -> Self {
-        self.cmd = self.cmd.arg("--llvm-bolt-profile-use").arg(profile.0.as_str());
+    pub fn with_bolt_profile(mut self, profile: LlvmBoltProfile) -> Self {
+        self.cmd = self.cmd.arg("--reproducible-artifact").arg(profile.0.as_str());
         self
     }
 

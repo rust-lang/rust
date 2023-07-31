@@ -39,7 +39,6 @@ use crate::util::{
     dir_is_empty, exe, libdir, mtime, output, run, run_suppressed, symlink_dir, try_run_suppressed,
 };
 
-mod bolt;
 mod builder;
 mod cache;
 mod cc_detect;
