@@ -249,7 +249,7 @@ fn expand_macro<'cx>(
                 trace_macros_note(&mut cx.expansions, sp, msg);
             }
 
-            let p = Parser::new(sess, tts, false, None);
+            let p = Parser::new(sess, tts, None);
 
             if is_local {
                 cx.resolver.record_macro_rule_usage(node_id, i);
@@ -446,7 +446,7 @@ pub fn compile_declarative_macro(
 
     let create_parser = || {
         let body = macro_def.body.tokens.clone();
-        Parser::new(&sess.parse_sess, body, false, rustc_parse::MACRO_ARGUMENTS)
+        Parser::new(&sess.parse_sess, body, rustc_parse::MACRO_ARGUMENTS)
     };
 
     let parser = create_parser();
@@ -1417,6 +1417,11 @@ fn quoted_tt_to_string(tt: &mbe::TokenTree) -> String {
     }
 }
 
-pub(super) fn parser_from_cx(sess: &ParseSess, tts: TokenStream, recovery: Recovery) -> Parser<'_> {
-    Parser::new(sess, tts, true, rustc_parse::MACRO_ARGUMENTS).recovery(recovery)
+pub(super) fn parser_from_cx(
+    sess: &ParseSess,
+    mut tts: TokenStream,
+    recovery: Recovery,
+) -> Parser<'_> {
+    tts.desugar_doc_comments();
+    Parser::new(sess, tts, rustc_parse::MACRO_ARGUMENTS).recovery(recovery)
 }

@@ -388,14 +388,9 @@ pub(super) fn token_descr(token: &Token) -> String {
 impl<'a> Parser<'a> {
     pub fn new(
         sess: &'a ParseSess,
-        mut stream: TokenStream,
-        desugar_doc_comments: bool,
+        stream: TokenStream,
         subparser_name: Option<&'static str>,
     ) -> Self {
-        if desugar_doc_comments {
-            stream.desugar_doc_comments();
-        }
-
         let mut parser = Parser {
             sess,
             token: Token::dummy(),
