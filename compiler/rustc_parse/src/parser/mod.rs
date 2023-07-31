@@ -1288,12 +1288,12 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a stream of tokens into a list of `TokenTree`s, up to EOF.
-    pub fn parse_all_token_trees(&mut self) -> PResult<'a, Vec<TokenTree>> {
+    pub fn parse_all_token_trees(&mut self) -> Vec<TokenTree> {
         let mut tts = Vec::new();
         while self.token != token::Eof {
             tts.push(self.parse_token_tree());
         }
-        Ok(tts)
+        tts
     }
 
     pub fn parse_tokens(&mut self) -> TokenStream {
