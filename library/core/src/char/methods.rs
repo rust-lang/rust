@@ -11,9 +11,27 @@ use super::*;
 impl char {
     /// The lowest valid code point a `char` can have, `'\0'`.
     ///
+    /// Unlike integer types, `char` actually has a gap in the middle,
+    /// meaning that the range of possible `char`s is smaller than you
+    /// might expect. Ranges of `char` will automatically hop this gap
+    /// for you:
+    ///
+    /// ```
+    /// #![feature(char_min)]
+    /// let dist = u32::from(char::MAX) - u32::from(char::MIN);
+    /// let size = (char::MIN..=char::MAX).count();
+    /// assert!(dist < size);
+    /// ```
+    ///
+    /// Despite this gap, the `MIN` and [`MAX`] values can be used as bounds for
+    /// all `char` values.
+    ///
+    /// [`MAX`]: char::MAX
+    ///
     /// # Examples
     ///
     /// ```
+    /// #![feature(char_min)]
     /// # fn something_which_returns_char() -> char { 'a' }
     /// let c: char = something_which_returns_char();
     /// assert!(char::MIN <= c);
@@ -25,6 +43,23 @@ impl char {
     pub const MIN: char = '\0';
 
     /// The highest valid code point a `char` can have, `'\u{10FFFF}'`.
+    ///
+    /// Unlike integer types, `char` actually has a gap in the middle,
+    /// meaning that the range of possible `char`s is smaller than you
+    /// might expect. Ranges of `char` will automatically hop this gap
+    /// for you:
+    ///
+    /// ```
+    /// #![feature(char_min)]
+    /// let dist = u32::from(char::MAX) - u32::from(char::MIN);
+    /// let size = (char::MIN..=char::MAX).count();
+    /// assert!(dist < size);
+    /// ```
+    ///
+    /// Despite this gap, the [`MIN`] and `MAX` values can be used as bounds for
+    /// all `char` values.
+    ///
+    /// [`MIN`]: char::MIN
     ///
     /// # Examples
     ///
