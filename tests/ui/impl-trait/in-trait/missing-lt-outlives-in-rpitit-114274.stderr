@@ -1,0 +1,38 @@
+error[E0261]: use of undeclared lifetime name `'missing`
+  --> $DIR/missing-lt-outlives-in-rpitit-114274.rs:8:55
+   |
+LL |     fn iter(&self) -> impl Iterator<Item = Self::Item<'missing>>;
+   |                                                       ^^^^^^^^ undeclared lifetime
+   |
+   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
+help: consider making the bound lifetime-generic with a new `'missing` lifetime
+   |
+LL |     fn iter(&self) -> impl for<'missing> Iterator<Item = Self::Item<'missing>>;
+   |                            +++++++++++++
+help: consider introducing lifetime `'missing` here
+   |
+LL |     fn iter<'missing>(&self) -> impl Iterator<Item = Self::Item<'missing>>;
+   |            ++++++++++
+help: consider introducing lifetime `'missing` here
+   |
+LL | trait Iterable<'missing> {
+   |               ++++++++++
+
+error[E0311]: the parameter type `Self` may not live long enough
+  --> $DIR/missing-lt-outlives-in-rpitit-114274.rs:8:37
+   |
+LL |     fn iter(&self) -> impl Iterator<Item = Self::Item<'missing>>;
+   |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `Self: 'a`...
+   = note: ...so that the type `Self` will meet its required lifetime bounds...
+note: ...that is required by this bound
+  --> $DIR/missing-lt-outlives-in-rpitit-114274.rs:6:15
+   |
+LL |         Self: 'a;
+   |               ^^
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0261, E0311.
+For more information about an error, try `rustc --explain E0261`.
