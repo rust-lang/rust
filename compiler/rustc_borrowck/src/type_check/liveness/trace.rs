@@ -164,13 +164,9 @@ impl<'me, 'typeck, 'flow, 'tcx> LivenessResults<'me, 'typeck, 'flow, 'tcx> {
     /// Runs dropck for locals whose liveness isn't relevant. This is
     /// necessary to eagerly detect unbound recursion during drop glue computation.
     ///
-    /// These locals should not result in any liveness constraints given that they
-    /// should otherwise not be considered boring and get dropped. This is currently
-    /// not the case due to mismatches between `Ty::needs_drop` and `compute_drop_data`.
-    /// See #110288 and RFC 3417 for more details.
-    ///
-    /// FIXME: Assert that the returned liveness constraints are empty once these
-    /// inconsistencies are fixed.
+    /// These are all the locals which do not potentially reference a region local
+    /// to this body. Locals which only reference free regions are always drop-live
+    /// and can therefore safely be dropped.
     fn dropck_boring_locals(&mut self, boring_locals: Vec<Local>) {
         for local in boring_locals {
             let local_ty = self.cx.body.local_decls[local].ty;
