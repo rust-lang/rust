@@ -664,9 +664,16 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
             )
         });
 
-        ongoing_codegen.submit_pre_codegened_module_to_llvm(
-            tcx,
+        ongoing_codegen.wait_for_signal_to_codegen_item();
+        ongoing_codegen.check_for_errors(tcx.sess);
+
+        // These modules are generally cheap and won't throw off scheduling.
+        let cost = 0;
+        submit_codegened_module_to_llvm(
+            &backend,
+            &ongoing_codegen.coordinator.sender,
             ModuleCodegen { name: llmod_id, module_llvm, kind: ModuleKind::Allocator },
+            cost,
         );
     }
 
@@ -761,7 +768,6 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
                     module,
                     cost,
                 );
-                false
             }
             CguReuse::PreLto => {
                 submit_pre_lto_module_to_llvm(
@@ -773,7 +779,6 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
                         source: cgu.previous_work_product(tcx),
                     },
                 );
-                true
             }
             CguReuse::PostLto => {
                 submit_post_lto_module_to_llvm(
@@ -784,9 +789,8 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
                         source: cgu.previous_work_product(tcx),
                     },
                 );
-                true
             }
-        };
+        }
     }
 
     ongoing_codegen.codegen_finished(tcx);
