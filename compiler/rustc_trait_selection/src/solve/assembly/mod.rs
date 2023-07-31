@@ -7,7 +7,7 @@ use rustc_hir::def_id::DefId;
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::Reveal;
 use rustc_middle::traits::solve::inspect::CandidateKind;
-use rustc_middle::traits::solve::{CanonicalResponse, Certainty, Goal, MaybeCause, QueryResult};
+use rustc_middle::traits::solve::{CanonicalResponse, Certainty, Goal, QueryResult};
 use rustc_middle::traits::BuiltinImplSource;
 use rustc_middle::ty::fast_reject::{SimplifiedType, TreatParams};
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -299,7 +299,7 @@ pub(super) trait GoalKind<'tcx>:
     /// for unsize coercion in hir typeck and because it is difficult to
     /// otherwise recompute this for codegen. This is a bit of a mess but the
     /// easiest way to maintain the existing behavior for now.
-    fn consider_builtin_unsize_and_upcast_candidates(
+    fn consider_builtin_unsize_candidates(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> Vec<(CanonicalResponse<'tcx>, BuiltinImplSource)>;
@@ -402,7 +402,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 ecx.with_incremented_depth(
                     |ecx| {
                         let result = ecx.evaluate_added_goals_and_make_canonical_response(
-                            Certainty::Maybe(MaybeCause::Overflow),
+                            Certainty::OVERFLOW,
                         )?;
                         Ok(vec![Candidate {
                             source: CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
@@ -624,7 +624,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         // There may be multiple unsize candidates for a trait with several supertraits:
         // `trait Foo: Bar<A> + Bar<B>` and `dyn Foo: Unsize<dyn Bar<_>>`
         if lang_items.unsize_trait() == Some(trait_def_id) {
-            for (result, source) in G::consider_builtin_unsize_and_upcast_candidates(self, goal) {
+            for (result, source) in G::consider_builtin_unsize_candidates(self, goal) {
                 candidates.push(Candidate { source: CandidateSource::BuiltinImpl(source), result });
             }
         }

@@ -338,7 +338,7 @@ fn rematch_unsize<'tcx>(
                     .into_obligations(),
             );
 
-            // Similar to ADTs, require that the rest of the fields are equal.
+            // Similar to ADTs, require that we can unsize the tail.
             nested.push(Obligation::new(
                 tcx,
                 ObligationCause::dummy(),

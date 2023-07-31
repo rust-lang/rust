@@ -1359,9 +1359,21 @@ impl<'tcx> ToPredicate<'tcx, Clause<'tcx>> for PolyTraitPredicate<'tcx> {
     }
 }
 
+impl<'tcx> ToPredicate<'tcx> for OutlivesPredicate<ty::Region<'tcx>, ty::Region<'tcx>> {
+    fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
+        ty::Binder::dummy(PredicateKind::Clause(ClauseKind::RegionOutlives(self))).to_predicate(tcx)
+    }
+}
+
 impl<'tcx> ToPredicate<'tcx> for PolyRegionOutlivesPredicate<'tcx> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         self.map_bound(|p| PredicateKind::Clause(ClauseKind::RegionOutlives(p))).to_predicate(tcx)
+    }
+}
+
+impl<'tcx> ToPredicate<'tcx> for OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>> {
+    fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
+        ty::Binder::dummy(PredicateKind::Clause(ClauseKind::TypeOutlives(self))).to_predicate(tcx)
     }
 }
 
