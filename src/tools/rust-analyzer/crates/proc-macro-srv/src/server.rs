@@ -58,7 +58,7 @@ impl server::FreeFunctions for RustAnalyzer {
         // FIXME: track env var accesses
         // https://github.com/rust-lang/rust/pull/71858
     }
-    fn track_path(&mut self, _path: &str) {}
+    fn track_path(&mut self, _path: std::path::PathBuf) {}
 
     fn literal_from_str(
         &mut self,
