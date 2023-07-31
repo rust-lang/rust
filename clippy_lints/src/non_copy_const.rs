@@ -154,7 +154,7 @@ fn is_value_unfrozen_raw<'tcx>(
             ty::Adt(def, ..) if def.is_union() => false,
             ty::Array(ty, _) => val.unwrap_branch().iter().any(|field| inner(cx, *field, ty)),
             ty::Adt(def, _) if def.is_union() => false,
-            ty::Adt(def, substs) if def.is_enum() => {
+            ty::Adt(def, args) if def.is_enum() => {
                 let (&variant_index, fields) = val.unwrap_branch().split_first().unwrap();
                 let variant_index = VariantIdx::from_u32(variant_index.unwrap_leaf().try_to_u32().ok().unwrap());
                 fields
@@ -164,19 +164,14 @@ fn is_value_unfrozen_raw<'tcx>(
                         def.variants()[variant_index]
                             .fields
                             .iter()
-                            .map(|field| field.ty(cx.tcx, substs)),
+                            .map(|field| field.ty(cx.tcx, args)),
                     )
                     .any(|(field, ty)| inner(cx, field, ty))
             },
-            ty::Adt(def, substs) => val
+            ty::Adt(def, args) => val
                 .unwrap_branch()
                 .iter()
-                .zip(
-                    def.non_enum_variant()
-                        .fields
-                        .iter()
-                        .map(|field| field.ty(cx.tcx, substs)),
-                )
+                .zip(def.non_enum_variant().fields.iter().map(|field| field.ty(cx.tcx, args)))
                 .any(|(field, ty)| inner(cx, *field, ty)),
             ty::Tuple(tys) => val
                 .unwrap_branch()

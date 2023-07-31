@@ -5,7 +5,8 @@
     clippy::redundant_closure,
     clippy::ref_option_ref,
     clippy::equatable_if_let,
-    clippy::let_unit_value
+    clippy::let_unit_value,
+    clippy::redundant_locals
 )]
 
 fn bad1(string: Option<&str>) -> (bool, &str) {

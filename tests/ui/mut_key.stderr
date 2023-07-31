@@ -12,14 +12,6 @@ error: mutable key type
 LL | fn should_not_take_this_arg(m: &mut HashMap<Key, usize>, _n: usize) -> HashSet<Key> {
    |                                                                        ^^^^^^^^^^^^
 
-error: this argument is a mutable reference, but not used mutably
-  --> $DIR/mut_key.rs:31:32
-   |
-LL | fn should_not_take_this_arg(m: &mut HashMap<Key, usize>, _n: usize) -> HashSet<Key> {
-   |                                ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider changing to: `&HashMap<Key, usize>`
-   |
-   = note: `-D clippy::needless-pass-by-ref-mut` implied by `-D warnings`
-
 error: mutable key type
   --> $DIR/mut_key.rs:32:5
    |
@@ -109,6 +101,14 @@ error: mutable key type
    |
 LL |     let _map = HashMap::<Arc<Cell<usize>>, usize>::new();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: this argument is a mutable reference, but not used mutably
+  --> $DIR/mut_key.rs:31:32
+   |
+LL | fn should_not_take_this_arg(m: &mut HashMap<Key, usize>, _n: usize) -> HashSet<Key> {
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider changing to: `&HashMap<Key, usize>`
+   |
+   = note: `-D clippy::needless-pass-by-ref-mut` implied by `-D warnings`
 
 error: aborting due to 18 previous errors
 

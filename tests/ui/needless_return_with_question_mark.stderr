@@ -1,0 +1,10 @@
+error: unneeded `return` statement with `?` operator
+  --> $DIR/needless_return_with_question_mark.rs:28:5
+   |
+LL |     return Err(())?;
+   |     ^^^^^^^ help: remove it
+   |
+   = note: `-D clippy::needless-return-with-question-mark` implied by `-D warnings`
+
+error: aborting due to previous error
+

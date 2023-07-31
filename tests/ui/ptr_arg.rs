@@ -267,3 +267,16 @@ mod issue_9218 {
         todo!()
     }
 }
+
+mod issue_11181 {
+    extern "C" fn allowed(_v: &Vec<u32>) {}
+
+    struct S;
+    impl S {
+        extern "C" fn allowed(_v: &Vec<u32>) {}
+    }
+
+    trait T {
+        extern "C" fn allowed(_v: &Vec<u32>) {}
+    }
+}
