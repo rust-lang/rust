@@ -1,5 +1,5 @@
 warning: the feature `lazy_type_alias` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/lazy-type-alias-enum-variant.rs:4:12
+  --> $DIR/enum-variant.rs:4:12
    |
 LL | #![feature(lazy_type_alias)]
    |            ^^^^^^^^^^^^^^^
