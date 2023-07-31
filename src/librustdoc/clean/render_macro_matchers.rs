@@ -76,7 +76,10 @@ fn snippet_equal_to_token(tcx: TyCtxt<'_>, matcher: &TokenTree) -> Option<String
         };
 
     // Reparse a single token tree.
-    let mut reparsed_trees = parser.parse_all_token_trees();
+    let mut reparsed_trees = Vec::new();
+    while parser.token != token::Eof {
+        reparsed_trees.push(parser.parse_token_tree());
+    }
     if reparsed_trees.len() != 1 {
         return None;
     }

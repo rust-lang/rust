@@ -1251,7 +1251,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a single token tree from the input.
-    pub(crate) fn parse_token_tree(&mut self) -> TokenTree {
+    pub fn parse_token_tree(&mut self) -> TokenTree {
         match self.token.kind {
             token::OpenDelim(..) => {
                 // Grab the tokens within the delimiters.
@@ -1285,15 +1285,6 @@ impl<'a> Parser<'a> {
                 TokenTree::Token(self.prev_token.clone(), Spacing::Alone)
             }
         }
-    }
-
-    /// Parses a stream of tokens into a list of `TokenTree`s, up to EOF.
-    pub fn parse_all_token_trees(&mut self) -> Vec<TokenTree> {
-        let mut tts = Vec::new();
-        while self.token != token::Eof {
-            tts.push(self.parse_token_tree());
-        }
-        tts
     }
 
     pub fn parse_tokens(&mut self) -> TokenStream {
