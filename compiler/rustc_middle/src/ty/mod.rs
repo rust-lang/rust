@@ -1359,9 +1359,21 @@ impl<'tcx> ToPredicate<'tcx, Clause<'tcx>> for PolyTraitPredicate<'tcx> {
     }
 }
 
+impl<'tcx> ToPredicate<'tcx> for OutlivesPredicate<ty::Region<'tcx>, ty::Region<'tcx>> {
+    fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
+        ty::Binder::dummy(PredicateKind::Clause(ClauseKind::RegionOutlives(self))).to_predicate(tcx)
+    }
+}
+
 impl<'tcx> ToPredicate<'tcx> for PolyRegionOutlivesPredicate<'tcx> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         self.map_bound(|p| PredicateKind::Clause(ClauseKind::RegionOutlives(p))).to_predicate(tcx)
+    }
+}
+
+impl<'tcx> ToPredicate<'tcx> for OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>> {
+    fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
+        ty::Binder::dummy(PredicateKind::Clause(ClauseKind::TypeOutlives(self))).to_predicate(tcx)
     }
 }
 
@@ -2611,19 +2623,6 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline]
     pub fn is_const_default_method(self, def_id: DefId) -> bool {
         matches!(self.trait_of_item(def_id), Some(trait_id) if self.has_attr(trait_id, sym::const_trait))
-    }
-
-    pub fn impl_trait_in_trait_parent_fn(self, mut def_id: DefId) -> DefId {
-        match self.opt_rpitit_info(def_id) {
-            Some(ImplTraitInTraitData::Trait { fn_def_id, .. })
-            | Some(ImplTraitInTraitData::Impl { fn_def_id, .. }) => fn_def_id,
-            None => {
-                while let def_kind = self.def_kind(def_id) && def_kind != DefKind::AssocFn {
-                    def_id = self.parent(def_id);
-                }
-                def_id
-            }
-        }
     }
 
     /// Returns the `DefId` of the item within which the `impl Trait` is declared.

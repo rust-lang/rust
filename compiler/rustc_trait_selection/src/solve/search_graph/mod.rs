@@ -9,9 +9,7 @@ use cache::ProvisionalCache;
 use overflow::OverflowData;
 use rustc_index::IndexVec;
 use rustc_middle::dep_graph::DepKind;
-use rustc_middle::traits::solve::{
-    CanonicalInput, Certainty, EvaluationCache, MaybeCause, QueryResult,
-};
+use rustc_middle::traits::solve::{CanonicalInput, Certainty, EvaluationCache, QueryResult};
 use rustc_middle::ty::TyCtxt;
 use std::{collections::hash_map::Entry, mem};
 
@@ -146,11 +144,7 @@ impl<'tcx> SearchGraph<'tcx> {
                 {
                     Err(cache.provisional_result(entry_index))
                 } else {
-                    Err(super::response_no_constraints(
-                        tcx,
-                        input,
-                        Certainty::Maybe(MaybeCause::Overflow),
-                    ))
+                    Err(super::response_no_constraints(tcx, input, Certainty::OVERFLOW))
                 }
             }
         }

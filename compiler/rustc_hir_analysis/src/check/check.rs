@@ -576,7 +576,6 @@ fn find_and_apply_rpit_args<'tcx>(
     struct Visitor<'tcx> {
         tcx: TyCtxt<'tcx>,
         opaque: DefId,
-        function: DefId,
         seen: FxHashSet<DefId>,
     }
     impl<'tcx> ty::TypeVisitor<TyCtxt<'tcx>> for Visitor<'tcx> {
@@ -601,19 +600,6 @@ fn find_and_apply_rpit_args<'tcx>(
                         }
                     }
                 }
-                ty::Alias(ty::Projection, alias) => {
-                    if self.tcx.is_impl_trait_in_trait(alias.def_id)
-                        && self.tcx.impl_trait_in_trait_parent_fn(alias.def_id) == self.function
-                    {
-                        // If we're lowering to associated item, install the opaque type which is just
-                        // the `type_of` of the trait's associated item. If we're using the old lowering
-                        // strategy, then just reinterpret the associated type like an opaque :^)
-                        self.tcx
-                            .type_of(alias.def_id)
-                            .instantiate(self.tcx, alias.args)
-                            .visit_with(self)?;
-                    }
-                }
                 ty::Alias(ty::Weak, alias) => {
                     self.tcx
                         .type_of(alias.def_id)
@@ -627,7 +613,7 @@ fn find_and_apply_rpit_args<'tcx>(
         }
     }
     if let ControlFlow::Break(args) =
-        ret.visit_with(&mut Visitor { tcx, function, opaque, seen: Default::default() })
+        ret.visit_with(&mut Visitor { tcx, opaque, seen: Default::default() })
     {
         trace!(?args);
         trace!("expected: {hidden_ty:#?}");
