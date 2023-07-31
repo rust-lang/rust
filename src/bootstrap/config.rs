@@ -50,7 +50,7 @@ pub enum DryRun {
     UserSelected,
 }
 
-#[derive(Copy, Clone, Default)]
+#[derive(Copy, Clone, Default, PartialEq, Eq)]
 pub enum DebuginfoLevel {
     #[default]
     None,
