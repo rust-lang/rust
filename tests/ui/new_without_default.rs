@@ -84,7 +84,6 @@ impl<'c> LtKo<'c> {
     pub fn new() -> LtKo<'c> {
         unimplemented!()
     }
-    // FIXME: that suggestion is missing lifetimes
 }
 
 struct Private;
