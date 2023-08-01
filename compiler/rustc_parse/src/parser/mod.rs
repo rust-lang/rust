@@ -24,7 +24,7 @@ use rustc_ast::tokenstream::{TokenStream, TokenTree, TokenTreeCursor};
 use rustc_ast::util::case::Case;
 use rustc_ast::AttrId;
 use rustc_ast::DUMMY_NODE_ID;
-use rustc_ast::{self as ast, AnonConst, AttrStyle, Const, DelimArgs, Extern};
+use rustc_ast::{self as ast, AnonConst, Const, DelimArgs, Extern};
 use rustc_ast::{Async, AttrArgs, AttrArgsEq, Expr, ExprKind, MacDelimiter, Mutability, StrLit};
 use rustc_ast::{HasAttrs, HasTokens, Unsafe, Visibility, VisibilityKind};
 use rustc_ast_pretty::pprust;
@@ -38,7 +38,7 @@ use rustc_session::parse::ParseSess;
 use rustc_span::source_map::{Span, DUMMY_SP};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use std::ops::Range;
-use std::{cmp, mem, slice};
+use std::{mem, slice};
 use thin_vec::ThinVec;
 use tracing::debug;
 
@@ -224,11 +224,6 @@ struct TokenCursor {
     // because it's the outermost token stream which never has delimiters.
     stack: Vec<(TokenTreeCursor, Delimiter, DelimSpan)>,
 
-    // We need to desugar doc comments from `/// foo` form into `#[doc =
-    // r"foo"]` form when parsing declarative macro inputs in `parse_tt`,
-    // because some declarative macros look for `doc` attributes.
-    desugar_doc_comments: bool,
-
     // Counts the number of calls to `{,inlined_}next`.
     num_next_calls: usize,
 
@@ -265,29 +260,17 @@ impl TokenCursor {
     #[inline(always)]
     fn inlined_next(&mut self) -> (Token, Spacing) {
         loop {
-            // FIXME: we currently don't return `Delimiter` open/close delims. To fix #67062 we will
-            // need to, whereupon the `delim != Delimiter::Invisible` conditions below can be
-            // removed.
+            // FIXME: we currently don't return `Delimiter::Invisible` open/close delims. To fix
+            // #67062 we will need to, whereupon the `delim != Delimiter::Invisible` conditions
+            // below can be removed.
             if let Some(tree) = self.tree_cursor.next_ref() {
                 match tree {
                     &TokenTree::Token(ref token, spacing) => {
-                        match (self.desugar_doc_comments, token) {
-                            (
-                                true,
-                                &Token { kind: token::DocComment(_, attr_style, data), span },
-                            ) => {
-                                let desugared = self.desugar(attr_style, data, span);
-                                self.tree_cursor.replace_prev_and_rewind(desugared);
-                                // Continue to get the first token of the desugared doc comment.
-                            }
-                            _ => {
-                                debug_assert!(!matches!(
-                                    token.kind,
-                                    token::OpenDelim(_) | token::CloseDelim(_)
-                                ));
-                                return (token.clone(), spacing);
-                            }
-                        }
+                        debug_assert!(!matches!(
+                            token.kind,
+                            token::OpenDelim(_) | token::CloseDelim(_)
+                        ));
+                        return (token.clone(), spacing);
                     }
                     &TokenTree::Delimited(sp, delim, ref tts) => {
                         let trees = tts.clone().into_trees();
@@ -309,52 +292,6 @@ impl TokenCursor {
                 // We have exhausted the outermost token stream.
                 return (Token::new(token::Eof, DUMMY_SP), Spacing::Alone);
             }
-        }
-    }
-
-    // Desugar a doc comment into something like `#[doc = r"foo"]`.
-    fn desugar(&mut self, attr_style: AttrStyle, data: Symbol, span: Span) -> Vec<TokenTree> {
-        // Searches for the occurrences of `"#*` and returns the minimum number of `#`s
-        // required to wrap the text. E.g.
-        // - `abc d` is wrapped as `r"abc d"` (num_of_hashes = 0)
-        // - `abc "d"` is wrapped as `r#"abc "d""#` (num_of_hashes = 1)
-        // - `abc "##d##"` is wrapped as `r###"abc ##"d"##"###` (num_of_hashes = 3)
-        let mut num_of_hashes = 0;
-        let mut count = 0;
-        for ch in data.as_str().chars() {
-            count = match ch {
-                '"' => 1,
-                '#' if count > 0 => count + 1,
-                _ => 0,
-            };
-            num_of_hashes = cmp::max(num_of_hashes, count);
-        }
-
-        // `/// foo` becomes `doc = r"foo"`.
-        let delim_span = DelimSpan::from_single(span);
-        let body = TokenTree::Delimited(
-            delim_span,
-            Delimiter::Bracket,
-            [
-                TokenTree::token_alone(token::Ident(sym::doc, false), span),
-                TokenTree::token_alone(token::Eq, span),
-                TokenTree::token_alone(
-                    TokenKind::lit(token::StrRaw(num_of_hashes), data, None),
-                    span,
-                ),
-            ]
-            .into_iter()
-            .collect::<TokenStream>(),
-        );
-
-        if attr_style == AttrStyle::Inner {
-            vec![
-                TokenTree::token_alone(token::Pound, span),
-                TokenTree::token_alone(token::Not, span),
-                body,
-            ]
-        } else {
-            vec![TokenTree::token_alone(token::Pound, span), body]
         }
     }
 }
@@ -451,8 +388,7 @@ pub(super) fn token_descr(token: &Token) -> String {
 impl<'a> Parser<'a> {
     pub fn new(
         sess: &'a ParseSess,
-        tokens: TokenStream,
-        desugar_doc_comments: bool,
+        stream: TokenStream,
         subparser_name: Option<&'static str>,
     ) -> Self {
         let mut parser = Parser {
@@ -464,10 +400,9 @@ impl<'a> Parser<'a> {
             restrictions: Restrictions::empty(),
             expected_tokens: Vec::new(),
             token_cursor: TokenCursor {
-                tree_cursor: tokens.into_trees(),
+                tree_cursor: stream.into_trees(),
                 stack: Vec::new(),
                 num_next_calls: 0,
-                desugar_doc_comments,
                 break_last_token: false,
             },
             unmatched_angle_bracket_count: 0,
@@ -1172,7 +1107,7 @@ impl<'a> Parser<'a> {
             }
             i += 1;
         }
-        return looker(&token);
+        looker(&token)
     }
 
     /// Returns whether any of the given keywords are `dist` tokens ahead of the current one.

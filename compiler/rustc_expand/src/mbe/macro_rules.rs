@@ -249,7 +249,7 @@ fn expand_macro<'cx>(
                 trace_macros_note(&mut cx.expansions, sp, msg);
             }
 
-            let p = Parser::new(sess, tts, false, None);
+            let p = Parser::new(sess, tts, None);
 
             if is_local {
                 cx.resolver.record_macro_rule_usage(node_id, i);
@@ -257,7 +257,7 @@ fn expand_macro<'cx>(
 
             // Let the context choose how to interpret the result.
             // Weird, but useful for X-macros.
-            return Box::new(ParserAnyMacro {
+            Box::new(ParserAnyMacro {
                 parser: p,
 
                 // Pass along the original expansion site and the name of the macro
@@ -269,18 +269,17 @@ fn expand_macro<'cx>(
                 is_trailing_mac: cx.current_expansion.is_trailing_mac,
                 arm_span,
                 is_local,
-            });
+            })
         }
         Err(CanRetry::No(_)) => {
             debug!("Will not retry matching as an error was emitted already");
-            return DummyResult::any(sp);
+            DummyResult::any(sp)
         }
         Err(CanRetry::Yes) => {
-            // Retry and emit a better error below.
+            // Retry and emit a better error.
+            diagnostics::failed_to_match_macro(cx, sp, def_span, name, arg, lhses)
         }
     }
-
-    diagnostics::failed_to_match_macro(cx, sp, def_span, name, arg, lhses)
 }
 
 pub(super) enum CanRetry {
@@ -447,7 +446,7 @@ pub fn compile_declarative_macro(
 
     let create_parser = || {
         let body = macro_def.body.tokens.clone();
-        Parser::new(&sess.parse_sess, body, true, rustc_parse::MACRO_ARGUMENTS)
+        Parser::new(&sess.parse_sess, body, rustc_parse::MACRO_ARGUMENTS)
     };
 
     let parser = create_parser();
@@ -457,8 +456,8 @@ pub fn compile_declarative_macro(
         match tt_parser.parse_tt(&mut Cow::Owned(parser), &argument_gram, &mut NoopTracker) {
             Success(m) => m,
             Failure(()) => {
-                // The fast `NoopTracker` doesn't have any info on failure, so we need to retry it with another one
-                // that gives us the information we need.
+                // The fast `NoopTracker` doesn't have any info on failure, so we need to retry it
+                // with another one that gives us the information we need.
                 // For this we need to reclone the macro body as the previous parser consumed it.
                 let retry_parser = create_parser();
 
@@ -1417,6 +1416,11 @@ fn quoted_tt_to_string(tt: &mbe::TokenTree) -> String {
     }
 }
 
-pub(super) fn parser_from_cx(sess: &ParseSess, tts: TokenStream, recovery: Recovery) -> Parser<'_> {
-    Parser::new(sess, tts, true, rustc_parse::MACRO_ARGUMENTS).recovery(recovery)
+pub(super) fn parser_from_cx(
+    sess: &ParseSess,
+    mut tts: TokenStream,
+    recovery: Recovery,
+) -> Parser<'_> {
+    tts.desugar_doc_comments();
+    Parser::new(sess, tts, rustc_parse::MACRO_ARGUMENTS).recovery(recovery)
 }
