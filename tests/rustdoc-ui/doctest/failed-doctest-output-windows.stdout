@@ -26,7 +26,8 @@ stdout 2
 stderr:
 stderr 1
 stderr 2
-thread 'main' panicked at 'oh no', $DIR/failed-doctest-output-windows.rs:7:1
+thread 'main' panicked at $DIR/failed-doctest-output-windows.rs:7:1:
+oh no
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 
 

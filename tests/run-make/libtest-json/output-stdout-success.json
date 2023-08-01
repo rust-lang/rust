@@ -2,9 +2,9 @@
 { "type": "test", "event": "started", "name": "a" }
 { "type": "test", "name": "a", "event": "ok", "stdout": "print from successful test\n" }
 { "type": "test", "event": "started", "name": "b" }
-{ "type": "test", "name": "b", "event": "failed", "stdout": "thread 'b' panicked at 'assertion failed: false', f.rs:9:5\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n" }
+{ "type": "test", "name": "b", "event": "failed", "stdout": "thread 'b' panicked at f.rs:9:5:\nassertion failed: false\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n" }
 { "type": "test", "event": "started", "name": "c" }
-{ "type": "test", "name": "c", "event": "ok", "stdout": "thread 'c' panicked at 'assertion failed: false', f.rs:15:5\n" }
+{ "type": "test", "name": "c", "event": "ok", "stdout": "thread 'c' panicked at f.rs:15:5:\nassertion failed: false\n" }
 { "type": "test", "event": "started", "name": "d" }
 { "type": "test", "name": "d", "event": "ignored", "message": "msg" }
 { "type": "suite", "event": "failed", "passed": 2, "failed": 1, "ignored": 1, "measured": 0, "filtered_out": 0, "exec_time": $TIME }

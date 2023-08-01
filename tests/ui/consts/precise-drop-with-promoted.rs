@@ -3,7 +3,7 @@
 // known-bug: #103507
 // failure-status: 101
 // normalize-stderr-test "note: .*\n\n" -> ""
-// normalize-stderr-test "thread 'rustc' panicked.*\n" -> ""
+// normalize-stderr-test "thread 'rustc' panicked.*\n.*\n" -> ""
 // normalize-stderr-test "(error: internal compiler error: [^:]+):\d+:\d+: " -> "$1:LL:CC: "
 // rustc-env:RUST_BACKTRACE=0
 

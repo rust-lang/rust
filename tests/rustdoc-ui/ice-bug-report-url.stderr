@@ -4,7 +4,8 @@ error: expected one of `->`, `where`, or `{`, found `<eof>`
 LL | fn wrong()
    |          ^ expected one of `->`, `where`, or `{`
 
-thread panicked at 'aborting due to `-Z treat-err-as-bug`'
+
+aborting due to `-Z treat-err-as-bug=1`
 stack backtrace:
 
 error: the compiler unexpectedly panicked. this is a bug.
