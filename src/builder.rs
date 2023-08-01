@@ -27,7 +27,6 @@ use rustc_codegen_ssa::traits::{
     BaseTypeMethods,
     BuilderMethods,
     ConstMethods,
-    DerivedTypeMethods,
     LayoutTypeMethods,
     HasCodegen,
     OverflowOp,
