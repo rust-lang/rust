@@ -23,7 +23,7 @@ struct MyVisitor<...> {
 and you then implement the `Visitor` or `MutVisitor` trait for that type:
 
 ```rust,ignore
-impl<'tcx> MutVisitor<'tcx> for NoLandingPads {
+impl<'tcx> MutVisitor<'tcx> for MyVisitor {
     fn visit_foo(&mut self, ...) {
         ...
         self.super_foo(...);
