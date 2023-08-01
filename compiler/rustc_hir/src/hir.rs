@@ -3747,6 +3747,46 @@ impl<'hir> Node<'hir> {
         }
     }
 
+    /// Returns the node's span if it has one.
+    ///
+    /// ## Exceptions:
+    ///
+    /// * `Node::PathSegment`
+    /// * `Node::Ctor`
+    /// * `Node::Lifetime`
+    /// * `Node::AnonConst`
+    /// * `Node::ConstBlock`
+    pub fn span(&self) -> Option<Span> {
+        match self {
+            Node::Param(Param { span, .. })
+            | Node::Item(Item { span, .. })
+            | Node::ForeignItem(ForeignItem { span, .. })
+            | Node::TraitItem(TraitItem { span, .. })
+            | Node::ImplItem(ImplItem { span, .. })
+            | Node::Variant(Variant { span, .. })
+            | Node::Field(FieldDef { span, .. })
+            | Node::Expr(Expr { span, .. })
+            | Node::ExprField(ExprField { span, .. })
+            | Node::Stmt(Stmt { span, .. })
+            | Node::Ty(Ty { span, .. })
+            | Node::TypeBinding(TypeBinding { span, .. })
+            | Node::Pat(Pat { span, .. })
+            | Node::PatField(PatField { span, .. })
+            | Node::Arm(Arm { span, .. })
+            | Node::Block(Block { span, .. })
+            | Node::Local(Local { span, .. })
+            | Node::GenericParam(GenericParam { span, .. })
+            | Node::Infer(InferArg { span, .. }) => Some(*span),
+            Node::Crate(Mod { spans, .. }) => Some(spans.inner_span),
+            Node::TraitRef(TraitRef { path, .. }) => Some(path.span),
+            Node::PathSegment(_)
+            | Node::Ctor(_)
+            | Node::Lifetime(_)
+            | Node::AnonConst(_)
+            | Node::ConstBlock(_) => None,
+        }
+    }
+
     pub fn fn_decl(self) -> Option<&'hir FnDecl<'hir>> {
         match self {
             Node::TraitItem(TraitItem { kind: TraitItemKind::Fn(fn_sig, _), .. })
