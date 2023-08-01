@@ -270,6 +270,8 @@ parse_found_expr_would_be_stmt = expected expression, found `{$token}`
 parse_function_body_equals_expr = function body cannot be `= expression;`
     .suggestion = surround the expression with `{"{"}` and `{"}"}` instead of `=` and `;`
 
+parse_generic_args_in_pat_require_turbofish_syntax = generic args in patterns require the turbofish syntax
+
 parse_generic_parameters_without_angle_brackets = generic parameters without surrounding angle brackets
     .suggestion = surround the type parameters with angle brackets
 

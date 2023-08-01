@@ -1,6 +1,6 @@
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{Parser, Restrictions, TokenType};
-use crate::errors::PathSingleColon;
+use crate::errors::{GenericArgsInPatRequireTurbofishSyntax, PathSingleColon};
 use crate::{errors, maybe_whole};
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
@@ -382,6 +382,14 @@ impl<'a> Parser<'a> {
                 };
 
                 PathSegment { ident, args: Some(args), id: ast::DUMMY_NODE_ID }
+            } else if style == PathStyle::Pat
+                && self.check_noexpect(&token::Lt)
+                && self.look_ahead(1, |t| t.can_begin_type())
+            {
+                return Err(self.sess.create_err(GenericArgsInPatRequireTurbofishSyntax {
+                    span: self.token.span,
+                    suggest_turbofish: self.token.span.shrink_to_lo(),
+                }));
             } else {
                 // Generic arguments are not found.
                 PathSegment::from_ident(ident)

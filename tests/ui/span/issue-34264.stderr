@@ -1,18 +1,13 @@
-error: expected one of `:`, `@`, or `|`, found `<`
+error: generic args in patterns require the turbofish syntax
   --> $DIR/issue-34264.rs:1:14
    |
 LL | fn foo(Option<i32>, String) {}
-   |              ^ expected one of `:`, `@`, or `|`
+   |              ^
    |
-   = note: anonymous parameters are removed in the 2018 edition (see RFC 1685)
-help: if this is a `self` type, give it a parameter name
+help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
    |
-LL | fn foo(self: Option<i32>, String) {}
-   |        +++++
-help: if this is a type, explicitly ignore the parameter name
-   |
-LL | fn foo(_: Option<i32>, String) {}
-   |        ++
+LL | fn foo(Option::<i32>, String) {}
+   |              ++
 
 error: expected one of `:`, `@`, or `|`, found `)`
   --> $DIR/issue-34264.rs:1:27

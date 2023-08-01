@@ -805,6 +805,7 @@ impl<'a> Parser<'a> {
             | token::DotDotDot | token::DotDotEq | token::DotDot // A range pattern.
             | token::ModSep // A tuple / struct variant pattern.
             | token::Not)) // A macro expanding to a pattern.
+        && !(self.look_ahead(1, |t| t.kind == token::Lt) && self.look_ahead(2, |t| t.can_begin_type())) // May suggest the turbofish syntax for generics, only valid for recoveries.
     }
 
     /// Parses `ident` or `ident @ pat`.
