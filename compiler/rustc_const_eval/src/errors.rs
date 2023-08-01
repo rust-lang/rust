@@ -459,7 +459,6 @@ fn bad_pointer_message(msg: CheckInAllocMsg, handler: &Handler) -> String {
     use crate::fluent_generated::*;
 
     let msg = match msg {
-        CheckInAllocMsg::DerefTest => const_eval_deref_test,
         CheckInAllocMsg::MemoryAccessTest => const_eval_memory_access_test,
         CheckInAllocMsg::PointerArithmeticTest => const_eval_pointer_arithmetic_test,
         CheckInAllocMsg::OffsetFromTest => const_eval_offset_from_test,

@@ -4,10 +4,9 @@
 fn main() {
     let p = {
         let b = Box::new(42);
-        &*b as *const i32
+        &*b as *const i32 as *const (u8, u8, u8, u8)
     };
     unsafe {
-        let _ = *p; //~ ERROR: has been freed
+        let _ = (*p).1; //~ ERROR: out-of-bounds pointer arithmetic
     }
-    panic!("this should never print");
 }

@@ -58,7 +58,6 @@ pub trait Projectable<'tcx, Prov: Provenance>: Sized + std::fmt::Debug {
         ecx: &InterpCx<'mir, 'tcx, M>,
     ) -> InterpResult<'tcx, Self>;
 
-    #[inline]
     fn offset<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
         &self,
         offset: Size,
@@ -69,7 +68,6 @@ pub trait Projectable<'tcx, Prov: Provenance>: Sized + std::fmt::Debug {
         self.offset_with_meta(offset, MemPlaceMeta::None, layout, ecx)
     }
 
-    #[inline]
     fn transmute<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
         &self,
         layout: TyAndLayout<'tcx>,

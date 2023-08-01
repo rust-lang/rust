@@ -13,11 +13,11 @@ LL |         libc::munmap(ptr, 4096);
    = note: BACKTRACE:
    = note: inside `main` at $DIR/mmap_use_after_munmap.rs:LL:CC
 
-error: Undefined Behavior: dereferencing pointer failed: ALLOC has been freed, so this pointer is dangling
+error: Undefined Behavior: memory access failed: ALLOC has been freed, so this pointer is dangling
   --> $DIR/mmap_use_after_munmap.rs:LL:CC
    |
 LL |         let _x = *(ptr as *mut u8);
-   |                  ^^^^^^^^^^^^^^^^^ dereferencing pointer failed: ALLOC has been freed, so this pointer is dangling
+   |                  ^^^^^^^^^^^^^^^^^ memory access failed: ALLOC has been freed, so this pointer is dangling
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

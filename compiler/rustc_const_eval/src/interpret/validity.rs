@@ -355,7 +355,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         value: &OpTy<'tcx, M::Provenance>,
         ptr_kind: PointerKind,
     ) -> InterpResult<'tcx> {
-        // Not using `deref_pointer` since we do the dereferenceable check ourselves below.
+        // Not using `deref_pointer` since we want to use our `read_immediate` wrapper.
         let place = self.ecx.ref_to_mplace(&self.read_immediate(value, ptr_kind.into())?)?;
         // Handle wide pointers.
         // Check metadata early, for better diagnostics
@@ -645,7 +645,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
 
     #[inline(always)]
     fn ecx(&self) -> &InterpCx<'mir, 'tcx, M> {
-        &self.ecx
+        self.ecx
     }
 
     fn read_discriminant(

@@ -29,7 +29,7 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/raw-pointer-ub.rs:32:16
    |
 LL |     let _val = *ptr;
-   |                ^^^^ dereferencing pointer failed: allocN has size 4, so pointer to 8 bytes starting at offset 0 is out-of-bounds
+   |                ^^^^ memory access failed: allocN has size 4, so pointer to 8 bytes starting at offset 0 is out-of-bounds
 
 error: aborting due to 4 previous errors
 

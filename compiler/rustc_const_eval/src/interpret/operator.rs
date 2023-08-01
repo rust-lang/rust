@@ -1,7 +1,7 @@
 use rustc_apfloat::{Float, FloatConvert};
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{InterpResult, Scalar};
-use rustc_middle::ty::layout::TyAndLayout;
+use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, FloatTy, Ty};
 use rustc_span::symbol::sym;
 use rustc_target::abi::Abi;
@@ -337,7 +337,15 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let offset_count = right.to_scalar().to_target_isize(self)?;
                 let pointee_ty = left.layout.ty.builtin_deref(true).unwrap().ty;
 
-                let offset_ptr = self.ptr_offset_inbounds(ptr, pointee_ty, offset_count)?;
+                // We cannot overflow i64 as a type's size must be <= isize::MAX.
+                let pointee_size = i64::try_from(self.layout_of(pointee_ty)?.size.bytes()).unwrap();
+                // The computed offset, in bytes, must not overflow an isize.
+                // `checked_mul` enforces a too small bound, but no actual allocation can be big enough for
+                // the difference to be noticeable.
+                let offset_bytes =
+                    offset_count.checked_mul(pointee_size).ok_or(err_ub!(PointerArithOverflow))?;
+
+                let offset_ptr = self.ptr_offset_inbounds(ptr, offset_bytes)?;
                 Ok((
                     ImmTy::from_scalar(Scalar::from_maybe_pointer(offset_ptr, self), left.layout),
                     false,

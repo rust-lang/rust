@@ -218,8 +218,6 @@ pub enum InvalidProgramInfo<'tcx> {
 /// Details of why a pointer had to be in-bounds.
 #[derive(Debug, Copy, Clone, TyEncodable, TyDecodable, HashStable)]
 pub enum CheckInAllocMsg {
-    /// We are dereferencing a pointer (i.e., creating a place).
-    DerefTest,
     /// We are access memory.
     MemoryAccessTest,
     /// We are doing pointer arithmetic.

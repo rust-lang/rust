@@ -161,7 +161,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx, const_eval::Memory
 
     #[inline(always)]
     fn ecx(&self) -> &InterpCx<'mir, 'tcx, M> {
-        &self.ecx
+        self.ecx
     }
 
     fn visit_value(&mut self, mplace: &MPlaceTy<'tcx>) -> InterpResult<'tcx> {

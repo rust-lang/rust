@@ -219,6 +219,17 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
     /// given layout.
     // Not called `offset` to avoid confusion with the trait method.
     fn offset_(&self, offset: Size, layout: TyAndLayout<'tcx>, cx: &impl HasDataLayout) -> Self {
+        debug_assert!(layout.is_sized(), "unsized immediates are not a thing");
+        // `ImmTy` have already been checked to be in-bounds, so we can just check directly if this
+        // remains in-bounds. This cannot actually be violated since projections are type-checked
+        // and bounds-checked.
+        assert!(
+            offset + layout.size <= self.layout.size,
+            "attempting to project to field at offset {} with size {} into immediate with layout {:#?}",
+            offset.bytes(),
+            layout.size.bytes(),
+            self.layout,
+        );
         // This makes several assumptions about what layouts we will encounter; we match what
         // codegen does as good as we can (see `extract_field` in `rustc_codegen_ssa/src/mir/operand.rs`).
         let inner_val: Immediate<_> = match (**self, self.layout.abi) {
@@ -387,7 +398,6 @@ impl<'tcx, Prov: Provenance> Projectable<'tcx, Prov> for OpTy<'tcx, Prov> {
         match self.as_mplace_or_imm() {
             Left(mplace) => Ok(mplace.offset_with_meta(offset, meta, layout, ecx)?.into()),
             Right(imm) => {
-                debug_assert!(layout.is_sized(), "unsized immediates are not a thing");
                 assert_matches!(meta, MemPlaceMeta::None); // no place to store metadata here
                 // Every part of an uninit is uninit.
                 Ok(imm.offset_(offset, layout, ecx).into())

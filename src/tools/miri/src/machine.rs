@@ -1285,6 +1285,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         // We do need to write `uninit` so that even after the call ends, the former contents of
         // this place cannot be observed any more. We do the write after retagging so that for
         // Tree Borrows, this is considered to activate the new tag.
+        // Conveniently this also ensures that the place actually points to suitable memory.
         ecx.write_uninit(&protected_place)?;
         // Now we throw away the protected place, ensuring its tag is never used again.
         Ok(())

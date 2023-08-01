@@ -1,9 +1,0 @@
-error[E0080]: evaluation of constant value failed
-  --> $DIR/dangling.rs:6:16
-   |
-LL |     let _val = &*slice;
-   |                ^^^^^^^ invalid metadata in wide pointer: slice is bigger than largest supported object
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0080`.

@@ -571,16 +571,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn ptr_offset_inbounds(
         &self,
         ptr: Pointer<Option<M::Provenance>>,
-        pointee_ty: Ty<'tcx>,
-        offset_count: i64,
+        offset_bytes: i64,
     ) -> InterpResult<'tcx, Pointer<Option<M::Provenance>>> {
-        // We cannot overflow i64 as a type's size must be <= isize::MAX.
-        let pointee_size = i64::try_from(self.layout_of(pointee_ty)?.size.bytes()).unwrap();
-        // The computed offset, in bytes, must not overflow an isize.
-        // `checked_mul` enforces a too small bound, but no actual allocation can be big enough for
-        // the difference to be noticeable.
-        let offset_bytes =
-            offset_count.checked_mul(pointee_size).ok_or(err_ub!(PointerArithOverflow))?;
         // The offset being in bounds cannot rely on "wrapping around" the address space.
         // So, first rule out overflows in the pointer arithmetic.
         let offset_ptr = ptr.signed_offset(offset_bytes, self)?;

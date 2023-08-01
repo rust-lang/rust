@@ -1,6 +1,5 @@
 use std::borrow::Cow;
 
-use either::Either;
 use rustc_ast::ast::InlineAsmOptions;
 use rustc_middle::{
     mir,
@@ -729,13 +728,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             callee_ty: callee_fn_abi.ret.layout.ty
                         });
                     }
-                    // Ensure the return place is aligned and dereferenceable, and protect it for
-                    // in-place return value passing.
-                    if let Either::Left(mplace) = destination.as_mplace_or_local() {
-                        self.check_mplace(&mplace)?;
-                    } else {
-                        // Nothing to do for locals, they are always properly allocated and aligned.
-                    }
+                    // Protect return place for in-place return value passing.
                     M::protect_in_place_function_argument(self, destination)?;
 
                     // Don't forget to mark "initially live" locals as live.

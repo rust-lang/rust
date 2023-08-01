@@ -15,9 +15,9 @@ use rustc_middle::ty::Ty;
 use rustc_target::abi::{Abi, Align, FieldIdx, HasDataLayout, Size, FIRST_VARIANT};
 
 use super::{
-    alloc_range, mir_assign_valid_types, AllocId, AllocRef, AllocRefMut, CheckInAllocMsg, ImmTy,
-    Immediate, InterpCx, InterpResult, Machine, MemoryKind, OpTy, Operand, Pointer,
-    PointerArithmetic, Projectable, Provenance, Readable, Scalar,
+    alloc_range, mir_assign_valid_types, AllocId, AllocRef, AllocRefMut, ImmTy, Immediate,
+    InterpCx, InterpResult, Machine, MemoryKind, OpTy, Operand, Pointer, PointerArithmetic,
+    Projectable, Provenance, Readable, Scalar,
 };
 
 #[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
@@ -88,17 +88,22 @@ impl<Prov: Provenance> MemPlace<Prov> {
 
     #[inline]
     // Not called `offset_with_meta` to avoid confusion with the trait method.
-    fn offset_with_meta_<'tcx>(
+    fn offset_with_meta_<'mir, 'tcx, M: Machine<'mir, 'tcx, Provenance = Prov>>(
         self,
         offset: Size,
         meta: MemPlaceMeta<Prov>,
-        cx: &impl HasDataLayout,
+        ecx: &InterpCx<'mir, 'tcx, M>,
     ) -> InterpResult<'tcx, Self> {
         debug_assert!(
             !meta.has_meta() || self.meta.has_meta(),
             "cannot use `offset_with_meta` to add metadata to a place"
         );
-        Ok(MemPlace { ptr: self.ptr.offset(offset, cx)?, meta })
+        if offset > ecx.data_layout().max_size_of_val() {
+            throw_ub!(PointerArithOverflow);
+        }
+        let offset: i64 = offset.bytes().try_into().unwrap();
+        let ptr = ecx.ptr_offset_inbounds(self.ptr, offset)?;
+        Ok(MemPlace { ptr, meta })
     }
 }
 
@@ -310,15 +315,18 @@ impl<'tcx, Prov: Provenance> Projectable<'tcx, Prov> for PlaceTy<'tcx, Prov> {
             Right((frame, local, old_offset)) => {
                 debug_assert!(layout.is_sized(), "unsized locals should live in memory");
                 assert_matches!(meta, MemPlaceMeta::None); // we couldn't store it anyway...
-                let new_offset = ecx
-                    .data_layout()
-                    .offset(old_offset.unwrap_or(Size::ZERO).bytes(), offset.bytes())?;
+                // `Place::Local` are always in-bounds of their surrounding local, so we can just
+                // check directly if this remains in-bounds. This cannot actually be violated since
+                // projections are type-checked and bounds-checked.
+                assert!(offset + layout.size <= self.layout.size);
+
+                let new_offset = Size::from_bytes(
+                    ecx.data_layout()
+                        .offset(old_offset.unwrap_or(Size::ZERO).bytes(), offset.bytes())?,
+                );
+
                 PlaceTy {
-                    place: Place::Local {
-                        frame,
-                        local,
-                        offset: Some(Size::from_bytes(new_offset)),
-                    },
+                    place: Place::Local { frame, local, offset: Some(new_offset) },
                     align: self.align.restrict_for_offset(offset),
                     layout,
                 }
@@ -464,7 +472,6 @@ where
         }
 
         let mplace = self.ref_to_mplace(&val)?;
-        self.check_mplace(&mplace)?;
         Ok(mplace)
     }
 
@@ -492,17 +499,6 @@ where
             .unwrap_or((mplace.layout.size, mplace.layout.align.abi));
         // Due to packed places, only `mplace.align` matters.
         self.get_ptr_alloc_mut(mplace.ptr(), size, mplace.align)
-    }
-
-    /// Check if this mplace is dereferenceable and sufficiently aligned.
-    pub fn check_mplace(&self, mplace: &MPlaceTy<'tcx, M::Provenance>) -> InterpResult<'tcx> {
-        let (size, _align) = self
-            .size_and_align_of_mplace(&mplace)?
-            .unwrap_or((mplace.layout.size, mplace.layout.align.abi));
-        // Due to packed places, only `mplace.align` matters.
-        let align = if M::enforce_alignment(self) { mplace.align } else { Align::ONE };
-        self.check_ptr_access_align(mplace.ptr(), size, align, CheckInAllocMsg::DerefTest)?;
-        Ok(())
     }
 
     /// Converts a repr(simd) place into a place where `place_index` accesses the SIMD elements.

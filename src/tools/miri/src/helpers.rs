@@ -700,23 +700,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         let mplace = MPlaceTy::from_aligned_ptr(ptr, layout);
 
-        this.check_mplace(&mplace)?;
-
-        Ok(mplace)
-    }
-
-    /// Deref' a pointer *without* checking that the place is dereferenceable.
-    fn deref_pointer_unchecked(
-        &self,
-        val: &ImmTy<'tcx, Provenance>,
-        layout: TyAndLayout<'tcx>,
-    ) -> InterpResult<'tcx, MPlaceTy<'tcx, Provenance>> {
-        let this = self.eval_context_ref();
-        let mut mplace = this.ref_to_mplace(val)?;
-
-        mplace.layout = layout;
-        mplace.align = layout.align.abi;
-
         Ok(mplace)
     }
 

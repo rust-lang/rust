@@ -1,3 +1,4 @@
+// stderr-per-bitwidth
 #![feature(const_mut_refs)]
 #![feature(raw_ref_op)]
 
@@ -9,17 +10,15 @@
 
 const fn helper() -> Option<&'static mut i32> { unsafe {
     // Undefined behaviour (integer as pointer), who doesn't love tests like this.
-    // This code never gets executed, because the static checks fail before that.
-    Some(&mut *(42 as *mut i32)) //~ ERROR evaluation of constant value failed
-    //~| 0x2a[noalloc] is a dangling pointer
+    Some(&mut *(42 as *mut i32))
 } }
 // The error is an evaluation error and not a validation error, so the error is reported
 // directly at the site where it occurs.
-const A: Option<&mut i32> = helper();
+const A: Option<&mut i32> = helper(); //~ ERROR it is undefined behavior to use this value
+//~^ encountered mutable reference in a `const`
 
 const fn helper2() -> Option<&'static mut i32> { unsafe {
     // Undefined behaviour (dangling pointer), who doesn't love tests like this.
-    // This code never gets executed, because the static checks fail before that.
     Some(&mut *(&mut 42 as *mut i32))
 } }
 const B: Option<&mut i32> = helper2(); //~ ERROR encountered dangling pointer in final constant
