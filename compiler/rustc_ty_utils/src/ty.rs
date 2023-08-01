@@ -47,10 +47,16 @@ fn sized_constraint_for_ty<'tcx>(
                 .collect()
         }
 
-        Alias(..) => {
-            // must calculate explicitly.
-            // FIXME: consider special-casing always-Sized projections
-            vec![ty]
+        Alias(_, alias_ty) => {
+            let Some(sized_trait_def_id) = tcx.lang_items().sized_trait() else { return vec![ty] };
+            if tcx.item_bounds(alias_ty.def_id).skip_binder().iter().any(|p| {
+                p.as_trait_clause()
+                    .is_some_and(|trait_pred| trait_pred.def_id() == sized_trait_def_id)
+            }) {
+                vec![]
+            } else {
+                vec![ty]
+            }
         }
 
         Param(..) => {
