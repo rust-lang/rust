@@ -14,6 +14,15 @@ LL |        a | b => {}
    |        |
    |        pattern doesn't bind `b`
 
+error[E0408]: variable `c` is not bound in all patterns
+  --> $DIR/resolve-inconsistent-names.rs:19:9
+   |
+LL |         (A, B) | (ref B, c) | (c, A) => ()
+   |         ^^^^^^           -     - variable not in all patterns
+   |         |                |
+   |         |                variable not in all patterns
+   |         pattern doesn't bind `c`
+
 error[E0408]: variable `A` is not bound in all patterns
   --> $DIR/resolve-inconsistent-names.rs:19:18
    |
@@ -36,15 +45,6 @@ LL |         (A, B) | (ref B, c) | (c, A) => ()
    |             |         |
    |             |         variable not in all patterns
    |             variable not in all patterns
-
-error[E0408]: variable `c` is not bound in all patterns
-  --> $DIR/resolve-inconsistent-names.rs:19:9
-   |
-LL |         (A, B) | (ref B, c) | (c, A) => ()
-   |         ^^^^^^           -     - variable not in all patterns
-   |         |                |
-   |         |                variable not in all patterns
-   |         pattern doesn't bind `c`
 
 error[E0409]: variable `B` is bound inconsistently across alternatives separated by `|`
   --> $DIR/resolve-inconsistent-names.rs:19:23
