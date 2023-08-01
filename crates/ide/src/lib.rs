@@ -127,7 +127,7 @@ pub use ide_db::{
     label::Label,
     line_index::{LineCol, LineIndex},
     search::{ReferenceCategory, SearchScope},
-    source_change::{FileSystemEdit, SourceChange},
+    source_change::{FileSystemEdit, SnippetEdit, SourceChange},
     symbol_index::Query,
     RootDatabase, SymbolKind,
 };
