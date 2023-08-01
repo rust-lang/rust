@@ -8,11 +8,13 @@
 //! For now, we are developing everything inside `rustc`, thus, we keep this module private.
 
 use crate::rustc_internal::{self, opaque};
+use crate::stable_mir::mir::{CopyNonOverlapping, UserTypeProjection};
 use crate::stable_mir::ty::{FloatTy, IntTy, Movability, RigidTy, TyKind, UintTy};
 use crate::stable_mir::{self, Context};
 use rustc_hir as hir;
-use rustc_middle::mir;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::mir::coverage::CodeRegion;
+use rustc_middle::mir::{self};
+use rustc_middle::ty::{self, Ty, TyCtxt, Variance};
 use rustc_span::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_target::abi::FieldIdx;
 use tracing::debug;
@@ -110,17 +112,43 @@ impl<'tcx> Stable<'tcx> for mir::Statement<'tcx> {
             Assign(assign) => {
                 stable_mir::mir::Statement::Assign(assign.0.stable(tables), assign.1.stable(tables))
             }
-            FakeRead(_) => todo!(),
-            SetDiscriminant { .. } => todo!(),
-            Deinit(_) => todo!(),
-            StorageLive(_) => todo!(),
-            StorageDead(_) => todo!(),
-            Retag(_, _) => todo!(),
-            PlaceMention(_) => todo!(),
-            AscribeUserType(_, _) => todo!(),
-            Coverage(_) => todo!(),
-            Intrinsic(_) => todo!(),
-            ConstEvalCounter => todo!(),
+            FakeRead(fake_read_place) => stable_mir::mir::Statement::FakeRead(
+                fake_read_place.0.stable(tables),
+                fake_read_place.1.stable(tables),
+            ),
+            SetDiscriminant { place: plc, variant_index: idx } => {
+                stable_mir::mir::Statement::SetDiscriminant {
+                    place: plc.as_ref().stable(tables),
+                    variant_index: idx.stable(tables),
+                }
+            }
+            Deinit(place) => stable_mir::mir::Statement::Deinit(place.stable(tables)),
+            StorageLive(place) => stable_mir::mir::Statement::StorageLive(place.stable(tables)),
+            StorageDead(place) => stable_mir::mir::Statement::StorageDead(place.stable(tables)),
+            Retag(retag, place) => {
+                stable_mir::mir::Statement::Retag(retag.stable(tables), place.stable(tables))
+            }
+            PlaceMention(place) => stable_mir::mir::Statement::PlaceMention(place.stable(tables)),
+            AscribeUserType(place_projection, variance) => {
+                stable_mir::mir::Statement::AscribeUserType(
+                    (
+                        place_projection.as_ref().0.stable(tables),
+                        UserTypeProjection {
+                            base: place_projection.as_ref().1.base.stable(tables),
+                            projection: format!("{:?}", place_projection.as_ref().1.projs),
+                        },
+                    ),
+                    variance.stable(tables),
+                )
+            }
+            Coverage(coverage) => stable_mir::mir::Statement::Coverage(stable_mir::mir::Coverage {
+                kind: coverage.kind.stable(tables),
+                code_region: coverage.code_region.as_ref().map(|reg| reg.stable(tables)),
+            }),
+            Intrinsic(intrinstic) => {
+                stable_mir::mir::Statement::Intrinsic(intrinstic.stable(tables))
+            }
+            ConstEvalCounter => stable_mir::mir::Statement::ConstEvalCounter,
             Nop => stable_mir::mir::Statement::Nop,
         }
     }
@@ -364,6 +392,24 @@ impl<'tcx> Stable<'tcx> for rustc_hir::Unsafety {
     }
 }
 
+impl<'tcx> Stable<'tcx> for mir::FakeReadCause {
+    type T = stable_mir::mir::FakeReadCause;
+    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
+        use mir::FakeReadCause::*;
+        match self {
+            ForMatchGuard => stable_mir::mir::FakeReadCause::ForMatchGuard,
+            ForMatchedPlace(local_def_id) => stable_mir::mir::FakeReadCause::ForMatchedPlace(
+                local_def_id.map(|id| id.to_def_id().index.index()),
+            ),
+            ForGuardBinding => stable_mir::mir::FakeReadCause::ForGuardBinding,
+            ForLet(local_def_id) => stable_mir::mir::FakeReadCause::ForLet(
+                local_def_id.map(|id| id.to_def_id().index.index()),
+            ),
+            ForIndex => stable_mir::mir::FakeReadCause::ForIndex,
+        }
+    }
+}
+
 impl<'tcx> Stable<'tcx> for FieldIdx {
     type T = usize;
     fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
@@ -393,6 +439,104 @@ impl<'tcx> Stable<'tcx> for mir::Place<'tcx> {
     }
 }
 
+impl<'tcx> Stable<'tcx> for mir::coverage::CoverageKind {
+    type T = stable_mir::mir::CoverageKind;
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        use rustc_middle::mir::coverage::CoverageKind;
+        match self {
+            CoverageKind::Counter { function_source_hash, id } => {
+                stable_mir::mir::CoverageKind::Counter {
+                    function_source_hash: *function_source_hash as usize,
+                    id: id.as_usize(),
+                }
+            }
+            CoverageKind::Expression { id, lhs, op, rhs } => {
+                stable_mir::mir::CoverageKind::Expression {
+                    id: id.as_usize(),
+                    lhs: lhs.as_usize(),
+                    op: op.stable(tables),
+                    rhs: rhs.as_usize(),
+                }
+            }
+            CoverageKind::Unreachable => stable_mir::mir::CoverageKind::Unreachable,
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for mir::coverage::Op {
+    type T = stable_mir::mir::Op;
+
+    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
+        use rustc_middle::mir::coverage::Op::*;
+        match self {
+            Subtract => stable_mir::mir::Op::Subtract,
+            Add => stable_mir::mir::Op::Add,
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for mir::Local {
+    type T = usize;
+    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
+        self.as_usize()
+    }
+}
+
+impl<'tcx> Stable<'tcx> for rustc_target::abi::VariantIdx {
+    type T = usize;
+    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
+        self.as_usize()
+    }
+}
+
+impl<'tcx> Stable<'tcx> for Variance {
+    type T = stable_mir::mir::Variance;
+    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
+        match self {
+            Variance::Bivariant => stable_mir::mir::Variance::Bivariant,
+            Variance::Contravariant => stable_mir::mir::Variance::Contravariant,
+            Variance::Covariant => stable_mir::mir::Variance::Covariant,
+            Variance::Invariant => stable_mir::mir::Variance::Invariant,
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for mir::RetagKind {
+    type T = stable_mir::mir::RetagKind;
+    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
+        use rustc_middle::mir::RetagKind;
+        match self {
+            RetagKind::FnEntry => stable_mir::mir::RetagKind::FnEntry,
+            RetagKind::TwoPhase => stable_mir::mir::RetagKind::TwoPhase,
+            RetagKind::Raw => stable_mir::mir::RetagKind::Raw,
+            RetagKind::Default => stable_mir::mir::RetagKind::Default,
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for rustc_middle::ty::UserTypeAnnotationIndex {
+    type T = usize;
+    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
+        self.as_usize()
+    }
+}
+
+impl<'tcx> Stable<'tcx> for CodeRegion {
+    type T = stable_mir::mir::CodeRegion;
+
+    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
+        match self {
+            _ => stable_mir::mir::CodeRegion {
+                file_name: self.file_name.as_u32() as usize,
+                start_line: self.start_line as usize,
+                start_col: self.start_col as usize,
+                end_line: self.end_line as usize,
+                end_col: self.end_col as usize,
+            },
+        }
+    }
+}
+
 impl<'tcx> Stable<'tcx> for mir::UnwindAction {
     type T = stable_mir::mir::UnwindAction;
     fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
@@ -402,6 +546,26 @@ impl<'tcx> Stable<'tcx> for mir::UnwindAction {
             UnwindAction::Unreachable => stable_mir::mir::UnwindAction::Unreachable,
             UnwindAction::Terminate => stable_mir::mir::UnwindAction::Terminate,
             UnwindAction::Cleanup(bb) => stable_mir::mir::UnwindAction::Cleanup(bb.as_usize()),
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for mir::NonDivergingIntrinsic<'tcx> {
+    type T = stable_mir::mir::NonDivergingIntrinsic;
+
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        use rustc_middle::mir::NonDivergingIntrinsic;
+        match self {
+            NonDivergingIntrinsic::Assume(op) => {
+                stable_mir::mir::NonDivergingIntrinsic::Assume(op.stable(tables))
+            }
+            NonDivergingIntrinsic::CopyNonOverlapping(copy_non_overlapping) => {
+                stable_mir::mir::NonDivergingIntrinsic::CopyNonOverlapping(CopyNonOverlapping {
+                    src: copy_non_overlapping.src.stable(tables),
+                    dst: copy_non_overlapping.dst.stable(tables),
+                    count: copy_non_overlapping.count.stable(tables),
+                })
+            }
         }
     }
 }

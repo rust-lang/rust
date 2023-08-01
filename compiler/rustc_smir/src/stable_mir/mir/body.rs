@@ -133,9 +133,90 @@ pub enum AsyncGeneratorKind {
     Fn,
 }
 
+// FIXME: We are using `usize` for now but we should be using DefIds and find what
+//        what those are refering to and then use appropirate ty_defs for them (i.e AdtDef)
+/// The FakeReadCause describes the type of pattern why a FakeRead statement exists.
+#[derive(Clone, Debug)]
+pub enum FakeReadCause {
+    ForMatchGuard,
+    ForMatchedPlace(Option<usize>),
+    ForGuardBinding,
+    ForLet(Option<usize>),
+    ForIndex,
+}
+
+/// Describes what kind of retag is to be performed
+#[derive(Clone, Debug)]
+pub enum RetagKind {
+    FnEntry,
+    TwoPhase,
+    Raw,
+    Default,
+}
+
+#[derive(Clone, Debug)]
+pub enum Variance {
+    Covariant,
+    Invariant,
+    Contravariant,
+    Bivariant,
+}
+
+#[derive(Clone, Debug)]
+pub enum Op {
+    Subtract,
+    Add,
+}
+
+#[derive(Clone, Debug)]
+pub enum CoverageKind {
+    Counter { function_source_hash: usize, id: usize },
+    Expression { id: usize, lhs: usize, op: Op, rhs: usize },
+    Unreachable,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct CodeRegion {
+    pub file_name: usize,
+    pub start_line: usize,
+    pub start_col: usize,
+    pub end_line: usize,
+    pub end_col: usize,
+}
+
+#[derive(Clone, Debug)]
+pub struct Coverage {
+    pub kind: CoverageKind,
+    pub code_region: Option<CodeRegion>,
+}
+
+#[derive(Clone, Debug)]
+pub struct CopyNonOverlapping {
+    pub src: Operand,
+    pub dst: Operand,
+    pub count: Operand,
+}
+
+#[derive(Clone, Debug)]
+pub enum NonDivergingIntrinsic {
+    Assume(Operand),
+    CopyNonOverlapping(CopyNonOverlapping),
+}
+
 #[derive(Clone, Debug)]
 pub enum Statement {
     Assign(Place, Rvalue),
+    FakeRead(FakeReadCause, Place),
+    SetDiscriminant { place: Place, variant_index: VariantIdx },
+    Deinit(Place),
+    StorageLive(Local),
+    StorageDead(Local),
+    Retag(RetagKind, Place),
+    PlaceMention(Place),
+    AscribeUserType((Place, UserTypeProjection), Variance),
+    Coverage(Coverage),
+    Intrinsic(NonDivergingIntrinsic),
+    ConstEvalCounter,
     Nop,
 }
 
@@ -271,9 +352,17 @@ pub enum Operand {
 
 #[derive(Clone, Debug)]
 pub struct Place {
-    pub local: usize,
+    pub local: Local,
     pub projection: String,
 }
+
+#[derive(Clone, Debug)]
+pub struct UserTypeProjection {
+    pub base: UserTypeAnnotationIndex,
+    pub projection: String,
+}
+
+type Local = usize;
 
 type FieldIdx = usize;
 
