@@ -13,6 +13,7 @@ use crate::stable_mir::ty::{FloatTy, IntTy, Movability, RigidTy, TyKind, UintTy}
 use crate::stable_mir::{self, Context};
 use rustc_hir as hir;
 use rustc_middle::mir::coverage::CodeRegion;
+use rustc_middle::mir::interpret::ConstValue;
 use rustc_middle::mir::{self};
 use rustc_middle::ty::{self, Ty, TyCtxt, Variance};
 use rustc_span::def_id::{CrateNum, DefId, LOCAL_CRATE};
@@ -1061,5 +1062,78 @@ impl<'tcx> Stable<'tcx> for rustc_middle::ty::BoundTy {
     fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
         use stable_mir::ty::BoundTy;
         BoundTy { var: self.var.as_usize(), kind: self.kind.stable(tables) }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for rustc_middle::mir::Constant<'tcx> {
+    type T = stable_mir::ty::Constant;
+
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        stable_mir::ty::Constant {
+            span: opaque(&self.span),
+            user_ty: self.user_ty.map(|f| f.index()),
+            literal: self.literal.stable(tables),
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for rustc_middle::mir::ConstantKind<'tcx> {
+    type T = stable_mir::ty::ConstantKind;
+
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        use mir::ConstantKind::*;
+        match self {
+            Ty(cnst) => stable_mir::ty::ConstantKind::Ty(opaque(cnst)),
+            Unevaluated(uneval_cnst, ty) => stable_mir::ty::ConstantKind::Unevaluated(
+                uneval_cnst.stable(tables),
+                tables.intern_ty(*ty),
+            ),
+            Val(_, _) => todo!(),
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for rustc_middle::mir::UnevaluatedConst<'tcx> {
+    type T = stable_mir::ty::UnevulatedConst;
+
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        stable_mir::ty::UnevulatedConst {
+            def: tables.const_def(self.def),
+            args: self.args.stable(tables),
+            promoted: self.promoted.map(|p| p.as_usize()),
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for ConstValue<'tcx> {
+    type T = stable_mir::ty::ConstValue;
+
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        use ConstValue::*;
+        match self {
+            Scalar(scalar) => stable_mir::ty::ConstValue::Scalar(scalar.stable(tables)),
+            ZeroSized => stable_mir::ty::ConstValue::ZeroSized,
+            Slice { data, start, end } => {
+                stable_mir::ty::ConstValue::Slice { data: opaque(data), start: *start, end: *end }
+            }
+            ByRef { alloc, offset } => stable_mir::ty::ConstValue::ByRef {
+                alloc: opaque(alloc),
+                offset: offset.bytes_usize(),
+            },
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for mir::interpret::Scalar {
+    type T = stable_mir::ty::Scalar;
+
+    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
+        use mir::interpret::Scalar::*;
+        match self {
+            Int(scalar_int) => stable_mir::ty::Scalar::Int(opaque(scalar_int)),
+            Ptr(pointer, u) => {
+                stable_mir::ty::Scalar::Ptr(pointer.into_parts().1.bytes_usize(), *u)
+            }
+        }
     }
 }

@@ -381,7 +381,7 @@ type FieldIdx = usize;
 /// The source-order index of a variant in a type.
 pub type VariantIdx = usize;
 
-type UserTypeAnnotationIndex = usize;
+pub type UserTypeAnnotationIndex = usize;
 
 #[derive(Clone, Debug)]
 pub struct SwitchTarget {

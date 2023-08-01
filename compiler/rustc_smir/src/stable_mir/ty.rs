@@ -1,4 +1,7 @@
-use super::{mir::Mutability, with, DefId};
+use super::{
+    mir::{Mutability, UserTypeAnnotationIndex},
+    with, DefId,
+};
 use crate::rustc_internal::Opaque;
 
 #[derive(Copy, Clone, Debug)]
@@ -12,7 +15,42 @@ impl Ty {
 
 pub(crate) type Const = Opaque;
 pub(crate) type Region = Opaque;
+type ScalarInt = Opaque;
+type ConstAllocation = Opaque;
 type Span = Opaque;
+type Pointer = usize;
+type Promoted = usize;
+type Size = usize;
+
+pub struct Constant {
+    pub span: Span,
+    pub user_ty: Option<UserTypeAnnotationIndex>,
+    pub literal: ConstantKind,
+}
+
+pub enum ConstantKind {
+    Ty(Const),
+    Unevaluated(UnevulatedConst, Ty),
+    Val(ConstValue, Ty),
+}
+
+pub struct UnevulatedConst {
+    pub def: ConstDef,
+    pub args: GenericArgs,
+    pub promoted: Option<Promoted>,
+}
+
+pub enum ConstValue {
+    Scalar(Scalar),
+    ZeroSized,
+    Slice { data: ConstAllocation, start: usize, end: usize },
+    ByRef { alloc: ConstAllocation, offset: Size },
+}
+
+pub enum Scalar {
+    Int(ScalarInt),
+    Ptr(Pointer, u8),
+}
 
 #[derive(Clone, Debug)]
 pub enum TyKind {
@@ -103,6 +141,9 @@ pub struct AliasDef(pub(crate) DefId);
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct TraitDef(pub(crate) DefId);
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct ConstDef(pub(crate) DefId);
 
 #[derive(Clone, Debug)]
 pub struct GenericArgs(pub Vec<GenericArgKind>);

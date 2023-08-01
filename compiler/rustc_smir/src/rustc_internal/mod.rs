@@ -63,6 +63,10 @@ pub fn trait_def(did: DefId) -> stable_mir::ty::TraitDef {
     with_tables(|t| t.trait_def(did))
 }
 
+pub fn const_def(did: DefId) -> stable_mir::ty::ConstDef {
+    with_tables(|t| t.const_def(did))
+}
+
 impl<'tcx> Tables<'tcx> {
     pub fn item_def_id(&self, item: &stable_mir::CrateItem) -> DefId {
         self.def_ids[item.0]
@@ -106,6 +110,10 @@ impl<'tcx> Tables<'tcx> {
 
     pub fn trait_def(&mut self, did: DefId) -> stable_mir::ty::TraitDef {
         stable_mir::ty::TraitDef(self.create_def_id(did))
+    }
+
+    pub fn const_def(&mut self, did: DefId) -> stable_mir::ty::ConstDef {
+        stable_mir::ty::ConstDef(self.create_def_id(did))
     }
 
     fn create_def_id(&mut self, did: DefId) -> stable_mir::DefId {
