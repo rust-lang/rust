@@ -213,7 +213,7 @@ pub trait SimdInt: Copy + Sealed {
 }
 
 macro_rules! impl_trait {
-    { $($ty:ident ($unsigned:ident)),* } => {
+    { $($ty:ty),* } => {
         $(
         impl<const LANES: usize> Sealed for Simd<$ty, LANES>
         where
@@ -353,18 +353,16 @@ macro_rules! impl_trait {
 
             #[inline]
             fn leading_ones(self) -> Self {
-                use crate::simd::SimdUint;
-                self.cast::<$unsigned>().leading_ones().cast()
+                (!self).leading_zeros()
             }
 
             #[inline]
             fn trailing_ones(self) -> Self {
-                use crate::simd::SimdUint;
-                self.cast::<$unsigned>().trailing_ones().cast()
+                (!self).trailing_zeros()
             }
         }
         )*
     }
 }
 
-impl_trait! { i8 (u8), i16 (u16), i32 (u32), i64 (u64), isize (usize) }
+impl_trait! { i8, i16, i32, i64, isize }
