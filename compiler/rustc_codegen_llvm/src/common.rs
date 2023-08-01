@@ -1,10 +1,9 @@
 //! Code that is useful in various codegen modules.
 
-use crate::consts::{self, const_alloc_to_llvm};
+use crate::consts::const_alloc_to_llvm;
 pub use crate::context::CodegenCx;
 use crate::llvm::{self, BasicBlock, Bool, ConstantInt, False, OperandBundleDef, True};
 use crate::type_::Type;
-use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
 
 use rustc_ast::Mutability;
@@ -13,7 +12,6 @@ use rustc_data_structures::stable_hasher::{Hash128, HashStable, StableHasher};
 use rustc_hir::def_id::DefId;
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::{ConstAllocation, GlobalAlloc, Scalar};
-use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::cstore::{DllCallingConvention, DllImport, PeImportNameType};
 use rustc_target::abi::{self, AddressSpace, HasDataLayout, Pointer};
@@ -211,11 +209,7 @@ impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             })
             .1;
         let len = s.len();
-        let cs = consts::ptrcast(
-            str_global,
-            self.type_ptr_to(self.layout_of(self.tcx.types.str_).llvm_type(self)),
-        );
-        (cs, self.const_usize(len as u64))
+        (str_global, self.const_usize(len as u64))
     }
 
     fn const_struct(&self, elts: &[&'ll Value], packed: bool) -> &'ll Value {
@@ -292,7 +286,7 @@ impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 let llval = unsafe {
                     llvm::LLVMConstInBoundsGEP2(
                         self.type_i8(),
-                        self.const_bitcast(base_addr, self.type_i8p_ext(base_addr_space)),
+                        self.const_bitcast(base_addr, self.type_ptr_ext(base_addr_space)),
                         &self.const_usize(offset.bytes()),
                         1,
                     )
@@ -310,10 +304,6 @@ impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         const_alloc_to_llvm(self, alloc)
     }
 
-    fn const_ptrcast(&self, val: &'ll Value, ty: &'ll Type) -> &'ll Value {
-        consts::ptrcast(val, ty)
-    }
-
     fn const_bitcast(&self, val: &'ll Value, ty: &'ll Type) -> &'ll Value {
         self.const_bitcast(val, ty)
     }
@@ -322,7 +312,7 @@ impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         unsafe {
             llvm::LLVMConstInBoundsGEP2(
                 self.type_i8(),
-                self.const_bitcast(base_addr, self.type_i8p()),
+                base_addr,
                 &self.const_usize(offset.bytes()),
                 1,
             )

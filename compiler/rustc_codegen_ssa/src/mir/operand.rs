@@ -2,7 +2,6 @@ use super::place::PlaceRef;
 use super::{FunctionCx, LocalRef};
 
 use crate::base;
-use crate::common::TypeKind;
 use crate::glue;
 use crate::traits::*;
 use crate::MemFlags;
@@ -132,7 +131,6 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
     ) -> Self {
         let alloc_align = alloc.inner().align;
         assert_eq!(alloc_align, layout.align.abi);
-        let ty = bx.type_ptr_to(bx.cx().backend_type(layout));
 
         let read_scalar = |start, size, s: abi::Scalar, ty| {
             let val = alloc
@@ -156,7 +154,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             Abi::Scalar(s @ abi::Scalar::Initialized { .. }) => {
                 let size = s.size(bx);
                 assert_eq!(size, layout.size, "abi::Scalar size does not match layout size");
-                let val = read_scalar(Size::ZERO, size, s, ty);
+                let val = read_scalar(Size::ZERO, size, s, bx.type_ptr());
                 OperandRef { val: OperandValue::Immediate(val), layout }
             }
             Abi::ScalarPair(
@@ -187,7 +185,6 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                 let base_addr = bx.static_addr_of(init, alloc_align, None);
 
                 let llval = bx.const_ptr_byte_offset(base_addr, offset);
-                let llval = bx.const_bitcast(llval, ty);
                 bx.load_operand(PlaceRef::new_sized(llval, layout))
             }
         }
@@ -314,38 +311,22 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             ) => {
                 // Bools in union fields needs to be truncated.
                 *llval = bx.to_immediate(*llval, field);
-                // HACK(eddyb) have to bitcast pointers until LLVM removes pointee types.
-                let ty = bx.cx().immediate_backend_type(field);
-                if bx.type_kind(ty) == TypeKind::Pointer {
-                    *llval = bx.pointercast(*llval, ty);
-                }
             }
             (OperandValue::Pair(a, b), Abi::ScalarPair(a_abi, b_abi)) => {
                 // Bools in union fields needs to be truncated.
                 *a = bx.to_immediate_scalar(*a, a_abi);
                 *b = bx.to_immediate_scalar(*b, b_abi);
-                // HACK(eddyb) have to bitcast pointers until LLVM removes pointee types.
-                let a_ty = bx.cx().scalar_pair_element_backend_type(field, 0, true);
-                let b_ty = bx.cx().scalar_pair_element_backend_type(field, 1, true);
-                if bx.type_kind(a_ty) == TypeKind::Pointer {
-                    *a = bx.pointercast(*a, a_ty);
-                }
-                if bx.type_kind(b_ty) == TypeKind::Pointer {
-                    *b = bx.pointercast(*b, b_ty);
-                }
             }
             // Newtype vector of array, e.g. #[repr(simd)] struct S([i32; 4]);
             (OperandValue::Immediate(llval), Abi::Aggregate { sized: true }) => {
                 assert!(matches!(self.layout.abi, Abi::Vector { .. }));
 
-                let llty = bx.cx().backend_type(self.layout);
                 let llfield_ty = bx.cx().backend_type(field);
 
                 // Can't bitcast an aggregate, so round trip through memory.
-                let lltemp = bx.alloca(llfield_ty, field.align.abi);
-                let llptr = bx.pointercast(lltemp, bx.cx().type_ptr_to(llty));
+                let llptr = bx.alloca(llfield_ty, field.align.abi);
                 bx.store(*llval, llptr, field.align.abi);
-                *llval = bx.load(llfield_ty, lltemp, field.align.abi);
+                *llval = bx.load(llfield_ty, llptr, field.align.abi);
             }
             (OperandValue::Immediate(_), Abi::Uninhabited | Abi::Aggregate { sized: false }) => {
                 bug!()
@@ -380,9 +361,8 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
             let ibty1 = bx.cx().scalar_pair_element_backend_type(layout, 1, true);
             OperandValue::Pair(bx.const_poison(ibty0), bx.const_poison(ibty1))
         } else {
-            let bty = bx.cx().backend_type(layout);
-            let ptr_bty = bx.cx().type_ptr_to(bty);
-            OperandValue::Ref(bx.const_poison(ptr_bty), None, layout.align.abi)
+            let ptr = bx.cx().type_ptr();
+            OperandValue::Ref(bx.const_poison(ptr), None, layout.align.abi)
         }
     }
 
@@ -434,8 +414,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
                 if flags.contains(MemFlags::NONTEMPORAL) {
                     // HACK(nox): This is inefficient but there is no nontemporal memcpy.
                     let ty = bx.backend_type(dest.layout);
-                    let ptr = bx.pointercast(r, bx.type_ptr_to(ty));
-                    let val = bx.load(ty, ptr, source_align);
+                    let val = bx.load(ty, r, source_align);
                     bx.store_with_flags(val, dest.llval, dest.align, flags);
                     return;
                 }
