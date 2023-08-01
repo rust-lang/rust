@@ -5,6 +5,7 @@ LL |         Some(ref x) => x,
    |              ^^^^^
    |
    = note: `-D clippy::ref-binding-to-reference` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::ref_binding_to_reference)]`
 help: try
    |
 LL |         Some(x) => &x,

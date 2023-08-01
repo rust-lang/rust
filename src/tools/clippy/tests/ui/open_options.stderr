@@ -5,6 +5,7 @@ LL |     OpenOptions::new().read(true).truncate(true).open("foo.txt");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::nonsensical-open-options` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::nonsensical_open_options)]`
 
 error: file opened with `append` and `truncate`
   --> $DIR/open_options.rs:9:5

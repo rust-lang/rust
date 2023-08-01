@@ -6,6 +6,7 @@ LL |     let v = vec![Arc::new("x".to_string()); 2];
    |
    = note: each element will point to the same `Arc` instance
    = note: `-D clippy::rc-clone-in-vec-init` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::rc_clone_in_vec_init)]`
 help: consider initializing each `Arc` element individually
    |
 LL ~     let v = {

@@ -5,6 +5,7 @@ LL |     /// 位
    |           ^^^^ help: consider using four spaces per tab
    |
    = note: `-D clippy::tabs-in-doc-comments` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::tabs_in_doc_comments)]`
 
 error: aborting due to previous error
 

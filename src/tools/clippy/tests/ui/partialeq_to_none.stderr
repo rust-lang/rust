@@ -5,6 +5,7 @@ LL |     if f != None { "yay" } else { "nay" }
    |        ^^^^^^^^^ help: use `Option::is_some()` instead: `f.is_some()`
    |
    = note: `-D clippy::partialeq-to-none` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::partialeq_to_none)]`
 
 error: binary comparison to literal `Option::None`
   --> $DIR/partialeq_to_none.rs:44:13

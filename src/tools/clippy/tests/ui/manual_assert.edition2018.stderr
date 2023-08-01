@@ -7,6 +7,7 @@ LL | |     }
    | |_____^ help: try instead: `assert!(a.is_empty(), "qaqaq{:?}", a);`
    |
    = note: `-D clippy::manual-assert` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_assert)]`
 
 error: only a `panic!` in `if`-then statement
   --> $DIR/manual_assert.rs:33:5

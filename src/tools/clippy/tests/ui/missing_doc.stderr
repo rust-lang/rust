@@ -5,6 +5,7 @@ LL | type Typedef = String;
    | ^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::missing-docs-in-private-items` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::missing_docs_in_private_items)]`
 
 error: missing documentation for a module
   --> $DIR/missing_doc.rs:19:1

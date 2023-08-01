@@ -5,6 +5,7 @@ LL |     "\\.+*?()|[]{}^$#&-~".chars().any(|x| x == c);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::string-lit-chars-any` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::string_lit_chars_any)]`
 help: use `matches!(...)` instead
    |
 LL |     matches!(c, '\\' | '.' | '+' | '*' | '?' | '(' | ')' | '|' | '[' | ']' | '{' | '}' | '^' | '$' | '#' | '&' | '-' | '~');

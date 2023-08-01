@@ -9,6 +9,7 @@ LL | |     b = a;
    |
    = note: or maybe you should use `core::mem::replace`?
    = note: `-D clippy::almost-swapped` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::almost_swapped)]`
 
 error: aborting due to previous error
 

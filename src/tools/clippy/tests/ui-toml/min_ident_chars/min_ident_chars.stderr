@@ -5,6 +5,7 @@ LL | use extern_types::Aaa;
    |                   ^^^
    |
    = note: `-D clippy::min-ident-chars` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::min_ident_chars)]`
 
 error: this ident is too short (3 <= 3)
   --> $DIR/min_ident_chars.rs:10:5

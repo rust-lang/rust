@@ -5,6 +5,7 @@ LL |         Self::default()
    |             ^^^^^^^^^^^ help: remove this call to `default`
    |
    = note: `-D clippy::default-constructed-unit-structs` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::default_constructed_unit_structs)]`
 
 error: use of `default` to create a unit struct
   --> $DIR/default_constructed_unit_structs.rs:53:31

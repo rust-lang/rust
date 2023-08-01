@@ -7,6 +7,7 @@ LL |     a = "zero";
    |     ^^^^^^^^^^ initialised here
    |
    = note: `-D clippy::needless-late-init` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_late_init)]`
 help: declare `a` here
    |
 LL |     let a = "zero";

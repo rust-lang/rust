@@ -6,6 +6,7 @@ LL | impl Into<InMacro> for String {
    |
    = help: replace the `Into` implementation with `From<std::string::String>`
    = note: `-D clippy::from-over-into` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::from_over_into)]`
 
 error: an implementation of `From` is preferred since it gives you `Into<_>` for free where the reverse isn't true
   --> $DIR/from_over_into_unfixable.rs:20:1

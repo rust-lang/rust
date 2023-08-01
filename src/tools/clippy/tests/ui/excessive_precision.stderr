@@ -5,6 +5,7 @@ LL |     const BAD32_1: f32 = 0.123_456_789_f32;
    |                          ^^^^^^^^^^^^^^^^^ help: consider changing the type or truncating it to: `0.123_456_79_f32`
    |
    = note: `-D clippy::excessive-precision` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::excessive_precision)]`
 
 error: float has excessive precision
   --> $DIR/excessive_precision.rs:21:26

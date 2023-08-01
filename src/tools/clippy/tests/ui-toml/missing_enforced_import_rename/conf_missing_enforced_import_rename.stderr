@@ -5,6 +5,7 @@ LL | use std::process::{exit as wrong_exit, Child as Kid};
    |                    ^^^^^^^^^^^^^^^^^^ help: try: `exit as goodbye`
    |
    = note: `-D clippy::missing-enforced-import-renames` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::missing_enforced_import_renames)]`
 
 error: this import should be renamed
   --> $DIR/conf_missing_enforced_import_rename.rs:6:1

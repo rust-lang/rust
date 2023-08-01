@@ -9,6 +9,7 @@ LL | |     }
    | |_____^
    |
    = note: `-D clippy::match-single-binding` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::match_single_binding)]`
 help: consider using a `let` statement
    |
 LL ~     let (x, y, z) = (a, b, c);

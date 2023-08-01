@@ -8,6 +8,7 @@ LL | |     }
    | |_____^
    |
    = note: `-D clippy::map-entry` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::map_entry)]`
 help: try
    |
 LL ~     if let std::collections::btree_map::Entry::Vacant(e) = m.entry(k) {

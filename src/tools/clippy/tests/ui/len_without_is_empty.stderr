@@ -5,6 +5,7 @@ LL |     pub fn len(&self) -> isize {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::len-without-is-empty` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::len_without_is_empty)]`
 
 error: trait `PubTraitsToo` has a `len` method but no (possibly inherited) `is_empty` method
   --> $DIR/len_without_is_empty.rs:57:1
@@ -96,6 +97,7 @@ LL |     pub fn len(&self) -> Result<usize, ()> {
    |
    = help: use a custom `Error` type instead
    = note: `-D clippy::result-unit-err` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::result_unit_err)]`
 
 error: this returns a `Result<_, ()>`
   --> $DIR/len_without_is_empty.rs:250:5

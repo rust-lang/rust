@@ -5,6 +5,7 @@ LL |     let _: &T = std::mem::transmute(p);
    |                 ^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*p`
    |
    = note: `-D clippy::transmute-ptr-to-ref` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::transmute_ptr_to_ref)]`
 
 error: transmute from a pointer type (`*mut T`) to a reference type (`&mut T`)
   --> $DIR/transmute_ptr_to_ref.rs:8:21

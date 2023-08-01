@@ -5,6 +5,7 @@ LL |     if (true) {}
    |     ^^^^^^^^^^^^ help: you can remove it
    |
    = note: `-D clippy::needless-if` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_if)]`
 
 error: this `if` branch is empty
   --> $DIR/needless_if.rs:28:5

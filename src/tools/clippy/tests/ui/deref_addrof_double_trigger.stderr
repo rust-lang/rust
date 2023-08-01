@@ -5,6 +5,7 @@ LL |     let b = **&&a;
    |              ^^^^ help: try: `&a`
    |
    = note: `-D clippy::deref-addrof` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::deref_addrof)]`
 
 error: immediately dereferencing a reference
   --> $DIR/deref_addrof_double_trigger.rs:16:17

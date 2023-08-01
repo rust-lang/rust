@@ -6,6 +6,7 @@ LL |     let n = 1 / 2;
    |
    = help: division of integers may cause loss of precision. consider using floats
    = note: `-D clippy::integer-division` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::integer_division)]`
 
 error: integer division
   --> $DIR/integer_division.rs:7:13

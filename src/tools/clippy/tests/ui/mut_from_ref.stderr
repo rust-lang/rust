@@ -10,6 +10,7 @@ note: immutable borrow here
 LL |     fn this_wont_hurt_a_bit(&self) -> &mut Foo {
    |                             ^^^^^
    = note: `-D clippy::mut-from-ref` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::mut_from_ref)]`
 
 error: mutable borrow from immutable input(s)
   --> $DIR/mut_from_ref.rs:14:25

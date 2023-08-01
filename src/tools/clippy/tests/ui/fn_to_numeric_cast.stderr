@@ -5,6 +5,7 @@ LL |     let _ = foo as i8;
    |             ^^^^^^^^^ help: try: `foo as usize`
    |
    = note: `-D clippy::fn-to-numeric-cast-with-truncation` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::fn_to_numeric_cast_with_truncation)]`
 
 error: casting function pointer `foo` to `i16`, which truncates the value
   --> $DIR/fn_to_numeric_cast.rs:13:13
@@ -25,6 +26,7 @@ LL |     let _ = foo as i64;
    |             ^^^^^^^^^^ help: try: `foo as usize`
    |
    = note: `-D clippy::fn-to-numeric-cast` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::fn_to_numeric_cast)]`
 
 error: casting function pointer `foo` to `i128`
   --> $DIR/fn_to_numeric_cast.rs:20:13

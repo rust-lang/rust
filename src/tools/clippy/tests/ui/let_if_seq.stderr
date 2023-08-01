@@ -11,6 +11,7 @@ LL | |     }
    |
    = note: you might not need `mut` at all
    = note: `-D clippy::useless-let-if-seq` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::useless_let_if_seq)]`
 
 error: `if _ { .. } else { .. }` is an expression
   --> $DIR/let_if_seq.rs:73:5

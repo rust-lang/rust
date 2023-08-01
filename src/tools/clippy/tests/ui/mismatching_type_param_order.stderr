@@ -6,6 +6,7 @@ LL |     impl<B, A> Foo<B, A> {}
    |
    = help: try `A`, or a name that does not conflict with `Foo`'s generic params
    = note: `-D clippy::mismatching-type-param-order` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::mismatching_type_param_order)]`
 
 error: `Foo` has a similarly named generic type parameter `A` in its declaration, but in a different order
   --> $DIR/mismatching_type_param_order.rs:11:23

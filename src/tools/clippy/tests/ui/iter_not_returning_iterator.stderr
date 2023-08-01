@@ -5,6 +5,7 @@ LL |     fn iter(&self) -> Counter2 {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::iter-not-returning-iterator` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::iter_not_returning_iterator)]`
 
 error: this method is named `iter_mut` but its return type does not implement `Iterator`
   --> $DIR/iter_not_returning_iterator.rs:36:5

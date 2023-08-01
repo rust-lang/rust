@@ -5,6 +5,7 @@ LL | #![allow(clippy::All)]
    |          ^^^^^^^^^^^ help: did you mean: `clippy::all`
    |
    = note: `-D unknown-lints` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(unknown_lints)]`
 
 error: unknown lint: `clippy::CMP_OWNED`
   --> $DIR/unknown_clippy_lints.rs:4:9

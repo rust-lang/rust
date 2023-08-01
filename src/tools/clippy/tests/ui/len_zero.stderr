@@ -5,6 +5,7 @@ LL |     if x.len() == 0 {
    |        ^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `x.is_empty()`
    |
    = note: `-D clippy::len-zero` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::len_zero)]`
 
 error: length comparison to zero
   --> $DIR/len_zero.rs:86:8
@@ -19,6 +20,7 @@ LL |     println!("{}", *s1 == "");
    |                    ^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `s1.is_empty()`
    |
    = note: `-D clippy::comparison-to-empty` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::comparison_to_empty)]`
 
 error: comparison to empty slice
   --> $DIR/len_zero.rs:96:20

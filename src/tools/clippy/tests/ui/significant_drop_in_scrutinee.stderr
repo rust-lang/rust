@@ -12,6 +12,7 @@ LL |     };
    |
    = note: this might lead to deadlocks or other unexpected behavior
    = note: `-D clippy::significant-drop-in-scrutinee` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::significant_drop_in_scrutinee)]`
 help: try moving the temporary above the match
    |
 LL ~     let value = mutex.lock().unwrap().foo();

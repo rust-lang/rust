@@ -5,6 +5,7 @@ LL |     let _ = (0..3).fold(false, |acc, x| acc || x > 2);
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `any(|x| x > 2)`
    |
    = note: `-D clippy::unnecessary-fold` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_fold)]`
 
 error: this `.fold` can be written more succinctly using another method
   --> $DIR/unnecessary_fold.rs:8:20

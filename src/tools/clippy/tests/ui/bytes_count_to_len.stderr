@@ -5,6 +5,7 @@ LL |     let _ = String::from("foo").bytes().count();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling `.len()` instead: `String::from("foo").len()`
    |
    = note: `-D clippy::bytes-count-to-len` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::bytes_count_to_len)]`
 
 error: using long and hard to read `.bytes().count()`
   --> $DIR/bytes_count_to_len.rs:10:13

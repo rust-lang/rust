@@ -25,6 +25,7 @@ LL |     10 % 1;
    |     ^^^^^^
    |
    = note: `-D clippy::modulo-one` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::modulo_one)]`
 
 error: any number modulo -1 will panic/overflow or result in 0
   --> $DIR/modulo_one.rs:11:5

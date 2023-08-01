@@ -6,6 +6,7 @@ LL |         "bar" | _ => {
    |
    = help: consider handling `_` separately
    = note: `-D clippy::wildcard-in-or-patterns` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::wildcard_in_or_patterns)]`
 
 error: wildcard pattern covers any other pattern as it will match anyway
   --> $DIR/wild_in_or_pats.rs:17:9

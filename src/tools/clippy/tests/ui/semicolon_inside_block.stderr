@@ -5,6 +5,7 @@ LL |     { unit_fn_block() };
    |     ^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::semicolon-inside-block` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::semicolon_inside_block)]`
 help: put the `;` here
    |
 LL -     { unit_fn_block() };

@@ -6,6 +6,7 @@ LL |     let peekable = std::iter::empty::<u32>().peekable();
    |
    = help: consider removing the call to `peekable`
    = note: `-D clippy::unused-peekable` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unused_peekable)]`
 
 error: `peek` never called on `Peekable` iterator
   --> $DIR/unused_peekable.rs:18:9

@@ -10,6 +10,7 @@ help: cast this to a pointer of the appropriate type
 LL |     let _ = unsafe { Box::from_raw(ptr) };
    |                                    ^^^
    = note: `-D clippy::from-raw-with-void-ptr` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::from_raw_with_void_ptr)]`
 
 error: creating a `Rc` from a void raw pointer
   --> $DIR/from_raw_with_void_ptr.rs:23:22

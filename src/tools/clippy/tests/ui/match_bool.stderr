@@ -5,6 +5,7 @@ LL |     match test && test {
    |           ^^^^^^^^^^^^ help: try: `test`
    |
    = note: `-D clippy::nonminimal-bool` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::nonminimal_bool)]`
 
 error: you seem to be trying to match on a boolean expression
   --> $DIR/match_bool.rs:7:5

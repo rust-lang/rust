@@ -5,6 +5,7 @@ LL |     let _ = unsafe { libc::strlen(cstring.as_ptr()) };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `cstring.as_bytes().len()`
    |
    = note: `-D clippy::strlen-on-c-strings` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::strlen_on_c_strings)]`
 
 error: using `libc::strlen` on a `CString` or `CStr` value
   --> $DIR/strlen_on_c_strings.rs:17:13

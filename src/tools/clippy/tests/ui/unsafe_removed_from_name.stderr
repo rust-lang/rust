@@ -5,6 +5,7 @@ LL | use std::cell::UnsafeCell as TotallySafeCell;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::unsafe-removed-from-name` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unsafe_removed_from_name)]`
 
 error: removed `unsafe` from the name of `UnsafeCell` in use as `TotallySafeCellAgain`
   --> $DIR/unsafe_removed_from_name.rs:9:1

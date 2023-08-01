@@ -5,6 +5,7 @@ LL |     x >= 8 && x < 12;
    |     ^^^^^^^^^^^^^^^^ help: use: `(8..12).contains(&x)`
    |
    = note: `-D clippy::manual-range-contains` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_range_contains)]`
 
 error: manual `Range::contains` implementation
   --> $DIR/range_contains.rs:14:5

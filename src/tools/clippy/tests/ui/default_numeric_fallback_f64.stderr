@@ -5,6 +5,7 @@ LL |         let x = 0.12;
    |                 ^^^^ help: consider adding suffix: `0.12_f64`
    |
    = note: `-D clippy::default-numeric-fallback` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::default_numeric_fallback)]`
 
 error: default numeric fallback might occur
   --> $DIR/default_numeric_fallback_f64.rs:22:18

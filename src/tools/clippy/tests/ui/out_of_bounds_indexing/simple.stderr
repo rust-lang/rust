@@ -5,6 +5,7 @@ LL |     &x[..=4];
    |           ^
    |
    = note: `-D clippy::out-of-bounds-indexing` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::out_of_bounds_indexing)]`
 
 error: range is out of bounds
   --> $DIR/simple.rs:10:11

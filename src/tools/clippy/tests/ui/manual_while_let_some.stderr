@@ -5,6 +5,7 @@ LL |         let number = numbers.pop().unwrap();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::manual-while-let-some` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_while_let_some)]`
 help: consider using a `while..let` loop
    |
 LL ~     while let Some(number) = numbers.pop() {

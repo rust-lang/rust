@@ -5,6 +5,7 @@ LL |     write!(v, "Hello {}", "world");
    |                           ^^^^^^^
    |
    = note: `-D clippy::write-literal` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::write_literal)]`
 help: try
    |
 LL -     write!(v, "Hello {}", "world");

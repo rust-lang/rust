@@ -6,6 +6,7 @@ LL |     pub fn box_test1<T>(foo: Box<&T>) {}
    |
    = note: `&T` is already a pointer, `Box<&T>` allocates a pointer on the heap
    = note: `-D clippy::redundant-allocation` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_allocation)]`
 
 error: usage of `Box<&MyStruct>`
   --> $DIR/redundant_allocation_fixable.rs:25:27

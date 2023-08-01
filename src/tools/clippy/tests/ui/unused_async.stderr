@@ -16,6 +16,7 @@ note: `await` used in an async block, which does not require the enclosing funct
 LL |             ready(()).await;
    |                       ^^^^^
    = note: `-D clippy::unused-async` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unused_async)]`
 
 error: unused `async` for function with no await statements
   --> $DIR/unused_async.rs:46:5

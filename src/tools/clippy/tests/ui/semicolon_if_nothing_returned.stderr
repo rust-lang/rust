@@ -5,6 +5,7 @@ LL |     println!("Hello")
    |     ^^^^^^^^^^^^^^^^^ help: add a `;` here: `println!("Hello");`
    |
    = note: `-D clippy::semicolon-if-nothing-returned` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::semicolon_if_nothing_returned)]`
 
 error: consider adding a `;` to the last statement for consistent formatting
   --> $DIR/semicolon_if_nothing_returned.rs:12:5

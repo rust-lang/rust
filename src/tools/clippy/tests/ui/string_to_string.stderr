@@ -6,6 +6,7 @@ LL |     let mut v = message.to_string();
    |
    = help: consider using `.clone()`
    = note: `-D clippy::string-to-string` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::string_to_string)]`
 
 error: aborting due to previous error
 

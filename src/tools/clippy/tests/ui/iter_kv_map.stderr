@@ -5,6 +5,7 @@ LL |     let _ = map.iter().map(|(key, _)| key).collect::<Vec<_>>();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `map.keys()`
    |
    = note: `-D clippy::iter-kv-map` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::iter_kv_map)]`
 
 error: iterating on a map's values
   --> $DIR/iter_kv_map.rs:15:13

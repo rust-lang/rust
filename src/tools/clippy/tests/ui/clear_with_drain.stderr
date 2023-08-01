@@ -5,6 +5,7 @@ LL |     v.drain(0..v.len());
    |       ^^^^^^^^^^^^^^^^^ help: try: `clear()`
    |
    = note: `-D clippy::clear-with-drain` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::clear_with_drain)]`
 
 error: `drain` used to clear a `Vec`
   --> $DIR/clear_with_drain.rs:26:7

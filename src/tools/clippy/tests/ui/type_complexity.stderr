@@ -5,6 +5,7 @@ LL | const CST: (u32, (u32, (u32, (u32, u32)))) = (0, (0, (0, (0, 0))));
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::type-complexity` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::type_complexity)]`
 
 error: very complex type used. Consider factoring parts into `type` definitions
   --> $DIR/type_complexity.rs:10:12

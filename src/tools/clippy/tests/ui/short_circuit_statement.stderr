@@ -5,6 +5,7 @@ LL |     f() && g();
    |     ^^^^^^^^^^^ help: replace it with: `if f() { g(); }`
    |
    = note: `-D clippy::short-circuit-statement` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::short_circuit_statement)]`
 
 error: boolean short circuit operator in statement may be clearer using an explicit test
   --> $DIR/short_circuit_statement.rs:6:5

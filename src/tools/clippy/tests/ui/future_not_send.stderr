@@ -27,6 +27,7 @@ LL | }
    | - `cell` is later dropped here
    = note: `std::cell::Cell<usize>` doesn't implement `std::marker::Sync`
    = note: `-D clippy::future-not-send` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::future_not_send)]`
 
 error: future cannot be sent between threads safely
   --> $DIR/future_not_send.rs:12:42

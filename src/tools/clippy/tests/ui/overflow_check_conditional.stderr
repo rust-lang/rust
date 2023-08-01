@@ -5,6 +5,7 @@ LL |     if a + b < a {}
    |        ^^^^^^^^^
    |
    = note: `-D clippy::overflow-check-conditional` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::overflow_check_conditional)]`
 
 error: you are trying to use classic C overflow conditions that will fail in Rust
   --> $DIR/overflow_check_conditional.rs:8:8

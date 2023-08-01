@@ -10,6 +10,7 @@ help: remove the `Some` and `unwrap()`
 LL |     let val = Some(1);
    |               ^^^^^^^
    = note: `-D clippy::unnecessary-literal-unwrap` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_literal_unwrap)]`
 
 error: used `expect()` on `Some` value
   --> $DIR/unnecessary_literal_unwrap_unfixable.rs:9:17

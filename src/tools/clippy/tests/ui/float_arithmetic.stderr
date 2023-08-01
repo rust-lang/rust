@@ -5,6 +5,7 @@ LL |     f * 2.0;
    |     ^^^^^^^
    |
    = note: `-D clippy::float-arithmetic` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::float_arithmetic)]`
 
 error: floating-point arithmetic detected
   --> $DIR/float_arithmetic.rs:19:5

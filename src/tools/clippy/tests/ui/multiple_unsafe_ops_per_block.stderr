@@ -18,6 +18,7 @@ note: unsafe function call occurs here
 LL |         not_very_safe();
    |         ^^^^^^^^^^^^^^^
    = note: `-D clippy::multiple-unsafe-ops-per-block` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::multiple_unsafe_ops_per_block)]`
 
 error: this `unsafe` block contains 2 unsafe operations, expected only one
   --> $DIR/multiple_unsafe_ops_per_block.rs:45:5

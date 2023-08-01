@@ -7,6 +7,7 @@ LL |     foo(n as _);
    |              help: consider giving the type explicitly: `usize`
    |
    = note: `-D clippy::as-underscore` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::as_underscore)]`
 
 error: using `as _` conversion
   --> $DIR/as_underscore.rs:10:18

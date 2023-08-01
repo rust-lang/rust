@@ -5,6 +5,7 @@ LL |     let _ = v.iter_mut().filter(|&ref a| a.is_empty());
    |                                  ^^^^^^
    |
    = note: `-D clippy::needless-borrowed-reference` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_borrowed_reference)]`
 help: try removing the `&ref` part
    |
 LL -     let _ = v.iter_mut().filter(|&ref a| a.is_empty());

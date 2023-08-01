@@ -5,6 +5,7 @@ LL |     const ATOMIC: AtomicUsize;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::declare-interior-mutable-const` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::declare_interior_mutable_const)]`
 
 error: a `const` item should never be interior mutable
   --> $DIR/traits.rs:9:9

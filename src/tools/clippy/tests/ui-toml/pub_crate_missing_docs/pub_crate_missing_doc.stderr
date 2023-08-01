@@ -5,6 +5,7 @@ LL |     pub(crate) fn crate_no_docs() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::missing-docs-in-private-items` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::missing_docs_in_private_items)]`
 
 error: missing documentation for a function
   --> $DIR/pub_crate_missing_doc.rs:15:5

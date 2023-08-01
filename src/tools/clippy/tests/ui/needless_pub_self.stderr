@@ -5,6 +5,7 @@ LL | pub(self) fn a() {}
    | ^^^^^^^^^ help: remove it
    |
    = note: `-D clippy::needless-pub-self` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_pub_self)]`
 
 error: unnecessary `pub(in self)`
   --> $DIR/needless_pub_self.rs:14:1
