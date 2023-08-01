@@ -14,7 +14,7 @@ Target triples available so far:
 
 ## Requirements
 
-The easiest way to obtain these targets is cross-compilation but native build from `x86_64-pc-windows-gnu` is possible with few hacks which I don't recommend.
+The easiest way to obtain these targets is cross-compilation, but native build from `x86_64-pc-windows-gnu` is possible with few hacks which I don't recommend.
 Std support is expected to be on pair with `*-pc-windows-gnu`.
 
 Binaries for this target should be at least on pair with `*-pc-windows-gnu` in terms of requirements and functionality.
@@ -25,15 +25,12 @@ Like with any other Windows target created binaries are in PE format.
 
 ## Building the target
 
-For cross-compilation I recommend using [llvm-mingw](https://github.com/mstorsjo/llvm-mingw) toolchain, one change that seems necessary beside configuring cross compilers is disabling experimental `m86k` target. Otherwise LLVM build fails with `multiple definition ...` errors.
-Native bootstrapping builds require rather fragile hacks until host artifacts are available so I won't describe them here.
+For cross-compilation I recommend using [llvm-mingw](https://github.com/mstorsjo/llvm-mingw) toolchain, one change that seems necessary beside configuring cross-compilers is disabling experimental `m86k` target. Otherwise, LLVM build fails with `multiple definition ...` errors.
+Native bootstrapping builds require rather fragile hacks until host artifacts are available, so I won't describe them here.
 
 ## Building Rust programs
 
-Rust does not yet ship pre-compiled artifacts for this target. To compile for
-this target, you will either need to build Rust with the target enabled (see
-"Building the target" above), or build your own copy of `core` by using
-`build-std` or similar.
+Rust does ship pre-compiled std library for those targets. That means one can cross-compile for those targets from other hosts.
 
 ## Testing
 

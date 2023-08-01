@@ -57,6 +57,9 @@ RUN ./install-mipsel-musl.sh
 COPY host-x86_64/dist-various-1/install-aarch64-none-elf.sh /build
 RUN ./install-aarch64-none-elf.sh
 
+COPY host-x86_64/dist-various-1/install-llvm-mingw.sh /build
+RUN ./install-llvm-mingw.sh
+
 # Suppress some warnings in the openwrt toolchains we downloaded
 ENV STAGING_DIR=/tmp
 
@@ -141,6 +144,8 @@ ENV TARGETS=$TARGETS,armv7r-none-eabi
 ENV TARGETS=$TARGETS,armv7r-none-eabihf
 ENV TARGETS=$TARGETS,thumbv7neon-unknown-linux-gnueabihf
 ENV TARGETS=$TARGETS,armv7a-none-eabi
+ENV TARGETS=$TARGETS,aarch64-pc-windows-gnullvm
+ENV TARGETS=$TARGETS,x86_64-pc-windows-gnullvm
 
 # riscv targets currently do not need a C compiler, as compiler_builtins
 # doesn't currently have it enabled, and the riscv gcc compiler is not
@@ -170,7 +175,9 @@ ENV CFLAGS_armv5te_unknown_linux_musleabi="-march=armv5te -marm -mfloat-abi=soft
     CC_riscv32imc_unknown_none_elf=false \
     CC_riscv32imac_unknown_none_elf=false \
     CC_riscv64imac_unknown_none_elf=false \
-    CC_riscv64gc_unknown_none_elf=false
+    CC_riscv64gc_unknown_none_elf=false \
+    CC_aarch64_pc_windows_gnullvm=aarch64-w64-mingw32-clang \
+    CC_x86_64_pc_windows_gnullvm=x86_64-w64-mingw32-clang
 
 ENV RUST_CONFIGURE_ARGS \
       --musl-root-armv5te=/musl-armv5te \
