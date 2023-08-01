@@ -41,8 +41,6 @@ pub enum BinOpToken {
 /// Describes how a sequence of token trees is delimited.
 /// Cannot use `proc_macro::Delimiter` directly because this
 /// structure should implement some additional traits.
-/// The `None` variant is also renamed to `Invisible` to be
-/// less confusing and better convey the semantics.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[derive(Encodable, Decodable, Hash, HashStable_Generic)]
 pub enum Delimiter {
