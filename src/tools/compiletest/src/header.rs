@@ -606,7 +606,7 @@ fn iter_header_extra(
     // Process any extra directives supplied by the caller (e.g. because they
     // are implied by the test mode), with a dummy line number of 0.
     for directive in extra_directives {
-        it(TestComment::new(None, test_common::CommentKind::Compiletest(directive), 0));
+        it(TestComment::new(directive, None, test_common::CommentKind::Compiletest(directive), 0));
     }
 
     test_common::iter_header(testfile, rdr, it);

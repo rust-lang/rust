@@ -9,27 +9,38 @@ pub struct TestComment<'line> {
     revision: Option<&'line str>,
     comment: CommentKind<'line>,
     line_num: usize,
+    full_line: &'line str,
 }
 
 impl<'line> TestComment<'line> {
-    pub fn new(revision: Option<&'line str>, comment: CommentKind<'line>, line_num: usize) -> Self {
-        Self { revision, comment, line_num }
+    pub const fn new(
+        line: &'line str,
+        revision: Option<&'line str>,
+        comment: CommentKind<'line>,
+        line_num: usize,
+    ) -> Self {
+        Self { revision, comment, line_num, full_line: line }
     }
 
-    pub fn revision(&self) -> Option<&str> {
+    pub const fn revision(&self) -> Option<&str> {
         self.revision
     }
 
-    pub fn comment(&self) -> CommentKind<'_> {
+    pub const fn comment(&self) -> CommentKind<'_> {
         self.comment
     }
 
-    pub fn line_num(&self) -> usize {
+    pub const fn line_num(&self) -> usize {
         self.line_num
     }
 
-    pub fn comment_str(&self) -> &str {
+    pub const fn comment_str(&self) -> &str {
         self.comment.line()
+    }
+
+    /// The full line that contains the comment. You almost never want this.
+    pub const fn full_line(&self) -> &str {
+        self.full_line
     }
 }
 
@@ -44,7 +55,7 @@ pub enum CommentKind<'line> {
 }
 
 impl CommentKind<'_> {
-    pub fn line(&self) -> &str {
+    pub const fn line(&self) -> &str {
         match self {
             CommentKind::Compiletest(line) | CommentKind::UiTest(line) => line,
         }
@@ -61,13 +72,13 @@ pub fn iter_header<R: Read>(testfile: &Path, rdr: R, it: &mut dyn FnMut(TestComm
     let is_rust_file = testfile.extension().is_some_and(|e| e == "rs");
 
     let mut rdr = BufReader::new(rdr);
-    let mut ln = String::new();
+    let mut full_ln = String::new();
     let mut line_num = 0;
 
     loop {
         line_num += 1;
-        ln.clear();
-        if rdr.read_line(&mut ln).unwrap() == 0 {
+        full_ln.clear();
+        if rdr.read_line(&mut full_ln).unwrap() == 0 {
             break;
         }
 
@@ -79,22 +90,33 @@ pub fn iter_header<R: Read>(testfile: &Path, rdr: R, it: &mut dyn FnMut(TestComm
         // Assume that any directives will be found before the first
         // module or function. This doesn't seem to be an optimization
         // with a warm page cache. Maybe with a cold one.
-        let ln = ln.trim();
+        let ln = full_ln.trim();
         if ln.starts_with("fn") || ln.starts_with("mod") {
             return;
         } else if is_rust_file {
             // first try to parse as a ui test comment, then as a compiletest comment
             if let Some((lncfg, ln)) = line_directive(RUST_UI_TEST_COMMENT, ln) {
-                let directive = TestComment::new(lncfg, CommentKind::UiTest(ln), line_num);
+                let directive =
+                    TestComment::new(full_ln.as_str(), lncfg, CommentKind::UiTest(ln), line_num);
                 it(directive);
             } else if let Some((lncfg, ln)) = line_directive(RUST_COMPILETEST_COMMENT, ln) {
-                let directive = TestComment::new(lncfg, CommentKind::Compiletest(ln), line_num);
+                let directive = TestComment::new(
+                    full_ln.as_str(),
+                    lncfg,
+                    CommentKind::Compiletest(ln),
+                    line_num,
+                );
                 it(directive);
             }
         } else {
             // parse a non-rust file that compiletest knows about
             if let Some((lncfg, ln)) = line_directive(NON_RUST_COMMENT, ln) {
-                let directive = TestComment::new(lncfg, CommentKind::Compiletest(ln), line_num);
+                let directive = TestComment::new(
+                    full_ln.as_str(),
+                    lncfg,
+                    CommentKind::Compiletest(ln),
+                    line_num,
+                );
                 it(directive);
             }
         }

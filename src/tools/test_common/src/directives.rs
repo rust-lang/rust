@@ -39,10 +39,26 @@ pub trait NameDirective {
     fn parse_name_negative(&self, comment: &TestComment<'_>) -> bool;
 }
 
+pub trait TestDirective {
+    fn compiletest_name(&self) -> &'static str;
+    fn ui_test_name(&self) -> Option<&'static str>;
+}
+
 macro_rules! name_value_directive {
     ($item:ident, $compiletest_name:literal) => {
         #[derive(Debug, Clone, Copy)]
         pub struct $item;
+
+        impl TestDirective for $item {
+            fn compiletest_name(&self) -> &'static str {
+                $compiletest_name
+            }
+
+            fn ui_test_name(&self) -> Option<&'static str> {
+                None
+            }
+        }
+
         impl NameValueDirective for $item {
             fn parse_name_value<'line>(
                 &self,
@@ -68,6 +84,17 @@ macro_rules! name_value_directive {
     ($item:ident, $compiletest_name:literal, $ui_test_name:literal) => {
         #[derive(Debug, Clone, Copy)]
         pub struct $item;
+
+        impl TestDirective for $item {
+            fn compiletest_name(&self) -> &'static str {
+                $compiletest_name
+            }
+
+            fn ui_test_name(&self) -> Option<&'static str> {
+                Some($ui_test_name)
+            }
+        }
+
         impl NameValueDirective for $item {
             fn parse_name_value<'line>(
                 &self,
@@ -106,6 +133,17 @@ macro_rules! name_directive {
     ($item:ident, $compiletest_name:literal) => {
         #[derive(Debug, Clone, Copy)]
         pub struct $item;
+
+        impl TestDirective for $item {
+            fn compiletest_name(&self) -> &'static str {
+                $compiletest_name
+            }
+
+            fn ui_test_name(&self) -> Option<&'static str> {
+                None
+            }
+        }
+
         impl NameDirective for $item {
             fn parse_name(&self, comment: &TestComment<'_>) -> bool {
                 match comment.comment() {
@@ -134,6 +172,17 @@ macro_rules! name_directive {
     ($item:ident, $compiletest_name:literal, $ui_test_name:literal) => {
         #[derive(Debug, Clone, Copy)]
         pub struct $item;
+
+        impl TestDirective for $item {
+            fn compiletest_name(&self) -> &'static str {
+                $compiletest_name
+            }
+
+            fn ui_test_name(&self) -> Option<&'static str> {
+                Some($ui_test_name)
+            }
+        }
+
         impl NameDirective for $item {
             fn parse_name(&self, comment: &TestComment<'_>) -> bool {
                 match comment.comment() {
@@ -173,6 +222,17 @@ macro_rules! name_val_or_name_directive {
     ($item:ident, $compiletest_name:literal) => {
         #[derive(Debug, Clone, Copy)]
         pub struct $item;
+
+        impl TestDirective for $item {
+            fn compiletest_name(&self) -> &'static str {
+                $compiletest_name
+            }
+
+            fn ui_test_name(&self) -> Option<&'static str> {
+                None
+            }
+        }
+
         impl NameValueDirective for $item {
             fn parse_name_value<'line>(
                 &self,
@@ -222,6 +282,17 @@ macro_rules! name_val_or_name_directive {
     ($item:ident, $compiletest_name:literal, $ui_test_name:literal) => {
         #[derive(Debug, Clone, Copy)]
         pub struct $item;
+
+        impl TestDirective for $item {
+            fn compiletest_name(&self) -> &'static str {
+                $compiletest_name
+            }
+
+            fn ui_test_name(&self) -> Option<&'static str> {
+                Some($ui_test_name)
+            }
+        }
+
         impl NameValueDirective for $item {
             fn parse_name_value<'line>(
                 &self,
@@ -292,7 +363,7 @@ macro_rules! name_val_or_name_directive {
 // Macros are in the form (name, compiletest_name, ui_test_name).
 // If ui_test_name does not exist, ui_test does not support that directive.
 // ========================================================================
-name_value_directive!(ErrorPatternDirective, "error-pattern", "error-in-other-file");
+name_value_directive!(ErrorPatternDirective, "error-in-other-file", "error-pattern");
 name_value_directive!(CompileFlagsDirective, "compile-flags", "compile-flags");
 name_value_directive!(RunFlagsDirective, "run-flags"); // UNUSED IN UI TESTS
 name_value_directive!(PrettyModeDirective, "pretty-mode"); // UNUSED IN UI TESTS
