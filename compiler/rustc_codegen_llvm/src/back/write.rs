@@ -381,29 +381,22 @@ unsafe extern "C" fn diagnostic_handler(info: &DiagnosticInfo, user: *mut c_void
         }
 
         llvm::diagnostic::Optimization(opt) => {
-            let enabled = match cgcx.remark {
-                Passes::All => true,
-                Passes::Some(ref v) => v.iter().any(|s| *s == opt.pass_name),
-            };
-
-            if enabled {
-                diag_handler.emit_note(FromLlvmOptimizationDiag {
-                    filename: &opt.filename,
-                    line: opt.line,
-                    column: opt.column,
-                    pass_name: &opt.pass_name,
-                    kind: match opt.kind {
-                        OptimizationDiagnosticKind::OptimizationRemark => "success",
-                        OptimizationDiagnosticKind::OptimizationMissed
-                        | OptimizationDiagnosticKind::OptimizationFailure => "missed",
-                        OptimizationDiagnosticKind::OptimizationAnalysis
-                        | OptimizationDiagnosticKind::OptimizationAnalysisFPCommute
-                        | OptimizationDiagnosticKind::OptimizationAnalysisAliasing => "analysis",
-                        OptimizationDiagnosticKind::OptimizationRemarkOther => "other",
-                    },
-                    message: &opt.message,
-                });
-            }
+            diag_handler.emit_note(FromLlvmOptimizationDiag {
+                filename: &opt.filename,
+                line: opt.line,
+                column: opt.column,
+                pass_name: &opt.pass_name,
+                kind: match opt.kind {
+                    OptimizationDiagnosticKind::OptimizationRemark => "success",
+                    OptimizationDiagnosticKind::OptimizationMissed
+                    | OptimizationDiagnosticKind::OptimizationFailure => "missed",
+                    OptimizationDiagnosticKind::OptimizationAnalysis
+                    | OptimizationDiagnosticKind::OptimizationAnalysisFPCommute
+                    | OptimizationDiagnosticKind::OptimizationAnalysisAliasing => "analysis",
+                    OptimizationDiagnosticKind::OptimizationRemarkOther => "other",
+                },
+                message: &opt.message,
+            });
         }
         llvm::diagnostic::PGO(diagnostic_ref) | llvm::diagnostic::Linker(diagnostic_ref) => {
             let message = llvm::build_string(|s| {
