@@ -3034,6 +3034,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
             self.maybe_suggest_convert_to_slice(
                 err,
+                obligation,
                 trait_ref,
                 impl_candidates.as_slice(),
                 span,

@@ -401,6 +401,7 @@ pub trait TypeErrCtxtExt<'tcx> {
     fn maybe_suggest_convert_to_slice(
         &self,
         err: &mut Diagnostic,
+        obligation: &PredicateObligation<'tcx>,
         trait_ref: ty::PolyTraitRef<'tcx>,
         candidate_impls: &[ImplCandidate<'tcx>],
         span: Span,
@@ -3957,10 +3958,17 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     fn maybe_suggest_convert_to_slice(
         &self,
         err: &mut Diagnostic,
+        obligation: &PredicateObligation<'tcx>,
         trait_ref: ty::PolyTraitRef<'tcx>,
         candidate_impls: &[ImplCandidate<'tcx>],
         span: Span,
     ) {
+        // We can only suggest the slice coersion for function arguments since the suggestion
+        // would make no sense in turbofish or call
+        let ObligationCauseCode::FunctionArgumentObligation { .. } = obligation.cause.code() else {
+            return;
+        };
+
         // Three cases where we can make a suggestion:
         // 1. `[T; _]` (array of T)
         // 2. `&[T; _]` (reference to array of T)
