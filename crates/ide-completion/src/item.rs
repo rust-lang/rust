@@ -437,8 +437,8 @@ impl Builder {
                 // `PartialOrd` because it has an alias of ">".
                 .filter(|alias| {
                     let mut chars = alias.chars();
-                    chars.next().is_some_and(unicode_ident::is_xid_start)
-                        && chars.all(unicode_ident::is_xid_continue)
+                    chars.next().is_some_and(char::is_alphabetic)
+                        && chars.all(|c| c.is_alphanumeric() || c == '_')
                 })
                 // Deliberately concatenated without separators as adding separators e.g.
                 // `alias1, alias2` results in LSP clients continuing to display the completion even
