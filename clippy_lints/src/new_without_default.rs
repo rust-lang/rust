@@ -155,7 +155,7 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
                                                 &generics_sugg,
                                                 &where_clause_sugg
                                             ),
-                                            Applicability::MaybeIncorrect,
+                                            Applicability::MachineApplicable,
                                         );
                                     },
                                 );
