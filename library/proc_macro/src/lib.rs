@@ -1459,10 +1459,29 @@ impl fmt::Debug for Literal {
 }
 
 #[unstable(feature = "proc_macro_tracked_env", issue = "74690")]
-/// Tracked access to env and path.
-pub mod tracked {
-    #[unstable(feature = "proc_macro_tracked_path", issue = "73921")]
-    use std::path::Path;
+/// Tracked access to env variables.
+pub mod tracked_env {
+    use std::env::{self, VarError};
+    use std::ffi::OsStr;
+
+    /// Retrieve an environment variable and add it to build dependency info.
+    /// The build system executing the compiler will know that the variable was accessed during
+    /// compilation, and will be able to rerun the build when the value of that variable changes.
+    /// Besides the dependency tracking this function should be equivalent to `env::var` from the
+    /// standard library, except that the argument must be UTF-8.
+    #[unstable(feature = "proc_macro_tracked_env", issue = "74690")]
+    pub fn var<K: AsRef<OsStr> + AsRef<str>>(key: K) -> Result<String, VarError> {
+        let key: &str = key.as_ref();
+        let value = env::var(key);
+        crate::bridge::client::FreeFunctions::track_env_var(key, value.as_deref().ok());
+        value
+    }
+}
+
+/// Tracked access to additional files.
+#[unstable(feature = "track_path", issue = "99515")]
+pub mod tracked_path {
+    use std::path::{Path, PathBuf};
 
     /// Track a file as if it was a dependency.
     ///
@@ -1475,26 +1494,8 @@ pub mod tracked {
     /// Errors if the provided `Path` cannot be encoded as a `str`
     ///
     /// Commonly used for tracking asset preprocessing.
-    #[unstable(feature = "proc_macro_tracked_path", issue = "73921")]
     pub fn path<P: AsRef<Path>>(path: P) {
-        let path: &Path = path.as_ref();
-        crate::bridge::client::FreeFunctions::track_path(PathBuf::from(path));
-    }
-
-    use std::env::{self, VarError};
-    use std::ffi::OsStr;
-    use std::path::PathBuf;
-
-    /// Retrieve an environment variable and add it to build dependency info.
-    /// The build system executing the compiler will know that the variable was accessed during
-    /// compilation, and will be able to rerun the build when the value of that variable changes.
-    /// Besides the dependency tracking this function should be equivalent to `env::var` from the
-    /// standard library, except that the argument must be UTF-8.
-    #[unstable(feature = "proc_macro_tracked_env", issue = "74690")]
-    pub fn env_var<K: AsRef<OsStr> + AsRef<str>>(key: K) -> Result<String, VarError> {
-        let key: &str = key.as_ref();
-        let value = env::var(key);
-        crate::bridge::client::FreeFunctions::track_env_var(key, value.as_deref().ok());
-        value
+        let path = PathBuf::from(path.as_ref());
+        crate::bridge::client::FreeFunctions::track_path(path);
     }
 }
