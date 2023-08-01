@@ -1,3 +1,5 @@
+# ignore-windows
+
 include ../tools.mk
 
 all:
