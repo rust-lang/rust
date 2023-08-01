@@ -58,11 +58,17 @@ fn sized_constraint_for_ty<'tcx>(
             // we know that `T` is Sized and do not need to check
             // it on the impl.
 
-            let Some(sized_trait) = tcx.lang_items().sized_trait() else { return vec![ty] };
-            let sized_predicate =
-                ty::TraitRef::new(tcx, sized_trait, [ty]).without_const().to_predicate(tcx);
+            let Some(sized_trait_def_id) = tcx.lang_items().sized_trait() else { return vec![ty] };
             let predicates = tcx.predicates_of(adtdef.did()).predicates;
-            if predicates.iter().any(|(p, _)| *p == sized_predicate) { vec![] } else { vec![ty] }
+            if predicates.iter().any(|(p, _)| {
+                p.as_trait_clause().is_some_and(|trait_pred| {
+                    trait_pred.def_id() == sized_trait_def_id && trait_pred.self_ty().skip_binder() == ty
+                })
+            }) {
+                vec![]
+            } else {
+                vec![ty]
+            }
         }
 
         Placeholder(..) | Bound(..) | Infer(..) => {
