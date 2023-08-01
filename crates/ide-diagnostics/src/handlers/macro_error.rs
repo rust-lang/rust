@@ -80,7 +80,7 @@ macro_rules! m {
 
 fn f() {
     m!();
-  //^^^^ error: unresolved macro `$crate::private::concat!`
+  //^^^^ error: unresolved macro $crate::private::concat
 }
 
 //- /core.rs crate:core
