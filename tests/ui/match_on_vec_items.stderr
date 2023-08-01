@@ -5,6 +5,7 @@ LL |     match arr[idx] {
    |           ^^^^^^^^ help: try: `arr.get(idx)`
    |
    = note: `-D clippy::match-on-vec-items` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::match_on_vec_items)]`
 
 error: indexing into a vector may panic
   --> $DIR/match_on_vec_items.rs:19:11

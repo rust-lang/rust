@@ -11,6 +11,7 @@ note: `_` wildcard arm here
 LL |         _ => 0,
    |         ^^^^^^
    = note: `-D clippy::match-same-arms` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::match_same_arms)]`
 
 error: this match arm has an identical body to another arm
   --> $DIR/match_same_arms.rs:18:9

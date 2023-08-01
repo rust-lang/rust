@@ -5,6 +5,7 @@ LL |     binary_heap = binary_heap.into_iter().filter(|x| x % 2 == 0).collect();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling `.retain()` instead: `binary_heap.retain(|x| x % 2 == 0)`
    |
    = note: `-D clippy::manual-retain` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_retain)]`
 
 error: this expression can be written more simply using `.retain()`
   --> $DIR/manual_retain.rs:23:5

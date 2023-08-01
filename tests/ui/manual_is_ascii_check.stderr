@@ -5,6 +5,7 @@ LL |     assert!(matches!('x', 'a'..='z'));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `'x'.is_ascii_lowercase()`
    |
    = note: `-D clippy::manual-is-ascii-check` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_is_ascii_check)]`
 
 error: manual check for common ascii range
   --> $DIR/manual_is_ascii_check.rs:6:13

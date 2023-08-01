@@ -5,6 +5,7 @@ LL |     println!("val='{}'", local_i32);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::uninlined-format-args` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::uninlined_format_args)]`
 help: change this to
    |
 LL -     println!("val='{}'", local_i32);
@@ -30,6 +31,7 @@ LL |     println!("Hello {} is {:.*}", "x", local_i32, local_f64);
    |                                   ^^^
    |
    = note: `-D clippy::print-literal` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::print_literal)]`
 help: try
    |
 LL -     println!("Hello {} is {:.*}", "x", local_i32, local_f64);

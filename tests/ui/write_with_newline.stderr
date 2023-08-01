@@ -5,6 +5,7 @@ LL |     write!(v, "Hello\n");
    |     ^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::write-with-newline` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::write_with_newline)]`
 help: use `writeln!` instead
    |
 LL -     write!(v, "Hello\n");

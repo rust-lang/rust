@@ -6,6 +6,7 @@ LL |     /* Safety: */ unsafe {}
    |
    = help: consider adding a safety comment on the preceding line
    = note: `-D clippy::undocumented-unsafe-blocks` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::undocumented_unsafe_blocks)]`
 
 error: unsafe block missing a safety comment
   --> $DIR/undocumented_unsafe_blocks.rs:267:5
@@ -251,6 +252,7 @@ help: consider removing the safety comment
 LL |     // SAFETY:
    |     ^^^^^^^^^^
    = note: `-D clippy::unnecessary-safety-comment` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_safety_comment)]`
 
 error: unsafe impl missing a safety comment
   --> $DIR/undocumented_unsafe_blocks.rs:473:5

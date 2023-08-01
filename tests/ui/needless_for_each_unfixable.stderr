@@ -11,6 +11,7 @@ LL | |     });
    | |_______^
    |
    = note: `-D clippy::needless-for-each` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_for_each)]`
 help: try
    |
 LL ~     for v in v.iter() {

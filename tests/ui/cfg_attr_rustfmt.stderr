@@ -5,6 +5,7 @@ LL |     #[cfg_attr(rustfmt, rustfmt::skip)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `#[rustfmt::skip]`
    |
    = note: `-D clippy::deprecated-cfg-attr` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::deprecated_cfg_attr)]`
 
 error: `cfg_attr` is deprecated for rustfmt and got replaced by tool attributes
   --> $DIR/cfg_attr_rustfmt.rs:22:1

@@ -5,6 +5,7 @@ LL | fn warn_arg(x: Box<A>) {
    |             ^
    |
    = note: `-D clippy::boxed-local` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::boxed_local)]`
 
 error: local variable doesn't need to be boxed here
   --> $DIR/boxed_local.rs:123:12

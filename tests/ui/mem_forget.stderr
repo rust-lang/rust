@@ -6,6 +6,7 @@ LL |     memstuff::forget(six);
    |
    = note: argument has type `std::sync::Arc<i32>`
    = note: `-D clippy::mem-forget` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::mem_forget)]`
 
 error: usage of `mem::forget` on `Drop` type
   --> $DIR/mem_forget.rs:19:5

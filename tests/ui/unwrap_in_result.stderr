@@ -17,6 +17,7 @@ note: potential non-recoverable error(s)
 LL |         let i = i_str.parse::<i32>().unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: `-D clippy::unwrap-in-result` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unwrap_in_result)]`
 
 error: used unwrap or expect in a function that returns result or option
   --> $DIR/unwrap_in_result.rs:33:5

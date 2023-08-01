@@ -5,6 +5,7 @@ LL |     let _val = Some(1).unwrap();
    |                ^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::unnecessary-literal-unwrap` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_literal_unwrap)]`
 help: remove the `Some` and `unwrap()`
    |
 LL -     let _val = Some(1).unwrap();

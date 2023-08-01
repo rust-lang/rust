@@ -9,6 +9,7 @@ LL |         vec.set_len(200);
    |
    = help: initialize the buffer or wrap the content in `MaybeUninit`
    = note: `-D clippy::uninit-vec` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::uninit_vec)]`
 
 error: calling `set_len()` immediately after reserving a buffer creates uninitialized values
   --> $DIR/uninit_vec.rs:24:5

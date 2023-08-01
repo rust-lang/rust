@@ -10,6 +10,7 @@ LL | |     };
    | |_____^
    |
    = note: `-D clippy::single-match` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::single_match)]`
 help: try
    |
 LL ~     if let Some(y) = x {

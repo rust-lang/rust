@@ -7,6 +7,7 @@ LL |     x.field.map(do_nothing);
    |     help: try: `if let Some(x_field) = x.field { do_nothing(x_field) }`
    |
    = note: `-D clippy::option-map-unit-fn` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::option_map_unit_fn)]`
 
 error: called `map(f)` on an `Option` value where `f` is a function that returns the unit type `()`
   --> $DIR/option_map_unit_fn_fixable.rs:39:5

@@ -5,6 +5,7 @@ LL |     let _ = (0..4).find_map(|x| if x > 1 { Some(x) } else { None });
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::unnecessary-find-map` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_find_map)]`
 
 error: this `.find_map` can be written more simply using `.find`
   --> $DIR/unnecessary_find_map.rs:7:13

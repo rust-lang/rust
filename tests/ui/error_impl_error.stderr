@@ -10,6 +10,7 @@ note: `Error` was implemented here
 LL |     impl std::error::Error for Error {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: `-D clippy::error-impl-error` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::error_impl_error)]`
 
 error: exported type named `Error` that implements `Error`
   --> $DIR/error_impl_error.rs:21:21

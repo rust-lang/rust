@@ -7,6 +7,7 @@ LL | #[cfg(hermit)]
    |       help: try: `target_os = "hermit"`
    |
    = note: `-D clippy::mismatched-target-os` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::mismatched_target_os)]`
 
 error: operating system used in target family position
   --> $DIR/mismatched_target_os_non_unix.rs:7:1

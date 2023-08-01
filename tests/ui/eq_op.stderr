@@ -5,6 +5,7 @@ LL |     let _ = 1 == 1;
    |             ^^^^^^
    |
    = note: `-D clippy::eq-op` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::eq_op)]`
 
 error: equal expressions as operands to `==`
   --> $DIR/eq_op.rs:10:13

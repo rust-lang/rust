@@ -12,6 +12,7 @@ LL | |     };
    | |_____^
    |
    = note: `-D clippy::manual-map` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_map)]`
 help: try
    |
 LL ~     let _ = Some(0).map(|x| {

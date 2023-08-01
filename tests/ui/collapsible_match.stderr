@@ -18,6 +18,7 @@ LL |
 LL |             Some(n) => foo(n),
    |             ^^^^^^^ with this pattern
    = note: `-D clippy::collapsible-match` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::collapsible_match)]`
 
 error: this `match` can be collapsed into the outer `match`
   --> $DIR/collapsible_match.rs:23:20

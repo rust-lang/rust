@@ -5,6 +5,7 @@ LL |     foo.map_or(Err("error"), |v| Ok(v));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `foo.ok_or("error")`
    |
    = note: `-D clippy::manual-ok-or` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_ok_or)]`
 
 error: this pattern reimplements `Option::ok_or`
   --> $DIR/manual_ok_or.rs:14:5

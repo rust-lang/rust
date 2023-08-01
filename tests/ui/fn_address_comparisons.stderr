@@ -5,6 +5,7 @@ LL |     let _ = f == a;
    |             ^^^^^^
    |
    = note: `-D clippy::fn-address-comparisons` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::fn_address_comparisons)]`
 
 error: comparing with a non-unique address of a function item
   --> $DIR/fn_address_comparisons.rs:18:13

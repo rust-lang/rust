@@ -6,6 +6,7 @@ LL |     assert!(foo());
    |
    = help: consider describing why the failing assert is problematic
    = note: `-D clippy::missing-assert-message` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::missing_assert_message)]`
 
 error: assert without any message
   --> $DIR/missing_assert_message.rs:14:5

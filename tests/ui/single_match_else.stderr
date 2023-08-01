@@ -12,6 +12,7 @@ LL | |     };
    | |_____^
    |
    = note: `-D clippy::single-match-else` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::single_match_else)]`
 help: try
    |
 LL ~     let _ = if let ExprNode::ExprAddrOf = ExprNode::Butterflies { Some(&NODE) } else {

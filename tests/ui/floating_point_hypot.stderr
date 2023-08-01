@@ -5,6 +5,7 @@ LL |     let _ = (x * x + y * y).sqrt();
    |             ^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `x.hypot(y)`
    |
    = note: `-D clippy::imprecise-flops` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::imprecise_flops)]`
 
 error: hypotenuse can be computed more accurately
   --> $DIR/floating_point_hypot.rs:7:13

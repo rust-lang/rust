@@ -5,6 +5,7 @@ LL |     let _: u32 = unsafe { std::mem::transmute(1f32) };
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `1f32.to_bits()`
    |
    = note: `-D clippy::transmute-float-to-int` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::transmute_float_to_int)]`
 
 error: transmute from a `f32` to a `i32`
   --> $DIR/transmute_float_to_int.rs:7:27

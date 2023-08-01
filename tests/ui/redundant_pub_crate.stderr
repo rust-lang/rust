@@ -7,6 +7,7 @@ LL |     pub(crate) fn g() {} // private due to m1
    |     help: consider using: `pub`
    |
    = note: `-D clippy::redundant-pub-crate` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_pub_crate)]`
 
 error: pub(crate) function inside private module
   --> $DIR/redundant_pub_crate.rs:11:9

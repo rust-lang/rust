@@ -5,6 +5,7 @@ LL |     (&1u8 as *const u8) as *const u16;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::cast-ptr-alignment` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::cast_ptr_alignment)]`
 
 error: casting from `*mut u8` to a more-strictly-aligned pointer (`*mut u16`) (1 < 2 bytes)
   --> $DIR/cast_alignment.rs:22:5

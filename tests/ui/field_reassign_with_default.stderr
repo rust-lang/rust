@@ -10,6 +10,7 @@ note: consider initializing the variable with `main::A { i: 42, ..Default::defau
 LL |     let mut a: A = Default::default();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: `-D clippy::field-reassign-with-default` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::field_reassign_with_default)]`
 
 error: field assignment outside of initializer for an instance created with Default::default()
   --> $DIR/field_reassign_with_default.rs:96:5

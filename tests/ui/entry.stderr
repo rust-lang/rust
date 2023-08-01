@@ -7,6 +7,7 @@ LL | |     }
    | |_____^ help: try: `m.entry(k).or_insert(v);`
    |
    = note: `-D clippy::map-entry` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::map_entry)]`
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
   --> $DIR/entry.rs:29:5

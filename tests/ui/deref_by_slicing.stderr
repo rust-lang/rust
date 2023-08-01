@@ -5,6 +5,7 @@ LL |     let _ = &vec[..];
    |             ^^^^^^^^ help: dereference the original value instead: `&*vec`
    |
    = note: `-D clippy::deref-by-slicing` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::deref_by_slicing)]`
 
 error: slicing when dereferencing would work
   --> $DIR/deref_by_slicing.rs:9:13

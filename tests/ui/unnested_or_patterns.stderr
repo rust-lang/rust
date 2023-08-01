@@ -5,6 +5,7 @@ LL |     if let box 0 | box 2 = Box::new(0) {}
    |            ^^^^^^^^^^^^^
    |
    = note: `-D clippy::unnested-or-patterns` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnested_or_patterns)]`
 help: nest the patterns
    |
 LL |     if let box (0 | 2) = Box::new(0) {}

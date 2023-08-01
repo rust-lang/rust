@@ -11,6 +11,7 @@ LL | |     };
    | |_____^ help: try: `Some(0).filter(|&x| x <= 0)`
    |
    = note: `-D clippy::manual-filter` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_filter)]`
 
 error: manual implementation of `Option::filter`
   --> $DIR/manual_filter.rs:16:5

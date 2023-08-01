@@ -9,6 +9,7 @@ LL | |     }
    | |_____^
    |
    = note: `-D clippy::new-ret-no-self` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::new_ret_no_self)]`
 
 error: methods called `new` usually return `Self`
   --> $DIR/new_ret_no_self.rs:84:5

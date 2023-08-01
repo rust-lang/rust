@@ -7,6 +7,7 @@ LL |     a % b;
    = note: double check for expected result especially when interoperating with different languages
    = note: or consider using `rem_euclid` or similar function
    = note: `-D clippy::modulo-arithmetic` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::modulo_arithmetic)]`
 
 error: you are using modulo operator on types that might have different signs
   --> $DIR/modulo_arithmetic_integral.rs:11:5

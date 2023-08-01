@@ -5,6 +5,7 @@ LL |     _n += 1;
    |     ^^^^^^^
    |
    = note: `-D clippy::arithmetic-side-effects` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::arithmetic_side_effects)]`
 
 error: arithmetic operation that can potentially result in unexpected side-effects
   --> $DIR/arithmetic_side_effects.rs:305:5

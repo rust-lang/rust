@@ -5,6 +5,7 @@ LL |     bad1: Arc<String>,
    |           ^^^^^^^^^^^ help: try: `Arc<str>`
    |
    = note: `-D clippy::rc-buffer` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::rc_buffer)]`
 
 error: usage of `Arc<T>` when T is a buffer type
   --> $DIR/rc_buffer_arc.rs:11:11

@@ -6,6 +6,7 @@ LL |     -1.6 % 2.1;
    |
    = note: double check for expected result especially when interoperating with different languages
    = note: `-D clippy::modulo-arithmetic` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::modulo_arithmetic)]`
 
 error: you are using modulo operator on constants with different signs: `1.600 % -2.100`
   --> $DIR/modulo_arithmetic_float.rs:9:5

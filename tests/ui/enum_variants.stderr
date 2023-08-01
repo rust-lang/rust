@@ -5,6 +5,7 @@ LL |     cFoo,
    |     ^^^^
    |
    = note: `-D clippy::enum-variant-names` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::enum_variant_names)]`
 
 error: all variants have the same prefix: `c`
   --> $DIR/enum_variants.rs:14:1

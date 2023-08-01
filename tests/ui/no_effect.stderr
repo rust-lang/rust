@@ -5,6 +5,7 @@ LL |     0;
    |     ^^
    |
    = note: `-D clippy::no-effect` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::no_effect)]`
 
 error: statement with no effect
   --> $DIR/no_effect.rs:101:5
@@ -157,6 +158,7 @@ LL |     let _unused = 1;
    |     ^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::no-effect-underscore-binding` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::no_effect_underscore_binding)]`
 
 error: binding to `_` prefixed variable with no side-effect
   --> $DIR/no_effect.rs:154:5

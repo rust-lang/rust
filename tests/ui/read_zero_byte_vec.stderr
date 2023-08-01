@@ -5,6 +5,7 @@ LL |     f.read_exact(&mut data).unwrap();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `data.resize(20, 0); f.read_exact(&mut data).unwrap();`
    |
    = note: `-D clippy::read-zero-byte-vec` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::read_zero_byte_vec)]`
 
 error: reading zero byte data to `Vec`
   --> $DIR/read_zero_byte_vec.rs:27:5

@@ -5,6 +5,7 @@ LL |     let _ = [1].iter().cloned();
    |                        ^^^^^^ help: try: `copied`
    |
    = note: `-D clippy::cloned-instead-of-copied` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::cloned_instead_of_copied)]`
 
 error: used `cloned` where `copied` could be used instead
   --> $DIR/cloned_instead_of_copied.rs:8:31

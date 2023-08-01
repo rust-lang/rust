@@ -5,6 +5,7 @@ LL |     if let Some(Some(0)) | Some(Some(1)) = None {}
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::unnested-or-patterns` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnested_or_patterns)]`
 help: nest the patterns
    |
 LL |     if let Some(Some(0 | 1)) = None {}

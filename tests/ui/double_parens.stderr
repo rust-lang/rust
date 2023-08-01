@@ -5,6 +5,7 @@ LL |     ((0))
    |     ^^^^^
    |
    = note: `-D clippy::double-parens` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::double_parens)]`
 
 error: consider removing unnecessary double parentheses
   --> $DIR/double_parens.rs:21:14

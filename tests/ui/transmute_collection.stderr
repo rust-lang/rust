@@ -5,6 +5,7 @@ LL |         let _ = transmute::<_, Vec<u32>>(vec![0u8]);
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::unsound-collection-transmute` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unsound_collection_transmute)]`
 
 error: transmute from `std::vec::Vec<u32>` to `std::vec::Vec<[u8; 4]>` with mismatched layout is unsound
   --> $DIR/transmute_collection.rs:13:17

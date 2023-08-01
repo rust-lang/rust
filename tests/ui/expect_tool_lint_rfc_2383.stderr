@@ -5,6 +5,7 @@ LL |     #[expect(dead_code)]
    |              ^^^^^^^^^
    |
    = note: `-D unfulfilled-lint-expectations` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(unfulfilled_lint_expectations)]`
 
 error: this lint expectation is unfulfilled
   --> $DIR/expect_tool_lint_rfc_2383.rs:41:18

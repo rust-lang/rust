@@ -5,6 +5,7 @@ LL |     pub fn bad(self: Self) {
    |                ^^^^^^^^^^ help: consider to change this parameter to: `self`
    |
    = note: `-D clippy::needless-arbitrary-self-type` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_arbitrary_self_type)]`
 
 error: the type of the `self` parameter does not need to be arbitrary
   --> $DIR/needless_arbitrary_self_type.rs:18:20

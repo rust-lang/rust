@@ -5,6 +5,7 @@ LL |     while let Option::Some(x) = iter.next() {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for x in iter`
    |
    = note: `-D clippy::while-let-on-iterator` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::while_let_on_iterator)]`
 
 error: this loop could be written as a `for` loop
   --> $DIR/while_let_on_iterator.rs:20:5

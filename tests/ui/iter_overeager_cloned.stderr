@@ -7,6 +7,7 @@ LL |     let _: Option<String> = vec.iter().cloned().last();
    |                                       help: try: `.last().cloned()`
    |
    = note: `-D clippy::iter-overeager-cloned` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::iter_overeager_cloned)]`
 
 error: unnecessarily eager cloning of iterator items
   --> $DIR/iter_overeager_cloned.rs:9:29
@@ -25,6 +26,7 @@ LL |     let _: usize = vec.iter().filter(|x| x == &"2").cloned().count();
    |                                                    help: try: `.count()`
    |
    = note: `-D clippy::redundant-clone` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_clone)]`
 
 error: unnecessarily eager cloning of iterator items
   --> $DIR/iter_overeager_cloned.rs:13:21

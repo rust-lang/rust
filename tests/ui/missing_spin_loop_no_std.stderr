@@ -5,6 +5,7 @@ LL |     while b.load(Ordering::Acquire) {}
    |                                     ^^ help: try: `{ core::hint::spin_loop() }`
    |
    = note: `-D clippy::missing-spin-loop` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::missing_spin_loop)]`
 
 error: aborting due to previous error
 

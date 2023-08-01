@@ -5,6 +5,7 @@ LL |     writeln!(v, r"{}", r"{hello}");
    |                        ^^^^^^^^^^ help: try: `"{hello}"`
    |
    = note: `-D clippy::needless-raw-strings` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_raw_strings)]`
 
 error: literal with an empty format string
   --> $DIR/write_literal_2.rs:10:23
@@ -13,6 +14,7 @@ LL |     writeln!(v, "{}", "{hello}");
    |                       ^^^^^^^^^
    |
    = note: `-D clippy::write-literal` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::write_literal)]`
 help: try
    |
 LL -     writeln!(v, "{}", "{hello}");

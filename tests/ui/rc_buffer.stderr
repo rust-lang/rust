@@ -5,6 +5,7 @@ LL |     bad1: Rc<String>,
    |           ^^^^^^^^^^ help: try: `Rc<str>`
    |
    = note: `-D clippy::rc-buffer` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::rc_buffer)]`
 
 error: usage of `Rc<T>` when T is a buffer type
   --> $DIR/rc_buffer.rs:12:11

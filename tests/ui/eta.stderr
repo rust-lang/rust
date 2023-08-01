@@ -5,6 +5,7 @@ LL |     let a = Some(1u8).map(|a| foo(a));
    |                           ^^^^^^^^^^ help: replace the closure with the function itself: `foo`
    |
    = note: `-D clippy::redundant-closure` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_closure)]`
 
 error: redundant closure
   --> $DIR/eta.rs:32:40
@@ -37,6 +38,7 @@ LL |     let e = Some(TestStruct { some_ref: &i }).map(|a| a.foo());
    |                                                   ^^^^^^^^^^^ help: replace the closure with the method itself: `TestStruct::foo`
    |
    = note: `-D clippy::redundant-closure-for-method-calls` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_closure_for_method_calls)]`
 
 error: redundant closure
   --> $DIR/eta.rs:94:51

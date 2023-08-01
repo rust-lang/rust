@@ -5,6 +5,7 @@ LL |     let _ = (&vec![1, 2, 3]).into_iter();
    |                              ^^^^^^^^^ help: call directly: `iter`
    |
    = note: `-D clippy::into-iter-on-ref` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::into_iter_on_ref)]`
 
 error: this `.into_iter()` call is equivalent to `.iter()` and will not consume the `slice`
   --> $DIR/into_iter_on_ref.rs:14:46

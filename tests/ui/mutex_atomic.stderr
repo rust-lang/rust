@@ -5,6 +5,7 @@ LL |     Mutex::new(true);
    |     ^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::mutex-atomic` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::mutex_atomic)]`
 
 error: consider using an `AtomicUsize` instead of a `Mutex` here; if you just want the locking behavior and not the internal type, consider using `Mutex<()>`
   --> $DIR/mutex_atomic.rs:11:5
@@ -37,6 +38,7 @@ LL |     Mutex::new(0u32);
    |     ^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::mutex-integer` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::mutex_integer)]`
 
 error: consider using an `AtomicIsize` instead of a `Mutex` here; if you just want the locking behavior and not the internal type, consider using `Mutex<()>`
   --> $DIR/mutex_atomic.rs:23:5
