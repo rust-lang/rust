@@ -2040,25 +2040,65 @@ macro_rules! int_impl {
         #[inline]
         #[rustc_inherit_overflow_checks]
         pub const fn pow(self, mut exp: u32) -> Self {
-            if exp == 0 {
-                return 1;
-            }
-            let mut base = self;
-            let mut acc = 1;
-
-            while exp > 1 {
-                if (exp & 1) == 1 {
-                    acc = acc * base;
+            #[cfg(not(bootstrap))]
+            if intrinsics::is_constant(self) && self > 0 && (self & (self - 1) == 0) {
+                let power_used = match self.checked_ilog2() {
+                    Some(v) => v,
+                    // SAFETY: We just checked this is a power of two. and above zero.
+                    None => unsafe { core::hint::unreachable_unchecked() },
+                };
+                // So it panics. Have to use `overflowing_mul` to efficiently set the
+                // result to 0 if not.
+                #[cfg(debug_assertions)]
+                power_used * exp;
+                let (num_shl, overflowed) = power_used.overflowing_mul(exp);
+                let fine = !overflowed
+                    & (power_used < (mem::size_of::<Self>() * 8) as u32);
+                (1 << num_shl) * fine as Self
+            } else {
+                if exp == 0 {
+                    return 1;
                 }
-                exp /= 2;
-                base = base * base;
+                let mut base = self;
+                let mut acc = 1;
+
+                while exp > 1 {
+                    if (exp & 1) == 1 {
+                        acc = acc * base;
+                    }
+                    exp /= 2;
+                    base = base * base;
+                }
+
+                // since exp!=0, finally the exp must be 1.
+                // Deal with the final bit of the exponent separately, since
+                // squaring the base afterwards is not necessary and may cause a
+                // needless overflow.
+                acc * base
             }
 
-            // since exp!=0, finally the exp must be 1.
-            // Deal with the final bit of the exponent separately, since
-            // squaring the base afterwards is not necessary and may cause a
-            // needless overflow.
-            acc * base
+            #[cfg(bootstrap)]
+            {
+                if exp == 0 {
+                    return 1;
+                }
+                let mut base = self;
+                let mut acc = 1;
+
+                while exp > 1 {
+                    if (exp & 1) == 1 {
+                        acc = acc * base;
+                    }
+                    exp /= 2;
+                    base = base * base;
+                }
+
+                // since exp!=0, finally the exp must be 1.
+                // Deal with the final bit of the exponent separately, since
+                // squaring the base afterwards is not necessary and may cause a
+                // needless overflow.
+                acc * base
+            }
         }
 
         /// Calculates the quotient of Euclidean division of `self` by `rhs`.

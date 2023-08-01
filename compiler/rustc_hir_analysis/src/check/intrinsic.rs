@@ -114,7 +114,8 @@ pub fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: DefId) -> hir
         | sym::forget
         | sym::black_box
         | sym::variant_count
-        | sym::ptr_mask => hir::Unsafety::Normal,
+        | sym::ptr_mask
+        | sym::is_constant => hir::Unsafety::Normal,
         _ => hir::Unsafety::Unsafe,
     };
 
@@ -476,6 +477,11 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
             }
 
             sym::black_box => (1, vec![param(0)], param(0)),
+
+            sym::is_constant => {
+                // FIXME: ZSTs cause an ICE. We should check for this.
+                (1, vec![param(0)], tcx.types.bool)
+            }
 
             sym::const_eval_select => (4, vec![param(0), param(1), param(2)], param(3)),
 

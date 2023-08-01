@@ -2489,6 +2489,25 @@ extern "rust-intrinsic" {
     /// constructing an empty slice) is returned.
     #[rustc_nounwind]
     pub fn option_payload_ptr<T>(arg: *const Option<T>) -> *const T;
+
+    /// Returns whether the argument is known at compile-time. This opens the
+    /// door for additional optimizations, in that LLVM can then optimize
+    /// following checks to either `true` or `false`. This is often paired with
+    /// an `if-else` statement, as LLVM will only keep one branch (if
+    /// optimizations are on).
+    ///
+    /// "Constant" in this context is not the same as a constant in Rust. As
+    /// such, this should only be used for optimizations.
+    ///
+    /// Note that, unlike most intrinsics, this is safe to call;
+    /// it does not require an `unsafe` block.
+    /// Therefore, implementations must not require the user to uphold
+    /// any safety invariants.
+    #[rustc_const_stable(feature = "todo", since = "never")]
+    #[rustc_safe_intrinsic]
+    #[rustc_nounwind]
+    #[cfg(not(bootstrap))]
+    pub fn is_constant<T>(arg: T) -> bool;
 }
 
 // Some functions are defined here because they accidentally got made

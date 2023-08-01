@@ -892,6 +892,8 @@ impl<'ll> CodegenCx<'ll, '_> {
         ifn!("llvm.lifetime.start.p0i8", fn(t_i64, ptr) -> void);
         ifn!("llvm.lifetime.end.p0i8", fn(t_i64, ptr) -> void);
 
+        ifn!("llvm.is.constant", fn(...) -> i1);
+
         ifn!("llvm.expect.i1", fn(i1, i1) -> i1);
         ifn!("llvm.eh.typeid.for", fn(ptr) -> t_i32);
         ifn!("llvm.localescape", fn(...) -> void);
