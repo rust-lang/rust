@@ -1160,7 +1160,7 @@ fn macro_call_as_call_id_(
             let macro_call = InFile::new(call.ast_id.file_id, call.ast_id.to_node(db));
             expand_eager_macro_input(db, krate, macro_call, def, &|path| {
                 resolver(path).filter(MacroDefId::is_fn_like)
-            })?
+            })
         }
         _ if def.is_fn_like() => ExpandResult {
             value: Some(def.as_lazy_macro(
