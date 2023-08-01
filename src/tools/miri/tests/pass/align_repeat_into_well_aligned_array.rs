@@ -4,6 +4,8 @@ use std::mem::size_of;
 
 fn main() {
     let mut a = Params::new();
+    // The array itself here happens to be quite well-aligned, but not all its elements have that
+    // large alignment and we better make sure that is still accepted by Miri.
     a.key_block = [0; BLOCKBYTES];
 }
 
