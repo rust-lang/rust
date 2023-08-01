@@ -158,42 +158,44 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     end_block.unit()
                 }
             }
-            ExprKind::LogicalOp { .. } => {
+            ExprKind::LogicalOp { op, lhs, rhs } => {
                 let condition_scope = this.local_scope();
                 let source_info = this.source_info(expr.span);
+                // We first evaluate the left-hand side of the predicate ...
                 let (then_block, else_block) =
                     this.in_if_then_scope(condition_scope, expr.span, |this| {
                         this.then_else_break(
                             block,
-                            expr,
+                            &this.thir[lhs],
                             Some(condition_scope),
                             condition_scope,
                             source_info,
                         )
                     });
+                let (short_circuit, continuation, constant) = match op {
+                    LogicalOp::And => (else_block, then_block, false),
+                    LogicalOp::Or => (then_block, else_block, true),
+                };
+                // At this point, the control flow splits into a short-circuiting path
+                // and a continuation path.
+                // - If the operator is `&&`, passing `lhs` leads to continuation of evaluation on `rhs`;
+                //   failing it leads to the short-circuting path which assigns `false` to the place.
+                // - If the operator is `||`, failing `lhs` leads to continuation of evaluation on `rhs`;
+                //   passing it leads to the short-circuting path which assigns `true` to the place.
                 this.cfg.push_assign_constant(
-                    then_block,
+                    short_circuit,
                     source_info,
                     destination,
                     Constant {
                         span: expr.span,
                         user_ty: None,
-                        literal: ConstantKind::from_bool(this.tcx, true),
+                        literal: ConstantKind::from_bool(this.tcx, constant),
                     },
                 );
-                this.cfg.push_assign_constant(
-                    else_block,
-                    source_info,
-                    destination,
-                    Constant {
-                        span: expr.span,
-                        user_ty: None,
-                        literal: ConstantKind::from_bool(this.tcx, false),
-                    },
-                );
+                let rhs = unpack!(this.expr_into_dest(destination, continuation, &this.thir[rhs]));
                 let target = this.cfg.start_new_block();
-                this.cfg.goto(then_block, source_info, target);
-                this.cfg.goto(else_block, source_info, target);
+                this.cfg.goto(rhs, source_info, target);
+                this.cfg.goto(short_circuit, source_info, target);
                 target.unit()
             }
             ExprKind::Loop { body } => {
