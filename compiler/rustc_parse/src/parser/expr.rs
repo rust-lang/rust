@@ -2599,7 +2599,7 @@ impl<'a> Parser<'a> {
 
         // Recover from missing expression in `for` loop
         if matches!(expr.kind, ExprKind::Block(..))
-            && !matches!(self.token.kind, token::OpenDelim(token::Delimiter::Brace))
+            && !matches!(self.token.kind, token::OpenDelim(Delimiter::Brace))
             && self.may_recover()
         {
             self.sess

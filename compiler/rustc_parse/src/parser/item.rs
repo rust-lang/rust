@@ -9,12 +9,12 @@ use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
 use rustc_ast::util::case::Case;
+use rustc_ast::MacCall;
 use rustc_ast::{self as ast, AttrVec, Attribute, DUMMY_NODE_ID};
 use rustc_ast::{Async, Const, Defaultness, IsAuto, Mutability, Unsafe, UseTree, UseTreeKind};
 use rustc_ast::{BindingAnnotation, Block, FnDecl, FnSig, Param, SelfKind};
 use rustc_ast::{EnumDef, FieldDef, Generics, TraitRef, Ty, TyKind, Variant, VariantData};
 use rustc_ast::{FnHeader, ForeignItem, Path, PathSegment, Visibility, VisibilityKind};
-use rustc_ast::{MacCall, MacDelimiter};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{
     struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed, IntoDiagnostic, PResult,
@@ -1968,7 +1968,7 @@ impl<'a> Parser<'a> {
             let arrow = TokenTree::token_alone(token::FatArrow, pspan.between(bspan)); // `=>`
             let tokens = TokenStream::new(vec![params, arrow, body]);
             let dspan = DelimSpan::from_pair(pspan.shrink_to_lo(), bspan.shrink_to_hi());
-            P(DelimArgs { dspan, delim: MacDelimiter::Brace, tokens })
+            P(DelimArgs { dspan, delim: Delimiter::Brace, tokens })
         } else {
             return self.unexpected();
         };

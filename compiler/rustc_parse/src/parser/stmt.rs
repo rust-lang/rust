@@ -193,10 +193,9 @@ impl<'a> Parser<'a> {
     /// At this point, the `!` token after the path has already been eaten.
     fn parse_stmt_mac(&mut self, lo: Span, attrs: AttrVec, path: ast::Path) -> PResult<'a, Stmt> {
         let args = self.parse_delim_args()?;
-        let delim = args.delim.to_token();
         let hi = self.prev_token.span;
 
-        let style = match delim {
+        let style = match args.delim {
             Delimiter::Brace => MacStmtStyle::Braces,
             _ => MacStmtStyle::NoBraces,
         };

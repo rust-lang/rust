@@ -25,7 +25,7 @@ use rustc_ast::util::case::Case;
 use rustc_ast::AttrId;
 use rustc_ast::DUMMY_NODE_ID;
 use rustc_ast::{self as ast, AnonConst, Const, DelimArgs, Extern};
-use rustc_ast::{Async, AttrArgs, AttrArgsEq, Expr, ExprKind, MacDelimiter, Mutability, StrLit};
+use rustc_ast::{Async, AttrArgs, AttrArgsEq, Expr, ExprKind, Mutability, StrLit};
 use rustc_ast::{HasAttrs, HasTokens, Unsafe, Visibility, VisibilityKind};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
@@ -1216,12 +1216,10 @@ impl<'a> Parser<'a> {
             || self.check(&token::OpenDelim(Delimiter::Brace));
 
         delimited.then(|| {
-            // We've confirmed above that there is a delimiter so unwrapping is OK.
             let TokenTree::Delimited(dspan, delim, tokens) = self.parse_token_tree() else {
                 unreachable!()
             };
-
-            DelimArgs { dspan, delim: MacDelimiter::from_token(delim).unwrap(), tokens }
+            DelimArgs { dspan, delim, tokens }
         })
     }
 
