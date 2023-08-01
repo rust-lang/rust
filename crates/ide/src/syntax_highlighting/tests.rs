@@ -48,6 +48,7 @@ fn macros() {
     check_highlighting(
         r#"
 //- proc_macros: mirror
+//- /lib.rs crate:lib
 proc_macros::mirror! {
     {
         ,i32 :x pub
@@ -95,11 +96,23 @@ macro without_args {
     }
 }
 
+#[rustc_builtin_macro]
+macro_rules! concat {}
+#[rustc_builtin_macro]
+macro_rules! include {}
+#[rustc_builtin_macro]
+macro_rules! format_args {}
+
+include!(concat!("foo/", "foo.rs"));
+
 fn main() {
-    println!("Hello, {}!", 92);
+    format_args!("Hello, {}!", 92);
     dont_color_me_braces!();
     noop!(noop!(1));
 }
+//- /foo/foo.rs crate:foo
+mod foo {}
+use self::foo as bar;
 "#,
         expect_file!["./test_data/highlight_macros.html"],
         false,

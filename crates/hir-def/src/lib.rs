@@ -1083,7 +1083,7 @@ pub trait AsMacroCall {
         &self,
         db: &dyn ExpandDatabase,
         krate: CrateId,
-        resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
+        resolver: impl Fn(path::ModPath) -> Option<MacroDefId> + Copy,
     ) -> Option<MacroCallId> {
         self.as_call_id_with_errors(db, krate, resolver).ok()?.value
     }
@@ -1092,7 +1092,7 @@ pub trait AsMacroCall {
         &self,
         db: &dyn ExpandDatabase,
         krate: CrateId,
-        resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
+        resolver: impl Fn(path::ModPath) -> Option<MacroDefId> + Copy,
     ) -> Result<ExpandResult<Option<MacroCallId>>, UnresolvedMacro>;
 }
 
@@ -1101,7 +1101,7 @@ impl AsMacroCall for InFile<&ast::MacroCall> {
         &self,
         db: &dyn ExpandDatabase,
         krate: CrateId,
-        resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
+        resolver: impl Fn(path::ModPath) -> Option<MacroDefId> + Copy,
     ) -> Result<ExpandResult<Option<MacroCallId>>, UnresolvedMacro> {
         let expands_to = hir_expand::ExpandTo::from_call_site(self.value);
         let ast_id = AstId::new(self.file_id, db.ast_id_map(self.file_id).ast_id(self.value));
@@ -1112,11 +1112,12 @@ impl AsMacroCall for InFile<&ast::MacroCall> {
             return Ok(ExpandResult::only_err(ExpandError::other("malformed macro invocation")));
         };
 
-        macro_call_as_call_id_(
+        macro_call_as_call_id_with_eager(
             db,
             &AstIdWithPath::new(ast_id.file_id, ast_id.value, path),
             expands_to,
             krate,
+            resolver,
             resolver,
         )
     }
@@ -1140,17 +1141,19 @@ fn macro_call_as_call_id(
     call: &AstIdWithPath<ast::MacroCall>,
     expand_to: ExpandTo,
     krate: CrateId,
-    resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
+    resolver: impl Fn(path::ModPath) -> Option<MacroDefId> + Copy,
 ) -> Result<Option<MacroCallId>, UnresolvedMacro> {
-    macro_call_as_call_id_(db, call, expand_to, krate, resolver).map(|res| res.value)
+    macro_call_as_call_id_with_eager(db, call, expand_to, krate, resolver, resolver)
+        .map(|res| res.value)
 }
 
-fn macro_call_as_call_id_(
+fn macro_call_as_call_id_with_eager(
     db: &dyn ExpandDatabase,
     call: &AstIdWithPath<ast::MacroCall>,
     expand_to: ExpandTo,
     krate: CrateId,
-    resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
+    resolver: impl FnOnce(path::ModPath) -> Option<MacroDefId>,
+    eager_resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
 ) -> Result<ExpandResult<Option<MacroCallId>>, UnresolvedMacro> {
     let def =
         resolver(call.path.clone()).ok_or_else(|| UnresolvedMacro { path: call.path.clone() })?;
@@ -1159,8 +1162,8 @@ fn macro_call_as_call_id_(
         MacroDefKind::BuiltInEager(..) => {
             let macro_call = InFile::new(call.ast_id.file_id, call.ast_id.to_node(db));
             expand_eager_macro_input(db, krate, macro_call, def, &|path| {
-                resolver(path).filter(MacroDefId::is_fn_like)
-            })?
+                eager_resolver(path).filter(MacroDefId::is_fn_like)
+            })
         }
         _ if def.is_fn_like() => ExpandResult {
             value: Some(def.as_lazy_macro(

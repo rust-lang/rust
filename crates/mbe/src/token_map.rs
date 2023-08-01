@@ -117,4 +117,8 @@ impl TokenMap {
             TokenTextRange::Delimiter(_) => None,
         })
     }
+
+    pub fn filter(&mut self, id: impl Fn(tt::TokenId) -> bool) {
+        self.entries.retain(|&(tid, _)| id(tid));
+    }
 }

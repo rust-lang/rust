@@ -70,7 +70,7 @@ pub mod token_id {
     }
 
     impl Subtree {
-        pub fn visit_ids(&mut self, f: &impl Fn(TokenId) -> TokenId) {
+        pub fn visit_ids(&mut self, f: &mut impl FnMut(TokenId) -> TokenId) {
             self.delimiter.open = f(self.delimiter.open);
             self.delimiter.close = f(self.delimiter.close);
             self.token_trees.iter_mut().for_each(|tt| match tt {
