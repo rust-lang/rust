@@ -1,3 +1,4 @@
+use crate::rustc_internal::Opaque;
 use crate::stable_mir::ty::{
     AdtDef, ClosureDef, Const, GeneratorDef, GenericArgs, Movability, Region,
 };
@@ -133,9 +134,101 @@ pub enum AsyncGeneratorKind {
     Fn,
 }
 
+pub(crate) type LocalDefId = Opaque;
+pub(crate) type CounterValueReference = Opaque;
+pub(crate) type InjectedExpressionId = Opaque;
+pub(crate) type ExpressionOperandId = Opaque;
+
+/// The FakeReadCause describes the type of pattern why a FakeRead statement exists.
+#[derive(Clone, Debug)]
+pub enum FakeReadCause {
+    ForMatchGuard,
+    ForMatchedPlace(LocalDefId),
+    ForGuardBinding,
+    ForLet(LocalDefId),
+    ForIndex,
+}
+
+/// Describes what kind of retag is to be performed
+#[derive(Clone, Debug)]
+pub enum RetagKind {
+    FnEntry,
+    TwoPhase,
+    Raw,
+    Default,
+}
+
+#[derive(Clone, Debug)]
+pub enum Variance {
+    Covariant,
+    Invariant,
+    Contravariant,
+    Bivariant,
+}
+
+#[derive(Clone, Debug)]
+pub enum Op {
+    Subtract,
+    Add,
+}
+
+#[derive(Clone, Debug)]
+pub enum CoverageKind {
+    Counter {
+        function_source_hash: usize,
+        id: CounterValueReference,
+    },
+    Expression {
+        id: InjectedExpressionId,
+        lhs: ExpressionOperandId,
+        op: Op,
+        rhs: ExpressionOperandId,
+    },
+    Unreachable,
+}
+
+#[derive(Clone, Debug)]
+pub struct CodeRegion {
+    pub file_name: String,
+    pub start_line: usize,
+    pub start_col: usize,
+    pub end_line: usize,
+    pub end_col: usize,
+}
+
+#[derive(Clone, Debug)]
+pub struct Coverage {
+    pub kind: CoverageKind,
+    pub code_region: Option<CodeRegion>,
+}
+
+#[derive(Clone, Debug)]
+pub struct CopyNonOverlapping {
+    pub src: Operand,
+    pub dst: Operand,
+    pub count: Operand,
+}
+
+#[derive(Clone, Debug)]
+pub enum NonDivergingIntrinsic {
+    Assume(Operand),
+    CopyNonOverlapping(CopyNonOverlapping),
+}
+
 #[derive(Clone, Debug)]
 pub enum Statement {
     Assign(Place, Rvalue),
+    FakeRead(FakeReadCause, Place),
+    SetDiscriminant { place: Place, variant_index: VariantIdx },
+    Deinit(Place),
+    StorageLive(Local),
+    StorageDead(Local),
+    Retag(RetagKind, Place),
+    PlaceMention(Place),
+    AscribeUserType { place: Place, projections: UserTypeProjection, variance: Variance },
+    Coverage(Coverage),
+    Intrinsic(NonDivergingIntrinsic),
+    ConstEvalCounter,
     Nop,
 }
 
@@ -271,14 +364,22 @@ pub enum Operand {
 
 #[derive(Clone, Debug)]
 pub struct Place {
-    pub local: usize,
+    pub local: Local,
     pub projection: String,
 }
+
+#[derive(Clone, Debug)]
+pub struct UserTypeProjection {
+    pub base: UserTypeAnnotationIndex,
+    pub projection: String,
+}
+
+pub type Local = usize;
 
 type FieldIdx = usize;
 
 /// The source-order index of a variant in a type.
-type VariantIdx = usize;
+pub type VariantIdx = usize;
 
 type UserTypeAnnotationIndex = usize;
 
