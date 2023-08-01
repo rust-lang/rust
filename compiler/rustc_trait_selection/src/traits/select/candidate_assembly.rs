@@ -745,7 +745,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         match (source.kind(), target.kind()) {
             // Trait+Kx+'a -> Trait+Ky+'b (upcasts).
-            (&ty::Dynamic(ref data_a, _, ty::Dyn), &ty::Dynamic(ref data_b, _, ty::Dyn)) => {
+            (
+                &ty::Dynamic(ref a_data, a_region, ty::Dyn),
+                &ty::Dynamic(ref b_data, b_region, ty::Dyn),
+            ) => {
                 // Upcast coercions permit several things:
                 //
                 // 1. Dropping auto traits, e.g., `Foo + Send` to `Foo`
@@ -757,19 +760,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 //
                 // We always perform upcasting coercions when we can because of reason
                 // #2 (region bounds).
-                let auto_traits_compatible = data_b
+                let auto_traits_compatible = b_data
                     .auto_traits()
                     // All of a's auto traits need to be in b's auto traits.
-                    .all(|b| data_a.auto_traits().any(|a| a == b));
+                    .all(|b| a_data.auto_traits().any(|a| a == b));
                 if auto_traits_compatible {
-                    let principal_def_id_a = data_a.principal_def_id();
-                    let principal_def_id_b = data_b.principal_def_id();
+                    let principal_def_id_a = a_data.principal_def_id();
+                    let principal_def_id_b = b_data.principal_def_id();
                     if principal_def_id_a == principal_def_id_b {
                         // no cyclic
                         candidates.vec.push(BuiltinUnsizeCandidate);
                     } else if principal_def_id_a.is_some() && principal_def_id_b.is_some() {
                         // not casual unsizing, now check whether this is trait upcasting coercion.
-                        let principal_a = data_a.principal().unwrap();
+                        let principal_a = a_data.principal().unwrap();
                         let target_trait_did = principal_def_id_b.unwrap();
                         let source_trait_ref = principal_a.with_self_ty(self.tcx(), source);
                         if let Some(deref_trait_ref) = self.need_migrate_deref_output_trait_object(
@@ -785,9 +788,23 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         for (idx, upcast_trait_ref) in
                             util::supertraits(self.tcx(), source_trait_ref).enumerate()
                         {
-                            if upcast_trait_ref.def_id() == target_trait_did {
-                                candidates.vec.push(TraitUpcastingUnsizeCandidate(idx));
-                            }
+                            self.infcx.probe(|_| {
+                                if upcast_trait_ref.def_id() == target_trait_did
+                                    && let Ok(nested) = self.match_upcast_principal(
+                                        obligation,
+                                        upcast_trait_ref,
+                                        a_data,
+                                        b_data,
+                                        a_region,
+                                        b_region,
+                                    )
+                                {
+                                    if nested.is_none() {
+                                        candidates.ambiguous = true;
+                                    }
+                                    candidates.vec.push(TraitUpcastingUnsizeCandidate(idx));
+                                }
+                            })
                         }
                     }
                 }

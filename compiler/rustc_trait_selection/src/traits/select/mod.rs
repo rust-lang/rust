@@ -2477,6 +2477,98 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         Ok(Normalized { value: impl_args, obligations: nested_obligations })
     }
 
+    fn match_upcast_principal(
+        &mut self,
+        obligation: &PolyTraitObligation<'tcx>,
+        unnormalized_upcast_principal: ty::PolyTraitRef<'tcx>,
+        a_data: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
+        b_data: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
+        a_region: ty::Region<'tcx>,
+        b_region: ty::Region<'tcx>,
+    ) -> SelectionResult<'tcx, Vec<PredicateObligation<'tcx>>> {
+        let tcx = self.tcx();
+        let mut nested = vec![];
+
+        let upcast_principal = normalize_with_depth_to(
+            self,
+            obligation.param_env,
+            obligation.cause.clone(),
+            obligation.recursion_depth + 1,
+            unnormalized_upcast_principal,
+            &mut nested,
+        );
+
+        for bound in b_data {
+            match bound.skip_binder() {
+                // Check that a_ty's supertrait (upcast_principal) is compatible
+                // with the target (b_ty).
+                ty::ExistentialPredicate::Trait(target_principal) => {
+                    nested.extend(
+                        self.infcx
+                            .at(&obligation.cause, obligation.param_env)
+                            .sup(
+                                DefineOpaqueTypes::No,
+                                upcast_principal.map_bound(|trait_ref| {
+                                    ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref)
+                                }),
+                                bound.rebind(target_principal),
+                            )
+                            .map_err(|_| SelectionError::Unimplemented)?
+                            .into_obligations(),
+                    );
+                }
+                // Check that b_ty's projection is satisfied by exactly one of
+                // a_ty's projections. First, we look through the list to see if
+                // any match. If not, error. Then, if *more* than one matches, we
+                // return ambiguity. Otherwise, if exactly one matches, equate
+                // it with b_ty's projection.
+                ty::ExistentialPredicate::Projection(target_projection) => {
+                    let target_projection = bound.rebind(target_projection);
+                    let mut matching_projections =
+                        a_data.projection_bounds().filter(|source_projection| {
+                            // Eager normalization means that we can just use can_eq
+                            // here instead of equating and processing obligations.
+                            source_projection.item_def_id() == target_projection.item_def_id()
+                                && self.infcx.can_eq(
+                                    obligation.param_env,
+                                    *source_projection,
+                                    target_projection,
+                                )
+                        });
+                    let Some(source_projection) = matching_projections.next() else {
+                        return Err(SelectionError::Unimplemented);
+                    };
+                    if matching_projections.next().is_some() {
+                        return Ok(None);
+                    }
+                    nested.extend(
+                        self.infcx
+                            .at(&obligation.cause, obligation.param_env)
+                            .sup(DefineOpaqueTypes::No, source_projection, target_projection)
+                            .map_err(|_| SelectionError::Unimplemented)?
+                            .into_obligations(),
+                    );
+                }
+                // Check that b_ty's auto traits are present in a_ty's bounds.
+                ty::ExistentialPredicate::AutoTrait(def_id) => {
+                    if !a_data.auto_traits().any(|source_def_id| source_def_id == def_id) {
+                        return Err(SelectionError::Unimplemented);
+                    }
+                }
+            }
+        }
+
+        nested.push(Obligation::with_depth(
+            tcx,
+            obligation.cause.clone(),
+            obligation.recursion_depth + 1,
+            obligation.param_env,
+            ty::Binder::dummy(ty::OutlivesPredicate(a_region, b_region)),
+        ));
+
+        Ok(Some(nested))
+    }
+
     /// Normalize `where_clause_trait_ref` and try to match it against
     /// `obligation`. If successful, return any predicates that
     /// result from the normalization.

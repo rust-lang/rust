@@ -890,89 +890,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let unnormalized_upcast_principal =
             util::supertraits(tcx, source_principal).nth(idx).unwrap();
 
-        let mut nested = vec![];
-        let upcast_principal = normalize_with_depth_to(
-            self,
-            obligation.param_env,
-            obligation.cause.clone(),
-            obligation.recursion_depth + 1,
-            unnormalized_upcast_principal,
-            &mut nested,
-        );
-
-        for bound in b_data {
-            match bound.skip_binder() {
-                // Check that a's supertrait (upcast_principal) is compatible
-                // with the target (b_ty).
-                ty::ExistentialPredicate::Trait(target_principal) => {
-                    nested.extend(
-                        self.infcx
-                            .at(&obligation.cause, obligation.param_env)
-                            .sup(
-                                DefineOpaqueTypes::No,
-                                upcast_principal.map_bound(|trait_ref| {
-                                    ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref)
-                                }),
-                                bound.rebind(target_principal),
-                            )
-                            .map_err(|_| SelectionError::Unimplemented)?
-                            .into_obligations(),
-                    );
-                }
-                // Check that b_ty's projection is satisfied by exactly one of
-                // a_ty's projections. First, we look through the list to see if
-                // any match. If not, error. Then, if *more* than one matches, we
-                // return ambiguity. Otherwise, if exactly one matches, equate
-                // it with b_ty's projection.
-                ty::ExistentialPredicate::Projection(target_projection) => {
-                    let target_projection = bound.rebind(target_projection);
-                    let mut matching_projections =
-                        a_data.projection_bounds().filter(|source_projection| {
-                            // Eager normalization means that we can just use can_eq
-                            // here instead of equating and processing obligations.
-                            source_projection.item_def_id() == target_projection.item_def_id()
-                                && self.infcx.can_eq(
-                                    obligation.param_env,
-                                    *source_projection,
-                                    target_projection,
-                                )
-                        });
-                    let Some(source_projection) = matching_projections.next() else {
-                        return Err(SelectionError::Unimplemented);
-                    };
-                    if matching_projections.next().is_some() {
-                        // This is incomplete but I don't care. We should never
-                        // have more than one projection that ever applies with
-                        // eager norm and actually implementable traits, since
-                        // you can't have two supertraits like:
-                        // `trait A: B<i32, Assoc = First> + B<i32, Assoc = Second>`
-                        return Err(SelectionError::Unimplemented);
-                    }
-                    nested.extend(
-                        self.infcx
-                            .at(&obligation.cause, obligation.param_env)
-                            .sup(DefineOpaqueTypes::No, source_projection, target_projection)
-                            .map_err(|_| SelectionError::Unimplemented)?
-                            .into_obligations(),
-                    );
-                }
-                // Check that b_ty's auto trait is present in a_ty's bounds.
-                ty::ExistentialPredicate::AutoTrait(def_id) => {
-                    if !a_data.auto_traits().any(|source_def_id| source_def_id == def_id) {
-                        return Err(SelectionError::Unimplemented);
-                    }
-                }
-            }
-        }
-
-        // Also require that a_ty's lifetime outlives b_ty's lifetime.
-        nested.push(Obligation::with_depth(
-            tcx,
-            obligation.cause.clone(),
-            obligation.recursion_depth + 1,
-            obligation.param_env,
-            ty::Binder::dummy(ty::OutlivesPredicate(a_region, b_region)),
-        ));
+        let nested = self
+            .match_upcast_principal(
+                obligation,
+                unnormalized_upcast_principal,
+                a_data,
+                b_data,
+                a_region,
+                b_region,
+            )?
+            .expect("did not expect ambiguity during confirmation");
 
         let vtable_segment_callback = {
             let mut vptr_offset = 0;
