@@ -42,7 +42,7 @@ fn sized_constraint_for_ty<'tcx>(
             let adt_tys = adt.sized_constraint(tcx);
             debug!("sized_constraint_for_ty({:?}) intermediate = {:?}", ty, adt_tys);
             adt_tys
-                .iter_instantiated_copied(tcx, args)
+                .iter_instantiated(tcx, args)
                 .flat_map(|ty| sized_constraint_for_ty(tcx, adtdef, ty))
                 .collect()
         }
@@ -92,10 +92,13 @@ fn defaultness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::Defaultness {
 ///     - a tuple of type parameters or projections, if there are multiple
 ///       such.
 ///     - an Error, if a type is infinitely sized
-fn adt_sized_constraint(tcx: TyCtxt<'_>, def_id: DefId) -> &[Ty<'_>] {
+fn adt_sized_constraint<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+) -> ty::EarlyBinder<&'tcx ty::List<Ty<'tcx>>> {
     if let Some(def_id) = def_id.as_local() {
         if matches!(tcx.representability(def_id), ty::Representability::Infinite) {
-            return tcx.mk_type_list(&[Ty::new_misc_error(tcx)]);
+            return ty::EarlyBinder::bind(tcx.mk_type_list(&[Ty::new_misc_error(tcx)]));
         }
     }
     let def = tcx.adt_def(def_id);
@@ -107,7 +110,7 @@ fn adt_sized_constraint(tcx: TyCtxt<'_>, def_id: DefId) -> &[Ty<'_>] {
 
     debug!("adt_sized_constraint: {:?} => {:?}", def, result);
 
-    result
+    ty::EarlyBinder::bind(result)
 }
 
 /// See `ParamEnv` struct definition for details.

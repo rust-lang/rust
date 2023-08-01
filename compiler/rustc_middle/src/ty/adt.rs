@@ -572,8 +572,8 @@ impl<'tcx> AdtDef<'tcx> {
     ///
     /// Due to normalization being eager, this applies even if
     /// the associated type is behind a pointer (e.g., issue #31299).
-    pub fn sized_constraint(self, tcx: TyCtxt<'tcx>) -> ty::EarlyBinder<&'tcx [Ty<'tcx>]> {
-        ty::EarlyBinder::bind(tcx.adt_sized_constraint(self.did()))
+    pub fn sized_constraint(self, tcx: TyCtxt<'tcx>) -> ty::EarlyBinder<&'tcx ty::List<Ty<'tcx>>> {
+        tcx.adt_sized_constraint(self.did())
     }
 }
 
