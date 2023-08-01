@@ -20,5 +20,5 @@ fn main() {
     let pointer = get_environ();
     let _x = unsafe { *pointer };
     std::env::set_var("FOO", "BAR");
-    let _y = unsafe { *pointer }; //~ ERROR: dereferenced after this allocation got freed
+    let _y = unsafe { *pointer }; //~ ERROR: has been freed
 }

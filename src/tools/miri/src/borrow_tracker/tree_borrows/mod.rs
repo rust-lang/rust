@@ -1,6 +1,6 @@
 use log::trace;
 
-use rustc_target::abi::{Abi, Size};
+use rustc_target::abi::{Abi, Align, Size};
 
 use crate::borrow_tracker::{AccessKind, GlobalStateInner, ProtectorKind, RetagFields};
 use rustc_middle::{
@@ -182,6 +182,8 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
         new_tag: BorTag,
     ) -> InterpResult<'tcx, Option<(AllocId, BorTag)>> {
         let this = self.eval_context_mut();
+        // Ensure we bail out if the pointer goes out-of-bounds (see miri#1050).
+        this.check_ptr_access_align(place.ptr, ptr_size, Align::ONE, CheckInAllocMsg::InboundsTest)?;
 
         // It is crucial that this gets called on all code paths, to ensure we track tag creation.
         let log_creation = |this: &MiriInterpCx<'mir, 'tcx>,
@@ -202,50 +204,32 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
         };
 
         trace!("Reborrow of size {:?}", ptr_size);
-        let (alloc_id, base_offset, parent_prov) = if ptr_size > Size::ZERO {
-            this.ptr_get_alloc_id(place.ptr)?
-        } else {
-            match this.ptr_try_get_alloc_id(place.ptr) {
-                Ok(data) => data,
-                Err(_) => {
-                    // This pointer doesn't come with an AllocId, so there's no
-                    // memory to do retagging in.
-                    trace!(
-                        "reborrow of size 0: reference {:?} derived from {:?} (pointee {})",
-                        new_tag,
-                        place.ptr,
-                        place.layout.ty,
-                    );
-                    log_creation(this, None)?;
-                    return Ok(None);
-                }
+        let (alloc_id, base_offset, parent_prov) = match this.ptr_try_get_alloc_id(place.ptr) {
+            Ok(data) => {
+                // Unlike SB, we *do* a proper retag for size 0 if can identify the allocation.
+                // After all, the pointer may be lazily initialized outside this initial range.
+                data
+            },
+            Err(_) => {
+                assert_eq!(ptr_size, Size::ZERO); // we did the deref check above, size has to be 0 here
+                // This pointer doesn't come with an AllocId, so there's no
+                // memory to do retagging in.
+                trace!(
+                    "reborrow of size 0: reference {:?} derived from {:?} (pointee {})",
+                    new_tag,
+                    place.ptr,
+                    place.layout.ty,
+                );
+                log_creation(this, None)?;
+                return Ok(None);
             }
         };
+        log_creation(this, Some((alloc_id, base_offset, parent_prov)))?;
+
         let orig_tag = match parent_prov {
             ProvenanceExtra::Wildcard => return Ok(None), // TODO: handle wildcard pointers
             ProvenanceExtra::Concrete(tag) => tag,
         };
-
-        // Protection against trying to get a reference to a vtable:
-        // vtables do not have an alloc_extra so the call to
-        // `get_alloc_extra` that follows fails.
-        let (alloc_size, _align, alloc_kind) = this.get_alloc_info(alloc_id);
-        if ptr_size == Size::ZERO && !matches!(alloc_kind, AllocKind::LiveData) {
-            return Ok(Some((alloc_id, orig_tag)));
-        }
-
-        log_creation(this, Some((alloc_id, base_offset, parent_prov)))?;
-
-        // Ensure we bail out if the pointer goes out-of-bounds (see miri#1050).
-        if base_offset + ptr_size > alloc_size {
-            throw_ub!(PointerOutOfBounds {
-                alloc_id,
-                alloc_size,
-                ptr_offset: this.target_usize_to_isize(base_offset.bytes()),
-                ptr_size,
-                msg: CheckInAllocMsg::InboundsTest
-            });
-        }
 
         trace!(
             "reborrow: reference {:?} derived from {:?} (pointee {}): {:?}, size {}",

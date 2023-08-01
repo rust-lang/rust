@@ -13,7 +13,7 @@ fn firstn() -> impl Generator<Yield = u64, Return = ()> {
         *num += 0;
 
         yield *num;
-        *num += 1; //~ERROR: dereferenced after this allocation got freed
+        *num += 1; //~ERROR: has been freed
     }
 }
 

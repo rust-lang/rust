@@ -14,6 +14,6 @@ fn main() {
             0,
         );
         libc::munmap(ptr, 4096);
-        let _x = *(ptr as *mut u8); //~ ERROR: was dereferenced after this allocation got freed
+        let _x = *(ptr as *mut u8); //~ ERROR: has been freed
     }
 }
