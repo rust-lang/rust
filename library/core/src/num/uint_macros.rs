@@ -1973,26 +1973,60 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline]
         #[rustc_inherit_overflow_checks]
+        #[rustc_allow_const_fn_unstable(is_val_statically_known)]
         pub const fn pow(self, mut exp: u32) -> Self {
-            if exp == 0 {
-                return 1;
-            }
-            let mut base = self;
-            let mut acc = 1;
-
-            while exp > 1 {
-                if (exp & 1) == 1 {
-                    acc = acc * base;
+            // LLVM now knows that `self` is a constant value, but not a
+            // constant in Rust. This allows us to compute the power used at
+            // compile-time.
+            //
+            // This will likely add a branch in debug builds, but this should
+            // be ok.
+            //
+            // This is a massive performance boost in release builds as you can
+            // get the power of a power of two and the exponent through a `shl`
+            // instruction, but we must add a couple more checks for parity with
+            // our own `pow`.
+            // SAFETY: This path has the same behavior as the other.
+            if unsafe { intrinsics::is_val_statically_known(self) }
+                && self.is_power_of_two()
+            {
+                let power_used = match self.checked_ilog2() {
+                    Some(v) => v,
+                    // SAFETY: We just checked this is a power of two. `0` is not a
+                    // power of two.
+                    None => unsafe { core::hint::unreachable_unchecked() },
+                };
+                // So it panics. Have to use `overflowing_mul` to efficiently set the
+                // result to 0 if not.
+                #[cfg(debug_assertions)]
+                {
+                    _ = power_used * exp;
                 }
-                exp /= 2;
-                base = base * base;
-            }
+                let (num_shl, overflowed) = power_used.overflowing_mul(exp);
+                let fine = !overflowed
+                    & (num_shl < (mem::size_of::<Self>() * 8) as u32);
+                (1 << num_shl) * fine as Self
+            } else {
+                if exp == 0 {
+                    return 1;
+                }
+                let mut base = self;
+                let mut acc = 1;
 
-            // since exp!=0, finally the exp must be 1.
-            // Deal with the final bit of the exponent separately, since
-            // squaring the base afterwards is not necessary and may cause a
-            // needless overflow.
-            acc * base
+                while exp > 1 {
+                    if (exp & 1) == 1 {
+                        acc = acc * base;
+                    }
+                    exp /= 2;
+                    base = base * base;
+                }
+
+                // since exp!=0, finally the exp must be 1.
+                // Deal with the final bit of the exponent separately, since
+                // squaring the base afterwards is not necessary and may cause a
+                // needless overflow.
+                acc * base
+            }
         }
 
         /// Returns the square root of the number, rounded down.

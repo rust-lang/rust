@@ -2511,6 +2511,52 @@ extern "rust-intrinsic" {
     where
         G: FnOnce<ARG, Output = RET>,
         F: FnOnce<ARG, Output = RET>;
+
+    /// Returns whether the argument's value is statically known at
+    /// compile-time.
+    ///
+    /// This is useful when there is a way of writing the code that will
+    /// be *faster* when some variables have known values, but *slower*
+    /// in the general case: an `if is_val_statically_known(var)` can be used
+    /// to select between these two variants. The `if` will be optimized away
+    /// and only the desired branch remains.
+    ///
+    /// Formally speaking, this function non-deterministically returns `true`
+    /// or `false`, and the caller has to ensure sound behavior for both cases.
+    /// In other words, the following code has *Undefined Behavior*:
+    ///
+    /// ```rust
+    /// if !is_val_statically_known(0) { unreachable_unchecked(); }
+    /// ```
+    ///
+    /// This also means that the following code's behavior is unspecified; it
+    /// may panic, or it may not:
+    ///
+    /// ```rust,no_run
+    /// assert_eq!(is_val_statically_known(0), black_box(is_val_statically_known(0)))
+    /// ```
+    ///
+    /// Unsafe code may not rely on `is_val_statically_known` returning any
+    /// particular value, ever. However, the compiler will generally make it
+    /// return `true` only if the value of the argument is actually known.
+    ///
+    /// When calling this in a `const fn`, both paths must be semantically
+    /// equivalent, that is, the result of the `true` branch and the `false`
+    /// branch must return the same value and have the same side-effects *no
+    /// matter what*.
+    #[rustc_const_unstable(feature = "is_val_statically_known", issue = "none")]
+    #[rustc_nounwind]
+    #[cfg(not(bootstrap))]
+    pub fn is_val_statically_known<T>(arg: T) -> bool;
+}
+
+// FIXME: Seems using `unstable` here completely ignores `rustc_allow_const_fn_unstable`
+// and thus compiling stage0 core doesn't work.
+#[rustc_const_stable(feature = "is_val_statically_known", since = "never")]
+#[cfg(bootstrap)]
+pub const unsafe fn is_val_statically_known<T>(t: T) -> bool {
+    mem::forget(t);
+    false
 }
 
 // Some functions are defined here because they accidentally got made

@@ -453,6 +453,8 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
 
             sym::black_box => (1, vec![param(0)], param(0)),
 
+            sym::is_val_statically_known => (1, vec![param(0)], tcx.types.bool),
+
             sym::const_eval_select => (4, vec![param(0), param(1), param(2)], param(3)),
 
             sym::vtable_size | sym::vtable_align => {
