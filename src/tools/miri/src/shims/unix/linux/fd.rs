@@ -71,7 +71,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let epoll_ctl_del = this.eval_libc_i32("EPOLL_CTL_DEL");
 
         if op == epoll_ctl_add || op == epoll_ctl_mod {
-            let event = this.deref_operand_as(event, this.libc_ty_layout("epoll_event"))?;
+            let event = this.deref_pointer_as(event, this.libc_ty_layout("epoll_event"))?;
 
             let events = this.project_field(&event, 0)?;
             let events = this.read_scalar(&events)?.to_u32()?;
@@ -240,7 +240,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let _domain = this.read_scalar(domain)?.to_i32()?;
         let _type_ = this.read_scalar(type_)?.to_i32()?;
         let _protocol = this.read_scalar(protocol)?.to_i32()?;
-        let sv = this.deref_operand(sv)?;
+        let sv = this.deref_pointer(sv)?;
 
         let fh = &mut this.machine.file_handler;
         let sv0 = fh.insert_fd(Box::new(SocketPair));

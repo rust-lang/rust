@@ -91,7 +91,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let n = this.read_scalar(n)?.to_u32()?;
                 let byte_offset = this.read_target_usize(byte_offset)?; // is actually a pointer
                 let io_status_block = this
-                    .deref_operand_as(io_status_block, this.windows_ty_layout("IO_STATUS_BLOCK"))?;
+                    .deref_pointer_as(io_status_block, this.windows_ty_layout("IO_STATUS_BLOCK"))?;
 
                 if byte_offset != 0 {
                     throw_unsup_format!(
@@ -187,7 +187,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let [system_info] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 let system_info =
-                    this.deref_operand_as(system_info, this.windows_ty_layout("SYSTEM_INFO"))?;
+                    this.deref_pointer_as(system_info, this.windows_ty_layout("SYSTEM_INFO"))?;
                 // Initialize with `0`.
                 this.write_bytes_ptr(
                     system_info.ptr,
@@ -391,8 +391,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let [console, buffer_info] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 this.read_target_isize(console)?;
-                // FIXME: this should use deref_operand_as, but CONSOLE_SCREEN_BUFFER_INFO is not in std
-                this.deref_operand(buffer_info)?;
+                // FIXME: this should use deref_pointer_as, but CONSOLE_SCREEN_BUFFER_INFO is not in std
+                this.deref_pointer(buffer_info)?;
                 // Indicate an error.
                 // FIXME: we should set last_error, but to what?
                 this.write_null(dest)?;
@@ -508,7 +508,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let [console, mode] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 this.read_target_isize(console)?;
-                this.deref_operand(mode)?;
+                this.deref_pointer(mode)?;
                 // Indicate an error.
                 this.write_null(dest)?;
             }

@@ -198,7 +198,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 this.read_scalar(pid)?.to_i32()?;
                 this.read_target_usize(cpusetsize)?;
-                this.deref_operand_as(mask, this.libc_ty_layout("cpu_set_t"))?;
+                this.deref_pointer_as(mask, this.libc_ty_layout("cpu_set_t"))?;
                 // FIXME: we just return an error; `num_cpus` then falls back to `sysconf`.
                 let einval = this.eval_libc("EINVAL");
                 this.set_last_error(einval)?;
