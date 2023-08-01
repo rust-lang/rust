@@ -663,9 +663,6 @@ jobs:
                 --enable-profiler
               SCRIPT: python x.py dist bootstrap --include-default-paths
               DIST_REQUIRE_ALL_TOOLS: 1
-              # Hack around this SDK version, because it doesn't work with clang.
-              # See https://github.com/rust-lang/rust/issues/88796
-              WINDOWS_SDK_20348_HACK: 1
             <<: *job-windows-8c
 
           - name: dist-i686-mingw
