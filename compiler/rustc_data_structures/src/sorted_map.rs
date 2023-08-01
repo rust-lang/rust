@@ -49,12 +49,11 @@ impl<K: Ord, V> SortedMap<K, V> {
     }
 
     #[inline]
-    pub fn insert(&mut self, key: K, mut value: V) -> Option<V> {
+    pub fn insert(&mut self, key: K, value: V) -> Option<V> {
         match self.lookup_index_for(&key) {
             Ok(index) => {
                 let slot = unsafe { self.data.get_unchecked_mut(index) };
-                mem::swap(&mut slot.1, &mut value);
-                Some(value)
+                Some(mem::replace(&mut slot.1, value))
             }
             Err(index) => {
                 self.data.insert(index, (key, value));

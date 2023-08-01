@@ -36,10 +36,10 @@ options.
 
 ### Indentation and line width
 
-* Use spaces, not tabs.
-* Each level of indentation must be 4 spaces (that is, all indentation
+- Use spaces, not tabs.
+- Each level of indentation must be 4 spaces (that is, all indentation
   outside of string literals and comments must be a multiple of 4).
-* The maximum width for a line is 100 characters.
+- The maximum width for a line is 100 characters.
 
 #### Block indent
 
@@ -100,10 +100,12 @@ fn baz() {}
 ```
 
 ### [Module-level items](items.md)
-### [Statements](statements.md)
-### [Expressions](expressions.md)
-### [Types](types.md)
 
+### [Statements](statements.md)
+
+### [Expressions](expressions.md)
+
+### [Types](types.md)
 
 ### Comments
 
