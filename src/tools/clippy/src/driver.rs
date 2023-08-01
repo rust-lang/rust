@@ -80,7 +80,7 @@ fn track_files(parse_sess: &mut ParseSess) {
     // Used by `clippy::cargo` lints and to determine the MSRV. `cargo clippy` executes `clippy-driver`
     // with the current directory set to `CARGO_MANIFEST_DIR` so a relative path is fine
     if Path::new("Cargo.toml").exists() {
-        file_depinfo.insert(Symbol::intern("Cargo.toml"));
+        file_depinfo.insert(std::path::PathBuf::from("Cargo.toml"));
     }
 
     // `clippy.toml` will be automatically tracked as it's loaded with `sess.source_map().load_file()`
@@ -95,7 +95,7 @@ fn track_files(parse_sess: &mut ParseSess) {
         if let Ok(current_exe) = env::current_exe()
             && let Some(current_exe) = current_exe.to_str()
         {
-            file_depinfo.insert(Symbol::intern(current_exe));
+            file_depinfo.insert(std::path::PathBuf::from(current_exe));
         }
     }
 }
