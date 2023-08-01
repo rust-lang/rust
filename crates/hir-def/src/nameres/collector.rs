@@ -38,7 +38,7 @@ use crate::{
         self, ExternCrate, Fields, FileItemTreeId, ImportKind, ItemTree, ItemTreeId, ItemTreeNode,
         MacroCall, MacroDef, MacroRules, Mod, ModItem, ModKind, TreeId,
     },
-    macro_call_as_call_id, macro_id_to_def_id,
+    macro_call_as_call_id, macro_call_as_call_id_with_eager, macro_id_to_def_id,
     nameres::{
         diagnostics::DefDiagnostic,
         mod_resolution::ModDir,
@@ -2187,7 +2187,7 @@ impl ModCollector<'_, '_> {
         // scopes without eager expansion.
 
         // Case 1: try to resolve macro calls with single-segment name and expand macro_rules
-        if let Ok(res) = macro_call_as_call_id(
+        if let Ok(res) = macro_call_as_call_id_with_eager(
             db.upcast(),
             &ast_id,
             mac.expand_to,
@@ -2210,19 +2210,34 @@ impl ModCollector<'_, '_> {
                         .map(|it| macro_id_to_def_id(self.def_collector.db, it))
                 })
             },
-        ) {
-            // Legacy macros need to be expanded immediately, so that any macros they produce
-            // are in scope.
-            if let Some(val) = res {
-                self.def_collector.collect_macro_expansion(
+            |path| {
+                let resolved_res = self.def_collector.def_map.resolve_path_fp_with_macro(
+                    db,
+                    ResolveMode::Other,
                     self.module_id,
-                    val,
-                    self.macro_depth + 1,
-                    container,
+                    &path,
+                    BuiltinShadowMode::Module,
+                    Some(MacroSubNs::Bang),
                 );
-            }
+                resolved_res.resolved_def.take_macros().map(|it| macro_id_to_def_id(db, it))
+            },
+        ) {
+            // FIXME: if there were errors, this mightve been in the eager expansion from an
+            // unresolved macro, so we need to push this into late macro resolution. see fixme above
+            if res.err.is_none() {
+                // Legacy macros need to be expanded immediately, so that any macros they produce
+                // are in scope.
+                if let Some(val) = res.value {
+                    self.def_collector.collect_macro_expansion(
+                        self.module_id,
+                        val,
+                        self.macro_depth + 1,
+                        container,
+                    );
+                }
 
-            return;
+                return;
+            }
         }
 
         // Case 2: resolve in module scope, expand during name resolution.
