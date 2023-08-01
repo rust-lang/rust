@@ -719,6 +719,70 @@ fn classify_name_ref(
         None
     };
 
+    let generic_arg_location = |arg: ast::GenericArg| {
+        let location = find_opt_node_in_file_compensated(
+            sema,
+            original_file,
+            arg.syntax().parent().and_then(ast::GenericArgList::cast),
+        )
+        .map(|args| {
+            // Determine the index of the parameter in the `GenericArgList`
+            // (subtract 1 because `siblings` includes the node itself)
+            let param_idx = arg.syntax().siblings(Direction::Prev).count() - 1;
+            let parent = args.syntax().parent();
+            let param = parent.and_then(|parent| {
+                match_ast! {
+                    match parent {
+                        ast::PathSegment(segment) => {
+                            match sema.resolve_path(&segment.parent_path().top_path())? {
+                                hir::PathResolution::Def(def) => match def {
+                                    hir::ModuleDef::Function(func) => {
+                                        let src = func.source(sema.db)?;
+                                        let params = src.value.generic_param_list()?;
+                                        params.generic_params().nth(param_idx)
+                                    }
+                                    _ => None,
+                                },
+                                _ => None,
+                            }
+                        },
+                        ast::MethodCallExpr(call) => {
+                            let func = sema.resolve_method_call(&call)?;
+                            let src = func.source(sema.db)?;
+                            let params = src.value.generic_param_list()?;
+                            params.generic_params().nth(param_idx)
+                        },
+                        ast::AssocTypeArg(arg) => {
+                            let trait_ = ast::PathSegment::cast(arg.syntax().parent()?.parent()?)?;
+                            match sema.resolve_path(&trait_.parent_path().top_path())? {
+                                hir::PathResolution::Def(def) => match def {
+                                    hir::ModuleDef::Trait(trait_) => {
+                                        let trait_items = trait_.items(sema.db);
+                                        let assoc_ty = trait_items.iter().find_map(|item| match item {
+                                            hir::AssocItem::TypeAlias(assoc_ty) => {
+                                                (assoc_ty.name(sema.db).as_str()? == arg.name_ref()?.text())
+                                                    .then_some(assoc_ty)
+                                            },
+                                            _ => None,
+                                        })?;
+                                        let src = assoc_ty.source(sema.db)?;
+                                        let params = src.value.generic_param_list()?;
+                                        params.generic_params().nth(param_idx)
+                                    }
+                                    _ => None,
+                                },
+                                _ => None,
+                            }
+                        },
+                        _ => None,
+                    }
+                }
+            });
+            (args, param)
+        });
+        TypeLocation::GenericArgList(location)
+    };
+
     let type_location = |node: &SyntaxNode| {
         let parent = node.parent()?;
         let res = match_ast! {
@@ -774,34 +838,8 @@ fn classify_name_ref(
                 ast::TypeBound(_) => TypeLocation::TypeBound,
                 // is this case needed?
                 ast::TypeBoundList(_) => TypeLocation::TypeBound,
-                ast::GenericArg(it) => {
-                    let location = find_opt_node_in_file_compensated(sema, original_file, it.syntax().parent().and_then(ast::GenericArgList::cast))
-                        .map(|args| {
-                            // Determine the index of the parameter in the `GenericArgList`
-                            // (subtract 1 because `siblings` includes the node itself)
-                            let param_idx = it.syntax().siblings(Direction::Prev).count() - 1;
-                            let param = args
-                                .syntax()
-                                .parent()
-                                .and_then(|p| ast::PathSegment::cast(p))
-                                .and_then(|segment| sema.resolve_path(&segment.parent_path().top_path()))
-                                .and_then(|resolved| {
-                                    match resolved {
-                                        hir::PathResolution::Def(def) => match def {
-                                            hir::ModuleDef::Function(func) => {
-                                                let src = func.source(sema.db)?;
-                                                let params = src.value.generic_param_list()?;
-                                                params.generic_params().nth(param_idx)
-                                            }
-                                            _ => None,
-                                        },
-                                        _ => None,
-                                    }
-                                });
-                            (args, param)
-                        });
-                    TypeLocation::GenericArgList(location)
-                },
+                ast::TypeArg(it) => generic_arg_location(ast::GenericArg::TypeArg(it)),
+                ast::GenericArg(it) => generic_arg_location(it),
                 // is this case needed?
                 ast::GenericArgList(it) => {
                     let location = find_opt_node_in_file_compensated(sema, original_file, Some(it))

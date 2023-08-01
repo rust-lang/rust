@@ -724,11 +724,70 @@ pub struct S;
 fn completes_const_and_type_generics_separately() {
     check(
         r#"
-struct Foo;
+    struct Foo;
+    const X: usize = 0;
+    fn foo<T, const N: usize>() {}
+    fn main() {
+        foo::<F$0, _>();
+    }
+    "#,
+        expect![[r#"
+                en Enum
+                ma makro!(…) macro_rules! makro
+                md module
+                st Foo
+                st Record
+                st Tuple
+                st Unit
+                tt Trait
+                un Union
+                bt u32
+                kw crate::
+                kw self::
+            "#]],
+    );
+    check(
+        r#"
+    struct Foo;
+    const X: usize = 0;
+    fn foo<T, const N: usize>() {}
+    fn main() {
+        foo::<_, $0>();
+    }
+    "#,
+        expect![[r#"
+                ct CONST
+                ct X
+                ma makro!(…) macro_rules! makro
+                kw crate::
+                kw self::
+            "#]],
+    );
+
+    check(
+        r#"
 const X: usize = 0;
-fn foo<T, const N: usize>() {}
+struct Foo;
+impl Foo { fn bar<const N: usize, T>(self) {} }
 fn main() {
-    foo::<F$0, _>();
+    Foo.bar::<X$0, _>();
+}
+"#,
+        expect![[r#"
+            ct CONST
+            ct X
+            ma makro!(…) macro_rules! makro
+            kw crate::
+            kw self::
+        "#]],
+    );
+    check(
+        r#"
+const X: usize = 0;
+struct Foo;
+impl Foo { fn bar<const N: usize, T>(self) {} }
+fn main() {
+    Foo.bar::<_, $0>();
 }
 "#,
         expect![[r#"
@@ -746,19 +805,46 @@ fn main() {
             kw self::
         "#]],
     );
+
     check(
         r#"
-struct Foo;
 const X: usize = 0;
-fn foo<T, const N: usize>() {}
-fn main() {
-    foo::<_, $0>();
+struct Foo;
+trait Bar {
+    type Baz<T, const X: usize>;
 }
+fn foo<T: Bar<Baz<(), $0> = ()>>() {}
 "#,
         expect![[r#"
             ct CONST
             ct X
             ma makro!(…) macro_rules! makro
+            kw crate::
+            kw self::
+        "#]],
+    );
+    check(
+        r#"
+const X: usize = 0;
+struct Foo;
+trait Bar {
+    type Baz<T, const X: usize>;
+}
+fn foo<T: Bar<Baz<F$0, 0> = ()>>() {}
+"#,
+        expect![[r#"
+            en Enum
+            ma makro!(…) macro_rules! makro
+            md module
+            st Foo
+            st Record
+            st Tuple
+            st Unit
+            tt Bar
+            tt Trait
+            tp T
+            un Union
+            bt u32
             kw crate::
             kw self::
         "#]],
