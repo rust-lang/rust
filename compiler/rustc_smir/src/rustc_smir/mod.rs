@@ -8,7 +8,7 @@
 //! For now, we are developing everything inside `rustc`, thus, we keep this module private.
 
 use crate::rustc_internal::{self, opaque};
-use crate::stable_mir::mir::{CopyNonOverlapping, UserTypeProjection};
+use crate::stable_mir::mir::{CopyNonOverlapping, UserTypeProjection, VariantIdx};
 use crate::stable_mir::ty::{FloatTy, IntTy, Movability, RigidTy, TyKind, UintTy};
 use crate::stable_mir::{self, Context};
 use rustc_hir as hir;
@@ -130,16 +130,11 @@ impl<'tcx> Stable<'tcx> for mir::Statement<'tcx> {
             }
             PlaceMention(place) => stable_mir::mir::Statement::PlaceMention(place.stable(tables)),
             AscribeUserType(place_projection, variance) => {
-                stable_mir::mir::Statement::AscribeUserType(
-                    (
-                        place_projection.as_ref().0.stable(tables),
-                        UserTypeProjection {
-                            base: place_projection.as_ref().1.base.stable(tables),
-                            projection: format!("{:?}", place_projection.as_ref().1.projs),
-                        },
-                    ),
-                    variance.stable(tables),
-                )
+                stable_mir::mir::Statement::AscribeUserType {
+                    place: place_projection.as_ref().0.stable(tables),
+                    projections: place_projection.as_ref().1.stable(tables),
+                    variance: variance.stable(tables),
+                }
             }
             Coverage(coverage) => stable_mir::mir::Statement::Coverage(stable_mir::mir::Coverage {
                 kind: coverage.kind.stable(tables),
@@ -398,13 +393,11 @@ impl<'tcx> Stable<'tcx> for mir::FakeReadCause {
         use mir::FakeReadCause::*;
         match self {
             ForMatchGuard => stable_mir::mir::FakeReadCause::ForMatchGuard,
-            ForMatchedPlace(local_def_id) => stable_mir::mir::FakeReadCause::ForMatchedPlace(
-                local_def_id.map(|id| id.to_def_id().index.index()),
-            ),
+            ForMatchedPlace(local_def_id) => {
+                stable_mir::mir::FakeReadCause::ForMatchedPlace(opaque(local_def_id))
+            }
             ForGuardBinding => stable_mir::mir::FakeReadCause::ForGuardBinding,
-            ForLet(local_def_id) => stable_mir::mir::FakeReadCause::ForLet(
-                local_def_id.map(|id| id.to_def_id().index.index()),
-            ),
+            ForLet(local_def_id) => stable_mir::mir::FakeReadCause::ForLet(opaque(local_def_id)),
             ForIndex => stable_mir::mir::FakeReadCause::ForIndex,
         }
     }
@@ -447,19 +440,27 @@ impl<'tcx> Stable<'tcx> for mir::coverage::CoverageKind {
             CoverageKind::Counter { function_source_hash, id } => {
                 stable_mir::mir::CoverageKind::Counter {
                     function_source_hash: *function_source_hash as usize,
-                    id: id.as_usize(),
+                    id: opaque(id),
                 }
             }
             CoverageKind::Expression { id, lhs, op, rhs } => {
                 stable_mir::mir::CoverageKind::Expression {
-                    id: id.as_usize(),
-                    lhs: lhs.as_usize(),
+                    id: opaque(id),
+                    lhs: opaque(lhs),
                     op: op.stable(tables),
-                    rhs: rhs.as_usize(),
+                    rhs: opaque(rhs),
                 }
             }
             CoverageKind::Unreachable => stable_mir::mir::CoverageKind::Unreachable,
         }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for mir::UserTypeProjection {
+    type T = stable_mir::mir::UserTypeProjection;
+
+    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
+        UserTypeProjection { base: self.base.as_usize(), projection: format!("{:?}", self.projs) }
     }
 }
 
@@ -476,14 +477,14 @@ impl<'tcx> Stable<'tcx> for mir::coverage::Op {
 }
 
 impl<'tcx> Stable<'tcx> for mir::Local {
-    type T = usize;
+    type T = stable_mir::mir::Local;
     fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
         self.as_usize()
     }
 }
 
 impl<'tcx> Stable<'tcx> for rustc_target::abi::VariantIdx {
-    type T = usize;
+    type T = VariantIdx;
     fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
         self.as_usize()
     }
@@ -525,14 +526,12 @@ impl<'tcx> Stable<'tcx> for CodeRegion {
     type T = stable_mir::mir::CodeRegion;
 
     fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
-        match self {
-            _ => stable_mir::mir::CodeRegion {
-                file_name: self.file_name.as_u32() as usize,
-                start_line: self.start_line as usize,
-                start_col: self.start_col as usize,
-                end_line: self.end_line as usize,
-                end_col: self.end_col as usize,
-            },
+        stable_mir::mir::CodeRegion {
+            file_name: self.file_name.as_str().to_string(),
+            start_line: self.start_line as usize,
+            start_col: self.start_col as usize,
+            end_line: self.end_line as usize,
+            end_col: self.end_col as usize,
         }
     }
 }

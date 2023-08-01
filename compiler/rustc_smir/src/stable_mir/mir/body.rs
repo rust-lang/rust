@@ -1,3 +1,4 @@
+use crate::rustc_internal::Opaque;
 use crate::stable_mir::ty::{
     AdtDef, ClosureDef, Const, GeneratorDef, GenericArgs, Movability, Region,
 };
@@ -133,15 +134,18 @@ pub enum AsyncGeneratorKind {
     Fn,
 }
 
-// FIXME: We are using `usize` for now but we should be using DefIds and find what
-//        what those are refering to and then use appropirate ty_defs for them (i.e AdtDef)
+pub(crate) type LocalDefId = Opaque;
+pub(crate) type CounterValueReference = Opaque;
+pub(crate) type InjectedExpressionId = Opaque;
+pub(crate) type ExpressionOperandId = Opaque;
+
 /// The FakeReadCause describes the type of pattern why a FakeRead statement exists.
 #[derive(Clone, Debug)]
 pub enum FakeReadCause {
     ForMatchGuard,
-    ForMatchedPlace(Option<usize>),
+    ForMatchedPlace(LocalDefId),
     ForGuardBinding,
-    ForLet(Option<usize>),
+    ForLet(LocalDefId),
     ForIndex,
 }
 
@@ -170,14 +174,22 @@ pub enum Op {
 
 #[derive(Clone, Debug)]
 pub enum CoverageKind {
-    Counter { function_source_hash: usize, id: usize },
-    Expression { id: usize, lhs: usize, op: Op, rhs: usize },
+    Counter {
+        function_source_hash: usize,
+        id: CounterValueReference,
+    },
+    Expression {
+        id: InjectedExpressionId,
+        lhs: ExpressionOperandId,
+        op: Op,
+        rhs: ExpressionOperandId,
+    },
     Unreachable,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct CodeRegion {
-    pub file_name: usize,
+    pub file_name: String,
     pub start_line: usize,
     pub start_col: usize,
     pub end_line: usize,
@@ -213,7 +225,7 @@ pub enum Statement {
     StorageDead(Local),
     Retag(RetagKind, Place),
     PlaceMention(Place),
-    AscribeUserType((Place, UserTypeProjection), Variance),
+    AscribeUserType { place: Place, projections: UserTypeProjection, variance: Variance },
     Coverage(Coverage),
     Intrinsic(NonDivergingIntrinsic),
     ConstEvalCounter,
@@ -362,12 +374,12 @@ pub struct UserTypeProjection {
     pub projection: String,
 }
 
-type Local = usize;
+pub type Local = usize;
 
 type FieldIdx = usize;
 
 /// The source-order index of a variant in a type.
-type VariantIdx = usize;
+pub type VariantIdx = usize;
 
 type UserTypeAnnotationIndex = usize;
 
