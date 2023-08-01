@@ -1983,7 +1983,7 @@ macro_rules! uint_impl {
                 power_used * exp;
                 let (num_shl, overflowed) = power_used.overflowing_mul(exp);
                 let fine = !overflowed
-                    & (power_used < (mem::size_of::<Self>() * 8) as u32);
+                    & (num_shl < (mem::size_of::<Self>() * 8) as u32);
                 (1 << num_shl) * fine as Self
             } else {
                 if exp == 0 {
