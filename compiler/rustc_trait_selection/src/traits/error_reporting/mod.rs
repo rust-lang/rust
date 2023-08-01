@@ -3032,7 +3032,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 self.report_similar_impl_candidates_for_root_obligation(&obligation, *trait_predicate, body_def_id, err);
             }
 
-            self.maybe_suggest_convert_to_slice(
+            self.suggest_convert_to_slice(
                 err,
                 obligation,
                 trait_ref,

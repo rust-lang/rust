@@ -398,7 +398,7 @@ pub trait TypeErrCtxtExt<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
     ) -> Vec<Option<(Span, (DefId, Ty<'tcx>))>>;
 
-    fn maybe_suggest_convert_to_slice(
+    fn suggest_convert_to_slice(
         &self,
         err: &mut Diagnostic,
         obligation: &PredicateObligation<'tcx>,
@@ -3955,7 +3955,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     /// If the type that failed selection is an array or a reference to an array,
     /// but the trait is implemented for slices, suggest that the user converts
     /// the array into a slice.
-    fn maybe_suggest_convert_to_slice(
+    fn suggest_convert_to_slice(
         &self,
         err: &mut Diagnostic,
         obligation: &PredicateObligation<'tcx>,
