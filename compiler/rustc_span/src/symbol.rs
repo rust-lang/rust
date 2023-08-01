@@ -445,6 +445,7 @@ symbols! {
         bridge,
         bswap,
         builtin_syntax,
+        c,
         c_str,
         c_str_literals,
         c_unwind,
