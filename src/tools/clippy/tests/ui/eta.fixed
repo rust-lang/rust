@@ -345,3 +345,58 @@ fn angle_brackets_and_args() {
     let dyn_opt: Option<&dyn TestTrait> = Some(&test_struct);
     dyn_opt.map(<dyn TestTrait>::method_on_dyn);
 }
+
+fn _late_bound_to_early_bound_regions() {
+    struct Foo<'a>(&'a u32);
+    impl<'a> Foo<'a> {
+        fn f(x: &'a u32) -> Self {
+            Foo(x)
+        }
+    }
+    fn f(f: impl for<'a> Fn(&'a u32) -> Foo<'a>) -> Foo<'static> {
+        f(&0)
+    }
+
+    let _ = f(|x| Foo::f(x));
+
+    struct Bar;
+    impl<'a> From<&'a u32> for Bar {
+        fn from(x: &'a u32) -> Bar {
+            Bar
+        }
+    }
+    fn f2(f: impl for<'a> Fn(&'a u32) -> Bar) -> Bar {
+        f(&0)
+    }
+
+    let _ = f2(|x| <Bar>::from(x));
+
+    struct Baz<'a>(&'a u32);
+    fn f3(f: impl Fn(&u32) -> Baz<'_>) -> Baz<'static> {
+        f(&0)
+    }
+
+    let _ = f3(|x| Baz(x));
+}
+
+fn _mixed_late_bound_and_early_bound_regions() {
+    fn f<T>(t: T, f: impl Fn(T, &u32) -> u32) -> u32 {
+        f(t, &0)
+    }
+    fn f2<'a, T: 'a>(_: &'a T, y: &u32) -> u32 {
+        *y
+    }
+    let _ = f(&0, f2);
+}
+
+fn _closure_with_types() {
+    fn f<T>(x: T) -> T {
+        x
+    }
+    fn f2<T: Default>(f: impl Fn(T) -> T) -> T {
+        f(T::default())
+    }
+
+    let _ = f2(|x: u32| f(x));
+    let _ = f2(|x| -> u32 { f(x) });
+}

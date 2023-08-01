@@ -16,6 +16,7 @@ mod match_wild_enum;
 mod match_wild_err_arm;
 mod needless_match;
 mod overlapping_arms;
+mod redundant_guards;
 mod redundant_pattern_match;
 mod rest_pat_in_fully_bound_struct;
 mod significant_drop_in_scrutinee;
@@ -936,6 +937,36 @@ declare_clippy_lint! {
     "reimplementation of `filter`"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for unnecessary guards in match expressions.
+    ///
+    /// ### Why is this bad?
+    /// It's more complex and much less readable. Making it part of the pattern can improve
+    /// exhaustiveness checking as well.
+    ///
+    /// ### Example
+    /// ```rust,ignore
+    /// match x {
+    ///     Some(x) if matches!(x, Some(1)) => ..,
+    ///     Some(x) if x == Some(2) => ..,
+    ///     _ => todo!(),
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```rust,ignore
+    /// match x {
+    ///     Some(Some(1)) => ..,
+    ///     Some(Some(2)) => ..,
+    ///     _ => todo!(),
+    /// }
+    /// ```
+    #[clippy::version = "1.72.0"]
+    pub REDUNDANT_GUARDS,
+    complexity,
+    "checks for unnecessary guards in match expressions"
+}
+
 #[derive(Default)]
 pub struct Matches {
     msrv: Msrv,
@@ -978,6 +1009,7 @@ impl_lint_pass!(Matches => [
     TRY_ERR,
     MANUAL_MAP,
     MANUAL_FILTER,
+    REDUNDANT_GUARDS,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Matches {
@@ -1025,6 +1057,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                     needless_match::check_match(cx, ex, arms, expr);
                     match_on_vec_items::check(cx, ex);
                     match_str_case_mismatch::check(cx, ex, arms);
+                    redundant_guards::check(cx, arms);
 
                     if !in_constant(cx, expr.hir_id) {
                         manual_unwrap_or::check(cx, expr, ex, arms);

@@ -24,5 +24,75 @@ error: this argument is a mutable reference, but not used mutably
 LL |     fn badger(&mut self, vec: &mut Vec<i32>) -> usize {
    |                               ^^^^^^^^^^^^^ help: consider changing to: `&Vec<i32>`
 
-error: aborting due to 4 previous errors
+error: this argument is a mutable reference, but not used mutably
+  --> $DIR/needless_pass_by_ref_mut.rs:126:16
+   |
+LL | async fn a1(x: &mut i32) {
+   |                ^^^^^^^^ help: consider changing to: `&i32`
+
+error: this argument is a mutable reference, but not used mutably
+  --> $DIR/needless_pass_by_ref_mut.rs:130:16
+   |
+LL | async fn a2(x: &mut i32, y: String) {
+   |                ^^^^^^^^ help: consider changing to: `&i32`
+
+error: this argument is a mutable reference, but not used mutably
+  --> $DIR/needless_pass_by_ref_mut.rs:134:16
+   |
+LL | async fn a3(x: &mut i32, y: String, z: String) {
+   |                ^^^^^^^^ help: consider changing to: `&i32`
+
+error: this argument is a mutable reference, but not used mutably
+  --> $DIR/needless_pass_by_ref_mut.rs:138:16
+   |
+LL | async fn a4(x: &mut i32, y: i32) {
+   |                ^^^^^^^^ help: consider changing to: `&i32`
+
+error: this argument is a mutable reference, but not used mutably
+  --> $DIR/needless_pass_by_ref_mut.rs:142:24
+   |
+LL | async fn a5(x: i32, y: &mut i32) {
+   |                        ^^^^^^^^ help: consider changing to: `&i32`
+
+error: this argument is a mutable reference, but not used mutably
+  --> $DIR/needless_pass_by_ref_mut.rs:146:24
+   |
+LL | async fn a6(x: i32, y: &mut i32) {
+   |                        ^^^^^^^^ help: consider changing to: `&i32`
+
+error: this argument is a mutable reference, but not used mutably
+  --> $DIR/needless_pass_by_ref_mut.rs:150:32
+   |
+LL | async fn a7(x: i32, y: i32, z: &mut i32) {
+   |                                ^^^^^^^^ help: consider changing to: `&i32`
+
+error: this argument is a mutable reference, but not used mutably
+  --> $DIR/needless_pass_by_ref_mut.rs:154:24
+   |
+LL | async fn a8(x: i32, a: &mut i32, y: i32, z: &mut i32) {
+   |                        ^^^^^^^^ help: consider changing to: `&i32`
+
+error: this argument is a mutable reference, but not used mutably
+  --> $DIR/needless_pass_by_ref_mut.rs:154:45
+   |
+LL | async fn a8(x: i32, a: &mut i32, y: i32, z: &mut i32) {
+   |                                             ^^^^^^^^ help: consider changing to: `&i32`
+
+error: this argument is a mutable reference, but not used mutably
+  --> $DIR/needless_pass_by_ref_mut.rs:188:16
+   |
+LL | fn cfg_warn(s: &mut u32) {}
+   |                ^^^^^^^^ help: consider changing to: `&u32`
+   |
+   = note: this is cfg-gated and may require further changes
+
+error: this argument is a mutable reference, but not used mutably
+  --> $DIR/needless_pass_by_ref_mut.rs:194:20
+   |
+LL |     fn cfg_warn(s: &mut u32) {}
+   |                    ^^^^^^^^ help: consider changing to: `&u32`
+   |
+   = note: this is cfg-gated and may require further changes
+
+error: aborting due to 15 previous errors
 

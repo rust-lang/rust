@@ -730,3 +730,24 @@ Whether to allow `r#""#` when `r""` can be used
 * [`unnecessary_raw_string_hashes`](https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_raw_string_hashes)
 
 
+## `absolute-paths-max-segments`
+The maximum number of segments a path can have before being linted, anything above this will
+be linted.
+
+**Default Value:** `2` (`u64`)
+
+---
+**Affected lints:**
+* [`absolute_paths`](https://rust-lang.github.io/rust-clippy/master/index.html#absolute_paths)
+
+
+## `absolute-paths-allowed-crates`
+Which crates to allow absolute paths from
+
+**Default Value:** `{}` (`rustc_data_structures::fx::FxHashSet<String>`)
+
+---
+**Affected lints:**
+* [`absolute_paths`](https://rust-lang.github.io/rust-clippy/master/index.html#absolute_paths)
+
+

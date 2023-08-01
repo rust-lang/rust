@@ -65,6 +65,30 @@ fn integration_test() {
         .expect("unable to run clippy");
 
     let stderr = String::from_utf8_lossy(&output.stderr);
+
+    // debug:
+    eprintln!("{stderr}");
+
+    // this is an internal test to make sure we would correctly panic on a delay_span_bug
+    if repo_name == "matthiaskrgr/clippy_ci_panic_test" {
+        // we need to kind of switch around our logic here:
+        // if we find a panic, everything is fine, if we don't panic, SOMETHING is broken about our testing
+
+        // the repo basically just contains a delay_span_bug that forces rustc/clippy to panic:
+        /*
+           #![feature(rustc_attrs)]
+           #[rustc_error(delay_span_bug_from_inside_query)]
+           fn main() {}
+        */
+
+        if stderr.find("error: internal compiler error").is_some() {
+            eprintln!("we saw that we intentionally panicked, yay");
+            return;
+        }
+
+        panic!("panic caused by delay_span_bug was NOT detected! Something is broken!");
+    }
+
     if let Some(backtrace_start) = stderr.find("error: internal compiler error") {
         static BACKTRACE_END_MSG: &str = "end of query stack";
         let backtrace_end = stderr[backtrace_start..]

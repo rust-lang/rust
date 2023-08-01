@@ -120,3 +120,27 @@ fn issue_8920() {
         .iter()
         .filter_map(|f| f.result_field.to_owned().ok());
 }
+
+fn issue8010() {
+    #[derive(Clone)]
+    enum Enum {
+        A(i32),
+        B,
+    }
+
+    let iter = [Enum::A(123), Enum::B].into_iter();
+
+    let _x = iter.clone().filter_map(|x| match x { Enum::A(s) => Some(s), _ => None });
+    let _x = iter.clone().filter(|x| matches!(x, Enum::B)).map(|x| match x {
+        Enum::A(s) => s,
+        _ => unreachable!(),
+    });
+    let _x = iter
+        .clone()
+        .filter_map(|x| match x { Enum::A(s) => Some(s), _ => None });
+    #[allow(clippy::unused_unit)]
+    let _x = iter
+        .clone()
+        .filter(|x| matches!(x, Enum::B))
+        .map(|x| if let Enum::B = x { () } else { unreachable!() });
+}

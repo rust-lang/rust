@@ -16,12 +16,23 @@ fn unwrap_option_some() {
     1;
 }
 
+#[rustfmt::skip] // force rustfmt not to remove braces in `|| { 234 }`
 fn unwrap_option_none() {
     let _val = panic!();
     let _val = panic!("this always happens");
+    let _val: String = String::default();
+    let _val: u16 = 234;
+    let _val: u16 = 234;
+    let _val: u16 = { 234 };
+    let _val: u16 =  { 234 };
 
     panic!();
     panic!("this always happens");
+    String::default();
+    234;
+    234;
+    { 234 };
+     { 234 };
 }
 
 fn unwrap_result_ok() {

@@ -9,6 +9,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{is_range_literal, BorrowKind, Expr, ExprKind, Pat};
 use rustc_lint::LateContext;
 use rustc_span::edition::Edition;
+use rustc_span::sym;
 
 pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
@@ -51,7 +52,7 @@ pub(super) fn check<'tcx>(
             },
             [],
             _,
-        ) if method.ident.name.as_str() == "iter_mut" => (arg, "&mut "),
+        ) if method.ident.name == sym::iter_mut => (arg, "&mut "),
         ExprKind::MethodCall(
             method,
             Expr {

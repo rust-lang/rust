@@ -15,6 +15,7 @@ use rustc_hir::{
     PredicateOrigin, TraitFn, TraitItem, TraitItemKind, Ty, TyKind, WherePredicate,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_middle::hir::map::Map;
 use rustc_middle::hir::nested_filter as middle_nested_filter;
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -620,7 +621,7 @@ impl<'cx, 'tcx, F> Visitor<'tcx> for LifetimeChecker<'cx, 'tcx, F>
 where
     F: NestedFilter<'tcx>,
 {
-    type Map = rustc_middle::hir::map::Map<'tcx>;
+    type Map = Map<'tcx>;
     type NestedFilter = F;
 
     // for lifetimes as parameters of generics

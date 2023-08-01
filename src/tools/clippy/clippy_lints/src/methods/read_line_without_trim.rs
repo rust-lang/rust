@@ -35,8 +35,8 @@ pub fn check(cx: &LateContext<'_>, call: &Expr<'_>, recv: &Expr<'_>, arg: &Expr<
                 && segment.ident.name == sym!(parse)
                 && let parse_result_ty = cx.typeck_results().expr_ty(parent)
                 && is_type_diagnostic_item(cx, parse_result_ty, sym::Result)
-                && let ty::Adt(_, substs) = parse_result_ty.kind()
-                && let Some(ok_ty) = substs[0].as_type()
+                && let ty::Adt(_, args) = parse_result_ty.kind()
+                && let Some(ok_ty) = args[0].as_type()
                 && parse_fails_on_trailing_newline(ok_ty)
             {
                 let local_snippet = snippet(cx, expr.span, "<expr>");
