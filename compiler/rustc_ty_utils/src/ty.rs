@@ -62,7 +62,8 @@ fn sized_constraint_for_ty<'tcx>(
             let predicates = tcx.predicates_of(adtdef.did()).predicates;
             if predicates.iter().any(|(p, _)| {
                 p.as_trait_clause().is_some_and(|trait_pred| {
-                    trait_pred.def_id() == sized_trait_def_id && trait_pred.self_ty().skip_binder() == ty
+                    trait_pred.def_id() == sized_trait_def_id
+                        && trait_pred.self_ty().skip_binder() == ty
                 })
             }) {
                 vec![]

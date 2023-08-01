@@ -795,7 +795,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Converts the types that the user supplied, in case that doing
     /// so should yield an error, but returns back a signature where
-    /// all parameters are of type `TyErr`.
+    /// all parameters are of type `ty::Error`.
     fn error_sig_of_closure(
         &self,
         decl: &hir::FnDecl<'_>,
