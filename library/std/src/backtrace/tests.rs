@@ -1,4 +1,5 @@
 use super::*;
+use crate::panic::{RefUnwindSafe, UnwindSafe};
 
 fn generate_fake_frames() -> Vec<BacktraceFrame> {
     vec![
@@ -90,4 +91,10 @@ fn test_frames() {
     let mut iter = frames.iter().zip(expected.iter());
 
     assert!(iter.all(|(f, e)| format!("{f:#?}") == *e));
+}
+
+#[test]
+fn backtrace_unwind_safe() {
+    fn assert_unwind_safe<T: UnwindSafe + RefUnwindSafe>() {}
+    assert_unwind_safe::<Backtrace>();
 }

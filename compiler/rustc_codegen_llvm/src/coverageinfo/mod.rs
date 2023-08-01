@@ -16,9 +16,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_llvm::RustString;
 use rustc_middle::bug;
-use rustc_middle::mir::coverage::{
-    CodeRegion, CounterValueReference, CoverageKind, ExpressionOperandId, InjectedExpressionId, Op,
-};
+use rustc_middle::mir::coverage::{CodeRegion, CounterId, CoverageKind, ExpressionId, Op, Operand};
 use rustc_middle::mir::Coverage;
 use rustc_middle::ty;
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt};
@@ -33,7 +31,7 @@ mod ffi;
 pub(crate) mod map_data;
 pub mod mapgen;
 
-const UNUSED_FUNCTION_COUNTER_ID: CounterValueReference = CounterValueReference::START;
+const UNUSED_FUNCTION_COUNTER_ID: CounterId = CounterId::START;
 
 const VAR_ALIGN_BYTES: usize = 8;
 
@@ -125,7 +123,7 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
                     let fn_name = bx.get_pgo_func_name_var(instance);
                     let hash = bx.const_u64(function_source_hash);
                     let num_counters = bx.const_u32(coverageinfo.num_counters);
-                    let index = bx.const_u32(id.zero_based_index());
+                    let index = bx.const_u32(id.as_u32());
                     debug!(
                         "codegen intrinsic instrprof.increment(fn_name={:?}, hash={:?}, num_counters={:?}, index={:?})",
                         fn_name, hash, num_counters, index,
@@ -178,7 +176,7 @@ impl<'tcx> Builder<'_, '_, 'tcx> {
     fn add_coverage_counter(
         &mut self,
         instance: Instance<'tcx>,
-        id: CounterValueReference,
+        id: CounterId,
         region: CodeRegion,
     ) -> bool {
         if let Some(coverage_context) = self.coverage_context() {
@@ -202,10 +200,10 @@ impl<'tcx> Builder<'_, '_, 'tcx> {
     fn add_coverage_counter_expression(
         &mut self,
         instance: Instance<'tcx>,
-        id: InjectedExpressionId,
-        lhs: ExpressionOperandId,
+        id: ExpressionId,
+        lhs: Operand,
         op: Op,
-        rhs: ExpressionOperandId,
+        rhs: Operand,
         region: Option<CodeRegion>,
     ) -> bool {
         if let Some(coverage_context) = self.coverage_context() {

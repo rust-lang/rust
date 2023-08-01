@@ -304,7 +304,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
             let counter_kind = if let Some(&counter_operand) = bcb_counters[bcb].as_ref() {
                 self.coverage_counters.make_identity_counter(counter_operand)
             } else if let Some(counter_kind) = self.bcb_data_mut(bcb).take_counter() {
-                bcb_counters[bcb] = Some(counter_kind.as_operand_id());
+                bcb_counters[bcb] = Some(counter_kind.as_operand());
                 debug_used_expressions.add_expression_operands(&counter_kind);
                 counter_kind
             } else {
