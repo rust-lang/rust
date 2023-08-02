@@ -379,6 +379,7 @@ pub fn build_generator_variant_struct_type_di_node<'ll, 'tcx>(
             // Fields that are common to all states
             let common_fields: SmallVec<_> = generator_args
                 .prefix_tys()
+                .iter()
                 .zip(common_upvar_names)
                 .enumerate()
                 .map(|(index, (upvar_ty, upvar_name))| {

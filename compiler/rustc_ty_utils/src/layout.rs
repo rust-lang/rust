@@ -317,7 +317,9 @@ fn layout_of_uncached<'tcx>(
         ty::Closure(_, ref args) => {
             let tys = args.as_closure().upvar_tys();
             univariant(
-                &tys.map(|ty| Ok(cx.layout_of(ty)?.layout)).try_collect::<IndexVec<_, _>>()?,
+                &tys.iter()
+                    .map(|ty| Ok(cx.layout_of(ty)?.layout))
+                    .try_collect::<IndexVec<_, _>>()?,
                 &ReprOptions::default(),
                 StructKind::AlwaysSized,
             )?
@@ -729,7 +731,7 @@ fn generator_layout<'tcx>(
     // Build a prefix layout, including "promoting" all ineligible
     // locals as part of the prefix. We compute the layout of all of
     // these fields at once to get optimal packing.
-    let tag_index = args.as_generator().prefix_tys().count();
+    let tag_index = args.as_generator().prefix_tys().len();
 
     // `info.variant_fields` already accounts for the reserved variants, so no need to add them.
     let max_discr = (info.variant_fields.len() - 1) as u128;
@@ -748,6 +750,7 @@ fn generator_layout<'tcx>(
     let prefix_layouts = args
         .as_generator()
         .prefix_tys()
+        .iter()
         .map(|ty| Ok(cx.layout_of(ty)?.layout))
         .chain(iter::once(Ok(tag_layout)))
         .chain(promoted_layouts)
@@ -1062,6 +1065,7 @@ fn variant_info_for_generator<'tcx>(
     let upvar_fields: Vec<_> = args
         .as_generator()
         .upvar_tys()
+        .iter()
         .zip(upvar_names)
         .enumerate()
         .map(|(field_idx, (_, name))| {

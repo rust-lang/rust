@@ -120,12 +120,16 @@ where
                     _ if component.is_copy_modulo_regions(tcx, self.param_env) => (),
 
                     ty::Closure(_, args) => {
-                        queue_type(self, args.as_closure().tupled_upvars_ty());
+                        for upvar in args.as_closure().upvar_tys() {
+                            queue_type(self, upvar);
+                        }
                     }
 
                     ty::Generator(def_id, args, _) => {
                         let args = args.as_generator();
-                        queue_type(self, args.tupled_upvars_ty());
+                        for upvar in args.upvar_tys() {
+                            queue_type(self, upvar);
+                        }
 
                         let witness = args.witness();
                         let interior_tys = match witness.kind() {
