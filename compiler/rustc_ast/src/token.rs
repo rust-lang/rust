@@ -55,7 +55,33 @@ pub enum Delimiter {
     /// "macro variable" `$var`. It is important to preserve operator priorities in cases like
     /// `$var * 3` where `$var` is `1 + 2`.
     /// Invisible delimiters might not survive roundtrip of a token stream through a string.
-    Invisible,
+    Invisible(InvisibleSource),
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Encodable, Decodable, Hash, HashStable_Generic)]
+pub enum InvisibleSource {
+    // Converted from `proc_macro::Delimiter` in
+    // `proc_macro::Delimiter::to_internal`, i.e. returned by a proc macro.
+    ProcMacro,
+
+    // Converted from `TokenKind::Interpolated` in
+    // `TokenStream::flatten_token`. Treated similarly to `ProcMacro`.
+    FlattenToken,
+}
+
+impl Delimiter {
+    // Should the parser skip these delimiters? Only happens for certain kinds
+    // of invisible delimiters. Once all interpolated nonterminals are removed,
+    // the answer should become `false` for all kinds, whereupon this function
+    // can be removed.
+    pub fn skip(&self) -> bool {
+        match self {
+            Delimiter::Invisible(src) => match src {
+                InvisibleSource::FlattenToken | InvisibleSource::ProcMacro => true,
+            },
+            Delimiter::Parenthesis | Delimiter::Bracket | Delimiter::Brace => false,
+        }
+    }
 }
 
 // Note that the suffix is *not* considered when deciding the `LitKind` in this
