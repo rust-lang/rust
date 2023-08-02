@@ -1957,6 +1957,7 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline]
         #[rustc_inherit_overflow_checks]
+        #[rustc_allow_const_fn_unstable(is_compile_time_known)]
         pub const fn pow(self, mut exp: u32) -> Self {
             // LLVM now knows that `self` is a constant value, but not a
             // constant in Rust. This allows us to compute the power used at
@@ -1970,7 +1971,8 @@ macro_rules! uint_impl {
             // instruction, but we must add a couple more checks for parity with
             // our own `pow`.
             #[cfg(not(bootstrap))]
-            if intrinsics::is_constant(self) && self.is_power_of_two() {
+            // SAFETY: This path has the same behavior as the other.
+            if unsafe { intrinsics::is_compile_time_known(self) } && self.is_power_of_two() {
                 let power_used = match self.checked_ilog2() {
                     Some(v) => v,
                     // SAFETY: We just checked this is a power of two. `0` is not a
@@ -1980,7 +1982,9 @@ macro_rules! uint_impl {
                 // So it panics. Have to use `overflowing_mul` to efficiently set the
                 // result to 0 if not.
                 #[cfg(debug_assertions)]
-                power_used * exp;
+                {
+                    _ = power_used * exp;
+                }
                 let (num_shl, overflowed) = power_used.overflowing_mul(exp);
                 let fine = !overflowed
                     & (num_shl < (mem::size_of::<Self>() * 8) as u32);

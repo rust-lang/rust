@@ -861,7 +861,7 @@ symbols! {
         intra_doc_pointers,
         intrinsics,
         irrefutable_let_patterns,
-        is_constant,
+        is_compile_time_known,
         isa_attribute,
         isize,
         issue,

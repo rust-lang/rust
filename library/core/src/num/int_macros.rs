@@ -2039,9 +2039,14 @@ macro_rules! int_impl {
                       without modifying the original"]
         #[inline]
         #[rustc_inherit_overflow_checks]
+        #[rustc_allow_const_fn_unstable(is_compile_time_known)]
         pub const fn pow(self, mut exp: u32) -> Self {
             #[cfg(not(bootstrap))]
-            if intrinsics::is_constant(self) && self > 0 && (self & (self - 1) == 0) {
+            // SAFETY: This path has the same behavior as the other.
+            if unsafe { intrinsics::is_compile_time_known(self) }
+                && self > 0
+                && (self & (self - 1) == 0)
+            {
                 let power_used = match self.checked_ilog2() {
                     Some(v) => v,
                     // SAFETY: We just checked this is a power of two. and above zero.
@@ -2050,7 +2055,9 @@ macro_rules! int_impl {
                 // So it panics. Have to use `overflowing_mul` to efficiently set the
                 // result to 0 if not.
                 #[cfg(debug_assertions)]
-                power_used * exp;
+                {
+                    _ = power_used * exp;
+                }
                 let (num_shl, overflowed) = power_used.overflowing_mul(exp);
                 let fine = !overflowed
                     & (num_shl < (mem::size_of::<Self>() * 8) as u32);

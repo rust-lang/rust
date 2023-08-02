@@ -2490,24 +2490,29 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn option_payload_ptr<T>(arg: *const Option<T>) -> *const T;
 
-    /// Returns whether the argument is known at compile-time. This opens the
-    /// door for additional optimizations, in that LLVM can then optimize
-    /// following checks to either `true` or `false`. This is often paired with
-    /// an `if-else` statement, as LLVM will only keep one branch (if
-    /// optimizations are on).
+    /// Returns whether the argument is known at compile-time.
     ///
-    /// "Constant" in this context is not the same as a constant in Rust. As
-    /// such, this should only be used for optimizations.
+    /// This is useful when there is a way of writing the code that will
+    /// be *faster* when some variables have known values, but *slower*
+    /// in the general case: an `if is_compile_time_known(var)` can be used
+    /// to select between these two variants. The `if` will be optimized away
+    /// and only the desired branch remains.
     ///
-    /// Note that, unlike most intrinsics, this is safe to call;
-    /// it does not require an `unsafe` block.
-    /// Therefore, implementations must not require the user to uphold
-    /// any safety invariants.
-    #[rustc_const_stable(feature = "todo", since = "never")]
-    #[rustc_safe_intrinsic]
+    /// Formally speaking, this function non-deterministically returns `true`
+    /// or `false`, and the caller has to ensure sound behavior for both cases.
+    /// In other words, the following code has *Undefined Behavior*:
+    ///
+    /// ```rust
+    /// if !is_compile_time_known(0) { unreachable_unchecked(); }
+    /// ```
+    ///
+    /// Unsafe code may not rely on `is_compile_time_known` returning any
+    /// particular value, ever. However, the compiler will generally make it
+    /// return `true` only if the value of the argument is actually known.
+    #[rustc_const_unstable(feature = "is_compile_time_known", issue = "none")]
     #[rustc_nounwind]
     #[cfg(not(bootstrap))]
-    pub fn is_constant<T>(arg: T) -> bool;
+    pub fn is_compile_time_known<T>(arg: T) -> bool;
 }
 
 // Some functions are defined here because they accidentally got made

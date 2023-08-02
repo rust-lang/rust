@@ -542,6 +542,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                     )?;
                 }
             }
+            sym::is_compile_time_known => ecx.write_scalar(Scalar::from_bool(false), dest)?,
             _ => {
                 throw_unsup_format!(
                     "intrinsic `{intrinsic_name}` is not supported at compile-time"
