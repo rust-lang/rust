@@ -418,9 +418,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         //     // First thing: load all the arguments. Details depend on the shim.
         //     let arg1 = this.read_scalar(arg1)?.to_u32()?;
         //     let arg2 = this.read_pointer(arg2)?; // when you need to work with the pointer directly
-        //     let arg3 = this.deref_operand_as(arg3, this.libc_ty_layout("some_libc_struct"))?; // when you want to load/store
+        //     let arg3 = this.deref_pointer_as(arg3, this.libc_ty_layout("some_libc_struct"))?; // when you want to load/store
         //         // through the pointer and supply the type information yourself
-        //     let arg4 = this.deref_operand(arg4)?; // when you want to load/store through the pointer and trust
+        //     let arg4 = this.deref_pointer(arg4)?; // when you want to load/store through the pointer and trust
         //         // the user-given type (which you shouldn't usually do)
         //
         //     // ...

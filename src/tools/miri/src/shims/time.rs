@@ -25,7 +25,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         this.assert_target_os_is_unix("clock_gettime");
 
         let clk_id = this.read_scalar(clk_id_op)?.to_i32()?;
-        let tp = this.deref_operand_as(tp_op, this.libc_ty_layout("timespec"))?;
+        let tp = this.deref_pointer_as(tp_op, this.libc_ty_layout("timespec"))?;
 
         let absolute_clocks;
         let mut relative_clocks;
@@ -92,7 +92,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         this.assert_target_os_is_unix("gettimeofday");
         this.check_no_isolation("`gettimeofday`")?;
 
-        let tv = this.deref_operand_as(tv_op, this.libc_ty_layout("timeval"))?;
+        let tv = this.deref_pointer_as(tv_op, this.libc_ty_layout("timeval"))?;
 
         // Using tz is obsolete and should always be null
         let tz = this.read_pointer(tz_op)?;
@@ -121,7 +121,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         this.assert_target_os("windows", "GetSystemTimeAsFileTime");
         this.check_no_isolation("`GetSystemTimeAsFileTime`")?;
 
-        let filetime = this.deref_operand_as(LPFILETIME_op, this.windows_ty_layout("FILETIME"))?;
+        let filetime = this.deref_pointer_as(LPFILETIME_op, this.windows_ty_layout("FILETIME"))?;
 
         let NANOS_PER_SEC = this.eval_windows_u64("time", "NANOS_PER_SEC");
         let INTERVALS_PER_SEC = this.eval_windows_u64("time", "INTERVALS_PER_SEC");
@@ -156,7 +156,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let qpc = i64::try_from(duration.as_nanos()).map_err(|_| {
             err_unsup_format!("programs running longer than 2^63 nanoseconds are not supported")
         })?;
-        this.write_scalar(Scalar::from_i64(qpc), &this.deref_operand(lpPerformanceCount_op)?)?;
+        this.write_scalar(Scalar::from_i64(qpc), &this.deref_pointer(lpPerformanceCount_op)?)?;
         Ok(Scalar::from_i32(-1)) // return non-zero on success
     }
 
@@ -176,7 +176,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // and thus 10^9 counts per second.
         this.write_scalar(
             Scalar::from_i64(1_000_000_000),
-            &this.deref_operand_as(lpFrequency_op, this.machine.layouts.u64)?,
+            &this.deref_pointer_as(lpFrequency_op, this.machine.layouts.u64)?,
         )?;
         Ok(Scalar::from_i32(-1)) // Return non-zero on success
     }
@@ -203,7 +203,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         this.assert_target_os("macos", "mach_timebase_info");
 
-        let info = this.deref_operand_as(info_op, this.libc_ty_layout("mach_timebase_info"))?;
+        let info = this.deref_pointer_as(info_op, this.libc_ty_layout("mach_timebase_info"))?;
 
         // Since our emulated ticks in `mach_absolute_time` *are* nanoseconds,
         // no scaling needs to happen.
@@ -222,7 +222,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         this.assert_target_os_is_unix("nanosleep");
 
-        let req = this.deref_operand_as(req_op, this.libc_ty_layout("timespec"))?;
+        let req = this.deref_pointer_as(req_op, this.libc_ty_layout("timespec"))?;
 
         let duration = match this.read_timespec(&req)? {
             Some(duration) => duration,

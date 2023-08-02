@@ -1,8 +1,8 @@
-error: Undefined Behavior: pointer to ALLOC was dereferenced after this allocation got freed
+error: Undefined Behavior: memory access failed: ALLOC has been freed, so this pointer is dangling
   --> RUSTLIB/alloc/src/alloc.rs:LL:CC
    |
 LL |     unsafe { __rust_dealloc(ptr, layout.size(), layout.align()) }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ pointer to ALLOC was dereferenced after this allocation got freed
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: ALLOC has been freed, so this pointer is dangling
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

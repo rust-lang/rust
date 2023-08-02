@@ -97,7 +97,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             1 => {
                 let [_flags, buf] = this.check_shim(abi, Abi::Rust, link_name, args)?;
 
-                let buf_place = this.deref_operand(buf)?;
+                let buf_place = this.deref_pointer(buf)?;
 
                 let ptr_layout = this.layout_of(ptr_ty)?;
 

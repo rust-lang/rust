@@ -419,7 +419,7 @@ where
     ///
     /// Only call this if you are sure the place is "valid" (aligned and inbounds), or do not
     /// want to ever use the place for memory access!
-    /// Generally prefer `deref_operand`.
+    /// Generally prefer `deref_pointer`.
     pub fn ref_to_mplace(
         &self,
         val: &ImmTy<'tcx, M::Provenance>,
@@ -439,8 +439,9 @@ where
     }
 
     /// Take an operand, representing a pointer, and dereference it to a place.
+    /// Corresponds to the `*` operator in Rust.
     #[instrument(skip(self), level = "debug")]
-    pub fn deref_operand(
+    pub fn deref_pointer(
         &self,
         src: &impl Readable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {

@@ -492,7 +492,7 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
             InvalidMeta(InvalidMetaKind::SliceTooBig) => const_eval_invalid_meta_slice,
             InvalidMeta(InvalidMetaKind::TooBig) => const_eval_invalid_meta,
             UnterminatedCString(_) => const_eval_unterminated_c_string,
-            PointerUseAfterFree(_) => const_eval_pointer_use_after_free,
+            PointerUseAfterFree(_, _) => const_eval_pointer_use_after_free,
             PointerOutOfBounds { ptr_size: Size::ZERO, .. } => const_eval_zst_pointer_out_of_bounds,
             PointerOutOfBounds { .. } => const_eval_pointer_out_of_bounds,
             DanglingIntPointer(0, _) => const_eval_dangling_null_pointer,
@@ -545,8 +545,10 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
             UnterminatedCString(ptr) | InvalidFunctionPointer(ptr) | InvalidVTablePointer(ptr) => {
                 builder.set_arg("pointer", ptr);
             }
-            PointerUseAfterFree(allocation) => {
-                builder.set_arg("allocation", allocation);
+            PointerUseAfterFree(alloc_id, msg) => {
+                builder
+                    .set_arg("alloc_id", alloc_id)
+                    .set_arg("bad_pointer_message", bad_pointer_message(msg, handler));
             }
             PointerOutOfBounds { alloc_id, alloc_size, ptr_offset, ptr_size, msg } => {
                 builder

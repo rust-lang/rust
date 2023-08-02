@@ -214,9 +214,9 @@ impl<'mir, 'tcx: 'mir> CompileTimeEvalContext<'mir, 'tcx> {
             // &str or &&str
             assert!(args.len() == 1);
 
-            let mut msg_place = self.deref_operand(&args[0])?;
+            let mut msg_place = self.deref_pointer(&args[0])?;
             while msg_place.layout.ty.is_ref() {
-                msg_place = self.deref_operand(&msg_place)?;
+                msg_place = self.deref_pointer(&msg_place)?;
             }
 
             let msg = Symbol::intern(self.read_str(&msg_place)?);

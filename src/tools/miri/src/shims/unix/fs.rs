@@ -344,7 +344,7 @@ trait EvalContextExtPrivate<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx
         let (created_sec, created_nsec) = metadata.created.unwrap_or((0, 0));
         let (modified_sec, modified_nsec) = metadata.modified.unwrap_or((0, 0));
 
-        let buf = this.deref_operand_as(buf_op, this.libc_ty_layout("stat"))?;
+        let buf = this.deref_pointer_as(buf_op, this.libc_ty_layout("stat"))?;
 
         this.write_int_fields_named(
             &[
@@ -1014,7 +1014,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             return Ok(-1);
         }
 
-        let statxbuf = this.deref_operand_as(statxbuf_op, this.libc_ty_layout("statx"))?;
+        let statxbuf = this.deref_pointer_as(statxbuf_op, this.libc_ty_layout("statx"))?;
 
         let path = this.read_path_from_c_str(pathname_ptr)?.into_owned();
         // See <https://github.com/rust-lang/rust/pull/79196> for a discussion of argument sizes.
@@ -1420,7 +1420,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 //     pub d_name: [c_char; 1024],
                 // }
 
-                let entry_place = this.deref_operand_as(entry_op, this.libc_ty_layout("dirent"))?;
+                let entry_place = this.deref_pointer_as(entry_op, this.libc_ty_layout("dirent"))?;
                 let name_place = this.project_field(&entry_place, 5)?;
 
                 let file_name = dir_entry.file_name(); // not a Path as there are no separators!
@@ -1456,14 +1456,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     &entry_place,
                 )?;
 
-                let result_place = this.deref_operand(result_op)?;
+                let result_place = this.deref_pointer(result_op)?;
                 this.write_scalar(this.read_scalar(entry_op)?, &result_place)?;
 
                 0
             }
             None => {
                 // end of stream: return 0, assign *result=NULL
-                this.write_null(&this.deref_operand(result_op)?)?;
+                this.write_null(&this.deref_pointer(result_op)?)?;
                 0
             }
             Some(Err(e)) =>

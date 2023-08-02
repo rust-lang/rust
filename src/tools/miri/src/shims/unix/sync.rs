@@ -36,7 +36,7 @@ fn mutexattr_get_kind<'mir, 'tcx: 'mir>(
     ecx: &MiriInterpCx<'mir, 'tcx>,
     attr_op: &OpTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, i32> {
-    ecx.read_scalar_at_offset(
+    ecx.deref_pointer_and_read(
         attr_op,
         0,
         ecx.libc_ty_layout("pthread_mutexattr_t"),
@@ -50,7 +50,7 @@ fn mutexattr_set_kind<'mir, 'tcx: 'mir>(
     attr_op: &OpTy<'tcx, Provenance>,
     kind: i32,
 ) -> InterpResult<'tcx, ()> {
-    ecx.write_scalar_at_offset(
+    ecx.deref_pointer_and_write(
         attr_op,
         0,
         Scalar::from_i32(kind),
@@ -79,7 +79,7 @@ fn mutex_reset_id<'mir, 'tcx: 'mir>(
     ecx: &mut MiriInterpCx<'mir, 'tcx>,
     mutex_op: &OpTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, ()> {
-    ecx.write_scalar_at_offset(
+    ecx.deref_pointer_and_write(
         mutex_op,
         4,
         Scalar::from_i32(0),
@@ -93,7 +93,7 @@ fn mutex_get_kind<'mir, 'tcx: 'mir>(
     mutex_op: &OpTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, i32> {
     let offset = if ecx.pointer_size().bytes() == 8 { 16 } else { 12 };
-    ecx.read_scalar_at_offset(
+    ecx.deref_pointer_and_read(
         mutex_op,
         offset,
         ecx.libc_ty_layout("pthread_mutex_t"),
@@ -108,7 +108,7 @@ fn mutex_set_kind<'mir, 'tcx: 'mir>(
     kind: i32,
 ) -> InterpResult<'tcx, ()> {
     let offset = if ecx.pointer_size().bytes() == 8 { 16 } else { 12 };
-    ecx.write_scalar_at_offset(
+    ecx.deref_pointer_and_write(
         mutex_op,
         offset,
         Scalar::from_i32(kind),
@@ -141,7 +141,7 @@ fn condattr_get_clock_id<'mir, 'tcx: 'mir>(
     ecx: &MiriInterpCx<'mir, 'tcx>,
     attr_op: &OpTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, i32> {
-    ecx.read_scalar_at_offset(
+    ecx.deref_pointer_and_read(
         attr_op,
         0,
         ecx.libc_ty_layout("pthread_condattr_t"),
@@ -155,7 +155,7 @@ fn condattr_set_clock_id<'mir, 'tcx: 'mir>(
     attr_op: &OpTy<'tcx, Provenance>,
     clock_id: i32,
 ) -> InterpResult<'tcx, ()> {
-    ecx.write_scalar_at_offset(
+    ecx.deref_pointer_and_write(
         attr_op,
         0,
         Scalar::from_i32(clock_id),
@@ -184,7 +184,7 @@ fn cond_reset_id<'mir, 'tcx: 'mir>(
     ecx: &mut MiriInterpCx<'mir, 'tcx>,
     cond_op: &OpTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, ()> {
-    ecx.write_scalar_at_offset(
+    ecx.deref_pointer_and_write(
         cond_op,
         4,
         Scalar::from_i32(0),
@@ -197,7 +197,7 @@ fn cond_get_clock_id<'mir, 'tcx: 'mir>(
     ecx: &MiriInterpCx<'mir, 'tcx>,
     cond_op: &OpTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, i32> {
-    ecx.read_scalar_at_offset(
+    ecx.deref_pointer_and_read(
         cond_op,
         8,
         ecx.libc_ty_layout("pthread_cond_t"),
@@ -211,7 +211,7 @@ fn cond_set_clock_id<'mir, 'tcx: 'mir>(
     cond_op: &OpTy<'tcx, Provenance>,
     clock_id: i32,
 ) -> InterpResult<'tcx, ()> {
-    ecx.write_scalar_at_offset(
+    ecx.deref_pointer_and_write(
         cond_op,
         8,
         Scalar::from_i32(clock_id),
@@ -346,7 +346,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // This can always be revisited to have some external state to catch double-destroys
         // but not complain about the above code. See https://github.com/rust-lang/miri/pull/1933
         this.write_uninit(
-            &this.deref_operand_as(attr_op, this.libc_ty_layout("pthread_mutexattr_t"))?,
+            &this.deref_pointer_as(attr_op, this.libc_ty_layout("pthread_mutexattr_t"))?,
         )?;
 
         Ok(0)
@@ -500,7 +500,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         // This might lead to false positives, see comment in pthread_mutexattr_destroy
         this.write_uninit(
-            &this.deref_operand_as(mutex_op, this.libc_ty_layout("pthread_mutex_t"))?,
+            &this.deref_pointer_as(mutex_op, this.libc_ty_layout("pthread_mutex_t"))?,
         )?;
         // FIXME: delete interpreter state associated with this mutex.
 
@@ -625,7 +625,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         // This might lead to false positives, see comment in pthread_mutexattr_destroy
         this.write_uninit(
-            &this.deref_operand_as(rwlock_op, this.libc_ty_layout("pthread_rwlock_t"))?,
+            &this.deref_pointer_as(rwlock_op, this.libc_ty_layout("pthread_rwlock_t"))?,
         )?;
         // FIXME: delete interpreter state associated with this rwlock.
 
@@ -675,7 +675,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_mut();
 
         let clock_id = condattr_get_clock_id(this, attr_op)?;
-        this.write_scalar(Scalar::from_i32(clock_id), &this.deref_operand(clk_id_op)?)?;
+        this.write_scalar(Scalar::from_i32(clock_id), &this.deref_pointer(clk_id_op)?)?;
 
         Ok(Scalar::from_i32(0))
     }
@@ -691,7 +691,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         // This might lead to false positives, see comment in pthread_mutexattr_destroy
         this.write_uninit(
-            &this.deref_operand_as(attr_op, this.libc_ty_layout("pthread_condattr_t"))?,
+            &this.deref_pointer_as(attr_op, this.libc_ty_layout("pthread_condattr_t"))?,
         )?;
 
         Ok(0)
@@ -784,7 +784,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // Extract the timeout.
         let clock_id = cond_get_clock_id(this, cond_op)?;
         let duration = match this
-            .read_timespec(&this.deref_operand_as(abstime_op, this.libc_ty_layout("timespec"))?)?
+            .read_timespec(&this.deref_pointer_as(abstime_op, this.libc_ty_layout("timespec"))?)?
         {
             Some(duration) => duration,
             None => {
@@ -867,7 +867,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         cond_get_clock_id(this, cond_op)?;
 
         // This might lead to false positives, see comment in pthread_mutexattr_destroy
-        this.write_uninit(&this.deref_operand_as(cond_op, this.libc_ty_layout("pthread_cond_t"))?)?;
+        this.write_uninit(&this.deref_pointer_as(cond_op, this.libc_ty_layout("pthread_cond_t"))?)?;
         // FIXME: delete interpreter state associated with this condvar.
 
         Ok(0)

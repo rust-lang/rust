@@ -130,7 +130,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_mut();
 
         let [place] = check_arg_count(args)?;
-        let place = this.deref_operand(place)?;
+        let place = this.deref_pointer(place)?;
 
         // Perform atomic load.
         let val = this.read_scalar_atomic(&place, atomic)?;
@@ -147,7 +147,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_mut();
 
         let [place, val] = check_arg_count(args)?;
-        let place = this.deref_operand(place)?;
+        let place = this.deref_pointer(place)?;
 
         // Perform regular load.
         let val = this.read_scalar(val)?;
@@ -188,7 +188,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_mut();
 
         let [place, rhs] = check_arg_count(args)?;
-        let place = this.deref_operand(place)?;
+        let place = this.deref_pointer(place)?;
         let rhs = this.read_immediate(rhs)?;
 
         if !place.layout.ty.is_integral() && !place.layout.ty.is_unsafe_ptr() {
@@ -229,7 +229,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_mut();
 
         let [place, new] = check_arg_count(args)?;
-        let place = this.deref_operand(place)?;
+        let place = this.deref_pointer(place)?;
         let new = this.read_scalar(new)?;
 
         let old = this.atomic_exchange_scalar(&place, new, atomic)?;
@@ -248,7 +248,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_mut();
 
         let [place, expect_old, new] = check_arg_count(args)?;
-        let place = this.deref_operand(place)?;
+        let place = this.deref_pointer(place)?;
         let expect_old = this.read_immediate(expect_old)?; // read as immediate for the sake of `binary_op()`
         let new = this.read_scalar(new)?;
 

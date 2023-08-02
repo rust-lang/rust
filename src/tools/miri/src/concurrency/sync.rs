@@ -206,7 +206,7 @@ pub(super) trait EvalContextExtPriv<'mir, 'tcx: 'mir>:
     ) -> InterpResult<'tcx, Option<Id>> {
         let this = self.eval_context_mut();
         let value_place =
-            this.deref_operand_and_offset(lock_op, offset, lock_layout, this.machine.layouts.u32)?;
+            this.deref_pointer_and_offset(lock_op, offset, lock_layout, this.machine.layouts.u32)?;
 
         // Since we are lazy, this update has to be atomic.
         let (old, success) = this
