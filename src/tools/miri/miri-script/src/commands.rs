@@ -6,7 +6,7 @@ use std::ops::Not;
 use anyhow::{anyhow, bail, Context, Result};
 use path_macro::path;
 use walkdir::WalkDir;
-use xshell::cmd;
+use xshell::{cmd, Shell};
 
 use crate::util::*;
 use crate::Command;
@@ -91,7 +91,7 @@ impl Command {
         // Make sure rustup-toolchain-install-master is installed.
         which::which("rustup-toolchain-install-master")
             .context("Please install rustup-toolchain-install-master by running 'cargo install rustup-toolchain-install-master'")?;
-        let sh = shell()?;
+        let sh = Shell::new()?;
         sh.change_dir(miri_dir()?);
         let new_commit = Some(sh.read_file("rust-version")?.trim().to_owned());
         let current_commit = {
@@ -130,7 +130,7 @@ impl Command {
     }
 
     fn rustc_pull(commit: Option<String>) -> Result<()> {
-        let sh = shell()?;
+        let sh = Shell::new()?;
         sh.change_dir(miri_dir()?);
         let commit = commit.map(Result::Ok).unwrap_or_else(|| {
             let rust_repo_head =
@@ -177,7 +177,7 @@ impl Command {
     }
 
     fn rustc_push(github_user: String, branch: String) -> Result<()> {
-        let sh = shell()?;
+        let sh = Shell::new()?;
         sh.change_dir(miri_dir()?);
         let base = sh.read_file("rust-version")?.trim().to_owned();
         // Make sure the repo is clean.
@@ -265,7 +265,7 @@ impl Command {
         let Some((command_name, trailing_args)) = command.split_first() else {
             bail!("expected many-seeds command to be non-empty");
         };
-        let sh = shell()?;
+        let sh = Shell::new()?;
         for seed in seed_start..seed_end {
             println!("Trying seed: {seed}");
             let mut miriflags = env::var_os("MIRIFLAGS").unwrap_or_default();
@@ -293,7 +293,7 @@ impl Command {
         // Make sure we have an up-to-date Miri installed and selected the right toolchain.
         Self::install(vec![])?;
 
-        let sh = shell()?;
+        let sh = Shell::new()?;
         sh.change_dir(miri_dir()?);
         let benches_dir = "bench-cargo-miri";
         let benches = if benches.is_empty() {
