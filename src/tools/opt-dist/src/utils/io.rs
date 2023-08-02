@@ -2,6 +2,7 @@ use anyhow::Context;
 use camino::{Utf8Path, Utf8PathBuf};
 use fs_extra::dir::CopyOptions;
 use std::fs::File;
+use std::path::Path;
 
 /// Delete and re-create the directory.
 pub fn reset_directory(path: &Utf8Path) -> anyhow::Result<()> {
@@ -14,6 +15,12 @@ pub fn reset_directory(path: &Utf8Path) -> anyhow::Result<()> {
 pub fn copy_directory(src: &Utf8Path, dst: &Utf8Path) -> anyhow::Result<()> {
     log::info!("Copying directory {src} to {dst}");
     fs_extra::dir::copy(src, dst, &CopyOptions::default().copy_inside(true))?;
+    Ok(())
+}
+
+pub fn copy_file<S: AsRef<Path>, D: AsRef<Path>>(src: S, dst: D) -> anyhow::Result<()> {
+    log::info!("Copying file {} to {}", src.as_ref().display(), dst.as_ref().display());
+    std::fs::copy(src.as_ref(), dst.as_ref())?;
     Ok(())
 }
 
@@ -59,4 +66,23 @@ pub fn get_files_from_dir(
         .into_iter()
         .map(|p| p.map(|p| Utf8PathBuf::from_path_buf(p).unwrap()))
         .collect::<Result<Vec<_>, _>>()?)
+}
+
+/// Finds a single file in the specified `directory` with the given `prefix` and `suffix`.
+pub fn find_file_in_dir(
+    directory: &Utf8Path,
+    prefix: &str,
+    suffix: &str,
+) -> anyhow::Result<Utf8PathBuf> {
+    let files = glob::glob(&format!("{directory}/{prefix}*{suffix}"))?
+        .into_iter()
+        .collect::<Result<Vec<_>, _>>()?;
+    match files.len() {
+        0 => Err(anyhow::anyhow!("No file with prefix {prefix} found in {directory}")),
+        1 => Ok(Utf8PathBuf::from_path_buf(files[0].clone()).unwrap()),
+        _ => Err(anyhow::anyhow!(
+            "More than one file with prefix {prefix} found in {directory}: {:?}",
+            files
+        )),
+    }
 }

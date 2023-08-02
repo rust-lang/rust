@@ -28,7 +28,7 @@ pub(crate) unsafe fn codegen(
         tws => bug!("Unsupported target word size for int: {}", tws),
     };
     let i8 = llvm::LLVMInt8TypeInContext(llcx);
-    let i8p = llvm::LLVMPointerType(i8, 0);
+    let i8p = llvm::LLVMPointerTypeInContext(llcx, 0);
     let void = llvm::LLVMVoidTypeInContext(llcx);
 
     if kind == AllocatorKind::Default {

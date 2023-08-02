@@ -557,7 +557,7 @@ impl<K: DepKind> DepGraph<K> {
                         result,
                         prev_index,
                         hash_result,
-                        |value| format!("{:?}", value),
+                        |value| format!("{value:?}"),
                     );
 
                     #[cfg(debug_assertions)]
@@ -1433,7 +1433,7 @@ pub(crate) fn print_markframe_trace<K: DepKind>(
     let mut current = frame;
     while let Some(frame) = current {
         let node = data.previous.index_to_node(frame.index);
-        eprintln!("#{i} {:?}", node);
+        eprintln!("#{i} {node:?}");
         current = frame.parent;
         i += 1;
     }

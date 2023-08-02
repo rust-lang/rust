@@ -463,7 +463,7 @@ impl TryFrom<ScalarInt> for Double {
 impl fmt::Debug for ScalarInt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Dispatch to LowerHex below.
-        write!(f, "0x{:x}", self)
+        write!(f, "0x{self:x}")
     }
 }
 

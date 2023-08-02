@@ -300,7 +300,7 @@ impl<'a> Parser<'a> {
                 Ok(ty) => (None, Some(ty)),
                 Err(mut err) => {
                     if let Ok(snip) = self.span_to_snippet(pat.span) {
-                        err.span_label(pat.span, format!("while parsing the type for `{}`", snip));
+                        err.span_label(pat.span, format!("while parsing the type for `{snip}`"));
                     }
                     // we use noexpect here because we don't actually expect Eq to be here
                     // but we are still checking for it in order to be able to handle it if
@@ -502,7 +502,7 @@ impl<'a> Parser<'a> {
 
     fn error_block_no_opening_brace<T>(&mut self) -> PResult<'a, T> {
         let tok = super::token_descr(&self.token);
-        let msg = format!("expected `{{`, found {}", tok);
+        let msg = format!("expected `{{`, found {tok}");
         Err(self.error_block_no_opening_brace_msg(Cow::from(msg)))
     }
 
@@ -638,10 +638,9 @@ impl<'a> Parser<'a> {
                                 e.span_suggestion(
                                     sp.with_hi(sp.lo() + BytePos(marker.len() as u32)),
                                     format!(
-                                        "add a space before `{}` to use a regular comment",
-                                        doc_comment_marker,
+                                        "add a space before `{doc_comment_marker}` to use a regular comment",
                                     ),
-                                    format!("{} {}", comment_marker, doc_comment_marker),
+                                    format!("{comment_marker} {doc_comment_marker}"),
                                     Applicability::MaybeIncorrect,
                                 );
                             }

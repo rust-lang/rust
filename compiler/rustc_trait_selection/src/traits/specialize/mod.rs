@@ -388,16 +388,16 @@ fn report_conflicting_impls<'tcx>(
                     impl_span,
                     format!(
                         "conflicting implementation{}",
-                        overlap.self_ty.map_or_else(String::new, |ty| format!(" for `{}`", ty))
+                        overlap.self_ty.map_or_else(String::new, |ty| format!(" for `{ty}`"))
                     ),
                 );
             }
             Err(cname) => {
                 let msg = match to_pretty_impl_header(tcx, overlap.with_impl) {
                     Some(s) => {
-                        format!("conflicting implementation in crate `{}`:\n- {}", cname, s)
+                        format!("conflicting implementation in crate `{cname}`:\n- {s}")
                     }
-                    None => format!("conflicting implementation in crate `{}`", cname),
+                    None => format!("conflicting implementation in crate `{cname}`"),
                 };
                 err.note(msg);
             }
@@ -514,8 +514,7 @@ pub(crate) fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Opti
         pretty_predicates.push(p.to_string());
     }
 
-    pretty_predicates
-        .extend(types_without_default_bounds.iter().map(|ty| format!("{}: ?Sized", ty)));
+    pretty_predicates.extend(types_without_default_bounds.iter().map(|ty| format!("{ty}: ?Sized")));
 
     if !pretty_predicates.is_empty() {
         write!(w, "\n  where {}", pretty_predicates.join(", ")).unwrap();

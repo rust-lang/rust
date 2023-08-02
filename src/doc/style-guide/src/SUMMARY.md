@@ -9,4 +9,5 @@
 - [Other style advice](advice.md)
 - [`Cargo.toml` conventions](cargo.md)
 - [Guiding principles and rationale](principles.md)
+- [Rust style editions](editions.md)
 - [Nightly-only syntax](nightly.md)

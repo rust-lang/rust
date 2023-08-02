@@ -46,7 +46,7 @@ pub fn report_missing_open_delim(
             };
             err.span_label(
                 unmatch_brace.found_span.shrink_to_lo(),
-                format!("missing open `{}` for this delimiter", missed_open),
+                format!("missing open `{missed_open}` for this delimiter"),
             );
             reported_missing_open = true;
         }

@@ -57,6 +57,7 @@ pub enum Certainty {
 
 impl Certainty {
     pub const AMBIGUOUS: Certainty = Certainty::Maybe(MaybeCause::Ambiguity);
+    pub const OVERFLOW: Certainty = Certainty::Maybe(MaybeCause::Overflow);
 
     /// Use this function to merge the certainty of multiple nested subgoals.
     ///
@@ -66,7 +67,7 @@ impl Certainty {
     /// success, we merge these two responses. This results in ambiguity.
     ///
     /// If we unify ambiguity with overflow, we return overflow. This doesn't matter
-    /// inside of the solver as we distinguish ambiguity from overflow. It does
+    /// inside of the solver as we do not distinguish ambiguity from overflow. It does
     /// however matter for diagnostics. If `T: Foo` resulted in overflow and `T: Bar`
     /// in ambiguity without changing the inference state, we still want to tell the
     /// user that `T: Baz` results in overflow.

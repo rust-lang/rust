@@ -2,10 +2,10 @@
 
 set -ex
 
-# Originally from https://github.com/llvm/llvm-project/releases/download/llvmorg-15.0.6/clang+llvm-15.0.6-x86_64-linux-gnu-ubuntu-18.04.tar.xz
-curl https://ci-mirrors.rust-lang.org/rustc/2022-12-06-clang%2Bllvm-15.0.6-x86_64-linux-gnu-ubuntu-18.04.tar.xz | \
+# Originally from https://github.com/llvm/llvm-project/releases/download/llvmorg-16.0.4/clang+llvm-16.0.4-x86_64-linux-gnu-ubuntu-22.04.tar.xz
+curl https://ci-mirrors.rust-lang.org/rustc/2023-05-17-clang%2Bllvm-16.0.4-x86_64-linux-gnu-ubuntu-22.04.tar.xz | \
   tar xJf -
-bin="$PWD/clang+llvm-15.0.6-x86_64-linux-gnu-ubuntu-18.04/bin"
+bin="$PWD/clang+llvm-16.0.4-x86_64-linux-gnu-ubuntu-22.04/bin"
 
 git clone https://github.com/WebAssembly/wasi-libc
 

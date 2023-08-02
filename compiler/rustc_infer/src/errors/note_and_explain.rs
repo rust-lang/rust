@@ -80,7 +80,7 @@ impl<'a> DescriptionCtx<'a> {
             // We shouldn't really be having unification failures with ReVar
             // and ReLateBound though.
             ty::ReVar(_) | ty::ReLateBound(..) | ty::ReErased => {
-                (alt_span, "revar", format!("{:?}", region))
+                (alt_span, "revar", format!("{region:?}"))
             }
         };
         Some(DescriptionCtx { span, kind, arg })

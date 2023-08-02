@@ -142,15 +142,6 @@ pub trait ExtraBackendMethods:
         target_features: &[String],
     ) -> TargetMachineFactoryFn<Self>;
 
-    fn spawn_thread<F, T>(_time_trace: bool, f: F) -> std::thread::JoinHandle<T>
-    where
-        F: FnOnce() -> T,
-        F: Send + 'static,
-        T: Send + 'static,
-    {
-        std::thread::spawn(f)
-    }
-
     fn spawn_named_thread<F, T>(
         _time_trace: bool,
         name: String,

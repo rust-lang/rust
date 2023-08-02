@@ -723,11 +723,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .iter_instantiated_copied(self.tcx, args)
                 .find_map(|(p, s)| get_future_output(p.as_predicate(), s))?,
             ty::Error(_) => return None,
-            ty::Alias(ty::Projection, proj) if self.tcx.is_impl_trait_in_trait(proj.def_id) => self
-                .tcx
-                .explicit_item_bounds(proj.def_id)
-                .iter_instantiated_copied(self.tcx, proj.args)
-                .find_map(|(p, s)| get_future_output(p.as_predicate(), s))?,
             _ => span_bug!(
                 self.tcx.def_span(expr_def_id),
                 "async fn generator return type not an inference variable: {ret_ty}"
@@ -800,7 +795,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Converts the types that the user supplied, in case that doing
     /// so should yield an error, but returns back a signature where
-    /// all parameters are of type `TyErr`.
+    /// all parameters are of type `ty::Error`.
     fn error_sig_of_closure(
         &self,
         decl: &hir::FnDecl<'_>,

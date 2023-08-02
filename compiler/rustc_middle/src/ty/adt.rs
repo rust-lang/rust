@@ -562,18 +562,10 @@ impl<'tcx> AdtDef<'tcx> {
         tcx.adt_destructor(self.did())
     }
 
-    /// Returns a list of types such that `Self: Sized` if and only
-    /// if that type is `Sized`, or `TyErr` if this type is recursive.
-    ///
-    /// Oddly enough, checking that the sized-constraint is `Sized` is
-    /// actually more expressive than checking all members:
-    /// the `Sized` trait is inductive, so an associated type that references
-    /// `Self` would prevent its containing ADT from being `Sized`.
-    ///
-    /// Due to normalization being eager, this applies even if
-    /// the associated type is behind a pointer (e.g., issue #31299).
-    pub fn sized_constraint(self, tcx: TyCtxt<'tcx>) -> ty::EarlyBinder<&'tcx [Ty<'tcx>]> {
-        ty::EarlyBinder::bind(tcx.adt_sized_constraint(self.did()))
+    /// Returns a list of types such that `Self: Sized` if and only if that
+    /// type is `Sized`, or `ty::Error` if this type has a recursive layout.
+    pub fn sized_constraint(self, tcx: TyCtxt<'tcx>) -> ty::EarlyBinder<&'tcx ty::List<Ty<'tcx>>> {
+        tcx.adt_sized_constraint(self.did())
     }
 }
 

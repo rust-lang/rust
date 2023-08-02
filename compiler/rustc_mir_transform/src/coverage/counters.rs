@@ -16,8 +16,8 @@ use rustc_middle::mir::coverage::*;
 /// `Coverage` statements.
 pub(super) struct CoverageCounters {
     function_source_hash: u64,
-    next_counter_id: u32,
-    num_expressions: u32,
+    next_counter_id: CounterId,
+    next_expression_id: ExpressionId,
     pub debug_counters: DebugCounters,
 }
 
@@ -25,8 +25,8 @@ impl CoverageCounters {
     pub fn new(function_source_hash: u64) -> Self {
         Self {
             function_source_hash,
-            next_counter_id: CounterValueReference::START.as_u32(),
-            num_expressions: 0,
+            next_counter_id: CounterId::START,
+            next_expression_id: ExpressionId::START,
             debug_counters: DebugCounters::new(),
         }
     }
@@ -65,9 +65,9 @@ impl CoverageCounters {
 
     fn make_expression<F>(
         &mut self,
-        lhs: ExpressionOperandId,
+        lhs: Operand,
         op: Op,
-        rhs: ExpressionOperandId,
+        rhs: Operand,
         debug_block_label_fn: F,
     ) -> CoverageKind
     where
@@ -81,33 +81,30 @@ impl CoverageCounters {
         expression
     }
 
-    pub fn make_identity_counter(&mut self, counter_operand: ExpressionOperandId) -> CoverageKind {
+    pub fn make_identity_counter(&mut self, counter_operand: Operand) -> CoverageKind {
         let some_debug_block_label = if self.debug_counters.is_enabled() {
             self.debug_counters.some_block_label(counter_operand).cloned()
         } else {
             None
         };
-        self.make_expression(counter_operand, Op::Add, ExpressionOperandId::ZERO, || {
+        self.make_expression(counter_operand, Op::Add, Operand::Zero, || {
             some_debug_block_label.clone()
         })
     }
 
     /// Counter IDs start from one and go up.
-    fn next_counter(&mut self) -> CounterValueReference {
-        assert!(self.next_counter_id < u32::MAX - self.num_expressions);
+    fn next_counter(&mut self) -> CounterId {
         let next = self.next_counter_id;
-        self.next_counter_id += 1;
-        CounterValueReference::from(next)
+        self.next_counter_id = next.next_id();
+        next
     }
 
-    /// Expression IDs start from u32::MAX and go down because an Expression can reference
-    /// (add or subtract counts) of both Counter regions and Expression regions. The counter
-    /// expression operand IDs must be unique across both types.
-    fn next_expression(&mut self) -> InjectedExpressionId {
-        assert!(self.next_counter_id < u32::MAX - self.num_expressions);
-        let next = u32::MAX - self.num_expressions;
-        self.num_expressions += 1;
-        InjectedExpressionId::from(next)
+    /// Expression IDs start from 0 and go up.
+    /// (Counter IDs and Expression IDs are distinguished by the `Operand` enum.)
+    fn next_expression(&mut self) -> ExpressionId {
+        let next = self.next_expression_id;
+        self.next_expression_id = next.next_id();
+        next
     }
 }
 
@@ -199,7 +196,7 @@ impl<'a> BcbCounters<'a> {
         &mut self,
         traversal: &mut TraverseCoverageGraphWithLoops,
         branching_bcb: BasicCoverageBlock,
-        branching_counter_operand: ExpressionOperandId,
+        branching_counter_operand: Operand,
         collect_intermediate_expressions: &mut Vec<CoverageKind>,
     ) -> Result<(), Error> {
         let branches = self.bcb_branches(branching_bcb);
@@ -261,7 +258,7 @@ impl<'a> BcbCounters<'a> {
                         "  [new intermediate expression: {}]",
                         self.format_counter(&intermediate_expression)
                     );
-                    let intermediate_expression_operand = intermediate_expression.as_operand_id();
+                    let intermediate_expression_operand = intermediate_expression.as_operand();
                     collect_intermediate_expressions.push(intermediate_expression);
                     some_sumup_counter_operand.replace(intermediate_expression_operand);
                 }
@@ -298,7 +295,7 @@ impl<'a> BcbCounters<'a> {
         &mut self,
         bcb: BasicCoverageBlock,
         collect_intermediate_expressions: &mut Vec<CoverageKind>,
-    ) -> Result<ExpressionOperandId, Error> {
+    ) -> Result<Operand, Error> {
         self.recursive_get_or_make_counter_operand(bcb, collect_intermediate_expressions, 1)
     }
 
@@ -307,7 +304,7 @@ impl<'a> BcbCounters<'a> {
         bcb: BasicCoverageBlock,
         collect_intermediate_expressions: &mut Vec<CoverageKind>,
         debug_indent_level: usize,
-    ) -> Result<ExpressionOperandId, Error> {
+    ) -> Result<Operand, Error> {
         // If the BCB already has a counter, return it.
         if let Some(counter_kind) = self.basic_coverage_blocks[bcb].counter() {
             debug!(
@@ -316,7 +313,7 @@ impl<'a> BcbCounters<'a> {
                 bcb,
                 self.format_counter(counter_kind),
             );
-            return Ok(counter_kind.as_operand_id());
+            return Ok(counter_kind.as_operand());
         }
 
         // A BCB with only one incoming edge gets a simple `Counter` (via `make_counter()`).
@@ -383,7 +380,7 @@ impl<'a> BcbCounters<'a> {
                     NESTED_INDENT.repeat(debug_indent_level),
                     self.format_counter(&intermediate_expression)
                 );
-                let intermediate_expression_operand = intermediate_expression.as_operand_id();
+                let intermediate_expression_operand = intermediate_expression.as_operand();
                 collect_intermediate_expressions.push(intermediate_expression);
                 some_sumup_edge_counter_operand.replace(intermediate_expression_operand);
             }
@@ -408,7 +405,7 @@ impl<'a> BcbCounters<'a> {
         from_bcb: BasicCoverageBlock,
         to_bcb: BasicCoverageBlock,
         collect_intermediate_expressions: &mut Vec<CoverageKind>,
-    ) -> Result<ExpressionOperandId, Error> {
+    ) -> Result<Operand, Error> {
         self.recursive_get_or_make_edge_counter_operand(
             from_bcb,
             to_bcb,
@@ -423,7 +420,7 @@ impl<'a> BcbCounters<'a> {
         to_bcb: BasicCoverageBlock,
         collect_intermediate_expressions: &mut Vec<CoverageKind>,
         debug_indent_level: usize,
-    ) -> Result<ExpressionOperandId, Error> {
+    ) -> Result<Operand, Error> {
         // If the source BCB has only one successor (assumed to be the given target), an edge
         // counter is unnecessary. Just get or make a counter for the source BCB.
         let successors = self.bcb_successors(from_bcb).iter();
@@ -444,7 +441,7 @@ impl<'a> BcbCounters<'a> {
                 to_bcb,
                 self.format_counter(counter_kind)
             );
-            return Ok(counter_kind.as_operand_id());
+            return Ok(counter_kind.as_operand());
         }
 
         // Make a new counter to count this edge.

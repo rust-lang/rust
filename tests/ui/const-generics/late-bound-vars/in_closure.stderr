@@ -1,4 +1,3 @@
-error: query stack during panic:
 #0 [mir_borrowck] borrow-checking `test::{closure#0}::{constant#1}`
 #1 [mir_drops_elaborated_and_const_checked] elaborating drops for `test::{closure#0}::{constant#1}`
 #2 [mir_for_ctfe] caching mir of `test::{closure#0}::{constant#1}` for CTFE
@@ -9,4 +8,3 @@ error: query stack during panic:
 #7 [analysis] running analysis passes on this crate
 end of query stack
 error: aborting due to previous error
-

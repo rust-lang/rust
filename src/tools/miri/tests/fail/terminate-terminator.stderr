@@ -1,6 +1,7 @@
 warning: You have explicitly enabled MIR optimizations, overriding Miri's default which is to completely disable them. Any optimizations may hide UB that Miri would otherwise detect, and it is not necessarily possible to predict what kind of UB will be missed. If you are enabling optimizations to make Miri run faster, we advise using cfg(miri) to shrink your workload instead. The performance benefit of enabling MIR optimizations is usually marginal at best.
 
-thread 'main' panicked at 'explicit panic', $DIR/terminate-terminator.rs:LL:CC
+thread 'main' panicked at $DIR/terminate-terminator.rs:LL:CC:
+explicit panic
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 error: abnormal termination: panic in a function that cannot unwind
   --> $DIR/terminate-terminator.rs:LL:CC

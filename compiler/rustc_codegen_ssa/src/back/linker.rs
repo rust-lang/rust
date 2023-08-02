@@ -309,7 +309,7 @@ impl<'a> GccLinker<'a> {
             self.linker_arg(&format!("-plugin-opt=sample-profile={}", path.display()));
         };
         self.linker_args(&[
-            &format!("-plugin-opt={}", opt_level),
+            &format!("-plugin-opt={opt_level}"),
             &format!("-plugin-opt=mcpu={}", self.target_cpu),
         ]);
     }
@@ -487,7 +487,7 @@ impl<'a> Linker for GccLinker<'a> {
 
     fn link_rust_dylib(&mut self, lib: &str, _path: &Path) {
         self.hint_dynamic();
-        self.cmd.arg(format!("-l{}", lib));
+        self.cmd.arg(format!("-l{lib}"));
     }
 
     fn link_framework(&mut self, framework: &str, as_needed: bool) {
@@ -671,8 +671,8 @@ impl<'a> Linker for GccLinker<'a> {
             let res: io::Result<()> = try {
                 let mut f = BufWriter::new(File::create(&path)?);
                 for sym in symbols {
-                    debug!("  _{}", sym);
-                    writeln!(f, "_{}", sym)?;
+                    debug!("  _{sym}");
+                    writeln!(f, "_{sym}")?;
                 }
             };
             if let Err(error) = res {
@@ -686,8 +686,8 @@ impl<'a> Linker for GccLinker<'a> {
                 // because LD doesn't like when it's empty
                 writeln!(f, "EXPORTS")?;
                 for symbol in symbols {
-                    debug!("  _{}", symbol);
-                    writeln!(f, "  {}", symbol)?;
+                    debug!("  _{symbol}");
+                    writeln!(f, "  {symbol}")?;
                 }
             };
             if let Err(error) = res {
@@ -701,8 +701,8 @@ impl<'a> Linker for GccLinker<'a> {
                 if !symbols.is_empty() {
                     writeln!(f, "  global:")?;
                     for sym in symbols {
-                        debug!("    {};", sym);
-                        writeln!(f, "    {};", sym)?;
+                        debug!("    {sym};");
+                        writeln!(f, "    {sym};")?;
                     }
                 }
                 writeln!(f, "\n  local:\n    *;\n}};")?;
@@ -837,7 +837,7 @@ impl<'a> Linker for MsvcLinker<'a> {
         // `foo.lib` file if the dll doesn't actually export any symbols, so we
         // check to see if the file is there and just omit linking to it if it's
         // not present.
-        let name = format!("{}.dll.lib", lib);
+        let name = format!("{lib}.dll.lib");
         if path.join(&name).exists() {
             self.cmd.arg(name);
         }
@@ -977,8 +977,8 @@ impl<'a> Linker for MsvcLinker<'a> {
             writeln!(f, "LIBRARY")?;
             writeln!(f, "EXPORTS")?;
             for symbol in symbols {
-                debug!("  _{}", symbol);
-                writeln!(f, "  {}", symbol)?;
+                debug!("  _{symbol}");
+                writeln!(f, "  {symbol}")?;
             }
         };
         if let Err(error) = res {
@@ -992,7 +992,7 @@ impl<'a> Linker for MsvcLinker<'a> {
     fn subsystem(&mut self, subsystem: &str) {
         // Note that previous passes of the compiler validated this subsystem,
         // so we just blindly pass it to the linker.
-        self.cmd.arg(&format!("/SUBSYSTEM:{}", subsystem));
+        self.cmd.arg(&format!("/SUBSYSTEM:{subsystem}"));
 
         // Windows has two subsystems we're interested in right now, the console
         // and windows subsystems. These both implicitly have different entry
@@ -1147,7 +1147,7 @@ impl<'a> Linker for EmLinker<'a> {
             &symbols.iter().map(|sym| "_".to_owned() + sym).collect::<Vec<_>>(),
         )
         .unwrap();
-        debug!("{}", encoded);
+        debug!("{encoded}");
 
         arg.push(encoded);
 
@@ -1350,7 +1350,7 @@ impl<'a> Linker for L4Bender<'a> {
     }
     fn link_staticlib(&mut self, lib: &str, _verbatim: bool) {
         self.hint_static();
-        self.cmd.arg(format!("-PC{}", lib));
+        self.cmd.arg(format!("-PC{lib}"));
     }
     fn link_rlib(&mut self, lib: &Path) {
         self.hint_static();
@@ -1399,7 +1399,7 @@ impl<'a> Linker for L4Bender<'a> {
 
     fn link_whole_staticlib(&mut self, lib: &str, _verbatim: bool, _search_path: &[PathBuf]) {
         self.hint_static();
-        self.cmd.arg("--whole-archive").arg(format!("-l{}", lib));
+        self.cmd.arg("--whole-archive").arg(format!("-l{lib}"));
         self.cmd.arg("--no-whole-archive");
     }
 
@@ -1453,7 +1453,7 @@ impl<'a> Linker for L4Bender<'a> {
     }
 
     fn subsystem(&mut self, subsystem: &str) {
-        self.cmd.arg(&format!("--subsystem {}", subsystem));
+        self.cmd.arg(&format!("--subsystem {subsystem}"));
     }
 
     fn reset_per_library_state(&mut self) {
@@ -1518,12 +1518,12 @@ impl<'a> AixLinker<'a> {
 impl<'a> Linker for AixLinker<'a> {
     fn link_dylib(&mut self, lib: &str, _verbatim: bool, _as_needed: bool) {
         self.hint_dynamic();
-        self.cmd.arg(format!("-l{}", lib));
+        self.cmd.arg(format!("-l{lib}"));
     }
 
     fn link_staticlib(&mut self, lib: &str, _verbatim: bool) {
         self.hint_static();
-        self.cmd.arg(format!("-l{}", lib));
+        self.cmd.arg(format!("-l{lib}"));
     }
 
     fn link_rlib(&mut self, lib: &Path) {
@@ -1573,7 +1573,7 @@ impl<'a> Linker for AixLinker<'a> {
 
     fn link_rust_dylib(&mut self, lib: &str, _: &Path) {
         self.hint_dynamic();
-        self.cmd.arg(format!("-l{}", lib));
+        self.cmd.arg(format!("-l{lib}"));
     }
 
     fn link_framework(&mut self, _framework: &str, _as_needed: bool) {
@@ -1626,12 +1626,12 @@ impl<'a> Linker for AixLinker<'a> {
             let mut f = BufWriter::new(File::create(&path)?);
             // FIXME: use llvm-nm to generate export list.
             for symbol in symbols {
-                debug!("  _{}", symbol);
-                writeln!(f, "  {}", symbol)?;
+                debug!("  _{symbol}");
+                writeln!(f, "  {symbol}")?;
             }
         };
         if let Err(e) = res {
-            self.sess.fatal(format!("failed to write export file: {}", e));
+            self.sess.fatal(format!("failed to write export file: {e}"));
         }
         self.cmd.arg(format!("-bE:{}", path.to_str().unwrap()));
     }
@@ -1908,7 +1908,7 @@ impl<'a> Linker for BpfLinker<'a> {
         let res: io::Result<()> = try {
             let mut f = BufWriter::new(File::create(&path)?);
             for sym in symbols {
-                writeln!(f, "{}", sym)?;
+                writeln!(f, "{sym}")?;
             }
         };
         if let Err(error) = res {

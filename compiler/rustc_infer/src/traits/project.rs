@@ -190,7 +190,7 @@ impl<'tcx> ProjectionCache<'_, 'tcx> {
         }
         let fresh_key =
             map.insert(key, ProjectionCacheEntry::NormalizedTy { ty: value, complete: None });
-        assert!(!fresh_key, "never started projecting `{:?}`", key);
+        assert!(!fresh_key, "never started projecting `{key:?}`");
     }
 
     /// Mark the relevant projection cache key as having its derived obligations
@@ -229,7 +229,7 @@ impl<'tcx> ProjectionCache<'_, 'tcx> {
     /// be different).
     pub fn ambiguous(&mut self, key: ProjectionCacheKey<'tcx>) {
         let fresh = self.map().insert(key, ProjectionCacheEntry::Ambiguous);
-        assert!(!fresh, "never started projecting `{:?}`", key);
+        assert!(!fresh, "never started projecting `{key:?}`");
     }
 
     /// Indicates that while trying to normalize `key`, `key` was required to
@@ -237,14 +237,14 @@ impl<'tcx> ProjectionCache<'_, 'tcx> {
     /// an error here.
     pub fn recur(&mut self, key: ProjectionCacheKey<'tcx>) {
         let fresh = self.map().insert(key, ProjectionCacheEntry::Recur);
-        assert!(!fresh, "never started projecting `{:?}`", key);
+        assert!(!fresh, "never started projecting `{key:?}`");
     }
 
     /// Indicates that trying to normalize `key` resulted in
     /// error.
     pub fn error(&mut self, key: ProjectionCacheKey<'tcx>) {
         let fresh = self.map().insert(key, ProjectionCacheEntry::Error);
-        assert!(!fresh, "never started projecting `{:?}`", key);
+        assert!(!fresh, "never started projecting `{key:?}`");
     }
 }
 

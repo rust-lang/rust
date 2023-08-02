@@ -357,7 +357,7 @@ fn impl_intersection_has_negative_obligation(
         Err(err) => {
             tcx.sess.delay_span_bug(
                 tcx.def_span(impl1_def_id),
-                format!("failed to fully normalize {:?}: {:?}", impl1_def_id, err),
+                format!("failed to fully normalize {impl1_def_id:?}: {err:?}"),
             );
             return false;
         }

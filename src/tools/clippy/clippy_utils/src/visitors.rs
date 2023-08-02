@@ -52,6 +52,16 @@ pub trait Visitable<'tcx> {
     /// Calls the corresponding `visit_*` function on the visitor.
     fn visit<V: Visitor<'tcx>>(self, visitor: &mut V);
 }
+impl<'tcx, T> Visitable<'tcx> for &'tcx [T]
+where
+    &'tcx T: Visitable<'tcx>,
+{
+    fn visit<V: Visitor<'tcx>>(self, visitor: &mut V) {
+        for x in self {
+            x.visit(visitor);
+        }
+    }
+}
 macro_rules! visitable_ref {
     ($t:ident, $f:ident) => {
         impl<'tcx> Visitable<'tcx> for &'tcx $t<'tcx> {

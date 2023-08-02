@@ -46,9 +46,9 @@ pub use t;
 /// executable for a particular target.
 pub fn exe(name: &str, target: TargetSelection) -> String {
     if target.contains("windows") {
-        format!("{}.exe", name)
+        format!("{name}.exe")
     } else if target.contains("uefi") {
-        format!("{}.efi", name)
+        format!("{name}.efi")
     } else {
         name.to_string()
     }
@@ -161,9 +161,8 @@ pub fn forcing_clang_based_tests() -> bool {
             other => {
                 // Let's make sure typos don't go unnoticed
                 panic!(
-                    "Unrecognized option '{}' set in \
-                        RUSTBUILD_FORCE_CLANG_BASED_TESTS",
-                    other
+                    "Unrecognized option '{other}' set in \
+                        RUSTBUILD_FORCE_CLANG_BASED_TESTS"
                 )
             }
         }
@@ -227,15 +226,14 @@ pub fn check_run(cmd: &mut Command, print_cmd_on_fail: bool) -> bool {
     let status = match cmd.status() {
         Ok(status) => status,
         Err(e) => {
-            println!("failed to execute command: {:?}\nerror: {}", cmd, e);
+            println!("failed to execute command: {cmd:?}\nerror: {e}");
             return false;
         }
     };
     if !status.success() && print_cmd_on_fail {
         println!(
-            "\n\ncommand did not execute successfully: {:?}\n\
-             expected success, got: {}\n\n",
-            cmd, status
+            "\n\ncommand did not execute successfully: {cmd:?}\n\
+             expected success, got: {status}\n\n"
         );
     }
     status.success()
@@ -250,7 +248,7 @@ pub fn run_suppressed(cmd: &mut Command) {
 pub fn try_run_suppressed(cmd: &mut Command) -> bool {
     let output = match cmd.output() {
         Ok(status) => status,
-        Err(e) => fail(&format!("failed to execute command: {:?}\nerror: {}", cmd, e)),
+        Err(e) => fail(&format!("failed to execute command: {cmd:?}\nerror: {e}")),
     };
     if !output.status.success() {
         println!(
@@ -283,7 +281,7 @@ pub fn make(host: &str) -> PathBuf {
 pub fn output(cmd: &mut Command) -> String {
     let output = match cmd.stderr(Stdio::inherit()).output() {
         Ok(status) => status,
-        Err(e) => fail(&format!("failed to execute command: {:?}\nerror: {}", cmd, e)),
+        Err(e) => fail(&format!("failed to execute command: {cmd:?}\nerror: {e}")),
     };
     if !output.status.success() {
         panic!(
@@ -298,7 +296,7 @@ pub fn output(cmd: &mut Command) -> String {
 pub fn output_result(cmd: &mut Command) -> Result<String, String> {
     let output = match cmd.stderr(Stdio::inherit()).output() {
         Ok(status) => status,
-        Err(e) => return Err(format!("failed to run command: {:?}: {}", cmd, e)),
+        Err(e) => return Err(format!("failed to run command: {cmd:?}: {e}")),
     };
     if !output.status.success() {
         return Err(format!(
@@ -328,7 +326,7 @@ pub fn up_to_date(src: &Path, dst: &Path) -> bool {
     let threshold = mtime(dst);
     let meta = match fs::metadata(src) {
         Ok(meta) => meta,
-        Err(e) => panic!("source {:?} failed to get metadata: {}", src, e),
+        Err(e) => panic!("source {src:?} failed to get metadata: {e}"),
     };
     if meta.is_dir() {
         dir_up_to_date(src, threshold)

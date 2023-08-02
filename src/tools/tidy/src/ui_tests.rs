@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 const ENTRY_LIMIT: usize = 900;
 // FIXME: The following limits should be reduced eventually.
 const ISSUES_ENTRY_LIMIT: usize = 1893;
-const ROOT_ENTRY_LIMIT: usize = 872;
+const ROOT_ENTRY_LIMIT: usize = 873;
 
 const EXPECTED_TEST_FILE_EXTENSIONS: &[&str] = &[
     "rs",     // test source files
@@ -100,7 +100,7 @@ pub fn check(path: &Path, bad: &mut bool) {
             {
                 tidy_error!(bad, "file {} has unexpected extension {}", file_path.display(), ext);
             }
-            if ext == "stderr" || ext == "stdout" {
+            if ext == "stderr" || ext == "stdout" || ext == "fixed" {
                 // Test output filenames have one of the formats:
                 // ```
                 // $testname.stderr

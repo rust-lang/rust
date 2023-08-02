@@ -10,6 +10,7 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
+    /// #![feature(multiple_supertrait_upcastable)]
     /// trait A {}
     /// trait B {}
     ///

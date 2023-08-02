@@ -158,20 +158,19 @@ pub(super) fn get_metadata_xcoff<'a>(path: &Path, data: &'a [u8]) -> Result<&'a 
     {
         let offset = metadata_symbol.address() as usize;
         if offset < 4 {
-            return Err(format!("Invalid metadata symbol offset: {}", offset));
+            return Err(format!("Invalid metadata symbol offset: {offset}"));
         }
         // The offset specifies the location of rustc metadata in the comment section.
         // The metadata is preceded by a 4-byte length field.
         let len = u32::from_be_bytes(info_data[(offset - 4)..offset].try_into().unwrap()) as usize;
         if offset + len > (info_data.len() as usize) {
             return Err(format!(
-                "Metadata at offset {} with size {} is beyond .info section",
-                offset, len
+                "Metadata at offset {offset} with size {len} is beyond .info section"
             ));
         }
         return Ok(&info_data[offset..(offset + len)]);
     } else {
-        return Err(format!("Unable to find symbol {}", AIX_METADATA_SYMBOL_NAME));
+        return Err(format!("Unable to find symbol {AIX_METADATA_SYMBOL_NAME}"));
     };
 }
 

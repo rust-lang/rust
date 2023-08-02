@@ -330,8 +330,7 @@ fn build_options<O: Default>(
                     match value {
                         None => handler.early_error(
                             format!(
-                                "{0} option `{1}` requires {2} ({3} {1}=<value>)",
-                                outputname, key, type_desc, prefix
+                                "{outputname} option `{key}` requires {type_desc} ({prefix} {key}=<value>)"
                             ),
                         ),
                         Some(value) => handler.early_error(
@@ -1882,6 +1881,7 @@ written to standard error output)"),
 
     // If you add a new option, please update:
     // - compiler/rustc_interface/src/tests.rs
+    // - src/doc/unstable-book/src/compiler-flags
 }
 
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]

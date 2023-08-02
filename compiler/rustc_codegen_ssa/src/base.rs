@@ -165,48 +165,25 @@ pub fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 cx.tcx().vtable_trait_upcasting_coercion_new_vptr_slot((source, target));
 
             if let Some(entry_idx) = vptr_entry_idx {
-                let ptr_ty = cx.type_i8p();
+                let ptr_ty = cx.type_ptr();
                 let ptr_align = cx.tcx().data_layout.pointer_align.abi;
-                let vtable_ptr_ty = vtable_ptr_ty(cx, target, target_dyn_kind);
-                let llvtable = bx.pointercast(old_info, bx.type_ptr_to(ptr_ty));
                 let gep = bx.inbounds_gep(
                     ptr_ty,
-                    llvtable,
+                    old_info,
                     &[bx.const_usize(u64::try_from(entry_idx).unwrap())],
                 );
                 let new_vptr = bx.load(ptr_ty, gep, ptr_align);
                 bx.nonnull_metadata(new_vptr);
                 // VTable loads are invariant.
                 bx.set_invariant_load(new_vptr);
-                bx.pointercast(new_vptr, vtable_ptr_ty)
+                new_vptr
             } else {
                 old_info
             }
         }
-        (_, &ty::Dynamic(ref data, _, target_dyn_kind)) => {
-            let vtable_ptr_ty = vtable_ptr_ty(cx, target, target_dyn_kind);
-            cx.const_ptrcast(meth::get_vtable(cx, source, data.principal()), vtable_ptr_ty)
-        }
+        (_, &ty::Dynamic(ref data, _, _)) => meth::get_vtable(cx, source, data.principal()),
         _ => bug!("unsized_info: invalid unsizing {:?} -> {:?}", source, target),
     }
-}
-
-// Returns the vtable pointer type of a `dyn` or `dyn*` type
-fn vtable_ptr_ty<'tcx, Cx: CodegenMethods<'tcx>>(
-    cx: &Cx,
-    target: Ty<'tcx>,
-    kind: ty::DynKind,
-) -> <Cx as BackendTypes>::Type {
-    cx.scalar_pair_element_backend_type(
-        cx.layout_of(match kind {
-            // vtable is the second field of `*mut dyn Trait`
-            ty::Dyn => Ty::new_mut_ptr(cx.tcx(), target),
-            // vtable is the second field of `dyn* Trait`
-            ty::DynStar => target,
-        }),
-        1,
-        true,
-    )
 }
 
 /// Coerces `src` to `dst_ty`. `src_ty` must be a pointer.
@@ -222,8 +199,7 @@ pub fn unsize_ptr<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         (&ty::Ref(_, a, _), &ty::Ref(_, b, _) | &ty::RawPtr(ty::TypeAndMut { ty: b, .. }))
         | (&ty::RawPtr(ty::TypeAndMut { ty: a, .. }), &ty::RawPtr(ty::TypeAndMut { ty: b, .. })) => {
             assert_eq!(bx.cx().type_is_sized(a), old_info.is_none());
-            let ptr_ty = bx.cx().type_ptr_to(bx.cx().backend_type(bx.cx().layout_of(b)));
-            (bx.pointercast(src, ptr_ty), unsized_info(bx, a, b, old_info))
+            (src, unsized_info(bx, a, b, old_info))
         }
         (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => {
             assert_eq!(def_a, def_b);
@@ -248,11 +224,7 @@ pub fn unsize_ptr<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 assert_eq!(result, None);
                 result = Some(unsize_ptr(bx, src, src_f.ty, dst_f.ty, old_info));
             }
-            let (lldata, llextra) = result.unwrap();
-            let lldata_ty = bx.cx().scalar_pair_element_backend_type(dst_layout, 0, true);
-            let llextra_ty = bx.cx().scalar_pair_element_backend_type(dst_layout, 1, true);
-            // HACK(eddyb) have to bitcast pointers until LLVM removes pointee types.
-            (bx.bitcast(lldata, lldata_ty), bx.bitcast(llextra, llextra_ty))
+            result.unwrap()
         }
         _ => bug!("unsize_ptr: called on bad types"),
     }
@@ -271,11 +243,9 @@ pub fn cast_to_dyn_star<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         matches!(dst_ty.kind(), ty::Dynamic(_, _, ty::DynStar)),
         "destination type must be a dyn*"
     );
-    // FIXME(dyn-star): We can remove this when all supported LLVMs use opaque ptrs only.
-    let unit_ptr = bx.cx().type_ptr_to(bx.cx().type_struct(&[], false));
     let src = match bx.cx().type_kind(bx.cx().backend_type(src_ty_and_layout)) {
-        TypeKind::Pointer => bx.pointercast(src, unit_ptr),
-        TypeKind::Integer => bx.inttoptr(src, unit_ptr),
+        TypeKind::Pointer => src,
+        TypeKind::Integer => bx.inttoptr(src, bx.type_ptr()),
         // FIXME(dyn-star): We probably have to do a bitcast first, then inttoptr.
         kind => bug!("unexpected TypeKind for left-hand side of `dyn*` cast: {kind:?}"),
     };
@@ -398,11 +368,6 @@ pub fn memcpy_ty<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     if flags == MemFlags::empty()
         && let Some(bty) = bx.cx().scalar_copy_backend_type(layout)
     {
-        // I look forward to only supporting opaque pointers
-        let pty = bx.type_ptr_to(bty);
-        let src = bx.pointercast(src, pty);
-        let dst = bx.pointercast(dst, pty);
-
         let temp = bx.load(bty, src, src_align);
         bx.store(temp, dst, dst_align);
     } else {
@@ -456,7 +421,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         // The entry function is either `int main(void)` or `int main(int argc, char **argv)`,
         // depending on whether the target needs `argc` and `argv` to be passed in.
         let llfty = if cx.sess().target.main_needs_argc_argv {
-            cx.type_func(&[cx.type_int(), cx.type_ptr_to(cx.type_i8p())], cx.type_int())
+            cx.type_func(&[cx.type_int(), cx.type_ptr()], cx.type_int())
         } else {
             cx.type_func(&[], cx.type_int())
         };
@@ -490,7 +455,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         bx.insert_reference_to_gdb_debug_scripts_section_global();
 
         let isize_ty = cx.type_isize();
-        let i8pp_ty = cx.type_ptr_to(cx.type_i8p());
+        let ptr_ty = cx.type_ptr();
         let (arg_argc, arg_argv) = get_argc_argv(cx, &mut bx);
 
         let (start_fn, start_ty, args) = if let EntryFnType::Main { sigpipe } = entry_type {
@@ -509,12 +474,11 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             let i8_ty = cx.type_i8();
             let arg_sigpipe = bx.const_u8(sigpipe);
 
-            let start_ty =
-                cx.type_func(&[cx.val_ty(rust_main), isize_ty, i8pp_ty, i8_ty], isize_ty);
+            let start_ty = cx.type_func(&[cx.val_ty(rust_main), isize_ty, ptr_ty, i8_ty], isize_ty);
             (start_fn, start_ty, vec![rust_main, arg_argc, arg_argv, arg_sigpipe])
         } else {
             debug!("using user-defined start fn");
-            let start_ty = cx.type_func(&[isize_ty, i8pp_ty], isize_ty);
+            let start_ty = cx.type_func(&[isize_ty, ptr_ty], isize_ty);
             (rust_main, start_ty, vec![arg_argc, arg_argv])
         };
 
@@ -541,7 +505,7 @@ fn get_argc_argv<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     } else {
         // The Rust start function doesn't need `argc` and `argv`, so just pass zeros.
         let arg_argc = bx.const_int(cx.type_int(), 0);
-        let arg_argv = bx.const_null(cx.type_ptr_to(cx.type_i8p()));
+        let arg_argv = bx.const_null(cx.type_ptr());
         (arg_argc, arg_argv)
     }
 }
@@ -664,9 +628,16 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
             )
         });
 
-        ongoing_codegen.submit_pre_codegened_module_to_llvm(
-            tcx,
+        ongoing_codegen.wait_for_signal_to_codegen_item();
+        ongoing_codegen.check_for_errors(tcx.sess);
+
+        // These modules are generally cheap and won't throw off scheduling.
+        let cost = 0;
+        submit_codegened_module_to_llvm(
+            &backend,
+            &ongoing_codegen.coordinator.sender,
             ModuleCodegen { name: llmod_id, module_llvm, kind: ModuleKind::Allocator },
+            cost,
         );
     }
 
@@ -761,7 +732,6 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
                     module,
                     cost,
                 );
-                false
             }
             CguReuse::PreLto => {
                 submit_pre_lto_module_to_llvm(
@@ -773,7 +743,6 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
                         source: cgu.previous_work_product(tcx),
                     },
                 );
-                true
             }
             CguReuse::PostLto => {
                 submit_post_lto_module_to_llvm(
@@ -784,9 +753,8 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
                         source: cgu.previous_work_product(tcx),
                     },
                 );
-                true
             }
-        };
+        }
     }
 
     ongoing_codegen.codegen_finished(tcx);

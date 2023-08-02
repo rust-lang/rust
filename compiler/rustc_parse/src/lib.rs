@@ -205,7 +205,7 @@ pub fn stream_to_parser<'a>(
     stream: TokenStream,
     subparser_name: Option<&'static str>,
 ) -> Parser<'a> {
-    Parser::new(sess, stream, false, subparser_name)
+    Parser::new(sess, stream, subparser_name)
 }
 
 /// Runs the given subparser `f` on the tokens of the given `attr`'s item.
@@ -215,7 +215,7 @@ pub fn parse_in<'a, T>(
     name: &'static str,
     mut f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
 ) -> PResult<'a, T> {
-    let mut parser = Parser::new(sess, tts, false, Some(name));
+    let mut parser = Parser::new(sess, tts, Some(name));
     let result = f(&mut parser)?;
     if parser.token != token::Eof {
         parser.unexpected()?;
@@ -247,7 +247,7 @@ pub fn parse_cfg_attr(
             match parse_in(parse_sess, tokens.clone(), "`cfg_attr` input", |p| p.parse_cfg_attr()) {
                 Ok(r) => return Some(r),
                 Err(mut e) => {
-                    e.help(format!("the valid syntax is `{}`", CFG_ATTR_GRAMMAR_HELP))
+                    e.help(format!("the valid syntax is `{CFG_ATTR_GRAMMAR_HELP}`"))
                         .note(CFG_ATTR_NOTE_REF)
                         .emit();
                 }

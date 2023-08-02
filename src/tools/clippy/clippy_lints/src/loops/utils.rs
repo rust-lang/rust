@@ -76,7 +76,7 @@ impl<'a, 'tcx> Visitor<'tcx> for IncrementVisitor<'a, 'tcx> {
                     ExprKind::Assign(lhs, _, _) if lhs.hir_id == expr.hir_id => {
                         *state = IncrementVisitorVarState::DontWarn;
                     },
-                    ExprKind::AddrOf(BorrowKind::Ref, mutability, _) if mutability == Mutability::Mut => {
+                    ExprKind::AddrOf(BorrowKind::Ref, Mutability::Mut, _) => {
                         *state = IncrementVisitorVarState::DontWarn;
                     },
                     _ => (),
@@ -226,7 +226,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
                             InitializeVisitorState::DontWarn
                         }
                     },
-                    ExprKind::AddrOf(BorrowKind::Ref, mutability, _) if mutability == Mutability::Mut => {
+                    ExprKind::AddrOf(BorrowKind::Ref, Mutability::Mut, _) => {
                         self.state = InitializeVisitorState::DontWarn;
                     },
                     _ => (),

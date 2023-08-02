@@ -42,7 +42,7 @@ fn sized_constraint_for_ty<'tcx>(
             let adt_tys = adt.sized_constraint(tcx);
             debug!("sized_constraint_for_ty({:?}) intermediate = {:?}", ty, adt_tys);
             adt_tys
-                .iter_instantiated_copied(tcx, args)
+                .iter_instantiated(tcx, args)
                 .flat_map(|ty| sized_constraint_for_ty(tcx, adtdef, ty))
                 .collect()
         }
@@ -58,11 +58,18 @@ fn sized_constraint_for_ty<'tcx>(
             // we know that `T` is Sized and do not need to check
             // it on the impl.
 
-            let Some(sized_trait) = tcx.lang_items().sized_trait() else { return vec![ty] };
-            let sized_predicate =
-                ty::TraitRef::new(tcx, sized_trait, [ty]).without_const().to_predicate(tcx);
+            let Some(sized_trait_def_id) = tcx.lang_items().sized_trait() else { return vec![ty] };
             let predicates = tcx.predicates_of(adtdef.did()).predicates;
-            if predicates.iter().any(|(p, _)| *p == sized_predicate) { vec![] } else { vec![ty] }
+            if predicates.iter().any(|(p, _)| {
+                p.as_trait_clause().is_some_and(|trait_pred| {
+                    trait_pred.def_id() == sized_trait_def_id
+                        && trait_pred.self_ty().skip_binder() == ty
+                })
+            }) {
+                vec![]
+            } else {
+                vec![ty]
+            }
         }
 
         Placeholder(..) | Bound(..) | Infer(..) => {
@@ -92,10 +99,13 @@ fn defaultness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::Defaultness {
 ///     - a tuple of type parameters or projections, if there are multiple
 ///       such.
 ///     - an Error, if a type is infinitely sized
-fn adt_sized_constraint(tcx: TyCtxt<'_>, def_id: DefId) -> &[Ty<'_>] {
+fn adt_sized_constraint<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+) -> ty::EarlyBinder<&'tcx ty::List<Ty<'tcx>>> {
     if let Some(def_id) = def_id.as_local() {
         if matches!(tcx.representability(def_id), ty::Representability::Infinite) {
-            return tcx.mk_type_list(&[Ty::new_misc_error(tcx)]);
+            return ty::EarlyBinder::bind(tcx.mk_type_list(&[Ty::new_misc_error(tcx)]));
         }
     }
     let def = tcx.adt_def(def_id);
@@ -107,7 +117,7 @@ fn adt_sized_constraint(tcx: TyCtxt<'_>, def_id: DefId) -> &[Ty<'_>] {
 
     debug!("adt_sized_constraint: {:?} => {:?}", def, result);
 
-    result
+    ty::EarlyBinder::bind(result)
 }
 
 /// See `ParamEnv` struct definition for details.
@@ -129,7 +139,9 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
     // sure that this will succeed without errors anyway.
 
     if tcx.def_kind(def_id) == DefKind::AssocFn
-        && tcx.associated_item(def_id).container == ty::AssocItemContainer::TraitContainer
+        && let assoc_item = tcx.associated_item(def_id)
+        && assoc_item.container == ty::AssocItemContainer::TraitContainer
+        && assoc_item.defaultness(tcx).has_value()
     {
         let sig = tcx.fn_sig(def_id).instantiate_identity();
         // We accounted for the binder of the fn sig, so skip the binder.
@@ -179,8 +191,10 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
 
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> std::ops::ControlFlow<Self::BreakTy> {
         if let ty::Alias(ty::Projection, unshifted_alias_ty) = *ty.kind()
-            && self.tcx.is_impl_trait_in_trait(unshifted_alias_ty.def_id)
-            && self.tcx.impl_trait_in_trait_parent_fn(unshifted_alias_ty.def_id) == self.fn_def_id
+            && let Some(ty::ImplTraitInTraitData::Trait { fn_def_id, .. }
+                    | ty::ImplTraitInTraitData::Impl { fn_def_id, .. })
+                = self.tcx.opt_rpitit_info(unshifted_alias_ty.def_id)
+            && fn_def_id == self.fn_def_id
             && self.seen.insert(unshifted_alias_ty.def_id)
         {
             // We have entered some binders as we've walked into the

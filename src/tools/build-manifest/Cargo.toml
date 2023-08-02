@@ -8,7 +8,7 @@ toml = "0.5"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 anyhow = "1.0.32"
-flate2 = "1.0.16"
+flate2 = "1.0.26"
 xz2 = "0.1.7"
 tar = "0.4.29"
 sha2 = "0.10.1"

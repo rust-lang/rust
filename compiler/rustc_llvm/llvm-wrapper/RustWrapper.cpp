@@ -1892,12 +1892,19 @@ extern "C" void LLVMRustContextConfigureDiagnosticHandler(
           LlvmRemarkStreamer(std::move(LlvmRemarkStreamer)) {}
 
     virtual bool handleDiagnostics(const DiagnosticInfo &DI) override {
-      if (this->LlvmRemarkStreamer) {
-        if (auto *OptDiagBase = dyn_cast<DiagnosticInfoOptimizationBase>(&DI)) {
-          if (OptDiagBase->isEnabled()) {
+      // If this diagnostic is one of the optimization remark kinds, we can check if it's enabled
+      // before emitting it. This can avoid many short-lived allocations when unpacking the
+      // diagnostic and converting its various C++ strings into rust strings.
+      // FIXME: some diagnostic infos still allocate before we get here, and avoiding that would be
+      // good in the future. That will require changing a few call sites in LLVM.
+      if (auto *OptDiagBase = dyn_cast<DiagnosticInfoOptimizationBase>(&DI)) {
+        if (OptDiagBase->isEnabled()) {
+          if (this->LlvmRemarkStreamer) {
             this->LlvmRemarkStreamer->emit(*OptDiagBase);
             return true;
           }
+        } else {
+          return true;
         }
       }
       if (DiagnosticHandlerCallback) {

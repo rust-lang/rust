@@ -24,6 +24,7 @@ use crate::util::{self, exe, output, t, up_to_date};
 use crate::{CLang, GitRepo, Kind};
 
 use build_helper::ci::CiEnv;
+use build_helper::git::get_git_merge_base;
 
 #[derive(Clone)]
 pub struct LlvmResult {
@@ -128,13 +129,19 @@ pub fn prebuilt_llvm_config(
 /// This retrieves the LLVM sha we *want* to use, according to git history.
 pub(crate) fn detect_llvm_sha(config: &Config, is_git: bool) -> String {
     let llvm_sha = if is_git {
+        // We proceed in 2 steps. First we get the closest commit that is actually upstream. Then we
+        // walk back further to the last bors merge commit that actually changed LLVM. The first
+        // step will fail on CI because only the `auto` branch exists; we just fall back to `HEAD`
+        // in that case.
+        let closest_upstream =
+            get_git_merge_base(Some(&config.src)).unwrap_or_else(|_| "HEAD".into());
         let mut rev_list = config.git();
         rev_list.args(&[
             PathBuf::from("rev-list"),
             format!("--author={}", config.stage0_metadata.config.git_merge_commit_email).into(),
             "-n1".into(),
             "--first-parent".into(),
-            "HEAD".into(),
+            closest_upstream.into(),
             "--".into(),
             config.src.join("src/llvm-project"),
             config.src.join("src/bootstrap/download-ci-llvm-stamp"),
@@ -342,12 +349,6 @@ impl Step for Llvm {
         if let Some(path) = builder.config.llvm_profile_use.as_ref() {
             cfg.define("LLVM_PROFDATA_FILE", &path);
         }
-        if builder.config.llvm_bolt_profile_generate
-            || builder.config.llvm_bolt_profile_use.is_some()
-        {
-            // Relocations are required for BOLT to work.
-            ldflags.push_all("-Wl,-q");
-        }
 
         // Disable zstd to avoid a dependency on libzstd.so.
         cfg.define("LLVM_ENABLE_ZSTD", "OFF");
@@ -500,8 +501,8 @@ impl Step for Llvm {
             let version = output(cmd.arg("--version"));
             let major = version.split('.').next().unwrap();
             let lib_name = match llvm_version_suffix {
-                Some(s) => format!("libLLVM-{}{}.dylib", major, s),
-                None => format!("libLLVM-{}.dylib", major),
+                Some(s) => format!("libLLVM-{major}{s}.dylib"),
+                None => format!("libLLVM-{major}.dylib"),
             };
 
             let lib_llvm = out_dir.join("build").join("lib").join(lib_name);
@@ -529,7 +530,7 @@ fn check_llvm_version(builder: &Builder<'_>, llvm_config: &Path) {
             return;
         }
     }
-    panic!("\n\nbad LLVM version: {}, need >=15.0\n\n", version)
+    panic!("\n\nbad LLVM version: {version}, need >=15.0\n\n")
 }
 
 fn configure_cmake(
@@ -686,10 +687,10 @@ fn configure_cmake(
         }
     }
     if builder.config.llvm_clang_cl.is_some() {
-        cflags.push(&format!(" --target={}", target));
+        cflags.push(&format!(" --target={target}"));
     }
     for flag in extra_compiler_flags {
-        cflags.push(&format!(" {}", flag));
+        cflags.push(&format!(" {flag}"));
     }
     cfg.define("CMAKE_C_FLAGS", cflags);
     let mut cxxflags: OsString = builder.cflags(target, GitRepo::Llvm, CLang::Cxx).join(" ").into();
@@ -698,10 +699,10 @@ fn configure_cmake(
         cxxflags.push(s);
     }
     if builder.config.llvm_clang_cl.is_some() {
-        cxxflags.push(&format!(" --target={}", target));
+        cxxflags.push(&format!(" --target={target}"));
     }
     for flag in extra_compiler_flags {
-        cxxflags.push(&format!(" {}", flag));
+        cxxflags.push(&format!(" {flag}"));
     }
     cfg.define("CMAKE_CXX_FLAGS", cxxflags);
     if let Some(ar) = builder.ar(target) {
@@ -772,7 +773,7 @@ fn configure_llvm(builder: &Builder<'_>, target: TargetSelection, cfg: &mut cmak
 fn get_var(var_base: &str, host: &str, target: &str) -> Option<OsString> {
     let kind = if host == target { "HOST" } else { "TARGET" };
     let target_u = target.replace("-", "_");
-    env::var_os(&format!("{}_{}", var_base, target))
+    env::var_os(&format!("{var_base}_{target}"))
         .or_else(|| env::var_os(&format!("{}_{}", var_base, target_u)))
         .or_else(|| env::var_os(&format!("{}_{}", kind, var_base)))
         .or_else(|| env::var_os(var_base))

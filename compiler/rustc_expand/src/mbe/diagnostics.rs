@@ -257,7 +257,7 @@ pub(super) fn emit_frag_parse_err(
                         e.span_suggestion_verbose(
                             site_span,
                             "surround the macro invocation with `{}` to interpret the expansion as a statement",
-                            format!("{{ {}; }}", snippet),
+                            format!("{{ {snippet}; }}"),
                             Applicability::MaybeIncorrect,
                         );
                     }

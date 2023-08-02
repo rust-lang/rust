@@ -214,4 +214,45 @@ mod issue_8836 {
     }
 }
 
+mod issue_11213 {
+    fn reproducer(x: bool) -> bool {
+        if x {
+            0_u8.is_power_of_two()
+        } else {
+            0_u16.is_power_of_two()
+        }
+    }
+
+    // a more obvious reproducer that shows
+    // why the code above is problematic:
+    fn v2(x: bool) -> bool {
+        trait Helper {
+            fn is_u8(&self) -> bool;
+        }
+        impl Helper for u8 {
+            fn is_u8(&self) -> bool {
+                true
+            }
+        }
+        impl Helper for u16 {
+            fn is_u8(&self) -> bool {
+                false
+            }
+        }
+
+        // this is certainly not the same code in both branches
+        // it returns a different bool depending on the branch.
+        if x { 0_u8.is_u8() } else { 0_u16.is_u8() }
+    }
+
+    fn do_lint(x: bool) -> bool {
+        // but do lint if the type of the literal is the same
+        if x {
+            0_u8.is_power_of_two()
+        } else {
+            0_u8.is_power_of_two()
+        }
+    }
+}
+
 fn main() {}

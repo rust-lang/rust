@@ -3,24 +3,22 @@ pub use super::ffi::*;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::bug;
 use rustc_middle::mir::coverage::{
-    CodeRegion, CounterValueReference, ExpressionOperandId, InjectedExpressionId,
-    InjectedExpressionIndex, MappedExpressionIndex, Op,
+    CodeRegion, CounterId, ExpressionId, MappedExpressionIndex, Op, Operand,
 };
 use rustc_middle::ty::Instance;
 use rustc_middle::ty::TyCtxt;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Expression {
-    lhs: ExpressionOperandId,
+    lhs: Operand,
     op: Op,
-    rhs: ExpressionOperandId,
+    rhs: Operand,
     region: Option<CodeRegion>,
 }
 
 /// Collects all of the coverage regions associated with (a) injected counters, (b) counter
 /// expressions (additions or subtraction), and (c) unreachable regions (always counted as zero),
-/// for a given Function. Counters and counter expressions have non-overlapping `id`s because they
-/// can both be operands in an expression. This struct also stores the `function_source_hash`,
+/// for a given Function. This struct also stores the `function_source_hash`,
 /// computed during instrumentation, and forwarded with counters.
 ///
 /// Note, it may be important to understand LLVM's definitions of `unreachable` regions versus "gap
@@ -34,8 +32,8 @@ pub struct FunctionCoverage<'tcx> {
     instance: Instance<'tcx>,
     source_hash: u64,
     is_used: bool,
-    counters: IndexVec<CounterValueReference, Option<CodeRegion>>,
-    expressions: IndexVec<InjectedExpressionIndex, Option<Expression>>,
+    counters: IndexVec<CounterId, Option<CodeRegion>>,
+    expressions: IndexVec<ExpressionId, Option<Expression>>,
     unreachable_regions: Vec<CodeRegion>,
 }
 
@@ -82,48 +80,36 @@ impl<'tcx> FunctionCoverage<'tcx> {
     }
 
     /// Adds a code region to be counted by an injected counter intrinsic.
-    pub fn add_counter(&mut self, id: CounterValueReference, region: CodeRegion) {
+    pub fn add_counter(&mut self, id: CounterId, region: CodeRegion) {
         if let Some(previous_region) = self.counters[id].replace(region.clone()) {
             assert_eq!(previous_region, region, "add_counter: code region for id changed");
         }
     }
 
     /// Both counters and "counter expressions" (or simply, "expressions") can be operands in other
-    /// expressions. Expression IDs start from `u32::MAX` and go down, so the range of expression
-    /// IDs will not overlap with the range of counter IDs. Counters and expressions can be added in
-    /// any order, and expressions can still be assigned contiguous (though descending) IDs, without
-    /// knowing what the last counter ID will be.
-    ///
-    /// When storing the expression data in the `expressions` vector in the `FunctionCoverage`
-    /// struct, its vector index is computed, from the given expression ID, by subtracting from
-    /// `u32::MAX`.
-    ///
-    /// Since the expression operands (`lhs` and `rhs`) can reference either counters or
-    /// expressions, an operand that references an expression also uses its original ID, descending
-    /// from `u32::MAX`. Theses operands are translated only during code generation, after all
-    /// counters and expressions have been added.
+    /// expressions. These are tracked as separate variants of `Operand`, so there is no ambiguity
+    /// between operands that are counter IDs and operands that are expression IDs.
     pub fn add_counter_expression(
         &mut self,
-        expression_id: InjectedExpressionId,
-        lhs: ExpressionOperandId,
+        expression_id: ExpressionId,
+        lhs: Operand,
         op: Op,
-        rhs: ExpressionOperandId,
+        rhs: Operand,
         region: Option<CodeRegion>,
     ) {
         debug!(
             "add_counter_expression({:?}, lhs={:?}, op={:?}, rhs={:?} at {:?}",
             expression_id, lhs, op, rhs, region
         );
-        let expression_index = self.expression_index(u32::from(expression_id));
         debug_assert!(
-            expression_index.as_usize() < self.expressions.len(),
-            "expression_index {} is out of range for expressions.len() = {}
+            expression_id.as_usize() < self.expressions.len(),
+            "expression_id {} is out of range for expressions.len() = {}
             for {:?}",
-            expression_index.as_usize(),
+            expression_id.as_usize(),
             self.expressions.len(),
             self,
         );
-        if let Some(previous_expression) = self.expressions[expression_index].replace(Expression {
+        if let Some(previous_expression) = self.expressions[expression_id].replace(Expression {
             lhs,
             op,
             rhs,
@@ -186,14 +172,11 @@ impl<'tcx> FunctionCoverage<'tcx> {
 
         // This closure converts any `Expression` operand (`lhs` or `rhs` of the `Op::Add` or
         // `Op::Subtract` operation) into its native `llvm::coverage::Counter::CounterKind` type
-        // and value. Operand ID value `0` maps to `CounterKind::Zero`; values in the known range
-        // of injected LLVM counters map to `CounterKind::CounterValueReference` (and the value
-        // matches the injected counter index); and any other value is converted into a
-        // `CounterKind::Expression` with the expression's `new_index`.
+        // and value.
         //
         // Expressions will be returned from this function in a sequential vector (array) of
         // `CounterExpression`, so the expression IDs must be mapped from their original,
-        // potentially sparse set of indexes, originally in reverse order from `u32::MAX`.
+        // potentially sparse set of indexes.
         //
         // An `Expression` as an operand will have already been encountered as an `Expression` with
         // operands, so its new_index will already have been generated (as a 1-up index value).
@@ -206,34 +189,19 @@ impl<'tcx> FunctionCoverage<'tcx> {
         // `expression_index`s lower than the referencing `Expression`. Therefore, it is
         // reasonable to look up the new index of an expression operand while the `new_indexes`
         // vector is only complete up to the current `ExpressionIndex`.
-        let id_to_counter = |new_indexes: &IndexSlice<
-            InjectedExpressionIndex,
-            Option<MappedExpressionIndex>,
-        >,
-                             id: ExpressionOperandId| {
-            if id == ExpressionOperandId::ZERO {
-                Some(Counter::zero())
-            } else if id.index() < self.counters.len() {
-                debug_assert!(
-                    id.index() > 0,
-                    "ExpressionOperandId indexes for counters are 1-based, but this id={}",
-                    id.index()
-                );
-                // Note: Some codegen-injected Counters may be only referenced by `Expression`s,
-                // and may not have their own `CodeRegion`s,
-                let index = CounterValueReference::from(id.index());
-                // Note, the conversion to LLVM `Counter` adjusts the index to be zero-based.
-                Some(Counter::counter_value_reference(index))
-            } else {
-                let index = self.expression_index(u32::from(id));
+        type NewIndexes = IndexSlice<ExpressionId, Option<MappedExpressionIndex>>;
+        let id_to_counter = |new_indexes: &NewIndexes, operand: Operand| match operand {
+            Operand::Zero => Some(Counter::zero()),
+            Operand::Counter(id) => Some(Counter::counter_value_reference(id)),
+            Operand::Expression(id) => {
                 self.expressions
-                    .get(index)
+                    .get(id)
                     .expect("expression id is out of range")
                     .as_ref()
                     // If an expression was optimized out, assume it would have produced a count
                     // of zero. This ensures that expressions dependent on optimized-out
                     // expressions are still valid.
-                    .map_or(Some(Counter::zero()), |_| new_indexes[index].map(Counter::expression))
+                    .map_or(Some(Counter::zero()), |_| new_indexes[id].map(Counter::expression))
             }
         };
 
@@ -339,10 +307,5 @@ impl<'tcx> FunctionCoverage<'tcx> {
 
     fn unreachable_regions(&self) -> impl Iterator<Item = (Counter, &CodeRegion)> {
         self.unreachable_regions.iter().map(|region| (Counter::zero(), region))
-    }
-
-    fn expression_index(&self, id_descending_from_max: u32) -> InjectedExpressionIndex {
-        debug_assert!(id_descending_from_max >= self.counters.len() as u32);
-        InjectedExpressionIndex::from(u32::MAX - id_descending_from_max)
     }
 }
