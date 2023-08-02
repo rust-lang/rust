@@ -7,7 +7,7 @@ LL |     field!(bar:u128),
    = note: macros cannot expand to struct fields
 
 error: unexpected token: `!`
-  --> $DIR/macro-expand-to-field.rs:21:10
+  --> $DIR/macro-expand-to-field.rs:22:10
    |
 LL |     field!(recovers:()),
    |          ^ unexpected token after this
@@ -15,7 +15,7 @@ LL |     field!(recovers:()),
    = note: macros cannot expand to struct fields
 
 error: unexpected token: `!`
-  --> $DIR/macro-expand-to-field.rs:27:12
+  --> $DIR/macro-expand-to-field.rs:28:12
    |
 LL |     variant!(whoops),
    |            ^ unexpected token after this
@@ -23,7 +23,7 @@ LL |     variant!(whoops),
    = note: macros cannot expand to enum variants
 
 error: unexpected token: `!`
-  --> $DIR/macro-expand-to-field.rs:32:12
+  --> $DIR/macro-expand-to-field.rs:34:12
    |
 LL |     variant!(recovers),
    |            ^ unexpected token after this
@@ -33,13 +33,21 @@ LL |     variant!(recovers),
 error: unexpected token: `!`
   --> $DIR/macro-expand-to-field.rs:39:14
    |
+LL |         field!(x:u32),
+   |              ^ unexpected token after this
+   |
+   = note: macros cannot expand to struct fields
+
+error: unexpected token: `!`
+  --> $DIR/macro-expand-to-field.rs:48:14
+   |
 LL |         field!(oopsies:()),
    |              ^ unexpected token after this
    |
    = note: macros cannot expand to struct fields
 
 error: unexpected token: `!`
-  --> $DIR/macro-expand-to-field.rs:42:14
+  --> $DIR/macro-expand-to-field.rs:52:14
    |
 LL |         field!(oopsies2:()),
    |              ^ unexpected token after this
@@ -47,7 +55,7 @@ LL |         field!(oopsies2:()),
    = note: macros cannot expand to struct fields
 
 error: unexpected token: `!`
-  --> $DIR/macro-expand-to-field.rs:50:10
+  --> $DIR/macro-expand-to-field.rs:61:10
    |
 LL |     field!(oopsies:()),
    |          ^ unexpected token after this
@@ -55,12 +63,12 @@ LL |     field!(oopsies:()),
    = note: macros cannot expand to union fields
 
 error: unexpected token: `!`
-  --> $DIR/macro-expand-to-field.rs:54:10
+  --> $DIR/macro-expand-to-field.rs:66:10
    |
 LL |     field!(recovers:()),
    |          ^ unexpected token after this
    |
    = note: macros cannot expand to union fields
 
-error: aborting due to 8 previous errors
+error: aborting due to 9 previous errors
 

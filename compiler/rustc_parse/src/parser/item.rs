@@ -1754,12 +1754,7 @@ impl<'a> Parser<'a> {
                     ident: None,
                     vis,
                     id: DUMMY_NODE_ID,
-                    ty: P(Ty {
-                        id: DUMMY_NODE_ID,
-                        kind: TyKind::Err,
-                        span: DUMMY_SP,
-                        tokens: None,
-                    }),
+                    ty: self.mk_ty(DUMMY_SP, TyKind::Err),
                     attrs,
                     is_placeholder: false,
                 });
