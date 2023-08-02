@@ -532,7 +532,7 @@ fn bench_buffered_reader_small_reads(b: &mut test::Bencher) {
 
 #[bench]
 fn bench_buffered_writer(b: &mut test::Bencher) {
-    b.iter(|| BufWriter::new(io::sink()));
+    b.iter(|| BufWriter::new(io::empty()));
 }
 
 /// A simple `Write` target, designed to be wrapped by `LineWriter` /

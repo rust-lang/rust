@@ -6,7 +6,7 @@ use crate::io::*;
 #[test]
 fn copy_copies() {
     let mut r = repeat(0).take(4);
-    let mut w = sink();
+    let mut w = empty();
     assert_eq!(copy(&mut r, &mut w).unwrap(), 4);
 
     let mut r = repeat(0).take(1 << 17);

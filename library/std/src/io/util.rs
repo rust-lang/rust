@@ -259,6 +259,7 @@ pub struct Sink;
 /// # Examples
 ///
 /// ```rust
+/// #![allow(deprecated_in_future)]
 /// use std::io::{self, Write};
 ///
 /// let buffer = vec![1, 2, 3, 5, 8];
@@ -269,7 +270,7 @@ pub struct Sink;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_io_structs", issue = "78812")]
 #[deprecated(since = "TBD", note = "superseded by `Empty`")]
-#[allow(deprecated_in_future)]
+#[allow(deprecated_in_future, dead_code)]
 pub const fn sink() -> Sink {
     Sink
 }

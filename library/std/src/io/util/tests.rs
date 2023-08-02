@@ -1,11 +1,12 @@
 use crate::io::prelude::*;
-use crate::io::{empty, repeat, sink, BorrowedBuf, Empty, Repeat, SeekFrom, Sink};
+use crate::io::{self, empty, repeat, BorrowedBuf, Empty, Repeat, SeekFrom};
 
 use crate::mem::MaybeUninit;
 
 #[test]
+#[allow(deprecated_in_future)]
 fn sink_sinks() {
-    let mut s = sink();
+    let mut s = io::sink();
     assert_eq!(s.write(&[]).unwrap(), 0);
     assert_eq!(s.write(&[0]).unwrap(), 1);
     assert_eq!(s.write(&[0; 1024]).unwrap(), 1024);
@@ -90,8 +91,9 @@ fn take_some_bytes() {
 }
 
 #[allow(dead_code)]
+#[allow(deprecated_in_future)]
 fn const_utils() {
     const _: Empty = empty();
     const _: Repeat = repeat(b'c');
-    const _: Sink = sink();
+    const _: io::Sink = io::sink();
 }

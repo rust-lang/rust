@@ -3,7 +3,7 @@
 #![feature(io_error_uncategorized)]
 
 use std::fmt;
-use std::io::{self, Error, Write, sink};
+use std::io::{self, empty, Error, Write};
 
 struct ErrorDisplay;
 
@@ -23,12 +23,14 @@ impl Write for ErrorWriter {
         Err(Error::new(WRITER_ERROR, "not connected"))
     }
 
-    fn flush(&mut self) -> io::Result<()> { Ok(()) }
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
 }
 
 fn main() {
     // Test that the error from the formatter is propagated.
-    let res = write!(sink(), "{} {} {}", 1, ErrorDisplay, "bar");
+    let res = write!(empty(), "{} {} {}", 1, ErrorDisplay, "bar");
     assert!(res.is_err(), "formatter error did not propagate");
     assert_eq!(res.unwrap_err().kind(), FORMAT_ERROR);
 

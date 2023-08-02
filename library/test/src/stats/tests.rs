@@ -17,7 +17,7 @@ macro_rules! assert_approx_eq {
 fn check(samples: &[f64], summ: &Summary) {
     let summ2 = Summary::new(samples);
 
-    let mut w = io::sink();
+    let mut w = io::empty();
     let w = &mut w;
     (write!(w, "\n")).unwrap();
 
