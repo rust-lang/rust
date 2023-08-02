@@ -348,11 +348,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         }
 
         // if the trait predicate is not const, the wf obligations should not be const as well.
-        let obligations = if trait_pred.constness == ty::BoundConstness::NotConst {
-            self.nominal_obligations_without_const(trait_ref.def_id, trait_ref.args)
-        } else {
-            self.nominal_obligations(trait_ref.def_id, trait_ref.args)
-        };
+        let obligations = self.nominal_obligations(trait_ref.def_id, trait_ref.args);
 
         debug!("compute_trait_pred obligations {:?}", obligations);
         let param_env = self.param_env;
@@ -445,8 +441,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         //     `i32: Clone`
         //     `i32: Copy`
         // ]
-        // Projection types do not require const predicates.
-        let obligations = self.nominal_obligations_without_const(data.def_id, data.args);
+        let obligations = self.nominal_obligations(data.def_id, data.args);
         self.out.extend(obligations);
 
         self.compute_projection_args(data.args);
@@ -472,8 +467,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 self.recursion_depth,
                 &mut self.out,
             );
-            // Inherent projection types do not require const predicates.
-            let obligations = self.nominal_obligations_without_const(data.def_id, args);
+            let obligations = self.nominal_obligations(data.def_id, args);
             self.out.extend(obligations);
         }
 
@@ -516,7 +510,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 cause,
                 self.recursion_depth,
                 self.param_env,
-                ty::Binder::dummy(trait_ref).without_const(),
+                ty::Binder::dummy(trait_ref),
             ));
         }
     }
@@ -667,7 +661,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 }
 
                 ty::FnDef(did, args) => {
-                    let obligations = self.nominal_obligations_without_const(did, args);
+                    let obligations = self.nominal_obligations(did, args);
                     self.out.extend(obligations);
                 }
 
@@ -822,11 +816,10 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn nominal_obligations_inner(
+    fn nominal_obligations(
         &mut self,
         def_id: DefId,
         args: GenericArgsRef<'tcx>,
-        remap_constness: bool,
     ) -> Vec<traits::PredicateObligation<'tcx>> {
         let predicates = self.tcx().predicates_of(def_id);
         let mut origins = vec![def_id; predicates.predicates.len()];
@@ -841,16 +834,13 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         debug_assert_eq!(predicates.predicates.len(), origins.len());
 
         iter::zip(predicates, origins.into_iter().rev())
-            .map(|((mut pred, span), origin_def_id)| {
+            .map(|((pred, span), origin_def_id)| {
                 let code = if span.is_dummy() {
                     traits::ItemObligation(origin_def_id)
                 } else {
                     traits::BindingObligation(origin_def_id, span)
                 };
                 let cause = self.cause(code);
-                if remap_constness {
-                    pred = pred.without_const(self.tcx());
-                }
                 traits::Obligation::with_depth(
                     self.tcx(),
                     cause,
@@ -861,22 +851,6 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
             })
             .filter(|pred| !pred.has_escaping_bound_vars())
             .collect()
-    }
-
-    fn nominal_obligations(
-        &mut self,
-        def_id: DefId,
-        args: GenericArgsRef<'tcx>,
-    ) -> Vec<traits::PredicateObligation<'tcx>> {
-        self.nominal_obligations_inner(def_id, args, false)
-    }
-
-    fn nominal_obligations_without_const(
-        &mut self,
-        def_id: DefId,
-        args: GenericArgsRef<'tcx>,
-    ) -> Vec<traits::PredicateObligation<'tcx>> {
-        self.nominal_obligations_inner(def_id, args, true)
     }
 
     fn from_object_ty(

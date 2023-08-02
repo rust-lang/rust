@@ -7,12 +7,22 @@ LL | #![feature(const_trait_impl, generic_const_exprs)]
    = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
    = note: `#[warn(incomplete_features)]` on by default
 
-error[E0080]: evaluation of `foo::<()>::{constant#0}` failed
+error[E0015]: cannot call non-const fn `<T as Tr>::a` in constants
+  --> $DIR/constifconst-call-in-const-position.rs:17:9
+   |
+LL |     [0; T::a()]
+   |         ^^^^^^
+   |
+   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
+
+error[E0015]: cannot call non-const fn `<T as Tr>::a` in constants
   --> $DIR/constifconst-call-in-const-position.rs:16:38
    |
 LL | const fn foo<T: ~const Tr>() -> [u8; T::a()] {
-   |                                      ^^^^^^ calling non-const function `<() as Tr>::a`
+   |                                      ^^^^^^
+   |
+   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to 2 previous errors; 1 warning emitted
 
-For more information about this error, try `rustc --explain E0080`.
+For more information about this error, try `rustc --explain E0015`.

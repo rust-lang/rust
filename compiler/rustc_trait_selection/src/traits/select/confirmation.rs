@@ -59,7 +59,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ParamCandidate(param) => {
                 let obligations =
                     self.confirm_param_candidate(obligation, param.map_bound(|t| t.trait_ref));
-                ImplSource::Param(param.skip_binder().constness, obligations)
+                // FIXME(effects)
+                ImplSource::Param(ty::BoundConstness::NotConst, obligations)
             }
 
             ImplCandidate(impl_def_id) => {
@@ -126,14 +127,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // so we need to make sure they have the correct depth.
         for subobligation in impl_src.borrow_nested_obligations_mut() {
             subobligation.set_depth_from_parent(obligation.recursion_depth);
-        }
-
-        if !obligation.predicate.is_const_if_const() {
-            // normalize nested predicates according to parent predicate's constness.
-            impl_src = impl_src.map(|mut o| {
-                o.predicate = o.predicate.without_const(self.tcx());
-                o
-            });
         }
 
         Ok(impl_src)
@@ -1305,6 +1298,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // If we have a projection type, make sure to normalize it so we replace it
                 // with a fresh infer variable
                 ty::Alias(ty::Projection | ty::Inherent, ..) => {
+                    // FIXME(effects) this needs constness
                     let predicate = normalize_with_depth_to(
                         self,
                         obligation.param_env,
@@ -1317,7 +1311,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 cause.span,
                                 [nested_ty],
                             ),
-                            constness: ty::BoundConstness::ConstIfConst,
                             polarity: ty::ImplPolarity::Positive,
                         }),
                         &mut nested,
@@ -1336,6 +1329,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // since it's either not `const Drop` (and we raise an error during selection),
                 // or it's an ADT (and we need to check for a custom impl during selection)
                 _ => {
+                    // FIXME(effects) this needs constness
                     let predicate = self_ty.rebind(ty::TraitPredicate {
                         trait_ref: ty::TraitRef::from_lang_item(
                             self.tcx(),
@@ -1343,7 +1337,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             cause.span,
                             [nested_ty],
                         ),
-                        constness: ty::BoundConstness::ConstIfConst,
                         polarity: ty::ImplPolarity::Positive,
                     });
 

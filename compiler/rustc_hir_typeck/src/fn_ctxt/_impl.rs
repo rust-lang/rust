@@ -1461,10 +1461,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             param_env,
             bounds,
         ) {
-            // N.B. We are remapping all predicates to non-const since we don't know if we just
-            // want them as function pointers or we are calling them from a const-context. The
-            // actual checking will occur in `rustc_const_eval::transform::check_consts`.
-            self.register_predicate(obligation.without_const(self.tcx));
+            self.register_predicate(obligation);
         }
     }
 

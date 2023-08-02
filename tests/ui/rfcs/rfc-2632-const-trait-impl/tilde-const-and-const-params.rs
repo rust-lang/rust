@@ -24,6 +24,7 @@ impl const Add42 for () {
 
 fn bar<A: ~const Add42, const N: usize>(_: Foo<N>) -> Foo<{ A::add(N) }> {
     //~^ ERROR `~const` is not allowed here
+    //~| ERROR cannot call
     Foo
 }
 

@@ -1,0 +1,11 @@
+error[E0015]: cannot call non-const fn `<<T as Foo>::Assoc as Foo>::foo` in constant functions
+  --> $DIR/assoc-type-const-bound-usage.rs:12:5
+   |
+LL |     <T as Foo>::Assoc::foo();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0015`.

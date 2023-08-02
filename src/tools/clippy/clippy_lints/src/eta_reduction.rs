@@ -10,7 +10,7 @@ use rustc_hir::{BindingAnnotation, Expr, ExprKind, FnRetTy, Param, PatKind, QPat
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{
-    self, Binder, BoundConstness, ClosureArgs, ClosureKind, EarlyBinder, FnSig, GenericArg, GenericArgKind,
+    self, Binder, ClosureArgs, ClosureKind, EarlyBinder, FnSig, GenericArg, GenericArgKind,
     GenericArgsRef, ImplPolarity, List, Region, RegionKind, Ty, TypeVisitableExt, TypeckResults,
 };
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -171,7 +171,6 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
                                     = cx.tcx.infer_ctxt().build().type_implements_fn_trait(
                                         cx.param_env,
                                         Binder::bind_with_vars(callee_ty_adjusted, List::empty()),
-                                        BoundConstness::NotConst,
                                         ImplPolarity::Positive,
                                     ) && path_to_local(callee)
                                         .map_or(

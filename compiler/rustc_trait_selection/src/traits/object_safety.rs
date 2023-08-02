@@ -574,7 +574,6 @@ fn virtual_call_violation_for_method<'tcx>(
         // implement auto traits if the underlying type does as well.
         if let ty::ClauseKind::Trait(ty::TraitPredicate {
             trait_ref: pred_trait_ref,
-            constness: ty::BoundConstness::NotConst,
             polarity: ty::ImplPolarity::Positive,
         }) = pred.kind().skip_binder()
             && pred_trait_ref.self_ty() == tcx.types.self_param

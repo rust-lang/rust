@@ -3,7 +3,7 @@
 // (`rustc_const_eval` instead of `rustc_hir_analysis`) Therefore one file as a
 // test is not enough.
 // known-bug: #110395
-// check-pass
+// FIXME check-pass
 #![feature(const_trait_impl)]
 
 #[const_trait]

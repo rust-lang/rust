@@ -826,7 +826,6 @@ impl<'tcx> Relate<'tcx> for ty::TraitPredicate<'tcx> {
     ) -> RelateResult<'tcx, ty::TraitPredicate<'tcx>> {
         Ok(ty::TraitPredicate {
             trait_ref: relation.relate(a.trait_ref, b.trait_ref)?,
-            constness: relation.relate(a.constness, b.constness)?,
             polarity: relation.relate(a.polarity, b.polarity)?,
         })
     }

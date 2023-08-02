@@ -1306,7 +1306,7 @@ fn normalize_to_error<'a, 'tcx>(
         cause,
         recursion_depth: depth,
         param_env,
-        predicate: trait_ref.without_const().to_predicate(selcx.tcx()),
+        predicate: trait_ref.to_predicate(selcx.tcx()),
     };
     let tcx = selcx.infcx.tcx;
     let new_value = selcx.infcx.next_ty_var(TypeVariableOrigin {
@@ -1867,8 +1867,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                             if selcx.infcx.predicate_must_hold_modulo_regions(
                                 &obligation.with(
                                     selcx.tcx(),
-                                    ty::TraitRef::from_lang_item(selcx.tcx(), LangItem::Sized, obligation.cause.span(),[self_ty])
-                                        .without_const(),
+                                    ty::TraitRef::from_lang_item(selcx.tcx(), LangItem::Sized, obligation.cause.span(),[self_ty]),
                                 ),
                             ) =>
                         {
@@ -2152,8 +2151,7 @@ fn confirm_builtin_candidate<'cx, 'tcx>(
                 LangItem::Sized,
                 obligation.cause.span(),
                 [self_ty],
-            )
-            .without_const();
+            );
             obligations.push(obligation.with(tcx, sized_predicate));
         }
         (metadata_ty.into(), obligations)

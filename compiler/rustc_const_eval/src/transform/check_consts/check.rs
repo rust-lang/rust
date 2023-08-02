@@ -746,6 +746,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 }
 
                 // Attempting to call a trait method?
+                // FIXME(effects) do we need this?
                 if let Some(trait_id) = tcx.trait_of_item(callee) {
                     trace!("attempting to call a trait method");
                     if !self.tcx.features().const_trait_impl {
@@ -761,7 +762,6 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     }
 
                     let trait_ref = TraitRef::from_method(tcx, trait_id, fn_args);
-                    let trait_ref = trait_ref.with_constness(ty::BoundConstness::ConstIfConst);
                     let obligation =
                         Obligation::new(tcx, ObligationCause::dummy(), param_env, trait_ref);
 
