@@ -18,7 +18,7 @@ use rustc_infer::infer::canonical::CanonicalVarValues;
 use rustc_infer::infer::canonical::{CanonicalExt, QueryRegionConstraints};
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::{
-    ExternalConstraints, ExternalConstraintsData, MaybeCause, PredefinedOpaquesData, QueryInput,
+ ExternalConstraintsData, MaybeCause, PredefinedOpaquesData, QueryInput,
 };
 use rustc_middle::ty::{self, BoundVar, GenericArgKind, Ty, TyCtxt, TypeFoldable};
 use rustc_span::DUMMY_SP;
@@ -69,35 +69,36 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             previous call to `try_evaluate_added_goals!`"
         );
 
-        let certainty = certainty.unify_with(goals_certainty);
+        if let Certainty::OVERFLOW = certainty {
+            // If we have overflow, it's probable that we're substituting a type
+            // into itself infinitely and any partial substitutions in the query
+            // response are probably not useful anyways, so just return an empty
+            // query response.
+            //
+            // This may prevent us from potentially useful inference, e.g.
+            // 2 candidates, one ambiguous and one overflow, which both
+            // have the same inference constraints.
+            //
+            // Changing this to retain some constraints in the future
+            // won't be a breaking change, so this is good enough for now.
+            return Ok(self.make_ambiguous_response_no_constraints(MaybeCause::Overflow));
+        }
 
-        let response = match certainty {
-            Certainty::Yes | Certainty::Maybe(MaybeCause::Ambiguity) => {
-                let external_constraints = self.compute_external_query_constraints()?;
-                Response { var_values: self.var_values, external_constraints, certainty }
-            }
-            Certainty::Maybe(MaybeCause::Overflow) => {
-                // If we have overflow, it's probable that we're substituting a type
-                // into itself infinitely and any partial substitutions in the query
-                // response are probably not useful anyways, so just return an empty
-                // query response.
-                //
-                // This may prevent us from potentially useful inference, e.g.
-                // 2 candidates, one ambiguous and one overflow, which both
-                // have the same inference constraints.
-                //
-                // Changing this to retain some constraints in the future
-                // won't be a breaking change, so this is good enough for now.
-                return Ok(self.make_ambiguous_response_no_constraints(MaybeCause::Overflow));
-            }
-        };
+        let certainty = certainty.unify_with(goals_certainty);
+        let var_values = self.var_values;
+        let external_constraints = self.compute_external_query_constraints()?;
 
         let canonical = Canonicalizer::canonicalize(
             self.infcx,
             CanonicalizeMode::Response { max_input_universe: self.max_input_universe },
             &mut Default::default(),
-            response,
+            Response {
+                var_values,
+                certainty,
+                external_constraints: self.tcx().mk_external_constraints(external_constraints),
+            },
         );
+
         Ok(canonical)
     }
 
@@ -143,7 +144,9 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     /// further constrained by inference, that will be passed back in the var
     /// values.
     #[instrument(level = "debug", skip(self), ret)]
-    fn compute_external_query_constraints(&self) -> Result<ExternalConstraints<'tcx>, NoSolution> {
+    fn compute_external_query_constraints(
+        &self,
+    ) -> Result<ExternalConstraintsData<'tcx>, NoSolution> {
         // We only check for leaks from universes which were entered inside
         // of the query.
         self.infcx.leak_check(self.max_input_universe, None).map_err(|e| {
@@ -173,9 +176,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             self.predefined_opaques_in_body.opaque_types.iter().all(|(pa, _)| pa != a)
         });
 
-        Ok(self
-            .tcx()
-            .mk_external_constraints(ExternalConstraintsData { region_constraints, opaque_types }))
+        Ok(ExternalConstraintsData { region_constraints, opaque_types })
     }
 
     /// After calling a canonical query, we apply the constraints returned
