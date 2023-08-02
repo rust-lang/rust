@@ -11,6 +11,7 @@ fn main() {
     string_as_mut_ptr();
     two_mut_protected_same_alloc();
     direct_mut_to_const_raw();
+    local_addr_of_mut();
 
     // Stacked Borrows tests
     read_does_not_invalidate1();
@@ -29,6 +30,17 @@ fn main() {
     wide_raw_ptr_in_tuple();
     not_unpin_not_protected();
     write_does_not_invalidate_all_aliases();
+}
+
+#[allow(unused_assignments)]
+fn local_addr_of_mut() {
+    let mut local = 0;
+    let ptr = ptr::addr_of_mut!(local);
+    // In SB, `local` and `*ptr` would have different tags, but in TB they have the same tag.
+    local = 1;
+    unsafe { *ptr = 2 };
+    local = 3;
+    unsafe { *ptr = 4 };
 }
 
 // Tree Borrows has no issue with several mutable references existing
