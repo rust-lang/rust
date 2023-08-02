@@ -1093,6 +1093,11 @@ fn assert_generic_args_match<'tcx>(tcx: TyCtxt<'tcx>, did: DefId, args: &[Generi
     }
 }
 
+/// Returns whether `ty` is never-like; i.e., `!` (never) or an enum with zero variants.
+pub fn is_never_like(ty: Ty<'_>) -> bool {
+    ty.is_never() || (ty.is_enum() && ty.ty_adt_def().is_some_and(|def| def.variants().is_empty()))
+}
+
 /// Makes the projection type for the named associated type in the given impl or trait impl.
 ///
 /// This function is for associated types which are "known" to exist, and as such, will only return
