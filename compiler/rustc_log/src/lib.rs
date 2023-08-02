@@ -123,7 +123,7 @@ where
             return Ok(());
         }
         let backtrace = std::backtrace::Backtrace::capture();
-        writeln!(writer, "stack backtrace: \n{:?}", backtrace)
+        writeln!(writer, "stack backtrace: \n{backtrace:?}")
     }
 }
 

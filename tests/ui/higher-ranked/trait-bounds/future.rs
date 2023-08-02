@@ -7,7 +7,7 @@
 //[classic] build-fail
 //[classic] failure-status: 101
 //[classic] normalize-stderr-test "note: .*\n\n" -> ""
-//[classic] normalize-stderr-test "thread 'rustc' panicked.*\n" -> ""
+//[classic] normalize-stderr-test "thread 'rustc' panicked.*\n.*\n" -> ""
 //[classic] normalize-stderr-test "(error: internal compiler error: [^:]+):\d+:\d+: " -> "$1:LL:CC: "
 //[classic] rustc-env:RUST_BACKTRACE=0
 

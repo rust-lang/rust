@@ -1,3 +1,4 @@
+257 > 255
 error: the compiler unexpectedly panicked. this is a bug.
 
 query stack during panic:

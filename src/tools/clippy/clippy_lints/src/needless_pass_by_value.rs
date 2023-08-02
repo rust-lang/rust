@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::{multispan_sugg, span_lint_and_then};
 use clippy_utils::ptr::get_spans;
 use clippy_utils::source::{snippet, snippet_opt};
 use clippy_utils::ty::{
-    implements_trait, implements_trait_with_env, is_copy, is_type_diagnostic_item, is_type_lang_item,
+    implements_trait, implements_trait_with_env_from_iter, is_copy, is_type_diagnostic_item, is_type_lang_item,
 };
 use clippy_utils::{get_trait_def_id, is_self, paths};
 use if_chain::if_chain;
@@ -182,7 +182,13 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                 if !ty.is_mutable_ptr();
                 if !is_copy(cx, ty);
                 if ty.is_sized(cx.tcx, cx.param_env);
-                if !allowed_traits.iter().any(|&t| implements_trait_with_env(cx.tcx, cx.param_env, ty, t, [None]));
+                if !allowed_traits.iter().any(|&t| implements_trait_with_env_from_iter(
+                    cx.tcx,
+                    cx.param_env,
+                    ty,
+                    t,
+                    [Option::<ty::GenericArg<'tcx>>::None],
+                ));
                 if !implements_borrow_trait;
                 if !all_borrowable_trait;
 

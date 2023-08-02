@@ -1,12 +1,12 @@
 error[E0277]: `Foo<T, U>` cannot be sent between threads safely
-  --> $DIR/issue-83857-ub.rs:20:38
+  --> $DIR/issue-83857-ub.rs:22:38
    |
 LL | fn generic<T, U>(v: Foo<T, U>, f: fn(<Foo<T, U> as WithAssoc>::Output) -> i32) {
    |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `Foo<T, U>` cannot be sent between threads safely
    |
    = help: the trait `Send` is not implemented for `Foo<T, U>`
 note: required for `Foo<T, U>` to implement `WithAssoc`
-  --> $DIR/issue-83857-ub.rs:13:15
+  --> $DIR/issue-83857-ub.rs:15:15
    |
 LL | impl<T: Send> WithAssoc for T {
    |         ----  ^^^^^^^^^     ^

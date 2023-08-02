@@ -38,7 +38,7 @@ pub mod sort;
 
 mod ascii;
 mod cmp;
-mod index;
+pub(crate) mod index;
 mod iter;
 mod raw;
 mod rotate;

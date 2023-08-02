@@ -348,7 +348,7 @@ pub fn place_to_string_for_capture<'tcx>(tcx: TyCtxt<'tcx>, place: &HirPlace<'tc
     for (i, proj) in place.projections.iter().enumerate() {
         match proj.kind {
             HirProjectionKind::Deref => {
-                curr_string = format!("*{}", curr_string);
+                curr_string = format!("*{curr_string}");
             }
             HirProjectionKind::Field(idx, variant) => match place.ty_before_projection(i).kind() {
                 ty::Adt(def, ..) => {

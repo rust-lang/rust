@@ -74,22 +74,21 @@ impl IntercrateAmbiguityCause {
         match self {
             IntercrateAmbiguityCause::DownstreamCrate { trait_desc, self_desc } => {
                 let self_desc = if let Some(ty) = self_desc {
-                    format!(" for type `{}`", ty)
+                    format!(" for type `{ty}`")
                 } else {
                     String::new()
                 };
-                format!("downstream crates may implement trait `{}`{}", trait_desc, self_desc)
+                format!("downstream crates may implement trait `{trait_desc}`{self_desc}")
             }
             IntercrateAmbiguityCause::UpstreamCrateUpdate { trait_desc, self_desc } => {
                 let self_desc = if let Some(ty) = self_desc {
-                    format!(" for type `{}`", ty)
+                    format!(" for type `{ty}`")
                 } else {
                     String::new()
                 };
                 format!(
-                    "upstream crates may add a new impl of trait `{}`{} \
-                     in future versions",
-                    trait_desc, self_desc
+                    "upstream crates may add a new impl of trait `{trait_desc}`{self_desc} \
+                     in future versions"
                 )
             }
             IntercrateAmbiguityCause::ReservationImpl { message } => message.clone(),
@@ -2100,7 +2099,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 Where(
                     obligation
                         .predicate
-                        .rebind(sized_crit.iter_instantiated_copied(self.tcx(), args).collect()),
+                        .rebind(sized_crit.iter_instantiated(self.tcx(), args).collect()),
                 )
             }
 
@@ -2410,8 +2409,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 let guar = self.infcx.tcx.sess.delay_span_bug(
                     obligation.cause.span,
                     format!(
-                        "Impl {:?} was matchable against {:?} but now is not",
-                        impl_def_id, obligation
+                        "Impl {impl_def_id:?} was matchable against {obligation:?} but now is not"
                     ),
                 );
                 let value = self.infcx.fresh_args_for_item(obligation.cause.span, impl_def_id);

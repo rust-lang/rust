@@ -22,7 +22,7 @@ fn rustfmt(src: &Path, rustfmt: &Path, paths: &[PathBuf], check: bool) -> impl F
         cmd.arg("--check");
     }
     cmd.args(paths);
-    let cmd_debug = format!("{:?}", cmd);
+    let cmd_debug = format!("{cmd:?}");
     let mut cmd = cmd.spawn().expect("running rustfmt");
     // poor man's async: return a closure that'll wait for rustfmt's completion
     move |block: bool| -> bool {
@@ -115,7 +115,7 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
     let rustfmt_config: RustfmtConfig = t!(toml::from_str(&rustfmt_config));
     let mut ignore_fmt = ignore::overrides::OverrideBuilder::new(&build.src);
     for ignore in rustfmt_config.ignore {
-        ignore_fmt.add(&format!("!{}", ignore)).expect(&ignore);
+        ignore_fmt.add(&format!("!{ignore}")).expect(&ignore);
     }
     let git_available = match Command::new("git")
         .arg("--version")
@@ -153,13 +153,13 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
                     entry.split(' ').nth(1).expect("every git status entry should list a path")
                 });
             for untracked_path in untracked_paths {
-                println!("skip untracked path {} during rustfmt invocations", untracked_path);
+                println!("skip untracked path {untracked_path} during rustfmt invocations");
                 // The leading `/` makes it an exact match against the
                 // repository root, rather than a glob. Without that, if you
                 // have `foo.rs` in the repository root it will also match
                 // against anything like `compiler/rustc_foo/src/foo.rs`,
                 // preventing the latter from being formatted.
-                ignore_fmt.add(&format!("!/{}", untracked_path)).expect(&untracked_path);
+                ignore_fmt.add(&format!("!/{untracked_path}")).expect(&untracked_path);
             }
             // Only check modified files locally to speed up runtime.
             // We still check all files in CI to avoid bugs in `get_modified_rs_files` letting regressions slip through;

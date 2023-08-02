@@ -32,6 +32,7 @@ static SETTINGS_HASHES: &[&str] = &[
     "56e7bf011c71c5d81e0bf42e84938111847a810eee69d906bba494ea90b51922",
     "af1b5efe196aed007577899db9dae15d6dbc923d6fa42fa0934e68617ba9bbe0",
     "3468fea433c25fff60be6b71e8a215a732a7b1268b6a83bf10d024344e140541",
+    "47d227f424bf889b0d899b9cc992d5695e1b78c406e183cd78eafefbe5488923",
 ];
 static RUST_ANALYZER_SETTINGS: &str = include_str!("../etc/rust_analyzer_settings.json");
 
@@ -92,7 +93,7 @@ impl FromStr for Profile {
                 Ok(Profile::Tools)
             }
             "none" => Ok(Profile::None),
-            _ => Err(format!("unknown profile: '{}'", s)),
+            _ => Err(format!("unknown profile: '{s}'")),
         }
     }
 }
@@ -167,7 +168,7 @@ pub fn setup(config: &Config, profile: Profile) {
 
     println!("To get started, try one of the following commands:");
     for cmd in suggestions {
-        println!("- `x.py {}`", cmd);
+        println!("- `x.py {cmd}`");
     }
 
     if profile != Profile::Dist {
@@ -208,9 +209,8 @@ fn setup_config_toml(path: &PathBuf, profile: Profile, config: &Config) {
 
     let settings = format!(
         "# Includes one of the default files in src/bootstrap/defaults\n\
-    profile = \"{}\"\n\
-    changelog-seen = {}\n",
-        profile, VERSION
+    profile = \"{profile}\"\n\
+    changelog-seen = {VERSION}\n"
     );
 
     t!(fs::write(path, settings));
@@ -341,7 +341,7 @@ fn ensure_stage1_toolchain_placeholder_exists(stage_path: &str) -> bool {
         return false;
     };
 
-    let pathbuf = pathbuf.join(format!("rustc{}", EXE_SUFFIX));
+    let pathbuf = pathbuf.join(format!("rustc{EXE_SUFFIX}"));
 
     if pathbuf.exists() {
         return true;
@@ -394,7 +394,7 @@ pub fn interactive_path() -> io::Result<Profile> {
         break match parse_with_abbrev(&input) {
             Ok(profile) => profile,
             Err(err) => {
-                eprintln!("error: {}", err);
+                eprintln!("error: {err}");
                 eprintln!("note: press Ctrl+C to exit");
                 continue;
             }

@@ -7,14 +7,14 @@ use std::fmt;
 impl<'tcx, N: fmt::Debug> fmt::Debug for traits::ImplSource<'tcx, N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            super::ImplSource::UserDefined(v) => write!(f, "{:?}", v),
+            super::ImplSource::UserDefined(v) => write!(f, "{v:?}"),
 
             super::ImplSource::Builtin(source, d) => {
                 write!(f, "Builtin({source:?}, {d:?})")
             }
 
             super::ImplSource::Param(ct, n) => {
-                write!(f, "ImplSourceParamData({:?}, {:?})", n, ct)
+                write!(f, "ImplSourceParamData({n:?}, {ct:?})")
             }
         }
     }

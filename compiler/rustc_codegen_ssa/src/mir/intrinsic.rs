@@ -270,7 +270,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             sym::const_allocate => {
                 // returns a null pointer at runtime.
-                bx.const_null(bx.type_i8p())
+                bx.const_null(bx.type_ptr())
             }
 
             sym::const_deallocate => {
@@ -310,14 +310,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         let ty = fn_args.type_at(0);
                         if int_type_width_signed(ty, bx.tcx()).is_some() || ty.is_unsafe_ptr() {
                             let weak = instruction == "cxchgweak";
-                            let mut dst = args[0].immediate();
+                            let dst = args[0].immediate();
                             let mut cmp = args[1].immediate();
                             let mut src = args[2].immediate();
                             if ty.is_unsafe_ptr() {
                                 // Some platforms do not support atomic operations on pointers,
                                 // so we cast to integer first.
-                                let ptr_llty = bx.type_ptr_to(bx.type_isize());
-                                dst = bx.pointercast(dst, ptr_llty);
                                 cmp = bx.ptrtoint(cmp, bx.type_isize());
                                 src = bx.ptrtoint(src, bx.type_isize());
                             }
@@ -342,13 +340,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         if int_type_width_signed(ty, bx.tcx()).is_some() || ty.is_unsafe_ptr() {
                             let layout = bx.layout_of(ty);
                             let size = layout.size;
-                            let mut source = args[0].immediate();
+                            let source = args[0].immediate();
                             if ty.is_unsafe_ptr() {
                                 // Some platforms do not support atomic operations on pointers,
                                 // so we cast to integer first...
                                 let llty = bx.type_isize();
-                                let ptr_llty = bx.type_ptr_to(llty);
-                                source = bx.pointercast(source, ptr_llty);
                                 let result = bx.atomic_load(llty, source, parse_ordering(bx, ordering), size);
                                 // ... and then cast the result back to a pointer
                                 bx.inttoptr(result, bx.backend_type(layout))
@@ -365,12 +361,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         if int_type_width_signed(ty, bx.tcx()).is_some() || ty.is_unsafe_ptr() {
                             let size = bx.layout_of(ty).size;
                             let mut val = args[1].immediate();
-                            let mut ptr = args[0].immediate();
+                            let ptr = args[0].immediate();
                             if ty.is_unsafe_ptr() {
                                 // Some platforms do not support atomic operations on pointers,
                                 // so we cast to integer first.
-                                let ptr_llty = bx.type_ptr_to(bx.type_isize());
-                                ptr = bx.pointercast(ptr, ptr_llty);
                                 val = bx.ptrtoint(val, bx.type_isize());
                             }
                             bx.atomic_store(val, ptr, parse_ordering(bx, ordering), size);
@@ -409,13 +403,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                         let ty = fn_args.type_at(0);
                         if int_type_width_signed(ty, bx.tcx()).is_some() || ty.is_unsafe_ptr() {
-                            let mut ptr = args[0].immediate();
+                            let ptr = args[0].immediate();
                             let mut val = args[1].immediate();
                             if ty.is_unsafe_ptr() {
                                 // Some platforms do not support atomic operations on pointers,
                                 // so we cast to integer first.
-                                let ptr_llty = bx.type_ptr_to(bx.type_isize());
-                                ptr = bx.pointercast(ptr, ptr_llty);
                                 val = bx.ptrtoint(val, bx.type_isize());
                             }
                             bx.atomic_rmw(atom_op, ptr, val, parse_ordering(bx, ordering))
@@ -470,10 +462,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         };
 
         if !fn_abi.ret.is_ignore() {
-            if let PassMode::Cast(ty, _) = &fn_abi.ret.mode {
-                let ptr_llty = bx.type_ptr_to(bx.cast_backend_type(ty));
-                let ptr = bx.pointercast(result.llval, ptr_llty);
-                bx.store(llval, ptr, result.align);
+            if let PassMode::Cast(..) = &fn_abi.ret.mode {
+                bx.store(llval, result.llval, result.align);
             } else {
                 OperandRef::from_immediate_or_packed_pair(bx, llval, result.layout)
                     .val

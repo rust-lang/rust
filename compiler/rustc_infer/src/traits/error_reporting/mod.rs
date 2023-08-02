@@ -28,11 +28,11 @@ impl<'tcx> InferCtxt<'tcx> {
         if !self.tcx.is_impl_trait_in_trait(trait_item_def_id) {
             if let Some(span) = self.tcx.hir().span_if_local(trait_item_def_id) {
                 let item_name = self.tcx.item_name(impl_item_def_id.to_def_id());
-                err.span_label(span, format!("definition of `{}` from trait", item_name));
+                err.span_label(span, format!("definition of `{item_name}` from trait"));
             }
         }
 
-        err.span_label(error_span, format!("impl has extra requirement {}", requirement));
+        err.span_label(error_span, format!("impl has extra requirement {requirement}"));
 
         err
     }
@@ -56,7 +56,7 @@ pub fn report_object_safety_error<'tcx>(
         "the trait `{}` cannot be made into an object",
         trait_str
     );
-    err.span_label(span, format!("`{}` cannot be made into an object", trait_str));
+    err.span_label(span, format!("`{trait_str}` cannot be made into an object"));
 
     let mut reported_violations = FxIndexSet::default();
     let mut multi_span = vec![];

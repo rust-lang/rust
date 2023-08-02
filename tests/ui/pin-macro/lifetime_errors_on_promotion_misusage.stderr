@@ -9,8 +9,12 @@ LL |
 LL |     stuff(phantom_pinned)
    |           -------------- borrow later used here
    |
-   = note: consider using a `let` binding to create a longer lived value
    = note: this error originates in the macro `pin` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider using a `let` binding to create a longer lived value
+   |
+LL ~     let binding = pin!(PhantomPinned);
+LL ~     let phantom_pinned = identity(binding);
+   |
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/lifetime_errors_on_promotion_misusage.rs:18:30

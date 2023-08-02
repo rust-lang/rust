@@ -155,7 +155,7 @@ impl<'tcx> InterpErrorInfo<'tcx> {
 }
 
 fn print_backtrace(backtrace: &Backtrace) {
-    eprintln!("\n\nAn error occurred in miri:\n{}", backtrace);
+    eprintln!("\n\nAn error occurred in miri:\n{backtrace}");
 }
 
 impl From<ErrorGuaranteed> for InterpErrorInfo<'_> {

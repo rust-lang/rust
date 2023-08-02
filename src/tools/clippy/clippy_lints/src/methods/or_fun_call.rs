@@ -1,16 +1,17 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::eager_or_lazy::switch_to_lazy_eval;
 use clippy_utils::source::snippet_with_context;
-use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
-use clippy_utils::{contains_return, is_trait_item, last_path_segment};
+use clippy_utils::ty::{expr_type_is_certain, implements_trait, is_type_diagnostic_item};
+use clippy_utils::{contains_return, is_default_equivalent, is_default_equivalent_call, last_path_segment};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir as hir;
 use rustc_lint::LateContext;
+use rustc_middle::ty;
 use rustc_span::source_map::Span;
-use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::symbol::{self, sym, Symbol};
+use {rustc_ast as ast, rustc_hir as hir};
 
-use super::OR_FUN_CALL;
+use super::{OR_FUN_CALL, UNWRAP_OR_DEFAULT};
 
 /// Checks for the `OR_FUN_CALL` lint.
 #[allow(clippy::too_many_lines)]
@@ -24,53 +25,72 @@ pub(super) fn check<'tcx>(
 ) {
     /// Checks for `unwrap_or(T::new())`, `unwrap_or(T::default())`,
     /// `or_insert(T::new())` or `or_insert(T::default())`.
+    /// Similarly checks for `unwrap_or_else(T::new)`, `unwrap_or_else(T::default)`,
+    /// `or_insert_with(T::new)` or `or_insert_with(T::default)`.
     #[allow(clippy::too_many_arguments)]
     fn check_unwrap_or_default(
         cx: &LateContext<'_>,
         name: &str,
+        receiver: &hir::Expr<'_>,
         fun: &hir::Expr<'_>,
-        arg: &hir::Expr<'_>,
-        or_has_args: bool,
+        call_expr: Option<&hir::Expr<'_>>,
         span: Span,
         method_span: Span,
     ) -> bool {
-        let is_default_default = || is_trait_item(cx, fun, sym::Default);
+        if !expr_type_is_certain(cx, receiver) {
+            return false;
+        }
 
-        let implements_default = |arg, default_trait_id| {
-            let arg_ty = cx.typeck_results().expr_ty(arg);
-            implements_trait(cx, arg_ty, default_trait_id, &[])
-        };
-
-        if_chain! {
-            if !or_has_args;
-            if let Some(sugg) = match name {
-                "unwrap_or" => Some("unwrap_or_default"),
-                "or_insert" => Some("or_default"),
-                _ => None,
-            };
-            if let hir::ExprKind::Path(ref qpath) = fun.kind;
-            if let Some(default_trait_id) = cx.tcx.get_diagnostic_item(sym::Default);
-            let path = last_path_segment(qpath).ident.name;
-            // needs to target Default::default in particular or be *::new and have a Default impl
-            // available
-            if (matches!(path, kw::Default) && is_default_default())
-                || (matches!(path, sym::new) && implements_default(arg, default_trait_id));
-
-            then {
-                span_lint_and_sugg(
-                    cx,
-                    OR_FUN_CALL,
-                    method_span.with_hi(span.hi()),
-                    &format!("use of `{name}` followed by a call to `{path}`"),
-                    "try",
-                    format!("{sugg}()"),
-                    Applicability::MachineApplicable,
-                );
-
-                true
+        let is_new = |fun: &hir::Expr<'_>| {
+            if let hir::ExprKind::Path(ref qpath) = fun.kind {
+                let path = last_path_segment(qpath).ident.name;
+                matches!(path, sym::new)
             } else {
                 false
             }
+        };
+
+        let output_type_implements_default = |fun| {
+            let fun_ty = cx.typeck_results().expr_ty(fun);
+            if let ty::FnDef(def_id, args) = fun_ty.kind() {
+                let output_ty = cx.tcx.fn_sig(def_id).instantiate(cx.tcx, args).skip_binder().output();
+                cx.tcx
+                    .get_diagnostic_item(sym::Default)
+                    .map_or(false, |default_trait_id| {
+                        implements_trait(cx, output_ty, default_trait_id, &[])
+                    })
+            } else {
+                false
+            }
+        };
+
+        let sugg = match (name, call_expr.is_some()) {
+            ("unwrap_or", true) | ("unwrap_or_else", false) => "unwrap_or_default",
+            ("or_insert", true) | ("or_insert_with", false) => "or_default",
+            _ => return false,
+        };
+
+        // needs to target Default::default in particular or be *::new and have a Default impl
+        // available
+        if (is_new(fun) && output_type_implements_default(fun))
+            || match call_expr {
+                Some(call_expr) => is_default_equivalent(cx, call_expr),
+                None => is_default_equivalent_call(cx, fun) || closure_body_returns_empty_to_string(cx, fun),
+            }
+        {
+            span_lint_and_sugg(
+                cx,
+                UNWRAP_OR_DEFAULT,
+                method_span.with_hi(span.hi()),
+                &format!("use of `{name}` to construct default value"),
+                "try",
+                format!("{sugg}()"),
+                Applicability::MachineApplicable,
+            );
+
+            true
+        } else {
+            false
         }
     }
 
@@ -168,10 +188,15 @@ pub(super) fn check<'tcx>(
         match inner_arg.kind {
             hir::ExprKind::Call(fun, or_args) => {
                 let or_has_args = !or_args.is_empty();
-                if !check_unwrap_or_default(cx, name, fun, arg, or_has_args, expr.span, method_span) {
+                if or_has_args
+                    || !check_unwrap_or_default(cx, name, receiver, fun, Some(inner_arg), expr.span, method_span)
+                {
                     let fun_span = if or_has_args { None } else { Some(fun.span) };
                     check_general_case(cx, name, method_span, receiver, arg, None, expr.span, fun_span);
                 }
+            },
+            hir::ExprKind::Path(..) | hir::ExprKind::Closure(..) => {
+                check_unwrap_or_default(cx, name, receiver, inner_arg, None, expr.span, method_span);
             },
             hir::ExprKind::Index(..) | hir::ExprKind::MethodCall(..) => {
                 check_general_case(cx, name, method_span, receiver, arg, None, expr.span, None);
@@ -188,4 +213,23 @@ pub(super) fn check<'tcx>(
             check_general_case(cx, name, method_span, receiver, arg, Some(lambda), expr.span, fun_span);
         }
     }
+}
+
+fn closure_body_returns_empty_to_string(cx: &LateContext<'_>, e: &hir::Expr<'_>) -> bool {
+    if let hir::ExprKind::Closure(&hir::Closure { body, .. }) = e.kind {
+        let body = cx.tcx.hir().body(body);
+
+        if body.params.is_empty()
+            && let hir::Expr{ kind, .. } = &body.value
+            && let hir::ExprKind::MethodCall(hir::PathSegment {ident, ..}, self_arg, _, _) = kind
+            && ident.name == sym::to_string
+            && let hir::Expr{ kind, .. } = self_arg
+            && let hir::ExprKind::Lit(lit) = kind
+            && let ast::LitKind::Str(symbol::kw::Empty, _) = lit.node
+        {
+            return true;
+        }
+    }
+
+    false
 }

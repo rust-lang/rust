@@ -437,7 +437,7 @@ impl<'a> Parser<'a> {
                     );
 
                     let mut err = self_.struct_span_err(self_.token.span, msg);
-                    err.span_label(self_.token.span, format!("expected {}", expected));
+                    err.span_label(self_.token.span, format!("expected {expected}"));
                     err
                 });
             PatKind::Lit(self.mk_expr(lo, ExprKind::Lit(lit)))
@@ -673,7 +673,7 @@ impl<'a> Parser<'a> {
         let msg = format!("expected {}, found {}", expected, super::token_descr(&self.token));
 
         let mut err = self.struct_span_err(self.token.span, msg);
-        err.span_label(self.token.span, format!("expected {}", expected));
+        err.span_label(self.token.span, format!("expected {expected}"));
 
         let sp = self.sess.source_map().start_point(self.token.span);
         if let Some(sp) = self.sess.ambiguous_block_expr_parse.borrow().get(&sp) {
@@ -1001,7 +1001,7 @@ impl<'a> Parser<'a> {
                     break;
                 }
                 let token_str = super::token_descr(&self.token);
-                let msg = format!("expected `}}`, found {}", token_str);
+                let msg = format!("expected `}}`, found {token_str}");
                 let mut err = self.struct_span_err(self.token.span, msg);
 
                 err.span_label(self.token.span, "expected `}`");

@@ -12,7 +12,7 @@ use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::{ArgAbiMethods, BaseTypeMethods, BuilderMethods, ConstMethods, IntrinsicCallMethods};
 #[cfg(feature="master")]
-use rustc_codegen_ssa::traits::{DerivedTypeMethods, MiscMethods};
+use rustc_codegen_ssa::traits::MiscMethods;
 use rustc_codegen_ssa::errors::InvalidMonomorphization;
 use rustc_middle::bug;
 use rustc_middle::ty::{self, Instance, Ty};

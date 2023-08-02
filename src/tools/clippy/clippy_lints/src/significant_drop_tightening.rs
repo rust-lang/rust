@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::{indent_of, snippet};
-use clippy_utils::{expr_or_init, get_attr, path_to_local};
+use clippy_utils::{expr_or_init, get_attr, path_to_local, peel_hir_expr_unary};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
@@ -235,7 +235,7 @@ impl<'ap, 'lc, 'others, 'stmt, 'tcx> StmtsChecker<'ap, 'lc, 'others, 'stmt, 'tcx
 
     fn manage_has_expensive_expr_after_last_attr(&mut self) {
         let has_expensive_stmt = match self.ap.curr_stmt.kind {
-            hir::StmtKind::Expr(expr) if !is_expensive_expr(expr) => false,
+            hir::StmtKind::Expr(expr) if is_inexpensive_expr(expr) => false,
             hir::StmtKind::Local(local) if let Some(expr) = local.init
                 && let hir::ExprKind::Path(_) = expr.kind => false,
             _ => true
@@ -330,13 +330,13 @@ impl<'ap, 'lc, 'others, 'stmt, 'tcx> Visitor<'tcx> for StmtsChecker<'ap, 'lc, 'o
                             apa.last_method_span = span;
                         }
                     },
-                    hir::StmtKind::Semi(expr) => {
-                        if has_drop(expr, &apa.first_bind_ident, self.cx) {
+                    hir::StmtKind::Semi(semi_expr) => {
+                        if has_drop(semi_expr, &apa.first_bind_ident, self.cx) {
                             apa.has_expensive_expr_after_last_attr = false;
                             apa.last_stmt_span = DUMMY_SP;
                             return;
                         }
-                        if let hir::ExprKind::MethodCall(_, _, _, span) = expr.kind {
+                        if let hir::ExprKind::MethodCall(_, _, _, span) = semi_expr.kind {
                             apa.last_method_span = span;
                         }
                     },
@@ -434,16 +434,31 @@ fn has_drop(expr: &hir::Expr<'_>, first_bind_ident: &Ident, lcx: &LateContext<'_
         && let Res::Def(DefKind::Fn, did) = fun_path.res
         && lcx.tcx.is_diagnostic_item(sym::mem_drop, did)
         && let [first_arg, ..] = args
-        && let hir::ExprKind::Path(hir::QPath::Resolved(_, arg_path)) = &first_arg.kind
-        && let [first_arg_ps, .. ] = arg_path.segments
     {
-        &first_arg_ps.ident == first_bind_ident
+        let has_ident = |local_expr: &hir::Expr<'_>| {
+            if let hir::ExprKind::Path(hir::QPath::Resolved(_, arg_path)) = &local_expr.kind
+                && let [first_arg_ps, .. ] = arg_path.segments
+                && &first_arg_ps.ident == first_bind_ident
+            {
+                true
+            }
+            else {
+                false
+            }
+        };
+        if has_ident(first_arg) {
+            return true;
+        }
+        if let hir::ExprKind::Tup(value) = &first_arg.kind && value.iter().any(has_ident) {
+            return true;
+        }
     }
-    else {
-        false
-    }
+    false
 }
 
-fn is_expensive_expr(expr: &hir::Expr<'_>) -> bool {
-    !matches!(expr.kind, hir::ExprKind::Path(_))
+fn is_inexpensive_expr(expr: &hir::Expr<'_>) -> bool {
+    let actual = peel_hir_expr_unary(expr).0;
+    let is_path = matches!(actual.kind, hir::ExprKind::Path(_));
+    let is_lit = matches!(actual.kind, hir::ExprKind::Lit(_));
+    is_path || is_lit
 }

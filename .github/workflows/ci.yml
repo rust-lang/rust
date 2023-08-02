@@ -418,7 +418,6 @@ jobs:
               RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --host=aarch64-pc-windows-msvc --enable-full-tools --enable-profiler"
               SCRIPT: python x.py dist bootstrap --include-default-paths
               DIST_REQUIRE_ALL_TOOLS: 1
-              WINDOWS_SDK_20348_HACK: 1
             os: windows-2019-8core-32gb
           - name: dist-i686-mingw
             env:

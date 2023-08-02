@@ -44,7 +44,7 @@ impl<'a, 'tcx> mir::visit::Visitor<'tcx> for PossibleOriginVisitor<'a, 'tcx> {
         let lhs = place.local;
         match rvalue {
             // Only consider `&mut`, which can modify origin place
-            mir::Rvalue::Ref(_, rustc_middle::mir::BorrowKind::Mut { .. }, borrowed) |
+            mir::Rvalue::Ref(_, mir::BorrowKind::Mut { .. }, borrowed) |
             // _2: &mut _;
             // _3 = move _2
             mir::Rvalue::Use(mir::Operand::Move(borrowed))  |

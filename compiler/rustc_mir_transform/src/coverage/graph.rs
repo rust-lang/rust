@@ -345,10 +345,7 @@ impl BasicCoverageBlockData {
         &mir_body[self.last_bb()].terminator()
     }
 
-    pub fn set_counter(
-        &mut self,
-        counter_kind: CoverageKind,
-    ) -> Result<ExpressionOperandId, Error> {
+    pub fn set_counter(&mut self, counter_kind: CoverageKind) -> Result<Operand, Error> {
         debug_assert!(
             // If the BCB has an edge counter (to be injected into a new `BasicBlock`), it can also
             // have an expression (to be injected into an existing `BasicBlock` represented by this
@@ -356,7 +353,7 @@ impl BasicCoverageBlockData {
             self.edge_from_bcbs.is_none() || counter_kind.is_expression(),
             "attempt to add a `Counter` to a BCB target with existing incoming edge counters"
         );
-        let operand = counter_kind.as_operand_id();
+        let operand = counter_kind.as_operand();
         if let Some(replaced) = self.counter_kind.replace(counter_kind) {
             Error::from_string(format!(
                 "attempt to set a BasicCoverageBlock coverage counter more than once; \
@@ -381,7 +378,7 @@ impl BasicCoverageBlockData {
         &mut self,
         from_bcb: BasicCoverageBlock,
         counter_kind: CoverageKind,
-    ) -> Result<ExpressionOperandId, Error> {
+    ) -> Result<Operand, Error> {
         if level_enabled!(tracing::Level::DEBUG) {
             // If the BCB has an edge counter (to be injected into a new `BasicBlock`), it can also
             // have an expression (to be injected into an existing `BasicBlock` represented by this
@@ -393,7 +390,7 @@ impl BasicCoverageBlockData {
                 ));
             }
         }
-        let operand = counter_kind.as_operand_id();
+        let operand = counter_kind.as_operand();
         if let Some(replaced) =
             self.edge_from_bcbs.get_or_insert_default().insert(from_bcb, counter_kind)
         {

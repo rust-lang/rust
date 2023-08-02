@@ -1052,7 +1052,7 @@ impl<'a> Parser<'a> {
                 }
                 components.push(Punct(c));
             } else {
-                panic!("unexpected character in a float token: {:?}", c)
+                panic!("unexpected character in a float token: {c:?}")
             }
         }
         if !ident_like.is_empty() {
@@ -1113,7 +1113,7 @@ impl<'a> Parser<'a> {
                 self.error_unexpected_after_dot();
                 DestructuredFloat::Error
             }
-            _ => panic!("unexpected components in a float token: {:?}", components),
+            _ => panic!("unexpected components in a float token: {components:?}"),
         }
     }
 
@@ -2342,7 +2342,7 @@ impl<'a> Parser<'a> {
             let ty = if this.eat(&token::Colon) {
                 this.parse_ty()?
             } else {
-                this.mk_ty(this.prev_token.span, TyKind::Infer)
+                this.mk_ty(pat.span, TyKind::Infer)
             };
 
             Ok((

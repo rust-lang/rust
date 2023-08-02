@@ -3,6 +3,7 @@
 
 // This test is for targets with 32bit c_int only.
 // ignore-msp430
+// ignore-avr
 
 fn main() {
 }

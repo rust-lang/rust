@@ -704,8 +704,8 @@ impl fmt::Debug for RegionSnapshot {
 impl<'tcx> fmt::Debug for GenericKind<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            GenericKind::Param(ref p) => write!(f, "{:?}", p),
-            GenericKind::Alias(ref p) => write!(f, "{:?}", p),
+            GenericKind::Param(ref p) => write!(f, "{p:?}"),
+            GenericKind::Alias(ref p) => write!(f, "{p:?}"),
         }
     }
 }
@@ -713,8 +713,8 @@ impl<'tcx> fmt::Debug for GenericKind<'tcx> {
 impl<'tcx> fmt::Display for GenericKind<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            GenericKind::Param(ref p) => write!(f, "{}", p),
-            GenericKind::Alias(ref p) => write!(f, "{}", p),
+            GenericKind::Param(ref p) => write!(f, "{p}"),
+            GenericKind::Alias(ref p) => write!(f, "{p}"),
         }
     }
 }

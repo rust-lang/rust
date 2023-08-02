@@ -4,7 +4,6 @@ use crate::back::profiling::{
 };
 use crate::base;
 use crate::common;
-use crate::consts;
 use crate::errors::{
     CopyBitcode, FromLlvmDiag, FromLlvmOptimizationDiag, LlvmError, WithLlvmError, WriteBytecode,
 };
@@ -259,7 +258,7 @@ pub(crate) fn save_temp_bitcode(
         return;
     }
     unsafe {
-        let ext = format!("{}.bc", name);
+        let ext = format!("{name}.bc");
         let cgu = Some(&module.name[..]);
         let path = cgcx.output_filenames.temp_path_ext(&ext, cgu);
         let cstr = path_to_c_string(&path);
@@ -382,29 +381,22 @@ unsafe extern "C" fn diagnostic_handler(info: &DiagnosticInfo, user: *mut c_void
         }
 
         llvm::diagnostic::Optimization(opt) => {
-            let enabled = match cgcx.remark {
-                Passes::All => true,
-                Passes::Some(ref v) => v.iter().any(|s| *s == opt.pass_name),
-            };
-
-            if enabled {
-                diag_handler.emit_note(FromLlvmOptimizationDiag {
-                    filename: &opt.filename,
-                    line: opt.line,
-                    column: opt.column,
-                    pass_name: &opt.pass_name,
-                    kind: match opt.kind {
-                        OptimizationDiagnosticKind::OptimizationRemark => "success",
-                        OptimizationDiagnosticKind::OptimizationMissed
-                        | OptimizationDiagnosticKind::OptimizationFailure => "missed",
-                        OptimizationDiagnosticKind::OptimizationAnalysis
-                        | OptimizationDiagnosticKind::OptimizationAnalysisFPCommute
-                        | OptimizationDiagnosticKind::OptimizationAnalysisAliasing => "analysis",
-                        OptimizationDiagnosticKind::OptimizationRemarkOther => "other",
-                    },
-                    message: &opt.message,
-                });
-            }
+            diag_handler.emit_note(FromLlvmOptimizationDiag {
+                filename: &opt.filename,
+                line: opt.line,
+                column: opt.column,
+                pass_name: &opt.pass_name,
+                kind: match opt.kind {
+                    OptimizationDiagnosticKind::OptimizationRemark => "success",
+                    OptimizationDiagnosticKind::OptimizationMissed
+                    | OptimizationDiagnosticKind::OptimizationFailure => "missed",
+                    OptimizationDiagnosticKind::OptimizationAnalysis
+                    | OptimizationDiagnosticKind::OptimizationAnalysisFPCommute
+                    | OptimizationDiagnosticKind::OptimizationAnalysisAliasing => "analysis",
+                    OptimizationDiagnosticKind::OptimizationRemarkOther => "other",
+                },
+                message: &opt.message,
+            });
         }
         llvm::diagnostic::PGO(diagnostic_ref) | llvm::diagnostic::Linker(diagnostic_ref) => {
             let message = llvm::build_string(|s| {
@@ -713,7 +705,7 @@ pub(crate) unsafe fn codegen(
 
                 let Ok(demangled) = rustc_demangle::try_demangle(input) else { return 0 };
 
-                if write!(cursor, "{:#}", demangled).is_err() {
+                if write!(cursor, "{demangled:#}").is_err() {
                     // Possible only if provided buffer is not big enough
                     return 0;
                 }
@@ -834,7 +826,7 @@ pub(crate) unsafe fn codegen(
 }
 
 fn create_section_with_flags_asm(section_name: &str, section_flags: &str, data: &[u8]) -> Vec<u8> {
-    let mut asm = format!(".section {},\"{}\"\n", section_name, section_flags).into_bytes();
+    let mut asm = format!(".section {section_name},\"{section_flags}\"\n").into_bytes();
     asm.extend_from_slice(b".ascii \"");
     asm.reserve(data.len());
     for &byte in data {
@@ -992,7 +984,7 @@ fn create_msvc_imps(
     let prefix = if cgcx.target_arch == "x86" { "\x01__imp__" } else { "\x01__imp_" };
 
     unsafe {
-        let i8p_ty = Type::i8p_llcx(llcx);
+        let ptr_ty = Type::ptr_llcx(llcx);
         let globals = base::iter_globals(llmod)
             .filter(|&val| {
                 llvm::LLVMRustGetLinkage(val) == llvm::Linkage::ExternalLinkage
@@ -1012,8 +1004,8 @@ fn create_msvc_imps(
             .collect::<Vec<_>>();
 
         for (imp_name, val) in globals {
-            let imp = llvm::LLVMAddGlobal(llmod, i8p_ty, imp_name.as_ptr().cast());
-            llvm::LLVMSetInitializer(imp, consts::ptrcast(val, i8p_ty));
+            let imp = llvm::LLVMAddGlobal(llmod, ptr_ty, imp_name.as_ptr().cast());
+            llvm::LLVMSetInitializer(imp, val);
             llvm::LLVMRustSetLinkage(imp, llvm::Linkage::ExternalLinkage);
         }
     }

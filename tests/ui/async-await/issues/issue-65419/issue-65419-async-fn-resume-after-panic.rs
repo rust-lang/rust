@@ -3,7 +3,8 @@
 
 // run-fail
 // needs-unwind
-// error-pattern: thread 'main' panicked at '`async fn` resumed after panicking'
+// error-pattern: thread 'main' panicked
+// error-pattern: `async fn` resumed after panicking
 // edition:2018
 // ignore-wasm no panic or subprocess support
 

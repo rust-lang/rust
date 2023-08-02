@@ -483,8 +483,7 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
 
         assert!(
             !value.has_escaping_bound_vars(),
-            "Normalizing {:?} without wrapping in a `Binder`",
-            value
+            "Normalizing {value:?} without wrapping in a `Binder`"
         );
 
         if !needs_normalization(&value, self.param_env.reveal()) {
@@ -1932,7 +1931,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                 // These traits have no associated types.
                 selcx.tcx().sess.delay_span_bug(
                     obligation.cause.span,
-                    format!("Cannot project an associated type from `{:?}`", impl_source),
+                    format!("Cannot project an associated type from `{impl_source:?}`"),
                 );
                 return Err(());
             }
@@ -2303,8 +2302,7 @@ fn confirm_param_env_candidate<'cx, 'tcx>(
         }
         Err(e) => {
             let msg = format!(
-                "Failed to unify obligation `{:?}` with poly_projection `{:?}`: {:?}",
-                obligation, poly_cache_entry, e,
+                "Failed to unify obligation `{obligation:?}` with poly_projection `{poly_cache_entry:?}`: {e:?}",
             );
             debug!("confirm_param_env_candidate: {}", msg);
             let err = Ty::new_error_with_message(infcx.tcx, obligation.cause.span, msg);

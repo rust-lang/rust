@@ -15,14 +15,6 @@ LL |     let x = [x.0, x.1];
    |
    = help: use `.into()` instead, or `<[T; N]>::from` if type annotations are needed
 
-error: it looks like you're trying to convert an array to a tuple
-  --> $DIR/tuple_array_conversions.rs:13:13
-   |
-LL |     let x = (x[0], x[1]);
-   |             ^^^^^^^^^^^^
-   |
-   = help: use `.into()` instead, or `<(T0, T1, ..., Tn)>::from` if type annotations are needed
-
 error: it looks like you're trying to convert a tuple to an array
   --> $DIR/tuple_array_conversions.rs:16:53
    |
@@ -55,8 +47,24 @@ LL |     t1.iter().for_each(|&(a, b)| _ = [a, b]);
    |
    = help: use `.into()` instead, or `<[T; N]>::from` if type annotations are needed
 
+error: it looks like you're trying to convert a tuple to an array
+  --> $DIR/tuple_array_conversions.rs:57:22
+   |
+LL |     let _: &[f64] = &[a, b];
+   |                      ^^^^^^
+   |
+   = help: use `.into()` instead, or `<[T; N]>::from` if type annotations are needed
+
 error: it looks like you're trying to convert an array to a tuple
-  --> $DIR/tuple_array_conversions.rs:69:13
+  --> $DIR/tuple_array_conversions.rs:60:5
+   |
+LL |     (src, dest);
+   |     ^^^^^^^^^^^
+   |
+   = help: use `.into()` instead, or `<(T0, T1, ..., Tn)>::from` if type annotations are needed
+
+error: it looks like you're trying to convert an array to a tuple
+  --> $DIR/tuple_array_conversions.rs:99:13
    |
 LL |     let x = (x[0], x[1]);
    |             ^^^^^^^^^^^^
@@ -64,20 +72,12 @@ LL |     let x = (x[0], x[1]);
    = help: use `.into()` instead, or `<(T0, T1, ..., Tn)>::from` if type annotations are needed
 
 error: it looks like you're trying to convert a tuple to an array
-  --> $DIR/tuple_array_conversions.rs:70:13
+  --> $DIR/tuple_array_conversions.rs:100:13
    |
 LL |     let x = [x.0, x.1];
    |             ^^^^^^^^^^
    |
    = help: use `.into()` instead, or `<[T; N]>::from` if type annotations are needed
-
-error: it looks like you're trying to convert an array to a tuple
-  --> $DIR/tuple_array_conversions.rs:72:13
-   |
-LL |     let x = (x[0], x[1]);
-   |             ^^^^^^^^^^^^
-   |
-   = help: use `.into()` instead, or `<(T0, T1, ..., Tn)>::from` if type annotations are needed
 
 error: aborting due to 10 previous errors
 

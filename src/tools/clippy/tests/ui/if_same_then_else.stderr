@@ -108,5 +108,23 @@ LL | |         bar + 1;
 LL | |     }
    | |_____^
 
-error: aborting due to 5 previous errors
+error: this `if` has identical blocks
+  --> $DIR/if_same_then_else.rs:250:14
+   |
+LL |           if x {
+   |  ______________^
+LL | |             0_u8.is_power_of_two()
+LL | |         } else {
+   | |_________^
+   |
+note: same as this
+  --> $DIR/if_same_then_else.rs:252:16
+   |
+LL |           } else {
+   |  ________________^
+LL | |             0_u8.is_power_of_two()
+LL | |         }
+   | |_________^
+
+error: aborting due to 6 previous errors
 

@@ -29,8 +29,8 @@ impl<'tcx> fmt::Debug for VtblEntry<'tcx> {
             VtblEntry::MetadataSize => write!(f, "MetadataSize"),
             VtblEntry::MetadataAlign => write!(f, "MetadataAlign"),
             VtblEntry::Vacant => write!(f, "Vacant"),
-            VtblEntry::Method(instance) => write!(f, "Method({})", instance),
-            VtblEntry::TraitVPtr(trait_ref) => write!(f, "TraitVPtr({})", trait_ref),
+            VtblEntry::Method(instance) => write!(f, "Method({instance})"),
+            VtblEntry::TraitVPtr(trait_ref) => write!(f, "TraitVPtr({trait_ref})"),
         }
     }
 }

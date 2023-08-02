@@ -207,7 +207,7 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
             self.tcx
                 .sess
                 .diagnostic()
-                .bug(format!("built-in macro `{}` was already registered", name));
+                .bug(format!("built-in macro `{name}` was already registered"));
         }
     }
 
@@ -570,7 +570,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
 
             let mut err = self.tcx.sess.create_err(err);
-            err.span_label(path.span, format!("not {} {}", article, expected));
+            err.span_label(path.span, format!("not {article} {expected}"));
 
             err.emit();
 
@@ -906,7 +906,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             if macro_kind.is_some() && sub_namespace_match(macro_kind, Some(MacroKind::Attr)) {
                 self.tcx.sess.span_err(
                     ident.span,
-                    format!("name `{}` is reserved in attribute namespace", ident),
+                    format!("name `{ident}` is reserved in attribute namespace"),
                 );
             }
         }

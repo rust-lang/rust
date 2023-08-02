@@ -1,12 +1,14 @@
-use clippy_utils::diagnostics::{span_lint_and_then, span_lint_hir_and_then};
+use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then, span_lint_hir_and_then};
 use clippy_utils::source::{snippet_opt, snippet_with_context};
 use clippy_utils::visitors::{for_each_expr_with_closures, Descend};
-use clippy_utils::{fn_def_id, path_to_local_id, span_find_starting_semi};
+use clippy_utils::{fn_def_id, is_from_proc_macro, path_to_local_id, span_find_starting_semi};
 use core::ops::ControlFlow;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
-use rustc_hir::{Block, Body, Expr, ExprKind, FnDecl, LangItem, MatchSource, PatKind, QPath, StmtKind};
+use rustc_hir::{
+    Block, Body, Expr, ExprKind, FnDecl, ItemKind, LangItem, MatchSource, OwnerNode, PatKind, QPath, Stmt, StmtKind,
+};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, GenericArgKind, Ty};
@@ -76,6 +78,46 @@ declare_clippy_lint! {
     "using a return statement like `return expr;` where an expression would suffice"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for return statements on `Err` paired with the `?` operator.
+    ///
+    /// ### Why is this bad?
+    /// The `return` is unnecessary.
+    ///
+    /// ### Example
+    /// ```rust,ignore
+    /// fn foo(x: usize) -> Result<(), Box<dyn Error>> {
+    ///     if x == 0 {
+    ///         return Err(...)?;
+    ///     }
+    ///     Ok(())
+    /// }
+    /// ```
+    /// simplify to
+    /// ```rust,ignore
+    /// fn foo(x: usize) -> Result<(), Box<dyn Error>> {
+    ///     if x == 0 {
+    ///         Err(...)?;
+    ///     }
+    ///     Ok(())
+    /// }
+    /// ```
+    /// if paired with `try_err`, use instead:
+    /// ```rust,ignore
+    /// fn foo(x: usize) -> Result<(), Box<dyn Error>> {
+    ///     if x == 0 {
+    ///         return Err(...);
+    ///     }
+    ///     Ok(())
+    /// }
+    /// ```
+    #[clippy::version = "1.73.0"]
+    pub NEEDLESS_RETURN_WITH_QUESTION_MARK,
+    style,
+    "using a return statement like `return Err(expr)?;` where removing it would suffice"
+}
+
 #[derive(PartialEq, Eq)]
 enum RetReplacement<'tcx> {
     Empty,
@@ -115,9 +157,35 @@ impl<'tcx> ToString for RetReplacement<'tcx> {
     }
 }
 
-declare_lint_pass!(Return => [LET_AND_RETURN, NEEDLESS_RETURN]);
+declare_lint_pass!(Return => [LET_AND_RETURN, NEEDLESS_RETURN, NEEDLESS_RETURN_WITH_QUESTION_MARK]);
 
 impl<'tcx> LateLintPass<'tcx> for Return {
+    fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
+        if !in_external_macro(cx.sess(), stmt.span)
+            && let StmtKind::Semi(expr) = stmt.kind
+            && let ExprKind::Ret(Some(ret)) = expr.kind
+            && let ExprKind::Match(.., MatchSource::TryDesugar) = ret.kind
+            // Ensure this is not the final stmt, otherwise removing it would cause a compile error
+            && let OwnerNode::Item(item) = cx.tcx.hir().owner(cx.tcx.hir().get_parent_item(expr.hir_id))
+            && let ItemKind::Fn(_, _, body) = item.kind
+            && let block = cx.tcx.hir().body(body).value
+            && let ExprKind::Block(block, _) = block.kind
+            && let [.., final_stmt] = block.stmts
+            && final_stmt.hir_id != stmt.hir_id
+            && !is_from_proc_macro(cx, expr)
+        {
+            span_lint_and_sugg(
+                cx,
+                NEEDLESS_RETURN_WITH_QUESTION_MARK,
+                expr.span.until(ret.span),
+                "unneeded `return` statement with `?` operator",
+                "remove it",
+                String::new(),
+                Applicability::MachineApplicable,
+            );
+        }
+    }
+
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx Block<'_>) {
         // we need both a let-binding stmt and an expr
         if_chain! {
@@ -173,6 +241,10 @@ impl<'tcx> LateLintPass<'tcx> for Return {
         sp: Span,
         _: LocalDefId,
     ) {
+        if sp.from_expansion() {
+            return;
+        }
+
         match kind {
             FnKind::Closure => {
                 // when returning without value in closure, replace this `return`

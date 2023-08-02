@@ -30,6 +30,7 @@ pub static RENAMED_LINTS: &[(&str, &str)] = &[
     ("clippy::single_char_push_str", "clippy::single_char_add_str"),
     ("clippy::stutter", "clippy::module_name_repetitions"),
     ("clippy::to_string_in_display", "clippy::recursive_format_impl"),
+    ("clippy::unwrap_or_else_default", "clippy::unwrap_or_default"),
     ("clippy::zero_width_space", "clippy::invisible_characters"),
     ("clippy::cast_ref_to_mut", "invalid_reference_casting"),
     ("clippy::clone_double_ref", "suspicious_double_ref_op"),

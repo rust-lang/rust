@@ -86,7 +86,7 @@ fn get_rpath_relative_to_output(config: &mut RPathConfig<'_>, lib: &Path) -> Str
     output.pop(); // strip filename
     let output = fs::canonicalize(&output).unwrap_or(output);
     let relative = path_relative_from(&lib, &output)
-        .unwrap_or_else(|| panic!("couldn't create relative path from {:?} to {:?}", output, lib));
+        .unwrap_or_else(|| panic!("couldn't create relative path from {output:?} to {lib:?}"));
     // FIXME (#9639): This needs to handle non-utf8 paths
     format!("{}/{}", prefix, relative.to_str().expect("non-utf8 component in path"))
 }

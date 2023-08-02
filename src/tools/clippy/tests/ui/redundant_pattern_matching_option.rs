@@ -10,6 +10,20 @@
     clippy::equatable_if_let,
     clippy::if_same_then_else
 )]
+#![feature(let_chains, if_let_guard)]
+
+fn issue_11174<T>(boolean: bool, maybe_some: Option<T>) -> bool {
+    matches!(maybe_some, None if !boolean)
+}
+
+fn issue_11174_edge_cases<T>(boolean: bool, boolean2: bool, maybe_some: Option<T>) {
+    let _ = matches!(maybe_some, None if boolean || boolean2); // guard needs parentheses
+    let _ = match maybe_some { // can't use `matches!` here
+                               // because `expr` metavars in macros don't allow let exprs
+        None if let Some(x) = Some(0) && x > 5 => true,
+        _ => false
+    };
+}
 
 fn main() {
     if let None = None::<()> {}

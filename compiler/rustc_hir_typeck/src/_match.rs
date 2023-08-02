@@ -558,10 +558,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     {
                         let pred = clause.kind().rebind(match clause.kind().skip_binder() {
                             ty::ClauseKind::Trait(trait_pred) => {
-                                // FIXME(rpitit): This will need to be fixed when we move to associated types
                                 assert!(matches!(
                                     *trait_pred.trait_ref.self_ty().kind(),
-                                    ty::Alias(_, ty::AliasTy { def_id, args: alias_args, .. })
+                                    ty::Alias(ty::Opaque, ty::AliasTy { def_id, args: alias_args, .. })
                                     if def_id == rpit_def_id && args == alias_args
                                 ));
                                 ty::ClauseKind::Trait(trait_pred.with_self_ty(self.tcx, ty))
@@ -569,7 +568,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             ty::ClauseKind::Projection(mut proj_pred) => {
                                 assert!(matches!(
                                     *proj_pred.projection_ty.self_ty().kind(),
-                                    ty::Alias(_, ty::AliasTy { def_id, args: alias_args, .. })
+                                    ty::Alias(ty::Opaque, ty::AliasTy { def_id, args: alias_args, .. })
                                     if def_id == rpit_def_id && args == alias_args
                                 ));
                                 proj_pred = proj_pred.with_self_ty(self.tcx, ty);

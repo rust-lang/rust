@@ -246,7 +246,7 @@ impl Default for ExpressionFormat {
     }
 }
 
-/// If enabled, this struct maintains a map from `CoverageKind` IDs (as `ExpressionOperandId`) to
+/// If enabled, this struct maintains a map from `CoverageKind` IDs (as `Operand`) to
 /// the `CoverageKind` data and optional label (normally, the counter's associated
 /// `BasicCoverageBlock` format string, if any).
 ///
@@ -258,7 +258,7 @@ impl Default for ExpressionFormat {
 /// `DebugCounters` supports a recursive rendering of `Expression` counters, so they can be
 /// presented as nested expressions such as `(bcb3 - (bcb0 + bcb1))`.
 pub(super) struct DebugCounters {
-    some_counters: Option<FxHashMap<ExpressionOperandId, DebugCounter>>,
+    some_counters: Option<FxHashMap<Operand, DebugCounter>>,
 }
 
 impl DebugCounters {
@@ -277,14 +277,14 @@ impl DebugCounters {
 
     pub fn add_counter(&mut self, counter_kind: &CoverageKind, some_block_label: Option<String>) {
         if let Some(counters) = &mut self.some_counters {
-            let id = counter_kind.as_operand_id();
+            let id = counter_kind.as_operand();
             counters
                 .try_insert(id, DebugCounter::new(counter_kind.clone(), some_block_label))
                 .expect("attempt to add the same counter_kind to DebugCounters more than once");
         }
     }
 
-    pub fn some_block_label(&self, operand: ExpressionOperandId) -> Option<&String> {
+    pub fn some_block_label(&self, operand: Operand) -> Option<&String> {
         self.some_counters.as_ref().and_then(|counters| {
             counters.get(&operand).and_then(|debug_counter| debug_counter.some_block_label.as_ref())
         })
@@ -323,24 +323,24 @@ impl DebugCounters {
             }
         }
 
-        let id = counter_kind.as_operand_id();
+        let id = counter_kind.as_operand();
         if self.some_counters.is_some() && (counter_format.block || !counter_format.id) {
             let counters = self.some_counters.as_ref().unwrap();
             if let Some(DebugCounter { some_block_label: Some(block_label), .. }) =
                 counters.get(&id)
             {
                 return if counter_format.id {
-                    format!("{}#{}", block_label, id.index())
+                    format!("{}#{:?}", block_label, id)
                 } else {
                     block_label.to_string()
                 };
             }
         }
-        format!("#{}", id.index())
+        format!("#{:?}", id)
     }
 
-    fn format_operand(&self, operand: ExpressionOperandId) -> String {
-        if operand.index() == 0 {
+    fn format_operand(&self, operand: Operand) -> String {
+        if matches!(operand, Operand::Zero) {
             return String::from("0");
         }
         if let Some(counters) = &self.some_counters {
@@ -358,7 +358,7 @@ impl DebugCounters {
                 return self.format_counter_kind(counter_kind);
             }
         }
-        format!("#{}", operand.index())
+        format!("#{:?}", operand)
     }
 }
 
@@ -485,8 +485,7 @@ impl GraphvizData {
 /// _not_ used are retained in the `unused_expressions` Vec, to be included in debug output (logs
 /// and/or a `CoverageGraph` graphviz output).
 pub(super) struct UsedExpressions {
-    some_used_expression_operands:
-        Option<FxHashMap<ExpressionOperandId, Vec<InjectedExpressionId>>>,
+    some_used_expression_operands: Option<FxHashMap<Operand, Vec<ExpressionId>>>,
     some_unused_expressions:
         Option<Vec<(CoverageKind, Option<BasicCoverageBlock>, BasicCoverageBlock)>>,
 }
@@ -517,7 +516,7 @@ impl UsedExpressions {
 
     pub fn expression_is_used(&self, expression: &CoverageKind) -> bool {
         if let Some(used_expression_operands) = self.some_used_expression_operands.as_ref() {
-            used_expression_operands.contains_key(&expression.as_operand_id())
+            used_expression_operands.contains_key(&expression.as_operand())
         } else {
             false
         }
@@ -530,7 +529,7 @@ impl UsedExpressions {
         target_bcb: BasicCoverageBlock,
     ) {
         if let Some(used_expression_operands) = self.some_used_expression_operands.as_ref() {
-            if !used_expression_operands.contains_key(&expression.as_operand_id()) {
+            if !used_expression_operands.contains_key(&expression.as_operand()) {
                 self.some_unused_expressions.as_mut().unwrap().push((
                     expression.clone(),
                     edge_from_bcb,

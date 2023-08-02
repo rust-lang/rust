@@ -6,7 +6,7 @@
 
 // normalize-stderr-test "note: compiler flags.*\n\n" -> ""
 // normalize-stderr-test "note: rustc.*running on.*" -> "note: rustc {version} running on {platform}"
-// normalize-stderr-test "thread.*panicked at .*, compiler.*" -> "thread panicked at 'aborting due to `-Z treat-err-as-bug`'"
+// normalize-stderr-test "thread.*panicked at compiler.*" -> ""
 // normalize-stderr-test " +\d{1,}: .*\n" -> ""
 // normalize-stderr-test " + at .*\n" -> ""
 // normalize-stderr-test ".*note: Some details are omitted.*\n" -> ""

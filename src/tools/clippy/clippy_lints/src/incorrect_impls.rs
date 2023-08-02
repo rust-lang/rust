@@ -1,8 +1,9 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::paths::ORD_CMP;
 use clippy_utils::ty::implements_trait;
-use clippy_utils::{get_parent_node, is_res_lang_ctor, last_path_segment, path_res};
+use clippy_utils::{get_parent_node, is_res_lang_ctor, last_path_segment, match_def_path, path_res, std_or_core};
 use rustc_errors::Applicability;
-use rustc_hir::def::Res;
+use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{Expr, ExprKind, ImplItem, ImplItemKind, ItemKind, LangItem, Node, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::EarlyBinder;
@@ -58,6 +59,10 @@ declare_clippy_lint! {
     /// If both `PartialOrd` and `Ord` are implemented, they must agree. This is commonly done by
     /// wrapping the result of `cmp` in `Some` for `partial_cmp`. Not doing this may silently
     /// introduce an error upon refactoring.
+    ///
+    /// ### Known issues
+    /// Code that calls the `.into()` method instead will be flagged as incorrect, despite `.into()`
+    /// wrapping it in `Some`.
     ///
     /// ### Limitations
     /// Will not lint if `Self` and `Rhs` do not have the same type.
@@ -190,6 +195,11 @@ impl LateLintPass<'_> for IncorrectImpls {
                     &[],
                 )
         {
+            // If the `cmp` call likely needs to be fully qualified in the suggestion
+            // (like `std::cmp::Ord::cmp`). It's unfortunate we must put this here but we can't
+            // access `cmp_expr` in the suggestion without major changes, as we lint in `else`.
+            let mut needs_fully_qualified = false;
+
             if block.stmts.is_empty()
                 && let Some(expr) = block.expr
                 && let ExprKind::Call(
@@ -201,9 +211,8 @@ impl LateLintPass<'_> for IncorrectImpls {
                         [cmp_expr],
                     ) = expr.kind
                 && is_res_lang_ctor(cx, cx.qpath_res(some_path, *some_hir_id), LangItem::OptionSome)
-                && let ExprKind::MethodCall(cmp_path, _, [other_expr], ..) = cmp_expr.kind
-                && cmp_path.ident.name == sym::cmp
-                && let Res::Local(..) = path_res(cx, other_expr)
+                // Fix #11178, allow `Self::cmp(self, ..)` too
+                && self_cmp_call(cx, cmp_expr, impl_item.owner_id.def_id, &mut needs_fully_qualified)
             {} else {
                 // If `Self` and `Rhs` are not the same type, bail. This makes creating a valid
                 // suggestion tons more complex.
@@ -220,14 +229,29 @@ impl LateLintPass<'_> for IncorrectImpls {
                         let [_, other] = body.params else {
                             return;
                         };
+                        let Some(std_or_core) = std_or_core(cx) else {
+                            return;
+                        };
 
-                        let suggs = if let Some(other_ident) = other.pat.simple_ident() {
-                            vec![(block.span, format!("{{ Some(self.cmp({})) }}", other_ident.name))]
-                        } else {
-                            vec![
+                        let suggs = match (other.pat.simple_ident(), needs_fully_qualified) {
+                            (Some(other_ident), true) => vec![(
+                                block.span,
+                                format!("{{ Some({std_or_core}::cmp::Ord::cmp(self, {})) }}", other_ident.name),
+                            )],
+                            (Some(other_ident), false) => {
+                                vec![(block.span, format!("{{ Some(self.cmp({})) }}", other_ident.name))]
+                            },
+                            (None, true) => vec![
+                                (
+                                    block.span,
+                                    format!("{{ Some({std_or_core}::cmp::Ord::cmp(self, other)) }}"),
+                                ),
+                                (other.pat.span, "other".to_owned()),
+                            ],
+                            (None, false) => vec![
                                 (block.span, "{ Some(self.cmp(other)) }".to_owned()),
                                 (other.pat.span, "other".to_owned()),
-                            ]
+                            ],
                         };
 
                         diag.multipart_suggestion(
@@ -239,5 +263,33 @@ impl LateLintPass<'_> for IncorrectImpls {
                 );
             }
         }
+    }
+}
+
+/// Returns whether this is any of `self.cmp(..)`, `Self::cmp(self, ..)` or `Ord::cmp(self, ..)`.
+fn self_cmp_call<'tcx>(
+    cx: &LateContext<'tcx>,
+    cmp_expr: &'tcx Expr<'tcx>,
+    def_id: LocalDefId,
+    needs_fully_qualified: &mut bool,
+) -> bool {
+    match cmp_expr.kind {
+        ExprKind::Call(path, [_self, _other]) => path_res(cx, path)
+            .opt_def_id()
+            .is_some_and(|def_id| match_def_path(cx, def_id, &ORD_CMP)),
+        ExprKind::MethodCall(_, _, [_other], ..) => {
+            // We can set this to true here no matter what as if it's a `MethodCall` and goes to the
+            // `else` branch, it must be a method named `cmp` that isn't `Ord::cmp`
+            *needs_fully_qualified = true;
+
+            // It's a bit annoying but `typeck_results` only gives us the CURRENT body, which we
+            // have none, not of any `LocalDefId` we want, so we must call the query itself to avoid
+            // an immediate ICE
+            cx.tcx
+                .typeck(def_id)
+                .type_dependent_def_id(cmp_expr.hir_id)
+                .is_some_and(|def_id| match_def_path(cx, def_id, &ORD_CMP))
+        },
+        _ => false,
     }
 }

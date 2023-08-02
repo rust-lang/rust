@@ -246,8 +246,11 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) {
         // `ForeignItem`s are handled separately.
         hir::ItemKind::ForeignMod { .. } => {}
         hir::ItemKind::TyAlias(hir_ty, ..) => {
-            if tcx.type_of(item.owner_id.def_id).skip_binder().has_opaque_types() {
-                // Bounds are respected for `type X = impl Trait` and `type X = (impl Trait, Y);`
+            if tcx.features().lazy_type_alias
+                || tcx.type_of(item.owner_id).skip_binder().has_opaque_types()
+            {
+                // Bounds of lazy type aliases and of eager ones that contain opaque types are respected.
+                // E.g: `type X = impl Trait;`, `type X = (impl Trait, Y);`.
                 check_item_type(tcx, def_id, hir_ty.span, UnsizedHandling::Allow);
             }
         }
@@ -552,8 +555,8 @@ fn gather_gat_bounds<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
     for (region_a, region_a_idx) in &regions {
         // Ignore `'static` lifetimes for the purpose of this lint: it's
         // because we know it outlives everything and so doesn't give meaningful
-        // clues
-        if let ty::ReStatic = **region_a {
+        // clues. Also ignore `ReError`, to avoid knock-down errors.
+        if let ty::ReStatic | ty::ReError(_) = **region_a {
             continue;
         }
         // For each region argument (e.g., `'a` in our example), check for a
@@ -596,8 +599,9 @@ fn gather_gat_bounds<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
         // on the GAT itself.
         for (region_b, region_b_idx) in &regions {
             // Again, skip `'static` because it outlives everything. Also, we trivially
-            // know that a region outlives itself.
-            if ty::ReStatic == **region_b || region_a == region_b {
+            // know that a region outlives itself. Also ignore `ReError`, to avoid
+            // knock-down errors.
+            if matches!(**region_b, ty::ReStatic | ty::ReError(_)) || region_a == region_b {
                 continue;
             }
             if region_known_to_outlive(

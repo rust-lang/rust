@@ -444,7 +444,7 @@ pub fn from_fn_attrs<'ll, 'tcx>(
     let mut function_features = function_features
         .iter()
         .flat_map(|feat| {
-            llvm_util::to_llvm_features(cx.tcx.sess, feat).into_iter().map(|f| format!("+{}", f))
+            llvm_util::to_llvm_features(cx.tcx.sess, feat).into_iter().map(|f| format!("+{f}"))
         })
         .chain(codegen_fn_attrs.instruction_set.iter().map(|x| match x {
             InstructionSetAttr::ArmA32 => "-thumb-mode".to_string(),

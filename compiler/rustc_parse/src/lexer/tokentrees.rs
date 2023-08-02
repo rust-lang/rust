@@ -198,7 +198,7 @@ impl<'a> TokenTreesReader<'a> {
         // An unexpected closing delimiter (i.e., there is no
         // matching opening delimiter).
         let token_str = token_to_string(&self.token);
-        let msg = format!("unexpected closing delimiter: `{}`", token_str);
+        let msg = format!("unexpected closing delimiter: `{token_str}`");
         let mut err = self.string_reader.sess.span_diagnostic.struct_span_err(self.token.span, msg);
 
         report_suspicious_mismatch_block(

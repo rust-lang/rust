@@ -13,7 +13,7 @@ use rustc_ast as ast;
 use rustc_ast::tokenstream::TokenTree;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, LocalDefId, LOCAL_CRATE};
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::ConstValue;
 use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, TyCtxt};
@@ -628,4 +628,36 @@ pub(super) fn display_macro_source(
             )
         }
     }
+}
+
+pub(crate) fn inherits_doc_hidden(
+    tcx: TyCtxt<'_>,
+    mut def_id: LocalDefId,
+    stop_at: Option<LocalDefId>,
+) -> bool {
+    let hir = tcx.hir();
+    while let Some(id) = tcx.opt_local_parent(def_id) {
+        if let Some(stop_at) = stop_at && id == stop_at {
+            return false;
+        }
+        def_id = id;
+        if tcx.is_doc_hidden(def_id.to_def_id()) {
+            return true;
+        } else if let Some(node) = hir.find_by_def_id(def_id) &&
+            matches!(
+                node,
+                hir::Node::Item(hir::Item { kind: hir::ItemKind::Impl(_), .. }),
+            )
+        {
+            // `impl` blocks stand a bit on their own: unless they have `#[doc(hidden)]` directly
+            // on them, they don't inherit it from the parent context.
+            return false;
+        }
+    }
+    false
+}
+
+#[inline]
+pub(crate) fn should_ignore_res(res: Res) -> bool {
+    matches!(res, Res::Def(DefKind::Ctor(..), _) | Res::SelfCtor(..))
 }

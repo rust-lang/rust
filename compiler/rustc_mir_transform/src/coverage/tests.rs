@@ -683,7 +683,7 @@ fn test_make_bcb_counters() {
 
         let_bcb!(1);
         assert_eq!(
-            1, // coincidentally, bcb1 has a `Counter` with id = 1
+            0, // bcb1 has a `Counter` with id = 0
             match basic_coverage_blocks[bcb1].counter().expect("should have a counter") {
                 CoverageKind::Counter { id, .. } => id,
                 _ => panic!("expected a Counter"),
@@ -693,7 +693,7 @@ fn test_make_bcb_counters() {
 
         let_bcb!(2);
         assert_eq!(
-            2, // coincidentally, bcb2 has a `Counter` with id = 2
+            1, // bcb2 has a `Counter` with id = 1
             match basic_coverage_blocks[bcb2].counter().expect("should have a counter") {
                 CoverageKind::Counter { id, .. } => id,
                 _ => panic!("expected a Counter"),

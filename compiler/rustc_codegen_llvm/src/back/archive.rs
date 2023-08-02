@@ -56,7 +56,7 @@ fn llvm_machine_type(cpu: &str) -> LLVMMachineType {
         "x86" => LLVMMachineType::I386,
         "aarch64" => LLVMMachineType::ARM64,
         "arm" => LLVMMachineType::ARM,
-        _ => panic!("unsupported cpu type {}", cpu),
+        _ => panic!("unsupported cpu type {cpu}"),
     }
 }
 
@@ -128,7 +128,7 @@ impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
         let name_suffix = if is_direct_dependency { "_imports" } else { "_imports_indirect" };
         let output_path = {
             let mut output_path: PathBuf = tmpdir.to_path_buf();
-            output_path.push(format!("{}{}", lib_name, name_suffix));
+            output_path.push(format!("{lib_name}{name_suffix}"));
             output_path.with_extension("lib")
         };
 
@@ -156,7 +156,7 @@ impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
             // functions. Therefore, use binutils to create the import library instead,
             // by writing a .DEF file to the temp dir and calling binutils's dlltool.
             let def_file_path =
-                tmpdir.join(format!("{}{}", lib_name, name_suffix)).with_extension("def");
+                tmpdir.join(format!("{lib_name}{name_suffix}")).with_extension("def");
 
             let def_file_content = format!(
                 "EXPORTS\n{}",
@@ -164,7 +164,7 @@ impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
                     .into_iter()
                     .map(|(name, ordinal)| {
                         match ordinal {
-                            Some(n) => format!("{} @{} NONAME", name, n),
+                            Some(n) => format!("{name} @{n} NONAME"),
                             None => name,
                         }
                     })
@@ -435,7 +435,7 @@ impl<'a> LlvmArchiveBuilder<'a> {
 }
 
 fn string_to_io_error(s: String) -> io::Error {
-    io::Error::new(io::ErrorKind::Other, format!("bad archive: {}", s))
+    io::Error::new(io::ErrorKind::Other, format!("bad archive: {s}"))
 }
 
 fn find_binutils_dlltool(sess: &Session) -> OsString {
