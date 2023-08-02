@@ -16,11 +16,15 @@ use rustc_index::IndexVec;
 use rustc_infer::infer::canonical::query_response::make_query_region_constraints;
 use rustc_infer::infer::canonical::CanonicalVarValues;
 use rustc_infer::infer::canonical::{CanonicalExt, QueryRegionConstraints};
+use rustc_infer::infer::InferCtxt;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::{
- ExternalConstraintsData, MaybeCause, PredefinedOpaquesData, QueryInput,
+    ExternalConstraintsData, MaybeCause, PredefinedOpaquesData, QueryInput,
 };
-use rustc_middle::ty::{self, BoundVar, GenericArgKind, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{
+    self, BoundVar, GenericArgKind, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    TypeVisitableExt,
+};
 use rustc_span::DUMMY_SP;
 use std::iter;
 use std::ops::Deref;
@@ -32,6 +36,10 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         &self,
         goal: Goal<'tcx, T>,
     ) -> (Vec<ty::GenericArg<'tcx>>, CanonicalInput<'tcx, T>) {
+        let opaque_types = self.infcx.clone_opaque_types_for_query_response();
+        let (goal, opaque_types) =
+            (goal, opaque_types).fold_with(&mut EagerResolver { infcx: self.infcx });
+
         let mut orig_values = Default::default();
         let canonical_goal = Canonicalizer::canonicalize(
             self.infcx,
@@ -40,11 +48,9 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             QueryInput {
                 goal,
                 anchor: self.infcx.defining_use_anchor,
-                predefined_opaques_in_body: self.tcx().mk_predefined_opaques_in_body(
-                    PredefinedOpaquesData {
-                        opaque_types: self.infcx.clone_opaque_types_for_query_response(),
-                    },
-                ),
+                predefined_opaques_in_body: self
+                    .tcx()
+                    .mk_predefined_opaques_in_body(PredefinedOpaquesData { opaque_types }),
             },
         );
         (orig_values, canonical_goal)
@@ -69,6 +75,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             previous call to `try_evaluate_added_goals!`"
         );
 
+        let certainty = certainty.unify_with(goals_certainty);
         if let Certainty::OVERFLOW = certainty {
             // If we have overflow, it's probable that we're substituting a type
             // into itself infinitely and any partial substitutions in the query
@@ -84,9 +91,11 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             return Ok(self.make_ambiguous_response_no_constraints(MaybeCause::Overflow));
         }
 
-        let certainty = certainty.unify_with(goals_certainty);
         let var_values = self.var_values;
         let external_constraints = self.compute_external_query_constraints()?;
+
+        let (var_values, external_constraints) =
+            (var_values, external_constraints).fold_with(&mut EagerResolver { infcx: self.infcx });
 
         let canonical = Canonicalizer::canonicalize(
             self.infcx,
@@ -332,5 +341,67 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             self.insert_hidden_type(key, param_env, ty)?;
         }
         Ok(())
+    }
+}
+
+/// Resolves ty, region, and const vars to their inferred values or their root vars.
+struct EagerResolver<'a, 'tcx> {
+    infcx: &'a InferCtxt<'tcx>,
+}
+
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for EagerResolver<'_, 'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
+        self.infcx.tcx
+    }
+
+    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+        match *t.kind() {
+            ty::Infer(ty::TyVar(vid)) => match self.infcx.probe_ty_var(vid) {
+                Ok(t) => t.fold_with(self),
+                Err(_) => Ty::new_var(self.infcx.tcx, self.infcx.root_var(vid)),
+            },
+            ty::Infer(ty::IntVar(vid)) => self.infcx.opportunistic_resolve_int_var(vid),
+            ty::Infer(ty::FloatVar(vid)) => self.infcx.opportunistic_resolve_float_var(vid),
+            _ => {
+                if t.has_infer() {
+                    t.super_fold_with(self)
+                } else {
+                    t
+                }
+            }
+        }
+    }
+
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+        match *r {
+            ty::ReVar(vid) => self
+                .infcx
+                .inner
+                .borrow_mut()
+                .unwrap_region_constraints()
+                .opportunistic_resolve_var(self.infcx.tcx, vid),
+            _ => r,
+        }
+    }
+
+    fn fold_const(&mut self, c: ty::Const<'tcx>) -> ty::Const<'tcx> {
+        match c.kind() {
+            ty::ConstKind::Infer(ty::InferConst::Var(vid)) => {
+                // FIXME: we need to fold the ty too, I think.
+                match self.infcx.probe_const_var(vid) {
+                    Ok(c) => c.fold_with(self),
+                    Err(_) => {
+                        ty::Const::new_var(self.infcx.tcx, self.infcx.root_const_var(vid), c.ty())
+                    }
+                }
+            }
+            _ => {
+                if c.has_infer() {
+                    c.super_fold_with(self)
+                } else {
+                    c
+                }
+            }
+        }
     }
 }
