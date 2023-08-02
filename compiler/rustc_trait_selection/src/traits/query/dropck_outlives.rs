@@ -291,9 +291,9 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
                 return Err(NoSolution);
             }
 
-            constraints.outlives.extend(
-                args.as_generator().upvar_tys().map(|t| -> ty::GenericArg<'tcx> { t.into() }),
-            );
+            constraints
+                .outlives
+                .extend(args.as_generator().upvar_tys().iter().map(ty::GenericArg::from));
             constraints.outlives.push(args.as_generator().resume_ty().into());
         }
 
