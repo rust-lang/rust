@@ -289,7 +289,7 @@ impl<'a> Parser<'a> {
                     recover_return_sign,
                 )?
             } else {
-                let path = self.parse_path(PathStyle::Type)?;
+                let path = self.parse_path(PathStyle::Type, None)?;
                 let parse_plus = allow_plus == AllowPlus::Yes && self.check_plus();
                 self.parse_remaining_bounds_path(lifetime_defs, path, lo, parse_plus)?
             }
@@ -649,7 +649,7 @@ impl<'a> Parser<'a> {
         ty_generics: Option<&Generics>,
     ) -> PResult<'a, TyKind> {
         // Simple path
-        let path = self.parse_path_inner(PathStyle::Type, ty_generics)?;
+        let path = self.parse_path_inner(PathStyle::Type, ty_generics, None)?;
         if self.eat(&token::Not) {
             // Macro invocation in type position
             Ok(TyKind::MacCall(P(MacCall { path, args: self.parse_delim_args()? })))
@@ -865,7 +865,7 @@ impl<'a> Parser<'a> {
 
             path
         } else {
-            self.parse_path(PathStyle::Type)?
+            self.parse_path(PathStyle::Type, None)?
         };
 
         if self.may_recover() && self.token == TokenKind::OpenDelim(Delimiter::Parenthesis) {

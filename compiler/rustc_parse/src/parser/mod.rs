@@ -1413,7 +1413,7 @@ impl<'a> Parser<'a> {
                 // Parse `pub(in path)`.
                 self.bump(); // `(`
                 self.bump(); // `in`
-                let path = self.parse_path(PathStyle::Mod)?; // `path`
+                let path = self.parse_path(PathStyle::Mod, None)?; // `path`
                 self.expect(&token::CloseDelim(Delimiter::Parenthesis))?; // `)`
                 let vis = VisibilityKind::Restricted {
                     path: P(path),
@@ -1430,7 +1430,7 @@ impl<'a> Parser<'a> {
             {
                 // Parse `pub(crate)`, `pub(self)`, or `pub(super)`.
                 self.bump(); // `(`
-                let path = self.parse_path(PathStyle::Mod)?; // `crate`/`super`/`self`
+                let path = self.parse_path(PathStyle::Mod, None)?; // `crate`/`super`/`self`
                 self.expect(&token::CloseDelim(Delimiter::Parenthesis))?; // `)`
                 let vis = VisibilityKind::Restricted {
                     path: P(path),
@@ -1456,7 +1456,7 @@ impl<'a> Parser<'a> {
     /// Recovery for e.g. `pub(something) fn ...` or `struct X { pub(something) y: Z }`
     fn recover_incorrect_vis_restriction(&mut self) -> PResult<'a, ()> {
         self.bump(); // `(`
-        let path = self.parse_path(PathStyle::Mod)?;
+        let path = self.parse_path(PathStyle::Mod, None)?;
         self.expect(&token::CloseDelim(Delimiter::Parenthesis))?; // `)`
 
         let path_str = pprust::path_to_string(&path);

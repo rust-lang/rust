@@ -80,7 +80,8 @@ enum EatOrResult {
 }
 
 /// The syntax location of a given pattern. Used for diagnostics.
-pub(super) enum PatternLocation {
+#[derive(Clone, Copy)]
+pub enum PatternLocation {
     LetBinding,
     FunctionParameter,
 }
@@ -91,8 +92,12 @@ impl<'a> Parser<'a> {
     /// Corresponds to `pat<no_top_alt>` in RFC 2535 and does not admit or-patterns
     /// at the top level. Used when parsing the parameters of lambda expressions,
     /// functions, function pointers, and `pat` macro fragments.
-    pub fn parse_pat_no_top_alt(&mut self, expected: Option<Expected>) -> PResult<'a, P<Pat>> {
-        self.parse_pat_with_range_pat(true, expected)
+    pub fn parse_pat_no_top_alt(
+        &mut self,
+        expected: Option<Expected>,
+        syntax_loc: Option<PatternLocation>,
+    ) -> PResult<'a, P<Pat>> {
+        self.parse_pat_with_range_pat(true, expected, syntax_loc)
     }
 
     /// Parses a pattern.
@@ -110,7 +115,7 @@ impl<'a> Parser<'a> {
         ra: RecoverColon,
         rt: CommaRecoveryMode,
     ) -> PResult<'a, P<Pat>> {
-        self.parse_pat_allow_top_alt_inner(expected, rc, ra, rt).map(|(pat, _)| pat)
+        self.parse_pat_allow_top_alt_inner(expected, rc, ra, rt, None).map(|(pat, _)| pat)
     }
 
     /// Returns the pattern and a bool indicating whether we recovered from a trailing vert (true =
@@ -121,6 +126,7 @@ impl<'a> Parser<'a> {
         rc: RecoverComma,
         ra: RecoverColon,
         rt: CommaRecoveryMode,
+        syntax_loc: Option<PatternLocation>,
     ) -> PResult<'a, (P<Pat>, bool)> {
         // Keep track of whether we recovered from a trailing vert so that we can avoid duplicated
         // suggestions (which bothers rustfix).
@@ -133,7 +139,7 @@ impl<'a> Parser<'a> {
         };
 
         // Parse the first pattern (`p_0`).
-        let mut first_pat = self.parse_pat_no_top_alt(expected)?;
+        let mut first_pat = self.parse_pat_no_top_alt(expected, syntax_loc.clone())?;
         if rc == RecoverComma::Yes {
             self.maybe_recover_unexpected_comma(first_pat.span, rt)?;
         }
@@ -172,7 +178,7 @@ impl<'a> Parser<'a> {
                     break;
                 }
             }
-            let pat = self.parse_pat_no_top_alt(expected).map_err(|mut err| {
+            let pat = self.parse_pat_no_top_alt(expected, syntax_loc).map_err(|mut err| {
                 err.span_label(lo, WHILE_PARSING_OR_MSG);
                 err
             })?;
@@ -208,6 +214,7 @@ impl<'a> Parser<'a> {
             rc,
             RecoverColon::No,
             CommaRecoveryMode::LikelyTuple,
+            Some(syntax_loc),
         )?;
         let colon = self.eat(&token::Colon);
 
@@ -319,6 +326,7 @@ impl<'a> Parser<'a> {
         &mut self,
         allow_range_pat: bool,
         expected: Option<Expected>,
+        syntax_loc: Option<PatternLocation>,
     ) -> PResult<'a, P<Pat>> {
         maybe_recover_from_interpolated_ty_qpath!(self, true);
         maybe_whole!(self, NtPat, |x| x);
@@ -393,7 +401,7 @@ impl<'a> Parser<'a> {
                 (Some(qself), path)
             } else {
                 // Parse an unqualified path
-                (None, self.parse_path(PathStyle::Pat)?)
+                (None, self.parse_path(PathStyle::Pat, syntax_loc)?)
             };
             let span = lo.to(self.prev_token.span);
 
@@ -485,7 +493,7 @@ impl<'a> Parser<'a> {
 
         // At this point we attempt to parse `@ $pat_rhs` and emit an error.
         self.bump(); // `@`
-        let mut rhs = self.parse_pat_no_top_alt(None)?;
+        let mut rhs = self.parse_pat_no_top_alt(None, None)?;
         let whole_span = lhs.span.to(rhs.span);
 
         if let PatKind::Ident(_, _, sub @ None) = &mut rhs.kind {
@@ -541,7 +549,7 @@ impl<'a> Parser<'a> {
         }
 
         let mutbl = self.parse_mutability();
-        let subpat = self.parse_pat_with_range_pat(false, expected)?;
+        let subpat = self.parse_pat_with_range_pat(false, expected, None)?;
         Ok(PatKind::Ref(subpat, mutbl))
     }
 
@@ -584,7 +592,7 @@ impl<'a> Parser<'a> {
         }
 
         // Parse the pattern we hope to be an identifier.
-        let mut pat = self.parse_pat_no_top_alt(Some(Expected::Identifier))?;
+        let mut pat = self.parse_pat_no_top_alt(Some(Expected::Identifier), None)?;
 
         // If we don't have `mut $ident (@ pat)?`, error.
         if let PatKind::Ident(BindingAnnotation(ByRef::No, m @ Mutability::Not), ..) = &mut pat.kind
@@ -776,7 +784,7 @@ impl<'a> Parser<'a> {
                 (Some(qself), path)
             } else {
                 // Parse an unqualified path
-                (None, self.parse_path(PathStyle::Pat)?)
+                (None, self.parse_path(PathStyle::Pat, None)?)
             };
             let hi = self.prev_token.span;
             Ok(self.mk_expr(lo.to(hi), ExprKind::Path(qself, path)))
@@ -814,7 +822,7 @@ impl<'a> Parser<'a> {
     fn parse_pat_ident(&mut self, binding_annotation: BindingAnnotation) -> PResult<'a, PatKind> {
         let ident = self.parse_ident()?;
         let sub = if self.eat(&token::At) {
-            Some(self.parse_pat_no_top_alt(Some(Expected::BindingPattern))?)
+            Some(self.parse_pat_no_top_alt(Some(Expected::BindingPattern), None)?)
         } else {
             None
         };
@@ -903,14 +911,14 @@ impl<'a> Parser<'a> {
             // We cannot use `parse_pat_ident()` since it will complain `box`
             // is not an identifier.
             let sub = if self.eat(&token::At) {
-                Some(self.parse_pat_no_top_alt(Some(Expected::BindingPattern))?)
+                Some(self.parse_pat_no_top_alt(Some(Expected::BindingPattern), None)?)
             } else {
                 None
             };
 
             Ok(PatKind::Ident(BindingAnnotation::NONE, Ident::new(kw::Box, box_span), sub))
         } else {
-            let pat = self.parse_pat_with_range_pat(false, None)?;
+            let pat = self.parse_pat_with_range_pat(false, None, None)?;
             self.sess.gated_spans.gate(sym::box_patterns, box_span.to(self.prev_token.span));
             Ok(PatKind::Box(pat))
         }

@@ -131,7 +131,7 @@ impl<'a> Parser<'a> {
             },
             NonterminalKind::PatParam { .. } | NonterminalKind::PatWithOr { .. } => {
                 token::NtPat(self.collect_tokens_no_attrs(|this| match kind {
-                    NonterminalKind::PatParam { .. } => this.parse_pat_no_top_alt(None),
+                    NonterminalKind::PatParam { .. } => this.parse_pat_no_top_alt(None, None),
                     NonterminalKind::PatWithOr { .. } => this.parse_pat_allow_top_alt(
                         None,
                         RecoverComma::No,
@@ -168,7 +168,7 @@ impl<'a> Parser<'a> {
                 }.into_diagnostic(&self.sess.span_diagnostic));
             }
             NonterminalKind::Path => token::NtPath(
-                P(self.collect_tokens_no_attrs(|this| this.parse_path(PathStyle::Type))?),
+                P(self.collect_tokens_no_attrs(|this| this.parse_path(PathStyle::Type, None))?),
             ),
             NonterminalKind::Meta => token::NtMeta(P(self.parse_attr_item(true)?)),
             NonterminalKind::Vis => token::NtVis(

@@ -1579,7 +1579,7 @@ impl<'a> Parser<'a> {
         self.expect(&token::ModSep)?;
 
         let mut path = ast::Path { segments: ThinVec::new(), span: DUMMY_SP, tokens: None };
-        self.parse_path_segments(&mut path.segments, T::PATH_STYLE, None)?;
+        self.parse_path_segments(&mut path.segments, T::PATH_STYLE, None, None)?;
         path.span = ty_span.to(self.prev_token.span);
 
         let ty_str = self.span_to_snippet(ty_span).unwrap_or_else(|_| pprust::ty_to_string(&ty));
@@ -2019,7 +2019,7 @@ impl<'a> Parser<'a> {
         {
             let rfc_note = "anonymous parameters are removed in the 2018 edition (see RFC 1685)";
 
-            let (ident, self_sugg, param_sugg, type_sugg, self_span, param_span, type_span) =
+            let (ident, self_sugg, param_sugg, type_sugg, self_span, param_span, type_span, maybe_name) =
                 match pat.kind {
                     PatKind::Ident(_, ident, _) => (
                         ident,
@@ -2029,6 +2029,7 @@ impl<'a> Parser<'a> {
                         pat.span.shrink_to_lo(),
                         pat.span.shrink_to_hi(),
                         pat.span.shrink_to_lo(),
+                        true,
                     ),
                     // Also catches `fn foo(&a)`.
                     PatKind::Ref(ref inner_pat, mutab)
@@ -2045,11 +2046,22 @@ impl<'a> Parser<'a> {
                                     pat.span.shrink_to_lo(),
                                     pat.span,
                                     pat.span.shrink_to_lo(),
+                                    true,
                                 )
                             }
                             _ => unreachable!(),
                         }
-                    }
+                    },
+                    PatKind::Path(_, ref path) if let Some(segment) = path.segments.last() => (
+                        segment.ident,
+                        "self: ",
+                        ": TypeName".to_string(),
+                        "_: ",
+                        pat.span.shrink_to_lo(),
+                        pat.span.shrink_to_hi(),
+                        pat.span.shrink_to_lo(),
+                        path.segments.len() == 1, // Avoid suggesting that `fn foo(a::b)` is fixed with a change to `fn foo(a::b: TypeName)`.
+                    ),
                     _ => {
                         // Otherwise, try to get a type and emit a suggestion.
                         if let Some(ty) = pat.to_ty() {
@@ -2077,7 +2089,7 @@ impl<'a> Parser<'a> {
             }
             // Avoid suggesting that `fn foo(HashMap<u32>)` is fixed with a change to
             // `fn foo(HashMap: TypeName<u32>)`.
-            if self.token != token::Lt {
+            if self.token != token::Lt && maybe_name {
                 err.span_suggestion(
                     param_span,
                     "if this is a parameter name, give it a type",
@@ -2100,7 +2112,7 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn recover_arg_parse(&mut self) -> PResult<'a, (P<ast::Pat>, P<ast::Ty>)> {
-        let pat = self.parse_pat_no_top_alt(Some(Expected::ArgumentName))?;
+        let pat = self.parse_pat_no_top_alt(Some(Expected::ArgumentName), None)?;
         self.expect(&token::Colon)?;
         let ty = self.parse_ty()?;
 
@@ -2508,7 +2520,7 @@ impl<'a> Parser<'a> {
                 // Skip the `:`.
                 snapshot_pat.bump();
                 snapshot_type.bump();
-                match snapshot_pat.parse_pat_no_top_alt(expected) {
+                match snapshot_pat.parse_pat_no_top_alt(expected, None) {
                     Err(inner_err) => {
                         inner_err.cancel();
                     }
@@ -2772,7 +2784,7 @@ impl<'a> Parser<'a> {
     /// sequence of patterns until `)` is reached.
     fn skip_pat_list(&mut self) -> PResult<'a, ()> {
         while !self.check(&token::CloseDelim(Delimiter::Parenthesis)) {
-            self.parse_pat_no_top_alt(None)?;
+            self.parse_pat_no_top_alt(None, None)?;
             if !self.eat(&token::Comma) {
                 return Ok(());
             }

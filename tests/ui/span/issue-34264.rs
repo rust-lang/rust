@@ -1,5 +1,5 @@
 fn foo(Option<i32>, String) {} //~ ERROR expected one of
-//~^ ERROR generic args in patterns require the turbofish syntax
+//~^ ERROR expected one of
 fn bar(x, y: usize) {} //~ ERROR expected one of
 
 fn main() {

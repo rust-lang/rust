@@ -1,24 +1,34 @@
-error: generic args in patterns require the turbofish syntax
+error: expected one of `!`, `(`, `...`, `..=`, `..`, `::`, `:`, `{`, or `|`, found `<`
   --> $DIR/issue-64252-self-type.rs:4:15
    |
 LL | pub fn foo(Box<Self>) { }
-   |               ^
+   |               ^ expected one of 9 possible tokens
    |
-help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
+   = note: anonymous parameters are removed in the 2018 edition (see RFC 1685)
+help: if this is a `self` type, give it a parameter name
    |
-LL | pub fn foo(Box::<Self>) { }
-   |               ++
+LL | pub fn foo(self: Box<Self>) { }
+   |            +++++
+help: if this is a type, explicitly ignore the parameter name
+   |
+LL | pub fn foo(_: Box<Self>) { }
+   |            ++
 
-error: generic args in patterns require the turbofish syntax
-  --> $DIR/issue-64252-self-type.rs:9:15
+error: expected one of `!`, `(`, `...`, `..=`, `..`, `::`, `:`, `{`, or `|`, found `<`
+  --> $DIR/issue-64252-self-type.rs:8:15
    |
 LL |     fn bar(Box<Self>) { }
-   |               ^
+   |               ^ expected one of 9 possible tokens
    |
-help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
+   = note: anonymous parameters are removed in the 2018 edition (see RFC 1685)
+help: if this is a `self` type, give it a parameter name
    |
-LL |     fn bar(Box::<Self>) { }
-   |               ++
+LL |     fn bar(self: Box<Self>) { }
+   |            +++++
+help: if this is a type, explicitly ignore the parameter name
+   |
+LL |     fn bar(_: Box<Self>) { }
+   |            ++
 
 error: aborting due to 2 previous errors
 

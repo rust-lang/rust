@@ -1,3 +1,4 @@
+use super::pat::PatternLocation;
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{Parser, Restrictions, TokenType};
 use crate::errors::{GenericArgsInPatRequireTurbofishSyntax, PathSingleColon};
@@ -79,7 +80,7 @@ impl<'a> Parser<'a> {
         let (mut path, path_span);
         if self.eat_keyword(kw::As) {
             let path_lo = self.token.span;
-            path = self.parse_path(PathStyle::Type)?;
+            path = self.parse_path(PathStyle::Type, None)?;
             path_span = path_lo.to(self.prev_token.span);
         } else {
             path_span = self.token.span.to(self.token.span);
@@ -98,7 +99,7 @@ impl<'a> Parser<'a> {
         }
 
         let qself = P(QSelf { ty, path_span, position: path.segments.len() });
-        self.parse_path_segments(&mut path.segments, style, None)?;
+        self.parse_path_segments(&mut path.segments, style, None, None)?;
 
         Ok((
             qself,
@@ -139,8 +140,12 @@ impl<'a> Parser<'a> {
         true
     }
 
-    pub(super) fn parse_path(&mut self, style: PathStyle) -> PResult<'a, Path> {
-        self.parse_path_inner(style, None)
+    pub(super) fn parse_path(
+        &mut self,
+        style: PathStyle,
+        syntax_loc: Option<PatternLocation>,
+    ) -> PResult<'a, Path> {
+        self.parse_path_inner(style, None, syntax_loc)
     }
 
     /// Parses simple paths.
@@ -157,6 +162,7 @@ impl<'a> Parser<'a> {
         &mut self,
         style: PathStyle,
         ty_generics: Option<&Generics>,
+        syntax_loc: Option<PatternLocation>,
     ) -> PResult<'a, Path> {
         let reject_generics_if_mod_style = |parser: &Parser<'_>, path: &Path| {
             // Ensure generic arguments don't end up in attribute paths, such as:
@@ -201,7 +207,7 @@ impl<'a> Parser<'a> {
         if self.eat(&token::ModSep) {
             segments.push(PathSegment::path_root(lo.shrink_to_lo().with_ctxt(mod_sep_ctxt)));
         }
-        self.parse_path_segments(&mut segments, style, ty_generics)?;
+        self.parse_path_segments(&mut segments, style, ty_generics, syntax_loc)?;
         Ok(Path { segments, span: lo.to(self.prev_token.span), tokens: None })
     }
 
@@ -210,9 +216,10 @@ impl<'a> Parser<'a> {
         segments: &mut ThinVec<PathSegment>,
         style: PathStyle,
         ty_generics: Option<&Generics>,
+        syntax_loc: Option<PatternLocation>,
     ) -> PResult<'a, ()> {
         loop {
-            let segment = self.parse_path_segment(style, ty_generics)?;
+            let segment = self.parse_path_segment(style, ty_generics, syntax_loc)?;
             if style.has_generic_ambiguity() {
                 // In order to check for trailing angle brackets, we must have finished
                 // recursing (`parse_path_segment` can indirectly call this function),
@@ -267,6 +274,7 @@ impl<'a> Parser<'a> {
         &mut self,
         style: PathStyle,
         ty_generics: Option<&Generics>,
+        syntax_loc: Option<PatternLocation>,
     ) -> PResult<'a, PathSegment> {
         let ident = self.parse_path_segment_ident()?;
         let is_args_start = |token: &Token| {
@@ -285,6 +293,17 @@ impl<'a> Parser<'a> {
             ]);
             is_args_start(&this.token)
         };
+
+        if let Some(PatternLocation::FunctionParameter) = syntax_loc {
+        } else if style == PathStyle::Pat
+            && self.check_noexpect(&token::Lt)
+            && self.look_ahead(1, |t| t.can_begin_type())
+        {
+            return Err(self.sess.create_err(GenericArgsInPatRequireTurbofishSyntax {
+                span: self.token.span,
+                suggest_turbofish: self.token.span.shrink_to_lo(),
+            }));
+        }
 
         Ok(
             if style == PathStyle::Type && check_args_start(self)
@@ -382,14 +401,6 @@ impl<'a> Parser<'a> {
                 };
 
                 PathSegment { ident, args: Some(args), id: ast::DUMMY_NODE_ID }
-            } else if style == PathStyle::Pat
-                && self.check_noexpect(&token::Lt)
-                && self.look_ahead(1, |t| t.can_begin_type())
-            {
-                return Err(self.sess.create_err(GenericArgsInPatRequireTurbofishSyntax {
-                    span: self.token.span,
-                    suggest_turbofish: self.token.span.shrink_to_lo(),
-                }));
             } else {
                 // Generic arguments are not found.
                 PathSegment::from_ident(ident)
