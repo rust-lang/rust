@@ -113,9 +113,9 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
     }
     let rustfmt_config = t!(std::fs::read_to_string(&rustfmt_config));
     let rustfmt_config: RustfmtConfig = t!(toml::from_str(&rustfmt_config));
-    let mut ignore_fmt = ignore::overrides::OverrideBuilder::new(&build.src);
+    let mut fmt_override = ignore::overrides::OverrideBuilder::new(&build.src);
     for ignore in rustfmt_config.ignore {
-        ignore_fmt.add(&format!("!{ignore}")).expect(&ignore);
+        fmt_override.add(&format!("!{ignore}")).expect(&ignore);
     }
     let git_available = match Command::new("git")
         .arg("--version")
@@ -152,6 +152,7 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
                 .map(|entry| {
                     entry.split(' ').nth(1).expect("every git status entry should list a path")
                 });
+            let mut untracked_count = 0;
             for untracked_path in untracked_paths {
                 println!("skip untracked path {untracked_path} during rustfmt invocations");
                 // The leading `/` makes it an exact match against the
@@ -159,7 +160,8 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
                 // have `foo.rs` in the repository root it will also match
                 // against anything like `compiler/rustc_foo/src/foo.rs`,
                 // preventing the latter from being formatted.
-                ignore_fmt.add(&format!("!/{untracked_path}")).expect(&untracked_path);
+                untracked_count += 1;
+                fmt_override.add(&format!("!/{untracked_path}")).expect(&untracked_path);
             }
             // Only check modified files locally to speed up runtime.
             // We still check all files in CI to avoid bugs in `get_modified_rs_files` letting regressions slip through;
@@ -172,10 +174,25 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
                                 println!("formatting modified file {file}");
                             }
                         } else {
-                            println!("formatting {} modified files", files.len());
+                            let pluralized = |count| if count > 1 { "files" } else { "file" };
+                            let untracked_msg = if untracked_count == 0 {
+                                "".to_string()
+                            } else {
+                                format!(
+                                    ", skipped {} untracked {}",
+                                    untracked_count,
+                                    pluralized(untracked_count),
+                                )
+                            };
+                            println!(
+                                "formatting {} modified {}{}",
+                                files.len(),
+                                pluralized(files.len()),
+                                untracked_msg
+                            );
                         }
                         for file in files {
-                            ignore_fmt.add(&format!("/{file}")).expect(&file);
+                            fmt_override.add(&format!("/{file}")).expect(&file);
                         }
                     }
                     Ok(None) => {}
@@ -196,7 +213,7 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
         println!("Could not find usable git. Skipping git-aware format checks");
     }
 
-    let ignore_fmt = ignore_fmt.build().unwrap();
+    let fmt_override = fmt_override.build().unwrap();
 
     let rustfmt_path = build.initial_rustfmt().unwrap_or_else(|| {
         eprintln!("./x.py fmt is not supported on this channel");
@@ -252,7 +269,7 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
         None => WalkBuilder::new(src.clone()),
     }
     .types(matcher)
-    .overrides(ignore_fmt)
+    .overrides(fmt_override)
     .build_parallel();
 
     // there is a lot of blocking involved in spawning a child process and reading files to format.
