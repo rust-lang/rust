@@ -314,11 +314,18 @@ impl ExprCollector<'_> {
                 self.alloc_expr(Expr::Loop { body, label }, syntax_ptr)
             }
             ast::Expr::WhileExpr(e) => {
+                // Desugar `while <cond> { <body> }` to
+                // `loop { if <cond> { <body> } else { break } }`
                 let label = e.label().map(|label| self.collect_label(label));
                 let body = self.collect_labelled_block_opt(label, e.loop_body());
                 let condition = self.collect_expr_opt(e.condition());
-
-                self.alloc_expr(Expr::While { condition, body, label }, syntax_ptr)
+                let break_expr =
+                    self.alloc_expr(Expr::Break { expr: None, label: None }, syntax_ptr.clone());
+                let if_expr = self.alloc_expr(
+                    Expr::If { condition, then_branch: body, else_branch: Some(break_expr) },
+                    syntax_ptr.clone(),
+                );
+                self.alloc_expr(Expr::Loop { body: if_expr, label }, syntax_ptr)
             }
             ast::Expr::ForExpr(e) => self.collect_for_loop(syntax_ptr, e),
             ast::Expr::CallExpr(e) => {
