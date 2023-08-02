@@ -827,7 +827,7 @@ pub trait PrettyPrinter<'tcx>:
                     if !args.as_generator().is_valid() {
                         p!("unavailable");
                     } else {
-                        self = self.comma_sep(args.as_generator().upvar_tys())?;
+                        self = self.comma_sep(args.as_generator().upvar_tys().iter())?;
                     }
                     p!(")");
 
@@ -900,7 +900,7 @@ pub trait PrettyPrinter<'tcx>:
                             print(args.as_closure().sig_as_fn_ptr_ty())
                         );
                         p!(" upvar_tys=(");
-                        self = self.comma_sep(args.as_closure().upvar_tys())?;
+                        self = self.comma_sep(args.as_closure().upvar_tys().iter())?;
                         p!(")");
                     }
                 }

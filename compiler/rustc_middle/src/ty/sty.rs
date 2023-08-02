@@ -296,15 +296,13 @@ impl<'tcx> ClosureArgs<'tcx> {
     /// In case there was a type error in figuring out the types of the captured path, an
     /// empty iterator is returned.
     #[inline]
-    pub fn upvar_tys(self) -> impl Iterator<Item = Ty<'tcx>> + 'tcx {
+    pub fn upvar_tys(self) -> &'tcx List<Ty<'tcx>> {
         match self.tupled_upvars_ty().kind() {
-            TyKind::Error(_) => None,
-            TyKind::Tuple(..) => Some(self.tupled_upvars_ty().tuple_fields()),
+            TyKind::Error(_) => ty::List::empty(),
+            TyKind::Tuple(..) => self.tupled_upvars_ty().tuple_fields(),
             TyKind::Infer(_) => bug!("upvar_tys called before capture types are inferred"),
             ty => bug!("Unexpected representation of upvar types tuple {:?}", ty),
         }
-        .into_iter()
-        .flatten()
     }
 
     /// Returns the tuple type representing the upvars for this closure.
@@ -436,15 +434,13 @@ impl<'tcx> GeneratorArgs<'tcx> {
     /// In case there was a type error in figuring out the types of the captured path, an
     /// empty iterator is returned.
     #[inline]
-    pub fn upvar_tys(self) -> impl Iterator<Item = Ty<'tcx>> + 'tcx {
+    pub fn upvar_tys(self) -> &'tcx List<Ty<'tcx>> {
         match self.tupled_upvars_ty().kind() {
-            TyKind::Error(_) => None,
-            TyKind::Tuple(..) => Some(self.tupled_upvars_ty().tuple_fields()),
+            TyKind::Error(_) => ty::List::empty(),
+            TyKind::Tuple(..) => self.tupled_upvars_ty().tuple_fields(),
             TyKind::Infer(_) => bug!("upvar_tys called before capture types are inferred"),
             ty => bug!("Unexpected representation of upvar types tuple {:?}", ty),
         }
-        .into_iter()
-        .flatten()
     }
 
     /// Returns the tuple type representing the upvars for this generator.
@@ -576,7 +572,7 @@ impl<'tcx> GeneratorArgs<'tcx> {
     /// This is the types of the fields of a generator which are not stored in a
     /// variant.
     #[inline]
-    pub fn prefix_tys(self) -> impl Iterator<Item = Ty<'tcx>> {
+    pub fn prefix_tys(self) -> &'tcx List<Ty<'tcx>> {
         self.upvar_tys()
     }
 }
@@ -592,20 +588,18 @@ impl<'tcx> UpvarArgs<'tcx> {
     /// In case there was a type error in figuring out the types of the captured path, an
     /// empty iterator is returned.
     #[inline]
-    pub fn upvar_tys(self) -> impl Iterator<Item = Ty<'tcx>> + 'tcx {
+    pub fn upvar_tys(self) -> &'tcx List<Ty<'tcx>> {
         let tupled_tys = match self {
             UpvarArgs::Closure(args) => args.as_closure().tupled_upvars_ty(),
             UpvarArgs::Generator(args) => args.as_generator().tupled_upvars_ty(),
         };
 
         match tupled_tys.kind() {
-            TyKind::Error(_) => None,
-            TyKind::Tuple(..) => Some(self.tupled_upvars_ty().tuple_fields()),
+            TyKind::Error(_) => ty::List::empty(),
+            TyKind::Tuple(..) => self.tupled_upvars_ty().tuple_fields(),
             TyKind::Infer(_) => bug!("upvar_tys called before capture types are inferred"),
             ty => bug!("Unexpected representation of upvar types tuple {:?}", ty),
         }
-        .into_iter()
-        .flatten()
     }
 
     #[inline]
