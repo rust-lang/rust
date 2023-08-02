@@ -198,19 +198,6 @@ impl InferenceContext<'_> {
                     None => self.result.standard_types.never.clone(),
                 }
             }
-            &Expr::While { condition, body, label } => {
-                self.with_breakable_ctx(BreakableKind::Loop, None, label, |this| {
-                    this.infer_expr(
-                        condition,
-                        &Expectation::HasType(this.result.standard_types.bool_.clone()),
-                    );
-                    this.infer_expr(body, &Expectation::HasType(TyBuilder::unit()));
-                });
-
-                // the body may not run, so it diverging doesn't mean we diverge
-                self.diverges = Diverges::Maybe;
-                TyBuilder::unit()
-            }
             Expr::Closure { body, args, ret_type, arg_types, closure_kind, capture_by: _ } => {
                 assert_eq!(args.len(), arg_types.len());
 

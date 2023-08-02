@@ -69,10 +69,6 @@ impl InferenceContext<'_> {
                     self.infer_mut_expr(*tail, Mutability::Not);
                 }
             }
-            &Expr::While { condition: c, body, label: _ } => {
-                self.infer_mut_expr(c, Mutability::Not);
-                self.infer_mut_expr(body, Mutability::Not);
-            }
             Expr::MethodCall { receiver: it, method_name: _, args, generic_args: _ }
             | Expr::Call { callee: it, args, is_assignee_expr: _ } => {
                 self.infer_mut_not_expr_iter(args.iter().copied().chain(Some(*it)));

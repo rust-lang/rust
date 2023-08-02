@@ -191,11 +191,6 @@ pub enum Expr {
         body: ExprId,
         label: Option<LabelId>,
     },
-    While {
-        condition: ExprId,
-        body: ExprId,
-        label: Option<LabelId>,
-    },
     Call {
         callee: ExprId,
         args: Box<[ExprId]>,
@@ -379,10 +374,6 @@ impl Expr {
                 }
             }
             Expr::Loop { body, .. } => f(*body),
-            Expr::While { condition, body, .. } => {
-                f(*condition);
-                f(*body);
-            }
             Expr::Call { callee, args, .. } => {
                 f(*callee);
                 args.iter().copied().for_each(f);
