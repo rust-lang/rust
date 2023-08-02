@@ -11,9 +11,9 @@ fn test_get_dbpath_for_term() {
         let p = get_dbpath_for_term(t).expect("no terminfo entry found");
         p.to_str().unwrap().to_string()
     }
-    assert!(x("screen") == "/usr/share/terminfo/s/screen");
-    assert!(get_dbpath_for_term("") == None);
+    assert_eq!(x("screen"), "/usr/share/terminfo/s/screen");
+    assert_eq!(get_dbpath_for_term(""), None);
     env::set_var("TERMINFO_DIRS", ":");
-    assert!(x("screen") == "/usr/share/terminfo/s/screen");
+    assert_eq!(x("screen"), "/usr/share/terminfo/s/screen");
     env::remove_var("TERMINFO_DIRS");
 }
