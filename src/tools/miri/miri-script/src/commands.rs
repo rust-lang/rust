@@ -16,17 +16,25 @@ const JOSH_FILTER: &str =
     ":rev(75dd959a3a40eb5b4574f8d2e23aa6efbeb33573:prefix=src/tools/miri):/src/tools/miri";
 
 impl MiriEnv {
-    fn build_miri_sysroot(&mut self) -> Result<()> {
+    fn build_miri_sysroot(&mut self, quiet: bool) -> Result<()> {
         if self.sh.var("MIRI_SYSROOT").is_ok() {
             // Sysroot already set, use that.
             return Ok(());
         }
         let manifest_path = path!(self.miri_dir / "cargo-miri" / "Cargo.toml");
         let Self { toolchain, cargo_extra_flags, .. } = &self;
+
+        // Make sure everything is built. Also Miri itself.
+        self.build(path!(self.miri_dir / "Cargo.toml"), &[], quiet)?;
+        self.build(&manifest_path, &[], quiet)?;
+
         let target = &match self.sh.var("MIRI_TEST_TARGET") {
             Ok(target) => vec!["--target".into(), target],
             Err(_) => vec![],
         };
+        if !quiet {
+            eprintln!("$ (buildig Miri sysroot)");
+        }
         let output = cmd!(self.sh,
             "cargo +{toolchain} --quiet run {cargo_extra_flags...} --manifest-path {manifest_path} --
              miri setup --print-sysroot {target...}"
@@ -365,9 +373,8 @@ impl Command {
     fn test(bless: bool, flags: Vec<OsString>) -> Result<()> {
         Self::auto_actions()?;
         let mut e = MiriEnv::new()?;
-        // First build, and get a sysroot.
-        e.build(path!(e.miri_dir / "Cargo.toml"), &[], /* quiet */ true)?;
-        e.build_miri_sysroot()?;
+        // Prepare a sysroot.
+        e.build_miri_sysroot(/* quiet */ false)?;
 
         // Then test, and let caller control flags.
         // Only in root project as `cargo-miri` has no tests.
@@ -393,12 +400,11 @@ impl Command {
             let miriflags = e.sh.var("MIRIFLAGS").unwrap_or_default();
             e.sh.set_var("MIRIFLAGS", format!("{miriflags} --target {target}"));
         }
-        // First build, and get a sysroot.
-        let miri_manifest = path!(e.miri_dir / "Cargo.toml");
-        e.build(&miri_manifest, &[], /* quiet */ true)?;
-        e.build_miri_sysroot()?;
+        // Prepare a sysroot.
+        e.build_miri_sysroot(/* quiet */ true)?;
 
         // Then run the actual command.
+        let miri_manifest = path!(e.miri_dir / "Cargo.toml");
         let miri_flags = e.sh.var("MIRIFLAGS").unwrap_or_default();
         let miri_flags = flagsplit(&miri_flags);
         let toolchain = &e.toolchain;
