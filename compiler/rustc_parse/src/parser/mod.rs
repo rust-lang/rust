@@ -263,7 +263,7 @@ impl TokenCursor {
                     &TokenTree::Delimited(sp, delim, ref tts) => {
                         let trees = tts.clone().into_trees();
                         self.stack.push((mem::replace(&mut self.tree_cursor, trees), delim, sp));
-                        if delim != Delimiter::Invisible {
+                        if !delim.skip() {
                             return (Token::new(token::OpenDelim(delim), sp.open), Spacing::Alone);
                         }
                         // No open delimiter to return; continue on to the next iteration.
@@ -272,7 +272,7 @@ impl TokenCursor {
             } else if let Some((tree_cursor, delim, span)) = self.stack.pop() {
                 // We have exhausted this token stream. Move back to its parent token stream.
                 self.tree_cursor = tree_cursor;
-                if delim != Delimiter::Invisible {
+                if !delim.skip() {
                     return (Token::new(token::CloseDelim(delim), span.close), Spacing::Alone);
                 }
                 // No close delimiter to return; continue on to the next iteration.
@@ -1046,7 +1046,7 @@ impl<'a> Parser<'a> {
         }
         debug_assert!(!matches!(
             next.0.kind,
-            token::OpenDelim(Delimiter::Invisible) | token::CloseDelim(Delimiter::Invisible)
+            token::OpenDelim(delim) | token::CloseDelim(delim) if delim.skip()
         ));
         self.inlined_bump_with(next)
     }
@@ -1060,17 +1060,17 @@ impl<'a> Parser<'a> {
         }
 
         if let Some(&(_, delim, span)) = self.token_cursor.stack.last()
-            && delim != Delimiter::Invisible
+            && !delim.skip()
         {
             // We are not in the outermost token stream, and the token stream
             // we are in has non-skipped delimiters. Look for skipped
             // delimiters in the lookahead range.
             let tree_cursor = &self.token_cursor.tree_cursor;
-            let all_normal = (0..dist).all(|i| {
+            let any_skip = (0..dist).any(|i| {
                 let token = tree_cursor.look_ahead(i);
-                !matches!(token, Some(TokenTree::Delimited(_, Delimiter::Invisible, _)))
+                matches!(token, Some(TokenTree::Delimited(_, delim, _)) if delim.skip())
             });
-            if all_normal {
+            if !any_skip {
                 // There were no skipped delimiters. Do lookahead by plain indexing.
                 return match tree_cursor.look_ahead(dist - 1) {
                     Some(tree) => {
@@ -1101,7 +1101,7 @@ impl<'a> Parser<'a> {
             token = cursor.next().0;
             if matches!(
                 token.kind,
-                token::OpenDelim(Delimiter::Invisible) | token::CloseDelim(Delimiter::Invisible)
+                token::OpenDelim(delim) | token::CloseDelim(delim) if delim.skip()
             ) {
                 continue;
             }
