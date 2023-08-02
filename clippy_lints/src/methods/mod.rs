@@ -3881,6 +3881,13 @@ impl Methods {
                         unnecessary_lazy_eval::check(cx, expr, recv, arg, "and");
                     }
                 },
+                ("any", [arg]) if let ExprKind::Closure(arg) = arg.kind
+                    && let body = cx.tcx.hir().body(arg.body)
+                    && let [param] = body.params
+                    && let Some(("chars", recv, _, _, _)) = method_call(recv) =>
+                {
+                    string_lit_chars_any::check(cx, expr, recv, param, peel_blocks(body.value), &self.msrv);
+                }
                 ("arg", [arg]) => {
                     suspicious_command_arg_space::check(cx, recv, arg, span);
                 }
@@ -3999,15 +4006,6 @@ impl Methods {
                         unnecessary_join::check(cx, expr, recv, join_arg, span);
                     }
                 },
-                ("skip", [arg]) => {
-                    iter_skip_zero::check(cx, expr, arg);
-
-                    if let Some((name2, recv2, args2, _span2, _)) = method_call(recv) {
-                        if let ("cloned", []) = (name2, args2) {
-                            iter_overeager_cloned::check(cx, expr, recv, recv2, false, false);
-                        }
-                    }
-                }
                 ("last", []) => {
                     if let Some((name2, recv2, args2, _span2, _)) = method_call(recv) {
                         if let ("cloned", []) = (name2, args2) {
@@ -4060,13 +4058,6 @@ impl Methods {
                         }
                     }
                 },
-                ("any", [arg]) if let ExprKind::Closure(arg) = arg.kind
-                    && let body = cx.tcx.hir().body(arg.body)
-                    && let [param] = body.params
-                    && let Some(("chars", recv, _, _, _)) = method_call(recv) =>
-                {
-                    string_lit_chars_any::check(cx, expr, recv, param, peel_blocks(body.value), &self.msrv);
-                }
                 ("nth", [n_arg]) => match method_call(recv) {
                     Some(("bytes", recv2, [], _, _)) => bytes_nth::check(cx, expr, recv2, n_arg),
                     Some(("cloned", recv2, [], _, _)) => iter_overeager_cloned::check(cx, expr, recv, recv2, false, false),
@@ -4120,6 +4111,15 @@ impl Methods {
                         seek_to_start_instead_of_rewind::check(cx, expr, recv, arg, span);
                     }
                 },
+                ("skip", [arg]) => {
+                    iter_skip_zero::check(cx, expr, arg);
+
+                    if let Some((name2, recv2, args2, _span2, _)) = method_call(recv) {
+                        if let ("cloned", []) = (name2, args2) {
+                            iter_overeager_cloned::check(cx, expr, recv, recv2, false, false);
+                        }
+                    }
+                }
                 ("sort", []) => {
                     stable_sort_primitive::check(cx, expr, recv);
                 },
@@ -4214,6 +4214,9 @@ impl Methods {
                     }
                     unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
                 },
+                ("write", []) => {
+                    readonly_write_lock::check(cx, expr, recv);
+                }
                 ("zip", [arg]) => {
                     if let ExprKind::MethodCall(name, iter_recv, [], _) = recv.kind
                         && name.ident.name == sym::iter
@@ -4221,9 +4224,6 @@ impl Methods {
                         range_zip_with_len::check(cx, expr, iter_recv, arg);
                     }
                 },
-                ("write", []) => {
-                    readonly_write_lock::check(cx, expr, recv);
-                }
                 _ => {},
             }
         }
