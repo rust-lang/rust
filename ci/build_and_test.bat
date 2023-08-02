@@ -6,7 +6,11 @@ rustc -Vv || exit /b 1
 cargo -V || exit /b 1
 
 :: Build and test main crate
-cargo build --locked || exit /b 1
+if "%CFG_RELEASE_CHANNEL%"=="nightly" (
+    cargo build --locked --all-features || exit /b 1
+) else (
+    cargo build --locked || exit /b 1
+)
 cargo test || exit /b 1
 
 :: Build and test other crates
