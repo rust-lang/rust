@@ -208,7 +208,7 @@ fn get_default_constructor(
     }
 
     let krate = ctx.sema.to_module_def(d.file.original_file(ctx.sema.db))?.krate();
-    let module = krate.root_module(ctx.sema.db);
+    let module = krate.root_module();
 
     // Look for a ::new() associated function
     let has_new_func = ty

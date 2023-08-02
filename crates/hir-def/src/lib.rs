@@ -121,6 +121,12 @@ impl From<CrateRootModuleId> for ModuleDefId {
     }
 }
 
+impl From<CrateId> for CrateRootModuleId {
+    fn from(krate: CrateId) -> Self {
+        CrateRootModuleId { krate }
+    }
+}
+
 impl TryFrom<ModuleId> for CrateRootModuleId {
     type Error = ();
 

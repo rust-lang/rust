@@ -2,6 +2,7 @@
 
 pub mod adt;
 
+use base_db::CrateId;
 use hir_expand::{
     name::Name, AstId, ExpandResult, HirFileId, InFile, MacroCallId, MacroCallKind, MacroDefKind,
 };
@@ -467,6 +468,7 @@ pub struct ExternCrateDeclData {
     pub name: Name,
     pub alias: Option<ImportAlias>,
     pub visibility: RawVisibility,
+    pub crate_id: CrateId,
 }
 
 impl ExternCrateDeclData {
@@ -478,10 +480,24 @@ impl ExternCrateDeclData {
         let item_tree = loc.id.item_tree(db);
         let extern_crate = &item_tree[loc.id.value];
 
+        let name = extern_crate.name.clone();
+        let crate_id = if name == hir_expand::name![self] {
+            loc.container.krate()
+        } else {
+            db.crate_def_map(loc.container.krate())
+                .extern_prelude()
+                .find(|&(prelude_name, ..)| *prelude_name == name)
+                // FIXME: Suspicious unwrap
+                .unwrap()
+                .1
+                .krate()
+        };
+
         Arc::new(Self {
             name: extern_crate.name.clone(),
             visibility: item_tree[extern_crate.visibility].clone(),
             alias: extern_crate.alias.clone(),
+            crate_id,
         })
     }
 }

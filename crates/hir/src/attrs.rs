@@ -12,9 +12,9 @@ use hir_ty::db::HirDatabase;
 use syntax::{ast, AstNode};
 
 use crate::{
-    Adt, AssocItem, Const, ConstParam, Enum, Field, Function, GenericParam, Impl, LifetimeParam,
-    Macro, Module, ModuleDef, Static, Struct, Trait, TraitAlias, TypeAlias, TypeParam, Union,
-    Variant,
+    Adt, AssocItem, Const, ConstParam, Enum, ExternCrateDecl, Field, Function, GenericParam, Impl,
+    LifetimeParam, Macro, Module, ModuleDef, Static, Struct, Trait, TraitAlias, TypeAlias,
+    TypeParam, Union, Variant,
 };
 
 pub trait HasAttrs {
@@ -117,6 +117,39 @@ impl HasAttrs for AssocItem {
             AssocItem::Const(it) => it.resolve_doc_path(db, link, ns),
             AssocItem::TypeAlias(it) => it.resolve_doc_path(db, link, ns),
         }
+    }
+}
+
+impl HasAttrs for ExternCrateDecl {
+    fn attrs(self, db: &dyn HirDatabase) -> AttrsWithOwner {
+        let def = AttrDefId::ExternCrateId(self.into());
+        db.attrs_with_owner(def)
+    }
+    fn docs(self, db: &dyn HirDatabase) -> Option<Documentation> {
+        let crate_docs = self.resolved_crate(db).root_module().attrs(db).docs().map(String::from);
+        let def = AttrDefId::ExternCrateId(self.into());
+        let decl_docs = db.attrs(def).docs().map(String::from);
+        match (decl_docs, crate_docs) {
+            (None, None) => None,
+            (Some(decl_docs), None) => Some(decl_docs),
+            (None, Some(crate_docs)) => Some(crate_docs),
+            (Some(mut decl_docs), Some(crate_docs)) => {
+                decl_docs.push('\n');
+                decl_docs.push('\n');
+                decl_docs += &crate_docs;
+                Some(decl_docs)
+            }
+        }
+        .map(Documentation::new)
+    }
+    fn resolve_doc_path(
+        self,
+        db: &dyn HirDatabase,
+        link: &str,
+        ns: Option<Namespace>,
+    ) -> Option<ModuleDef> {
+        let def = AttrDefId::ExternCrateId(self.into());
+        resolve_doc_path(db, def, link, ns).map(ModuleDef::from)
     }
 }
 

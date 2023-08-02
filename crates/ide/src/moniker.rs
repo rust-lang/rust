@@ -247,6 +247,10 @@ pub(crate) fn def_to_moniker(
             name: s.name(db).display(db).to_string(),
             desc: MonikerDescriptorKind::Meta,
         },
+        Definition::ExternCrateDecl(m) => MonikerDescriptor {
+            name: m.name(db).display(db).to_string(),
+            desc: MonikerDescriptorKind::Namespace,
+        },
     };
 
     description.push(name_desc);

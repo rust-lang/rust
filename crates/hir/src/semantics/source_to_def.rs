@@ -93,9 +93,9 @@ use hir_def::{
         DynMap,
     },
     hir::{BindingId, LabelId},
-    AdtId, ConstId, ConstParamId, DefWithBodyId, EnumId, EnumVariantId, FieldId, FunctionId,
-    GenericDefId, GenericParamId, ImplId, LifetimeParamId, MacroId, ModuleId, StaticId, StructId,
-    TraitAliasId, TraitId, TypeAliasId, TypeParamId, UnionId, VariantId,
+    AdtId, ConstId, ConstParamId, DefWithBodyId, EnumId, EnumVariantId, ExternCrateId, FieldId,
+    FunctionId, GenericDefId, GenericParamId, ImplId, LifetimeParamId, MacroId, ModuleId, StaticId,
+    StructId, TraitAliasId, TraitId, TypeAliasId, TypeParamId, UnionId, VariantId,
 };
 use hir_expand::{attrs::AttrId, name::AsName, HirFileId, MacroCallId};
 use rustc_hash::FxHashMap;
@@ -202,6 +202,12 @@ impl SourceToDefCtx<'_, '_> {
         src: InFile<ast::Variant>,
     ) -> Option<EnumVariantId> {
         self.to_def(src, keys::VARIANT)
+    }
+    pub(super) fn extern_crate_to_def(
+        &mut self,
+        src: InFile<ast::ExternCrate>,
+    ) -> Option<ExternCrateId> {
+        self.to_def(src, keys::EXTERN_CRATE)
     }
     pub(super) fn adt_to_def(
         &mut self,
