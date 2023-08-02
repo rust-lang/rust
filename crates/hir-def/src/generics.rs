@@ -21,7 +21,7 @@ use crate::{
     db::DefDatabase,
     dyn_map::{keys, DynMap},
     expander::Expander,
-    item_tree::ItemTree,
+    item_tree::{AttrOwner, ItemTree},
     lower::LowerCtx,
     nameres::{DefMap, MacroSubNs},
     src::{HasChildSource, HasSource},
@@ -215,9 +215,14 @@ impl GenericParams {
         }
     }
 
-    pub(crate) fn fill(&mut self, lower_ctx: &LowerCtx<'_>, node: &dyn HasGenericParams) {
+    pub(crate) fn fill(
+        &mut self,
+        lower_ctx: &LowerCtx<'_>,
+        node: &dyn HasGenericParams,
+        add_param_attrs: impl FnMut(AttrOwner, ast::GenericParam),
+    ) {
         if let Some(params) = node.generic_param_list() {
-            self.fill_params(lower_ctx, params)
+            self.fill_params(lower_ctx, params, add_param_attrs)
         }
         if let Some(where_clause) = node.where_clause() {
             self.fill_where_predicates(lower_ctx, where_clause);
@@ -235,7 +240,12 @@ impl GenericParams {
         }
     }
 
-    fn fill_params(&mut self, lower_ctx: &LowerCtx<'_>, params: ast::GenericParamList) {
+    fn fill_params(
+        &mut self,
+        lower_ctx: &LowerCtx<'_>,
+        params: ast::GenericParamList,
+        mut add_param_attrs: impl FnMut(AttrOwner, ast::GenericParam),
+    ) {
         for type_or_const_param in params.type_or_const_params() {
             match type_or_const_param {
                 ast::TypeOrConstParam::Type(type_param) => {
@@ -249,13 +259,14 @@ impl GenericParams {
                         default,
                         provenance: TypeParamProvenance::TypeParamList,
                     };
-                    self.type_or_consts.alloc(param.into());
+                    let idx = self.type_or_consts.alloc(param.into());
                     let type_ref = TypeRef::Path(name.into());
                     self.fill_bounds(
                         lower_ctx,
                         type_param.type_bound_list(),
                         Either::Left(type_ref),
                     );
+                    add_param_attrs(idx.into(), ast::GenericParam::TypeParam(type_param));
                 }
                 ast::TypeOrConstParam::Const(const_param) => {
                     let name = const_param.name().map_or_else(Name::missing, |it| it.as_name());
@@ -267,7 +278,8 @@ impl GenericParams {
                         ty: Interned::new(ty),
                         has_default: const_param.default_val().is_some(),
                     };
-                    self.type_or_consts.alloc(param.into());
+                    let idx = self.type_or_consts.alloc(param.into());
+                    add_param_attrs(idx.into(), ast::GenericParam::ConstParam(const_param));
                 }
             }
         }
@@ -275,13 +287,14 @@ impl GenericParams {
             let name =
                 lifetime_param.lifetime().map_or_else(Name::missing, |lt| Name::new_lifetime(&lt));
             let param = LifetimeParamData { name: name.clone() };
-            self.lifetimes.alloc(param);
+            let idx = self.lifetimes.alloc(param);
             let lifetime_ref = LifetimeRef::new_name(name);
             self.fill_bounds(
                 lower_ctx,
                 lifetime_param.type_bound_list(),
                 Either::Right(lifetime_ref),
             );
+            add_param_attrs(idx.into(), ast::GenericParam::LifetimeParam(lifetime_param));
         }
     }
 
