@@ -245,6 +245,7 @@ impl fmt::Debug for Repeat {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[non_exhaustive]
 #[derive(Copy, Clone, Debug, Default)]
+#[deprecated(since = "TBD", note = "superseded by `Empty`")]
 pub struct Sink;
 
 /// Creates an instance of a writer which will successfully consume all data.
@@ -267,11 +268,14 @@ pub struct Sink;
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_io_structs", issue = "78812")]
+#[deprecated(since = "TBD", note = "superseded by `Empty`")]
+#[allow(deprecated_in_future)]
 pub const fn sink() -> Sink {
     Sink
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(deprecated_in_future)]
 impl Write for Sink {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
@@ -296,6 +300,7 @@ impl Write for Sink {
 }
 
 #[stable(feature = "write_mt", since = "1.48.0")]
+#[allow(deprecated_in_future)]
 impl Write for &Sink {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
