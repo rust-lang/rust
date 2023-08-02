@@ -4,7 +4,7 @@ error: used `unwrap()` on an `Option` value
 LL |     Some(3).unwrap();
    |     ^^^^^^^^^^^^^^^^
    |
-   = help: if this value is `None`, it will panic
+   = note: if this value is `None`, it will panic
    = note: `-D clippy::unwrap-used` implied by `-D warnings`
 
 error: used `expect()` on an `Option` value
@@ -13,7 +13,7 @@ error: used `expect()` on an `Option` value
 LL |     Some(3).expect("Hello world!");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: if this value is `None`, it will panic
+   = note: if this value is `None`, it will panic
    = note: `-D clippy::expect-used` implied by `-D warnings`
 
 error: used `unwrap()` on a `Result` value
@@ -22,7 +22,7 @@ error: used `unwrap()` on a `Result` value
 LL |     a.unwrap();
    |     ^^^^^^^^^^
    |
-   = help: if this value is an `Err`, it will panic
+   = note: if this value is an `Err`, it will panic
 
 error: used `expect()` on a `Result` value
   --> $DIR/unwrap_expect_used.rs:44:5
@@ -30,7 +30,7 @@ error: used `expect()` on a `Result` value
 LL |     a.expect("Hello world!");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: if this value is an `Err`, it will panic
+   = note: if this value is an `Err`, it will panic
 
 error: used `unwrap_err()` on a `Result` value
   --> $DIR/unwrap_expect_used.rs:45:5
@@ -38,7 +38,7 @@ error: used `unwrap_err()` on a `Result` value
 LL |     a.unwrap_err();
    |     ^^^^^^^^^^^^^^
    |
-   = help: if this value is an `Ok`, it will panic
+   = note: if this value is an `Ok`, it will panic
 
 error: used `expect_err()` on a `Result` value
   --> $DIR/unwrap_expect_used.rs:46:5
@@ -46,7 +46,7 @@ error: used `expect_err()` on a `Result` value
 LL |     a.expect_err("Hello error!");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: if this value is an `Ok`, it will panic
+   = note: if this value is an `Ok`, it will panic
 
 error: aborting due to 6 previous errors
 

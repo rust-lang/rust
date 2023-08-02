@@ -1,5 +1,5 @@
-use clippy_utils::diagnostics::span_lint_and_help;
-use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::ty::{is_never_like, is_type_diagnostic_item};
 use clippy_utils::{is_in_cfg_test, is_in_test_function, is_lint_allowed};
 use rustc_hir::Expr;
 use rustc_lint::{LateContext, Lint};
@@ -32,7 +32,8 @@ impl Variant {
     }
 }
 
-/// lint use of `unwrap()` or `unwrap_err` for `Result` and `unwrap()` for `Option`.
+/// Lint usage of `unwrap` or `unwrap_err` for `Result` and `unwrap()` for `Option` (and their
+/// `expect` counterparts).
 pub(super) fn check(
     cx: &LateContext<'_>,
     expr: &Expr<'_>,
@@ -49,10 +50,7 @@ pub(super) fn check(
         && let ty::Adt(_, substs) = ty.kind()
         && let Some(t_or_e_ty) = substs[usize::from(!is_err)].as_type()
     {
-        // Issue #11245: Do not lint `!` or never-like enums
-        if t_or_e_ty.is_never()
-            || (t_or_e_ty.is_enum() && t_or_e_ty.ty_adt_def().is_some_and(|def| def.variants().is_empty()))
-        {
+        if is_never_like(t_or_e_ty) {
             return;
         }
 
@@ -67,21 +65,19 @@ pub(super) fn check(
         return;
     }
 
-    let help = if variant == Variant::Unwrap && is_lint_allowed(cx, EXPECT_USED, expr.hir_id) {
-        format!(
-            "if you don't want to handle the `{none_value}` case gracefully, consider \
-                using `expect{method_suffix}()` to provide a better panic message"
-        )
-    } else {
-        format!("if this value is {none_prefix}`{none_value}`, it will panic")
-    };
-
-    span_lint_and_help(
+    span_lint_and_then(
         cx,
         variant.lint(),
         expr.span,
         &format!("used `{}()` on {kind} value", variant.method_name(is_err)),
-        None,
-        &help,
+        |diag| {
+            diag.note(format!("if this value is {none_prefix}`{none_value}`, it will panic"));
+
+            if variant == Variant::Unwrap && is_lint_allowed(cx, EXPECT_USED, expr.hir_id) {
+                diag.help(format!(
+                    "consider using `expect{method_suffix}()` to provide a better panic message"
+                ));
+            }
+        },
     );
 }
