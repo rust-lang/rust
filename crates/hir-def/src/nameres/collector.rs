@@ -52,10 +52,10 @@ use crate::{
     tt,
     visibility::{RawVisibility, Visibility},
     AdtId, AstId, AstIdWithPath, ConstLoc, CrateRootModuleId, EnumLoc, EnumVariantId,
-    ExternBlockLoc, ExternCrateLoc, FunctionId, FunctionLoc, ImplLoc, ImportLoc, Intern,
-    ItemContainerId, LocalModuleId, Macro2Id, Macro2Loc, MacroExpander, MacroId, MacroRulesId,
-    MacroRulesLoc, ModuleDefId, ModuleId, ProcMacroId, ProcMacroLoc, StaticLoc, StructLoc,
-    TraitAliasLoc, TraitLoc, TypeAliasLoc, UnionLoc, UnresolvedMacro,
+    ExternBlockLoc, ExternCrateLoc, FunctionId, FunctionLoc, ImplLoc, Intern, ItemContainerId,
+    LocalModuleId, Macro2Id, Macro2Loc, MacroExpander, MacroId, MacroRulesId, MacroRulesLoc,
+    ModuleDefId, ModuleId, ProcMacroId, ProcMacroLoc, StaticLoc, StructLoc, TraitAliasLoc,
+    TraitLoc, TypeAliasLoc, UnionLoc, UnresolvedMacro, UseLoc,
 };
 
 static GLOB_RECURSION_LIMIT: Limit = Limit::new(100);
@@ -146,7 +146,7 @@ impl PartialResolvedImport {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 enum ImportSource {
-    Import { id: ItemTreeId<item_tree::Import>, use_tree: Idx<ast::UseTree> },
+    Use { id: ItemTreeId<item_tree::Use>, use_tree: Idx<ast::UseTree> },
     ExternCrate(ItemTreeId<item_tree::ExternCrate>),
 }
 
@@ -166,7 +166,7 @@ impl Import {
         db: &dyn DefDatabase,
         krate: CrateId,
         tree: &ItemTree,
-        id: ItemTreeId<item_tree::Import>,
+        id: ItemTreeId<item_tree::Use>,
         mut cb: impl FnMut(Self),
     ) {
         let it = &tree[id.value];
@@ -181,7 +181,7 @@ impl Import {
                 kind,
                 is_prelude,
                 is_macro_use: false,
-                source: ImportSource::Import { id, use_tree: idx },
+                source: ImportSource::Use { id, use_tree: idx },
             });
         });
     }
@@ -1474,7 +1474,7 @@ impl DefCollector<'_> {
         }
 
         for directive in &self.unresolved_imports {
-            if let ImportSource::Import { id: import, use_tree } = directive.import.source {
+            if let ImportSource::Use { id: import, use_tree } = directive.import.source {
                 if matches!(
                     (directive.import.path.segments().first(), &directive.import.path.kind),
                     (Some(krate), PathKind::Plain | PathKind::Abs) if diagnosed_extern_crates.contains(krate)
@@ -1576,12 +1576,10 @@ impl ModCollector<'_, '_> {
 
             match item {
                 ModItem::Mod(m) => self.collect_module(m, &attrs),
-                ModItem::Import(import_id) => {
-                    let _import_id = ImportLoc {
-                        container: module,
-                        id: ItemTreeId::new(self.tree_id, import_id),
-                    }
-                    .intern(db);
+                ModItem::Use(import_id) => {
+                    let _import_id =
+                        UseLoc { container: module, id: ItemTreeId::new(self.tree_id, import_id) }
+                            .intern(db);
                     Import::from_use(
                         db,
                         krate,

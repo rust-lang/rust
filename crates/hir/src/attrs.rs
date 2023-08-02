@@ -173,6 +173,7 @@ fn resolve_doc_path(
         AttrDefId::TypeAliasId(it) => it.resolver(db.upcast()),
         AttrDefId::ImplId(it) => it.resolver(db.upcast()),
         AttrDefId::ExternBlockId(it) => it.resolver(db.upcast()),
+        AttrDefId::UseId(it) => it.resolver(db.upcast()),
         AttrDefId::MacroId(it) => it.resolver(db.upcast()),
         AttrDefId::ExternCrateId(it) => it.resolver(db.upcast()),
         AttrDefId::GenericParamId(it) => match it {

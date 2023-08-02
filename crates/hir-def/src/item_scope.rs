@@ -16,6 +16,7 @@ use syntax::ast;
 use crate::{
     db::DefDatabase, per_ns::PerNs, visibility::Visibility, AdtId, BuiltinType, ConstId,
     ExternCrateId, HasModule, ImplId, LocalModuleId, MacroId, ModuleDefId, ModuleId, TraitId,
+    UseId,
 };
 
 #[derive(Copy, Clone, Debug)]
@@ -117,6 +118,11 @@ impl ItemScope {
         &self,
     ) -> impl Iterator<Item = ExternCrateId> + ExactSizeIterator + '_ {
         self.extern_crate_decls.iter().copied()
+    }
+
+    pub fn use_decls(&self) -> impl Iterator<Item = UseId> + ExactSizeIterator + '_ {
+        // FIXME: to be implemented
+        std::iter::empty()
     }
 
     pub fn impls(&self) -> impl Iterator<Item = ImplId> + ExactSizeIterator + '_ {

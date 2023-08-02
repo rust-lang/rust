@@ -502,13 +502,13 @@ impl<'a> Ctx<'a> {
         Some(id(self.data().impls.alloc(res)))
     }
 
-    fn lower_use(&mut self, use_item: &ast::Use) -> Option<FileItemTreeId<Import>> {
+    fn lower_use(&mut self, use_item: &ast::Use) -> Option<FileItemTreeId<Use>> {
         let visibility = self.lower_visibility(use_item);
         let ast_id = self.source_ast_id_map.ast_id(use_item);
         let (use_tree, _) = lower_use_tree(self.db, self.hygiene(), use_item.use_tree()?)?;
 
-        let res = Import { visibility, ast_id, use_tree };
-        Some(id(self.data().imports.alloc(res)))
+        let res = Use { visibility, ast_id, use_tree };
+        Some(id(self.data().uses.alloc(res)))
     }
 
     fn lower_extern_crate(
