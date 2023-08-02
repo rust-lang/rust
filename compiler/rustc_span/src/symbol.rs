@@ -498,6 +498,7 @@ symbols! {
         cold,
         collapse_debuginfo,
         column,
+        compare_bytes,
         compare_exchange,
         compare_exchange_weak,
         compile_error,
