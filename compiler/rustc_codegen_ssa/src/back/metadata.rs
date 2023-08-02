@@ -275,6 +275,7 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
             let mut e_flags: u32 = 0x0;
 
             // Check if compressed is enabled
+            // `unstable_target_features` is used here because "c" is gated behind riscv_target_feature.
             if sess.unstable_target_features.contains(&sym::c) {
                 e_flags |= elf::EF_RISCV_RVC;
             }
