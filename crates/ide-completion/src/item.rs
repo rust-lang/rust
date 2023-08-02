@@ -427,9 +427,26 @@ impl Builder {
         let insert_text = self.insert_text.unwrap_or_else(|| label.to_string());
 
         if !self.doc_aliases.is_empty() {
-            let doc_aliases = self.doc_aliases.into_iter().join(", ");
+            let doc_aliases = self.doc_aliases.iter().join(", ");
             label = SmolStr::from(format!("{label} (alias {doc_aliases})"));
-            lookup = SmolStr::from(format!("{lookup} {doc_aliases}"));
+            let lookup_doc_aliases = self
+                .doc_aliases
+                .iter()
+                // Don't include aliases in `lookup` that aren't valid identifiers as including
+                // them results in weird completion filtering behavior e.g. `Partial>` matching
+                // `PartialOrd` because it has an alias of ">".
+                .filter(|alias| {
+                    let mut chars = alias.chars();
+                    chars.next().is_some_and(char::is_alphabetic)
+                        && chars.all(|c| c.is_alphanumeric() || c == '_')
+                })
+                // Deliberately concatenated without separators as adding separators e.g.
+                // `alias1, alias2` results in LSP clients continuing to display the completion even
+                // after typing a comma or space.
+                .join("");
+            if !lookup_doc_aliases.is_empty() {
+                lookup = SmolStr::from(format!("{lookup}{lookup_doc_aliases}"));
+            }
         }
         if let [import_edit] = &*self.imports_to_add {
             // snippets can have multiple imports, but normal completions only have up to one
