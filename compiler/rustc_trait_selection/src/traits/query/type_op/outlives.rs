@@ -31,16 +31,6 @@ impl<'tcx> super::QueryTypeOp<'tcx> for DropckOutlives<'tcx> {
         tcx: TyCtxt<'tcx>,
         canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, Self>>,
     ) -> Result<CanonicalQueryResponse<'tcx, Self::QueryResponse>, NoSolution> {
-        // Subtle: note that we are not invoking
-        // `infcx.at(...).dropck_outlives(...)` here, but rather the
-        // underlying `dropck_outlives` query. This same underlying
-        // query is also used by the
-        // `infcx.at(...).dropck_outlives(...)` fn. Avoiding the
-        // wrapper means we don't need an infcx in this code, which is
-        // good because the interface doesn't give us one (so that we
-        // know we are not registering any subregion relations or
-        // other things).
-
         // FIXME convert to the type expected by the `dropck_outlives`
         // query. This should eventually be fixed by changing the
         // *underlying query*.
