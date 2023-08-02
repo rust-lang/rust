@@ -173,7 +173,7 @@ pub(crate) fn complete_type_path(
                     });
                     return;
                 }
-                TypeLocation::GenericArgList(Some((arg_list, generic_param))) => {
+                TypeLocation::GenericArgList(Some((arg_list, _))) => {
                     let in_assoc_type_arg = ctx
                         .original_token
                         .parent_ancestors()

@@ -726,20 +726,30 @@ fn classify_name_ref(
             arg.syntax().parent().and_then(ast::GenericArgList::cast),
         )
         .map(|args| {
-            // Determine the index of the parameter in the `GenericArgList`
-            // (subtract 1 because `siblings` includes the node itself)
-            let param_idx = arg.syntax().siblings(Direction::Prev).count() - 1;
-            let parent = args.syntax().parent();
-            let param = parent.and_then(|parent| {
-                match_ast! {
+            let param = (|| {
+                let parent = args.syntax().parent()?;
+                let params = match_ast! {
                     match parent {
                         ast::PathSegment(segment) => {
                             match sema.resolve_path(&segment.parent_path().top_path())? {
                                 hir::PathResolution::Def(def) => match def {
                                     hir::ModuleDef::Function(func) => {
-                                        let src = func.source(sema.db)?;
-                                        let params = src.value.generic_param_list()?;
-                                        params.generic_params().nth(param_idx)
+                                        func.source(sema.db)?.value.generic_param_list()
+                                    }
+                                    hir::ModuleDef::Adt(adt) => {
+                                        adt.source(sema.db)?.value.generic_param_list()
+                                    }
+                                    hir::ModuleDef::Variant(variant) => {
+                                        variant.parent_enum(sema.db).source(sema.db)?.value.generic_param_list()
+                                    }
+                                    hir::ModuleDef::Trait(trait_) => {
+                                        trait_.source(sema.db)?.value.generic_param_list()
+                                    }
+                                    hir::ModuleDef::TraitAlias(trait_) => {
+                                        trait_.source(sema.db)?.value.generic_param_list()
+                                    }
+                                    hir::ModuleDef::TypeAlias(ty_) => {
+                                        ty_.source(sema.db)?.value.generic_param_list()
                                     }
                                     _ => None,
                                 },
@@ -748,9 +758,7 @@ fn classify_name_ref(
                         },
                         ast::MethodCallExpr(call) => {
                             let func = sema.resolve_method_call(&call)?;
-                            let src = func.source(sema.db)?;
-                            let params = src.value.generic_param_list()?;
-                            params.generic_params().nth(param_idx)
+                            func.source(sema.db)?.value.generic_param_list()
                         },
                         ast::AssocTypeArg(arg) => {
                             let trait_ = ast::PathSegment::cast(arg.syntax().parent()?.parent()?)?;
@@ -765,9 +773,7 @@ fn classify_name_ref(
                                             },
                                             _ => None,
                                         })?;
-                                        let src = assoc_ty.source(sema.db)?;
-                                        let params = src.value.generic_param_list()?;
-                                        params.generic_params().nth(param_idx)
+                                        assoc_ty.source(sema.db)?.value.generic_param_list()
                                     }
                                     _ => None,
                                 },
@@ -776,8 +782,12 @@ fn classify_name_ref(
                         },
                         _ => None,
                     }
-                }
-            });
+                }?;
+                // Determine the index of the parameter in the `GenericArgList`
+                // (subtract 1 because `siblings` includes the node itself)
+                let param_idx = arg.syntax().siblings(Direction::Prev).count() - 1;
+                params.generic_params().nth(param_idx)
+            })();
             (args, param)
         });
         TypeLocation::GenericArgList(location)
