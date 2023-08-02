@@ -31,12 +31,12 @@ env:
   # Name to use for the branch
   BRANCH: cargo_update
   # Github repository to open the PR on
-  BASE_REPO: rust-lang/rust
+  BASE_REPO: pitaj/rust
 
 jobs:
   not-waiting-on-bors:
     # Only run workflow if on rust-lang-ci
-    if: github.repository_owner == 'rust-lang-ci'
+    if: github.repository_owner == 'pitaj-rust-lang-ci'
     name: skip if S-waiting-on-bors
     runs-on: ubuntu-latest
     steps:
