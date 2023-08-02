@@ -1616,6 +1616,9 @@ fn test_hover_extern_crate() {
     check(
         r#"
 //- /main.rs crate:main deps:std
+//! Crate docs
+
+/// Decl docs!
 extern crate st$0d;
 //- /std/lib.rs crate:std
 //! Standard library for this test
@@ -1624,23 +1627,32 @@ extern crate st$0d;
 //! abc123
 "#,
         expect![[r#"
-                *std*
+            *std*
 
-                ```rust
-                extern crate std
-                ```
+            ```rust
+            main
+            ```
 
-                ---
+            ```rust
+            extern crate std
+            ```
 
-                Standard library for this test
+            ---
 
-                Printed?
-                abc123
-            "#]],
+            Decl docs!
+
+            Standard library for this test
+
+            Printed?
+            abc123
+        "#]],
     );
     check(
         r#"
 //- /main.rs crate:main deps:std
+//! Crate docs
+
+/// Decl docs!
 extern crate std as ab$0c;
 //- /std/lib.rs crate:std
 //! Standard library for this test
@@ -1649,19 +1661,25 @@ extern crate std as ab$0c;
 //! abc123
 "#,
         expect![[r#"
-                *abc*
+            *abc*
 
-                ```rust
-                extern crate std
-                ```
+            ```rust
+            main
+            ```
 
-                ---
+            ```rust
+            extern crate std as abc
+            ```
 
-                Standard library for this test
+            ---
 
-                Printed?
-                abc123
-            "#]],
+            Decl docs!
+
+            Standard library for this test
+
+            Printed?
+            abc123
+        "#]],
     );
 }
 

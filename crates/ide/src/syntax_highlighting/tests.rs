@@ -804,6 +804,7 @@ fn test_extern_crate() {
 //- /main.rs crate:main deps:std,alloc
 extern crate std;
 extern crate alloc as abc;
+extern crate unresolved as definitely_unresolved;
 //- /std/lib.rs crate:std
 pub struct S;
 //- /alloc/lib.rs crate:alloc

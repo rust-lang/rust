@@ -137,6 +137,9 @@ pub(crate) fn find_defs<'a>(
                             NameRefClass::FieldShorthand { local_ref, field_ref: _ } => {
                                 Definition::Local(local_ref)
                             }
+                            NameRefClass::ExternCrateShorthand { decl, .. } => {
+                                Definition::ExternCrateDecl(decl)
+                            }
                         }
                     }
                     ast::NameLike::Name(name) => match NameClass::classify(sema, &name)? {

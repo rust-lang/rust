@@ -145,7 +145,14 @@ fn find_definitions(
                     if name
                         .syntax()
                         .parent()
-                        .map_or(false, |it| ast::Rename::can_cast(it.kind())) =>
+                        .map_or(false, |it| ast::Rename::can_cast(it.kind()))
+                        // FIXME: uncomment this once we resolve to usages to extern crate declarations
+                        // && name
+                        //     .syntax()
+                        //     .ancestors()
+                        //     .nth(2)
+                        //     .map_or(true, |it| !ast::ExternCrate::can_cast(it.kind()))
+                        =>
                 {
                     bail!("Renaming aliases is currently unsupported")
                 }
@@ -165,7 +172,12 @@ fn find_definitions(
                             NameRefClass::FieldShorthand { local_ref, field_ref: _ } => {
                                 Definition::Local(local_ref)
                             }
+                            NameRefClass::ExternCrateShorthand { decl, .. } => {
+                                Definition::ExternCrateDecl(decl)
+                            }
                         })
+                        // FIXME: uncomment this once we resolve to usages to extern crate declarations
+                        .filter(|def| !matches!(def, Definition::ExternCrateDecl(..)))
                         .ok_or_else(|| format_err!("No references found at position"))
                         .and_then(|def| {
                             // if the name differs from the definitions name it has to be an alias
@@ -2516,5 +2528,110 @@ fn main() {
 }
 ",
         )
+    }
+
+    #[test]
+    fn extern_crate() {
+        check_prepare(
+            r"
+//- /lib.rs crate:main deps:foo
+extern crate foo$0;
+use foo as qux;
+//- /foo.rs crate:foo
+",
+            expect![[r#"No references found at position"#]],
+        );
+        // FIXME: replace above check_prepare with this once we resolve to usages to extern crate declarations
+        //         check(
+        //             "bar",
+        //             r"
+        // //- /lib.rs crate:main deps:foo
+        // extern crate foo$0;
+        // use foo as qux;
+        // //- /foo.rs crate:foo
+        // ",
+        //             r"
+        // extern crate foo as bar;
+        // use bar as qux;
+        // ",
+        //         );
+    }
+
+    #[test]
+    fn extern_crate_rename() {
+        check_prepare(
+            r"
+//- /lib.rs crate:main deps:foo
+extern crate foo as qux$0;
+use qux as frob;
+//- /foo.rs crate:foo
+",
+            expect!["Renaming aliases is currently unsupported"],
+        );
+        // FIXME: replace above check_prepare with this once we resolve to usages to extern crate
+        // declarations
+        //         check(
+        //             "bar",
+        //             r"
+        // //- /lib.rs crate:main deps:foo
+        // extern crate foo as qux$0;
+        // use qux as frob;
+        // //- /foo.rs crate:foo
+        // ",
+        //             r"
+        // extern crate foo as bar;
+        // use bar as frob;
+        // ",
+        //         );
+    }
+
+    #[test]
+    fn extern_crate_self() {
+        check_prepare(
+            r"
+extern crate self$0;
+use self as qux;
+",
+            expect!["No references found at position"],
+        );
+        // FIXME: replace above check_prepare with this once we resolve to usages to extern crate declarations
+        //         check(
+        //             "bar",
+        //             r"
+        // extern crate self$0;
+        // use self as qux;
+        // ",
+        //             r"
+        // extern crate self as bar;
+        // use self as qux;
+        // ",
+        //         );
+    }
+
+    #[test]
+    fn extern_crate_self_rename() {
+        check_prepare(
+            r"
+//- /lib.rs crate:main deps:foo
+extern crate self as qux$0;
+use qux as frob;
+//- /foo.rs crate:foo
+",
+            expect!["Renaming aliases is currently unsupported"],
+        );
+        // FIXME: replace above check_prepare with this once we resolve to usages to extern crate declarations
+        //         check(
+        //             "bar",
+        //             r"
+        // //- /lib.rs crate:main deps:foo
+        // extern crate self as qux$0;
+        // use qux as frob;
+        // //- /foo.rs crate:foo
+        // ",
+        //             r"
+        // extern crate self as bar;
+        // use bar as frob;
+        // ",
+        //         );
     }
 }

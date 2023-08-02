@@ -113,6 +113,12 @@ impl ItemScope {
         self.declarations.iter().copied()
     }
 
+    pub fn extern_crate_decls(
+        &self,
+    ) -> impl Iterator<Item = ExternCrateId> + ExactSizeIterator + '_ {
+        self.extern_crate_decls.iter().copied()
+    }
+
     pub fn impls(&self) -> impl Iterator<Item = ImplId> + ExactSizeIterator + '_ {
         self.impls.iter().copied()
     }
