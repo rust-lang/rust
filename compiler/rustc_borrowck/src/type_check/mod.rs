@@ -791,25 +791,20 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                     (adt_def.variant(FIRST_VARIANT), args)
                 }
                 ty::Closure(_, args) => {
-                    return match args
-                        .as_closure()
-                        .tupled_upvars_ty()
-                        .tuple_fields()
-                        .get(field.index())
-                    {
+                    return match args.as_closure().upvar_tys().get(field.index()) {
                         Some(&ty) => Ok(ty),
                         None => Err(FieldAccessError::OutOfRange {
-                            field_count: args.as_closure().upvar_tys().count(),
+                            field_count: args.as_closure().upvar_tys().len(),
                         }),
                     };
                 }
                 ty::Generator(_, args, _) => {
                     // Only prefix fields (upvars and current state) are
                     // accessible without a variant index.
-                    return match args.as_generator().prefix_tys().nth(field.index()) {
-                        Some(ty) => Ok(ty),
+                    return match args.as_generator().prefix_tys().get(field.index()) {
+                        Some(ty) => Ok(*ty),
                         None => Err(FieldAccessError::OutOfRange {
-                            field_count: args.as_generator().prefix_tys().count(),
+                            field_count: args.as_generator().prefix_tys().len(),
                         }),
                     };
                 }
@@ -1772,10 +1767,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 }
             }
             AggregateKind::Closure(_, args) => {
-                match args.as_closure().upvar_tys().nth(field_index.as_usize()) {
-                    Some(ty) => Ok(ty),
+                match args.as_closure().upvar_tys().get(field_index.as_usize()) {
+                    Some(ty) => Ok(*ty),
                     None => Err(FieldAccessError::OutOfRange {
-                        field_count: args.as_closure().upvar_tys().count(),
+                        field_count: args.as_closure().upvar_tys().len(),
                     }),
                 }
             }
@@ -1783,10 +1778,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 // It doesn't make sense to look at a field beyond the prefix;
                 // these require a variant index, and are not initialized in
                 // aggregate rvalues.
-                match args.as_generator().prefix_tys().nth(field_index.as_usize()) {
-                    Some(ty) => Ok(ty),
+                match args.as_generator().prefix_tys().get(field_index.as_usize()) {
+                    Some(ty) => Ok(*ty),
                     None => Err(FieldAccessError::OutOfRange {
-                        field_count: args.as_generator().prefix_tys().count(),
+                        field_count: args.as_generator().prefix_tys().len(),
                     }),
                 }
             }
