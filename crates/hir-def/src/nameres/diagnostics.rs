@@ -19,7 +19,7 @@ pub enum DefDiagnosticKind {
 
     UnresolvedExternCrate { ast: AstId<ast::ExternCrate> },
 
-    UnresolvedImport { id: ItemTreeId<item_tree::Import>, index: Idx<ast::UseTree> },
+    UnresolvedImport { id: ItemTreeId<item_tree::Use>, index: Idx<ast::UseTree> },
 
     UnconfiguredCode { ast: ErasedAstId, cfg: CfgExpr, opts: CfgOptions },
 
@@ -70,7 +70,7 @@ impl DefDiagnostic {
 
     pub(super) fn unresolved_import(
         container: LocalModuleId,
-        id: ItemTreeId<item_tree::Import>,
+        id: ItemTreeId<item_tree::Use>,
         index: Idx<ast::UseTree>,
     ) -> Self {
         Self { in_module: container, kind: DefDiagnosticKind::UnresolvedImport { id, index } }

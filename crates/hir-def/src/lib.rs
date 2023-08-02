@@ -88,8 +88,8 @@ use crate::{
     builtin_type::BuiltinType,
     data::adt::VariantData,
     item_tree::{
-        Const, Enum, ExternCrate, Function, Impl, Import, ItemTreeId, ItemTreeNode, MacroDef,
-        MacroRules, Static, Struct, Trait, TraitAlias, TypeAlias, Union,
+        Const, Enum, ExternCrate, Function, Impl, ItemTreeId, ItemTreeNode, MacroDef, MacroRules,
+        Static, Struct, Trait, TraitAlias, TypeAlias, Union, Use,
     },
 };
 
@@ -324,9 +324,9 @@ type ImplLoc = ItemLoc<Impl>;
 impl_intern!(ImplId, ImplLoc, intern_impl, lookup_intern_impl);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
-pub struct ImportId(salsa::InternId);
-type ImportLoc = ItemLoc<Import>;
-impl_intern!(ImportId, ImportLoc, intern_import, lookup_intern_import);
+pub struct UseId(salsa::InternId);
+type UseLoc = ItemLoc<Use>;
+impl_intern!(UseId, UseLoc, intern_use, lookup_intern_use);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub struct ExternCrateId(salsa::InternId);
