@@ -191,7 +191,7 @@ impl<'tcx> FunctionCoverage<'tcx> {
         // vector is only complete up to the current `ExpressionIndex`.
         type NewIndexes = IndexSlice<ExpressionId, Option<MappedExpressionIndex>>;
         let id_to_counter = |new_indexes: &NewIndexes, operand: Operand| match operand {
-            Operand::Zero => Some(Counter::zero()),
+            Operand::Zero => Some(Counter::ZERO),
             Operand::Counter(id) => Some(Counter::counter_value_reference(id)),
             Operand::Expression(id) => {
                 self.expressions
@@ -201,7 +201,7 @@ impl<'tcx> FunctionCoverage<'tcx> {
                     // If an expression was optimized out, assume it would have produced a count
                     // of zero. This ensures that expressions dependent on optimized-out
                     // expressions are still valid.
-                    .map_or(Some(Counter::zero()), |_| new_indexes[id].map(Counter::expression))
+                    .map_or(Some(Counter::ZERO), |_| new_indexes[id].map(Counter::expression))
             }
         };
 
@@ -237,7 +237,7 @@ impl<'tcx> FunctionCoverage<'tcx> {
                         original_index={:?}, lhs={:?}, op={:?}, rhs={:?}, region={:?}",
                         original_index, lhs, op, rhs, optional_region,
                     );
-                    rhs_counter = Counter::zero();
+                    rhs_counter = Counter::ZERO;
                 }
                 debug_assert!(
                     lhs_counter.is_zero()
@@ -306,6 +306,6 @@ impl<'tcx> FunctionCoverage<'tcx> {
     }
 
     fn unreachable_regions(&self) -> impl Iterator<Item = (Counter, &CodeRegion)> {
-        self.unreachable_regions.iter().map(|region| (Counter::zero(), region))
+        self.unreachable_regions.iter().map(|region| (Counter::ZERO, region))
     }
 }
