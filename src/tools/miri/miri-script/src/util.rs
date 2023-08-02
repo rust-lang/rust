@@ -13,19 +13,10 @@ pub fn miri_dir() -> std::io::Result<PathBuf> {
 
 /// Queries the active toolchain for the Miri dir.
 pub fn active_toolchain() -> Result<String> {
-    let sh = shell()?;
+    let sh = Shell::new()?;
     sh.change_dir(miri_dir()?);
     let stdout = cmd!(sh, "rustup show active-toolchain").read()?;
     Ok(stdout.split_whitespace().next().context("Could not obtain active Rust toolchain")?.into())
-}
-
-pub fn shell() -> Result<Shell> {
-    let sh = Shell::new()?;
-    // xshell does not propagate parent's env variables by default.
-    for (k, v) in std::env::vars_os() {
-        sh.set_var(k, v);
-    }
-    Ok(sh)
 }
 
 pub fn flagsplit(flags: &str) -> Vec<String> {
@@ -50,7 +41,7 @@ pub struct MiriEnv {
 impl MiriEnv {
     pub fn new() -> Result<Self> {
         let toolchain = active_toolchain()?;
-        let sh = shell()?; // we are preserving the current_dir on this one, so paths resolve properly!
+        let sh = Shell::new()?; // we are preserving the current_dir on this one, so paths resolve properly!
         let miri_dir = miri_dir()?;
 
         let sysroot = cmd!(sh, "rustc +{toolchain} --print sysroot").read()?.into();

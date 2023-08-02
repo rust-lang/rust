@@ -94,7 +94,7 @@ pub fn phase_cargo_miri(mut args: impl Iterator<Item = String>) {
     let target = target.as_ref().unwrap_or(host);
 
     // We always setup.
-    setup(&subcommand, target, &rustc_version, verbose);
+    let miri_sysroot = setup(&subcommand, target, &rustc_version, verbose);
 
     // Invoke actual cargo for the job, but with different flags.
     // We re-use `cargo test` and `cargo run`, which makes target and binary handling very easy but
@@ -159,6 +159,8 @@ pub fn phase_cargo_miri(mut args: impl Iterator<Item = String>) {
     // Forward all further arguments (not consumed by `ArgSplitFlagValue`) to cargo.
     cmd.args(args);
 
+    // Let it know where the Miri sysroot lives.
+    cmd.env("MIRI_SYSROOT", miri_sysroot);
     // Set `RUSTC_WRAPPER` to ourselves.  Cargo will prepend that binary to its usual invocation,
     // i.e., the first argument is `rustc` -- which is what we use in `main` to distinguish
     // the two codepaths. (That extra argument is why we prefer this over setting `RUSTC`.)

@@ -6,7 +6,7 @@ use std::ops::Not;
 use anyhow::{anyhow, bail, Context, Result};
 use path_macro::path;
 use walkdir::WalkDir;
-use xshell::cmd;
+use xshell::{cmd, Shell};
 
 use crate::util::*;
 use crate::Command;
@@ -16,17 +16,25 @@ const JOSH_FILTER: &str =
     ":rev(75dd959a3a40eb5b4574f8d2e23aa6efbeb33573:prefix=src/tools/miri):/src/tools/miri";
 
 impl MiriEnv {
-    fn build_miri_sysroot(&mut self) -> Result<()> {
+    fn build_miri_sysroot(&mut self, quiet: bool) -> Result<()> {
         if self.sh.var("MIRI_SYSROOT").is_ok() {
             // Sysroot already set, use that.
             return Ok(());
         }
         let manifest_path = path!(self.miri_dir / "cargo-miri" / "Cargo.toml");
         let Self { toolchain, cargo_extra_flags, .. } = &self;
+
+        // Make sure everything is built. Also Miri itself.
+        self.build(path!(self.miri_dir / "Cargo.toml"), &[], quiet)?;
+        self.build(&manifest_path, &[], quiet)?;
+
         let target = &match self.sh.var("MIRI_TEST_TARGET") {
             Ok(target) => vec!["--target".into(), target],
             Err(_) => vec![],
         };
+        if !quiet {
+            eprintln!("$ (buildig Miri sysroot)");
+        }
         let output = cmd!(self.sh,
             "cargo +{toolchain} --quiet run {cargo_extra_flags...} --manifest-path {manifest_path} --
              miri setup --print-sysroot {target...}"
@@ -91,7 +99,7 @@ impl Command {
         // Make sure rustup-toolchain-install-master is installed.
         which::which("rustup-toolchain-install-master")
             .context("Please install rustup-toolchain-install-master by running 'cargo install rustup-toolchain-install-master'")?;
-        let sh = shell()?;
+        let sh = Shell::new()?;
         sh.change_dir(miri_dir()?);
         let new_commit = Some(sh.read_file("rust-version")?.trim().to_owned());
         let current_commit = {
@@ -130,7 +138,7 @@ impl Command {
     }
 
     fn rustc_pull(commit: Option<String>) -> Result<()> {
-        let sh = shell()?;
+        let sh = Shell::new()?;
         sh.change_dir(miri_dir()?);
         let commit = commit.map(Result::Ok).unwrap_or_else(|| {
             let rust_repo_head =
@@ -177,7 +185,7 @@ impl Command {
     }
 
     fn rustc_push(github_user: String, branch: String) -> Result<()> {
-        let sh = shell()?;
+        let sh = Shell::new()?;
         sh.change_dir(miri_dir()?);
         let base = sh.read_file("rust-version")?.trim().to_owned();
         // Make sure the repo is clean.
@@ -265,7 +273,7 @@ impl Command {
         let Some((command_name, trailing_args)) = command.split_first() else {
             bail!("expected many-seeds command to be non-empty");
         };
-        let sh = shell()?;
+        let sh = Shell::new()?;
         for seed in seed_start..seed_end {
             println!("Trying seed: {seed}");
             let mut miriflags = env::var_os("MIRIFLAGS").unwrap_or_default();
@@ -293,7 +301,7 @@ impl Command {
         // Make sure we have an up-to-date Miri installed and selected the right toolchain.
         Self::install(vec![])?;
 
-        let sh = shell()?;
+        let sh = Shell::new()?;
         sh.change_dir(miri_dir()?);
         let benches_dir = "bench-cargo-miri";
         let benches = if benches.is_empty() {
@@ -365,9 +373,8 @@ impl Command {
     fn test(bless: bool, flags: Vec<OsString>) -> Result<()> {
         Self::auto_actions()?;
         let mut e = MiriEnv::new()?;
-        // First build, and get a sysroot.
-        e.build(path!(e.miri_dir / "Cargo.toml"), &[], /* quiet */ true)?;
-        e.build_miri_sysroot()?;
+        // Prepare a sysroot.
+        e.build_miri_sysroot(/* quiet */ false)?;
 
         // Then test, and let caller control flags.
         // Only in root project as `cargo-miri` has no tests.
@@ -393,12 +400,11 @@ impl Command {
             let miriflags = e.sh.var("MIRIFLAGS").unwrap_or_default();
             e.sh.set_var("MIRIFLAGS", format!("{miriflags} --target {target}"));
         }
-        // First build, and get a sysroot.
-        let miri_manifest = path!(e.miri_dir / "Cargo.toml");
-        e.build(&miri_manifest, &[], /* quiet */ true)?;
-        e.build_miri_sysroot()?;
+        // Prepare a sysroot.
+        e.build_miri_sysroot(/* quiet */ true)?;
 
         // Then run the actual command.
+        let miri_manifest = path!(e.miri_dir / "Cargo.toml");
         let miri_flags = e.sh.var("MIRIFLAGS").unwrap_or_default();
         let miri_flags = flagsplit(&miri_flags);
         let toolchain = &e.toolchain;
