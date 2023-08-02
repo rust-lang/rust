@@ -3,10 +3,10 @@ use crate::llvm;
 use crate::abi::Abi;
 use crate::builder::Builder;
 use crate::common::CodegenCx;
-use crate::coverageinfo::map_data::{CounterExpression, FunctionCoverage};
+use crate::coverageinfo::ffi::{CounterExpression, CounterMappingRegion};
+use crate::coverageinfo::map_data::FunctionCoverage;
 
 use libc::c_uint;
-use llvm::coverageinfo::CounterMappingRegion;
 use rustc_codegen_ssa::traits::{
     BaseTypeMethods, BuilderMethods, ConstMethods, CoverageInfoBuilderMethods, MiscMethods,
     StaticMethods,
@@ -27,7 +27,7 @@ use rustc_middle::ty::Ty;
 use std::cell::RefCell;
 use std::ffi::CString;
 
-mod ffi;
+pub(crate) mod ffi;
 pub(crate) mod map_data;
 pub mod mapgen;
 

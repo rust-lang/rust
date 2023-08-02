@@ -1,9 +1,8 @@
 use crate::common::CodegenCx;
 use crate::coverageinfo;
-use crate::coverageinfo::map_data::{Counter, CounterExpression};
+use crate::coverageinfo::ffi::{Counter, CounterExpression, CounterMappingRegion};
 use crate::llvm;
 
-use llvm::coverageinfo::CounterMappingRegion;
 use rustc_codegen_ssa::traits::ConstMethods;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::def::DefKind;
