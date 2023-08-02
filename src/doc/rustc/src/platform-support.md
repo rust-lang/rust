@@ -319,6 +319,7 @@ target | std | host | notes
 `thumbv7a-pc-windows-msvc` | ? |  |
 `thumbv7a-uwp-windows-msvc` | ✓ |  |
 `thumbv7neon-unknown-linux-musleabihf` | ? |  | Thumb2-mode ARMv7-A Linux with NEON, MUSL
+[`wasm32-wasi-preview1-threads`](platform-support/wasm32-wasi-preview1-threads.md) | ✓ | WebAssembly with WASI Preview 1 and threads
 [`wasm64-unknown-unknown`](platform-support/wasm64-unknown-unknown.md) | ? |  | WebAssembly
 `x86_64-apple-ios-macabi` | ✓ |  | Apple Catalyst on x86_64
 [`x86_64-apple-tvos`](platform-support/apple-tvos.md) | ? | | x86 64-bit tvOS
