@@ -28,7 +28,7 @@ pub fn rust_version_symbol() -> Symbol {
 }
 
 pub fn is_builtin_attr(attr: &Attribute) -> bool {
-    attr.is_doc_comment() || attr.ident().filter(|ident| is_builtin_attr_name(ident.name)).is_some()
+    attr.is_doc_comment() || attr.ident().is_some_and(|ident| is_builtin_attr_name(ident.name))
 }
 
 enum AttrError {

@@ -150,7 +150,7 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_sized_trait<'tcx>(
 
         ty::Adt(def, args) => {
             let sized_crit = def.sized_constraint(ecx.tcx());
-            Ok(sized_crit.iter_instantiated_copied(ecx.tcx(), args).collect())
+            Ok(sized_crit.iter_instantiated(ecx.tcx(), args).collect())
         }
     }
 }
