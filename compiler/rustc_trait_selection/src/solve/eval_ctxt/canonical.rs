@@ -94,8 +94,13 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         let var_values = self.var_values;
         let external_constraints = self.compute_external_query_constraints()?;
 
-        let (var_values, external_constraints) =
+        let (var_values, mut external_constraints) =
             (var_values, external_constraints).fold_with(&mut EagerResolver { infcx: self.infcx });
+        // Remove any trivial region constraints once we've resolved regions
+        external_constraints
+            .region_constraints
+            .outlives
+            .retain(|(outlives, _)| outlives.0.as_region().map_or(true, |re| re != outlives.1));
 
         let canonical = Canonicalizer::canonicalize(
             self.infcx,
