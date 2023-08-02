@@ -452,7 +452,7 @@ fn env_empty() {
 #[test]
 #[cfg(not(windows))]
 #[cfg_attr(any(target_os = "emscripten", target_env = "sgx"), ignore)]
-fn main() {
+fn debug_print() {
     const PIDFD: &'static str =
         if cfg!(target_os = "linux") { "    create_pidfd: false,\n" } else { "" };
 
@@ -538,6 +538,27 @@ fn main() {
     cwd: Some(
         "/some/path",
     ),
+{PIDFD}}}"#
+        )
+    );
+
+    let mut command_with_removed_env = Command::new("boring-name");
+    command_with_removed_env.env_remove("BAR");
+    assert_eq!(format!("{command_with_removed_env:?}"), r#"unset(BAR) "boring-name""#);
+    assert_eq!(
+        format!("{command_with_removed_env:#?}"),
+        format!(
+            r#"Command {{
+    program: "boring-name",
+    args: [
+        "boring-name",
+    ],
+    env: CommandEnv {{
+        clear: false,
+        vars: {{
+            "BAR": None,
+        }},
+    }},
 {PIDFD}}}"#
         )
     );

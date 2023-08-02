@@ -561,6 +561,8 @@ impl fmt::Debug for Command {
             for (key, value_opt) in self.get_envs() {
                 if let Some(value) = value_opt {
                     write!(f, "{}={value:?} ", key.to_string_lossy())?;
+                } else {
+                    write!(f, "unset({}) ", key.to_string_lossy())?;
                 }
             }
             if self.program != self.args[0] {
