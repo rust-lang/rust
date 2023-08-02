@@ -30,11 +30,8 @@ pub struct Counter {
 }
 
 impl Counter {
-    /// Constructs a new `Counter` of kind `Zero`. For this `CounterKind`, the
-    /// `id` is not used.
-    pub fn zero() -> Self {
-        Self { kind: CounterKind::Zero, id: 0 }
-    }
+    /// A `Counter` of kind `Zero`. For this counter kind, the `id` is not used.
+    pub(crate) const ZERO: Self = Self { kind: CounterKind::Zero, id: 0 };
 
     /// Constructs a new `Counter` of kind `CounterValueReference`.
     pub fn counter_value_reference(counter_id: CounterId) -> Self {
@@ -172,7 +169,7 @@ impl CounterMappingRegion {
     ) -> Self {
         Self {
             counter,
-            false_counter: Counter::zero(),
+            false_counter: Counter::ZERO,
             file_id,
             expanded_file_id: 0,
             start_line,
@@ -220,8 +217,8 @@ impl CounterMappingRegion {
         end_col: u32,
     ) -> Self {
         Self {
-            counter: Counter::zero(),
-            false_counter: Counter::zero(),
+            counter: Counter::ZERO,
+            false_counter: Counter::ZERO,
             file_id,
             expanded_file_id,
             start_line,
@@ -243,8 +240,8 @@ impl CounterMappingRegion {
         end_col: u32,
     ) -> Self {
         Self {
-            counter: Counter::zero(),
-            false_counter: Counter::zero(),
+            counter: Counter::ZERO,
+            false_counter: Counter::ZERO,
             file_id,
             expanded_file_id: 0,
             start_line,
@@ -268,7 +265,7 @@ impl CounterMappingRegion {
     ) -> Self {
         Self {
             counter,
-            false_counter: Counter::zero(),
+            false_counter: Counter::ZERO,
             file_id,
             expanded_file_id: 0,
             start_line,
