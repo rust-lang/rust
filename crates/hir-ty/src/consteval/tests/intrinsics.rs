@@ -252,6 +252,28 @@ fn wrapping_add() {
 }
 
 #[test]
+fn ptr_offset_from() {
+    check_number(
+        r#"
+        //- minicore: index, slice, coerce_unsized
+        extern "rust-intrinsic" {
+            pub fn ptr_offset_from<T>(ptr: *const T, base: *const T) -> isize;
+            pub fn ptr_offset_from_unsigned<T>(ptr: *const T, base: *const T) -> usize;
+        }
+
+        const GOAL: isize = {
+            let x = [1, 2, 3, 4, 5i32];
+            let r1 = -ptr_offset_from(&x[0], &x[4]);
+            let r2 = ptr_offset_from(&x[3], &x[1]);
+            let r3 = ptr_offset_from_unsigned(&x[3], &x[0]) as isize;
+            r3 * 100 + r2 * 10 + r1
+        };
+        "#,
+        324,
+    );
+}
+
+#[test]
 fn saturating() {
     check_number(
         r#"

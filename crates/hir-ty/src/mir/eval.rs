@@ -68,18 +68,22 @@ pub struct VTableMap {
 }
 
 impl VTableMap {
+    const OFFSET: usize = 1000; // We should add some offset to ids to make 0 (null) an invalid id.
+
     fn id(&mut self, ty: Ty) -> usize {
         if let Some(it) = self.ty_to_id.get(&ty) {
             return *it;
         }
-        let id = self.id_to_ty.len();
+        let id = self.id_to_ty.len() + VTableMap::OFFSET;
         self.id_to_ty.push(ty.clone());
         self.ty_to_id.insert(ty, id);
         id
     }
 
     pub(crate) fn ty(&self, id: usize) -> Result<&Ty> {
-        self.id_to_ty.get(id).ok_or(MirEvalError::InvalidVTableId(id))
+        id.checked_sub(VTableMap::OFFSET)
+            .and_then(|id| self.id_to_ty.get(id))
+            .ok_or(MirEvalError::InvalidVTableId(id))
     }
 
     fn ty_of_bytes(&self, bytes: &[u8]) -> Result<&Ty> {
@@ -467,6 +471,10 @@ impl DropFlags {
 
     fn remove_place(&mut self, p: &Place) -> bool {
         // FIXME: replace parents with parts
+        if let Some(parent) = p.iterate_over_parents().find(|it| self.need_drop.contains(&it)) {
+            self.need_drop.remove(&parent);
+            return true;
+        }
         self.need_drop.remove(p)
     }
 }
@@ -511,6 +519,11 @@ pub fn interpret_mir(
     )
 }
 
+#[cfg(test)]
+const EXECUTION_LIMIT: usize = 100_000;
+#[cfg(not(test))]
+const EXECUTION_LIMIT: usize = 10_000_000;
+
 impl Evaluator<'_> {
     pub fn new<'a>(
         db: &'a dyn HirDatabase,
@@ -534,7 +547,7 @@ impl Evaluator<'_> {
             stderr: vec![],
             assert_placeholder_ty_is_unused,
             stack_depth_limit: 100,
-            execution_limit: 1000_000,
+            execution_limit: EXECUTION_LIMIT,
             memory_limit: 1000_000_000, // 2GB, 1GB for stack and 1GB for heap
             layout_cache: RefCell::new(HashMap::default()),
         }
@@ -683,8 +696,10 @@ impl Evaluator<'_> {
                         .offset(u32::from(f.local_id.into_raw()) as usize)
                         .bytes_usize();
                     addr = addr.offset(offset);
-                    // FIXME: support structs with unsized fields
-                    metadata = None;
+                    // Unsized field metadata is equal to the metadata of the struct
+                    if self.size_align_of(&ty, locals)?.is_some() {
+                        metadata = None;
+                    }
                 }
                 ProjectionElem::OpaqueCast(_) => not_supported!("opaque cast"),
             }
@@ -1803,6 +1818,17 @@ impl Evaluator<'_> {
                         }
                     }
                 }
+                chalk_ir::TyKind::Array(inner, len) => {
+                    let len = match try_const_usize(this.db, &len) {
+                        Some(it) => it as usize,
+                        None => not_supported!("non evaluatable array len in patching addresses"),
+                    };
+                    let size = this.size_of_sized(inner, locals, "inner of array")?;
+                    for i in 0..len {
+                        let offset = i * size;
+                        rec(this, &bytes[offset..offset + size], inner, locals, mm)?;
+                    }
+                }
                 chalk_ir::TyKind::Tuple(_, subst) => {
                     let layout = this.layout(ty)?;
                     for (id, ty) in subst.iter(Interner).enumerate() {
@@ -1911,10 +1937,31 @@ impl Evaluator<'_> {
                 AdtId::UnionId(_) => (),
                 AdtId::EnumId(_) => (),
             },
+            TyKind::Tuple(_, subst) => {
+                for (id, ty) in subst.iter(Interner).enumerate() {
+                    let ty = ty.assert_ty_ref(Interner); // Tuple only has type argument
+                    let offset = layout.fields.offset(id).bytes_usize();
+                    self.patch_addresses(patch_map, old_vtable, addr.offset(offset), ty, locals)?;
+                }
+            }
+            TyKind::Array(inner, len) => {
+                let len = match try_const_usize(self.db, &len) {
+                    Some(it) => it as usize,
+                    None => not_supported!("non evaluatable array len in patching addresses"),
+                };
+                let size = self.size_of_sized(inner, locals, "inner of array")?;
+                for i in 0..len {
+                    self.patch_addresses(
+                        patch_map,
+                        old_vtable,
+                        addr.offset(i * size),
+                        inner,
+                        locals,
+                    )?;
+                }
+            }
             TyKind::AssociatedType(_, _)
             | TyKind::Scalar(_)
-            | TyKind::Tuple(_, _)
-            | TyKind::Array(_, _)
             | TyKind::Slice(_)
             | TyKind::Raw(_, _)
             | TyKind::OpaqueType(_, _)
