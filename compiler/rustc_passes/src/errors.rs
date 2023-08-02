@@ -690,6 +690,10 @@ pub enum MacroExport {
     #[diag(passes_macro_export)]
     Normal,
 
+    #[diag(passes_macro_export_on_decl_macro)]
+    #[note]
+    OnDeclMacro,
+
     #[diag(passes_invalid_macro_export_arguments)]
     UnknownItem { name: Symbol },
 
