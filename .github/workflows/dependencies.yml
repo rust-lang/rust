@@ -1,7 +1,7 @@
 # Automatically run `cargo update` periodically
 #
-# Requires setting a `CARGO_UPDATE_TOKEN` Actions Repository secret
-# to a Github API access token.
+# Requires setting a `CARGO_UPDATE_TOKEN` Actions Repository secret to a
+# Github access token with write access for "Contents" and "Pull requests".
 
 ---
 name: Bump dependencies in Cargo.lock
@@ -125,7 +125,17 @@ jobs:
           git commit --no-verify --file=commit.txt
 
       - name: push
-        run: git push --no-verify --force --set-upstream origin "$BRANCH"
+        env:
+          GITHUB_TOKEN: ${{ secrets.CARGO_UPDATE_TOKEN }}
+        # Need to use our own token for pushing, otherwise pushing will
+        # not initiate a new CI run.
+        run: |
+          # Remove existing token added by default within Github Actions
+          git config --unset-all http.https://github.com/.extraheader
+          # Set remote with custom token
+          git remote set-url origin "https://${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+
+          git push --no-verify --force --set-upstream origin "$BRANCH"
 
       - name: edit existing open pull request
         id: edit
