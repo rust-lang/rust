@@ -2567,15 +2567,13 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     None,
                 );
                 if let Some(infer::RelateParamBound(_, t, _)) = origin {
-                    let return_impl_trait =
-                        self.tcx.return_type_impl_trait(generic_param_scope).is_some();
                     let t = self.resolve_vars_if_possible(t);
                     match t.kind() {
                         // We've got:
                         // fn get_later<G, T>(g: G, dest: &mut T) -> impl FnOnce() + '_
                         // suggest:
                         // fn get_later<'a, G: 'a, T>(g: G, dest: &mut T) -> impl FnOnce() + '_ + 'a
-                        ty::Closure(..) | ty::Alias(ty::Opaque, ..) if return_impl_trait => {
+                        ty::Closure(..) | ty::Alias(ty::Opaque, ..) => {
                             new_binding_suggestion(&mut err, type_param_span);
                         }
                         _ => {

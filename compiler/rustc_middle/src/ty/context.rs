@@ -50,9 +50,7 @@ use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use rustc_hir::definitions::Definitions;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{
-    Constness, ExprKind, HirId, ImplItemKind, ItemKind, Node, TraitCandidate, TraitItemKind,
-};
+use rustc_hir::{Constness, HirId, Node, TraitCandidate};
 use rustc_index::IndexVec;
 use rustc_macros::HashStable;
 use rustc_query_system::dep_graph::DepNodeIndex;
@@ -1075,31 +1073,6 @@ impl<'tcx> TyCtxt<'tcx> {
             }
         }
         return None;
-    }
-
-    pub fn return_type_impl_trait(self, scope_def_id: LocalDefId) -> Option<(Ty<'tcx>, Span)> {
-        // `type_of()` will fail on these (#55796, #86483), so only allow `fn`s or closures.
-        match self.hir().get_by_def_id(scope_def_id) {
-            Node::Item(&hir::Item { kind: ItemKind::Fn(..), .. }) => {}
-            Node::TraitItem(&hir::TraitItem { kind: TraitItemKind::Fn(..), .. }) => {}
-            Node::ImplItem(&hir::ImplItem { kind: ImplItemKind::Fn(..), .. }) => {}
-            Node::Expr(&hir::Expr { kind: ExprKind::Closure { .. }, .. }) => {}
-            _ => return None,
-        }
-
-        let ret_ty = self.type_of(scope_def_id).instantiate_identity();
-        match ret_ty.kind() {
-            ty::FnDef(_, _) => {
-                let sig = ret_ty.fn_sig(self);
-                let output = self.erase_late_bound_regions(sig.output());
-                output.is_impl_trait().then(|| {
-                    let hir_id = self.hir().local_def_id_to_hir_id(scope_def_id);
-                    let fn_decl = self.hir().fn_decl_by_hir_id(hir_id).unwrap();
-                    (output, fn_decl.output.span())
-                })
-            }
-            _ => None,
-        }
     }
 
     /// Checks if the bound region is in Impl Item.
