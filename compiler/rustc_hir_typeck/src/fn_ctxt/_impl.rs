@@ -2,7 +2,7 @@ use crate::callee::{self, DeferredCallResolution};
 use crate::errors::CtorIsPrivate;
 use crate::method::{self, MethodCallee, SelfSource};
 use crate::rvalue_scopes;
-use crate::{BreakableCtxt, Diverges, Expectation, FnCtxt, RawTy};
+use crate::{BreakableCtxt, Diverges, Expectation, FnCtxt};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, Diagnostic, ErrorGuaranteed, MultiSpan, StashKey};
@@ -324,6 +324,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         )
     }
 
+    // FIXME(-Ztrait-solver=next): This could be replaced with `try_structurally_resolve`
+    // calls after the new trait solver is stable.
+    /// TODO: I don't know what to call this.
+    pub(super) fn structurally_normalize_after_astconv(
+        &self,
+        span: Span,
+        value: Ty<'tcx>,
+    ) -> Ty<'tcx> {
+        match self
+            .at(&self.misc(span), self.param_env)
+            .structurally_normalize(value, &mut **self.inh.fulfillment_cx.borrow_mut())
+        {
+            Ok(ty) => ty,
+            Err(errors) => {
+                let guar = self.err_ctxt().report_fulfillment_errors(&errors);
+                Ty::new_error(self.tcx, guar)
+            }
+        }
+    }
+
     pub fn require_type_meets(
         &self,
         ty: Ty<'tcx>,
@@ -374,37 +394,33 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn handle_raw_ty(&self, span: Span, ty: Ty<'tcx>) -> RawTy<'tcx> {
-        RawTy { raw: ty, normalized: self.normalize(span, ty) }
-    }
-
-    pub fn to_ty(&self, ast_t: &hir::Ty<'_>) -> RawTy<'tcx> {
+    pub fn to_ty(&self, ast_t: &hir::Ty<'_>) -> Ty<'tcx> {
         let t = self.astconv().ast_ty_to_ty(ast_t);
         self.register_wf_obligation(t.into(), ast_t.span, traits::WellFormed(None));
-        self.handle_raw_ty(ast_t.span, t)
+        t
     }
 
     pub fn to_ty_saving_user_provided_ty(&self, ast_ty: &hir::Ty<'_>) -> Ty<'tcx> {
         let ty = self.to_ty(ast_ty);
         debug!("to_ty_saving_user_provided_ty: ty={:?}", ty);
 
-        if Self::can_contain_user_lifetime_bounds(ty.raw) {
-            let c_ty = self.canonicalize_response(UserType::Ty(ty.raw));
+        if Self::can_contain_user_lifetime_bounds(ty) {
+            let c_ty = self.canonicalize_response(UserType::Ty(ty));
             debug!("to_ty_saving_user_provided_ty: c_ty={:?}", c_ty);
             self.typeck_results.borrow_mut().user_provided_types_mut().insert(ast_ty.hir_id, c_ty);
         }
 
-        ty.normalized
+        self.normalize(ast_ty.span, ty)
     }
 
-    pub(super) fn user_args_for_adt(ty: RawTy<'tcx>) -> UserArgs<'tcx> {
-        match (ty.raw.kind(), ty.normalized.kind()) {
+    pub(super) fn user_args_for_adt(raw: Ty<'tcx>, normalized: Ty<'tcx>) -> UserArgs<'tcx> {
+        match (raw.kind(), normalized.kind()) {
             (ty::Adt(_, args), _) => UserArgs { args, user_self_ty: None },
             (_, ty::Adt(adt, args)) => UserArgs {
                 args,
-                user_self_ty: Some(UserSelfTy { impl_def_id: adt.did(), self_ty: ty.raw }),
+                user_self_ty: Some(UserSelfTy { impl_def_id: adt.did(), self_ty: raw }),
             },
-            _ => bug!("non-adt type {:?}", ty),
+            _ => bug!("non-adt type {:?}", raw),
         }
     }
 
@@ -817,7 +833,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         qpath: &'tcx QPath<'tcx>,
         hir_id: hir::HirId,
         span: Span,
-    ) -> (Res, Option<RawTy<'tcx>>, &'tcx [hir::PathSegment<'tcx>]) {
+    ) -> (Res, Option<Ty<'tcx>>, &'tcx [hir::PathSegment<'tcx>]) {
         debug!(
             "resolve_ty_and_res_fully_qualified_call: qpath={:?} hir_id={:?} span={:?}",
             qpath, hir_id, span
@@ -841,15 +857,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // We manually call `register_wf_obligation` in the success path
                 // below.
                 let ty = self.astconv().ast_ty_to_ty_in_path(qself);
-                (self.handle_raw_ty(span, ty), qself, segment)
+                (ty, qself, segment)
             }
             QPath::LangItem(..) => {
                 bug!("`resolve_ty_and_res_fully_qualified_call` called on `LangItem`")
             }
         };
+
+        // FIXME(-Ztrait-solver=next): Can use `try_structurally_resolve` after migration.
+        let normalized =
+            if !ty.is_ty_var() { self.structurally_normalize_after_astconv(span, ty) } else { ty };
+
         if let Some(&cached_result) = self.typeck_results.borrow().type_dependent_defs().get(hir_id)
         {
-            self.register_wf_obligation(ty.raw.into(), qself.span, traits::WellFormed(None));
+            self.register_wf_obligation(ty.into(), qself.span, traits::WellFormed(None));
             // Return directly on cache hit. This is useful to avoid doubly reporting
             // errors with default match binding modes. See #44614.
             let def = cached_result.map_or(Res::Err, |(kind, def_id)| Res::Def(kind, def_id));
@@ -857,7 +878,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
         let item_name = item_segment.ident;
         let result = self
-            .resolve_fully_qualified_call(span, item_name, ty.normalized, qself.span, hir_id)
+            .resolve_fully_qualified_call(span, item_name, normalized, qself.span, hir_id)
             .and_then(|r| {
                 // lint bare trait if the method is found in the trait
                 if span.edition().at_least_rust_2021() && let Some(mut diag) = self.tcx.sess.diagnostic().steal_diagnostic(qself.span, StashKey::TraitMissingMethod) {
@@ -876,14 +897,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 };
 
                 let trait_missing_method =
-                    matches!(error, method::MethodError::NoMatch(_)) && ty.normalized.is_trait();
+                    matches!(error, method::MethodError::NoMatch(_)) && normalized.is_trait();
                 // If we have a path like `MyTrait::missing_method`, then don't register
                 // a WF obligation for `dyn MyTrait` when method lookup fails. Otherwise,
                 // register a WF obligation so that we can detect any additional
                 // errors in the self type.
                 if !trait_missing_method {
                     self.register_wf_obligation(
-                        ty.raw.into(),
+                        ty.into(),
                         qself.span,
                         traits::WellFormed(None),
                     );
@@ -902,7 +923,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if item_name.name != kw::Empty {
                     if let Some(mut e) = self.report_method_error(
                         span,
-                        ty.normalized,
+                        normalized,
                         item_name,
                         SelfSource::QPath(qself),
                         error,
@@ -918,7 +939,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             });
 
         if result.is_ok() {
-            self.register_wf_obligation(ty.raw.into(), qself.span, traits::WellFormed(None));
+            self.register_wf_obligation(ty.into(), qself.span, traits::WellFormed(None));
         }
 
         // Write back the new resolution.
@@ -1082,7 +1103,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn instantiate_value_path(
         &self,
         segments: &[hir::PathSegment<'_>],
-        self_ty: Option<RawTy<'tcx>>,
+        self_ty: Option<Ty<'tcx>>,
         res: Res,
         span: Span,
         hir_id: hir::HirId,
@@ -1093,7 +1114,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Res::Local(_) | Res::SelfCtor(_) => vec![],
             Res::Def(kind, def_id) => self.astconv().def_ids_for_value_path_segments(
                 segments,
-                self_ty.map(|ty| ty.raw),
+                self_ty.map(|ty| ty),
                 kind,
                 def_id,
                 span,
@@ -1107,8 +1128,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Res::Def(DefKind::Ctor(CtorOf::Variant, _), _)
                 if let Some(self_ty) = self_ty =>
             {
-                let adt_def = self_ty.normalized.ty_adt_def().unwrap();
-                user_self_ty = Some(UserSelfTy { impl_def_id: adt_def.did(), self_ty: self_ty.raw });
+                let adt_def = self.structurally_normalize_after_astconv(span, self_ty).ty_adt_def().unwrap();
+                user_self_ty = Some(UserSelfTy { impl_def_id: adt_def.did(), self_ty });
                 is_alias_variant_ctor = true;
             }
             Res::Def(DefKind::AssocFn | DefKind::AssocConst, def_id) => {
@@ -1127,7 +1148,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             // inherent impl, we need to record the
                             // `T` for posterity (see `UserSelfTy` for
                             // details).
-                            let self_ty = self_ty.expect("UFCS sugared assoc missing Self").raw;
+                            let self_ty = self_ty.expect("UFCS sugared assoc missing Self");
                             user_self_ty = Some(UserSelfTy { impl_def_id: container_id, self_ty });
                         }
                     }
@@ -1206,9 +1227,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             path_segs.last().is_some_and(|PathSeg(def_id, _)| tcx.generics_of(*def_id).has_self);
 
         let (res, self_ctor_args) = if let Res::SelfCtor(impl_def_id) = res {
-            let ty =
-                self.handle_raw_ty(span, tcx.at(span).type_of(impl_def_id).instantiate_identity());
-            match ty.normalized.ty_adt_def() {
+            let ty = tcx.at(span).type_of(impl_def_id).instantiate_identity();
+            let normalized = self.structurally_normalize_after_astconv(span, ty);
+            match normalized.ty_adt_def() {
                 Some(adt_def) if adt_def.has_ctor() => {
                     let (ctor_kind, ctor_def_id) = adt_def.non_enum_variant().ctor.unwrap();
                     // Check the visibility of the ctor.
@@ -1218,7 +1239,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             .emit_err(CtorIsPrivate { span, def: tcx.def_path_str(adt_def.did()) });
                     }
                     let new_res = Res::Def(DefKind::Ctor(CtorOf::Struct, ctor_kind), ctor_def_id);
-                    let user_args = Self::user_args_for_adt(ty);
+                    let user_args = Self::user_args_for_adt(ty, normalized);
                     user_self_ty = user_args.user_self_ty;
                     (new_res, Some(user_args.args))
                 }
@@ -1227,7 +1248,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         span,
                         "the `Self` constructor can only be used with tuple or unit structs",
                     );
-                    if let Some(adt_def) = ty.normalized.ty_adt_def() {
+                    if let Some(adt_def) = normalized.ty_adt_def() {
                         match adt_def.adt_kind() {
                             AdtKind::Enum => {
                                 err.help("did you mean to use one of the enum's variants?");
@@ -1299,7 +1320,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self.fcx.astconv().ast_region_to_region(lt, Some(param)).into()
                     }
                     (GenericParamDefKind::Type { .. }, GenericArg::Type(ty)) => {
-                        self.fcx.to_ty(ty).raw.into()
+                        self.fcx.to_ty(ty).into()
                     }
                     (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => {
                         self.fcx.const_arg_to_const(&ct.value, param.def_id).into()
@@ -1367,7 +1388,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 def_id,
                 &[],
                 has_self,
-                self_ty.map(|s| s.raw),
+                self_ty.map(|s| s),
                 &arg_count,
                 &mut CreateCtorSubstsContext {
                     fcx: self,

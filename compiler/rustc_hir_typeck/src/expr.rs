@@ -1317,7 +1317,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Find the type of `e`. Supply hints based on the type we are casting to,
         // if appropriate.
         let t_cast = self.to_ty_saving_user_provided_ty(t);
-        let t_cast = self.resolve_vars_if_possible(t_cast);
+        // FIXME(-Ztrait-solver): This structural resolve is only here for diagnostics,
+        // because we use the TyKind to early return from `CastCheck::new`.
+        let t_cast = self.try_structurally_resolve_type(t.span, t_cast);
         let t_expr = self.check_expr_with_expectation(e, ExpectCastableToType(t_cast));
         let t_expr = self.resolve_vars_if_possible(t_expr);
 
@@ -3142,7 +3144,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         fields: &[Ident],
         expr: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
-        let container = self.to_ty(container).normalized;
+        // We only need to normalize in the old solver
+        let container = self.normalize(expr.span, self.to_ty(container));
 
         let mut field_indices = Vec::with_capacity(fields.len());
         let mut current_container = container;

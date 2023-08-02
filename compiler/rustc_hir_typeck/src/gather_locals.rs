@@ -74,9 +74,7 @@ impl<'a, 'tcx> GatherLocalsVisitor<'a, 'tcx> {
         let local_ty = match decl.ty {
             Some(ref ty) => {
                 let o_ty = self.fcx.to_ty(&ty);
-
-                let c_ty =
-                    self.fcx.inh.infcx.canonicalize_user_type_annotation(UserType::Ty(o_ty.raw));
+                let c_ty = self.fcx.inh.infcx.canonicalize_user_type_annotation(UserType::Ty(o_ty));
                 debug!("visit_local: ty.hir_id={:?} o_ty={:?} c_ty={:?}", ty.hir_id, o_ty, c_ty);
                 self.fcx
                     .typeck_results
@@ -84,7 +82,9 @@ impl<'a, 'tcx> GatherLocalsVisitor<'a, 'tcx> {
                     .user_provided_types_mut()
                     .insert(ty.hir_id, c_ty);
 
-                Some(o_ty.normalized)
+                // We only need to normalize here in the old solver
+                let normalized = self.fcx.normalize(ty.span, o_ty);
+                Some(normalized)
             }
             None => None,
         };

@@ -6,7 +6,7 @@ use crate::method::MethodCallee;
 use crate::TupleArgumentsFlag::*;
 use crate::{errors, Expectation::*};
 use crate::{
-    struct_span_err, BreakableCtxt, Diverges, Expectation, FnCtxt, Needs, RawTy, TupleArgumentsFlag,
+    struct_span_err, BreakableCtxt, Diverges, Expectation, FnCtxt, Needs, TupleArgumentsFlag,
 };
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxIndexSet;
@@ -1346,6 +1346,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Result<(&'tcx ty::VariantDef, Ty<'tcx>), ErrorGuaranteed> {
         let path_span = qpath.span();
         let (def, ty) = self.finish_resolving_struct_path(qpath, path_span, hir_id);
+        let normalized = self.structurally_normalize_after_astconv(path_span, ty);
+
         let variant = match def {
             Res::Err => {
                 let guar =
@@ -1353,18 +1355,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.set_tainted_by_errors(guar);
                 return Err(guar);
             }
-            Res::Def(DefKind::Variant, _) => match ty.normalized.ty_adt_def() {
-                Some(adt) => {
-                    Some((adt.variant_of_res(def), adt.did(), Self::user_args_for_adt(ty)))
-                }
-                _ => bug!("unexpected type: {:?}", ty.normalized),
+            Res::Def(DefKind::Variant, _) => match normalized.ty_adt_def() {
+                Some(adt) => Some((
+                    adt.variant_of_res(def),
+                    adt.did(),
+                    Self::user_args_for_adt(ty, normalized),
+                )),
+                _ => bug!("unexpected type: {:?}", normalized),
             },
             Res::Def(DefKind::Struct | DefKind::Union | DefKind::TyAlias | DefKind::AssocTy, _)
             | Res::SelfTyParam { .. }
-            | Res::SelfTyAlias { .. } => match ty.normalized.ty_adt_def() {
-                Some(adt) if !adt.is_enum() => {
-                    Some((adt.non_enum_variant(), adt.did(), Self::user_args_for_adt(ty)))
-                }
+            | Res::SelfTyAlias { .. } => match normalized.ty_adt_def() {
+                Some(adt) if !adt.is_enum() => Some((
+                    adt.non_enum_variant(),
+                    adt.did(),
+                    Self::user_args_for_adt(ty, normalized),
+                )),
                 _ => None,
             },
             _ => bug!("unexpected definition: {:?}", def),
@@ -1379,9 +1385,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Check bounds on type arguments used in the path.
             self.add_required_obligations_for_hir(path_span, did, args, hir_id);
 
-            Ok((variant, ty.normalized))
+            Ok((variant, normalized))
         } else {
-            Err(match *ty.normalized.kind() {
+            Err(match *normalized.kind() {
                 ty::Error(guar) => {
                     // E0071 might be caused by a spelling error, which will have
                     // already caused an error message and probably a suggestion
@@ -1394,7 +1400,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     path_span,
                     E0071,
                     "expected struct, variant or union type, found {}",
-                    ty.normalized.sort_string(self.tcx)
+                    normalized.sort_string(self.tcx)
                 )
                 .span_label(path_span, "not a struct")
                 .emit(),
@@ -1802,23 +1808,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         qpath: &QPath<'_>,
         path_span: Span,
         hir_id: hir::HirId,
-    ) -> (Res, RawTy<'tcx>) {
+    ) -> (Res, Ty<'tcx>) {
         match *qpath {
             QPath::Resolved(ref maybe_qself, ref path) => {
-                let self_ty = maybe_qself.as_ref().map(|qself| self.to_ty(qself).raw);
+                let self_ty = maybe_qself.as_ref().map(|qself| self.to_ty(qself));
                 let ty = self.astconv().res_to_ty(self_ty, path, hir_id, true);
-                (path.res, self.handle_raw_ty(path_span, ty))
+                (path.res, ty)
             }
             QPath::TypeRelative(ref qself, ref segment) => {
                 let ty = self.to_ty(qself);
 
                 let result = self
                     .astconv()
-                    .associated_path_to_ty(hir_id, path_span, ty.raw, qself, segment, true);
+                    .associated_path_to_ty(hir_id, path_span, ty, qself, segment, true);
                 let ty = result
                     .map(|(ty, _, _)| ty)
                     .unwrap_or_else(|guar| Ty::new_error(self.tcx(), guar));
-                let ty = self.handle_raw_ty(path_span, ty);
                 let result = result.map(|(_, kind, def_id)| (kind, def_id));
 
                 // Write back the new resolution.
@@ -1827,8 +1832,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 (result.map_or(Res::Err, |(kind, def_id)| Res::Def(kind, def_id)), ty)
             }
             QPath::LangItem(lang_item, span, id) => {
-                let (res, ty) = self.resolve_lang_item_path(lang_item, span, hir_id, id);
-                (res, self.handle_raw_ty(path_span, ty))
+                self.resolve_lang_item_path(lang_item, span, hir_id, id)
             }
         }
     }

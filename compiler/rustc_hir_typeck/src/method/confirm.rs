@@ -395,7 +395,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                         self.cfcx.fcx.astconv().ast_region_to_region(lt, Some(param)).into()
                     }
                     (GenericParamDefKind::Type { .. }, GenericArg::Type(ty)) => {
-                        self.cfcx.to_ty(ty).raw.into()
+                        self.cfcx.to_ty(ty).into()
                     }
                     (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => {
                         self.cfcx.const_arg_to_const(&ct.value, param.def_id).into()
