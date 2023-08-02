@@ -694,12 +694,15 @@ impl Evaluator<'_> {
                 else {
                     return Err(MirEvalError::TypeError("type_name generic arg is not provided"));
                 };
-                let Ok(ty_name) = ty.display_source_code(
+                let ty_name = match ty.display_source_code(
                     self.db,
                     locals.body.owner.module(self.db.upcast()),
                     true,
-                ) else {
-                    not_supported!("fail in generating type_name using source code display");
+                ) {
+                    Ok(ty_name) => ty_name,
+                    // Fallback to human readable display in case of `Err`. Ideally we want to use `display_source_code` to
+                    // render full paths.
+                    Err(_) => ty.display(self.db).to_string(),
                 };
                 let len = ty_name.len();
                 let addr = self.heap_allocate(len, 1)?;
@@ -755,7 +758,22 @@ impl Evaluator<'_> {
                 let ans = lhs.wrapping_add(rhs);
                 destination.write_from_bytes(self, &ans.to_le_bytes()[0..destination.size])
             }
-            "wrapping_sub" | "unchecked_sub" | "ptr_offset_from_unsigned" | "ptr_offset_from" => {
+            "ptr_offset_from_unsigned" | "ptr_offset_from" => {
+                let [lhs, rhs] = args else {
+                    return Err(MirEvalError::TypeError("wrapping_sub args are not provided"));
+                };
+                let lhs = i128::from_le_bytes(pad16(lhs.get(self)?, false));
+                let rhs = i128::from_le_bytes(pad16(rhs.get(self)?, false));
+                let ans = lhs.wrapping_sub(rhs);
+                let Some(ty) = generic_args.as_slice(Interner).get(0).and_then(|it| it.ty(Interner))
+                else {
+                    return Err(MirEvalError::TypeError("ptr_offset_from generic arg is not provided"));
+                };
+                let size = self.size_of_sized(ty, locals, "ptr_offset_from arg")? as i128;
+                let ans = ans / size;
+                destination.write_from_bytes(self, &ans.to_le_bytes()[0..destination.size])
+            }
+            "wrapping_sub" | "unchecked_sub" => {
                 let [lhs, rhs] = args else {
                     return Err(MirEvalError::TypeError("wrapping_sub args are not provided"));
                 };

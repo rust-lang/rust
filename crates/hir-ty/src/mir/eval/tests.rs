@@ -183,6 +183,50 @@ fn main() {
 }
 
 #[test]
+fn drop_struct_field() {
+    check_pass(
+        r#"
+//- minicore: drop, add, option, cell, builtin_impls
+
+use core::cell::Cell;
+
+fn should_not_reach() {
+    _ // FIXME: replace this function with panic when that works
+}
+
+struct X<'a>(&'a Cell<i32>);
+impl<'a> Drop for X<'a> {
+    fn drop(&mut self) {
+        self.0.set(self.0.get() + 1)
+    }
+}
+
+struct Tuple<'a>(X<'a>, X<'a>, X<'a>);
+
+fn main() {
+    let s = Cell::new(0);
+    {
+        let x0 = X(&s);
+        let xt = Tuple(x0, X(&s), X(&s));
+        let x1 = xt.1;
+        if s.get() != 0 {
+            should_not_reach();
+        }
+        drop(xt.0);
+        if s.get() != 1 {
+            should_not_reach();
+        }
+    }
+    // FIXME: this should be 3
+    if s.get() != 2 {
+        should_not_reach();
+    }
+}
+"#,
+    );
+}
+
+#[test]
 fn drop_in_place() {
     check_pass(
         r#"

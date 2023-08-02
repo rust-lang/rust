@@ -234,6 +234,7 @@ impl Place {
         self.local == child.local && child.projection.starts_with(&self.projection)
     }
 
+    /// The place itself is not included
     fn iterate_over_parents(&self) -> impl Iterator<Item = Place> + '_ {
         (0..self.projection.len())
             .map(|x| &self.projection[0..x])

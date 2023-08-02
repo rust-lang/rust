@@ -1028,18 +1028,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                         self.push_assignment(current, lhs_place, r_value, expr_id.into());
                         return Ok(Some(current));
                     } else {
-                        let Some((lhs_place, current)) =
-                            self.lower_expr_as_place(current, *lhs, false)?
-                        else {
-                            return Ok(None);
-                        };
-                        let Some((rhs_op, current)) =
-                            self.lower_expr_to_some_operand(*rhs, current)?
-                        else {
-                            return Ok(None);
-                        };
-                        self.push_assignment(current, lhs_place, rhs_op.into(), expr_id.into());
-                        return Ok(Some(current));
+                        return self.lower_assignment(current, *lhs, *rhs, expr_id.into());
                     }
                 }
                 let Some((lhs_op, current)) = self.lower_expr_to_some_operand(*lhs, current)?
@@ -1283,6 +1272,30 @@ impl<'ctx> MirLowerCtx<'ctx> {
             }
             Expr::Underscore => not_supported!("underscore"),
         }
+    }
+
+    fn lower_assignment(
+        &mut self,
+        current: BasicBlockId,
+        lhs: ExprId,
+        rhs: ExprId,
+        span: MirSpan,
+    ) -> Result<Option<BasicBlockId>> {
+        let Some((rhs_op, current)) =
+            self.lower_expr_to_some_operand(rhs, current)?
+        else {
+            return Ok(None);
+        };
+        if matches!(&self.body.exprs[lhs], Expr::Underscore) {
+            return Ok(Some(current));
+        }
+        let Some((lhs_place, current)) =
+            self.lower_expr_as_place(current, lhs, false)?
+        else {
+            return Ok(None);
+        };
+        self.push_assignment(current, lhs_place, rhs_op.into(), span);
+        Ok(Some(current))
     }
 
     fn placeholder_subst(&mut self) -> Substitution {
