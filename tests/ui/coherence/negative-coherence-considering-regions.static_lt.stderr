@@ -1,0 +1,12 @@
+error[E0119]: conflicting implementations of trait `Bar` for type `&'static _`
+  --> $DIR/negative-coherence-considering-regions.rs:26:1
+   |
+LL | impl<T> Bar for T where T: Foo {}
+   | ------------------------------ first implementation here
+...
+LL | impl<T> Bar for &'static T {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `&'static _`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0119`.

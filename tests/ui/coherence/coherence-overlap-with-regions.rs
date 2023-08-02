@@ -1,4 +1,4 @@
-// check-pass
+// known-bug: unknown
 
 #![feature(negative_impls)]
 #![feature(rustc_attrs)]

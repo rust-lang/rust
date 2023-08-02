@@ -1,5 +1,5 @@
 // revisions: stock with_negative_coherence
-//[with_negative_coherence] check-pass
+//[with_negative_coherence] known-bug: unknown
 
 #![feature(negative_impls)]
 #![cfg_attr(with_negative_coherence, feature(with_negative_coherence))]

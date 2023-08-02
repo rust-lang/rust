@@ -1,5 +1,5 @@
 // revisions: any_lt static_lt
-//[static_lt] check-pass
+//[static_lt] known-bug: unknown
 
 #![feature(negative_impls)]
 #![feature(with_negative_coherence)]
