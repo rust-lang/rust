@@ -49,8 +49,8 @@ pub struct MiriEnv {
 
 impl MiriEnv {
     pub fn new() -> Result<Self> {
-        let sh = shell()?;
         let toolchain = active_toolchain()?;
+        let sh = shell()?; // we are preserving the current_dir on this one, so paths resolve properly!
         let miri_dir = miri_dir()?;
 
         let sysroot = cmd!(sh, "rustc +{toolchain} --print sysroot").read()?.into();
@@ -77,18 +77,18 @@ impl MiriEnv {
 
         // Compute rustflags.
         let rustflags = {
-            let env = std::env::var_os("RUSTFLAGS");
-            let mut flags_with_warnings = OsString::from(
-                "-Zunstable-options -Wrustc::internal -Wrust_2018_idioms -Wunused_lifetimes -Wsemicolon_in_expressions_from_macros ",
-            );
-            if let Some(value) = env {
-                flags_with_warnings.push(value);
-            }
+            let mut flags = OsString::new();
             // We set the rpath so that Miri finds the private rustc libraries it needs.
-            let mut flags_with_compiler_settings = OsString::from("-C link-args=-Wl,-rpath,");
-            flags_with_compiler_settings.push(&libdir);
-            flags_with_compiler_settings.push(flags_with_warnings);
-            flags_with_compiler_settings
+            flags.push("-C link-args=-Wl,-rpath,");
+            flags.push(libdir);
+            // Enable rustc-specific lints (ignored without `-Zunstable-options`).
+            flags.push(" -Zunstable-options -Wrustc::internal -Wrust_2018_idioms -Wunused_lifetimes -Wsemicolon_in_expressions_from_macros");
+            // Add user-defined flags.
+            if let Some(value) = std::env::var_os("RUSTFLAGS") {
+                flags.push(" ");
+                flags.push(value);
+            }
+            flags
         };
         sh.set_var("RUSTFLAGS", rustflags);
 
