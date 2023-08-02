@@ -91,7 +91,7 @@ impl<'tcx, Other> FnVal<'tcx, Other> {
 // `Memory` has to depend on the `Machine` because some of its operations
 // (e.g., `get`) call a `Machine` hook.
 pub struct Memory<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
-    /// Allocations local to this instance of the miri engine. The kind
+    /// Allocations local to this instance of the interpreter. The kind
     /// helps ensure that the same mechanism is used for allocation and
     /// deallocation. When an allocation is not found here, it is a
     /// global and looked up in the `tcx` for read access. Some machines may
