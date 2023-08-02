@@ -67,12 +67,6 @@ pub struct FormatArguments {
     names: FxHashMap<Symbol, usize>,
 }
 
-// FIXME: Rustdoc has trouble proving Send/Sync for this. See #106930.
-#[cfg(parallel_compiler)]
-unsafe impl Sync for FormatArguments {}
-#[cfg(parallel_compiler)]
-unsafe impl Send for FormatArguments {}
-
 impl FormatArguments {
     pub fn new() -> Self {
         Self {
