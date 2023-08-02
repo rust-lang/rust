@@ -233,15 +233,6 @@ fn exported_symbols_provider_local(
             ));
         }
 
-        symbols.push((
-            ExportedSymbol::NoDefId(SymbolName::new(tcx, OomStrategy::SYMBOL)),
-            SymbolExportInfo {
-                level: SymbolExportLevel::Rust,
-                kind: SymbolExportKind::Text,
-                used: false,
-            },
-        ));
-
         let exported_symbol =
             ExportedSymbol::NoDefId(SymbolName::new(tcx, NO_ALLOC_SHIM_IS_UNSTABLE));
         symbols.push((
