@@ -468,7 +468,7 @@ pub struct ExternCrateDeclData {
     pub name: Name,
     pub alias: Option<ImportAlias>,
     pub visibility: RawVisibility,
-    pub crate_id: CrateId,
+    pub crate_id: Option<CrateId>,
 }
 
 impl ExternCrateDeclData {
@@ -482,15 +482,12 @@ impl ExternCrateDeclData {
 
         let name = extern_crate.name.clone();
         let crate_id = if name == hir_expand::name![self] {
-            loc.container.krate()
+            Some(loc.container.krate())
         } else {
             db.crate_def_map(loc.container.krate())
                 .extern_prelude()
                 .find(|&(prelude_name, ..)| *prelude_name == name)
-                // FIXME: Suspicious unwrap
-                .unwrap()
-                .1
-                .krate()
+                .map(|(_, root)| root.krate())
         };
 
         Arc::new(Self {

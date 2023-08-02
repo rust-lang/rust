@@ -126,7 +126,7 @@ impl HasAttrs for ExternCrateDecl {
         db.attrs_with_owner(def)
     }
     fn docs(self, db: &dyn HirDatabase) -> Option<Documentation> {
-        let crate_docs = self.resolved_crate(db).root_module().attrs(db).docs().map(String::from);
+        let crate_docs = self.resolved_crate(db)?.root_module().attrs(db).docs().map(String::from);
         let def = AttrDefId::ExternCrateId(self.into());
         let decl_docs = db.attrs(def).docs().map(String::from);
         match (decl_docs, crate_docs) {

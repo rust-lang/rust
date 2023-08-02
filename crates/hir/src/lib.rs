@@ -2138,8 +2138,8 @@ impl ExternCrateDecl {
         self.id.module(db.upcast()).into()
     }
 
-    pub fn resolved_crate(self, db: &dyn HirDatabase) -> Crate {
-        db.extern_crate_decl_data(self.id).crate_id.into()
+    pub fn resolved_crate(self, db: &dyn HirDatabase) -> Option<Crate> {
+        db.extern_crate_decl_data(self.id).crate_id.map(Into::into)
     }
 
     pub fn name(self, db: &dyn HirDatabase) -> Name {

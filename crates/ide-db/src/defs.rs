@@ -538,7 +538,7 @@ impl NameRefClass {
                 },
                 ast::ExternCrate(extern_crate_ast) => {
                     let extern_crate = sema.to_def(&extern_crate_ast)?;
-                    let krate = extern_crate.resolved_crate(sema.db);
+                    let krate = extern_crate.resolved_crate(sema.db)?;
                     Some(if extern_crate_ast.rename().is_some() {
                         NameRefClass::Definition(Definition::Module(krate.root_module()))
                     } else {
