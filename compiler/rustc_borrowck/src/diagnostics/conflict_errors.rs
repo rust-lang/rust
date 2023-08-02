@@ -2133,13 +2133,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         self.current -= 1;
                     }
                     fn visit_expr(&mut self, expr: &hir::Expr<'tcx>) {
-                        if self.span == expr.span {
+                        if self.span == expr.span.source_callsite() {
                             self.found = self.current;
                         }
                         walk_expr(self, expr);
                     }
                 }
                 let source_info = self.body.source_info(location);
+                let proper_span = proper_span.source_callsite();
                 if let Some(scope) = self.body.source_scopes.get(source_info.scope)
                     && let ClearCrossCrate::Set(scope_data) = &scope.local_data
                     && let Some(node) = self.infcx.tcx.hir().find(scope_data.lint_root)

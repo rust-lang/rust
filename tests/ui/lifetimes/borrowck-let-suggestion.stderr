@@ -9,8 +9,12 @@ LL |
 LL |     x.use_mut();
    |     - borrow later used here
    |
-   = note: consider using a `let` binding to create a longer lived value
    = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider using a `let` binding to create a longer lived value
+   |
+LL ~     let binding = vec![1];
+LL ~     let mut x = binding.iter();
+   |
 
 error: aborting due to previous error
 
