@@ -1,5 +1,5 @@
 error[E0515]: cannot return value referencing local variable `local`
-  --> $DIR/late-bound-regions.rs:22:5
+  --> $DIR/late-bound-regions.rs:20:5
    |
 LL |     f(&local)
    |     ^^------^
