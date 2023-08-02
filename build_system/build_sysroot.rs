@@ -128,8 +128,8 @@ pub(crate) fn build_sysroot(
             cargo: bootstrap_host_compiler.cargo.clone(),
             rustc: rustc_clif.clone(),
             rustdoc: rustdoc_clif.clone(),
-            rustflags: String::new(),
-            rustdocflags: String::new(),
+            rustflags: vec![],
+            rustdocflags: vec![],
             triple: target_triple,
             runner: vec![],
         }
@@ -241,25 +241,25 @@ fn build_clif_sysroot_for_triple(
     }
 
     // Build sysroot
-    let mut rustflags = " -Zforce-unstable-if-unmarked -Cpanic=abort".to_string();
+    let mut rustflags = vec!["-Zforce-unstable-if-unmarked".to_owned(), "-Cpanic=abort".to_owned()];
     match cg_clif_dylib_path {
         CodegenBackend::Local(path) => {
-            rustflags.push_str(&format!(" -Zcodegen-backend={}", path.to_str().unwrap()));
+            rustflags.push(format!("-Zcodegen-backend={}", path.to_str().unwrap()));
         }
         CodegenBackend::Builtin(name) => {
-            rustflags.push_str(&format!(" -Zcodegen-backend={name}"));
+            rustflags.push(format!("-Zcodegen-backend={name}"));
         }
     };
     // Necessary for MinGW to find rsbegin.o and rsend.o
-    rustflags
-        .push_str(&format!(" --sysroot {}", RTSTARTUP_SYSROOT.to_path(dirs).to_str().unwrap()));
+    rustflags.push("--sysroot".to_owned());
+    rustflags.push(RTSTARTUP_SYSROOT.to_path(dirs).to_str().unwrap().to_owned());
     if channel == "release" {
         // Incremental compilation by default disables mir inlining. This leads to both a decent
         // compile perf and a significant runtime perf regression. As such forcefully enable mir
         // inlining.
-        rustflags.push_str(" -Zinline-mir");
+        rustflags.push("-Zinline-mir".to_owned());
     }
-    compiler.rustflags += &rustflags;
+    compiler.rustflags.extend(rustflags);
     let mut build_cmd = STANDARD_LIBRARY.build(&compiler, dirs);
     maybe_incremental(&mut build_cmd);
     if channel == "release" {
