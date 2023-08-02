@@ -1,68 +1,92 @@
 error: casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:20:9
+  --> $DIR/reference_casting.rs:15:16
    |
-LL |         (*(a as *const _ as *mut String)).push_str(" world");
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     let _num = &mut *(num as *const i32 as *mut i32);
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: the lint level is defined here
-  --> $DIR/reference_casting.rs:4:9
-   |
-LL | #![deny(invalid_reference_casting)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: `#[deny(invalid_reference_casting)]` on by default
 
 error: casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:22:9
+  --> $DIR/reference_casting.rs:17:16
    |
-LL |         *(a as *const _ as *mut _) = String::from("Replaced");
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     let _num = &mut *(num as *const i32).cast_mut();
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:24:9
+  --> $DIR/reference_casting.rs:19:16
    |
-LL |         *(a as *const _ as *mut String) += " world";
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     let _num = &mut *std::ptr::from_ref(num).cast_mut();
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:26:25
+  --> $DIR/reference_casting.rs:21:16
    |
-LL |         let _num = &mut *(num as *const i32 as *mut i32);
-   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     let _num = &mut *std::ptr::from_ref({ num }).cast_mut();
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:28:25
+  --> $DIR/reference_casting.rs:23:16
    |
-LL |         let _num = &mut *(num as *const i32).cast_mut();
-   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     let _num = &mut *{ std::ptr::from_ref(num) }.cast_mut();
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:30:20
+  --> $DIR/reference_casting.rs:25:16
    |
-LL |         let _num = *{ num as *const i32 }.cast_mut();
-   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     let _num = &mut *(std::ptr::from_ref({ num }) as *mut i32);
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:32:9
+  --> $DIR/reference_casting.rs:29:16
    |
-LL |         *std::ptr::from_ref(num).cast_mut() += 1;
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     let deferred = num as *const i32 as *mut i32;
+   |                    ----------------------------- casting happend here
+LL |     let _num = &mut *deferred;
+   |                ^^^^^^^^^^^^^^
 
-error: casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:34:9
+error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
+  --> $DIR/reference_casting.rs:38:5
    |
-LL |         *std::ptr::from_ref({ num }).cast_mut() += 1;
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     *(a as *const _ as *mut _) = String::from("Replaced");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:36:9
+error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
+  --> $DIR/reference_casting.rs:40:5
    |
-LL |         *{ std::ptr::from_ref(num) }.cast_mut() += 1;
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     *(a as *const _ as *mut String) += " world";
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:38:9
+error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
+  --> $DIR/reference_casting.rs:42:5
    |
-LL |         *(std::ptr::from_ref({ num }) as *mut i32) += 1;
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     *std::ptr::from_ref(num).cast_mut() += 1;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 10 previous errors
+error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
+  --> $DIR/reference_casting.rs:44:5
+   |
+LL |     *std::ptr::from_ref({ num }).cast_mut() += 1;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
+  --> $DIR/reference_casting.rs:46:5
+   |
+LL |     *{ std::ptr::from_ref(num) }.cast_mut() += 1;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
+  --> $DIR/reference_casting.rs:48:5
+   |
+LL |     *(std::ptr::from_ref({ num }) as *mut i32) += 1;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
+  --> $DIR/reference_casting.rs:51:5
+   |
+LL |     let value = num as *const i32 as *mut i32;
+   |                 ----------------------------- casting happend here
+LL |     *value = 1;
+   |     ^^^^^^^^^^
+
+error: aborting due to 14 previous errors
 
