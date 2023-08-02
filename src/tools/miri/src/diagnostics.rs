@@ -273,6 +273,8 @@ pub fn report_error<'tcx, 'mir>(
     } else {
         #[rustfmt::skip]
         let title = match e.kind() {
+            UndefinedBehavior(UndefinedBehaviorInfo::ValidationError(e)) if matches!(e.kind, ValidationErrorKind::PointerAsInt { .. } | ValidationErrorKind::PartialPointer) =>
+                bug!("This validation error should be impossible in Miri: {:?}", e.kind),
             UndefinedBehavior(_) =>
                 "Undefined Behavior",
             ResourceExhaustion(_) =>
@@ -377,7 +379,7 @@ pub fn report_error<'tcx, 'mir>(
     if let Some((alloc_id, access)) = extra {
         eprintln!(
             "Uninitialized memory occurred at {alloc_id:?}{range:?}, in this allocation:",
-            range = access.uninit,
+            range = access.bad,
         );
         eprintln!("{:?}", ecx.dump_alloc(alloc_id));
     }
