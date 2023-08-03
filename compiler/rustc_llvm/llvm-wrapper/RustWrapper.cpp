@@ -1967,6 +1967,9 @@ extern "C" void LLVMRustContextConfigureDiagnosticHandler(
   std::unique_ptr<LLVMRemarkStreamer> LlvmRemarkStreamer;
 
   if (RemarkFilePath != nullptr) {
+    // Enable PGO hotness data for remarks, if available
+    unwrap(C)->setDiagnosticsHotnessRequested(true);
+
     std::error_code EC;
     RemarkFile = std::make_unique<ToolOutputFile>(
       RemarkFilePath,
