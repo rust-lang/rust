@@ -126,12 +126,6 @@ fn base_config(test_dir: &str) -> compiletest::Config {
         out_dir: PathBuf::from(std::env::var_os("CARGO_TARGET_DIR").unwrap_or("target".into())).join("ui_test"),
         ..compiletest::Config::rustc(Path::new("tests").join(test_dir))
     };
-
-    if let Some(_path) = option_env!("RUSTC_LIB_PATH") {
-        //let path = PathBuf::from(path);
-        //config.run_lib_path = path.clone();
-        //config.compile_lib_path = path;
-    }
     let current_exe_path = env::current_exe().unwrap();
     let deps_path = current_exe_path.parent().unwrap();
     let profile_path = deps_path.parent().unwrap();
