@@ -27,7 +27,7 @@ fn read_until() {
 
 #[test]
 fn skip_until() {
-    let bytes: &[u8] = b"read\0ignore\0read\0ignore\0read\0ignore";
+    let bytes: &[u8] = b"read\0ignore\0read\0ignore\0read\0ignore\0";
     let mut reader = BufReader::new(bytes);
 
     // read from the bytes, alternating between
@@ -41,10 +41,12 @@ fn skip_until() {
             break;
         } else {
             assert_eq!(out, b"read\0");
+            assert_eq!(read, b"read\0".len());
         }
 
         // skip past `ignore\0`
-        reader.skip_until(0).unwrap();
+        let skipped = reader.skip_until(0).unwrap();
+        assert_eq!(skipped, b"ignore\0".len());
     }
 
     // ensure we are at the end of the byte slice and that we can skip no further
