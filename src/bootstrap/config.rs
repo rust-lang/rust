@@ -1925,7 +1925,8 @@ impl Config {
                 .unwrap();
         if !(source_version == rustc_version
             || (source_version.major == rustc_version.major
-                && source_version.minor == rustc_version.minor + 1))
+                && (source_version.minor == rustc_version.minor
+                    || source_version.minor == rustc_version.minor + 1)))
         {
             let prev_version = format!("{}.{}.x", source_version.major, source_version.minor - 1);
             eprintln!(
