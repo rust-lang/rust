@@ -384,7 +384,7 @@ fn collect_items_rec<'tcx>(
 
             if let Ok(alloc) = tcx.eval_static_initializer(def_id) {
                 for &id in alloc.inner().provenance().ptrs().values() {
-                    collect_miri(tcx, id, &mut used_items);
+                    collect_alloc(tcx, id, &mut used_items);
                 }
             }
 
@@ -1331,8 +1331,8 @@ fn create_mono_items_for_default_impls<'tcx>(
     }
 }
 
-/// Scans the miri alloc in order to find function calls, closures, and drop-glue.
-fn collect_miri<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut MonoItems<'tcx>) {
+/// Scans the CTFE alloc in order to find function calls, closures, and drop-glue.
+fn collect_alloc<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut MonoItems<'tcx>) {
     match tcx.global_alloc(alloc_id) {
         GlobalAlloc::Static(def_id) => {
             assert!(!tcx.is_thread_local_static(def_id));
@@ -1346,7 +1346,7 @@ fn collect_miri<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut MonoIte
             trace!("collecting {:?} with {:#?}", alloc_id, alloc);
             for &inner in alloc.inner().provenance().ptrs().values() {
                 rustc_data_structures::stack::ensure_sufficient_stack(|| {
-                    collect_miri(tcx, inner, output);
+                    collect_alloc(tcx, inner, output);
                 });
             }
         }
@@ -1358,7 +1358,7 @@ fn collect_miri<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut MonoIte
         }
         GlobalAlloc::VTable(ty, trait_ref) => {
             let alloc_id = tcx.vtable_allocation((ty, trait_ref));
-            collect_miri(tcx, alloc_id, output)
+            collect_alloc(tcx, alloc_id, output)
         }
     }
 }
@@ -1381,10 +1381,10 @@ fn collect_const_value<'tcx>(
     output: &mut MonoItems<'tcx>,
 ) {
     match value {
-        ConstValue::Scalar(Scalar::Ptr(ptr, _size)) => collect_miri(tcx, ptr.provenance, output),
+        ConstValue::Scalar(Scalar::Ptr(ptr, _size)) => collect_alloc(tcx, ptr.provenance, output),
         ConstValue::Slice { data: alloc, start: _, end: _ } | ConstValue::ByRef { alloc, .. } => {
             for &id in alloc.inner().provenance().ptrs().values() {
-                collect_miri(tcx, id, output);
+                collect_alloc(tcx, id, output);
             }
         }
         _ => {}
