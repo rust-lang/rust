@@ -147,7 +147,7 @@ impl<'tcx> std::ops::Deref for ExternalConstraints<'tcx> {
 }
 
 /// Additional constraints returned on success.
-#[derive(Debug, PartialEq, Eq, Clone, Hash, HashStable, Default)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash, HashStable, Default, TypeVisitable, TypeFoldable)]
 pub struct ExternalConstraintsData<'tcx> {
     // FIXME: implement this.
     pub region_constraints: QueryRegionConstraints<'tcx>,
