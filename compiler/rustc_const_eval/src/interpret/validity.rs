@@ -345,6 +345,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         value: &OpTy<'tcx, M::Provenance>,
         ptr_kind: PointerKind,
     ) -> InterpResult<'tcx> {
+        // Not using `deref_pointer` since we do the dereferenceable check ourselves below.
         let place = self.ecx.ref_to_mplace(&self.read_immediate(value, ptr_kind.into())?)?;
         // Handle wide pointers.
         // Check metadata early, for better diagnostics
@@ -515,9 +516,6 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 Ok(true)
             }
             ty::RawPtr(..) => {
-                // We are conservative with uninit for integers, but try to
-                // actually enforce the strict rules for raw pointers (mostly because
-                // that lets us re-use `ref_to_mplace`).
                 let place =
                     self.ecx.ref_to_mplace(&self.read_immediate(value, ExpectedKind::RawPtr)?)?;
                 if place.layout.is_unsized() {

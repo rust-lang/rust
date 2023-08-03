@@ -827,7 +827,7 @@ pub trait PrettyPrinter<'tcx>:
                     if !args.as_generator().is_valid() {
                         p!("unavailable");
                     } else {
-                        self = self.comma_sep(args.as_generator().upvar_tys())?;
+                        self = self.comma_sep(args.as_generator().upvar_tys().iter())?;
                     }
                     p!(")");
 
@@ -900,7 +900,7 @@ pub trait PrettyPrinter<'tcx>:
                             print(args.as_closure().sig_as_fn_ptr_ty())
                         );
                         p!(" upvar_tys=(");
-                        self = self.comma_sep(args.as_closure().upvar_tys())?;
+                        self = self.comma_sep(args.as_closure().upvar_tys().iter())?;
                         p!(")");
                     }
                 }
@@ -2806,10 +2806,7 @@ define_print_and_forward_display! {
     }
 
     TraitPredPrintModifiersAndPath<'tcx> {
-        if let ty::BoundConstness::ConstIfConst = self.0.constness {
-            p!("~const ")
-        }
-
+        // FIXME(effects) print `~const` here
         if let ty::ImplPolarity::Negative = self.0.polarity {
             p!("!")
         }
@@ -2843,9 +2840,7 @@ define_print_and_forward_display! {
 
     ty::TraitPredicate<'tcx> {
         p!(print(self.trait_ref.self_ty()), ": ");
-        if let ty::BoundConstness::ConstIfConst = self.constness && cx.tcx().features().const_trait_impl {
-            p!("~const ");
-        }
+        // FIXME(effects) print `~const` here
         if let ty::ImplPolarity::Negative = self.polarity {
             p!("!");
         }

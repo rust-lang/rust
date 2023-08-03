@@ -42,13 +42,12 @@ impl<'tcx> Bounds<'tcx> {
         tcx: TyCtxt<'tcx>,
         trait_ref: ty::PolyTraitRef<'tcx>,
         span: Span,
-        constness: ty::BoundConstness,
         polarity: ty::ImplPolarity,
     ) {
         self.clauses.push((
             trait_ref
                 .map_bound(|trait_ref| {
-                    ty::ClauseKind::Trait(ty::TraitPredicate { trait_ref, constness, polarity })
+                    ty::ClauseKind::Trait(ty::TraitPredicate { trait_ref, polarity })
                 })
                 .to_predicate(tcx),
             span,

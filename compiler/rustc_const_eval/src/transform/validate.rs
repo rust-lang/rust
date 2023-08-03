@@ -630,7 +630,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     }
                     ty::Closure(_, args) => {
                         let args = args.as_closure();
-                        let Some(f_ty) = args.upvar_tys().nth(f.as_usize()) else {
+                        let Some(&f_ty) = args.upvar_tys().get(f.as_usize()) else {
                             fail_out_of_bounds(self, location);
                             return;
                         };
@@ -667,7 +667,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
 
                             f_ty.ty
                         } else {
-                            let Some(f_ty) = args.as_generator().prefix_tys().nth(f.index()) else {
+                            let Some(&f_ty) = args.as_generator().prefix_tys().get(f.index())
+                            else {
                                 fail_out_of_bounds(self, location);
                                 return;
                             };

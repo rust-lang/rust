@@ -1,4 +1,4 @@
-pub use super::ffi::*;
+use crate::coverageinfo::ffi::{Counter, CounterExpression, ExprKind};
 
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::bug;

@@ -25,6 +25,9 @@ metadata_conflicting_alloc_error_handler =
 metadata_conflicting_global_alloc =
     the `#[global_allocator]` in {$other_crate_name} conflicts with global allocator in: {$crate_name}
 
+metadata_consider_adding_std =
+    consider adding the standard library to the sysroot with `x build library --target {$locator_triple}`
+
 metadata_consider_building_std =
     consider building the standard library from source with `cargo build -Zbuild-std`
 

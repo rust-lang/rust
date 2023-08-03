@@ -97,7 +97,6 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 orig_env,
                 ty::TraitPredicate {
                     trait_ref,
-                    constness: ty::BoundConstness::NotConst,
                     polarity: if polarity {
                         ImplPolarity::Positive
                     } else {
@@ -260,7 +259,6 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         predicates.push_back(ty::Binder::dummy(ty::TraitPredicate {
             trait_ref: ty::TraitRef::new(infcx.tcx, trait_did, [ty]),
 
-            constness: ty::BoundConstness::NotConst,
             // Auto traits are positive
             polarity: ty::ImplPolarity::Positive,
         }));

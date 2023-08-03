@@ -100,7 +100,6 @@ pub trait InferCtxtExt<'tcx> {
         &self,
         param_env: ty::ParamEnv<'tcx>,
         ty: ty::Binder<'tcx, Ty<'tcx>>,
-        constness: ty::BoundConstness,
         polarity: ty::ImplPolarity,
     ) -> Result<(ty::ClosureKind, ty::Binder<'tcx, Ty<'tcx>>), ()>;
 }
@@ -356,7 +355,6 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         &self,
         param_env: ty::ParamEnv<'tcx>,
         ty: ty::Binder<'tcx, Ty<'tcx>>,
-        constness: ty::BoundConstness,
         polarity: ty::ImplPolarity,
     ) -> Result<(ty::ClosureKind, ty::Binder<'tcx, Ty<'tcx>>), ()> {
         self.commit_if_ok(|_| {
@@ -372,12 +370,13 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
                     span: DUMMY_SP,
                     kind: TypeVariableOriginKind::MiscVariable,
                 });
+                // FIXME(effects)
                 let trait_ref = ty::TraitRef::new(self.tcx, trait_def_id, [ty.skip_binder(), var]);
                 let obligation = Obligation::new(
                     self.tcx,
                     ObligationCause::dummy(),
                     param_env,
-                    ty.rebind(ty::TraitPredicate { trait_ref, constness, polarity }),
+                    ty.rebind(ty::TraitPredicate { trait_ref, polarity }),
                 );
                 let ocx = ObligationCtxt::new(self);
                 ocx.register_obligation(obligation);
@@ -689,8 +688,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         let trait_predicate = bound_predicate.rebind(trait_predicate);
                         let trait_predicate = self.resolve_vars_if_possible(trait_predicate);
 
-                        let predicate_is_const = ty::BoundConstness::ConstIfConst
-                            == trait_predicate.skip_binder().constness;
+                        // FIXME(effects)
+                        let predicate_is_const = false;
 
                         if self.tcx.sess.has_errors().is_some()
                             && trait_predicate.references_error()
@@ -1909,9 +1908,6 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             .all_impls(trait_pred.def_id())
             .filter_map(|def_id| {
                 if self.tcx.impl_polarity(def_id) == ty::ImplPolarity::Negative
-                    || !trait_pred
-                        .skip_binder()
-                        .is_constness_satisfied_by(self.tcx.constness(def_id))
                     || !self.tcx.is_user_visible_dep(def_id.krate)
                 {
                     return None;
@@ -2996,7 +2992,6 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             && let Ok((implemented_kind, params)) = self.type_implements_fn_trait(
             obligation.param_env,
             trait_ref.self_ty(),
-            trait_predicate.skip_binder().constness,
             trait_predicate.skip_binder().polarity,
         )
         {
@@ -3099,14 +3094,15 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
     fn maybe_add_note_for_unsatisfied_const(
         &self,
-        obligation: &PredicateObligation<'tcx>,
-        trait_ref: ty::PolyTraitRef<'tcx>,
-        trait_predicate: &ty::PolyTraitPredicate<'tcx>,
-        err: &mut Diagnostic,
-        span: Span,
+        _obligation: &PredicateObligation<'tcx>,
+        _trait_ref: ty::PolyTraitRef<'tcx>,
+        _trait_predicate: &ty::PolyTraitPredicate<'tcx>,
+        _err: &mut Diagnostic,
+        _span: Span,
     ) -> UnsatisfiedConst {
-        let mut unsatisfied_const = UnsatisfiedConst(false);
-        if trait_predicate.is_const_if_const() {
+        let unsatisfied_const = UnsatisfiedConst(false);
+        // FIXME(effects)
+        /* if trait_predicate.is_const_if_const() {
             let non_const_predicate = trait_ref.without_const();
             let non_const_obligation = Obligation {
                 cause: obligation.cause.clone(),
@@ -3126,7 +3122,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     ),
                 );
             }
-        }
+        } */
         unsatisfied_const
     }
 

@@ -10,5 +10,14 @@ note: this function is not `const`, so it cannot have `~const` trait bounds
 LL | fn bar<A: ~const Add42, const N: usize>(_: Foo<N>) -> Foo<{ A::add(N) }> {
    |    ^^^
 
-error: aborting due to previous error
+error[E0015]: cannot call non-const fn `<A as Add42>::add` in constants
+  --> $DIR/tilde-const-and-const-params.rs:25:61
+   |
+LL | fn bar<A: ~const Add42, const N: usize>(_: Foo<N>) -> Foo<{ A::add(N) }> {
+   |                                                             ^^^^^^^^^
+   |
+   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
 
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0015`.

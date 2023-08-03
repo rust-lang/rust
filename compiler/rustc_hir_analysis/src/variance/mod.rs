@@ -156,7 +156,6 @@ fn variance_of_opaque(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Varianc
         match pred.kind().skip_binder() {
             ty::ClauseKind::Trait(ty::TraitPredicate {
                 trait_ref: ty::TraitRef { def_id: _, args, .. },
-                constness: _,
                 polarity: _,
             }) => {
                 for subst in &args[1..] {

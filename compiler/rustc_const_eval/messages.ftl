@@ -282,7 +282,7 @@ const_eval_pointer_out_of_bounds =
         *[many] bytes
     } starting at offset {$ptr_offset} is out-of-bounds
 const_eval_pointer_use_after_free =
-    pointer to {$allocation} was dereferenced after this allocation got freed
+    {$bad_pointer_message}: {$alloc_id} has been freed, so this pointer is dangling
 const_eval_ptr_as_bytes_1 =
     this code performed an operation that depends on the underlying bytes representing a pointer
 const_eval_ptr_as_bytes_2 =

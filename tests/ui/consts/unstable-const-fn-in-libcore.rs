@@ -20,6 +20,7 @@ impl<T> Opt<T> {
         match self {
             Opt::Some(t) => t,
             Opt::None => f(),
+            //~^ ERROR cannot call
         }
     }
 }

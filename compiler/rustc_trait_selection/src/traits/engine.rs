@@ -97,7 +97,7 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
             cause,
             recursion_depth: 0,
             param_env,
-            predicate: ty::Binder::dummy(trait_ref).without_const().to_predicate(tcx),
+            predicate: ty::Binder::dummy(trait_ref).to_predicate(tcx),
         });
     }
 

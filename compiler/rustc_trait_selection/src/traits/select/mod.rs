@@ -1583,7 +1583,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn match_projection_obligation_against_definition_bounds(
         &mut self,
         obligation: &PolyTraitObligation<'tcx>,
-    ) -> smallvec::SmallVec<[(usize, ty::BoundConstness); 2]> {
+    ) -> smallvec::SmallVec<[usize; 2]> {
         let poly_trait_predicate = self.infcx.resolve_vars_if_possible(obligation.predicate);
         let placeholder_trait_predicate =
             self.infcx.instantiate_binder_with_placeholders(poly_trait_predicate);
@@ -1632,7 +1632,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             _ => false,
                         }
                     }) {
-                        return Some((idx, pred.constness));
+                        return Some(idx);
                     }
                 }
                 None
@@ -1820,7 +1820,6 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             (ParamCandidate(other), ParamCandidate(victim)) => {
                 let same_except_bound_vars = other.skip_binder().trait_ref
                     == victim.skip_binder().trait_ref
-                    && other.skip_binder().constness == victim.skip_binder().constness
                     && other.skip_binder().polarity == victim.skip_binder().polarity
                     && !other.skip_binder().trait_ref.has_escaping_bound_vars();
                 if same_except_bound_vars {
@@ -1830,12 +1829,6 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                     // probably best characterized as a "hack", since we might prefer to just do our
                     // best to *not* create essentially duplicate candidates in the first place.
                     DropVictim::drop_if(other.bound_vars().len() <= victim.bound_vars().len())
-                } else if other.skip_binder().trait_ref == victim.skip_binder().trait_ref
-                    && victim.skip_binder().constness == ty::BoundConstness::NotConst
-                    && other.skip_binder().polarity == victim.skip_binder().polarity
-                {
-                    // Drop otherwise equivalent non-const candidates in favor of const candidates.
-                    DropVictim::Yes
                 } else {
                     DropVictim::No
                 }
@@ -2169,7 +2162,8 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                         let all = args
                             .as_generator()
                             .upvar_tys()
-                            .chain(iter::once(args.as_generator().witness()))
+                            .iter()
+                            .chain([args.as_generator().witness()])
                             .collect::<Vec<_>>();
                         Where(obligation.predicate.rebind(all))
                     }
@@ -2210,7 +2204,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                     // Not yet resolved.
                     Ambiguous
                 } else {
-                    Where(obligation.predicate.rebind(args.as_closure().upvar_tys().collect()))
+                    Where(obligation.predicate.rebind(args.as_closure().upvar_tys().to_vec()))
                 }
             }
 

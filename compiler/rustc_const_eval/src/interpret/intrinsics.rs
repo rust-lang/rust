@@ -144,7 +144,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             sym::min_align_of_val | sym::size_of_val => {
-                // Avoid `deref_operand` -- this is not a deref, the ptr does not have to be
+                // Avoid `deref_pointer` -- this is not a deref, the ptr does not have to be
                 // dereferenceable!
                 let place = self.ref_to_mplace(&self.read_immediate(&args[0])?)?;
                 let (size, align) = self
@@ -225,7 +225,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.write_scalar(val, dest)?;
             }
             sym::discriminant_value => {
-                let place = self.deref_operand(&args[0])?;
+                let place = self.deref_pointer(&args[0])?;
                 let variant = self.read_discriminant(&place)?;
                 let discr = self.discriminant_for_variant(place.layout, variant)?;
                 self.write_scalar(discr, dest)?;

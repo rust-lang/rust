@@ -713,7 +713,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         );
 
         debug!(?poly_trait_ref, ?assoc_bindings);
-        bounds.push_trait_bound(tcx, poly_trait_ref, span, constness, polarity);
+        bounds.push_trait_bound(tcx, poly_trait_ref, span, polarity);
 
         let mut dup_bindings = FxHashMap::default();
         for binding in &assoc_bindings {

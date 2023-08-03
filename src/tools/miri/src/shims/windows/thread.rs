@@ -29,7 +29,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let thread = if this.ptr_is_null(this.read_pointer(thread_op)?)? {
             None
         } else {
-            let thread_info_place = this.deref_operand(thread_op)?;
+            let thread_info_place = this.deref_pointer(thread_op)?;
             Some(thread_info_place)
         };
 

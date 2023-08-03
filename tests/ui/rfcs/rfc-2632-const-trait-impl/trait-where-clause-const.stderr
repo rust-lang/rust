@@ -1,0 +1,51 @@
+error[E0015]: cannot call non-const fn `<T as Foo>::a` in constant functions
+  --> $DIR/trait-where-clause-const.rs:20:5
+   |
+LL |     T::a();
+   |     ^^^^^^
+   |
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+
+error[E0015]: cannot call non-const fn `<T as Foo>::b` in constant functions
+  --> $DIR/trait-where-clause-const.rs:21:5
+   |
+LL |     T::b();
+   |     ^^^^^^
+   |
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+
+error[E0015]: cannot call non-const fn `<T as Foo>::c::<T>` in constant functions
+  --> $DIR/trait-where-clause-const.rs:23:5
+   |
+LL |     T::c::<T>();
+   |     ^^^^^^^^^^^
+   |
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+
+error[E0015]: cannot call non-const fn `<T as Foo>::a` in constant functions
+  --> $DIR/trait-where-clause-const.rs:28:5
+   |
+LL |     T::a();
+   |     ^^^^^^
+   |
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+
+error[E0015]: cannot call non-const fn `<T as Foo>::b` in constant functions
+  --> $DIR/trait-where-clause-const.rs:29:5
+   |
+LL |     T::b();
+   |     ^^^^^^
+   |
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+
+error[E0015]: cannot call non-const fn `<T as Foo>::c::<T>` in constant functions
+  --> $DIR/trait-where-clause-const.rs:30:5
+   |
+LL |     T::c::<T>();
+   |     ^^^^^^^^^^^
+   |
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0015`.
