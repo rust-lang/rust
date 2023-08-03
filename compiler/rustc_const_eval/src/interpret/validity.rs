@@ -25,12 +25,16 @@ use rustc_target::abi::{
 
 use std::hash::Hash;
 
-// for the validation errors
-use super::UndefinedBehaviorInfo::*;
 use super::{
     AllocId, CheckInAllocMsg, GlobalAlloc, ImmTy, Immediate, InterpCx, InterpResult, MPlaceTy,
     Machine, MemPlaceMeta, OpTy, Pointer, Projectable, Scalar, ValueVisitor,
 };
+
+// for the validation errors
+use super::InterpError::UndefinedBehavior as Ub;
+use super::InterpError::Unsupported as Unsup;
+use super::UndefinedBehaviorInfo::*;
+use super::UnsupportedOpInfo::*;
 
 macro_rules! throw_validation_failure {
     ($where:expr, $kind: expr) => {{
@@ -43,7 +47,7 @@ macro_rules! throw_validation_failure {
             None
         };
 
-        throw_ub!(Validation(ValidationErrorInfo { path, kind: $kind }))
+        throw_ub!(ValidationError(ValidationErrorInfo { path, kind: $kind }))
     }};
 }
 
@@ -85,16 +89,16 @@ macro_rules! try_validation {
             Ok(x) => x,
             // We catch the error and turn it into a validation failure. We are okay with
             // allocation here as this can only slow down builds that fail anyway.
-            Err(e) => match e.into_parts() {
+            Err(e) => match e.kind() {
                 $(
-                    (InterpError::UndefinedBehavior($($p)|+), _) =>
+                    $($p)|+ =>
                        throw_validation_failure!(
                             $where,
                             $kind
                         )
                 ),+,
                 #[allow(unreachable_patterns)]
-                (e, rest) => Err::<!, _>($crate::interpret::InterpErrorInfo::from_parts(e, rest))?,
+                _ => Err::<!, _>(e)?,
             }
         }
     }};
@@ -294,7 +298,13 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         Ok(try_validation!(
             self.ecx.read_immediate(op),
             self.path,
-            InvalidUninitBytes(None) => Uninit { expected }
+            Ub(InvalidUninitBytes(None)) =>
+                Uninit { expected },
+            // The `Unsup` cases can only occur during CTFE
+            Unsup(ReadPointerAsInt(_)) =>
+                PointerAsInt { expected },
+            Unsup(ReadPartialPointer(_)) =>
+                PartialPointer,
         ))
     }
 
@@ -319,8 +329,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 let (_ty, _trait) = try_validation!(
                     self.ecx.get_ptr_vtable(vtable),
                     self.path,
-                    DanglingIntPointer(..) |
-                    InvalidVTablePointer(..) => InvalidVTablePtr { value: format!("{vtable}") }
+                    Ub(DanglingIntPointer(..) | InvalidVTablePointer(..)) =>
+                        InvalidVTablePtr { value: format!("{vtable}") }
                 );
                 // FIXME: check if the type/trait match what ty::Dynamic says?
             }
@@ -356,7 +366,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         let size_and_align = try_validation!(
             self.ecx.size_and_align_of_mplace(&place),
             self.path,
-            InvalidMeta(msg) => match msg {
+            Ub(InvalidMeta(msg)) => match msg {
                 InvalidMetaKind::SliceTooBig => InvalidMetaSliceTooLarge { ptr_kind },
                 InvalidMetaKind::TooBig => InvalidMetaTooLarge { ptr_kind },
             }
@@ -375,23 +385,23 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 CheckInAllocMsg::InboundsTest, // will anyway be replaced by validity message
             ),
             self.path,
-            AlignmentCheckFailed { required, has } => UnalignedPtr {
+            Ub(AlignmentCheckFailed { required, has }) => UnalignedPtr {
                 ptr_kind,
                 required_bytes: required.bytes(),
                 found_bytes: has.bytes()
             },
-            DanglingIntPointer(0, _) => NullPtr { ptr_kind },
-            DanglingIntPointer(i, _) => DanglingPtrNoProvenance {
+            Ub(DanglingIntPointer(0, _)) => NullPtr { ptr_kind },
+            Ub(DanglingIntPointer(i, _)) => DanglingPtrNoProvenance {
                 ptr_kind,
                 // FIXME this says "null pointer" when null but we need translate
-                pointer: format!("{}", Pointer::<Option<AllocId>>::from_addr_invalid(i))
+                pointer: format!("{}", Pointer::<Option<AllocId>>::from_addr_invalid(*i))
             },
-            PointerOutOfBounds { .. } => DanglingPtrOutOfBounds {
+            Ub(PointerOutOfBounds { .. }) => DanglingPtrOutOfBounds {
                 ptr_kind
             },
             // This cannot happen during const-eval (because interning already detects
             // dangling pointers), but it can happen in Miri.
-            PointerUseAfterFree(..) => DanglingPtrUseAfterFree {
+            Ub(PointerUseAfterFree(..)) => DanglingPtrUseAfterFree {
                 ptr_kind,
             },
         );
@@ -477,7 +487,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 try_validation!(
                     value.to_bool(),
                     self.path,
-                    InvalidBool(..) => ValidationErrorKind::InvalidBool {
+                    Ub(InvalidBool(..)) => ValidationErrorKind::InvalidBool {
                         value: format!("{value:x}"),
                     }
                 );
@@ -488,7 +498,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 try_validation!(
                     value.to_char(),
                     self.path,
-                    InvalidChar(..) => ValidationErrorKind::InvalidChar {
+                    Ub(InvalidChar(..)) => ValidationErrorKind::InvalidChar {
                         value: format!("{value:x}"),
                     }
                 );
@@ -497,7 +507,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
             ty::Float(_) | ty::Int(_) | ty::Uint(_) => {
                 // NOTE: Keep this in sync with the array optimization for int/float
                 // types below!
-                let value = self.read_scalar(
+                self.read_scalar(
                     value,
                     if matches!(ty.kind(), ty::Float(..)) {
                         ExpectedKind::Float
@@ -505,14 +515,6 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                         ExpectedKind::Int
                     },
                 )?;
-                // As a special exception we *do* match on a `Scalar` here, since we truly want
-                // to know its underlying representation (and *not* cast it to an integer).
-                if matches!(value, Scalar::Ptr(..)) {
-                    throw_validation_failure!(
-                        self.path,
-                        ExpectedNonPtr { value: format!("{value:x}") }
-                    )
-                }
                 Ok(true)
             }
             ty::RawPtr(..) => {
@@ -546,10 +548,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                     let _fn = try_validation!(
                         self.ecx.get_ptr_fn(ptr),
                         self.path,
-                        DanglingIntPointer(..) |
-                        InvalidFunctionPointer(..) => InvalidFnPtr {
-                            value: format!("{ptr}"),
-                        },
+                        Ub(DanglingIntPointer(..) | InvalidFunctionPointer(..)) =>
+                            InvalidFnPtr { value: format!("{ptr}") },
                     );
                     // FIXME: Check if the signature matches
                 } else {
@@ -657,11 +657,12 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
             Ok(try_validation!(
                 this.ecx.read_discriminant(op),
                 this.path,
-                InvalidTag(val) => InvalidEnumTag {
+                Ub(InvalidTag(val)) => InvalidEnumTag {
                     value: format!("{val:x}"),
                 },
-                UninhabitedEnumVariantRead(_) => UninhabitedEnumTag,
-                InvalidUninitBytes(None) => UninitEnumTag,
+                Ub(UninhabitedEnumVariantRead(_)) => UninhabitedEnumVariant,
+                // Uninit / bad provenance are not possible since the field was already previously
+                // checked at its integer type.
             ))
         })
     }
@@ -740,7 +741,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 try_validation!(
                     self.ecx.read_bytes_ptr_strip_provenance(mplace.ptr, Size::from_bytes(len)),
                     self.path,
-                    InvalidUninitBytes(..) => { UninitStr },
+                    Ub(InvalidUninitBytes(..)) => Uninit { expected: ExpectedKind::Str },
+                    Unsup(ReadPointerAsInt(_)) => PointerAsInt { expected: ExpectedKind::Str }
                 );
             }
             ty::Array(tys, ..) | ty::Slice(tys)
@@ -752,6 +754,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 if matches!(tys.kind(), ty::Int(..) | ty::Uint(..) | ty::Float(..))
                 =>
             {
+                let expected = if tys.is_integral() { ExpectedKind::Int } else { ExpectedKind::Float };
                 // Optimized handling for arrays of integer/float type.
 
                 // This is the length of the array/slice.
@@ -770,7 +773,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                     Left(mplace) => mplace,
                     Right(imm) => match *imm {
                         Immediate::Uninit =>
-                            throw_validation_failure!(self.path, UninitVal),
+                            throw_validation_failure!(self.path, Uninit { expected }),
                         Immediate::Scalar(..) | Immediate::ScalarPair(..) =>
                             bug!("arrays/slices can never have Scalar/ScalarPair layout"),
                     }
@@ -796,17 +799,21 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                         // For some errors we might be able to provide extra information.
                         // (This custom logic does not fit the `try_validation!` macro.)
                         match err.kind() {
-                            err_ub!(InvalidUninitBytes(Some((_alloc_id, access)))) => {
+                            Ub(InvalidUninitBytes(Some((_alloc_id, access)))) | Unsup(ReadPointerAsInt(Some((_alloc_id, access)))) => {
                                 // Some byte was uninitialized, determine which
                                 // element that byte belongs to so we can
                                 // provide an index.
                                 let i = usize::try_from(
-                                    access.uninit.start.bytes() / layout.size.bytes(),
+                                    access.bad.start.bytes() / layout.size.bytes(),
                                 )
                                 .unwrap();
                                 self.path.push(PathElem::ArrayElem(i));
 
-                                throw_validation_failure!(self.path, UninitVal)
+                                if matches!(err.kind(), Ub(InvalidUninitBytes(_))) {
+                                    throw_validation_failure!(self.path, Uninit { expected })
+                                } else {
+                                    throw_validation_failure!(self.path, PointerAsInt { expected })
+                                }
                             }
 
                             // Propagate upwards (that will also check for unexpected errors).
@@ -892,17 +899,22 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // Run it.
         match visitor.visit_value(&op) {
             Ok(()) => Ok(()),
-            // Pass through validation failures.
-            Err(err) if matches!(err.kind(), err_ub!(Validation { .. })) => Err(err),
-            // Complain about any other kind of UB error -- those are bad because we'd like to
+            // Pass through validation failures and "invalid program" issues.
+            Err(err)
+                if matches!(
+                    err.kind(),
+                    err_ub!(ValidationError { .. }) | InterpError::InvalidProgram(_)
+                ) =>
+            {
+                Err(err)
+            }
+            // Complain about any other kind of error -- those are bad because we'd like to
             // report them in a way that shows *where* in the value the issue lies.
-            Err(err) if matches!(err.kind(), InterpError::UndefinedBehavior(_)) => {
+            Err(err) => {
                 let (err, backtrace) = err.into_parts();
                 backtrace.print_backtrace();
                 bug!("Unexpected Undefined Behavior error during validation: {err:?}");
             }
-            // Pass through everything else.
-            Err(err) => Err(err),
         }
     }
 
