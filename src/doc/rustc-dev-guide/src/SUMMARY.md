@@ -131,6 +131,7 @@
     - [Variance](./variance.md)
     - [Opaque Types](./opaque-types-type-alias-impl-trait.md)
         - [Inference details](./opaque-types-impl-trait-inference.md)
+        - [Return Position Impl Trait In Trait](./return-position-impl-trait-in-trait.md)
 - [Pattern and Exhaustiveness Checking](./pat-exhaustive-checking.md)
 - [MIR dataflow](./mir/dataflow.md)
 - [Drop elaboration](./mir/drop-elaboration.md)
