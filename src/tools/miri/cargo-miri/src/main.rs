@@ -56,7 +56,7 @@ fn main() {
         return;
     }
 
-    // The way rustdoc invokes rustc is indistuingishable from the way cargo invokes rustdoc by the
+    // The way rustdoc invokes rustc is indistinguishable from the way cargo invokes rustdoc by the
     // arguments alone. `phase_cargo_rustdoc` sets this environment variable to let us disambiguate.
     if env::var_os("MIRI_CALLED_FROM_RUSTDOC").is_some() {
         // ...however, we then also see this variable when rustdoc invokes us as the testrunner!

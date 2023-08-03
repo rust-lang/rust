@@ -114,7 +114,7 @@ pub fn setup(
                 command.arg("-v");
             }
         } else {
-            // Supress output.
+            // Suppress output.
             command.stdout(process::Stdio::null());
             command.stderr(process::Stdio::null());
         }

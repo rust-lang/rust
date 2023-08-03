@@ -33,7 +33,7 @@ impl MiriEnv {
             Err(_) => vec![],
         };
         if !quiet {
-            eprintln!("$ (buildig Miri sysroot)");
+            eprintln!("$ (building Miri sysroot)");
         }
         let output = cmd!(self.sh,
             "cargo +{toolchain} --quiet run {cargo_extra_flags...} --manifest-path {manifest_path} --
