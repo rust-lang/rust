@@ -543,8 +543,8 @@ fn debug_print() {
     );
 
     let mut command_with_removed_env = Command::new("boring-name");
-    command_with_removed_env.env_remove("BAR");
-    assert_eq!(format!("{command_with_removed_env:?}"), r#"unset(BAR) "boring-name""#);
+    command_with_removed_env.env_remove("FOO").env_remove("BAR");
+    assert_eq!(format!("{command_with_removed_env:?}"), r#"unset BAR FOO && "boring-name""#);
     assert_eq!(
         format!("{command_with_removed_env:#?}"),
         format!(
@@ -557,6 +557,7 @@ fn debug_print() {
         clear: false,
         vars: {{
             "BAR": None,
+            "FOO": None,
         }},
     }},
 {PIDFD}}}"#
