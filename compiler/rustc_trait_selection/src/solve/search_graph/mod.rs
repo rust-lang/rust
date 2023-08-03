@@ -165,21 +165,46 @@ impl<'tcx> SearchGraph<'tcx> {
         }
     }
 
-    /// Tries putting the new goal on the stack, returning an error if it is already cached.
+    /// Probably the most involved method of the whole solver.
     ///
-    /// This correctly updates the provisional cache if there is a cycle.
-    #[instrument(level = "debug", skip(self, tcx, inspect), ret)]
-    fn try_push_stack(
+    /// Given some goal which is proven via the `prove_goal` closure, this
+    /// handles caching, overflow, and coinductive cycles.
+    pub(super) fn with_new_goal(
         &mut self,
         tcx: TyCtxt<'tcx>,
         input: CanonicalInput<'tcx>,
-        available_depth: Limit,
         inspect: &mut ProofTreeBuilder<'tcx>,
-    ) -> Result<(), QueryResult<'tcx>> {
-        // Look at the provisional cache to check for cycles.
+        mut prove_goal: impl FnMut(&mut Self, &mut ProofTreeBuilder<'tcx>) -> QueryResult<'tcx>,
+    ) -> QueryResult<'tcx> {
+        // Check for overflow.
+        let Some(available_depth) = Self::allowed_depth_for_nested(tcx, &self.stack) else {
+            if let Some(last) = self.stack.raw.last_mut() {
+                last.encountered_overflow = true;
+            }
+            return Self::response_no_constraints(tcx, input, Certainty::OVERFLOW);
+        };
+
+        // Try to fetch the goal from the global cache.
+        if inspect.use_global_cache() {
+            if let Some(CacheData { result, reached_depth, encountered_overflow }) =
+                self.global_cache(tcx).get(
+                    tcx,
+                    input,
+                    |cycle_participants| {
+                        self.stack.iter().any(|entry| cycle_participants.contains(&entry.input))
+                    },
+                    available_depth,
+                )
+            {
+                self.on_cache_hit(reached_depth, encountered_overflow);
+                return result;
+            }
+        }
+
+        // Look at the provisional cache to detect cycles.
         let cache = &mut self.provisional_cache;
         match cache.lookup_table.entry(input) {
-            // No entry, simply push this goal on the stack.
+            // No entry, we push this goal on the stack and try to prove it.
             Entry::Vacant(v) => {
                 let depth = self.stack.next_index();
                 let entry = StackEntry {
@@ -194,13 +219,12 @@ impl<'tcx> SearchGraph<'tcx> {
                 let response = Self::response_no_constraints(tcx, input, Certainty::Yes);
                 let entry_index = cache.entries.push(ProvisionalEntry { response, depth, input });
                 v.insert(entry_index);
-                Ok(())
             }
             // We have a nested goal which relies on a goal `root` deeper in the stack.
             //
-            // We first store that we may have to rerun `evaluate_goal` for `root` in case the
-            // provisional response is not equal to the final response. We also update the depth
-            // of all goals which recursively depend on our current goal to depend on `root`
+            // We first store that we may have to reprove `root` in case the provisional
+            // response is not equal to the final response. We also update the depth of all
+            // goals which recursively depend on our current goal to depend on `root`
             // instead.
             //
             // Finally we can return either the provisional response for that goal if we have a
@@ -209,7 +233,6 @@ impl<'tcx> SearchGraph<'tcx> {
                 inspect.cache_hit(CacheHit::Provisional);
 
                 let entry_index = *entry_index.get();
-
                 let stack_depth = cache.depth(entry_index);
                 debug!("encountered cycle with depth {stack_depth:?}");
 
@@ -233,112 +256,55 @@ impl<'tcx> SearchGraph<'tcx> {
                     // If we're in a coinductive cycle, we have to retry proving the current goal
                     // until we reach a fixpoint.
                     self.stack[stack_depth].has_been_used = true;
-                    Err(cache.provisional_result(entry_index))
+                    return cache.provisional_result(entry_index);
                 } else {
-                    Err(Self::response_no_constraints(tcx, input, Certainty::OVERFLOW))
+                    return Self::response_no_constraints(tcx, input, Certainty::OVERFLOW);
                 }
             }
         }
-    }
-
-    /// We cannot simply store the result of [super::EvalCtxt::compute_goal] as we have to deal with
-    /// coinductive cycles.
-    ///
-    /// When we encounter a coinductive cycle, we have to prove the final result of that cycle
-    /// while we are still computing that result. Because of this we continuously recompute the
-    /// cycle until the result of the previous iteration is equal to the final result, at which
-    /// point we are done.
-    ///
-    /// This function returns `true` if we were able to finalize the goal and `false` if it has
-    /// updated the provisional cache and we have to recompute the current goal.
-    ///
-    /// FIXME: Refer to the rustc-dev-guide entry once it exists.
-    #[instrument(level = "debug", skip(self, actual_input), ret)]
-    fn try_finalize_goal(
-        &mut self,
-        actual_input: CanonicalInput<'tcx>,
-        response: QueryResult<'tcx>,
-    ) -> Result<StackEntry<'tcx>, ()> {
-        let stack_entry = self.pop_stack();
-        assert_eq!(stack_entry.input, actual_input);
-
-        let cache = &mut self.provisional_cache;
-        let provisional_entry_index = *cache.lookup_table.get(&stack_entry.input).unwrap();
-        let provisional_entry = &mut cache.entries[provisional_entry_index];
-        // We eagerly update the response in the cache here. If we have to reevaluate
-        // this goal we use the new response when hitting a cycle, and we definitely
-        // want to access the final response whenever we look at the cache.
-        let prev_response = mem::replace(&mut provisional_entry.response, response);
-
-        // Was the current goal the root of a cycle and was the provisional response
-        // different from the final one.
-        if stack_entry.has_been_used && prev_response != response {
-            // If so, remove all entries whose result depends on this goal
-            // from the provisional cache...
-            //
-            // That's not completely correct, as a nested goal can also
-            // depend on a goal which is lower in the stack so it doesn't
-            // actually depend on the current goal. This should be fairly
-            // rare and is hopefully not relevant for performance.
-            #[allow(rustc::potential_query_instability)]
-            cache.lookup_table.retain(|_key, index| *index <= provisional_entry_index);
-            cache.entries.truncate(provisional_entry_index.index() + 1);
-
-            // ...and finally push our goal back on the stack and reevaluate it.
-            self.stack.push(StackEntry { has_been_used: false, ..stack_entry });
-            Err(())
-        } else {
-            Ok(stack_entry)
-        }
-    }
-
-    pub(super) fn with_new_goal(
-        &mut self,
-        tcx: TyCtxt<'tcx>,
-        input: CanonicalInput<'tcx>,
-        inspect: &mut ProofTreeBuilder<'tcx>,
-        mut loop_body: impl FnMut(&mut Self, &mut ProofTreeBuilder<'tcx>) -> QueryResult<'tcx>,
-    ) -> QueryResult<'tcx> {
-        let Some(available_depth) = Self::allowed_depth_for_nested(tcx, &self.stack) else {
-            if let Some(last) = self.stack.raw.last_mut() {
-                last.encountered_overflow = true;
-            }
-            return Self::response_no_constraints(tcx, input, Certainty::OVERFLOW);
-        };
-
-        if inspect.use_global_cache() {
-            if let Some(CacheData { result, reached_depth, encountered_overflow }) =
-                self.global_cache(tcx).get(
-                    tcx,
-                    input,
-                    |cycle_participants| {
-                        self.stack.iter().any(|entry| cycle_participants.contains(&entry.input))
-                    },
-                    available_depth,
-                )
-            {
-                self.on_cache_hit(reached_depth, encountered_overflow);
-                return result;
-            }
-        }
-
-        match self.try_push_stack(tcx, input, available_depth, inspect) {
-            Ok(()) => {}
-            // Our goal is already on the stack, eager return.
-            Err(response) => return response,
-        }
 
         // This is for global caching, so we properly track query dependencies.
-        // Everything that affects the `Result` should be performed within this
+        // Everything that affects the `result` should be performed within this
         // `with_anon_task` closure.
         let ((final_entry, result), dep_node) =
             tcx.dep_graph.with_anon_task(tcx, DepKind::TraitSelect, || {
-                // We run our goal in a loop to handle coinductive cycles. If we fail to reach a
-                // fipoint we return overflow.
+                // When we encounter a coinductive cycle, we have to fetch the
+                // result of that cycle while we are still computing it. Because
+                // of this we continuously recompute the cycle until the result
+                // of the previous iteration is equal to the final result, at which
+                // point we are done.
                 for _ in 0..self.local_overflow_limit() {
-                    let result = loop_body(self, inspect);
-                    if let Ok(final_entry) = self.try_finalize_goal(input, result) {
-                        return (final_entry, result);
+                    let response = prove_goal(self, inspect);
+
+                    // Check whether the current goal is the root of a cycle and whether
+                    // we have to rerun because its provisional result differed from the
+                    // final result.
+                    //
+                    // Also update the response for this goal stored in the provisional
+                    // cache.
+                    let stack_entry = self.pop_stack();
+                    debug_assert_eq!(stack_entry.input, input);
+                    let cache = &mut self.provisional_cache;
+                    let provisional_entry_index =
+                        *cache.lookup_table.get(&stack_entry.input).unwrap();
+                    let provisional_entry = &mut cache.entries[provisional_entry_index];
+                    let prev_response = mem::replace(&mut provisional_entry.response, response);
+                    if stack_entry.has_been_used && prev_response != response {
+                        // If so, remove all entries whose result depends on this goal
+                        // from the provisional cache...
+                        //
+                        // That's not completely correct, as a nested goal can also
+                        // depend on a goal which is lower in the stack so it doesn't
+                        // actually depend on the current goal. This should be fairly
+                        // rare and is hopefully not relevant for performance.
+                        #[allow(rustc::potential_query_instability)]
+                        cache.lookup_table.retain(|_key, index| *index <= provisional_entry_index);
+                        cache.entries.truncate(provisional_entry_index.index() + 1);
+
+                        // ...and finally push our goal back on the stack and reevaluate it.
+                        self.stack.push(StackEntry { has_been_used: false, ..stack_entry });
+                    } else {
+                        return (stack_entry, response);
                     }
                 }
 
@@ -348,17 +314,16 @@ impl<'tcx> SearchGraph<'tcx> {
                 (current_entry, result)
             });
 
-        let cache = &mut self.provisional_cache;
-        let provisional_entry_index = *cache.lookup_table.get(&input).unwrap();
-        let provisional_entry = &mut cache.entries[provisional_entry_index];
-        let depth = provisional_entry.depth;
-
-        // We're now done with this goal. In case this goal is involved in a cycle
+        // We're now done with this goal. In case this goal is involved in a larger cycle
         // do not remove it from the provisional cache and do not add it to the global
         // cache.
         //
         // It is not possible for any nested goal to depend on something deeper on the
         // stack, as this would have also updated the depth of the current goal.
+        let cache = &mut self.provisional_cache;
+        let provisional_entry_index = *cache.lookup_table.get(&input).unwrap();
+        let provisional_entry = &mut cache.entries[provisional_entry_index];
+        let depth = provisional_entry.depth;
         if depth == self.stack.next_index() {
             for (i, entry) in cache.entries.drain_enumerated(provisional_entry_index.index()..) {
                 let actual_index = cache.lookup_table.remove(&entry.input);
