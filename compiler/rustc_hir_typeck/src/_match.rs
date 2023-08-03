@@ -136,9 +136,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 &cause,
                 Some(&arm.body),
                 arm_ty,
-                Some(&mut |err| {
-                    self.suggest_removing_semicolon_for_coerce(err, expr, arm_ty, prior_arm)
-                }),
+                |err| self.suggest_removing_semicolon_for_coerce(err, expr, arm_ty, prior_arm),
                 false,
             );
 
@@ -269,7 +267,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         coercion.coerce_forced_unit(
             self,
             &cause,
-            &mut |err| {
+            |err| {
                 if let Some((span, msg)) = &ret_reason {
                     err.span_label(*span, msg.clone());
                 } else if let ExprKind::Block(block, _) = &then_expr.kind

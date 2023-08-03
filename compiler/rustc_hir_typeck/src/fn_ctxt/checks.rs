@@ -1587,9 +1587,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     &cause,
                     Some(tail_expr),
                     tail_expr_ty,
-                    Some(&mut |diag: &mut Diagnostic| {
+                    |diag| {
                         self.suggest_block_to_brackets(diag, blk, tail_expr_ty, ty_for_diagnostic);
-                    }),
+                    },
                     false,
                 );
             } else {
@@ -1626,7 +1626,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     coerce.coerce_forced_unit(
                         self,
                         &self.misc(sp),
-                        &mut |err| {
+                        |err| {
                             if let Some(expected_ty) = expected.only_has_type(self) {
                                 if blk.stmts.is_empty() && blk.expr.is_none() {
                                     self.suggest_boxing_when_appropriate(

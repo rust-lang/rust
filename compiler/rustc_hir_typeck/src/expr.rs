@@ -652,7 +652,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     coerce.coerce_forced_unit(
                         self,
                         &cause,
-                        &mut |mut err| {
+                        |mut err| {
                             self.suggest_mismatched_types_on_tail(
                                 &mut err, expr, ty, e_ty, target_id,
                             );
@@ -748,7 +748,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 coercion.coerce_forced_unit(
                     self,
                     &cause,
-                    &mut |db| {
+                    |db| {
                         let span = fn_decl.output.span();
                         if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
                             db.span_label(
@@ -760,7 +760,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     true,
                 );
             } else {
-                coercion.coerce_forced_unit(self, &cause, &mut |_| (), true);
+                coercion.coerce_forced_unit(self, &cause, |_| (), true);
             }
         }
         self.tcx.types.never
