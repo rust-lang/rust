@@ -735,7 +735,7 @@ fn projection_stack<'a, 'hir>(mut e: &'a Expr<'hir>) -> (Vec<&'a Expr<'hir>>, &'
     let mut result = vec![];
     let root = loop {
         match e.kind {
-            ExprKind::Index(ep, _) | ExprKind::Field(ep, _) => {
+            ExprKind::Index(ep, _, _) | ExprKind::Field(ep, _) => {
                 result.push(e);
                 e = ep;
             },
@@ -782,7 +782,7 @@ pub fn can_mut_borrow_both(cx: &LateContext<'_>, e1: &Expr<'_>, e2: &Expr<'_>) -
                     return true;
                 }
             },
-            (ExprKind::Index(_, i1), ExprKind::Index(_, i2)) => {
+            (ExprKind::Index(_, i1, _), ExprKind::Index(_, i2, _)) => {
                 if !eq_expr_value(cx, i1, i2) {
                     return false;
                 }

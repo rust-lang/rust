@@ -163,7 +163,7 @@ fn expr_search_pat(tcx: TyCtxt<'_>, e: &Expr<'_>) -> (Pat, Pat) {
         ) => (Pat::Str("unsafe"), Pat::Str("}")),
         ExprKind::Block(_, None) => (Pat::Str("{"), Pat::Str("}")),
         ExprKind::Field(e, name) => (expr_search_pat(tcx, e).0, Pat::Sym(name.name)),
-        ExprKind::Index(e, _) => (expr_search_pat(tcx, e).0, Pat::Str("]")),
+        ExprKind::Index(e, _, _) => (expr_search_pat(tcx, e).0, Pat::Str("]")),
         ExprKind::Path(ref path) => qpath_search_pat(path),
         ExprKind::AddrOf(_, _, e) => (Pat::Str("&"), expr_search_pat(tcx, e).1),
         ExprKind::Break(Destination { label: None, .. }, None) => (Pat::Str("break"), Pat::Str("break")),

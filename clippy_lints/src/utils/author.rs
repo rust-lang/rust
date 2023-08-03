@@ -526,7 +526,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 self.ident(field_name);
                 self.expr(object);
             },
-            ExprKind::Index(object, index) => {
+            ExprKind::Index(object, index, _) => {
                 bind!(self, object, index);
                 kind!("Index({object}, {index})");
                 self.expr(object);

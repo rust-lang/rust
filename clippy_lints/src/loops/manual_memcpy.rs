@@ -60,8 +60,8 @@ pub(super) fn check<'tcx>(
                     o.and_then(|(lhs, rhs)| {
                         let rhs = fetch_cloned_expr(rhs);
                         if_chain! {
-                            if let ExprKind::Index(base_left, idx_left) = lhs.kind;
-                            if let ExprKind::Index(base_right, idx_right) = rhs.kind;
+                            if let ExprKind::Index(base_left, idx_left, _) = lhs.kind;
+                            if let ExprKind::Index(base_right, idx_right, _) = rhs.kind;
                             if let Some(ty) = get_slice_like_element_ty(cx, cx.typeck_results().expr_ty(base_left));
                             if get_slice_like_element_ty(cx, cx.typeck_results().expr_ty(base_right)).is_some();
                             if let Some((start_left, offset_left)) = get_details_from_idx(cx, idx_left, &starts);

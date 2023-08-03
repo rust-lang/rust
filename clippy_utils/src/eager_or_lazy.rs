@@ -185,7 +185,7 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                         .type_dependent_def_id(e.hir_id)
                         .map_or(Lazy, |id| fn_eagerness(self.cx, id, name.ident.name, true));
                 },
-                ExprKind::Index(_, e) => {
+                ExprKind::Index(_, e, _) => {
                     let ty = self.cx.typeck_results().expr_ty_adjusted(e);
                     if is_copy(self.cx, ty) && !ty.is_ref() {
                         self.eagerness |= NoChange;
