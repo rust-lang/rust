@@ -101,7 +101,7 @@ impl<'tcx> TraitAliasExpander<'tcx> {
     fn expand(&mut self, item: &TraitAliasExpansionInfo<'tcx>) -> bool {
         let tcx = self.tcx;
         let trait_ref = item.trait_ref();
-        let pred = trait_ref.without_const().to_predicate(tcx);
+        let pred = trait_ref.to_predicate(tcx);
 
         debug!("expand_trait_aliases: trait_ref={:?}", trait_ref);
 
@@ -113,9 +113,13 @@ impl<'tcx> TraitAliasExpander<'tcx> {
 
         // Don't recurse if this trait alias is already on the stack for the DFS search.
         let anon_pred = anonymize_predicate(tcx, pred);
-        if item.path.iter().rev().skip(1).any(|&(tr, _)| {
-            anonymize_predicate(tcx, tr.without_const().to_predicate(tcx)) == anon_pred
-        }) {
+        if item
+            .path
+            .iter()
+            .rev()
+            .skip(1)
+            .any(|&(tr, _)| anonymize_predicate(tcx, tr.to_predicate(tcx)) == anon_pred)
+        {
             return false;
         }
 

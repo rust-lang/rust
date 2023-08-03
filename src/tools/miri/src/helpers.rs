@@ -715,9 +715,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     }
 
     /// Dereference a pointer operand to a place using `layout` instead of the pointer's declared type
-    fn deref_operand_as(
+    fn deref_pointer_as(
         &self,
-        op: &OpTy<'tcx, Provenance>,
+        op: &impl Readable<'tcx, Provenance>,
         layout: TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, Provenance>> {
         let this = self.eval_context_ref();
@@ -746,15 +746,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     }
 
     /// Calculates the MPlaceTy given the offset and layout of an access on an operand
-    fn deref_operand_and_offset(
+    fn deref_pointer_and_offset(
         &self,
-        op: &OpTy<'tcx, Provenance>,
+        op: &impl Readable<'tcx, Provenance>,
         offset: u64,
         base_layout: TyAndLayout<'tcx>,
         value_layout: TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, Provenance>> {
         let this = self.eval_context_ref();
-        let op_place = this.deref_operand_as(op, base_layout)?;
+        let op_place = this.deref_pointer_as(op, base_layout)?;
         let offset = Size::from_bytes(offset);
 
         // Ensure that the access is within bounds.
@@ -763,28 +763,28 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         Ok(value_place)
     }
 
-    fn read_scalar_at_offset(
+    fn deref_pointer_and_read(
         &self,
-        op: &OpTy<'tcx, Provenance>,
+        op: &impl Readable<'tcx, Provenance>,
         offset: u64,
         base_layout: TyAndLayout<'tcx>,
         value_layout: TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_ref();
-        let value_place = this.deref_operand_and_offset(op, offset, base_layout, value_layout)?;
+        let value_place = this.deref_pointer_and_offset(op, offset, base_layout, value_layout)?;
         this.read_scalar(&value_place)
     }
 
-    fn write_scalar_at_offset(
+    fn deref_pointer_and_write(
         &mut self,
-        op: &OpTy<'tcx, Provenance>,
+        op: &impl Readable<'tcx, Provenance>,
         offset: u64,
         value: impl Into<Scalar<Provenance>>,
         base_layout: TyAndLayout<'tcx>,
         value_layout: TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, ()> {
         let this = self.eval_context_mut();
-        let value_place = this.deref_operand_and_offset(op, offset, base_layout, value_layout)?;
+        let value_place = this.deref_pointer_and_offset(op, offset, base_layout, value_layout)?;
         this.write_scalar(value, &value_place)
     }
 

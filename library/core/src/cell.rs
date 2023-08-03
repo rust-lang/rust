@@ -1893,7 +1893,8 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 /// on an _exclusive_ `UnsafeCell<T>`. Even though `T` and `UnsafeCell<T>` have the
 /// same memory layout, the following is not allowed and undefined behavior:
 ///
-/// ```rust,no_run
+#[cfg_attr(bootstrap, doc = "```rust,no_run")]
+#[cfg_attr(not(bootstrap), doc = "```rust,compile_fail")]
 /// # use std::cell::UnsafeCell;
 /// unsafe fn not_allowed<T>(ptr: &UnsafeCell<T>) -> &mut T {
 ///   let t = ptr as *const UnsafeCell<T> as *mut T;

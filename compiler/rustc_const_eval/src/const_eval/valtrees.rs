@@ -102,7 +102,7 @@ pub(crate) fn const_to_valtree_inner<'tcx>(
         ty::FnPtr(_) | ty::RawPtr(_) => Err(ValTreeCreationError::NonSupportedType),
 
         ty::Ref(_, _, _)  => {
-            let Ok(derefd_place)= ecx.deref_operand(place) else {
+            let Ok(derefd_place)= ecx.deref_pointer(place) else {
                 return Err(ValTreeCreationError::Other);
             };
             debug!(?derefd_place);

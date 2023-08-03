@@ -534,7 +534,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     let dest = this.project_index(&dest, i)?;
 
                     let val = if simd_element_to_bool(mask)? {
-                        let place = this.deref_operand(&ptr)?;
+                        let place = this.deref_pointer(&ptr)?;
                         this.read_immediate(&place)?
                     } else {
                         passthru
@@ -557,7 +557,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     let mask = this.read_immediate(&this.project_index(&mask, i)?)?;
 
                     if simd_element_to_bool(mask)? {
-                        let place = this.deref_operand(&ptr)?;
+                        let place = this.deref_pointer(&ptr)?;
                         this.write_immediate(*value, &place)?;
                     }
                 }

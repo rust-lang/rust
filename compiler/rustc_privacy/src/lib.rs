@@ -147,7 +147,7 @@ where
 
     fn visit_clause(&mut self, clause: ty::Clause<'tcx>) -> ControlFlow<V::BreakTy> {
         match clause.kind().skip_binder() {
-            ty::ClauseKind::Trait(ty::TraitPredicate { trait_ref, constness: _, polarity: _ }) => {
+            ty::ClauseKind::Trait(ty::TraitPredicate { trait_ref, polarity: _ }) => {
                 self.visit_trait(trait_ref)
             }
             ty::ClauseKind::Projection(ty::ProjectionPredicate { projection_ty, term }) => {

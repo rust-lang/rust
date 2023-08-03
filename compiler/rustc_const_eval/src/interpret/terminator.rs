@@ -661,7 +661,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let receiver_place = loop {
                     match receiver.layout.ty.kind() {
                         ty::Ref(..) | ty::RawPtr(..) => {
-                            // We do *not* use `deref_operand` here: we don't want to conceptually
+                            // We do *not* use `deref_pointer` here: we don't want to conceptually
                             // create a place that must be dereferenceable, since the receiver might
                             // be a raw pointer and (for `*const dyn Trait`) we don't need to
                             // actually access memory to resolve this method.

@@ -7,7 +7,7 @@ fn main() {
         &*b as *const i32
     };
     unsafe {
-        let _ = *p; //~ ERROR: dereferenced after this allocation got freed
+        let _ = *p; //~ ERROR: has been freed
     }
     panic!("this should never print");
 }

@@ -18,7 +18,7 @@ use rustc_middle::ty::{
     layout::{HasParamEnv, LayoutOf},
     Ty,
 };
-use rustc_target::abi::{Abi, Size};
+use rustc_target::abi::{Abi, Align, Size};
 
 use crate::borrow_tracker::{
     stacked_borrows::diagnostics::{AllocHistory, DiagnosticCx, DiagnosticCxBuilder},
@@ -619,6 +619,8 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
         retag_info: RetagInfo, // diagnostics info about this retag
     ) -> InterpResult<'tcx, Option<AllocId>> {
         let this = self.eval_context_mut();
+        // Ensure we bail out if the pointer goes out-of-bounds (see miri#1050).
+        this.check_ptr_access_align(place.ptr, size, Align::ONE, CheckInAllocMsg::InboundsTest)?;
 
         // It is crucial that this gets called on all code paths, to ensure we track tag creation.
         let log_creation = |this: &MiriInterpCx<'mir, 'tcx>,
@@ -706,18 +708,6 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
 
         let (alloc_id, base_offset, orig_tag) = this.ptr_get_alloc_id(place.ptr)?;
         log_creation(this, Some((alloc_id, base_offset, orig_tag)))?;
-
-        // Ensure we bail out if the pointer goes out-of-bounds (see miri#1050).
-        let (alloc_size, _) = this.get_live_alloc_size_and_align(alloc_id)?;
-        if base_offset + size > alloc_size {
-            throw_ub!(PointerOutOfBounds {
-                alloc_id,
-                alloc_size,
-                ptr_offset: this.target_usize_to_isize(base_offset.bytes()),
-                ptr_size: size,
-                msg: CheckInAllocMsg::InboundsTest
-            });
-        }
 
         trace!(
             "reborrow: reference {:?} derived from {:?} (pointee {}): {:?}, size {}",

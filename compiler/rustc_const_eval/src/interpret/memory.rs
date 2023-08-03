@@ -317,7 +317,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         kind = "static_mem"
                     )
                 }
-                None => err_ub!(PointerUseAfterFree(alloc_id)),
+                None => err_ub!(PointerUseAfterFree(alloc_id, CheckInAllocMsg::MemoryAccessTest)),
             }
             .into());
         };
@@ -380,7 +380,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             M::enforce_alignment(self),
             CheckInAllocMsg::MemoryAccessTest,
             |alloc_id, offset, prov| {
-                let (size, align) = self.get_live_alloc_size_and_align(alloc_id)?;
+                let (size, align) = self
+                    .get_live_alloc_size_and_align(alloc_id, CheckInAllocMsg::MemoryAccessTest)?;
                 Ok((size, align, (alloc_id, offset, prov)))
             },
         )
@@ -404,7 +405,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             CheckAlignment::Error,
             msg,
             |alloc_id, _, _| {
-                let (size, align) = self.get_live_alloc_size_and_align(alloc_id)?;
+                let (size, align) = self.get_live_alloc_size_and_align(alloc_id, msg)?;
                 Ok((size, align, ()))
             },
         )?;
@@ -414,7 +415,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Low-level helper function to check if a ptr is in-bounds and potentially return a reference
     /// to the allocation it points to. Supports both shared and mutable references, as the actual
     /// checking is offloaded to a helper closure. `align` defines whether and which alignment check
-    /// is done. Returns `None` for size 0, and otherwise `Some` of what `alloc_size` returned.
+    /// is done.
+    ///
+    /// If this returns `None`, the size is 0; it can however return `Some` even for size 0.
     fn check_and_deref_ptr<T>(
         &self,
         ptr: Pointer<Option<M::Provenance>>,
@@ -515,7 +518,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
             Some(GlobalAlloc::Function(..)) => throw_ub!(DerefFunctionPointer(id)),
             Some(GlobalAlloc::VTable(..)) => throw_ub!(DerefVTablePointer(id)),
-            None => throw_ub!(PointerUseAfterFree(id)),
+            None => throw_ub!(PointerUseAfterFree(id, CheckInAllocMsg::MemoryAccessTest)),
             Some(GlobalAlloc::Static(def_id)) => {
                 assert!(self.tcx.is_static(def_id));
                 assert!(!self.tcx.is_thread_local_static(def_id));
@@ -761,11 +764,15 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
     }
 
-    /// Obtain the size and alignment of a live allocation.
-    pub fn get_live_alloc_size_and_align(&self, id: AllocId) -> InterpResult<'tcx, (Size, Align)> {
+    /// Obtain the size and alignment of a *live* allocation.
+    fn get_live_alloc_size_and_align(
+        &self,
+        id: AllocId,
+        msg: CheckInAllocMsg,
+    ) -> InterpResult<'tcx, (Size, Align)> {
         let (size, align, kind) = self.get_alloc_info(id);
         if matches!(kind, AllocKind::Dead) {
-            throw_ub!(PointerUseAfterFree(id))
+            throw_ub!(PointerUseAfterFree(id, msg))
         }
         Ok((size, align))
     }

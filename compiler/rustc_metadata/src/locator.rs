@@ -1130,6 +1130,7 @@ impl CrateError {
                         is_nightly_build: sess.is_nightly_build(),
                         profiler_runtime: Symbol::intern(&sess.opts.unstable_opts.profiler_runtime),
                         locator_triple: locator.triple,
+                        is_ui_testing: sess.opts.unstable_opts.ui_testing,
                     });
                 }
             }
@@ -1146,6 +1147,7 @@ impl CrateError {
                     is_nightly_build: sess.is_nightly_build(),
                     profiler_runtime: Symbol::intern(&sess.opts.unstable_opts.profiler_runtime),
                     locator_triple: sess.opts.target_triple.clone(),
+                    is_ui_testing: sess.opts.unstable_opts.ui_testing,
                 });
             }
         }

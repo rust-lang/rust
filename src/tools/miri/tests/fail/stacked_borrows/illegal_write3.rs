@@ -1,3 +1,5 @@
+#![allow(invalid_reference_casting)]
+
 fn main() {
     let target = 42;
     // Make sure raw ptr with raw tag cannot mutate frozen location without breaking the shared ref.

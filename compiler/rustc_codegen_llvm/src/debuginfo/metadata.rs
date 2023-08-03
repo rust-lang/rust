@@ -990,14 +990,8 @@ fn build_upvar_field_di_nodes<'ll, 'tcx>(
     closure_or_generator_di_node: &'ll DIType,
 ) -> SmallVec<&'ll DIType> {
     let (&def_id, up_var_tys) = match closure_or_generator_ty.kind() {
-        ty::Generator(def_id, args, _) => {
-            let upvar_tys: SmallVec<_> = args.as_generator().prefix_tys().collect();
-            (def_id, upvar_tys)
-        }
-        ty::Closure(def_id, args) => {
-            let upvar_tys: SmallVec<_> = args.as_closure().upvar_tys().collect();
-            (def_id, upvar_tys)
-        }
+        ty::Generator(def_id, args, _) => (def_id, args.as_generator().prefix_tys()),
+        ty::Closure(def_id, args) => (def_id, args.as_closure().upvar_tys()),
         _ => {
             bug!(
                 "build_upvar_field_di_nodes() called with non-closure-or-generator-type: {:?}",
@@ -1007,9 +1001,7 @@ fn build_upvar_field_di_nodes<'ll, 'tcx>(
     };
 
     debug_assert!(
-        up_var_tys
-            .iter()
-            .all(|&t| t == cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), t))
+        up_var_tys.iter().all(|t| t == cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), t))
     );
 
     let capture_names = cx.tcx.closure_saved_names_of_captured_variables(def_id);

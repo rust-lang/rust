@@ -12,7 +12,6 @@
 //! The code in this file doesn't *do anything* with those results; it
 //! just returns them for other code to use.
 
-use either::Either;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Diagnostic;
 use rustc_hir as hir;
@@ -115,14 +114,12 @@ impl<'tcx> DefiningTy<'tcx> {
     /// not a closure or generator, there are no upvars, and hence it
     /// will be an empty list. The order of types in this list will
     /// match up with the upvar order in the HIR, typesystem, and MIR.
-    pub fn upvar_tys(self) -> impl Iterator<Item = Ty<'tcx>> + 'tcx {
+    pub fn upvar_tys(self) -> &'tcx ty::List<Ty<'tcx>> {
         match self {
-            DefiningTy::Closure(_, args) => Either::Left(args.as_closure().upvar_tys()),
-            DefiningTy::Generator(_, args, _) => {
-                Either::Right(Either::Left(args.as_generator().upvar_tys()))
-            }
+            DefiningTy::Closure(_, args) => args.as_closure().upvar_tys(),
+            DefiningTy::Generator(_, args, _) => args.as_generator().upvar_tys(),
             DefiningTy::FnDef(..) | DefiningTy::Const(..) | DefiningTy::InlineConst(..) => {
-                Either::Right(Either::Right(iter::empty()))
+                ty::List::empty()
             }
         }
     }

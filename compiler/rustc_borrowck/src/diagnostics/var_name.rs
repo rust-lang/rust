@@ -43,7 +43,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         fr: RegionVid,
     ) -> Option<usize> {
         let upvar_index =
-            self.universal_regions().defining_ty.upvar_tys().position(|upvar_ty| {
+            self.universal_regions().defining_ty.upvar_tys().iter().position(|upvar_ty| {
                 debug!("get_upvar_index_for_region: upvar_ty={upvar_ty:?}");
                 tcx.any_free_region_meets(&upvar_ty, |r| {
                     let r = r.as_var();
@@ -52,7 +52,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 })
             })?;
 
-        let upvar_ty = self.universal_regions().defining_ty.upvar_tys().nth(upvar_index);
+        let upvar_ty = self.universal_regions().defining_ty.upvar_tys().get(upvar_index);
 
         debug!(
             "get_upvar_index_for_region: found {fr:?} in upvar {upvar_index} which has type {upvar_ty:?}",

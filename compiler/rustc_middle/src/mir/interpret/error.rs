@@ -282,8 +282,8 @@ pub enum UndefinedBehaviorInfo<'a> {
     InvalidMeta(InvalidMetaKind),
     /// Reading a C string that does not end within its allocation.
     UnterminatedCString(Pointer),
-    /// Dereferencing a dangling pointer after it got freed.
-    PointerUseAfterFree(AllocId),
+    /// Using a pointer after it got freed.
+    PointerUseAfterFree(AllocId, CheckInAllocMsg),
     /// Used a pointer outside the bounds it is valid for.
     /// (If `ptr_size > 0`, determines the size of the memory range that was expected to be in-bounds.)
     PointerOutOfBounds {

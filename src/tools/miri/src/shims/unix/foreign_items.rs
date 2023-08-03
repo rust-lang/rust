@@ -191,7 +191,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             // Allocation
             "posix_memalign" => {
                 let [ret, align, size] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let ret = this.deref_operand(ret)?;
+                let ret = this.deref_pointer(ret)?;
                 let align = this.read_target_usize(align)?;
                 let size = this.read_target_usize(size)?;
                 // Align must be power of 2, and also at least ptr-sized (POSIX rules).
@@ -271,7 +271,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             // Thread-local storage
             "pthread_key_create" => {
                 let [key, dtor] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let key_place = this.deref_operand_as(key, this.libc_ty_layout("pthread_key_t"))?;
+                let key_place = this.deref_pointer_as(key, this.libc_ty_layout("pthread_key_t"))?;
                 let dtor = this.read_pointer(dtor)?;
 
                 // Extract the function type out of the signature (that seems easier than constructing it ourselves).
@@ -506,7 +506,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             "pthread_attr_getguardsize"
             if this.frame_in_std() => {
                 let [_attr, guard_size] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let guard_size = this.deref_operand(guard_size)?;
+                let guard_size = this.deref_pointer(guard_size)?;
                 let guard_size_layout = this.libc_ty_layout("size_t");
                 this.write_scalar(Scalar::from_uint(this.machine.page_size, guard_size_layout.size), &guard_size)?;
 
@@ -532,9 +532,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 // Hence we can mostly ignore the input `attr_place`.
                 let [attr_place, addr_place, size_place] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let _attr_place = this.deref_operand_as(attr_place, this.libc_ty_layout("pthread_attr_t"))?;
-                let addr_place = this.deref_operand(addr_place)?;
-                let size_place = this.deref_operand(size_place)?;
+                let _attr_place = this.deref_pointer_as(attr_place, this.libc_ty_layout("pthread_attr_t"))?;
+                let addr_place = this.deref_pointer(addr_place)?;
+                let size_place = this.deref_pointer(size_place)?;
 
                 this.write_scalar(
                     Scalar::from_uint(this.machine.stack_addr, this.pointer_size()),
@@ -575,10 +575,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 this.check_no_isolation("`getpwuid_r`")?;
 
                 let uid = this.read_scalar(uid)?.to_u32()?;
-                let pwd = this.deref_operand_as(pwd, this.libc_ty_layout("passwd"))?;
+                let pwd = this.deref_pointer_as(pwd, this.libc_ty_layout("passwd"))?;
                 let buf = this.read_pointer(buf)?;
                 let buflen = this.read_target_usize(buflen)?;
-                let result = this.deref_operand(result)?;
+                let result = this.deref_pointer(result)?;
 
                 // Must be for "us".
                 if uid != crate::shims::unix::UID {

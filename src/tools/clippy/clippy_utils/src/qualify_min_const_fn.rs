@@ -16,7 +16,7 @@ use rustc_middle::mir::{
 };
 use rustc_middle::traits::{ImplSource, ObligationCause, BuiltinImplSource};
 use rustc_middle::ty::adjustment::PointerCoercion;
-use rustc_middle::ty::{self, BoundConstness, GenericArgKind, TraitRef, Ty, TyCtxt};
+use rustc_middle::ty::{self, GenericArgKind, TraitRef, Ty, TyCtxt};
 use rustc_semver::RustcVersion;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
@@ -399,11 +399,12 @@ fn is_ty_const_destruct<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, body: &Body<'tcx>
             return true;
         }
 
+        // FIXME(effects) constness
         let obligation = Obligation::new(
             tcx,
             ObligationCause::dummy_with_span(body.span),
             ConstCx::new(tcx, body).param_env,
-            TraitRef::from_lang_item(tcx, LangItem::Destruct, body.span, [ty]).with_constness(BoundConstness::ConstIfConst),
+            TraitRef::from_lang_item(tcx, LangItem::Destruct, body.span, [ty]),
         );
 
         let infcx = tcx.infer_ctxt().build();
