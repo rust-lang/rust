@@ -814,6 +814,13 @@ impl<'tcx> DeadVisitor<'tcx> {
             }
         };
 
+        for id in &dead_codes[1..] {
+            let hir = self.tcx.hir().local_def_id_to_hir_id(*id);
+            let lint_level = self.tcx.lint_level_at_node(lint::builtin::DEAD_CODE, hir).0;
+            if let Some(expectation_id) = lint_level.get_expectation_id() {
+                self.tcx.sess.diagnostic().insert_fulfilled_expectation(expectation_id);
+            }
+        }
         self.tcx.emit_spanned_lint(
             lint,
             tcx.hir().local_def_id_to_hir_id(first_id),

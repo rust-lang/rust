@@ -1263,6 +1263,10 @@ impl Handler {
         std::mem::take(&mut self.inner.borrow_mut().fulfilled_expectations)
     }
 
+    pub fn insert_fulfilled_expectation(&self, expectation_id: LintExpectationId) {
+        self.inner.borrow_mut().fulfilled_expectations.insert(expectation_id);
+    }
+
     pub fn flush_delayed(&self) {
         let mut inner = self.inner.lock();
         let bugs = std::mem::replace(&mut inner.delayed_span_bugs, Vec::new());
