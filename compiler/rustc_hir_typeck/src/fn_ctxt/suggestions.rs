@@ -994,14 +994,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
             let ty = self.normalize(expr.span, ty);
             if self.can_coerce(found, ty) {
-                err.multipart_suggestion(
-                    "you might have meant to return this value",
-                    vec![
-                        (expr.span.shrink_to_lo(), "return ".to_string()),
-                        (expr.span.shrink_to_hi(), ";".to_string()),
-                    ],
-                    Applicability::MaybeIncorrect,
-                );
+                if let Some(node) = self.tcx.hir().find(fn_id)
+                    && let Some(owner_node) = node.as_owner()
+                    && let Some(span) = expr.span.find_ancestor_inside(owner_node.span())
+                {
+                    err.multipart_suggestion(
+                        "you might have meant to return this value",
+                        vec![
+                            (span.shrink_to_lo(), "return ".to_string()),
+                            (span.shrink_to_hi(), ";".to_string()),
+                        ],
+                        Applicability::MaybeIncorrect,
+                    );
+                }
             }
         }
     }
@@ -1185,10 +1190,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ),
             ))
         {
+            let mut span = expr.span;
+            while expr.span.eq_ctxt(span) && let Some(parent_callsite) = span.parent_callsite()
+            {
+                span = parent_callsite;
+            }
+
             let sugg = if expr.precedence().order() >= PREC_POSTFIX {
-                vec![(expr.span.shrink_to_hi(), ".into()".to_owned())]
+                vec![(span.shrink_to_hi(), ".into()".to_owned())]
             } else {
-                vec![(expr.span.shrink_to_lo(), "(".to_owned()), (expr.span.shrink_to_hi(), ").into()".to_owned())]
+                vec![(span.shrink_to_lo(), "(".to_owned()), (span.shrink_to_hi(), ").into()".to_owned())]
             };
             diag.multipart_suggestion(
                 format!("call `Into::into` on this expression to convert `{expr_ty}` into `{expected_ty}`"),
