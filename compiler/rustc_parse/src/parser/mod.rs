@@ -1491,7 +1491,7 @@ pub enum FlatToken {
 }
 
 #[derive(Debug)]
-pub enum NtOrTt {
+pub enum ParseNtResult {
     Nt(Nonterminal),
     Tt(TokenTree),
 }

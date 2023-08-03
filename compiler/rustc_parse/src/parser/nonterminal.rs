@@ -8,7 +8,7 @@ use rustc_span::symbol::{kw, Ident};
 
 use crate::errors::UnexpectedNonterminal;
 use crate::parser::pat::{CommaRecoveryMode, RecoverColon, RecoverComma};
-use crate::parser::{FollowedByType, ForceCollect, NtOrTt, Parser, PathStyle};
+use crate::parser::{FollowedByType, ForceCollect, ParseNtResult, Parser, PathStyle};
 
 impl<'a> Parser<'a> {
     /// Checks whether a non-terminal may begin with a particular token.
@@ -103,14 +103,14 @@ impl<'a> Parser<'a> {
     /// Parse a non-terminal (e.g. MBE `:pat` or `:ident`). Inlined because there is only one call
     /// site.
     #[inline]
-    pub fn parse_nonterminal(&mut self, kind: NonterminalKind) -> PResult<'a, NtOrTt> {
+    pub fn parse_nonterminal(&mut self, kind: NonterminalKind) -> PResult<'a, ParseNtResult> {
         // A `macro_rules!` invocation may pass a captured item/expr to a proc-macro,
         // which requires having captured tokens available. Since we cannot determine
         // in advance whether or not a proc-macro will be (transitively) invoked,
         // we always capture tokens for any `Nonterminal` which needs them.
         let mut nt = match kind {
             // Note that TT is treated differently to all the others.
-            NonterminalKind::TT => return Ok(NtOrTt::Tt(self.parse_token_tree())),
+            NonterminalKind::TT => return Ok(ParseNtResult::Tt(self.parse_token_tree())),
             NonterminalKind::Item => match self.parse_item(ForceCollect::Yes)? {
                 Some(item) => NtItem(item),
                 None => {
@@ -197,7 +197,7 @@ impl<'a> Parser<'a> {
             );
         }
 
-        Ok(NtOrTt::Nt(nt))
+        Ok(ParseNtResult::Nt(nt))
     }
 }
 
