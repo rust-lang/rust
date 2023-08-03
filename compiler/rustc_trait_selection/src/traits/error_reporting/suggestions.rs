@@ -2854,7 +2854,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         err.note("all local variables must have a statically known size");
                     }
                     Some(Node::Local(hir::Local {
-                        init: Some(hir::Expr { kind: hir::ExprKind::Index(_, _), span, .. }),
+                        init: Some(hir::Expr { kind: hir::ExprKind::Index(..), span, .. }),
                         ..
                     })) => {
                         // When encountering an assignment of an unsized trait, like

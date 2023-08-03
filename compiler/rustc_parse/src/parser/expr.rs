@@ -857,7 +857,7 @@ impl<'a> Parser<'a> {
             let msg = format!(
                 "cast cannot be followed by {}",
                 match with_postfix.kind {
-                    ExprKind::Index(_, _) => "indexing",
+                    ExprKind::Index(..) => "indexing",
                     ExprKind::Try(_) => "`?`",
                     ExprKind::Field(_, _) => "a field access",
                     ExprKind::MethodCall(_) => "a method call",
@@ -1304,7 +1304,10 @@ impl<'a> Parser<'a> {
         let index = self.parse_expr()?;
         self.suggest_missing_semicolon_before_array(prev_span, open_delim_span)?;
         self.expect(&token::CloseDelim(Delimiter::Bracket))?;
-        Ok(self.mk_expr(lo.to(self.prev_token.span), self.mk_index(base, index)))
+        Ok(self.mk_expr(
+            lo.to(self.prev_token.span),
+            self.mk_index(base, index, open_delim_span.to(self.prev_token.span)),
+        ))
     }
 
     /// Assuming we have just parsed `.`, continue parsing into an expression.
@@ -3366,8 +3369,8 @@ impl<'a> Parser<'a> {
         ExprKind::Binary(binop, lhs, rhs)
     }
 
-    fn mk_index(&self, expr: P<Expr>, idx: P<Expr>) -> ExprKind {
-        ExprKind::Index(expr, idx)
+    fn mk_index(&self, expr: P<Expr>, idx: P<Expr>, brackets_span: Span) -> ExprKind {
+        ExprKind::Index(expr, idx, brackets_span)
     }
 
     fn mk_call(&self, f: P<Expr>, args: ThinVec<P<Expr>>) -> ExprKind {

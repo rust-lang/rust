@@ -336,7 +336,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                 ))
             }
 
-            hir::ExprKind::Index(ref base, _) => {
+            hir::ExprKind::Index(ref base, _, _) => {
                 if self.typeck_results.is_method_call(expr) {
                     // If this is an index implemented by a method call, then it
                     // will include an implicit deref of the result.

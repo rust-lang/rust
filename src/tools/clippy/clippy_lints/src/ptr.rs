@@ -695,7 +695,7 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'_>, args:
                         }
                     },
                     // Indexing is fine for currently supported types.
-                    ExprKind::Index(e, _) if e.hir_id == child_id => (),
+                    ExprKind::Index(e, _, _) if e.hir_id == child_id => (),
                     _ => set_skip_flag(),
                 },
                 _ => set_skip_flag(),

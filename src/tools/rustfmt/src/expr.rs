@@ -256,7 +256,7 @@ pub(crate) fn format_expr(
             shape,
             SeparatorPlace::Back,
         ),
-        ast::ExprKind::Index(ref expr, ref index) => {
+        ast::ExprKind::Index(ref expr, ref index, _) => {
             rewrite_index(&**expr, &**index, context, shape)
         }
         ast::ExprKind::Repeat(ref expr, ref repeats) => rewrite_pair(
@@ -1342,7 +1342,7 @@ pub(crate) fn is_simple_expr(expr: &ast::Expr) -> bool {
         | ast::ExprKind::Field(ref expr, _)
         | ast::ExprKind::Try(ref expr)
         | ast::ExprKind::Unary(_, ref expr) => is_simple_expr(expr),
-        ast::ExprKind::Index(ref lhs, ref rhs) => is_simple_expr(lhs) && is_simple_expr(rhs),
+        ast::ExprKind::Index(ref lhs, ref rhs, _) => is_simple_expr(lhs) && is_simple_expr(rhs),
         ast::ExprKind::Repeat(ref lhs, ref rhs) => {
             is_simple_expr(lhs) && is_simple_expr(&*rhs.value)
         }
