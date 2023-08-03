@@ -137,7 +137,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
     let name_str = intrinsic_name.as_str();
 
     let bound_vars = tcx.mk_bound_variable_kinds(&[
-        ty::BoundVariableKind::Region(ty::BrAnon(None)),
+        ty::BoundVariableKind::Region(ty::BrAnon),
         ty::BoundVariableKind::Region(ty::BrEnv),
     ]);
     let mk_va_list_ty = |mutbl| {
@@ -145,7 +145,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
             let region = ty::Region::new_late_bound(
                 tcx,
                 ty::INNERMOST,
-                ty::BoundRegion { var: ty::BoundVar::from_u32(0), kind: ty::BrAnon(None) },
+                ty::BoundRegion { var: ty::BoundVar::from_u32(0), kind: ty::BrAnon },
             );
             let env_region = ty::Region::new_late_bound(
                 tcx,
@@ -405,7 +405,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
                 );
                 let discriminant_def_id = assoc_items[0];
 
-                let br = ty::BoundRegion { var: ty::BoundVar::from_u32(0), kind: ty::BrAnon(None) };
+                let br = ty::BoundRegion { var: ty::BoundVar::from_u32(0), kind: ty::BrAnon };
                 (
                     1,
                     vec![Ty::new_imm_ref(
@@ -463,7 +463,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
             }
 
             sym::raw_eq => {
-                let br = ty::BoundRegion { var: ty::BoundVar::from_u32(0), kind: ty::BrAnon(None) };
+                let br = ty::BoundRegion { var: ty::BoundVar::from_u32(0), kind: ty::BrAnon };
                 let param_ty = Ty::new_imm_ref(
                     tcx,
                     ty::Region::new_late_bound(tcx, ty::INNERMOST, br),

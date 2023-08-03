@@ -3102,7 +3102,7 @@ fn bind_generator_hidden_types_above<'tcx>(
                         ty::ReErased => {
                             let br = ty::BoundRegion {
                                 var: ty::BoundVar::from_u32(counter),
-                                kind: ty::BrAnon(None),
+                                kind: ty::BrAnon,
                             };
                             counter += 1;
                             ty::Region::new_late_bound(tcx, current_depth, br)
@@ -3118,8 +3118,9 @@ fn bind_generator_hidden_types_above<'tcx>(
     if considering_regions {
         debug_assert!(!hidden_types.has_erased_regions());
     }
-    let bound_vars = tcx.mk_bound_variable_kinds_from_iter(bound_vars.iter().chain(
-        (num_bound_variables..counter).map(|_| ty::BoundVariableKind::Region(ty::BrAnon(None))),
-    ));
+    let bound_vars =
+        tcx.mk_bound_variable_kinds_from_iter(bound_vars.iter().chain(
+            (num_bound_variables..counter).map(|_| ty::BoundVariableKind::Region(ty::BrAnon)),
+        ));
     ty::Binder::bind_with_vars(hidden_types, bound_vars)
 }

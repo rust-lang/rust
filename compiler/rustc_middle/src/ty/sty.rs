@@ -69,7 +69,7 @@ pub struct FreeRegion {
 #[derive(HashStable)]
 pub enum BoundRegionKind {
     /// An anonymous region parameter for a given fn (&T)
-    BrAnon(Option<Span>),
+    BrAnon,
 
     /// Named region parameters for functions (a in &'a T)
     ///
@@ -1465,7 +1465,7 @@ impl<'tcx> Region<'tcx> {
         bound_region: ty::BoundRegion,
     ) -> Region<'tcx> {
         // Use a pre-interned one when possible.
-        if let ty::BoundRegion { var, kind: ty::BrAnon(None) } = bound_region
+        if let ty::BoundRegion { var, kind: ty::BrAnon } = bound_region
             && let Some(inner) = tcx.lifetimes.re_late_bounds.get(debruijn.as_usize())
             && let Some(re) = inner.get(var.as_usize()).copied()
         {
@@ -3010,7 +3010,7 @@ mod size_asserts {
     use super::*;
     use rustc_data_structures::static_assert_size;
     // tidy-alphabetical-start
-    static_assert_size!(RegionKind<'_>, 28);
+    static_assert_size!(RegionKind<'_>, 24);
     static_assert_size!(TyKind<'_>, 32);
     // tidy-alphabetical-end
 }
