@@ -84,9 +84,9 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
             return;
         }
 
-        let is_generator = tcx.type_of(def_id.to_def_id()).instantiate_identity().is_generator();
         // FIXME(welseywiser) const prop doesn't work on generators because of query cycles
         // computing their layout.
+        let is_generator = def_kind == DefKind::Generator;
         if is_generator {
             trace!("ConstProp skipped for generator {:?}", def_id);
             return;
