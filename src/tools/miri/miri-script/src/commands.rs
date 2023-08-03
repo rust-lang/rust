@@ -58,7 +58,7 @@ impl MiriEnv {
 impl Command {
     fn auto_actions() -> Result<()> {
         let miri_dir = miri_dir()?;
-        let auto_everything = path!(miri_dir / ".auto_everything").exists();
+        let auto_everything = path!(miri_dir / ".auto-everything").exists();
         let auto_toolchain = auto_everything || path!(miri_dir / ".auto-toolchain").exists();
         let auto_fmt = auto_everything || path!(miri_dir / ".auto-fmt").exists();
         let auto_clippy = auto_everything || path!(miri_dir / ".auto-clippy").exists();
@@ -78,6 +78,21 @@ impl Command {
     }
 
     pub fn exec(self) -> Result<()> {
+        match &self {
+            Command::Install { .. }
+            | Command::Build { .. }
+            | Command::Check { .. }
+            | Command::Test { .. }
+            | Command::Run { .. }
+            | Command::Fmt { .. }
+            | Command::Clippy { .. }
+            | Command::Cargo { .. } => Self::auto_actions()?,
+            | Command::ManySeeds { .. }
+            | Command::Toolchain { .. }
+            | Command::RustcPull { .. }
+            | Command::Bench { .. }
+            | Command::RustcPush { .. } => {}
+        }
         match self {
             Command::Install { flags } => Self::install(flags),
             Command::Build { flags } => Self::build(flags),
@@ -328,7 +343,6 @@ impl Command {
     }
 
     fn install(flags: Vec<OsString>) -> Result<()> {
-        Self::auto_actions()?;
         let e = MiriEnv::new()?;
         e.install_to_sysroot(e.miri_dir.clone(), &flags)?;
         e.install_to_sysroot(path!(e.miri_dir / "cargo-miri"), &flags)?;
@@ -336,7 +350,6 @@ impl Command {
     }
 
     fn build(flags: Vec<OsString>) -> Result<()> {
-        Self::auto_actions()?;
         let e = MiriEnv::new()?;
         e.build(path!(e.miri_dir / "Cargo.toml"), &flags, /* quiet */ false)?;
         e.build(path!(e.miri_dir / "cargo-miri" / "Cargo.toml"), &flags, /* quiet */ false)?;
@@ -344,7 +357,6 @@ impl Command {
     }
 
     fn check(flags: Vec<OsString>) -> Result<()> {
-        Self::auto_actions()?;
         let e = MiriEnv::new()?;
         e.check(path!(e.miri_dir / "Cargo.toml"), &flags)?;
         e.check(path!(e.miri_dir / "cargo-miri" / "Cargo.toml"), &flags)?;
@@ -352,7 +364,6 @@ impl Command {
     }
 
     fn clippy(flags: Vec<OsString>) -> Result<()> {
-        Self::auto_actions()?;
         let e = MiriEnv::new()?;
         e.clippy(path!(e.miri_dir / "Cargo.toml"), &flags)?;
         e.clippy(path!(e.miri_dir / "cargo-miri" / "Cargo.toml"), &flags)?;
@@ -361,7 +372,6 @@ impl Command {
     }
 
     fn cargo(flags: Vec<OsString>) -> Result<()> {
-        Self::auto_actions()?;
         let e = MiriEnv::new()?;
         let toolchain = &e.toolchain;
         // We carefully kept the working dir intact, so this will run cargo *on the workspace in the
@@ -371,7 +381,6 @@ impl Command {
     }
 
     fn test(bless: bool, flags: Vec<OsString>) -> Result<()> {
-        Self::auto_actions()?;
         let mut e = MiriEnv::new()?;
         // Prepare a sysroot.
         e.build_miri_sysroot(/* quiet */ false)?;
@@ -386,7 +395,6 @@ impl Command {
     }
 
     fn run(dep: bool, flags: Vec<OsString>) -> Result<()> {
-        Self::auto_actions()?;
         let mut e = MiriEnv::new()?;
         // Scan for "--target" to overwrite the "MIRI_TEST_TARGET" env var so
         // that we set the MIRI_SYSROOT up the right way.
@@ -424,7 +432,6 @@ impl Command {
     }
 
     fn fmt(flags: Vec<OsString>) -> Result<()> {
-        Self::auto_actions()?;
         let e = MiriEnv::new()?;
         let toolchain = &e.toolchain;
         let config_path = path!(e.miri_dir / "rustfmt.toml");
