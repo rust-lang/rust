@@ -1,6 +1,7 @@
 Version 1.71.1 (2023-08-03)
 ===========================
 
+- [Fix CVE-2023-38497: Cargo did not respect the umask when extracting dependencies](https://github.com/rust-lang/cargo/security/advisories/GHSA-j3xp-wfr4-hx87)
 - [Fix bash completion for users of Rustup](https://github.com/rust-lang/rust/pull/113579)
 - [Do not show `suspicious_double_ref_op` lint when calling `borrow()`](https://github.com/rust-lang/rust/pull/112517)
 - [Fix ICE: substitute types before checking inlining compatibility](https://github.com/rust-lang/rust/pull/113802)
