@@ -502,7 +502,6 @@ compiler-team = [
 ]
 compiler-team-contributors = [
     "@compiler-errors",
-    "@eholk",
     "@jackh726",
     "@TaKO8Ki",
     "@WaffleLapkin",
