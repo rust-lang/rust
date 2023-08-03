@@ -756,13 +756,13 @@ impl<'tcx> LateLintPass<'tcx> for MissingDebugImplementations {
             _ => return,
         }
 
-        let Some(debug) = cx.tcx.get_diagnostic_item(sym::Debug) else { return };
-
         // Avoid listing trait impls if the trait is allowed.
         let (level, _) = cx.tcx.lint_level_at_node(MISSING_DEBUG_IMPLEMENTATIONS, item.hir_id());
         if level == Level::Allow {
             return;
         }
+
+        let Some(debug) = cx.tcx.get_diagnostic_item(sym::Debug) else { return };
 
         let has_impl = cx
             .tcx
