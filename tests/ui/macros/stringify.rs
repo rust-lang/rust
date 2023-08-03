@@ -790,26 +790,26 @@ fn test_ty() {
     assert_eq!(stringify_ty!([T]), "[T]");
 
     // TyKind::Array
-    assert_eq!(stringify_ty!([T; 0]), "[T; 0]");
+    assert_eq!(stringify_ty!([T; 0]), "[T ; 0]");
 
     // TyKind::Ptr
-    assert_eq!(stringify_ty!(*const T), "*const T");
-    assert_eq!(stringify_ty!(*mut T), "*mut T");
+    assert_eq!(stringify_ty!(*const T), "* const T");
+    assert_eq!(stringify_ty!(*mut T), "* mut T");
 
     // TyKind::Ref
-    assert_eq!(stringify_ty!(&T), "&T");
-    assert_eq!(stringify_ty!(&mut T), "&mut T");
-    assert_eq!(stringify_ty!(&'a T), "&'a T");
-    assert_eq!(stringify_ty!(&'a mut T), "&'a mut T");
+    assert_eq!(stringify_ty!(&T), "& T");
+    assert_eq!(stringify_ty!(&mut T), "& mut T");
+    assert_eq!(stringify_ty!(&'a T), "& 'a T");
+    assert_eq!(stringify_ty!(&'a mut T), "& 'a mut T");
 
     // TyKind::BareFn
     assert_eq!(stringify_ty!(fn()), "fn()");
     assert_eq!(stringify_ty!(fn() -> ()), "fn() -> ()");
     assert_eq!(stringify_ty!(fn(u8)), "fn(u8)");
-    assert_eq!(stringify_ty!(fn(x: u8)), "fn(x: u8)");
+    assert_eq!(stringify_ty!(fn(x: u8)), "fn(x : u8)");
     #[rustfmt::skip]
-    assert_eq!(stringify_ty!(for<> fn()), "fn()");
-    assert_eq!(stringify_ty!(for<'a> fn()), "for<'a> fn()");
+    assert_eq!(stringify_ty!(for<> fn()), "for < > fn()");
+    assert_eq!(stringify_ty!(for<'a> fn()), "for < 'a > fn()");
 
     // TyKind::Never
     assert_eq!(stringify_ty!(!), "!");
@@ -821,28 +821,28 @@ fn test_ty() {
 
     // TyKind::Path
     assert_eq!(stringify_ty!(T), "T");
-    assert_eq!(stringify_ty!(Ref<'a>), "Ref<'a>");
-    assert_eq!(stringify_ty!(PhantomData<T>), "PhantomData<T>");
-    assert_eq!(stringify_ty!(PhantomData::<T>), "PhantomData<T>");
-    assert_eq!(stringify_ty!(Fn() -> !), "Fn() -> !");
-    assert_eq!(stringify_ty!(Fn(u8) -> !), "Fn(u8) -> !");
-    assert_eq!(stringify_ty!(<Struct as Trait>::Type), "<Struct as Trait>::Type");
+    assert_eq!(stringify_ty!(Ref<'a>), "Ref < 'a >");
+    assert_eq!(stringify_ty!(PhantomData<T>), "PhantomData < T >");
+    assert_eq!(stringify_ty!(PhantomData::<T>), "PhantomData :: < T >");
+    assert_eq!(stringify_ty!(Fn() -> !), "Fn() ->!");
+    assert_eq!(stringify_ty!(Fn(u8) -> !), "Fn(u8) ->!");
+    assert_eq!(stringify_ty!(<Struct as Trait>::Type), "< Struct as Trait > :: Type");
 
     // TyKind::TraitObject
     assert_eq!(stringify_ty!(dyn Send), "dyn Send");
     assert_eq!(stringify_ty!(dyn Send + 'a), "dyn Send + 'a");
     assert_eq!(stringify_ty!(dyn 'a + Send), "dyn 'a + Send");
-    assert_eq!(stringify_ty!(dyn ?Sized), "dyn ?Sized");
-    assert_eq!(stringify_ty!(dyn ~const Clone), "dyn ~const Clone");
-    assert_eq!(stringify_ty!(dyn for<'a> Send), "dyn for<'a> Send");
+    assert_eq!(stringify_ty!(dyn ?Sized), "dyn ? Sized");
+    assert_eq!(stringify_ty!(dyn ~const Clone), "dyn ~ const Clone");
+    assert_eq!(stringify_ty!(dyn for<'a> Send), "dyn for < 'a > Send");
 
     // TyKind::ImplTrait
     assert_eq!(stringify_ty!(impl Send), "impl Send");
     assert_eq!(stringify_ty!(impl Send + 'a), "impl Send + 'a");
     assert_eq!(stringify_ty!(impl 'a + Send), "impl 'a + Send");
-    assert_eq!(stringify_ty!(impl ?Sized), "impl ?Sized");
-    assert_eq!(stringify_ty!(impl ~const Clone), "impl ~const Clone");
-    assert_eq!(stringify_ty!(impl for<'a> Send), "impl for<'a> Send");
+    assert_eq!(stringify_ty!(impl ?Sized), "impl ? Sized");
+    assert_eq!(stringify_ty!(impl ~const Clone), "impl ~ const Clone");
+    assert_eq!(stringify_ty!(impl for<'a> Send), "impl for < 'a > Send");
 
     // TyKind::Paren
     assert_eq!(stringify_ty!((T)), "(T)");
@@ -851,8 +851,8 @@ fn test_ty() {
     assert_eq!(stringify_ty!(_), "_");
 
     // TyKind::MacCall
-    assert_eq!(stringify_ty!(mac!(...)), "mac!(...)");
-    assert_eq!(stringify_ty!(mac![...]), "mac![...]");
+    assert_eq!(stringify_ty!(mac!(...)), "mac! (...)");
+    assert_eq!(stringify_ty!(mac![...]), "mac! [...]");
     assert_eq!(stringify_ty!(mac! { ... }), "mac! { ... }");
 }
 

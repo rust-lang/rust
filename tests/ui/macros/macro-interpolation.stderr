@@ -1,4 +1,4 @@
-error: expected identifier, found `!`
+error: expected identifier, found invisible open delimiter
   --> $DIR/macro-interpolation.rs:21:19
    |
 LL |         <$type as $trait>::$name
