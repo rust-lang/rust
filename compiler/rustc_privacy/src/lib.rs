@@ -291,8 +291,7 @@ where
             | ty::Param(..)
             | ty::Bound(..)
             | ty::Error(_)
-            | ty::GeneratorWitness(..)
-            | ty::GeneratorWitnessMIR(..) => {}
+            | ty::GeneratorWitness(..) => {}
             ty::Placeholder(..) | ty::Infer(..) => {
                 bug!("unexpected type: {:?}", ty)
             }

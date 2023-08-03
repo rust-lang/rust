@@ -192,7 +192,6 @@ where
                     | ty::Tuple(_)
                     | ty::Bound(..)
                     | ty::GeneratorWitness(..)
-                    | ty::GeneratorWitnessMIR(..)
                     | ty::Never
                     | ty::Infer(_)
                     | ty::Error(_) => {

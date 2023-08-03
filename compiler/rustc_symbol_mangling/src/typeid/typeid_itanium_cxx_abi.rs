@@ -720,7 +720,6 @@ fn encode_ty<'tcx>(
         | ty::Bound(..)
         | ty::Error(..)
         | ty::GeneratorWitness(..)
-        | ty::GeneratorWitnessMIR(..)
         | ty::Infer(..)
         | ty::Placeholder(..) => {
             bug!("encode_ty: unexpected `{:?}`", ty.kind());
@@ -779,7 +778,6 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
         | ty::Str
         | ty::Never
         | ty::Foreign(..)
-        | ty::GeneratorWitnessMIR(..)
         | ty::GeneratorWitness(..) => {}
 
         ty::Bool => {

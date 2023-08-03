@@ -1384,7 +1384,6 @@ impl<'tcx> TyCtxt<'tcx> {
                     Placeholder,
                     Generator,
                     GeneratorWitness,
-                    GeneratorWitnessMIR,
                     Dynamic,
                     Closure,
                     Tuple,

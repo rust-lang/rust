@@ -2131,7 +2131,6 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             | ty::Ref(..)
             | ty::Generator(..)
             | ty::GeneratorWitness(..)
-            | ty::GeneratorWitnessMIR(..)
             | ty::Array(..)
             | ty::Closure(..)
             | ty::Never
@@ -2230,22 +2229,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 }
             }
 
-            ty::GeneratorWitness(binder) => {
-                let witness_tys = binder.skip_binder();
-                for witness_ty in witness_tys.iter() {
-                    let resolved = self.infcx.shallow_resolve(witness_ty);
-                    if resolved.is_ty_var() {
-                        return Ambiguous;
-                    }
-                }
-                // (*) binder moved here
-                let all_vars = self.tcx().mk_bound_variable_kinds_from_iter(
-                    obligation.predicate.bound_vars().iter().chain(binder.bound_vars().iter()),
-                );
-                Where(ty::Binder::bind_with_vars(witness_tys.to_vec(), all_vars))
-            }
-
-            ty::GeneratorWitnessMIR(def_id, ref args) => {
+            ty::GeneratorWitness(def_id, ref args) => {
                 let hidden_types = bind_generator_hidden_types_above(
                     self.infcx,
                     def_id,
@@ -2350,12 +2334,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 t.rebind([ty].into_iter().chain(iter::once(witness)).collect())
             }
 
-            ty::GeneratorWitness(types) => {
-                debug_assert!(!types.has_escaping_bound_vars());
-                types.map_bound(|types| types.to_vec())
-            }
-
-            ty::GeneratorWitnessMIR(def_id, ref args) => {
+            ty::GeneratorWitness(def_id, ref args) => {
                 bind_generator_hidden_types_above(self.infcx, def_id, args, t.bound_vars())
             }
 

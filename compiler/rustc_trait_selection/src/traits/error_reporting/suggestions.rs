@@ -2173,11 +2173,10 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     );
 
                     match *ty.kind() {
-                        ty::Generator(did, ..) | ty::GeneratorWitnessMIR(did, _) => {
+                        ty::Generator(did, ..) | ty::GeneratorWitness(did, _) => {
                             generator = generator.or(Some(did));
                             outer_generator = Some(did);
                         }
-                        ty::GeneratorWitness(..) => {}
                         ty::Tuple(_) if !seen_upvar_tys_infer_tuple => {
                             // By introducing a tuple of upvar types into the chain of obligations
                             // of a generator, the first non-generator item is now the tuple itself,
@@ -2203,11 +2202,10 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     );
 
                     match *ty.kind() {
-                        ty::Generator(did, ..) | ty::GeneratorWitnessMIR(did, ..) => {
+                        ty::Generator(did, ..) | ty::GeneratorWitness(did, ..) => {
                             generator = generator.or(Some(did));
                             outer_generator = Some(did);
                         }
-                        ty::GeneratorWitness(..) => {}
                         ty::Tuple(_) if !seen_upvar_tys_infer_tuple => {
                             // By introducing a tuple of upvar types into the chain of obligations
                             // of a generator, the first non-generator item is now the tuple itself,
@@ -2987,20 +2985,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 }
                                 err.span_note(self.tcx.def_span(def_id), msg)
                             }
-                            ty::GeneratorWitness(bound_tys) => {
-                                use std::fmt::Write;
-
-                                // FIXME: this is kind of an unusual format for rustc, can we make it more clear?
-                                // Maybe we should just remove this note altogether?
-                                // FIXME: only print types which don't meet the trait requirement
-                                let mut msg =
-                                    "required because it captures the following types: ".to_owned();
-                                for ty in bound_tys.skip_binder() {
-                                    with_forced_trimmed_paths!(write!(msg, "`{ty}`, ").unwrap());
-                                }
-                                err.note(msg.trim_end_matches(", ").to_string())
-                            }
-                            ty::GeneratorWitnessMIR(def_id, args) => {
+                            ty::GeneratorWitness(def_id, args) => {
                                 use std::fmt::Write;
 
                                 // FIXME: this is kind of an unusual format for rustc, can we make it more clear?

@@ -426,7 +426,6 @@ fn push_debuginfo_type_name<'tcx>(
         | ty::Placeholder(..)
         | ty::Alias(..)
         | ty::Bound(..)
-        | ty::GeneratorWitnessMIR(..)
         | ty::GeneratorWitness(..) => {
             bug!(
                 "debuginfo: Trying to create type name for \

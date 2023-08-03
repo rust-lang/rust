@@ -469,7 +469,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             // FIXME: These should ideally not exist as a self type. It would be nice for
             // the builtin auto trait impls of generators to instead directly recurse
             // into the witness.
-            ty::GeneratorWitness(_) | ty::GeneratorWitnessMIR(_, _) => (),
+            ty::GeneratorWitness(..) => (),
 
             // These variants should not exist as a self type.
             ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_))
@@ -621,8 +621,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             | ty::Dynamic(..)
             | ty::Closure(..)
             | ty::Generator(..)
-            | ty::GeneratorWitness(_)
-            | ty::GeneratorWitnessMIR(..)
+            | ty::GeneratorWitness(..)
             | ty::Never
             | ty::Tuple(_)
             | ty::Param(_)
@@ -778,8 +777,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             | ty::Alias(..)
             | ty::Closure(..)
             | ty::Generator(..)
-            | ty::GeneratorWitness(_)
-            | ty::GeneratorWitnessMIR(..)
+            | ty::GeneratorWitness(..)
             | ty::Never
             | ty::Tuple(_)
             | ty::Param(_)
