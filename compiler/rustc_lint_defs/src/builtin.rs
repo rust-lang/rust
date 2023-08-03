@@ -2847,6 +2847,45 @@ declare_lint! {
 }
 
 declare_lint! {
+    /// The `unnameable_test_items` lint detects [`#[test]`][test] functions
+    /// that are not able to be run by the test harness because they are in a
+    /// position where they are not nameable.
+    ///
+    /// [test]: https://doc.rust-lang.org/reference/attributes/testing.html#the-test-attribute
+    ///
+    /// ### Example
+    ///
+    /// ```rust,test
+    /// fn main() {
+    ///     #[test]
+    ///     fn foo() {
+    ///         // This test will not fail because it does not run.
+    ///         assert_eq!(1, 2);
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// In order for the test harness to run a test, the test function must be
+    /// located in a position where it can be accessed from the crate root.
+    /// This generally means it must be defined in a module, and not anywhere
+    /// else such as inside another function. The compiler previously allowed
+    /// this without an error, so a lint was added as an alert that a test is
+    /// not being used. Whether or not this should be allowed has not yet been
+    /// decided, see [RFC 2471] and [issue #36629].
+    ///
+    /// [RFC 2471]: https://github.com/rust-lang/rfcs/pull/2471#issuecomment-397414443
+    /// [issue #36629]: https://github.com/rust-lang/rust/issues/36629
+    pub UNNAMEABLE_TEST_ITEMS,
+    Warn,
+    "detects an item that cannot be named being marked as `#[test_case]`",
+    report_in_external_macro
+}
+
+declare_lint! {
     /// The `useless_deprecated` lint detects deprecation attributes with no effect.
     ///
     /// ### Example
@@ -3403,6 +3442,7 @@ declare_lint_pass! {
         UNKNOWN_CRATE_TYPES,
         UNKNOWN_DIAGNOSTIC_ATTRIBUTES,
         UNKNOWN_LINTS,
+        UNNAMEABLE_TEST_ITEMS,
         UNNAMEABLE_TYPES,
         UNREACHABLE_CODE,
         UNREACHABLE_PATTERNS,
