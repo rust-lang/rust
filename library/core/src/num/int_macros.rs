@@ -2042,7 +2042,7 @@ macro_rules! int_impl {
         #[rustc_allow_const_fn_unstable(is_val_statically_known)]
         pub const fn pow(self, mut exp: u32) -> Self {
             // SAFETY: This path has the same behavior as the other.
-            if unsafe { intrinsics::is_val_statically_known(ptr::addr_of!(self)) }
+            if unsafe { intrinsics::is_val_statically_known(self) }
                 && self > 0
                 && (self & (self - 1) == 0)
             {

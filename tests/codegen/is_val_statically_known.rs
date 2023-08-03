@@ -1,7 +1,7 @@
 // compile-flags: --crate-type=lib
 #![feature(core_intrinsics)]
 
-use std::intrinsics::is_compile_time_known;
+use std::intrinsics::is_val_statically_known;
 
 pub struct A(u32);
 pub enum B {
@@ -10,7 +10,7 @@ pub enum B {
 
 #[inline]
 pub fn tuple_struct(a: A) -> i32 {
-    if unsafe { is_compile_time_known(a) } { 1 } else { 0 }
+    if unsafe { is_val_statically_known(a) } { 1 } else { 0 }
 }
 
 // CHECK-LABEL: @tuple_struct_true(
@@ -29,7 +29,7 @@ pub fn tuple_struct_false(a: A) -> i32 {
 
 #[inline]
 pub fn r#enum(b: B) -> i32 {
-    if unsafe { is_compile_time_known(b) } { 3 } else { 2 }
+    if unsafe { is_val_statically_known(b) } { 3 } else { 2 }
 }
 
 // CHECK-LABEL: @enum_true(

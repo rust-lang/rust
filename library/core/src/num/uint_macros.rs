@@ -1971,7 +1971,7 @@ macro_rules! uint_impl {
             // instruction, but we must add a couple more checks for parity with
             // our own `pow`.
             // SAFETY: This path has the same behavior as the other.
-            if unsafe { intrinsics::is_val_statically_known(ptr::addr_of!(self)) }
+            if unsafe { intrinsics::is_val_statically_known(self) }
                 && self.is_power_of_two()
             {
                 let power_used = match self.checked_ilog2() {

@@ -6,7 +6,6 @@ use crate::ascii;
 use crate::intrinsics;
 use crate::mem;
 use crate::ops::{Add, Mul, Sub};
-use crate::ptr;
 use crate::str::FromStr;
 
 // Used because the `?` operator is not allowed in a const context.

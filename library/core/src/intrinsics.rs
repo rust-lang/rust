@@ -2524,14 +2524,14 @@ extern "rust-intrinsic" {
     #[rustc_const_unstable(feature = "is_val_statically_known", issue = "none")]
     #[rustc_nounwind]
     #[cfg(not(bootstrap))]
-    pub fn is_val_statically_known<T>(arg: *const T) -> bool;
+    pub fn is_val_statically_known<T>(arg: T) -> bool;
 }
 
 // FIXME: Seems using `unstable` here completely ignores `rustc_allow_const_fn_unstable`
 // and thus compiling stage0 core doesn't work.
 #[rustc_const_stable(feature = "is_val_statically_known", since = "never")]
 #[cfg(bootstrap)]
-pub const unsafe fn is_val_statically_known<T>(_: *const T) -> bool {
+pub const unsafe fn is_val_statically_known<T: ~const crate::marker::Destruct>(_: T) -> bool {
     false
 }
 
