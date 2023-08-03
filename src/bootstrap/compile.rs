@@ -898,13 +898,11 @@ impl Step for Rustc {
         // unexpected debuginfo from dependencies, for example from the C++ standard library used in
         // our LLVM wrapper. Unless we're explicitly requesting `librustc_driver` to be built with
         // debuginfo (via the debuginfo level of the executables using it): strip this debuginfo
-        // away after the fact. This is to make the distributed artifacts smaller, and therefore we
-        // only do this at stage >= 1.
+        // away after the fact.
         // FIXME: to make things simpler for now, limit this to the host and target where we know
         // `strip -g` is both available and will fix the issue, i.e. on a x64 linux host that is not
         // cross-compiling. Expand this to other appropriate targets in the future.
-        if compiler.stage != 0
-            && builder.config.rust_debuginfo_level_rustc == DebuginfoLevel::None
+        if builder.config.rust_debuginfo_level_rustc == DebuginfoLevel::None
             && builder.config.rust_debuginfo_level_tools == DebuginfoLevel::None
             && target == "x86_64-unknown-linux-gnu"
             && target == builder.config.build
