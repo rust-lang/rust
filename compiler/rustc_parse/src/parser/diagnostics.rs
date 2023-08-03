@@ -2107,7 +2107,7 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn recover_arg_parse(&mut self) -> PResult<'a, (P<ast::Pat>, P<ast::Ty>)> {
-        let pat = self.parse_pat_no_top_alt(Some(Expected::ArgumentName))?;
+        let pat = self.parse_pat_no_top_alt(Some(Expected::ArgumentName), None)?;
         self.expect(&token::Colon)?;
         let ty = self.parse_ty()?;
 
@@ -2515,7 +2515,7 @@ impl<'a> Parser<'a> {
                 // Skip the `:`.
                 snapshot_pat.bump();
                 snapshot_type.bump();
-                match snapshot_pat.parse_pat_no_top_alt(expected) {
+                match snapshot_pat.parse_pat_no_top_alt(expected, None) {
                     Err(inner_err) => {
                         inner_err.cancel();
                     }
@@ -2779,7 +2779,7 @@ impl<'a> Parser<'a> {
     /// sequence of patterns until `)` is reached.
     fn skip_pat_list(&mut self) -> PResult<'a, ()> {
         while !self.check(&token::CloseDelim(Delimiter::Parenthesis)) {
-            self.parse_pat_no_top_alt(None)?;
+            self.parse_pat_no_top_alt(None, None)?;
             if !self.eat(&token::Comma) {
                 return Ok(());
             }

@@ -1,13 +1,13 @@
 error: generic args in patterns require the turbofish syntax
-  --> $DIR/issue-22647.rs:2:15
+  --> $DIR/issue-114112.rs:7:10
    |
-LL |     let caller<F> = |f: F|
-   |               ^
+LL |         E<i32>::A(v) => {
+   |          ^
    |
 help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
    |
-LL |     let caller::<F> = |f: F|
-   |               ++
+LL |         E::<i32>::A(v) => {
+   |          ++
 
 error: aborting due to previous error
 
