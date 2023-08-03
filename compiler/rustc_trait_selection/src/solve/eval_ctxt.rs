@@ -340,6 +340,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
     ) -> Result<(bool, Certainty, Vec<Goal<'tcx, ty::Predicate<'tcx>>>), NoSolution> {
         let (orig_values, canonical_goal) = self.canonicalize_goal(goal);
         let mut goal_evaluation = self.inspect.new_goal_evaluation(goal, is_normalizes_to_hack);
+        let encountered_overflow = self.search_graph.encountered_overflow();
         let canonical_response = EvalCtxt::evaluate_canonical_goal(
             self.tcx(),
             self.search_graph,
@@ -388,6 +389,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
             && !self.search_graph.in_cycle()
         {
             debug!("rerunning goal to check result is stable");
+            self.search_graph.reset_encountered_overflow(encountered_overflow);
             let (_orig_values, canonical_goal) = self.canonicalize_goal(goal);
             let new_canonical_response = EvalCtxt::evaluate_canonical_goal(
                 self.tcx(),

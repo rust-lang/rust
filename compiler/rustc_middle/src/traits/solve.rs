@@ -1,7 +1,6 @@
 use std::ops::ControlFlow;
 
 use rustc_data_structures::intern::Interned;
-use rustc_query_system::cache::Cache;
 
 use crate::infer::canonical::{CanonicalVarValues, QueryRegionConstraints};
 use crate::traits::query::NoSolution;
@@ -11,9 +10,10 @@ use crate::ty::{
     TypeVisitor,
 };
 
+mod cache;
 pub mod inspect;
 
-pub type EvaluationCache<'tcx> = Cache<CanonicalInput<'tcx>, QueryResult<'tcx>>;
+pub use cache::{CacheData, EvaluationCache};
 
 /// A goal is a statement, i.e. `predicate`, we want to prove
 /// given some assumptions, i.e. `param_env`.
