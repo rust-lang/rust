@@ -1,9 +1,10 @@
 use rustc_ast::{
     ptr::P,
     token,
+    token::Delimiter,
     tokenstream::{DelimSpan, TokenStream, TokenTree},
-    BinOpKind, BorrowKind, DelimArgs, Expr, ExprKind, ItemKind, MacCall, MacDelimiter, MethodCall,
-    Mutability, Path, PathSegment, Stmt, StructRest, UnOp, UseTree, UseTreeKind, DUMMY_NODE_ID,
+    BinOpKind, BorrowKind, DelimArgs, Expr, ExprKind, ItemKind, MacCall, MethodCall, Mutability,
+    Path, PathSegment, Stmt, StructRest, UnOp, UseTree, UseTreeKind, DUMMY_NODE_ID,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
@@ -179,7 +180,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
                 path: panic_path,
                 args: P(DelimArgs {
                     dspan: DelimSpan::from_single(self.span),
-                    delim: MacDelimiter::Parenthesis,
+                    delim: Delimiter::Parenthesis,
                     tokens: initial.into_iter().chain(captures).collect::<TokenStream>(),
                 }),
             })),

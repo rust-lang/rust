@@ -2,7 +2,7 @@
 
 use crate::ast::{AttrArgs, AttrArgsEq, AttrId, AttrItem, AttrKind, AttrStyle, AttrVec, Attribute};
 use crate::ast::{DelimArgs, Expr, ExprKind, LitKind, MetaItemLit};
-use crate::ast::{MacDelimiter, MetaItem, MetaItemKind, NestedMetaItem, NormalAttr};
+use crate::ast::{MetaItem, MetaItemKind, NestedMetaItem, NormalAttr};
 use crate::ast::{Path, PathSegment, DUMMY_NODE_ID};
 use crate::ptr::P;
 use crate::token::{self, CommentKind, Delimiter, Token};
@@ -196,7 +196,7 @@ impl AttrItem {
 
     fn meta_item_list(&self) -> Option<ThinVec<NestedMetaItem>> {
         match &self.args {
-            AttrArgs::Delimited(args) if args.delim == MacDelimiter::Parenthesis => {
+            AttrArgs::Delimited(args) if args.delim == Delimiter::Parenthesis => {
                 MetaItemKind::list_from_tokens(args.tokens.clone())
             }
             AttrArgs::Delimited(_) | AttrArgs::Eq(..) | AttrArgs::Empty => None,
@@ -402,11 +402,9 @@ impl MetaItemKind {
     fn from_attr_args(args: &AttrArgs) -> Option<MetaItemKind> {
         match args {
             AttrArgs::Empty => Some(MetaItemKind::Word),
-            AttrArgs::Delimited(DelimArgs {
-                dspan: _,
-                delim: MacDelimiter::Parenthesis,
-                tokens,
-            }) => MetaItemKind::list_from_tokens(tokens.clone()).map(MetaItemKind::List),
+            AttrArgs::Delimited(DelimArgs { dspan: _, delim: Delimiter::Parenthesis, tokens }) => {
+                MetaItemKind::list_from_tokens(tokens.clone()).map(MetaItemKind::List)
+            }
             AttrArgs::Delimited(..) => None,
             AttrArgs::Eq(_, AttrArgsEq::Ast(expr)) => match expr.kind {
                 ExprKind::Lit(token_lit) => {
@@ -578,7 +576,7 @@ pub fn mk_attr_nested_word(
     let path = Path::from_ident(outer_ident);
     let attr_args = AttrArgs::Delimited(DelimArgs {
         dspan: DelimSpan::from_single(span),
-        delim: MacDelimiter::Parenthesis,
+        delim: Delimiter::Parenthesis,
         tokens: inner_tokens,
     });
     mk_attr(g, style, path, attr_args, span)
