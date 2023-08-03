@@ -10,7 +10,7 @@
 //! [c]: https://rustc-dev-guide.rust-lang.org/solve/canonicalization.html
 use super::{CanonicalInput, Certainty, EvalCtxt, Goal};
 use crate::solve::canonicalize::{CanonicalizeMode, Canonicalizer};
-use crate::solve::{CanonicalResponse, QueryResult, Response};
+use crate::solve::{response_no_constraints_raw, CanonicalResponse, QueryResult, Response};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_index::IndexVec;
 use rustc_infer::infer::canonical::query_response::make_query_region_constraints;
@@ -109,29 +109,11 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         &self,
         maybe_cause: MaybeCause,
     ) -> CanonicalResponse<'tcx> {
-        let unconstrained_response = Response {
-            var_values: CanonicalVarValues {
-                var_values: self.tcx().mk_args_from_iter(self.var_values.var_values.iter().map(
-                    |arg| -> ty::GenericArg<'tcx> {
-                        match arg.unpack() {
-                            GenericArgKind::Lifetime(_) => self.next_region_infer().into(),
-                            GenericArgKind::Type(_) => self.next_ty_infer().into(),
-                            GenericArgKind::Const(ct) => self.next_const_infer(ct.ty()).into(),
-                        }
-                    },
-                )),
-            },
-            external_constraints: self
-                .tcx()
-                .mk_external_constraints(ExternalConstraintsData::default()),
-            certainty: Certainty::Maybe(maybe_cause),
-        };
-
-        Canonicalizer::canonicalize(
-            self.infcx,
-            CanonicalizeMode::Response { max_input_universe: self.max_input_universe },
-            &mut Default::default(),
-            unconstrained_response,
+        response_no_constraints_raw(
+            self.tcx(),
+            self.max_input_universe,
+            self.variables,
+            Certainty::Maybe(maybe_cause),
         )
     }
 

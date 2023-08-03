@@ -5,7 +5,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::Limit;
 
 use super::SearchGraph;
-use crate::solve::{response_no_constraints, EvalCtxt};
+use crate::solve::{response_no_constraints_raw, EvalCtxt};
 
 /// When detecting a solver overflow, we return ambiguity. Overflow can be
 /// *hidden* by either a fatal error in an **AND** or a trivial success in an **OR**.
@@ -115,6 +115,6 @@ impl<'tcx> SearchGraph<'tcx> {
         goal: Canonical<'tcx, impl Sized>,
     ) -> QueryResult<'tcx> {
         self.overflow_data.deal_with_overflow();
-        response_no_constraints(tcx, goal, Certainty::OVERFLOW)
+        Ok(response_no_constraints_raw(tcx, goal.max_universe, goal.variables, Certainty::OVERFLOW))
     }
 }

@@ -107,7 +107,7 @@ impl<'tcx> SearchGraph<'tcx> {
                 }
 
                 let depth = self.stack.push(StackElem { input, has_been_used: false });
-                let response = super::response_no_constraints(tcx, input, Certainty::Yes);
+                let response = Self::response_no_constraints(tcx, input, Certainty::Yes);
                 let entry_index = cache.entries.push(ProvisionalEntry { response, depth, input });
                 v.insert(entry_index);
                 Ok(())
@@ -144,7 +144,7 @@ impl<'tcx> SearchGraph<'tcx> {
                 {
                     Err(cache.provisional_result(entry_index))
                 } else {
-                    Err(super::response_no_constraints(tcx, input, Certainty::OVERFLOW))
+                    Err(Self::response_no_constraints(tcx, input, Certainty::OVERFLOW))
                 }
             }
         }
@@ -282,5 +282,13 @@ impl<'tcx> SearchGraph<'tcx> {
         }
 
         result
+    }
+
+    fn response_no_constraints(
+        tcx: TyCtxt<'tcx>,
+        goal: CanonicalInput<'tcx>,
+        certainty: Certainty,
+    ) -> QueryResult<'tcx> {
+        Ok(super::response_no_constraints_raw(tcx, goal.max_universe, goal.variables, certainty))
     }
 }

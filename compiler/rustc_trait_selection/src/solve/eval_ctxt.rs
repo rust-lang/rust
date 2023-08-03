@@ -3,11 +3,11 @@ use rustc_infer::infer::at::ToTrace;
 use rustc_infer::infer::canonical::CanonicalVarValues;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{
-    DefineOpaqueTypes, InferCtxt, InferOk, LateBoundRegionConversionTime, RegionVariableOrigin,
-    TyCtxtInferExt,
+    DefineOpaqueTypes, InferCtxt, InferOk, LateBoundRegionConversionTime, TyCtxtInferExt,
 };
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::ObligationCause;
+use rustc_middle::infer::canonical::CanonicalVarInfos;
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::traits::solve::inspect;
 use rustc_middle::traits::solve::{
@@ -55,6 +55,9 @@ pub struct EvalCtxt<'a, 'tcx> {
     /// the job already.
     infcx: &'a InferCtxt<'tcx>,
 
+    /// The variable info for the `var_values`, only used to make an ambiguous response
+    /// with no constraints.
+    variables: CanonicalVarInfos<'tcx>,
     pub(super) var_values: CanonicalVarValues<'tcx>,
 
     predefined_opaques_in_body: PredefinedOpaques<'tcx>,
@@ -184,18 +187,19 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
 
         let mut ecx = EvalCtxt {
             search_graph: &mut search_graph,
-            infcx: infcx,
+            infcx,
+            nested_goals: NestedGoals::new(),
+            inspect: ProofTreeBuilder::new_maybe_root(infcx.tcx, generate_proof_tree),
+
             // Only relevant when canonicalizing the response,
             // which we don't do within this evaluation context.
             predefined_opaques_in_body: infcx
                 .tcx
                 .mk_predefined_opaques_in_body(PredefinedOpaquesData::default()),
-            // Only relevant when canonicalizing the response.
             max_input_universe: ty::UniverseIndex::ROOT,
+            variables: ty::List::empty(),
             var_values: CanonicalVarValues::dummy(),
-            nested_goals: NestedGoals::new(),
             tainted: Ok(()),
-            inspect: ProofTreeBuilder::new_maybe_root(infcx.tcx, generate_proof_tree),
         };
         let result = f(&mut ecx);
 
@@ -245,6 +249,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
 
         let mut ecx = EvalCtxt {
             infcx,
+            variables: canonical_input.variables,
             var_values,
             predefined_opaques_in_body: input.predefined_opaques_in_body,
             max_input_universe: canonical_input.max_universe,
@@ -591,10 +596,6 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             kind: TypeVariableOriginKind::MiscVariable,
             span: DUMMY_SP,
         })
-    }
-
-    pub(super) fn next_region_infer(&self) -> ty::Region<'tcx> {
-        self.infcx.next_region_var(RegionVariableOrigin::MiscVariable(DUMMY_SP))
     }
 
     pub(super) fn next_const_infer(&self, ty: Ty<'tcx>) -> ty::Const<'tcx> {
