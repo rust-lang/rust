@@ -7,6 +7,7 @@ use crate::errors::*;
 
 use rustc_arena::TypedArena;
 use rustc_ast::Mutability;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{
     struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, MultiSpan,
@@ -660,6 +661,17 @@ fn report_arm_reachability<'p, 'tcx>(
     }
 }
 
+fn collect_non_exhaustive_tys<'p, 'tcx>(
+    pat: &DeconstructedPat<'p, 'tcx>,
+    non_exhaustive_tys: &mut FxHashSet<Ty<'tcx>>,
+) {
+    if matches!(pat.ctor(), Constructor::NonExhaustive) {
+        non_exhaustive_tys.insert(pat.ty());
+    }
+    pat.iter_fields()
+        .for_each(|field_pat| collect_non_exhaustive_tys(field_pat, non_exhaustive_tys))
+}
+
 /// Report that a match is not exhaustive.
 fn non_exhaustive_match<'p, 'tcx>(
     cx: &MatchCheckCtxt<'p, 'tcx>,
@@ -717,22 +729,27 @@ fn non_exhaustive_match<'p, 'tcx>(
         scrut_ty,
         if is_variant_list_non_exhaustive { ", which is marked as non-exhaustive" } else { "" }
     ));
-    if (scrut_ty == cx.tcx.types.usize || scrut_ty == cx.tcx.types.isize)
-        && !is_empty_match
-        && witnesses.len() == 1
-        && matches!(witnesses[0].ctor(), Constructor::NonExhaustive)
-    {
-        err.note(format!(
-            "`{scrut_ty}` does not have a fixed maximum value, so a wildcard `_` is necessary to match \
-             exhaustively",
-        ));
-        if cx.tcx.sess.is_nightly_build() {
-            err.help(format!(
-                "add `#![feature(precise_pointer_size_matching)]` to the crate attributes to \
-                 enable precise `{scrut_ty}` matching",
-            ));
+
+    if !is_empty_match && witnesses.len() == 1 {
+        let mut non_exhaustive_tys = FxHashSet::default();
+        collect_non_exhaustive_tys(&witnesses[0], &mut non_exhaustive_tys);
+
+        for ty in non_exhaustive_tys {
+            if ty == cx.tcx.types.usize || ty == cx.tcx.types.isize {
+                err.note(format!(
+                    "`{ty}` does not have a fixed maximum value, so a wildcard `_` is necessary to match \
+                     exhaustively",
+                ));
+                if cx.tcx.sess.is_nightly_build() {
+                    err.help(format!(
+                        "add `#![feature(precise_pointer_size_matching)]` to the crate attributes to \
+                         enable precise `{ty}` matching",
+                    ));
+                }
+            }
         }
     }
+
     if let ty::Ref(_, sub_ty, _) = scrut_ty.kind() {
         if !sub_ty.is_inhabited_from(cx.tcx, cx.module, cx.param_env) {
             err.note("references are always considered inhabited");
