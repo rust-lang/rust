@@ -38,7 +38,7 @@
 #![allow(for_loops_over_fallibles)]
 #![allow(forgetting_copy_types)]
 #![allow(forgetting_references)]
-#![allow(incorrect_fn_null_checks)]
+#![allow(useless_ptr_null_checks)]
 #![allow(array_into_iter)]
 #![allow(invalid_atomic_ordering)]
 #![allow(invalid_value)]
