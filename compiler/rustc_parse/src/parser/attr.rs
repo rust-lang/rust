@@ -260,7 +260,7 @@ impl<'a> Parser<'a> {
             item
         } else {
             let do_parse = |this: &mut Self| {
-                let path = this.parse_path(PathStyle::Mod, None)?;
+                let path = this.parse_path(PathStyle::Mod)?;
                 let args = this.parse_attr_args()?;
                 Ok(ast::AttrItem { path, args, tokens: None })
             };
@@ -387,7 +387,7 @@ impl<'a> Parser<'a> {
         }
 
         let lo = self.token.span;
-        let path = self.parse_path(PathStyle::Mod, None)?;
+        let path = self.parse_path(PathStyle::Mod)?;
         let kind = self.parse_meta_item_kind()?;
         let span = lo.to(self.prev_token.span);
         Ok(ast::MetaItem { path, kind, span })

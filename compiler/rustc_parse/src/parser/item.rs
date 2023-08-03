@@ -452,7 +452,7 @@ impl<'a> Parser<'a> {
 
     /// Parses an item macro, e.g., `item!();`.
     fn parse_item_macro(&mut self, vis: &Visibility) -> PResult<'a, MacCall> {
-        let path = self.parse_path(PathStyle::Mod, None)?; // `foo::bar`
+        let path = self.parse_path(PathStyle::Mod)?; // `foo::bar`
         self.expect(&token::Not)?; // `!`
         match self.parse_delim_args() {
             // `( .. )` or `[ .. ]` (followed by `;`), or `{ .. }`.
@@ -976,7 +976,7 @@ impl<'a> Parser<'a> {
             self.parse_use_tree_glob_or_nested()?
         } else {
             // `use path::*;` or `use path::{...};` or `use path;` or `use path as bar;`
-            prefix = self.parse_path(PathStyle::Mod, None)?;
+            prefix = self.parse_path(PathStyle::Mod)?;
 
             if self.eat(&token::ModSep) {
                 self.parse_use_tree_glob_or_nested()?
@@ -987,7 +987,7 @@ impl<'a> Parser<'a> {
                         .emit_err(errors::SingleColonImportPath { span: self.prev_token.span });
 
                     // We parse the rest of the path and append it to the original prefix.
-                    self.parse_path_segments(&mut prefix.segments, PathStyle::Mod, None, None)?;
+                    self.parse_path_segments(&mut prefix.segments, PathStyle::Mod, None)?;
                     prefix.span = lo.to(self.prev_token.span);
                 }
 

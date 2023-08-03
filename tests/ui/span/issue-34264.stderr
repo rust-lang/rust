@@ -1,8 +1,8 @@
-error: expected one of `!`, `(`, `...`, `..=`, `..`, `::`, `:`, `{`, or `|`, found `<`
+error: expected one of `:`, `@`, or `|`, found `<`
   --> $DIR/issue-34264.rs:1:14
    |
 LL | fn foo(Option<i32>, String) {}
-   |              ^ expected one of 9 possible tokens
+   |              ^ expected one of `:`, `@`, or `|`
    |
    = note: anonymous parameters are removed in the 2018 edition (see RFC 1685)
 help: if this is a `self` type, give it a parameter name

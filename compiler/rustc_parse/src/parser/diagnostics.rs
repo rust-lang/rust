@@ -1579,7 +1579,7 @@ impl<'a> Parser<'a> {
         self.expect(&token::ModSep)?;
 
         let mut path = ast::Path { segments: ThinVec::new(), span: DUMMY_SP, tokens: None };
-        self.parse_path_segments(&mut path.segments, T::PATH_STYLE, None, None)?;
+        self.parse_path_segments(&mut path.segments, T::PATH_STYLE, None)?;
         path.span = ty_span.to(self.prev_token.span);
 
         let ty_str = self.span_to_snippet(ty_span).unwrap_or_else(|_| pprust::ty_to_string(&ty));

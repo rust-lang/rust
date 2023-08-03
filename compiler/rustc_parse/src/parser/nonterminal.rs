@@ -168,7 +168,7 @@ impl<'a> Parser<'a> {
                 }.into_diagnostic(&self.sess.span_diagnostic));
             }
             NonterminalKind::Path => token::NtPath(
-                P(self.collect_tokens_no_attrs(|this| this.parse_path(PathStyle::Type, None))?),
+                P(self.collect_tokens_no_attrs(|this| this.parse_path(PathStyle::Type))?),
             ),
             NonterminalKind::Meta => token::NtMeta(P(self.parse_attr_item(true)?)),
             NonterminalKind::Vis => token::NtVis(

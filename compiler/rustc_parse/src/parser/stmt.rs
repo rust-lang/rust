@@ -149,7 +149,7 @@ impl<'a> Parser<'a> {
 
     fn parse_stmt_path_start(&mut self, lo: Span, attrs: AttrWrapper) -> PResult<'a, Stmt> {
         let stmt = self.collect_tokens_trailing_token(attrs, ForceCollect::No, |this, attrs| {
-            let path = this.parse_path(PathStyle::Expr, None)?;
+            let path = this.parse_path(PathStyle::Expr)?;
 
             if this.eat(&token::Not) {
                 let stmt_mac = this.parse_stmt_mac(lo, attrs, path)?;

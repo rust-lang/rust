@@ -2,10 +2,11 @@ use super::{ForceCollect, Parser, PathStyle, TrailingToken};
 use crate::errors::{
     self, AmbiguousRangePattern, DotDotDotForRemainingFields, DotDotDotRangeToPatternNotAllowed,
     DotDotDotRestPattern, EnumPatternInsteadOfIdentifier, ExpectedBindingLeftOfAt,
-    ExpectedCommaAfterPatternField, InclusiveRangeExtraEquals, InclusiveRangeMatchArrow,
-    InclusiveRangeNoEnd, InvalidMutInPattern, PatternOnWrongSideOfAt, RefMutOrderIncorrect,
-    RemoveLet, RepeatedMutInPattern, TopLevelOrPatternNotAllowed, TopLevelOrPatternNotAllowedSugg,
-    TrailingVertNotAllowed, UnexpectedLifetimeInPattern, UnexpectedVertVertBeforeFunctionParam,
+    ExpectedCommaAfterPatternField, GenericArgsInPatRequireTurbofishSyntax,
+    InclusiveRangeExtraEquals, InclusiveRangeMatchArrow, InclusiveRangeNoEnd, InvalidMutInPattern,
+    PatternOnWrongSideOfAt, RefMutOrderIncorrect, RemoveLet, RepeatedMutInPattern,
+    TopLevelOrPatternNotAllowed, TopLevelOrPatternNotAllowedSugg, TrailingVertNotAllowed,
+    UnexpectedLifetimeInPattern, UnexpectedVertVertBeforeFunctionParam,
     UnexpectedVertVertInPattern,
 };
 use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
@@ -366,11 +367,11 @@ impl<'a> Parser<'a> {
             // Parse _
             PatKind::Wild
         } else if self.eat_keyword(kw::Mut) {
-            self.parse_pat_ident_mut()?
+            self.parse_pat_ident_mut(syntax_loc)?
         } else if self.eat_keyword(kw::Ref) {
             // Parse ref ident @ pat / ref mut ident @ pat
             let mutbl = self.parse_mutability();
-            self.parse_pat_ident(BindingAnnotation(ByRef::Yes, mutbl))?
+            self.parse_pat_ident(BindingAnnotation(ByRef::Yes, mutbl), syntax_loc)?
         } else if self.eat_keyword(kw::Box) {
             self.parse_pat_box()?
         } else if self.check_inline_const(0) {
@@ -392,7 +393,7 @@ impl<'a> Parser<'a> {
             // Parse `ident @ pat`
             // This can give false positives and parse nullary enums,
             // they are dealt with later in resolve.
-            self.parse_pat_ident(BindingAnnotation::NONE)?
+            self.parse_pat_ident(BindingAnnotation::NONE, syntax_loc)?
         } else if self.is_start_of_pat_with_path() {
             // Parse pattern starting with a path
             let (qself, path) = if self.eat_lt() {
@@ -401,7 +402,7 @@ impl<'a> Parser<'a> {
                 (Some(qself), path)
             } else {
                 // Parse an unqualified path
-                (None, self.parse_path(PathStyle::Pat, syntax_loc)?)
+                (None, self.parse_path(PathStyle::Pat)?)
             };
             let span = lo.to(self.prev_token.span);
 
@@ -574,12 +575,12 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse a mutable binding with the `mut` token already eaten.
-    fn parse_pat_ident_mut(&mut self) -> PResult<'a, PatKind> {
+    fn parse_pat_ident_mut(&mut self, syntax_loc: Option<PatternLocation>) -> PResult<'a, PatKind> {
         let mut_span = self.prev_token.span;
 
         if self.eat_keyword(kw::Ref) {
             self.sess.emit_err(RefMutOrderIncorrect { span: mut_span.to(self.prev_token.span) });
-            return self.parse_pat_ident(BindingAnnotation::REF_MUT);
+            return self.parse_pat_ident(BindingAnnotation::REF_MUT, syntax_loc);
         }
 
         self.recover_additional_muts();
@@ -784,7 +785,7 @@ impl<'a> Parser<'a> {
                 (Some(qself), path)
             } else {
                 // Parse an unqualified path
-                (None, self.parse_path(PathStyle::Pat, None)?)
+                (None, self.parse_path(PathStyle::Pat)?)
             };
             let hi = self.prev_token.span;
             Ok(self.mk_expr(lo.to(hi), ExprKind::Path(qself, path)))
@@ -813,16 +814,28 @@ impl<'a> Parser<'a> {
             | token::DotDotDot | token::DotDotEq | token::DotDot // A range pattern.
             | token::ModSep // A tuple / struct variant pattern.
             | token::Not)) // A macro expanding to a pattern.
-        // May suggest the turbofish syntax for generics, only valid for recoveries.
-        && !(self.look_ahead(1, |t| t.kind == token::Lt)
-            && self.look_ahead(2, |t| t.can_begin_type()))
     }
 
     /// Parses `ident` or `ident @ pat`.
     /// Used by the copy foo and ref foo patterns to give a good
     /// error message when parsing mistakes like `ref foo(a, b)`.
-    fn parse_pat_ident(&mut self, binding_annotation: BindingAnnotation) -> PResult<'a, PatKind> {
+    fn parse_pat_ident(
+        &mut self,
+        binding_annotation: BindingAnnotation,
+        syntax_loc: Option<PatternLocation>,
+    ) -> PResult<'a, PatKind> {
         let ident = self.parse_ident()?;
+
+        if !matches!(syntax_loc, Some(PatternLocation::FunctionParameter))
+            && self.check_noexpect(&token::Lt)
+            && self.look_ahead(1, |t| t.can_begin_type())
+        {
+            return Err(self.sess.create_err(GenericArgsInPatRequireTurbofishSyntax {
+                span: self.token.span,
+                suggest_turbofish: self.token.span.shrink_to_lo(),
+            }));
+        }
+
         let sub = if self.eat(&token::At) {
             Some(self.parse_pat_no_top_alt(Some(Expected::BindingPattern), None)?)
         } else {
