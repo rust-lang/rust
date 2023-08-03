@@ -1,3 +1,4 @@
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::infer::at::ToTrace;
 use rustc_infer::infer::canonical::CanonicalVarValues;
@@ -305,24 +306,26 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         // Deal with overflow, caching, and coinduction.
         //
         // The actual solver logic happens in `ecx.compute_goal`.
-        search_graph.with_new_goal(
-            tcx,
-            canonical_input,
-            goal_evaluation,
-            |search_graph, goal_evaluation| {
-                EvalCtxt::enter_canonical(
-                    tcx,
-                    search_graph,
-                    canonical_input,
-                    goal_evaluation,
-                    |ecx, goal| {
-                        let result = ecx.compute_goal(goal);
-                        ecx.inspect.query_result(result);
-                        result
-                    },
-                )
-            },
-        )
+        ensure_sufficient_stack(|| {
+            search_graph.with_new_goal(
+                tcx,
+                canonical_input,
+                goal_evaluation,
+                |search_graph, goal_evaluation| {
+                    EvalCtxt::enter_canonical(
+                        tcx,
+                        search_graph,
+                        canonical_input,
+                        goal_evaluation,
+                        |ecx, goal| {
+                            let result = ecx.compute_goal(goal);
+                            ecx.inspect.query_result(result);
+                            result
+                        },
+                    )
+                },
+            )
+        })
     }
 
     /// Recursively evaluates `goal`, returning whether any inference vars have
