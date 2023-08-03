@@ -65,7 +65,7 @@ fn incorrect_check<'a>(cx: &LateContext<'a>, expr: &Expr<'_>) -> Option<PtrNullC
 
     let orig_ty = cx.typeck_results().expr_ty(expr);
     if orig_ty.is_fn() {
-        Some(PtrNullChecksDiag::FnPtr)
+        Some(PtrNullChecksDiag::FnPtr { orig_ty, label: expr.span })
     } else if orig_ty.is_ref() {
         Some(PtrNullChecksDiag::Ref { orig_ty, label: expr.span })
     } else {

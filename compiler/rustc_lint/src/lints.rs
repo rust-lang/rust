@@ -618,7 +618,11 @@ pub struct ExpectationNote {
 pub enum PtrNullChecksDiag<'a> {
     #[diag(lint_ptr_null_checks_fn_ptr)]
     #[help(lint_help)]
-    FnPtr,
+    FnPtr {
+        orig_ty: Ty<'a>,
+        #[label]
+        label: Span,
+    },
     #[diag(lint_ptr_null_checks_ref)]
     Ref {
         orig_ty: Ty<'a>,
