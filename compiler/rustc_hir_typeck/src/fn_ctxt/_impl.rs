@@ -509,10 +509,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         typeck_results.rvalue_scopes = rvalue_scopes;
     }
 
-    pub(in super::super) fn resolve_generator_interiors(&self, def_id: DefId) {
-        self.save_generator_interior_predicates(def_id);
-    }
-
     /// Unify the inference variables corresponding to generator witnesses, and save all the
     /// predicates that were stalled on those inference variables.
     ///
@@ -522,7 +518,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// We must not attempt to select obligations after this method has run, or risk query cycle
     /// ICE.
     #[instrument(level = "debug", skip(self))]
-    fn save_generator_interior_predicates(&self, def_id: DefId) {
+    pub(in super::super) fn resolve_generator_interiors(&self, def_id: DefId) {
         // Try selecting all obligations that are not blocked on inference variables.
         // Once we start unifying generator witnesses, trying to select obligations on them will
         // trigger query cycle ICEs, as doing so requires MIR.
