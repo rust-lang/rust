@@ -243,6 +243,12 @@ fn main() -> Result<()> {
         Mode::Fail { require_patterns: true, rustfix: false },
         "tests/fail",
         &target,
+        WithoutDependencies,
+    )?;
+    ui(
+        Mode::Fail { require_patterns: true, rustfix: false },
+        "tests/fail-dep",
+        &target,
         WithDependencies,
     )?;
     if cfg!(target_os = "linux") {
