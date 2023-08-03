@@ -139,7 +139,7 @@ impl<'a> Parser<'a> {
         };
 
         // Parse the first pattern (`p_0`).
-        let mut first_pat = self.parse_pat_no_top_alt(expected, syntax_loc.clone())?;
+        let mut first_pat = self.parse_pat_no_top_alt(expected, syntax_loc)?;
         if rc == RecoverComma::Yes {
             self.maybe_recover_unexpected_comma(first_pat.span, rt)?;
         }
@@ -813,7 +813,9 @@ impl<'a> Parser<'a> {
             | token::DotDotDot | token::DotDotEq | token::DotDot // A range pattern.
             | token::ModSep // A tuple / struct variant pattern.
             | token::Not)) // A macro expanding to a pattern.
-        && !(self.look_ahead(1, |t| t.kind == token::Lt) && self.look_ahead(2, |t| t.can_begin_type())) // May suggest the turbofish syntax for generics, only valid for recoveries.
+        // May suggest the turbofish syntax for generics, only valid for recoveries.
+        && !(self.look_ahead(1, |t| t.kind == token::Lt)
+            && self.look_ahead(2, |t| t.can_begin_type()))
     }
 
     /// Parses `ident` or `ident @ pat`.
