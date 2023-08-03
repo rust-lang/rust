@@ -54,6 +54,7 @@ impl<T: ?Sized> *mut T {
     /// Casts to a pointer of another type.
     #[stable(feature = "ptr_cast", since = "1.38.0")]
     #[rustc_const_stable(feature = "const_ptr_cast", since = "1.38.0")]
+    #[rustc_diagnostic_item = "ptr_cast"]
     #[inline(always)]
     pub const fn cast<U>(self) -> *mut U {
         self as _
