@@ -48,7 +48,6 @@ impl<'a> Parser<'a> {
                 NtStmt(_)
                 | NtPat(_)
                 | NtExpr(_)
-                | NtTy(_)
                 | NtIdent(..)
                 | NtLiteral(_) // `true`, `false`
                 | NtMeta(_)
@@ -83,7 +82,7 @@ impl<'a> Parser<'a> {
                 token::OpenDelim(Delimiter::Brace) => true,
                 token::Interpolated(nt) => match **nt {
                     NtBlock(_) | NtLifetime(_) | NtStmt(_) | NtExpr(_) | NtLiteral(_) => true,
-                    NtItem(_) | NtPat(_) | NtTy(_) | NtIdent(..) | NtMeta(_) | NtPath(_) => false,
+                    NtItem(_) | NtPat(_) | NtIdent(..) | NtMeta(_) | NtPath(_) => false,
                 },
                 token::OpenDelim(Delimiter::Invisible(InvisibleSource::MetaVar(k))) => match k {
                     NonterminalKind::Block
@@ -201,9 +200,9 @@ impl<'a> Parser<'a> {
                 )
             }
 
-            NonterminalKind::Ty => NtTy(
-                self.collect_tokens_no_attrs(|this| this.parse_ty_no_question_mark_recover())?,
-            ),
+            NonterminalKind::Ty => return Ok(ParseNtResult::Ty(
+                self.collect_tokens_no_attrs(|this| this.parse_ty_no_question_mark_recover())?
+            )),
 
             // this could be handled like a token, since it is one
             NonterminalKind::Ident

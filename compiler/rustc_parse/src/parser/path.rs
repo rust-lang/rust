@@ -1,9 +1,9 @@
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
-use super::{Parser, Restrictions, TokenType};
+use super::{ParseNtResult, Parser, Restrictions, TokenType};
 use crate::errors::PathSingleColon;
 use crate::{errors, maybe_whole};
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Delimiter, Token, TokenKind};
+use rustc_ast::token::{self, Delimiter, NonterminalKind, Token, TokenKind};
 use rustc_ast::{
     self as ast, AngleBracketedArg, AngleBracketedArgs, AnonConst, AssocConstraint,
     AssocConstraintKind, BlockCheckMode, GenericArg, GenericArgs, Generics, ParenthesizedArgs,
@@ -184,14 +184,14 @@ impl<'a> Parser<'a> {
             path.into_inner()
         });
 
-        if let token::Interpolated(nt) = &self.token.kind {
-            if let token::NtTy(ty) = &**nt {
-                if let ast::TyKind::Path(None, path) = &ty.kind {
-                    let path = path.clone();
-                    self.bump();
-                    reject_generics_if_mod_style(self, &path);
-                    return Ok(path);
-                }
+        if let Some(NonterminalKind::Ty) = self.token.is_metavar_seq() {
+            let mut self2 = self.clone();
+            let ty =
+                crate::reparse_metavar_seq!(self2, NonterminalKind::Ty, ParseNtResult::Ty(ty), ty);
+            if let ast::TyKind::Path(None, path) = ty.into_inner().kind {
+                *self = self2;
+                reject_generics_if_mod_style(self, &path);
+                return Ok(path);
             }
         }
 

@@ -1,4 +1,4 @@
-error: expected one of `(`, `,`, `=`, `{`, or `}`, found `(String)`
+error: expected one of `(`, `,`, `=`, `{`, or `}`, found invisible open delimiter
   --> $DIR/syntax-error-recovery.rs:7:26
    |
 LL |                 $token $($inner)? = $value,
@@ -10,7 +10,7 @@ LL | values!(STRING(1) as (String) => cfg(test),);
    = help: enum variants can be `Variant`, `Variant = <integer>`, `Variant(Type, ..., TypeN)` or `Variant { fields: Types }`
    = note: this error originates in the macro `values` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: macro expansion ignores `(String)` and any tokens following
+error: macro expansion ignores invisible open delimiter and any tokens following
   --> $DIR/syntax-error-recovery.rs:7:26
    |
 LL |                 $token $($inner)? = $value,

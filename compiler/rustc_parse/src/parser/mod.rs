@@ -141,12 +141,17 @@ macro_rules! maybe_recover_from_interpolated_ty_qpath {
     ($self: expr, $allow_qpath_recovery: expr) => {
         if $allow_qpath_recovery
                     && $self.may_recover()
-                    && $self.look_ahead(1, |t| t == &token::ModSep)
-                    && let token::Interpolated(nt) = &$self.token.kind
-                    && let token::NtTy(ty) = &**nt
+                    && let Some(token::NonterminalKind::Ty) = $self.token.is_metavar_seq()
+                    && $self.check_noexpect_past_close_delim(&token::ModSep)
                 {
-                    let ty = ty.clone();
-                    $self.bump();
+                    // Reparse the type, then move to recovery. `unwrap` is
+                    // safe because we found `InvisibleSource::MetaVar` above.
+                    let ty = crate::reparse_metavar_seq!(
+                        $self,
+                        token::NonterminalKind::Ty,
+                        super::ParseNtResult::Ty(ty),
+                        ty
+                    );
                     return $self.maybe_recover_from_bad_qpath_stage_2($self.prev_token.span, ty);
                 }
     };
@@ -572,6 +577,24 @@ impl<'a> Parser<'a> {
 
     fn check_noexpect(&self, tok: &TokenKind) -> bool {
         self.token == *tok
+    }
+
+    // Check the first token after the delimiter that closes the current
+    // delimited sequence. (Panics if used in the outermost token stream, which
+    // has no delimiters.) It uses a clone of the relevant tree cursor to skip
+    // past the entire `TokenTree::Delimited` in a single step, avoiding the
+    // need for unbounded token lookahead.
+    //
+    // Primarily used when `self.token` matches
+    // `OpenDelim(Delimiter::Invisible(_))`, to look ahead through the current
+    // metavar expansion.
+    fn check_noexpect_past_close_delim(&self, tok: &TokenKind) -> bool {
+        let mut tree_cursor = self.token_cursor.stack.last().unwrap().0.clone();
+        let tt = tree_cursor.next_ref();
+        matches!(
+            tt,
+            Some(ast::tokenstream::TokenTree::Token(token::Token { kind, .. }, _)) if kind == tok
+        )
     }
 
     /// Consumes a token 'tok' if it exists. Returns whether the given token was present.
@@ -1558,6 +1581,7 @@ pub enum FlatToken {
 #[derive(Clone, Debug)]
 pub enum ParseNtResult {
     Tt(TokenTree),
+    Ty(P<ast::Ty>),
     Vis(P<ast::Visibility>),
 
     /// This case will eventually be removed, along with `Token::Interpolate`.

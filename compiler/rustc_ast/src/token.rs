@@ -508,15 +508,16 @@ impl Token {
                 ident_can_begin_type(name, self.span, is_raw), // type name or keyword
             OpenDelim(Delimiter::Parenthesis) | // tuple
             OpenDelim(Delimiter::Bracket)     | // array
-            Not                         | // never
-            BinOp(Star)                 | // raw pointer
-            BinOp(And)                  | // reference
-            AndAnd                      | // double reference
-            Question                    | // maybe bound in trait object
-            Lifetime(..)                | // lifetime bound in trait object
-            Lt | BinOp(Shl)             | // associated path
-            ModSep                      => true, // global path
-            Interpolated(ref nt) => matches!(**nt, NtTy(..) | NtPath(..)),
+            Not             | // never
+            BinOp(Star)     | // raw pointer
+            BinOp(And)      | // reference
+            AndAnd          | // double reference
+            Question        | // maybe bound in trait object
+            Lifetime(..)    | // lifetime bound in trait object
+            Lt | BinOp(Shl) | // associated path
+            ModSep          => true, // global path
+            Interpolated(ref nt) => matches!(**nt, NtPath(..)),
+            OpenDelim(Delimiter::Invisible(InvisibleSource::MetaVar(NonterminalKind::Ty))) => true,
             _ => false,
         }
     }
@@ -846,7 +847,6 @@ pub enum Nonterminal {
     NtStmt(P<ast::Stmt>),
     NtPat(P<ast::Pat>),
     NtExpr(P<ast::Expr>),
-    NtTy(P<ast::Ty>),
     NtIdent(Ident, /* is_raw */ bool),
     NtLifetime(Ident),
     NtLiteral(P<ast::Expr>),
@@ -941,7 +941,6 @@ impl Nonterminal {
             NtStmt(stmt) => stmt.span,
             NtPat(pat) => pat.span,
             NtExpr(expr) | NtLiteral(expr) => expr.span,
-            NtTy(ty) => ty.span,
             NtIdent(ident, _) | NtLifetime(ident) => ident.span,
             NtMeta(attr_item) => attr_item.span(),
             NtPath(path) => path.span,
@@ -973,7 +972,6 @@ impl fmt::Debug for Nonterminal {
             NtStmt(..) => f.pad("NtStmt(..)"),
             NtPat(..) => f.pad("NtPat(..)"),
             NtExpr(..) => f.pad("NtExpr(..)"),
-            NtTy(..) => f.pad("NtTy(..)"),
             NtIdent(..) => f.pad("NtIdent(..)"),
             NtLiteral(..) => f.pad("NtLiteral(..)"),
             NtMeta(..) => f.pad("NtMeta(..)"),
