@@ -245,13 +245,14 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) {
         }
         // `ForeignItem`s are handled separately.
         hir::ItemKind::ForeignMod { .. } => {}
-        hir::ItemKind::TyAlias(hir_ty, ..) => {
+        hir::ItemKind::TyAlias(hir_ty, ast_generics) => {
             if tcx.features().lazy_type_alias
                 || tcx.type_of(item.owner_id).skip_binder().has_opaque_types()
             {
                 // Bounds of lazy type aliases and of eager ones that contain opaque types are respected.
                 // E.g: `type X = impl Trait;`, `type X = (impl Trait, Y);`.
                 check_item_type(tcx, def_id, hir_ty.span, UnsizedHandling::Allow);
+                check_variances_for_type_defn(tcx, item, ast_generics);
             }
         }
         _ => {}
@@ -1700,10 +1701,27 @@ fn check_variances_for_type_defn<'tcx>(
     hir_generics: &hir::Generics<'_>,
 ) {
     let identity_args = ty::GenericArgs::identity_for_item(tcx, item.owner_id);
-    for field in tcx.adt_def(item.owner_id).all_fields() {
-        if field.ty(tcx, identity_args).references_error() {
-            return;
+
+    match item.kind {
+        ItemKind::Enum(..) | ItemKind::Struct(..) | ItemKind::Union(..) => {
+            for field in tcx.adt_def(item.owner_id).all_fields() {
+                if field.ty(tcx, identity_args).references_error() {
+                    return;
+                }
+            }
         }
+        ItemKind::TyAlias(..) => {
+            let ty = tcx.type_of(item.owner_id).instantiate_identity();
+
+            if tcx.features().lazy_type_alias || ty.has_opaque_types() {
+                if ty.references_error() {
+                    return;
+                }
+            } else {
+                bug!();
+            }
+        }
+        _ => bug!(),
     }
 
     let ty_predicates = tcx.predicates_of(item.owner_id);

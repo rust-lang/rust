@@ -12,7 +12,7 @@
 use rustc_arena::DroplessArena;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{LocalDefId, LocalDefIdMap};
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use std::fmt;
 
 use self::VarianceTerm::*;
@@ -97,6 +97,12 @@ pub fn determine_parameters_to_be_inferred<'a, 'tcx>(
                 }
             }
             DefKind::Fn | DefKind::AssocFn => terms_cx.add_inferreds_for_item(def_id),
+            DefKind::TyAlias
+                if tcx.features().lazy_type_alias
+                    || tcx.type_of(def_id).instantiate_identity().has_opaque_types() =>
+            {
+                terms_cx.add_inferreds_for_item(def_id)
+            }
             _ => {}
         }
     }
