@@ -562,20 +562,16 @@ impl fmt::Debug for Command {
                 write!(f, "env -i ")?;
                 // Altered env vars will be printed next, that should exactly work as expected.
             } else {
-                // Removed env vars need a separate command.
-                // We use a single `unset` command for all of them.
+                // Removed env vars need the command to be wrappen in `env`.
                 let mut any_removed = false;
                 for (key, value_opt) in self.get_envs() {
                     if value_opt.is_none() {
                         if !any_removed {
-                            write!(f, "unset ")?;
+                            write!(f, "env ")?;
                             any_removed = true;
                         }
-                        write!(f, "{} ", key.to_string_lossy())?;
+                        write!(f, "-u {} ", key.to_string_lossy())?;
                     }
-                }
-                if any_removed {
-                    write!(f, "&& ")?;
                 }
             }
             // Altered env vars can just be added in front of the program.
