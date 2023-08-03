@@ -513,7 +513,7 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
             ScalarSizeMismatch(_) => const_eval_scalar_size_mismatch,
             UninhabitedEnumVariantWritten(_) => const_eval_uninhabited_enum_variant_written,
             UninhabitedEnumVariantRead(_) => const_eval_uninhabited_enum_variant_read,
-            Validation(e) => e.diagnostic_message(),
+            ValidationError(e) => e.diagnostic_message(),
             Custom(x) => (x.msg)(),
         }
     }
@@ -587,13 +587,13 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
             InvalidUninitBytes(Some((alloc, info))) => {
                 builder.set_arg("alloc", alloc);
                 builder.set_arg("access", info.access);
-                builder.set_arg("uninit", info.uninit);
+                builder.set_arg("uninit", info.bad);
             }
             ScalarSizeMismatch(info) => {
                 builder.set_arg("target_size", info.target_size);
                 builder.set_arg("data_size", info.data_size);
             }
-            Validation(e) => e.add_args(handler, builder),
+            ValidationError(e) => e.add_args(handler, builder),
             Custom(custom) => {
                 (custom.add_args)(&mut |name, value| {
                     builder.set_arg(name, value);
@@ -608,74 +608,72 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
         use crate::fluent_generated::*;
         use rustc_middle::mir::interpret::ValidationErrorKind::*;
         match self.kind {
-            PtrToUninhabited { ptr_kind: PointerKind::Box, .. } => const_eval_box_to_uninhabited,
-            PtrToUninhabited { ptr_kind: PointerKind::Ref, .. } => const_eval_ref_to_uninhabited,
+            PtrToUninhabited { ptr_kind: PointerKind::Box, .. } => {
+                const_eval_validation_box_to_uninhabited
+            }
+            PtrToUninhabited { ptr_kind: PointerKind::Ref, .. } => {
+                const_eval_validation_ref_to_uninhabited
+            }
 
-            PtrToStatic { ptr_kind: PointerKind::Box } => const_eval_box_to_static,
-            PtrToStatic { ptr_kind: PointerKind::Ref } => const_eval_ref_to_static,
+            PtrToStatic { ptr_kind: PointerKind::Box } => const_eval_validation_box_to_static,
+            PtrToStatic { ptr_kind: PointerKind::Ref } => const_eval_validation_ref_to_static,
 
-            PtrToMut { ptr_kind: PointerKind::Box } => const_eval_box_to_mut,
-            PtrToMut { ptr_kind: PointerKind::Ref } => const_eval_ref_to_mut,
+            PtrToMut { ptr_kind: PointerKind::Box } => const_eval_validation_box_to_mut,
+            PtrToMut { ptr_kind: PointerKind::Ref } => const_eval_validation_ref_to_mut,
 
-            ExpectedNonPtr { .. } => const_eval_expected_non_ptr,
-            MutableRefInConst => const_eval_mutable_ref_in_const,
-            NullFnPtr => const_eval_null_fn_ptr,
-            NeverVal => const_eval_never_val,
-            NullablePtrOutOfRange { .. } => const_eval_nullable_ptr_out_of_range,
-            PtrOutOfRange { .. } => const_eval_ptr_out_of_range,
-            OutOfRange { .. } => const_eval_out_of_range,
-            UnsafeCell => const_eval_unsafe_cell,
-            UninhabitedVal { .. } => const_eval_uninhabited_val,
-            InvalidEnumTag { .. } => const_eval_invalid_enum_tag,
-            UninhabitedEnumTag => const_eval_uninhabited_enum_tag,
-            UninitEnumTag => const_eval_uninit_enum_tag,
-            UninitStr => const_eval_uninit_str,
-            Uninit { expected: ExpectedKind::Bool } => const_eval_uninit_bool,
-            Uninit { expected: ExpectedKind::Reference } => const_eval_uninit_ref,
-            Uninit { expected: ExpectedKind::Box } => const_eval_uninit_box,
-            Uninit { expected: ExpectedKind::RawPtr } => const_eval_uninit_raw_ptr,
-            Uninit { expected: ExpectedKind::InitScalar } => const_eval_uninit_init_scalar,
-            Uninit { expected: ExpectedKind::Char } => const_eval_uninit_char,
-            Uninit { expected: ExpectedKind::Float } => const_eval_uninit_float,
-            Uninit { expected: ExpectedKind::Int } => const_eval_uninit_int,
-            Uninit { expected: ExpectedKind::FnPtr } => const_eval_uninit_fn_ptr,
-            UninitVal => const_eval_uninit,
-            InvalidVTablePtr { .. } => const_eval_invalid_vtable_ptr,
+            PointerAsInt { .. } => const_eval_validation_pointer_as_int,
+            PartialPointer => const_eval_validation_partial_pointer,
+            MutableRefInConst => const_eval_validation_mutable_ref_in_const,
+            NullFnPtr => const_eval_validation_null_fn_ptr,
+            NeverVal => const_eval_validation_never_val,
+            NullablePtrOutOfRange { .. } => const_eval_validation_nullable_ptr_out_of_range,
+            PtrOutOfRange { .. } => const_eval_validation_ptr_out_of_range,
+            OutOfRange { .. } => const_eval_validation_out_of_range,
+            UnsafeCell => const_eval_validation_unsafe_cell,
+            UninhabitedVal { .. } => const_eval_validation_uninhabited_val,
+            InvalidEnumTag { .. } => const_eval_validation_invalid_enum_tag,
+            UninhabitedEnumVariant => const_eval_validation_uninhabited_enum_variant,
+            Uninit { .. } => const_eval_validation_uninit,
+            InvalidVTablePtr { .. } => const_eval_validation_invalid_vtable_ptr,
             InvalidMetaSliceTooLarge { ptr_kind: PointerKind::Box } => {
-                const_eval_invalid_box_slice_meta
+                const_eval_validation_invalid_box_slice_meta
             }
             InvalidMetaSliceTooLarge { ptr_kind: PointerKind::Ref } => {
-                const_eval_invalid_ref_slice_meta
+                const_eval_validation_invalid_ref_slice_meta
             }
 
-            InvalidMetaTooLarge { ptr_kind: PointerKind::Box } => const_eval_invalid_box_meta,
-            InvalidMetaTooLarge { ptr_kind: PointerKind::Ref } => const_eval_invalid_ref_meta,
-            UnalignedPtr { ptr_kind: PointerKind::Ref, .. } => const_eval_unaligned_ref,
-            UnalignedPtr { ptr_kind: PointerKind::Box, .. } => const_eval_unaligned_box,
+            InvalidMetaTooLarge { ptr_kind: PointerKind::Box } => {
+                const_eval_validation_invalid_box_meta
+            }
+            InvalidMetaTooLarge { ptr_kind: PointerKind::Ref } => {
+                const_eval_validation_invalid_ref_meta
+            }
+            UnalignedPtr { ptr_kind: PointerKind::Ref, .. } => const_eval_validation_unaligned_ref,
+            UnalignedPtr { ptr_kind: PointerKind::Box, .. } => const_eval_validation_unaligned_box,
 
-            NullPtr { ptr_kind: PointerKind::Box } => const_eval_null_box,
-            NullPtr { ptr_kind: PointerKind::Ref } => const_eval_null_ref,
+            NullPtr { ptr_kind: PointerKind::Box } => const_eval_validation_null_box,
+            NullPtr { ptr_kind: PointerKind::Ref } => const_eval_validation_null_ref,
             DanglingPtrNoProvenance { ptr_kind: PointerKind::Box, .. } => {
-                const_eval_dangling_box_no_provenance
+                const_eval_validation_dangling_box_no_provenance
             }
             DanglingPtrNoProvenance { ptr_kind: PointerKind::Ref, .. } => {
-                const_eval_dangling_ref_no_provenance
+                const_eval_validation_dangling_ref_no_provenance
             }
             DanglingPtrOutOfBounds { ptr_kind: PointerKind::Box } => {
-                const_eval_dangling_box_out_of_bounds
+                const_eval_validation_dangling_box_out_of_bounds
             }
             DanglingPtrOutOfBounds { ptr_kind: PointerKind::Ref } => {
-                const_eval_dangling_ref_out_of_bounds
+                const_eval_validation_dangling_ref_out_of_bounds
             }
             DanglingPtrUseAfterFree { ptr_kind: PointerKind::Box } => {
-                const_eval_dangling_box_use_after_free
+                const_eval_validation_dangling_box_use_after_free
             }
             DanglingPtrUseAfterFree { ptr_kind: PointerKind::Ref } => {
-                const_eval_dangling_ref_use_after_free
+                const_eval_validation_dangling_ref_use_after_free
             }
             InvalidBool { .. } => const_eval_validation_invalid_bool,
             InvalidChar { .. } => const_eval_validation_invalid_char,
-            InvalidFnPtr { .. } => const_eval_invalid_fn_ptr,
+            InvalidFnPtr { .. } => const_eval_validation_invalid_fn_ptr,
         }
     }
 
@@ -683,13 +681,21 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
         use crate::fluent_generated as fluent;
         use rustc_middle::mir::interpret::ValidationErrorKind::*;
 
+        if let PointerAsInt { .. } | PartialPointer = self.kind {
+            err.help(fluent::const_eval_ptr_as_bytes_1);
+            err.help(fluent::const_eval_ptr_as_bytes_2);
+        }
+
         let message = if let Some(path) = self.path {
             handler.eagerly_translate_to_string(
-                fluent::const_eval_invalid_value_with_path,
+                fluent::const_eval_validation_front_matter_invalid_value_with_path,
                 [("path".into(), DiagnosticArgValue::Str(path.into()))].iter().map(|(a, b)| (a, b)),
             )
         } else {
-            handler.eagerly_translate_to_string(fluent::const_eval_invalid_value, [].into_iter())
+            handler.eagerly_translate_to_string(
+                fluent::const_eval_validation_front_matter_invalid_value,
+                [].into_iter(),
+            )
         };
 
         err.set_arg("front_matter", message);
@@ -729,8 +735,24 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
             PtrToUninhabited { ty, .. } | UninhabitedVal { ty } => {
                 err.set_arg("ty", ty);
             }
-            ExpectedNonPtr { value }
-            | InvalidEnumTag { value }
+            PointerAsInt { expected } | Uninit { expected } => {
+                let msg = match expected {
+                    ExpectedKind::Reference => fluent::const_eval_validation_expected_ref,
+                    ExpectedKind::Box => fluent::const_eval_validation_expected_box,
+                    ExpectedKind::RawPtr => fluent::const_eval_validation_expected_raw_ptr,
+                    ExpectedKind::InitScalar => fluent::const_eval_validation_expected_init_scalar,
+                    ExpectedKind::Bool => fluent::const_eval_validation_expected_bool,
+                    ExpectedKind::Char => fluent::const_eval_validation_expected_char,
+                    ExpectedKind::Float => fluent::const_eval_validation_expected_float,
+                    ExpectedKind::Int => fluent::const_eval_validation_expected_int,
+                    ExpectedKind::FnPtr => fluent::const_eval_validation_expected_fn_ptr,
+                    ExpectedKind::EnumTag => fluent::const_eval_validation_expected_enum_tag,
+                    ExpectedKind::Str => fluent::const_eval_validation_expected_str,
+                };
+                let msg = handler.eagerly_translate_to_string(msg, [].into_iter());
+                err.set_arg("expected", msg);
+            }
+            InvalidEnumTag { value }
             | InvalidVTablePtr { value }
             | InvalidBool { value }
             | InvalidChar { value }
@@ -758,15 +780,12 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
             | NullFnPtr
             | NeverVal
             | UnsafeCell
-            | UninitEnumTag
-            | UninitStr
-            | Uninit { .. }
-            | UninitVal
             | InvalidMetaSliceTooLarge { .. }
             | InvalidMetaTooLarge { .. }
             | DanglingPtrUseAfterFree { .. }
             | DanglingPtrOutOfBounds { .. }
-            | UninhabitedEnumTag => {}
+            | UninhabitedEnumVariant
+            | PartialPointer => {}
         }
     }
 }
@@ -776,9 +795,9 @@ impl ReportErrorExt for UnsupportedOpInfo {
         use crate::fluent_generated::*;
         match self {
             UnsupportedOpInfo::Unsupported(s) => s.clone().into(),
-            UnsupportedOpInfo::PartialPointerOverwrite(_) => const_eval_partial_pointer_overwrite,
-            UnsupportedOpInfo::PartialPointerCopy(_) => const_eval_partial_pointer_copy,
-            UnsupportedOpInfo::ReadPointerAsBytes => const_eval_read_pointer_as_bytes,
+            UnsupportedOpInfo::OverwritePartialPointer(_) => const_eval_partial_pointer_overwrite,
+            UnsupportedOpInfo::ReadPartialPointer(_) => const_eval_partial_pointer_copy,
+            UnsupportedOpInfo::ReadPointerAsInt(_) => const_eval_read_pointer_as_int,
             UnsupportedOpInfo::ThreadLocalStatic(_) => const_eval_thread_local_static,
             UnsupportedOpInfo::ReadExternStatic(_) => const_eval_read_extern_static,
         }
@@ -787,13 +806,16 @@ impl ReportErrorExt for UnsupportedOpInfo {
         use crate::fluent_generated::*;
 
         use UnsupportedOpInfo::*;
-        if let ReadPointerAsBytes | PartialPointerOverwrite(_) | PartialPointerCopy(_) = self {
+        if let ReadPointerAsInt(_) | OverwritePartialPointer(_) | ReadPartialPointer(_) = self {
             builder.help(const_eval_ptr_as_bytes_1);
             builder.help(const_eval_ptr_as_bytes_2);
         }
         match self {
-            Unsupported(_) | ReadPointerAsBytes => {}
-            PartialPointerOverwrite(ptr) | PartialPointerCopy(ptr) => {
+            // `ReadPointerAsInt(Some(info))` is never printed anyway, it only serves as an error to
+            // be further processed by validity checking which then turns it into something nice to
+            // print. So it's not worth the effort of having diagnostics that can print the `info`.
+            Unsupported(_) | ReadPointerAsInt(_) => {}
+            OverwritePartialPointer(ptr) | ReadPartialPointer(ptr) => {
                 builder.set_arg("ptr", ptr);
             }
             ThreadLocalStatic(did) | ReadExternStatic(did) => {
