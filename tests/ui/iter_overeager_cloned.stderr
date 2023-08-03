@@ -66,5 +66,69 @@ LL ~         .iter()
 LL ~         .flatten().cloned();
    |
 
-error: aborting due to 7 previous errors
+error: unnecessarily eager cloning of iterator items
+  --> $DIR/iter_overeager_cloned.rs:24:13
+   |
+LL |     let _ = vec.iter().cloned().filter(|x| x.starts_with('2'));
+   |             ^^^^^^^^^^----------------------------------------
+   |                       |
+   |                       help: try: `.filter(|&x| x.starts_with('2')).cloned()`
+
+error: unnecessarily eager cloning of iterator items
+  --> $DIR/iter_overeager_cloned.rs:26:13
+   |
+LL |     let _ = vec.iter().cloned().find(|x| x == "2");
+   |             ^^^^^^^^^^----------------------------
+   |                       |
+   |                       help: try: `.find(|&x| x == "2").cloned()`
+
+error: unnecessarily eager cloning of iterator items
+  --> $DIR/iter_overeager_cloned.rs:30:17
+   |
+LL |         let _ = vec.iter().cloned().filter(f);
+   |                 ^^^^^^^^^^-------------------
+   |                           |
+   |                           help: try: `.filter(|&x| f(x)).cloned()`
+
+error: unnecessarily eager cloning of iterator items
+  --> $DIR/iter_overeager_cloned.rs:31:17
+   |
+LL |         let _ = vec.iter().cloned().find(f);
+   |                 ^^^^^^^^^^-----------------
+   |                           |
+   |                           help: try: `.find(|&x| f(x)).cloned()`
+
+error: unnecessarily eager cloning of iterator items
+  --> $DIR/iter_overeager_cloned.rs:37:17
+   |
+LL |         let _ = vec.iter().cloned().filter(f);
+   |                 ^^^^^^^^^^-------------------
+   |                           |
+   |                           help: try: `.filter(|&x| f(x)).cloned()`
+
+error: unnecessarily eager cloning of iterator items
+  --> $DIR/iter_overeager_cloned.rs:38:17
+   |
+LL |         let _ = vec.iter().cloned().find(f);
+   |                 ^^^^^^^^^^-----------------
+   |                           |
+   |                           help: try: `.find(|&x| f(x)).cloned()`
+
+error: unnecessarily eager cloning of iterator items
+  --> $DIR/iter_overeager_cloned.rs:45:9
+   |
+LL |         iter.cloned().filter(move |(&a, b)| a == 1 && b == &target)
+   |         ^^^^-------------------------------------------------------
+   |             |
+   |             help: try: `.filter(move |&(&a, b)| a == 1 && b == &target).cloned()`
+
+error: unnecessarily eager cloning of iterator items
+  --> $DIR/iter_overeager_cloned.rs:56:13
+   |
+LL |             iter.cloned().filter(move |S { a, b }| **a == 1 && b == &target)
+   |             ^^^^------------------------------------------------------------
+   |                 |
+   |                 help: try: `.filter(move |&S { a, b }| **a == 1 && b == &target).cloned()`
+
+error: aborting due to 15 previous errors
 

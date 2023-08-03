@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::{implements_trait, is_copy};
 use rustc_errors::Applicability;
-use rustc_hir::Expr;
+use rustc_hir::{Expr, ExprKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
 use rustc_span::sym;
@@ -10,12 +10,28 @@ use rustc_span::sym;
 use super::ITER_OVEREAGER_CLONED;
 use crate::redundant_clone::REDUNDANT_CLONE;
 
+#[derive(Clone, Copy)]
+pub(super) enum Op<'a> {
+    // rm `.cloned()`
+    // e.g. `count`
+    RmCloned,
+
+    // later `.cloned()`
+    // and add `&` to the parameter of closure parameter
+    // e.g. `find` `filter`
+    FixClosure(&'a str, &'a Expr<'a>),
+
+    // later `.cloned()`
+    // e.g. `skip` `take`
+    LaterCloned,
+}
+
 pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx Expr<'_>,
     cloned_call: &'tcx Expr<'_>,
     cloned_recv: &'tcx Expr<'_>,
-    is_count: bool,
+    op: Op<'tcx>,
     needs_into_iter: bool,
 ) {
     let typeck = cx.typeck_results();
@@ -35,10 +51,9 @@ pub(super) fn check<'tcx>(
             return;
         }
 
-        let (lint, msg, trailing_clone) = if is_count {
-            (REDUNDANT_CLONE, "unneeded cloning of iterator items", "")
-        } else {
-            (ITER_OVEREAGER_CLONED, "unnecessarily eager cloning of iterator items", ".cloned()")
+        let (lint, msg, trailing_clone) = match op {
+            Op::RmCloned => (REDUNDANT_CLONE, "unneeded cloning of iterator items", ""),
+            Op::LaterCloned | Op::FixClosure(_, _) => (ITER_OVEREAGER_CLONED, "unnecessarily eager cloning of iterator items", ".cloned()"),
         };
 
         span_lint_and_then(
@@ -47,11 +62,27 @@ pub(super) fn check<'tcx>(
             expr.span,
             msg,
             |diag| {
-                let method_span = expr.span.with_lo(cloned_call.span.hi());
-                if let Some(mut snip) = snippet_opt(cx, method_span) {
-                    snip.push_str(trailing_clone);
-                    let replace_span = expr.span.with_lo(cloned_recv.span.hi());
-                    diag.span_suggestion(replace_span, "try", snip, Applicability::MachineApplicable);
+                match op {
+                    Op::RmCloned | Op::LaterCloned => {
+                        let method_span = expr.span.with_lo(cloned_call.span.hi());
+                        if let Some(mut snip) = snippet_opt(cx, method_span) {
+                            snip.push_str(trailing_clone);
+                            let replace_span = expr.span.with_lo(cloned_recv.span.hi());
+                            diag.span_suggestion(replace_span, "try", snip, Applicability::MachineApplicable);
+                        }
+                    }
+                    Op::FixClosure(name, predicate_expr) => {
+                        if let Some(predicate) = snippet_opt(cx, predicate_expr.span) {
+                            let new_closure = if let ExprKind::Closure(_) = predicate_expr.kind {
+                                predicate.replacen('|', "|&", 1)
+                            } else {
+                                format!("|&x| {predicate}(x)")
+                            };
+                            let snip = format!(".{name}({new_closure}).cloned()" );
+                            let replace_span = expr.span.with_lo(cloned_recv.span.hi());
+                            diag.span_suggestion(replace_span, "try", snip, Applicability::MachineApplicable);
+                        }
+                    }
                 }
             }
         );
