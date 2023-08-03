@@ -1463,11 +1463,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         // Type check the pattern. Override if necessary to avoid knock-on errors.
-        self.check_pat_top(&decl.pat, decl_ty, ty_span, origin_expr);
+        self.check_pat_top(&decl.pat, decl_ty, ty_span, origin_expr, Some(decl.origin));
         let pat_ty = self.node_ty(decl.pat.hir_id);
         self.overwrite_local_ty_if_err(decl.hir_id, decl.pat, pat_ty);
 
-        if let Some(blk) = decl.els {
+        if let Some(blk) = decl.origin.try_get_else() {
             let previous_diverges = self.diverges.get();
             let else_ty = self.check_block_with_expected(blk, NoExpectation);
             let cause = self.cause(blk.span, ObligationCauseCode::LetElse);
