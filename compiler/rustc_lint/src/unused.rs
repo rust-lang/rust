@@ -666,6 +666,24 @@ trait UnusedDelimLint {
         if !followed_by_block {
             return false;
         }
+
+        // Check if we need parens for `match &( Struct { feild:  }) {}`.
+        {
+            let mut innermost = inner;
+            loop {
+                innermost = match &innermost.kind {
+                    ExprKind::AddrOf(_, _, expr) => expr,
+                    _ => {
+                        if parser::contains_exterior_struct_lit(&innermost) {
+                            return true;
+                        } else {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
         let mut innermost = inner;
         loop {
             innermost = match &innermost.kind {
