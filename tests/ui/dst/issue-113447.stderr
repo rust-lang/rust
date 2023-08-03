@@ -1,0 +1,25 @@
+error[E0277]: can't compare `&[u8; 1]` with `[{integer}; 1]`
+  --> $DIR/issue-113447.rs:24:20
+   |
+LL |     let _ = &[0u8] == [0xAA];
+   |                    ^^ no implementation for `&[u8; 1] == [{integer}; 1]`
+   |
+   = help: the trait `PartialEq<[{integer}; 1]>` is not implemented for `&[u8; 1]`
+   = help: the following other types implement trait `PartialEq<Rhs>`:
+             <[A; N] as PartialEq<[B; N]>>
+             <[A; N] as PartialEq<[B]>>
+             <[A; N] as PartialEq<&[B]>>
+             <[A; N] as PartialEq<&mut [B]>>
+             <[T] as PartialEq<Vec<U, A>>>
+             <[A] as PartialEq<[B]>>
+             <[B] as PartialEq<[A; N]>>
+             <&[u8] as PartialEq<Bytes>>
+           and 4 others
+help: convert the array to a `&[u8]` slice instead
+   |
+LL |     let _ = &[0u8] == &[0xAA][..];
+   |                       +      ++++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.
