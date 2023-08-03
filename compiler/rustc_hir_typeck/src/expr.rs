@@ -68,20 +68,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn check_expr_has_type_or_error(
         &self,
         expr: &'tcx hir::Expr<'tcx>,
-        expected: Ty<'tcx>,
-        extend_err: impl FnMut(&mut Diagnostic),
+        expected_ty: Ty<'tcx>,
+        extend_err: impl FnOnce(&mut Diagnostic),
     ) -> Ty<'tcx> {
-        self.check_expr_meets_expectation_or_error(expr, ExpectHasType(expected), extend_err)
-    }
-
-    fn check_expr_meets_expectation_or_error(
-        &self,
-        expr: &'tcx hir::Expr<'tcx>,
-        expected: Expectation<'tcx>,
-        mut extend_err: impl FnMut(&mut Diagnostic),
-    ) -> Ty<'tcx> {
-        let expected_ty = expected.to_option(&self).unwrap_or(self.tcx.types.bool);
-        let mut ty = self.check_expr_with_expectation(expr, expected);
+        let mut ty = self.check_expr_with_expectation(expr, ExpectHasType(expected_ty));
 
         // While we don't allow *arbitrary* coercions here, we *do* allow
         // coercions from ! to `expected`.
