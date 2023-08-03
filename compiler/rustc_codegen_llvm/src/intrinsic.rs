@@ -119,8 +119,8 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             sym::likely => {
                 self.call_intrinsic("llvm.expect.i1", &[args[0].immediate(), self.const_bool(true)])
             }
-            sym::is_compile_time_known => {
-                self.call_intrinsic("llvm.is.constant", &[args[0].immediate()])
+            sym::is_val_statically_known => {
+                self.call_intrinsic("llvm.is.constant.ptr", &[args[0].immediate()])
             }
             sym::unlikely => self
                 .call_intrinsic("llvm.expect.i1", &[args[0].immediate(), self.const_bool(false)]),

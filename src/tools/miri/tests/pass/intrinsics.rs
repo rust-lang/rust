@@ -33,6 +33,12 @@ fn main() {
     assert_eq!(intrinsics::likely(false), false);
     assert_eq!(intrinsics::unlikely(true), true);
 
+    if unsafe { intrinsics::is_val_statically_known(&0 as _) } {
+        0
+    } else {
+        0
+    };
+
     intrinsics::forget(Bomb);
 
     let _v = intrinsics::discriminant_value(&Some(()));

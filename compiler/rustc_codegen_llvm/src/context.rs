@@ -892,7 +892,10 @@ impl<'ll> CodegenCx<'ll, '_> {
         ifn!("llvm.lifetime.start.p0i8", fn(t_i64, ptr) -> void);
         ifn!("llvm.lifetime.end.p0i8", fn(t_i64, ptr) -> void);
 
-        ifn!("llvm.is.constant", fn(...) -> i1);
+        // Defining only the `ptr` variant of this overloaded intrinsic means
+        // we can call this on any type we want (that doesn't ICE), but at the
+        // slight cost of needing to write `addr_of!` everywhere.
+        ifn!("llvm.is.constant.ptr", fn(ptr) -> i1);
 
         ifn!("llvm.expect.i1", fn(i1, i1) -> i1);
         ifn!("llvm.eh.typeid.for", fn(ptr) -> t_i32);

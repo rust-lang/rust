@@ -258,7 +258,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             sym::copy => {
                 self.copy_intrinsic(&args[0], &args[1], &args[2], /*nonoverlapping*/ false)?;
             }
-            sym::is_compile_time_known => self.write_scalar(Scalar::from_bool(false), dest)?,
             sym::write_bytes => {
                 self.write_bytes_intrinsic(&args[0], &args[1], &args[2])?;
             }

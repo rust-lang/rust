@@ -2039,11 +2039,10 @@ macro_rules! int_impl {
                       without modifying the original"]
         #[inline]
         #[rustc_inherit_overflow_checks]
-        #[rustc_allow_const_fn_unstable(is_compile_time_known)]
+        #[rustc_allow_const_fn_unstable(is_val_statically_known)]
         pub const fn pow(self, mut exp: u32) -> Self {
-            #[cfg(not(bootstrap))]
             // SAFETY: This path has the same behavior as the other.
-            if unsafe { intrinsics::is_compile_time_known(self) }
+            if unsafe { intrinsics::is_val_statically_known(ptr::addr_of!(self)) }
                 && self > 0
                 && (self & (self - 1) == 0)
             {
@@ -2063,29 +2062,6 @@ macro_rules! int_impl {
                     & (num_shl < (mem::size_of::<Self>() * 8) as u32);
                 (1 << num_shl) * fine as Self
             } else {
-                if exp == 0 {
-                    return 1;
-                }
-                let mut base = self;
-                let mut acc = 1;
-
-                while exp > 1 {
-                    if (exp & 1) == 1 {
-                        acc = acc * base;
-                    }
-                    exp /= 2;
-                    base = base * base;
-                }
-
-                // since exp!=0, finally the exp must be 1.
-                // Deal with the final bit of the exponent separately, since
-                // squaring the base afterwards is not necessary and may cause a
-                // needless overflow.
-                acc * base
-            }
-
-            #[cfg(bootstrap)]
-            {
                 if exp == 0 {
                     return 1;
                 }

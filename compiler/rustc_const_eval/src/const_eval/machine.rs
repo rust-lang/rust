@@ -542,7 +542,12 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                     )?;
                 }
             }
-            sym::is_compile_time_known => ecx.write_scalar(Scalar::from_bool(false), dest)?,
+            // The name of this intrinsic is actually misleading. It actually
+            // represents whether the value is known to the optimizer (LLVM).
+            // The value of `arg`, while known to the machine, should be
+            // considered unknown to the optimizer as we haven't gotten to the
+            // codegen stage or ran any sort of optimizations yet.
+            sym::is_val_statically_known => ecx.write_scalar(Scalar::from_bool(false), dest)?,
             _ => {
                 throw_unsup_format!(
                     "intrinsic `{intrinsic_name}` is not supported at compile-time"

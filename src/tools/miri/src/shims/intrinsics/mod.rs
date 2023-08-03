@@ -5,6 +5,7 @@ use std::iter;
 
 use log::trace;
 
+use rand::Rng;
 use rustc_apfloat::{Float, Round};
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::{
@@ -131,16 +132,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 this.write_pointer(Pointer::new(ptr.provenance, masked_addr), dest)?;
             }
 
-            // The default implementation always returns `false`, but we want
-            // to return either `true` or `false` at random.
-            "is_comptile_time_known" => {
-                let rand = 0;
-                _ = getrandom::getrandom(&mut [rand]);
-
-                this.write_scalar(
-                    Scalar::from_bool(if (rand % 1) == 1 { true } else { false }),
-                    dest,
-                )?;
+            // We want to return either `true` or `false` at random, or else something like
+            // ```
+            // if !is_val_statically_known(0) { unreachable_unchecked(); }
+            // ```
+            // Would not be considered UB, or the other way around (`is_val_statically_known(0)`).
+            "is_val_statically_known" => {
+                let [_] = check_arg_count(args)?;
+                let branch = this.machine.rng.get_mut().gen();
+                this.write_scalar(Scalar::from_bool(branch), dest)?;
             }
 
             // Floating-point operations
@@ -461,10 +461,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 }
             }
             // Nothing else
-            _ => span_bug!(
-                this.cur_span(),
-                "`float_to_int_unchecked` called with non-int output type {dest_ty:?}"
-            ),
+            _ =>
+                span_bug!(
+                    this.cur_span(),
+                    "`float_to_int_unchecked` called with non-int output type {dest_ty:?}"
+                ),
         })
     }
 >>>>>>> acbf90a9489 (Make MIRI choose the path randomly and rename the intrinsic)
