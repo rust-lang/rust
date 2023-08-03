@@ -155,7 +155,7 @@ fn try_get_option_occurrence<'tcx>(
                 });
                 if let ExprKind::Path(QPath::Resolved(None, Path { res: Res::Local(local_id), .. })) = e.kind {
                     match some_captures.get(local_id)
-                        .or_else(|| (method_sugg == "map_or_else").then_some(()).and_then(|_| none_captures.get(local_id)))
+                        .or_else(|| (method_sugg == "map_or_else").then_some(()).and_then(|()| none_captures.get(local_id)))
                     {
                         Some(CaptureKind::Value | CaptureKind::Ref(Mutability::Mut)) => return None,
                         Some(CaptureKind::Ref(Mutability::Not)) if as_mut => return None,
