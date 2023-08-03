@@ -2019,7 +2019,7 @@ impl<'a> Parser<'a> {
         {
             let rfc_note = "anonymous parameters are removed in the 2018 edition (see RFC 1685)";
 
-            let (ident, self_sugg, param_sugg, type_sugg, self_span, param_span, type_span, maybe_name) =
+            let (ident, self_sugg, param_sugg, type_sugg, self_span, param_span, type_span) =
                 match pat.kind {
                     PatKind::Ident(_, ident, _) => (
                         ident,
@@ -2029,7 +2029,6 @@ impl<'a> Parser<'a> {
                         pat.span.shrink_to_lo(),
                         pat.span.shrink_to_hi(),
                         pat.span.shrink_to_lo(),
-                        true,
                     ),
                     // Also catches `fn foo(&a)`.
                     PatKind::Ref(ref inner_pat, mutab)
@@ -2046,22 +2045,11 @@ impl<'a> Parser<'a> {
                                     pat.span.shrink_to_lo(),
                                     pat.span,
                                     pat.span.shrink_to_lo(),
-                                    true,
                                 )
                             }
                             _ => unreachable!(),
                         }
-                    },
-                    PatKind::Path(_, ref path) if let Some(segment) = path.segments.last() => (
-                        segment.ident,
-                        "self: ",
-                        ": TypeName".to_string(),
-                        "_: ",
-                        pat.span.shrink_to_lo(),
-                        pat.span.shrink_to_hi(),
-                        pat.span.shrink_to_lo(),
-                        path.segments.len() == 1, // Avoid suggesting that `fn foo(a::b)` is fixed with a change to `fn foo(a::b: TypeName)`.
-                    ),
+                    }
                     _ => {
                         // Otherwise, try to get a type and emit a suggestion.
                         if let Some(ty) = pat.to_ty() {
@@ -2089,7 +2077,7 @@ impl<'a> Parser<'a> {
             }
             // Avoid suggesting that `fn foo(HashMap<u32>)` is fixed with a change to
             // `fn foo(HashMap: TypeName<u32>)`.
-            if self.token != token::Lt && maybe_name {
+            if self.token != token::Lt {
                 err.span_suggestion(
                     param_span,
                     "if this is a parameter name, give it a type",
