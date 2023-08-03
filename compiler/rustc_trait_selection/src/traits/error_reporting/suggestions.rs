@@ -3953,9 +3953,11 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         candidate_impls: &[ImplCandidate<'tcx>],
         span: Span,
     ) {
-        // We can only suggest the slice coersion for function arguments since the suggestion
-        // would make no sense in turbofish or call
-        let ObligationCauseCode::FunctionArgumentObligation { .. } = obligation.cause.code() else {
+        // We can only suggest the slice coersion for function and binary operation arguments,
+        // since the suggestion would make no sense in turbofish or call
+        let (ObligationCauseCode::BinOp { .. }
+        | ObligationCauseCode::FunctionArgumentObligation { .. }) = obligation.cause.code()
+        else {
             return;
         };
 
