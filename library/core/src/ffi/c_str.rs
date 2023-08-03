@@ -491,6 +491,34 @@ impl CStr {
         self.inner.as_ptr()
     }
 
+    /// Returns the length of `self`. Like C's `strlen`, this does not include the nul terminator.
+    ///
+    /// > **Note**: This method is currently implemented as a constant-time
+    /// > cast, but it is planned to alter its definition in the future to
+    /// > perform the length calculation whenever this method is called.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(cstr_count_bytes)]
+    ///
+    /// use std::ffi::CStr;
+    ///
+    /// let cstr = CStr::from_bytes_with_nul(b"foo\0").unwrap();
+    /// assert_eq!(cstr.count_bytes(), 3);
+    ///
+    /// let cstr = CStr::from_bytes_with_nul(b"\0").unwrap();
+    /// assert_eq!(cstr.count_bytes(), 0);
+    /// ```
+    #[inline]
+    #[must_use]
+    #[doc(alias("len", "strlen"))]
+    #[unstable(feature = "cstr_count_bytes", issue = "114441")]
+    #[rustc_const_unstable(feature = "const_cstr_from_ptr", issue = "113219")]
+    pub const fn count_bytes(&self) -> usize {
+        self.inner.len() - 1
+    }
+
     /// Returns `true` if `self.to_bytes()` has a length of 0.
     ///
     /// # Examples
