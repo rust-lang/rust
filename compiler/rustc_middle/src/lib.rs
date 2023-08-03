@@ -64,6 +64,7 @@
 #![feature(macro_metavar_expr)]
 #![recursion_limit = "512"]
 #![allow(rustc::potential_query_instability)]
+#![cfg_attr(not(bootstrap), allow(internal_features))]
 
 #[macro_use]
 extern crate bitflags;

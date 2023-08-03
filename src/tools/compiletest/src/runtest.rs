@@ -868,6 +868,8 @@ impl<'test> TestCx<'test> {
             .args(&["--target", &self.config.target])
             .arg("-L")
             .arg(&aux_dir)
+            .arg("-A")
+            .arg("internal_features")
             .args(&self.props.compile_flags)
             .envs(self.props.rustc_env.clone());
         self.maybe_add_external_args(&mut rustc, &self.config.target_rustcflags);
@@ -936,7 +938,9 @@ impl<'test> TestCx<'test> {
             .arg("-L")
             .arg(&self.config.build_base)
             .arg("-L")
-            .arg(aux_dir);
+            .arg(aux_dir)
+            .arg("-A")
+            .arg("internal_features");
         self.set_revision_flags(&mut rustc);
         self.maybe_add_external_args(&mut rustc, &self.config.target_rustcflags);
         rustc.args(&self.props.compile_flags);
@@ -1867,6 +1871,8 @@ impl<'test> TestCx<'test> {
             .arg("--deny")
             .arg("warnings")
             .arg(&self.testpaths.file)
+            .arg("-A")
+            .arg("internal_features")
             .args(&self.props.compile_flags);
 
         if self.config.mode == RustdocJson {
@@ -2458,6 +2464,9 @@ impl<'test> TestCx<'test> {
         if let AllowUnused::Yes = allow_unused {
             rustc.args(&["-A", "unused"]);
         }
+
+        // Allow tests to use internal features.
+        rustc.args(&["-A", "internal_features"]);
 
         if self.props.force_host {
             self.maybe_add_external_args(&mut rustc, &self.config.host_rustcflags);

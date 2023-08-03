@@ -72,6 +72,9 @@ lint_builtin_incomplete_features = the feature `{$name}` is incomplete and may n
     .note = see issue #{$n} <https://github.com/rust-lang/rust/issues/{$n}> for more information
     .help = consider using `min_{$name}` instead, which is more stable and complete
 
+lint_builtin_internal_features = the feature `{$name}` is internal to the compiler or standard library
+    .note = using it is strongly discouraged
+
 lint_builtin_keyword_idents = `{$kw}` is a keyword in the {$next} edition
     .suggestion = you can use a raw identifier to stay compatible
 

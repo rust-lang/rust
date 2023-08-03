@@ -16,12 +16,22 @@ macro_rules! set {
     }};
 }
 
+#[derive(PartialEq)]
+enum FeatureStatus {
+    Default,
+    Incomplete,
+    Internal,
+}
+
 macro_rules! declare_features {
-    (__status_to_bool active) => {
-        false
+    (__status_to_enum active) => {
+        FeatureStatus::Default
     };
-    (__status_to_bool incomplete) => {
-        true
+    (__status_to_enum incomplete) => {
+        FeatureStatus::Incomplete
+    };
+    (__status_to_enum internal) => {
+        FeatureStatus::Internal
     };
     ($(
         $(#[doc = $doc:tt])* ($status:ident, $feature:ident, $ver:expr, $issue:expr, $edition:expr),
@@ -83,9 +93,25 @@ macro_rules! declare_features {
             pub fn incomplete(&self, feature: Symbol) -> bool {
                 match feature {
                     $(
-                        sym::$feature => declare_features!(__status_to_bool $status),
+                        sym::$feature => declare_features!(__status_to_enum $status) == FeatureStatus::Incomplete,
                     )*
                     // accepted and removed features aren't in this file but are never incomplete
+                    _ if self.declared_lang_features.iter().any(|f| f.0 == feature) => false,
+                    _ if self.declared_lib_features.iter().any(|f| f.0 == feature) => false,
+                    _ => panic!("`{}` was not listed in `declare_features`", feature),
+                }
+            }
+
+            /// Some features are internal to the compiler and standard library and should not
+            /// be used in normal projects. We warn the user about these
+            /// to alert them.
+            pub fn internal(&self, feature: Symbol) -> bool {
+                match feature {
+                    $(
+                        sym::$feature => declare_features!(__status_to_enum $status) == FeatureStatus::Internal,
+                    )*
+                    // accepted and removed features aren't in this file but are never internal
+                    // (a removed feature might have been internal, but it doesn't matter anymore)
                     _ if self.declared_lang_features.iter().any(|f| f.0 == feature) => false,
                     _ if self.declared_lib_features.iter().any(|f| f.0 == feature) => false,
                     _ => panic!("`{}` was not listed in `declare_features`", feature),
@@ -137,29 +163,29 @@ declare_features! (
     /// Allows using the `vectorcall` ABI.
     (active, abi_vectorcall, "1.7.0", None, None),
     /// Allows using `#![needs_allocator]`, an implementation detail of `#[global_allocator]`.
-    (active, allocator_internals, "1.20.0", None, None),
+    (internal, allocator_internals, "1.20.0", None, None),
     /// Allows using `#[allow_internal_unsafe]`. This is an
     /// attribute on `macro_rules!` and can't use the attribute handling
     /// below (it has to be checked before expansion possibly makes
     /// macros disappear).
-    (active, allow_internal_unsafe, "1.0.0", None, None),
+    (internal, allow_internal_unsafe, "1.0.0", None, None),
     /// Allows using `#[allow_internal_unstable]`. This is an
     /// attribute on `macro_rules!` and can't use the attribute handling
     /// below (it has to be checked before expansion possibly makes
     /// macros disappear).
-    (active, allow_internal_unstable, "1.0.0", None, None),
+    (internal, allow_internal_unstable, "1.0.0", None, None),
     /// Allows using anonymous lifetimes in argument-position impl-trait.
     (active, anonymous_lifetime_in_impl_trait, "1.63.0", None, None),
     /// Allows identifying the `compiler_builtins` crate.
-    (active, compiler_builtins, "1.13.0", None, None),
+    (internal, compiler_builtins, "1.13.0", None, None),
     /// Allows writing custom MIR
-    (active, custom_mir, "1.65.0", None, None),
+    (internal, custom_mir, "1.65.0", None, None),
     /// Outputs useful `assert!` messages
     (active, generic_assert, "1.63.0", None, None),
     /// Allows using the `rust-intrinsic`'s "ABI".
-    (active, intrinsics, "1.0.0", None, None),
+    (internal, intrinsics, "1.0.0", None, None),
     /// Allows using `#[lang = ".."]` attribute for linking items to special compiler logic.
-    (active, lang_items, "1.0.0", None, None),
+    (internal, lang_items, "1.0.0", None, None),
     /// Allows `#[link(..., cfg(..))]`; perma-unstable per #37406
     (active, link_cfg, "1.14.0", None, None),
     /// Allows the `multiple_supertrait_upcastable` lint.
@@ -167,22 +193,22 @@ declare_features! (
     /// Allow negative trait bounds. This is an internal-only feature for testing the trait solver!
     (incomplete, negative_bounds, "1.71.0", None, None),
     /// Allows using `#[omit_gdb_pretty_printer_section]`.
-    (active, omit_gdb_pretty_printer_section, "1.5.0", None, None),
+    (internal, omit_gdb_pretty_printer_section, "1.5.0", None, None),
     /// Allows using `#[prelude_import]` on glob `use` items.
-    (active, prelude_import, "1.2.0", None, None),
+    (internal, prelude_import, "1.2.0", None, None),
     /// Used to identify crates that contain the profiler runtime.
-    (active, profiler_runtime, "1.18.0", None, None),
+    (internal, profiler_runtime, "1.18.0", None, None),
     /// Allows using `rustc_*` attributes (RFC 572).
-    (active, rustc_attrs, "1.0.0", None, None),
+    (internal, rustc_attrs, "1.0.0", None, None),
     /// Allows using the `#[stable]` and `#[unstable]` attributes.
-    (active, staged_api, "1.0.0", None, None),
+    (internal, staged_api, "1.0.0", None, None),
     /// Added for testing E0705; perma-unstable.
-    (active, test_2018_feature, "1.31.0", None, Some(Edition::Edition2018)),
+    (internal, test_2018_feature, "1.31.0", None, Some(Edition::Edition2018)),
     /// Added for testing unstable lints; perma-unstable.
-    (active, test_unstable_lint, "1.60.0", None, None),
+    (internal, test_unstable_lint, "1.60.0", None, None),
     /// Allows non-`unsafe` —and thus, unsound— access to `Pin` constructions.
-    /// Marked `incomplete` since perma-unstable and unsound.
-    (incomplete, unsafe_pin_internals, "1.60.0", None, None),
+    /// Marked `internal` since perma-unstable and unsound.
+    (internal, unsafe_pin_internals, "1.60.0", None, None),
     /// Use for stable + negative coherence and strict coherence depending on trait's
     /// rustc_strict_coherence value.
     (active, with_negative_coherence, "1.60.0", None, None),
@@ -216,19 +242,19 @@ declare_features! (
     /// Allows using the `#[linkage = ".."]` attribute.
     (active, linkage, "1.0.0", Some(29603), None),
     /// Allows declaring with `#![needs_panic_runtime]` that a panic runtime is needed.
-    (active, needs_panic_runtime, "1.10.0", Some(32837), None),
+    (internal, needs_panic_runtime, "1.10.0", Some(32837), None),
     /// Allows using `+bundled,+whole-archive` native libs.
     (active, packed_bundled_libs, "1.69.0", Some(108081), None),
     /// Allows using the `#![panic_runtime]` attribute.
-    (active, panic_runtime, "1.10.0", Some(32837), None),
+    (internal, panic_runtime, "1.10.0", Some(32837), None),
     /// Allows using `#[rustc_allow_const_fn_unstable]`.
     /// This is an attribute on `const fn` for the same
     /// purpose as `#[allow_internal_unstable]`.
-    (active, rustc_allow_const_fn_unstable, "1.49.0", Some(69399), None),
+    (internal, rustc_allow_const_fn_unstable, "1.49.0", Some(69399), None),
     /// Allows using compiler's own crates.
     (active, rustc_private, "1.0.0", Some(27812), None),
     /// Allows using internal rustdoc features like `doc(keyword)`.
-    (active, rustdoc_internals, "1.58.0", Some(90418), None),
+    (internal, rustdoc_internals, "1.58.0", Some(90418), None),
     /// Allows using the `rustdoc::missing_doc_code_examples` lint
     (active, rustdoc_missing_doc_code_examples, "1.31.0", Some(101730), None),
     /// Allows using `#[start]` on a function indicating that it is the program entrypoint.
