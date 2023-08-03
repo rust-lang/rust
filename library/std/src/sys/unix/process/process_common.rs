@@ -558,20 +558,25 @@ impl fmt::Debug for Command {
             if let Some(ref cwd) = self.cwd {
                 write!(f, "cd {cwd:?} && ")?;
             }
-            // Removed env vars need a separate command.
-            // We use a single `unset` command for all of them.
-            let mut any_removed = false;
-            for (key, value_opt) in self.get_envs() {
-                if value_opt.is_none() {
-                    if !any_removed {
-                        write!(f, "unset ")?;
-                        any_removed = true;
+            if self.env.does_clear() {
+                write!(f, "env -i ")?;
+                // Altered env vars will be printed next, that should exactly work as expected.
+            } else {
+                // Removed env vars need a separate command.
+                // We use a single `unset` command for all of them.
+                let mut any_removed = false;
+                for (key, value_opt) in self.get_envs() {
+                    if value_opt.is_none() {
+                        if !any_removed {
+                            write!(f, "unset ")?;
+                            any_removed = true;
+                        }
+                        write!(f, "{} ", key.to_string_lossy())?;
                     }
-                    write!(f, "{} ", key.to_string_lossy())?;
                 }
-            }
-            if any_removed {
-                write!(f, "&& ")?;
+                if any_removed {
+                    write!(f, "&& ")?;
+                }
             }
             // Altered env vars can just be added in front of the program.
             for (key, value_opt) in self.get_envs() {

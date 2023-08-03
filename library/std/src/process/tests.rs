@@ -563,6 +563,29 @@ fn debug_print() {
 {PIDFD}}}"#
         )
     );
+
+    let mut command_with_cleared_env = Command::new("boring-name");
+    command_with_cleared_env.env_clear().env("BAR", "val").env_remove("FOO");
+    assert_eq!(format!("{command_with_cleared_env:?}"), r#"env -i BAR="val" "boring-name""#);
+    assert_eq!(
+        format!("{command_with_cleared_env:#?}"),
+        format!(
+            r#"Command {{
+    program: "boring-name",
+    args: [
+        "boring-name",
+    ],
+    env: CommandEnv {{
+        clear: true,
+        vars: {{
+            "BAR": Some(
+                "val",
+            ),
+        }},
+    }},
+{PIDFD}}}"#
+        )
+    );
 }
 
 // See issue #91991
