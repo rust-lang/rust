@@ -3416,7 +3416,7 @@ dependencies = [
  "libc",
  "measureme",
  "memmap2",
- "parking_lot 0.11.2",
+ "parking_lot 0.12.1",
  "rustc-hash",
  "rustc-rayon",
  "rustc-rayon-core",
@@ -4135,7 +4135,7 @@ dependencies = [
 name = "rustc_query_system"
 version = "0.0.0"
 dependencies = [
- "parking_lot 0.11.2",
+ "parking_lot 0.12.1",
  "rustc-rayon-core",
  "rustc_ast",
  "rustc_data_structures",
