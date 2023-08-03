@@ -183,7 +183,12 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
     ) -> InterpResult<'tcx, Option<(AllocId, BorTag)>> {
         let this = self.eval_context_mut();
         // Ensure we bail out if the pointer goes out-of-bounds (see miri#1050).
-        this.check_ptr_access_align(place.ptr, ptr_size, Align::ONE, CheckInAllocMsg::InboundsTest)?;
+        this.check_ptr_access_align(
+            place.ptr,
+            ptr_size,
+            Align::ONE,
+            CheckInAllocMsg::InboundsTest,
+        )?;
 
         // It is crucial that this gets called on all code paths, to ensure we track tag creation.
         let log_creation = |this: &MiriInterpCx<'mir, 'tcx>,
@@ -209,7 +214,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
                 // Unlike SB, we *do* a proper retag for size 0 if can identify the allocation.
                 // After all, the pointer may be lazily initialized outside this initial range.
                 data
-            },
+            }
             Err(_) => {
                 assert_eq!(ptr_size, Size::ZERO); // we did the deref check above, size has to be 0 here
                 // This pointer doesn't come with an AllocId, so there's no
