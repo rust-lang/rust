@@ -487,10 +487,10 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                     let unconstrained_rhs = this.next_term_infer_of_kind(goal.predicate.term);
                     let unconstrained_goal = goal.with(
                         this.tcx(),
-                        ty::Binder::dummy(ty::ProjectionPredicate {
+                        ty::ProjectionPredicate {
                             projection_ty: goal.predicate.projection_ty,
                             term: unconstrained_rhs,
-                        }),
+                        },
                     );
 
                     let (_, certainty, instantiate_goals) =

@@ -162,7 +162,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         self.add_goal(Goal::new(
             self.tcx(),
             param_env,
-            ty::Binder::dummy(ty::ProjectionPredicate { projection_ty: alias, term: other }),
+            ty::ProjectionPredicate { projection_ty: alias, term: other },
         ));
 
         Ok(())

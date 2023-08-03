@@ -269,7 +269,7 @@ fn rematch_unsize<'tcx>(
                 infcx.tcx,
                 ObligationCause::dummy(),
                 goal.param_env,
-                ty::Binder::dummy(ty::OutlivesPredicate(a_ty, region)),
+                ty::OutlivesPredicate(a_ty, region),
             ));
 
             Ok(Some(ImplSource::Builtin(source, nested)))

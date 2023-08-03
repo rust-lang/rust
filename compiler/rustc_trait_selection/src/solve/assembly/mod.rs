@@ -413,10 +413,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                         let normalized_ty = ecx.next_ty_infer();
                         let normalizes_to_goal = goal.with(
                             tcx,
-                            ty::Binder::dummy(ty::ProjectionPredicate {
-                                projection_ty,
-                                term: normalized_ty.into(),
-                            }),
+                            ty::ProjectionPredicate { projection_ty, term: normalized_ty.into() },
                         );
                         ecx.add_goal(normalizes_to_goal);
                         let _ = ecx.try_evaluate_added_goals().inspect_err(|_| {
