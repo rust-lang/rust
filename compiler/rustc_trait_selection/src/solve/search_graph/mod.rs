@@ -27,6 +27,7 @@ struct StackElem<'tcx> {
 
 pub(super) struct SearchGraph<'tcx> {
     mode: SolverMode,
+    local_overflow_limit: usize,
     /// The stack of goals currently being computed.
     ///
     /// An element is *deeper* in the stack if its index is *lower*.
@@ -39,6 +40,7 @@ impl<'tcx> SearchGraph<'tcx> {
     pub(super) fn new(tcx: TyCtxt<'tcx>, mode: SolverMode) -> SearchGraph<'tcx> {
         Self {
             mode,
+            local_overflow_limit: tcx.recursion_limit().0.ilog2() as usize,
             stack: Default::default(),
             overflow_data: OverflowData::new(tcx),
             provisional_cache: ProvisionalCache::empty(),
@@ -47,6 +49,10 @@ impl<'tcx> SearchGraph<'tcx> {
 
     pub(super) fn solver_mode(&self) -> SolverMode {
         self.mode
+    }
+
+    pub(super) fn local_overflow_limit(&self) -> usize {
+        self.local_overflow_limit
     }
 
     /// We do not use the global cache during coherence.

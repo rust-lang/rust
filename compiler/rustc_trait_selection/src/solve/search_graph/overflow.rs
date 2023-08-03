@@ -5,7 +5,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::Limit;
 
 use super::SearchGraph;
-use crate::solve::{response_no_constraints_raw, EvalCtxt};
+use crate::solve::response_no_constraints_raw;
 
 /// When detecting a solver overflow, we return ambiguity. Overflow can be
 /// *hidden* by either a fatal error in an **AND** or a trivial success in an **OR**.
@@ -72,33 +72,6 @@ pub(in crate::solve) trait OverflowHandler<'tcx> {
         self.search_graph().overflow_data.additional_depth = start_depth;
         self.search_graph().overflow_data.deal_with_overflow();
         on_overflow(self)
-    }
-
-    // Increment the `additional_depth` by one and evaluate `body`, or `on_overflow`
-    // if the depth is overflown.
-    fn with_incremented_depth<T>(
-        &mut self,
-        on_overflow: impl FnOnce(&mut Self) -> T,
-        body: impl FnOnce(&mut Self) -> T,
-    ) -> T {
-        let depth = self.search_graph().stack.len();
-        self.search_graph().overflow_data.additional_depth += 1;
-
-        let result = if self.search_graph().overflow_data.has_overflow(depth) {
-            self.search_graph().overflow_data.deal_with_overflow();
-            on_overflow(self)
-        } else {
-            body(self)
-        };
-
-        self.search_graph().overflow_data.additional_depth -= 1;
-        result
-    }
-}
-
-impl<'tcx> OverflowHandler<'tcx> for EvalCtxt<'_, 'tcx> {
-    fn search_graph(&mut self) -> &mut SearchGraph<'tcx> {
-        &mut self.search_graph
     }
 }
 

@@ -15,7 +15,7 @@ use rustc_middle::traits::solve::{
     CanonicalInput, CanonicalResponse, Certainty, IsNormalizesToHack, PredefinedOpaques,
     PredefinedOpaquesData, QueryResult,
 };
-use rustc_middle::traits::DefiningAnchor;
+use rustc_middle::traits::{specialization_graph, DefiningAnchor};
 use rustc_middle::ty::{
     self, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable, TypeVisitable,
     TypeVisitableExt, TypeVisitor,
@@ -25,11 +25,10 @@ use rustc_span::DUMMY_SP;
 use std::io::Write;
 use std::ops::ControlFlow;
 
-use crate::traits::specialization_graph;
 use crate::traits::vtable::{count_own_vtable_entries, prepare_vtable_segments, VtblSegment};
 
 use super::inspect::ProofTreeBuilder;
-use super::search_graph::{self, OverflowHandler};
+use super::search_graph;
 use super::SolverMode;
 use super::{search_graph::SearchGraph, Goal};
 pub use select::InferCtxtSelectExt;
@@ -173,6 +172,10 @@ impl<'tcx> InferCtxtEvalExt<'tcx> for InferCtxt<'tcx> {
 impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
     pub(super) fn solver_mode(&self) -> SolverMode {
         self.search_graph.solver_mode()
+    }
+
+    pub(super) fn local_overflow_limit(&self) -> usize {
+        self.search_graph.local_overflow_limit()
     }
 
     /// Creates a root evaluation context and search graph. This should only be
@@ -479,101 +482,22 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         let inspect = self.inspect.new_evaluate_added_goals();
         let inspect = core::mem::replace(&mut self.inspect, inspect);
 
-        let mut goals = core::mem::replace(&mut self.nested_goals, NestedGoals::new());
-        let mut new_goals = NestedGoals::new();
-
-        let response = self.repeat_while_none(
-            |_| Ok(Certainty::OVERFLOW),
-            |this| {
-                this.inspect.evaluate_added_goals_loop_start();
-
-                let mut has_changed = Err(Certainty::Yes);
-
-                if let Some(goal) = goals.normalizes_to_hack_goal.take() {
-                    // Replace the goal with an unconstrained infer var, so the
-                    // RHS does not affect projection candidate assembly.
-                    let unconstrained_rhs = this.next_term_infer_of_kind(goal.predicate.term);
-                    let unconstrained_goal = goal.with(
-                        this.tcx(),
-                        ty::ProjectionPredicate {
-                            projection_ty: goal.predicate.projection_ty,
-                            term: unconstrained_rhs,
-                        },
-                    );
-
-                    let (_, certainty, instantiate_goals) =
-                        match this.evaluate_goal(IsNormalizesToHack::Yes, unconstrained_goal) {
-                            Ok(r) => r,
-                            Err(NoSolution) => return Some(Err(NoSolution)),
-                        };
-                    new_goals.goals.extend(instantiate_goals);
-
-                    // Finally, equate the goal's RHS with the unconstrained var.
-                    // We put the nested goals from this into goals instead of
-                    // next_goals to avoid needing to process the loop one extra
-                    // time if this goal returns something -- I don't think this
-                    // matters in practice, though.
-                    match this.eq_and_get_goals(
-                        goal.param_env,
-                        goal.predicate.term,
-                        unconstrained_rhs,
-                    ) {
-                        Ok(eq_goals) => {
-                            goals.goals.extend(eq_goals);
-                        }
-                        Err(NoSolution) => return Some(Err(NoSolution)),
-                    };
-
-                    // We only look at the `projection_ty` part here rather than
-                    // looking at the "has changed" return from evaluate_goal,
-                    // because we expect the `unconstrained_rhs` part of the predicate
-                    // to have changed -- that means we actually normalized successfully!
-                    if goal.predicate.projection_ty
-                        != this.resolve_vars_if_possible(goal.predicate.projection_ty)
-                    {
-                        has_changed = Ok(())
-                    }
-
-                    match certainty {
-                        Certainty::Yes => {}
-                        Certainty::Maybe(_) => {
-                            // We need to resolve vars here so that we correctly
-                            // deal with `has_changed` in the next iteration.
-                            new_goals.normalizes_to_hack_goal =
-                                Some(this.resolve_vars_if_possible(goal));
-                            has_changed = has_changed.map_err(|c| c.unify_with(certainty));
-                        }
-                    }
+        let mut response = Ok(Certainty::OVERFLOW);
+        for _ in 0..self.local_overflow_limit() {
+            // FIXME: This match is a bit ugly, it might be nice to change the inspect
+            // stuff to use a closure instead. which should hopefully simplify this a bit.
+            match self.evaluate_added_goals_step() {
+                Ok(Some(cert)) => {
+                    response = Ok(cert);
+                    break;
                 }
-
-                for goal in goals.goals.drain(..) {
-                    let (changed, certainty, instantiate_goals) =
-                        match this.evaluate_goal(IsNormalizesToHack::No, goal) {
-                            Ok(result) => result,
-                            Err(NoSolution) => return Some(Err(NoSolution)),
-                        };
-                    new_goals.goals.extend(instantiate_goals);
-
-                    if changed {
-                        has_changed = Ok(());
-                    }
-
-                    match certainty {
-                        Certainty::Yes => {}
-                        Certainty::Maybe(_) => {
-                            new_goals.goals.push(goal);
-                            has_changed = has_changed.map_err(|c| c.unify_with(certainty));
-                        }
-                    }
+                Ok(None) => {}
+                Err(NoSolution) => {
+                    response = Err(NoSolution);
+                    break;
                 }
-
-                core::mem::swap(&mut new_goals, &mut goals);
-                match has_changed {
-                    Ok(()) => None,
-                    Err(certainty) => Some(Ok(certainty)),
-                }
-            },
-        );
+            }
+        }
 
         self.inspect.eval_added_goals_result(response);
 
@@ -584,8 +508,83 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         let goal_evaluations = std::mem::replace(&mut self.inspect, inspect);
         self.inspect.added_goals_evaluation(goal_evaluations);
 
-        self.nested_goals = goals;
         response
+    }
+
+    /// Iterate over all added goals: returning `Ok(Some(_))` in case we can stop rerunning.
+    ///
+    /// Goals for the next step get directly added the the nested goals of the `EvalCtxt`.
+    fn evaluate_added_goals_step(&mut self) -> Result<Option<Certainty>, NoSolution> {
+        let tcx = self.tcx();
+        let mut goals = core::mem::replace(&mut self.nested_goals, NestedGoals::new());
+
+        self.inspect.evaluate_added_goals_loop_start();
+        // If this loop did not result in any progress, what's our final certainty.
+        let mut unchanged_certainty = Some(Certainty::Yes);
+        if let Some(goal) = goals.normalizes_to_hack_goal.take() {
+            // Replace the goal with an unconstrained infer var, so the
+            // RHS does not affect projection candidate assembly.
+            let unconstrained_rhs = self.next_term_infer_of_kind(goal.predicate.term);
+            let unconstrained_goal = goal.with(
+                tcx,
+                ty::ProjectionPredicate {
+                    projection_ty: goal.predicate.projection_ty,
+                    term: unconstrained_rhs,
+                },
+            );
+
+            let (_, certainty, instantiate_goals) =
+                self.evaluate_goal(IsNormalizesToHack::Yes, unconstrained_goal)?;
+            self.add_goals(instantiate_goals);
+
+            // Finally, equate the goal's RHS with the unconstrained var.
+            // We put the nested goals from this into goals instead of
+            // next_goals to avoid needing to process the loop one extra
+            // time if this goal returns something -- I don't think this
+            // matters in practice, though.
+            let eq_goals =
+                self.eq_and_get_goals(goal.param_env, goal.predicate.term, unconstrained_rhs)?;
+            goals.goals.extend(eq_goals);
+
+            // We only look at the `projection_ty` part here rather than
+            // looking at the "has changed" return from evaluate_goal,
+            // because we expect the `unconstrained_rhs` part of the predicate
+            // to have changed -- that means we actually normalized successfully!
+            if goal.predicate.projection_ty
+                != self.resolve_vars_if_possible(goal.predicate.projection_ty)
+            {
+                unchanged_certainty = None;
+            }
+
+            match certainty {
+                Certainty::Yes => {}
+                Certainty::Maybe(_) => {
+                    // We need to resolve vars here so that we correctly
+                    // deal with `has_changed` in the next iteration.
+                    self.set_normalizes_to_hack_goal(self.resolve_vars_if_possible(goal));
+                    unchanged_certainty = unchanged_certainty.map(|c| c.unify_with(certainty));
+                }
+            }
+        }
+
+        for goal in goals.goals.drain(..) {
+            let (has_changed, certainty, instantiate_goals) =
+                self.evaluate_goal(IsNormalizesToHack::No, goal)?;
+            self.add_goals(instantiate_goals);
+            if has_changed {
+                unchanged_certainty = None;
+            }
+
+            match certainty {
+                Certainty::Yes => {}
+                Certainty::Maybe(_) => {
+                    self.add_goal(goal);
+                    unchanged_certainty = unchanged_certainty.map(|c| c.unify_with(certainty));
+                }
+            }
+        }
+
+        Ok(unchanged_certainty)
     }
 }
 
