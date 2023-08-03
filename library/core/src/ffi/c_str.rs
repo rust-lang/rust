@@ -214,6 +214,8 @@ impl CStr {
     /// * The memory referenced by the returned `CStr` must not be mutated for
     ///   the duration of lifetime `'a`.
     ///
+    /// * The nul terminator must be within `isize::MAX` from `ptr`
+    ///
     /// > **Note**: This operation is intended to be a 0-cost cast but it is
     /// > currently implemented with an up-front calculation of the length of
     /// > the string. This is not guaranteed to always be the case.
@@ -259,42 +261,16 @@ impl CStr {
     #[rustc_const_unstable(feature = "const_cstr_from_ptr", issue = "113219")]
     pub const unsafe fn from_ptr<'a>(ptr: *const c_char) -> &'a CStr {
         // SAFETY: The caller has provided a pointer that points to a valid C
-        // string with a NUL terminator of size less than `isize::MAX`, whose
-        // content remain valid and doesn't change for the lifetime of the
-        // returned `CStr`.
-        //
-        // Thus computing the length is fine (a NUL byte exists), the call to
-        // from_raw_parts is safe because we know the length is at most `isize::MAX`, meaning
-        // the call to `from_bytes_with_nul_unchecked` is correct.
+        // string with a NUL terminator less than `isize::MAX` from `ptr`.
+        let len = unsafe { const_strlen(ptr) };
+
+        // SAFETY: The caller has provided a valid pointer with length less than
+        // `isize::MAX`, so `from_raw_parts` is safe. The content remains valid
+        // and doesn't change for the lifetime of the returned `CStr`. This
+        // means the call to `from_bytes_with_nul_unchecked` is correct.
         //
         // The cast from c_char to u8 is ok because a c_char is always one byte.
-        unsafe {
-            const fn strlen_ct(s: *const c_char) -> usize {
-                let mut len = 0;
-
-                // SAFETY: Outer caller has provided a pointer to a valid C string.
-                while unsafe { *s.add(len) } != 0 {
-                    len += 1;
-                }
-
-                len
-            }
-
-            // `inline` is necessary for codegen to see strlen.
-            #[inline]
-            fn strlen_rt(s: *const c_char) -> usize {
-                extern "C" {
-                    /// Provided by libc or compiler_builtins.
-                    fn strlen(s: *const c_char) -> usize;
-                }
-
-                // SAFETY: Outer caller has provided a pointer to a valid C string.
-                unsafe { strlen(s) }
-            }
-
-            let len = intrinsics::const_eval_select((ptr,), strlen_ct, strlen_rt);
-            Self::from_bytes_with_nul_unchecked(slice::from_raw_parts(ptr.cast(), len + 1))
-        }
+        unsafe { Self::from_bytes_with_nul_unchecked(slice::from_raw_parts(ptr.cast(), len + 1)) }
     }
 
     /// Creates a C string wrapper from a byte slice with any number of nuls.
@@ -680,4 +656,38 @@ impl AsRef<CStr> for CStr {
     fn as_ref(&self) -> &CStr {
         self
     }
+}
+
+/// Calculate the length of a nul-terminated string. Defers to C's `strlen` when possible.
+///
+/// # Safety
+///
+/// The pointer must point to a valid buffer that contains a NUL terminator. The NUL must be
+/// located within `isize::MAX` from `ptr`.
+#[inline]
+const unsafe fn const_strlen(ptr: *const c_char) -> usize {
+    const fn strlen_ct(s: *const c_char) -> usize {
+        let mut len = 0;
+
+        // SAFETY: Outer caller has provided a pointer to a valid C string.
+        while unsafe { *s.add(len) } != 0 {
+            len += 1;
+        }
+
+        len
+    }
+
+    #[inline]
+    fn strlen_rt(s: *const c_char) -> usize {
+        extern "C" {
+            /// Provided by libc or compiler_builtins.
+            fn strlen(s: *const c_char) -> usize;
+        }
+
+        // SAFETY: Outer caller has provided a pointer to a valid C string.
+        unsafe { strlen(s) }
+    }
+
+    // SAFETY: the two functions always provide equivalent functionality
+    unsafe { intrinsics::const_eval_select((ptr,), strlen_ct, strlen_rt) }
 }
