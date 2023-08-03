@@ -81,7 +81,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::ErrorGuaranteed;
 use rustc_lint_defs::pluralize;
-use rustc_parse::parser::{NtOrTt, Parser};
+use rustc_parse::parser::{ParseNtResult, Parser};
 use rustc_span::symbol::Ident;
 use rustc_span::symbol::MacroRulesNormalizedIdent;
 use rustc_span::Span;
@@ -692,8 +692,8 @@ impl TtParser {
                             Ok(nt) => nt,
                         };
                         let m = match nt {
-                            NtOrTt::Nt(nt) => MatchedNonterminal(Lrc::new(nt)),
-                            NtOrTt::Tt(tt) => MatchedTokenTree(tt),
+                            ParseNtResult::Nt(nt) => MatchedNonterminal(Lrc::new(nt)),
+                            ParseNtResult::Tt(tt) => MatchedTokenTree(tt),
                         };
                         mp.push_match(next_metavar, seq_depth, m);
                         mp.idx += 1;
