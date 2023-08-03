@@ -60,11 +60,6 @@ use rustc_trait_selection::traits::ObligationCtxt;
 use rustc_trait_selection::traits::{self, ObligationCauseCode};
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
-    fn check_expr_eq_type(&self, expr: &'tcx hir::Expr<'tcx>, expected: Ty<'tcx>) {
-        let ty = self.check_expr_with_hint(expr, expected);
-        self.demand_eqtype(expr.span, expected, ty);
-    }
-
     pub fn check_expr_has_type_or_error(
         &self,
         expr: &'tcx hir::Expr<'tcx>,
@@ -331,9 +326,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             ExprKind::Cast(e, t) => self.check_expr_cast(e, t, expr),
             ExprKind::Type(e, t) => {
-                let ty = self.to_ty_saving_user_provided_ty(&t);
-                self.check_expr_eq_type(&e, ty);
-                ty
+                let ascribed_ty = self.to_ty_saving_user_provided_ty(&t);
+                let ty = self.check_expr_with_hint(e, ascribed_ty);
+                self.demand_eqtype(e.span, ascribed_ty, ty);
+                ascribed_ty
             }
             ExprKind::If(cond, then_expr, opt_else_expr) => {
                 self.check_then_else(cond, then_expr, opt_else_expr, expr.span, expected)
