@@ -378,15 +378,16 @@ impl<'tcx, Prov: Provenance> Scalar<Prov> {
     #[inline]
     pub fn to_bits(self, target_size: Size) -> InterpResult<'tcx, u128> {
         assert_ne!(target_size.bytes(), 0, "you should never look at the bits of a ZST");
-        self.try_to_int().map_err(|_| err_unsup!(ReadPointerAsBytes))?.to_bits(target_size).map_err(
-            |size| {
+        self.try_to_int()
+            .map_err(|_| err_unsup!(ReadPointerAsInt(None)))?
+            .to_bits(target_size)
+            .map_err(|size| {
                 err_ub!(ScalarSizeMismatch(ScalarSizeMismatch {
                     target_size: target_size.bytes(),
                     data_size: size.bytes(),
                 }))
                 .into()
-            },
-        )
+            })
     }
 
     #[inline(always)]

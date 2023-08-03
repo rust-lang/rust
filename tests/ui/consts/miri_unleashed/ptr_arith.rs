@@ -1,5 +1,5 @@
 // compile-flags: -Zunleash-the-miri-inside-of-you
-#![feature(core_intrinsics)]
+#![feature(core_intrinsics, pointer_byte_offsets)]
 
 // During CTFE, we prevent pointer-to-int casts.
 // Pointer comparisons are prevented in the trait system.
@@ -15,7 +15,7 @@ static PTR_INT_TRANSMUTE: () = unsafe {
     let x: usize = std::mem::transmute(&0);
     let _v = x + 0;
     //~^ ERROR could not evaluate static initializer
-    //~| unable to turn pointer into raw bytes
+    //~| unable to turn pointer into integer
 };
 
 // I'd love to test pointer comparison, but that is not possible since

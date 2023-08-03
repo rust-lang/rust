@@ -307,6 +307,12 @@ impl Step for CodegenBackend {
     }
 
     fn run(self, builder: &Builder<'_>) {
+        // FIXME: remove once https://github.com/rust-lang/rust/issues/112393 is resolved
+        if builder.build.config.vendor && &self.backend == "gcc" {
+            println!("Skipping checking of `rustc_codegen_gcc` with vendoring enabled.");
+            return;
+        }
+
         let compiler = builder.compiler(builder.top_stage, builder.config.build);
         let target = self.target;
         let backend = self.backend;

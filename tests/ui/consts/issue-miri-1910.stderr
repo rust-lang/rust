@@ -1,7 +1,7 @@
 error[E0080]: evaluation of constant value failed
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
    |
-   = note: unable to turn pointer into raw bytes
+   = note: unable to turn pointer into integer
    |
 note: inside `std::ptr::read::<u8>`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
