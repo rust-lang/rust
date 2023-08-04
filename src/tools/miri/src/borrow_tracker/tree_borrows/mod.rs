@@ -117,7 +117,7 @@ impl<'tcx> NewPermission {
         let ty_is_freeze = pointee.is_freeze(*cx.tcx, cx.param_env());
         let ty_is_unpin = pointee.is_unpin(*cx.tcx, cx.param_env());
         let initial_state = match mutability {
-            Mutability::Mut if ty_is_unpin => Permission::new_unique_2phase(ty_is_freeze),
+            Mutability::Mut if ty_is_unpin => Permission::new_reserved(ty_is_freeze),
             Mutability::Not if ty_is_freeze => Permission::new_frozen(),
             // Raw pointers never enter this function so they are not handled.
             // However raw pointers are not the only pointers that take the parent
@@ -146,7 +146,7 @@ impl<'tcx> NewPermission {
             let ty_is_freeze = ty.is_freeze(*cx.tcx, cx.param_env());
             Self {
                 zero_size,
-                initial_state: Permission::new_unique_2phase(ty_is_freeze),
+                initial_state: Permission::new_reserved(ty_is_freeze),
                 protector: (kind == RetagKind::FnEntry).then_some(ProtectorKind::WeakProtector),
             }
         })
@@ -250,6 +250,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
 
         let alloc_kind = this.get_alloc_info(alloc_id).2;
         if !matches!(alloc_kind, AllocKind::LiveData) {
+            assert_eq!(ptr_size, Size::ZERO); // we did the deref check above, size has to be 0 here
             // There's not actually any bytes here where accesses could even be tracked.
             // Just produce the new provenance, nothing else to do.
             return Ok(Some(Provenance::Concrete { alloc_id, tag: new_tag }));
@@ -261,24 +262,39 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
         let mut tree_borrows = alloc_extra.borrow_tracker_tb().borrow_mut();
 
         // All reborrows incur a (possibly zero-sized) read access to the parent
-        {
-            let global = &this.machine.borrow_tracker.as_ref().unwrap();
-            let span = this.machine.current_span();
-            tree_borrows.perform_access(
-                AccessKind::Read,
-                orig_tag,
-                range,
-                global,
-                span,
-                diagnostics::AccessCause::Reborrow,
-            )?;
+        tree_borrows.perform_access(
+            AccessKind::Read,
+            orig_tag,
+            range,
+            this.machine.borrow_tracker.as_ref().unwrap(),
+            this.machine.current_span(),
+            diagnostics::AccessCause::Reborrow,
+        )?;
+        // Record the parent-child pair in the tree.
+        tree_borrows.new_child(orig_tag, new_tag, new_perm.initial_state, range, span)?;
+        drop(tree_borrows);
+
+        // Also inform the data race model (but only if any bytes are actually affected).
+        if range.size.bytes() > 0 {
             if let Some(data_race) = alloc_extra.data_race.as_ref() {
-                data_race.read(alloc_id, range, &this.machine)?;
+                // We sometimes need to make it a write, since not all retags commute with reads!
+                // FIXME: Is that truly the semantics we want? Some optimizations are likely to be
+                // very unhappy without this. We'd tsill ge some UB just by picking a suitable
+                // interleaving, but wether UB happens can depend on whether a write occurs in the
+                // future...
+                let is_write = new_perm.initial_state.is_active()
+                    || (new_perm.initial_state.is_resrved() && new_perm.protector.is_some());
+                if is_write {
+                    // Need to get mutable access to alloc_extra.
+                    // (Cannot always do this as we can do read-only reborrowing on read-only allocations.)
+                    let (alloc_extra, machine) = this.get_alloc_extra_mut(alloc_id)?;
+                    alloc_extra.data_race.as_mut().unwrap().write(alloc_id, range, machine)?;
+                } else {
+                    data_race.read(alloc_id, range, &this.machine)?;
+                }
             }
         }
 
-        // Record the parent-child pair in the tree.
-        tree_borrows.new_child(orig_tag, new_tag, new_perm.initial_state, range, span)?;
         Ok(Some(Provenance::Concrete { alloc_id, tag: new_tag }))
     }
 

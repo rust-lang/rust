@@ -376,7 +376,7 @@ where {
 impl Tree {
     /// Create a new tree, with only a root pointer.
     pub fn new(root_tag: BorTag, size: Size, span: Span) -> Self {
-        let root_perm = Permission::new_root();
+        let root_perm = Permission::new_active();
         let mut tag_mapping = UniKeyMap::default();
         let root_idx = tag_mapping.insert(root_tag);
         let nodes = {
