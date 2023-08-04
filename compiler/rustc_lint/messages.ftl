@@ -166,8 +166,9 @@ lint_check_name_warning = {$msg}
 
 lint_command_line_source = `forbid` lint level was set on command line
 
-lint_confusable_identifier_pair = identifier pair considered confusable between `{$existing_sym}` and `{$sym}`
-    .label = this is where the previous identifier occurred
+lint_confusable_identifier_pair = found both `{$existing_sym}` and `{$sym}` as identifiers, which look alike
+    .current_use = this identifier can be confused with `{$existing_sym}`
+    .other_use = other identifier used here
 
 lint_cstring_ptr = getting the inner pointer of a temporary `CString`
     .as_ptr_label = this pointer will be invalid
