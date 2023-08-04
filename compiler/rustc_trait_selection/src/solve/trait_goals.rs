@@ -448,7 +448,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             // We need to normalize the b_ty since it's matched structurally
             // in the other functions below.
             let b_ty = match ecx
-                .normalize_non_self_ty(goal.predicate.trait_ref.args.type_at(1), goal.param_env)
+                .try_normalize_ty(goal.param_env, goal.predicate.trait_ref.args.type_at(1))
             {
                 Ok(Some(b_ty)) => b_ty,
                 Ok(None) => return vec![misc_candidate(ecx, Certainty::OVERFLOW)],
@@ -926,42 +926,5 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     ) -> QueryResult<'tcx> {
         let candidates = self.assemble_and_evaluate_candidates(goal);
         self.merge_candidates(candidates)
-    }
-
-    /// Normalize a non-self type when it is structually matched on when solving
-    /// a built-in goal.
-    ///
-    /// This is handled already through `assemble_candidates_after_normalizing_self_ty`
-    /// for the self type, but for other goals, additional normalization of other
-    /// arguments may be needed to completely implement the semantics of the trait.
-    ///
-    /// This is required when structurally matching on any trait argument that is
-    /// not the self type.
-    fn normalize_non_self_ty(
-        &mut self,
-        mut ty: Ty<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-    ) -> Result<Option<Ty<'tcx>>, NoSolution> {
-        if !matches!(ty.kind(), ty::Alias(..)) {
-            return Ok(Some(ty));
-        }
-
-        for _ in 0..self.local_overflow_limit() {
-            let ty::Alias(_, projection_ty) = *ty.kind() else {
-                return Ok(Some(ty));
-            };
-
-            let normalized_ty = self.next_ty_infer();
-            let normalizes_to_goal = Goal::new(
-                self.tcx(),
-                param_env,
-                ty::ProjectionPredicate { projection_ty, term: normalized_ty.into() },
-            );
-            self.add_goal(normalizes_to_goal);
-            self.try_evaluate_added_goals()?;
-            ty = self.resolve_vars_if_possible(normalized_ty);
-        }
-
-        Ok(None)
     }
 }
