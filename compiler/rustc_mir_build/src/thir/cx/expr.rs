@@ -1072,6 +1072,9 @@ impl<'tcx> Cx<'tcx> {
                     variant_index,
                     name: field,
                 },
+                HirProjectionKind::OpaqueCast => {
+                    ExprKind::Use { source: self.thir.exprs.push(captured_place_expr) }
+                }
                 HirProjectionKind::Index | HirProjectionKind::Subslice => {
                     // We don't capture these projections, so we can ignore them here
                     continue;
