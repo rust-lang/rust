@@ -101,8 +101,6 @@ impl<'a> Parser<'a> {
     /// site.
     #[inline]
     pub fn parse_nonterminal(&mut self, kind: NonterminalKind) -> PResult<'a, NtOrTt> {
-        // Any `Nonterminal` which stores its tokens (currently `NtItem` and `NtExpr`)
-        // needs to have them force-captured here.
         // A `macro_rules!` invocation may pass a captured item/expr to a proc-macro,
         // which requires having captured tokens available. Since we cannot determine
         // in advance whether or not a proc-macro will be (transitively) invoked,
