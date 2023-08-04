@@ -4,7 +4,7 @@ error: expected expression, found end of macro arguments
 LL |     let _ = #[no_output] "Hello, world!";
    |             ^^^^^^^^^^^^
 
-error: macro expansion ignores token `,` and any following
+error: macro expansion ignores `,` and any tokens following
   --> $DIR/attr-invalid-exprs.rs:15:13
    |
 LL |     let _ = #[duplicate] "Hello, world!";
@@ -16,7 +16,7 @@ help: you might be missing a semicolon here
 LL |     let _ = #[duplicate]; "Hello, world!";
    |                         +
 
-error: macro expansion ignores token `,` and any following
+error: macro expansion ignores `,` and any tokens following
   --> $DIR/attr-invalid-exprs.rs:24:9
    |
 LL |         #[duplicate]

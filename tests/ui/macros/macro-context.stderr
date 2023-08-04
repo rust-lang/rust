@@ -1,4 +1,4 @@
-error: macro expansion ignores token `;` and any following
+error: macro expansion ignores `;` and any tokens following
   --> $DIR/macro-context.rs:3:15
    |
 LL |     () => ( i ; typeof );
@@ -9,7 +9,7 @@ LL |     let a: m!();
    |
    = note: the usage of `m!` is likely invalid in type context
 
-error: macro expansion ignores token `typeof` and any following
+error: macro expansion ignores reserved keyword `typeof` and any tokens following
   --> $DIR/macro-context.rs:3:17
    |
 LL |     () => ( i ; typeof );
@@ -20,7 +20,7 @@ LL |     let i = m!();
    |
    = note: the usage of `m!` is likely invalid in expression context
 
-error: macro expansion ignores token `;` and any following
+error: macro expansion ignores `;` and any tokens following
   --> $DIR/macro-context.rs:3:15
    |
 LL |     () => ( i ; typeof );
