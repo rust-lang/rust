@@ -987,9 +987,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let target = self.infcx.shallow_resolve(target);
         debug!(?source, ?target, "confirm_builtin_unsize_candidate");
 
-        let mut nested = vec![];
-        let src;
-        match (source.kind(), target.kind()) {
+        Ok(match (source.kind(), target.kind()) {
             // Trait+Kx+'a -> Trait+Ky+'b (auto traits and lifetime subtyping).
             (&ty::Dynamic(ref data_a, r_a, dyn_a), &ty::Dynamic(ref data_b, r_b, dyn_b))
                 if dyn_a == dyn_b =>
@@ -1016,16 +1014,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                 // Require that the traits involved in this upcast are **equal**;
                 // only the **lifetime bound** is changed.
-                let InferOk { obligations, .. } = self
+                let InferOk { mut obligations, .. } = self
                     .infcx
                     .at(&obligation.cause, obligation.param_env)
                     .sup(DefineOpaqueTypes::No, target, source_trait)
                     .map_err(|_| Unimplemented)?;
-                nested.extend(obligations);
 
                 // Register one obligation for 'a: 'b.
                 let outlives = ty::OutlivesPredicate(r_a, r_b);
-                nested.push(Obligation::with_depth(
+                obligations.push(Obligation::with_depth(
                     tcx,
                     obligation.cause.clone(),
                     obligation.recursion_depth + 1,
@@ -1033,7 +1030,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     obligation.predicate.rebind(outlives),
                 ));
 
-                src = BuiltinImplSource::Misc;
+                ImplSource::Builtin(BuiltinImplSource::Misc, obligations)
             }
 
             // `T` -> `Trait`
@@ -1059,11 +1056,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 //  words, if the object type is `Foo + Send`, this would create an obligation for
                 //  the `Send` check.)
                 //  - Projection predicates
-                nested.extend(
-                    data.iter().map(|predicate| {
-                        predicate_to_obligation(predicate.with_self_ty(tcx, source))
-                    }),
-                );
+                let mut nested: Vec<_> = data
+                    .iter()
+                    .map(|predicate| predicate_to_obligation(predicate.with_self_ty(tcx, source)))
+                    .collect();
 
                 // We can only make objects from sized types.
                 let tr = ty::TraitRef::from_lang_item(
@@ -1081,7 +1077,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     ty::Binder::dummy(ty::ClauseKind::TypeOutlives(outlives)).to_predicate(tcx),
                 ));
 
-                src = BuiltinImplSource::Misc;
+                ImplSource::Builtin(BuiltinImplSource::Misc, nested)
             }
 
             // `[T; n]` -> `[T]`
@@ -1091,9 +1087,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     .at(&obligation.cause, obligation.param_env)
                     .eq(DefineOpaqueTypes::No, b, a)
                     .map_err(|_| Unimplemented)?;
-                nested.extend(obligations);
 
-                src = BuiltinImplSource::Misc;
+                ImplSource::Builtin(BuiltinImplSource::Misc, obligations)
             }
 
             // `Struct<T>` -> `Struct<U>`
@@ -1105,6 +1100,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                 let tail_field = def.non_enum_variant().tail();
                 let tail_field_ty = tcx.type_of(tail_field.did);
+
+                let mut nested = vec![];
 
                 // Extract `TailField<T>` and `TailField<U>` from `Struct<T>` and `Struct<U>`,
                 // normalizing in the process, since `type_of` returns something directly from
@@ -1151,7 +1148,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 );
                 nested.push(tail_unsize_obligation);
 
-                src = BuiltinImplSource::Misc;
+                ImplSource::Builtin(BuiltinImplSource::Misc, nested)
             }
 
             // `(.., T)` -> `(.., U)`
@@ -1166,27 +1163,24 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // last element is equal to the target.
                 let new_tuple =
                     Ty::new_tup_from_iter(tcx, a_mid.iter().copied().chain(iter::once(b_last)));
-                let InferOk { obligations, .. } = self
+                let InferOk { mut obligations, .. } = self
                     .infcx
                     .at(&obligation.cause, obligation.param_env)
                     .eq(DefineOpaqueTypes::No, target, new_tuple)
                     .map_err(|_| Unimplemented)?;
-                nested.extend(obligations);
 
                 // Add a nested `T: Unsize<U>` predicate.
                 let last_unsize_obligation = obligation.with(
                     tcx,
                     ty::TraitRef::new(tcx, obligation.predicate.def_id(), [a_last, b_last]),
                 );
-                nested.push(last_unsize_obligation);
+                obligations.push(last_unsize_obligation);
 
-                src = BuiltinImplSource::TupleUnsizing;
+                ImplSource::Builtin(BuiltinImplSource::TupleUnsizing, obligations)
             }
 
             _ => bug!("source: {source}, target: {target}"),
-        };
-
-        Ok(ImplSource::Builtin(src, nested))
+        })
     }
 
     fn confirm_const_destruct_candidate(

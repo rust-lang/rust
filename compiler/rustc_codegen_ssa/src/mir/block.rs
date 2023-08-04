@@ -862,11 +862,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     .iter()
                     .enumerate()
                     .map(|(i, arg)| {
-                        // The indices passed to simd_shuffle* in the
+                        // The indices passed to simd_shuffle in the
                         // third argument must be constant. This is
                         // checked by const-qualification, which also
                         // promotes any complex rvalues to constants.
-                        if i == 2 && intrinsic.as_str().starts_with("simd_shuffle") {
+                        if i == 2 && intrinsic == sym::simd_shuffle {
                             if let mir::Operand::Constant(constant) = arg {
                                 let (llval, ty) = self.simd_shuffle_indices(&bx, constant);
                                 return OperandRef {
