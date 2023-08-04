@@ -1939,7 +1939,8 @@ impl<'test> TestCx<'test> {
                 let mut test_client =
                     Command::new(self.config.remote_test_client.as_ref().unwrap());
                 test_client
-                    .args(&["run", &support_libs.len().to_string(), &prog])
+                    .args(&["run", &support_libs.len().to_string()])
+                    .arg(&prog)
                     .args(support_libs)
                     .args(args);
 
@@ -2525,7 +2526,7 @@ impl<'test> TestCx<'test> {
         // If this is emscripten, then run tests under nodejs
         if self.config.target.contains("emscripten") {
             if let Some(ref p) = self.config.nodejs {
-                args.push(p.clone());
+                args.push(p.into());
             } else {
                 self.fatal("emscripten target requested and no NodeJS binary found (--nodejs)");
             }
@@ -2533,7 +2534,7 @@ impl<'test> TestCx<'test> {
         // shim
         } else if self.config.target.contains("wasm32") {
             if let Some(ref p) = self.config.nodejs {
-                args.push(p.clone());
+                args.push(p.into());
             } else {
                 self.fatal("wasm32 target requested and no NodeJS binary found (--nodejs)");
             }
@@ -2545,13 +2546,12 @@ impl<'test> TestCx<'test> {
                 .unwrap() // chop off `ui`
                 .parent()
                 .unwrap(); // chop off `tests`
-            args.push(src.join("src/etc/wasm32-shim.js").display().to_string());
+            args.push(src.join("src/etc/wasm32-shim.js").into_os_string());
         }
 
         let exe_file = self.make_exe_name();
 
-        // FIXME (#9639): This needs to handle non-utf8 paths
-        args.push(exe_file.to_str().unwrap().to_owned());
+        args.push(exe_file.into_os_string());
 
         // Add the arguments in the run_flags directive
         args.extend(self.split_maybe_args(&self.props.run_flags));
@@ -2560,12 +2560,16 @@ impl<'test> TestCx<'test> {
         ProcArgs { prog, args }
     }
 
-    fn split_maybe_args(&self, argstr: &Option<String>) -> Vec<String> {
+    fn split_maybe_args(&self, argstr: &Option<String>) -> Vec<OsString> {
         match *argstr {
             Some(ref s) => s
                 .split(' ')
                 .filter_map(|s| {
-                    if s.chars().all(|c| c.is_whitespace()) { None } else { Some(s.to_owned()) }
+                    if s.chars().all(|c| c.is_whitespace()) {
+                        None
+                    } else {
+                        Some(OsString::from(s))
+                    }
                 })
                 .collect(),
             None => Vec::new(),
@@ -4372,8 +4376,8 @@ impl<'test> TestCx<'test> {
 }
 
 struct ProcArgs {
-    prog: String,
-    args: Vec<String>,
+    prog: OsString,
+    args: Vec<OsString>,
 }
 
 pub struct ProcRes {
