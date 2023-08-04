@@ -103,11 +103,11 @@ fn check_tuple<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, elements: &
         // Fix #11100
         && tys.iter().all_equal()
         && let Some(locals) = (match first.kind {
-            ExprKind::Index(_, _) => elements
+            ExprKind::Index(..) => elements
                 .iter()
                 .enumerate()
                 .map(|(i, i_expr)| -> Option<&'tcx Expr<'tcx>> {
-                    if let ExprKind::Index(lhs, index) = i_expr.kind
+                    if let ExprKind::Index(lhs, index, _) = i_expr.kind
                         && let ExprKind::Lit(lit) = index.kind
                         && let LitKind::Int(val, _) = lit.node
                     {

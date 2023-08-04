@@ -240,8 +240,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ExprKind::Field(el, ident) => {
                     hir::ExprKind::Field(self.lower_expr(el), self.lower_ident(*ident))
                 }
-                ExprKind::Index(el, er) => {
-                    hir::ExprKind::Index(self.lower_expr(el), self.lower_expr(er))
+                ExprKind::Index(el, er, brackets_span) => {
+                    hir::ExprKind::Index(self.lower_expr(el), self.lower_expr(er), *brackets_span)
                 }
                 ExprKind::Range(Some(e1), Some(e2), RangeLimits::Closed) => {
                     self.lower_expr_range_closed(e.span, e1, e2)

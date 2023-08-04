@@ -40,7 +40,7 @@ fn record_rvalue_scope_rec(
             hir::ExprKind::AddrOf(_, _, subexpr)
             | hir::ExprKind::Unary(hir::UnOp::Deref, subexpr)
             | hir::ExprKind::Field(subexpr, _)
-            | hir::ExprKind::Index(subexpr, _) => {
+            | hir::ExprKind::Index(subexpr, _, _) => {
                 expr = subexpr;
             }
             _ => {

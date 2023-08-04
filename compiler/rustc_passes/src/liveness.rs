@@ -1061,7 +1061,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 self.propagate_through_expr(&l, ln)
             }
 
-            hir::ExprKind::Index(ref l, ref r) | hir::ExprKind::Binary(_, ref l, ref r) => {
+            hir::ExprKind::Index(ref l, ref r, _) | hir::ExprKind::Binary(_, ref l, ref r) => {
                 let r_succ = self.propagate_through_expr(&r, succ);
                 self.propagate_through_expr(&l, r_succ)
             }
