@@ -1083,8 +1083,10 @@ pub struct IdentifierUncommonCodepoints;
 pub struct ConfusableIdentifierPair {
     pub existing_sym: Symbol,
     pub sym: Symbol,
-    #[label]
+    #[label(lint_other_use)]
     pub label: Span,
+    #[label(lint_current_use)]
+    pub main_label: Span,
 }
 
 #[derive(LintDiagnostic)]
