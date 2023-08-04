@@ -161,22 +161,14 @@ impl<'mir: 'ecx, 'tcx: 'mir, 'ecx> EvalContextPrivExt<'mir, 'tcx, 'ecx>
 {
 }
 trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'mir, 'tcx> {
-    /// Returns the `AllocId` the reborrow was done in, if there is some actual
-    /// memory associated with this pointer. Returns `None` if there is no actual
-    /// memory allocated. Also checks that the reborrow of size `ptr_size` is
-    /// within bounds of the allocation.
-    ///
-    /// Also returns the tag that the pointer should get, which is essentially
-    /// `if new_perm.is_some() { new_tag } else { parent_tag }` along with
-    /// some logging (always) and fake reads (if `new_perm` is
-    /// `Some(NewPermission { perform_read_access: true }`).
+    /// Returns the provenance that should be used henceforth.
     fn tb_reborrow(
         &mut self,
         place: &MPlaceTy<'tcx, Provenance>, // parent tag extracted from here
         ptr_size: Size,
         new_perm: NewPermission,
         new_tag: BorTag,
-    ) -> InterpResult<'tcx, Option<(AllocId, BorTag)>> {
+    ) -> InterpResult<'tcx, Option<Provenance>> {
         let this = self.eval_context_mut();
         // Ensure we bail out if the pointer goes out-of-bounds (see miri#1050).
         this.check_ptr_access_align(
@@ -222,13 +214,14 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
                     place.layout.ty,
                 );
                 log_creation(this, None)?;
-                return Ok(None);
+                // Keep original provenance.
+                return Ok(place.ptr.provenance);
             }
         };
         log_creation(this, Some((alloc_id, base_offset, parent_prov)))?;
 
         let orig_tag = match parent_prov {
-            ProvenanceExtra::Wildcard => return Ok(None), // TODO: handle wildcard pointers
+            ProvenanceExtra::Wildcard => return Ok(place.ptr.provenance), // TODO: handle wildcard pointers
             ProvenanceExtra::Concrete(tag) => tag,
         };
 
@@ -279,7 +272,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
 
         // Record the parent-child pair in the tree.
         tree_borrows.new_child(orig_tag, new_tag, new_perm.initial_state, range, span)?;
-        Ok(Some((alloc_id, new_tag)))
+        Ok(Some(Provenance::Concrete { alloc_id, tag: new_tag }))
     }
 
     /// Retags an individual pointer, returning the retagged version.
@@ -315,25 +308,10 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
         let new_tag = this.machine.borrow_tracker.as_mut().unwrap().get_mut().new_ptr();
 
         // Compute the actual reborrow.
-        let reborrowed = this.tb_reborrow(&place, reborrow_size, new_perm, new_tag)?;
+        let new_prov = this.tb_reborrow(&place, reborrow_size, new_perm, new_tag)?;
 
         // Adjust pointer.
-        let new_place = place.map_provenance(|p| {
-            p.map(|prov| {
-                match reborrowed {
-                    Some((alloc_id, actual_tag)) => {
-                        // If `reborrow` could figure out the AllocId of this ptr, hard-code it into the new one.
-                        // Even if we started out with a wildcard, this newly retagged pointer is tied to that allocation.
-                        Provenance::Concrete { alloc_id, tag: actual_tag }
-                    }
-                    None => {
-                        // Looks like this has to stay a wildcard pointer.
-                        assert!(matches!(prov, Provenance::Wildcard));
-                        Provenance::Wildcard
-                    }
-                }
-            })
-        });
+        let new_place = place.map_provenance(|_| new_prov);
 
         // Return new pointer.
         Ok(ImmTy::from_immediate(new_place.to_ref(this), val.layout))
