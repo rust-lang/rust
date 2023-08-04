@@ -370,7 +370,10 @@ impl TokenDescription {
     }
 }
 
-pub(super) fn token_descr(token: &Token) -> String {
+/// Provide a description of a token for error messages. In most cases the
+/// result is the same as pretty-printing it, but for a few token kinds we can
+/// do better.
+pub fn token_descr(token: &Token) -> String {
     use TokenDescription::*;
 
     let s = pprust::token_to_string(token).to_string();

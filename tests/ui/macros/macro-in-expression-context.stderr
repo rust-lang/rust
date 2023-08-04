@@ -1,4 +1,4 @@
-error: macro expansion ignores token `assert_eq` and any following
+error: macro expansion ignores `assert_eq` and any tokens following
   --> $DIR/macro-in-expression-context.rs:12:9
    |
 LL |         assert_eq!("B", "B");
