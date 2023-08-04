@@ -346,6 +346,15 @@ pub enum TokenDescription {
     Keyword,
     ReservedKeyword,
     DocComment,
+
+    // Invisible delimiters aren't pretty-printed. But in error messages we
+    // want to print something, otherwise we get confusing things in messages
+    // like "expected `(`, found ``". It's better to say "expected `(`, found
+    // invisible open delimiter".
+    //
+    // There has been no need for an `InvisibleCloseDelim` entry yet, but one
+    // could be added if necessary.
+    InvisibleOpenDelim,
 }
 
 impl TokenDescription {
@@ -355,22 +364,26 @@ impl TokenDescription {
             _ if token.is_used_keyword() => Some(TokenDescription::Keyword),
             _ if token.is_unused_keyword() => Some(TokenDescription::ReservedKeyword),
             token::DocComment(..) => Some(TokenDescription::DocComment),
+            token::OpenDelim(Delimiter::Invisible(_)) => Some(TokenDescription::InvisibleOpenDelim),
             _ => None,
         }
     }
 }
 
 pub(super) fn token_descr(token: &Token) -> String {
-    let name = pprust::token_to_string(token).to_string();
+    use TokenDescription::*;
 
-    let kind = TokenDescription::from_token(token).map(|kind| match kind {
-        TokenDescription::ReservedIdentifier => "reserved identifier",
-        TokenDescription::Keyword => "keyword",
-        TokenDescription::ReservedKeyword => "reserved keyword",
-        TokenDescription::DocComment => "doc comment",
-    });
+    let s = pprust::token_to_string(token).to_string();
 
-    if let Some(kind) = kind { format!("{kind} `{name}`") } else { format!("`{name}`") }
+    match TokenDescription::from_token(token) {
+        Some(ReservedIdentifier) => format!("reserved identifier `{s}`"),
+        Some(Keyword) => format!("keyword `{s}`"),
+        Some(ReservedKeyword) => format!("reserved keyword `{s}`"),
+        Some(DocComment) => format!("doc comment `{s}`"),
+        // Deliberately doesn't print `s`, which is empty.
+        Some(InvisibleOpenDelim) => "invisible open delimiter".to_string(),
+        None => format!("`{s}`"),
+    }
 }
 
 impl<'a> Parser<'a> {
