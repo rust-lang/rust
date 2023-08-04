@@ -250,7 +250,7 @@ impl<'a> DecorateLint<'a, ()> for BuiltinUngatedAsyncFnTrackCaller<'_> {
         rustc_session::parse::add_feature_diagnostics(
             diag,
             &self.parse_sess,
-            sym::closure_track_caller,
+            sym::async_fn_track_caller,
         );
         diag
     }

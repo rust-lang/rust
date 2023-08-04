@@ -1259,8 +1259,8 @@ impl<'tcx> LateLintPass<'tcx> for UnstableFeatures {
 
 declare_lint! {
     /// The `ungated_async_fn_track_caller` lint warns when the
-    /// `#[track_caller]` attribute is used on an async function, method, or
-    /// closure, without enabling the corresponding unstable feature flag.
+    /// `#[track_caller]` attribute is used on an async function
+    /// without enabling the corresponding unstable feature flag.
     ///
     /// ### Example
     ///
@@ -1274,13 +1274,13 @@ declare_lint! {
     /// ### Explanation
     ///
     /// The attribute must be used in conjunction with the
-    /// [`closure_track_caller` feature flag]. Otherwise, the `#[track_caller]`
+    /// [`async_fn_track_caller` feature flag]. Otherwise, the `#[track_caller]`
     /// annotation will function as a no-op.
     ///
-    /// [`closure_track_caller` feature flag]: https://doc.rust-lang.org/beta/unstable-book/language-features/closure-track-caller.html
+    /// [`async_fn_track_caller` feature flag]: https://doc.rust-lang.org/beta/unstable-book/language-features/async-fn-track-caller.html
     UNGATED_ASYNC_FN_TRACK_CALLER,
     Warn,
-    "enabling track_caller on an async fn is a no-op unless the closure_track_caller feature is enabled"
+    "enabling track_caller on an async fn is a no-op unless the async_fn_track_caller feature is enabled"
 }
 
 declare_lint_pass!(
@@ -1300,7 +1300,7 @@ impl<'tcx> LateLintPass<'tcx> for UngatedAsyncFnTrackCaller {
         def_id: LocalDefId,
     ) {
         if fn_kind.asyncness() == IsAsync::Async
-            && !cx.tcx.features().closure_track_caller
+            && !cx.tcx.features().async_fn_track_caller
             // Now, check if the function has the `#[track_caller]` attribute
             && let Some(attr) = cx.tcx.get_attr(def_id, sym::track_caller)
         {
