@@ -1,6 +1,7 @@
 use colored::*;
 use regex::bytes::Regex;
 use std::ffi::OsString;
+use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
 use std::{env, process::Command};
 use ui_test::{color_eyre::Result, Config, Match, Mode, OutputConflictHandling};
@@ -128,7 +129,10 @@ fn run_tests(mode: Mode, path: &str, target: &str, with_dependencies: bool) -> R
     eprintln!("   Compiler: {}", config.program.display());
     ui_test::run_tests_generic(
         vec![config],
-        std::thread::available_parallelism().unwrap(),
+        std::env::var("MIRI_TEST_THREADS").map_or_else(
+            |_| std::thread::available_parallelism().unwrap(),
+            |threads| NonZeroUsize::new(threads.parse().unwrap()).unwrap(),
+        ),
         args,
         // The files we're actually interested in (all `.rs` files).
         ui_test::default_file_filter,
