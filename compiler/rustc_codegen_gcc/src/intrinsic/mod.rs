@@ -311,6 +311,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                     let a_ptr = self.bitcast(a, void_ptr_type);
                     let b_ptr = self.bitcast(b, void_ptr_type);
 
+                    // Here we assume that the `memcmp` provided by the target is a NOP for size 0.
                     let builtin = self.context.get_builtin_function("memcmp");
                     let cmp = self.context.new_call(None, builtin, &[a_ptr, b_ptr, n]);
                     self.sext(cmp, self.type_ix(32))

@@ -330,6 +330,7 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             }
 
             sym::compare_bytes => {
+                // Here we assume that the `memcmp` provided by the target is a NOP for size 0.
                 let cmp = self.call_intrinsic(
                     "memcmp",
                     &[args[0].immediate(), args[1].immediate(), args[2].immediate()],
