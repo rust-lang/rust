@@ -49,30 +49,18 @@ pub use crate::plumbing::QueryCtxt;
 mod profiling_support;
 pub use self::profiling_support::alloc_self_profile_query_strings;
 
-struct DynamicConfig<
-    'tcx,
-    C: QueryCache,
-    const ANON: bool,
-    const DEPTH_LIMIT: bool,
-    const FEEDABLE: bool,
-> {
+struct DynamicConfig<'tcx, C: QueryCache> {
     dynamic: &'tcx DynamicQuery<'tcx, C>,
 }
 
-impl<'tcx, C: QueryCache, const ANON: bool, const DEPTH_LIMIT: bool, const FEEDABLE: bool> Copy
-    for DynamicConfig<'tcx, C, ANON, DEPTH_LIMIT, FEEDABLE>
-{
-}
-impl<'tcx, C: QueryCache, const ANON: bool, const DEPTH_LIMIT: bool, const FEEDABLE: bool> Clone
-    for DynamicConfig<'tcx, C, ANON, DEPTH_LIMIT, FEEDABLE>
-{
+impl<'tcx, C: QueryCache> Copy for DynamicConfig<'tcx, C> {}
+impl<'tcx, C: QueryCache> Clone for DynamicConfig<'tcx, C> {
     fn clone(&self) -> Self {
         DynamicConfig { dynamic: self.dynamic }
     }
 }
 
-impl<'tcx, C: QueryCache, const ANON: bool, const DEPTH_LIMIT: bool, const FEEDABLE: bool>
-    QueryConfig<QueryCtxt<'tcx>> for DynamicConfig<'tcx, C, ANON, DEPTH_LIMIT, FEEDABLE>
+impl<'tcx, C: QueryCache> QueryConfig<QueryCtxt<'tcx>> for DynamicConfig<'tcx, C>
 where
     for<'a> C::Key: HashStable<StableHashingContext<'a>>,
 {
@@ -156,7 +144,7 @@ where
 
     #[inline(always)]
     fn anon(self) -> bool {
-        ANON
+        self.dynamic.anon
     }
 
     #[inline(always)]
@@ -166,12 +154,12 @@ where
 
     #[inline(always)]
     fn depth_limit(self) -> bool {
-        DEPTH_LIMIT
+        self.dynamic.depth_limit
     }
 
     #[inline(always)]
     fn feedable(self) -> bool {
-        FEEDABLE
+        self.dynamic.feedable
     }
 
     #[inline(always)]

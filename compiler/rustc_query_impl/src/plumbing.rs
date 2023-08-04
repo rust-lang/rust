@@ -566,6 +566,9 @@ macro_rules! define_queries {
                 DynamicQuery {
                     name: stringify!($name),
                     eval_always: is_eval_always!([$($modifiers)*]),
+                    anon: is_anon!([$($modifiers)*]),
+                    depth_limit: depth_limit!([$($modifiers)*]),
+                    feedable: feedable!([$($modifiers)*]),
                     dep_kind: dep_graph::DepKind::$name,
                     handle_cycle_error: handle_cycle_error!([$($modifiers)*]),
                     query_state: offset_of!(QueryStates<'tcx> => $name),
@@ -629,13 +632,7 @@ macro_rules! define_queries {
 
             impl<'tcx> QueryConfigRestored<'tcx> for QueryType<'tcx> {
                 type RestoredValue = queries::$name::Value<'tcx>;
-                type Config = DynamicConfig<
-                    'tcx,
-                    queries::$name::Storage<'tcx>,
-                    { is_anon!([$($modifiers)*]) },
-                    { depth_limit!([$($modifiers)*]) },
-                    { feedable!([$($modifiers)*]) },
-                >;
+                type Config = DynamicConfig<'tcx, queries::$name::Storage<'tcx>>;
 
                 #[inline(always)]
                 fn config(tcx: TyCtxt<'tcx>) -> Self::Config {

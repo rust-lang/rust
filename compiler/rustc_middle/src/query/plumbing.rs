@@ -35,6 +35,9 @@ impl QueryKeyStringCache {
 pub struct DynamicQuery<'tcx, C: QueryCache> {
     pub name: &'static str,
     pub eval_always: bool,
+    pub anon: bool,
+    pub depth_limit: bool,
+    pub feedable: bool,
     pub dep_kind: DepKind,
     pub handle_cycle_error: HandleCycleError,
     pub query_state: FieldOffset<QueryStates<'tcx>, QueryState<C::Key, DepKind>>,
