@@ -351,6 +351,15 @@ pub fn unexpected_hidden_region_diagnostic<'tcx>(
                 )
             }
         }
+        ty::RePlaceholder(_) => {
+            explain_free_region(
+                tcx,
+                &mut err,
+                &format!("hidden type `{}` captures ", hidden_ty),
+                hidden_region,
+                "",
+            );
+        }
         ty::ReError(_) => {
             err.delay_as_bug();
         }

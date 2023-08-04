@@ -185,6 +185,21 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     {
         tcx.fold_regions(ty, |region, _| match *region {
             ty::ReVar(vid) => {
+                let scc = self.constraint_sccs.scc(vid);
+
+                // Special handling of higher-ranked regions.
+                if self.scc_universes[scc] != ty::UniverseIndex::ROOT {
+                    match self.scc_values.placeholders_contained_in(scc).enumerate().last() {
+                        // If the region contains a single placeholder then they're equal.
+                        Some((0, placeholder)) => {
+                            return ty::Region::new_placeholder(tcx, placeholder);
+                        }
+
+                        // Fallback: this will produce a cryptic error message.
+                        _ => return region,
+                    }
+                }
+
                 // Find something that we can name
                 let upper_bound = self.approx_universal_upper_bound(vid);
                 let upper_bound = &self.definitions[upper_bound];
