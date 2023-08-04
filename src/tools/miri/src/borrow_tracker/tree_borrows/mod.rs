@@ -248,6 +248,13 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
                 .insert(new_tag, protect);
         }
 
+        let alloc_kind = this.get_alloc_info(alloc_id).2;
+        if !matches!(alloc_kind, AllocKind::LiveData) {
+            // There's not actually any bytes here where accesses could even be tracked.
+            // Just produce the new provenance, nothing else to do.
+            return Ok(Some(Provenance::Concrete { alloc_id, tag: new_tag }));
+        }
+
         let span = this.machine.current_span();
         let alloc_extra = this.get_alloc_extra(alloc_id)?;
         let range = alloc_range(base_offset, ptr_size);
