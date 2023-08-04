@@ -751,9 +751,19 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 )
                 .must_apply_modulo_regions()
         {
+            let msg = if let ty::Adt(def, _) = ty.kind()
+                && [
+                    tcx.get_diagnostic_item(sym::Arc),
+                    tcx.get_diagnostic_item(sym::Rc),
+                ].contains(&Some(def.did()))
+            {
+                "clone the value to increment its reference count"
+            } else {
+                "consider cloning the value if the performance cost is acceptable"
+            };
             err.span_suggestion_verbose(
                 span.shrink_to_hi(),
-                "consider cloning the value if the performance cost is acceptable",
+                msg,
                 suggestion,
                 Applicability::MachineApplicable,
             );
