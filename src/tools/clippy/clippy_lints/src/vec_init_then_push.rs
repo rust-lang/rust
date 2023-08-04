@@ -88,7 +88,7 @@ impl VecPushSearcher {
                     let mut last_place = parent;
                     while let Some(parent) = get_parent_expr(cx, last_place) {
                         if matches!(parent.kind, ExprKind::Unary(UnOp::Deref, _) | ExprKind::Field(..))
-                            || matches!(parent.kind, ExprKind::Index(e, _) if e.hir_id == last_place.hir_id)
+                            || matches!(parent.kind, ExprKind::Index(e, _, _) if e.hir_id == last_place.hir_id)
                         {
                             last_place = parent;
                         } else {

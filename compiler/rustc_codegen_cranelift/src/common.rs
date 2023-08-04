@@ -477,7 +477,7 @@ impl<'tcx> LayoutOfHelpers<'tcx> for RevealAllLayoutCx<'tcx> {
 
     #[inline]
     fn handle_layout_err(&self, err: LayoutError<'tcx>, span: Span, ty: Ty<'tcx>) -> ! {
-        if let layout::LayoutError::SizeOverflow(_) = err {
+        if let LayoutError::SizeOverflow(_) | LayoutError::ReferencesError(_) = err {
             self.0.sess.span_fatal(span, err.to_string())
         } else {
             span_bug!(span, "failed to get layout for `{}`: {}", ty, err)

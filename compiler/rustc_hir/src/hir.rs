@@ -1754,7 +1754,7 @@ impl Expr<'_> {
 
             ExprKind::Unary(UnOp::Deref, _) => true,
 
-            ExprKind::Field(ref base, _) | ExprKind::Index(ref base, _) => {
+            ExprKind::Field(ref base, _) | ExprKind::Index(ref base, _, _) => {
                 allow_projections_from(base) || base.is_place_expr(allow_projections_from)
             }
 
@@ -1831,7 +1831,7 @@ impl Expr<'_> {
             ExprKind::Type(base, _)
             | ExprKind::Unary(_, base)
             | ExprKind::Field(base, _)
-            | ExprKind::Index(base, _)
+            | ExprKind::Index(base, _, _)
             | ExprKind::AddrOf(.., base)
             | ExprKind::Cast(base, _) => {
                 // This isn't exactly true for `Index` and all `Unary`, but we are using this
@@ -2015,7 +2015,9 @@ pub enum ExprKind<'hir> {
     /// Access of a named (e.g., `obj.foo`) or unnamed (e.g., `obj.0`) struct or tuple field.
     Field(&'hir Expr<'hir>, Ident),
     /// An indexing operation (`foo[2]`).
-    Index(&'hir Expr<'hir>, &'hir Expr<'hir>),
+    /// Similar to [`ExprKind::MethodCall`], the final `Span` represents the span of the brackets
+    /// and index.
+    Index(&'hir Expr<'hir>, &'hir Expr<'hir>, Span),
 
     /// Path to a definition, possibly containing lifetime or type parameters.
     Path(QPath<'hir>),

@@ -469,11 +469,17 @@ impl<'tcx> Cx<'tcx> {
                 }
             }
 
-            hir::ExprKind::Index(ref lhs, ref index) => {
+            hir::ExprKind::Index(ref lhs, ref index, brackets_span) => {
                 if self.typeck_results().is_method_call(expr) {
                     let lhs = self.mirror_expr(lhs);
                     let index = self.mirror_expr(index);
-                    self.overloaded_place(expr, expr_ty, None, Box::new([lhs, index]), expr.span)
+                    self.overloaded_place(
+                        expr,
+                        expr_ty,
+                        None,
+                        Box::new([lhs, index]),
+                        brackets_span,
+                    )
                 } else {
                     ExprKind::Index { lhs: self.mirror_expr(lhs), index: self.mirror_expr(index) }
                 }

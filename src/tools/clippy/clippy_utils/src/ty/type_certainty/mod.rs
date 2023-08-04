@@ -31,7 +31,7 @@ fn expr_type_certainty(cx: &LateContext<'_>, expr: &Expr<'_>) -> Certainty {
     let certainty = match &expr.kind {
         ExprKind::Unary(_, expr)
         | ExprKind::Field(expr, _)
-        | ExprKind::Index(expr, _)
+        | ExprKind::Index(expr, _, _)
         | ExprKind::AddrOf(_, _, expr) => expr_type_certainty(cx, expr),
 
         ExprKind::Array(exprs) => join(exprs.iter().map(|expr| expr_type_certainty(cx, expr))),

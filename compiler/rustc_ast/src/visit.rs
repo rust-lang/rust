@@ -885,7 +885,7 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
             visitor.visit_expr(subexpression);
             visitor.visit_ident(*ident);
         }
-        ExprKind::Index(main_expression, index_expression) => {
+        ExprKind::Index(main_expression, index_expression, _) => {
             visitor.visit_expr(main_expression);
             visitor.visit_expr(index_expression)
         }

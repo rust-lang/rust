@@ -237,7 +237,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
             ExprKind::If(local_expr, _, _) => {
                 self.manage_cond_expr(local_expr);
             }
-            ExprKind::Index(prefix, suffix) => {
+            ExprKind::Index(prefix, suffix, _) => {
                 self.manage_cond_expr(prefix);
                 self.manage_cond_expr(suffix);
             }

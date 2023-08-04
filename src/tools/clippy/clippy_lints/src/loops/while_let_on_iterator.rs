@@ -113,7 +113,7 @@ fn try_parse_iter_expr(cx: &LateContext<'_>, mut e: &Expr<'_>) -> Option<IterExp
 
             // Shouldn't have side effects, but there's no way to trace which field is used. So forget which fields have
             // already been seen.
-            ExprKind::Index(base, idx) if !idx.can_have_side_effects() => {
+            ExprKind::Index(base, idx, _) if !idx.can_have_side_effects() => {
                 can_move = false;
                 fields.clear();
                 e = base;

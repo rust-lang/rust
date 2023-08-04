@@ -33,7 +33,7 @@ impl<'tcx> LateLintPass<'tcx> for TemporaryAssignment {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::Assign(target, ..) = &expr.kind {
             let mut base = target;
-            while let ExprKind::Field(f, _) | ExprKind::Index(f, _) = &base.kind {
+            while let ExprKind::Field(f, _) | ExprKind::Index(f, _, _) = &base.kind {
                 base = f;
             }
             if is_temporary(base) && !is_adjusted(cx, base) {

@@ -157,7 +157,6 @@ impl<Prov: Provenance> MemPlace<Prov> {
     }
 
     /// Turn a mplace into a (thin or wide) pointer, as a reference, pointing to the same space.
-    /// This is the inverse of `ref_to_mplace`.
     #[inline(always)]
     pub fn to_ref(self, cx: &impl HasDataLayout) -> Immediate<Prov> {
         match self.meta {
@@ -415,7 +414,7 @@ where
     }
 
     /// Take a value, which represents a (thin or wide) reference, and make it a place.
-    /// Alignment is just based on the type. This is the inverse of `MemPlace::to_ref()`.
+    /// Alignment is just based on the type. This is the inverse of `mplace_to_ref()`.
     ///
     /// Only call this if you are sure the place is "valid" (aligned and inbounds), or do not
     /// want to ever use the place for memory access!
@@ -436,6 +435,18 @@ where
         // `ref_to_mplace` is called on raw pointers even if they don't actually get dereferenced;
         // we hence can't call `size_and_align_of` since that asserts more validity than we want.
         Ok(MPlaceTy::from_aligned_ptr_with_meta(ptr.to_pointer(self)?, layout, meta))
+    }
+
+    /// Turn a mplace into a (thin or wide) mutable raw pointer, pointing to the same space.
+    /// `align` information is lost!
+    /// This is the inverse of `ref_to_mplace`.
+    pub fn mplace_to_ref(
+        &self,
+        mplace: &MPlaceTy<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx, ImmTy<'tcx, M::Provenance>> {
+        let imm = mplace.to_ref(self);
+        let layout = self.layout_of(Ty::new_mut_ptr(self.tcx.tcx, mplace.layout.ty))?;
+        Ok(ImmTy::from_immediate(imm, layout))
     }
 
     /// Take an operand, representing a pointer, and dereference it to a place.
