@@ -521,7 +521,7 @@ pub fn phase_runner(mut binary_args: impl Iterator<Item = String>, phase: Runner
     // `.rmeta`.
     // We also need to remove `--error-format` as cargo specifies that to be JSON,
     // but when we run here, cargo does not interpret the JSON any more. `--json`
-    // then also nees to be dropped.
+    // then also needs to be dropped.
     let mut args = info.args.into_iter();
     let error_format_flag = "--error-format";
     let json_flag = "--json";

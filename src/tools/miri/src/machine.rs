@@ -427,7 +427,7 @@ pub struct MiriMachine<'mir, 'tcx> {
     /// the emulated program.
     profiler: Option<measureme::Profiler>,
     /// Used with `profiler` to cache the `StringId`s for event names
-    /// uesd with `measureme`.
+    /// used with `measureme`.
     string_cache: FxHashMap<String, measureme::StringId>,
 
     /// Cache of `Instance` exported under the given `Symbol` name.
@@ -516,7 +516,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
             let pid = process::id();
             // We adopt the same naming scheme for the profiler output that rustc uses. In rustc,
             // the PID is padded so that the nondeterministic value of the PID does not spread
-            // nondeterminisim to the allocator. In Miri we are not aiming for such performance
+            // nondeterminism to the allocator. In Miri we are not aiming for such performance
             // control, we just pad for consistency with rustc.
             let filename = format!("{crate_name}-{pid:07}");
             let path = Path::new(out).join(filename);
