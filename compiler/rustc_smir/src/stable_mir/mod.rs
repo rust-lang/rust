@@ -15,7 +15,7 @@ use std::cell::Cell;
 
 use crate::rustc_smir::Tables;
 
-use self::ty::{Ty, TyKind};
+use self::ty::{TraitDecl, TraitDef, Ty, TyKind};
 
 pub mod mir;
 pub mod ty;
@@ -84,6 +84,7 @@ pub trait Context {
     /// Retrieve all items of the local crate that have a MIR associated with them.
     fn all_local_items(&mut self) -> CrateItems;
     fn mir_body(&mut self, item: &CrateItem) -> mir::Body;
+    fn trait_decl(&mut self, trait_def: &TraitDef) -> TraitDecl;
     /// Get information about the local crate.
     fn local_crate(&self) -> Crate;
     /// Retrieve a list of all external crates.
