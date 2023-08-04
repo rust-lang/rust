@@ -35,6 +35,11 @@ macro_rules! impl_float_to_int {
     }
 }
 
+#[cfg(not(bootstrap))]
+impl_float_to_int!(f16 => u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize);
+#[cfg(not(bootstrap))]
+impl_float_to_int!(f128 => u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize);
+
 impl_float_to_int!(f32 => u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize);
 impl_float_to_int!(f64 => u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize);
 
@@ -166,6 +171,17 @@ impl_from! { u32, f64, #[stable(feature = "lossless_float_conv", since = "1.6.0"
 
 // Float -> Float
 impl_from! { f32, f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")] }
+
+#[cfg(not(bootstrap))]
+impl_from! { f16, f32, #[stable(feature = "lossless_float_conv", since = "1.6.0")] }
+#[cfg(not(bootstrap))]
+impl_from! { f16, f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")] }
+#[cfg(not(bootstrap))]
+impl_from! { f16, f128, #[stable(feature = "lossless_float_conv", since = "1.6.0")] }
+#[cfg(not(bootstrap))]
+impl_from! { f32, f128, #[stable(feature = "lossless_float_conv", since = "1.6.0")] }
+#[cfg(not(bootstrap))]
+impl_from! { f64, f128, #[stable(feature = "lossless_float_conv", since = "1.6.0")] }
 
 // bool -> Float
 #[stable(feature = "float_from_bool", since = "1.68.0")]

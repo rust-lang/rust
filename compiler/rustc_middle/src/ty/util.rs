@@ -999,12 +999,14 @@ impl<'tcx> Ty<'tcx> {
                 (min, max)
             }
             ty::Char => (0, std::char::MAX as u128),
+            ty::Float(ty::FloatTy::F16) => ((-Half::INFINITY).to_bits(), Half::INFINITY.to_bits()),
             ty::Float(ty::FloatTy::F32) => {
                 ((-Single::INFINITY).to_bits(), Single::INFINITY.to_bits())
             }
             ty::Float(ty::FloatTy::F64) => {
                 ((-Double::INFINITY).to_bits(), Double::INFINITY.to_bits())
             }
+            ty::Float(ty::FloatTy::F128) => ((-Quad::INFINITY).to_bits(), Quad::INFINITY.to_bits()),
             _ => return None,
         })
     }

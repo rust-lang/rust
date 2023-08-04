@@ -1,4 +1,4 @@
-use rustc_apfloat::ieee::{Double, Single};
+use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_apfloat::Float;
 use rustc_errors::{DiagnosticArgValue, IntoDiagnosticArg};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
@@ -433,6 +433,22 @@ impl TryFrom<ScalarInt> for char {
     }
 }
 
+impl From<Half> for ScalarInt {
+    #[inline]
+    fn from(f: Half) -> Self {
+        // We trust apfloat to give us properly truncated data.
+        Self { data: f.to_bits(), size: NonZeroU8::new((Half::BITS / 8) as u8).unwrap() }
+    }
+}
+
+impl TryFrom<ScalarInt> for Half {
+    type Error = Size;
+    #[inline]
+    fn try_from(int: ScalarInt) -> Result<Self, Size> {
+        int.to_bits(Size::from_bytes(2)).map(Self::from_bits)
+    }
+}
+
 impl From<Single> for ScalarInt {
     #[inline]
     fn from(f: Single) -> Self {
@@ -462,6 +478,22 @@ impl TryFrom<ScalarInt> for Double {
     #[inline]
     fn try_from(int: ScalarInt) -> Result<Self, Size> {
         int.to_bits(Size::from_bytes(8)).map(Self::from_bits)
+    }
+}
+
+impl From<Quad> for ScalarInt {
+    #[inline]
+    fn from(f: Quad) -> Self {
+        // We trust apfloat to give us properly truncated data.
+        Self { data: f.to_bits(), size: NonZeroU8::new((Quad::BITS / 8) as u8).unwrap() }
+    }
+}
+
+impl TryFrom<ScalarInt> for Quad {
+    type Error = Size;
+    #[inline]
+    fn try_from(int: ScalarInt) -> Result<Self, Size> {
+        int.to_bits(Size::from_bytes(16)).map(Self::from_bits)
     }
 }
 

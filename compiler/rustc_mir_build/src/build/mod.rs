@@ -1,6 +1,6 @@
 use crate::build::expr::as_place::PlaceBuilder;
 use crate::build::scope::DropKind;
-use rustc_apfloat::ieee::{Double, Single};
+use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_apfloat::Float;
 use rustc_ast::attr;
 use rustc_data_structures::fx::FxHashMap;
@@ -1006,13 +1006,73 @@ fn parse_float_into_constval<'tcx>(
     parse_float_into_scalar(num, float_ty, neg).map(ConstValue::Scalar)
 }
 
+#[cfg(not(bootstrap))]
+fn parse_check_f16(_num: &str, _f: Half) -> Option<()> {
+    // todo: reenable this once our f16 FromStr doesn't just use f32
+    // let Ok(rust_f) = num.parse::<f16>() else { return None };
+
+    // assert!(
+    //     u128::from(rust_f.to_bits()) == f.to_bits(),
+    //     "apfloat::ieee::Half gave a different result for `{num}`: \
+    //      {f} ({:#x}) vs Rust's {} ({:#x})",
+    //     f.to_bits(),
+    //     Single::from_bits(rust_f.to_bits().into()),
+    //     rust_f.to_bits()
+    // );
+
+    Some(())
+}
+
+// FIXME:f16_f128: bootstrap `f16` parsing via `f32`
+#[cfg(bootstrap)]
+fn parse_check_f16(_num: &str, _f: Half) -> Option<()> {
+    Some(())
+}
+
+#[cfg(not(bootstrap))]
+fn parse_check_f128(_num: &str, _f: Quad) -> Option<()> {
+    // todo: reenable this once our f128 FromStr doesn't just use f64
+    // let Ok(rust_f) = num.parse::<f128>() else { return None };
+
+    // assert!(
+    //     u128::from(rust_f.to_bits()) == f.to_bits(),
+    //     "apfloat::ieee::Quad gave a different result for `{num}`: \
+    //      {f} ({:#x}) vs Rust's {} ({:#x})",
+    //     f.to_bits(),
+    //     Quad::from_bits(rust_f.to_bits().into()),
+    //     rust_f.to_bits()
+    // );
+
+    Some(())
+}
+
+// FIXME:f16_f128: bootstrap `f128` parsing via `f64`
+#[cfg(bootstrap)]
+fn parse_check_f128(_num: &str, _f: Quad) -> Option<()> {
+    Some(())
+}
+
 pub(crate) fn parse_float_into_scalar(
     num: Symbol,
     float_ty: ty::FloatTy,
     neg: bool,
 ) -> Option<Scalar> {
     let num = num.as_str();
+
     match float_ty {
+        ty::FloatTy::F16 => {
+            let mut f = num
+                .parse::<Half>()
+                .unwrap_or_else(|e| panic!("apfloat::ieee::Half failed to parse `{num}`: {e:?}"));
+
+            parse_check_f16(num, f)?;
+
+            if neg {
+                f = -f;
+            }
+
+            Some(Scalar::from_f16(f))
+        }
         ty::FloatTy::F32 => {
             let Ok(rust_f) = num.parse::<f32>() else { return None };
             let mut f = num
@@ -1021,10 +1081,8 @@ pub(crate) fn parse_float_into_scalar(
 
             assert!(
                 u128::from(rust_f.to_bits()) == f.to_bits(),
-                "apfloat::ieee::Single gave different result for `{}`: \
-                 {}({:#x}) vs Rust's {}({:#x})",
-                rust_f,
-                f,
+                "apfloat::ieee::Single gave a different result for `{num}`: \
+                 {f} ({:#x}) vs Rust's {} ({:#x})",
                 f.to_bits(),
                 Single::from_bits(rust_f.to_bits().into()),
                 rust_f.to_bits()
@@ -1044,10 +1102,8 @@ pub(crate) fn parse_float_into_scalar(
 
             assert!(
                 u128::from(rust_f.to_bits()) == f.to_bits(),
-                "apfloat::ieee::Double gave different result for `{}`: \
-                 {}({:#x}) vs Rust's {}({:#x})",
-                rust_f,
-                f,
+                "apfloat::ieee::Double gave a different result for `{num}`: \
+                 {f} ({:#x}) vs Rust's {} ({:#x})",
                 f.to_bits(),
                 Double::from_bits(rust_f.to_bits().into()),
                 rust_f.to_bits()
@@ -1058,6 +1114,19 @@ pub(crate) fn parse_float_into_scalar(
             }
 
             Some(Scalar::from_f64(f))
+        }
+        ty::FloatTy::F128 => {
+            let mut f = num
+                .parse::<Quad>()
+                .unwrap_or_else(|e| panic!("apfloat::ieee::Quad failed to parse `{num}`: {e:?}"));
+
+            parse_check_f128(num, f);
+
+            if neg {
+                f = -f;
+            }
+
+            Some(Scalar::from_f128(f))
         }
     }
 }

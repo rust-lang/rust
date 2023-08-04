@@ -109,6 +109,9 @@ macro_rules! add_impl {
 
 add_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 
+#[cfg(not(bootstrap))]
+add_impl! { f16 f128 }
+
 /// The subtraction operator `-`.
 ///
 /// Note that `Rhs` is `Self` by default, but this is not mandatory. For
@@ -217,6 +220,9 @@ macro_rules! sub_impl {
 }
 
 sub_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
+
+#[cfg(not(bootstrap))]
+sub_impl! { f16 f128 }
 
 /// The multiplication operator `*`.
 ///
@@ -347,6 +353,9 @@ macro_rules! mul_impl {
 }
 
 mul_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
+
+#[cfg(not(bootstrap))]
+mul_impl! { f16 f128 }
 
 /// The division operator `/`.
 ///
@@ -506,6 +515,9 @@ macro_rules! div_impl_float {
 
 div_impl_float! { f32 f64 }
 
+#[cfg(not(bootstrap))]
+div_impl_float! { f16 f128 }
+
 /// The remainder operator `%`.
 ///
 /// Note that `Rhs` is `Self` by default, but this is not mandatory.
@@ -623,6 +635,9 @@ macro_rules! rem_impl_float {
 
 rem_impl_float! { f32 f64 }
 
+#[cfg(not(bootstrap))]
+rem_impl_float! { f16 f128 }
+
 /// The unary negation operator `-`.
 ///
 /// # Examples
@@ -698,6 +713,9 @@ macro_rules! neg_impl {
 
 neg_impl! { isize i8 i16 i32 i64 i128 f32 f64 }
 
+#[cfg(not(bootstrap))]
+neg_impl! { f16 f128 }
+
 /// The addition assignment operator `+=`.
 ///
 /// # Examples
@@ -764,6 +782,9 @@ macro_rules! add_assign_impl {
 }
 
 add_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
+
+#[cfg(not(bootstrap))]
+add_assign_impl! { f16 f128 }
 
 /// The subtraction assignment operator `-=`.
 ///
@@ -832,6 +853,9 @@ macro_rules! sub_assign_impl {
 
 sub_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 
+#[cfg(not(bootstrap))]
+sub_assign_impl! { f16 f128 }
+
 /// The multiplication assignment operator `*=`.
 ///
 /// # Examples
@@ -890,6 +914,9 @@ macro_rules! mul_assign_impl {
 
 mul_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 
+#[cfg(not(bootstrap))]
+mul_assign_impl! { f16 f128 }
+
 /// The division assignment operator `/=`.
 ///
 /// # Examples
@@ -946,6 +973,9 @@ macro_rules! div_assign_impl {
 }
 
 div_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
+
+#[cfg(not(bootstrap))]
+div_assign_impl! { f16 f128 }
 
 /// The remainder assignment operator `%=`.
 ///
@@ -1007,3 +1037,6 @@ macro_rules! rem_assign_impl {
 }
 
 rem_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
+
+#[cfg(not(bootstrap))]
+rem_assign_impl! { f16 f128 }

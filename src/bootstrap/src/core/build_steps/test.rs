@@ -3113,7 +3113,19 @@ impl Step for CodegenCranelift {
             return;
         }
 
+<<<<<<< HEAD:src/bootstrap/src/core/build_steps/test.rs
         if !target_supports_cranelift_backend(run.target) {
+=======
+        let triple = run.target.triple;
+        let target_supported = if triple.contains("linux") {
+            triple.contains("x86_64") || triple.contains("aarch64") || triple.contains("s390x")
+        } else if triple.contains("darwin") || triple.contains("windows") {
+            triple.contains("x86_64")
+        } else {
+            false
+        };
+        if !target_supported {
+>>>>>>> fc8be3d1f6b (Change parsing fallbacks):src/bootstrap/test.rs
             builder.info("target not supported by rustc_codegen_cranelift. skipping");
             return;
         }
@@ -3170,18 +3182,28 @@ impl Step for CodegenCranelift {
             &compiler.host,
             target
         ));
+<<<<<<< HEAD:src/bootstrap/src/core/build_steps/test.rs
         let _time = helpers::timeit(&builder);
+=======
+        let _time = util::timeit(&builder);
+>>>>>>> fc8be3d1f6b (Change parsing fallbacks):src/bootstrap/test.rs
 
         // FIXME handle vendoring for source tarballs before removing the --skip-test below
         let download_dir = builder.out.join("cg_clif_download");
 
+<<<<<<< HEAD:src/bootstrap/src/core/build_steps/test.rs
         // FIXME: Uncomment the `prepare` command below once vendoring is implemented.
         /*
+=======
+>>>>>>> fc8be3d1f6b (Change parsing fallbacks):src/bootstrap/test.rs
         let mut prepare_cargo = build_cargo();
         prepare_cargo.arg("--").arg("prepare").arg("--download-dir").arg(&download_dir);
         #[allow(deprecated)]
         builder.config.try_run(&mut prepare_cargo.into()).unwrap();
+<<<<<<< HEAD:src/bootstrap/src/core/build_steps/test.rs
         */
+=======
+>>>>>>> fc8be3d1f6b (Change parsing fallbacks):src/bootstrap/test.rs
 
         let mut cargo = build_cargo();
         cargo
@@ -3193,6 +3215,7 @@ impl Step for CodegenCranelift {
             .arg(builder.stage_out(compiler, Mode::ToolRustc).join("cg_clif"))
             .arg("--no-unstable-features")
             .arg("--use-backend")
+<<<<<<< HEAD:src/bootstrap/src/core/build_steps/test.rs
             .arg("cranelift")
             // Avoid having to vendor the standard library dependencies
             .arg("--sysroot")
@@ -3325,5 +3348,19 @@ impl Step for CodegenGCC {
 
         let mut cmd: Command = cargo.into();
         builder.run_cmd(BootstrapCommand::from(&mut cmd).fail_fast());
+=======
+            .arg("cranelift");
+        // // Avoid having to vendor the standard library dependencies
+        // .arg("--sysroot")
+        // .arg("llvm")
+        // // These tests depend on crates that are not yet vendored
+        // // FIXME remove once vendoring is handled
+        // .arg("--skip-test")
+        // .arg("testsuite.extended_sysroot");
+        cargo.args(builder.config.test_args());
+
+        #[allow(deprecated)]
+        builder.config.try_run(&mut cargo.into()).unwrap();
+>>>>>>> fc8be3d1f6b (Change parsing fallbacks):src/bootstrap/test.rs
     }
 }

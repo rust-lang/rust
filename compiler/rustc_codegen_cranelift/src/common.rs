@@ -33,8 +33,10 @@ pub(crate) fn scalar_to_clif_type(tcx: TyCtxt<'_>, scalar: Scalar) -> Type {
             Integer::I64 => types::I64,
             Integer::I128 => types::I128,
         },
+        Primitive::F16 => unimplemented!("f16 is not yet implemented"),
         Primitive::F32 => types::F32,
         Primitive::F64 => types::F64,
+        Primitive::F128 => unimplemented!("f128 is not yet implemented"),
         // FIXME(erikdesjardins): handle non-default addrspace ptr sizes
         Primitive::Pointer(_) => pointer_ty(tcx),
     }
@@ -61,8 +63,10 @@ fn clif_type_from_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<types::Typ
         },
         ty::Char => types::I32,
         ty::Float(size) => match size {
+            FloatTy::F16 => unimplemented!("f16 is not yet implemented"),
             FloatTy::F32 => types::F32,
             FloatTy::F64 => types::F64,
+            FloatTy::F128 => unimplemented!("f128 is not yet implemented"),
         },
         ty::FnPtr(_) => pointer_ty(tcx),
         ty::RawPtr(TypeAndMut { ty: pointee_ty, mutbl: _ }) | ty::Ref(_, pointee_ty, _) => {

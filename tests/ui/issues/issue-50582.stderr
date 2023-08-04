@@ -23,7 +23,7 @@ LL |     Vec::<[(); 1 + for x in 0..1 {}]>::new();
              <i16 as Add<&i16>>
              <i32 as Add>
              <i32 as Add<&i32>>
-           and 48 others
+           and 56 others
 
 error: aborting due to 2 previous errors
 

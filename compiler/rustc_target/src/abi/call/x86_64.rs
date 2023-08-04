@@ -51,7 +51,7 @@ where
 
             Abi::Scalar(scalar) => match scalar.primitive() {
                 abi::Int(..) | abi::Pointer(_) => Class::Int,
-                abi::F32 | abi::F64 => Class::Sse,
+                abi::F16 | abi::F32 | abi::F64 | abi::F128 => Class::Sse,
             },
 
             Abi::Vector { .. } => Class::Sse,

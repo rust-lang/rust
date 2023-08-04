@@ -133,8 +133,10 @@ impl PrimitiveExt for Primitive {
     fn to_ty<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match *self {
             Int(i, signed) => i.to_ty(tcx, signed),
+            F16 => tcx.types.f16,
             F32 => tcx.types.f32,
             F64 => tcx.types.f64,
+            F128 => tcx.types.f128,
             // FIXME(erikdesjardins): handle non-default addrspace ptr sizes
             Pointer(_) => Ty::new_mut_ptr(tcx, Ty::new_unit(tcx)),
         }
@@ -151,7 +153,7 @@ impl PrimitiveExt for Primitive {
                 let signed = false;
                 tcx.data_layout().ptr_sized_integer().to_ty(tcx, signed)
             }
-            F32 | F64 => bug!("floats do not have an int type"),
+            F16 | F32 | F64 | F128 => bug!("floats do not have an int type"),
         }
     }
 }

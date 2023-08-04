@@ -3,7 +3,7 @@ use std::fmt;
 use either::{Either, Left, Right};
 
 use rustc_apfloat::{
-    ieee::{Double, Single},
+    ieee::{Double, Half, Quad, Single},
     Float,
 };
 use rustc_macros::HashStable;
@@ -69,6 +69,13 @@ impl<Prov: Provenance> fmt::LowerHex for Scalar<Prov> {
     }
 }
 
+impl<Prov> From<Half> for Scalar<Prov> {
+    #[inline(always)]
+    fn from(f: Half) -> Self {
+        Scalar::from_f16(f)
+    }
+}
+
 impl<Prov> From<Single> for Scalar<Prov> {
     #[inline(always)]
     fn from(f: Single) -> Self {
@@ -80,6 +87,13 @@ impl<Prov> From<Double> for Scalar<Prov> {
     #[inline(always)]
     fn from(f: Double) -> Self {
         Scalar::from_f64(f)
+    }
+}
+
+impl<Prov> From<Quad> for Scalar<Prov> {
+    #[inline(always)]
+    fn from(f: Quad) -> Self {
+        Scalar::from_f128(f)
     }
 }
 
@@ -202,12 +216,22 @@ impl<Prov> Scalar<Prov> {
     }
 
     #[inline]
+    pub fn from_f16(f: Half) -> Self {
+        Scalar::Int(f.into())
+    }
+
+    #[inline]
     pub fn from_f32(f: Single) -> Self {
         Scalar::Int(f.into())
     }
 
     #[inline]
     pub fn from_f64(f: Double) -> Self {
+        Scalar::Int(f.into())
+    }
+
+    #[inline]
+    pub fn from_f128(f: Quad) -> Self {
         Scalar::Int(f.into())
     }
 
@@ -423,12 +447,22 @@ impl<'tcx, Prov: Provenance> Scalar<Prov> {
     }
 
     #[inline]
+    pub fn to_f16(self) -> InterpResult<'tcx, Single> {
+        self.to_float()
+    }
+
+    #[inline]
     pub fn to_f32(self) -> InterpResult<'tcx, Single> {
         self.to_float()
     }
 
     #[inline]
     pub fn to_f64(self) -> InterpResult<'tcx, Double> {
+        self.to_float()
+    }
+
+    #[inline]
+    pub fn to_f128(self) -> InterpResult<'tcx, Single> {
         self.to_float()
     }
 }

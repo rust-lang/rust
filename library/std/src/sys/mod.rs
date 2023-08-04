@@ -89,6 +89,21 @@ cfg_if::cfg_if! {
     }
 }
 
+// todo: does android have its own version of these functions?
+#[inline]
+#[cfg(not(test))]
+#[cfg(not(bootstrap))]
+pub fn log2f16(n: f16) -> f16 {
+    unsafe { crate::intrinsics::log2f16(n) }
+}
+
+#[inline]
+#[cfg(not(test))]
+#[cfg(not(bootstrap))]
+pub fn log2f128(n: f128) -> f128 {
+    unsafe { crate::intrinsics::log2f128(n) }
+}
+
 // Solaris/Illumos requires a wrapper around log, log2, and log10 functions
 // because of their non-standard behavior (e.g., log(-n) returns -Inf instead
 // of expected NaN).

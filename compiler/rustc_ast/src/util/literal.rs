@@ -325,8 +325,10 @@ fn filtered_float_lit(
         Some(suf) => LitKind::Float(
             symbol,
             ast::LitFloatType::Suffixed(match suf {
+                sym::f16 => ast::FloatTy::F16,
                 sym::f32 => ast::FloatTy::F32,
                 sym::f64 => ast::FloatTy::F64,
+                sym::f128 => ast::FloatTy::F128,
                 _ => return Err(LitError::InvalidFloatSuffix),
             }),
         ),

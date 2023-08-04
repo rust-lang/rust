@@ -13,3 +13,7 @@ macro_rules! floating {
 
 floating! { f32 }
 floating! { f64 }
+
+#[cfg(not(bootstrap))]
+floating! { f16 }
+floating! { f128 }

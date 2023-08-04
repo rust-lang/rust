@@ -14,7 +14,7 @@ LL |     1 + Some(1);
              <i16 as Add<&i16>>
              <i32 as Add>
              <i32 as Add<&i32>>
-           and 48 others
+           and 56 others
 
 error[E0277]: cannot subtract `Option<{integer}>` from `usize`
   --> $DIR/binops.rs:3:16
@@ -45,7 +45,7 @@ LL |     3 * ();
              <i16 as Mul<&i16>>
              <i32 as Mul>
              <i32 as Mul<&i32>>
-           and 49 others
+           and 57 others
 
 error[E0277]: cannot divide `{integer}` by `&str`
   --> $DIR/binops.rs:5:7
@@ -63,7 +63,7 @@ LL |     4 / "";
              <i16 as Div<&i16>>
              <i32 as Div>
              <i32 as Div<&i32>>
-           and 54 others
+           and 62 others
 
 error[E0277]: can't compare `{integer}` with `String`
   --> $DIR/binops.rs:6:7
@@ -81,7 +81,7 @@ LL |     5 < String::new();
              i128
              usize
              u8
-           and 6 others
+           and 8 others
 
 error[E0277]: can't compare `{integer}` with `Result<{integer}, _>`
   --> $DIR/binops.rs:7:7
@@ -99,7 +99,7 @@ LL |     6 == Ok(1);
              i128
              usize
              u8
-           and 6 others
+           and 8 others
 
 error: aborting due to 6 previous errors
 

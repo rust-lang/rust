@@ -336,6 +336,14 @@ pub mod f32;
 #[path = "num/f64.rs"]
 pub mod f64;
 
+#[cfg(not(bootstrap))]
+#[path = "num/f16.rs"]
+pub mod f16;
+
+#[cfg(not(bootstrap))]
+#[path = "num/f128.rs"]
+pub mod f128;
+
 #[macro_use]
 pub mod num;
 

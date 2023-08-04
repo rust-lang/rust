@@ -231,6 +231,9 @@ mod impls {
         bool char
     }
 
+    #[cfg(not(bootstrap))]
+    impl_clone! { f16 f128 }
+
     #[unstable(feature = "never_type", issue = "35121")]
     impl Clone for ! {
         #[inline]

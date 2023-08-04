@@ -75,8 +75,10 @@ impl ApproxConstant {
     fn check_lit(&self, cx: &LateContext<'_>, lit: &LitKind, e: &Expr<'_>) {
         match *lit {
             LitKind::Float(s, LitFloatType::Suffixed(fty)) => match fty {
+                FloatTy::F16 => todo!(),
                 FloatTy::F32 => self.check_known_consts(cx, e, s, "f32"),
                 FloatTy::F64 => self.check_known_consts(cx, e, s, "f64"),
+                FloatTy::F128 => todo!(),
             },
             LitKind::Float(s, LitFloatType::Unsuffixed) => self.check_known_consts(cx, e, s, "f{32, 64}"),
             _ => (),

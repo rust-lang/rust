@@ -528,7 +528,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                         }
                     }
                 }
-                abi::F32 | abi::F64 => {}
+                abi::F16 | abi::F32 | abi::F64 | abi::F128 => {}
             }
         }
 

@@ -160,8 +160,22 @@ macro_rules! from_str_float_impl {
         }
     };
 }
+
 from_str_float_impl!(f32);
 from_str_float_impl!(f64);
+
+#[cfg(not(bootstrap))]
+from_str_float_impl!(f16);
+
+// FIXME:f16_f128: when we have better dec2flt, use that
+#[cfg(not(bootstrap))]
+impl FromStr for f128 {
+    type Err = <f64 as FromStr>::Err;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        f64::from_str(s).map(Into::into)
+    }
+}
 
 /// An error which can be returned when parsing a float.
 ///

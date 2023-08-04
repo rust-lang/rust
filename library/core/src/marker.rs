@@ -498,6 +498,12 @@ marker_impls! {
 
 }
 
+#[cfg(not(bootstrap))]
+marker_impls! {
+    #[stable(feature = "f16_f128", since = "CURRENT_RUSTC_VERSION")]
+    Copy for f16, f128
+}
+
 #[unstable(feature = "never_type", issue = "35121")]
 impl Copy for ! {}
 

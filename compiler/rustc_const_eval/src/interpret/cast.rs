@@ -1,6 +1,6 @@
 use std::assert_matches::assert_matches;
 
-use rustc_apfloat::ieee::{Double, Single};
+use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_apfloat::{Float, FloatConvert};
 use rustc_middle::mir::interpret::{InterpResult, PointerArithmetic, Scalar};
 use rustc_middle::mir::CastKind;
@@ -185,8 +185,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         let val = match src.layout.ty.kind() {
             // Floating point
+            Float(FloatTy::F16) => self.cast_from_float(src.to_scalar().to_f16()?, cast_to.ty),
             Float(FloatTy::F32) => self.cast_from_float(src.to_scalar().to_f32()?, cast_to.ty),
             Float(FloatTy::F64) => self.cast_from_float(src.to_scalar().to_f64()?, cast_to.ty),
+            Float(FloatTy::F128) => self.cast_from_float(src.to_scalar().to_f128()?, cast_to.ty),
             _ => {
                 bug!("Can't cast 'Float' type into {}", cast_to.ty);
             }
@@ -286,10 +288,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 Scalar::from_uint(v, size)
             }
 
+            Float(FloatTy::F16) if signed => Scalar::from_f16(Half::from_i128(v as i128).value),
             Float(FloatTy::F32) if signed => Scalar::from_f32(Single::from_i128(v as i128).value),
             Float(FloatTy::F64) if signed => Scalar::from_f64(Double::from_i128(v as i128).value),
+            Float(FloatTy::F128) if signed => Scalar::from_f128(Quad::from_i128(v as i128).value),
+            Float(FloatTy::F16) => Scalar::from_f16(Half::from_u128(v).value),
             Float(FloatTy::F32) => Scalar::from_f32(Single::from_u128(v).value),
             Float(FloatTy::F64) => Scalar::from_f64(Double::from_u128(v).value),
+            Float(FloatTy::F128) => Scalar::from_f128(Quad::from_u128(v).value),
 
             Char => {
                 // `u8` to `char` cast

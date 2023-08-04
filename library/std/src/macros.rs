@@ -375,8 +375,16 @@ macro_rules! dbg {
 
 #[cfg(test)]
 macro_rules! assert_approx_eq {
-    ($a:expr, $b:expr) => {{
+    ($a:expr, $b:expr) => {{ assert_approx_eq!($a, $b, 1.0e-6) }};
+    // Allow setting a custom limit (for f16)
+    ($a:expr, $b:expr, $lim:expr) => {{
         let (a, b) = (&$a, &$b);
-        assert!((*a - *b).abs() < 1.0e-6, "{} is not approximately equal to {}", *a, *b);
+        assert!(
+            (*a - *b).abs() < $lim,
+            "{} is not approximately equal to {} (threshold {})",
+            *a,
+            *b,
+            $lim
+        );
     }};
 }

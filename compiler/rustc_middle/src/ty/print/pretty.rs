@@ -7,7 +7,8 @@ use crate::ty::{
     ConstInt, ParamConst, ScalarInt, Term, TermKind, TypeFoldable, TypeSuperFoldable,
     TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
 };
-use rustc_apfloat::ieee::{Double, Single};
+use crate::ty::{GenericArg, GenericArgKind};
+use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_apfloat::Float;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_hir as hir;
@@ -1475,6 +1476,9 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             ty::Bool if int == ScalarInt::FALSE => p!("false"),
             ty::Bool if int == ScalarInt::TRUE => p!("true"),
             // Float
+            ty::Float(ty::FloatTy::F16) => {
+                p!(write("{}f16", Half::try_from(int).unwrap()))
+            }
             ty::Float(ty::FloatTy::F32) => {
                 let val = Single::try_from(int).unwrap();
                 p!(write("{}{}f32", val, if val.is_finite() { "" } else { "_" }))
@@ -1482,6 +1486,9 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             ty::Float(ty::FloatTy::F64) => {
                 let val = Double::try_from(int).unwrap();
                 p!(write("{}{}f64", val, if val.is_finite() { "" } else { "_" }))
+            }
+            ty::Float(ty::FloatTy::F128) => {
+                p!(write("{}f128", Quad::try_from(int).unwrap()))
             }
             // Int
             ty::Uint(_) | ty::Int(_) => {
