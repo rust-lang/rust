@@ -5,20 +5,9 @@
       let mut _0: ();
       let _1: ();
 +     let mut _2: fn() {f};
-+     let mut _4: ();
 +     scope 1 (inlined call::<fn() {f}>) {
 +         debug f => _2;
 +         let _3: ();
-+         scope 2 (inlined <fn() {f} as FnOnce<()>>::call_once - shim(fn() {f})) {
-+             scope 3 (inlined f) {
-+                 scope 4 (inlined call::<fn() {f}>) {
-+                     debug f => f;
-+                     let _5: ();
-+                     scope 5 (inlined <fn() {f} as FnOnce<()>>::call_once - shim(fn() {f})) {
-+                     }
-+                 }
-+             }
-+         }
 +     }
   
       bb0: {
@@ -27,15 +16,10 @@
 +         StorageLive(_2);
 +         _2 = f;
 +         StorageLive(_3);
-+         StorageLive(_4);
-+         _4 = const ();
-+         StorageLive(_5);
-+         _5 = f() -> [return: bb1, unwind continue];
++         _3 = <fn() {f} as FnOnce<()>>::call_once(move _2, const ()) -> [return: bb1, unwind continue];
       }
   
       bb1: {
-+         StorageDead(_5);
-+         StorageDead(_4);
 +         StorageDead(_3);
 +         StorageDead(_2);
           StorageDead(_1);

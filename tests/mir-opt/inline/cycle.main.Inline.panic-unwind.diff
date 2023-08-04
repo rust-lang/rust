@@ -5,21 +5,10 @@
       let mut _0: ();
       let _1: ();
 +     let mut _2: fn() {g};
-+     let mut _5: ();
 +     scope 1 (inlined f::<fn() {g}>) {
 +         debug g => _2;
 +         let mut _3: &fn() {g};
 +         let _4: ();
-+         scope 2 (inlined <fn() {g} as Fn<()>>::call - shim(fn() {g})) {
-+             scope 3 (inlined g) {
-+                 scope 4 (inlined f::<fn() {main}>) {
-+                     debug g => main;
-+                     let _6: ();
-+                     scope 5 (inlined <fn() {main} as Fn<()>>::call - shim(fn() {main})) {
-+                     }
-+                 }
-+             }
-+         }
 +     }
   
       bb0: {
@@ -30,10 +19,7 @@
 +         StorageLive(_4);
 +         StorageLive(_3);
 +         _3 = &_2;
-+         StorageLive(_5);
-+         _5 = const ();
-+         StorageLive(_6);
-+         _6 = main() -> [return: bb4, unwind: bb2];
++         _4 = <fn() {g} as Fn<()>>::call(move _3, const ()) -> [return: bb2, unwind: bb3];
       }
   
       bb1: {
@@ -44,19 +30,17 @@
           return;
 +     }
 + 
-+     bb2 (cleanup): {
-+         drop(_2) -> [return: bb3, unwind terminate];
++     bb2: {
++         StorageDead(_3);
++         drop(_2) -> [return: bb1, unwind continue];
 +     }
 + 
 +     bb3 (cleanup): {
-+         resume;
++         drop(_2) -> [return: bb4, unwind terminate];
 +     }
 + 
-+     bb4: {
-+         StorageDead(_6);
-+         StorageDead(_5);
-+         StorageDead(_3);
-+         drop(_2) -> [return: bb1, unwind continue];
++     bb4 (cleanup): {
++         resume;
       }
   }
   

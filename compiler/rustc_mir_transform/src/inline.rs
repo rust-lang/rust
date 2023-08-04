@@ -223,19 +223,29 @@ impl<'tcx> Inliner<'tcx> {
             return Err("failed to normalize return type");
         }
         if callsite.fn_sig.abi() == Abi::RustCall {
-            let (arg_tuple, skipped_args) = match &args[..] {
-                [arg_tuple] => (arg_tuple, 0),
-                [_, arg_tuple] => (arg_tuple, 1),
+            // FIXME: Don't inline user-written `extern "rust-call"` functions,
+            // since this is generally perf-negative on rustc, and we hope that
+            // LLVM will inline these functions instead.
+            if callee_body.spread_arg.is_some() {
+                return Err("do not inline user-written rust-call functions");
+            }
+
+            let (self_arg, arg_tuple) = match &args[..] {
+                [arg_tuple] => (None, arg_tuple),
+                [self_arg, arg_tuple] => (Some(self_arg), arg_tuple),
                 _ => bug!("Expected `rust-call` to have 1 or 2 args"),
             };
 
+            let self_arg_ty =
+                self_arg.map(|self_arg| self_arg.ty(&caller_body.local_decls, self.tcx));
+
             let arg_tuple_ty = arg_tuple.ty(&caller_body.local_decls, self.tcx);
-            let ty::Tuple(arg_tuple_tys) = arg_tuple_ty.kind() else {
+            let ty::Tuple(arg_tuple_tys) = *arg_tuple_ty.kind() else {
                 bug!("Closure arguments are not passed as a tuple");
             };
 
             for (arg_ty, input) in
-                arg_tuple_tys.iter().zip(callee_body.args_iter().skip(skipped_args))
+                self_arg_ty.into_iter().chain(arg_tuple_tys).zip(callee_body.args_iter())
             {
                 let input_type = callee_body.local_decls[input].ty;
                 if !util::is_subtype(self.tcx, self.param_env, input_type, arg_ty) {
