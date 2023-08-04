@@ -96,7 +96,7 @@ llvm-config = "{llvm_config}"
         "tests/ui",
     ];
     for test_path in env.skipped_tests() {
-        args.extend(["--exclude", test_path]);
+        args.extend(["--skip", test_path]);
     }
     cmd(&args).env("COMPILETEST_FORCE_STAGE0", "1").run().context("Cannot execute tests")
 }

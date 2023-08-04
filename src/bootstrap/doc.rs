@@ -570,7 +570,7 @@ fn doc_std(
     if builder.no_std(target) == Some(true) {
         panic!(
             "building std documentation for no_std target {target} is not supported\n\
-             Set `docs = false` in the config to disable documentation, or pass `--exclude doc::library`."
+             Set `docs = false` in the config to disable documentation, or pass `--skip library`."
         );
     }
 
