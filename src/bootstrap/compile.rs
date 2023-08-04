@@ -23,7 +23,7 @@ use crate::builder::crate_description;
 use crate::builder::Cargo;
 use crate::builder::{Builder, Kind, PathSet, RunConfig, ShouldRun, Step, TaskPath};
 use crate::cache::{Interned, INTERNER};
-use crate::config::{LlvmLibunwind, RustcLto, TargetSelection};
+use crate::config::{DebuginfoLevel, LlvmLibunwind, RustcLto, TargetSelection};
 use crate::dist;
 use crate::llvm;
 use crate::tool::SourceType;
@@ -888,15 +888,36 @@ impl Step for Rustc {
             compiler.host,
             target,
         );
+        let stamp = librustc_stamp(builder, compiler, target);
         run_cargo(
             builder,
             cargo,
             vec![],
-            &librustc_stamp(builder, compiler, target),
+            &stamp,
             vec![],
             false,
             true, // Only ship rustc_driver.so and .rmeta files, not all intermediate .rlib files.
         );
+
+        // When building `librustc_driver.so` (like `libLLVM.so`) on linux, it can contain
+        // unexpected debuginfo from dependencies, for example from the C++ standard library used in
+        // our LLVM wrapper. Unless we're explicitly requesting `librustc_driver` to be built with
+        // debuginfo (via the debuginfo level of the executables using it): strip this debuginfo
+        // away after the fact.
+        // FIXME: to make things simpler for now, limit this to the host and target where we know
+        // `strip -g` is both available and will fix the issue, i.e. on a x64 linux host that is not
+        // cross-compiling. Expand this to other appropriate targets in the future.
+        if builder.config.rust_debuginfo_level_rustc == DebuginfoLevel::None
+            && builder.config.rust_debuginfo_level_tools == DebuginfoLevel::None
+            && target == "x86_64-unknown-linux-gnu"
+            && target == builder.config.build
+        {
+            let target_root_dir = stamp.parent().unwrap();
+            let rustc_driver = target_root_dir.join("librustc_driver.so");
+            if rustc_driver.exists() {
+                output(Command::new("strip").arg("--strip-debug").arg(rustc_driver));
+            }
+        }
 
         builder.ensure(RustcLink::from_rustc(
             self,

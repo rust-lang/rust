@@ -14,6 +14,7 @@
 //!
 //! ```rust
 //! #![feature(core_intrinsics, custom_mir)]
+#![cfg_attr(not(bootstrap), doc = "#![allow(internal_features)]")]
 //!
 //! use core::intrinsics::mir::*;
 //!
@@ -63,6 +64,7 @@
 //!
 //! ```rust
 //! #![feature(core_intrinsics, custom_mir)]
+#![cfg_attr(not(bootstrap), doc = "#![allow(internal_features)]")]
 //!
 //! use core::intrinsics::mir::*;
 //!
@@ -315,6 +317,7 @@ define!(
     /// # Examples
     ///
     /// ```rust
+    #[cfg_attr(not(bootstrap), doc = "#![allow(internal_features)]")]
     /// #![feature(custom_mir, core_intrinsics)]
     ///
     /// use core::intrinsics::mir::*;

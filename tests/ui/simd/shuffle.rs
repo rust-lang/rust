@@ -8,7 +8,6 @@
 
 extern "platform-intrinsic" {
     fn simd_shuffle<T, I, U>(a: T, b: T, i: I) -> U;
-    fn simd_shuffle16<T, U>(x: T, y: T, idx: [u32; 16]) -> U;
 }
 
 #[derive(Copy, Clone)]
@@ -16,7 +15,7 @@ extern "platform-intrinsic" {
 struct Simd<T, const N: usize>([T; N]);
 
 pub unsafe fn __shuffle_vector16<const IDX: [u32; 16], T, U>(x: T, y: T) -> U {
-    simd_shuffle16(x, y, IDX)
+    simd_shuffle(x, y, IDX)
 }
 
 fn main() {

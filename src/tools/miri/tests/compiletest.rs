@@ -53,6 +53,7 @@ fn test_config(target: &str, path: &str, mode: Mode, with_dependencies: bool) ->
     // Add some flags we always want.
     program.args.push("-Dwarnings".into());
     program.args.push("-Dunused".into());
+    program.args.push("-Ainternal_features".into());
     if let Ok(extra_flags) = env::var("MIRIFLAGS") {
         for flag in extra_flags.split_whitespace() {
             program.args.push(flag.into());

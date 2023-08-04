@@ -40,6 +40,7 @@
 #![recursion_limit = "256"]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
+#![cfg_attr(not(bootstrap), allow(internal_features))]
 
 #[macro_use]
 extern crate rustc_middle;
@@ -57,7 +58,6 @@ mod early;
 mod enum_intrinsics_non_enums;
 mod errors;
 mod expect;
-mod fn_null_check;
 mod for_loops_over_fallibles;
 pub mod hidden_unicode_codepoints;
 mod internal;
@@ -76,6 +76,7 @@ mod noop_method_call;
 mod opaque_hidden_inferred_bound;
 mod pass_by_value;
 mod passes;
+mod ptr_nulls;
 mod redundant_semicolon;
 mod reference_casting;
 mod traits;
@@ -102,7 +103,6 @@ use builtin::*;
 use deref_into_dyn_supertrait::*;
 use drop_forget_useless::*;
 use enum_intrinsics_non_enums::EnumIntrinsicsNonEnums;
-use fn_null_check::*;
 use for_loops_over_fallibles::*;
 use hidden_unicode_codepoints::*;
 use internal::*;
@@ -117,6 +117,7 @@ use nonstandard_style::*;
 use noop_method_call::*;
 use opaque_hidden_inferred_bound::*;
 use pass_by_value::*;
+use ptr_nulls::*;
 use redundant_semicolon::*;
 use reference_casting::*;
 use traits::*;
@@ -173,7 +174,7 @@ early_lint_methods!(
             WhileTrue: WhileTrue,
             NonAsciiIdents: NonAsciiIdents,
             HiddenUnicodeCodepoints: HiddenUnicodeCodepoints,
-            IncompleteFeatures: IncompleteFeatures,
+            IncompleteInternalFeatures: IncompleteInternalFeatures,
             RedundantSemicolons: RedundantSemicolons,
             UnusedDocComment: UnusedDocComment,
             UnexpectedCfgs: UnexpectedCfgs,
@@ -227,7 +228,7 @@ late_lint_methods!(
             // Depends on types used in type definitions
             MissingCopyImplementations: MissingCopyImplementations,
             // Depends on referenced function signatures in expressions
-            IncorrectFnNullChecks: IncorrectFnNullChecks,
+            PtrNullChecks: PtrNullChecks,
             MutableTransmutes: MutableTransmutes,
             TypeAliasBounds: TypeAliasBounds,
             TrivialConstraints: TrivialConstraints,

@@ -141,7 +141,7 @@ call-function: ("check-colors", {
     "theme": "ayu",
     "color": "#c5c5c5",
     "color_hover": "#ffb44c",
-    "background": "rgb(20, 25, 31)",
+    "background": "#14191f",
     "background_hover": "#14191f",
     "background_toggle": "rgba(0, 0, 0, 0)",
     "background_toggle_hover": "rgba(70, 70, 70, 0.33)",

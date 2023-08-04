@@ -12,6 +12,7 @@
         test
     )
 )]
+#![cfg_attr(all(not(bootstrap), feature = "nightly"), allow(internal_features))]
 
 #[cfg(feature = "nightly")]
 pub mod bit_set;

@@ -220,6 +220,7 @@
 #![warn(missing_debug_implementations)]
 #![allow(explicit_outlives_requirements)]
 #![allow(unused_lifetimes)]
+#![cfg_attr(not(bootstrap), allow(internal_features))]
 #![deny(rustc::existing_doc_keyword)]
 #![deny(fuzzy_provenance_casts)]
 // Ensure that std can be linked against panic_abort despite compiled with `-C panic=unwind`

@@ -72,6 +72,9 @@ lint_builtin_incomplete_features = the feature `{$name}` is incomplete and may n
     .note = see issue #{$n} <https://github.com/rust-lang/rust/issues/{$n}> for more information
     .help = consider using `min_{$name}` instead, which is more stable and complete
 
+lint_builtin_internal_features = the feature `{$name}` is internal to the compiler or standard library
+    .note = using it is strongly discouraged
+
 lint_builtin_keyword_idents = `{$kw}` is a keyword in the {$next} edition
     .suggestion = you can use a raw identifier to stay compatible
 
@@ -212,9 +215,6 @@ lint_enum_intrinsics_mem_variant =
 lint_expectation = this lint expectation is unfulfilled
     .note = the `unfulfilled_lint_expectations` lint can't be expected and will always produce this message
     .rationale = {$rationale}
-
-lint_fn_null_check = function pointers are not nullable, so checking them for null will always return false
-    .help = wrap the function pointer inside an `Option` and use `Option::is_none` to check for null pointer value
 
 lint_for_loops_over_fallibles =
     for loop over {$article} `{$ty}`. This is more readably written as an `if let` statement
@@ -453,6 +453,13 @@ lint_path_statement_drop = path statement drops value
     .suggestion = use `drop` to clarify the intent
 
 lint_path_statement_no_effect = path statement with no effect
+
+lint_ptr_null_checks_fn_ptr = function pointers are not nullable, so checking them for null will always return false
+    .help = wrap the function pointer inside an `Option` and use `Option::is_none` to check for null pointer value
+    .label = expression has type `{$orig_ty}`
+
+lint_ptr_null_checks_ref = references are not nullable, so checking them for null will always return false
+    .label = expression has type `{$orig_ty}`
 
 lint_query_instability = using `{$query}` can result in unstable query results
     .note = if you believe this case to be fine, allow this lint and add a comment explaining your rationale

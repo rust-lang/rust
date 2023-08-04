@@ -6,6 +6,7 @@
 //!
 //! ```
 //! # #![feature(rustc_attrs)]
+//! # #![allow(internal_features)]
 //! #![rustc_partition_reused(module="spike", cfg="rpass2")]
 //! #![rustc_partition_codegened(module="spike-x", cfg="rpass2")]
 //! ```

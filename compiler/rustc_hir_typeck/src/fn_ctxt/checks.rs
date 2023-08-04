@@ -1463,11 +1463,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         // Type check the pattern. Override if necessary to avoid knock-on errors.
-        self.check_pat_top(&decl.pat, decl_ty, ty_span, origin_expr);
+        self.check_pat_top(&decl.pat, decl_ty, ty_span, origin_expr, Some(decl.origin));
         let pat_ty = self.node_ty(decl.pat.hir_id);
         self.overwrite_local_ty_if_err(decl.hir_id, decl.pat, pat_ty);
 
-        if let Some(blk) = decl.els {
+        if let Some(blk) = decl.origin.try_get_else() {
             let previous_diverges = self.diverges.get();
             let else_ty = self.check_block_with_expected(blk, NoExpectation);
             let cause = self.cause(blk.span, ObligationCauseCode::LetElse);
@@ -1485,7 +1485,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.check_decl(local.into());
     }
 
-    pub fn check_stmt(&self, stmt: &'tcx hir::Stmt<'tcx>, is_last: bool) {
+    pub fn check_stmt(&self, stmt: &'tcx hir::Stmt<'tcx>) {
         // Don't do all the complex logic below for `DeclItem`.
         match stmt.kind {
             hir::StmtKind::Item(..) => return,
@@ -1512,14 +1512,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 });
             }
             hir::StmtKind::Semi(ref expr) => {
-                // All of this is equivalent to calling `check_expr`, but it is inlined out here
-                // in order to capture the fact that this `match` is the last statement in its
-                // function. This is done for better suggestions to remove the `;`.
-                let expectation = match expr.kind {
-                    hir::ExprKind::Match(..) if is_last => IsLast(stmt.span),
-                    _ => NoExpectation,
-                };
-                self.check_expr_with_expectation(expr, expectation);
+                self.check_expr(expr);
             }
         }
 
@@ -1570,8 +1563,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ctxt = BreakableCtxt { coerce: Some(coerce), may_break: false };
 
         let (ctxt, ()) = self.with_breakable_ctxt(blk.hir_id, ctxt, || {
-            for (pos, s) in blk.stmts.iter().enumerate() {
-                self.check_stmt(s, blk.stmts.len() - 1 == pos);
+            for s in blk.stmts {
+                self.check_stmt(s);
             }
 
             // check the tail expression **without** holding the
@@ -1594,9 +1587,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     &cause,
                     Some(tail_expr),
                     tail_expr_ty,
-                    Some(&mut |diag: &mut Diagnostic| {
+                    |diag| {
                         self.suggest_block_to_brackets(diag, blk, tail_expr_ty, ty_for_diagnostic);
-                    }),
+                    },
                     false,
                 );
             } else {
@@ -1633,7 +1626,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     coerce.coerce_forced_unit(
                         self,
                         &self.misc(sp),
-                        &mut |err| {
+                        |err| {
                             if let Some(expected_ty) = expected.only_has_type(self) {
                                 if blk.stmts.is_empty() && blk.expr.is_none() {
                                     self.suggest_boxing_when_appropriate(

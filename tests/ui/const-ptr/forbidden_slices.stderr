@@ -41,7 +41,7 @@ error[E0080]: it is undefined behavior to use this value
   --> $DIR/forbidden_slices.rs:26:1
    |
 LL | pub static S4: &[u8] = unsafe { from_raw_parts((&D1) as *const _ as _, 1) };
-   | ^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<deref>[0]: encountered uninitialized bytes
+   | ^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<deref>[0]: encountered uninitialized memory, but expected an integer
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
@@ -52,8 +52,9 @@ error[E0080]: it is undefined behavior to use this value
   --> $DIR/forbidden_slices.rs:28:1
    |
 LL | pub static S5: &[u8] = unsafe { from_raw_parts((&D3) as *const _ as _, size_of::<&u32>()) };
-   | ^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
+   | ^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<deref>[0]: encountered a pointer, but expected an integer
    |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
                HEX_DUMP
            }
@@ -75,7 +76,7 @@ error[E0080]: it is undefined behavior to use this value
   --> $DIR/forbidden_slices.rs:33:1
    |
 LL | pub static S7: &[u16] = unsafe {
-   | ^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<deref>[1]: encountered uninitialized bytes
+   | ^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<deref>[1]: encountered uninitialized memory, but expected an integer
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
@@ -143,7 +144,7 @@ error[E0080]: it is undefined behavior to use this value
   --> $DIR/forbidden_slices.rs:53:1
    |
 LL | pub static R4: &[u8] = unsafe {
-   | ^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<deref>[0]: encountered uninitialized bytes
+   | ^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<deref>[0]: encountered uninitialized memory, but expected an integer
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
@@ -154,8 +155,9 @@ error[E0080]: it is undefined behavior to use this value
   --> $DIR/forbidden_slices.rs:58:1
    |
 LL | pub static R5: &[u8] = unsafe {
-   | ^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
+   | ^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<deref>[0]: encountered a pointer, but expected an integer
    |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
                HEX_DUMP
            }

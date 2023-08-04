@@ -1,20 +1,20 @@
-use crate::errors;
-
 use super::diagnostics::{dummy_arg, ConsumeClosingDelim};
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{AttrWrapper, FollowedByType, ForceCollect, Parser, PathStyle, TrailingToken};
+use crate::errors::{self, MacroExpandsToAdtField};
+use crate::fluent_generated as fluent;
 use ast::StaticItem;
 use rustc_ast::ast::*;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
 use rustc_ast::util::case::Case;
+use rustc_ast::MacCall;
 use rustc_ast::{self as ast, AttrVec, Attribute, DUMMY_NODE_ID};
 use rustc_ast::{Async, Const, Defaultness, IsAuto, Mutability, Unsafe, UseTree, UseTreeKind};
 use rustc_ast::{BindingAnnotation, Block, FnDecl, FnSig, Param, SelfKind};
 use rustc_ast::{EnumDef, FieldDef, Generics, TraitRef, Ty, TyKind, Variant, VariantData};
 use rustc_ast::{FnHeader, ForeignItem, Path, PathSegment, Visibility, VisibilityKind};
-use rustc_ast::{MacCall, MacDelimiter};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{
     struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed, IntoDiagnostic, PResult,
@@ -1450,6 +1450,17 @@ impl<'a> Parser<'a> {
                 }
                 let ident = this.parse_field_ident("enum", vlo)?;
 
+                if this.token == token::Not {
+                    if let Err(mut err) = this.unexpected::<()>() {
+                        err.note(fluent::parse_macro_expands_to_enum_variant).emit();
+                    }
+
+                    this.bump();
+                    this.parse_delim_args()?;
+
+                    return Ok((None, TrailingToken::MaybeComma));
+                }
+
                 let struct_def = if this.check(&token::OpenDelim(Delimiter::Brace)) {
                     // Parse a struct variant.
                     let (fields, recovered) =
@@ -1477,7 +1488,7 @@ impl<'a> Parser<'a> {
 
                 Ok((Some(vr), TrailingToken::MaybeComma))
             },
-        ).map_err(|mut err|{
+        ).map_err(|mut err| {
             err.help("enum variants can be `Variant`, `Variant = <integer>`, `Variant(Type, ..., TypeN)` or `Variant { fields: Types }`");
             err
         })
@@ -1687,7 +1698,8 @@ impl<'a> Parser<'a> {
         self.collect_tokens_trailing_token(attrs, ForceCollect::No, |this, attrs| {
             let lo = this.token.span;
             let vis = this.parse_visibility(FollowedByType::No)?;
-            Ok((this.parse_single_struct_field(adt_ty, lo, vis, attrs)?, TrailingToken::None))
+            this.parse_single_struct_field(adt_ty, lo, vis, attrs)
+                .map(|field| (field, TrailingToken::None))
         })
     }
 
@@ -1821,8 +1833,8 @@ impl<'a> Parser<'a> {
                     "field names and their types are separated with `:`",
                     ":",
                     Applicability::MachineApplicable,
-                );
-                err.emit();
+                )
+                .emit();
             } else {
                 return Err(err);
             }
@@ -1839,6 +1851,23 @@ impl<'a> Parser<'a> {
         attrs: AttrVec,
     ) -> PResult<'a, FieldDef> {
         let name = self.parse_field_ident(adt_ty, lo)?;
+        // Parse the macro invocation and recover
+        if self.token.kind == token::Not {
+            if let Err(mut err) = self.unexpected::<FieldDef>() {
+                err.subdiagnostic(MacroExpandsToAdtField { adt_ty }).emit();
+                self.bump();
+                self.parse_delim_args()?;
+                return Ok(FieldDef {
+                    span: DUMMY_SP,
+                    ident: None,
+                    vis,
+                    id: DUMMY_NODE_ID,
+                    ty: self.mk_ty(DUMMY_SP, TyKind::Err),
+                    attrs,
+                    is_placeholder: false,
+                });
+            }
+        }
         self.expect_field_ty_separator()?;
         let ty = self.parse_ty()?;
         if self.token.kind == token::Colon && self.look_ahead(1, |tok| tok.kind != token::Colon) {
@@ -1968,7 +1997,7 @@ impl<'a> Parser<'a> {
             let arrow = TokenTree::token_alone(token::FatArrow, pspan.between(bspan)); // `=>`
             let tokens = TokenStream::new(vec![params, arrow, body]);
             let dspan = DelimSpan::from_pair(pspan.shrink_to_lo(), bspan.shrink_to_hi());
-            P(DelimArgs { dspan, delim: MacDelimiter::Brace, tokens })
+            P(DelimArgs { dspan, delim: Delimiter::Brace, tokens })
         } else {
             return self.unexpected();
         };

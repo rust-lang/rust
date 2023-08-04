@@ -338,6 +338,7 @@ fn collect_lang_features_in(features: &mut Features, base: &Path, file: &str, ba
         let level = match parts.next().map(|l| l.trim().trim_start_matches('(')) {
             Some("active") => Status::Unstable,
             Some("incomplete") => Status::Unstable,
+            Some("internal") => Status::Unstable,
             Some("removed") => Status::Removed,
             Some("accepted") => Status::Stable,
             _ => continue,

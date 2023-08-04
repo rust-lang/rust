@@ -405,9 +405,18 @@ pub struct BuiltinExplicitOutlivesSuggestion {
 pub struct BuiltinIncompleteFeatures {
     pub name: Symbol,
     #[subdiagnostic]
-    pub note: Option<BuiltinIncompleteFeaturesNote>,
+    pub note: Option<BuiltinFeatureIssueNote>,
     #[subdiagnostic]
     pub help: Option<BuiltinIncompleteFeaturesHelp>,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_builtin_internal_features)]
+#[note]
+pub struct BuiltinInternalFeatures {
+    pub name: Symbol,
+    #[subdiagnostic]
+    pub note: Option<BuiltinFeatureIssueNote>,
 }
 
 #[derive(Subdiagnostic)]
@@ -416,7 +425,7 @@ pub struct BuiltinIncompleteFeaturesHelp;
 
 #[derive(Subdiagnostic)]
 #[note(lint_note)]
-pub struct BuiltinIncompleteFeaturesNote {
+pub struct BuiltinFeatureIssueNote {
     pub n: NonZeroU32,
 }
 
@@ -613,11 +622,23 @@ pub struct ExpectationNote {
     pub rationale: Symbol,
 }
 
-// fn_null_check.rs
+// ptr_nulls.rs
 #[derive(LintDiagnostic)]
-#[diag(lint_fn_null_check)]
-#[help]
-pub struct FnNullCheckDiag;
+pub enum PtrNullChecksDiag<'a> {
+    #[diag(lint_ptr_null_checks_fn_ptr)]
+    #[help(lint_help)]
+    FnPtr {
+        orig_ty: Ty<'a>,
+        #[label]
+        label: Span,
+    },
+    #[diag(lint_ptr_null_checks_ref)]
+    Ref {
+        orig_ty: Ty<'a>,
+        #[label]
+        label: Span,
+    },
+}
 
 // for_loops_over_fallibles.rs
 #[derive(LintDiagnostic)]
