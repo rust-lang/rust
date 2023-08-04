@@ -22,9 +22,7 @@ extern "platform-intrinsic" {
     fn simd_insert<T, E>(x: T, idx: u32, y: E) -> T;
     fn simd_extract<T, E>(x: T, idx: u32) -> E;
 
-    fn simd_shuffle2<T, U>(x: T, y: T, idx: [u32; 2]) -> U;
-    fn simd_shuffle4<T, U>(x: T, y: T, idx: [u32; 4]) -> U;
-    fn simd_shuffle8<T, U>(x: T, y: T, idx: [u32; 8]) -> U;
+    fn simd_shuffle<T, I, U>(x: T, y: T, idx: I) -> U;
 }
 
 macro_rules! all_eq {
@@ -83,19 +81,19 @@ fn main() {
     let y4 = i32x4(140, 141, 142, 143);
     let y8 = i32x8(180, 181, 182, 183, 184, 185, 186, 187);
     unsafe {
-        all_eq!(simd_shuffle2(x2, y2, const { [3u32, 0] }), i32x2(121, 20));
-        all_eq!(simd_shuffle4(x2, y2, const { [3u32, 0, 1, 2] }), i32x4(121, 20, 21, 120));
-        all_eq!(simd_shuffle8(x2, y2, const { [3u32, 0, 1, 2, 1, 2, 3, 0] }),
+        all_eq!(simd_shuffle(x2, y2, const { [3u32, 0] }), i32x2(121, 20));
+        all_eq!(simd_shuffle(x2, y2, const { [3u32, 0, 1, 2] }), i32x4(121, 20, 21, 120));
+        all_eq!(simd_shuffle(x2, y2, const { [3u32, 0, 1, 2, 1, 2, 3, 0] }),
                 i32x8(121, 20, 21, 120, 21, 120, 121, 20));
 
-        all_eq!(simd_shuffle2(x4, y4, const { [7u32, 2] }), i32x2(143, 42));
-        all_eq!(simd_shuffle4(x4, y4, const { [7u32, 2, 5, 0] }), i32x4(143, 42, 141, 40));
-        all_eq!(simd_shuffle8(x4, y4, const { [7u32, 2, 5, 0, 3, 6, 4, 1] }),
+        all_eq!(simd_shuffle(x4, y4, const { [7u32, 2] }), i32x2(143, 42));
+        all_eq!(simd_shuffle(x4, y4, const { [7u32, 2, 5, 0] }), i32x4(143, 42, 141, 40));
+        all_eq!(simd_shuffle(x4, y4, const { [7u32, 2, 5, 0, 3, 6, 4, 1] }),
                 i32x8(143, 42, 141, 40, 43, 142, 140, 41));
 
-        all_eq!(simd_shuffle2(x8, y8, const { [11u32, 5] }), i32x2(183, 85));
-        all_eq!(simd_shuffle4(x8, y8, const { [11u32, 5, 15, 0] }), i32x4(183, 85, 187, 80));
-        all_eq!(simd_shuffle8(x8, y8, const { [11u32, 5, 15, 0, 3, 8, 12, 1] }),
+        all_eq!(simd_shuffle(x8, y8, const { [11u32, 5] }), i32x2(183, 85));
+        all_eq!(simd_shuffle(x8, y8, const { [11u32, 5, 15, 0] }), i32x4(183, 85, 187, 80));
+        all_eq!(simd_shuffle(x8, y8, const { [11u32, 5, 15, 0, 3, 8, 12, 1] }),
                 i32x8(183, 85, 187, 80, 83, 180, 184, 81));
     }
 
