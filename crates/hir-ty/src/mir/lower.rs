@@ -582,36 +582,6 @@ impl<'ctx> MirLowerCtx<'ctx> {
                     Ok(())
                 })
             }
-            Expr::While { condition, body, label } => {
-                self.lower_loop(current, place, *label, expr_id.into(), |this, begin| {
-                    let scope = this.push_drop_scope();
-                    let Some((discr, to_switch)) =
-                        this.lower_expr_to_some_operand(*condition, begin)?
-                    else {
-                        return Ok(());
-                    };
-                    let fail_cond = this.new_basic_block();
-                    let after_cond = this.new_basic_block();
-                    this.set_terminator(
-                        to_switch,
-                        TerminatorKind::SwitchInt {
-                            discr,
-                            targets: SwitchTargets::static_if(1, after_cond, fail_cond),
-                        },
-                        expr_id.into(),
-                    );
-                    let fail_cond = this.drop_until_scope(this.drop_scopes.len() - 1, fail_cond);
-                    let end = this.current_loop_end()?;
-                    this.set_goto(fail_cond, end, expr_id.into());
-                    if let Some((_, block)) = this.lower_expr_as_place(after_cond, *body, true)? {
-                        let block = scope.pop_and_drop(this, block);
-                        this.set_goto(block, begin, expr_id.into());
-                    } else {
-                        scope.pop_assume_dropped(this);
-                    }
-                    Ok(())
-                })
-            }
             Expr::Call { callee, args, .. } => {
                 if let Some((func_id, generic_args)) = self.infer.method_resolution(expr_id) {
                     let ty = chalk_ir::TyKind::FnDef(
