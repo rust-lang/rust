@@ -948,6 +948,8 @@ pub(crate) enum ExpectedIdentifierFound {
     #[label(parse_expected_identifier_found_doc_comment)]
     DocComment(#[primary_span] Span),
     #[label(parse_expected_identifier)]
+    InvisibleOpenDelim(#[primary_span] Span),
+    #[label(parse_expected_identifier)]
     Other(#[primary_span] Span),
 }
 
@@ -960,6 +962,9 @@ impl ExpectedIdentifierFound {
             Some(TokenDescription::Keyword) => ExpectedIdentifierFound::Keyword,
             Some(TokenDescription::ReservedKeyword) => ExpectedIdentifierFound::ReservedKeyword,
             Some(TokenDescription::DocComment) => ExpectedIdentifierFound::DocComment,
+            Some(TokenDescription::InvisibleOpenDelim) => {
+                ExpectedIdentifierFound::InvisibleOpenDelim
+            }
             None => ExpectedIdentifierFound::Other,
         })(span)
     }
@@ -991,6 +996,9 @@ impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for ExpectedIdentifier {
             }
             Some(TokenDescription::DocComment) => {
                 fluent::parse_expected_identifier_found_doc_comment_str
+            }
+            Some(TokenDescription::InvisibleOpenDelim) => {
+                fluent::parse_expected_identifier_found_invisible_open_delim_str
             }
             None => fluent::parse_expected_identifier_found_str,
         });
@@ -1047,6 +1055,9 @@ impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for ExpectedSemi {
                 fluent::parse_expected_semi_found_reserved_keyword_str
             }
             Some(TokenDescription::DocComment) => fluent::parse_expected_semi_found_doc_comment_str,
+            Some(TokenDescription::InvisibleOpenDelim) => {
+                fluent::parse_expected_semi_found_invisible_open_delim_str
+            }
             None => fluent::parse_expected_semi_found_str,
         });
         diag.set_span(self.span);
@@ -1671,6 +1682,13 @@ pub(crate) enum UnexpectedTokenAfterStructName {
         span: Span,
         token: Token,
     },
+    #[diag(parse_unexpected_token_after_struct_name_found_invisible_open_delim)]
+    InvisibleOpenDelim {
+        #[primary_span]
+        #[label(parse_unexpected_token_after_struct_name)]
+        span: Span,
+        token: Token,
+    },
     #[diag(parse_unexpected_token_after_struct_name_found_other)]
     Other {
         #[primary_span]
@@ -1687,6 +1705,7 @@ impl UnexpectedTokenAfterStructName {
             Some(TokenDescription::Keyword) => Self::Keyword { span, token },
             Some(TokenDescription::ReservedKeyword) => Self::ReservedKeyword { span, token },
             Some(TokenDescription::DocComment) => Self::DocComment { span, token },
+            Some(TokenDescription::InvisibleOpenDelim) => Self::InvisibleOpenDelim { span, token },
             None => Self::Other { span, token },
         }
     }
