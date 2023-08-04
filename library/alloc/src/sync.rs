@@ -359,6 +359,7 @@ struct ArcInner<T: ?Sized> {
 }
 
 /// Calculate layout for `ArcInner<T>` using the inner value's layout
+#[inline]
 fn arcinner_layout_for_value_layout(layout: Layout) -> Layout {
     // Calculate layout using the given value layout.
     // Previously, layout was calculated on the expression
