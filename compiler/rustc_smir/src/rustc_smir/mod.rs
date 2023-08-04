@@ -826,7 +826,7 @@ impl<'tcx> Stable<'tcx> for ty::FnSig<'tcx> {
     type T = stable_mir::ty::FnSig;
     fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
         use rustc_target::spec::abi;
-        use stable_mir::ty::{Abi, FnSig, Unsafety};
+        use stable_mir::ty::{Abi, FnSig};
 
         FnSig {
             inputs_and_output: self
@@ -835,10 +835,7 @@ impl<'tcx> Stable<'tcx> for ty::FnSig<'tcx> {
                 .map(|ty| tables.intern_ty(ty))
                 .collect(),
             c_variadic: self.c_variadic,
-            unsafety: match self.unsafety {
-                hir::Unsafety::Normal => Unsafety::Normal,
-                hir::Unsafety::Unsafe => Unsafety::Unsafe,
-            },
+            unsafety: self.unsafety.stable(tables),
             abi: match self.abi {
                 abi::Abi::Rust => Abi::Rust,
                 abi::Abi::C { unwind } => Abi::C { unwind },

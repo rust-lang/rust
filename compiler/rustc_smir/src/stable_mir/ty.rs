@@ -1,4 +1,4 @@
-use super::{mir::Mutability, with, DefId};
+use super::{mir::Mutability, mir::Safety, with, DefId};
 use crate::rustc_internal::Opaque;
 
 #[derive(Copy, Clone, Debug)]
@@ -140,14 +140,8 @@ pub type PolyFnSig = Binder<FnSig>;
 pub struct FnSig {
     pub inputs_and_output: Vec<Ty>,
     pub c_variadic: bool,
-    pub unsafety: Unsafety,
+    pub unsafety: Safety,
     pub abi: Abi,
-}
-
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub enum Unsafety {
-    Unsafe,
-    Normal,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
