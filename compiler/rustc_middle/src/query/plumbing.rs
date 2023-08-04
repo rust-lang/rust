@@ -149,7 +149,6 @@ pub fn query_get_at<'tcx, Cache>(
 where
     Cache: QueryCache,
 {
-    let key = key.into_query_param();
     match try_get_cached(tcx, query_cache, &key) {
         Some(value) => value,
         None => execute_query(tcx, span, key, QueryMode::Get).unwrap(),
@@ -166,7 +165,6 @@ pub fn query_ensure<'tcx, Cache>(
 ) where
     Cache: QueryCache,
 {
-    let key = key.into_query_param();
     if try_get_cached(tcx, query_cache, &key).is_none() {
         execute_query(tcx, DUMMY_SP, key, QueryMode::Ensure { check_cache });
     }
