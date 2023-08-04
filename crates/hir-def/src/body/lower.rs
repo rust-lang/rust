@@ -313,20 +313,7 @@ impl ExprCollector<'_> {
                 let body = self.collect_labelled_block_opt(label, e.loop_body());
                 self.alloc_expr(Expr::Loop { body, label }, syntax_ptr)
             }
-            ast::Expr::WhileExpr(e) => {
-                // Desugar `while <cond> { <body> }` to
-                // `loop { if <cond> { <body> } else { break } }`
-                let label = e.label().map(|label| self.collect_label(label));
-                let body = self.collect_labelled_block_opt(label, e.loop_body());
-                let condition = self.collect_expr_opt(e.condition());
-                let break_expr =
-                    self.alloc_expr(Expr::Break { expr: None, label: None }, syntax_ptr.clone());
-                let if_expr = self.alloc_expr(
-                    Expr::If { condition, then_branch: body, else_branch: Some(break_expr) },
-                    syntax_ptr.clone(),
-                );
-                self.alloc_expr(Expr::Loop { body: if_expr, label }, syntax_ptr)
-            }
+            ast::Expr::WhileExpr(e) => self.collect_while_loop(syntax_ptr, e),
             ast::Expr::ForExpr(e) => self.collect_for_loop(syntax_ptr, e),
             ast::Expr::CallExpr(e) => {
                 let is_rustc_box = {
@@ -736,6 +723,32 @@ impl ExprCollector<'_> {
         *tail = Some(next_tail);
         self.current_try_block_label = old_label;
         expr_id
+    }
+
+    /// Desugar `ast::WhileExpr` from: `[opt_ident]: while <cond> <body>` into:
+    /// ```ignore (pseudo-rust)
+    /// [opt_ident]: loop {
+    ///   if <cond> {
+    ///     <body>
+    ///   }
+    ///   else {
+    ///     break;
+    ///   }
+    /// }
+    /// ```
+    /// FIXME: Rustc wraps the condition in a construct equivalent to `{ let _t = <cond>; _t }`
+    /// to preserve drop semantics. We should probably do the same in future.
+    fn collect_while_loop(&mut self, syntax_ptr: AstPtr<ast::Expr>, e: ast::WhileExpr) -> ExprId {
+        let label = e.label().map(|label| self.collect_label(label));
+        let body = self.collect_labelled_block_opt(label, e.loop_body());
+        let condition = self.collect_expr_opt(e.condition());
+        let break_expr =
+            self.alloc_expr(Expr::Break { expr: None, label: None }, syntax_ptr.clone());
+        let if_expr = self.alloc_expr(
+            Expr::If { condition, then_branch: body, else_branch: Some(break_expr) },
+            syntax_ptr.clone(),
+        );
+        self.alloc_expr(Expr::Loop { body: if_expr, label }, syntax_ptr)
     }
 
     /// Desugar `ast::ForExpr` from: `[opt_ident]: for <pat> in <head> <body>` into:
