@@ -3201,8 +3201,8 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
     /// Checks that all of the arms in an or-pattern have exactly the
     /// same set of bindings, with the same binding modes for each.
     fn check_consistent_bindings(&mut self, pats: &[P<Pat>]) -> Vec<BindingMap> {
-        let mut missing_vars = FxHashMap::default();
-        let mut inconsistent_vars = FxHashMap::default();
+        let mut missing_vars = FxIndexMap::default();
+        let mut inconsistent_vars = FxIndexMap::default();
 
         // 1) Compute the binding maps of all arms.
         let maps = pats.iter().map(|pat| self.binding_mode_map(pat)).collect::<Vec<_>>();
@@ -3244,10 +3244,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         }
 
         // 3) Report all missing variables we found.
-        let mut missing_vars = missing_vars.into_iter().collect::<Vec<_>>();
-        missing_vars.sort_by_key(|&(sym, ref _err)| sym);
-
-        for (name, mut v) in missing_vars.into_iter() {
+        for (name, mut v) in missing_vars {
             if inconsistent_vars.contains_key(&name) {
                 v.could_be_path = false;
             }
@@ -3258,10 +3255,8 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         }
 
         // 4) Report all inconsistencies in binding modes we found.
-        let mut inconsistent_vars = inconsistent_vars.iter().collect::<Vec<_>>();
-        inconsistent_vars.sort();
         for (name, v) in inconsistent_vars {
-            self.report_error(v.0, ResolutionError::VariableBoundWithDifferentMode(*name, v.1));
+            self.report_error(v.0, ResolutionError::VariableBoundWithDifferentMode(name, v.1));
         }
 
         // 5) Finally bubble up all the binding maps.
