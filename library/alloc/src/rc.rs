@@ -656,6 +656,7 @@ impl<T> Rc<T> {
             )?))
         }
     }
+
     /// Constructs a new `Pin<Rc<T>>`. If `T` does not implement `Unpin`, then
     /// `value` will be pinned in memory and unable to be moved.
     #[inline]
@@ -678,6 +679,7 @@ impl<T, A: Allocator> Rc<T, A> {
     pub fn allocator(this: &Self) -> &A {
         &this.alloc
     }
+
     /// Constructs a new `Rc` in the provided allocator.
     ///
     /// # Examples

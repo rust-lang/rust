@@ -926,6 +926,7 @@ impl<T, A: Allocator> Arc<T, A> {
             ))
         }
     }
+
     /// Returns the inner value, if the `Arc` has exactly one strong reference.
     ///
     /// Otherwise, an [`Err`] is returned with the same `Arc` that was
@@ -3192,6 +3193,7 @@ impl<T: ?Sized + PartialOrd, A: Allocator> PartialOrd for Arc<T, A> {
         *(*self) >= *(*other)
     }
 }
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + Ord, A: Allocator> Ord for Arc<T, A> {
     /// Comparison for two `Arc`s.
@@ -3213,6 +3215,7 @@ impl<T: ?Sized + Ord, A: Allocator> Ord for Arc<T, A> {
         (**self).cmp(&**other)
     }
 }
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + Eq, A: Allocator> Eq for Arc<T, A> {}
 
