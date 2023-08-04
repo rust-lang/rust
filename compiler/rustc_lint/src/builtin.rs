@@ -28,8 +28,8 @@ use crate::{
         BuiltinClashingExternSub, BuiltinConstNoMangle, BuiltinDeprecatedAttrLink,
         BuiltinDeprecatedAttrLinkSuggestion, BuiltinDeprecatedAttrUsed, BuiltinDerefNullptr,
         BuiltinEllipsisInclusiveRangePatternsLint, BuiltinExplicitOutlives,
-        BuiltinExplicitOutlivesSuggestion, BuiltinIncompleteFeatures,
-        BuiltinIncompleteFeaturesHelp, BuiltinIncompleteFeaturesNote, BuiltinKeywordIdents,
+        BuiltinExplicitOutlivesSuggestion, BuiltinFeatureIssueNote, BuiltinIncompleteFeatures,
+        BuiltinIncompleteFeaturesHelp, BuiltinInternalFeatures, BuiltinKeywordIdents,
         BuiltinMissingCopyImpl, BuiltinMissingDebugImpl, BuiltinMissingDoc,
         BuiltinMutablesTransmutes, BuiltinNoMangleGeneric, BuiltinNonShorthandFieldPatterns,
         BuiltinSpecialModuleNameUsed, BuiltinTrivialBounds, BuiltinTypeAliasGenericBounds,
@@ -2301,12 +2301,36 @@ declare_lint! {
     "incomplete features that may function improperly in some or all cases"
 }
 
+declare_lint! {
+    /// The `internal_features` lint detects unstable features enabled with
+    /// the [`feature` attribute] that are internal to the compiler or standard
+    /// library.
+    ///
+    /// [`feature` attribute]: https://doc.rust-lang.org/nightly/unstable-book/
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![feature(rustc_attrs)]
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// These features are an implementation detail of the compiler and standard
+    /// library and are not supposed to be used in user code.
+    pub INTERNAL_FEATURES,
+    Deny,
+    "internal features are not supposed to be used"
+}
+
 declare_lint_pass!(
     /// Check for used feature gates in `INCOMPLETE_FEATURES` in `rustc_feature/src/active.rs`.
-    IncompleteFeatures => [INCOMPLETE_FEATURES]
+    IncompleteInternalFeatures => [INCOMPLETE_FEATURES, INTERNAL_FEATURES]
 );
 
-impl EarlyLintPass for IncompleteFeatures {
+impl EarlyLintPass for IncompleteInternalFeatures {
     fn check_crate(&mut self, cx: &EarlyContext<'_>, _: &ast::Crate) {
         let features = cx.sess().features_untracked();
         features
@@ -2314,17 +2338,26 @@ impl EarlyLintPass for IncompleteFeatures {
             .iter()
             .map(|(name, span, _)| (name, span))
             .chain(features.declared_lib_features.iter().map(|(name, span)| (name, span)))
-            .filter(|(&name, _)| features.incomplete(name))
+            .filter(|(&name, _)| features.incomplete(name) || features.internal(name))
             .for_each(|(&name, &span)| {
                 let note = rustc_feature::find_feature_issue(name, GateIssue::Language)
-                    .map(|n| BuiltinIncompleteFeaturesNote { n });
-                let help =
-                    HAS_MIN_FEATURES.contains(&name).then_some(BuiltinIncompleteFeaturesHelp);
-                cx.emit_spanned_lint(
-                    INCOMPLETE_FEATURES,
-                    span,
-                    BuiltinIncompleteFeatures { name, note, help },
-                );
+                    .map(|n| BuiltinFeatureIssueNote { n });
+
+                if features.incomplete(name) {
+                    let help =
+                        HAS_MIN_FEATURES.contains(&name).then_some(BuiltinIncompleteFeaturesHelp);
+                    cx.emit_spanned_lint(
+                        INCOMPLETE_FEATURES,
+                        span,
+                        BuiltinIncompleteFeatures { name, note, help },
+                    );
+                } else {
+                    cx.emit_spanned_lint(
+                        INTERNAL_FEATURES,
+                        span,
+                        BuiltinInternalFeatures { name, note },
+                    );
+                }
             });
     }
 }

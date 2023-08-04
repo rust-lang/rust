@@ -17,6 +17,7 @@ sugar for dynamic allocations via `malloc` and `free`:
 
 ```rust,ignore (libc-is-finicky)
 #![feature(lang_items, start, libc, core_intrinsics, rustc_private, rustc_attrs)]
+#![allow(internal_features)]
 #![no_std]
 use core::intrinsics;
 use core::panic::PanicInfo;
@@ -119,6 +120,7 @@ in the same format as C:
 ```rust,ignore (libc-is-finicky)
 #![feature(lang_items, core_intrinsics, rustc_private)]
 #![feature(start)]
+#![allow(internal_features)]
 #![no_std]
 use core::intrinsics;
 use core::panic::PanicInfo;
@@ -155,6 +157,7 @@ compiler's name mangling too:
 ```rust,ignore (libc-is-finicky)
 #![feature(lang_items, core_intrinsics, rustc_private)]
 #![feature(start)]
+#![allow(internal_features)]
 #![no_std]
 #![no_main]
 use core::intrinsics;

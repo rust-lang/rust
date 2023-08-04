@@ -41,7 +41,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // #55810: Type check patterns first so we get types for all bindings.
         let scrut_span = scrut.span.find_ancestor_inside(expr.span).unwrap_or(scrut.span);
         for arm in arms {
-            self.check_pat_top(&arm.pat, scrutinee_ty, Some(scrut_span), Some(scrut));
+            self.check_pat_top(&arm.pat, scrutinee_ty, Some(scrut_span), Some(scrut), None);
         }
 
         // Now typecheck the blocks.
@@ -136,15 +136,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 &cause,
                 Some(&arm.body),
                 arm_ty,
-                Some(&mut |err| {
-                    self.suggest_removing_semicolon_for_coerce(
-                        err,
-                        expr,
-                        orig_expected,
-                        arm_ty,
-                        prior_arm,
-                    )
-                }),
+                |err| self.suggest_removing_semicolon_for_coerce(err, expr, arm_ty, prior_arm),
                 false,
             );
 
@@ -181,7 +173,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         diag: &mut Diagnostic,
         expr: &hir::Expr<'tcx>,
-        expectation: Expectation<'tcx>,
         arm_ty: Ty<'tcx>,
         prior_arm: Option<(Option<hir::HirId>, Ty<'tcx>, Span)>,
     ) {
@@ -195,7 +186,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let hir::ExprKind::Block(block, _) = body.value.kind else {
             return;
         };
-        let Some(hir::Stmt { kind: hir::StmtKind::Semi(last_expr), .. }) =
+        let Some(hir::Stmt { kind: hir::StmtKind::Semi(last_expr), span: semi_span, .. }) =
             block.innermost_block().stmts.last()
         else {
             return;
@@ -210,9 +201,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .and_then(|owner| owner.fn_decl())
             .map(|decl| decl.output.span())
         else {
-            return;
-        };
-        let Expectation::IsLast(stmt) = expectation else {
             return;
         };
 
@@ -231,7 +219,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         }
 
-        let semi_span = expr.span.shrink_to_hi().with_hi(stmt.hi());
+        let semi_span = expr.span.shrink_to_hi().with_hi(semi_span.hi());
         let mut ret_span: MultiSpan = semi_span.into();
         ret_span.push_span_label(
             expr.span,
@@ -279,7 +267,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         coercion.coerce_forced_unit(
             self,
             &cause,
-            &mut |err| {
+            |err| {
                 if let Some((span, msg)) = &ret_reason {
                     err.span_label(*span, msg.clone());
                 } else if let ExprKind::Block(block, _) = &then_expr.kind

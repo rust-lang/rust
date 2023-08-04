@@ -13,7 +13,7 @@ LL |         ['f', 'o', ..] => {}
 error[E0527]: pattern requires 1 element but array has 3
   --> $DIR/slice-pat-type-mismatches.rs:18:9
    |
-LL |         [0] => {},
+LL |         [0] => {}
    |         ^^^ expected 3 elements
 
 error[E0528]: pattern requires at least 4 elements but array has 3

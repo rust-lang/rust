@@ -305,7 +305,7 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                             terminator.kind = TerminatorKind::Unreachable;
                         }
                     }
-                    _ if intrinsic_name.as_str().starts_with("simd_shuffle") => {
+                    sym::simd_shuffle => {
                         validate_simd_shuffle(tcx, args, terminator.source_info.span);
                     }
                     _ => {}

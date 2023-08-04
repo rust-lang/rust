@@ -1,4 +1,4 @@
-// see issue #70529
+// check-pass
 struct A;
 
 impl From<A> for [u8; 2] {
@@ -13,9 +13,7 @@ impl From<A> for [u8; 3] {
     }
 }
 
-
 fn main() {
     let a = A;
     let [_, _] = a.into();
-    //~^ ERROR type annotations needed
 }

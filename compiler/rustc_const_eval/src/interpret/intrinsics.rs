@@ -1,4 +1,4 @@
-//! Intrinsics and other functions that the miri engine executes without
+//! Intrinsics and other functions that the interpreter executes without
 //! looking at their MIR. Intrinsics/functions supported here are shared by CTFE
 //! and miri.
 

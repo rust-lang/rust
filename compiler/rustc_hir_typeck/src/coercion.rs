@@ -1418,7 +1418,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         expression: &'tcx hir::Expr<'tcx>,
         expression_ty: Ty<'tcx>,
     ) {
-        self.coerce_inner(fcx, cause, Some(expression), expression_ty, None, false)
+        self.coerce_inner(fcx, cause, Some(expression), expression_ty, |_| {}, false)
     }
 
     /// Indicates that one of the inputs is a "forced unit". This
@@ -1437,7 +1437,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         &mut self,
         fcx: &FnCtxt<'a, 'tcx>,
         cause: &ObligationCause<'tcx>,
-        augment_error: &mut dyn FnMut(&mut Diagnostic),
+        augment_error: impl FnOnce(&mut Diagnostic),
         label_unit_as_expected: bool,
     ) {
         self.coerce_inner(
@@ -1445,7 +1445,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
             cause,
             None,
             Ty::new_unit(fcx.tcx),
-            Some(augment_error),
+            augment_error,
             label_unit_as_expected,
         )
     }
@@ -1460,7 +1460,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         cause: &ObligationCause<'tcx>,
         expression: Option<&'tcx hir::Expr<'tcx>>,
         mut expression_ty: Ty<'tcx>,
-        augment_error: Option<&mut dyn FnMut(&mut Diagnostic)>,
+        augment_error: impl FnOnce(&mut Diagnostic),
         label_expression_as_expected: bool,
     ) {
         // Incorporate whatever type inference information we have
@@ -1639,9 +1639,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                     }
                 }
 
-                if let Some(augment_error) = augment_error {
-                    augment_error(&mut err);
-                }
+                augment_error(&mut err);
 
                 let is_insufficiently_polymorphic =
                     matches!(coercion_error, TypeError::RegionsInsufficientlyPolymorphic(..));

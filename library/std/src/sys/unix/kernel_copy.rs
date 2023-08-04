@@ -89,6 +89,12 @@ enum FdMeta {
     NoneObtained,
 }
 
+#[derive(PartialEq)]
+enum FdHandle {
+    Input,
+    Output,
+}
+
 impl FdMeta {
     fn maybe_fifo(&self) -> bool {
         match self {
@@ -114,12 +120,14 @@ impl FdMeta {
         }
     }
 
-    fn copy_file_range_candidate(&self) -> bool {
+    fn copy_file_range_candidate(&self, f: FdHandle) -> bool {
         match self {
             // copy_file_range will fail on empty procfs files. `read` can determine whether EOF has been reached
             // without extra cost and skip the write, thus there is no benefit in attempting copy_file_range
-            FdMeta::Metadata(meta) if meta.is_file() && meta.len() > 0 => true,
-            FdMeta::NoneObtained => true,
+            FdMeta::Metadata(meta) if f == FdHandle::Input && meta.is_file() && meta.len() > 0 => {
+                true
+            }
+            FdMeta::Metadata(meta) if f == FdHandle::Output && meta.is_file() => true,
             _ => false,
         }
     }
@@ -197,7 +205,9 @@ impl<R: CopyRead, W: CopyWrite> SpecCopy for Copier<'_, '_, R, W> {
             written += flush()?;
             let max_write = reader.min_limit();
 
-            if input_meta.copy_file_range_candidate() && output_meta.copy_file_range_candidate() {
+            if input_meta.copy_file_range_candidate(FdHandle::Input)
+                && output_meta.copy_file_range_candidate(FdHandle::Output)
+            {
                 let result = copy_regular_files(readfd, writefd, max_write);
                 result.update_take(reader);
 

@@ -8,8 +8,6 @@
       let mut _3: &fn() {foo};
       let _4: fn() {foo};
       let mut _5: ();
-+     scope 1 (inlined <fn() {foo} as Fn<()>>::call - shim(fn() {foo})) {
-+     }
   
       bb0: {
           StorageLive(_2);
@@ -22,26 +20,20 @@
           _3 = &_4;
           StorageLive(_5);
           _5 = ();
--         _2 = <fn() {foo} as Fn<()>>::call(move _3, move _5) -> [return: bb2, unwind unreachable];
-+         _2 = move (*_3)() -> [return: bb3, unwind unreachable];
+          _2 = <fn() {foo} as Fn<()>>::call(move _3, move _5) -> [return: bb2, unwind unreachable];
       }
   
       bb2: {
-+         return;
-+     }
-+ 
-+     bb3: {
           StorageDead(_5);
           StorageDead(_3);
           StorageDead(_4);
           StorageDead(_2);
           _0 = const ();
--         drop(_1) -> [return: bb3, unwind unreachable];
--     }
-- 
--     bb3: {
--         return;
-+         drop(_1) -> [return: bb2, unwind unreachable];
+          drop(_1) -> [return: bb3, unwind unreachable];
+      }
+  
+      bb3: {
+          return;
       }
   }
   

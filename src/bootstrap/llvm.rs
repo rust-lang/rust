@@ -485,23 +485,54 @@ impl Step for Llvm {
 
         cfg.build();
 
+        // Helper to find the name of LLVM's shared library on darwin and linux.
+        let find_llvm_lib_name = |extension| {
+            let mut cmd = Command::new(&res.llvm_config);
+            let version = output(cmd.arg("--version"));
+            let major = version.split('.').next().unwrap();
+            let lib_name = match &llvm_version_suffix {
+                Some(version_suffix) => format!("libLLVM-{major}{version_suffix}.{extension}"),
+                None => format!("libLLVM-{major}.{extension}"),
+            };
+            lib_name
+        };
+
         // When building LLVM with LLVM_LINK_LLVM_DYLIB for macOS, an unversioned
         // libLLVM.dylib will be built. However, llvm-config will still look
         // for a versioned path like libLLVM-14.dylib. Manually create a symbolic
         // link to make llvm-config happy.
         if builder.llvm_link_shared() && target.contains("apple-darwin") {
-            let mut cmd = Command::new(&res.llvm_config);
-            let version = output(cmd.arg("--version"));
-            let major = version.split('.').next().unwrap();
-            let lib_name = match llvm_version_suffix {
-                Some(s) => format!("libLLVM-{major}{s}.dylib"),
-                None => format!("libLLVM-{major}.dylib"),
-            };
-
+            let lib_name = find_llvm_lib_name("dylib");
             let lib_llvm = out_dir.join("build").join("lib").join(lib_name);
             if !lib_llvm.exists() {
                 t!(builder.symlink_file("libLLVM.dylib", &lib_llvm));
             }
+        }
+
+        // When building LLVM as a shared library on linux, it can contain unexpected debuginfo:
+        // some can come from the C++ standard library. Unless we're explicitly requesting LLVM to
+        // be built with debuginfo, strip it away after the fact, to make dist artifacts smaller.
+        // FIXME: to make things simpler for now, limit this to the host and target where we know
+        // `strip -g` is both available and will fix the issue, i.e. on a x64 linux host that is not
+        // cross-compiling. Expand this to other appropriate targets in the future.
+        if builder.llvm_link_shared()
+            && builder.config.llvm_optimize
+            && !builder.config.llvm_release_debuginfo
+            && target == "x86_64-unknown-linux-gnu"
+            && target == builder.config.build
+        {
+            // Find the name of the LLVM shared library that we just built.
+            let lib_name = find_llvm_lib_name("so");
+
+            // If the shared library exists in LLVM's `/build/lib/` or `/lib/` folders, strip its
+            // debuginfo. Note: `output` will propagate any errors here.
+            let strip_if_possible = |path: PathBuf| {
+                if path.exists() {
+                    output(Command::new("strip").arg("--strip-debug").arg(path));
+                }
+            };
+            strip_if_possible(out_dir.join("lib").join(&lib_name));
+            strip_if_possible(out_dir.join("build").join("lib").join(&lib_name));
         }
 
         t!(stamp.write());

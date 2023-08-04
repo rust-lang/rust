@@ -1167,7 +1167,7 @@ impl<'a> Parser<'a> {
             DestructuredFloat::TrailingDot(sym, sym_span, dot_span) => {
                 assert!(suffix.is_none());
                 // Analogous to `Self::break_and_eat`
-                self.token_cursor.break_last_token = true;
+                self.break_last_token = true;
                 // This might work, in cases like `1. 2`, and might not,
                 // in cases like `offset_of!(Ty, 1.)`. It depends on what comes
                 // after the float-like token, and therefore we have to make
@@ -2599,7 +2599,7 @@ impl<'a> Parser<'a> {
 
         // Recover from missing expression in `for` loop
         if matches!(expr.kind, ExprKind::Block(..))
-            && !matches!(self.token.kind, token::OpenDelim(token::Delimiter::Brace))
+            && !matches!(self.token.kind, token::OpenDelim(Delimiter::Brace))
             && self.may_recover()
         {
             self.sess

@@ -1382,12 +1382,8 @@ pub(crate) fn can_be_overflowed_expr(
                 || (context.use_block_indent() && args_len == 1)
         }
         ast::ExprKind::MacCall(ref mac) => {
-            match (
-                rustc_ast::ast::MacDelimiter::from_token(mac.args.delim.to_token()),
-                context.config.overflow_delimited_expr(),
-            ) {
-                (Some(ast::MacDelimiter::Bracket), true)
-                | (Some(ast::MacDelimiter::Brace), true) => true,
+            match (mac.args.delim, context.config.overflow_delimited_expr()) {
+                (Delimiter::Bracket, true) | (Delimiter::Brace, true) => true,
                 _ => context.use_block_indent() && args_len == 1,
             }
         }

@@ -66,7 +66,11 @@ impl<Prov: Provenance> ProvenanceMap<Prov> {
     /// Returns all ptr-sized provenance in the given range.
     /// If the range has length 0, returns provenance that crosses the edge between `start-1` and
     /// `start`.
-    fn range_get_ptrs(&self, range: AllocRange, cx: &impl HasDataLayout) -> &[(Size, Prov)] {
+    pub(super) fn range_get_ptrs(
+        &self,
+        range: AllocRange,
+        cx: &impl HasDataLayout,
+    ) -> &[(Size, Prov)] {
         // We have to go back `pointer_size - 1` bytes, as that one would still overlap with
         // the beginning of this range.
         let adjusted_start = Size::from_bytes(
@@ -158,7 +162,7 @@ impl<Prov: Provenance> ProvenanceMap<Prov> {
         if first < start {
             if !Prov::OFFSET_IS_ADDR {
                 // We can't split up the provenance into less than a pointer.
-                return Err(AllocError::PartialPointerOverwrite(first));
+                return Err(AllocError::OverwritePartialPointer(first));
             }
             // Insert the remaining part in the bytewise provenance.
             let prov = self.ptrs[&first];
@@ -171,7 +175,7 @@ impl<Prov: Provenance> ProvenanceMap<Prov> {
             let begin_of_last = last - cx.data_layout().pointer_size;
             if !Prov::OFFSET_IS_ADDR {
                 // We can't split up the provenance into less than a pointer.
-                return Err(AllocError::PartialPointerOverwrite(begin_of_last));
+                return Err(AllocError::OverwritePartialPointer(begin_of_last));
             }
             // Insert the remaining part in the bytewise provenance.
             let prov = self.ptrs[&begin_of_last];
@@ -246,10 +250,10 @@ impl<Prov: Provenance> ProvenanceMap<Prov> {
         if !Prov::OFFSET_IS_ADDR {
             // There can't be any bytewise provenance, and we cannot split up the begin/end overlap.
             if let Some(entry) = begin_overlap {
-                return Err(AllocError::PartialPointerCopy(entry.0));
+                return Err(AllocError::ReadPartialPointer(entry.0));
             }
             if let Some(entry) = end_overlap {
-                return Err(AllocError::PartialPointerCopy(entry.0));
+                return Err(AllocError::ReadPartialPointer(entry.0));
             }
             debug_assert!(self.bytes.is_none());
         } else {

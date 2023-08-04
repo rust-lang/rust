@@ -15,9 +15,6 @@ const_eval_await_non_const =
     cannot convert `{$ty}` into a future in {const_eval_const_context}s
 const_eval_bounds_check_failed =
     indexing out of bounds: the len is {$len} but the index is {$index}
-const_eval_box_to_mut = {$front_matter}: encountered a box pointing to mutable memory in a constant
-const_eval_box_to_static = {$front_matter}: encountered a box pointing to a static variable in a constant
-const_eval_box_to_uninhabited = {$front_matter}: encountered a box pointing to uninhabited type {$ty}
 const_eval_call_nonzero_intrinsic =
     `{$name}` called on 0
 
@@ -41,18 +38,12 @@ const_eval_const_context = {$kind ->
 const_eval_copy_nonoverlapping_overlapping =
     `copy_nonoverlapping` called on overlapping ranges
 
-const_eval_dangling_box_no_provenance = {$front_matter}: encountered a dangling box ({$pointer} has no provenance)
-const_eval_dangling_box_out_of_bounds = {$front_matter}: encountered a dangling box (going beyond the bounds of its allocation)
-const_eval_dangling_box_use_after_free = {$front_matter}: encountered a dangling box (use-after-free)
 const_eval_dangling_int_pointer =
     {$bad_pointer_message}: {$pointer} is a dangling pointer (it has no provenance)
 const_eval_dangling_null_pointer =
     {$bad_pointer_message}: null pointer is a dangling pointer (it has no provenance)
 const_eval_dangling_ptr_in_final = encountered dangling pointer in final constant
 
-const_eval_dangling_ref_no_provenance = {$front_matter}: encountered a dangling reference ({$pointer} has no provenance)
-const_eval_dangling_ref_out_of_bounds = {$front_matter}: encountered a dangling reference (going beyond the bounds of its allocation)
-const_eval_dangling_ref_use_after_free = {$front_matter}: encountered a dangling reference (use-after-free)
 const_eval_dead_local =
     accessing a dead local variable
 const_eval_dealloc_immutable =
@@ -105,7 +96,6 @@ const_eval_error = {$error_kind ->
 const_eval_exact_div_has_remainder =
     exact_div: {$a} cannot be divided by {$b} without remainder
 
-const_eval_expected_non_ptr = {$front_matter}: encountered `{$value}`, but expected plain (non-pointer) bytes
 const_eval_fn_ptr_call =
     function pointers need an RFC before allowed to be called in {const_eval_const_context}s
 const_eval_for_loop_into_iter_non_const =
@@ -156,8 +146,6 @@ const_eval_invalid_align_details =
 
 const_eval_invalid_bool =
     interpreting an invalid 8-bit value as a bool: 0x{$value}
-const_eval_invalid_box_meta = {$front_matter}: encountered invalid box metadata: total size is bigger than largest supported object
-const_eval_invalid_box_slice_meta = {$front_matter}: encountered invalid box metadata: slice is bigger than largest supported object
 const_eval_invalid_char =
     interpreting an invalid 32-bit value as a char: 0x{$value}
 const_eval_invalid_dealloc =
@@ -168,16 +156,12 @@ const_eval_invalid_dealloc =
         *[other] {""}
     }
 
-const_eval_invalid_enum_tag = {$front_matter}: encountered {$value}, but expected a valid enum tag
-const_eval_invalid_fn_ptr = {$front_matter}: encountered {$value}, but expected a function pointer
 const_eval_invalid_function_pointer =
     using {$pointer} as function pointer but it does not point to a function
 const_eval_invalid_meta =
     invalid metadata in wide pointer: total size is bigger than largest supported object
 const_eval_invalid_meta_slice =
     invalid metadata in wide pointer: slice is bigger than largest supported object
-const_eval_invalid_ref_meta = {$front_matter}: encountered invalid reference metadata: total size is bigger than largest supported object
-const_eval_invalid_ref_slice_meta = {$front_matter}: encountered invalid reference metadata: slice is bigger than largest supported object
 const_eval_invalid_str =
     this string is not valid UTF-8: {$err}
 const_eval_invalid_tag =
@@ -189,14 +173,10 @@ const_eval_invalid_uninit_bytes =
     reading memory at {$alloc}{$access}, but memory is uninitialized at {$uninit}, and this operation requires initialized memory
 const_eval_invalid_uninit_bytes_unknown =
     using uninitialized data, but this operation requires initialized memory
-const_eval_invalid_value = constructing invalid value
-const_eval_invalid_value_with_path = constructing invalid value at {$path}
-## The `front_matter`s here refer to either `middle_invalid_value` or `middle_invalid_value_with_path`.
 
 const_eval_invalid_vtable_pointer =
     using {$pointer} as vtable pointer but it does not point to a vtable
 
-const_eval_invalid_vtable_ptr = {$front_matter}: encountered {$value}, but expected a vtable pointer
 
 const_eval_live_drop =
     destructor of `{$dropped_ty}` cannot be evaluated at compile-time
@@ -218,14 +198,13 @@ const_eval_max_num_nodes_in_const = maximum number of nodes exceeded in constant
 const_eval_memory_access_test = memory access failed
 const_eval_memory_exhausted =
     tried to allocate more memory than available to compiler
+
 const_eval_modified_global =
     modifying a static's initial value from another static's initializer
 
 const_eval_mut_deref =
     mutation through a reference is not allowed in {const_eval_const_context}s
 
-const_eval_mutable_ref_in_const = {$front_matter}: encountered mutable reference in a `const`
-const_eval_never_val = {$front_matter}: encountered a value of the never type `!`
 const_eval_non_const_fmt_macro_call =
     cannot call non-const formatting macro in {const_eval_const_context}s
 
@@ -241,10 +220,6 @@ const_eval_noreturn_asm_returned =
 const_eval_not_enough_caller_args =
     calling a function with fewer arguments than it requires
 
-const_eval_null_box = {$front_matter}: encountered a null box
-const_eval_null_fn_ptr = {$front_matter}: encountered a null function pointer
-const_eval_null_ref = {$front_matter}: encountered a null reference
-const_eval_nullable_ptr_out_of_range = {$front_matter}: encountered a potentially null pointer, but expected something that cannot possibly fail to be {$in_range}
 const_eval_nullary_intrinsic_fail =
     could not evaluate nullary intrinsic
 
@@ -257,7 +232,6 @@ const_eval_offset_from_underflow =
 
 const_eval_operator_non_const =
     cannot call non-const operator in {const_eval_const_context}s
-const_eval_out_of_range = {$front_matter}: encountered {$value}, but expected something {$in_range}
 const_eval_overflow =
     overflow executing `{$name}`
 
@@ -287,7 +261,6 @@ const_eval_ptr_as_bytes_1 =
     this code performed an operation that depends on the underlying bytes representing a pointer
 const_eval_ptr_as_bytes_2 =
     the absolute address of a pointer is not known at compile-time, so such operations are not supported
-const_eval_ptr_out_of_range = {$front_matter}: encountered a pointer, but expected something that cannot possibly fail to be {$in_range}
 const_eval_question_branch_non_const =
     `?` cannot determine the branch of `{$ty}` in {const_eval_const_context}s
 
@@ -315,8 +288,8 @@ const_eval_raw_ptr_to_int =
 
 const_eval_read_extern_static =
     cannot read from extern static ({$did})
-const_eval_read_pointer_as_bytes =
-    unable to turn pointer into raw bytes
+const_eval_read_pointer_as_int =
+    unable to turn pointer into integer
 const_eval_realloc_or_alloc_with_offset =
     {$kind ->
         [dealloc] deallocating
@@ -324,9 +297,6 @@ const_eval_realloc_or_alloc_with_offset =
         *[other] {""}
     } {$ptr} which does not point to the beginning of an object
 
-const_eval_ref_to_mut = {$front_matter}: encountered a reference pointing to mutable memory in a constant
-const_eval_ref_to_static = {$front_matter}: encountered a reference pointing to a static variable in a constant
-const_eval_ref_to_uninhabited = {$front_matter}: encountered a reference pointing to uninhabited type {$ty}
 const_eval_remainder_by_zero =
     calculating the remainder with a divisor of zero
 const_eval_remainder_overflow =
@@ -363,8 +333,6 @@ const_eval_transient_mut_borrow_raw = raw mutable references are not allowed in 
 
 const_eval_try_block_from_output_non_const =
     `try` block cannot convert `{$ty}` to the result in {const_eval_const_context}s
-const_eval_unaligned_box = {$front_matter}: encountered an unaligned box (required {$required_bytes} byte alignment but found {$found_bytes})
-const_eval_unaligned_ref = {$front_matter}: encountered an unaligned reference (required {$required_bytes} byte alignment but found {$found_bytes})
 const_eval_unallowed_fn_pointer_call = function pointer calls are not allowed in {const_eval_const_context}s
 
 const_eval_unallowed_heap_allocations =
@@ -408,29 +376,14 @@ const_eval_undefined_behavior =
 const_eval_undefined_behavior_note =
     The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
 
-const_eval_uninhabited_enum_tag = {$front_matter}: encountered an uninhabited enum variant
 const_eval_uninhabited_enum_variant_read =
     read discriminant of an uninhabited enum variant
 const_eval_uninhabited_enum_variant_written =
     writing discriminant of an uninhabited enum variant
-const_eval_uninhabited_val = {$front_matter}: encountered a value of uninhabited type `{$ty}`
-const_eval_uninit = {$front_matter}: encountered uninitialized bytes
-const_eval_uninit_bool = {$front_matter}: encountered uninitialized memory, but expected a boolean
-const_eval_uninit_box = {$front_matter}: encountered uninitialized memory, but expected a box
-const_eval_uninit_char = {$front_matter}: encountered uninitialized memory, but expected a unicode scalar value
-const_eval_uninit_enum_tag = {$front_matter}: encountered uninitialized bytes, but expected a valid enum tag
-const_eval_uninit_float = {$front_matter}: encountered uninitialized memory, but expected a floating point number
-const_eval_uninit_fn_ptr = {$front_matter}: encountered uninitialized memory, but expected a function pointer
-const_eval_uninit_init_scalar = {$front_matter}: encountered uninitialized memory, but expected initialized scalar value
-const_eval_uninit_int = {$front_matter}: encountered uninitialized memory, but expected an integer
-const_eval_uninit_raw_ptr = {$front_matter}: encountered uninitialized memory, but expected a raw pointer
-const_eval_uninit_ref = {$front_matter}: encountered uninitialized memory, but expected a reference
-const_eval_uninit_str = {$front_matter}: encountered uninitialized data in `str`
 const_eval_unreachable = entering unreachable code
 const_eval_unreachable_unwind =
     unwinding past a stack frame that does not allow unwinding
 
-const_eval_unsafe_cell = {$front_matter}: encountered `UnsafeCell` in a `const`
 const_eval_unsigned_offset_from_overflow =
     `ptr_offset_from_unsigned` called when first pointer has smaller offset than second: {$a_offset} < {$b_offset}
 
@@ -453,8 +406,63 @@ const_eval_unwind_past_top =
 const_eval_upcast_mismatch =
     upcast on a pointer whose vtable does not match its type
 
+## The `front_matter`s here refer to either `const_eval_front_matter_invalid_value` or `const_eval_front_matter_invalid_value_with_path`.
+## (We'd love to sort this differently to make that more clear but tidy won't let us...)
+const_eval_validation_box_to_mut = {$front_matter}: encountered a box pointing to mutable memory in a constant
+const_eval_validation_box_to_static = {$front_matter}: encountered a box pointing to a static variable in a constant
+const_eval_validation_box_to_uninhabited = {$front_matter}: encountered a box pointing to uninhabited type {$ty}
+const_eval_validation_dangling_box_no_provenance = {$front_matter}: encountered a dangling box ({$pointer} has no provenance)
+const_eval_validation_dangling_box_out_of_bounds = {$front_matter}: encountered a dangling box (going beyond the bounds of its allocation)
+const_eval_validation_dangling_box_use_after_free = {$front_matter}: encountered a dangling box (use-after-free)
+const_eval_validation_dangling_ref_no_provenance = {$front_matter}: encountered a dangling reference ({$pointer} has no provenance)
+const_eval_validation_dangling_ref_out_of_bounds = {$front_matter}: encountered a dangling reference (going beyond the bounds of its allocation)
+const_eval_validation_dangling_ref_use_after_free = {$front_matter}: encountered a dangling reference (use-after-free)
+
+const_eval_validation_expected_bool = expected a boolean
+const_eval_validation_expected_box = expected a box
+const_eval_validation_expected_char = expected a unicode scalar value
+const_eval_validation_expected_enum_tag = expected a valid enum tag
+const_eval_validation_expected_float = expected a floating point number
+const_eval_validation_expected_fn_ptr = expected a function pointer
+const_eval_validation_expected_init_scalar = expected initialized scalar value
+const_eval_validation_expected_int = expected an integer
+const_eval_validation_expected_raw_ptr = expected a raw pointer
+const_eval_validation_expected_ref = expected a reference
+const_eval_validation_expected_str = expected a string
+
+const_eval_validation_front_matter_invalid_value = constructing invalid value
+const_eval_validation_front_matter_invalid_value_with_path = constructing invalid value at {$path}
+
 const_eval_validation_invalid_bool = {$front_matter}: encountered {$value}, but expected a boolean
+const_eval_validation_invalid_box_meta = {$front_matter}: encountered invalid box metadata: total size is bigger than largest supported object
+const_eval_validation_invalid_box_slice_meta = {$front_matter}: encountered invalid box metadata: slice is bigger than largest supported object
 const_eval_validation_invalid_char = {$front_matter}: encountered {$value}, but expected a valid unicode scalar value (in `0..=0x10FFFF` but not in `0xD800..=0xDFFF`)
+
+const_eval_validation_invalid_enum_tag = {$front_matter}: encountered {$value}, but expected a valid enum tag
+const_eval_validation_invalid_fn_ptr = {$front_matter}: encountered {$value}, but expected a function pointer
+const_eval_validation_invalid_ref_meta = {$front_matter}: encountered invalid reference metadata: total size is bigger than largest supported object
+const_eval_validation_invalid_ref_slice_meta = {$front_matter}: encountered invalid reference metadata: slice is bigger than largest supported object
+const_eval_validation_invalid_vtable_ptr = {$front_matter}: encountered {$value}, but expected a vtable pointer
+const_eval_validation_mutable_ref_in_const = {$front_matter}: encountered mutable reference in a `const`
+const_eval_validation_never_val = {$front_matter}: encountered a value of the never type `!`
+const_eval_validation_null_box = {$front_matter}: encountered a null box
+const_eval_validation_null_fn_ptr = {$front_matter}: encountered a null function pointer
+const_eval_validation_null_ref = {$front_matter}: encountered a null reference
+const_eval_validation_nullable_ptr_out_of_range = {$front_matter}: encountered a potentially null pointer, but expected something that cannot possibly fail to be {$in_range}
+const_eval_validation_out_of_range = {$front_matter}: encountered {$value}, but expected something {$in_range}
+const_eval_validation_partial_pointer = {$front_matter}: encountered a partial pointer or a mix of pointers
+const_eval_validation_pointer_as_int = {$front_matter}: encountered a pointer, but {$expected}
+const_eval_validation_ptr_out_of_range = {$front_matter}: encountered a pointer, but expected something that cannot possibly fail to be {$in_range}
+const_eval_validation_ref_to_mut = {$front_matter}: encountered a reference pointing to mutable memory in a constant
+const_eval_validation_ref_to_static = {$front_matter}: encountered a reference pointing to a static variable in a constant
+const_eval_validation_ref_to_uninhabited = {$front_matter}: encountered a reference pointing to uninhabited type {$ty}
+const_eval_validation_unaligned_box = {$front_matter}: encountered an unaligned box (required {$required_bytes} byte alignment but found {$found_bytes})
+const_eval_validation_unaligned_ref = {$front_matter}: encountered an unaligned reference (required {$required_bytes} byte alignment but found {$found_bytes})
+const_eval_validation_uninhabited_enum_variant = {$front_matter}: encountered an uninhabited enum variant
+const_eval_validation_uninhabited_val = {$front_matter}: encountered a value of uninhabited type `{$ty}`
+const_eval_validation_uninit = {$front_matter}: encountered uninitialized memory, but {$expected}
+const_eval_validation_unsafe_cell = {$front_matter}: encountered `UnsafeCell` in a `const`
+
 const_eval_write_to_read_only =
     writing to {$allocation} which is read-only
 const_eval_zst_pointer_out_of_bounds =

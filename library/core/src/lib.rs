@@ -96,6 +96,7 @@
 #![allow(explicit_outlives_requirements)]
 #![allow(incomplete_features)]
 #![warn(multiple_supertrait_upcastable)]
+#![cfg_attr(not(bootstrap), allow(internal_features))]
 //
 // Library features:
 // tidy-alphabetical-start

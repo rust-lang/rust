@@ -5,6 +5,7 @@
 #![feature(c_unwind)]
 #![feature(cfg_target_abi)]
 #![cfg_attr(not(target_env = "msvc"), feature(libc))]
+#![cfg_attr(not(bootstrap), allow(internal_features))]
 
 cfg_if::cfg_if! {
     if #[cfg(target_env = "msvc")] {

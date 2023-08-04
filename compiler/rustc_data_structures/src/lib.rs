@@ -37,6 +37,7 @@
 #![allow(rustc::potential_query_instability)]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
+#![cfg_attr(not(bootstrap), allow(internal_features))]
 #![deny(unsafe_op_in_unsafe_fn)]
 
 #[macro_use]

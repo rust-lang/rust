@@ -134,10 +134,6 @@ impl InterpErrorBacktrace {
 }
 
 impl<'tcx> InterpErrorInfo<'tcx> {
-    pub fn from_parts(kind: InterpError<'tcx>, backtrace: InterpErrorBacktrace) -> Self {
-        Self(Box::new(InterpErrorInfoInner { kind, backtrace }))
-    }
-
     pub fn into_parts(self) -> (InterpError<'tcx>, InterpErrorBacktrace) {
         let InterpErrorInfo(box InterpErrorInfoInner { kind, backtrace }) = self;
         (kind, backtrace)
@@ -155,7 +151,7 @@ impl<'tcx> InterpErrorInfo<'tcx> {
 }
 
 fn print_backtrace(backtrace: &Backtrace) {
-    eprintln!("\n\nAn error occurred in miri:\n{backtrace}");
+    eprintln!("\n\nAn error occurred in the MIR interpreter:\n{backtrace}");
 }
 
 impl From<ErrorGuaranteed> for InterpErrorInfo<'_> {
@@ -226,13 +222,13 @@ impl IntoDiagnosticArg for InvalidMetaKind {
     }
 }
 
-/// Details of an access to uninitialized bytes where it is not allowed.
+/// Details of an access to uninitialized bytes / bad pointer bytes where it is not allowed.
 #[derive(Debug, Clone, Copy)]
-pub struct UninitBytesAccess {
+pub struct BadBytesAccess {
     /// Range of the original memory access.
     pub access: AllocRange,
-    /// Range of the uninit memory that was encountered. (Might not be maximal.)
-    pub uninit: AllocRange,
+    /// Range of the bad memory that was encountered. (Might not be maximal.)
+    pub bad: AllocRange,
 }
 
 /// Information about a size mismatch.
@@ -316,7 +312,7 @@ pub enum UndefinedBehaviorInfo<'a> {
     /// Using a string that is not valid UTF-8,
     InvalidStr(std::str::Utf8Error),
     /// Using uninitialized data where it is not allowed.
-    InvalidUninitBytes(Option<(AllocId, UninitBytesAccess)>),
+    InvalidUninitBytes(Option<(AllocId, BadBytesAccess)>),
     /// Working with a local that is not currently live.
     DeadLocal,
     /// Data size is not equal to target size.
@@ -326,7 +322,7 @@ pub enum UndefinedBehaviorInfo<'a> {
     /// An uninhabited enum variant is projected.
     UninhabitedEnumVariantRead(VariantIdx),
     /// Validation error.
-    Validation(ValidationErrorInfo<'a>),
+    ValidationError(ValidationErrorInfo<'a>),
     // FIXME(fee1-dead) these should all be actual variants of the enum instead of dynamically
     // dispatched
     /// A custom (free-form) error, created by `err_ub_custom!`.
@@ -368,6 +364,8 @@ pub enum ExpectedKind {
     Float,
     Int,
     FnPtr,
+    EnumTag,
+    Str,
 }
 
 impl From<PointerKind> for ExpectedKind {
@@ -381,10 +379,11 @@ impl From<PointerKind> for ExpectedKind {
 
 #[derive(Debug)]
 pub enum ValidationErrorKind<'tcx> {
+    PointerAsInt { expected: ExpectedKind },
+    PartialPointer,
     PtrToUninhabited { ptr_kind: PointerKind, ty: Ty<'tcx> },
     PtrToStatic { ptr_kind: PointerKind },
     PtrToMut { ptr_kind: PointerKind },
-    ExpectedNonPtr { value: String },
     MutableRefInConst,
     NullFnPtr,
     NeverVal,
@@ -394,11 +393,8 @@ pub enum ValidationErrorKind<'tcx> {
     UnsafeCell,
     UninhabitedVal { ty: Ty<'tcx> },
     InvalidEnumTag { value: String },
-    UninhabitedEnumTag,
-    UninitEnumTag,
-    UninitStr,
+    UninhabitedEnumVariant,
     Uninit { expected: ExpectedKind },
-    UninitVal,
     InvalidVTablePtr { value: String },
     InvalidMetaSliceTooLarge { ptr_kind: PointerKind },
     InvalidMetaTooLarge { ptr_kind: PointerKind },
@@ -426,12 +422,12 @@ pub enum UnsupportedOpInfo {
     //
     /// Overwriting parts of a pointer; without knowing absolute addresses, the resulting state
     /// cannot be represented by the CTFE interpreter.
-    PartialPointerOverwrite(Pointer<AllocId>),
-    /// Attempting to `copy` parts of a pointer to somewhere else; without knowing absolute
+    OverwritePartialPointer(Pointer<AllocId>),
+    /// Attempting to read or copy parts of a pointer to somewhere else; without knowing absolute
     /// addresses, the resulting state cannot be represented by the CTFE interpreter.
-    PartialPointerCopy(Pointer<AllocId>),
-    /// Encountered a pointer where we needed raw bytes.
-    ReadPointerAsBytes,
+    ReadPartialPointer(Pointer<AllocId>),
+    /// Encountered a pointer where we needed an integer.
+    ReadPointerAsInt(Option<(AllocId, BadBytesAccess)>),
     /// Accessing thread local statics
     ThreadLocalStatic(DefId),
     /// Accessing an unsupported extern static.
@@ -497,7 +493,7 @@ impl InterpError<'_> {
         matches!(
             self,
             InterpError::Unsupported(UnsupportedOpInfo::Unsupported(_))
-                | InterpError::UndefinedBehavior(UndefinedBehaviorInfo::Validation { .. })
+                | InterpError::UndefinedBehavior(UndefinedBehaviorInfo::ValidationError { .. })
                 | InterpError::UndefinedBehavior(UndefinedBehaviorInfo::Ub(_))
         )
     }

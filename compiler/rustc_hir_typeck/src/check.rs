@@ -89,7 +89,7 @@ pub(super) fn check_fn<'a, 'tcx>(
     for (idx, (param_ty, param)) in inputs_fn.chain(maybe_va_list).zip(body.params).enumerate() {
         // Check the pattern.
         let ty_span = try { inputs_hir?.get(idx)?.span };
-        fcx.check_pat_top(&param.pat, param_ty, ty_span, None);
+        fcx.check_pat_top(&param.pat, param_ty, ty_span, None, None);
 
         // Check that argument is Sized.
         if !params_can_be_unsized {

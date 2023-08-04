@@ -36,7 +36,7 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_outer_attributes(&mut self) -> PResult<'a, AttrWrapper> {
         let mut outer_attrs = ast::AttrVec::new();
         let mut just_parsed_doc_comment = false;
-        let start_pos = self.token_cursor.num_next_calls;
+        let start_pos = self.num_bump_calls;
         loop {
             let attr = if self.check(&token::Pound) {
                 let prev_outer_attr_sp = outer_attrs.last().map(|attr| attr.span);
@@ -277,7 +277,7 @@ impl<'a> Parser<'a> {
     pub(crate) fn parse_inner_attributes(&mut self) -> PResult<'a, ast::AttrVec> {
         let mut attrs = ast::AttrVec::new();
         loop {
-            let start_pos: u32 = self.token_cursor.num_next_calls.try_into().unwrap();
+            let start_pos: u32 = self.num_bump_calls.try_into().unwrap();
             // Only try to parse if it is an inner attribute (has `!`).
             let attr = if self.check(&token::Pound) && self.look_ahead(1, |t| t == &token::Not) {
                 Some(self.parse_attribute(InnerAttrPolicy::Permitted)?)
@@ -298,7 +298,7 @@ impl<'a> Parser<'a> {
                 None
             };
             if let Some(attr) = attr {
-                let end_pos: u32 = self.token_cursor.num_next_calls.try_into().unwrap();
+                let end_pos: u32 = self.num_bump_calls.try_into().unwrap();
                 // If we are currently capturing tokens, mark the location of this inner attribute.
                 // If capturing ends up creating a `LazyAttrTokenStream`, we will include
                 // this replace range with it, removing the inner attribute from the final
