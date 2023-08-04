@@ -140,8 +140,8 @@ impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
             MonoItem::Fn(instance) => {
                 format!("Fn({:?}, {})", instance.def, instance.args.as_ptr().addr())
             }
-            MonoItem::Static(id) => format!("Static({:?})", id),
-            MonoItem::GlobalAsm(id) => format!("GlobalAsm({:?})", id),
+            MonoItem::Static(id) => format!("Static({id:?})"),
+            MonoItem::GlobalAsm(id) => format!("GlobalAsm({id:?})"),
         }
     }
 }

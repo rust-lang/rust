@@ -1,6 +1,6 @@
-## Statements
+# Statements
 
-### Let statements
+## Let statements
 
 Put a space after the `:` and on both sides of the `=` (if they are present).
 Don't put a space before the semicolon.
@@ -27,7 +27,6 @@ If the first line still does not fit on a single line, split after the `:`, and
 use block indentation. If the type requires multiple lines, even after
 line-breaking after the `:`, then place the first line on the same line as the
 `:`, subject to the [combining rules](expressions.html#combinable-expressions).
-
 
 ```rust
 let pattern:
@@ -101,7 +100,7 @@ let Foo {
 );
 ```
 
-#### else blocks (let-else statements)
+### else blocks (let-else statements)
 
 A let statement can contain an `else` component, making it a let-else statement.
 In this case, always apply the same formatting rules to the components preceding
@@ -231,7 +230,7 @@ fn main() {
 }
 ```
 
-### Macros in statement position
+## Macros in statement position
 
 For a macro use in statement position, use parentheses or square brackets as
 delimiters, and terminate it with a semicolon. Do not put spaces around the
@@ -242,8 +241,7 @@ name, `!`, the delimiters, or the `;`.
 a_macro!(...);
 ```
 
-
-### Expressions in statement position
+## Expressions in statement position
 
 Do not put space between the expression and the semicolon.
 

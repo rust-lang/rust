@@ -856,7 +856,7 @@ fn sanitize_witness<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
     witness: Ty<'tcx>,
-    upvars: Vec<Ty<'tcx>>,
+    upvars: &'tcx ty::List<Ty<'tcx>>,
     layout: &GeneratorLayout<'tcx>,
 ) {
     let did = body.source.def_id();
@@ -1471,13 +1471,13 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
                 let args = args.as_generator();
                 (
                     args.discr_ty(tcx),
-                    args.upvar_tys().collect::<Vec<_>>(),
+                    args.upvar_tys(),
                     args.witness(),
                     movability == hir::Movability::Movable,
                 )
             }
             _ => {
-                tcx.sess.delay_span_bug(body.span, format!("unexpected generator type {}", gen_ty));
+                tcx.sess.delay_span_bug(body.span, format!("unexpected generator type {gen_ty}"));
                 return;
             }
         };

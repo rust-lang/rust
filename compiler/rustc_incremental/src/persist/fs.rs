@@ -427,13 +427,11 @@ fn copy_files(sess: &Session, target_dir: &Path, source_dir: &Path) -> Result<bo
     if sess.opts.unstable_opts.incremental_info {
         eprintln!(
             "[incremental] session directory: \
-                  {} files hard-linked",
-            files_linked
+                  {files_linked} files hard-linked"
         );
         eprintln!(
             "[incremental] session directory: \
-                 {} files copied",
-            files_copied
+                 {files_copied} files copied"
         );
     }
 
@@ -604,7 +602,7 @@ fn crate_path(sess: &Session, crate_name: Symbol, stable_crate_id: StableCrateId
 
     let stable_crate_id = base_n::encode(stable_crate_id.as_u64() as u128, INT_ENCODE_BASE);
 
-    let crate_name = format!("{}-{}", crate_name, stable_crate_id);
+    let crate_name = format!("{crate_name}-{stable_crate_id}");
     incr_dir.join(crate_name)
 }
 

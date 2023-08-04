@@ -1,7 +1,7 @@
 // revisions: no_flag with_flag
 // [no_flag] check-pass
 // [with_flag] compile-flags: -Zextra-const-ub-checks
-#![feature(never_type)]
+#![feature(never_type, pointer_byte_offsets)]
 
 use std::mem::transmute;
 use std::ptr::addr_of;
@@ -11,6 +11,9 @@ enum E { A, B }
 
 #[derive(Clone, Copy)]
 enum Never {}
+
+#[repr(usize)]
+enum PtrSizedEnum { V }
 
 // An enum with uninhabited variants but also at least 2 inhabited variants -- so the uninhabited
 // variants *do* have a discriminant.
@@ -31,12 +34,20 @@ const INVALID_BOOL: () = unsafe {
 const INVALID_PTR_IN_INT: () = unsafe {
     let _x: usize = transmute(&3u8);
     //[with_flag]~^ ERROR: evaluation of constant value failed
+    //[with_flag]~| invalid value
+};
+
+const INVALID_PTR_IN_ENUM: () = unsafe {
+    let _x: PtrSizedEnum = transmute(&3u8);
+    //[with_flag]~^ ERROR: evaluation of constant value failed
+    //[with_flag]~| invalid value
 };
 
 const INVALID_SLICE_TO_USIZE_TRANSMUTE: () = unsafe {
     let x: &[u8] = &[0; 32];
     let _x: (usize, usize) = transmute(x);
     //[with_flag]~^ ERROR: evaluation of constant value failed
+    //[with_flag]~| invalid value
 };
 
 const UNALIGNED_PTR: () = unsafe {
@@ -50,6 +61,27 @@ const UNINHABITED_VARIANT: () = unsafe {
     // Not using transmute, we want to hit the ImmTy code path.
     let v = *addr_of!(data).cast::<UninhDiscriminant>();
     //[with_flag]~^ ERROR: evaluation of constant value failed
+    //[with_flag]~| invalid value
+};
+
+const PARTIAL_POINTER: () = unsafe {
+    #[repr(C, packed)]
+    struct Packed {
+        pad1: u8,
+        ptr: *const u8,
+        pad2: [u8; 7],
+    }
+    // `Align` ensures that the entire thing has pointer alignment again.
+    #[repr(C)]
+    struct Align {
+        p: Packed,
+        align: usize,
+    }
+    let mem = Packed { pad1: 0, ptr: &0u8 as *const u8, pad2: [0; 7] };
+    let mem = Align { p: mem, align: 0 };
+    let _val = *(&mem as *const Align as *const [*const u8; 2]);
+    //[with_flag]~^ ERROR: evaluation of constant value failed
+    //[with_flag]~| invalid value
 };
 
 // Regression tests for an ICE (related to <https://github.com/rust-lang/rust/issues/113988>).

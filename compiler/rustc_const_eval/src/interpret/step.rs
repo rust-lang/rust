@@ -178,7 +178,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // The operand always has the same type as the result.
                 let val = self.read_immediate(&self.eval_operand(operand, Some(dest.layout))?)?;
                 let val = self.unary_op(un_op, &val)?;
-                assert_eq!(val.layout, dest.layout, "layout mismatch for result of {:?}", un_op);
+                assert_eq!(val.layout, dest.layout, "layout mismatch for result of {un_op:?}");
                 self.write_immediate(*val, &dest)?;
             }
 
@@ -198,7 +198,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 } else {
                     // Write the src to the first element.
                     let first = self.project_index(&dest, 0)?;
-                    self.copy_op(&src, &first.into(), /*allow_transmute*/ false)?;
+                    self.copy_op(&src, &first, /*allow_transmute*/ false)?;
 
                     // This is performance-sensitive code for big static/const arrays! So we
                     // avoid writing each operand individually and instead just make many copies
@@ -208,13 +208,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     let rest_ptr = first_ptr.offset(elem_size, self)?;
                     // For the alignment of `rest_ptr`, we crucially do *not* use `first.align` as
                     // that place might be more aligned than its type mandates (a `u8` array could
-                    // be 4-aligned if it sits at the right spot in a struct). Instead we use
-                    // `first.layout.align`, i.e., the alignment given by the type.
+                    // be 4-aligned if it sits at the right spot in a struct). We have to also factor
+                    // in element size.
                     self.mem_copy_repeatedly(
                         first_ptr,
-                        first.align,
+                        dest.align,
                         rest_ptr,
-                        first.layout.align.abi,
+                        dest.align.restrict_for_offset(elem_size),
                         elem_size,
                         length - 1,
                         /*nonoverlapping:*/ true,
@@ -224,8 +224,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             Len(place) => {
                 let src = self.eval_place(place)?;
-                let op = self.place_to_op(&src)?;
-                let len = op.len(self)?;
+                let len = src.len(self)?;
                 self.write_scalar(Scalar::from_target_usize(len, self), &dest)?;
             }
 

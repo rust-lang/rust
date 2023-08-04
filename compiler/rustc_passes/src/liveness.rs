@@ -605,7 +605,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         for var_idx in 0..self.ir.var_kinds.len() {
             let var = Variable::from(var_idx);
             if test(var) {
-                write!(wr, " {:?}", var)?;
+                write!(wr, " {var:?}")?;
             }
         }
         Ok(())

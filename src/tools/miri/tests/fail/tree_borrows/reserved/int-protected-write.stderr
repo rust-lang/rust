@@ -1,4 +1,4 @@
-──────────────────────────────────────────────────────────────────────
+──────────────────────────────────────────────────
 Warning: this tree is indicative only. Some tags may have been hidden.
 0..  1
 | Act|    └─┬──<TAG=root of the allocation>
@@ -7,7 +7,7 @@ Warning: this tree is indicative only. Some tags may have been hidden.
 | Res|        │ └─┬──<TAG=caller:x>
 | Res|        │   └────<TAG=callee:x> Strongly protected
 | Res|        └────<TAG=y, callee:y, caller:y>
-──────────────────────────────────────────────────────────────────────
+──────────────────────────────────────────────────
 error: Undefined Behavior: write access through <TAG> (y, callee:y, caller:y) is forbidden
   --> $DIR/int-protected-write.rs:LL:CC
    |
@@ -16,8 +16,8 @@ LL |             *y = 0;
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
    = help: the accessed tag <TAG> (y, callee:y, caller:y) is foreign to the protected tag <TAG> (callee:x) (i.e., it is not a child)
-   = help: this foreign write access would cause the protected tag <TAG> (callee:x) to transition from Reserved to Disabled
-   = help: this transition would be a loss of read and write permissions, which is not allowed for protected tags
+   = help: this foreign write access would cause the protected tag <TAG> (callee:x) (currently Reserved) to become Disabled
+   = help: protected tags must never be Disabled
 help: the accessed tag <TAG> was created here
   --> $DIR/int-protected-write.rs:LL:CC
    |

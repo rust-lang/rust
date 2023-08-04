@@ -75,12 +75,10 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
             self.body_def_id,
             ObligationCauseCode::WellFormed(loc),
         );
-        // for a type to be WF, we do not need to check if const trait predicates satisfy.
-        let param_env = self.param_env.without_const();
         self.ocx.register_obligation(traits::Obligation::new(
             self.tcx(),
             cause,
-            param_env,
+            self.param_env,
             ty::Binder::dummy(ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(arg))),
         ));
     }
@@ -196,7 +194,7 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) {
             // We match on both `ty::ImplPolarity` and `ast::ImplPolarity` just to get the `!` span.
             match (tcx.impl_polarity(def_id), impl_.polarity) {
                 (ty::ImplPolarity::Positive, _) => {
-                    check_impl(tcx, item, impl_.self_ty, &impl_.of_trait, impl_.constness);
+                    check_impl(tcx, item, impl_.self_ty, &impl_.of_trait);
                 }
                 (ty::ImplPolarity::Negative, ast::ImplPolarity::Negative(span)) => {
                     // FIXME(#27579): what amount of WF checking do we need for neg impls?
@@ -248,8 +246,11 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) {
         // `ForeignItem`s are handled separately.
         hir::ItemKind::ForeignMod { .. } => {}
         hir::ItemKind::TyAlias(hir_ty, ..) => {
-            if tcx.type_of(item.owner_id.def_id).skip_binder().has_opaque_types() {
-                // Bounds are respected for `type X = impl Trait` and `type X = (impl Trait, Y);`
+            if tcx.features().lazy_type_alias
+                || tcx.type_of(item.owner_id).skip_binder().has_opaque_types()
+            {
+                // Bounds of lazy type aliases and of eager ones that contain opaque types are respected.
+                // E.g: `type X = impl Trait;`, `type X = (impl Trait, Y);`.
                 check_item_type(tcx, def_id, hir_ty.span, UnsizedHandling::Allow);
             }
         }
@@ -286,6 +287,17 @@ fn check_trait_item(tcx: TyCtxt<'_>, trait_item: &hir::TraitItem<'_>) {
     };
     check_object_unsafe_self_trait_by_name(tcx, trait_item);
     check_associated_item(tcx, def_id, span, method_sig);
+
+    if matches!(trait_item.kind, hir::TraitItemKind::Fn(..)) {
+        for &assoc_ty_def_id in tcx.associated_types_for_impl_traits_in_associated_fn(def_id) {
+            check_associated_item(
+                tcx,
+                assoc_ty_def_id.expect_local(),
+                tcx.def_span(assoc_ty_def_id),
+                None,
+            );
+        }
+    }
 }
 
 /// Require that the user writes where clauses on GATs for the implicit
@@ -472,8 +484,7 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, associated_items: &[hir::TraitItemRe
             let bound =
                 if unsatisfied_bounds.len() > 1 { "these bounds are" } else { "this bound is" };
             err.note(format!(
-                "{} currently required to ensure that impls have maximum flexibility",
-                bound
+                "{bound} currently required to ensure that impls have maximum flexibility"
             ));
             err.note(
                 "we are soliciting feedback, see issue #87479 \
@@ -505,7 +516,7 @@ fn augment_param_env<'tcx>(
     );
     // FIXME(compiler-errors): Perhaps there is a case where we need to normalize this
     // i.e. traits::normalize_param_env_or_error
-    ty::ParamEnv::new(bounds, param_env.reveal(), param_env.constness())
+    ty::ParamEnv::new(bounds, param_env.reveal())
 }
 
 /// We use the following trait as an example throughout this function.
@@ -544,8 +555,8 @@ fn gather_gat_bounds<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
     for (region_a, region_a_idx) in &regions {
         // Ignore `'static` lifetimes for the purpose of this lint: it's
         // because we know it outlives everything and so doesn't give meaningful
-        // clues
-        if let ty::ReStatic = **region_a {
+        // clues. Also ignore `ReError`, to avoid knock-down errors.
+        if let ty::ReStatic | ty::ReError(_) = **region_a {
             continue;
         }
         // For each region argument (e.g., `'a` in our example), check for a
@@ -588,8 +599,9 @@ fn gather_gat_bounds<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
         // on the GAT itself.
         for (region_b, region_b_idx) in &regions {
             // Again, skip `'static` because it outlives everything. Also, we trivially
-            // know that a region outlives itself.
-            if ty::ReStatic == **region_b || region_a == region_b {
+            // know that a region outlives itself. Also ignore `ReError`, to avoid
+            // knock-down errors.
+            if matches!(**region_b, ty::ReStatic | ty::ReError(_)) || region_a == region_b {
                 continue;
             }
             if region_known_to_outlive(
@@ -989,7 +1001,7 @@ fn check_type_defn<'tcx>(tcx: TyCtxt<'tcx>, item: &hir::Item<'tcx>, all_sized: b
                     let ty = tcx.erase_regions(ty);
                     if ty.has_infer() {
                         tcx.sess
-                            .delay_span_bug(item.span, format!("inference variables in {:?}", ty));
+                            .delay_span_bug(item.span, format!("inference variables in {ty:?}"));
                         // Just treat unresolved type expression as if it needs drop.
                         true
                     } else {
@@ -1179,7 +1191,6 @@ fn check_impl<'tcx>(
     item: &'tcx hir::Item<'tcx>,
     ast_self_ty: &hir::Ty<'_>,
     ast_trait_ref: &Option<hir::TraitRef<'_>>,
-    constness: hir::Constness,
 ) {
     enter_wf_checking_ctxt(tcx, item.span, item.owner_id.def_id, |wfcx| {
         match ast_trait_ref {
@@ -1193,14 +1204,8 @@ fn check_impl<'tcx>(
                     Some(WellFormedLoc::Ty(item.hir_id().expect_owner().def_id)),
                     trait_ref,
                 );
-                let trait_pred = ty::TraitPredicate {
-                    trait_ref,
-                    constness: match constness {
-                        hir::Constness::Const => ty::BoundConstness::ConstIfConst,
-                        hir::Constness::NotConst => ty::BoundConstness::NotConst,
-                    },
-                    polarity: ty::ImplPolarity::Positive,
-                };
+                let trait_pred =
+                    ty::TraitPredicate { trait_ref, polarity: ty::ImplPolarity::Positive };
                 let mut obligations = traits::wf::trait_obligations(
                     wfcx.infcx,
                     wfcx.param_env,
@@ -1416,7 +1421,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
     let wf_obligations = predicates.into_iter().flat_map(|(p, sp)| {
         traits::wf::predicate_obligations(
             infcx,
-            wfcx.param_env.without_const(),
+            wfcx.param_env,
             wfcx.body_def_id,
             p.as_predicate(),
             sp,
@@ -1469,13 +1474,6 @@ fn check_fn_or_method<'tcx>(
 
     check_where_clauses(wfcx, span, def_id);
 
-    check_return_position_impl_trait_in_trait_bounds(
-        wfcx,
-        def_id,
-        sig.output(),
-        hir_decl.output.span(),
-    );
-
     if sig.abi == Abi::RustCall {
         let span = tcx.def_span(def_id);
         let has_implicit_self = hir_decl.implicit_self != hir::ImplicitSelfKind::None;
@@ -1507,87 +1505,6 @@ fn check_fn_or_method<'tcx>(
                 "functions with the \"rust-call\" ABI must take a single non-self tuple argument",
             );
         }
-    }
-}
-
-/// Basically `check_associated_type_bounds`, but separated for now and should be
-/// deduplicated when RPITITs get lowered into real associated items.
-#[tracing::instrument(level = "trace", skip(wfcx))]
-fn check_return_position_impl_trait_in_trait_bounds<'tcx>(
-    wfcx: &WfCheckingCtxt<'_, 'tcx>,
-    fn_def_id: LocalDefId,
-    fn_output: Ty<'tcx>,
-    span: Span,
-) {
-    let tcx = wfcx.tcx();
-    let Some(assoc_item) = tcx.opt_associated_item(fn_def_id.to_def_id()) else {
-        return;
-    };
-    if assoc_item.container != ty::AssocItemContainer::TraitContainer {
-        return;
-    }
-    fn_output.visit_with(&mut ImplTraitInTraitFinder {
-        wfcx,
-        fn_def_id,
-        depth: ty::INNERMOST,
-        seen: FxHashSet::default(),
-    });
-}
-
-// FIXME(-Zlower-impl-trait-in-trait-to-assoc-ty): Even with the new lowering
-// strategy, we can't just call `check_associated_item` on the new RPITITs,
-// because tests like `tests/ui/async-await/in-trait/implied-bounds.rs` will fail.
-// That's because we need to check that the bounds of the RPITIT hold using
-// the special args that we create during opaque type lowering, otherwise we're
-// getting a bunch of early bound and free regions mixed up... Haven't looked too
-// deep into this, though.
-struct ImplTraitInTraitFinder<'a, 'tcx> {
-    wfcx: &'a WfCheckingCtxt<'a, 'tcx>,
-    fn_def_id: LocalDefId,
-    depth: ty::DebruijnIndex,
-    seen: FxHashSet<DefId>,
-}
-impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
-    type BreakTy = !;
-
-    fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<!> {
-        let tcx = self.wfcx.tcx();
-        if let ty::Alias(ty::Opaque, unshifted_opaque_ty) = *ty.kind()
-            && self.seen.insert(unshifted_opaque_ty.def_id)
-            && let Some(opaque_def_id) = unshifted_opaque_ty.def_id.as_local()
-            && let origin = tcx.opaque_type_origin(opaque_def_id)
-            && let hir::OpaqueTyOrigin::FnReturn(source) | hir::OpaqueTyOrigin::AsyncFn(source) = origin
-            && source == self.fn_def_id
-        {
-            let opaque_ty = tcx.fold_regions(unshifted_opaque_ty, |re, _depth| {
-                match re.kind() {
-                    ty::ReEarlyBound(_) | ty::ReFree(_) | ty::ReError(_) | ty::ReStatic => re,
-                    r => bug!("unexpected region: {r:?}"),
-                }
-            });
-            for (bound, bound_span) in tcx
-                .explicit_item_bounds(opaque_ty.def_id)
-                .iter_instantiated_copied(tcx, opaque_ty.args)
-            {
-                let bound = self.wfcx.normalize(bound_span, None, bound);
-                self.wfcx.register_obligations(traits::wf::predicate_obligations(
-                    self.wfcx.infcx,
-                    self.wfcx.param_env,
-                    self.wfcx.body_def_id,
-                    bound.as_predicate(),
-                    bound_span,
-                ));
-                // Set the debruijn index back to innermost here, since we already eagerly
-                // shifted the args that we use to generate these bounds. This is unfortunately
-                // subtly different behavior than the `ImplTraitInTraitFinder` we use in `param_env`,
-                // but that function doesn't actually need to normalize the bound it's visiting
-                // (whereas we have to do so here)...
-                let old_depth = std::mem::replace(&mut self.depth, ty::INNERMOST);
-                bound.visit_with(self);
-                self.depth = old_depth;
-            }
-        }
-        ty.super_visit_with(self)
     }
 }
 
@@ -1863,8 +1780,7 @@ fn report_bivariance(
 
     if matches!(param.kind, hir::GenericParamKind::Type { .. }) && !has_explicit_bounds {
         err.help(format!(
-            "if you intended `{0}` to be a const parameter, use `const {0}: usize` instead",
-            param_name
+            "if you intended `{param_name}` to be a const parameter, use `const {param_name}: usize` instead"
         ));
     }
     err.emit()

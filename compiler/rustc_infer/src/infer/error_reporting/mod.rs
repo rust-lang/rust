@@ -238,7 +238,7 @@ fn msg_span_from_named_region<'tcx>(
                         let text = if name == kw::UnderscoreLifetime {
                             "the anonymous lifetime as defined here".to_string()
                         } else {
-                            format!("the lifetime `{}` as defined here", name)
+                            format!("the lifetime `{name}` as defined here")
                         };
                         (text, Some(span))
                     }
@@ -250,7 +250,7 @@ fn msg_span_from_named_region<'tcx>(
                         })
                     ),
                     _ => (
-                        format!("the lifetime `{}` as defined here", region),
+                        format!("the lifetime `{region}` as defined here"),
                         Some(tcx.def_span(scope)),
                     ),
                 }
@@ -280,7 +280,7 @@ fn emit_msg_span(
     span: Option<Span>,
     suffix: &str,
 ) {
-    let message = format!("{}{}{}", prefix, description, suffix);
+    let message = format!("{prefix}{description}{suffix}");
 
     if let Some(span) = span {
         err.span_note(span, message);
@@ -296,7 +296,7 @@ fn label_msg_span(
     span: Option<Span>,
     suffix: &str,
 ) {
-    let message = format!("{}{}{}", prefix, description, suffix);
+    let message = format!("{prefix}{description}{suffix}");
 
     if let Some(span) = span {
         err.span_label(span, message);
@@ -333,7 +333,7 @@ pub fn unexpected_hidden_region_diagnostic<'tcx>(
             explain_free_region(
                 tcx,
                 &mut err,
-                &format!("hidden type `{}` captures ", hidden_ty),
+                &format!("hidden type `{hidden_ty}` captures "),
                 hidden_region,
                 "",
             );
@@ -345,7 +345,7 @@ pub fn unexpected_hidden_region_diagnostic<'tcx>(
                     fn_returns,
                     hidden_region.to_string(),
                     None,
-                    format!("captures `{}`", hidden_region),
+                    format!("captures `{hidden_region}`"),
                     None,
                     Some(reg_info.def_id),
                 )
@@ -373,7 +373,7 @@ pub fn unexpected_hidden_region_diagnostic<'tcx>(
             note_and_explain_region(
                 tcx,
                 &mut err,
-                &format!("hidden type `{}` captures ", hidden_ty),
+                &format!("hidden type `{hidden_ty}` captures "),
                 hidden_region,
                 "",
                 None,
@@ -716,7 +716,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     {
                         err.span_label(span, format!("this is an iterator with items of type `{}`", args.type_at(0)));
                     } else {
-                    err.span_label(span, format!("this expression has type `{}`", ty));
+                    err.span_label(span, format!("this expression has type `{ty}`"));
                 }
                 }
                 if let Some(ty::error::ExpectedFound { found, .. }) = exp_found
@@ -726,7 +726,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     err.span_suggestion(
                         span,
                         "consider dereferencing the boxed value",
-                        format!("*{}", snippet),
+                        format!("*{snippet}"),
                         Applicability::MachineApplicable,
                     );
                 }
@@ -764,7 +764,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             Some(ty) if expected == ty => {
                                 let source_map = self.tcx.sess.source_map();
                                 err.span_suggestion(
-                                    source_map.end_point(cause.span),
+                                    source_map.end_point(cause.span()),
                                     "try removing this `?`",
                                     "",
                                     Applicability::MachineApplicable,
@@ -785,13 +785,13 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     if prior_arms.len() <= 4 {
                         for sp in prior_arms {
                             any_multiline_arm |= source_map.is_multiline(*sp);
-                            err.span_label(*sp, format!("this is found to be of type `{}`", t));
+                            err.span_label(*sp, format!("this is found to be of type `{t}`"));
                         }
                     } else if let Some(sp) = prior_arms.last() {
                         any_multiline_arm |= source_map.is_multiline(*sp);
                         err.span_label(
                             *sp,
-                            format!("this and all prior arms are found to be of type `{}`", t),
+                            format!("this and all prior arms are found to be of type `{t}`"),
                         );
                     }
                     let outer = if any_multiline_arm || !source_map.is_multiline(cause.span) {
@@ -1661,7 +1661,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     ..
                 })) = values
                 {
-                    Cow::from(format!("expected this to be `{}`", expected))
+                    Cow::from(format!("expected this to be `{expected}`"))
                 } else {
                     terr.to_string(self.tcx)
                 };
@@ -2068,7 +2068,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 visitor.visit_body(body);
                 visitor.result.map(|r| &r.peel_refs().kind)
             }
-            Some(hir::Node::Item(hir::Item { kind: hir::ItemKind::Const(ty, _), .. })) => {
+            Some(hir::Node::Item(hir::Item { kind: hir::ItemKind::Const(ty, _, _), .. })) => {
                 Some(&ty.peel_refs().kind)
             }
             _ => None,
@@ -2368,13 +2368,13 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         }
 
         let labeled_user_string = match bound_kind {
-            GenericKind::Param(ref p) => format!("the parameter type `{}`", p),
+            GenericKind::Param(ref p) => format!("the parameter type `{p}`"),
             GenericKind::Alias(ref p) => match p.kind(self.tcx) {
                 ty::AliasKind::Projection | ty::AliasKind::Inherent => {
-                    format!("the associated type `{}`", p)
+                    format!("the associated type `{p}`")
                 }
-                ty::AliasKind::Weak => format!("the type alias `{}`", p),
-                ty::AliasKind::Opaque => format!("the opaque type `{}`", p),
+                ty::AliasKind::Weak => format!("the type alias `{p}`"),
+                ty::AliasKind::Opaque => format!("the opaque type `{p}`"),
             },
         };
 
@@ -2388,7 +2388,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 span,
                 impl_item_def_id,
                 trait_item_def_id,
-                &format!("`{}: {}`", bound_kind, sub),
+                &format!("`{bound_kind}: {sub}`"),
             );
         }
 
@@ -2402,7 +2402,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             let msg = "consider adding an explicit lifetime bound";
             if let Some((sp, has_lifetimes)) = type_param_span {
                 let suggestion =
-                    if has_lifetimes { format!(" + {}", sub) } else { format!(": {}", sub) };
+                    if has_lifetimes { format!(" + {sub}") } else { format!(": {sub}") };
                 let mut suggestions = vec![(sp, suggestion)];
                 for add_lt_sugg in add_lt_suggs.into_iter().flatten() {
                     suggestions.push(add_lt_sugg);
@@ -2413,7 +2413,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     Applicability::MaybeIncorrect, // Issue #41966
                 );
             } else {
-                let consider = format!("{} `{}: {}`...", msg, bound_kind, sub);
+                let consider = format!("{msg} `{bound_kind}: {sub}`...");
                 err.help(consider);
             }
         }
@@ -2422,13 +2422,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             |err: &mut Diagnostic, type_param_span: Option<(Span, bool)>| {
                 let msg = "consider introducing an explicit lifetime bound";
                 if let Some((sp, has_lifetimes)) = type_param_span {
-                    let suggestion = if has_lifetimes {
-                        format!(" + {}", new_lt)
-                    } else {
-                        format!(": {}", new_lt)
-                    };
+                    let suggestion =
+                        if has_lifetimes { format!(" + {new_lt}") } else { format!(": {new_lt}") };
                     let mut sugg =
-                        vec![(sp, suggestion), (span.shrink_to_hi(), format!(" + {}", new_lt))];
+                        vec![(sp, suggestion), (span.shrink_to_hi(), format!(" + {new_lt}"))];
                     for lt in add_lt_suggs.clone().into_iter().flatten() {
                         sugg.push(lt);
                         sugg.rotate_right(1);
@@ -2508,7 +2505,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     "{} may not live long enough",
                     labeled_user_string
                 );
-                let pred = format!("{}: {}", bound_kind, sub);
+                let pred = format!("{bound_kind}: {sub}");
                 let suggestion = format!("{} {}", generics.add_where_or_trailing_comma(), pred,);
                 err.span_suggestion(
                     generics.tail_span_for_predicate_suggestion(),
@@ -2564,21 +2561,19 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 note_and_explain_region(
                     self.tcx,
                     &mut err,
-                    &format!("{} must be valid for ", labeled_user_string),
+                    &format!("{labeled_user_string} must be valid for "),
                     sub,
                     "...",
                     None,
                 );
                 if let Some(infer::RelateParamBound(_, t, _)) = origin {
-                    let return_impl_trait =
-                        self.tcx.return_type_impl_trait(generic_param_scope).is_some();
                     let t = self.resolve_vars_if_possible(t);
                     match t.kind() {
                         // We've got:
                         // fn get_later<G, T>(g: G, dest: &mut T) -> impl FnOnce() + '_
                         // suggest:
                         // fn get_later<'a, G: 'a, T>(g: G, dest: &mut T) -> impl FnOnce() + '_ + 'a
-                        ty::Closure(..) | ty::Alias(ty::Opaque, ..) if return_impl_trait => {
+                        ty::Closure(..) | ty::Alias(ty::Opaque, ..) => {
                             new_binding_suggestion(&mut err, type_param_span);
                         }
                         _ => {
@@ -2814,10 +2809,10 @@ impl<'tcx> InferCtxt<'tcx> {
                 br_string(br),
                 self.tcx.associated_item(def_id).name
             ),
-            infer::EarlyBoundRegion(_, name) => format!(" for lifetime parameter `{}`", name),
+            infer::EarlyBoundRegion(_, name) => format!(" for lifetime parameter `{name}`"),
             infer::UpvarRegion(ref upvar_id, _) => {
                 let var_name = self.tcx.hir().name(upvar_id.var_path.hir_id);
-                format!(" for capture of `{}` by closure", var_name)
+                format!(" for capture of `{var_name}` by closure")
             }
             infer::Nll(..) => bug!("NLL variable found in lexical phase"),
         };

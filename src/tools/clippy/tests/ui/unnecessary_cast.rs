@@ -38,6 +38,16 @@ mod fake_libc {
     }
 }
 
+fn aaa() -> ::std::primitive::u32 {
+    0
+}
+
+use std::primitive::u32 as UnsignedThirtyTwoBitInteger;
+
+fn bbb() -> UnsignedThirtyTwoBitInteger {
+    0
+}
+
 #[rustfmt::skip]
 fn main() {
     // Test cast_unnecessary
@@ -105,6 +115,13 @@ fn main() {
     extern_fake_libc::getpid_SAFE_TRUTH() as i32;
     let pid = unsafe { fake_libc::getpid() };
     pid as i32;
+    aaa() as u32;
+    let x = aaa();
+    aaa() as u32;
+    // Will not lint currently.
+    bbb() as u32;
+    let x = bbb();
+    bbb() as u32;
 
     let i8_ptr: *const i8 = &1;
     let u8_ptr: *const u8 = &1;

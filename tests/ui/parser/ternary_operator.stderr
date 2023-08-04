@@ -1,0 +1,115 @@
+error: Rust has no ternary operator
+  --> $DIR/ternary_operator.rs:5:19
+   |
+LL |     let x = 5 > 2 ? true : false;
+   |                   ^^^^^^^^^^^^^^^
+   |
+   = help: use an `if-else` expression instead
+
+error: Rust has no ternary operator
+  --> $DIR/ternary_operator.rs:21:19
+   |
+LL |     let x = 5 > 2 ? { true } : { false };
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use an `if-else` expression instead
+
+error: Rust has no ternary operator
+  --> $DIR/ternary_operator.rs:37:19
+   |
+LL |     let x = 5 > 2 ? f32::MAX : f32::MIN;
+   |                   ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use an `if-else` expression instead
+
+error: expected one of `.`, `;`, `?`, `else`, or an operator, found `:`
+  --> $DIR/ternary_operator.rs:53:37
+   |
+LL |     let x = 5 > 2 ? { let x = vec![]: Vec<u16>; x } : { false };
+   |                                     ^ expected one of `.`, `;`, `?`, `else`, or an operator
+   |
+   = note: type ascription syntax has been removed, see issue #101728 <https://github.com/rust-lang/rust/issues/101728>
+
+error: Rust has no ternary operator
+  --> $DIR/ternary_operator.rs:53:19
+   |
+LL |     let x = 5 > 2 ? { let x = vec![]: Vec<u16>; x } : { false };
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use an `if-else` expression instead
+
+error[E0277]: the `?` operator can only be applied to values that implement `Try`
+  --> $DIR/ternary_operator.rs:5:17
+   |
+LL |     let x = 5 > 2 ? true : false;
+   |                 ^^^ the `?` operator cannot be applied to type `{integer}`
+   |
+   = help: the trait `Try` is not implemented for `{integer}`
+
+error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromResidual`)
+  --> $DIR/ternary_operator.rs:5:19
+   |
+LL | fn a() {
+   | ------ this function should return `Result` or `Option` to accept `?`
+LL |     let x = 5 > 2 ? true : false;
+   |                   ^ cannot use the `?` operator in a function that returns `()`
+   |
+   = help: the trait `FromResidual<_>` is not implemented for `()`
+
+error[E0277]: the `?` operator can only be applied to values that implement `Try`
+  --> $DIR/ternary_operator.rs:21:17
+   |
+LL |     let x = 5 > 2 ? { true } : { false };
+   |                 ^^^ the `?` operator cannot be applied to type `{integer}`
+   |
+   = help: the trait `Try` is not implemented for `{integer}`
+
+error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromResidual`)
+  --> $DIR/ternary_operator.rs:21:19
+   |
+LL | fn b() {
+   | ------ this function should return `Result` or `Option` to accept `?`
+LL |     let x = 5 > 2 ? { true } : { false };
+   |                   ^ cannot use the `?` operator in a function that returns `()`
+   |
+   = help: the trait `FromResidual<_>` is not implemented for `()`
+
+error[E0277]: the `?` operator can only be applied to values that implement `Try`
+  --> $DIR/ternary_operator.rs:37:17
+   |
+LL |     let x = 5 > 2 ? f32::MAX : f32::MIN;
+   |                 ^^^ the `?` operator cannot be applied to type `{integer}`
+   |
+   = help: the trait `Try` is not implemented for `{integer}`
+
+error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromResidual`)
+  --> $DIR/ternary_operator.rs:37:19
+   |
+LL | fn c() {
+   | ------ this function should return `Result` or `Option` to accept `?`
+LL |     let x = 5 > 2 ? f32::MAX : f32::MIN;
+   |                   ^ cannot use the `?` operator in a function that returns `()`
+   |
+   = help: the trait `FromResidual<_>` is not implemented for `()`
+
+error[E0277]: the `?` operator can only be applied to values that implement `Try`
+  --> $DIR/ternary_operator.rs:53:17
+   |
+LL |     let x = 5 > 2 ? { let x = vec![]: Vec<u16>; x } : { false };
+   |                 ^^^ the `?` operator cannot be applied to type `{integer}`
+   |
+   = help: the trait `Try` is not implemented for `{integer}`
+
+error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromResidual`)
+  --> $DIR/ternary_operator.rs:53:19
+   |
+LL | fn main() {
+   | --------- this function should return `Result` or `Option` to accept `?`
+LL |     let x = 5 > 2 ? { let x = vec![]: Vec<u16>; x } : { false };
+   |                   ^ cannot use the `?` operator in a function that returns `()`
+   |
+   = help: the trait `FromResidual<_>` is not implemented for `()`
+
+error: aborting due to 13 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

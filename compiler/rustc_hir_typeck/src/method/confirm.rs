@@ -225,7 +225,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                         assert!(mutbl.is_mut());
                         Ty::new_ptr(self.tcx, ty::TypeAndMut { mutbl: hir::Mutability::Not, ty })
                     }
-                    other => panic!("Cannot adjust receiver type {:?} to const ptr", other),
+                    other => panic!("Cannot adjust receiver type {other:?} to const ptr"),
                 };
 
                 adjustments.push(Adjustment {
@@ -262,8 +262,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 let impl_def_id = pick.item.container_id(self.tcx);
                 assert!(
                     self.tcx.impl_trait_ref(impl_def_id).is_none(),
-                    "impl {:?} is not an inherent impl",
-                    impl_def_id
+                    "impl {impl_def_id:?} is not an inherent impl"
                 );
                 self.fresh_args_for_item(self.span, impl_def_id)
             }

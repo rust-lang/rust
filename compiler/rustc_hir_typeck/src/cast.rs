@@ -144,7 +144,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let reported = self
                     .tcx
                     .sess
-                    .delay_span_bug(span, format!("`{:?}` should be sized but is not?", t));
+                    .delay_span_bug(span, format!("`{t:?}` should be sized but is not?"));
                 return Err(reported);
             }
         })
@@ -644,12 +644,12 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                             err.span_suggestion(
                                 self.cast_span,
                                 "try casting to a reference instead",
-                                format!("&{}{}", mtstr, s),
+                                format!("&{mtstr}{s}"),
                                 Applicability::MachineApplicable,
                             );
                         }
                         Err(_) => {
-                            let msg = format!("did you mean `&{}{}`?", mtstr, tstr);
+                            let msg = format!("did you mean `&{mtstr}{tstr}`?");
                             err.span_help(self.cast_span, msg);
                         }
                     }

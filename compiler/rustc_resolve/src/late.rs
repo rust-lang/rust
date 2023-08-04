@@ -337,6 +337,7 @@ enum LifetimeBinderKind {
     PolyTrait,
     WhereBound,
     Item,
+    ConstItem,
     Function,
     Closure,
     ImplBlock,
@@ -349,7 +350,7 @@ impl LifetimeBinderKind {
             BareFnType => "type",
             PolyTrait => "bound",
             WhereBound => "bound",
-            Item => "item",
+            Item | ConstItem => "item",
             ImplBlock => "impl block",
             Function => "function",
             Closure => "closure",
@@ -1916,10 +1917,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         candidate: LifetimeElisionCandidate,
     ) {
         if let Some(prev_res) = self.r.lifetimes_res_map.insert(id, res) {
-            panic!(
-                "lifetime {:?} resolved multiple times ({:?} before, {:?} now)",
-                id, prev_res, res
-            )
+            panic!("lifetime {id:?} resolved multiple times ({prev_res:?} before, {res:?} now)")
         }
         match res {
             LifetimeRes::Param { .. } | LifetimeRes::Fresh { .. } | LifetimeRes::Static => {
@@ -1935,8 +1933,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
     fn record_lifetime_param(&mut self, id: NodeId, res: LifetimeRes) {
         if let Some(prev_res) = self.r.lifetimes_res_map.insert(id, res) {
             panic!(
-                "lifetime parameter {:?} resolved multiple times ({:?} before, {:?} now)",
-                id, prev_res, res
+                "lifetime parameter {id:?} resolved multiple times ({prev_res:?} before, {res:?} now)"
             )
         }
     }
@@ -2404,30 +2401,44 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                 });
             }
 
-            ItemKind::Static(box ast::StaticItem { ref ty, ref expr, .. })
-            | ItemKind::Const(box ast::ConstItem { ref ty, ref expr, .. }) => {
+            ItemKind::Static(box ast::StaticItem { ref ty, ref expr, .. }) => {
                 self.with_static_rib(|this| {
                     this.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Static), |this| {
                         this.visit_ty(ty);
                     });
-                    this.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Infer), |this| {
+                    if let Some(expr) = expr {
+                        // We already forbid generic params because of the above item rib,
+                        // so it doesn't matter whether this is a trivial constant.
+                        this.resolve_const_body(expr, Some((item.ident, ConstantItemKind::Static)));
+                    }
+                });
+            }
+
+            ItemKind::Const(box ast::ConstItem { ref generics, ref ty, ref expr, .. }) => {
+                self.with_generic_param_rib(
+                    &generics.params,
+                    RibKind::Item(HasGenericParams::Yes(generics.span)),
+                    LifetimeRibKind::Generics {
+                        binder: item.id,
+                        kind: LifetimeBinderKind::ConstItem,
+                        span: generics.span,
+                    },
+                    |this| {
+                        this.visit_generics(generics);
+
+                        this.with_lifetime_rib(
+                            LifetimeRibKind::Elided(LifetimeRes::Static),
+                            |this| this.visit_ty(ty),
+                        );
+
                         if let Some(expr) = expr {
-                            let constant_item_kind = match item.kind {
-                                ItemKind::Const(..) => ConstantItemKind::Const,
-                                ItemKind::Static(..) => ConstantItemKind::Static,
-                                _ => unreachable!(),
-                            };
-                            // We already forbid generic params because of the above item rib,
-                            // so it doesn't matter whether this is a trivial constant.
-                            this.with_constant_rib(
-                                IsRepeatExpr::No,
-                                ConstantHasGenerics::Yes,
-                                Some((item.ident, constant_item_kind)),
-                                |this| this.visit_expr(expr),
+                            this.resolve_const_body(
+                                expr,
+                                Some((item.ident, ConstantItemKind::Const)),
                             );
                         }
-                    });
-                });
+                    },
+                );
             }
 
             ItemKind::Use(ref use_tree) => {
@@ -2700,28 +2711,31 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         for item in trait_items {
             self.resolve_doc_links(&item.attrs, MaybeExported::Ok(item.id));
             match &item.kind {
-                AssocItemKind::Const(box ast::ConstItem { ty, expr, .. }) => {
-                    self.visit_ty(ty);
-                    // Only impose the restrictions of `ConstRibKind` for an
-                    // actual constant expression in a provided default.
-                    if let Some(expr) = expr {
-                        // We allow arbitrary const expressions inside of associated consts,
-                        // even if they are potentially not const evaluatable.
-                        //
-                        // Type parameters can already be used and as associated consts are
-                        // not used as part of the type system, this is far less surprising.
-                        self.with_lifetime_rib(
-                            LifetimeRibKind::Elided(LifetimeRes::Infer),
-                            |this| {
-                                this.with_constant_rib(
-                                    IsRepeatExpr::No,
-                                    ConstantHasGenerics::Yes,
-                                    None,
-                                    |this| this.visit_expr(expr),
-                                )
-                            },
-                        );
-                    }
+                AssocItemKind::Const(box ast::ConstItem { generics, ty, expr, .. }) => {
+                    self.with_generic_param_rib(
+                        &generics.params,
+                        RibKind::AssocItem,
+                        LifetimeRibKind::Generics {
+                            binder: item.id,
+                            span: generics.span,
+                            kind: LifetimeBinderKind::ConstItem,
+                        },
+                        |this| {
+                            this.visit_generics(generics);
+                            this.visit_ty(ty);
+
+                            // Only impose the restrictions of `ConstRibKind` for an
+                            // actual constant expression in a provided default.
+                            if let Some(expr) = expr {
+                                // We allow arbitrary const expressions inside of associated consts,
+                                // even if they are potentially not const evaluatable.
+                                //
+                                // Type parameters can already be used and as associated consts are
+                                // not used as part of the type system, this is far less surprising.
+                                this.resolve_const_body(expr, None);
+                            }
+                        },
+                    );
                 }
                 AssocItemKind::Fn(box Fn { generics, .. }) => {
                     walk_assoc_item(self, generics, LifetimeBinderKind::Function, item);
@@ -2876,36 +2890,42 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         use crate::ResolutionError::*;
         self.resolve_doc_links(&item.attrs, MaybeExported::ImplItem(trait_id.ok_or(&item.vis)));
         match &item.kind {
-            AssocItemKind::Const(box ast::ConstItem { ty, expr, .. }) => {
+            AssocItemKind::Const(box ast::ConstItem { generics, ty, expr, .. }) => {
                 debug!("resolve_implementation AssocItemKind::Const");
-                // If this is a trait impl, ensure the const
-                // exists in trait
-                self.check_trait_item(
-                    item.id,
-                    item.ident,
-                    &item.kind,
-                    ValueNS,
-                    item.span,
-                    seen_trait_items,
-                    |i, s, c| ConstNotMemberOfTrait(i, s, c),
-                );
 
-                self.visit_ty(ty);
-                if let Some(expr) = expr {
-                    // We allow arbitrary const expressions inside of associated consts,
-                    // even if they are potentially not const evaluatable.
-                    //
-                    // Type parameters can already be used and as associated consts are
-                    // not used as part of the type system, this is far less surprising.
-                    self.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Infer), |this| {
-                        this.with_constant_rib(
-                            IsRepeatExpr::No,
-                            ConstantHasGenerics::Yes,
-                            None,
-                            |this| this.visit_expr(expr),
-                        )
-                    });
-                }
+                self.with_generic_param_rib(
+                    &generics.params,
+                    RibKind::AssocItem,
+                    LifetimeRibKind::Generics {
+                        binder: item.id,
+                        span: generics.span,
+                        kind: LifetimeBinderKind::ConstItem,
+                    },
+                    |this| {
+                        // If this is a trait impl, ensure the const
+                        // exists in trait
+                        this.check_trait_item(
+                            item.id,
+                            item.ident,
+                            &item.kind,
+                            ValueNS,
+                            item.span,
+                            seen_trait_items,
+                            |i, s, c| ConstNotMemberOfTrait(i, s, c),
+                        );
+
+                        this.visit_generics(generics);
+                        this.visit_ty(ty);
+                        if let Some(expr) = expr {
+                            // We allow arbitrary const expressions inside of associated consts,
+                            // even if they are potentially not const evaluatable.
+                            //
+                            // Type parameters can already be used and as associated consts are
+                            // not used as part of the type system, this is far less surprising.
+                            this.resolve_const_body(expr, None);
+                        }
+                    },
+                );
             }
             AssocItemKind::Fn(box Fn { generics, .. }) => {
                 debug!("resolve_implementation AssocItemKind::Fn");
@@ -3061,6 +3081,14 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                 trait_item_span: binding.span,
             },
         );
+    }
+
+    fn resolve_const_body(&mut self, expr: &'ast Expr, item: Option<(Ident, ConstantItemKind)>) {
+        self.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Infer), |this| {
+            this.with_constant_rib(IsRepeatExpr::No, ConstantHasGenerics::Yes, item, |this| {
+                this.visit_expr(expr)
+            });
+        })
     }
 
     fn resolve_params(&mut self, params: &'ast [Param]) {
@@ -4448,6 +4476,7 @@ impl<'ast> Visitor<'ast> for LifetimeCountVisitor<'_, '_, '_> {
     fn visit_item(&mut self, item: &'ast Item) {
         match &item.kind {
             ItemKind::TyAlias(box TyAlias { ref generics, .. })
+            | ItemKind::Const(box ConstItem { ref generics, .. })
             | ItemKind::Fn(box Fn { ref generics, .. })
             | ItemKind::Enum(_, ref generics)
             | ItemKind::Struct(_, ref generics)
@@ -4467,7 +4496,6 @@ impl<'ast> Visitor<'ast> for LifetimeCountVisitor<'_, '_, '_> {
             ItemKind::Mod(..)
             | ItemKind::ForeignMod(..)
             | ItemKind::Static(..)
-            | ItemKind::Const(..)
             | ItemKind::Use(..)
             | ItemKind::ExternCrate(..)
             | ItemKind::MacroDef(..)

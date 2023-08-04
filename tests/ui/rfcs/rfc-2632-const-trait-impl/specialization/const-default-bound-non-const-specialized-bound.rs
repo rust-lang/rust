@@ -1,5 +1,7 @@
 // Tests that trait bounds on specializing trait impls must be `~const` if the
 // same bound is present on the default impl and is `~const` there.
+// check-pass
+// FIXME(effects) ^ should error
 
 #![feature(const_trait_impl)]
 #![feature(rustc_attrs)]
@@ -29,7 +31,7 @@ where
 
 impl<T> Bar for T
 where
-    T: Foo, //~ ERROR missing `~const` qualifier
+    T: Foo, //FIXME ~ ERROR missing `~const` qualifier
     T: Specialize,
 {
     fn bar() {}
@@ -47,7 +49,7 @@ where
     default fn baz() {}
 }
 
-impl<T> const Baz for T //~ ERROR conflicting implementations of trait `Baz`
+impl<T> const Baz for T //FIXME ~ ERROR conflicting implementations of trait `Baz`
 where
     T: Foo,
     T: Specialize,

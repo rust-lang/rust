@@ -57,7 +57,7 @@ impl<'tcx> fmt::Display for Discr<'tcx> {
                 let x = self.val;
                 // sign extend the raw representation to be an i128
                 let x = size.sign_extend(x) as i128;
-                write!(fmt, "{}", x)
+                write!(fmt, "{x}")
             }
             _ => write!(fmt, "{}", self.val),
         }

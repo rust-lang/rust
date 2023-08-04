@@ -801,9 +801,6 @@ LLVMRustOptimize(
       OptimizerLastEPCallbacks.push_back(
         [SanitizerOptions](ModulePassManager &MPM, OptimizationLevel Level) {
           auto CompileKernel = SanitizerOptions->SanitizeKernelAddress;
-#if LLVM_VERSION_LT(15, 0)
-          MPM.addPass(RequireAnalysisPass<ASanGlobalsMetadataAnalysis, Module>());
-#endif
           AddressSanitizerOptions opts = AddressSanitizerOptions{
             CompileKernel,
             SanitizerOptions->SanitizeAddressRecover

@@ -5,7 +5,7 @@ use crate::const_eval::CanAccessStatics;
 use crate::interpret::MPlaceTy;
 use crate::interpret::{
     intern_const_alloc_recursive, ConstValue, ImmTy, Immediate, InternKind, MemPlaceMeta,
-    MemoryKind, PlaceTy, Projectable, Scalar,
+    MemoryKind, Place, Projectable, Scalar,
 };
 use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt};
 use rustc_span::source_map::DUMMY_SP;
@@ -21,7 +21,7 @@ fn branches<'tcx>(
 ) -> ValTreeCreationResult<'tcx> {
     let place = match variant {
         Some(variant) => ecx.project_downcast(place, variant).unwrap(),
-        None => *place,
+        None => place.clone(),
     };
     let variant = variant.map(|variant| Some(ty::ValTree::Leaf(ScalarInt::from(variant.as_u32()))));
     debug!(?place, ?variant);
@@ -55,7 +55,7 @@ fn slice_branches<'tcx>(
     place: &MPlaceTy<'tcx>,
     num_nodes: &mut usize,
 ) -> ValTreeCreationResult<'tcx> {
-    let n = place.len(ecx).unwrap_or_else(|_| panic!("expected to use len of place {:?}", place));
+    let n = place.len(ecx).unwrap_or_else(|_| panic!("expected to use len of place {place:?}"));
 
     let mut elems = Vec::with_capacity(n as usize);
     for i in 0..n {
@@ -86,7 +86,7 @@ pub(crate) fn const_to_valtree_inner<'tcx>(
             Ok(ty::ValTree::zst())
         }
         ty::Bool | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Char => {
-            let Ok(val) = ecx.read_immediate(&place.into()) else {
+            let Ok(val) = ecx.read_immediate(place) else {
                 return Err(ValTreeCreationError::Other);
             };
             let val = val.to_scalar();
@@ -102,7 +102,7 @@ pub(crate) fn const_to_valtree_inner<'tcx>(
         ty::FnPtr(_) | ty::RawPtr(_) => Err(ValTreeCreationError::NonSupportedType),
 
         ty::Ref(_, _, _)  => {
-            let Ok(derefd_place)= ecx.deref_operand(&place.into()) else {
+            let Ok(derefd_place)= ecx.deref_pointer(place) else {
                 return Err(ValTreeCreationError::Other);
             };
             debug!(?derefd_place);
@@ -130,7 +130,7 @@ pub(crate) fn const_to_valtree_inner<'tcx>(
                 bug!("uninhabited types should have errored and never gotten converted to valtree")
             }
 
-            let Ok(variant) = ecx.read_discriminant(&place.into()) else {
+            let Ok(variant) = ecx.read_discriminant(place) else {
                 return Err(ValTreeCreationError::Other);
             };
             branches(ecx, place, def.variant(variant).fields.len(), def.is_enum().then_some(variant), num_nodes)
@@ -280,7 +280,7 @@ pub fn valtree_to_const_value<'tcx>(
             ),
         },
         ty::Ref(_, _, _) | ty::Tuple(_) | ty::Array(_, _) | ty::Adt(..) => {
-            let mut place = match ty.kind() {
+            let place = match ty.kind() {
                 ty::Ref(_, inner_ty, _) => {
                     // Need to create a place for the pointee to fill for Refs
                     create_pointee_place(&mut ecx, *inner_ty, valtree)
@@ -289,8 +289,8 @@ pub fn valtree_to_const_value<'tcx>(
             };
             debug!(?place);
 
-            valtree_into_mplace(&mut ecx, &mut place, valtree);
-            dump_place(&ecx, place.into());
+            valtree_into_mplace(&mut ecx, &place, valtree);
+            dump_place(&ecx, &place);
             intern_const_alloc_recursive(&mut ecx, InternKind::Constant, &place).unwrap();
 
             match ty.kind() {
@@ -329,7 +329,7 @@ pub fn valtree_to_const_value<'tcx>(
 #[instrument(skip(ecx), level = "debug")]
 fn valtree_into_mplace<'tcx>(
     ecx: &mut CompileTimeEvalContext<'tcx, 'tcx>,
-    place: &mut MPlaceTy<'tcx>,
+    place: &MPlaceTy<'tcx>,
     valtree: ty::ValTree<'tcx>,
 ) {
     // This will match on valtree and write the value(s) corresponding to the ValTree
@@ -345,14 +345,14 @@ fn valtree_into_mplace<'tcx>(
         ty::Bool | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Char => {
             let scalar_int = valtree.unwrap_leaf();
             debug!("writing trivial valtree {:?} to place {:?}", scalar_int, place);
-            ecx.write_immediate(Immediate::Scalar(scalar_int.into()), &place.into()).unwrap();
+            ecx.write_immediate(Immediate::Scalar(scalar_int.into()), place).unwrap();
         }
         ty::Ref(_, inner_ty, _) => {
-            let mut pointee_place = create_pointee_place(ecx, *inner_ty, valtree);
+            let pointee_place = create_pointee_place(ecx, *inner_ty, valtree);
             debug!(?pointee_place);
 
-            valtree_into_mplace(ecx, &mut pointee_place, valtree);
-            dump_place(ecx, pointee_place.into());
+            valtree_into_mplace(ecx, &pointee_place, valtree);
+            dump_place(ecx, &pointee_place);
             intern_const_alloc_recursive(ecx, InternKind::Constant, &pointee_place).unwrap();
 
             let imm = match inner_ty.kind() {
@@ -369,7 +369,7 @@ fn valtree_into_mplace<'tcx>(
             };
             debug!(?imm);
 
-            ecx.write_immediate(imm, &place.into()).unwrap();
+            ecx.write_immediate(imm, place).unwrap();
         }
         ty::Adt(_, _) | ty::Tuple(_) | ty::Array(_, _) | ty::Str | ty::Slice(_) => {
             let branches = valtree.unwrap_branch();
@@ -389,7 +389,7 @@ fn valtree_into_mplace<'tcx>(
                         Some(variant_idx),
                     )
                 }
-                _ => (*place, branches, None),
+                _ => (place.clone(), branches, None),
             };
             debug!(?place_adjusted, ?branches);
 
@@ -398,7 +398,7 @@ fn valtree_into_mplace<'tcx>(
             for (i, inner_valtree) in branches.iter().enumerate() {
                 debug!(?i, ?inner_valtree);
 
-                let mut place_inner = match ty.kind() {
+                let place_inner = match ty.kind() {
                     ty::Str | ty::Slice(_) => ecx.project_index(place, i as u64).unwrap(),
                     _ if !ty.is_sized(*ecx.tcx, ty::ParamEnv::empty())
                         && i == branches.len() - 1 =>
@@ -443,25 +443,25 @@ fn valtree_into_mplace<'tcx>(
                 };
 
                 debug!(?place_inner);
-                valtree_into_mplace(ecx, &mut place_inner, *inner_valtree);
-                dump_place(&ecx, place_inner.into());
+                valtree_into_mplace(ecx, &place_inner, *inner_valtree);
+                dump_place(&ecx, &place_inner);
             }
 
             debug!("dump of place_adjusted:");
-            dump_place(ecx, place_adjusted.into());
+            dump_place(ecx, &place_adjusted);
 
             if let Some(variant_idx) = variant_idx {
                 // don't forget filling the place with the discriminant of the enum
-                ecx.write_discriminant(variant_idx, &place.into()).unwrap();
+                ecx.write_discriminant(variant_idx, place).unwrap();
             }
 
             debug!("dump of place after writing discriminant:");
-            dump_place(ecx, place.into());
+            dump_place(ecx, place);
         }
         _ => bug!("shouldn't have created a ValTree for {:?}", ty),
     }
 }
 
-fn dump_place<'tcx>(ecx: &CompileTimeEvalContext<'tcx, 'tcx>, place: PlaceTy<'tcx>) {
-    trace!("{:?}", ecx.dump_place(*place));
+fn dump_place<'tcx>(ecx: &CompileTimeEvalContext<'tcx, 'tcx>, place: &MPlaceTy<'tcx>) {
+    trace!("{:?}", ecx.dump_place(Place::Ptr(**place)));
 }

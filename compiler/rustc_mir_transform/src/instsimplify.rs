@@ -57,7 +57,7 @@ struct InstSimplifyContext<'tcx, 'a> {
 impl<'tcx> InstSimplifyContext<'tcx, '_> {
     fn should_simplify(&self, source_info: &SourceInfo, rvalue: &Rvalue<'tcx>) -> bool {
         self.tcx.consider_optimizing(|| {
-            format!("InstSimplify - Rvalue: {:?} SourceInfo: {:?}", rvalue, source_info)
+            format!("InstSimplify - Rvalue: {rvalue:?} SourceInfo: {source_info:?}")
         })
     }
 

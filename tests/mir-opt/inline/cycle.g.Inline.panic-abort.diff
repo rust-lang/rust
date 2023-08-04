@@ -5,13 +5,10 @@
       let mut _0: ();
       let _1: ();
 +     let mut _2: fn() {main};
-+     let mut _5: ();
 +     scope 1 (inlined f::<fn() {main}>) {
 +         debug g => _2;
 +         let mut _3: &fn() {main};
 +         let _4: ();
-+         scope 2 (inlined <fn() {main} as Fn<()>>::call - shim(fn() {main})) {
-+         }
 +     }
   
       bb0: {
@@ -22,9 +19,7 @@
 +         StorageLive(_4);
 +         StorageLive(_3);
 +         _3 = &_2;
-+         StorageLive(_5);
-+         _5 = const ();
-+         _4 = move (*_3)() -> [return: bb2, unwind unreachable];
++         _4 = <fn() {main} as Fn<()>>::call(move _3, const ()) -> [return: bb2, unwind unreachable];
       }
   
       bb1: {
@@ -36,7 +31,6 @@
 +     }
 + 
 +     bb2: {
-+         StorageDead(_5);
 +         StorageDead(_3);
 +         drop(_2) -> [return: bb1, unwind unreachable];
       }

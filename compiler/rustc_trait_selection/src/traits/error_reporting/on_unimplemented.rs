@@ -170,7 +170,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
         if let Some(k) = obligation.cause.span.desugaring_kind() {
             flags.push((sym::from_desugaring, None));
-            flags.push((sym::from_desugaring, Some(format!("{:?}", k))));
+            flags.push((sym::from_desugaring, Some(format!("{k:?}"))));
         }
 
         if let ObligationCauseCode::MainFunctionType = obligation.cause.code() {
@@ -258,9 +258,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             if let ty::Array(aty, len) = self_ty.kind() {
                 flags.push((sym::_Self, Some("[]".to_string())));
                 let len = len.try_to_value().and_then(|v| v.try_to_target_usize(self.tcx));
-                flags.push((sym::_Self, Some(format!("[{}; _]", aty))));
+                flags.push((sym::_Self, Some(format!("[{aty}; _]"))));
                 if let Some(n) = len {
-                    flags.push((sym::_Self, Some(format!("[{}; {}]", aty, n))));
+                    flags.push((sym::_Self, Some(format!("[{aty}; {n}]"))));
                 }
                 if let Some(def) = aty.ty_adt_def() {
                     // We also want to be able to select the array's type's original
@@ -579,7 +579,7 @@ impl<'tcx> OnUnimplementedFormatString {
                                     "there is no parameter `{}` on {}",
                                     s,
                                     if trait_def_id == item_def_id {
-                                        format!("trait `{}`", trait_name)
+                                        format!("trait `{trait_name}`")
                                     } else {
                                         "impl".to_string()
                                     }

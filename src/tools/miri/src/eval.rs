@@ -246,7 +246,7 @@ impl MainThreadState {
                     this.machine.main_fn_ret_place.unwrap().ptr,
                     this.machine.layouts.isize,
                 );
-                let exit_code = this.read_target_isize(&ret_place.into())?;
+                let exit_code = this.read_target_isize(&ret_place)?;
                 // Need to call this ourselves since we are not going to return to the scheduler
                 // loop, and we want the main thread TLS to not show up as memory leaks.
                 this.terminate_active_thread()?;
@@ -321,7 +321,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
         let argvs_place = ecx.allocate(argvs_layout, MiriMemoryKind::Machine.into())?;
         for (idx, arg) in argvs.into_iter().enumerate() {
             let place = ecx.project_field(&argvs_place, idx)?;
-            ecx.write_immediate(arg, &place.into())?;
+            ecx.write_immediate(arg, &place)?;
         }
         ecx.mark_immutable(&argvs_place);
         // A pointer to that place is the 3rd argument for main.
@@ -330,7 +330,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
         {
             let argc_place =
                 ecx.allocate(ecx.machine.layouts.isize, MiriMemoryKind::Machine.into())?;
-            ecx.write_scalar(argc, &argc_place.into())?;
+            ecx.write_scalar(argc, &argc_place)?;
             ecx.mark_immutable(&argc_place);
             ecx.machine.argc = Some(*argc_place);
 
@@ -338,7 +338,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
                 ecx.layout_of(Ty::new_imm_ptr(tcx, tcx.types.unit))?,
                 MiriMemoryKind::Machine.into(),
             )?;
-            ecx.write_immediate(argv, &argv_place.into())?;
+            ecx.write_immediate(argv, &argv_place)?;
             ecx.mark_immutable(&argv_place);
             ecx.machine.argv = Some(*argv_place);
         }
@@ -355,7 +355,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
             // Store the UTF-16 string. We just allocated so we know the bounds are fine.
             for (idx, &c) in cmd_utf16.iter().enumerate() {
                 let place = ecx.project_field(&cmd_place, idx)?;
-                ecx.write_scalar(Scalar::from_u16(c), &place.into())?;
+                ecx.write_scalar(Scalar::from_u16(c), &place)?;
             }
             ecx.mark_immutable(&cmd_place);
         }

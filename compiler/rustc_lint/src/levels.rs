@@ -945,7 +945,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                             );
                         }
                     } else {
-                        panic!("renamed lint does not exist: {}", new_name);
+                        panic!("renamed lint does not exist: {new_name}");
                     }
                 }
             }

@@ -345,10 +345,7 @@ impl BasicCoverageBlockData {
         &mir_body[self.last_bb()].terminator()
     }
 
-    pub fn set_counter(
-        &mut self,
-        counter_kind: CoverageKind,
-    ) -> Result<ExpressionOperandId, Error> {
+    pub fn set_counter(&mut self, counter_kind: CoverageKind) -> Result<Operand, Error> {
         debug_assert!(
             // If the BCB has an edge counter (to be injected into a new `BasicBlock`), it can also
             // have an expression (to be injected into an existing `BasicBlock` represented by this
@@ -356,12 +353,11 @@ impl BasicCoverageBlockData {
             self.edge_from_bcbs.is_none() || counter_kind.is_expression(),
             "attempt to add a `Counter` to a BCB target with existing incoming edge counters"
         );
-        let operand = counter_kind.as_operand_id();
+        let operand = counter_kind.as_operand();
         if let Some(replaced) = self.counter_kind.replace(counter_kind) {
             Error::from_string(format!(
                 "attempt to set a BasicCoverageBlock coverage counter more than once; \
-                {:?} already had counter {:?}",
-                self, replaced,
+                {self:?} already had counter {replaced:?}",
             ))
         } else {
             Ok(operand)
@@ -382,27 +378,25 @@ impl BasicCoverageBlockData {
         &mut self,
         from_bcb: BasicCoverageBlock,
         counter_kind: CoverageKind,
-    ) -> Result<ExpressionOperandId, Error> {
+    ) -> Result<Operand, Error> {
         if level_enabled!(tracing::Level::DEBUG) {
             // If the BCB has an edge counter (to be injected into a new `BasicBlock`), it can also
             // have an expression (to be injected into an existing `BasicBlock` represented by this
             // `BasicCoverageBlock`).
             if self.counter_kind.as_ref().is_some_and(|c| !c.is_expression()) {
                 return Error::from_string(format!(
-                    "attempt to add an incoming edge counter from {:?} when the target BCB already \
-                    has a `Counter`",
-                    from_bcb
+                    "attempt to add an incoming edge counter from {from_bcb:?} when the target BCB already \
+                    has a `Counter`"
                 ));
             }
         }
-        let operand = counter_kind.as_operand_id();
+        let operand = counter_kind.as_operand();
         if let Some(replaced) =
             self.edge_from_bcbs.get_or_insert_default().insert(from_bcb, counter_kind)
         {
             Error::from_string(format!(
                 "attempt to set an edge counter more than once; from_bcb: \
-                {:?} already had counter {:?}",
-                from_bcb, replaced,
+                {from_bcb:?} already had counter {replaced:?}",
             ))
         } else {
             Ok(operand)
@@ -612,7 +606,7 @@ impl TraverseCoverageGraphWithLoops {
                             the {}",
                             successor_to_add,
                             if let Some(loop_header) = some_loop_header {
-                                format!("worklist for the loop headed by {:?}", loop_header)
+                                format!("worklist for the loop headed by {loop_header:?}")
                             } else {
                                 String::from("non-loop worklist")
                             },
@@ -623,7 +617,7 @@ impl TraverseCoverageGraphWithLoops {
                             "{:?} successor is non-branching. Defer it to the end of the {}",
                             successor_to_add,
                             if let Some(loop_header) = some_loop_header {
-                                format!("worklist for the loop headed by {:?}", loop_header)
+                                format!("worklist for the loop headed by {loop_header:?}")
                             } else {
                                 String::from("non-loop worklist")
                             },

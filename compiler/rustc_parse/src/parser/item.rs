@@ -1,20 +1,20 @@
-use crate::errors;
-
 use super::diagnostics::{dummy_arg, ConsumeClosingDelim};
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{AttrWrapper, FollowedByType, ForceCollect, Parser, PathStyle, TrailingToken};
+use crate::errors::{self, MacroExpandsToAdtField};
+use crate::fluent_generated as fluent;
 use ast::StaticItem;
 use rustc_ast::ast::*;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
 use rustc_ast::util::case::Case;
+use rustc_ast::MacCall;
 use rustc_ast::{self as ast, AttrVec, Attribute, DUMMY_NODE_ID};
 use rustc_ast::{Async, Const, Defaultness, IsAuto, Mutability, Unsafe, UseTree, UseTreeKind};
 use rustc_ast::{BindingAnnotation, Block, FnDecl, FnSig, Param, SelfKind};
 use rustc_ast::{EnumDef, FieldDef, Generics, TraitRef, Ty, TyKind, Variant, VariantData};
 use rustc_ast::{FnHeader, ForeignItem, Path, PathSegment, Visibility, VisibilityKind};
-use rustc_ast::{MacCall, MacDelimiter};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{
     struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed, IntoDiagnostic, PResult,
@@ -226,9 +226,9 @@ impl<'a> Parser<'a> {
         } else if self.is_static_global() {
             // STATIC ITEM
             self.bump(); // `static`
-            let m = self.parse_mutability();
-            let (ident, ty, expr) = self.parse_item_global(Some(m))?;
-            (ident, ItemKind::Static(Box::new(StaticItem { ty, mutability: m, expr })))
+            let mutability = self.parse_mutability();
+            let (ident, item) = self.parse_static_item(mutability)?;
+            (ident, ItemKind::Static(Box::new(item)))
         } else if let Const::Yes(const_span) = self.parse_constness(Case::Sensitive) {
             // CONST ITEM
             if self.token.is_keyword(kw::Impl) {
@@ -236,8 +236,16 @@ impl<'a> Parser<'a> {
                 self.recover_const_impl(const_span, attrs, def_())?
             } else {
                 self.recover_const_mut(const_span);
-                let (ident, ty, expr) = self.parse_item_global(None)?;
-                (ident, ItemKind::Const(Box::new(ConstItem { defaultness: def_(), ty, expr })))
+                let (ident, generics, ty, expr) = self.parse_const_item()?;
+                (
+                    ident,
+                    ItemKind::Const(Box::new(ConstItem {
+                        defaultness: def_(),
+                        generics,
+                        ty,
+                        expr,
+                    })),
+                )
             }
         } else if self.check_keyword(kw::Trait) || self.check_auto_or_unsafe_trait_item() {
             // TRAIT ITEM
@@ -878,6 +886,7 @@ impl<'a> Parser<'a> {
                             self.sess.emit_err(errors::AssociatedStaticItemNotAllowed { span });
                             AssocItemKind::Const(Box::new(ConstItem {
                                 defaultness: Defaultness::Final,
+                                generics: Generics::default(),
                                 ty,
                                 expr,
                             }))
@@ -892,7 +901,7 @@ impl<'a> Parser<'a> {
 
     /// Parses a `type` alias with the following grammar:
     /// ```ebnf
-    /// TypeAlias = "type" Ident Generics {":" GenericBounds}? {"=" Ty}? ";" ;
+    /// TypeAlias = "type" Ident Generics (":" GenericBounds)? WhereClause ("=" Ty)? WhereClause ";" ;
     /// ```
     /// The `"type"` has already been eaten.
     fn parse_type_alias(&mut self, defaultness: Defaultness) -> PResult<'a, ItemInfo> {
@@ -1220,33 +1229,132 @@ impl<'a> Parser<'a> {
         Ok(impl_info)
     }
 
-    /// Parse `["const" | ("static" "mut"?)] $ident ":" $ty (= $expr)?` with
-    /// `["const" | ("static" "mut"?)]` already parsed and stored in `m`.
+    /// Parse a static item with the prefix `"static" "mut"?` already parsed and stored in `mutability`.
     ///
-    /// When `m` is `"const"`, `$ident` may also be `"_"`.
-    fn parse_item_global(
-        &mut self,
-        m: Option<Mutability>,
-    ) -> PResult<'a, (Ident, P<Ty>, Option<P<ast::Expr>>)> {
-        let id = if m.is_none() { self.parse_ident_or_underscore() } else { self.parse_ident() }?;
+    /// ```ebnf
+    /// Static = "static" "mut"? $ident ":" $ty (= $expr)? ";" ;
+    /// ```
+    fn parse_static_item(&mut self, mutability: Mutability) -> PResult<'a, (Ident, StaticItem)> {
+        let ident = self.parse_ident()?;
 
-        // Parse the type of a `const` or `static mut?` item.
-        // That is, the `":" $ty` fragment.
+        if self.token.kind == TokenKind::Lt && self.may_recover() {
+            let generics = self.parse_generics()?;
+            self.sess.emit_err(errors::StaticWithGenerics { span: generics.span });
+        }
+
+        // Parse the type of a static item. That is, the `":" $ty` fragment.
+        // FIXME: This could maybe benefit from `.may_recover()`?
         let ty = match (self.eat(&token::Colon), self.check(&token::Eq) | self.check(&token::Semi))
         {
-            // If there wasn't a `:` or the colon was followed by a `=` or `;` recover a missing type.
             (true, false) => self.parse_ty()?,
-            (colon, _) => self.recover_missing_const_type(colon, m),
+            // If there wasn't a `:` or the colon was followed by a `=` or `;`, recover a missing type.
+            (colon, _) => self.recover_missing_global_item_type(colon, Some(mutability)),
         };
 
         let expr = if self.eat(&token::Eq) { Some(self.parse_expr()?) } else { None };
+
         self.expect_semi()?;
-        Ok((id, ty, expr))
+
+        Ok((ident, StaticItem { ty, mutability, expr }))
+    }
+
+    /// Parse a constant item with the prefix `"const"` already parsed.
+    ///
+    /// ```ebnf
+    /// Const = "const" ($ident | "_") Generics ":" $ty (= $expr)? WhereClause ";" ;
+    /// ```
+    fn parse_const_item(&mut self) -> PResult<'a, (Ident, Generics, P<Ty>, Option<P<ast::Expr>>)> {
+        let ident = self.parse_ident_or_underscore()?;
+
+        let mut generics = self.parse_generics()?;
+
+        // Check the span for emptiness instead of the list of parameters in order to correctly
+        // recognize and subsequently flag empty parameter lists (`<>`) as unstable.
+        if !generics.span.is_empty() {
+            self.sess.gated_spans.gate(sym::generic_const_items, generics.span);
+        }
+
+        // Parse the type of a constant item. That is, the `":" $ty` fragment.
+        // FIXME: This could maybe benefit from `.may_recover()`?
+        let ty = match (
+            self.eat(&token::Colon),
+            self.check(&token::Eq) | self.check(&token::Semi) | self.check_keyword(kw::Where),
+        ) {
+            (true, false) => self.parse_ty()?,
+            // If there wasn't a `:` or the colon was followed by a `=`, `;` or `where`, recover a missing type.
+            (colon, _) => self.recover_missing_global_item_type(colon, None),
+        };
+
+        // Proactively parse a where-clause to be able to provide a good error message in case we
+        // encounter the item body following it.
+        let before_where_clause =
+            if self.may_recover() { self.parse_where_clause()? } else { WhereClause::default() };
+
+        let expr = if self.eat(&token::Eq) { Some(self.parse_expr()?) } else { None };
+
+        let after_where_clause = self.parse_where_clause()?;
+
+        // Provide a nice error message if the user placed a where-clause before the item body.
+        // Users may be tempted to write such code if they are still used to the deprecated
+        // where-clause location on type aliases and associated types. See also #89122.
+        if before_where_clause.has_where_token && let Some(expr) = &expr {
+            self.sess.emit_err(errors::WhereClauseBeforeConstBody {
+                span: before_where_clause.span,
+                name: ident.span,
+                body: expr.span,
+                sugg: if !after_where_clause.has_where_token {
+                    self.sess.source_map().span_to_snippet(expr.span).ok().map(|body| {
+                        errors::WhereClauseBeforeConstBodySugg {
+                            left: before_where_clause.span.shrink_to_lo(),
+                            snippet: body,
+                            right: before_where_clause.span.shrink_to_hi().to(expr.span),
+                        }
+                    })
+                } else {
+                    // FIXME(generic_const_items): Provide a structured suggestion to merge the first
+                    // where-clause into the second one.
+                    None
+                },
+            });
+        }
+
+        // Merge the predicates of both where-clauses since either one can be relevant.
+        // If we didn't parse a body (which is valid for associated consts in traits) and we were
+        // allowed to recover, `before_where_clause` contains the predicates, otherwise they are
+        // in `after_where_clause`. Further, both of them might contain predicates iff two
+        // where-clauses were provided which is syntactically ill-formed but we want to recover from
+        // it and treat them as one large where-clause.
+        let mut predicates = before_where_clause.predicates;
+        predicates.extend(after_where_clause.predicates);
+        let where_clause = WhereClause {
+            has_where_token: before_where_clause.has_where_token
+                || after_where_clause.has_where_token,
+            predicates,
+            span: if after_where_clause.has_where_token {
+                after_where_clause.span
+            } else {
+                before_where_clause.span
+            },
+        };
+
+        if where_clause.has_where_token {
+            self.sess.gated_spans.gate(sym::generic_const_items, where_clause.span);
+        }
+
+        generics.where_clause = where_clause;
+
+        self.expect_semi()?;
+
+        Ok((ident, generics, ty, expr))
     }
 
     /// We were supposed to parse `":" $ty` but the `:` or the type was missing.
     /// This means that the type is missing.
-    fn recover_missing_const_type(&mut self, colon_present: bool, m: Option<Mutability>) -> P<Ty> {
+    fn recover_missing_global_item_type(
+        &mut self,
+        colon_present: bool,
+        m: Option<Mutability>,
+    ) -> P<Ty> {
         // Construct the error and stash it away with the hope
         // that typeck will later enrich the error with a type.
         let kind = match m {
@@ -1342,6 +1450,17 @@ impl<'a> Parser<'a> {
                 }
                 let ident = this.parse_field_ident("enum", vlo)?;
 
+                if this.token == token::Not {
+                    if let Err(mut err) = this.unexpected::<()>() {
+                        err.note(fluent::parse_macro_expands_to_enum_variant).emit();
+                    }
+
+                    this.bump();
+                    this.parse_delim_args()?;
+
+                    return Ok((None, TrailingToken::MaybeComma));
+                }
+
                 let struct_def = if this.check(&token::OpenDelim(Delimiter::Brace)) {
                     // Parse a struct variant.
                     let (fields, recovered) =
@@ -1369,7 +1488,7 @@ impl<'a> Parser<'a> {
 
                 Ok((Some(vr), TrailingToken::MaybeComma))
             },
-        ).map_err(|mut err|{
+        ).map_err(|mut err| {
             err.help("enum variants can be `Variant`, `Variant = <integer>`, `Variant(Type, ..., TypeN)` or `Variant { fields: Types }`");
             err
         })
@@ -1579,7 +1698,8 @@ impl<'a> Parser<'a> {
         self.collect_tokens_trailing_token(attrs, ForceCollect::No, |this, attrs| {
             let lo = this.token.span;
             let vis = this.parse_visibility(FollowedByType::No)?;
-            Ok((this.parse_single_struct_field(adt_ty, lo, vis, attrs)?, TrailingToken::None))
+            this.parse_single_struct_field(adt_ty, lo, vis, attrs)
+                .map(|field| (field, TrailingToken::None))
         })
     }
 
@@ -1713,8 +1833,8 @@ impl<'a> Parser<'a> {
                     "field names and their types are separated with `:`",
                     ":",
                     Applicability::MachineApplicable,
-                );
-                err.emit();
+                )
+                .emit();
             } else {
                 return Err(err);
             }
@@ -1731,6 +1851,23 @@ impl<'a> Parser<'a> {
         attrs: AttrVec,
     ) -> PResult<'a, FieldDef> {
         let name = self.parse_field_ident(adt_ty, lo)?;
+        // Parse the macro invocation and recover
+        if self.token.kind == token::Not {
+            if let Err(mut err) = self.unexpected::<FieldDef>() {
+                err.subdiagnostic(MacroExpandsToAdtField { adt_ty }).emit();
+                self.bump();
+                self.parse_delim_args()?;
+                return Ok(FieldDef {
+                    span: DUMMY_SP,
+                    ident: None,
+                    vis,
+                    id: DUMMY_NODE_ID,
+                    ty: self.mk_ty(DUMMY_SP, TyKind::Err),
+                    attrs,
+                    is_placeholder: false,
+                });
+            }
+        }
         self.expect_field_ty_separator()?;
         let ty = self.parse_ty()?;
         if self.token.kind == token::Colon && self.look_ahead(1, |tok| tok.kind != token::Colon) {
@@ -1860,7 +1997,7 @@ impl<'a> Parser<'a> {
             let arrow = TokenTree::token_alone(token::FatArrow, pspan.between(bspan)); // `=>`
             let tokens = TokenStream::new(vec![params, arrow, body]);
             let dspan = DelimSpan::from_pair(pspan.shrink_to_lo(), bspan.shrink_to_hi());
-            P(DelimArgs { dspan, delim: MacDelimiter::Brace, tokens })
+            P(DelimArgs { dspan, delim: Delimiter::Brace, tokens })
         } else {
             return self.unexpected();
         };

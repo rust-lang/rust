@@ -12,7 +12,6 @@ RUN yum upgrade -y && \
       automake \
       bzip2 \
       file \
-      cmake3 \
       gcc \
       gcc-c++ \
       git \
@@ -35,7 +34,7 @@ RUN yum upgrade -y && \
       zlib-devel.x86_64 \
       && yum clean all
 
-RUN mkdir -p /rustroot/bin && ln -s /usr/bin/cmake3 /rustroot/bin/cmake
+RUN mkdir -p /rustroot/bin
 
 ENV PATH=/rustroot/bin:$PATH
 ENV LD_LIBRARY_PATH=/rustroot/lib64:/rustroot/lib32:/rustroot/lib

@@ -1,14 +1,15 @@
-use crate::visitors::{for_each_expr, for_each_expr_with_closures, Descend};
+use crate::visitors::{for_each_expr, for_each_expr_with_closures, Descend, Visitable};
+use crate::{self as utils, get_enclosing_loop_or_multi_call_closure};
 use core::ops::ControlFlow;
+use hir::def::Res;
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{Expr, ExprKind, HirId, HirIdSet, Node};
+use rustc_hir::{self as hir, Expr, ExprKind, HirId, HirIdSet};
 use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty;
-use {crate as utils, rustc_hir as hir};
 
 /// Returns a set of mutated local variable IDs, or `None` if mutations could not be determined.
 pub fn mutated_variables<'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) -> Option<HirIdSet> {
@@ -127,7 +128,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for BindingUsageFinder<'a, 'tcx> {
     }
 
     fn visit_path(&mut self, path: &hir::Path<'tcx>, _: hir::HirId) {
-        if let hir::def::Res::Local(id) = path.res {
+        if let Res::Local(id) = path.res {
             if self.binding_ids.contains(&id) {
                 self.usage_found = true;
             }
@@ -153,6 +154,17 @@ pub fn contains_return_break_continue_macro(expression: &Expr<'_>) -> bool {
     .is_some()
 }
 
+pub fn local_used_in<'tcx>(cx: &LateContext<'tcx>, local_id: HirId, v: impl Visitable<'tcx>) -> bool {
+    for_each_expr_with_closures(cx, v, |e| {
+        if utils::path_to_local_id(e, local_id) {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
+    })
+    .is_some()
+}
+
 pub fn local_used_after_expr(cx: &LateContext<'_>, local_id: HirId, after: &Expr<'_>) -> bool {
     let Some(block) = utils::get_enclosing_block(cx, local_id) else {
         return false;
@@ -165,32 +177,21 @@ pub fn local_used_after_expr(cx: &LateContext<'_>, local_id: HirId, after: &Expr
     // let closure = || local;
     // closure();
     // closure();
-    let in_loop_or_closure = cx
-        .tcx
-        .hir()
-        .parent_iter(after.hir_id)
-        .take_while(|&(id, _)| id != block.hir_id)
-        .any(|(_, node)| {
-            matches!(
-                node,
-                Node::Expr(Expr {
-                    kind: ExprKind::Loop(..) | ExprKind::Closure { .. },
-                    ..
-                })
-            )
-        });
-    if in_loop_or_closure {
-        return true;
-    }
+    let loop_start = get_enclosing_loop_or_multi_call_closure(cx, after).map(|e| e.hir_id);
 
     let mut past_expr = false;
     for_each_expr_with_closures(cx, block, |e| {
-        if e.hir_id == after.hir_id {
+        if past_expr {
+            if utils::path_to_local_id(e, local_id) {
+                ControlFlow::Break(())
+            } else {
+                ControlFlow::Continue(Descend::Yes)
+            }
+        } else if e.hir_id == after.hir_id {
             past_expr = true;
             ControlFlow::Continue(Descend::No)
-        } else if past_expr && utils::path_to_local_id(e, local_id) {
-            ControlFlow::Break(())
         } else {
+            past_expr = Some(e.hir_id) == loop_start;
             ControlFlow::Continue(Descend::Yes)
         }
     })

@@ -24,7 +24,9 @@ use rustc_hir::def_id::{CrateNum, LocalDefId};
 use rustc_middle::middle::stability;
 use rustc_middle::ty::RegisteredTools;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::lint::builtin::{LEGACY_DERIVE_HELPERS, SOFT_UNSTABLE};
+use rustc_session::lint::builtin::{
+    LEGACY_DERIVE_HELPERS, SOFT_UNSTABLE, UNKNOWN_DIAGNOSTIC_ATTRIBUTES,
+};
 use rustc_session::lint::builtin::{UNUSED_MACROS, UNUSED_MACRO_RULES};
 use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_session::parse::feature_err;
@@ -140,9 +142,9 @@ pub(crate) fn registered_tools(tcx: TyCtxt<'_>, (): ()) -> RegisteredTools {
             }
         }
     }
-    // We implicitly add `rustfmt` and `clippy` to known tools,
+    // We implicitly add `rustfmt`, `clippy`, `diagnostic` to known tools,
     // but it's not an error to register them explicitly.
-    let predefined_tools = [sym::clippy, sym::rustfmt];
+    let predefined_tools = [sym::clippy, sym::rustfmt, sym::diagnostic];
     registered_tools.extend(predefined_tools.iter().cloned().map(Ident::with_dummy_span));
     registered_tools
 }
@@ -205,7 +207,7 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
             self.tcx
                 .sess
                 .diagnostic()
-                .bug(format!("built-in macro `{}` was already registered", name));
+                .bug(format!("built-in macro `{name}` was already registered"));
         }
     }
 
@@ -568,7 +570,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
 
             let mut err = self.tcx.sess.create_err(err);
-            err.span_label(path.span, format!("not {} {}", article, expected));
+            err.span_label(path.span, format!("not {article} {expected}"));
 
             err.emit();
 
@@ -593,6 +595,18 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 )
                 .emit();
             }
+        }
+
+        if res == Res::NonMacroAttr(NonMacroAttrKind::Tool)
+            && path.segments.len() >= 2
+            && path.segments[0].ident.name == sym::diagnostic
+        {
+            self.tcx.sess.parse_sess.buffer_lint(
+                UNKNOWN_DIAGNOSTIC_ATTRIBUTES,
+                path.segments[1].span(),
+                node_id,
+                "unknown diagnostic attribute",
+            );
         }
 
         Ok((ext, res))
@@ -892,7 +906,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             if macro_kind.is_some() && sub_namespace_match(macro_kind, Some(MacroKind::Attr)) {
                 self.tcx.sess.span_err(
                     ident.span,
-                    format!("name `{}` is reserved in attribute namespace", ident),
+                    format!("name `{ident}` is reserved in attribute namespace"),
                 );
             }
         }

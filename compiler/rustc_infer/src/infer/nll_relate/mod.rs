@@ -557,7 +557,7 @@ where
                 // Forbid inference variables in the RHS.
                 self.infcx.tcx.sess.delay_span_bug(
                     self.delegate.span(),
-                    format!("unexpected inference var {:?}", b,),
+                    format!("unexpected inference var {b:?}",),
                 );
                 Ok(a)
             }

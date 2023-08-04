@@ -60,28 +60,13 @@ use rustc_trait_selection::traits::ObligationCtxt;
 use rustc_trait_selection::traits::{self, ObligationCauseCode};
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
-    fn check_expr_eq_type(&self, expr: &'tcx hir::Expr<'tcx>, expected: Ty<'tcx>) {
-        let ty = self.check_expr_with_hint(expr, expected);
-        self.demand_eqtype(expr.span, expected, ty);
-    }
-
     pub fn check_expr_has_type_or_error(
         &self,
         expr: &'tcx hir::Expr<'tcx>,
-        expected: Ty<'tcx>,
-        extend_err: impl FnMut(&mut Diagnostic),
+        expected_ty: Ty<'tcx>,
+        extend_err: impl FnOnce(&mut Diagnostic),
     ) -> Ty<'tcx> {
-        self.check_expr_meets_expectation_or_error(expr, ExpectHasType(expected), extend_err)
-    }
-
-    fn check_expr_meets_expectation_or_error(
-        &self,
-        expr: &'tcx hir::Expr<'tcx>,
-        expected: Expectation<'tcx>,
-        mut extend_err: impl FnMut(&mut Diagnostic),
-    ) -> Ty<'tcx> {
-        let expected_ty = expected.to_option(&self).unwrap_or(self.tcx.types.bool);
-        let mut ty = self.check_expr_with_expectation(expr, expected);
+        let mut ty = self.check_expr_with_expectation(expr, ExpectHasType(expected_ty));
 
         // While we don't allow *arbitrary* coercions here, we *do* allow
         // coercions from ! to `expected`.
@@ -341,9 +326,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             ExprKind::Cast(e, t) => self.check_expr_cast(e, t, expr),
             ExprKind::Type(e, t) => {
-                let ty = self.to_ty_saving_user_provided_ty(&t);
-                self.check_expr_eq_type(&e, ty);
-                ty
+                let ascribed_ty = self.to_ty_saving_user_provided_ty(&t);
+                let ty = self.check_expr_with_hint(e, ascribed_ty);
+                self.demand_eqtype(e.span, ascribed_ty, ty);
+                ascribed_ty
             }
             ExprKind::If(cond, then_expr, opt_else_expr) => {
                 self.check_then_else(cond, then_expr, opt_else_expr, expr.span, expected)
@@ -666,7 +652,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     coerce.coerce_forced_unit(
                         self,
                         &cause,
-                        &mut |mut err| {
+                        |mut err| {
                             self.suggest_mismatched_types_on_tail(
                                 &mut err, expr, ty, e_ty, target_id,
                             );
@@ -762,7 +748,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 coercion.coerce_forced_unit(
                     self,
                     &cause,
-                    &mut |db| {
+                    |db| {
                         let span = fn_decl.output.span();
                         if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
                             db.span_label(
@@ -774,7 +760,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     true,
                 );
             } else {
-                coercion.coerce_forced_unit(self, &cause, &mut |_| (), true);
+                coercion.coerce_forced_unit(self, &cause, |_| (), true);
             }
         }
         self.tcx.types.never
@@ -1334,7 +1320,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 t_cast,
                 t.span,
                 expr.span,
-                self.param_env.constness(),
+                hir::Constness::NotConst,
             ) {
                 Ok(cast_check) => {
                     debug!(
@@ -1394,7 +1380,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let Some((
             _,
             hir::Node::Local(hir::Local { ty: Some(ty), .. })
-            | hir::Node::Item(hir::Item { kind: hir::ItemKind::Const(ty, _), .. }),
+            | hir::Node::Item(hir::Item { kind: hir::ItemKind::Const(ty, _, _), .. }),
         )) = parent_node
         else {
             return;
@@ -1428,7 +1414,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Create a new function context.
         let def_id = block.def_id;
-        let fcx = FnCtxt::new(self, self.param_env.with_const(), def_id);
+        let fcx = FnCtxt::new(self, self.param_env, def_id);
         crate::GatherLocalsVisitor::new(&fcx).visit_body(body);
 
         let ty = fcx.check_expr_with_expectation(&body.value, expected);
@@ -1890,7 +1876,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let mut truncated_fields_error = String::new();
         let remaining_fields_names = match &displayable_field_names[..] {
-            [field1] => format!("`{}`", field1),
+            [field1] => format!("`{field1}`"),
             [field1, field2] => format!("`{field1}` and `{field2}`"),
             [field1, field2, field3] => format!("`{field1}`, `{field2}` and `{field3}`"),
             _ => {
@@ -2117,16 +2103,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     );
                 }
                 _ => {
-                    err.span_label(variant_ident_span, format!("`{adt}` defined here", adt = ty));
+                    err.span_label(variant_ident_span, format!("`{ty}` defined here"));
                     err.span_label(field.ident.span, "field does not exist");
                     err.span_suggestion_verbose(
                         expr_span,
-                        format!(
-                            "`{adt}` is a tuple {kind_name}, use the appropriate syntax",
-                            adt = ty,
-                            kind_name = kind_name,
-                        ),
-                        format!("{adt}(/* fields */)", adt = ty),
+                        format!("`{ty}` is a tuple {kind_name}, use the appropriate syntax",),
+                        format!("{ty}(/* fields */)"),
                         Applicability::HasPlaceholders,
                     );
                 }
@@ -2243,7 +2225,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // dynamic limit, to never omit just one field
         let limit = if names.len() == 6 { 6 } else { 5 };
         let mut display =
-            names.iter().take(limit).map(|n| format!("`{}`", n)).collect::<Vec<_>>().join(", ");
+            names.iter().take(limit).map(|n| format!("`{n}`")).collect::<Vec<_>>().join(", ");
         if names.len() > limit {
             display = format!("{} ... and {} others", display, names.len() - limit);
         }
@@ -2992,7 +2974,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ty::Binder::dummy(ty::TraitPredicate {
                             trait_ref: impl_trait_ref,
                             polarity: ty::ImplPolarity::Positive,
-                            constness: ty::BoundConstness::NotConst,
                         }),
                         |derived| {
                             traits::ImplDerivedObligation(Box::new(

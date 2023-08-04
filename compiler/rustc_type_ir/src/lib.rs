@@ -6,6 +6,7 @@
 #![feature(unwrap_infallible)]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
+#![cfg_attr(not(bootstrap), allow(internal_features))]
 
 #[macro_use]
 extern crate bitflags;
@@ -408,7 +409,7 @@ pub fn debug_bound_var<T: std::fmt::Write>(
     var: impl std::fmt::Debug,
 ) -> Result<(), std::fmt::Error> {
     if debruijn == INNERMOST {
-        write!(fmt, "^{:?}", var)
+        write!(fmt, "^{var:?}")
     } else {
         write!(fmt, "^{}_{:?}", debruijn.index(), var)
     }

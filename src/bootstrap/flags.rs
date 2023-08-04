@@ -149,12 +149,9 @@ pub struct Flags {
     /// generate PGO profile with llvm built for rustc
     #[arg(global(true), long)]
     pub llvm_profile_generate: bool,
-    /// generate BOLT profile for LLVM build
+    /// Additional reproducible artifacts that should be added to the reproducible artifacts archive.
     #[arg(global(true), long)]
-    pub llvm_bolt_profile_generate: bool,
-    /// use BOLT profile for LLVM build
-    #[arg(global(true), value_hint = clap::ValueHint::FilePath, long, value_name = "PROFILE")]
-    pub llvm_bolt_profile_use: Option<String>,
+    pub reproducible_artifact: Vec<String>,
     #[arg(global(true))]
     /// paths for the subcommand
     pub paths: Vec<PathBuf>,
@@ -189,7 +186,7 @@ impl Flags {
             let build = Build::new(config);
             let paths = Builder::get_help(&build, subcommand);
             if let Some(s) = paths {
-                println!("{}", s);
+                println!("{s}");
             } else {
                 panic!("No paths available for subcommand `{}`", subcommand.as_str());
             }
@@ -366,7 +363,11 @@ pub enum Subcommand {
     /// Clean out build directories
     Clean {
         #[arg(long)]
+        /// Clean the entire build directory (not used by default)
         all: bool,
+        #[arg(long, value_name = "N")]
+        /// Clean a specific stage without touching other artifacts. By default, every stage is cleaned if this option is not used.
+        stage: Option<u32>,
     },
     /// Build distribution artifacts
     Dist,

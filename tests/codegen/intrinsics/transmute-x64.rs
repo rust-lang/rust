@@ -1,6 +1,5 @@
 // compile-flags: -O -C no-prepopulate-passes
 // only-x86_64 (it's using arch-specific types)
-// min-llvm-version: 15.0 # this test assumes `ptr`s
 
 #![crate_type = "lib"]
 

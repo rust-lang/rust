@@ -35,7 +35,7 @@ impl rustc_query_system::dep_graph::DepKind for DepKind {
                 if let Some(def_id) = node.extract_def_id(tcx) {
                     write!(f, "{}", tcx.def_path_debug_str(def_id))?;
                 } else if let Some(ref s) = tcx.dep_graph.dep_node_debug_str(*node) {
-                    write!(f, "{}", s)?;
+                    write!(f, "{s}")?;
                 } else {
                     write!(f, "{}", node.hash)?;
                 }

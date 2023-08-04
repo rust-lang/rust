@@ -53,7 +53,7 @@ enum DiagnosticOnEnum {
 #[derive(Diagnostic)]
 #[diag(no_crate_example, code = "E0123")]
 #[diag = "E0123"]
-//~^ ERROR expected parentheses: #[diag(...)]
+//~^ ERROR failed to resolve: maybe a missing crate `core`
 struct WrongStructAttrStyle {}
 
 #[derive(Diagnostic)]
@@ -644,7 +644,7 @@ struct MissingCodeInSuggestion {
 //~| ERROR cannot find attribute `multipart_suggestion` in this scope
 #[multipart_suggestion()]
 //~^ ERROR cannot find attribute `multipart_suggestion` in this scope
-//~| ERROR unexpected end of input, unexpected token in nested attribute, expected ident
+//~| ERROR `#[multipart_suggestion(...)]` is not a valid attribute
 struct MultipartSuggestion {
     #[multipart_suggestion(no_crate_suggestion)]
     //~^ ERROR `#[multipart_suggestion(...)]` is not a valid attribute
@@ -797,7 +797,7 @@ struct SuggestionsNoItem {
 struct SuggestionsInvalidItem {
     #[suggestion(code(foo))]
     //~^ ERROR `code(...)` must contain only string literals
-    //~| ERROR unexpected token
+    //~| ERROR failed to resolve: maybe a missing crate `core`
     sub: Span,
 }
 
@@ -805,7 +805,7 @@ struct SuggestionsInvalidItem {
 #[diag(no_crate_example)]
 struct SuggestionsInvalidLiteral {
     #[suggestion(code = 3)]
-    //~^ ERROR expected string literal
+    //~^ ERROR failed to resolve: maybe a missing crate `core`
     sub: Span,
 }
 

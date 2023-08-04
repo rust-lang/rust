@@ -1,7 +1,6 @@
 // compile-flags: -O
 // only-64bit (because we're using [ui]size)
 // ignore-debug (because the assertions get in the way)
-// min-llvm-version: 15.0 (because this is a relatively new instcombine)
 
 #![crate_type = "lib"]
 #![feature(slice_from_ptr_range)]

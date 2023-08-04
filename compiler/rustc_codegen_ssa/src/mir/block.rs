@@ -439,8 +439,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     ZeroSized => bug!("ZST return value shouldn't be in PassMode::Cast"),
                 };
                 let ty = bx.cast_backend_type(cast_ty);
-                let addr = bx.pointercast(llslot, bx.type_ptr_to(ty));
-                bx.load(ty, addr, self.fn_abi.ret.layout.align.abi)
+                bx.load(ty, llslot, self.fn_abi.ret.layout.align.abi)
             }
         };
         bx.ret(llval);
@@ -703,13 +702,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     with_no_trimmed_paths!({
                         if layout.abi.is_uninhabited() {
                             // Use this error even for the other intrinsics as it is more precise.
-                            format!("attempted to instantiate uninhabited type `{}`", ty)
+                            format!("attempted to instantiate uninhabited type `{ty}`")
                         } else if requirement == ValidityRequirement::Zero {
-                            format!("attempted to zero-initialize type `{}`, which is invalid", ty)
+                            format!("attempted to zero-initialize type `{ty}`, which is invalid")
                         } else {
                             format!(
-                                "attempted to leave type `{}` uninitialized, which is invalid",
-                                ty
+                                "attempted to leave type `{ty}` uninitialized, which is invalid"
                             )
                         }
                     })
@@ -853,9 +851,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             Some(intrinsic) => {
                 let dest = match ret_dest {
                     _ if fn_abi.ret.is_indirect() => llargs[0],
-                    ReturnDest::Nothing => {
-                        bx.const_undef(bx.type_ptr_to(bx.arg_memory_ty(&fn_abi.ret)))
-                    }
+                    ReturnDest::Nothing => bx.const_undef(bx.type_ptr()),
                     ReturnDest::IndirectOperand(dst, _) | ReturnDest::Store(dst) => dst.llval,
                     ReturnDest::DirectOperand(_) => {
                         bug!("Cannot use direct operand with an intrinsic call")
@@ -866,11 +862,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     .iter()
                     .enumerate()
                     .map(|(i, arg)| {
-                        // The indices passed to simd_shuffle* in the
+                        // The indices passed to simd_shuffle in the
                         // third argument must be constant. This is
                         // checked by const-qualification, which also
                         // promotes any complex rvalues to constants.
-                        if i == 2 && intrinsic.as_str().starts_with("simd_shuffle") {
+                        if i == 2 && intrinsic == sym::simd_shuffle {
                             if let mir::Operand::Constant(constant) = arg {
                                 let (llval, ty) = self.simd_shuffle_indices(&bx, constant);
                                 return OperandRef {
@@ -1045,10 +1041,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             assert_eq!(
                 fn_abi.args.len(),
                 mir_args + 1,
-                "#[track_caller] fn's must have 1 more argument in their ABI than in their MIR: {:?} {:?} {:?}",
-                instance,
-                fn_span,
-                fn_abi,
+                "#[track_caller] fn's must have 1 more argument in their ABI than in their MIR: {instance:?} {fn_span:?} {fn_abi:?}",
             );
             let location =
                 self.get_caller_location(bx, mir::SourceInfo { span: fn_span, ..source_info });
@@ -1428,8 +1421,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             // Have to load the argument, maybe while casting it.
             if let PassMode::Cast(ty, _) = &arg.mode {
                 let llty = bx.cast_backend_type(ty);
-                let addr = bx.pointercast(llval, bx.type_ptr_to(llty));
-                llval = bx.load(llty, addr, align.min(arg.layout.align.abi));
+                llval = bx.load(llty, llval, align.min(arg.layout.align.abi));
             } else {
                 // We can't use `PlaceRef::load` here because the argument
                 // may have a type we don't treat as immediate, but the ABI
@@ -1555,7 +1547,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     fn landing_pad_for_uncached(&mut self, bb: mir::BasicBlock) -> Bx::BasicBlock {
         let llbb = self.llbb(bb);
         if base::wants_new_eh_instructions(self.cx.sess()) {
-            let cleanup_bb = Bx::append_block(self.cx, self.llfn, &format!("funclet_{:?}", bb));
+            let cleanup_bb = Bx::append_block(self.cx, self.llfn, &format!("funclet_{bb:?}"));
             let mut cleanup_bx = Bx::build(self.cx, cleanup_bb);
             let funclet = cleanup_bx.cleanup_pad(None, &[]);
             cleanup_bx.br(llbb);
@@ -1634,7 +1626,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // represents that this is a catch-all block.
                 bx = Bx::build(self.cx, cp_llbb);
                 let null =
-                    bx.const_null(bx.type_i8p_ext(bx.cx().data_layout().instruction_address_space));
+                    bx.const_null(bx.type_ptr_ext(bx.cx().data_layout().instruction_address_space));
                 let sixty_four = bx.const_i32(64);
                 funclet = Some(bx.catch_pad(cs, &[null, sixty_four, null]));
             } else {
@@ -1675,7 +1667,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         match self.cached_llbbs[bb] {
             CachedLlbb::None => {
                 // FIXME(eddyb) only name the block if `fewer_names` is `false`.
-                let llbb = Bx::append_block(self.cx, self.llfn, &format!("{:?}", bb));
+                let llbb = Bx::append_block(self.cx, self.llfn, &format!("{bb:?}"));
                 self.cached_llbbs[bb] = CachedLlbb::Some(llbb);
                 Some(llbb)
             }

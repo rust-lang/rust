@@ -1,9 +1,10 @@
-// run-pass
+// FIXME run-pass
+// known-bug: #110395
 // revisions: stock precise
 #![feature(const_trait_impl)]
 #![feature(const_mut_refs)]
 #![feature(never_type)]
-#![cfg_attr(precise, feature(const_precise_live_drops))]
+// #![cfg_attr(precise, feature(const_precise_live_drops))]
 
 use std::marker::Destruct;
 
@@ -16,10 +17,12 @@ impl<'a> const Drop for S<'a> {
 }
 
 const fn a<T: ~const Destruct>(_: T) {}
+//FIXME ~^ ERROR destructor of
 
 const fn b() -> u8 {
     let mut c = 0;
     let _ = S(&mut c);
+    //FIXME ~^ ERROR destructor of
     a(S(&mut c));
     c
 }

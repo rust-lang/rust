@@ -117,8 +117,8 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             });
         }
 
-        // simd_shuffle32<T, U>(x: T, y: T, idx: [u32; 32]) -> U
-        _ if intrinsic.as_str().starts_with("simd_shuffle") => {
+        // simd_shuffle<T, I, U>(x: T, y: T, idx: I) -> U
+        sym::simd_shuffle => {
             let (x, y, idx) = match args {
                 [x, y, idx] => (x, y, idx),
                 _ => {
@@ -133,36 +133,26 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 return;
             }
 
-            // If this intrinsic is the older "simd_shuffleN" form, simply parse the integer.
-            // If there is no suffix, use the index array length.
-            let n: u16 = if intrinsic == sym::simd_shuffle {
-                // Make sure this is actually an array, since typeck only checks the length-suffixed
-                // version of this intrinsic.
-                let idx_ty = fx.monomorphize(idx.ty(fx.mir, fx.tcx));
-                match idx_ty.kind() {
-                    ty::Array(ty, len) if matches!(ty.kind(), ty::Uint(ty::UintTy::U32)) => len
-                        .try_eval_target_usize(fx.tcx, ty::ParamEnv::reveal_all())
-                        .unwrap_or_else(|| {
-                            span_bug!(span, "could not evaluate shuffle index array length")
-                        })
-                        .try_into()
-                        .unwrap(),
-                    _ => {
-                        fx.tcx.sess.span_err(
-                            span,
-                            format!(
-                                "simd_shuffle index must be an array of `u32`, got `{}`",
-                                idx_ty,
-                            ),
-                        );
-                        // Prevent verifier error
-                        fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
-                        return;
-                    }
+            // Make sure this is actually an array, since typeck only checks the length-suffixed
+            // version of this intrinsic.
+            let idx_ty = fx.monomorphize(idx.ty(fx.mir, fx.tcx));
+            let n: u16 = match idx_ty.kind() {
+                ty::Array(ty, len) if matches!(ty.kind(), ty::Uint(ty::UintTy::U32)) => len
+                    .try_eval_target_usize(fx.tcx, ty::ParamEnv::reveal_all())
+                    .unwrap_or_else(|| {
+                        span_bug!(span, "could not evaluate shuffle index array length")
+                    })
+                    .try_into()
+                    .unwrap(),
+                _ => {
+                    fx.tcx.sess.span_err(
+                        span,
+                        format!("simd_shuffle index must be an array of `u32`, got `{}`", idx_ty),
+                    );
+                    // Prevent verifier error
+                    fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
+                    return;
                 }
-            } else {
-                // FIXME remove this case
-                intrinsic.as_str()["simd_shuffle".len()..].parse().unwrap()
             };
 
             assert_eq!(x.layout(), y.layout());
@@ -179,7 +169,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             let indexes = {
                 use rustc_middle::mir::interpret::*;
                 let idx_const = crate::constant::mir_operand_get_const_val(fx, idx)
-                    .expect("simd_shuffle* idx not const");
+                    .expect("simd_shuffle idx not const");
 
                 let idx_bytes = match idx_const {
                     ConstValue::ByRef { alloc, offset } => {

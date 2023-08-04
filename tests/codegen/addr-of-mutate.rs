@@ -1,5 +1,4 @@
 // compile-flags: -C opt-level=3 -C no-prepopulate-passes
-// min-llvm-version: 15.0 (for opaque pointers)
 
 #![crate_type = "lib"]
 

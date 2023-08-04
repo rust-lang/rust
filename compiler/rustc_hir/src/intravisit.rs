@@ -467,9 +467,15 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) {
         ItemKind::Use(ref path, _) => {
             visitor.visit_use(path, item.hir_id());
         }
-        ItemKind::Static(ref typ, _, body) | ItemKind::Const(ref typ, body) => {
+        ItemKind::Static(ref typ, _, body) => {
             visitor.visit_id(item.hir_id());
             visitor.visit_ty(typ);
+            visitor.visit_nested_body(body);
+        }
+        ItemKind::Const(ref typ, ref generics, body) => {
+            visitor.visit_id(item.hir_id());
+            visitor.visit_ty(typ);
+            visitor.visit_generics(generics);
             visitor.visit_nested_body(body);
         }
         ItemKind::Fn(ref sig, ref generics, body_id) => {

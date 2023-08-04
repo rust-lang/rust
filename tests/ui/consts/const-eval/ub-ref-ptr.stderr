@@ -46,7 +46,7 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/ub-ref-ptr.rs:33:1
    |
 LL | const REF_AS_USIZE: usize = unsafe { mem::transmute(&0) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into integer
    |
    = help: this code performed an operation that depends on the underlying bytes representing a pointer
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
@@ -55,7 +55,7 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/ub-ref-ptr.rs:36:39
    |
 LL | const REF_AS_USIZE_SLICE: &[usize] = &[unsafe { mem::transmute(&0) }];
-   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
+   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into integer
    |
    = help: this code performed an operation that depends on the underlying bytes representing a pointer
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
@@ -70,7 +70,7 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/ub-ref-ptr.rs:39:86
    |
 LL | const REF_AS_USIZE_BOX_SLICE: Box<[usize]> = unsafe { mem::transmute::<&[usize], _>(&[mem::transmute(&0)]) };
-   |                                                                                      ^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
+   |                                                                                      ^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into integer
    |
    = help: this code performed an operation that depends on the underlying bytes representing a pointer
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported

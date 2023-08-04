@@ -72,6 +72,9 @@ lint_builtin_incomplete_features = the feature `{$name}` is incomplete and may n
     .note = see issue #{$n} <https://github.com/rust-lang/rust/issues/{$n}> for more information
     .help = consider using `min_{$name}` instead, which is more stable and complete
 
+lint_builtin_internal_features = the feature `{$name}` is internal to the compiler or standard library
+    .note = using it is strongly discouraged
+
 lint_builtin_keyword_idents = `{$kw}` is a keyword in the {$next} edition
     .suggestion = you can use a raw identifier to stay compatible
 
@@ -155,8 +158,6 @@ lint_builtin_unused_doc_comment = unused doc comment
 lint_builtin_while_true = denote infinite loops with `loop {"{"} ... {"}"}`
     .suggestion = use `loop`
 
-lint_cast_ref_to_mut = casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
-
 lint_check_name_deprecated = lint name `{$lint_name}` is deprecated and does not have an effect anymore. Use: {$new_name}
 
 lint_check_name_unknown = unknown lint: `{$lint_name}`
@@ -215,9 +216,6 @@ lint_expectation = this lint expectation is unfulfilled
     .note = the `unfulfilled_lint_expectations` lint can't be expected and will always produce this message
     .rationale = {$rationale}
 
-lint_fn_null_check = function pointers are not nullable, so checking them for null will always return false
-    .help = wrap the function pointer inside an `Option` and use `Option::is_none` to check for null pointer value
-
 lint_for_loops_over_fallibles =
     for loop over {$article} `{$ty}`. This is more readably written as an `if let` statement
     .suggestion = consider using `if let` to clear intent
@@ -266,8 +264,6 @@ lint_improper_ctypes_char_help = consider using `u32` or `libc::wchar_t` instead
 
 lint_improper_ctypes_char_reason = the `char` type has no C equivalent
 lint_improper_ctypes_dyn = trait objects have no C equivalent
-
-lint_improper_ctypes_enum_phantomdata = this enum contains a PhantomData field
 
 lint_improper_ctypes_enum_repr_help =
     consider adding a `#[repr(C)]`, `#[repr(transparent)]`, or integer `#[repr(...)]` attribute to this enum
@@ -321,6 +317,12 @@ lint_invalid_nan_comparisons_eq_ne = incorrect NaN comparison, NaN cannot be dir
     .suggestion = use `f32::is_nan()` or `f64::is_nan()` instead
 
 lint_invalid_nan_comparisons_lt_le_gt_ge = incorrect NaN comparison, NaN is not orderable
+
+lint_invalid_reference_casting_assign_to_ref = assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
+    .label = casting happend here
+
+lint_invalid_reference_casting_borrow_as_mut = casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
+    .label = casting happend here
 
 lint_lintpass_by_hand = implementing `LintPass` by hand
     .help = try using `declare_lint_pass!` or `impl_lint_pass!` instead
@@ -412,8 +414,8 @@ lint_non_upper_case_global = {$sort} `{$name}` should have an upper case name
     .label = should have an UPPER_CASE name
 
 lint_noop_method_call = call to `.{$method}()` on a reference in this situation does nothing
-    .label = unnecessary method call
-    .note = the type `{$receiver_ty}` which `{$method}` is being called on is the same as the type returned from `{$method}`, so the method call does not do anything and can be removed
+    .suggestion = remove this redundant call
+    .note = the type `{$orig_ty}` does not implement `{$trait_}`, so calling `{$method}` on `&{$orig_ty}` copies the reference, which does not do anything and can be removed
 
 lint_only_cast_u8_to_char = only `u8` can be cast into `char`
     .suggestion = use a `char` literal instead
@@ -451,6 +453,13 @@ lint_path_statement_drop = path statement drops value
     .suggestion = use `drop` to clarify the intent
 
 lint_path_statement_no_effect = path statement with no effect
+
+lint_ptr_null_checks_fn_ptr = function pointers are not nullable, so checking them for null will always return false
+    .help = wrap the function pointer inside an `Option` and use `Option::is_none` to check for null pointer value
+    .label = expression has type `{$orig_ty}`
+
+lint_ptr_null_checks_ref = references are not nullable, so checking them for null will always return false
+    .label = expression has type `{$orig_ty}`
 
 lint_query_instability = using `{$query}` can result in unstable query results
     .note = if you believe this case to be fine, allow this lint and add a comment explaining your rationale

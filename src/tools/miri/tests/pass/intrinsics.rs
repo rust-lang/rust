@@ -3,7 +3,7 @@
 //! Tests for various intrinsics that do not fit anywhere else.
 
 use std::intrinsics;
-use std::mem::{size_of, size_of_val, size_of_val_raw, discriminant};
+use std::mem::{discriminant, size_of, size_of_val, size_of_val_raw};
 
 struct Bomb;
 

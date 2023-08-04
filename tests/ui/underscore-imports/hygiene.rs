@@ -3,6 +3,7 @@
 // check-pass
 
 #![feature(decl_macro)]
+#![allow(noop_method_call)]
 
 mod x {
     pub use std::ops::Deref as _;

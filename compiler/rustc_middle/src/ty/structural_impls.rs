@@ -73,9 +73,9 @@ impl fmt::Debug for ty::BoundRegionKind {
             ty::BrAnon(span) => write!(f, "BrAnon({span:?})"),
             ty::BrNamed(did, name) => {
                 if did.is_crate_root() {
-                    write!(f, "BrNamed({})", name)
+                    write!(f, "BrNamed({name})")
                 } else {
-                    write!(f, "BrNamed({:?}, {})", did, name)
+                    write!(f, "BrNamed({did:?}, {name})")
                 }
             }
             ty::BrEnv => write!(f, "BrEnv"),
@@ -172,9 +172,7 @@ impl fmt::Debug for ty::ParamConst {
 
 impl<'tcx> fmt::Debug for ty::TraitPredicate<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if let ty::BoundConstness::ConstIfConst = self.constness {
-            write!(f, "~const ")?;
-        }
+        // FIXME(effects) printing?
         write!(f, "TraitPredicate({:?}, polarity:{:?})", self.trait_ref, self.polarity)
     }
 }
@@ -205,7 +203,7 @@ impl<'tcx> fmt::Debug for ty::ClauseKind<'tcx> {
             ty::ClauseKind::RegionOutlives(ref pair) => pair.fmt(f),
             ty::ClauseKind::TypeOutlives(ref pair) => pair.fmt(f),
             ty::ClauseKind::Projection(ref pair) => pair.fmt(f),
-            ty::ClauseKind::WellFormed(ref data) => write!(f, "WellFormed({:?})", data),
+            ty::ClauseKind::WellFormed(ref data) => write!(f, "WellFormed({data:?})"),
             ty::ClauseKind::ConstEvaluatable(ct) => {
                 write!(f, "ConstEvaluatable({ct:?})")
             }
@@ -220,12 +218,12 @@ impl<'tcx> fmt::Debug for ty::PredicateKind<'tcx> {
             ty::PredicateKind::Subtype(ref pair) => pair.fmt(f),
             ty::PredicateKind::Coerce(ref pair) => pair.fmt(f),
             ty::PredicateKind::ObjectSafe(trait_def_id) => {
-                write!(f, "ObjectSafe({:?})", trait_def_id)
+                write!(f, "ObjectSafe({trait_def_id:?})")
             }
             ty::PredicateKind::ClosureKind(closure_def_id, closure_args, kind) => {
-                write!(f, "ClosureKind({:?}, {:?}, {:?})", closure_def_id, closure_args, kind)
+                write!(f, "ClosureKind({closure_def_id:?}, {closure_args:?}, {kind:?})")
             }
-            ty::PredicateKind::ConstEquate(c1, c2) => write!(f, "ConstEquate({:?}, {:?})", c1, c2),
+            ty::PredicateKind::ConstEquate(c1, c2) => write!(f, "ConstEquate({c1:?}, {c2:?})"),
             ty::PredicateKind::Ambiguous => write!(f, "Ambiguous"),
             ty::PredicateKind::AliasRelate(t1, t2, dir) => {
                 write!(f, "AliasRelate({t1:?}, {dir:?}, {t2:?})")
@@ -470,10 +468,8 @@ TrivialTypeTraversalAndLiftImpls! {
     ::rustc_hir::Unsafety,
     ::rustc_target::asm::InlineAsmRegOrRegClass,
     ::rustc_target::spec::abi::Abi,
-    crate::mir::coverage::ExpressionOperandId,
-    crate::mir::coverage::CounterValueReference,
-    crate::mir::coverage::InjectedExpressionId,
-    crate::mir::coverage::InjectedExpressionIndex,
+    crate::mir::coverage::CounterId,
+    crate::mir::coverage::ExpressionId,
     crate::mir::coverage::MappedExpressionIndex,
     crate::mir::Local,
     crate::mir::Promoted,
@@ -602,7 +598,7 @@ impl<'a, 'tcx> Lift<'tcx> for ty::ParamEnv<'a> {
     type Lifted = ty::ParamEnv<'tcx>;
     fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
         tcx.lift(self.caller_bounds())
-            .map(|caller_bounds| ty::ParamEnv::new(caller_bounds, self.reveal(), self.constness()))
+            .map(|caller_bounds| ty::ParamEnv::new(caller_bounds, self.reveal()))
     }
 }
 

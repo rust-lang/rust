@@ -4,6 +4,7 @@
     unused,
     clippy::uninlined_format_args,
     clippy::needless_if,
+    clippy::redundant_guards,
     clippy::redundant_pattern_matching
 )]
 fn dummy() {}

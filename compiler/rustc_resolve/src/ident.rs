@@ -677,6 +677,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                         ident: orig_ident,
                                         b1: innermost_binding,
                                         b2: binding,
+                                        warning: false,
                                         misc1: misc(innermost_flags),
                                         misc2: misc(flags),
                                     });
@@ -905,6 +906,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     ident,
                     b1: binding,
                     b2: shadowed_glob,
+                    warning: false,
                     misc1: AmbiguityErrorMisc::None,
                     misc2: AmbiguityErrorMisc::None,
                 });
@@ -1443,12 +1445,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     let name_str = if name == kw::PathRoot {
                         "crate root".to_string()
                     } else {
-                        format!("`{}`", name)
+                        format!("`{name}`")
                     };
                     let label = if segment_idx == 1 && path[0].ident.name == kw::PathRoot {
-                        format!("global paths cannot start with {}", name_str)
+                        format!("global paths cannot start with {name_str}")
                     } else {
-                        format!("{} in paths can only be used in start position", name_str)
+                        format!("{name_str} in paths can only be used in start position")
                     };
                     (label, None)
                 });

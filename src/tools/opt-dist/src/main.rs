@@ -1,5 +1,7 @@
+use crate::bolt::{bolt_optimize, with_bolt_instrumented};
 use anyhow::Context;
 use log::LevelFilter;
+use utils::io;
 
 use crate::environment::{create_environment, Environment};
 use crate::exec::Bootstrap;
@@ -12,6 +14,7 @@ use crate::utils::{
     with_log_group,
 };
 
+mod bolt;
 mod environment;
 mod exec;
 mod metrics;
@@ -40,7 +43,17 @@ fn execute_pipeline(
         let rustc_profile_dir_root = env.opt_artifacts().join("rustc-pgo");
 
         stage.section("Build PGO instrumented rustc and LLVM", |section| {
-            Bootstrap::build(env).rustc_pgo_instrument(&rustc_profile_dir_root).run(section)
+            let mut builder = Bootstrap::build(env).rustc_pgo_instrument(&rustc_profile_dir_root);
+
+            if env.supports_shared_llvm() {
+                // This first LLVM that we build will be thrown away after this stage, and it
+                // doesn't really need LTO. Without LTO, it builds in ~1 minute thanks to sccache,
+                // with LTO it takes almost 10 minutes. It makes the followup Rustc PGO
+                // instrumented/optimized build a bit slower, but it seems to be worth it.
+                builder = builder.without_llvm_lto();
+            }
+
+            builder.run(section)
         })?;
 
         let profile = stage
@@ -89,19 +102,35 @@ fn execute_pipeline(
         // BOLT instrumentation is performed "on-the-fly" when the LLVM library is copied to the sysroot of rustc,
         // therefore the LLVM artifacts on disk are not "tainted" with BOLT instrumentation and they can be reused.
         timer.section("Stage 3 (LLVM BOLT)", |stage| {
-            stage.section("Build BOLT instrumented LLVM", |stage| {
+            stage.section("Build PGO optimized LLVM", |stage| {
                 Bootstrap::build(env)
-                    .llvm_bolt_instrument()
+                    .with_llvm_bolt_ldflags()
                     .llvm_pgo_optimize(&llvm_pgo_profile)
                     .avoid_rustc_rebuild()
                     .run(stage)
             })?;
 
-            let profile = stage.section("Gather profiles", |_| gather_llvm_bolt_profiles(env))?;
+            // Find the path to the `libLLVM.so` file
+            let llvm_lib = io::find_file_in_dir(
+                &env.build_artifacts().join("stage2").join("lib"),
+                "libLLVM",
+                ".so",
+            )?;
+
+            // Instrument it and gather profiles
+            let profile = with_bolt_instrumented(&llvm_lib, || {
+                stage.section("Gather profiles", |_| gather_llvm_bolt_profiles(env))
+            })?;
             print_free_disk_space()?;
 
-            // LLVM is not being cleared here, we want to reuse the previous PGO-optimized build
+            // Now optimize the library with BOLT. The `libLLVM-XXX.so` library is actually hard-linked
+            // from several places, and this specific path (`llvm_lib`) will *not* be packaged into
+            // the final dist build. However, when BOLT optimizes an artifact, it does so *in-place*,
+            // therefore it will actually optimize all the hard links, which means that the final
+            // packaged `libLLVM.so` file *will* be BOLT optimized.
+            bolt_optimize(&llvm_lib, &profile).context("Could not optimize LLVM with BOLT")?;
 
+            // LLVM is not being cleared here, we want to use the BOLT-optimized LLVM
             Ok(Some(profile))
         })?
     } else {
@@ -114,7 +143,7 @@ fn execute_pipeline(
         .avoid_rustc_rebuild();
 
     if let Some(llvm_bolt_profile) = llvm_bolt_profile {
-        dist = dist.llvm_bolt_optimize(&llvm_bolt_profile);
+        dist = dist.with_bolt_profile(llvm_bolt_profile);
     }
 
     // Final stage: Assemble the dist artifacts

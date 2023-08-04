@@ -634,7 +634,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     // Ensure the return place is aligned and dereferenceable, and protect it for
                     // in-place return value passing.
                     if let Either::Left(mplace) = destination.as_mplace_or_local() {
-                        self.check_mplace(mplace)?;
+                        self.check_mplace(&mplace)?;
                     } else {
                         // Nothing to do for locals, they are always properly allocated and aligned.
                     }
@@ -661,7 +661,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let receiver_place = loop {
                     match receiver.layout.ty.kind() {
                         ty::Ref(..) | ty::RawPtr(..) => {
-                            // We do *not* use `deref_operand` here: we don't want to conceptually
+                            // We do *not* use `deref_pointer` here: we don't want to conceptually
                             // create a place that must be dereferenceable, since the receiver might
                             // be a raw pointer and (for `*const dyn Trait`) we don't need to
                             // actually access memory to resolve this method.

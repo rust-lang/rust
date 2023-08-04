@@ -28,8 +28,8 @@ use crate::{
         BuiltinClashingExternSub, BuiltinConstNoMangle, BuiltinDeprecatedAttrLink,
         BuiltinDeprecatedAttrLinkSuggestion, BuiltinDeprecatedAttrUsed, BuiltinDerefNullptr,
         BuiltinEllipsisInclusiveRangePatternsLint, BuiltinExplicitOutlives,
-        BuiltinExplicitOutlivesSuggestion, BuiltinIncompleteFeatures,
-        BuiltinIncompleteFeaturesHelp, BuiltinIncompleteFeaturesNote, BuiltinKeywordIdents,
+        BuiltinExplicitOutlivesSuggestion, BuiltinFeatureIssueNote, BuiltinIncompleteFeatures,
+        BuiltinIncompleteFeaturesHelp, BuiltinInternalFeatures, BuiltinKeywordIdents,
         BuiltinMissingCopyImpl, BuiltinMissingDebugImpl, BuiltinMissingDoc,
         BuiltinMutablesTransmutes, BuiltinNoMangleGeneric, BuiltinNonShorthandFieldPatterns,
         BuiltinSpecialModuleNameUsed, BuiltinTrivialBounds, BuiltinTypeAliasGenericBounds,
@@ -1458,15 +1458,20 @@ impl TypeAliasBounds {
 
 impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &hir::Item<'_>) {
-        let hir::ItemKind::TyAlias(ty, type_alias_generics) = &item.kind else { return };
-        if cx.tcx.type_of(item.owner_id.def_id).skip_binder().has_opaque_types() {
-            // Bounds are respected for `type X = impl Trait` and `type X = (impl Trait, Y);`
+        let hir::ItemKind::TyAlias(hir_ty, type_alias_generics) = &item.kind else { return };
+
+        if cx.tcx.features().lazy_type_alias {
+            // Bounds of lazy type aliases are respected.
             return;
         }
-        if cx.tcx.type_of(item.owner_id).skip_binder().has_inherent_projections() {
-            // Bounds are respected for `type X = … Type::Inherent …`
+
+        let ty = cx.tcx.type_of(item.owner_id).skip_binder();
+        if ty.has_opaque_types() || ty.has_inherent_projections() {
+            // Bounds of type aliases that contain opaque types or inherent projections are respected.
+            // E.g: `type X = impl Trait;`, `type X = (impl Trait, Y);`, `type X = Type::Inherent;`.
             return;
         }
+
         // There must not be a where clause
         if type_alias_generics.predicates.is_empty() {
             return;
@@ -1491,7 +1496,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
         if !where_spans.is_empty() {
             let sub = (!suggested_changing_assoc_types).then(|| {
                 suggested_changing_assoc_types = true;
-                SuggestChangingAssocTypes { ty }
+                SuggestChangingAssocTypes { ty: hir_ty }
             });
             cx.emit_spanned_lint(
                 TYPE_ALIAS_BOUNDS,
@@ -1507,7 +1512,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
             let suggestion = BuiltinTypeAliasGenericBoundsSuggestion { suggestions: inline_sugg };
             let sub = (!suggested_changing_assoc_types).then(|| {
                 suggested_changing_assoc_types = true;
-                SuggestChangingAssocTypes { ty }
+                SuggestChangingAssocTypes { ty: hir_ty }
             });
             cx.emit_spanned_lint(
                 TYPE_ALIAS_BOUNDS,
@@ -1529,9 +1534,10 @@ declare_lint_pass!(
 impl<'tcx> LateLintPass<'tcx> for UnusedBrokenConst {
     fn check_item(&mut self, cx: &LateContext<'_>, it: &hir::Item<'_>) {
         match it.kind {
-            hir::ItemKind::Const(_, body_id) => {
+            hir::ItemKind::Const(_, _, body_id) => {
                 let def_id = cx.tcx.hir().body_owner_def_id(body_id).to_def_id();
                 // trigger the query once for all constants since that will already report the errors
+                // FIXME(generic_const_items): Does this work properly with generic const items?
                 cx.tcx.ensure().const_eval_poly(def_id);
             }
             hir::ItemKind::Static(_, _, body_id) => {
@@ -1716,7 +1722,7 @@ impl EarlyLintPass for EllipsisInclusiveRangePatterns {
                 let end = expr_to_string(&end);
                 let replace = match start {
                     Some(start) => format!("&({}..={})", expr_to_string(&start), end),
-                    None => format!("&(..={})", end),
+                    None => format!("&(..={end})"),
                 };
                 if join.edition() >= Edition::Edition2021 {
                     cx.sess().emit_err(BuiltinEllipsisInclusiveRangePatterns {
@@ -2295,12 +2301,36 @@ declare_lint! {
     "incomplete features that may function improperly in some or all cases"
 }
 
+declare_lint! {
+    /// The `internal_features` lint detects unstable features enabled with
+    /// the [`feature` attribute] that are internal to the compiler or standard
+    /// library.
+    ///
+    /// [`feature` attribute]: https://doc.rust-lang.org/nightly/unstable-book/
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![feature(rustc_attrs)]
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// These features are an implementation detail of the compiler and standard
+    /// library and are not supposed to be used in user code.
+    pub INTERNAL_FEATURES,
+    Deny,
+    "internal features are not supposed to be used"
+}
+
 declare_lint_pass!(
     /// Check for used feature gates in `INCOMPLETE_FEATURES` in `rustc_feature/src/active.rs`.
-    IncompleteFeatures => [INCOMPLETE_FEATURES]
+    IncompleteInternalFeatures => [INCOMPLETE_FEATURES, INTERNAL_FEATURES]
 );
 
-impl EarlyLintPass for IncompleteFeatures {
+impl EarlyLintPass for IncompleteInternalFeatures {
     fn check_crate(&mut self, cx: &EarlyContext<'_>, _: &ast::Crate) {
         let features = cx.sess().features_untracked();
         features
@@ -2308,17 +2338,26 @@ impl EarlyLintPass for IncompleteFeatures {
             .iter()
             .map(|(name, span, _)| (name, span))
             .chain(features.declared_lib_features.iter().map(|(name, span)| (name, span)))
-            .filter(|(&name, _)| features.incomplete(name))
+            .filter(|(&name, _)| features.incomplete(name) || features.internal(name))
             .for_each(|(&name, &span)| {
                 let note = rustc_feature::find_feature_issue(name, GateIssue::Language)
-                    .map(|n| BuiltinIncompleteFeaturesNote { n });
-                let help =
-                    HAS_MIN_FEATURES.contains(&name).then_some(BuiltinIncompleteFeaturesHelp);
-                cx.emit_spanned_lint(
-                    INCOMPLETE_FEATURES,
-                    span,
-                    BuiltinIncompleteFeatures { name, note, help },
-                );
+                    .map(|n| BuiltinFeatureIssueNote { n });
+
+                if features.incomplete(name) {
+                    let help =
+                        HAS_MIN_FEATURES.contains(&name).then_some(BuiltinIncompleteFeaturesHelp);
+                    cx.emit_spanned_lint(
+                        INCOMPLETE_FEATURES,
+                        span,
+                        BuiltinIncompleteFeatures { name, note, help },
+                    );
+                } else {
+                    cx.emit_spanned_lint(
+                        INTERNAL_FEATURES,
+                        span,
+                        BuiltinInternalFeatures { name, note },
+                    );
+                }
             });
     }
 }

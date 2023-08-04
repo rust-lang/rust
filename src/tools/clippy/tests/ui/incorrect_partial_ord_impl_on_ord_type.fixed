@@ -1,5 +1,4 @@
 //@run-rustfix
-#![allow(unused)]
 #![no_main]
 
 use std::cmp::Ordering;
@@ -110,5 +109,37 @@ impl PartialEq<u32> for F {
 impl PartialOrd<u32> for F {
     fn partial_cmp(&self, other: &u32) -> Option<Ordering> {
         todo!();
+    }
+}
+
+// #11178, do not lint
+
+#[derive(Eq, PartialEq)]
+struct G(u32);
+
+impl Ord for G {
+    fn cmp(&self, other: &Self) -> Ordering {
+        todo!();
+    }
+}
+
+impl PartialOrd for G {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(Self::cmp(self, other))
+    }
+}
+
+#[derive(Eq, PartialEq)]
+struct H(u32);
+
+impl Ord for H {
+    fn cmp(&self, other: &Self) -> Ordering {
+        todo!();
+    }
+}
+
+impl PartialOrd for H {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(Ord::cmp(self, other))
     }
 }

@@ -1,50 +1,28 @@
-error[E0277]: the trait bound `NonTrivialDrop: ~const A` is not satisfied
-  --> $DIR/const-drop-fail-2.rs:31:23
+error[E0015]: cannot call non-const fn `<T as A>::a` in constant functions
+  --> $DIR/const-drop-fail-2.rs:25:9
    |
-LL | const _: () = check::<ConstDropImplWithBounds<NonTrivialDrop>>(
-   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `~const A` is not implemented for `NonTrivialDrop`
+LL |         T::a();
+   |         ^^^^^^
    |
-note: the trait `A` is implemented for `NonTrivialDrop`, but that implementation is not `const`
-  --> $DIR/const-drop-fail-2.rs:31:23
-   |
-LL | const _: () = check::<ConstDropImplWithBounds<NonTrivialDrop>>(
-   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: required by a bound in `ConstDropImplWithBounds`
-  --> $DIR/const-drop-fail-2.rs:21:35
-   |
-LL | struct ConstDropImplWithBounds<T: ~const A>(PhantomData<T>);
-   |                                   ^^^^^^^^ required by this bound in `ConstDropImplWithBounds`
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
 
-error[E0277]: the trait bound `NonTrivialDrop: ~const A` is not satisfied
-  --> $DIR/const-drop-fail-2.rs:32:5
+error[E0493]: destructor of `T` cannot be evaluated at compile-time
+  --> $DIR/const-drop-fail-2.rs:29:36
    |
-LL |     ConstDropImplWithBounds(PhantomData)
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `~const A` is not implemented for `NonTrivialDrop`
-   |
-note: the trait `A` is implemented for `NonTrivialDrop`, but that implementation is not `const`
-  --> $DIR/const-drop-fail-2.rs:32:5
-   |
-LL |     ConstDropImplWithBounds(PhantomData)
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: required by a bound in `ConstDropImplWithBounds`
-  --> $DIR/const-drop-fail-2.rs:21:35
-   |
-LL | struct ConstDropImplWithBounds<T: ~const A>(PhantomData<T>);
-   |                                   ^^^^^^^^ required by this bound in `ConstDropImplWithBounds`
+LL | const fn check<T: ~const Destruct>(_: T) {}
+   |                                    ^      - value is dropped here
+   |                                    |
+   |                                    the destructor for this type cannot be evaluated in constant functions
 
-error[E0367]: `Drop` impl requires `T: ~const A` but the struct it is implemented for does not
-  --> $DIR/const-drop-fail-2.rs:37:9
+error[E0015]: cannot call non-const fn `<T as A>::a` in constant functions
+  --> $DIR/const-drop-fail-2.rs:39:9
    |
-LL | impl<T: ~const A> const Drop for ConstDropImplWithNonConstBounds<T> {
-   |         ^^^^^^^^
+LL |         T::a();
+   |         ^^^^^^
    |
-note: the implementor must specify the same requirement
-  --> $DIR/const-drop-fail-2.rs:35:1
-   |
-LL | struct ConstDropImplWithNonConstBounds<T: A>(PhantomData<T>);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
 
 error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0277, E0367.
-For more information about an error, try `rustc --explain E0277`.
+Some errors have detailed explanations: E0015, E0493.
+For more information about an error, try `rustc --explain E0015`.

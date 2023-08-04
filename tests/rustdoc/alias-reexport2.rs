@@ -3,6 +3,7 @@
 
 #![crate_name = "foo"]
 #![feature(lazy_type_alias)]
+#![allow(incomplete_features)]
 
 extern crate alias_reexport;
 

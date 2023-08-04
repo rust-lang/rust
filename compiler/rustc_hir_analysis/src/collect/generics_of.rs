@@ -209,6 +209,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                 | ItemKind::Struct(..)
                 | ItemKind::OpaqueTy(..)
                 | ItemKind::Union(..) => (None, Defaults::Allowed),
+                ItemKind::Const(..) => (None, Defaults::Deny),
                 _ => (None, Defaults::FutureCompatDisallowed),
             }
         }

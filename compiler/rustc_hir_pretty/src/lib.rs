@@ -420,12 +420,13 @@ impl<'a> State<'a> {
     fn print_associated_const(
         &mut self,
         ident: Ident,
+        generics: &hir::Generics<'_>,
         ty: &hir::Ty<'_>,
         default: Option<hir::BodyId>,
     ) {
-        self.head("");
         self.word_space("const");
         self.print_ident(ident);
+        self.print_generic_params(generics.params);
         self.word_space(":");
         self.print_type(ty);
         if let Some(expr) = default {
@@ -433,6 +434,7 @@ impl<'a> State<'a> {
             self.word_space("=");
             self.ann.nested(self, Nested::Body(expr));
         }
+        self.print_where_clause(generics);
         self.word(";")
     }
 
@@ -532,9 +534,10 @@ impl<'a> State<'a> {
                 self.word(";");
                 self.end(); // end the outer cbox
             }
-            hir::ItemKind::Const(ty, expr) => {
+            hir::ItemKind::Const(ty, generics, expr) => {
                 self.head("const");
                 self.print_ident(item.ident);
+                self.print_generic_params(generics.params);
                 self.word_space(":");
                 self.print_type(ty);
                 self.space();
@@ -542,6 +545,7 @@ impl<'a> State<'a> {
 
                 self.word_space("=");
                 self.ann.nested(self, Nested::Body(expr));
+                self.print_where_clause(generics);
                 self.word(";");
                 self.end(); // end the outer cbox
             }
@@ -836,7 +840,7 @@ impl<'a> State<'a> {
         self.print_outer_attributes(self.attrs(ti.hir_id()));
         match ti.kind {
             hir::TraitItemKind::Const(ty, default) => {
-                self.print_associated_const(ti.ident, ty, default);
+                self.print_associated_const(ti.ident, ti.generics, ty, default);
             }
             hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Required(arg_names)) => {
                 self.print_method_sig(ti.ident, sig, ti.generics, arg_names, None);
@@ -865,7 +869,7 @@ impl<'a> State<'a> {
 
         match ii.kind {
             hir::ImplItemKind::Const(ty, expr) => {
-                self.print_associated_const(ii.ident, ty, Some(expr));
+                self.print_associated_const(ii.ident, ii.generics, ty, Some(expr));
             }
             hir::ImplItemKind::Fn(ref sig, body) => {
                 self.head("");

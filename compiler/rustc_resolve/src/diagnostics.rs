@@ -5,10 +5,8 @@ use rustc_ast::{self as ast, Crate, ItemKind, ModKind, NodeId, Path, CRATE_NODE_
 use rustc_ast::{MetaItemKind, NestedMetaItem};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{
-    pluralize, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, MultiSpan,
-};
-use rustc_errors::{struct_span_err, SuggestionStyle};
+use rustc_errors::{pluralize, report_ambiguity_error, struct_span_err, SuggestionStyle};
+use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, MultiSpan};
 use rustc_feature::BUILTIN_ATTRIBUTES;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, CtorOf, DefKind, NonMacroAttrKind, PerNS};
@@ -17,8 +15,9 @@ use rustc_hir::PrimTy;
 use rustc_middle::bug;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::builtin::ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE;
+use rustc_session::lint::builtin::AMBIGUOUS_GLOB_IMPORTS;
 use rustc_session::lint::builtin::MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS;
-use rustc_session::lint::BuiltinLintDiagnostics;
+use rustc_session::lint::{AmbiguityErrorDiag, BuiltinLintDiagnostics};
 use rustc_session::Session;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
@@ -135,7 +134,23 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         for ambiguity_error in &self.ambiguity_errors {
-            self.report_ambiguity_error(ambiguity_error);
+            let diag = self.ambiguity_diagnostics(ambiguity_error);
+            if ambiguity_error.warning {
+                let NameBindingKind::Import { import, .. } = ambiguity_error.b1.0.kind else {
+                    unreachable!()
+                };
+                self.lint_buffer.buffer_lint_with_diagnostic(
+                    AMBIGUOUS_GLOB_IMPORTS,
+                    import.root_id,
+                    ambiguity_error.ident.span,
+                    diag.msg.to_string(),
+                    BuiltinLintDiagnostics::AmbiguousGlobImports { diag },
+                );
+            } else {
+                let mut err = struct_span_err!(self.tcx.sess, diag.span, E0659, "{}", &diag.msg);
+                report_ambiguity_error(&mut err, diag);
+                err.emit();
+            }
         }
 
         let mut reported_spans = FxHashSet::default();
@@ -228,7 +243,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             (TypeNS, _) => "type",
         };
 
-        let msg = format!("the name `{}` is defined multiple times", name);
+        let msg = format!("the name `{name}` is defined multiple times");
 
         let mut err = match (old_binding.is_extern_crate(), new_binding.is_extern_crate()) {
             (true, true) => struct_span_err!(self.tcx.sess, span, E0259, "{}", msg),
@@ -250,11 +265,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             container
         ));
 
-        err.span_label(span, format!("`{}` re{} here", name, new_participle));
+        err.span_label(span, format!("`{name}` re{new_participle} here"));
         if !old_binding.span.is_dummy() && old_binding.span != span {
             err.span_label(
                 self.tcx.sess.source_map().guess_head_span(old_binding.span),
-                format!("previous {} of the {} `{}` here", old_noun, old_kind, name),
+                format!("previous {old_noun} of the {old_kind} `{name}` here"),
             );
         }
 
@@ -343,15 +358,15 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         binding_span: Span,
     ) {
         let suggested_name = if name.as_str().chars().next().unwrap().is_uppercase() {
-            format!("Other{}", name)
+            format!("Other{name}")
         } else {
-            format!("other_{}", name)
+            format!("other_{name}")
         };
 
         let mut suggestion = None;
         match import.kind {
             ImportKind::Single { type_ns_only: true, .. } => {
-                suggestion = Some(format!("self as {}", suggested_name))
+                suggestion = Some(format!("self as {suggested_name}"))
             }
             ImportKind::Single { source, .. } => {
                 if let Some(pos) =
@@ -587,11 +602,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     let sugg_msg = "try using a local generic parameter instead";
                     let name = self.tcx.item_name(def_id);
                     let (span, snippet) = if span.is_empty() {
-                        let snippet = format!("<{}>", name);
+                        let snippet = format!("<{name}>");
                         (span, snippet)
                     } else {
                         let span = sm.span_through_char(span, '<').shrink_to_hi();
-                        let snippet = format!("{}, ", name);
+                        let snippet = format!("{name}, ");
                         (span, snippet)
                     };
                     // Suggest the modification to the user
@@ -652,7 +667,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     name,
                 );
                 for sp in target_sp {
-                    err.span_label(sp, format!("pattern doesn't bind `{}`", name));
+                    err.span_label(sp, format!("pattern doesn't bind `{name}`"));
                 }
                 for sp in origin_sp {
                     err.span_label(sp, "variable not in all patterns");
@@ -679,8 +694,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     if import_suggestions.is_empty() {
                         let help_msg = format!(
                             "if you meant to match on a variant or a `const` item, consider \
-                             making the path in the pattern qualified: `path::to::ModOrType::{}`",
-                            name,
+                             making the path in the pattern qualified: `path::to::ModOrType::{name}`",
                         );
                         err.span_help(span, help_msg);
                     }
@@ -938,8 +952,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 let mut err = self.tcx.sess.struct_span_err_with_code(
                     span,
                     format!(
-                        "item `{}` is an associated {}, which doesn't match its trait `{}`",
-                        name, kind, trait_path,
+                        "item `{name}` is an associated {kind}, which doesn't match its trait `{trait_path}`",
                     ),
                     code,
                 );
@@ -1412,10 +1425,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         "a function-like macro".to_string()
                     }
                     Res::Def(DefKind::Macro(MacroKind::Attr), _) | Res::NonMacroAttr(..) => {
-                        format!("an attribute: `#[{}]`", ident)
+                        format!("an attribute: `#[{ident}]`")
                     }
                     Res::Def(DefKind::Macro(MacroKind::Derive), _) => {
-                        format!("a derive macro: `#[derive({})]`", ident)
+                        format!("a derive macro: `#[derive({ident})]`")
                     }
                     Res::ToolMod => {
                         // Don't confuse the user with tool modules.
@@ -1436,7 +1449,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     if !import.span.is_dummy() {
                         err.span_note(
                             import.span,
-                            format!("`{}` is imported here, but it is {}", ident, desc),
+                            format!("`{ident}` is imported here, but it is {desc}"),
                         );
                         // Silence the 'unused import' warning we might get,
                         // since this diagnostic already covers that import.
@@ -1444,7 +1457,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         return;
                     }
                 }
-                err.note(format!("`{}` is in scope, but it is {}", ident, desc));
+                err.note(format!("`{ident}` is in scope, but it is {desc}"));
                 return;
             }
         }
@@ -1540,20 +1553,15 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
     }
 
-    fn report_ambiguity_error(&self, ambiguity_error: &AmbiguityError<'_>) {
-        let AmbiguityError { kind, ident, b1, b2, misc1, misc2 } = *ambiguity_error;
+    fn ambiguity_diagnostics(&self, ambiguity_error: &AmbiguityError<'_>) -> AmbiguityErrorDiag {
+        let AmbiguityError { kind, ident, b1, b2, misc1, misc2, .. } = *ambiguity_error;
         let (b1, b2, misc1, misc2, swapped) = if b2.span.is_dummy() && !b1.span.is_dummy() {
             // We have to print the span-less alternative first, otherwise formatting looks bad.
             (b2, b1, misc2, misc1, true)
         } else {
             (b1, b2, misc1, misc2, false)
         };
-
-        let mut err = struct_span_err!(self.tcx.sess, ident.span, E0659, "`{ident}` is ambiguous");
-        err.span_label(ident.span, "ambiguous name");
-        err.note(format!("ambiguous because of {}", kind.descr()));
-
-        let mut could_refer_to = |b: NameBinding<'_>, misc: AmbiguityErrorMisc, also: &str| {
+        let could_refer_to = |b: NameBinding<'_>, misc: AmbiguityErrorMisc, also: &str| {
             let what = self.binding_description(b, ident, misc == AmbiguityErrorMisc::FromPrelude);
             let note_msg = format!("`{ident}` could{also} refer to {what}");
 
@@ -1579,16 +1587,35 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 AmbiguityErrorMisc::FromPrelude | AmbiguityErrorMisc::None => {}
             }
 
-            err.span_note(b.span, note_msg);
-            for (i, help_msg) in help_msgs.iter().enumerate() {
-                let or = if i == 0 { "" } else { "or " };
-                err.help(format!("{}{}", or, help_msg));
-            }
+            (
+                b.span,
+                note_msg,
+                help_msgs
+                    .iter()
+                    .enumerate()
+                    .map(|(i, help_msg)| {
+                        let or = if i == 0 { "" } else { "or " };
+                        format!("{or}{help_msg}")
+                    })
+                    .collect::<Vec<_>>(),
+            )
         };
+        let (b1_span, b1_note_msg, b1_help_msgs) = could_refer_to(b1, misc1, "");
+        let (b2_span, b2_note_msg, b2_help_msgs) = could_refer_to(b2, misc2, " also");
 
-        could_refer_to(b1, misc1, "");
-        could_refer_to(b2, misc2, " also");
-        err.emit();
+        AmbiguityErrorDiag {
+            msg: format!("`{ident}` is ambiguous"),
+            span: ident.span,
+            label_span: ident.span,
+            label_msg: "ambiguous name".to_string(),
+            note_msg: format!("ambiguous because of {}", kind.descr()),
+            b1_span,
+            b1_note_msg,
+            b1_help_msgs,
+            b2_span,
+            b2_note_msg,
+            b2_help_msgs,
+        }
     }
 
     /// If the binding refers to a tuple struct constructor with fields,
@@ -1626,7 +1653,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let descr = get_descr(binding);
         let mut err =
             struct_span_err!(self.tcx.sess, ident.span, E0603, "{} `{}` is private", descr, ident);
-        err.span_label(ident.span, format!("private {}", descr));
+        err.span_label(ident.span, format!("private {descr}"));
 
         if let Some((this_res, outer_ident)) = outermost_res {
             let import_suggestions = self.lookup_import_candidates(
@@ -1811,7 +1838,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 _ => format!("`{parent}`"),
             };
 
-            let mut msg = format!("could not find `{}` in {}", ident, parent);
+            let mut msg = format!("could not find `{ident}` in {parent}");
             if ns == TypeNS || ns == ValueNS {
                 let ns_to_try = if ns == TypeNS { ValueNS } else { TypeNS };
                 let binding = if let Some(module) = module {
@@ -1926,12 +1953,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             let suggestion = match_span.map(|span| {
                 (
                     vec![(span, String::from(""))],
-                    format!("`{}` is defined here, but is not a type", ident),
+                    format!("`{ident}` is defined here, but is not a type"),
                     Applicability::MaybeIncorrect,
                 )
             });
 
-            (format!("use of undeclared type `{}`", ident), suggestion)
+            (format!("use of undeclared type `{ident}`"), suggestion)
         } else {
             let mut suggestion = None;
             if ident.name == sym::alloc {
@@ -1953,7 +1980,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     },
                 )
             });
-            (format!("use of undeclared crate or module `{}`", ident), suggestion)
+            (format!("use of undeclared crate or module `{ident}`"), suggestion)
         }
     }
 
@@ -2137,16 +2164,16 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             let module_name = crate_module.kind.name().unwrap();
             let import_snippet = match import.kind {
                 ImportKind::Single { source, target, .. } if source != target => {
-                    format!("{} as {}", source, target)
+                    format!("{source} as {target}")
                 }
-                _ => format!("{}", ident),
+                _ => format!("{ident}"),
             };
 
             let mut corrections: Vec<(Span, String)> = Vec::new();
             if !import.is_nested() {
                 // Assume this is the easy case of `use issue_59764::foo::makro;` and just remove
                 // intermediate segments.
-                corrections.push((import.span, format!("{}::{}", module_name, import_snippet)));
+                corrections.push((import.span, format!("{module_name}::{import_snippet}")));
             } else {
                 // Find the binding span (and any trailing commas and spaces).
                 //   ie. `use a::b::{c, d, e};`
@@ -2213,11 +2240,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         start_point,
                         if has_nested {
                             // In this case, `start_snippet` must equal '{'.
-                            format!("{}{}, ", start_snippet, import_snippet)
+                            format!("{start_snippet}{import_snippet}, ")
                         } else {
                             // In this case, add a `{`, then the moved import, then whatever
                             // was there before.
-                            format!("{{{}, {}", import_snippet, start_snippet)
+                            format!("{{{import_snippet}, {start_snippet}")
                         },
                     ));
 
@@ -2634,9 +2661,9 @@ fn show_candidates(
                 "item"
             };
             let plural_descr =
-                if descr.ends_with('s') { format!("{}es", descr) } else { format!("{}s", descr) };
+                if descr.ends_with('s') { format!("{descr}es") } else { format!("{descr}s") };
 
-            let mut msg = format!("{}these {} exist but are inaccessible", prefix, plural_descr);
+            let mut msg = format!("{prefix}these {plural_descr} exist but are inaccessible");
             let mut has_colon = false;
 
             let mut spans = Vec::new();
@@ -2657,7 +2684,7 @@ fn show_candidates(
 
             let mut multi_span = MultiSpan::from_spans(spans.iter().map(|(_, sp)| *sp).collect());
             for (name, span) in spans {
-                multi_span.push_span_label(span, format!("`{}`: not accessible", name));
+                multi_span.push_span_label(span, format!("`{name}`: not accessible"));
             }
 
             for note in inaccessible_path_strings.iter().flat_map(|cand| cand.3.as_ref()) {

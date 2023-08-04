@@ -71,12 +71,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let epoll_ctl_del = this.eval_libc_i32("EPOLL_CTL_DEL");
 
         if op == epoll_ctl_add || op == epoll_ctl_mod {
-            let event = this.deref_operand_as(event, this.libc_ty_layout("epoll_event"))?;
+            let event = this.deref_pointer_as(event, this.libc_ty_layout("epoll_event"))?;
 
             let events = this.project_field(&event, 0)?;
-            let events = this.read_scalar(&events.into())?.to_u32()?;
+            let events = this.read_scalar(&events)?.to_u32()?;
             let data = this.project_field(&event, 1)?;
-            let data = this.read_scalar(&data.into())?;
+            let data = this.read_scalar(&data)?;
             let event = EpollEvent { events, data };
 
             if let Some(epfd) = this.machine.file_handler.handles.get_mut(&epfd) {
@@ -240,7 +240,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let _domain = this.read_scalar(domain)?.to_i32()?;
         let _type_ = this.read_scalar(type_)?.to_i32()?;
         let _protocol = this.read_scalar(protocol)?.to_i32()?;
-        let sv = this.deref_operand(sv)?;
+        let sv = this.deref_pointer(sv)?;
 
         let fh = &mut this.machine.file_handler;
         let sv0 = fh.insert_fd(Box::new(SocketPair));
@@ -248,8 +248,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let sv1 = fh.insert_fd(Box::new(SocketPair));
         let sv1 = ScalarInt::try_from_int(sv1, sv.layout.size).unwrap();
 
-        this.write_scalar(sv0, &sv.into())?;
-        this.write_scalar(sv1, &sv.offset(sv.layout.size, sv.layout, this)?.into())?;
+        this.write_scalar(sv0, &sv)?;
+        this.write_scalar(sv1, &sv.offset(sv.layout.size, sv.layout, this)?)?;
 
         Ok(Scalar::from_i32(0))
     }

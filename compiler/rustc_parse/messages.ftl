@@ -23,6 +23,8 @@ parse_async_block_in_2015 = `async` blocks are only allowed in Rust 2018 or late
 parse_async_fn_in_2015 = `async fn` is not permitted in Rust 2015
     .label = to use `async fn`, switch to Rust 2018 or later
 
+parse_async_move_block_in_2015 = `async move` blocks are only allowed in Rust 2018 or later
+
 parse_async_move_order_incorrect = the order of `move` and `async` is incorrect
     .suggestion = try switching the order
 
@@ -270,6 +272,8 @@ parse_found_expr_would_be_stmt = expected expression, found `{$token}`
 parse_function_body_equals_expr = function body cannot be `= expression;`
     .suggestion = surround the expression with `{"{"}` and `{"}"}` instead of `=` and `;`
 
+parse_generic_args_in_pat_require_turbofish_syntax = generic args in patterns require the turbofish syntax
+
 parse_generic_parameters_without_angle_brackets = generic parameters without surrounding angle brackets
     .suggestion = surround the type parameters with angle brackets
 
@@ -456,6 +460,12 @@ parse_lone_slash = invalid trailing slash in literal
 parse_loop_else = `{$loop_kind}...else` loops are not supported
     .note = consider moving this `else` clause to a separate `if` statement and use a `bool` variable to control if it should run
     .loop_keyword = `else` is attached to this loop
+
+parse_macro_expands_to_adt_field = macros cannot expand to {$adt_ty} fields
+
+parse_macro_expands_to_enum_variant = macros cannot expand to enum variants
+
+parse_macro_expands_to_match_arm = macros cannot expand to match arms
 
 parse_macro_invocation_visibility = can't qualify macro invocation with `pub`
     .suggestion = remove the visibility
@@ -690,6 +700,8 @@ parse_single_colon_import_path = expected `::`, found `:`
 parse_single_colon_struct_type = found single colon in a struct field type path
     .suggestion = write a path separator here
 
+parse_static_with_generics = static items may not have generic parameters
+
 parse_struct_literal_body_without_path =
     struct literal body without path
     .suggestion = you might have forgotten to add the struct literal inside the block
@@ -722,6 +734,10 @@ parse_sugg_wrap_pattern_in_parens = wrap the pattern in parentheses
 
 parse_switch_mut_let_order =
     switch the order of `mut` and `let`
+
+parse_ternary_operator = Rust has no ternary operator
+    .help = use an `if-else` expression instead
+
 parse_tilde_const_lifetime = `~const` may only modify trait bounds, not lifetime bounds
 
 parse_tilde_is_not_unary_operator = `~` cannot be used as a unary operator
@@ -846,6 +862,12 @@ parse_use_let_not_var = write `let` instead of `var` to introduce a new variable
 parse_visibility_not_followed_by_item = visibility `{$vis}` is not followed by an item
     .label = the visibility
     .help = you likely meant to define an item, e.g., `{$vis} fn foo() {"{}"}`
+
+parse_where_clause_before_const_body = where clauses are not allowed before const item bodies
+    .label = unexpected where clause
+    .name_label = while parsing this const item
+    .body_label = the item body
+    .suggestion = move the body before the where clause
 
 parse_where_clause_before_tuple_struct_body = where clauses are not allowed before tuple struct bodies
     .label = unexpected where clause

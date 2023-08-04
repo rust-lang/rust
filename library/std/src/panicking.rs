@@ -266,7 +266,7 @@ pub fn panic_hook_with_disk_dump(info: &PanicInfo<'_>, path: Option<&crate::path
     let name = thread.as_ref().and_then(|t| t.name()).unwrap_or("<unnamed>");
 
     let write = |err: &mut dyn crate::io::Write, backtrace: Option<BacktraceStyle>| {
-        let _ = writeln!(err, "thread '{name}' panicked at '{msg}', {location}");
+        let _ = writeln!(err, "thread '{name}' panicked at {location}:\n{msg}");
 
         static FIRST_PANIC: AtomicBool = AtomicBool::new(true);
 
@@ -300,7 +300,7 @@ pub fn panic_hook_with_disk_dump(info: &PanicInfo<'_>, path: Option<&crate::path
     };
 
     if let Some(path) = path
-        && let Ok(mut out) = crate::fs::File::options().create(true).write(true).open(&path)
+        && let Ok(mut out) = crate::fs::File::options().create(true).append(true).open(&path)
     {
         write(&mut out, BacktraceStyle::full());
     }

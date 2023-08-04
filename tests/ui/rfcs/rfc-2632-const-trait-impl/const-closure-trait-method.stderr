@@ -1,0 +1,15 @@
+error[E0015]: cannot call non-const closure in constant functions
+  --> $DIR/const-closure-trait-method.rs:15:5
+   |
+LL |     x(())
+   |     ^^^^^
+   |
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+help: consider further restricting this bound
+   |
+LL | const fn need_const_closure<T: ~const FnOnce(()) -> i32 + ~const std::ops::FnOnce<((),)>>(x: T) -> i32 {
+   |                                                         ++++++++++++++++++++++++++++++++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0015`.

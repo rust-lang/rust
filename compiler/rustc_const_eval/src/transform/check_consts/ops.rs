@@ -310,8 +310,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
 
         if let Some(feature) = feature && ccx.tcx.sess.is_nightly_build() {
             err.help(format!(
-                "add `#![feature({})]` to the crate attributes to enable",
-                feature,
+                "add `#![feature({feature})]` to the crate attributes to enable",
             ));
         }
 
@@ -346,10 +345,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallUnstable {
             err.help("const-stable functions can only call other const-stable functions");
         } else if ccx.tcx.sess.is_nightly_build() {
             if let Some(feature) = feature {
-                err.help(format!(
-                    "add `#![feature({})]` to the crate attributes to enable",
-                    feature
-                ));
+                err.help(format!("add `#![feature({feature})]` to the crate attributes to enable"));
             }
         }
 

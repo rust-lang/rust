@@ -132,8 +132,7 @@ impl ClippyCmd {
         let clippy_args: String = self
             .clippy_args
             .iter()
-            .map(|arg| format!("{arg}__CLIPPY_HACKERY__"))
-            .collect();
+            .fold(String::new(), |s, arg| s + arg + "__CLIPPY_HACKERY__");
 
         // Currently, `CLIPPY_TERMINAL_WIDTH` is used only to format "unknown field" error messages.
         let terminal_width = termize::dimensions().map_or(0, |(w, _)| w);

@@ -96,6 +96,7 @@
 #![allow(explicit_outlives_requirements)]
 #![allow(incomplete_features)]
 #![warn(multiple_supertrait_upcastable)]
+#![cfg_attr(not(bootstrap), allow(internal_features))]
 //
 // Library features:
 // tidy-alphabetical-start
@@ -399,7 +400,8 @@ pub mod primitive;
     missing_debug_implementations,
     dead_code,
     unused_imports,
-    unsafe_op_in_unsafe_fn
+    unsafe_op_in_unsafe_fn,
+    ambiguous_glob_reexports
 )]
 #[allow(rustdoc::bare_urls)]
 // FIXME: This annotation should be moved into rust-lang/stdarch after clashing_extern_declarations is

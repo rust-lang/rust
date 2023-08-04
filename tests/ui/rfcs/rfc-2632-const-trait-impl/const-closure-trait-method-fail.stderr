@@ -1,16 +1,15 @@
-error[E0277]: the trait bound `(): ~const Tr` is not satisfied in `fn(()) -> i32 {<() as Tr>::a}`
-  --> $DIR/const-closure-trait-method-fail.rs:18:23
+error[E0015]: cannot call non-const closure in constant functions
+  --> $DIR/const-closure-trait-method-fail.rs:15:5
    |
-LL | const _: () = assert!(need_const_closure(Tr::a) == 42);
-   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^ within `fn(()) -> i32 {<() as Tr>::a}`, the trait `~const Tr` is not implemented for `()`
+LL |     x(())
+   |     ^^^^^
    |
-note: the trait `Tr` is implemented for `()`, but that implementation is not `const`
-  --> $DIR/const-closure-trait-method-fail.rs:18:23
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+help: consider further restricting this bound
    |
-LL | const _: () = assert!(need_const_closure(Tr::a) == 42);
-   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: required because it appears within the type `fn(()) -> i32 {<() as Tr>::a}`
+LL | const fn need_const_closure<T: ~const FnOnce(()) -> i32 + ~const std::ops::FnOnce<((),)>>(x: T) -> i32 {
+   |                                                         ++++++++++++++++++++++++++++++++
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0277`.
+For more information about this error, try `rustc --explain E0015`.

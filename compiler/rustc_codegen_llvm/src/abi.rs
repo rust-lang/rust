@@ -216,9 +216,7 @@ impl<'ll, 'tcx> ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
             // uses it for i16 -> {i8, i8}, but not for i24 -> {i8, i8, i8}.
             let can_store_through_cast_ptr = false;
             if can_store_through_cast_ptr {
-                let cast_ptr_llty = bx.type_ptr_to(cast.llvm_type(bx));
-                let cast_dst = bx.pointercast(dst.llval, cast_ptr_llty);
-                bx.store(val, cast_dst, self.layout.align.abi);
+                bx.store(val, dst.llval, self.layout.align.abi);
             } else {
                 // The actual return type is a struct, but the ABI
                 // adaptation code has cast it into some scalar type. The
@@ -336,7 +334,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
             PassMode::Direct(_) | PassMode::Pair(..) => self.ret.layout.immediate_llvm_type(cx),
             PassMode::Cast(cast, _) => cast.llvm_type(cx),
             PassMode::Indirect { .. } => {
-                llargument_tys.push(cx.type_ptr_to(self.ret.memory_ty(cx)));
+                llargument_tys.push(cx.type_ptr());
                 cx.type_void()
             }
         };
@@ -364,9 +362,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     }
                     cast.llvm_type(cx)
                 }
-                PassMode::Indirect { attrs: _, extra_attrs: None, on_stack: _ } => {
-                    cx.type_ptr_to(arg.memory_ty(cx))
-                }
+                PassMode::Indirect { attrs: _, extra_attrs: None, on_stack: _ } => cx.type_ptr(),
             };
             llargument_tys.push(llarg_ty);
         }
@@ -379,12 +375,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
     }
 
     fn ptr_to_llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type {
-        unsafe {
-            llvm::LLVMPointerType(
-                self.llvm_type(cx),
-                cx.data_layout().instruction_address_space.0 as c_uint,
-            )
-        }
+        cx.type_ptr_ext(cx.data_layout().instruction_address_space)
     }
 
     fn llvm_cconv(&self) -> llvm::CallConv {

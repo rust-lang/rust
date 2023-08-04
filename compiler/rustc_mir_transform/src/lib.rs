@@ -615,7 +615,7 @@ fn inner_optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> Body<'_> {
         // computes and caches its result.
         Some(hir::ConstContext::ConstFn) => tcx.ensure_with_value().mir_for_ctfe(did),
         None => {}
-        Some(other) => panic!("do not use `optimized_mir` for constants: {:?}", other),
+        Some(other) => panic!("do not use `optimized_mir` for constants: {other:?}"),
     }
     debug!("about to call mir_drops_elaborated...");
     let body = tcx.mir_drops_elaborated_and_const_checked(did).steal();

@@ -125,8 +125,8 @@ impl Debug for TrackedValue {
                 write!(f, "{}", tcx.hir().node_to_string(self.hir_id()))
             } else {
                 match self {
-                    Self::Variable(hir_id) => write!(f, "Variable({:?})", hir_id),
-                    Self::Temporary(hir_id) => write!(f, "Temporary({:?})", hir_id),
+                    Self::Variable(hir_id) => write!(f, "Variable({hir_id:?})"),
+                    Self::Temporary(hir_id) => write!(f, "Temporary({hir_id:?})"),
                 }
             }
         })

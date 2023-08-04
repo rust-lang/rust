@@ -2,7 +2,7 @@
 //! otherwise mutated. We also box items in the map. This means we can safely provide
 //! shared references into existing items in the `FxHashMap`, because they will not be dropped
 //! (from being removed) or moved (because they are boxed).
-//! The API is is completely tailored to what `memory.rs` needs. It is still in
+//! The API is completely tailored to what `memory.rs` needs. It is still in
 //! a separate file to minimize the amount of code that has to care about the unsafety.
 
 use std::borrow::Borrow;

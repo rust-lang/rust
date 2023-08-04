@@ -18,9 +18,7 @@ use std::process::Command;
 
 use object::read::archive::ArchiveFile;
 use object::BinaryFormat;
-use sha2::Digest;
 
-use crate::bolt::{instrument_with_bolt, optimize_with_bolt};
 use crate::builder::{Builder, Kind, RunConfig, ShouldRun, Step};
 use crate::cache::{Interned, INTERNER};
 use crate::channel;
@@ -162,7 +160,7 @@ fn find_files(files: &[&str], path: &[PathBuf]) -> Vec<PathBuf> {
         if let Some(file_path) = file_path {
             found.push(file_path);
         } else {
-            panic!("Could not find '{}' in {:?}", file, path);
+            panic!("Could not find '{file}' in {path:?}");
         }
     }
 
@@ -1480,8 +1478,8 @@ impl Step for Extended {
         rtf.push('}');
 
         fn filter(contents: &str, marker: &str) -> String {
-            let start = format!("tool-{}-start", marker);
-            let end = format!("tool-{}-end", marker);
+            let start = format!("tool-{marker}-start");
+            let end = format!("tool-{marker}-end");
             let mut lines = Vec::new();
             let mut omitted = false;
             for line in contents.lines() {
@@ -1862,7 +1860,7 @@ impl Step for Extended {
             builder.install(&etc.join("gfx/banner.bmp"), &exe, 0o644);
             builder.install(&etc.join("gfx/dialogbg.bmp"), &exe, 0o644);
 
-            builder.info(&format!("building `msi` installer with {:?}", light));
+            builder.info(&format!("building `msi` installer with {light:?}"));
             let filename = format!("{}-{}.msi", pkgname(builder, "rust"), target.triple);
             let mut cmd = Command::new(&light);
             cmd.arg("-nologo")
@@ -1941,19 +1939,7 @@ fn install_llvm_file(builder: &Builder<'_>, source: &Path, destination: &Path) {
         return;
     }
 
-    // After LLVM is built, we modify (instrument or optimize) the libLLVM.so library file.
-    // This is not done in-place so that the built LLVM files are not "tainted" with BOLT.
-    // We perform the instrumentation/optimization here, on the fly, just before they are being
-    // packaged into some destination directory.
-    let postprocessed = if builder.config.llvm_bolt_profile_generate {
-        builder.ensure(BoltInstrument::new(source.to_path_buf()))
-    } else if let Some(path) = &builder.config.llvm_bolt_profile_use {
-        builder.ensure(BoltOptimize::new(source.to_path_buf(), path.into()))
-    } else {
-        source.to_path_buf()
-    };
-
-    builder.install(&postprocessed, destination, 0o644);
+    builder.install(&source, destination, 0o644);
 }
 
 /// Maybe add LLVM object files to the given destination lib-dir. Allows either static or dynamic linking.
@@ -1996,7 +1982,7 @@ fn maybe_install_llvm(builder: &Builder<'_>, target: TargetSelection, dst_libdir
     {
         let mut cmd = Command::new(llvm_config);
         cmd.arg("--libfiles");
-        builder.verbose(&format!("running {:?}", cmd));
+        builder.verbose(&format!("running {cmd:?}"));
         let files = if builder.config.dry_run() { "".into() } else { output(&mut cmd) };
         let build_llvm_out = &builder.llvm_out(builder.config.build);
         let target_llvm_out = &builder.llvm_out(target);
@@ -2038,117 +2024,6 @@ pub fn maybe_install_llvm_runtime(builder: &Builder<'_>, target: TargetSelection
     }
 }
 
-/// Creates an output path to a BOLT-manipulated artifact for the given `file`.
-/// The hash of the file is used to make sure that we don't mix BOLT artifacts amongst different
-/// files with the same name.
-///
-/// We need to keep the file-name the same though, to make sure that copying the manipulated file
-/// to a directory will not change the final file path.
-fn create_bolt_output_path(builder: &Builder<'_>, file: &Path, hash: &str) -> PathBuf {
-    let directory = builder.out.join("bolt").join(hash);
-    t!(fs::create_dir_all(&directory));
-    directory.join(file.file_name().unwrap())
-}
-
-/// Instrument the provided file with BOLT.
-/// Returns a path to the instrumented artifact.
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub struct BoltInstrument {
-    file: PathBuf,
-    hash: String,
-}
-
-impl BoltInstrument {
-    fn new(file: PathBuf) -> Self {
-        let mut hasher = sha2::Sha256::new();
-        hasher.update(t!(fs::read(&file)));
-        let hash = hex::encode(hasher.finalize().as_slice());
-
-        Self { file, hash }
-    }
-}
-
-impl Step for BoltInstrument {
-    type Output = PathBuf;
-
-    const ONLY_HOSTS: bool = false;
-    const DEFAULT: bool = false;
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.never()
-    }
-
-    fn run(self, builder: &Builder<'_>) -> PathBuf {
-        if builder.build.config.dry_run() {
-            return self.file.clone();
-        }
-
-        if builder.build.config.llvm_from_ci {
-            println!("warning: trying to use BOLT with LLVM from CI, this will probably not work");
-        }
-
-        println!("Instrumenting {} with BOLT", self.file.display());
-
-        let output_path = create_bolt_output_path(builder, &self.file, &self.hash);
-        if !output_path.is_file() {
-            instrument_with_bolt(&self.file, &output_path);
-        }
-        output_path
-    }
-}
-
-/// Optimize the provided file with BOLT.
-/// Returns a path to the optimized artifact.
-///
-/// The hash is stored in the step to make sure that we don't optimize the same file
-/// twice (even under  different file paths).
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub struct BoltOptimize {
-    file: PathBuf,
-    profile: PathBuf,
-    hash: String,
-}
-
-impl BoltOptimize {
-    fn new(file: PathBuf, profile: PathBuf) -> Self {
-        let mut hasher = sha2::Sha256::new();
-        hasher.update(t!(fs::read(&file)));
-        hasher.update(t!(fs::read(&profile)));
-        let hash = hex::encode(hasher.finalize().as_slice());
-
-        Self { file, profile, hash }
-    }
-}
-
-impl Step for BoltOptimize {
-    type Output = PathBuf;
-
-    const ONLY_HOSTS: bool = false;
-    const DEFAULT: bool = false;
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.never()
-    }
-
-    fn run(self, builder: &Builder<'_>) -> PathBuf {
-        if builder.build.config.dry_run() {
-            return self.file.clone();
-        }
-
-        if builder.build.config.llvm_from_ci {
-            println!("warning: trying to use BOLT with LLVM from CI, this will probably not work");
-        }
-
-        println!("Optimizing {} with BOLT", self.file.display());
-
-        let output_path = create_bolt_output_path(builder, &self.file, &self.hash);
-        if !output_path.is_file() {
-            optimize_with_bolt(&self.file, &self.profile, &output_path);
-        }
-        output_path
-    }
-}
-
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct LlvmTools {
     pub target: TargetSelection,
@@ -2175,7 +2050,7 @@ impl Step for LlvmTools {
         /* run only if llvm-config isn't used */
         if let Some(config) = builder.config.target_config.get(&target) {
             if let Some(ref _s) = config.llvm_config {
-                builder.info(&format!("Skipping LlvmTools ({}): external LLVM", target));
+                builder.info(&format!("Skipping LlvmTools ({target}): external LLVM"));
                 return None;
             }
         }
@@ -2231,7 +2106,7 @@ impl Step for RustDev {
         /* run only if llvm-config isn't used */
         if let Some(config) = builder.config.target_config.get(&target) {
             if let Some(ref _s) = config.llvm_config {
-                builder.info(&format!("Skipping RustDev ({}): external LLVM", target));
+                builder.info(&format!("Skipping RustDev ({target}): external LLVM"));
                 return None;
             }
         }
@@ -2390,8 +2265,8 @@ impl Step for ReproducibleArtifacts {
             tarball.add_file(path, ".", 0o644);
             added_anything = true;
         }
-        if let Some(path) = builder.config.llvm_bolt_profile_use.as_ref() {
-            tarball.add_file(path, ".", 0o644);
+        for profile in &builder.config.reproducible_artifacts {
+            tarball.add_file(profile, ".", 0o644);
             added_anything = true;
         }
         if added_anything { Some(tarball.generate()) } else { None }

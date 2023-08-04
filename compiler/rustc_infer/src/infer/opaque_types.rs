@@ -448,7 +448,9 @@ where
             ty::Closure(_, ref args) => {
                 // Skip lifetime parameters of the enclosing item(s)
 
-                args.as_closure().tupled_upvars_ty().visit_with(self);
+                for upvar in args.as_closure().upvar_tys() {
+                    upvar.visit_with(self);
+                }
                 args.as_closure().sig_as_fn_ptr_ty().visit_with(self);
             }
 
@@ -456,7 +458,9 @@ where
                 // Skip lifetime parameters of the enclosing item(s)
                 // Also skip the witness type, because that has no free regions.
 
-                args.as_generator().tupled_upvars_ty().visit_with(self);
+                for upvar in args.as_generator().upvar_tys() {
+                    upvar.visit_with(self);
+                }
                 args.as_generator().return_ty().visit_with(self);
                 args.as_generator().yield_ty().visit_with(self);
                 args.as_generator().resume_ty().visit_with(self);
@@ -615,13 +619,6 @@ impl<'tcx> InferCtxt<'tcx> {
                     // Replace all other mentions of the same opaque type with the hidden type,
                     // as the bounds must hold on the hidden type after all.
                     ty::Alias(ty::Opaque, ty::AliasTy { def_id: def_id2, args: args2, .. })
-                        if def_id == def_id2 && args == args2 =>
-                    {
-                        hidden_ty
-                    }
-                    // FIXME(RPITIT): This can go away when we move to associated types
-                    // FIXME(inherent_associated_types): Extend this to support `ty::Inherent`, too.
-                    ty::Alias(ty::Projection, ty::AliasTy { def_id: def_id2, args: args2, .. })
                         if def_id == def_id2 && args == args2 =>
                     {
                         hidden_ty

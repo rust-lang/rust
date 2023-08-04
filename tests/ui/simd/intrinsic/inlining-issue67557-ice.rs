@@ -6,7 +6,7 @@
 #![feature(platform_intrinsics, repr_simd)]
 
 extern "platform-intrinsic" {
-    fn simd_shuffle2<T, U>(x: T, y: T, idx: [u32; 2]) -> U;
+    fn simd_shuffle<T, I, U>(x: T, y: T, idx: I) -> U;
 }
 
 #[repr(simd)]
@@ -22,5 +22,5 @@ fn main() {
 #[inline(always)]
 unsafe fn inline_me() -> Simd2 {
     const IDX: [u32; 2] = [0, 3];
-    simd_shuffle2(Simd2(10, 11), Simd2(12, 13), IDX)
+    simd_shuffle(Simd2(10, 11), Simd2(12, 13), IDX)
 }

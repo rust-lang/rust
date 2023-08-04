@@ -319,7 +319,7 @@ impl StepDescription {
     fn is_excluded(&self, builder: &Builder<'_>, pathset: &PathSet) -> bool {
         if builder.config.exclude.iter().any(|e| pathset.has(&e, builder.kind)) {
             if !matches!(builder.config.dry_run, DryRun::SelfCheck) {
-                println!("Skipping {:?} because it is excluded", pathset);
+                println!("Skipping {pathset:?} because it is excluded");
             }
             return true;
         }
@@ -473,8 +473,7 @@ impl<'a> ShouldRun<'a> {
         // `compiler` and `library` folders respectively.
         assert!(
             self.kind == Kind::Setup || !self.builder.src.join(alias).exists(),
-            "use `builder.path()` for real paths: {}",
-            alias
+            "use `builder.path()` for real paths: {alias}"
         );
         self.paths.insert(PathSet::Set(
             std::iter::once(TaskPath { path: alias.into(), kind: Some(self.kind) }).collect(),
@@ -1283,7 +1282,7 @@ impl<'a> Builder<'a> {
                         out_dir.join(target.triple).join("doc")
                     }
                 }
-                _ => panic!("doc mode {:?} not expected", mode),
+                _ => panic!("doc mode {mode:?} not expected"),
             };
             let rustdoc = self.rustdoc(compiler);
             self.clear_if_dirty(&my_out, &rustdoc);
@@ -1637,15 +1636,15 @@ impl<'a> Builder<'a> {
                 // so. Note that this is definitely a hack, and we should likely
                 // flesh out rpath support more fully in the future.
                 rustflags.arg("-Zosx-rpath-install-name");
-                Some(format!("-Wl,-rpath,@loader_path/../{}", libdir))
+                Some(format!("-Wl,-rpath,@loader_path/../{libdir}"))
             } else if !target.contains("windows") && !target.contains("aix") {
                 rustflags.arg("-Clink-args=-Wl,-z,origin");
-                Some(format!("-Wl,-rpath,$ORIGIN/../{}", libdir))
+                Some(format!("-Wl,-rpath,$ORIGIN/../{libdir}"))
             } else {
                 None
             };
             if let Some(rpath) = rpath {
-                rustflags.arg(&format!("-Clink-args={}", rpath));
+                rustflags.arg(&format!("-Clink-args={rpath}"));
             }
         }
 
@@ -1659,7 +1658,7 @@ impl<'a> Builder<'a> {
 
         if let Some(target_linker) = self.linker(target) {
             let target = crate::envify(&target.triple);
-            cargo.env(&format!("CARGO_TARGET_{}_LINKER", target), target_linker);
+            cargo.env(&format!("CARGO_TARGET_{target}_LINKER"), target_linker);
         }
         if self.is_fuse_ld_lld(target) {
             rustflags.arg("-Clink-args=-fuse-ld=lld");
@@ -1895,24 +1894,24 @@ impl<'a> Builder<'a> {
             };
             let triple_underscored = target.triple.replace("-", "_");
             let cc = ccacheify(&self.cc(target));
-            cargo.env(format!("CC_{}", triple_underscored), &cc);
+            cargo.env(format!("CC_{triple_underscored}"), &cc);
 
             let cflags = self.cflags(target, GitRepo::Rustc, CLang::C).join(" ");
-            cargo.env(format!("CFLAGS_{}", triple_underscored), &cflags);
+            cargo.env(format!("CFLAGS_{triple_underscored}"), &cflags);
 
             if let Some(ar) = self.ar(target) {
                 let ranlib = format!("{} s", ar.display());
                 cargo
-                    .env(format!("AR_{}", triple_underscored), ar)
-                    .env(format!("RANLIB_{}", triple_underscored), ranlib);
+                    .env(format!("AR_{triple_underscored}"), ar)
+                    .env(format!("RANLIB_{triple_underscored}"), ranlib);
             }
 
             if let Ok(cxx) = self.cxx(target) {
                 let cxx = ccacheify(&cxx);
                 let cxxflags = self.cflags(target, GitRepo::Rustc, CLang::Cxx).join(" ");
                 cargo
-                    .env(format!("CXX_{}", triple_underscored), &cxx)
-                    .env(format!("CXXFLAGS_{}", triple_underscored), cxxflags);
+                    .env(format!("CXX_{triple_underscored}"), &cxx)
+                    .env(format!("CXXFLAGS_{triple_underscored}"), cxxflags);
             }
         }
 
@@ -2025,7 +2024,7 @@ impl<'a> Builder<'a> {
             if let Some(limit) = limit {
                 if stage == 0 || self.config.default_codegen_backend().unwrap_or_default() == "llvm"
                 {
-                    rustflags.arg(&format!("-Cllvm-args=-import-instr-limit={}", limit));
+                    rustflags.arg(&format!("-Cllvm-args=-import-instr-limit={limit}"));
                 }
             }
         }
@@ -2033,7 +2032,7 @@ impl<'a> Builder<'a> {
         if matches!(mode, Mode::Std) {
             if let Some(mir_opt_level) = self.config.rust_validate_mir_opts {
                 rustflags.arg("-Zvalidate-mir");
-                rustflags.arg(&format!("-Zmir-opt-level={}", mir_opt_level));
+                rustflags.arg(&format!("-Zmir-opt-level={mir_opt_level}"));
             }
             // Always enable inlining MIR when building the standard library.
             // Without this flag, MIR inlining is disabled when incremental compilation is enabled.
@@ -2065,9 +2064,9 @@ impl<'a> Builder<'a> {
                     continue;
                 }
                 let mut out = String::new();
-                out += &format!("\n\nCycle in build detected when adding {:?}\n", step);
+                out += &format!("\n\nCycle in build detected when adding {step:?}\n");
                 for el in stack.iter().rev() {
-                    out += &format!("\t{:?}\n", el);
+                    out += &format!("\t{el:?}\n");
                 }
                 panic!("{}", out);
             }
@@ -2094,7 +2093,7 @@ impl<'a> Builder<'a> {
         };
 
         if self.config.print_step_timings && !self.config.dry_run() {
-            let step_string = format!("{:?}", step);
+            let step_string = format!("{step:?}");
             let brace_index = step_string.find("{").unwrap_or(0);
             let type_string = type_name::<S>();
             println!(
@@ -2174,7 +2173,7 @@ impl<'a> Builder<'a> {
         let path = path.as_ref();
         self.info(&format!("Opening doc {}", path.display()));
         if let Err(err) = opener::open(path) {
-            self.info(&format!("{}\n", err));
+            self.info(&format!("{err}\n"));
         }
     }
 }

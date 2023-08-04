@@ -252,6 +252,45 @@ impl HelpUseLatestEdition {
     }
 }
 
+#[derive(Subdiagnostic)]
+pub enum OptionResultRefMismatch<'tcx> {
+    #[suggestion(
+        hir_typeck_option_result_copied,
+        code = ".copied()",
+        style = "verbose",
+        applicability = "machine-applicable"
+    )]
+    Copied {
+        #[primary_span]
+        span: Span,
+        def_path: String,
+    },
+    #[suggestion(
+        hir_typeck_option_result_cloned,
+        code = ".cloned()",
+        style = "verbose",
+        applicability = "machine-applicable"
+    )]
+    Cloned {
+        #[primary_span]
+        span: Span,
+        def_path: String,
+    },
+    #[suggestion(
+        hir_typeck_option_result_asref,
+        code = ".as_ref()",
+        style = "verbose",
+        applicability = "machine-applicable"
+    )]
+    AsRef {
+        #[primary_span]
+        span: Span,
+        def_path: String,
+        expected_ty: Ty<'tcx>,
+        expr_ty: Ty<'tcx>,
+    },
+}
+
 #[derive(Diagnostic)]
 #[diag(hir_typeck_const_select_must_be_const)]
 #[help]

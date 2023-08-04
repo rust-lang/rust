@@ -6,7 +6,7 @@ LL |     debug_assert_eq!(iter.next(), Some(value));
    |
    = note: expected enum `Option<<I as Iterator>::Item>`
               found enum `Option<&<I as Iterator>::Item>`
-help: use `Option::as_ref()` to convert `Option<<I as Iterator>::Item>` to `Option<&<I as Iterator>::Item>`
+help: use `Option::as_ref` to convert `Option<<I as Iterator>::Item>` to `Option<&<I as Iterator>::Item>`
    |
 LL |     debug_assert_eq!(iter.next().as_ref(), Some(value));
    |                                 +++++++++

@@ -498,11 +498,9 @@ impl<'tcx> Predicate<'tcx> {
             .map_bound(|kind| match kind {
                 PredicateKind::Clause(ClauseKind::Trait(TraitPredicate {
                     trait_ref,
-                    constness,
                     polarity,
                 })) => Some(PredicateKind::Clause(ClauseKind::Trait(TraitPredicate {
                     trait_ref,
-                    constness,
                     polarity: polarity.flip()?,
                 }))),
 
@@ -511,19 +509,6 @@ impl<'tcx> Predicate<'tcx> {
             .transpose()?;
 
         Some(tcx.mk_predicate(kind))
-    }
-
-    pub fn without_const(mut self, tcx: TyCtxt<'tcx>) -> Self {
-        if let PredicateKind::Clause(ClauseKind::Trait(TraitPredicate { trait_ref, constness, polarity })) = self.kind().skip_binder()
-            && constness != BoundConstness::NotConst
-        {
-            self = tcx.mk_predicate(self.kind().rebind(PredicateKind::Clause(ClauseKind::Trait(TraitPredicate {
-                trait_ref,
-                constness: BoundConstness::NotConst,
-                polarity,
-            }))));
-        }
-        self
     }
 
     #[instrument(level = "debug", skip(tcx), ret)]
@@ -628,10 +613,6 @@ impl<'tcx> Clause<'tcx> {
         } else {
             None
         }
-    }
-
-    pub fn without_const(self, tcx: TyCtxt<'tcx>) -> Clause<'tcx> {
-        self.as_predicate().without_const(tcx).expect_clause()
     }
 }
 
@@ -852,8 +833,6 @@ impl<'tcx> Clause<'tcx> {
 pub struct TraitPredicate<'tcx> {
     pub trait_ref: TraitRef<'tcx>,
 
-    pub constness: BoundConstness,
-
     /// If polarity is Positive: we are proving that the trait is implemented.
     ///
     /// If polarity is Negative: we are proving that a negative impl of this trait
@@ -867,20 +846,6 @@ pub struct TraitPredicate<'tcx> {
 pub type PolyTraitPredicate<'tcx> = ty::Binder<'tcx, TraitPredicate<'tcx>>;
 
 impl<'tcx> TraitPredicate<'tcx> {
-    pub fn remap_constness(&mut self, param_env: &mut ParamEnv<'tcx>) {
-        *param_env = param_env.with_constness(self.constness.and(param_env.constness()))
-    }
-
-    /// Remap the constness of this predicate before emitting it for diagnostics.
-    pub fn remap_constness_diag(&mut self, param_env: ParamEnv<'tcx>) {
-        // this is different to `remap_constness` that callees want to print this predicate
-        // in case of selection errors. `T: ~const Drop` bounds cannot end up here when the
-        // param_env is not const because it is always satisfied in non-const contexts.
-        if let hir::Constness::NotConst = param_env.constness() {
-            self.constness = ty::BoundConstness::NotConst;
-        }
-    }
-
     pub fn with_self_ty(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> Self {
         Self { trait_ref: self.trait_ref.with_self_ty(tcx, self_ty), ..self }
     }
@@ -892,24 +857,6 @@ impl<'tcx> TraitPredicate<'tcx> {
     pub fn self_ty(self) -> Ty<'tcx> {
         self.trait_ref.self_ty()
     }
-
-    #[inline]
-    pub fn is_const_if_const(self) -> bool {
-        self.constness == BoundConstness::ConstIfConst
-    }
-
-    pub fn is_constness_satisfied_by(self, constness: hir::Constness) -> bool {
-        match (self.constness, constness) {
-            (BoundConstness::NotConst, _)
-            | (BoundConstness::ConstIfConst, hir::Constness::Const) => true,
-            (BoundConstness::ConstIfConst, hir::Constness::NotConst) => false,
-        }
-    }
-
-    pub fn without_const(mut self) -> Self {
-        self.constness = BoundConstness::NotConst;
-        self
-    }
 }
 
 impl<'tcx> PolyTraitPredicate<'tcx> {
@@ -920,19 +867,6 @@ impl<'tcx> PolyTraitPredicate<'tcx> {
 
     pub fn self_ty(self) -> ty::Binder<'tcx, Ty<'tcx>> {
         self.map_bound(|trait_ref| trait_ref.self_ty())
-    }
-
-    /// Remap the constness of this predicate before emitting it for diagnostics.
-    pub fn remap_constness_diag(&mut self, param_env: ParamEnv<'tcx>) {
-        *self = self.map_bound(|mut p| {
-            p.remap_constness_diag(param_env);
-            p
-        });
-    }
-
-    #[inline]
-    pub fn is_const_if_const(self) -> bool {
-        self.skip_binder().is_const_if_const()
     }
 
     #[inline]
@@ -980,9 +914,9 @@ pub struct Term<'tcx> {
 impl Debug for Term<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let data = if let Some(ty) = self.ty() {
-            format!("Term::Ty({:?})", ty)
+            format!("Term::Ty({ty:?})")
         } else if let Some(ct) = self.ct() {
-            format!("Term::Ct({:?})", ct)
+            format!("Term::Ct({ct:?})")
         } else {
             unreachable!()
         };
@@ -1309,7 +1243,7 @@ impl<'tcx> ToPredicate<'tcx> for TraitRef<'tcx> {
 impl<'tcx> ToPredicate<'tcx, TraitPredicate<'tcx>> for TraitRef<'tcx> {
     #[inline(always)]
     fn to_predicate(self, _tcx: TyCtxt<'tcx>) -> TraitPredicate<'tcx> {
-        self.without_const()
+        TraitPredicate { trait_ref: self, polarity: ImplPolarity::Positive }
     }
 }
 
@@ -1350,7 +1284,6 @@ impl<'tcx> ToPredicate<'tcx, PolyTraitPredicate<'tcx>> for Binder<'tcx, TraitRef
     fn to_predicate(self, _: TyCtxt<'tcx>) -> PolyTraitPredicate<'tcx> {
         self.map_bound(|trait_ref| TraitPredicate {
             trait_ref,
-            constness: ty::BoundConstness::NotConst,
             polarity: ty::ImplPolarity::Positive,
         })
     }
@@ -1381,9 +1314,21 @@ impl<'tcx> ToPredicate<'tcx, Clause<'tcx>> for PolyTraitPredicate<'tcx> {
     }
 }
 
+impl<'tcx> ToPredicate<'tcx> for OutlivesPredicate<ty::Region<'tcx>, ty::Region<'tcx>> {
+    fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
+        ty::Binder::dummy(PredicateKind::Clause(ClauseKind::RegionOutlives(self))).to_predicate(tcx)
+    }
+}
+
 impl<'tcx> ToPredicate<'tcx> for PolyRegionOutlivesPredicate<'tcx> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         self.map_bound(|p| PredicateKind::Clause(ClauseKind::RegionOutlives(p))).to_predicate(tcx)
+    }
+}
+
+impl<'tcx> ToPredicate<'tcx> for OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>> {
+    fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
+        ty::Binder::dummy(PredicateKind::Clause(ClauseKind::TypeOutlives(self))).to_predicate(tcx)
     }
 }
 
@@ -1700,15 +1645,12 @@ pub struct ParamEnv<'tcx> {
 #[derive(Copy, Clone)]
 struct ParamTag {
     reveal: traits::Reveal,
-    constness: hir::Constness,
 }
 
 impl_tag! {
     impl Tag for ParamTag;
-    ParamTag { reveal: traits::Reveal::UserFacing, constness: hir::Constness::NotConst },
-    ParamTag { reveal: traits::Reveal::All,        constness: hir::Constness::NotConst },
-    ParamTag { reveal: traits::Reveal::UserFacing, constness: hir::Constness::Const    },
-    ParamTag { reveal: traits::Reveal::All,        constness: hir::Constness::Const    },
+    ParamTag { reveal: traits::Reveal::UserFacing },
+    ParamTag { reveal: traits::Reveal::All },
 }
 
 impl<'tcx> fmt::Debug for ParamEnv<'tcx> {
@@ -1716,7 +1658,6 @@ impl<'tcx> fmt::Debug for ParamEnv<'tcx> {
         f.debug_struct("ParamEnv")
             .field("caller_bounds", &self.caller_bounds())
             .field("reveal", &self.reveal())
-            .field("constness", &self.constness())
             .finish()
     }
 }
@@ -1725,7 +1666,6 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ParamEnv<'tcx> {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         self.caller_bounds().hash_stable(hcx, hasher);
         self.reveal().hash_stable(hcx, hasher);
-        self.constness().hash_stable(hcx, hasher);
     }
 }
 
@@ -1737,7 +1677,6 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ParamEnv<'tcx> {
         Ok(ParamEnv::new(
             self.caller_bounds().try_fold_with(folder)?,
             self.reveal().try_fold_with(folder)?,
-            self.constness(),
         ))
     }
 }
@@ -1756,7 +1695,7 @@ impl<'tcx> ParamEnv<'tcx> {
     /// type-checking.
     #[inline]
     pub fn empty() -> Self {
-        Self::new(List::empty(), Reveal::UserFacing, hir::Constness::NotConst)
+        Self::new(List::empty(), Reveal::UserFacing)
     }
 
     #[inline]
@@ -1769,16 +1708,6 @@ impl<'tcx> ParamEnv<'tcx> {
         self.packed.tag().reveal
     }
 
-    #[inline]
-    pub fn constness(self) -> hir::Constness {
-        self.packed.tag().constness
-    }
-
-    #[inline]
-    pub fn is_const(self) -> bool {
-        self.packed.tag().constness == hir::Constness::Const
-    }
-
     /// Construct a trait environment with no where-clauses in scope
     /// where the values of all `impl Trait` and other hidden types
     /// are revealed. This is suitable for monomorphized, post-typeck
@@ -1788,45 +1717,18 @@ impl<'tcx> ParamEnv<'tcx> {
     /// or invoke `param_env.with_reveal_all()`.
     #[inline]
     pub fn reveal_all() -> Self {
-        Self::new(List::empty(), Reveal::All, hir::Constness::NotConst)
+        Self::new(List::empty(), Reveal::All)
     }
 
     /// Construct a trait environment with the given set of predicates.
     #[inline]
-    pub fn new(
-        caller_bounds: &'tcx List<Clause<'tcx>>,
-        reveal: Reveal,
-        constness: hir::Constness,
-    ) -> Self {
-        ty::ParamEnv { packed: CopyTaggedPtr::new(caller_bounds, ParamTag { reveal, constness }) }
+    pub fn new(caller_bounds: &'tcx List<Clause<'tcx>>, reveal: Reveal) -> Self {
+        ty::ParamEnv { packed: CopyTaggedPtr::new(caller_bounds, ParamTag { reveal }) }
     }
 
     pub fn with_user_facing(mut self) -> Self {
         self.packed.set_tag(ParamTag { reveal: Reveal::UserFacing, ..self.packed.tag() });
         self
-    }
-
-    #[inline]
-    pub fn with_constness(mut self, constness: hir::Constness) -> Self {
-        self.packed.set_tag(ParamTag { constness, ..self.packed.tag() });
-        self
-    }
-
-    #[inline]
-    pub fn with_const(mut self) -> Self {
-        self.packed.set_tag(ParamTag { constness: hir::Constness::Const, ..self.packed.tag() });
-        self
-    }
-
-    #[inline]
-    pub fn without_const(mut self) -> Self {
-        self.packed.set_tag(ParamTag { constness: hir::Constness::NotConst, ..self.packed.tag() });
-        self
-    }
-
-    #[inline]
-    pub fn remap_constness_with(&mut self, mut constness: ty::BoundConstness) {
-        *self = self.with_constness(constness.and(self.constness()))
     }
 
     /// Returns a new parameter environment with the same clauses, but
@@ -1843,17 +1745,13 @@ impl<'tcx> ParamEnv<'tcx> {
             return self;
         }
 
-        ParamEnv::new(
-            tcx.reveal_opaque_types_in_bounds(self.caller_bounds()),
-            Reveal::All,
-            self.constness(),
-        )
+        ParamEnv::new(tcx.reveal_opaque_types_in_bounds(self.caller_bounds()), Reveal::All)
     }
 
     /// Returns this same environment but with no caller bounds.
     #[inline]
     pub fn without_caller_bounds(self) -> Self {
-        Self::new(List::empty(), self.reveal(), self.constness())
+        Self::new(List::empty(), self.reveal())
     }
 
     /// Creates a suitable environment in which to perform trait
@@ -1880,24 +1778,6 @@ impl<'tcx> ParamEnv<'tcx> {
                 }
             }
         }
-    }
-}
-
-// FIXME(ecstaticmorse): Audit all occurrences of `without_const().to_predicate(tcx)` to ensure that
-// the constness of trait bounds is being propagated correctly.
-impl<'tcx> PolyTraitRef<'tcx> {
-    #[inline]
-    pub fn with_constness(self, constness: BoundConstness) -> PolyTraitPredicate<'tcx> {
-        self.map_bound(|trait_ref| ty::TraitPredicate {
-            trait_ref,
-            constness,
-            polarity: ty::ImplPolarity::Positive,
-        })
-    }
-
-    #[inline]
-    pub fn without_const(self) -> PolyTraitPredicate<'tcx> {
-        self.with_constness(BoundConstness::NotConst)
     }
 }
 
@@ -2680,19 +2560,6 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline]
     pub fn is_const_default_method(self, def_id: DefId) -> bool {
         matches!(self.trait_of_item(def_id), Some(trait_id) if self.has_attr(trait_id, sym::const_trait))
-    }
-
-    pub fn impl_trait_in_trait_parent_fn(self, mut def_id: DefId) -> DefId {
-        match self.opt_rpitit_info(def_id) {
-            Some(ImplTraitInTraitData::Trait { fn_def_id, .. })
-            | Some(ImplTraitInTraitData::Impl { fn_def_id, .. }) => fn_def_id,
-            None => {
-                while let def_kind = self.def_kind(def_id) && def_kind != DefKind::AssocFn {
-                    def_id = self.parent(def_id);
-                }
-                def_id
-            }
-        }
     }
 
     /// Returns the `DefId` of the item within which the `impl Trait` is declared.

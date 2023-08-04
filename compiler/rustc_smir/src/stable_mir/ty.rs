@@ -10,7 +10,7 @@ impl Ty {
     }
 }
 
-type Const = Opaque;
+pub(crate) type Const = Opaque;
 pub(crate) type Region = Opaque;
 type Span = Opaque;
 
@@ -18,6 +18,8 @@ type Span = Opaque;
 pub enum TyKind {
     RigidTy(RigidTy),
     Alias(AliasKind, AliasTy),
+    Param(ParamTy),
+    Bound(usize, BoundTy),
 }
 
 #[derive(Clone, Debug)]
@@ -227,4 +229,16 @@ pub struct ExistentialProjection {
     pub def_id: TraitDef,
     pub generic_args: GenericArgs,
     pub term: TermKind,
+}
+
+#[derive(Clone, Debug)]
+pub struct ParamTy {
+    pub index: u32,
+    pub name: String,
+}
+
+#[derive(Clone, Debug)]
+pub struct BoundTy {
+    pub var: usize,
+    pub kind: BoundTyKind,
 }

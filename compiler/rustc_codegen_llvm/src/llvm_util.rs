@@ -315,7 +315,7 @@ pub fn target_features(sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
 
 pub fn print_version() {
     let (major, minor, patch) = get_version();
-    println!("LLVM version: {}.{}.{}", major, minor, patch);
+    println!("LLVM version: {major}.{minor}.{patch}");
 }
 
 pub fn get_version() -> (u32, u32, u32) {
@@ -390,11 +390,11 @@ fn print_target_features(out: &mut dyn PrintBackendInfo, sess: &Session, tm: &ll
 
     writeln!(out, "Features supported by rustc for this target:");
     for (feature, desc) in &rustc_target_features {
-        writeln!(out, "    {1:0$} - {2}.", max_feature_len, feature, desc);
+        writeln!(out, "    {feature:max_feature_len$} - {desc}.");
     }
     writeln!(out, "\nCode-generation features supported by LLVM for this target:");
     for (feature, desc) in &llvm_target_features {
-        writeln!(out, "    {1:0$} - {2}.", max_feature_len, feature, desc);
+        writeln!(out, "    {feature:max_feature_len$} - {desc}.");
     }
     if llvm_target_features.is_empty() {
         writeln!(out, "    Target features listing is not supported by this LLVM version.");
@@ -507,8 +507,6 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
             .features
             .split(',')
             .filter(|v| !v.is_empty() && backend_feature_name(v).is_some())
-            // Drop +atomics-32 feature introduced in LLVM 15.
-            .filter(|v| *v != "+atomics-32" || get_version() >= (15, 0, 0))
             .map(String::from),
     );
 
@@ -575,7 +573,7 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
                         match (enable_disable, feat) {
                             ('-' | '+', TargetFeatureFoldStrength::Both(f))
                             | ('+', TargetFeatureFoldStrength::EnableOnly(f)) => {
-                                Some(format!("{}{}", enable_disable, f))
+                                Some(format!("{enable_disable}{f}"))
                             }
                             _ => None,
                         }

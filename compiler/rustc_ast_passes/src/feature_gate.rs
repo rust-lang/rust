@@ -218,6 +218,19 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 }
             }
         }
+        if !attr.is_doc_comment()
+            && attr.get_normal_item().path.segments.len() == 2
+            && attr.get_normal_item().path.segments[0].ident.name == sym::diagnostic
+            && !self.features.diagnostic_namespace
+        {
+            let msg = "`#[diagnostic]` attribute name space is experimental";
+            gate_feature_post!(
+                self,
+                diagnostic_namespace,
+                attr.get_normal_item().path.segments[0].ident.span,
+                msg
+            );
+        }
 
         // Emit errors for non-staged-api crates.
         if !self.features.staged_api {
@@ -556,6 +569,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session) {
     gate_all!(const_closures, "const closures are experimental");
     gate_all!(builtin_syntax, "`builtin #` syntax is unstable");
     gate_all!(explicit_tail_calls, "`become` expression is experimental");
+    gate_all!(generic_const_items, "generic const items are experimental");
 
     if !visitor.features.negative_bounds {
         for &span in spans.get(&sym::negative_bounds).iter().copied().flatten() {

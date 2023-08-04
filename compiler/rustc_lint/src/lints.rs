@@ -405,9 +405,18 @@ pub struct BuiltinExplicitOutlivesSuggestion {
 pub struct BuiltinIncompleteFeatures {
     pub name: Symbol,
     #[subdiagnostic]
-    pub note: Option<BuiltinIncompleteFeaturesNote>,
+    pub note: Option<BuiltinFeatureIssueNote>,
     #[subdiagnostic]
     pub help: Option<BuiltinIncompleteFeaturesHelp>,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_builtin_internal_features)]
+#[note]
+pub struct BuiltinInternalFeatures {
+    pub name: Symbol,
+    #[subdiagnostic]
+    pub note: Option<BuiltinFeatureIssueNote>,
 }
 
 #[derive(Subdiagnostic)]
@@ -416,7 +425,7 @@ pub struct BuiltinIncompleteFeaturesHelp;
 
 #[derive(Subdiagnostic)]
 #[note(lint_note)]
-pub struct BuiltinIncompleteFeaturesNote {
+pub struct BuiltinFeatureIssueNote {
     pub n: NonZeroU32,
 }
 
@@ -613,11 +622,23 @@ pub struct ExpectationNote {
     pub rationale: Symbol,
 }
 
-// fn_null_check.rs
+// ptr_nulls.rs
 #[derive(LintDiagnostic)]
-#[diag(lint_fn_null_check)]
-#[help]
-pub struct FnNullCheckDiag;
+pub enum PtrNullChecksDiag<'a> {
+    #[diag(lint_ptr_null_checks_fn_ptr)]
+    #[help(lint_help)]
+    FnPtr {
+        orig_ty: Ty<'a>,
+        #[label]
+        label: Span,
+    },
+    #[diag(lint_ptr_null_checks_ref)]
+    Ref {
+        orig_ty: Ty<'a>,
+        #[label]
+        label: Span,
+    },
+}
 
 // for_loops_over_fallibles.rs
 #[derive(LintDiagnostic)]
@@ -743,10 +764,20 @@ pub enum InvalidFromUtf8Diag {
     },
 }
 
-// cast_ref_to_mut.rs
+// reference_casting.rs
 #[derive(LintDiagnostic)]
-#[diag(lint_cast_ref_to_mut)]
-pub struct CastRefToMutDiag;
+pub enum InvalidReferenceCastingDiag {
+    #[diag(lint_invalid_reference_casting_borrow_as_mut)]
+    BorrowAsMut {
+        #[label]
+        orig_cast: Option<Span>,
+    },
+    #[diag(lint_invalid_reference_casting_assign_to_ref)]
+    AssignToRef {
+        #[label]
+        orig_cast: Option<Span>,
+    },
+}
 
 // hidden_unicode_codepoints.rs
 #[derive(LintDiagnostic)]
@@ -776,7 +807,7 @@ impl AddToDiagnostic for HiddenUnicodeCodepointsDiagLabels {
         ) -> rustc_errors::SubdiagnosticMessage,
     {
         for (c, span) in self.spans {
-            diag.span_label(span, format!("{:?}", c));
+            diag.span_label(span, format!("{c:?}"));
         }
     }
 }
@@ -808,7 +839,7 @@ impl AddToDiagnostic for HiddenUnicodeCodepointsDiagSub {
                     spans
                         .into_iter()
                         .map(|(c, span)| {
-                            let c = format!("{:?}", c);
+                            let c = format!("{c:?}");
                             (span, c[1..c.len() - 1].to_string())
                         })
                         .collect(),
@@ -823,7 +854,7 @@ impl AddToDiagnostic for HiddenUnicodeCodepointsDiagSub {
                     "escaped",
                     spans
                         .into_iter()
-                        .map(|(c, _)| format!("{:?}", c))
+                        .map(|(c, _)| format!("{c:?}"))
                         .collect::<Vec<String>>()
                         .join(", "),
                 );
@@ -1231,8 +1262,9 @@ pub enum NonUpperCaseGlobalSub {
 #[note]
 pub struct NoopMethodCallDiag<'a> {
     pub method: Symbol,
-    pub receiver_ty: Ty<'a>,
-    #[label]
+    pub orig_ty: Ty<'a>,
+    pub trait_: Symbol,
+    #[suggestion(code = "", applicability = "machine-applicable")]
     pub label: Span,
 }
 

@@ -628,7 +628,8 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
                                         valtree, ty
                                     )
                                     });
-                                let s = std::str::from_utf8(slice).expect("non utf8 str from miri");
+                                let s = std::str::from_utf8(slice)
+                                    .expect("non utf8 str from MIR interpreter");
 
                                 self.push("e");
 

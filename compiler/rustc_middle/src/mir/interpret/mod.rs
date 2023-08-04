@@ -142,11 +142,11 @@ use crate::ty::GenericArgKind;
 use crate::ty::{self, Instance, Ty, TyCtxt};
 
 pub use self::error::{
-    struct_error, CheckInAllocMsg, ErrorHandled, EvalToAllocationRawResult, EvalToConstValueResult,
-    EvalToValTreeResult, ExpectedKind, InterpError, InterpErrorInfo, InterpResult, InvalidMetaKind,
-    InvalidProgramInfo, MachineStopType, PointerKind, ReportedErrorInfo, ResourceExhaustionInfo,
-    ScalarSizeMismatch, UndefinedBehaviorInfo, UninitBytesAccess, UnsupportedOpInfo,
-    ValidationErrorInfo, ValidationErrorKind,
+    struct_error, BadBytesAccess, CheckInAllocMsg, ErrorHandled, EvalToAllocationRawResult,
+    EvalToConstValueResult, EvalToValTreeResult, ExpectedKind, InterpError, InterpErrorInfo,
+    InterpResult, InvalidMetaKind, InvalidProgramInfo, MachineStopType, PointerKind,
+    ReportedErrorInfo, ResourceExhaustionInfo, ScalarSizeMismatch, UndefinedBehaviorInfo,
+    UnsupportedOpInfo, ValidationErrorInfo, ValidationErrorKind,
 };
 
 pub use self::value::{get_slice_bytes, ConstAlloc, ConstValue, Scalar};
@@ -176,7 +176,7 @@ impl<'tcx> GlobalId<'tcx> {
     pub fn display(self, tcx: TyCtxt<'tcx>) -> String {
         let instance_name = with_no_trimmed_paths!(tcx.def_path_str(self.instance.def.def_id()));
         if let Some(promoted) = self.promoted {
-            format!("{}::{:?}", instance_name, promoted)
+            format!("{instance_name}::{promoted:?}")
         } else {
             instance_name
         }
@@ -609,7 +609,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Panics in case the `AllocId` is dangling. Since that is impossible for `AllocId`s in
     /// constants (as all constants must pass interning and validation that check for dangling
     /// ids), this function is frequently used throughout rustc, but should not be used within
-    /// the miri engine.
+    /// the interpreter.
     pub fn global_alloc(self, id: AllocId) -> GlobalAlloc<'tcx> {
         match self.try_get_global_alloc(id) {
             Some(alloc) => alloc,

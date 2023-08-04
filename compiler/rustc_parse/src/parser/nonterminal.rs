@@ -131,7 +131,7 @@ impl<'a> Parser<'a> {
             },
             NonterminalKind::PatParam { .. } | NonterminalKind::PatWithOr { .. } => {
                 token::NtPat(self.collect_tokens_no_attrs(|this| match kind {
-                    NonterminalKind::PatParam { .. } => this.parse_pat_no_top_alt(None),
+                    NonterminalKind::PatParam { .. } => this.parse_pat_no_top_alt(None, None),
                     NonterminalKind::PatWithOr { .. } => this.parse_pat_allow_top_alt(
                         None,
                         RecoverComma::No,

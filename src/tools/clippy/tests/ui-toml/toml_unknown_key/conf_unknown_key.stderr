@@ -1,4 +1,6 @@
 error: error reading Clippy's configuration file: unknown field `foobar`, expected one of
+           absolute-paths-allowed-crates
+           absolute-paths-max-segments
            accept-comment-above-attributes
            accept-comment-above-statement
            allow-dbg-in-tests
@@ -68,6 +70,8 @@ LL | foobar = 42
    | ^^^^^^
 
 error: error reading Clippy's configuration file: unknown field `barfoo`, expected one of
+           absolute-paths-allowed-crates
+           absolute-paths-max-segments
            accept-comment-above-attributes
            accept-comment-above-statement
            allow-dbg-in-tests

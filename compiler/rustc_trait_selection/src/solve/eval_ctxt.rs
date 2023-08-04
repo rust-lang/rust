@@ -11,8 +11,8 @@ use rustc_infer::traits::ObligationCause;
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::traits::solve::inspect;
 use rustc_middle::traits::solve::{
-    CanonicalInput, CanonicalResponse, Certainty, IsNormalizesToHack, MaybeCause,
-    PredefinedOpaques, PredefinedOpaquesData, QueryResult,
+    CanonicalInput, CanonicalResponse, Certainty, IsNormalizesToHack, PredefinedOpaques,
+    PredefinedOpaquesData, QueryResult,
 };
 use rustc_middle::traits::DefiningAnchor;
 use rustc_middle::ty::{
@@ -344,7 +344,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
             Ok(response) => response,
         };
 
-        let has_changed = !canonical_response.value.var_values.is_identity()
+        let has_changed = !canonical_response.value.var_values.is_identity_modulo_regions()
             || !canonical_response.value.external_constraints.opaque_types.is_empty();
         let (certainty, nested_goals) = match self.instantiate_and_apply_query_response(
             goal.param_env,
@@ -475,7 +475,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         let mut new_goals = NestedGoals::new();
 
         let response = self.repeat_while_none(
-            |_| Ok(Certainty::Maybe(MaybeCause::Overflow)),
+            |_| Ok(Certainty::OVERFLOW),
             |this| {
                 this.inspect.evaluate_added_goals_loop_start();
 

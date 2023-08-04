@@ -135,8 +135,8 @@ static_assert_size!(Scalar, 24);
 impl<Prov: Provenance> fmt::Debug for Scalar<Prov> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Scalar::Ptr(ptr, _size) => write!(f, "{:?}", ptr),
-            Scalar::Int(int) => write!(f, "{:?}", int),
+            Scalar::Ptr(ptr, _size) => write!(f, "{ptr:?}"),
+            Scalar::Int(int) => write!(f, "{int:?}"),
         }
     }
 }
@@ -144,8 +144,8 @@ impl<Prov: Provenance> fmt::Debug for Scalar<Prov> {
 impl<Prov: Provenance> fmt::Display for Scalar<Prov> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Scalar::Ptr(ptr, _size) => write!(f, "pointer to {:?}", ptr),
-            Scalar::Int(int) => write!(f, "{}", int),
+            Scalar::Ptr(ptr, _size) => write!(f, "pointer to {ptr:?}"),
+            Scalar::Int(int) => write!(f, "{int}"),
         }
     }
 }
@@ -153,8 +153,8 @@ impl<Prov: Provenance> fmt::Display for Scalar<Prov> {
 impl<Prov: Provenance> fmt::LowerHex for Scalar<Prov> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Scalar::Ptr(ptr, _size) => write!(f, "pointer to {:?}", ptr),
-            Scalar::Int(int) => write!(f, "{:#x}", int),
+            Scalar::Ptr(ptr, _size) => write!(f, "pointer to {ptr:?}"),
+            Scalar::Int(int) => write!(f, "{int:#x}"),
         }
     }
 }
@@ -378,15 +378,16 @@ impl<'tcx, Prov: Provenance> Scalar<Prov> {
     #[inline]
     pub fn to_bits(self, target_size: Size) -> InterpResult<'tcx, u128> {
         assert_ne!(target_size.bytes(), 0, "you should never look at the bits of a ZST");
-        self.try_to_int().map_err(|_| err_unsup!(ReadPointerAsBytes))?.to_bits(target_size).map_err(
-            |size| {
+        self.try_to_int()
+            .map_err(|_| err_unsup!(ReadPointerAsInt(None)))?
+            .to_bits(target_size)
+            .map_err(|size| {
                 err_ub!(ScalarSizeMismatch(ScalarSizeMismatch {
                     target_size: target_size.bytes(),
                     data_size: size.bytes(),
                 }))
                 .into()
-            },
-        )
+            })
     }
 
     #[inline(always)]

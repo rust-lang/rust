@@ -3,6 +3,7 @@
 #![doc(html_playground_url="https://play.rust-lang.org/")]
 
 #![crate_name = "test_docs"]
+#![allow(internal_features)]
 #![feature(rustdoc_internals)]
 #![feature(doc_cfg)]
 #![feature(associated_type_defaults)]

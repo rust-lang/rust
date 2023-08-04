@@ -307,6 +307,12 @@ impl Step for CodegenBackend {
     }
 
     fn run(self, builder: &Builder<'_>) {
+        // FIXME: remove once https://github.com/rust-lang/rust/issues/112393 is resolved
+        if builder.build.config.vendor && &self.backend == "gcc" {
+            println!("Skipping checking of `rustc_codegen_gcc` with vendoring enabled.");
+            return;
+        }
+
         let compiler = builder.compiler(builder.top_stage, builder.config.build);
         let target = self.target;
         let backend = self.backend;
@@ -322,7 +328,7 @@ impl Step for CodegenBackend {
         );
         cargo
             .arg("--manifest-path")
-            .arg(builder.src.join(format!("compiler/rustc_codegen_{}/Cargo.toml", backend)));
+            .arg(builder.src.join(format!("compiler/rustc_codegen_{backend}/Cargo.toml")));
         rustc_cargo_env(builder, &mut cargo, target, compiler.stage);
 
         let _guard = builder.msg_check(&backend, target);
@@ -525,5 +531,5 @@ fn codegen_backend_stamp(
 ) -> PathBuf {
     builder
         .cargo_out(compiler, Mode::Codegen, target)
-        .join(format!(".librustc_codegen_{}-check.stamp", backend))
+        .join(format!(".librustc_codegen_{backend}-check.stamp"))
 }

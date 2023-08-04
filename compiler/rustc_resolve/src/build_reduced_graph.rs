@@ -41,6 +41,7 @@ impl<'a, Id: Into<DefId>> ToNameBinding<'a>
         arenas.alloc_name_binding(NameBindingData {
             kind: NameBindingKind::Module(self.0),
             ambiguity: None,
+            warn_ambiguity: false,
             vis: self.1.to_def_id(),
             span: self.2,
             expansion: self.3,
@@ -53,6 +54,7 @@ impl<'a, Id: Into<DefId>> ToNameBinding<'a> for (Res, ty::Visibility<Id>, Span, 
         arenas.alloc_name_binding(NameBindingData {
             kind: NameBindingKind::Res(self.0),
             ambiguity: None,
+            warn_ambiguity: false,
             vis: self.1.to_def_id(),
             span: self.2,
             expansion: self.3,
@@ -69,7 +71,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     {
         let binding = def.to_name_binding(self.arenas);
         let key = self.new_disambiguated_key(ident, ns);
-        if let Err(old_binding) = self.try_define(parent, key, binding) {
+        if let Err(old_binding) = self.try_define(parent, key, binding, false) {
             self.report_conflict(parent, ident, ns, old_binding, binding);
         }
     }
@@ -999,7 +1001,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
         allow_shadowing: bool,
     ) {
         if self.r.macro_use_prelude.insert(name, binding).is_some() && !allow_shadowing {
-            let msg = format!("`{}` is already in scope", name);
+            let msg = format!("`{name}` is already in scope");
             let note =
                 "macro-expanded `#[macro_use]`s may not shadow existing macros (see RFC 1560)";
             self.r.tcx.sess.struct_span_err(span, msg).note(note).emit();

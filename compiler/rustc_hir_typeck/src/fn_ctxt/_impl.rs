@@ -61,7 +61,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 debug!("warn_if_unreachable: id={:?} span={:?} kind={}", id, span, kind);
 
-                let msg = format!("unreachable {}", kind);
+                let msg = format!("unreachable {kind}");
                 self.tcx().struct_span_lint_hir(
                     lint::builtin::UNREACHABLE_CODE,
                     id,
@@ -134,7 +134,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     pub fn tag(&self) -> String {
-        format!("{:p}", self)
+        format!("{self:p}")
     }
 
     pub fn local_ty(&self, span: Span, nid: hir::HirId) -> Ty<'tcx> {
@@ -1412,9 +1412,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.tcx.sess.delay_span_bug(
                         span,
                         format!(
-                        "instantiate_value_path: (UFCS) {:?} was a subtype of {:?} but now is not?",
-                        self_ty,
-                        impl_ty,
+                        "instantiate_value_path: (UFCS) {self_ty:?} was a subtype of {impl_ty:?} but now is not?",
                     ),
                     );
                 }
@@ -1463,10 +1461,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             param_env,
             bounds,
         ) {
-            // N.B. We are remapping all predicates to non-const since we don't know if we just
-            // want them as function pointers or we are calling them from a const-context. The
-            // actual checking will occur in `rustc_const_eval::transform::check_consts`.
-            self.register_predicate(obligation.without_const(self.tcx));
+            self.register_predicate(obligation);
         }
     }
 

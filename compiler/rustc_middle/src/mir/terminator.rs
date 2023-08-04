@@ -280,7 +280,7 @@ impl<'tcx> Debug for TerminatorKind<'tcx> {
 
         match (successor_count, unwind) {
             (0, None) => Ok(()),
-            (0, Some(unwind)) => write!(fmt, " -> {}", unwind),
+            (0, Some(unwind)) => write!(fmt, " -> {unwind}"),
             (1, None) => write!(fmt, " -> {:?}", self.successors().next().unwrap()),
             _ => {
                 write!(fmt, " -> [")?;
@@ -307,22 +307,22 @@ impl<'tcx> TerminatorKind<'tcx> {
         use self::TerminatorKind::*;
         match self {
             Goto { .. } => write!(fmt, "goto"),
-            SwitchInt { discr, .. } => write!(fmt, "switchInt({:?})", discr),
+            SwitchInt { discr, .. } => write!(fmt, "switchInt({discr:?})"),
             Return => write!(fmt, "return"),
             GeneratorDrop => write!(fmt, "generator_drop"),
             Resume => write!(fmt, "resume"),
             Terminate => write!(fmt, "abort"),
-            Yield { value, resume_arg, .. } => write!(fmt, "{:?} = yield({:?})", resume_arg, value),
+            Yield { value, resume_arg, .. } => write!(fmt, "{resume_arg:?} = yield({value:?})"),
             Unreachable => write!(fmt, "unreachable"),
-            Drop { place, .. } => write!(fmt, "drop({:?})", place),
+            Drop { place, .. } => write!(fmt, "drop({place:?})"),
             Call { func, args, destination, .. } => {
-                write!(fmt, "{:?} = ", destination)?;
-                write!(fmt, "{:?}(", func)?;
+                write!(fmt, "{destination:?} = ")?;
+                write!(fmt, "{func:?}(")?;
                 for (index, arg) in args.iter().enumerate() {
                     if index > 0 {
                         write!(fmt, ", ")?;
                     }
-                    write!(fmt, "{:?}", arg)?;
+                    write!(fmt, "{arg:?}")?;
                 }
                 write!(fmt, ")")
             }
@@ -331,7 +331,7 @@ impl<'tcx> TerminatorKind<'tcx> {
                 if !expected {
                     write!(fmt, "!")?;
                 }
-                write!(fmt, "{:?}, ", cond)?;
+                write!(fmt, "{cond:?}, ")?;
                 msg.fmt_assert_args(fmt)?;
                 write!(fmt, ")")
             }
@@ -344,7 +344,7 @@ impl<'tcx> TerminatorKind<'tcx> {
                     let print_late = |&late| if late { "late" } else { "" };
                     match op {
                         InlineAsmOperand::In { reg, value } => {
-                            write!(fmt, "in({}) {:?}", reg, value)?;
+                            write!(fmt, "in({reg}) {value:?}")?;
                         }
                         InlineAsmOperand::Out { reg, late, place: Some(place) } => {
                             write!(fmt, "{}out({}) {:?}", print_late(late), reg, place)?;
@@ -371,17 +371,17 @@ impl<'tcx> TerminatorKind<'tcx> {
                             write!(fmt, "in{}out({}) {:?} => _", print_late(late), reg, in_value)?;
                         }
                         InlineAsmOperand::Const { value } => {
-                            write!(fmt, "const {:?}", value)?;
+                            write!(fmt, "const {value:?}")?;
                         }
                         InlineAsmOperand::SymFn { value } => {
-                            write!(fmt, "sym_fn {:?}", value)?;
+                            write!(fmt, "sym_fn {value:?}")?;
                         }
                         InlineAsmOperand::SymStatic { def_id } => {
-                            write!(fmt, "sym_static {:?}", def_id)?;
+                            write!(fmt, "sym_static {def_id:?}")?;
                         }
                     }
                 }
-                write!(fmt, ", options({:?}))", options)
+                write!(fmt, ", options({options:?}))")
             }
         }
     }

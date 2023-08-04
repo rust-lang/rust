@@ -196,7 +196,7 @@ fn set_compiler(
                 '0'..='6' => {}
                 _ => return,
             }
-            let alternative = format!("e{}", gnu_compiler);
+            let alternative = format!("e{gnu_compiler}");
             if Command::new(&alternative).output().is_ok() {
                 cfg.compiler(alternative);
             }

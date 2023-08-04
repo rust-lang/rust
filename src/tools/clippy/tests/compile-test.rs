@@ -5,7 +5,7 @@
 #![warn(rust_2018_idioms, unused_lifetimes)]
 #![allow(unused_extern_crates)]
 
-use compiletest::{status_emitter, CommandBuilder};
+use compiletest::{status_emitter, CommandBuilder, OutputConflictHandling};
 use ui_test as compiletest;
 use ui_test::Mode as TestMode;
 
@@ -115,10 +115,12 @@ fn base_config(test_dir: &str) -> compiletest::Config {
         mode: TestMode::Yolo,
         stderr_filters: vec![],
         stdout_filters: vec![],
-        output_conflict_handling: if var_os("BLESS").is_some() || env::args().any(|arg| arg == "--bless") {
-            compiletest::OutputConflictHandling::Bless
+        output_conflict_handling: if var_os("RUSTC_BLESS").is_some_and(|v| v != "0")
+            || env::args().any(|arg| arg == "--bless")
+        {
+            OutputConflictHandling::Bless
         } else {
-            compiletest::OutputConflictHandling::Error("cargo test -- -- --bless".into())
+            OutputConflictHandling::Error("cargo uibless".into())
         },
         target: None,
         out_dir: PathBuf::from(std::env::var_os("CARGO_TARGET_DIR").unwrap_or("target".into())).join("ui_test"),
@@ -138,6 +140,7 @@ fn base_config(test_dir: &str) -> compiletest::Config {
         [
             "--emit=metadata",
             "-Aunused",
+            "-Ainternal_features",
             "-Zui-testing",
             "-Dwarnings",
             &format!("-Ldependency={}", deps_path.display()),
@@ -187,9 +190,6 @@ fn run_ui() {
                 .to_string()
         }),
     );
-    eprintln!("   Compiler: {}", config.program.display());
-
-    let name = config.root_dir.display().to_string();
 
     let test_filter = test_filter();
 
@@ -197,7 +197,7 @@ fn run_ui() {
         config,
         move |path| compiletest::default_file_filter(path) && test_filter(path),
         compiletest::default_per_file_config,
-        (status_emitter::Text, status_emitter::Gha::<true> { name }),
+        status_emitter::Text,
     )
     .unwrap();
     check_rustfix_coverage();
@@ -208,8 +208,19 @@ fn run_internal_tests() {
     if !RUN_INTERNAL_TESTS {
         return;
     }
-    let config = base_config("ui-internal");
-    compiletest::run_tests(config).unwrap();
+    let mut config = base_config("ui-internal");
+    if let OutputConflictHandling::Error(err) = &mut config.output_conflict_handling {
+        *err = "cargo uitest --features internal -- -- --bless".into();
+    }
+    let test_filter = test_filter();
+
+    compiletest::run_tests_generic(
+        config,
+        move |path| compiletest::default_file_filter(path) && test_filter(path),
+        compiletest::default_per_file_config,
+        status_emitter::Text,
+    )
+    .unwrap();
 }
 
 fn run_ui_toml() {
@@ -228,13 +239,11 @@ fn run_ui_toml() {
         "$$DIR",
     );
 
-    let name = config.root_dir.display().to_string();
-
     let test_filter = test_filter();
 
     ui_test::run_tests_generic(
         config,
-        |path| test_filter(path) && path.extension() == Some("rs".as_ref()),
+        |path| compiletest::default_file_filter(path) && test_filter(path),
         |config, path| {
             let mut config = config.clone();
             config
@@ -243,7 +252,7 @@ fn run_ui_toml() {
                 .push(("CLIPPY_CONF_DIR".into(), Some(path.parent().unwrap().into())));
             Some(config)
         },
-        (status_emitter::Text, status_emitter::Gha::<true> { name }),
+        status_emitter::Text,
     )
     .unwrap();
 }
@@ -284,8 +293,6 @@ fn run_ui_cargo() {
         "$$DIR",
     );
 
-    let name = config.root_dir.display().to_string();
-
     let test_filter = test_filter();
 
     ui_test::run_tests_generic(
@@ -296,7 +303,7 @@ fn run_ui_cargo() {
             config.out_dir = PathBuf::from("target/ui_test_cargo/").join(path.parent().unwrap());
             Some(config)
         },
-        (status_emitter::Text, status_emitter::Gha::<true> { name }),
+        status_emitter::Text,
     )
     .unwrap();
 }

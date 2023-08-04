@@ -886,6 +886,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
             .universal_regions()
             .defining_ty
             .upvar_tys()
+            .iter()
             .position(|ty| self.any_param_predicate_mentions(&predicates, ty, region))
         {
             let (upvar_name, upvar_span) = self.regioncx.get_upvar_name_and_span_for_region(

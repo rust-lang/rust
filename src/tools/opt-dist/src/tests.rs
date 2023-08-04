@@ -1,8 +1,8 @@
 use crate::environment::Environment;
 use crate::exec::cmd;
-use crate::utils::io::{copy_directory, unpack_archive};
+use crate::utils::io::{copy_directory, find_file_in_dir, unpack_archive};
 use anyhow::Context;
-use camino::Utf8PathBuf;
+use camino::{Utf8Path, Utf8PathBuf};
 
 /// Run tests on optimized dist artifacts.
 pub fn run_tests(env: &dyn Environment) -> anyhow::Result<()> {
@@ -22,13 +22,14 @@ pub fn run_tests(env: &dyn Environment) -> anyhow::Result<()> {
         Ok(extracted_path)
     };
     let host_triple = env.host_triple();
+    let version = find_dist_version(&dist_dir)?;
 
     // Extract rustc, libstd, cargo and src archives to create the optimized sysroot
-    let rustc_dir = extract_dist_dir(&format!("rustc-nightly-{host_triple}"))?.join("rustc");
-    let libstd_dir = extract_dist_dir(&format!("rust-std-nightly-{host_triple}"))?
+    let rustc_dir = extract_dist_dir(&format!("rustc-{version}-{host_triple}"))?.join("rustc");
+    let libstd_dir = extract_dist_dir(&format!("rust-std-{version}-{host_triple}"))?
         .join(format!("rust-std-{host_triple}"));
-    let cargo_dir = extract_dist_dir(&format!("cargo-nightly-{host_triple}"))?.join("cargo");
-    let extracted_src_dir = extract_dist_dir("rust-src-nightly")?.join("rust-src");
+    let cargo_dir = extract_dist_dir(&format!("cargo-{version}-{host_triple}"))?.join("cargo");
+    let extracted_src_dir = extract_dist_dir(&format!("rust-src-{version}"))?.join("rust-src");
 
     // We need to manually copy libstd to the extracted rustc sysroot
     copy_directory(
@@ -98,4 +99,16 @@ llvm-config = "{llvm_config}"
         args.extend(["--exclude", test_path]);
     }
     cmd(&args).env("COMPILETEST_FORCE_STAGE0", "1").run().context("Cannot execute tests")
+}
+
+/// Tries to find the version of the dist artifacts (either nightly, beta, or 1.XY.Z).
+fn find_dist_version(directory: &Utf8Path) -> anyhow::Result<String> {
+    // Lookup a known file with a unique prefix and extract the version from its filename
+    let archive = find_file_in_dir(directory, "reproducible-artifacts-", ".tar.xz")?
+        .file_name()
+        .unwrap()
+        .to_string();
+    let (version, _) =
+        archive.strip_prefix("reproducible-artifacts-").unwrap().split_once("-").unwrap();
+    Ok(version.to_string())
 }

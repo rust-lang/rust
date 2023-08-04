@@ -57,12 +57,15 @@ pub fn is_subtype<'tcx>(
     // we would get unification errors because we're unable to look into opaque types,
     // even if they're constrained in our current function.
     for (key, ty) in infcx.take_opaque_types() {
-        span_bug!(
-            ty.hidden_type.span,
-            "{}, {}",
-            tcx.type_of(key.def_id).instantiate(tcx, key.args),
-            ty.hidden_type.ty
-        );
+        let hidden_ty = tcx.type_of(key.def_id).instantiate(tcx, key.args);
+        if hidden_ty != ty.hidden_type.ty {
+            span_bug!(
+                ty.hidden_type.span,
+                "{}, {}",
+                tcx.type_of(key.def_id).instantiate(tcx, key.args),
+                ty.hidden_type.ty
+            );
+        }
     }
     errors.is_empty()
 }

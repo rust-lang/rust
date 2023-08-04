@@ -74,22 +74,21 @@ impl IntercrateAmbiguityCause {
         match self {
             IntercrateAmbiguityCause::DownstreamCrate { trait_desc, self_desc } => {
                 let self_desc = if let Some(ty) = self_desc {
-                    format!(" for type `{}`", ty)
+                    format!(" for type `{ty}`")
                 } else {
                     String::new()
                 };
-                format!("downstream crates may implement trait `{}`{}", trait_desc, self_desc)
+                format!("downstream crates may implement trait `{trait_desc}`{self_desc}")
             }
             IntercrateAmbiguityCause::UpstreamCrateUpdate { trait_desc, self_desc } => {
                 let self_desc = if let Some(ty) = self_desc {
-                    format!(" for type `{}`", ty)
+                    format!(" for type `{ty}`")
                 } else {
                     String::new()
                 };
                 format!(
-                    "upstream crates may add a new impl of trait `{}`{} \
-                     in future versions",
-                    trait_desc, self_desc
+                    "upstream crates may add a new impl of trait `{trait_desc}`{self_desc} \
+                     in future versions"
                 )
             }
             IntercrateAmbiguityCause::ReservationImpl { message } => message.clone(),
@@ -1000,13 +999,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         let stack = self.push_stack(previous_stack, &obligation);
-        let mut fresh_trait_pred = stack.fresh_trait_pred;
-        let mut param_env = obligation.param_env;
-
-        fresh_trait_pred = fresh_trait_pred.map_bound(|mut pred| {
-            pred.remap_constness(&mut param_env);
-            pred
-        });
+        let fresh_trait_pred = stack.fresh_trait_pred;
+        let param_env = obligation.param_env;
 
         debug!(?fresh_trait_pred);
 
@@ -1386,8 +1380,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         (result, dep_node)
     }
 
-    /// filter_impls filters constant trait obligations and candidates that have a positive impl
-    /// for a negative goal and a negative impl for a positive goal
+    /// filter_impls filters candidates that have a positive impl for a negative
+    /// goal and a negative impl for a positive goal
     #[instrument(level = "debug", skip(self, candidates))]
     fn filter_impls(
         &mut self,
@@ -1399,42 +1393,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let mut result = Vec::with_capacity(candidates.len());
 
         for candidate in candidates {
-            // Respect const trait obligations
-            if obligation.is_const() {
-                match candidate {
-                    // const impl
-                    ImplCandidate(def_id) if tcx.constness(def_id) == hir::Constness::Const => {}
-                    // const param
-                    ParamCandidate(trait_pred) if trait_pred.is_const_if_const() => {}
-                    // const projection
-                    ProjectionCandidate(_, ty::BoundConstness::ConstIfConst)
-                    // auto trait impl
-                    | AutoImplCandidate
-                    // generator / future, this will raise error in other places
-                    // or ignore error with const_async_blocks feature
-                    | GeneratorCandidate
-                    | FutureCandidate
-                    // FnDef where the function is const
-                    | FnPointerCandidate { is_const: true }
-                    | ConstDestructCandidate(_)
-                    | ClosureCandidate { is_const: true } => {}
-
-                    FnPointerCandidate { is_const: false } => {
-                        if let ty::FnDef(def_id, _) = obligation.self_ty().skip_binder().kind() && tcx.trait_of_item(*def_id).is_some() {
-                            // Trait methods are not seen as const unless the trait is implemented as const.
-                            // We do not filter that out in here, but nested obligations will be needed to confirm this.
-                        } else {
-                            continue
-                        }
-                    }
-
-                    _ => {
-                        // reject all other types of candidates
-                        continue;
-                    }
-                }
-            }
-
             if let ImplCandidate(def_id) = candidate {
                 if ty::ImplPolarity::Reservation == tcx.impl_polarity(def_id)
                     || obligation.polarity() == tcx.impl_polarity(def_id)
@@ -1487,7 +1445,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn is_knowable<'o>(&mut self, stack: &TraitObligationStack<'o, 'tcx>) -> Result<(), Conflict> {
         debug!("is_knowable(intercrate={:?})", self.is_intercrate());
 
-        if !self.is_intercrate() || stack.obligation.polarity() == ty::ImplPolarity::Negative {
+        if !self.is_intercrate() {
             return Ok(());
         }
 
@@ -1528,7 +1486,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     fn check_candidate_cache(
         &mut self,
-        mut param_env: ty::ParamEnv<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
         cache_fresh_trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> Option<SelectionResult<'tcx, SelectionCandidate<'tcx>>> {
         // Neither the global nor local cache is aware of intercrate
@@ -1539,8 +1497,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return None;
         }
         let tcx = self.tcx();
-        let mut pred = cache_fresh_trait_pred.skip_binder();
-        pred.remap_constness(&mut param_env);
+        let pred = cache_fresh_trait_pred.skip_binder();
 
         if self.can_use_global_caches(param_env) {
             if let Some(res) = tcx.selection_cache.get(&(param_env, pred), tcx) {
@@ -1586,15 +1543,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     #[instrument(skip(self, param_env, cache_fresh_trait_pred, dep_node), level = "debug")]
     fn insert_candidate_cache(
         &mut self,
-        mut param_env: ty::ParamEnv<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
         cache_fresh_trait_pred: ty::PolyTraitPredicate<'tcx>,
         dep_node: DepNodeIndex,
         candidate: SelectionResult<'tcx, SelectionCandidate<'tcx>>,
     ) {
         let tcx = self.tcx();
-        let mut pred = cache_fresh_trait_pred.skip_binder();
-
-        pred.remap_constness(&mut param_env);
+        let pred = cache_fresh_trait_pred.skip_binder();
 
         if !self.can_cache_candidate(&candidate) {
             debug!(?pred, ?candidate, "insert_candidate_cache - candidate is not cacheable");
@@ -1628,7 +1583,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn match_projection_obligation_against_definition_bounds(
         &mut self,
         obligation: &PolyTraitObligation<'tcx>,
-    ) -> smallvec::SmallVec<[(usize, ty::BoundConstness); 2]> {
+    ) -> smallvec::SmallVec<[usize; 2]> {
         let poly_trait_predicate = self.infcx.resolve_vars_if_possible(obligation.predicate);
         let placeholder_trait_predicate =
             self.infcx.instantiate_binder_with_placeholders(poly_trait_predicate);
@@ -1677,7 +1632,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             _ => false,
                         }
                     }) {
-                        return Some((idx, pred.constness));
+                        return Some(idx);
                     }
                 }
                 None
@@ -1827,6 +1782,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
     /// candidates and prefer where-clause candidates.
     ///
     /// See the comment for "SelectionCandidate" for more details.
+    #[instrument(level = "debug", skip(self))]
     fn candidate_should_be_dropped_in_favor_of(
         &mut self,
         victim: &EvaluatedCandidate<'tcx>,
@@ -1850,13 +1806,6 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         // This is a fix for #53123 and prevents winnowing from accidentally extending the
         // lifetime of a variable.
         match (&other.candidate, &victim.candidate) {
-            (_, AutoImplCandidate) | (AutoImplCandidate, _) => {
-                bug!(
-                    "default implementations shouldn't be recorded \
-                    when there are other valid candidates"
-                );
-            }
-
             // FIXME(@jswrenn): this should probably be more sophisticated
             (TransmutabilityCandidate, _) | (_, TransmutabilityCandidate) => DropVictim::No,
 
@@ -1871,7 +1820,6 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             (ParamCandidate(other), ParamCandidate(victim)) => {
                 let same_except_bound_vars = other.skip_binder().trait_ref
                     == victim.skip_binder().trait_ref
-                    && other.skip_binder().constness == victim.skip_binder().constness
                     && other.skip_binder().polarity == victim.skip_binder().polarity
                     && !other.skip_binder().trait_ref.has_escaping_bound_vars();
                 if same_except_bound_vars {
@@ -1881,12 +1829,6 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                     // probably best characterized as a "hack", since we might prefer to just do our
                     // best to *not* create essentially duplicate candidates in the first place.
                     DropVictim::drop_if(other.bound_vars().len() <= victim.bound_vars().len())
-                } else if other.skip_binder().trait_ref == victim.skip_binder().trait_ref
-                    && victim.skip_binder().constness == ty::BoundConstness::NotConst
-                    && other.skip_binder().polarity == victim.skip_binder().polarity
-                {
-                    // Drop otherwise equivalent non-const candidates in favor of const candidates.
-                    DropVictim::Yes
                 } else {
                     DropVictim::No
                 }
@@ -1898,6 +1840,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             (
                 ParamCandidate(ref other_cand),
                 ImplCandidate(..)
+                | AutoImplCandidate
                 | ClosureCandidate { .. }
                 | GeneratorCandidate
                 | FutureCandidate
@@ -1925,6 +1868,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             }
             (
                 ImplCandidate(_)
+                | AutoImplCandidate
                 | ClosureCandidate { .. }
                 | GeneratorCandidate
                 | FutureCandidate
@@ -1958,6 +1902,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             (
                 ObjectCandidate(_) | ProjectionCandidate(..),
                 ImplCandidate(..)
+                | AutoImplCandidate
                 | ClosureCandidate { .. }
                 | GeneratorCandidate
                 | FutureCandidate
@@ -1971,6 +1916,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
 
             (
                 ImplCandidate(..)
+                | AutoImplCandidate
                 | ClosureCandidate { .. }
                 | GeneratorCandidate
                 | FutureCandidate
@@ -2061,6 +2007,19 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 }
             }
 
+            (AutoImplCandidate, ImplCandidate(_)) | (ImplCandidate(_), AutoImplCandidate) => {
+                DropVictim::No
+            }
+
+            (AutoImplCandidate, _) | (_, AutoImplCandidate) => {
+                bug!(
+                    "default implementations shouldn't be recorded \
+                    when there are other global candidates: {:?} {:?}",
+                    other,
+                    victim
+                );
+            }
+
             // Everything else is ambiguous
             (
                 ImplCandidate(_)
@@ -2133,7 +2092,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 Where(
                     obligation
                         .predicate
-                        .rebind(sized_crit.iter_instantiated_copied(self.tcx(), args).collect()),
+                        .rebind(sized_crit.iter_instantiated(self.tcx(), args).collect()),
                 )
             }
 
@@ -2203,7 +2162,8 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                         let all = args
                             .as_generator()
                             .upvar_tys()
-                            .chain(iter::once(args.as_generator().witness()))
+                            .iter()
+                            .chain([args.as_generator().witness()])
                             .collect::<Vec<_>>();
                         Where(obligation.predicate.rebind(all))
                     }
@@ -2244,7 +2204,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                     // Not yet resolved.
                     Ambiguous
                 } else {
-                    Where(obligation.predicate.rebind(args.as_closure().upvar_tys().collect()))
+                    Where(obligation.predicate.rebind(args.as_closure().upvar_tys().to_vec()))
                 }
             }
 
@@ -2443,8 +2403,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 let guar = self.infcx.tcx.sess.delay_span_bug(
                     obligation.cause.span,
                     format!(
-                        "Impl {:?} was matchable against {:?} but now is not",
-                        impl_def_id, obligation
+                        "Impl {impl_def_id:?} was matchable against {obligation:?} but now is not"
                     ),
                 );
                 let value = self.infcx.fresh_args_for_item(obligation.cause.span, impl_def_id);

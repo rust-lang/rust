@@ -22,6 +22,33 @@ fn string_to_parser(ps: &ParseSess, source_str: String) -> Parser<'_> {
     new_parser_from_source_str(ps, PathBuf::from("bogofile").into(), source_str)
 }
 
+fn create_test_handler() -> (Handler, Lrc<SourceMap>, Arc<Mutex<Vec<u8>>>) {
+    let output = Arc::new(Mutex::new(Vec::new()));
+    let source_map = Lrc::new(SourceMap::new(FilePathMapping::empty()));
+    let fallback_bundle = rustc_errors::fallback_fluent_bundle(
+        vec![crate::DEFAULT_LOCALE_RESOURCE, rustc_parse::DEFAULT_LOCALE_RESOURCE],
+        false,
+    );
+    let emitter = EmitterWriter::new(
+        Box::new(Shared { data: output.clone() }),
+        Some(source_map.clone()),
+        None,
+        fallback_bundle,
+        false,
+        false,
+        false,
+        Some(140),
+        false,
+        false,
+        TerminalUrl::No,
+    );
+    let handler = Handler::with_emitter(Box::new(emitter));
+    (handler, source_map, output)
+}
+
+/// Returns the result of parsing the given string via the given callback.
+///
+/// If there are any errors, this will panic.
 pub(crate) fn with_error_checking_parse<'a, T, F>(s: String, ps: &'a ParseSess, f: F) -> T
 where
     F: FnOnce(&mut Parser<'a>) -> PResult<'a, T>,
@@ -30,6 +57,26 @@ where
     let x = f(&mut p).unwrap();
     p.sess.span_diagnostic.abort_if_errors();
     x
+}
+
+/// Verifies that parsing the given string using the given callback will
+/// generate an error that contains the given text.
+pub(crate) fn with_expected_parse_error<T, F>(source_str: &str, expected_output: &str, f: F)
+where
+    F: for<'a> FnOnce(&mut Parser<'a>) -> PResult<'a, T>,
+{
+    let (handler, source_map, output) = create_test_handler();
+    let ps = ParseSess::with_span_handler(handler, source_map);
+    let mut p = string_to_parser(&ps, source_str.to_string());
+    let result = f(&mut p);
+    assert!(result.is_ok());
+
+    let bytes = output.lock().unwrap();
+    let actual_output = str::from_utf8(&bytes).unwrap();
+    println!("expected output:\n------\n{}------", expected_output);
+    println!("actual output:\n------\n{}------", actual_output);
+
+    assert!(actual_output.contains(expected_output))
 }
 
 /// Maps a string to tts, using a made-up filename.
@@ -130,13 +177,7 @@ impl<T: Write> Write for Shared<T> {
 
 fn test_harness(file_text: &str, span_labels: Vec<SpanLabel>, expected_output: &str) {
     create_default_session_if_not_set_then(|_| {
-        let output = Arc::new(Mutex::new(Vec::new()));
-
-        let fallback_bundle = rustc_errors::fallback_fluent_bundle(
-            vec![crate::DEFAULT_LOCALE_RESOURCE, rustc_parse::DEFAULT_LOCALE_RESOURCE],
-            false,
-        );
-        let source_map = Lrc::new(SourceMap::new(FilePathMapping::empty()));
+        let (handler, source_map, output) = create_test_handler();
         source_map.new_source_file(Path::new("test.rs").to_owned().into(), file_text.to_owned());
 
         let primary_span = make_span(&file_text, &span_labels[0].start, &span_labels[0].end);
@@ -148,20 +189,6 @@ fn test_harness(file_text: &str, span_labels: Vec<SpanLabel>, expected_output: &
             println!("text: {:?}", source_map.span_to_snippet(span));
         }
 
-        let emitter = EmitterWriter::new(
-            Box::new(Shared { data: output.clone() }),
-            Some(source_map.clone()),
-            None,
-            fallback_bundle,
-            false,
-            false,
-            false,
-            None,
-            false,
-            false,
-            TerminalUrl::No,
-        );
-        let handler = Handler::with_emitter(true, None, Box::new(emitter), None);
         #[allow(rustc::untranslatable_diagnostic)]
         handler.span_err(msp, "foo");
 

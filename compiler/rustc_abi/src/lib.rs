@@ -1,4 +1,5 @@
 #![cfg_attr(feature = "nightly", feature(step_trait, rustc_attrs, min_specialization))]
+#![cfg_attr(all(not(bootstrap), feature = "nightly"), allow(internal_features))]
 
 use std::fmt;
 #[cfg(feature = "nightly")]
@@ -332,7 +333,7 @@ impl TargetDataLayout {
             16 => 1 << 15,
             32 => 1 << 31,
             64 => 1 << 47,
-            bits => panic!("obj_size_bound: unknown pointer bit size {}", bits),
+            bits => panic!("obj_size_bound: unknown pointer bit size {bits}"),
         }
     }
 
@@ -342,7 +343,7 @@ impl TargetDataLayout {
             16 => I16,
             32 => I32,
             64 => I64,
-            bits => panic!("ptr_sized_integer: unknown pointer bit size {}", bits),
+            bits => panic!("ptr_sized_integer: unknown pointer bit size {bits}"),
         }
     }
 
@@ -399,7 +400,7 @@ impl FromStr for Endian {
         match s {
             "little" => Ok(Self::Little),
             "big" => Ok(Self::Big),
-            _ => Err(format!(r#"unknown endian: "{}""#, s)),
+            _ => Err(format!(r#"unknown endian: "{s}""#)),
         }
     }
 }
@@ -456,7 +457,7 @@ impl Size {
     pub fn bits(self) -> u64 {
         #[cold]
         fn overflow(bytes: u64) -> ! {
-            panic!("Size::bits: {} bytes in bits doesn't fit in u64", bytes)
+            panic!("Size::bits: {bytes} bytes in bits doesn't fit in u64")
         }
 
         self.bytes().checked_mul(8).unwrap_or_else(|| overflow(self.bytes()))
@@ -1179,17 +1180,12 @@ impl FieldsShape {
                 unreachable!("FieldsShape::offset: `Primitive`s have no fields")
             }
             FieldsShape::Union(count) => {
-                assert!(
-                    i < count.get(),
-                    "tried to access field {} of union with {} fields",
-                    i,
-                    count
-                );
+                assert!(i < count.get(), "tried to access field {i} of union with {count} fields");
                 Size::ZERO
             }
             FieldsShape::Array { stride, count } => {
                 let i = u64::try_from(i).unwrap();
-                assert!(i < count, "tried to access field {} of array with {} fields", i, count);
+                assert!(i < count, "tried to access field {i} of array with {count} fields");
                 stride * i
             }
             FieldsShape::Arbitrary { ref offsets, .. } => offsets[FieldIdx::from_usize(i)],
@@ -1294,7 +1290,7 @@ impl Abi {
                 Primitive::Int(_, signed) => signed,
                 _ => false,
             },
-            _ => panic!("`is_signed` on non-scalar ABI {:?}", self),
+            _ => panic!("`is_signed` on non-scalar ABI {self:?}"),
         }
     }
 

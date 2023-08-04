@@ -197,7 +197,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
         }
 
-        err.span_label(span, format!("associated type `{}` not found", assoc_name));
+        err.span_label(span, format!("associated type `{assoc_name}` not found"));
         err.emit()
     }
 
@@ -393,7 +393,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             .into_iter()
             .map(|error| error.root_obligation.predicate)
             .filter_map(format_pred)
-            .map(|(p, _)| format!("`{}`", p))
+            .map(|(p, _)| format!("`{p}`"))
             .collect();
         bounds.sort();
         bounds.dedup();
@@ -652,7 +652,7 @@ pub(crate) fn fn_trait_to_string(
             }
             .map(|s| {
                 // `s.empty()` checks to see if the type is the unit tuple, if so we don't want a comma
-                if parenthesized || s.is_empty() { format!("({})", s) } else { format!("({},)", s) }
+                if parenthesized || s.is_empty() { format!("({s})") } else { format!("({s},)") }
             })
             .ok(),
             _ => None,

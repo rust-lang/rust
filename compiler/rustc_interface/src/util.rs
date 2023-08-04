@@ -519,7 +519,8 @@ fn multiple_output_types_to_stdout(
     output_types: &OutputTypes,
     single_output_file_is_stdout: bool,
 ) -> bool {
-    if atty::is(atty::Stream::Stdout) {
+    use std::io::IsTerminal;
+    if std::io::stdout().is_terminal() {
         // If stdout is a tty, check if multiple text output types are
         // specified by `--emit foo=- --emit bar=-` or `-o - --emit foo,bar`
         let named_text_types = output_types

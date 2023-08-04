@@ -255,6 +255,7 @@ pub fn expand_test_or_bench(
             ast::ItemKind::Const(
                 ast::ConstItem {
                     defaultness: ast::Defaultness::Final,
+                    generics: ast::Generics::default(),
                     ty: cx.ty(sp, ast::TyKind::Path(None, test_path("TestDescAndFn"))),
                     // test::TestDescAndFn {
                     expr: Some(

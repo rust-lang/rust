@@ -126,7 +126,7 @@ You can skip linkcheck with --exclude src/tools/linkchecker"
             );
         }
 
-        builder.info(&format!("Linkcheck ({})", host));
+        builder.info(&format!("Linkcheck ({host})"));
 
         // Test the linkchecker itself.
         let bootstrap_host = builder.config.build;
@@ -557,7 +557,7 @@ impl Miri {
         if builder.config.dry_run() {
             String::new()
         } else {
-            builder.verbose(&format!("running: {:?}", cargo));
+            builder.verbose(&format!("running: {cargo:?}"));
             let out =
                 cargo.output().expect("We already ran `cargo miri setup` before and that worked");
             assert!(out.status.success(), "`cargo miri setup` returned with non-0 exit code");
@@ -565,7 +565,7 @@ impl Miri {
             let stdout = String::from_utf8(out.stdout)
                 .expect("`cargo miri setup` stdout is not valid UTF-8");
             let sysroot = stdout.trim_end();
-            builder.verbose(&format!("`cargo miri setup --print-sysroot` said: {:?}", sysroot));
+            builder.verbose(&format!("`cargo miri setup --print-sysroot` said: {sysroot:?}"));
             sysroot.to_owned()
         }
     }
@@ -629,10 +629,6 @@ impl Step for Miri {
         cargo.env("MIRI_SYSROOT", &miri_sysroot);
         cargo.env("MIRI_HOST_SYSROOT", sysroot);
         cargo.env("MIRI", &miri);
-        // propagate --bless
-        if builder.config.cmd.bless() {
-            cargo.env("MIRI_BLESS", "Gesundheit");
-        }
 
         // Set the target.
         cargo.env("MIRI_TEST_TARGET", target.rustc_target_arg());
@@ -650,8 +646,8 @@ impl Step for Miri {
             cargo.env("MIRIFLAGS", "-O -Zmir-opt-level=4 -Cdebug-assertions=yes");
             // Optimizations can change backtraces
             cargo.env("MIRI_SKIP_UI_CHECKS", "1");
-            // `MIRI_SKIP_UI_CHECKS` and `MIRI_BLESS` are incompatible
-            cargo.env_remove("MIRI_BLESS");
+            // `MIRI_SKIP_UI_CHECKS` and `RUSTC_BLESS` are incompatible
+            cargo.env_remove("RUSTC_BLESS");
             // Optimizations can change error locations and remove UB so don't run `fail` tests.
             cargo.args(&["tests/pass", "tests/panic"]);
 
@@ -794,11 +790,6 @@ impl Step for Clippy {
 
         cargo.add_rustc_lib_path(builder, compiler);
         let mut cargo = prepare_cargo_test(cargo, &[], &[], "clippy", compiler, host, builder);
-
-        // propagate --bless
-        if builder.config.cmd.bless() {
-            cargo.env("BLESS", "Gesundheit");
-        }
 
         let _guard = builder.msg_sysroot_tool(Kind::Test, compiler.stage, "clippy", host, host);
 
@@ -2241,9 +2232,11 @@ fn prepare_cargo_test(
 ) -> Command {
     let mut cargo = cargo.into();
 
-    // If bless is passed, give downstream crates a way to use it
-    if builder.config.cmd.bless() {
-        cargo.env("RUSTC_BLESS", "1");
+    // Propegate `--bless` if it has not already been set/unset
+    // Any tools that want to use this should bless if `RUSTC_BLESS` is set to
+    // anything other than `0`.
+    if builder.config.cmd.bless() && !cargo.get_envs().any(|v| v.0 == "RUSTC_BLESS") {
+        cargo.env("RUSTC_BLESS", "Gesundheit");
     }
 
     // Pass in some standard flags then iterate over the graph we've discovered
@@ -2587,7 +2580,7 @@ impl Step for RemoteCopyLibs {
 
         builder.ensure(compile::Std::new(compiler, target));
 
-        builder.info(&format!("REMOTE copy libs to emulator ({})", target));
+        builder.info(&format!("REMOTE copy libs to emulator ({target})"));
 
         let server = builder.ensure(tool::RemoteTestServer { compiler, target });
 

@@ -1,5 +1,6 @@
 // compile-flags: -Zmir-opt-level=0
-// run-pass
+// known-bug: #110395
+// FIXME run-pass
 
 #![feature(const_float_bits_conv)]
 #![feature(const_float_classify)]

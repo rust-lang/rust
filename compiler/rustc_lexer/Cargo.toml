@@ -16,7 +16,11 @@ Rust lexer used by rustc. No stability guarantees are provided.
 # Note that this crate purposefully does not depend on other rustc crates
 [dependencies]
 unicode-xid = "0.2.0"
-unic-emoji-char = "0.9.0"
+
+[dependencies.unicode-properties]
+version = "0.1.0"
+default-features = false
+features = ["emoji"]
 
 [dev-dependencies]
 expect-test = "1.4.0"

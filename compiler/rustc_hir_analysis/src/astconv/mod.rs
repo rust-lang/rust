@@ -713,7 +713,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         );
 
         debug!(?poly_trait_ref, ?assoc_bindings);
-        bounds.push_trait_bound(tcx, poly_trait_ref, span, constness, polarity);
+        bounds.push_trait_bound(tcx, poly_trait_ref, span, polarity);
 
         let mut dup_bindings = FxHashMap::default();
         for binding in &assoc_bindings {
@@ -1128,7 +1128,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     ty_param_name
                 )
             };
-            err.span_label(span, format!("ambiguous associated type `{}`", assoc_name));
+            err.span_label(span, format!("ambiguous associated type `{assoc_name}`"));
 
             let mut where_bounds = vec![];
             for bound in bounds {
@@ -1407,7 +1407,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             _ => {
                 let reported = if variant_resolution.is_some() {
                     // Variant in type position
-                    let msg = format!("expected type, found variant `{}`", assoc_ident);
+                    let msg = format!("expected type, found variant `{assoc_ident}`");
                     tcx.sess.span_err(span, msg)
                 } else if qself_ty.is_enum() {
                     let mut err = struct_span_err!(
@@ -1438,12 +1438,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     } else {
                         err.span_label(
                             assoc_ident.span,
-                            format!("variant not found in `{}`", qself_ty),
+                            format!("variant not found in `{qself_ty}`"),
                         );
                     }
 
                     if let Some(sp) = tcx.hir().span_if_local(adt_def.did()) {
-                        err.span_label(sp, format!("variant `{}` not found here", assoc_ident));
+                        err.span_label(sp, format!("variant `{assoc_ident}` not found here"));
                     }
 
                     err.emit()
@@ -1462,7 +1462,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     let traits: Vec<_> =
                         self.probe_traits_that_match_assoc_ty(qself_ty, assoc_ident);
 
-                    // Don't print `TyErr` to the user.
+                    // Don't print `ty::Error` to the user.
                     self.report_ambiguous_associated_type(
                         span,
                         &[qself_ty.to_string()],
@@ -2750,7 +2750,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 ty::BrNamed(_, kw::UnderscoreLifetime) | ty::BrAnon(..) | ty::BrEnv => {
                     "an anonymous lifetime".to_string()
                 }
-                ty::BrNamed(_, name) => format!("lifetime `{}`", name),
+                ty::BrNamed(_, name) => format!("lifetime `{name}`"),
             };
 
             let mut err = generate_err(&br_name);

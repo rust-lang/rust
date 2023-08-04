@@ -18,6 +18,7 @@
 #![recursion_limit = "256"]
 #![allow(rustdoc::private_intra_doc_links)]
 #![allow(rustc::potential_query_instability)]
+#![cfg_attr(not(bootstrap), allow(internal_features))]
 
 #[macro_use]
 extern crate tracing;
@@ -658,6 +659,7 @@ impl<'a> fmt::Debug for Module<'a> {
 struct NameBindingData<'a> {
     kind: NameBindingKind<'a>,
     ambiguity: Option<(NameBinding<'a>, AmbiguityKind)>,
+    warn_ambiguity: bool,
     expansion: LocalExpnId,
     span: Span,
     vis: ty::Visibility<DefId>,
@@ -767,6 +769,7 @@ struct AmbiguityError<'a> {
     b2: NameBinding<'a>,
     misc1: AmbiguityErrorMisc,
     misc2: AmbiguityErrorMisc,
+    warning: bool,
 }
 
 impl<'a> NameBindingData<'a> {
@@ -790,6 +793,14 @@ impl<'a> NameBindingData<'a> {
         self.ambiguity.is_some()
             || match self.kind {
                 NameBindingKind::Import { binding, .. } => binding.is_ambiguity(),
+                _ => false,
+            }
+    }
+
+    fn is_warn_ambiguity(&self) -> bool {
+        self.warn_ambiguity
+            || match self.kind {
+                NameBindingKind::Import { binding, .. } => binding.is_warn_ambiguity(),
                 _ => false,
             }
     }
@@ -1158,7 +1169,7 @@ impl<'tcx> Resolver<'_, 'tcx> {
     }
 
     fn local_def_id(&self, node: NodeId) -> LocalDefId {
-        self.opt_local_def_id(node).unwrap_or_else(|| panic!("no entry for node id: `{:?}`", node))
+        self.opt_local_def_id(node).unwrap_or_else(|| panic!("no entry for node id: `{node:?}`"))
     }
 
     /// Adds a definition with a parent definition.
@@ -1322,6 +1333,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             dummy_binding: arenas.alloc_name_binding(NameBindingData {
                 kind: NameBindingKind::Res(Res::Err),
                 ambiguity: None,
+                warn_ambiguity: false,
                 expansion: LocalExpnId::ROOT,
                 span: DUMMY_SP,
                 vis: ty::Visibility::Public,
@@ -1685,6 +1697,16 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     }
 
     fn record_use(&mut self, ident: Ident, used_binding: NameBinding<'a>, is_lexical_scope: bool) {
+        self.record_use_inner(ident, used_binding, is_lexical_scope, used_binding.warn_ambiguity);
+    }
+
+    fn record_use_inner(
+        &mut self,
+        ident: Ident,
+        used_binding: NameBinding<'a>,
+        is_lexical_scope: bool,
+        warn_ambiguity: bool,
+    ) {
         if let Some((b2, kind)) = used_binding.ambiguity {
             let ambiguity_error = AmbiguityError {
                 kind,
@@ -1693,9 +1715,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 b2,
                 misc1: AmbiguityErrorMisc::None,
                 misc2: AmbiguityErrorMisc::None,
+                warning: warn_ambiguity,
             };
             if !self.matches_previous_ambiguity_error(&ambiguity_error) {
-                // avoid duplicated span information to be emitt out
+                // avoid duplicated span information to be emit out
                 self.ambiguity_errors.push(ambiguity_error);
             }
         }
@@ -1715,7 +1738,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 self.used_imports.insert(id);
             }
             self.add_to_glob_map(import, ident);
-            self.record_use(ident, binding, false);
+            self.record_use_inner(ident, binding, false, warn_ambiguity || binding.warn_ambiguity);
         }
     }
 
@@ -1812,7 +1835,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     fn record_partial_res(&mut self, node_id: NodeId, resolution: PartialRes) {
         debug!("(recording res) recording {:?} for {}", resolution, node_id);
         if let Some(prev_res) = self.partial_res_map.insert(node_id, resolution) {
-            panic!("path resolved multiple times ({:?} before, {:?} now)", prev_res, resolution);
+            panic!("path resolved multiple times ({prev_res:?} before, {resolution:?} now)");
         }
     }
 

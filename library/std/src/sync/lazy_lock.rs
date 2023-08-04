@@ -89,6 +89,15 @@ impl<T, F: FnOnce() -> T> LazyLock<T, F> {
         LazyLock { once: Once::new(), data: UnsafeCell::new(Data { f: ManuallyDrop::new(f) }) }
     }
 
+    /// Creates a new lazy value that is already initialized.
+    #[inline]
+    #[cfg(test)]
+    pub(crate) fn preinit(value: T) -> LazyLock<T, F> {
+        let once = Once::new();
+        once.call_once(|| {});
+        LazyLock { once, data: UnsafeCell::new(Data { value: ManuallyDrop::new(value) }) }
+    }
+
     /// Consumes this `LazyLock` returning the stored value.
     ///
     /// Returns `Ok(value)` if `Lazy` is initialized and `Err(f)` otherwise.
@@ -213,10 +222,12 @@ impl<T: Default> Default for LazyLock<T> {
 #[unstable(feature = "lazy_cell", issue = "109736")]
 impl<T: fmt::Debug, F> fmt::Debug for LazyLock<T, F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut d = f.debug_tuple("LazyLock");
         match self.get() {
-            Some(v) => f.debug_tuple("LazyLock").field(v).finish(),
-            None => f.write_str("LazyLock(Uninit)"),
-        }
+            Some(v) => d.field(v),
+            None => d.field(&format_args!("<uninit>")),
+        };
+        d.finish()
     }
 }
 

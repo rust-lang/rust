@@ -52,13 +52,13 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     trace!(
         "eval_body_using_ecx: pushing stack frame for global: {}{}",
         with_no_trimmed_paths!(ecx.tcx.def_path_str(cid.instance.def_id())),
-        cid.promoted.map_or_else(String::new, |p| format!("::promoted[{:?}]", p))
+        cid.promoted.map_or_else(String::new, |p| format!("::promoted[{p:?}]"))
     );
 
     ecx.push_stack_frame(
         cid.instance,
         body,
-        &ret.into(),
+        &ret.clone().into(),
         StackPopCleanup::Root { cleanup: false },
     )?;
 
@@ -228,7 +228,6 @@ pub fn eval_to_const_value_raw_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
 ) -> ::rustc_middle::mir::interpret::EvalToConstValueResult<'tcx> {
-    assert!(key.param_env.is_const());
     // see comment in eval_to_allocation_raw_provider for what we're doing here
     if key.param_env.reveal() == Reveal::All {
         let mut key = key;
@@ -269,7 +268,6 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
 ) -> ::rustc_middle::mir::interpret::EvalToAllocationRawResult<'tcx> {
-    assert!(key.param_env.is_const());
     // Because the constant is computed twice (once per value of `Reveal`), we are at risk of
     // reporting the same error twice here. To resolve this, we check whether we can evaluate the
     // constant in the more restrictive `Reveal::UserFacing`, which most likely already was
@@ -356,7 +354,7 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
             // Since evaluation had no errors, validate the resulting constant.
             // This is a separate `try` block to provide more targeted error reporting.
             let validation: Result<_, InterpErrorInfo<'_>> = try {
-                let mut ref_tracking = RefTracking::new(mplace);
+                let mut ref_tracking = RefTracking::new(mplace.clone());
                 let mut inner = false;
                 while let Some((mplace, path)) = ref_tracking.todo.pop() {
                     let mode = match tcx.static_mutability(cid.instance.def_id()) {

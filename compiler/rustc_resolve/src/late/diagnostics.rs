@@ -585,13 +585,13 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     let others = match enum_candidates.len() {
                         1 => String::new(),
                         2 => " and 1 other".to_owned(),
-                        n => format!(" and {} others", n),
+                        n => format!(" and {n} others"),
                     };
                     format!("there is an enum variant `{}`{}; ", enum_candidates[0].0, others)
                 } else {
                     String::new()
                 };
-                let msg = format!("{}try using the variant's enum", preamble);
+                let msg = format!("{preamble}try using the variant's enum");
 
                 err.span_suggestions(
                     span,
@@ -696,7 +696,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     ident.name == path[0].ident.name {
                     err.span_help(
                         ident.span,
-                        format!("the binding `{}` is available in a different scope in the same function", path_str),
+                        format!("the binding `{path_str}` is available in a different scope in the same function"),
                     );
                     return (true, candidates);
                 }
@@ -858,7 +858,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 for label_rib in &self.label_ribs {
                     for (label_ident, node_id) in &label_rib.bindings {
                         let ident = path.last().unwrap().ident;
-                        if format!("'{}", ident) == label_ident.to_string() {
+                        if format!("'{ident}") == label_ident.to_string() {
                             err.span_label(label_ident.span, "a label with a similar name exists");
                             if let PathSource::Expr(Some(Expr {
                                 kind: ExprKind::Break(None, Some(_)),
@@ -983,7 +983,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 if let Some(ident) = fn_kind.ident() {
                     err.span_label(
                         ident.span,
-                        format!("this function {} have a `self` parameter", doesnt),
+                        format!("this function {doesnt} have a `self` parameter"),
                     );
                 }
             }
@@ -1164,7 +1164,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                         };
                         err.span_suggestion_verbose(
                             *where_span,
-                            format!("constrain the associated type to `{}`", ident),
+                            format!("constrain the associated type to `{ident}`"),
                             where_bound_predicate_to_string(&new_where_bound_predicate),
                             Applicability::MaybeIncorrect,
                         );
@@ -1338,8 +1338,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                             span, // Note the parentheses surrounding the suggestion below
                             format!(
                                 "you might want to surround a struct literal with parentheses: \
-                                 `({} {{ /* fields */ }})`?",
-                                path_str
+                                 `({path_str} {{ /* fields */ }})`?"
                             ),
                         );
                     }
@@ -1373,7 +1372,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                                     .map(|(idx, new)| (new, old_fields.get(idx)))
                                     .map(|(new, old)| {
                                         let new = new.to_ident_string();
-                                        if let Some(Some(old)) = old && new != *old { format!("{}: {}", new, old) } else { new }
+                                        if let Some(Some(old)) = old && new != *old { format!("{new}: {old}") } else { new }
                                     })
                                     .collect::<Vec<String>>()
                             } else {
@@ -1390,7 +1389,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     };
                     err.span_suggestion(
                         span,
-                        format!("use struct {} syntax instead", descr),
+                        format!("use struct {descr} syntax instead"),
                         format!("{path_str} {{{pad}{fields}{pad}}}"),
                         applicability,
                     );
@@ -1584,7 +1583,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 err.span_suggestion(
                     span,
                     "use the tuple variant pattern syntax instead",
-                    format!("{}({})", path_str, fields),
+                    format!("{path_str}({fields})"),
                     Applicability::HasPlaceholders,
                 );
             }
@@ -1994,9 +1993,9 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
 
             if !suggestable_variants.is_empty() {
                 let msg = if non_suggestable_variant_count == 0 && suggestable_variants.len() == 1 {
-                    format!("try {} the enum's variant", source_msg)
+                    format!("try {source_msg} the enum's variant")
                 } else {
-                    format!("try {} one of the enum's variants", source_msg)
+                    format!("try {source_msg} one of the enum's variants")
                 };
 
                 err.span_suggestions(
@@ -2009,19 +2008,15 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
 
             // If the enum has no tuple variants..
             if non_suggestable_variant_count == variants.len() {
-                err.help(format!("the enum has no tuple variants {}", source_msg));
+                err.help(format!("the enum has no tuple variants {source_msg}"));
             }
 
             // If there are also non-tuple variants..
             if non_suggestable_variant_count == 1 {
-                err.help(format!(
-                    "you might have meant {} the enum's non-tuple variant",
-                    source_msg
-                ));
+                err.help(format!("you might have meant {source_msg} the enum's non-tuple variant"));
             } else if non_suggestable_variant_count >= 1 {
                 err.help(format!(
-                    "you might have meant {} one of the enum's non-tuple variants",
-                    source_msg
+                    "you might have meant {source_msg} one of the enum's non-tuple variants"
                 ));
             }
         } else {
@@ -2041,7 +2036,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 .map(|(variant, _, kind)| (path_names_to_string(variant), kind))
                 .map(|(variant, kind)| match kind {
                     CtorKind::Const => variant,
-                    CtorKind::Fn => format!("({}())", variant),
+                    CtorKind::Fn => format!("({variant}())"),
                 })
                 .collect::<Vec<_>>();
             let no_suggestable_variant = suggestable_variants.is_empty();
@@ -2066,7 +2061,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 .filter(|(_, def_id, kind)| needs_placeholder(*def_id, *kind))
                 .map(|(variant, _, kind)| (path_names_to_string(variant), kind))
                 .filter_map(|(variant, kind)| match kind {
-                    CtorKind::Fn => Some(format!("({}(/* fields */))", variant)),
+                    CtorKind::Fn => Some(format!("({variant}(/* fields */))")),
                     _ => None,
                 })
                 .collect::<Vec<_>>();
@@ -2348,13 +2343,20 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             let mut should_continue = true;
             match rib.kind {
                 LifetimeRibKind::Generics { binder: _, span, kind } => {
+                    // Avoid suggesting placing lifetime parameters on constant items unless the relevant
+                    // feature is enabled. Suggest the parent item as a possible location if applicable.
+                    if let LifetimeBinderKind::ConstItem = kind
+                        && !self.r.tcx().features().generic_const_items
+                    {
+                        continue;
+                    }
+
                     if !span.can_be_used_for_suggestions() && suggest_note && let Some(name) = name {
                         suggest_note = false; // Avoid displaying the same help multiple times.
                         err.span_label(
                             span,
                             format!(
-                                "lifetime `{}` is missing in item created through this procedural macro",
-                                name,
+                                "lifetime `{name}` is missing in item created through this procedural macro",
                             ),
                         );
                         continue;
@@ -2398,7 +2400,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                         );
                     } else if let Some(name) = name {
                         let message =
-                            Cow::from(format!("consider introducing lifetime `{}` here", name));
+                            Cow::from(format!("consider introducing lifetime `{name}` here"));
                         should_continue = suggest(err, false, span, message, sugg);
                     } else {
                         let message = Cow::from("consider introducing a named lifetime parameter");
@@ -2542,7 +2544,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 }
 
                 let help_name = if let Some(ident) = ident {
-                    format!("`{}`", ident)
+                    format!("`{ident}`")
                 } else {
                     format!("argument {}", index + 1)
                 };
@@ -2550,7 +2552,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 if lifetime_count == 1 {
                     m.push_str(&help_name[..])
                 } else {
-                    m.push_str(&format!("one of {}'s {} lifetimes", help_name, lifetime_count)[..])
+                    m.push_str(&format!("one of {help_name}'s {lifetime_count} lifetimes")[..])
                 }
             }
 
@@ -2580,14 +2582,12 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             } else if num_params == 1 {
                 err.help(format!(
                     "this function's return type contains a borrowed value, \
-                 but the signature does not say which {} it is borrowed from",
-                    m
+                 but the signature does not say which {m} it is borrowed from"
                 ));
             } else {
                 err.help(format!(
                     "this function's return type contains a borrowed value, \
-                 but the signature does not say whether it is borrowed from {}",
-                    m
+                 but the signature does not say whether it is borrowed from {m}"
                 ));
             }
         }
@@ -2606,7 +2606,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             }
             MissingLifetimeKind::Ampersand => {
                 debug_assert_eq!(lt.count, 1);
-                (lt.span.shrink_to_hi(), format!("{} ", existing_name))
+                (lt.span.shrink_to_hi(), format!("{existing_name} "))
             }
             MissingLifetimeKind::Comma => {
                 let sugg: String = std::iter::repeat([existing_name.as_str(), ", "])
@@ -2653,7 +2653,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             }
             1 => {
                 err.multipart_suggestion_verbose(
-                    format!("consider using the `{}` lifetime", existing_name),
+                    format!("consider using the `{existing_name}` lifetime"),
                     spans_suggs,
                     Applicability::MaybeIncorrect,
                 );
@@ -2770,9 +2770,9 @@ pub(super) fn signal_label_shadowing(sess: &Session, orig: Span, shadower: Ident
     let shadower = shadower.span;
     let mut err = sess.struct_span_warn(
         shadower,
-        format!("label name `{}` shadows a label name that is already in scope", name),
+        format!("label name `{name}` shadows a label name that is already in scope"),
     );
     err.span_label(orig, "first declared here");
-    err.span_label(shadower, format!("label `{}` already in scope", name));
+    err.span_label(shadower, format!("label `{name}` already in scope"));
     err.emit();
 }

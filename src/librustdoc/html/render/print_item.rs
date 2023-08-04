@@ -433,7 +433,7 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                     <a href=\"#{id}\">{name}</a>\
                  </h2>{}",
                 ITEM_TABLE_OPEN,
-                id = cx.derive_id(my_section.id().to_owned()),
+                id = cx.derive_id(my_section.id()),
                 name = my_section.name(),
             );
         }
@@ -1543,10 +1543,12 @@ fn item_constant(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, c: &cle
 
         write!(
             w,
-            "{vis}const {name}: {typ}",
+            "{vis}const {name}{generics}: {typ}{where_clause}",
             vis = visibility_print_with_space(it.visibility(tcx), it.item_id, cx),
             name = it.name.unwrap(),
+            generics = c.generics.print(cx),
             typ = c.type_.print(cx),
+            where_clause = print_where_clause(&c.generics, cx, 0, Ending::NoNewline),
         );
 
         // FIXME: The code below now prints

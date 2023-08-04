@@ -908,7 +908,7 @@ pub fn list_file_metadata(
     let flavor = get_flavor_from_path(path);
     match get_metadata_section(target, flavor, path, metadata_loader) {
         Ok(metadata) => metadata.list_crate_metadata(out),
-        Err(msg) => write!(out, "{}\n", msg),
+        Err(msg) => write!(out, "{msg}\n"),
     }
 }
 
@@ -1130,6 +1130,7 @@ impl CrateError {
                         is_nightly_build: sess.is_nightly_build(),
                         profiler_runtime: Symbol::intern(&sess.opts.unstable_opts.profiler_runtime),
                         locator_triple: locator.triple,
+                        is_ui_testing: sess.opts.unstable_opts.ui_testing,
                     });
                 }
             }
@@ -1146,6 +1147,7 @@ impl CrateError {
                     is_nightly_build: sess.is_nightly_build(),
                     profiler_runtime: Symbol::intern(&sess.opts.unstable_opts.profiler_runtime),
                     locator_triple: sess.opts.target_triple.clone(),
+                    is_ui_testing: sess.opts.unstable_opts.ui_testing,
                 });
             }
         }

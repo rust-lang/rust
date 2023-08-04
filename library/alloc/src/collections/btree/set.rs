@@ -1121,19 +1121,6 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// ```
     /// use std::collections::BTreeSet;
     ///
-    /// let set = BTreeSet::from([1, 2, 3]);
-    /// let mut set_iter = set.iter();
-    /// assert_eq!(set_iter.next(), Some(&1));
-    /// assert_eq!(set_iter.next(), Some(&2));
-    /// assert_eq!(set_iter.next(), Some(&3));
-    /// assert_eq!(set_iter.next(), None);
-    /// ```
-    ///
-    /// Values returned by the iterator are returned in ascending order:
-    ///
-    /// ```
-    /// use std::collections::BTreeSet;
-    ///
     /// let set = BTreeSet::from([3, 1, 2]);
     /// let mut set_iter = set.iter();
     /// assert_eq!(set_iter.next(), Some(&1));

@@ -1,8 +1,13 @@
-error: expected one of `=>`, `@`, `if`, or `|`, found `<`
+error: generic args in patterns require the turbofish syntax
   --> $DIR/pat-lt-bracket-4.rs:8:12
    |
 LL |         Foo<T>::A(value) => value,
-   |            ^ expected one of `=>`, `@`, `if`, or `|`
+   |            ^
+   |
+help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
+   |
+LL |         Foo::<T>::A(value) => value,
+   |            ++
 
 error: aborting due to previous error
 

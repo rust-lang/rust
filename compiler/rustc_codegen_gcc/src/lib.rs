@@ -71,7 +71,7 @@ use gccjit::{Context, OptimizationLevel, CType};
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_codegen_ssa::{CodegenResults, CompiledModule, ModuleCodegen};
 use rustc_codegen_ssa::base::codegen_crate;
-use rustc_codegen_ssa::back::write::{CodegenContext, FatLTOInput, ModuleConfig, TargetMachineFactoryFn};
+use rustc_codegen_ssa::back::write::{CodegenContext, FatLtoInput, ModuleConfig, TargetMachineFactoryFn};
 use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule};
 use rustc_codegen_ssa::target_features::supported_target_features;
 use rustc_codegen_ssa::traits::{CodegenBackend, ExtraBackendMethods, ModuleBufferMethods, ThinBufferMethods, WriteBackendMethods};
@@ -217,14 +217,14 @@ impl WriteBackendMethods for GccCodegenBackend {
     type ThinData = ();
     type ThinBuffer = ThinBuffer;
 
-    fn run_fat_lto(_cgcx: &CodegenContext<Self>, mut modules: Vec<FatLTOInput<Self>>, _cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>) -> Result<LtoModuleCodegen<Self>, FatalError> {
+    fn run_fat_lto(_cgcx: &CodegenContext<Self>, mut modules: Vec<FatLtoInput<Self>>, _cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>) -> Result<LtoModuleCodegen<Self>, FatalError> {
         // TODO(antoyo): implement LTO by sending -flto to libgccjit and adding the appropriate gcc linker plugins.
         // NOTE: implemented elsewhere.
         // TODO(antoyo): what is implemented elsewhere ^ ?
         let module =
             match modules.remove(0) {
-                FatLTOInput::InMemory(module) => module,
-                FatLTOInput::Serialized { .. } => {
+                FatLtoInput::InMemory(module) => module,
+                FatLtoInput::Serialized { .. } => {
                     unimplemented!();
                 }
             };

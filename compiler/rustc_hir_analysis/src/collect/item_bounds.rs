@@ -3,7 +3,7 @@ use crate::astconv::{AstConv, PredicateFilter};
 use rustc_hir as hir;
 use rustc_infer::traits::util;
 use rustc_middle::ty::GenericArgs;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeFolder};
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::Span;
 
@@ -113,13 +113,34 @@ pub(super) fn explicit_item_bounds(
             ..
         }) => associated_type_bounds(tcx, def_id, bounds, *span),
         hir::Node::Item(hir::Item {
-            kind: hir::ItemKind::OpaqueTy(hir::OpaqueTy { bounds, .. }),
+            kind: hir::ItemKind::OpaqueTy(hir::OpaqueTy { bounds, in_trait: false, .. }),
             span,
             ..
         }) => {
             let args = GenericArgs::identity_for_item(tcx, def_id);
             let item_ty = Ty::new_opaque(tcx, def_id.to_def_id(), args);
             opaque_type_bounds(tcx, def_id, bounds, item_ty, *span)
+        }
+        // Since RPITITs are astconv'd as projections in `ast_ty_to_ty`, when we're asking
+        // for the item bounds of the *opaques* in a trait's default method signature, we
+        // need to map these projections back to opaques.
+        hir::Node::Item(hir::Item {
+            kind: hir::ItemKind::OpaqueTy(hir::OpaqueTy { bounds, in_trait: true, origin, .. }),
+            span,
+            ..
+        }) => {
+            let (hir::OpaqueTyOrigin::FnReturn(fn_def_id)
+            | hir::OpaqueTyOrigin::AsyncFn(fn_def_id)) = *origin
+            else {
+                bug!()
+            };
+            let args = GenericArgs::identity_for_item(tcx, def_id);
+            let item_ty = Ty::new_opaque(tcx, def_id.to_def_id(), args);
+            tcx.arena.alloc_slice(
+                &opaque_type_bounds(tcx, def_id, bounds, item_ty, *span)
+                    .to_vec()
+                    .fold_with(&mut AssocTyToOpaque { tcx, fn_def_id: fn_def_id.to_def_id() }),
+            )
         }
         hir::Node::Item(hir::Item { kind: hir::ItemKind::TyAlias(..), .. }) => &[],
         _ => bug!("item_bounds called on {:?}", def_id),
@@ -134,4 +155,27 @@ pub(super) fn item_bounds(
     tcx.explicit_item_bounds(def_id).map_bound(|bounds| {
         tcx.mk_clauses_from_iter(util::elaborate(tcx, bounds.iter().map(|&(bound, _span)| bound)))
     })
+}
+
+struct AssocTyToOpaque<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    fn_def_id: DefId,
+}
+
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTyToOpaque<'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        if let ty::Alias(ty::Projection, projection_ty) = ty.kind()
+            && let Some(ty::ImplTraitInTraitData::Trait { fn_def_id, .. })
+                = self.tcx.opt_rpitit_info(projection_ty.def_id)
+            && fn_def_id == self.fn_def_id
+        {
+            self.tcx.type_of(projection_ty.def_id).instantiate(self.tcx, projection_ty.args)
+        } else {
+            ty
+        }
+    }
 }

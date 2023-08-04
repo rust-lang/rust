@@ -1,3 +1,6 @@
+// check-pass
+// known-bug: #110395
+
 #![feature(const_trait_impl)]
 
 #[const_trait]
@@ -13,6 +16,6 @@ impl Foo for S {
 }
 
 impl const Bar for S {}
-//~^ ERROR the trait bound
+//FIXME ~^ ERROR the trait bound
 
 fn main() {}

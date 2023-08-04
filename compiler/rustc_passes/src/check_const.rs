@@ -157,10 +157,8 @@ impl<'tcx> CheckConstVisitor<'tcx> {
                 // is a pretty narrow case, however.
                 if tcx.sess.is_nightly_build() {
                     for gate in missing_secondary {
-                        let note = format!(
-                            "add `#![feature({})]` to the crate attributes to enable",
-                            gate,
-                        );
+                        let note =
+                            format!("add `#![feature({gate})]` to the crate attributes to enable",);
                         err.help(note);
                     }
                 }

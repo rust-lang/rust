@@ -486,4 +486,11 @@ pub fn issue_11145() {
     x += 1;
 }
 
+pub fn issue_11262() {
+    let one = 1;
+    let zero = 0;
+    let _ = 2 / one;
+    let _ = 2 / zero;
+}
+
 fn main() {}

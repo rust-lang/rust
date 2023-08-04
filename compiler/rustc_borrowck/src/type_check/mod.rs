@@ -409,18 +409,12 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
             }
 
             if let ty::FnDef(def_id, args) = *constant.literal.ty().kind() {
-                // const_trait_impl: use a non-const param env when checking that a FnDef type is well formed.
-                // this is because the well-formedness of the function does not need to be proved to have `const`
-                // impls for trait bounds.
                 let instantiated_predicates = tcx.predicates_of(def_id).instantiate(tcx, args);
-                let prev = self.cx.param_env;
-                self.cx.param_env = prev.without_const();
                 self.cx.normalize_and_prove_instantiated_predicates(
                     def_id,
                     instantiated_predicates,
                     locations,
                 );
-                self.cx.param_env = prev;
             }
         }
     }
@@ -797,25 +791,20 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                     (adt_def.variant(FIRST_VARIANT), args)
                 }
                 ty::Closure(_, args) => {
-                    return match args
-                        .as_closure()
-                        .tupled_upvars_ty()
-                        .tuple_fields()
-                        .get(field.index())
-                    {
+                    return match args.as_closure().upvar_tys().get(field.index()) {
                         Some(&ty) => Ok(ty),
                         None => Err(FieldAccessError::OutOfRange {
-                            field_count: args.as_closure().upvar_tys().count(),
+                            field_count: args.as_closure().upvar_tys().len(),
                         }),
                     };
                 }
                 ty::Generator(_, args, _) => {
                     // Only prefix fields (upvars and current state) are
                     // accessible without a variant index.
-                    return match args.as_generator().prefix_tys().nth(field.index()) {
-                        Some(ty) => Ok(ty),
+                    return match args.as_generator().prefix_tys().get(field.index()) {
+                        Some(ty) => Ok(*ty),
                         None => Err(FieldAccessError::OutOfRange {
-                            field_count: args.as_generator().prefix_tys().count(),
+                            field_count: args.as_generator().prefix_tys().len(),
                         }),
                     };
                 }
@@ -1778,10 +1767,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 }
             }
             AggregateKind::Closure(_, args) => {
-                match args.as_closure().upvar_tys().nth(field_index.as_usize()) {
-                    Some(ty) => Ok(ty),
+                match args.as_closure().upvar_tys().get(field_index.as_usize()) {
+                    Some(ty) => Ok(*ty),
                     None => Err(FieldAccessError::OutOfRange {
-                        field_count: args.as_closure().upvar_tys().count(),
+                        field_count: args.as_closure().upvar_tys().len(),
                     }),
                 }
             }
@@ -1789,10 +1778,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 // It doesn't make sense to look at a field beyond the prefix;
                 // these require a variant index, and are not initialized in
                 // aggregate rvalues.
-                match args.as_generator().prefix_tys().nth(field_index.as_usize()) {
-                    Some(ty) => Ok(ty),
+                match args.as_generator().prefix_tys().get(field_index.as_usize()) {
+                    Some(ty) => Ok(*ty),
                     None => Err(FieldAccessError::OutOfRange {
-                        field_count: args.as_generator().prefix_tys().count(),
+                        field_count: args.as_generator().prefix_tys().len(),
                     }),
                 }
             }

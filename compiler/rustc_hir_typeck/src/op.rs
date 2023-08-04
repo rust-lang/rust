@@ -4,7 +4,7 @@ use super::method::MethodCallee;
 use super::{has_expected_num_generic_args, FnCtxt};
 use crate::Expectation;
 use rustc_ast as ast;
-use rustc_errors::{self, struct_span_err, Applicability, Diagnostic};
+use rustc_errors::{self, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::traits::ObligationCauseCode;
@@ -380,33 +380,93 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 };
 
-                let mut suggest_deref_binop = |lhs_deref_ty: Ty<'tcx>| {
-                    if self
-                        .lookup_op_method(
-                            lhs_deref_ty,
-                            Some((rhs_expr, rhs_ty)),
-                            Op::Binary(op, is_assign),
-                            expected,
-                        )
-                        .is_ok()
-                    {
-                        let msg = format!(
-                            "`{}{}` can be used on `{}` if you dereference the left-hand side",
-                            op.node.as_str(),
-                            match is_assign {
-                                IsAssign::Yes => "=",
-                                IsAssign::No => "",
-                            },
-                            lhs_deref_ty,
-                        );
-                        err.span_suggestion_verbose(
-                            lhs_expr.span.shrink_to_lo(),
-                            msg,
-                            "*",
-                            rustc_errors::Applicability::MachineApplicable,
-                        );
-                    }
-                };
+                let suggest_deref_binop =
+                    |err: &mut DiagnosticBuilder<'_, _>, lhs_deref_ty: Ty<'tcx>| {
+                        if self
+                            .lookup_op_method(
+                                lhs_deref_ty,
+                                Some((rhs_expr, rhs_ty)),
+                                Op::Binary(op, is_assign),
+                                expected,
+                            )
+                            .is_ok()
+                        {
+                            let msg = format!(
+                                "`{}{}` can be used on `{}` if you dereference the left-hand side",
+                                op.node.as_str(),
+                                match is_assign {
+                                    IsAssign::Yes => "=",
+                                    IsAssign::No => "",
+                                },
+                                lhs_deref_ty,
+                            );
+                            err.span_suggestion_verbose(
+                                lhs_expr.span.shrink_to_lo(),
+                                msg,
+                                "*",
+                                rustc_errors::Applicability::MachineApplicable,
+                            );
+                        }
+                    };
+
+                let suggest_different_borrow =
+                    |err: &mut DiagnosticBuilder<'_, _>,
+                     lhs_adjusted_ty,
+                     lhs_new_mutbl: Option<ast::Mutability>,
+                     rhs_adjusted_ty,
+                     rhs_new_mutbl: Option<ast::Mutability>| {
+                        if self
+                            .lookup_op_method(
+                                lhs_adjusted_ty,
+                                Some((rhs_expr, rhs_adjusted_ty)),
+                                Op::Binary(op, is_assign),
+                                expected,
+                            )
+                            .is_ok()
+                        {
+                            let op_str = op.node.as_str();
+                            err.note(format!("an implementation for `{lhs_adjusted_ty} {op_str} {rhs_adjusted_ty}` exists"));
+
+                            if let Some(lhs_new_mutbl) = lhs_new_mutbl
+                                && let Some(rhs_new_mutbl) = rhs_new_mutbl
+                                && lhs_new_mutbl.is_not()
+                                && rhs_new_mutbl.is_not() {
+                                err.multipart_suggestion_verbose(
+                                    "consider reborrowing both sides",
+                                    vec![
+                                        (lhs_expr.span.shrink_to_lo(), "&*".to_string()),
+                                        (rhs_expr.span.shrink_to_lo(), "&*".to_string())
+                                    ],
+                                    rustc_errors::Applicability::MachineApplicable,
+                                );
+                            } else {
+                                let mut suggest_new_borrow = |new_mutbl: ast::Mutability, sp: Span| {
+                                    // Can reborrow (&mut -> &)
+                                    if new_mutbl.is_not() {
+                                        err.span_suggestion_verbose(
+                                            sp.shrink_to_lo(),
+                                            "consider reborrowing this side",
+                                            "&*",
+                                            rustc_errors::Applicability::MachineApplicable,
+                                        );
+                                    // Works on &mut but have &
+                                    } else {
+                                        err.span_help(
+                                            sp,
+                                            "consider making this expression a mutable borrow",
+                                        );
+                                    }
+                                };
+
+                                if let Some(lhs_new_mutbl) = lhs_new_mutbl {
+                                    suggest_new_borrow(lhs_new_mutbl, lhs_expr.span);
+                                }
+                                if let Some(rhs_new_mutbl) = rhs_new_mutbl {
+                                    suggest_new_borrow(rhs_new_mutbl, rhs_expr.span);
+                                }
+                            }
+                        }
+                    };
 
                 let is_compatible_after_call = |lhs_ty, rhs_ty| {
                     self.lookup_op_method(
@@ -429,15 +489,60 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 } else if is_assign == IsAssign::Yes
                     && let Some(lhs_deref_ty) = self.deref_once_mutably_for_diagnostic(lhs_ty)
                 {
-                    suggest_deref_binop(lhs_deref_ty);
+                    suggest_deref_binop(&mut err, lhs_deref_ty);
                 } else if is_assign == IsAssign::No
-                    && let Ref(_, lhs_deref_ty, _) = lhs_ty.kind()
+                    && let Ref(region, lhs_deref_ty, mutbl) = lhs_ty.kind()
                 {
                     if self.type_is_copy_modulo_regions(
                         self.param_env,
                         *lhs_deref_ty,
                     ) {
-                        suggest_deref_binop(*lhs_deref_ty);
+                        suggest_deref_binop(&mut err, *lhs_deref_ty);
+                    } else {
+                        let lhs_inv_mutbl = mutbl.invert();
+                        let lhs_inv_mutbl_ty = Ty::new_ref(
+                            self.tcx,
+                            *region,
+                            ty::TypeAndMut {
+                                ty: *lhs_deref_ty,
+                                mutbl: lhs_inv_mutbl,
+                            },
+                        );
+
+                        suggest_different_borrow(
+                            &mut err,
+                            lhs_inv_mutbl_ty,
+                            Some(lhs_inv_mutbl),
+                            rhs_ty,
+                            None,
+                        );
+
+                        if let Ref(region, rhs_deref_ty, mutbl) = rhs_ty.kind() {
+                            let rhs_inv_mutbl = mutbl.invert();
+                            let rhs_inv_mutbl_ty = Ty::new_ref(
+                                self.tcx,
+                                *region,
+                                ty::TypeAndMut {
+                                    ty: *rhs_deref_ty,
+                                    mutbl: rhs_inv_mutbl,
+                                },
+                            );
+
+                            suggest_different_borrow(
+                                &mut err,
+                                lhs_ty,
+                                None,
+                                rhs_inv_mutbl_ty,
+                                Some(rhs_inv_mutbl),
+                            );
+                            suggest_different_borrow(
+                                &mut err,
+                                lhs_inv_mutbl_ty,
+                                Some(lhs_inv_mutbl),
+                                rhs_inv_mutbl_ty,
+                                Some(rhs_inv_mutbl),
+                            );
+                        }
                     }
                 } else if self.suggest_fn_call(&mut err, lhs_expr, lhs_ty, |lhs_ty| {
                     is_compatible_after_call(lhs_ty, rhs_ty)

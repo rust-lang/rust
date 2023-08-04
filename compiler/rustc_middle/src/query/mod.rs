@@ -706,7 +706,7 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    query adt_sized_constraint(key: DefId) -> &'tcx [Ty<'tcx>] {
+    query adt_sized_constraint(key: DefId) -> ty::EarlyBinder<&'tcx ty::List<Ty<'tcx>>> {
         desc { |tcx| "computing `Sized` constraints for `{}`", tcx.def_path_str(key) }
     }
 
@@ -883,6 +883,13 @@ rustc_queries! {
     /// this can not be used to check whether these types are well formed.
     query assumed_wf_types(key: LocalDefId) -> &'tcx [(Ty<'tcx>, Span)] {
         desc { |tcx| "computing the implied bounds of `{}`", tcx.def_path_str(key) }
+    }
+
+    /// We need to store the assumed_wf_types for an RPITIT so that impls of foreign
+    /// traits with return-position impl trait in traits can inherit the right wf types.
+    query assumed_wf_types_for_rpitit(key: DefId) -> &'tcx [(Ty<'tcx>, Span)] {
+        desc { |tcx| "computing the implied bounds of `{}`", tcx.def_path_str(key) }
+        separate_provide_extern
     }
 
     /// Computes the signature of the function.
@@ -1277,7 +1284,7 @@ rustc_queries! {
     query vtable_allocation(key: (Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>)) -> mir::interpret::AllocId {
         desc { |tcx| "vtable const allocation for <{} as {}>",
             key.0,
-            key.1.map(|trait_ref| format!("{}", trait_ref)).unwrap_or("_".to_owned())
+            key.1.map(|trait_ref| format!("{trait_ref}")).unwrap_or("_".to_owned())
         }
     }
 

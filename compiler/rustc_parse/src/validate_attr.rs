@@ -2,9 +2,10 @@
 
 use crate::{errors, parse_in};
 
+use rustc_ast::token::Delimiter;
 use rustc_ast::tokenstream::DelimSpan;
 use rustc_ast::MetaItemKind;
-use rustc_ast::{self as ast, AttrArgs, AttrArgsEq, Attribute, DelimArgs, MacDelimiter, MetaItem};
+use rustc_ast::{self as ast, AttrArgs, AttrArgsEq, Attribute, DelimArgs, MetaItem};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, FatalError, PResult};
 use rustc_feature::{AttributeTemplate, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
@@ -84,8 +85,8 @@ pub fn parse_meta<'a>(sess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Meta
     })
 }
 
-pub fn check_meta_bad_delim(sess: &ParseSess, span: DelimSpan, delim: MacDelimiter) {
-    if let ast::MacDelimiter::Parenthesis = delim {
+pub fn check_meta_bad_delim(sess: &ParseSess, span: DelimSpan, delim: Delimiter) {
+    if let Delimiter::Parenthesis = delim {
         return;
     }
     sess.emit_err(errors::MetaBadDelim {
@@ -94,8 +95,8 @@ pub fn check_meta_bad_delim(sess: &ParseSess, span: DelimSpan, delim: MacDelimit
     });
 }
 
-pub fn check_cfg_attr_bad_delim(sess: &ParseSess, span: DelimSpan, delim: MacDelimiter) {
-    if let ast::MacDelimiter::Parenthesis = delim {
+pub fn check_cfg_attr_bad_delim(sess: &ParseSess, span: DelimSpan, delim: Delimiter) {
+    if let Delimiter::Parenthesis = delim {
         return;
     }
     sess.emit_err(errors::CfgAttrBadDelim {

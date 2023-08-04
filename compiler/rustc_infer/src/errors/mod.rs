@@ -210,10 +210,8 @@ impl<'a> SourceKindMultiSuggestion<'a> {
             _ => ("", ""),
         };
         let (start_span, start_span_code, end_span) = match should_wrap_expr {
-            Some(end_span) => {
-                (data.span(), format!("{}{}{}{{ ", arrow, ty_info, post), Some(end_span))
-            }
-            None => (data.span(), format!("{}{}{}", arrow, ty_info, post), None),
+            Some(end_span) => (data.span(), format!("{arrow}{ty_info}{post}{{ "), Some(end_span)),
+            None => (data.span(), format!("{arrow}{ty_info}{post}"), None),
         };
         Self::ClosureReturn { start_span, start_span_code, end_span }
     }
@@ -404,9 +402,9 @@ impl AddToDiagnostic for AddLifetimeParamsSuggestion<'_> {
             debug!(?lifetime_sub.ident.span);
             let make_suggestion = |ident: Ident| {
                 let sugg = if ident.name == kw::Empty {
-                    format!("{}, ", suggestion_param_name)
+                    format!("{suggestion_param_name}, ")
                 } else if ident.name == kw::UnderscoreLifetime && ident.span.is_empty() {
-                    format!("{} ", suggestion_param_name)
+                    format!("{suggestion_param_name} ")
                 } else {
                     suggestion_param_name.clone()
                 };
@@ -419,9 +417,9 @@ impl AddToDiagnostic for AddLifetimeParamsSuggestion<'_> {
                 let new_param_suggestion = if let Some(first) =
                     generics.params.iter().find(|p| !p.name.ident().span.is_empty())
                 {
-                    (first.span.shrink_to_lo(), format!("{}, ", suggestion_param_name))
+                    (first.span.shrink_to_lo(), format!("{suggestion_param_name}, "))
                 } else {
-                    (generics.span, format!("<{}>", suggestion_param_name))
+                    (generics.span, format!("<{suggestion_param_name}>"))
                 };
 
                 suggestions.push(new_param_suggestion);
@@ -1320,7 +1318,7 @@ impl AddToDiagnostic for SuggestTuplePatternMany {
             message,
             self.compatible_variants.into_iter().map(|variant| {
                 vec![
-                    (self.cause_span.shrink_to_lo(), format!("{}(", variant)),
+                    (self.cause_span.shrink_to_lo(), format!("{variant}(")),
                     (self.cause_span.shrink_to_hi(), ")".to_string()),
                 ]
             }),

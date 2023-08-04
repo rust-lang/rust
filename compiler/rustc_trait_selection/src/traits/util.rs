@@ -50,7 +50,7 @@ impl<'tcx> TraitAliasExpansionInfo<'tcx> {
         diag.span_label(self.top().1, top_label);
         if self.path.len() > 1 {
             for (_, sp) in self.path.iter().rev().skip(1).take(self.path.len() - 2) {
-                diag.span_label(*sp, format!("referenced here ({})", use_desc));
+                diag.span_label(*sp, format!("referenced here ({use_desc})"));
             }
         }
         if self.top().1 != self.bottom().1 {
@@ -58,7 +58,7 @@ impl<'tcx> TraitAliasExpansionInfo<'tcx> {
             // redundant labels.
             diag.span_label(
                 self.bottom().1,
-                format!("trait alias used in trait object type ({})", use_desc),
+                format!("trait alias used in trait object type ({use_desc})"),
             );
         }
     }
@@ -101,7 +101,7 @@ impl<'tcx> TraitAliasExpander<'tcx> {
     fn expand(&mut self, item: &TraitAliasExpansionInfo<'tcx>) -> bool {
         let tcx = self.tcx;
         let trait_ref = item.trait_ref();
-        let pred = trait_ref.without_const().to_predicate(tcx);
+        let pred = trait_ref.to_predicate(tcx);
 
         debug!("expand_trait_aliases: trait_ref={:?}", trait_ref);
 
@@ -113,9 +113,13 @@ impl<'tcx> TraitAliasExpander<'tcx> {
 
         // Don't recurse if this trait alias is already on the stack for the DFS search.
         let anon_pred = anonymize_predicate(tcx, pred);
-        if item.path.iter().rev().skip(1).any(|&(tr, _)| {
-            anonymize_predicate(tcx, tr.without_const().to_predicate(tcx)) == anon_pred
-        }) {
+        if item
+            .path
+            .iter()
+            .rev()
+            .skip(1)
+            .any(|&(tr, _)| anonymize_predicate(tcx, tr.to_predicate(tcx)) == anon_pred)
+        {
             return false;
         }
 

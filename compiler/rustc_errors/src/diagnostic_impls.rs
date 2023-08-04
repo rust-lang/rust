@@ -1,3 +1,4 @@
+use crate::diagnostic::DiagnosticLocation;
 use crate::{fluent_generated as fluent, AddToDiagnostic};
 use crate::{DiagnosticArgValue, DiagnosticBuilder, Handler, IntoDiagnostic, IntoDiagnosticArg};
 use rustc_ast as ast;
@@ -10,6 +11,7 @@ use rustc_span::Span;
 use rustc_target::abi::TargetDataLayoutErrors;
 use rustc_target::spec::{PanicStrategy, SplitDebuginfo, StackProtector, TargetTriple};
 use rustc_type_ir as type_ir;
+use std::backtrace::Backtrace;
 use std::borrow::Cow;
 use std::fmt;
 use std::num::ParseIntError;
@@ -316,4 +318,63 @@ pub enum LabelKind {
     Note,
     Label,
     Help,
+}
+
+#[derive(Subdiagnostic)]
+#[label(errors_expected_lifetime_parameter)]
+pub struct ExpectedLifetimeParameter {
+    #[primary_span]
+    pub span: Span,
+    pub count: usize,
+}
+
+#[derive(Subdiagnostic)]
+#[note(errors_delayed_at_with_newline)]
+pub struct DelayedAtWithNewline {
+    #[primary_span]
+    pub span: Span,
+    pub emitted_at: DiagnosticLocation,
+    pub note: Backtrace,
+}
+#[derive(Subdiagnostic)]
+#[note(errors_delayed_at_without_newline)]
+pub struct DelayedAtWithoutNewline {
+    #[primary_span]
+    pub span: Span,
+    pub emitted_at: DiagnosticLocation,
+    pub note: Backtrace,
+}
+
+impl IntoDiagnosticArg for DiagnosticLocation {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::from(self.to_string()))
+    }
+}
+
+impl IntoDiagnosticArg for Backtrace {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::from(self.to_string()))
+    }
+}
+
+#[derive(Subdiagnostic)]
+#[note(errors_invalid_flushed_delayed_diagnostic_level)]
+pub struct InvalidFlushedDelayedDiagnosticLevel {
+    #[primary_span]
+    pub span: Span,
+    pub level: rustc_errors::Level,
+}
+impl IntoDiagnosticArg for rustc_errors::Level {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::from(self.to_string()))
+    }
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(errors_indicate_anonymous_lifetime, code = "{suggestion}", style = "verbose")]
+pub struct IndicateAnonymousLifetime {
+    #[primary_span]
+    pub span: Span,
+    pub count: usize,
+    pub suggestion: String,
 }

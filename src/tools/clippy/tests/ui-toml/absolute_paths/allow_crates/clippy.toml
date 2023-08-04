@@ -1,0 +1,2 @@
+absolute-paths-max-segments = 2
+absolute-paths-allowed-crates = ["crate", "helper"]
