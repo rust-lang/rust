@@ -27,9 +27,7 @@ use rustc_data_structures::profiling::{
 use rustc_data_structures::sync::SeqCst;
 use rustc_errors::registry::{InvalidErrorCode, Registry};
 use rustc_errors::{markdown, ColorConfig};
-use rustc_errors::{
-    DiagnosticMessage, ErrorGuaranteed, Handler, PResult, SubdiagnosticMessage, TerminalUrl,
-};
+use rustc_errors::{DiagnosticMessage, ErrorGuaranteed, Handler, PResult, SubdiagnosticMessage};
 use rustc_feature::find_gated_cfg;
 use rustc_fluent_macro::fluent_messages;
 use rustc_interface::util::{self, collect_crate_types, get_codegen_backend};
@@ -1405,15 +1403,7 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str, extra_info:
         rustc_errors::fallback_fluent_bundle(crate::DEFAULT_LOCALE_RESOURCES.to_vec(), false);
     let emitter = Box::new(rustc_errors::emitter::EmitterWriter::stderr(
         rustc_errors::ColorConfig::Auto,
-        None,
-        None,
         fallback_bundle,
-        false,
-        false,
-        None,
-        false,
-        false,
-        TerminalUrl::No,
     ));
     let handler = rustc_errors::Handler::with_emitter(emitter);
 
