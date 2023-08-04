@@ -221,7 +221,7 @@ fn is_mutated_static(e: &hir::Expr<'_>) -> bool {
     match e.kind {
         Path(QPath::Resolved(_, path)) => !matches!(path.res, Res::Local(_)),
         Path(_) => true,
-        Field(inner, _) | Index(inner, _) => is_mutated_static(inner),
+        Field(inner, _) | Index(inner, _, _) => is_mutated_static(inner),
         _ => false,
     }
 }

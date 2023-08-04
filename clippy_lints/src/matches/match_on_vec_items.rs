@@ -12,7 +12,7 @@ use super::MATCH_ON_VEC_ITEMS;
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, scrutinee: &'tcx Expr<'_>) {
     if_chain! {
         if let Some(idx_expr) = is_vec_indexing(cx, scrutinee);
-        if let ExprKind::Index(vec, idx) = idx_expr.kind;
+        if let ExprKind::Index(vec, idx, _) = idx_expr.kind;
 
         then {
             // FIXME: could be improved to suggest surrounding every pattern with Some(_),
@@ -36,7 +36,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, scrutinee: &'tcx Expr<'_>) {
 
 fn is_vec_indexing<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Option<&'tcx Expr<'tcx>> {
     if_chain! {
-        if let ExprKind::Index(array, index) = expr.kind;
+        if let ExprKind::Index(array, index, _) = expr.kind;
         if is_vector(cx, array);
         if !is_full_range(cx, index);
 
