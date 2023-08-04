@@ -177,7 +177,7 @@ pub enum LocalValue<Prov: Provenance = AllocId> {
 
 impl<'tcx, Prov: Provenance + 'static> LocalState<'tcx, Prov> {
     /// Read the local's value or error if the local is not yet live or not live anymore.
-    #[inline]
+    #[inline(always)]
     pub fn access(&self) -> InterpResult<'tcx, &Operand<Prov>> {
         match &self.value {
             LocalValue::Dead => throw_ub!(DeadLocal), // could even be "invalid program"?
@@ -190,7 +190,7 @@ impl<'tcx, Prov: Provenance + 'static> LocalState<'tcx, Prov> {
     ///
     /// Note: This may only be invoked from the `Machine::access_local_mut` hook and not from
     /// anywhere else. You may be invalidating machine invariants if you do!
-    #[inline]
+    #[inline(always)]
     pub fn access_mut(&mut self) -> InterpResult<'tcx, &mut Operand<Prov>> {
         match &mut self.value {
             LocalValue::Dead => throw_ub!(DeadLocal), // could even be "invalid program"?

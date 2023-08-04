@@ -291,23 +291,21 @@ impl<'tcx, Prov: Provenance> Projectable<'tcx, Prov> for ImmTy<'tcx, Prov> {
         self.layout
     }
 
-    fn meta<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
-        &self,
-        _ecx: &InterpCx<'mir, 'tcx, M>,
-    ) -> InterpResult<'tcx, MemPlaceMeta<M::Provenance>> {
-        assert!(self.layout.is_sized()); // unsized ImmTy can only exist temporarily and should never reach this here
+    #[inline(always)]
+    fn meta(&self) -> InterpResult<'tcx, MemPlaceMeta<Prov>> {
+        debug_assert!(self.layout.is_sized()); // unsized ImmTy can only exist temporarily and should never reach this here
         Ok(MemPlaceMeta::None)
     }
 
-    fn offset_with_meta(
+    fn offset_with_meta<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
         &self,
         offset: Size,
         meta: MemPlaceMeta<Prov>,
         layout: TyAndLayout<'tcx>,
-        cx: &impl HasDataLayout,
+        ecx: &InterpCx<'mir, 'tcx, M>,
     ) -> InterpResult<'tcx, Self> {
         assert_matches!(meta, MemPlaceMeta::None); // we can't store this anywhere anyway
-        Ok(self.offset_(offset, layout, cx))
+        Ok(self.offset_(offset, layout, ecx))
     }
 
     fn to_op<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
@@ -318,49 +316,39 @@ impl<'tcx, Prov: Provenance> Projectable<'tcx, Prov> for ImmTy<'tcx, Prov> {
     }
 }
 
-impl<'tcx, Prov: Provenance> OpTy<'tcx, Prov> {
-    // Provided as inherent method since it doesn't need the `ecx` of `Projectable::meta`.
-    pub fn meta(&self) -> InterpResult<'tcx, MemPlaceMeta<Prov>> {
-        Ok(if self.layout.is_unsized() {
-            if matches!(self.op, Operand::Immediate(_)) {
-                // Unsized immediate OpTy cannot occur. We create a MemPlace for all unsized locals during argument passing.
-                // However, ConstProp doesn't do that, so we can run into this nonsense situation.
-                throw_inval!(ConstPropNonsense);
-            }
-            // There are no unsized immediates.
-            self.assert_mem_place().meta
-        } else {
-            MemPlaceMeta::None
-        })
-    }
-}
-
 impl<'tcx, Prov: Provenance + 'static> Projectable<'tcx, Prov> for OpTy<'tcx, Prov> {
     #[inline(always)]
     fn layout(&self) -> TyAndLayout<'tcx> {
         self.layout
     }
 
-    fn meta<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
-        &self,
-        _ecx: &InterpCx<'mir, 'tcx, M>,
-    ) -> InterpResult<'tcx, MemPlaceMeta<M::Provenance>> {
-        self.meta()
+    fn meta(&self) -> InterpResult<'tcx, MemPlaceMeta<Prov>> {
+        Ok(match self.as_mplace_or_imm() {
+            Left(mplace) => mplace.meta,
+            Right(_) => {
+                if self.layout.is_unsized() {
+                    // Unsized immediate OpTy cannot occur. We create a MemPlace for all unsized locals during argument passing.
+                    // However, ConstProp doesn't do that, so we can run into this nonsense situation.
+                    throw_inval!(ConstPropNonsense);
+                }
+                MemPlaceMeta::None
+            }
+        })
     }
 
-    fn offset_with_meta(
+    fn offset_with_meta<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
         &self,
         offset: Size,
         meta: MemPlaceMeta<Prov>,
         layout: TyAndLayout<'tcx>,
-        cx: &impl HasDataLayout,
+        ecx: &InterpCx<'mir, 'tcx, M>,
     ) -> InterpResult<'tcx, Self> {
         match self.as_mplace_or_imm() {
-            Left(mplace) => Ok(mplace.offset_with_meta(offset, meta, layout, cx)?.into()),
+            Left(mplace) => Ok(mplace.offset_with_meta(offset, meta, layout, ecx)?.into()),
             Right(imm) => {
                 assert!(!meta.has_meta()); // no place to store metadata here
                 // Every part of an uninit is uninit.
-                Ok(imm.offset(offset, layout, cx)?.into())
+                Ok(imm.offset(offset, layout, ecx)?.into())
             }
         }
     }

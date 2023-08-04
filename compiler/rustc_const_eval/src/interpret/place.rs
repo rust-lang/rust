@@ -111,6 +111,8 @@ pub enum Place<Prov: Provenance = AllocId> {
     /// (Without that optimization, we'd just always be a `MemPlace`.)
     /// Note that this only stores the frame index, not the thread this frame belongs to -- that is
     /// implicit. This means a `Place` must never be moved across interpreter thread boundaries!
+    ///
+    /// This variant shall not be used for unsized types -- those must always live in memory.
     Local { frame: usize, local: mir::Local, offset: Option<Size> },
 }
 
@@ -157,7 +159,7 @@ impl<Prov: Provenance> MemPlace<Prov> {
     }
 
     /// Turn a mplace into a (thin or wide) pointer, as a reference, pointing to the same space.
-    #[inline(always)]
+    #[inline]
     pub fn to_ref(self, cx: &impl HasDataLayout) -> Immediate<Prov> {
         match self.meta {
             MemPlaceMeta::None => Immediate::from(Scalar::from_maybe_pointer(self.ptr, cx)),
@@ -220,22 +222,20 @@ impl<'tcx, Prov: Provenance + 'static> Projectable<'tcx, Prov> for MPlaceTy<'tcx
         self.layout
     }
 
-    fn meta<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
-        &self,
-        _ecx: &InterpCx<'mir, 'tcx, M>,
-    ) -> InterpResult<'tcx, MemPlaceMeta<M::Provenance>> {
+    #[inline(always)]
+    fn meta(&self) -> InterpResult<'tcx, MemPlaceMeta<Prov>> {
         Ok(self.meta)
     }
 
-    fn offset_with_meta(
+    fn offset_with_meta<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
         &self,
         offset: Size,
         meta: MemPlaceMeta<Prov>,
         layout: TyAndLayout<'tcx>,
-        cx: &impl HasDataLayout,
+        ecx: &InterpCx<'mir, 'tcx, M>,
     ) -> InterpResult<'tcx, Self> {
         Ok(MPlaceTy {
-            mplace: self.mplace.offset_with_meta_(offset, meta, cx)?,
+            mplace: self.mplace.offset_with_meta_(offset, meta, ecx)?,
             align: self.align.restrict_for_offset(offset),
             layout,
         })
@@ -255,25 +255,33 @@ impl<'tcx, Prov: Provenance + 'static> Projectable<'tcx, Prov> for PlaceTy<'tcx,
         self.layout
     }
 
-    fn meta<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
-        &self,
-        ecx: &InterpCx<'mir, 'tcx, M>,
-    ) -> InterpResult<'tcx, MemPlaceMeta<M::Provenance>> {
-        ecx.place_meta(self)
+    fn meta(&self) -> InterpResult<'tcx, MemPlaceMeta<Prov>> {
+        Ok(match self.as_mplace_or_local() {
+            Left(mplace) => mplace.meta,
+            Right(_) => {
+                if self.layout.is_unsized() {
+                    // Unsized `Place::Local` cannot occur. We create a MemPlace for all unsized locals during argument passing.
+                    // However, ConstProp doesn't do that, so we can run into this nonsense situation.
+                    throw_inval!(ConstPropNonsense);
+                }
+                MemPlaceMeta::None
+            }
+        })
     }
 
-    fn offset_with_meta(
+    fn offset_with_meta<'mir, M: Machine<'mir, 'tcx, Provenance = Prov>>(
         &self,
         offset: Size,
         meta: MemPlaceMeta<Prov>,
         layout: TyAndLayout<'tcx>,
-        cx: &impl HasDataLayout,
+        ecx: &InterpCx<'mir, 'tcx, M>,
     ) -> InterpResult<'tcx, Self> {
         Ok(match self.as_mplace_or_local() {
-            Left(mplace) => mplace.offset_with_meta(offset, meta, layout, cx)?.into(),
+            Left(mplace) => mplace.offset_with_meta(offset, meta, layout, ecx)?.into(),
             Right((frame, local, old_offset)) => {
+                debug_assert!(layout.is_sized(), "unsized locals should live in memory");
                 assert_matches!(meta, MemPlaceMeta::None); // we couldn't store it anyway...
-                let new_offset = cx
+                let new_offset = ecx
                     .data_layout()
                     .offset(old_offset.unwrap_or(Size::ZERO).bytes(), offset.bytes())?;
                 PlaceTy {
@@ -399,20 +407,6 @@ where
     Prov: Provenance + 'static,
     M: Machine<'mir, 'tcx, Provenance = Prov>,
 {
-    /// Get the metadata of the given place.
-    pub(super) fn place_meta(
-        &self,
-        place: &PlaceTy<'tcx, M::Provenance>,
-    ) -> InterpResult<'tcx, MemPlaceMeta<M::Provenance>> {
-        if place.layout.is_unsized() {
-            // For `Place::Local`, the metadata is stored with the local, not the place. So we have
-            // to look that up first.
-            self.place_to_op(place)?.meta()
-        } else {
-            Ok(MemPlaceMeta::None)
-        }
-    }
-
     /// Take a value, which represents a (thin or wide) reference, and make it a place.
     /// Alignment is just based on the type. This is the inverse of `mplace_to_ref()`.
     ///
@@ -537,8 +531,14 @@ where
         frame: usize,
         local: mir::Local,
     ) -> InterpResult<'tcx, PlaceTy<'tcx, M::Provenance>> {
-        let layout = self.layout_of_local(&self.stack()[frame], local, None)?;
-        let place = Place::Local { frame, local, offset: None };
+        // Other parts of the system rely on `Place::Local` never being unsized.
+        // So we eagerly check here if this local has an MPlace, and if yes we use it.
+        let frame_ref = &self.stack()[frame];
+        let layout = self.layout_of_local(frame_ref, local, None)?;
+        let place = match frame_ref.locals[local].access()? {
+            Operand::Immediate(_) => Place::Local { frame, local, offset: None },
+            Operand::Indirect(mplace) => Place::Ptr(*mplace),
+        };
         Ok(PlaceTy { place, layout, align: layout.align.abi })
     }
 
