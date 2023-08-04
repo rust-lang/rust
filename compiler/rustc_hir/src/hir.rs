@@ -2675,7 +2675,7 @@ pub struct OpaqueTy<'hir> {
     ///
     /// This mapping associated a captured lifetime (first parameter) with the new
     /// early-bound lifetime that was generated for the opaque.
-    pub lifetime_mapping: Option<&'hir [(Lifetime, LocalDefId)]>,
+    pub lifetime_mapping: Option<&'hir [(&'hir Lifetime, LocalDefId)]>,
     /// Whether the opaque is a return-position impl trait (or async future)
     /// originating from a trait method. This makes it so that the opaque is
     /// lowered as an associated type.

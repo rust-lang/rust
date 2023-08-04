@@ -1694,6 +1694,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         // Leave the responsibility to create the `LocalDefId` to lowering.
         let param = self.r.next_node_id();
         let res = LifetimeRes::Fresh { param, binder };
+        self.record_lifetime_param(param, res);
 
         // Record the created lifetime parameter so lowering can pick it up and add it to HIR.
         self.r
