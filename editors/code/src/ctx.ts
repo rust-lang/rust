@@ -442,8 +442,10 @@ export class Ctx {
                 statusBar.tooltip.appendMarkdown(
                     "\n\n[Start server](command:rust-analyzer.startServer)",
                 );
-                statusBar.color = undefined;
-                statusBar.backgroundColor = undefined;
+                statusBar.color = new vscode.ThemeColor("statusBarItem.warningForeground");
+                statusBar.backgroundColor = new vscode.ThemeColor(
+                    "statusBarItem.warningBackground",
+                );
                 statusBar.command = "rust-analyzer.startServer";
                 statusBar.text = `$(stop-circle) rust-analyzer`;
                 return;
