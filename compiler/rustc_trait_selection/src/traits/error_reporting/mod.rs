@@ -2987,6 +2987,14 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         unsatisfied_const: bool,
     ) {
         let body_def_id = obligation.cause.body_id;
+        let span = if let ObligationCauseCode::BinOp { rhs_span: Some(rhs_span), .. } =
+            obligation.cause.code()
+        {
+            *rhs_span
+        } else {
+            span
+        };
+
         // Try to report a help message
         if is_fn_trait
             && let Ok((implemented_kind, params)) = self.type_implements_fn_trait(
