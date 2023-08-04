@@ -36,6 +36,9 @@ impl Evaluator<'_> {
         destination: Interval,
         span: MirSpan,
     ) -> Result<bool> {
+        if self.not_special_fn_cache.borrow().contains(&def) {
+            return Ok(false);
+        }
         let function_data = self.db.function_data(def);
         let is_intrinsic = match &function_data.abi {
             Some(abi) => *abi == Interned::new_str("rust-intrinsic"),
@@ -137,8 +140,11 @@ impl Evaluator<'_> {
                     self.exec_clone(def, args, self_ty.clone(), locals, destination, span)?;
                     return Ok(true);
                 }
+                // Return early to prevent caching clone as non special fn.
+                return Ok(false);
             }
         }
+        self.not_special_fn_cache.borrow_mut().insert(def);
         Ok(false)
     }
 
