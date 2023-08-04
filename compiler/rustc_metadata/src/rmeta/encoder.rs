@@ -30,6 +30,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::traits::specialization_graph;
 use rustc_middle::ty::codec::TyEncoder;
 use rustc_middle::ty::fast_reject::{self, SimplifiedType, TreatParams};
+use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::{self, AssocItemContainer, SymbolName, Ty, TyCtxt};
 use rustc_middle::util::common::to_readable_str;
 use rustc_serialize::{opaque, Decodable, Decoder, Encodable, Encoder};
@@ -1034,7 +1035,7 @@ fn should_encode_mir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> (bool, bool) {
     }
 }
 
-fn should_encode_variances(def_kind: DefKind) -> bool {
+fn should_encode_variances<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, def_kind: DefKind) -> bool {
     match def_kind {
         DefKind::Struct
         | DefKind::Union
@@ -1053,7 +1054,6 @@ fn should_encode_variances(def_kind: DefKind) -> bool {
         | DefKind::Static(..)
         | DefKind::Const
         | DefKind::ForeignMod
-        | DefKind::TyAlias
         | DefKind::Impl { .. }
         | DefKind::Trait
         | DefKind::TraitAlias
@@ -1067,6 +1067,10 @@ fn should_encode_variances(def_kind: DefKind) -> bool {
         | DefKind::Closure
         | DefKind::Generator
         | DefKind::ExternCrate => false,
+        DefKind::TyAlias => {
+            tcx.features().lazy_type_alias
+                || tcx.type_of(def_id).instantiate_identity().has_opaque_types()
+        }
     }
 }
 
@@ -1349,7 +1353,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 self.encode_default_body_stability(def_id);
                 self.encode_deprecation(def_id);
             }
-            if should_encode_variances(def_kind) {
+            if should_encode_variances(tcx, def_id, def_kind) {
                 let v = self.tcx.variances_of(def_id);
                 record_array!(self.tables.variances_of[def_id] <- v);
             }

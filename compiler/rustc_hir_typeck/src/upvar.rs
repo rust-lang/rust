@@ -264,12 +264,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.demand_eqtype(span, closure_kind.to_ty(self.tcx), closure_kind_ty);
 
             // If we have an origin, store it.
-            if let Some(origin) = origin {
-                let origin = if enable_precise_capture(span) {
-                    (origin.0, origin.1)
-                } else {
-                    (origin.0, Place { projections: vec![], ..origin.1 })
-                };
+            if let Some(mut origin) = origin {
+                if !enable_precise_capture(span) {
+                    // Without precise captures, we just capture the base and ignore
+                    // the projections.
+                    origin.1.projections.clear()
+                }
 
                 self.typeck_results
                     .borrow_mut()
@@ -294,10 +294,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Equate the type variables for the upvars with the actual types.
         let final_upvar_tys = self.final_upvar_tys(closure_def_id);
-        debug!(
-            "analyze_closure: id={:?} args={:?} final_upvar_tys={:?}",
-            closure_hir_id, args, final_upvar_tys
-        );
+        debug!(?closure_hir_id, ?args, ?final_upvar_tys);
 
         // Build a tuple (U0..Un) of the final upvar types U0..Un
         // and unify the upvar tuple type in the closure with it:
@@ -338,10 +335,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let upvar_ty = captured_place.place.ty();
                 let capture = captured_place.info.capture_kind;
 
-                debug!(
-                    "final_upvar_tys: place={:?} upvar_ty={:?} capture={:?}, mutability={:?}",
-                    captured_place.place, upvar_ty, capture, captured_place.mutability,
-                );
+                debug!(?captured_place.place, ?upvar_ty, ?capture, ?captured_place.mutability);
 
                 apply_capture_kind_on_capture_ty(self.tcx, upvar_ty, capture, captured_place.region)
             })
@@ -679,6 +673,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     match (p1.kind, p2.kind) {
                         // Paths are the same, continue to next loop.
                         (ProjectionKind::Deref, ProjectionKind::Deref) => {}
+                        (ProjectionKind::OpaqueCast, ProjectionKind::OpaqueCast) => {}
                         (ProjectionKind::Field(i1, _), ProjectionKind::Field(i2, _))
                             if i1 == i2 => {}
 
@@ -701,10 +696,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             l @ (ProjectionKind::Index
                             | ProjectionKind::Subslice
                             | ProjectionKind::Deref
+                            | ProjectionKind::OpaqueCast
                             | ProjectionKind::Field(..)),
                             r @ (ProjectionKind::Index
                             | ProjectionKind::Subslice
                             | ProjectionKind::Deref
+                            | ProjectionKind::OpaqueCast
                             | ProjectionKind::Field(..)),
                         ) => bug!(
                             "ProjectionKinds Index or Subslice were unexpected: ({:?}, {:?})",
@@ -1890,6 +1887,7 @@ fn restrict_capture_precision(
                 return (place, curr_mode);
             }
             ProjectionKind::Deref => {}
+            ProjectionKind::OpaqueCast => {}
             ProjectionKind::Field(..) => {} // ignore
         }
     }
@@ -1946,6 +1944,7 @@ fn construct_place_string<'tcx>(tcx: TyCtxt<'_>, place: &Place<'tcx>) -> String 
             ProjectionKind::Deref => String::from("Deref"),
             ProjectionKind::Index => String::from("Index"),
             ProjectionKind::Subslice => String::from("Subslice"),
+            ProjectionKind::OpaqueCast => String::from("OpaqueCast"),
         };
         if i != 0 {
             projections_str.push(',');
