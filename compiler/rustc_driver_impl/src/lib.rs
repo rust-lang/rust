@@ -393,6 +393,10 @@ fn run_compiler(
                         pretty::print_after_hir_lowering(tcx, *ppm);
                         Ok(())
                     })?;
+
+                    // Make sure the `output_filenames` query is run for its side
+                    // effects of writing the dep-info and reporting errors.
+                    queries.global_ctxt()?.enter(|tcx| tcx.output_filenames(()));
                 } else {
                     let krate = queries.parse()?.steal();
                     pretty::print_after_parsing(sess, &krate, *ppm);
