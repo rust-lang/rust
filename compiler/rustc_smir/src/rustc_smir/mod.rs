@@ -42,6 +42,14 @@ impl<'tcx> Context for Tables<'tcx> {
         Some(self.crate_item(self.tcx.entry_fn(())?.0))
     }
 
+    fn all_trait_decls(&mut self) -> stable_mir::TraitDecls {
+        self.tcx
+            .traits(LOCAL_CRATE)
+            .iter()
+            .map(|trait_def_id| self.trait_def(*trait_def_id))
+            .collect()
+    }
+
     fn trait_decl(&mut self, trait_def: &stable_mir::ty::TraitDef) -> stable_mir::ty::TraitDecl {
         let def_id = self.trait_def_id(trait_def);
         let trait_def = self.tcx.trait_def(def_id);
