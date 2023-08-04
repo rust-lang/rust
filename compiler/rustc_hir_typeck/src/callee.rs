@@ -645,18 +645,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.typeck_results.borrow().qpath_res(qpath, callee_expr.hir_id)
             }
             hir::ExprKind::Call(ref inner_callee, _) => {
-                // If the call spans more than one line and the callee kind is
-                // itself another `ExprCall`, that's a clue that we might just be
-                // missing a semicolon (Issue #51055)
-                let call_is_multiline = self.tcx.sess.source_map().is_multiline(call_expr.span);
-                if call_is_multiline {
-                    err.span_suggestion(
-                        callee_expr.span.shrink_to_hi(),
-                        "consider using a semicolon here",
-                        ";",
-                        Applicability::MaybeIncorrect,
-                    );
-                }
                 if let hir::ExprKind::Path(ref inner_qpath) = inner_callee.kind {
                     inner_callee_path = Some(inner_qpath);
                     self.typeck_results.borrow().qpath_res(inner_qpath, inner_callee.hir_id)
@@ -668,6 +656,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         if !self.maybe_suggest_bad_array_definition(&mut err, call_expr, callee_expr) {
+            // If the call spans more than one line and the callee kind is
+            // itself another `ExprCall`, that's a clue that we might just be
+            // missing a semicolon (#51055, #106515).
+            let call_is_multiline = self
+                .tcx
+                .sess
+                .source_map()
+                .is_multiline(call_expr.span.with_lo(callee_expr.span.hi()))
+                && call_expr.span.ctxt() == callee_expr.span.ctxt();
+            if call_is_multiline {
+                err.span_suggestion(
+                    callee_expr.span.shrink_to_hi(),
+                    "consider using a semicolon here to finish the statement",
+                    ";",
+                    Applicability::MaybeIncorrect,
+                );
+            }
             if let Some((maybe_def, output_ty, _)) = self.extract_callable_info(callee_ty)
                 && !self.type_is_sized_modulo_regions(self.param_env, output_ty)
             {
