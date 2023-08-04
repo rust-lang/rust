@@ -44,9 +44,10 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     let is_target_supported = |reg_class: InlineAsmRegClass| {
                         for &(_, feature) in reg_class.supported_types(asm_arch) {
                             if let Some(feature) = feature {
-                                let codegen_fn_attrs = self.tcx.codegen_fn_attrs(instance.def_id());
-                                if self.tcx.sess.target_features.contains(&feature)
-                                    || codegen_fn_attrs.target_features.contains(&feature)
+                                if self
+                                    .tcx
+                                    .asm_target_features(instance.def_id())
+                                    .contains(&feature)
                                 {
                                     return true;
                                 }
