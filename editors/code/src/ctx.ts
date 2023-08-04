@@ -414,7 +414,7 @@ export class Ctx {
                 statusBar.tooltip.appendText(status.message ?? "Ready");
                 statusBar.color = undefined;
                 statusBar.backgroundColor = undefined;
-                statusBar.command = "rust-analyzer.stopServer";
+                statusBar.command = "rust-analyzer.openLogs";
                 this.dependencies?.refresh();
                 break;
             case "warning":
