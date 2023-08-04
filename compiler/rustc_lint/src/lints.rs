@@ -371,10 +371,6 @@ pub enum BuiltinEllipsisInclusiveRangePatternsLint {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(lint_builtin_unnameable_test_items)]
-pub struct BuiltinUnnameableTestItems;
-
-#[derive(LintDiagnostic)]
 #[diag(lint_builtin_keyword_idents)]
 pub struct BuiltinKeywordIdents {
     pub kw: Ident,

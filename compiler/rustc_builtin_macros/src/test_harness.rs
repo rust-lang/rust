@@ -4,10 +4,12 @@ use rustc_ast as ast;
 use rustc_ast::entry::EntryPointType;
 use rustc_ast::mut_visit::{ExpectOne, *};
 use rustc_ast::ptr::P;
+use rustc_ast::visit::{walk_item, Visitor};
 use rustc_ast::{attr, ModKind};
 use rustc_expand::base::{ExtCtxt, ResolverExpand};
 use rustc_expand::expand::{AstFragment, ExpansionConfig};
 use rustc_feature::Features;
+use rustc_session::lint::builtin::UNNAMEABLE_TEST_ITEMS;
 use rustc_session::Session;
 use rustc_span::hygiene::{AstPass, SyntaxContext, Transparency};
 use rustc_span::symbol::{sym, Ident, Symbol};
@@ -137,8 +139,28 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
             let prev_tests = mem::take(&mut self.tests);
             noop_visit_item_kind(&mut item.kind, self);
             self.add_test_cases(item.id, span, prev_tests);
+        } else {
+            // But in those cases, we emit a lint to warn the user of these missing tests.
+            walk_item(&mut InnerItemLinter { sess: self.cx.ext_cx.sess }, &item);
         }
         smallvec![P(item)]
+    }
+}
+
+struct InnerItemLinter<'a> {
+    sess: &'a Session,
+}
+
+impl<'a> Visitor<'a> for InnerItemLinter<'_> {
+    fn visit_item(&mut self, i: &'a ast::Item) {
+        if let Some(attr) = attr::find_by_name(&i.attrs, sym::rustc_test_marker) {
+            self.sess.parse_sess.buffer_lint(
+                UNNAMEABLE_TEST_ITEMS,
+                attr.span,
+                i.id,
+                crate::fluent_generated::builtin_macros_unnameable_test_items,
+            );
+        }
     }
 }
 
