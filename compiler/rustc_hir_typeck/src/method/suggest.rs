@@ -115,7 +115,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         item_name: Ident,
         source: SelfSource<'tcx>,
         error: MethodError<'tcx>,
-        args: Option<(&'tcx hir::Expr<'tcx>, &'tcx [hir::Expr<'tcx>])>,
+        args: Option<(&'tcx hir::Expr<'tcx>, &'tcx [hir::Expr<'tcx>], &'tcx hir::Expr<'tcx>)>,
         expected: Expectation<'tcx>,
         trait_missing_method: bool,
     ) -> Option<DiagnosticBuilder<'_, ErrorGuaranteed>> {
@@ -257,7 +257,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn suggest_missing_writer(
         &self,
         rcvr_ty: Ty<'tcx>,
-        args: (&'tcx hir::Expr<'tcx>, &'tcx [hir::Expr<'tcx>]),
+        args: (&'tcx hir::Expr<'tcx>, &'tcx [hir::Expr<'tcx>], &'tcx hir::Expr<'tcx>),
     ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
         let (ty_str, _ty_file) = self.tcx.short_ty_string(rcvr_ty);
         let mut err =
@@ -282,7 +282,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         rcvr_ty: Ty<'tcx>,
         item_name: Ident,
         source: SelfSource<'tcx>,
-        args: Option<(&'tcx hir::Expr<'tcx>, &'tcx [hir::Expr<'tcx>])>,
+        args: Option<(&'tcx hir::Expr<'tcx>, &'tcx [hir::Expr<'tcx>], &'tcx hir::Expr<'tcx>)>,
         sugg_span: Span,
         no_match_data: &mut NoMatchData<'tcx>,
         expected: Expectation<'tcx>,
@@ -953,6 +953,33 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 unsatisfied_bounds = true;
             }
+        } else if let ty::Adt(def, targs) = rcvr_ty.kind() && let Some((rcvr, _, expr)) = args {
+            // This is useful for methods on arbitrary self types that might have a simple
+            // mutability difference, like calling a method on `Pin<&mut Self>` that is on
+            // `Pin<&Self>`.
+            if targs.len() == 1 {
+                let mut item_segment = hir::PathSegment::invalid();
+                item_segment.ident = item_name;
+                for t in [Ty::new_mut_ref, Ty::new_imm_ref, |_, _, t| t] {
+                    let new_args = tcx.mk_args_from_iter(
+                        targs
+                            .iter()
+                            .map(|arg| match arg.as_type() {
+                                Some(ty) => ty::GenericArg::from(
+                                    t(tcx, tcx.lifetimes.re_erased, ty.peel_refs()),
+                                ),
+                                _ => arg,
+                            })
+                    );
+                    let rcvr_ty = Ty::new_adt(tcx, *def, new_args);
+                    if let Ok(method) = self.lookup_method_for_diagnostic(rcvr_ty, &item_segment, span, expr, rcvr) {
+                        err.span_note(
+                            tcx.def_span(method.def_id),
+                            format!("{item_kind} is available for `{rcvr_ty}`"),
+                        );
+                    }
+                }
+            }
         }
 
         let label_span_not_found = |err: &mut Diagnostic| {
@@ -1111,7 +1138,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 span,
                 rcvr_ty,
                 item_name,
-                args.map(|(_, args)| args.len() + 1),
+                args.map(|(_, args, _)| args.len() + 1),
                 source,
                 no_match_data.out_of_scope_traits.clone(),
                 &unsatisfied_predicates,
@@ -1192,7 +1219,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         rcvr_ty: Ty<'tcx>,
         item_name: Ident,
-        args: Option<(&'tcx hir::Expr<'tcx>, &'tcx [hir::Expr<'tcx>])>,
+        args: Option<(&'tcx hir::Expr<'tcx>, &'tcx [hir::Expr<'tcx>], &'tcx hir::Expr<'tcx>)>,
         span: Span,
         err: &mut Diagnostic,
         sources: &mut Vec<CandidateSource>,
@@ -1343,7 +1370,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         rcvr_ty: Ty<'tcx>,
         source: SelfSource<'tcx>,
         item_name: Ident,
-        args: Option<(&hir::Expr<'tcx>, &[hir::Expr<'tcx>])>,
+        args: Option<(&hir::Expr<'tcx>, &[hir::Expr<'tcx>], &'tcx hir::Expr<'tcx>)>,
         sugg_span: Span,
     ) {
         let mut has_unsuggestable_args = false;
@@ -1415,7 +1442,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 None
             };
             let mut applicability = Applicability::MachineApplicable;
-            let args = if let Some((receiver, args)) = args {
+            let args = if let Some((receiver, args, _)) = args {
                 // The first arg is the same kind as the receiver
                 let explicit_args = if first_arg.is_some() {
                     std::iter::once(receiver).chain(args.iter()).collect::<Vec<_>>()
@@ -2995,7 +3022,7 @@ pub fn all_traits(tcx: TyCtxt<'_>) -> Vec<TraitInfo> {
 
 fn print_disambiguation_help<'tcx>(
     item_name: Ident,
-    args: Option<(&'tcx hir::Expr<'tcx>, &'tcx [hir::Expr<'tcx>])>,
+    args: Option<(&'tcx hir::Expr<'tcx>, &'tcx [hir::Expr<'tcx>], &'tcx hir::Expr<'tcx>)>,
     err: &mut Diagnostic,
     trait_name: String,
     rcvr_ty: Ty<'_>,
@@ -3007,7 +3034,7 @@ fn print_disambiguation_help<'tcx>(
     fn_has_self_parameter: bool,
 ) {
     let mut applicability = Applicability::MachineApplicable;
-    let (span, sugg) = if let (ty::AssocKind::Fn, Some((receiver, args))) = (kind, args) {
+    let (span, sugg) = if let (ty::AssocKind::Fn, Some((receiver, args, _))) = (kind, args) {
         let args = format!(
             "({}{})",
             rcvr_ty.ref_mutability().map_or("", |mutbl| mutbl.ref_prefix_str()),

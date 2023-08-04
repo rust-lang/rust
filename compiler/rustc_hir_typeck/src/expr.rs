@@ -1293,7 +1293,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         segment.ident,
                         SelfSource::MethodCall(rcvr),
                         error,
-                        Some((rcvr, args)),
+                        Some((rcvr, args, expr)),
                         expected,
                         false,
                     ) {
