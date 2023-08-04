@@ -452,22 +452,23 @@ fn prove_negated_obligation<'tcx>(
 /// This both checks whether any downstream or sibling crates could
 /// implement it and whether an upstream crate can add this impl
 /// without breaking backwards compatibility.
-#[instrument(level = "debug", skip(tcx), ret)]
-pub fn trait_ref_is_knowable<'tcx>(
+#[instrument(level = "debug", skip(tcx, lazily_normalize_ty), ret)]
+pub fn trait_ref_is_knowable<'tcx, E: Debug>(
     tcx: TyCtxt<'tcx>,
     trait_ref: ty::TraitRef<'tcx>,
-) -> Result<(), Conflict> {
+    mut lazily_normalize_ty: impl FnMut(Ty<'tcx>) -> Result<Ty<'tcx>, E>,
+) -> Result<Result<(), Conflict>, E> {
     if Some(trait_ref.def_id) == tcx.lang_items().fn_ptr_trait() {
         // The only types implementing `FnPtr` are function pointers,
         // so if there's no impl of `FnPtr` in the current crate,
         // then such an impl will never be added in the future.
-        return Ok(());
+        return Ok(Ok(()));
     }
 
-    if orphan_check_trait_ref(trait_ref, InCrate::Remote).is_ok() {
+    if orphan_check_trait_ref(trait_ref, InCrate::Remote, &mut lazily_normalize_ty)?.is_ok() {
         // A downstream or cousin crate is allowed to implement some
         // substitution of this trait-ref.
-        return Err(Conflict::Downstream);
+        return Ok(Err(Conflict::Downstream));
     }
 
     if trait_ref_is_local_or_fundamental(tcx, trait_ref) {
@@ -476,7 +477,7 @@ pub fn trait_ref_is_knowable<'tcx>(
         // allowed to implement a substitution of this trait ref, which
         // means impls could only come from dependencies of this crate,
         // which we already know about.
-        return Ok(());
+        return Ok(Ok(()));
     }
 
     // This is a remote non-fundamental trait, so if another crate
@@ -487,10 +488,10 @@ pub fn trait_ref_is_knowable<'tcx>(
     // and if we are an intermediate owner, then we don't care
     // about future-compatibility, which means that we're OK if
     // we are an owner.
-    if orphan_check_trait_ref(trait_ref, InCrate::Local).is_ok() {
-        Ok(())
+    if orphan_check_trait_ref(trait_ref, InCrate::Local, &mut lazily_normalize_ty)?.is_ok() {
+        Ok(Ok(()))
     } else {
-        Err(Conflict::Upstream)
+        Ok(Err(Conflict::Upstream))
     }
 }
 
@@ -526,7 +527,7 @@ pub fn orphan_check(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Result<(), OrphanChe
         return Ok(());
     }
 
-    orphan_check_trait_ref(trait_ref, InCrate::Local)
+    orphan_check_trait_ref::<!>(trait_ref, InCrate::Local, |ty| Ok(ty)).unwrap()
 }
 
 /// Checks whether a trait-ref is potentially implementable by a crate.
@@ -615,11 +616,12 @@ pub fn orphan_check(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Result<(), OrphanChe
 ///
 /// Note that this function is never called for types that have both type
 /// parameters and inference variables.
-#[instrument(level = "trace", ret)]
-fn orphan_check_trait_ref<'tcx>(
+#[instrument(level = "trace", skip(lazily_normalize_ty), ret)]
+fn orphan_check_trait_ref<'tcx, E: Debug>(
     trait_ref: ty::TraitRef<'tcx>,
     in_crate: InCrate,
-) -> Result<(), OrphanCheckErr<'tcx>> {
+    lazily_normalize_ty: impl FnMut(Ty<'tcx>) -> Result<Ty<'tcx>, E>,
+) -> Result<Result<(), OrphanCheckErr<'tcx>>, E> {
     if trait_ref.has_infer() && trait_ref.has_param() {
         bug!(
             "can't orphan check a trait ref with both params and inference variables {:?}",
@@ -627,9 +629,10 @@ fn orphan_check_trait_ref<'tcx>(
         );
     }
 
-    let mut checker = OrphanChecker::new(in_crate);
-    match trait_ref.visit_with(&mut checker) {
+    let mut checker = OrphanChecker::new(in_crate, lazily_normalize_ty);
+    Ok(match trait_ref.visit_with(&mut checker) {
         ControlFlow::Continue(()) => Err(OrphanCheckErr::NonLocalInputType(checker.non_local_tys)),
+        ControlFlow::Break(OrphanCheckEarlyExit::NormalizationFailure(err)) => return Err(err),
         ControlFlow::Break(OrphanCheckEarlyExit::ParamTy(ty)) => {
             // Does there exist some local type after the `ParamTy`.
             checker.search_first_local_ty = true;
@@ -642,34 +645,39 @@ fn orphan_check_trait_ref<'tcx>(
             }
         }
         ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(_)) => Ok(()),
-    }
+    })
 }
 
-struct OrphanChecker<'tcx> {
+struct OrphanChecker<'tcx, F> {
     in_crate: InCrate,
     in_self_ty: bool,
+    lazily_normalize_ty: F,
     /// Ignore orphan check failures and exclusively search for the first
     /// local type.
     search_first_local_ty: bool,
     non_local_tys: Vec<(Ty<'tcx>, bool)>,
 }
 
-impl<'tcx> OrphanChecker<'tcx> {
-    fn new(in_crate: InCrate) -> Self {
+impl<'tcx, F, E> OrphanChecker<'tcx, F>
+where
+    F: FnOnce(Ty<'tcx>) -> Result<Ty<'tcx>, E>,
+{
+    fn new(in_crate: InCrate, lazily_normalize_ty: F) -> Self {
         OrphanChecker {
             in_crate,
             in_self_ty: true,
+            lazily_normalize_ty,
             search_first_local_ty: false,
             non_local_tys: Vec::new(),
         }
     }
 
-    fn found_non_local_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<OrphanCheckEarlyExit<'tcx>> {
+    fn found_non_local_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<OrphanCheckEarlyExit<'tcx, E>> {
         self.non_local_tys.push((t, self.in_self_ty));
         ControlFlow::Continue(())
     }
 
-    fn found_param_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<OrphanCheckEarlyExit<'tcx>> {
+    fn found_param_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<OrphanCheckEarlyExit<'tcx, E>> {
         if self.search_first_local_ty {
             ControlFlow::Continue(())
         } else {
@@ -685,18 +693,28 @@ impl<'tcx> OrphanChecker<'tcx> {
     }
 }
 
-enum OrphanCheckEarlyExit<'tcx> {
+enum OrphanCheckEarlyExit<'tcx, E> {
+    NormalizationFailure(E),
     ParamTy(Ty<'tcx>),
     LocalTy(Ty<'tcx>),
 }
 
-impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OrphanChecker<'tcx> {
-    type BreakTy = OrphanCheckEarlyExit<'tcx>;
+impl<'tcx, F, E> TypeVisitor<TyCtxt<'tcx>> for OrphanChecker<'tcx, F>
+where
+    F: FnMut(Ty<'tcx>) -> Result<Ty<'tcx>, E>,
+{
+    type BreakTy = OrphanCheckEarlyExit<'tcx, E>;
     fn visit_region(&mut self, _r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
         ControlFlow::Continue(())
     }
 
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+        // Need to lazily normalize here in with `-Ztrait-solver=next-coherence`.
+        let ty = match (self.lazily_normalize_ty)(ty) {
+            Ok(ty) => ty,
+            Err(err) => return ControlFlow::Break(OrphanCheckEarlyExit::NormalizationFailure(err)),
+        };
+
         let result = match *ty.kind() {
             ty::Bool
             | ty::Char
