@@ -1219,7 +1219,8 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         // If we have a borrow tracker, we also have it set up protection so that all reads *and
         // writes* during this call are insta-UB.
         if ecx.machine.borrow_tracker.is_some() {
-            if let Either::Left(place) = place.as_mplace_or_local() {
+            // Have to do `to_op` first because a `Place::Local` doesn't imply the local doesn't have an address.
+            if let Either::Left(place) = ecx.place_to_op(place)?.as_mplace_or_imm() {
                 ecx.protect_place(&place)?;
             } else {
                 // Locals that don't have their address taken are as protected as they can ever be.
