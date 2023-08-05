@@ -213,7 +213,9 @@ impl Struct {
             //     continue;
             // }
             let signature = delegee.signature(db);
-            let delegate = generate_impl(ctx, self, &field.ty, &field.name, delegee);
+            let Some(delegate) = generate_impl(ctx, self, &field.ty, &field.name, delegee) else {
+                continue;
+            };
 
             acc.add_group(
                 &GroupLabel("Delegate trait impl for field...".to_owned()),
@@ -237,7 +239,7 @@ fn generate_impl(
     field_ty: &ast::Type,
     field_name: &String,
     delegee: &Delegee,
-) -> ast::Impl {
+) -> Option<ast::Impl> {
     let delegate: ast::Impl;
     let source: ast::Impl;
     let genpar: Option<ast::GenericParamList>;
@@ -247,7 +249,7 @@ fn generate_impl(
 
     match delegee {
         Delegee::Bound(delegee) => {
-            let in_file = ctx.sema.source(delegee.0.to_owned()).unwrap();
+            let in_file = ctx.sema.source(delegee.0.to_owned())?;
             let source: ast::Trait = in_file.value;
 
             delegate = make::impl_trait(
@@ -293,15 +295,15 @@ fn generate_impl(
                 None => {}
             };
 
-            let target = ctx.sema.scope(strukt.strukt.syntax()).unwrap();
-            let source = ctx.sema.scope(source.syntax()).unwrap();
+            let target = ctx.sema.scope(strukt.strukt.syntax())?;
+            let source = ctx.sema.scope(source.syntax())?;
 
             let transform =
                 PathTransform::trait_impl(&target, &source, delegee.0, delegate.clone());
             transform.apply(&delegate.syntax());
         }
         Delegee::Impls(delegee) => {
-            let in_file = ctx.sema.source(delegee.1.to_owned()).unwrap();
+            let in_file = ctx.sema.source(delegee.1.to_owned())?;
             source = in_file.value;
             delegate = make::impl_trait(
                 delegee.0.is_unsafe(db),
@@ -341,8 +343,8 @@ fn generate_impl(
                     }
                 });
 
-            let target = ctx.sema.scope(strukt.strukt.syntax()).unwrap();
-            let source = ctx.sema.scope(source.syntax()).unwrap();
+            let target = ctx.sema.scope(strukt.strukt.syntax())?;
+            let source = ctx.sema.scope(source.syntax())?;
 
             let transform =
                 PathTransform::trait_impl(&target, &source, delegee.0, delegate.clone());
@@ -350,7 +352,7 @@ fn generate_impl(
         }
     }
 
-    delegate
+    Some(delegate)
 }
 
 fn process_assoc_item(
@@ -359,19 +361,19 @@ fn process_assoc_item(
     base_name: &str,
 ) -> Option<ast::AssocItem> {
     match item {
-        AssocItem::Const(c) => Some(const_assoc_item(c, qual_path_ty)),
-        AssocItem::Fn(f) => Some(func_assoc_item(f, qual_path_ty, base_name)),
+        AssocItem::Const(c) => const_assoc_item(c, qual_path_ty),
+        AssocItem::Fn(f) => func_assoc_item(f, qual_path_ty, base_name),
         AssocItem::MacroCall(_) => {
             // FIXME : Handle MacroCall case.
-            // return Some(macro_assoc_item(mac, qual_path_ty));
+            // macro_assoc_item(mac, qual_path_ty)
             None
         }
-        AssocItem::TypeAlias(ta) => Some(ty_assoc_item(ta, qual_path_ty)),
+        AssocItem::TypeAlias(ta) => ty_assoc_item(ta, qual_path_ty),
     }
 }
 
-fn const_assoc_item(item: syntax::ast::Const, qual_path_ty: ast::Path) -> AssocItem {
-    let path_expr_segment = make::path_from_text(item.name().unwrap().to_string().as_str());
+fn const_assoc_item(item: syntax::ast::Const, qual_path_ty: ast::Path) -> Option<AssocItem> {
+    let path_expr_segment = make::path_from_text(item.name()?.to_string().as_str());
 
     // We want rhs of the const assignment to be a qualified path
     // The general case for const assigment can be found [here](`https://doc.rust-lang.org/reference/items/constant-items.html`)
@@ -380,19 +382,19 @@ fn const_assoc_item(item: syntax::ast::Const, qual_path_ty: ast::Path) -> AssocI
     // FIXME : We can't rely on `make::path_qualified` for now but it would be nice to replace the following with it.
     // make::path_qualified(qual_path_ty, path_expr_segment.as_single_segment().unwrap());
     let qualpath = qualpath(qual_path_ty, path_expr_segment);
-    let inner = make::item_const(
-        item.visibility(),
-        item.name().unwrap(),
-        item.ty().unwrap(),
-        make::expr_path(qualpath),
-    )
-    .clone_for_update();
+    let inner =
+        make::item_const(item.visibility(), item.name()?, item.ty()?, make::expr_path(qualpath))
+            .clone_for_update();
 
-    AssocItem::Const(inner)
+    Some(AssocItem::Const(inner))
 }
 
-fn func_assoc_item(item: syntax::ast::Fn, qual_path_ty: Path, base_name: &str) -> AssocItem {
-    let path_expr_segment = make::path_from_text(item.name().unwrap().to_string().as_str());
+fn func_assoc_item(
+    item: syntax::ast::Fn,
+    qual_path_ty: Path,
+    base_name: &str,
+) -> Option<AssocItem> {
+    let path_expr_segment = make::path_from_text(item.name()?.to_string().as_str());
     let qualpath = qualpath(qual_path_ty, path_expr_segment);
 
     let call = match item.param_list() {
@@ -415,7 +417,7 @@ fn func_assoc_item(item: syntax::ast::Fn, qual_path_ty: Path, base_name: &str) -
                 if param_count > 0 {
                     // Add SelfParam and a TOKEN::COMMA
                     ted::insert_all(
-                        Position::after(args.l_paren_token().unwrap()),
+                        Position::after(args.l_paren_token()?),
                         vec![
                             NodeOrToken::Node(tail_expr_self.syntax().clone_for_update()),
                             NodeOrToken::Token(make::token(SyntaxKind::WHITESPACE)),
@@ -425,7 +427,7 @@ fn func_assoc_item(item: syntax::ast::Fn, qual_path_ty: Path, base_name: &str) -
                 } else {
                     // Add SelfParam only
                     ted::insert(
-                        Position::after(args.l_paren_token().unwrap()),
+                        Position::after(args.l_paren_token()?),
                         NodeOrToken::Node(tail_expr_self.syntax().clone_for_update()),
                     );
                 }
@@ -444,10 +446,10 @@ fn func_assoc_item(item: syntax::ast::Fn, qual_path_ty: Path, base_name: &str) -
     let body = make::block_expr(vec![], Some(call)).clone_for_update();
     let func = make::fn_(
         item.visibility(),
-        item.name().unwrap(),
+        item.name()?,
         item.generic_param_list(),
         item.where_clause(),
-        item.param_list().unwrap(),
+        item.param_list()?,
         body,
         item.ret_type(),
         item.async_token().is_some(),
@@ -456,14 +458,14 @@ fn func_assoc_item(item: syntax::ast::Fn, qual_path_ty: Path, base_name: &str) -
     )
     .clone_for_update();
 
-    AssocItem::Fn(func.indent(edit::IndentLevel(1)).clone_for_update())
+    Some(AssocItem::Fn(func.indent(edit::IndentLevel(1)).clone_for_update()))
 }
 
-fn ty_assoc_item(item: syntax::ast::TypeAlias, qual_path_ty: Path) -> AssocItem {
-    let path_expr_segment = make::path_from_text(item.name().unwrap().to_string().as_str());
+fn ty_assoc_item(item: syntax::ast::TypeAlias, qual_path_ty: Path) -> Option<AssocItem> {
+    let path_expr_segment = make::path_from_text(item.name()?.to_string().as_str());
     let qualpath = qualpath(qual_path_ty, path_expr_segment);
     let ty = make::ty_path(qualpath);
-    let ident = item.name().unwrap().to_string();
+    let ident = item.name()?.to_string();
 
     let alias = make::ty_alias(
         ident.as_str(),
@@ -474,7 +476,7 @@ fn ty_assoc_item(item: syntax::ast::TypeAlias, qual_path_ty: Path) -> AssocItem 
     )
     .clone_for_update();
 
-    AssocItem::TypeAlias(alias)
+    Some(AssocItem::TypeAlias(alias))
 }
 
 fn qualpath(qual_path_ty: ast::Path, path_expr_seg: ast::Path) -> ast::Path {
