@@ -98,3 +98,10 @@ pub struct EncounteredErrorWhileInstantiating {
 pub struct UnknownCguCollectionMode<'a> {
     pub mode: &'a str,
 }
+
+#[derive(Diagnostic)]
+#[diag(monomorphize_unexpected_polymorphic_constant)]
+pub struct UnexpectedPolymorphicConst {
+    #[primary_span]
+    pub span: Span,
+}

@@ -193,6 +193,7 @@ use std::path::PathBuf;
 
 use crate::errors::{
     EncounteredErrorWhileInstantiating, LargeAssignmentsLint, RecursionLimit, TypeLengthLimit,
+    UnexpectedPolymorphicConst,
 };
 
 #[derive(PartialEq)]
@@ -705,11 +706,11 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                         // The `monomorphize` call should have evaluated that constant already.
                         Ok(val) => val,
                         Err(ErrorHandled::Reported(_)) => return,
-                        Err(ErrorHandled::TooGeneric) => span_bug!(
-                            self.body.source_info(location).span,
-                            "collection encountered polymorphic constant: {:?}",
-                            literal
-                        ),
+                        Err(ErrorHandled::TooGeneric) => {
+                            self.tcx.sess.emit_fatal(UnexpectedPolymorphicConst {
+                                span: self.body.source_info(location).span,
+                            })
+                        }
                     }
                 }
                 _ => return,
@@ -720,11 +721,11 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                     // The `monomorphize` call should have evaluated that constant already.
                     Ok(val) => val,
                     Err(ErrorHandled::Reported(_)) => return,
-                    Err(ErrorHandled::TooGeneric) => span_bug!(
-                        self.body.source_info(location).span,
-                        "collection encountered polymorphic constant: {:?}",
-                        literal
-                    ),
+                    Err(ErrorHandled::TooGeneric) => {
+                        self.tcx.sess.emit_fatal(UnexpectedPolymorphicConst {
+                            span: self.body.source_info(location).span,
+                        })
+                    }
                 }
             }
         };

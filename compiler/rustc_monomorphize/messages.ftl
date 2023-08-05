@@ -22,6 +22,8 @@ monomorphize_symbol_already_defined = symbol `{$symbol}` is already defined
 
 monomorphize_type_length_limit = reached the type-length limit while instantiating `{$shrunk}`
 
+monomorphize_unexpected_polymorphic_constant = unexpected polymorphic constant
+
 monomorphize_unknown_cgu_collection_mode =
     unknown codegen-item collection mode '{$mode}', falling back to 'lazy' mode
 

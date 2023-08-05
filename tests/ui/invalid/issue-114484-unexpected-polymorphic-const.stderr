@@ -1,0 +1,16 @@
+error: reached the recursion limit finding the struct tail for `[u8; 256]`
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]`
+
+error: reached the recursion limit finding the struct tail for `[u8; 256]`
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]`
+
+error: unexpected polymorphic constant
+  --> $DIR/issue-114484-unexpected-polymorphic-const.rs:48:18
+   |
+LL |     let vtable = Vtable::<T>::LEVELS[(level != 0) as usize];
+   |                  ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
