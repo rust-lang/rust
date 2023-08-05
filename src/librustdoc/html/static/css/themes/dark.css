@@ -68,7 +68,7 @@
 	--test-arrow-color: #dedede;
 	--test-arrow-background-color: rgba(78, 139, 202, 0.2);
 	--test-arrow-hover-color: #dedede;
-	--test-arrow-hover-background-color: #4e8bca;
+	--test-arrow-hover-background-color: rgb(78, 139, 202);
 	--target-background-color: #494a3d;
 	--target-border-color: #bb7410;
 	--kbd-color: #000;
