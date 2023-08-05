@@ -130,5 +130,21 @@ LL |             iter.cloned().filter(move |S { a, b }| **a == 1 && b == &target
    |                 |
    |                 help: try: `.filter(move |&S { a, b }| **a == 1 && b == &target).cloned()`
 
-error: aborting due to 15 previous errors
+error: unneeded cloning of iterator items
+  --> $DIR/iter_overeager_cloned.rs:60:13
+   |
+LL |     let _ = vec.iter().cloned().map(|x| x.len());
+   |             ^^^^^^^^^^--------------------------
+   |                       |
+   |                       help: try: `.map(|x| x.len())`
+
+error: unneeded cloning of iterator items
+  --> $DIR/iter_overeager_cloned.rs:65:13
+   |
+LL |     let _ = vec.iter().cloned().for_each(|x| assert!(!x.is_empty()));
+   |             ^^^^^^^^^^----------------------------------------------
+   |                       |
+   |                       help: try: `.for_each(|x| assert!(!x.is_empty()))`
+
+error: aborting due to 17 previous errors
 

@@ -57,13 +57,11 @@ fn main() {
         }
     }
 
-    // Not implemented yet
     let _ = vec.iter().cloned().map(|x| x.len());
 
     // This would fail if changed.
     let _ = vec.iter().cloned().map(|x| x + "2");
 
-    // Not implemented yet
     let _ = vec.iter().cloned().for_each(|x| assert!(!x.is_empty()));
 
     // Not implemented yet
