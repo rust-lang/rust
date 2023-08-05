@@ -2789,7 +2789,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             // implement this trait and list them.
                             err.note(format!(
                                 "`{short_item_name}` is a \"sealed trait\", because to implement \
-                                 it you also need to implelement `{}`, which is not accessible; \
+                                 it you also need to implement `{}`, which is not accessible; \
                                  this is usually done to force you to use one of the provided \
                                  types that already implement it",
                                 with_no_trimmed_paths!(tcx.def_path_str(def_id)),
