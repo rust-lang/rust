@@ -730,6 +730,48 @@ fn main() {
 }
 
 #[test]
+fn posix_getenv() {
+    check_pass(
+        r#"
+//- /main.rs env:foo=bar
+
+type c_char = u8;
+
+extern "C" {
+    pub fn getenv(s: *const c_char) -> *mut c_char;
+}
+
+fn should_not_reach() {
+    _ // FIXME: replace this function with panic when that works
+}
+
+fn main() {
+    let result = getenv(b"foo\0" as *const _);
+    if *result != b'b' {
+        should_not_reach();
+    }
+    let result = (result as usize + 1) as *const c_char;
+    if *result != b'a' {
+        should_not_reach();
+    }
+    let result = (result as usize + 1) as *const c_char;
+    if *result != b'r' {
+        should_not_reach();
+    }
+    let result = (result as usize + 1) as *const c_char;
+    if *result != 0 {
+        should_not_reach();
+    }
+    let result = getenv(b"not found\0" as *const _);
+    if result as usize != 0 {
+        should_not_reach();
+    }
+}
+"#,
+    );
+}
+
+#[test]
 fn posix_tls() {
     check_pass(
         r#"

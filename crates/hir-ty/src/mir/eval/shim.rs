@@ -473,6 +473,38 @@ impl Evaluator<'_> {
                 self.write_memory_using_ref(destination.addr, destination.size)?.fill(0);
                 Ok(())
             }
+            "getenv" => {
+                let [name] = args else {
+                    return Err(MirEvalError::TypeError("libc::write args are not provided"));
+                };
+                let mut name_buf = vec![];
+                let name = {
+                    let mut index = Address::from_bytes(name.get(self)?)?;
+                    loop {
+                        let byte = self.read_memory(index, 1)?[0];
+                        index = index.offset(1);
+                        if byte == 0 {
+                            break;
+                        }
+                        name_buf.push(byte);
+                    }
+                    String::from_utf8_lossy(&name_buf)
+                };
+                let value = self.db.crate_graph()[self.crate_id].env.get(&name);
+                match value {
+                    None => {
+                        // Write null as fail
+                        self.write_memory_using_ref(destination.addr, destination.size)?.fill(0);
+                    }
+                    Some(mut value) => {
+                        value.push('\0');
+                        let addr = self.heap_allocate(value.len(), 1)?;
+                        self.write_memory(addr, value.as_bytes())?;
+                        self.write_memory(destination.addr, &addr.to_bytes())?;
+                    }
+                }
+                Ok(())
+            }
             _ => not_supported!("unknown external function {as_str}"),
         }
     }

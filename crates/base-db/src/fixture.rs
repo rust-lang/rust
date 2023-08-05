@@ -130,6 +130,7 @@ impl ChangeFixture {
         let mut default_crate_root: Option<FileId> = None;
         let mut default_target_data_layout: Option<String> = None;
         let mut default_cfg = CfgOptions::default();
+        let mut default_env = Env::new_for_test_fixture();
 
         let mut file_set = FileSet::default();
         let mut current_source_root_kind = SourceRootKind::Local;
@@ -200,6 +201,7 @@ impl ChangeFixture {
                 assert!(default_crate_root.is_none());
                 default_crate_root = Some(file_id);
                 default_cfg = meta.cfg;
+                default_env.extend(meta.env.iter().map(|(x, y)| (x.to_owned(), y.to_owned())));
                 default_target_data_layout = meta.target_data_layout;
             }
 
@@ -220,7 +222,7 @@ impl ChangeFixture {
                 None,
                 default_cfg,
                 Default::default(),
-                Env::new_for_test_fixture(),
+                default_env,
                 false,
                 CrateOrigin::Local { repo: None, name: None },
                 default_target_data_layout
