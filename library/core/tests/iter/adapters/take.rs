@@ -167,3 +167,22 @@ fn test_byref_take_consumed_items() {
     assert_eq!(count, 70);
     assert_eq!(inner, 90..90);
 }
+
+#[test]
+fn test_take_repeat_double_ended() {
+    let mut iter = repeat(0).take(100);
+    assert_eq!(iter.len(), 100);
+    assert_eq!(iter.next(), Some(0));
+    assert_eq!(iter.next_back(), Some(0));
+    assert_eq!(iter.advance_by(1), Ok(()));
+    assert_eq!(iter.advance_back_by(1), Ok(()));
+    assert_eq!(iter.len(), 96);
+}
+
+#[test]
+fn test_take_repeat_with_exact_size() {
+    let mut iter = repeat_with(|| 0).take(100);
+    assert_eq!(iter.len(), 100);
+    assert_eq!(iter.advance_by(100), Ok(()));
+    assert_eq!(iter.len(), 0);
+}

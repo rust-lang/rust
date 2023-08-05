@@ -1,5 +1,7 @@
 use crate::cmp;
-use crate::iter::{adapters::SourceIter, FusedIterator, InPlaceIterable, TrustedLen};
+use crate::iter::{
+    adapters::SourceIter, FusedIterator, InPlaceIterable, Repeat, RepeatWith, TrustedLen,
+};
 use crate::num::NonZeroUsize;
 use crate::ops::{ControlFlow, Try};
 
@@ -241,8 +243,33 @@ where
     }
 }
 
+#[stable(feature = "double_ended_repeat_take_iterator", since = "CURRENT_RUSTC_VERSION")]
+impl<T: Clone> DoubleEndedIterator for Take<Repeat<T>> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        if self.n == 0 {
+            None
+        } else {
+            self.n -= 1;
+            self.iter.next()
+        }
+    }
+
+    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
+        let advanced = self.n.min(n);
+        self.n -= advanced;
+        let remainder = n - advanced;
+        NonZeroUsize::new(remainder).map_or(Ok(()), Err)
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<I> ExactSizeIterator for Take<I> where I: ExactSizeIterator {}
+
+#[stable(feature = "take_repeat_exactsize", since = "CURRENT_RUSTC_VERSION")]
+impl<T: Clone> ExactSizeIterator for Take<Repeat<T>> {}
+
+#[stable(feature = "take_repeat_with_exactsize", since = "CURRENT_RUSTC_VERSION")]
+impl<T, F> ExactSizeIterator for Take<RepeatWith<F>> where F: FnMut() -> T {}
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<I> FusedIterator for Take<I> where I: FusedIterator {}
