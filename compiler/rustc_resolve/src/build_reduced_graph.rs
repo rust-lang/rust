@@ -278,7 +278,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                 };
                 match self.r.resolve_path(
                     &segments,
-                    Some(TypeNS),
+                    None,
                     parent_scope,
                     finalize.then(|| Finalize::new(id, path.span)),
                     None,
