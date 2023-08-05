@@ -2686,8 +2686,15 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
     ///
     /// # Safety
     ///
-    /// The pointer must have originated from the [`into_raw`] and must still own its potential
-    /// weak reference, and must point to a block of memory allocated by `alloc`.
+    /// The pointer must have originated from the [`into_raw`] function and must still own its
+    /// potential weak reference, and must point to a block of memory allocated by `alloc`.
+    ///
+    /// Note that `from_raw_in` expects values that actually originated from a call to [`into_raw`]
+    /// and have not been used with `from_raw` yet, not what [`into_raw`] can maybe return,
+    /// or is documented to potentially return.
+    /// For example, [`into_raw`] can return dangling pointers, but this doesn't allow you to create
+    /// a dangling pointer yourself and pass it to `from_raw`. Even if it has the same address
+    /// as a pointer created by [`into_raw`], use [`Weak::new`] instead.
     ///
     /// It is allowed for the strong count to be 0 at the time of calling this. Nevertheless, this
     /// takes ownership of one weak reference currently represented as a raw pointer (the weak

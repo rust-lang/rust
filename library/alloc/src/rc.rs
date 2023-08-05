@@ -2776,8 +2776,16 @@ impl<T: ?Sized> Weak<T> {
     ///
     /// # Safety
     ///
-    /// The pointer must have originated from the [`into_raw`] and must still own its potential
-    /// weak reference, and `ptr` must point to a block of memory allocated by the global allocator.
+    /// The pointer must have originated from the [`into_raw`] or [`into_raw_and_alloc`] functions
+    /// and must still own its potential weak reference, and `ptr` must point to a block of
+    /// memory allocated by `alloc`.
+    ///
+    /// Note that `from_raw` expects values that actually originated from a call to one of these
+    /// functions and have not been used with `from_raw` yet, not what these functions can maybe
+    /// return, or are documented to potentially return.
+    /// For example, [`into_raw`] can return dangling pointers, but this doesn't allow you to create
+    /// a dangling pointer yourself and pass it to `from_raw`. Even if it has the same address
+    /// as a pointer created by [`into_raw`], use [`Weak::new`] instead.
     ///
     /// It is allowed for the strong count to be 0 at the time of calling this. Nevertheless, this
     /// takes ownership of one weak reference currently represented as a raw pointer (the weak
@@ -2806,6 +2814,7 @@ impl<T: ?Sized> Weak<T> {
     /// ```
     ///
     /// [`into_raw`]: Weak::into_raw
+    /// [`into_raw_and_alloc`]: Weak::into_raw_and_alloc
     /// [`upgrade`]: Weak::upgrade
     /// [`new`]: Weak::new
     #[inline]
@@ -2942,8 +2951,16 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
     ///
     /// # Safety
     ///
-    /// The pointer must have originated from the [`into_raw`] and must still own its potential
-    /// weak reference, and `ptr` must point to a block of memory allocated by `alloc`.
+    /// The pointer must have originated from the [`into_raw`] or [`into_raw_and_alloc`] functions
+    /// and must still own its potential weak reference, and `ptr` must point to a block of
+    /// memory allocated by `alloc`.
+    ///
+    /// Note that `from_raw` expects values that actually originated from a call to one of these
+    /// functions and have not been used with `from_raw` yet, not what these functions can maybe
+    /// return, or are documented to potentially return.
+    /// For example, [`into_raw`] can return dangling pointers, but this doesn't allow you to create
+    /// a dangling pointer yourself and pass it to `from_raw`. Even if it has the same address
+    /// as a pointer created by [`into_raw`], use [`Weak::new`] instead.
     ///
     /// It is allowed for the strong count to be 0 at the time of calling this. Nevertheless, this
     /// takes ownership of one weak reference currently represented as a raw pointer (the weak
@@ -2972,6 +2989,7 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
     /// ```
     ///
     /// [`into_raw`]: Weak::into_raw
+    /// [`into_raw_and_alloc`]: Weak::into_raw_and_alloc
     /// [`upgrade`]: Weak::upgrade
     /// [`new`]: Weak::new
     #[inline]
