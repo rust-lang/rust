@@ -58,50 +58,74 @@ error: expected at least one digit in exponent
 LL |     1e+;
    |     ^^^
 
-error: hexadecimal float literal is not supported
+error: expected at least one digit in exponent
   --> $DIR/lex-bad-numeric-literals.rs:15:5
+   |
+LL |     1e_3;
+   |     ^^^^
+
+error: expected at least one digit in exponent
+  --> $DIR/lex-bad-numeric-literals.rs:18:5
+   |
+LL |     1E+__3;
+   |     ^^^^^^
+
+error: expected at least one digit in exponent
+  --> $DIR/lex-bad-numeric-literals.rs:21:5
+   |
+LL |     1e-______3_3;
+   |     ^^^^^^^^^^^^
+
+error: expected at least one digit in exponent
+  --> $DIR/lex-bad-numeric-literals.rs:24:5
+   |
+LL |     1em;
+   |     ^^^
+
+error: hexadecimal float literal is not supported
+  --> $DIR/lex-bad-numeric-literals.rs:27:5
    |
 LL |     0x539.0;
    |     ^^^^^^^
 
 error[E0768]: no valid digits found for number
-  --> $DIR/lex-bad-numeric-literals.rs:26:5
+  --> $DIR/lex-bad-numeric-literals.rs:38:5
    |
 LL |     0x;
    |     ^^
 
 error[E0768]: no valid digits found for number
-  --> $DIR/lex-bad-numeric-literals.rs:27:5
+  --> $DIR/lex-bad-numeric-literals.rs:39:5
    |
 LL |     0xu32;
    |     ^^
 
 error[E0768]: no valid digits found for number
-  --> $DIR/lex-bad-numeric-literals.rs:28:5
+  --> $DIR/lex-bad-numeric-literals.rs:40:5
    |
 LL |     0ou32;
    |     ^^
 
 error[E0768]: no valid digits found for number
-  --> $DIR/lex-bad-numeric-literals.rs:29:5
+  --> $DIR/lex-bad-numeric-literals.rs:41:5
    |
 LL |     0bu32;
    |     ^^
 
 error[E0768]: no valid digits found for number
-  --> $DIR/lex-bad-numeric-literals.rs:30:5
+  --> $DIR/lex-bad-numeric-literals.rs:42:5
    |
 LL |     0b;
    |     ^^
 
 error: octal float literal is not supported
-  --> $DIR/lex-bad-numeric-literals.rs:32:5
+  --> $DIR/lex-bad-numeric-literals.rs:44:5
    |
 LL |     0o123.456;
    |     ^^^^^^^^^
 
 error: binary float literal is not supported
-  --> $DIR/lex-bad-numeric-literals.rs:34:5
+  --> $DIR/lex-bad-numeric-literals.rs:46:5
    |
 LL |     0b111.101;
    |     ^^^^^^^^^
@@ -112,24 +136,56 @@ error: octal float literal is not supported
 LL |     0o2f32;
    |     ^^^^^^ not supported
 
-error: integer literal is too large
-  --> $DIR/lex-bad-numeric-literals.rs:16:5
+error: invalid suffix `_3` for float literal
+  --> $DIR/lex-bad-numeric-literals.rs:15:5
    |
-LL |     9900000000000000000000000000999999999999999999999999999999;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     1e_3;
+   |     ^^^^ invalid suffix `_3`
    |
-   = note: value exceeds limit of `340282366920938463463374607431768211455`
+   = help: valid suffixes are `f32` and `f64`
 
-error: integer literal is too large
+error: invalid suffix `__3` for float literal
   --> $DIR/lex-bad-numeric-literals.rs:18:5
    |
+LL |     1E+__3;
+   |     ^^^^^^ invalid suffix `__3`
+   |
+   = help: valid suffixes are `f32` and `f64`
+
+error: invalid suffix `______3_3` for float literal
+  --> $DIR/lex-bad-numeric-literals.rs:21:5
+   |
+LL |     1e-______3_3;
+   |     ^^^^^^^^^^^^ invalid suffix `______3_3`
+   |
+   = help: valid suffixes are `f32` and `f64`
+
+error: invalid suffix `m` for float literal
+  --> $DIR/lex-bad-numeric-literals.rs:24:5
+   |
+LL |     1em;
+   |     ^^^ invalid suffix `m`
+   |
+   = help: valid suffixes are `f32` and `f64`
+
+error: integer literal is too large
+  --> $DIR/lex-bad-numeric-literals.rs:28:5
+   |
 LL |     9900000000000000000000000000999999999999999999999999999999;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: value exceeds limit of `340282366920938463463374607431768211455`
 
 error: integer literal is too large
-  --> $DIR/lex-bad-numeric-literals.rs:20:5
+  --> $DIR/lex-bad-numeric-literals.rs:30:5
+   |
+LL |     9900000000000000000000000000999999999999999999999999999999;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: value exceeds limit of `340282366920938463463374607431768211455`
+
+error: integer literal is too large
+  --> $DIR/lex-bad-numeric-literals.rs:32:5
    |
 LL |     0b111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111110;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -137,7 +193,7 @@ LL |     0b111111111111111111111111111111111111111111111111111111111111111111111
    = note: value exceeds limit of `0b11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111`
 
 error: integer literal is too large
-  --> $DIR/lex-bad-numeric-literals.rs:22:5
+  --> $DIR/lex-bad-numeric-literals.rs:34:5
    |
 LL |     0o37777777777777777777777777777777777777777770;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -145,7 +201,7 @@ LL |     0o37777777777777777777777777777777777777777770;
    = note: value exceeds limit of `0o3777777777777777777777777777777777777777777`
 
 error: integer literal is too large
-  --> $DIR/lex-bad-numeric-literals.rs:24:5
+  --> $DIR/lex-bad-numeric-literals.rs:36:5
    |
 LL |     0xffffffffffffffffffffffffffffffff0;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -153,17 +209,17 @@ LL |     0xffffffffffffffffffffffffffffffff0;
    = note: value exceeds limit of `0xffffffffffffffffffffffffffffffff`
 
 error: octal float literal is not supported
-  --> $DIR/lex-bad-numeric-literals.rs:31:5
+  --> $DIR/lex-bad-numeric-literals.rs:43:5
    |
 LL |     0o123f64;
    |     ^^^^^^^^ not supported
 
 error: binary float literal is not supported
-  --> $DIR/lex-bad-numeric-literals.rs:33:5
+  --> $DIR/lex-bad-numeric-literals.rs:45:5
    |
 LL |     0b101f64;
    |     ^^^^^^^^ not supported
 
-error: aborting due to 26 previous errors
+error: aborting due to 34 previous errors
 
 For more information about this error, try `rustc --explain E0768`.

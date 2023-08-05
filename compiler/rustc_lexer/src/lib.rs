@@ -869,7 +869,14 @@ impl Cursor<'_> {
         if self.first() == '-' || self.first() == '+' {
             self.bump();
         }
-        self.eat_decimal_digits()
+        match self.first() {
+            '0'..='9' => {
+                self.bump();
+                self.eat_decimal_digits();
+                true
+            }
+            _ => false,
+        }
     }
 
     // Eats the suffix of the literal, e.g. "u8".

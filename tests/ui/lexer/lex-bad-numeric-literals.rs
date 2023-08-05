@@ -12,6 +12,18 @@ fn main() {
     0x9.0e-9; //~ ERROR: hexadecimal float literal is not supported
     0o; //~ ERROR: no valid digits
     1e+; //~ ERROR: expected at least one digit in exponent
+    1e_3;
+    //~^ ERROR: invalid suffix `_3` for float literal
+    //~| ERROR: expected at least one digit in exponent
+    1E+__3;
+    //~^ ERROR: invalid suffix `__3` for float literal
+    //~| ERROR: expected at least one digit in exponent
+    1e-______3_3;
+    //~^ ERROR: invalid suffix `______3_3` for float literal
+    //~| ERROR: expected at least one digit in exponent
+    1em;
+    //~^ ERROR: invalid suffix `m` for float literal
+    //~| ERROR: expected at least one digit in exponent
     0x539.0; //~ ERROR: hexadecimal float literal is not supported
     9900000000000000000000000000999999999999999999999999999999;
     //~^ ERROR: integer literal is too large
