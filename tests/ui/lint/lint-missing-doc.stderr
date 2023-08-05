@@ -113,24 +113,6 @@ LL | pub static BAR4: u32 = 0;
    | ^^^^^^^^^^^^^^^^^^^^
 
 error: missing documentation for a function
-  --> $DIR/lint-missing-doc.rs:174:5
-   |
-LL |     pub fn undocumented1() {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^
-
-error: missing documentation for a function
-  --> $DIR/lint-missing-doc.rs:175:5
-   |
-LL |     pub fn undocumented2() {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^
-
-error: missing documentation for a function
-  --> $DIR/lint-missing-doc.rs:181:9
-   |
-LL |         pub fn also_undocumented1() {}
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: missing documentation for a function
   --> $DIR/lint-missing-doc.rs:196:5
    |
 LL |     pub fn extern_fn_undocumented(f: f32) -> f32;
@@ -153,6 +135,24 @@ error: missing documentation for a trait alias
    |
 LL | pub trait T = Sync;
    | ^^^^^^^^^^^
+
+error: missing documentation for a function
+  --> $DIR/lint-missing-doc.rs:174:5
+   |
+LL |     pub fn undocumented1() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: missing documentation for a function
+  --> $DIR/lint-missing-doc.rs:175:5
+   |
+LL |     pub fn undocumented2() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: missing documentation for a function
+  --> $DIR/lint-missing-doc.rs:181:9
+   |
+LL |         pub fn also_undocumented1() {}
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 25 previous errors
 

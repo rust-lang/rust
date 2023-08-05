@@ -17,7 +17,7 @@
 use crate::{passes::LateLintPassObject, LateContext, LateLintPass, LintStore};
 use rustc_ast as ast;
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_data_structures::sync::{join, DynSend};
+use rustc_data_structures::sync::join;
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit as hir_visit;
@@ -336,7 +336,7 @@ macro_rules! impl_late_lint_pass {
 
 crate::late_lint_methods!(impl_late_lint_pass, []);
 
-pub(super) fn late_lint_mod<'tcx, T: LateLintPass<'tcx> + 'tcx>(
+pub fn late_lint_mod<'tcx, T: LateLintPass<'tcx> + 'tcx>(
     tcx: TyCtxt<'tcx>,
     module_def_id: LocalDefId,
     builtin_lints: T,
@@ -376,6 +376,12 @@ fn late_lint_mod_inner<'tcx, T: LateLintPass<'tcx>>(
     let mut cx = LateContextAndPass { context, pass };
 
     let (module, _span, hir_id) = tcx.hir().get_module(module_def_id);
+
+    // There is no module lint that will have the crate itself as an item, so check it here.
+    if hir_id == hir::CRATE_HIR_ID {
+        lint_callback!(cx, check_crate,);
+    }
+
     cx.process_mod(module, hir_id);
 
     // Visit the crate attributes
@@ -383,10 +389,19 @@ fn late_lint_mod_inner<'tcx, T: LateLintPass<'tcx>>(
         for attr in tcx.hir().attrs(hir::CRATE_HIR_ID).iter() {
             cx.visit_attribute(attr)
         }
+        lint_callback!(cx, check_crate_post,);
     }
 }
 
-fn late_lint_crate<'tcx, T: LateLintPass<'tcx> + 'tcx>(tcx: TyCtxt<'tcx>, builtin_lints: T) {
+fn late_lint_crate<'tcx>(tcx: TyCtxt<'tcx>) {
+    // Note: `passes` is often empty.
+    let mut passes: Vec<_> =
+        unerased_lint_store(tcx).late_passes.iter().map(|mk_pass| (mk_pass)(tcx)).collect();
+
+    if passes.is_empty() {
+        return;
+    }
+
     let context = LateContext {
         tcx,
         enclosing_body: None,
@@ -399,18 +414,8 @@ fn late_lint_crate<'tcx, T: LateLintPass<'tcx> + 'tcx>(tcx: TyCtxt<'tcx>, builti
         only_module: false,
     };
 
-    // Note: `passes` is often empty. In that case, it's faster to run
-    // `builtin_lints` directly rather than bundling it up into the
-    // `RuntimeCombinedLateLintPass`.
-    let mut passes: Vec<_> =
-        unerased_lint_store(tcx).late_passes.iter().map(|mk_pass| (mk_pass)(tcx)).collect();
-    if passes.is_empty() {
-        late_lint_crate_inner(tcx, context, builtin_lints);
-    } else {
-        passes.push(Box::new(builtin_lints));
-        let pass = RuntimeCombinedLateLintPass { passes: &mut passes[..] };
-        late_lint_crate_inner(tcx, context, pass);
-    }
+    let pass = RuntimeCombinedLateLintPass { passes: &mut passes[..] };
+    late_lint_crate_inner(tcx, context, pass);
 }
 
 fn late_lint_crate_inner<'tcx, T: LateLintPass<'tcx>>(
@@ -432,15 +437,12 @@ fn late_lint_crate_inner<'tcx, T: LateLintPass<'tcx>>(
 }
 
 /// Performs lint checking on a crate.
-pub fn check_crate<'tcx, T: LateLintPass<'tcx> + 'tcx>(
-    tcx: TyCtxt<'tcx>,
-    builtin_lints: impl FnOnce() -> T + Send + DynSend,
-) {
+pub fn check_crate<'tcx>(tcx: TyCtxt<'tcx>) {
     join(
         || {
             tcx.sess.time("crate_lints", || {
                 // Run whole crate non-incremental lints
-                late_lint_crate(tcx, builtin_lints());
+                late_lint_crate(tcx);
             });
         },
         || {

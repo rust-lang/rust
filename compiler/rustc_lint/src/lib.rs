@@ -59,6 +59,7 @@ mod enum_intrinsics_non_enums;
 mod errors;
 mod expect;
 mod for_loops_over_fallibles;
+mod foreign_modules;
 pub mod hidden_unicode_codepoints;
 mod internal;
 mod invalid_from_utf8;
@@ -125,11 +126,11 @@ use types::*;
 use unused::*;
 
 /// Useful for other parts of the compiler / Clippy.
-pub use builtin::SoftLints;
+pub use builtin::{MissingDoc, SoftLints};
 pub use context::{CheckLintNameResult, FindLintError, LintStore};
 pub use context::{EarlyContext, LateContext, LintContext};
 pub use early::{check_ast_node, EarlyCheckNode};
-pub use late::{check_crate, unerased_lint_store};
+pub use late::{check_crate, late_lint_mod, unerased_lint_store};
 pub use passes::{EarlyLintPass, LateLintPass};
 pub use rustc_session::lint::Level::{self, *};
 pub use rustc_session::lint::{BufferedEarlyLint, FutureIncompatibleInfo, Lint, LintId};
@@ -140,11 +141,12 @@ fluent_messages! { "../messages.ftl" }
 pub fn provide(providers: &mut Providers) {
     levels::provide(providers);
     expect::provide(providers);
+    foreign_modules::provide(providers);
     *providers = Providers { lint_mod, ..*providers };
 }
 
 fn lint_mod(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
-    late::late_lint_mod(tcx, module_def_id, BuiltinCombinedModuleLateLintPass::new());
+    late_lint_mod(tcx, module_def_id, BuiltinCombinedModuleLateLintPass::new());
 }
 
 early_lint_methods!(
@@ -178,25 +180,6 @@ early_lint_methods!(
             RedundantSemicolons: RedundantSemicolons,
             UnusedDocComment: UnusedDocComment,
             UnexpectedCfgs: UnexpectedCfgs,
-        ]
-    ]
-);
-
-// FIXME: Make a separate lint type which does not require typeck tables.
-
-late_lint_methods!(
-    declare_combined_late_lint_pass,
-    [
-        pub BuiltinCombinedLateLintPass,
-        [
-            // Tracks attributes of parents
-            MissingDoc: MissingDoc::new(),
-            // Builds a global list of all impls of `Debug`.
-            // FIXME: Turn the computation of types which implement Debug into a query
-            // and change this to a module lint pass
-            MissingDebugImplementations: MissingDebugImplementations::default(),
-            // Keeps a global list of foreign declarations.
-            ClashingExternDeclarations: ClashingExternDeclarations::new(),
         ]
     ]
 );
@@ -253,6 +236,8 @@ late_lint_methods!(
             OpaqueHiddenInferredBound: OpaqueHiddenInferredBound,
             MultipleSupertraitUpcastable: MultipleSupertraitUpcastable,
             MapUnitFn: MapUnitFn,
+            MissingDebugImplementations: MissingDebugImplementations,
+            MissingDoc: MissingDoc,
         ]
     ]
 );
@@ -281,7 +266,7 @@ fn register_builtins(store: &mut LintStore) {
     store.register_lints(&BuiltinCombinedPreExpansionLintPass::get_lints());
     store.register_lints(&BuiltinCombinedEarlyLintPass::get_lints());
     store.register_lints(&BuiltinCombinedModuleLateLintPass::get_lints());
-    store.register_lints(&BuiltinCombinedLateLintPass::get_lints());
+    store.register_lints(&foreign_modules::get_lints());
 
     add_lint_group!(
         "nonstandard_style",
@@ -521,20 +506,20 @@ fn register_internals(store: &mut LintStore) {
     store.register_lints(&LintPassImpl::get_lints());
     store.register_early_pass(|| Box::new(LintPassImpl));
     store.register_lints(&DefaultHashTypes::get_lints());
-    store.register_late_pass(|_| Box::new(DefaultHashTypes));
+    store.register_late_mod_pass(|_| Box::new(DefaultHashTypes));
     store.register_lints(&QueryStability::get_lints());
-    store.register_late_pass(|_| Box::new(QueryStability));
+    store.register_late_mod_pass(|_| Box::new(QueryStability));
     store.register_lints(&ExistingDocKeyword::get_lints());
-    store.register_late_pass(|_| Box::new(ExistingDocKeyword));
+    store.register_late_mod_pass(|_| Box::new(ExistingDocKeyword));
     store.register_lints(&TyTyKind::get_lints());
-    store.register_late_pass(|_| Box::new(TyTyKind));
+    store.register_late_mod_pass(|_| Box::new(TyTyKind));
     store.register_lints(&Diagnostics::get_lints());
     store.register_early_pass(|| Box::new(Diagnostics));
-    store.register_late_pass(|_| Box::new(Diagnostics));
+    store.register_late_mod_pass(|_| Box::new(Diagnostics));
     store.register_lints(&BadOptAccess::get_lints());
-    store.register_late_pass(|_| Box::new(BadOptAccess));
+    store.register_late_mod_pass(|_| Box::new(BadOptAccess));
     store.register_lints(&PassByValue::get_lints());
-    store.register_late_pass(|_| Box::new(PassByValue));
+    store.register_late_mod_pass(|_| Box::new(PassByValue));
     // FIXME(davidtwco): deliberately do not include `UNTRANSLATABLE_DIAGNOSTIC` and
     // `DIAGNOSTIC_OUTSIDE_OF_IMPL` here because `-Wrustc::internal` is provided to every crate and
     // these lints will trigger all of the time - change this once migration to diagnostic structs
