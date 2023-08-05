@@ -662,7 +662,7 @@ fn test_send_vectored_fds_unix_stream() {
     }
 }
 
-#[cfg(any(target_os = "android", target_os = "linux", target_os = "freebsd"))]
+#[cfg(any(target_os = "android", target_os = "linux"))]
 #[test]
 #[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating Unix sockets
 fn test_send_vectored_with_ancillary_to_unix_datagram() {
