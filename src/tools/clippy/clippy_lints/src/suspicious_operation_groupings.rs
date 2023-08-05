@@ -572,7 +572,7 @@ fn ident_difference_expr_with_base_location(
         | (AddrOf(_, _, _), AddrOf(_, _, _))
         | (Path(_, _), Path(_, _))
         | (Range(_, _, _), Range(_, _, _))
-        | (Index(_, _), Index(_, _))
+        | (Index(_, _, _), Index(_, _, _))
         | (Field(_, _), Field(_, _))
         | (AssignOp(_, _, _), AssignOp(_, _, _))
         | (Assign(_, _, _), Assign(_, _, _))

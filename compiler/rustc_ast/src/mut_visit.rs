@@ -1400,7 +1400,7 @@ pub fn noop_visit_expr<T: MutVisitor>(
             fn_decl,
             body,
             fn_decl_span,
-            fn_arg_span: _,
+            fn_arg_span,
         }) => {
             vis.visit_closure_binder(binder);
             visit_constness(constness, vis);
@@ -1408,6 +1408,7 @@ pub fn noop_visit_expr<T: MutVisitor>(
             vis.visit_fn_decl(fn_decl);
             vis.visit_expr(body);
             vis.visit_span(fn_decl_span);
+            vis.visit_span(fn_arg_span);
         }
         ExprKind::Block(blk, label) => {
             vis.visit_block(blk);
@@ -1420,9 +1421,10 @@ pub fn noop_visit_expr<T: MutVisitor>(
             vis.visit_expr(expr);
             vis.visit_span(await_kw_span);
         }
-        ExprKind::Assign(el, er, _) => {
+        ExprKind::Assign(el, er, span) => {
             vis.visit_expr(el);
             vis.visit_expr(er);
+            vis.visit_span(span);
         }
         ExprKind::AssignOp(_op, el, er) => {
             vis.visit_expr(el);
@@ -1432,9 +1434,10 @@ pub fn noop_visit_expr<T: MutVisitor>(
             vis.visit_expr(el);
             vis.visit_ident(ident);
         }
-        ExprKind::Index(el, er) => {
+        ExprKind::Index(el, er, brackets_span) => {
             vis.visit_expr(el);
             vis.visit_expr(er);
+            vis.visit_span(brackets_span);
         }
         ExprKind::Range(e1, e2, _lim) => {
             visit_opt(e1, |e1| vis.visit_expr(e1));

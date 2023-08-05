@@ -8,7 +8,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, CrateVariancesMap, GenericArgsRef, Ty, TyCtxt};
-use rustc_middle::ty::{TypeSuperVisitable, TypeVisitable};
+use rustc_middle::ty::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt};
 use std::ops::ControlFlow;
 
 /// Defines the `TermsContext` basically houses an arena where we can
@@ -52,6 +52,14 @@ fn variances_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Variance] {
         | DefKind::Union
         | DefKind::Variant
         | DefKind::Ctor(..) => {
+            // These are inferred.
+            let crate_map = tcx.crate_variances(());
+            return crate_map.variances.get(&item_def_id.to_def_id()).copied().unwrap_or(&[]);
+        }
+        DefKind::TyAlias
+            if tcx.features().lazy_type_alias
+                || tcx.type_of(item_def_id).instantiate_identity().has_opaque_types() =>
+        {
             // These are inferred.
             let crate_map = tcx.crate_variances(());
             return crate_map.variances.get(&item_def_id.to_def_id()).copied().unwrap_or(&[]);

@@ -250,7 +250,7 @@ impl<'a> DecorateLint<'a, ()> for BuiltinUngatedAsyncFnTrackCaller<'_> {
         rustc_session::parse::add_feature_diagnostics(
             diag,
             &self.parse_sess,
-            sym::closure_track_caller,
+            sym::async_fn_track_caller,
         );
         diag
     }
@@ -369,10 +369,6 @@ pub enum BuiltinEllipsisInclusiveRangePatternsLint {
         suggestion: Span,
     },
 }
-
-#[derive(LintDiagnostic)]
-#[diag(lint_builtin_unnameable_test_items)]
-pub struct BuiltinUnnameableTestItems;
 
 #[derive(LintDiagnostic)]
 #[diag(lint_builtin_keyword_idents)]
@@ -1087,8 +1083,10 @@ pub struct IdentifierUncommonCodepoints;
 pub struct ConfusableIdentifierPair {
     pub existing_sym: Symbol,
     pub sym: Symbol,
-    #[label]
+    #[label(lint_other_use)]
     pub label: Span,
+    #[label(lint_current_use)]
+    pub main_label: Span,
 }
 
 #[derive(LintDiagnostic)]

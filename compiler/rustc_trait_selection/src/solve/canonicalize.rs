@@ -207,23 +207,18 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'_, 'tcx> {
         t
     }
 
-    fn fold_region(&mut self, mut r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        match self.canonicalize_mode {
-            CanonicalizeMode::Input => {
-                // Don't resolve infer vars in input, since it affects
-                // caching and may cause trait selection bugs which rely
-                // on regions to be equal.
-            }
-            CanonicalizeMode::Response { .. } => {
-                if let ty::ReVar(vid) = *r {
-                    r = self
-                        .infcx
-                        .inner
-                        .borrow_mut()
-                        .unwrap_region_constraints()
-                        .opportunistic_resolve_var(self.infcx.tcx, vid);
-                }
-            }
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+        if let ty::ReVar(vid) = *r {
+            let resolved_region = self
+                .infcx
+                .inner
+                .borrow_mut()
+                .unwrap_region_constraints()
+                .opportunistic_resolve_var(self.infcx.tcx, vid);
+            assert_eq!(
+                r, resolved_region,
+                "region var should have been resolved, {r} -> {resolved_region}"
+            );
         }
 
         let kind = match *r {
@@ -278,38 +273,22 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'_, 'tcx> {
         ty::Region::new_late_bound(self.interner(), self.binder_index, br)
     }
 
-    fn fold_ty(&mut self, mut t: Ty<'tcx>) -> Ty<'tcx> {
+    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
         let kind = match *t.kind() {
-            ty::Infer(ty::TyVar(mut vid)) => {
-                // We need to canonicalize the *root* of our ty var.
-                // This is so that our canonical response correctly reflects
-                // any equated inference vars correctly!
-                let root_vid = self.infcx.root_var(vid);
-                if root_vid != vid {
-                    t = Ty::new_var(self.infcx.tcx, root_vid);
-                    vid = root_vid;
-                }
-
-                match self.infcx.probe_ty_var(vid) {
-                    Ok(t) => return self.fold_ty(t),
-                    Err(ui) => CanonicalVarKind::Ty(CanonicalTyVarKind::General(ui)),
-                }
+            ty::Infer(ty::TyVar(vid)) => {
+                assert_eq!(self.infcx.root_var(vid), vid, "ty vid should have been resolved");
+                let Err(ui) = self.infcx.probe_ty_var(vid) else {
+                    bug!("ty var should have been resolved: {t}");
+                };
+                CanonicalVarKind::Ty(CanonicalTyVarKind::General(ui))
             }
             ty::Infer(ty::IntVar(vid)) => {
-                let nt = self.infcx.opportunistic_resolve_int_var(vid);
-                if nt != t {
-                    return self.fold_ty(nt);
-                } else {
-                    CanonicalVarKind::Ty(CanonicalTyVarKind::Int)
-                }
+                assert_eq!(self.infcx.opportunistic_resolve_int_var(vid), t);
+                CanonicalVarKind::Ty(CanonicalTyVarKind::Int)
             }
             ty::Infer(ty::FloatVar(vid)) => {
-                let nt = self.infcx.opportunistic_resolve_float_var(vid);
-                if nt != t {
-                    return self.fold_ty(nt);
-                } else {
-                    CanonicalVarKind::Ty(CanonicalTyVarKind::Float)
-                }
+                assert_eq!(self.infcx.opportunistic_resolve_float_var(vid), t);
+                CanonicalVarKind::Ty(CanonicalTyVarKind::Float)
             }
             ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 bug!("fresh var during canonicalization: {t:?}")
@@ -372,22 +351,19 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'_, 'tcx> {
         Ty::new_bound(self.infcx.tcx, self.binder_index, bt)
     }
 
-    fn fold_const(&mut self, mut c: ty::Const<'tcx>) -> ty::Const<'tcx> {
+    fn fold_const(&mut self, c: ty::Const<'tcx>) -> ty::Const<'tcx> {
         let kind = match c.kind() {
-            ty::ConstKind::Infer(ty::InferConst::Var(mut vid)) => {
-                // We need to canonicalize the *root* of our const var.
-                // This is so that our canonical response correctly reflects
-                // any equated inference vars correctly!
-                let root_vid = self.infcx.root_const_var(vid);
-                if root_vid != vid {
-                    c = ty::Const::new_var(self.infcx.tcx, root_vid, c.ty());
-                    vid = root_vid;
-                }
-
-                match self.infcx.probe_const_var(vid) {
-                    Ok(c) => return self.fold_const(c),
-                    Err(universe) => CanonicalVarKind::Const(universe, c.ty()),
-                }
+            ty::ConstKind::Infer(ty::InferConst::Var(vid)) => {
+                assert_eq!(
+                    self.infcx.root_const_var(vid),
+                    vid,
+                    "const var should have been resolved"
+                );
+                let Err(ui) = self.infcx.probe_const_var(vid) else {
+                    bug!("const var should have been resolved");
+                };
+                // FIXME: we should fold this ty eventually
+                CanonicalVarKind::Const(ui, c.ty())
             }
             ty::ConstKind::Infer(ty::InferConst::Fresh(_)) => {
                 bug!("fresh var during canonicalization: {c:?}")

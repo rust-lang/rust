@@ -136,19 +136,13 @@ pub(crate) fn new_handler(
         ErrorOutputType::HumanReadable(kind) => {
             let (short, color_config) = kind.unzip();
             Box::new(
-                EmitterWriter::stderr(
-                    color_config,
-                    source_map.map(|sm| sm as _),
-                    None,
-                    fallback_bundle,
-                    short,
-                    unstable_opts.teach,
-                    diagnostic_width,
-                    false,
-                    unstable_opts.track_diagnostics,
-                    TerminalUrl::No,
-                )
-                .ui_testing(unstable_opts.ui_testing),
+                EmitterWriter::stderr(color_config, fallback_bundle)
+                    .sm(source_map.map(|sm| sm as _))
+                    .short_message(short)
+                    .teach(unstable_opts.teach)
+                    .diagnostic_width(diagnostic_width)
+                    .track_diagnostics(unstable_opts.track_diagnostics)
+                    .ui_testing(unstable_opts.ui_testing),
             )
         }
         ErrorOutputType::Json { pretty, json_rendered } => {

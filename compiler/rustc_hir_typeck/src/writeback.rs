@@ -210,7 +210,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     // to use builtin indexing because the index type is known to be
     // usize-ish
     fn fix_index_builtin_expr(&mut self, e: &hir::Expr<'_>) {
-        if let hir::ExprKind::Index(ref base, ref index) = e.kind {
+        if let hir::ExprKind::Index(ref base, ref index, _) = e.kind {
             // All valid indexing looks like this; might encounter non-valid indexes at this point.
             let base_ty = self.typeck_results.expr_ty_adjusted_opt(base);
             if base_ty.is_none() {

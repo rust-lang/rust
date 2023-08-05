@@ -1,4 +1,3 @@
-use parking_lot::Mutex;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::profiling::{EventId, QueryInvocationId, SelfProfilerRef};
@@ -88,7 +87,7 @@ pub struct DepGraphData<K: DepKind> {
 
     colors: DepNodeColorMap,
 
-    processed_side_effects: Mutex<FxHashSet<DepNodeIndex>>,
+    processed_side_effects: Lock<FxHashSet<DepNodeIndex>>,
 
     /// When we load, there may be `.o` files, cached MIR, or other such
     /// things available to us. If we find that they are not dirty, we

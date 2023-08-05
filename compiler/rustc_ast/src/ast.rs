@@ -1462,7 +1462,8 @@ pub enum ExprKind {
     /// Access of a named (e.g., `obj.foo`) or unnamed (e.g., `obj.0`) struct field.
     Field(P<Expr>, Ident),
     /// An indexing operation (e.g., `foo[2]`).
-    Index(P<Expr>, P<Expr>),
+    /// The span represents the span of the `[2]`, including brackets.
+    Index(P<Expr>, P<Expr>, Span),
     /// A range (e.g., `1..2`, `1..`, `..2`, `1..=2`, `..=2`; and `..` in destructuring assignment).
     Range(Option<P<Expr>>, Option<P<Expr>>, RangeLimits),
     /// An underscore, used in destructuring assignment to ignore a value.

@@ -653,7 +653,7 @@ trait UnusedDelimLint {
                     ExprKind::Call(fn_, _params) => fn_,
                     ExprKind::Cast(expr, _ty) => expr,
                     ExprKind::Type(expr, _ty) => expr,
-                    ExprKind::Index(base, _subscript) => base,
+                    ExprKind::Index(base, _subscript, _) => base,
                     _ => break,
                 };
                 if !classify::expr_requires_semi_to_be_stmt(innermost) {
@@ -830,7 +830,7 @@ trait UnusedDelimLint {
                 (value, UnusedDelimsCtx::ReturnValue, false, Some(left), None, true)
             }
 
-            Index(_, ref value) => (value, UnusedDelimsCtx::IndexExpr, false, None, None, false),
+            Index(_, ref value, _) => (value, UnusedDelimsCtx::IndexExpr, false, None, None, false),
 
             Assign(_, ref value, _) | AssignOp(.., ref value) => {
                 (value, UnusedDelimsCtx::AssignedValue, false, None, None, false)

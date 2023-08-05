@@ -1,7 +1,7 @@
 use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{ColorConfig, ErrorGuaranteed, FatalError, TerminalUrl};
+use rustc_errors::{ColorConfig, ErrorGuaranteed, FatalError};
 use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::{self as hir, intravisit, CRATE_HIR_ID};
 use rustc_interface::interface;
@@ -558,33 +558,11 @@ pub(crate) fn make_test(
                 rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec(),
                 false,
             );
-            supports_color = EmitterWriter::stderr(
-                ColorConfig::Auto,
-                None,
-                None,
-                fallback_bundle.clone(),
-                false,
-                false,
-                Some(80),
-                false,
-                false,
-                TerminalUrl::No,
-            )
-            .supports_color();
+            supports_color = EmitterWriter::stderr(ColorConfig::Auto, fallback_bundle.clone())
+                .diagnostic_width(Some(80))
+                .supports_color();
 
-            let emitter = EmitterWriter::new(
-                Box::new(io::sink()),
-                None,
-                None,
-                fallback_bundle,
-                false,
-                false,
-                false,
-                None,
-                false,
-                false,
-                TerminalUrl::No,
-            );
+            let emitter = EmitterWriter::new(Box::new(io::sink()), fallback_bundle);
 
             // FIXME(misdreavus): pass `-Z treat-err-as-bug` to the doctest parser
             let handler = Handler::with_emitter(Box::new(emitter)).disable_warnings();
@@ -760,19 +738,7 @@ fn check_if_attr_is_complete(source: &str, edition: Edition) -> bool {
                 false,
             );
 
-            let emitter = EmitterWriter::new(
-                Box::new(io::sink()),
-                None,
-                None,
-                fallback_bundle,
-                false,
-                false,
-                false,
-                None,
-                false,
-                false,
-                TerminalUrl::No,
-            );
+            let emitter = EmitterWriter::new(Box::new(io::sink()), fallback_bundle);
 
             let handler = Handler::with_emitter(Box::new(emitter)).disable_warnings();
             let sess = ParseSess::with_span_handler(handler, sm);

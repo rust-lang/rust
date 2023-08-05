@@ -1620,8 +1620,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     .iter()
                                     .enumerate()
                                     .filter(|x| x.1.hir_id == *hir_id)
-                                    .map(|(i, _)| init_tup.get(i).unwrap())
-                                    .next()
+                                    .find_map(|(i, _)| init_tup.get(i))
                                 {
                                     self.note_type_is_not_clone_inner_expr(init)
                                 } else {

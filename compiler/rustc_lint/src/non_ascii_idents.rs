@@ -222,6 +222,7 @@ impl EarlyLintPass for NonAsciiIdents {
                                     existing_sym: *existing_symbol,
                                     sym: symbol,
                                     label: *existing_span,
+                                    main_label: sp,
                                 },
                             );
                         }

@@ -5,11 +5,7 @@ use rustc_target::abi::{Abi, Align, Size};
 use crate::borrow_tracker::{AccessKind, GlobalStateInner, ProtectorKind, RetagFields};
 use rustc_middle::{
     mir::{Mutability, RetagKind},
-    ty::{
-        self,
-        layout::{HasParamEnv, LayoutOf},
-        Ty,
-    },
+    ty::{self, layout::HasParamEnv, Ty},
 };
 use rustc_span::def_id::DefId;
 
@@ -493,8 +489,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         // We have to turn the place into a pointer to use the usual retagging logic.
         // (The pointer type does not matter, so we use a raw pointer.)
-        let ptr_layout = this.layout_of(Ty::new_mut_ptr(this.tcx.tcx, place.layout.ty))?;
-        let ptr = ImmTy::from_immediate(place.to_ref(this), ptr_layout);
+        let ptr = this.mplace_to_ref(place)?;
         // Reborrow it. With protection! That is the entire point.
         let new_perm = NewPermission {
             initial_state: Permission::new_active(),

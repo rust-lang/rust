@@ -477,7 +477,7 @@ impl<'a> State<'a> {
                 self.word(".");
                 self.print_ident(*ident);
             }
-            ast::ExprKind::Index(expr, index) => {
+            ast::ExprKind::Index(expr, index, _) => {
                 self.print_expr_maybe_paren(expr, parser::PREC_POSTFIX);
                 self.word("[");
                 self.print_expr(index);

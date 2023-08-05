@@ -119,7 +119,7 @@ fn condition_needs_parentheses(e: &Expr<'_>) -> bool {
     | ExprKind::Call(i, _)
     | ExprKind::Cast(i, _)
     | ExprKind::Type(i, _)
-    | ExprKind::Index(i, _) = inner.kind
+    | ExprKind::Index(i, _, _) = inner.kind
     {
         if matches!(
             i.kind,

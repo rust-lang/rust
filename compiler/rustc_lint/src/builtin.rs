@@ -35,7 +35,7 @@ use crate::{
         BuiltinSpecialModuleNameUsed, BuiltinTrivialBounds, BuiltinTypeAliasGenericBounds,
         BuiltinTypeAliasGenericBoundsSuggestion, BuiltinTypeAliasWhereClause,
         BuiltinUnexpectedCliConfigName, BuiltinUnexpectedCliConfigValue,
-        BuiltinUngatedAsyncFnTrackCaller, BuiltinUnnameableTestItems, BuiltinUnpermittedTypeInit,
+        BuiltinUngatedAsyncFnTrackCaller, BuiltinUnpermittedTypeInit,
         BuiltinUnpermittedTypeInitSub, BuiltinUnreachablePub, BuiltinUnsafe,
         BuiltinUnstableFeatures, BuiltinUnusedDocComment, BuiltinUnusedDocCommentSub,
         BuiltinWhileTrue, SuggestChangingAssocTypes,
@@ -1259,8 +1259,8 @@ impl<'tcx> LateLintPass<'tcx> for UnstableFeatures {
 
 declare_lint! {
     /// The `ungated_async_fn_track_caller` lint warns when the
-    /// `#[track_caller]` attribute is used on an async function, method, or
-    /// closure, without enabling the corresponding unstable feature flag.
+    /// `#[track_caller]` attribute is used on an async function
+    /// without enabling the corresponding unstable feature flag.
     ///
     /// ### Example
     ///
@@ -1274,13 +1274,13 @@ declare_lint! {
     /// ### Explanation
     ///
     /// The attribute must be used in conjunction with the
-    /// [`closure_track_caller` feature flag]. Otherwise, the `#[track_caller]`
+    /// [`async_fn_track_caller` feature flag]. Otherwise, the `#[track_caller]`
     /// annotation will function as a no-op.
     ///
-    /// [`closure_track_caller` feature flag]: https://doc.rust-lang.org/beta/unstable-book/language-features/closure-track-caller.html
+    /// [`async_fn_track_caller` feature flag]: https://doc.rust-lang.org/beta/unstable-book/language-features/async-fn-track-caller.html
     UNGATED_ASYNC_FN_TRACK_CALLER,
     Warn,
-    "enabling track_caller on an async fn is a no-op unless the closure_track_caller feature is enabled"
+    "enabling track_caller on an async fn is a no-op unless the async_fn_track_caller feature is enabled"
 }
 
 declare_lint_pass!(
@@ -1300,7 +1300,7 @@ impl<'tcx> LateLintPass<'tcx> for UngatedAsyncFnTrackCaller {
         def_id: LocalDefId,
     ) {
         if fn_kind.asyncness() == IsAsync::Async
-            && !cx.tcx.features().closure_track_caller
+            && !cx.tcx.features().async_fn_track_caller
             // Now, check if the function has the `#[track_caller]` attribute
             && let Some(attr) = cx.tcx.get_attr(def_id, sym::track_caller)
         {
@@ -1766,82 +1766,6 @@ impl EarlyLintPass for EllipsisInclusiveRangePatterns {
             if pat.id == node_id {
                 self.node_id = None
             }
-        }
-    }
-}
-
-declare_lint! {
-    /// The `unnameable_test_items` lint detects [`#[test]`][test] functions
-    /// that are not able to be run by the test harness because they are in a
-    /// position where they are not nameable.
-    ///
-    /// [test]: https://doc.rust-lang.org/reference/attributes/testing.html#the-test-attribute
-    ///
-    /// ### Example
-    ///
-    /// ```rust,test
-    /// fn main() {
-    ///     #[test]
-    ///     fn foo() {
-    ///         // This test will not fail because it does not run.
-    ///         assert_eq!(1, 2);
-    ///     }
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// In order for the test harness to run a test, the test function must be
-    /// located in a position where it can be accessed from the crate root.
-    /// This generally means it must be defined in a module, and not anywhere
-    /// else such as inside another function. The compiler previously allowed
-    /// this without an error, so a lint was added as an alert that a test is
-    /// not being used. Whether or not this should be allowed has not yet been
-    /// decided, see [RFC 2471] and [issue #36629].
-    ///
-    /// [RFC 2471]: https://github.com/rust-lang/rfcs/pull/2471#issuecomment-397414443
-    /// [issue #36629]: https://github.com/rust-lang/rust/issues/36629
-    UNNAMEABLE_TEST_ITEMS,
-    Warn,
-    "detects an item that cannot be named being marked as `#[test_case]`",
-    report_in_external_macro
-}
-
-pub struct UnnameableTestItems {
-    boundary: Option<hir::OwnerId>, // Id of the item under which things are not nameable
-    items_nameable: bool,
-}
-
-impl_lint_pass!(UnnameableTestItems => [UNNAMEABLE_TEST_ITEMS]);
-
-impl UnnameableTestItems {
-    pub fn new() -> Self {
-        Self { boundary: None, items_nameable: true }
-    }
-}
-
-impl<'tcx> LateLintPass<'tcx> for UnnameableTestItems {
-    fn check_item(&mut self, cx: &LateContext<'_>, it: &hir::Item<'_>) {
-        if self.items_nameable {
-            if let hir::ItemKind::Mod(..) = it.kind {
-            } else {
-                self.items_nameable = false;
-                self.boundary = Some(it.owner_id);
-            }
-            return;
-        }
-
-        let attrs = cx.tcx.hir().attrs(it.hir_id());
-        if let Some(attr) = attr::find_by_name(attrs, sym::rustc_test_marker) {
-            cx.emit_spanned_lint(UNNAMEABLE_TEST_ITEMS, attr.span, BuiltinUnnameableTestItems);
-        }
-    }
-
-    fn check_item_post(&mut self, _cx: &LateContext<'_>, it: &hir::Item<'_>) {
-        if !self.items_nameable && self.boundary == Some(it.owner_id) {
-            self.items_nameable = true;
         }
     }
 }

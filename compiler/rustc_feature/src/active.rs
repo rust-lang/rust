@@ -339,6 +339,8 @@ declare_features! (
     (active, async_closure, "1.37.0", Some(62290), None),
     /// Allows async functions to be declared, implemented, and used in traits.
     (active, async_fn_in_trait, "1.66.0", Some(91611), None),
+    /// Allows `#[track_caller]` on async functions.
+    (active, async_fn_track_caller, "CURRENT_RUSTC_VERSION", Some(110011), None),
     /// Allows builtin # foo() syntax
     (active, builtin_syntax, "1.71.0", Some(110680), None),
     /// Allows `c"foo"` literals.

@@ -441,7 +441,7 @@ pub(crate) fn left_most_sub_expr(e: &ast::Expr) -> &ast::Expr {
         | ast::ExprKind::Assign(ref e, _, _)
         | ast::ExprKind::AssignOp(_, ref e, _)
         | ast::ExprKind::Field(ref e, _)
-        | ast::ExprKind::Index(ref e, _)
+        | ast::ExprKind::Index(ref e, _, _)
         | ast::ExprKind::Range(Some(ref e), _, _)
         | ast::ExprKind::Try(ref e) => left_most_sub_expr(e),
         _ => e,
@@ -479,7 +479,7 @@ pub(crate) fn is_block_expr(context: &RewriteContext<'_>, expr: &ast::Expr, repr
         | ast::ExprKind::Match(..) => repr.contains('\n'),
         ast::ExprKind::Paren(ref expr)
         | ast::ExprKind::Binary(_, _, ref expr)
-        | ast::ExprKind::Index(_, ref expr)
+        | ast::ExprKind::Index(_, ref expr, _)
         | ast::ExprKind::Unary(_, ref expr)
         | ast::ExprKind::Try(ref expr)
         | ast::ExprKind::Yield(Some(ref expr)) => is_block_expr(context, expr, repr),

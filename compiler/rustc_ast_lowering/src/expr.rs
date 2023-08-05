@@ -240,8 +240,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ExprKind::Field(el, ident) => {
                     hir::ExprKind::Field(self.lower_expr(el), self.lower_ident(*ident))
                 }
-                ExprKind::Index(el, er) => {
-                    hir::ExprKind::Index(self.lower_expr(el), self.lower_expr(er))
+                ExprKind::Index(el, er, brackets_span) => {
+                    hir::ExprKind::Index(self.lower_expr(el), self.lower_expr(er), *brackets_span)
                 }
                 ExprKind::Range(Some(e1), Some(e2), RangeLimits::Closed) => {
                     self.lower_expr_range_closed(e.span, e1, e2)
@@ -657,14 +657,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     /// Forwards a possible `#[track_caller]` annotation from `outer_hir_id` to
-    /// `inner_hir_id` in case the `closure_track_caller` feature is enabled.
+    /// `inner_hir_id` in case the `async_fn_track_caller` feature is enabled.
     pub(super) fn maybe_forward_track_caller(
         &mut self,
         span: Span,
         outer_hir_id: hir::HirId,
         inner_hir_id: hir::HirId,
     ) {
-        if self.tcx.features().closure_track_caller
+        if self.tcx.features().async_fn_track_caller
             && let Some(attrs) = self.attrs.get(&outer_hir_id.local_id)
             && attrs.into_iter().any(|attr| attr.has_name(sym::track_caller))
         {

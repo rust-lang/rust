@@ -400,6 +400,7 @@ symbols! {
         async_await,
         async_closure,
         async_fn_in_trait,
+        async_fn_track_caller,
         atomic,
         atomic_mod,
         atomics,
