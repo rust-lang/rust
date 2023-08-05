@@ -1,20 +1,21 @@
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::infer::at::ToTrace;
 use rustc_infer::infer::canonical::CanonicalVarValues;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{
-    DefineOpaqueTypes, InferCtxt, InferOk, LateBoundRegionConversionTime, RegionVariableOrigin,
-    TyCtxtInferExt,
+    DefineOpaqueTypes, InferCtxt, InferOk, LateBoundRegionConversionTime, TyCtxtInferExt,
 };
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::ObligationCause;
+use rustc_middle::infer::canonical::CanonicalVarInfos;
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::traits::solve::inspect;
 use rustc_middle::traits::solve::{
     CanonicalInput, CanonicalResponse, Certainty, IsNormalizesToHack, PredefinedOpaques,
     PredefinedOpaquesData, QueryResult,
 };
-use rustc_middle::traits::DefiningAnchor;
+use rustc_middle::traits::{specialization_graph, DefiningAnchor};
 use rustc_middle::ty::{
     self, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable, TypeVisitable,
     TypeVisitableExt, TypeVisitor,
@@ -24,11 +25,10 @@ use rustc_span::DUMMY_SP;
 use std::io::Write;
 use std::ops::ControlFlow;
 
-use crate::traits::specialization_graph;
 use crate::traits::vtable::{count_own_vtable_entries, prepare_vtable_segments, VtblSegment};
 
 use super::inspect::ProofTreeBuilder;
-use super::search_graph::{self, OverflowHandler};
+use super::search_graph;
 use super::SolverMode;
 use super::{search_graph::SearchGraph, Goal};
 pub use select::InferCtxtSelectExt;
@@ -55,6 +55,9 @@ pub struct EvalCtxt<'a, 'tcx> {
     /// the job already.
     infcx: &'a InferCtxt<'tcx>,
 
+    /// The variable info for the `var_values`, only used to make an ambiguous response
+    /// with no constraints.
+    variables: CanonicalVarInfos<'tcx>,
     pub(super) var_values: CanonicalVarValues<'tcx>,
 
     predefined_opaques_in_body: PredefinedOpaques<'tcx>,
@@ -171,6 +174,10 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         self.search_graph.solver_mode()
     }
 
+    pub(super) fn local_overflow_limit(&self) -> usize {
+        self.search_graph.local_overflow_limit()
+    }
+
     /// Creates a root evaluation context and search graph. This should only be
     /// used from outside of any evaluation, and other methods should be preferred
     /// over using this manually (such as [`InferCtxtEvalExt::evaluate_root_goal`]).
@@ -184,18 +191,19 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
 
         let mut ecx = EvalCtxt {
             search_graph: &mut search_graph,
-            infcx: infcx,
+            infcx,
+            nested_goals: NestedGoals::new(),
+            inspect: ProofTreeBuilder::new_maybe_root(infcx.tcx, generate_proof_tree),
+
             // Only relevant when canonicalizing the response,
             // which we don't do within this evaluation context.
             predefined_opaques_in_body: infcx
                 .tcx
                 .mk_predefined_opaques_in_body(PredefinedOpaquesData::default()),
-            // Only relevant when canonicalizing the response.
             max_input_universe: ty::UniverseIndex::ROOT,
+            variables: ty::List::empty(),
             var_values: CanonicalVarValues::dummy(),
-            nested_goals: NestedGoals::new(),
             tainted: Ok(()),
-            inspect: ProofTreeBuilder::new_maybe_root(infcx.tcx, generate_proof_tree),
         };
         let result = f(&mut ecx);
 
@@ -245,6 +253,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
 
         let mut ecx = EvalCtxt {
             infcx,
+            variables: canonical_input.variables,
             var_values,
             predefined_opaques_in_body: input.predefined_opaques_in_body,
             max_input_universe: canonical_input.max_universe,
@@ -300,24 +309,26 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         // Deal with overflow, caching, and coinduction.
         //
         // The actual solver logic happens in `ecx.compute_goal`.
-        search_graph.with_new_goal(
-            tcx,
-            canonical_input,
-            goal_evaluation,
-            |search_graph, goal_evaluation| {
-                EvalCtxt::enter_canonical(
-                    tcx,
-                    search_graph,
-                    canonical_input,
-                    goal_evaluation,
-                    |ecx, goal| {
-                        let result = ecx.compute_goal(goal);
-                        ecx.inspect.query_result(result);
-                        result
-                    },
-                )
-            },
-        )
+        ensure_sufficient_stack(|| {
+            search_graph.with_new_goal(
+                tcx,
+                canonical_input,
+                goal_evaluation,
+                |search_graph, goal_evaluation| {
+                    EvalCtxt::enter_canonical(
+                        tcx,
+                        search_graph,
+                        canonical_input,
+                        goal_evaluation,
+                        |ecx, goal| {
+                            let result = ecx.compute_goal(goal);
+                            ecx.inspect.query_result(result);
+                            result
+                        },
+                    )
+                },
+            )
+        })
     }
 
     /// Recursively evaluates `goal`, returning whether any inference vars have
@@ -329,6 +340,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
     ) -> Result<(bool, Certainty, Vec<Goal<'tcx, ty::Predicate<'tcx>>>), NoSolution> {
         let (orig_values, canonical_goal) = self.canonicalize_goal(goal);
         let mut goal_evaluation = self.inspect.new_goal_evaluation(goal, is_normalizes_to_hack);
+        let encountered_overflow = self.search_graph.encountered_overflow();
         let canonical_response = EvalCtxt::evaluate_canonical_goal(
             self.tcx(),
             self.search_graph,
@@ -377,6 +389,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
             && !self.search_graph.in_cycle()
         {
             debug!("rerunning goal to check result is stable");
+            self.search_graph.reset_encountered_overflow(encountered_overflow);
             let (_orig_values, canonical_goal) = self.canonicalize_goal(goal);
             let new_canonical_response = EvalCtxt::evaluate_canonical_goal(
                 self.tcx(),
@@ -471,101 +484,22 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         let inspect = self.inspect.new_evaluate_added_goals();
         let inspect = core::mem::replace(&mut self.inspect, inspect);
 
-        let mut goals = core::mem::replace(&mut self.nested_goals, NestedGoals::new());
-        let mut new_goals = NestedGoals::new();
-
-        let response = self.repeat_while_none(
-            |_| Ok(Certainty::OVERFLOW),
-            |this| {
-                this.inspect.evaluate_added_goals_loop_start();
-
-                let mut has_changed = Err(Certainty::Yes);
-
-                if let Some(goal) = goals.normalizes_to_hack_goal.take() {
-                    // Replace the goal with an unconstrained infer var, so the
-                    // RHS does not affect projection candidate assembly.
-                    let unconstrained_rhs = this.next_term_infer_of_kind(goal.predicate.term);
-                    let unconstrained_goal = goal.with(
-                        this.tcx(),
-                        ty::Binder::dummy(ty::ProjectionPredicate {
-                            projection_ty: goal.predicate.projection_ty,
-                            term: unconstrained_rhs,
-                        }),
-                    );
-
-                    let (_, certainty, instantiate_goals) =
-                        match this.evaluate_goal(IsNormalizesToHack::Yes, unconstrained_goal) {
-                            Ok(r) => r,
-                            Err(NoSolution) => return Some(Err(NoSolution)),
-                        };
-                    new_goals.goals.extend(instantiate_goals);
-
-                    // Finally, equate the goal's RHS with the unconstrained var.
-                    // We put the nested goals from this into goals instead of
-                    // next_goals to avoid needing to process the loop one extra
-                    // time if this goal returns something -- I don't think this
-                    // matters in practice, though.
-                    match this.eq_and_get_goals(
-                        goal.param_env,
-                        goal.predicate.term,
-                        unconstrained_rhs,
-                    ) {
-                        Ok(eq_goals) => {
-                            goals.goals.extend(eq_goals);
-                        }
-                        Err(NoSolution) => return Some(Err(NoSolution)),
-                    };
-
-                    // We only look at the `projection_ty` part here rather than
-                    // looking at the "has changed" return from evaluate_goal,
-                    // because we expect the `unconstrained_rhs` part of the predicate
-                    // to have changed -- that means we actually normalized successfully!
-                    if goal.predicate.projection_ty
-                        != this.resolve_vars_if_possible(goal.predicate.projection_ty)
-                    {
-                        has_changed = Ok(())
-                    }
-
-                    match certainty {
-                        Certainty::Yes => {}
-                        Certainty::Maybe(_) => {
-                            // We need to resolve vars here so that we correctly
-                            // deal with `has_changed` in the next iteration.
-                            new_goals.normalizes_to_hack_goal =
-                                Some(this.resolve_vars_if_possible(goal));
-                            has_changed = has_changed.map_err(|c| c.unify_with(certainty));
-                        }
-                    }
+        let mut response = Ok(Certainty::OVERFLOW);
+        for _ in 0..self.local_overflow_limit() {
+            // FIXME: This match is a bit ugly, it might be nice to change the inspect
+            // stuff to use a closure instead. which should hopefully simplify this a bit.
+            match self.evaluate_added_goals_step() {
+                Ok(Some(cert)) => {
+                    response = Ok(cert);
+                    break;
                 }
-
-                for goal in goals.goals.drain(..) {
-                    let (changed, certainty, instantiate_goals) =
-                        match this.evaluate_goal(IsNormalizesToHack::No, goal) {
-                            Ok(result) => result,
-                            Err(NoSolution) => return Some(Err(NoSolution)),
-                        };
-                    new_goals.goals.extend(instantiate_goals);
-
-                    if changed {
-                        has_changed = Ok(());
-                    }
-
-                    match certainty {
-                        Certainty::Yes => {}
-                        Certainty::Maybe(_) => {
-                            new_goals.goals.push(goal);
-                            has_changed = has_changed.map_err(|c| c.unify_with(certainty));
-                        }
-                    }
+                Ok(None) => {}
+                Err(NoSolution) => {
+                    response = Err(NoSolution);
+                    break;
                 }
-
-                core::mem::swap(&mut new_goals, &mut goals);
-                match has_changed {
-                    Ok(()) => None,
-                    Err(certainty) => Some(Ok(certainty)),
-                }
-            },
-        );
+            }
+        }
 
         self.inspect.eval_added_goals_result(response);
 
@@ -576,8 +510,83 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         let goal_evaluations = std::mem::replace(&mut self.inspect, inspect);
         self.inspect.added_goals_evaluation(goal_evaluations);
 
-        self.nested_goals = goals;
         response
+    }
+
+    /// Iterate over all added goals: returning `Ok(Some(_))` in case we can stop rerunning.
+    ///
+    /// Goals for the next step get directly added the the nested goals of the `EvalCtxt`.
+    fn evaluate_added_goals_step(&mut self) -> Result<Option<Certainty>, NoSolution> {
+        let tcx = self.tcx();
+        let mut goals = core::mem::replace(&mut self.nested_goals, NestedGoals::new());
+
+        self.inspect.evaluate_added_goals_loop_start();
+        // If this loop did not result in any progress, what's our final certainty.
+        let mut unchanged_certainty = Some(Certainty::Yes);
+        if let Some(goal) = goals.normalizes_to_hack_goal.take() {
+            // Replace the goal with an unconstrained infer var, so the
+            // RHS does not affect projection candidate assembly.
+            let unconstrained_rhs = self.next_term_infer_of_kind(goal.predicate.term);
+            let unconstrained_goal = goal.with(
+                tcx,
+                ty::ProjectionPredicate {
+                    projection_ty: goal.predicate.projection_ty,
+                    term: unconstrained_rhs,
+                },
+            );
+
+            let (_, certainty, instantiate_goals) =
+                self.evaluate_goal(IsNormalizesToHack::Yes, unconstrained_goal)?;
+            self.add_goals(instantiate_goals);
+
+            // Finally, equate the goal's RHS with the unconstrained var.
+            // We put the nested goals from this into goals instead of
+            // next_goals to avoid needing to process the loop one extra
+            // time if this goal returns something -- I don't think this
+            // matters in practice, though.
+            let eq_goals =
+                self.eq_and_get_goals(goal.param_env, goal.predicate.term, unconstrained_rhs)?;
+            goals.goals.extend(eq_goals);
+
+            // We only look at the `projection_ty` part here rather than
+            // looking at the "has changed" return from evaluate_goal,
+            // because we expect the `unconstrained_rhs` part of the predicate
+            // to have changed -- that means we actually normalized successfully!
+            if goal.predicate.projection_ty
+                != self.resolve_vars_if_possible(goal.predicate.projection_ty)
+            {
+                unchanged_certainty = None;
+            }
+
+            match certainty {
+                Certainty::Yes => {}
+                Certainty::Maybe(_) => {
+                    // We need to resolve vars here so that we correctly
+                    // deal with `has_changed` in the next iteration.
+                    self.set_normalizes_to_hack_goal(self.resolve_vars_if_possible(goal));
+                    unchanged_certainty = unchanged_certainty.map(|c| c.unify_with(certainty));
+                }
+            }
+        }
+
+        for goal in goals.goals.drain(..) {
+            let (has_changed, certainty, instantiate_goals) =
+                self.evaluate_goal(IsNormalizesToHack::No, goal)?;
+            self.add_goals(instantiate_goals);
+            if has_changed {
+                unchanged_certainty = None;
+            }
+
+            match certainty {
+                Certainty::Yes => {}
+                Certainty::Maybe(_) => {
+                    self.add_goal(goal);
+                    unchanged_certainty = unchanged_certainty.map(|c| c.unify_with(certainty));
+                }
+            }
+        }
+
+        Ok(unchanged_certainty)
     }
 }
 
@@ -591,10 +600,6 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             kind: TypeVariableOriginKind::MiscVariable,
             span: DUMMY_SP,
         })
-    }
-
-    pub(super) fn next_region_infer(&self) -> ty::Region<'tcx> {
-        self.infcx.next_region_var(RegionVariableOrigin::MiscVariable(DUMMY_SP))
     }
 
     pub(super) fn next_const_infer(&self, ty: Ty<'tcx>) -> ty::Const<'tcx> {

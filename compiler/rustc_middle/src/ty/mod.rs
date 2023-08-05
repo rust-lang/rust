@@ -1338,9 +1338,22 @@ impl<'tcx> ToPredicate<'tcx> for PolyTypeOutlivesPredicate<'tcx> {
     }
 }
 
+impl<'tcx> ToPredicate<'tcx> for ProjectionPredicate<'tcx> {
+    fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
+        ty::Binder::dummy(PredicateKind::Clause(ClauseKind::Projection(self))).to_predicate(tcx)
+    }
+}
+
 impl<'tcx> ToPredicate<'tcx> for PolyProjectionPredicate<'tcx> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         self.map_bound(|p| PredicateKind::Clause(ClauseKind::Projection(p))).to_predicate(tcx)
+    }
+}
+
+impl<'tcx> ToPredicate<'tcx, Clause<'tcx>> for ProjectionPredicate<'tcx> {
+    fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Clause<'tcx> {
+        let p: Predicate<'tcx> = self.to_predicate(tcx);
+        p.expect_clause()
     }
 }
 

@@ -393,10 +393,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                     None => tcx.types.unit,
                     Some(field_def) => {
                         let self_ty = field_def.ty(tcx, args);
-                        ecx.add_goal(goal.with(
-                            tcx,
-                            ty::Binder::dummy(goal.predicate.with_self_ty(tcx, self_ty)),
-                        ));
+                        ecx.add_goal(goal.with(tcx, goal.predicate.with_self_ty(tcx, self_ty)));
                         return ecx
                             .evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
                     }
@@ -406,10 +403,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                 ty::Tuple(elements) => match elements.last() {
                     None => tcx.types.unit,
                     Some(&self_ty) => {
-                        ecx.add_goal(goal.with(
-                            tcx,
-                            ty::Binder::dummy(goal.predicate.with_self_ty(tcx, self_ty)),
-                        ));
+                        ecx.add_goal(goal.with(tcx, goal.predicate.with_self_ty(tcx, self_ty)));
                         return ecx
                             .evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
                     }
@@ -450,10 +444,10 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
         Self::consider_implied_clause(
             ecx,
             goal,
-            ty::Binder::dummy(ty::ProjectionPredicate {
+            ty::ProjectionPredicate {
                 projection_ty: ecx.tcx().mk_alias_ty(goal.predicate.def_id(), [self_ty]),
                 term,
-            })
+            }
             .to_predicate(tcx),
             // Technically, we need to check that the future type is Sized,
             // but that's already proven by the generator being WF.
@@ -490,12 +484,12 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
         Self::consider_implied_clause(
             ecx,
             goal,
-            ty::Binder::dummy(ty::ProjectionPredicate {
+            ty::ProjectionPredicate {
                 projection_ty: ecx
                     .tcx()
                     .mk_alias_ty(goal.predicate.def_id(), [self_ty, generator.resume_ty()]),
                 term,
-            })
+            }
             .to_predicate(tcx),
             // Technically, we need to check that the future type is Sized,
             // but that's already proven by the generator being WF.

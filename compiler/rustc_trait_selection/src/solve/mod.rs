@@ -17,10 +17,11 @@
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::canonical::{Canonical, CanonicalVarValues};
 use rustc_infer::traits::query::NoSolution;
+use rustc_middle::infer::canonical::CanonicalVarInfos;
 use rustc_middle::traits::solve::{
     CanonicalResponse, Certainty, ExternalConstraintsData, Goal, QueryResult, Response,
 };
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt, UniverseIndex};
 use rustc_middle::ty::{
     CoercePredicate, RegionOutlivesPredicate, SubtypePredicate, TypeOutlivesPredicate,
 };
@@ -284,20 +285,21 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     }
 }
 
-pub(super) fn response_no_constraints<'tcx>(
+fn response_no_constraints_raw<'tcx>(
     tcx: TyCtxt<'tcx>,
-    goal: Canonical<'tcx, impl Sized>,
+    max_universe: UniverseIndex,
+    variables: CanonicalVarInfos<'tcx>,
     certainty: Certainty,
-) -> QueryResult<'tcx> {
-    Ok(Canonical {
-        max_universe: goal.max_universe,
-        variables: goal.variables,
+) -> CanonicalResponse<'tcx> {
+    Canonical {
+        max_universe,
+        variables,
         value: Response {
-            var_values: CanonicalVarValues::make_identity(tcx, goal.variables),
+            var_values: CanonicalVarValues::make_identity(tcx, variables),
             // FIXME: maybe we should store the "no response" version in tcx, like
             // we do for tcx.types and stuff.
             external_constraints: tcx.mk_external_constraints(ExternalConstraintsData::default()),
             certainty,
         },
-    })
+    }
 }

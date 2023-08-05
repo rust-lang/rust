@@ -75,10 +75,7 @@ impl<'tcx> NormalizationFolder<'_, 'tcx> {
             tcx,
             self.at.cause.clone(),
             self.at.param_env,
-            ty::Binder::dummy(ty::ProjectionPredicate {
-                projection_ty: alias,
-                term: new_infer_ty.into(),
-            }),
+            ty::ProjectionPredicate { projection_ty: alias, term: new_infer_ty.into() },
         );
 
         // Do not emit an error if normalization is known to fail but instead
@@ -131,10 +128,10 @@ impl<'tcx> NormalizationFolder<'_, 'tcx> {
             tcx,
             self.at.cause.clone(),
             self.at.param_env,
-            ty::Binder::dummy(ty::ProjectionPredicate {
+            ty::ProjectionPredicate {
                 projection_ty: tcx.mk_alias_ty(uv.def, uv.args),
                 term: new_infer_ct.into(),
-            }),
+            },
         );
 
         let result = if infcx.predicate_may_hold(&obligation) {
