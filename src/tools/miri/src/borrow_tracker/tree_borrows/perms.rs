@@ -445,7 +445,7 @@ mod propagation_optimization_checks {
     }
 
     #[test]
-    fn foreign_read_is_noop_after_write() {
+    fn foreign_read_is_noop_after_foreign_write() {
         use transition::*;
         let old_access = AccessKind::Write;
         let new_access = AccessKind::Read;
