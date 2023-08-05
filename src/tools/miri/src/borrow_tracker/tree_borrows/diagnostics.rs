@@ -218,7 +218,7 @@ impl<'tcx> Tree {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy)]
 pub(super) enum TransitionError {
     /// This access is not allowed because some parent tag has insufficient permissions.
     /// For example, if a tag is `Frozen` and encounters a child write this will

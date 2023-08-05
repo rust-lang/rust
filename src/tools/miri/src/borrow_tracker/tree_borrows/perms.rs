@@ -134,23 +134,30 @@ pub struct PermTransition {
 
 impl Permission {
     /// Default initial permission of the root of a new tree.
-    pub fn new_root() -> Self {
+    pub fn new_active() -> Self {
         Self { inner: Active }
     }
 
     /// Default initial permission of a reborrowed mutable reference.
-    pub fn new_unique_2phase(ty_is_freeze: bool) -> Self {
+    pub fn new_reserved(ty_is_freeze: bool) -> Self {
         Self { inner: Reserved { ty_is_freeze } }
-    }
-
-    /// Default initial permission for return place.
-    pub fn new_active() -> Self {
-        Self { inner: Active }
     }
 
     /// Default initial permission of a reborrowed shared reference
     pub fn new_frozen() -> Self {
         Self { inner: Frozen }
+    }
+
+    pub fn is_active(self) -> bool {
+        matches!(self.inner, Active)
+    }
+
+    pub fn is_resrved(self) -> bool {
+        matches!(self.inner, Reserved { .. })
+    }
+
+    pub fn is_frozen(self) -> bool {
+        matches!(self.inner, Frozen)
     }
 
     /// Apply the transition to the inner PermissionPriv.
@@ -438,7 +445,7 @@ mod propagation_optimization_checks {
     }
 
     #[test]
-    fn foreign_read_is_noop_after_write() {
+    fn foreign_read_is_noop_after_foreign_write() {
         use transition::*;
         let old_access = AccessKind::Write;
         let new_access = AccessKind::Read;
