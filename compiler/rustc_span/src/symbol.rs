@@ -1159,7 +1159,6 @@ symbols! {
         ptr_cast,
         ptr_cast_mut,
         ptr_const_is_null,
-        ptr_from_mut,
         ptr_from_ref,
         ptr_guaranteed_cmp,
         ptr_is_null,

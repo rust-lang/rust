@@ -712,7 +712,6 @@ pub const fn from_ref<T: ?Sized>(r: &T) -> *const T {
 #[must_use]
 #[unstable(feature = "ptr_from_ref", issue = "106116")]
 #[cfg_attr(not(bootstrap), rustc_never_returns_null_ptr)]
-#[rustc_diagnostic_item = "ptr_from_mut"]
 pub const fn from_mut<T: ?Sized>(r: &mut T) -> *mut T {
     r
 }
