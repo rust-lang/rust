@@ -159,17 +159,47 @@ impl GenericParams {
         let krate = def.module(db).krate;
         let cfg_options = db.crate_graph();
         let cfg_options = &cfg_options[krate].cfg_options;
-        let enabled_params = |params: &GenericParams, item_tree: &ItemTree| {
+
+        // Returns the generic parameters that are enabled under the current `#[cfg]` options
+        let enabled_params = |params: &Interned<GenericParams>, item_tree: &ItemTree| {
             let enabled = |param| item_tree.attrs(db, krate, param).is_cfg_enabled(cfg_options);
-            Interned::new(GenericParams {
-                type_or_consts: (params.type_or_consts.iter())
-                    .filter_map(|(idx, param)| enabled(idx.into()).then(|| param.clone()))
-                    .collect(),
-                lifetimes: (params.lifetimes.iter())
-                    .filter_map(|(idx, param)| enabled(idx.into()).then(|| param.clone()))
-                    .collect(),
-                where_predicates: params.where_predicates.clone(),
-            })
+
+            // In the common case, no parameters will by disabled by `#[cfg]` attributes.
+            // Therefore, make a first pass to check if all parameters are enabled and, if so,
+            // clone the `Interned<GenericParams>` instead of recreating an identical copy.
+            let all_type_or_consts_enabled =
+                params.type_or_consts.iter().all(|(idx, _)| enabled(idx.into()));
+            let all_lifetimes_enabled = params.lifetimes.iter().all(|(idx, _)| enabled(idx.into()));
+
+            if all_type_or_consts_enabled && all_lifetimes_enabled {
+                params.clone()
+            } else {
+                Interned::new(GenericParams {
+                    type_or_consts: all_type_or_consts_enabled
+                        .then(|| params.type_or_consts.clone())
+                        .unwrap_or_else(|| {
+                            params
+                                .type_or_consts
+                                .iter()
+                                .filter_map(|(idx, param)| {
+                                    enabled(idx.into()).then(|| param.clone())
+                                })
+                                .collect()
+                        }),
+                    lifetimes: all_lifetimes_enabled
+                        .then(|| params.lifetimes.clone())
+                        .unwrap_or_else(|| {
+                            params
+                                .lifetimes
+                                .iter()
+                                .filter_map(|(idx, param)| {
+                                    enabled(idx.into()).then(|| param.clone())
+                                })
+                                .collect()
+                        }),
+                    where_predicates: params.where_predicates.clone(),
+                })
+            }
         };
         macro_rules! id_to_generics {
             ($id:ident) => {{
@@ -186,7 +216,8 @@ impl GenericParams {
                 let tree = loc.id.item_tree(db);
                 let item = &tree[loc.id.value];
 
-                let mut generic_params = GenericParams::clone(&item.explicit_generic_params);
+                let enabled_params = enabled_params(&item.explicit_generic_params, &tree);
+                let mut generic_params = GenericParams::clone(&enabled_params);
 
                 let module = loc.container.module(db);
                 let func_data = db.function_data(id);
