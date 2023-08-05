@@ -9,7 +9,7 @@ use crate::interpret::{
 };
 use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt};
 use rustc_span::source_map::DUMMY_SP;
-use rustc_target::abi::{Align, FieldIdx, VariantIdx, FIRST_VARIANT};
+use rustc_target::abi::{Align, VariantIdx};
 
 #[instrument(skip(ecx), level = "debug")]
 fn branches<'tcx>(
@@ -399,45 +399,8 @@ fn valtree_into_mplace<'tcx>(
                 debug!(?i, ?inner_valtree);
 
                 let place_inner = match ty.kind() {
-                    ty::Str | ty::Slice(_) => ecx.project_index(place, i as u64).unwrap(),
-                    _ if !ty.is_sized(*ecx.tcx, ty::ParamEnv::empty())
-                        && i == branches.len() - 1 =>
-                    {
-                        // Note: For custom DSTs we need to manually process the last unsized field.
-                        // We created a `Pointer` for the `Allocation` of the complete sized version of
-                        // the Adt in `create_pointee_place` and now we fill that `Allocation` with the
-                        // values in the ValTree. For the unsized field we have to additionally add the meta
-                        // data.
-
-                        let (unsized_inner_ty, num_elems) =
-                            get_info_on_unsized_field(ty, valtree, tcx);
-                        debug!(?unsized_inner_ty);
-
-                        let inner_ty = match ty.kind() {
-                            ty::Adt(def, args) => {
-                                let i = FieldIdx::from_usize(i);
-                                def.variant(FIRST_VARIANT).fields[i].ty(tcx, args)
-                            }
-                            ty::Tuple(inner_tys) => inner_tys[i],
-                            _ => bug!("unexpected unsized type {:?}", ty),
-                        };
-
-                        let inner_layout =
-                            tcx.layout_of(ty::ParamEnv::empty().and(inner_ty)).unwrap();
-                        debug!(?inner_layout);
-
-                        let offset = place_adjusted.layout.fields.offset(i);
-                        place
-                            .offset_with_meta(
-                                offset,
-                                MemPlaceMeta::Meta(Scalar::from_target_usize(
-                                    num_elems as u64,
-                                    &tcx,
-                                )),
-                                inner_layout,
-                                &tcx,
-                            )
-                            .unwrap()
+                    ty::Str | ty::Slice(_) | ty::Array(..) => {
+                        ecx.project_index(place, i as u64).unwrap()
                     }
                     _ => ecx.project_field(&place_adjusted, i).unwrap(),
                 };
