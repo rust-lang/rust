@@ -1983,7 +1983,8 @@ function initSearch(rawSearchIndex) {
                     }
                     elem.id = match;
                 }
-                if ((elem.id === null && parsedQuery.totalElems > 1 && elem.typeFilter === -1)
+                if ((elem.id === null && parsedQuery.totalElems > 1 && elem.typeFilter === -1
+                     && elem.generics.length === 0)
                     || elem.typeFilter === TY_GENERIC) {
                     if (genericSymbols.has(elem.name)) {
                         elem.id = genericSymbols.get(elem.name);
