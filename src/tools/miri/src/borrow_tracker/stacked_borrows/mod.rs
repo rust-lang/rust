@@ -13,11 +13,7 @@ use log::trace;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::mir::{Mutability, RetagKind};
-use rustc_middle::ty::{
-    self,
-    layout::HasParamEnv,
-    Ty,
-};
+use rustc_middle::ty::{self, layout::HasParamEnv, Ty};
 use rustc_target::abi::{Abi, Align, Size};
 
 use crate::borrow_tracker::{

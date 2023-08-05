@@ -5,11 +5,7 @@ use rustc_target::abi::{Abi, Align, Size};
 use crate::borrow_tracker::{AccessKind, GlobalStateInner, ProtectorKind, RetagFields};
 use rustc_middle::{
     mir::{Mutability, RetagKind},
-    ty::{
-        self,
-        layout::HasParamEnv,
-        Ty,
-    },
+    ty::{self, layout::HasParamEnv, Ty},
 };
 use rustc_span::def_id::DefId;
 
