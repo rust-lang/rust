@@ -715,8 +715,8 @@ pub struct S;
 
 #[test]
 fn completes_const_and_type_generics_separately() {
-    let type_completion_cases = [
-        // Function
+    // Function generic params
+    check(
         r#"
 struct Foo;
 const X: usize = 0;
@@ -725,7 +725,41 @@ fn main() {
     foo::<F$0, _>();
 }
         "#,
-        // Method
+        expect![[r#"
+            en Enum
+            ma makro!(…) macro_rules! makro
+            md module
+            st Foo
+            st Record
+            st Tuple
+            st Unit
+            tt Trait
+            un Union
+            bt u32
+            kw crate::
+            kw self::
+        "#]],
+    );
+    check(
+        r#"
+struct Foo;
+const X: usize = 0;
+fn foo<T, const N: usize>() {}
+fn main() {
+    foo::<_, $0>();
+}
+        "#,
+        expect![[r#"
+            ct CONST
+            ct X
+            ma makro!(…) macro_rules! makro
+            kw crate::
+            kw self::
+        "#]],
+    );
+
+    // Method generic params
+    check(
         r#"
 const X: usize = 0;
 struct Foo;
@@ -734,28 +768,40 @@ fn main() {
     Foo.bar::<_, $0>();
 }
         "#,
-    ];
+        expect![[r#"
+            en Enum
+            ma makro!(…) macro_rules! makro
+            md module
+            st Foo
+            st Record
+            st Tuple
+            st Unit
+            tt Trait
+            un Union
+            bt u32
+            kw crate::
+            kw self::
+        "#]],
+    );
+    check(
+        r#"
+const X: usize = 0;
+struct Foo;
+impl Foo { fn bar<const N: usize, T>(self) {} }
+fn main() {
+    Foo.bar::<X$0, _>();
+}
+        "#,
+        expect![[r#"
+            ct CONST
+            ct X
+            ma makro!(…) macro_rules! makro
+            kw crate::
+            kw self::
+        "#]],
+    );
 
-    for case in type_completion_cases {
-        check(
-            case,
-            expect![[r#"
-                en Enum
-                ma makro!(…) macro_rules! makro
-                md module
-                st Foo
-                st Record
-                st Tuple
-                st Unit
-                tt Trait
-                un Union
-                bt u32
-                kw crate::
-                kw self::
-            "#]],
-        )
-    }
-
+    // Associated type generic params
     check(
         r#"
 const X: usize = 0;
@@ -781,27 +827,7 @@ fn foo(_: impl Bar<Baz<F$0, 0> = ()>) {}
             kw self::
         "#]],
     );
-
-    let const_completion_cases = [
-        // Function params
-        r#"
-struct Foo;
-const X: usize = 0;
-fn foo<T, const N: usize>() {}
-fn main() {
-    foo::<_, $0>();
-}
-        "#,
-        // Method params
-        r#"
-const X: usize = 0;
-struct Foo;
-impl Foo { fn bar<const N: usize, T>(self) {} }
-fn main() {
-    Foo.bar::<X$0, _>();
-}
-        "#,
-        // Associated type params
+    check(
         r#"
 const X: usize = 0;
 struct Foo;
@@ -810,7 +836,17 @@ trait Bar {
 }
 fn foo<T: Bar<Baz<(), $0> = ()>>() {}
         "#,
-        // Type params
+        expect![[r#"
+            ct CONST
+            ct X
+            ma makro!(…) macro_rules! makro
+            kw crate::
+            kw self::
+        "#]],
+    );
+
+    // Type generic params
+    check(
         r#"
 const X: usize = 0;
 struct Foo<T, const N: usize>(T);
@@ -818,7 +854,17 @@ fn main() {
     let _: Foo::<_, $0> = Foo(());
 }
         "#,
-        // Enum variant params
+        expect![[r#"
+            ct CONST
+            ct X
+            ma makro!(…) macro_rules! makro
+            kw crate::
+            kw self::
+        "#]],
+    );
+
+    // Type alias generic params
+    check(
         r#"
 const X: usize = 0;
 struct Foo<T, const N: usize>(T);
@@ -827,6 +873,17 @@ fn main() {
     let _: Bar::<X$0, _> = Bar(());
 }
         "#,
+        expect![[r#"
+            ct CONST
+            ct X
+            ma makro!(…) macro_rules! makro
+            kw crate::
+            kw self::
+        "#]],
+    );
+
+    // Enum variant params
+    check(
         r#"
 const X: usize = 0;
 enum Foo<T, const N: usize> { A(T), B }
@@ -834,13 +891,33 @@ fn main() {
     Foo::B::<(), $0>;
 }
         "#,
-        // Trait params
+        expect![[r#"
+            ct CONST
+            ct X
+            ma makro!(…) macro_rules! makro
+            kw crate::
+            kw self::
+        "#]],
+    );
+
+    // Trait params
+    check(
         r#"
 const X: usize = 0;
 trait Foo<T, const N: usize> {}
 impl Foo<(), $0> for () {}
         "#,
-        // Trait alias params
+        expect![[r#"
+            ct CONST
+            ct X
+            ma makro!(…) macro_rules! makro
+            kw crate::
+            kw self::
+        "#]],
+    );
+
+    // Trait alias params
+    check(
         r#"
 #![feature(trait_alias)]
 const X: usize = 0;
@@ -848,18 +925,12 @@ trait Foo<T, const N: usize> {}
 trait Bar<const M: usize, U> = Foo<U, M>;
 fn foo<T: Bar<X$0, ()>>() {}
         "#,
-    ];
-
-    for case in const_completion_cases {
-        check(
-            case,
-            expect![[r#"
-                ct CONST
-                ct X
-                ma makro!(…) macro_rules! makro
-                kw crate::
-                kw self::
-            "#]],
-        );
-    }
+        expect![[r#"
+            ct CONST
+            ct X
+            ma makro!(…) macro_rules! makro
+            kw crate::
+            kw self::
+        "#]],
+    );
 }
