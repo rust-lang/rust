@@ -75,7 +75,7 @@ assert-text: (
 // Now, generic correction plus error
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 // Intentionally wrong spelling of "NotableStructWithLongName"
-write: (".search-input", "NotableStructWithLongNamr<x>,y")
+write: (".search-input", "Foo<NotableStructWithLongNamr>,y")
 // To be SURE that the search will be run.
 press-key: 'Enter'
 // Waiting for the search results to appear...
@@ -88,6 +88,14 @@ assert-text: (
     ".search-corrections",
     "Type \"notablestructwithlongnamr\" not found and used as generic parameter. Consider searching for \"notablestructwithlongname\" instead."
 )
+
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+// Intentionally wrong spelling of "NotableStructWithLongName"
+write: (".search-input", "generic:NotableStructWithLongNamr<x>,y")
+// To be SURE that the search will be run.
+press-key: 'Enter'
+// Waiting for the search results to appear...
+wait-for: "#search-tabs"
 
 assert-css: (".error", {
     "display": "block"
