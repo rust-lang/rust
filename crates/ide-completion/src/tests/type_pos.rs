@@ -384,10 +384,8 @@ trait Trait2<T>: Trait1 {
 fn foo<'lt, T: Trait2<$0>, const CONST_PARAM: usize>(_: T) {}
 "#,
         expect![[r#"
-            ct CONST
-            cp CONST_PARAM
             en Enum
-            ma makro!(…)   macro_rules! makro
+            ma makro!(…) macro_rules! makro
             md module
             st Record
             st Tuple
@@ -437,7 +435,6 @@ trait Tr<T> {
 impl Tr<$0
     "#,
         expect![[r#"
-            ct CONST
             en Enum
             ma makro!(…) macro_rules! makro
             md module
@@ -485,7 +482,6 @@ trait MyTrait<T, U> {
 fn f(t: impl MyTrait<u$0
 "#,
         expect![[r#"
-            ct CONST
             en Enum
             ma makro!(…) macro_rules! makro
             md module
@@ -511,7 +507,6 @@ trait MyTrait<T, U> {
 fn f(t: impl MyTrait<u8, u$0
 "#,
         expect![[r#"
-            ct CONST
             en Enum
             ma makro!(…) macro_rules! makro
             md module
@@ -555,7 +550,6 @@ trait MyTrait<T, U = u8> {
 fn f(t: impl MyTrait<u$0
 "#,
         expect![[r#"
-            ct CONST
             en Enum
             ma makro!(…) macro_rules! makro
             md module
@@ -581,7 +575,6 @@ trait MyTrait<T, U = u8> {
 fn f(t: impl MyTrait<u8, u$0
 "#,
         expect![[r#"
-            ct CONST
             en Enum
             ma makro!(…)             macro_rules! makro
             md module
@@ -822,7 +815,7 @@ fn foo<T: Bar<Baz<(), $0> = ()>>() {}
 const X: usize = 0;
 struct Foo<T, const N: usize>(T);
 fn main() {
-    let _: Foo::<_, $0> = todo!();
+    let _: Foo::<_, $0> = Foo(());
 }
         "#,
         // Enum variant params
@@ -831,7 +824,7 @@ const X: usize = 0;
 struct Foo<T, const N: usize>(T);
 type Bar<const X: usize, U> = Foo<U, X>;
 fn main() {
-    let _: Bar::<X$0, _> = todo!();
+    let _: Bar::<X$0, _> = Bar(());
 }
         "#,
         r#"
