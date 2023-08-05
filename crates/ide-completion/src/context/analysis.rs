@@ -848,7 +848,6 @@ fn classify_name_ref(
                 ast::TypeBound(_) => TypeLocation::TypeBound,
                 // is this case needed?
                 ast::TypeBoundList(_) => TypeLocation::TypeBound,
-                ast::TypeArg(it) => generic_arg_location(ast::GenericArg::TypeArg(it)),
                 ast::GenericArg(it) => generic_arg_location(it),
                 // is this case needed?
                 ast::GenericArgList(it) => {
