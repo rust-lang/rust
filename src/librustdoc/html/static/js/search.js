@@ -973,6 +973,8 @@ function initSearch(rawSearchIndex) {
             returned: [],
             // Total number of "top" elements (does not include generics).
             foundElems: 0,
+            // Total number of elements (includes generics).
+            totalElems: 0,
             literalSearch: false,
             error: null,
             correction: null,
@@ -1074,6 +1076,7 @@ function initSearch(rawSearchIndex) {
             query.literalSearch = parserState.totalElems > 1;
         }
         query.foundElems = query.elems.length + query.returned.length;
+        query.totalElems = parserState.totalElems;
         return query;
     }
 
@@ -1980,7 +1983,7 @@ function initSearch(rawSearchIndex) {
                     }
                     elem.id = match;
                 }
-                if ((elem.id === null && parsedQuery.foundElems > 1 && elem.typeFilter === -1)
+                if ((elem.id === null && parsedQuery.totalElems > 1 && elem.typeFilter === -1)
                     || elem.typeFilter === TY_GENERIC) {
                     if (genericSymbols.has(elem.name)) {
                         elem.id = genericSymbols.get(elem.name);

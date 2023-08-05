@@ -37,6 +37,7 @@ let ParserState;
  *     args: Array<QueryElement>,
  *     returned: Array<QueryElement>,
  *     foundElems: number,
+ *     totalElems: number,
  *     literalSearch: boolean,
  *     corrections: Array<{from: string, to: integer}>,
  * }}

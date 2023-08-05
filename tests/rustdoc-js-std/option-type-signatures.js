@@ -72,4 +72,10 @@ const EXPECTED = [
             { 'path': 'std::option::Option', 'name': 'flatten' },
         ],
     },
+    {
+        'query': 'option<t>',
+        'returned': [
+            { 'path': 'std::result::Result', 'name': 'ok' },
+        ],
+    },
 ];
