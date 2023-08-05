@@ -934,14 +934,26 @@ where
         Ok(MPlaceTy { mplace, layout: place.layout, align: place.align })
     }
 
+    pub fn allocate_dyn(
+        &mut self,
+        layout: TyAndLayout<'tcx>,
+        kind: MemoryKind<M::MemoryKind>,
+        meta: MemPlaceMeta<M::Provenance>,
+    ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {
+        let Some((size, align)) = self.size_and_align_of(&meta, &layout)? else {
+            span_bug!(self.cur_span(), "cannot allocate space for `extern` type, size is not known")
+        };
+        let ptr = self.allocate_ptr(size, align, kind)?;
+        Ok(MPlaceTy::from_aligned_ptr_with_meta(ptr.into(), layout, meta))
+    }
+
     pub fn allocate(
         &mut self,
         layout: TyAndLayout<'tcx>,
         kind: MemoryKind<M::MemoryKind>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {
         assert!(layout.is_sized());
-        let ptr = self.allocate_ptr(layout.size, layout.align.abi, kind)?;
-        Ok(MPlaceTy::from_aligned_ptr(ptr.into(), layout))
+        self.allocate_dyn(layout, kind, MemPlaceMeta::None)
     }
 
     /// Returns a wide MPlace of type `&'static [mut] str` to a new 1-aligned allocation.
