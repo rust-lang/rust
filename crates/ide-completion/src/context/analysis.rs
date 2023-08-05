@@ -783,9 +783,27 @@ fn classify_name_ref(
                         _ => None,
                     }
                 }?;
-                // Determine the index of the parameter in the `GenericArgList`
-                // (subtract 1 because `siblings` includes the node itself)
-                let param_idx = arg.syntax().siblings(Direction::Prev).count() - 1;
+                // Determine the index of the argument in the `GenericArgList` and match it with
+                // the corresponding parameter in the `GenericParamList`.
+                // Since lifetime parameters are often omitted, ignore them for the purposes of
+                // matching the argument with its parameter unless a lifetime argument is provided
+                // explicitly. That is, for `struct S<'a, 'b, T>`, match `S::<$0>` to to `T` and
+                // `S::<'a, $0, _>` to `'b`.
+                let mut explicit_lifetime_arg = false;
+                let arg_idx = arg
+                    .syntax()
+                    .siblings(Direction::Prev)
+                    // Skip the node itself
+                    .skip(1)
+                    .map(|arg| if ast::LifetimeArg::can_cast(arg.kind()) { explicit_lifetime_arg = true })
+                    .count();
+                let param_idx = if explicit_lifetime_arg {
+                    arg_idx
+                } else {
+                    // Lifetimes parameters always precede type and generic parameters,
+                    // so offset the argument index by the total number of lifetime params
+                    arg_idx + params.lifetime_params().count()
+                };
                 params.generic_params().nth(param_idx)
             })();
             (args, param)

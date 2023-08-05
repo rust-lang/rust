@@ -20,7 +20,16 @@ pub(crate) fn complete_type_path(
     let scope_def_applicable = |def| {
         use hir::{GenericParam::*, ModuleDef::*};
         match def {
-            ScopeDef::GenericParam(LifetimeParam(_)) | ScopeDef::Label(_) => false,
+            ScopeDef::GenericParam(LifetimeParam(_)) => {
+                matches!(
+                    location,
+                    TypeLocation::GenericArgList(Some((
+                        _,
+                        Some(ast::GenericParam::LifetimeParam(_))
+                    )))
+                )
+            }
+            ScopeDef::Label(_) => false,
             // no values in type places
             ScopeDef::ModuleDef(Function(_) | Variant(_) | Static(_)) | ScopeDef::Local(_) => false,
             // unless its a constant in a generic arg list position
