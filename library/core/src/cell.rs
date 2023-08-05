@@ -543,6 +543,7 @@ impl<T: ?Sized> Cell<T> {
     #[inline]
     #[stable(feature = "cell_as_ptr", since = "1.12.0")]
     #[rustc_const_stable(feature = "const_cell_as_ptr", since = "1.32.0")]
+    #[cfg_attr(not(bootstrap), rustc_never_returns_null_ptr)]
     pub const fn as_ptr(&self) -> *mut T {
         self.value.get()
     }
@@ -1076,6 +1077,7 @@ impl<T: ?Sized> RefCell<T> {
     /// ```
     #[inline]
     #[stable(feature = "cell_as_ptr", since = "1.12.0")]
+    #[cfg_attr(not(bootstrap), rustc_never_returns_null_ptr)]
     pub fn as_ptr(&self) -> *mut T {
         self.value.get()
     }
@@ -2071,6 +2073,7 @@ impl<T: ?Sized> UnsafeCell<T> {
     #[inline(always)]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_unsafecell_get", since = "1.32.0")]
+    #[cfg_attr(not(bootstrap), rustc_never_returns_null_ptr)]
     pub const fn get(&self) -> *mut T {
         // We can just cast the pointer from `UnsafeCell<T>` to `T` because of
         // #[repr(transparent)]. This exploits std's special status, there is
@@ -2213,6 +2216,7 @@ impl<T: ?Sized> SyncUnsafeCell<T> {
     /// when casting to `&mut T`, and ensure that there are no mutations
     /// or mutable aliases going on when casting to `&T`
     #[inline]
+    #[cfg_attr(not(bootstrap), rustc_never_returns_null_ptr)]
     pub const fn get(&self) -> *mut T {
         self.value.get()
     }
