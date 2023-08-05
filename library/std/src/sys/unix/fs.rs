@@ -43,6 +43,8 @@ use libc::c_char;
 use libc::dirfd;
 #[cfg(any(target_os = "linux", target_os = "emscripten"))]
 use libc::fstatat64;
+#[cfg(all(miri, any(target_os = "linux")))]
+use libc::open64;
 #[cfg(any(
     target_os = "android",
     target_os = "solaris",
@@ -89,7 +91,7 @@ use libc::{
 use libc::{dirent64, fstat64, ftruncate64, lseek64, lstat64, off64_t, stat64};
 
 // FIXME: port this to other unices that support *at syscalls
-#[cfg(any(target_os = "linux", target_os = "android"))]
+#[cfg(all(not(miri), any(target_os = "linux", target_os = "android")))]
 mod dir_fd;
 
 pub use crate::sys_common::fs::try_exists;
@@ -1085,7 +1087,7 @@ impl File {
     pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
         let result = run_path_with_cstr(path, |path| File::open_c(None, &path, opts));
 
-        #[cfg(any(target_os = "linux", target_os = "android"))]
+        #[cfg(all(not(miri), any(target_os = "linux", target_os = "android")))]
         let result = {
             use crate::io::ErrorKind;
             match result {
@@ -1100,7 +1102,7 @@ impl File {
         result
     }
 
-    #[cfg(not(any(target_os = "linux", target_os = "android")))]
+    #[cfg(any(miri, not(any(target_os = "linux", target_os = "android"))))]
     pub fn open_c(
         dirfd: Option<BorrowedFd<'_>>,
         path: &CStr,
@@ -1779,7 +1781,8 @@ pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
 
 macro long_filename_fallback($path:expr, $result:expr, $fallback:expr) {{
     cfg_if::cfg_if! {
-        if #[cfg(any(target_os = "linux", target_os = "android"))] {
+        // miri doesn't support the *at syscalls
+        if #[cfg(all(not(miri), any(target_os = "linux", target_os = "android")))] {
             dir_fd::long_filename_fallback($result, $path, $fallback)
         } else {
             $result
