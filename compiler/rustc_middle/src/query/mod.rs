@@ -159,7 +159,6 @@ rustc_queries! {
     /// All items in the crate.
     query hir_crate_items(_: ()) -> &'tcx rustc_middle::hir::ModuleItems {
         arena_cache
-        eval_always
         desc { "getting HIR crate items" }
     }
 
