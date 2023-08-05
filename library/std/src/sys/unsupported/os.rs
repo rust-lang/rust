@@ -65,10 +65,18 @@ pub fn current_exe() -> io::Result<PathBuf> {
 
 pub struct Env(!);
 
+impl fmt::Debug for Env {
+    fn fmt(&self, _: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let Self(inner) = self;
+        match *inner {}
+    }
+}
+
 impl Iterator for Env {
     type Item = (OsString, OsString);
     fn next(&mut self) -> Option<(OsString, OsString)> {
-        self.0
+        let Self(inner) = self;
+        match *inner {}
     }
 }
 
