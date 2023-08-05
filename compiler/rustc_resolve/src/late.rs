@@ -3944,11 +3944,12 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
 
         if path.len() > 1
             && let Some(res) = result.full_res()
+            && let Some((&last_segment, prev_segs)) = path.split_last()
+            && prev_segs.iter().all(|seg| !seg.has_generic_args)
             && res != Res::Err
             && path[0].ident.name != kw::PathRoot
             && path[0].ident.name != kw::DollarCrate
         {
-            let last_segment = *path.last().unwrap();
             let unqualified_result = {
                 match self.resolve_path(&[last_segment], Some(ns), None) {
                     PathResult::NonModule(path_res) => path_res.expect_full_res(),
