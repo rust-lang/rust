@@ -1170,7 +1170,7 @@ fn referent_used_exactly_once<'tcx>(
         && let [location] = *local_assignments(mir, local).as_slice()
         && let Some(statement) = mir.basic_blocks[location.block].statements.get(location.statement_index)
         && let StatementKind::Assign(box (_, Rvalue::Ref(_, _, place))) = statement.kind
-        && !place.has_deref()
+        && !place.is_indirect_first_projection()
         // Ensure not in a loop (https://github.com/rust-lang/rust-clippy/issues/9710)
         && TriColorDepthFirstSearch::new(&mir.basic_blocks).run_from(location.block, &mut CycleDetector).is_none()
     {
