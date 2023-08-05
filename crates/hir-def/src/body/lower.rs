@@ -913,15 +913,14 @@ impl ExprCollector<'_> {
         self.alloc_expr(Expr::Match { expr, arms }, syntax_ptr)
     }
 
-    fn collect_macro_call<F, T, U>(
+    fn collect_macro_call<T, U>(
         &mut self,
         mcall: ast::MacroCall,
         syntax_ptr: AstPtr<ast::MacroCall>,
         record_diagnostics: bool,
-        collector: F,
+        collector: impl FnOnce(&mut Self, Option<T>) -> U,
     ) -> U
     where
-        F: FnOnce(&mut Self, Option<T>) -> U,
         T: ast::AstNode,
     {
         // File containing the macro call. Expansion errors will be attached here.
