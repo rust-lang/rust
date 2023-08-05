@@ -2466,8 +2466,13 @@ impl<'test> TestCx<'test> {
             rustc.args(&["-A", "unused"]);
         }
 
-        // Allow tests to use internal features.
-        rustc.args(&["-A", "internal_features"]);
+        // #[cfg(not(bootstrap)] unconditionally pass flag after beta bump
+        // since `ui-fulldeps --stage=1` builds using the stage 0 compiler,
+        // which doesn't have this lint.
+        if !(self.config.stage_id.starts_with("stage1-") && self.config.suite == "ui-fulldeps") {
+            // Allow tests to use internal features.
+            rustc.args(&["-A", "internal_features"]);
+        }
 
         if self.props.force_host {
             self.maybe_add_external_args(&mut rustc, &self.config.host_rustcflags);
