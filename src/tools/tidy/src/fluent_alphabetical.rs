@@ -23,7 +23,7 @@ fn check_alphabetic(filename: &str, fluent: &str, bad: &mut bool) {
                 tidy_error!(
                     bad,
                     "{filename}: message `{}` appears before `{}`, but is alphabetically later than it
-run tidy with `--bless` to sort the file correctly",
+run `./x.py test tidy --bless` to sort the file correctly",
                     name.as_str(),
                     next.as_str()
                 );
