@@ -79,7 +79,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
                         | hir::ExprKind::Unary(hir::UnOp::Deref, inner)
                         | hir::ExprKind::Field(inner, _)
                         | hir::ExprKind::MethodCall(_, inner, _, _)
-                        | hir::ExprKind::Index(inner, _) = &expr.kind
+                        | hir::ExprKind::Index(inner, _, _) = &expr.kind
                     {
                         expr = inner;
                     }

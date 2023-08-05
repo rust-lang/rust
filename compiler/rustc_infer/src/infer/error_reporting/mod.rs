@@ -351,6 +351,15 @@ pub fn unexpected_hidden_region_diagnostic<'tcx>(
                 )
             }
         }
+        ty::RePlaceholder(_) => {
+            explain_free_region(
+                tcx,
+                &mut err,
+                &format!("hidden type `{}` captures ", hidden_ty),
+                hidden_region,
+                "",
+            );
+        }
         ty::ReError(_) => {
             err.delay_as_bug();
         }
@@ -1635,6 +1644,12 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         (false, Mismatch::Fixed(self.tcx.def_descr(expected.def_id)))
                     }
                     ValuePairs::Regions(_) => (false, Mismatch::Fixed("lifetime")),
+                    ValuePairs::ExistentialTraitRef(_) => {
+                        (false, Mismatch::Fixed("existential trait ref"))
+                    }
+                    ValuePairs::ExistentialProjection(_) => {
+                        (false, Mismatch::Fixed("existential projection"))
+                    }
                 };
                 let Some(vals) = self.values_str(values) else {
                     // Derived error. Cancel the emitter.
@@ -2139,6 +2154,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             infer::Regions(exp_found) => self.expected_found_str(exp_found),
             infer::Terms(exp_found) => self.expected_found_str_term(exp_found),
             infer::Aliases(exp_found) => self.expected_found_str(exp_found),
+            infer::ExistentialTraitRef(exp_found) => self.expected_found_str(exp_found),
+            infer::ExistentialProjection(exp_found) => self.expected_found_str(exp_found),
             infer::TraitRefs(exp_found) => {
                 let pretty_exp_found = ty::error::ExpectedFound {
                     expected: exp_found.expected.print_only_trait_path(),

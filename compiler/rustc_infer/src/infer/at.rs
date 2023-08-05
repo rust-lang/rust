@@ -481,3 +481,31 @@ impl<'tcx> ToTrace<'tcx> for ty::FnSig<'tcx> {
         TypeTrace { cause: cause.clone(), values: Sigs(ExpectedFound::new(a_is_expected, a, b)) }
     }
 }
+
+impl<'tcx> ToTrace<'tcx> for ty::PolyExistentialTraitRef<'tcx> {
+    fn to_trace(
+        cause: &ObligationCause<'tcx>,
+        a_is_expected: bool,
+        a: Self,
+        b: Self,
+    ) -> TypeTrace<'tcx> {
+        TypeTrace {
+            cause: cause.clone(),
+            values: ExistentialTraitRef(ExpectedFound::new(a_is_expected, a, b)),
+        }
+    }
+}
+
+impl<'tcx> ToTrace<'tcx> for ty::PolyExistentialProjection<'tcx> {
+    fn to_trace(
+        cause: &ObligationCause<'tcx>,
+        a_is_expected: bool,
+        a: Self,
+        b: Self,
+    ) -> TypeTrace<'tcx> {
+        TypeTrace {
+            cause: cause.clone(),
+            values: ExistentialProjection(ExpectedFound::new(a_is_expected, a, b)),
+        }
+    }
+}

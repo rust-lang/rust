@@ -88,14 +88,10 @@ pub trait TypeVisitableExt<'tcx>: TypeVisitable<TyCtxt<'tcx>> {
         self.has_type_flags(TypeFlags::HAS_INFER)
     }
     fn has_placeholders(&self) -> bool {
-        self.has_type_flags(
-            TypeFlags::HAS_RE_PLACEHOLDER
-                | TypeFlags::HAS_TY_PLACEHOLDER
-                | TypeFlags::HAS_CT_PLACEHOLDER,
-        )
+        self.has_type_flags(TypeFlags::HAS_PLACEHOLDER)
     }
     fn has_non_region_placeholders(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_TY_PLACEHOLDER | TypeFlags::HAS_CT_PLACEHOLDER)
+        self.has_type_flags(TypeFlags::HAS_PLACEHOLDER - TypeFlags::HAS_RE_PLACEHOLDER)
     }
     fn has_param(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_PARAM)

@@ -211,7 +211,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                 self.select_from_expr(base);
             }
 
-            hir::ExprKind::Index(lhs, rhs) => {
+            hir::ExprKind::Index(lhs, rhs, _) => {
                 // lhs[rhs]
                 self.select_from_expr(lhs);
                 self.consume_expr(rhs);

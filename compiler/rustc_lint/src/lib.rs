@@ -189,8 +189,6 @@ late_lint_methods!(
     [
         pub BuiltinCombinedLateLintPass,
         [
-            // Tracks state across modules
-            UnnameableTestItems: UnnameableTestItems::new(),
             // Tracks attributes of parents
             MissingDoc: MissingDoc::new(),
             // Builds a global list of all impls of `Debug`.

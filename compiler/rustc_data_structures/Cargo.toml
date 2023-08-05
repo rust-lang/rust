@@ -35,7 +35,7 @@ elsa = "=1.7.1"
 itertools = "0.10.1"
 
 [dependencies.parking_lot]
-version = "0.11"
+version = "0.12"
 
 [target.'cfg(windows)'.dependencies.windows]
 version = "0.48.0"

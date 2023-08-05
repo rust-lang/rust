@@ -38,10 +38,10 @@ LL |     let _c = unsafe { _ptr2.offset_from(_ptr1) };
    |              ++++++++      ~~~~~~~~~~~~~     +++
 
 error[E0608]: cannot index into a value of type `*const u32`
-  --> $DIR/issue-112252-ptr-arithmetics-help.rs:9:14
+  --> $DIR/issue-112252-ptr-arithmetics-help.rs:9:19
    |
 LL |     let _d = _ptr1[5];
-   |              ^^^^^^^^
+   |                   ^^^
    |
 help: consider using `wrapping_add` or `add` for indexing into raw pointer
    |

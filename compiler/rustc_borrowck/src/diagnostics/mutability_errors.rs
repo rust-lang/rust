@@ -567,7 +567,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         }
                     };
                     if let hir::ExprKind::Assign(place, rv, _sp) = expr.kind
-                        && let hir::ExprKind::Index(val, index) = place.kind
+                        && let hir::ExprKind::Index(val, index, _) = place.kind
                         && (expr.span == self.assign_span || place.span == self.assign_span)
                     {
                         // val[index] = rv;
@@ -620,7 +620,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         );
                         self.suggested = true;
                     } else if let hir::ExprKind::MethodCall(_path, receiver, _, sp) = expr.kind
-                        && let hir::ExprKind::Index(val, index) = receiver.kind
+                        && let hir::ExprKind::Index(val, index, _) = receiver.kind
                         && expr.span == self.assign_span
                     {
                         // val[index].path(args..);

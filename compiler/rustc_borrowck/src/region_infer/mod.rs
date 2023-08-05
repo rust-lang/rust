@@ -784,13 +784,20 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// is considered a *lower bound*. If possible, we will modify
     /// the constraint to set it equal to one of the option regions.
     /// If we make any changes, returns true, else false.
+    ///
+    /// This function only adds the member constraints to the region graph,
+    /// it does not check them. They are later checked in
+    /// `check_member_constraints` after the region graph has been computed.
     #[instrument(skip(self, member_constraint_index), level = "debug")]
     fn apply_member_constraint(
         &mut self,
         scc: ConstraintSccIndex,
         member_constraint_index: NllMemberConstraintIndex,
         choice_regions: &[ty::RegionVid],
-    ) -> bool {
+    ) {
+        // Lazily compute the reverse graph, we'll need it later.
+        self.compute_reverse_scc_graph();
+
         // Create a mutable vector of the options. We'll try to winnow
         // them down.
         let mut choice_regions: Vec<ty::RegionVid> = choice_regions.to_vec();
@@ -805,10 +812,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             *c_r = self.scc_representatives[scc];
         }
 
-        // The 'member region' in a member constraint is part of the
-        // hidden type, which must be in the root universe. Therefore,
-        // it cannot have any placeholders in its value.
-        assert!(self.scc_universes[scc] == ty::UniverseIndex::ROOT);
+        // If the member region lives in a higher universe, we currently choose
+        // the most conservative option by leaving it unchanged.
+        if self.scc_universes[scc] != ty::UniverseIndex::ROOT {
+            return;
+        }
         debug_assert!(
             self.scc_values.placeholders_contained_in(scc).next().is_none(),
             "scc {:?} in a member constraint has placeholder value: {:?}",
@@ -832,7 +840,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // free region that must outlive the member region `R0` (`UB:
         // R0`). Therefore, we need only keep an option `O` if `UB: O`
         // for all UB.
-        self.compute_reverse_scc_graph();
         let universal_region_relations = &self.universal_region_relations;
         for ub in self.rev_scc_graph.as_ref().unwrap().upper_bounds(scc) {
             debug!(?ub);
@@ -867,7 +874,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             }
         }) else {
             debug!("no unique minimum choice");
-            return false;
+            return;
         };
 
         let min_choice_scc = self.constraint_sccs.scc(min_choice);
@@ -878,10 +885,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 min_choice,
                 member_constraint_index,
             });
-
-            true
-        } else {
-            false
         }
     }
 

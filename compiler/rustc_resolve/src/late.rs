@@ -4269,7 +4269,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             ExprKind::ConstBlock(ref ct) => {
                 self.resolve_anon_const(ct, AnonConstKind::InlineConst);
             }
-            ExprKind::Index(ref elem, ref idx) => {
+            ExprKind::Index(ref elem, ref idx, _) => {
                 self.resolve_expr(elem, Some(expr));
                 self.visit_expr(idx);
             }

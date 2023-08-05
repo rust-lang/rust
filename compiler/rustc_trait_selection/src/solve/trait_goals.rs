@@ -1,7 +1,6 @@
 //! Dealing with trait goals, i.e. `T: Trait<'a, U>`.
 
 use super::assembly::{self, structural_traits};
-use super::search_graph::OverflowHandler;
 use super::{EvalCtxt, SolverMode};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{LangItem, Movability};
@@ -444,7 +443,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             Err(NoSolution) => vec![],
         };
 
-        ecx.probe(|_| CandidateKind::DynUpcastingAssembly).enter(|ecx| {
+        ecx.probe(|_| CandidateKind::UnsizeAssembly).enter(|ecx| {
             let a_ty = goal.predicate.self_ty();
             // We need to normalize the b_ty since it's matched structurally
             // in the other functions below.
@@ -526,7 +525,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         b_region: ty::Region<'tcx>,
     ) -> Vec<(CanonicalResponse<'tcx>, BuiltinImplSource)> {
         let tcx = self.tcx();
-        let Goal { predicate: (a_ty, b_ty), .. } = goal;
+        let Goal { predicate: (a_ty, _b_ty), .. } = goal;
 
         // All of a's auto traits need to be in b's auto traits.
         let auto_traits_compatible =
@@ -535,51 +534,30 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             return vec![];
         }
 
-        // Try to match `a_ty` against `b_ty`, replacing `a_ty`'s principal trait ref with
-        // the supertrait principal and subtyping the types.
-        let unsize_dyn_to_principal =
-            |ecx: &mut Self, principal: Option<ty::PolyExistentialTraitRef<'tcx>>| {
-                ecx.probe_candidate("upcast dyn to principle").enter(
-                    |ecx| -> Result<_, NoSolution> {
-                        // Require that all of the trait predicates from A match B, except for
-                        // the auto traits. We do this by constructing a new A type with B's
-                        // auto traits, and equating these types.
-                        let new_a_data = principal
-                            .into_iter()
-                            .map(|trait_ref| trait_ref.map_bound(ty::ExistentialPredicate::Trait))
-                            .chain(a_data.iter().filter(|a| {
-                                matches!(a.skip_binder(), ty::ExistentialPredicate::Projection(_))
-                            }))
-                            .chain(
-                                b_data
-                                    .auto_traits()
-                                    .map(ty::ExistentialPredicate::AutoTrait)
-                                    .map(ty::Binder::dummy),
-                            );
-                        let new_a_data = tcx.mk_poly_existential_predicates_from_iter(new_a_data);
-                        let new_a_ty = Ty::new_dynamic(tcx, new_a_data, b_region, ty::Dyn);
-
-                        // We also require that A's lifetime outlives B's lifetime.
-                        ecx.eq(goal.param_env, new_a_ty, b_ty)?;
-                        ecx.add_goal(goal.with(tcx, ty::OutlivesPredicate(a_region, b_region)));
-                        ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-                    },
-                )
-            };
-
         let mut responses = vec![];
         // If the principal def ids match (or are both none), then we're not doing
         // trait upcasting. We're just removing auto traits (or shortening the lifetime).
         if a_data.principal_def_id() == b_data.principal_def_id() {
-            if let Ok(resp) = unsize_dyn_to_principal(self, a_data.principal()) {
+            if let Ok(resp) = self.consider_builtin_upcast_to_principal(
+                goal,
+                a_data,
+                a_region,
+                b_data,
+                b_region,
+                a_data.principal(),
+            ) {
                 responses.push((resp, BuiltinImplSource::Misc));
             }
         } else if let Some(a_principal) = a_data.principal() {
             self.walk_vtable(
                 a_principal.with_self_ty(tcx, a_ty),
                 |ecx, new_a_principal, _, vtable_vptr_slot| {
-                    if let Ok(resp) = unsize_dyn_to_principal(
-                        ecx,
+                    if let Ok(resp) = ecx.consider_builtin_upcast_to_principal(
+                        goal,
+                        a_data,
+                        a_region,
+                        b_data,
+                        b_region,
                         Some(new_a_principal.map_bound(|trait_ref| {
                             ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref)
                         })),
@@ -628,6 +606,83 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
 
         // The type must outlive the lifetime of the `dyn` we're unsizing into.
         self.add_goal(goal.with(tcx, ty::OutlivesPredicate(a_ty, b_region)));
+        self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+    }
+
+    fn consider_builtin_upcast_to_principal(
+        &mut self,
+        goal: Goal<'tcx, (Ty<'tcx>, Ty<'tcx>)>,
+        a_data: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
+        a_region: ty::Region<'tcx>,
+        b_data: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
+        b_region: ty::Region<'tcx>,
+        upcast_principal: Option<ty::PolyExistentialTraitRef<'tcx>>,
+    ) -> QueryResult<'tcx> {
+        let param_env = goal.param_env;
+
+        // More than one projection in a_ty's bounds may match the projection
+        // in b_ty's bound. Use this to first determine *which* apply without
+        // having any inference side-effects. We process obligations because
+        // unification may initially succeed due to deferred projection equality.
+        let projection_may_match =
+            |ecx: &mut Self,
+             source_projection: ty::PolyExistentialProjection<'tcx>,
+             target_projection: ty::PolyExistentialProjection<'tcx>| {
+                source_projection.item_def_id() == target_projection.item_def_id()
+                    && ecx
+                        .probe(|_| CandidateKind::UpcastProbe)
+                        .enter(|ecx| -> Result<(), NoSolution> {
+                            ecx.eq(param_env, source_projection, target_projection)?;
+                            let _ = ecx.try_evaluate_added_goals()?;
+                            Ok(())
+                        })
+                        .is_ok()
+            };
+
+        for bound in b_data {
+            match bound.skip_binder() {
+                // Check that a's supertrait (upcast_principal) is compatible
+                // with the target (b_ty).
+                ty::ExistentialPredicate::Trait(target_principal) => {
+                    self.eq(param_env, upcast_principal.unwrap(), bound.rebind(target_principal))?;
+                }
+                // Check that b_ty's projection is satisfied by exactly one of
+                // a_ty's projections. First, we look through the list to see if
+                // any match. If not, error. Then, if *more* than one matches, we
+                // return ambiguity. Otherwise, if exactly one matches, equate
+                // it with b_ty's projection.
+                ty::ExistentialPredicate::Projection(target_projection) => {
+                    let target_projection = bound.rebind(target_projection);
+                    let mut matching_projections =
+                        a_data.projection_bounds().filter(|source_projection| {
+                            projection_may_match(self, *source_projection, target_projection)
+                        });
+                    let Some(source_projection) = matching_projections.next() else {
+                        return Err(NoSolution);
+                    };
+                    if matching_projections.next().is_some() {
+                        return self.evaluate_added_goals_and_make_canonical_response(
+                            Certainty::AMBIGUOUS,
+                        );
+                    }
+                    self.eq(param_env, source_projection, target_projection)?;
+                }
+                // Check that b_ty's auto traits are present in a_ty's bounds.
+                ty::ExistentialPredicate::AutoTrait(def_id) => {
+                    if !a_data.auto_traits().any(|source_def_id| source_def_id == def_id) {
+                        return Err(NoSolution);
+                    }
+                }
+            }
+        }
+
+        // Also require that a_ty's lifetime outlives b_ty's lifetime.
+        self.add_goal(Goal::new(
+            self.tcx(),
+            param_env,
+            ty::Binder::dummy(ty::OutlivesPredicate(a_region, b_region)),
+        ));
+
         self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
 
@@ -857,12 +912,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             ecx.add_goals(
                 constituent_tys(ecx, goal.predicate.self_ty())?
                     .into_iter()
-                    .map(|ty| {
-                        goal.with(
-                            ecx.tcx(),
-                            ty::Binder::dummy(goal.predicate.with_self_ty(ecx.tcx(), ty)),
-                        )
-                    })
+                    .map(|ty| goal.with(ecx.tcx(), goal.predicate.with_self_ty(ecx.tcx(), ty)))
                     .collect::<Vec<_>>(),
             );
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
@@ -879,7 +929,9 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     }
 
     /// Normalize a non-self type when it is structually matched on when solving
-    /// a built-in goal. This is handled already through `assemble_candidates_after_normalizing_self_ty`
+    /// a built-in goal.
+    ///
+    /// This is handled already through `assemble_candidates_after_normalizing_self_ty`
     /// for the self type, but for other goals, additional normalization of other
     /// arguments may be needed to completely implement the semantics of the trait.
     ///
@@ -894,30 +946,22 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             return Ok(Some(ty));
         }
 
-        self.repeat_while_none(
-            |_| Ok(None),
-            |ecx| {
-                let ty::Alias(_, projection_ty) = *ty.kind() else {
-                    return Some(Ok(Some(ty)));
-                };
+        for _ in 0..self.local_overflow_limit() {
+            let ty::Alias(_, projection_ty) = *ty.kind() else {
+                return Ok(Some(ty));
+            };
 
-                let normalized_ty = ecx.next_ty_infer();
-                let normalizes_to_goal = Goal::new(
-                    ecx.tcx(),
-                    param_env,
-                    ty::Binder::dummy(ty::ProjectionPredicate {
-                        projection_ty,
-                        term: normalized_ty.into(),
-                    }),
-                );
-                ecx.add_goal(normalizes_to_goal);
-                if let Err(err) = ecx.try_evaluate_added_goals() {
-                    return Some(Err(err));
-                }
+            let normalized_ty = self.next_ty_infer();
+            let normalizes_to_goal = Goal::new(
+                self.tcx(),
+                param_env,
+                ty::ProjectionPredicate { projection_ty, term: normalized_ty.into() },
+            );
+            self.add_goal(normalizes_to_goal);
+            self.try_evaluate_added_goals()?;
+            ty = self.resolve_vars_if_possible(normalized_ty);
+        }
 
-                ty = ecx.resolve_vars_if_possible(normalized_ty);
-                None
-            },
-        )
+        Ok(None)
     }
 }

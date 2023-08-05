@@ -852,10 +852,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let instance = ty::Instance::resolve_drop_in_place(*self.tcx, place.layout.ty);
         let fn_abi = self.fn_abi_of_instance(instance, ty::List::empty())?;
 
-        let arg = ImmTy::from_immediate(
-            place.to_ref(self),
-            self.layout_of(Ty::new_mut_ptr(self.tcx.tcx, place.layout.ty))?,
-        );
+        let arg = self.mplace_to_ref(&place)?;
         let ret = MPlaceTy::fake_alloc_zst(self.layout_of(self.tcx.types.unit)?);
 
         self.eval_fn_call(

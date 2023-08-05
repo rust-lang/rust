@@ -21,12 +21,11 @@ use {
     parking_lot::{Condvar, Mutex},
     rayon_core,
     rustc_data_structures::fx::FxHashSet,
-    rustc_data_structures::sync::Lock,
-    rustc_data_structures::sync::Lrc,
     rustc_data_structures::{defer, jobserver},
     rustc_span::DUMMY_SP,
     std::iter,
     std::process,
+    std::sync::Arc,
 };
 
 /// Represents a span and a query key.
@@ -191,7 +190,7 @@ struct QueryWaiter<D: DepKind> {
     query: Option<QueryJobId>,
     condvar: Condvar,
     span: Span,
-    cycle: Lock<Option<CycleError<D>>>,
+    cycle: Mutex<Option<CycleError<D>>>,
 }
 
 #[cfg(parallel_compiler)]
@@ -205,20 +204,20 @@ impl<D: DepKind> QueryWaiter<D> {
 #[cfg(parallel_compiler)]
 struct QueryLatchInfo<D: DepKind> {
     complete: bool,
-    waiters: Vec<Lrc<QueryWaiter<D>>>,
+    waiters: Vec<Arc<QueryWaiter<D>>>,
 }
 
 #[cfg(parallel_compiler)]
 #[derive(Clone)]
 pub(super) struct QueryLatch<D: DepKind> {
-    info: Lrc<Mutex<QueryLatchInfo<D>>>,
+    info: Arc<Mutex<QueryLatchInfo<D>>>,
 }
 
 #[cfg(parallel_compiler)]
 impl<D: DepKind> QueryLatch<D> {
     fn new() -> Self {
         QueryLatch {
-            info: Lrc::new(Mutex::new(QueryLatchInfo { complete: false, waiters: Vec::new() })),
+            info: Arc::new(Mutex::new(QueryLatchInfo { complete: false, waiters: Vec::new() })),
         }
     }
 
@@ -229,11 +228,11 @@ impl<D: DepKind> QueryLatch<D> {
         span: Span,
     ) -> Result<(), CycleError<D>> {
         let waiter =
-            Lrc::new(QueryWaiter { query, span, cycle: Lock::new(None), condvar: Condvar::new() });
+            Arc::new(QueryWaiter { query, span, cycle: Mutex::new(None), condvar: Condvar::new() });
         self.wait_on_inner(&waiter);
         // FIXME: Get rid of this lock. We have ownership of the QueryWaiter
-        // although another thread may still have a Lrc reference so we cannot
-        // use Lrc::get_mut
+        // although another thread may still have a Arc reference so we cannot
+        // use Arc::get_mut
         let mut cycle = waiter.cycle.lock();
         match cycle.take() {
             None => Ok(()),
@@ -242,7 +241,7 @@ impl<D: DepKind> QueryLatch<D> {
     }
 
     /// Awaits the caller on this latch by blocking the current thread.
-    fn wait_on_inner(&self, waiter: &Lrc<QueryWaiter<D>>) {
+    fn wait_on_inner(&self, waiter: &Arc<QueryWaiter<D>>) {
         let mut info = self.info.lock();
         if !info.complete {
             // We push the waiter on to the `waiters` list. It can be accessed inside
@@ -276,7 +275,7 @@ impl<D: DepKind> QueryLatch<D> {
 
     /// Removes a single waiter from the list of waiters.
     /// This is used to break query cycles.
-    fn extract_waiter(&self, waiter: usize) -> Lrc<QueryWaiter<D>> {
+    fn extract_waiter(&self, waiter: usize) -> Arc<QueryWaiter<D>> {
         let mut info = self.info.lock();
         debug_assert!(!info.complete);
         // Remove the waiter from the list of waiters
@@ -428,7 +427,7 @@ where
 fn remove_cycle<D: DepKind>(
     query_map: &QueryMap<D>,
     jobs: &mut Vec<QueryJobId>,
-    wakelist: &mut Vec<Lrc<QueryWaiter<D>>>,
+    wakelist: &mut Vec<Arc<QueryWaiter<D>>>,
 ) -> bool {
     let mut visited = FxHashSet::default();
     let mut stack = Vec::new();

@@ -319,7 +319,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
 
         if_chain! {
             // an index op
-            if let ExprKind::Index(seqexpr, idx) = expr.kind;
+            if let ExprKind::Index(seqexpr, idx, _) = expr.kind;
             if !self.check(idx, seqexpr, expr);
             then {
                 return;

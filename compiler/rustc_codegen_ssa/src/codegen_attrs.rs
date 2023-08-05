@@ -215,14 +215,19 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
             }
             sym::thread_local => codegen_fn_attrs.flags |= CodegenFnAttrFlags::THREAD_LOCAL,
             sym::track_caller => {
-                if !tcx.is_closure(did.to_def_id())
+                let is_closure = tcx.is_closure(did.to_def_id());
+
+                if !is_closure
                     && let Some(fn_sig) = fn_sig()
                     && fn_sig.skip_binder().abi() != abi::Abi::Rust
                 {
                     struct_span_err!(tcx.sess, attr.span, E0737, "`#[track_caller]` requires Rust ABI")
                         .emit();
                 }
-                if tcx.is_closure(did.to_def_id()) && !tcx.features().closure_track_caller {
+                if is_closure
+                    && !tcx.features().closure_track_caller
+                    && !attr.span.allows_unstable(sym::closure_track_caller)
+                {
                     feature_err(
                         &tcx.sess.parse_sess,
                         sym::closure_track_caller,

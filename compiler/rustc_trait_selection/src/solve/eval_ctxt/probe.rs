@@ -17,6 +17,7 @@ where
 
         let mut nested_ecx = EvalCtxt {
             infcx: outer_ecx.infcx,
+            variables: outer_ecx.variables,
             var_values: outer_ecx.var_values,
             predefined_opaques_in_body: outer_ecx.predefined_opaques_in_body,
             max_input_universe: outer_ecx.max_input_universe,

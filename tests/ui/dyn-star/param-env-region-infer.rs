@@ -1,8 +1,9 @@
-// revisions: current next
-// Need `-Zdeduplicate-diagnostics=yes` because the number of cycle errors
-// emitted is for some horrible reason platform-specific.
-//[next] compile-flags: -Ztrait-solver=next -Zdeduplicate-diagnostics=yes
+// revisions: current
 // incremental
+
+// FIXME(-Ztrait-solver=next): THis currently results in unstable query results:
+// `normalizes-to(opaque, opaque)` changes from `Maybe(Ambiguous)` to `Maybe(Overflow)`
+// once the hidden type of the opaque is already defined to be itself.
 
 // checks that we don't ICE if there are region inference variables in the environment
 // when computing `PointerLike` builtin candidates.
