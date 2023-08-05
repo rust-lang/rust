@@ -4020,10 +4020,8 @@ impl Methods {
                     }
                 },
                 ("last", []) => {
-                    if let Some((name2, recv2, args2, _span2, _)) = method_call(recv) {
-                        if let ("cloned", []) = (name2, args2) {
-                            iter_overeager_cloned::check(cx, expr, recv, recv2, false, false);
-                        }
+                    if let Some(("cloned", recv2, [], _span2, _)) = method_call(recv) {
+                        iter_overeager_cloned::check(cx, expr, recv, recv2, false, false);
                     }
                 },
                 ("lock", []) => {
@@ -4127,10 +4125,8 @@ impl Methods {
                 ("skip", [arg]) => {
                     iter_skip_zero::check(cx, expr, arg);
 
-                    if let Some((name2, recv2, args2, _span2, _)) = method_call(recv) {
-                        if let ("cloned", []) = (name2, args2) {
-                            iter_overeager_cloned::check(cx, expr, recv, recv2, false, false);
-                        }
+                    if let Some(("cloned", recv2, [], _span2, _)) = method_call(recv) {
+                        iter_overeager_cloned::check(cx, expr, recv, recv2, false, false);
                     }
                 }
                 ("sort", []) => {
@@ -4155,10 +4151,8 @@ impl Methods {
                 },
                 ("step_by", [arg]) => iterator_step_by_zero::check(cx, expr, arg),
                 ("take", [_arg]) => {
-                    if let Some((name2, recv2, args2, _span2, _)) = method_call(recv) {
-                        if let ("cloned", []) = (name2, args2) {
-                            iter_overeager_cloned::check(cx, expr, recv, recv2, false, false);
-                        }
+                    if let Some(("cloned", recv2, [], _span2, _)) = method_call(recv) {
+                        iter_overeager_cloned::check(cx, expr, recv, recv2, false, false);
                     }
                 },
                 ("take", []) => needless_option_take::check(cx, expr, recv),
