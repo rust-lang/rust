@@ -156,8 +156,6 @@ declare_features! (
     // -------------------------------------------------------------------------
     // no-tracking-issue-start
 
-    /// Allows using the `thiscall` ABI.
-    (active, abi_thiscall, "1.19.0", None, None),
     /// Allows using the `unadjusted` ABI; perma-unstable.
     (active, abi_unadjusted, "1.16.0", None, None),
     /// Allows using the `vectorcall` ABI.

@@ -15,7 +15,6 @@
     abi_ptx,
     abi_msp430_interrupt,
     abi_avr_interrupt,
-    abi_thiscall,
     abi_amdgpu_kernel,
     wasm_abi,
     abi_x86_interrupt

@@ -150,7 +150,8 @@ pub fn is_stable(name: &str) -> Result<(), AbiDisabled> {
         // Stable
         "Rust" | "C" | "C-unwind" | "cdecl" | "cdecl-unwind" | "stdcall" | "stdcall-unwind"
         | "fastcall" | "fastcall-unwind" | "aapcs" | "aapcs-unwind" | "win64" | "win64-unwind"
-        | "sysv64" | "sysv64-unwind" | "system" | "system-unwind" | "efiapi" => Ok(()),
+        | "sysv64" | "sysv64-unwind" | "system" | "system-unwind" | "efiapi" | "thiscall"
+        | "thiscall-unwind" => Ok(()),
         "rust-intrinsic" => Err(AbiDisabled::Unstable {
             feature: sym::intrinsics,
             explain: "intrinsics are subject to change",
@@ -166,14 +167,6 @@ pub fn is_stable(name: &str) -> Result<(), AbiDisabled> {
         "vectorcall-unwind" => Err(AbiDisabled::Unstable {
             feature: sym::abi_vectorcall,
             explain: "vectorcall-unwind ABI is experimental and subject to change",
-        }),
-        "thiscall" => Err(AbiDisabled::Unstable {
-            feature: sym::abi_thiscall,
-            explain: "thiscall is experimental and subject to change",
-        }),
-        "thiscall-unwind" => Err(AbiDisabled::Unstable {
-            feature: sym::abi_thiscall,
-            explain: "thiscall-unwind ABI is experimental and subject to change",
         }),
         "rust-call" => Err(AbiDisabled::Unstable {
             feature: sym::unboxed_closures,
