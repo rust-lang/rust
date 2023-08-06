@@ -105,6 +105,12 @@ pub struct AliasDef(pub(crate) DefId);
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct TraitDef(pub(crate) DefId);
 
+impl TraitDef {
+    pub fn trait_decl(&self) -> TraitDecl {
+        with(|cx| cx.trait_decl(self))
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct GenericArgs(pub Vec<GenericArgKind>);
 
