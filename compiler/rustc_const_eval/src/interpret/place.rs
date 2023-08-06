@@ -826,10 +826,10 @@ where
                 // predicate like `where Self: Sized` with `Self = dyn Trait`.
                 // See #102553 for an example of such a predicate.
                 if src.layout().is_unsized() {
-                    throw_inval!(SizeOfUnsizedType(src.layout().ty));
+                    throw_inval!(ConstPropNonsense);
                 }
                 if dest.layout().is_unsized() {
-                    throw_inval!(SizeOfUnsizedType(dest.layout().ty));
+                    throw_inval!(ConstPropNonsense);
                 }
                 assert_eq!(src.layout().size, dest.layout().size);
                 // Yay, we got a value that we can write directly.
