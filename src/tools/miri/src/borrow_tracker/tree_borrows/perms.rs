@@ -152,7 +152,7 @@ impl Permission {
         matches!(self.inner, Active)
     }
 
-    pub fn is_resrved(self) -> bool {
+    pub fn is_reserved(self) -> bool {
         matches!(self.inner, Reserved { .. })
     }
 
