@@ -19,85 +19,85 @@ LL |         let v: &Slice = self.return_a_ref_to_struct();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: redundant type annotation
-  --> $DIR/redundant_type_annotations.rs:143:5
+  --> $DIR/redundant_type_annotations.rs:155:5
    |
 LL |     let _return: String = return_a_string();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: redundant type annotation
-  --> $DIR/redundant_type_annotations.rs:145:5
+  --> $DIR/redundant_type_annotations.rs:157:5
    |
 LL |     let _return: Pie = return_a_struct();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: redundant type annotation
-  --> $DIR/redundant_type_annotations.rs:147:5
+  --> $DIR/redundant_type_annotations.rs:159:5
    |
 LL |     let _return: Pizza = return_an_enum();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: redundant type annotation
-  --> $DIR/redundant_type_annotations.rs:149:5
+  --> $DIR/redundant_type_annotations.rs:161:5
    |
 LL |     let _return: u32 = return_an_int();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: redundant type annotation
-  --> $DIR/redundant_type_annotations.rs:151:5
+  --> $DIR/redundant_type_annotations.rs:163:5
    |
 LL |     let _return: String = String::new();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: redundant type annotation
-  --> $DIR/redundant_type_annotations.rs:153:5
+  --> $DIR/redundant_type_annotations.rs:165:5
    |
 LL |     let new_pie: Pie = Pie::new();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: redundant type annotation
-  --> $DIR/redundant_type_annotations.rs:155:5
+  --> $DIR/redundant_type_annotations.rs:167:5
    |
 LL |     let _return: u32 = new_pie.return_an_int();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: redundant type annotation
-  --> $DIR/redundant_type_annotations.rs:157:5
+  --> $DIR/redundant_type_annotations.rs:169:5
    |
 LL |     let _return: u32 = Pie::associated_return_an_int();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: redundant type annotation
-  --> $DIR/redundant_type_annotations.rs:159:5
+  --> $DIR/redundant_type_annotations.rs:171:5
    |
 LL |     let _return: String = Pie::associated_return_a_string();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: redundant type annotation
-  --> $DIR/redundant_type_annotations.rs:165:5
+  --> $DIR/redundant_type_annotations.rs:177:5
    |
 LL |     let _var: u32 = u32::MAX;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: redundant type annotation
-  --> $DIR/redundant_type_annotations.rs:167:5
+  --> $DIR/redundant_type_annotations.rs:179:5
    |
 LL |     let _var: u32 = 5_u32;
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
 error: redundant type annotation
-  --> $DIR/redundant_type_annotations.rs:169:5
+  --> $DIR/redundant_type_annotations.rs:181:5
    |
 LL |     let _var: &str = "test";
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: redundant type annotation
-  --> $DIR/redundant_type_annotations.rs:171:5
+  --> $DIR/redundant_type_annotations.rs:183:5
    |
 LL |     let _var: &[u8] = b"test";
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: redundant type annotation
-  --> $DIR/redundant_type_annotations.rs:173:5
+  --> $DIR/redundant_type_annotations.rs:185:5
    |
 LL |     let _var: bool = false;
    |     ^^^^^^^^^^^^^^^^^^^^^^^
