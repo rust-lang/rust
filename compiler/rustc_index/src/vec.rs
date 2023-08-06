@@ -75,6 +75,14 @@ impl<I: Idx, T> IndexVec<I, T> {
         IndexVec::from_raw((0..n).map(I::new).map(func).collect())
     }
 
+    /// Create an `IndexVec` with `n` elements, where the value of each
+    /// element is the result of `func(i)`. (The underlying vector will
+    /// be allocated only once, with a capacity of at least `n`.)
+    #[inline]
+    pub fn from_try_fn_n<E>(func: impl FnMut(I) -> Result<T, E>, n: usize) -> Result<Self, E> {
+        Ok(IndexVec::from_raw((0..n).map(I::new).map(func).collect::<Result<_, E>>()?))
+    }
+
     #[inline]
     pub fn as_slice(&self) -> &IndexSlice<I, T> {
         IndexSlice::from_raw(&self.raw)

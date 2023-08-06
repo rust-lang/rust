@@ -537,7 +537,7 @@ where
         frame: usize,
         local: mir::Local,
     ) -> InterpResult<'tcx, PlaceTy<'tcx, M::Provenance>> {
-        let layout = self.layout_of_local(&self.stack()[frame], local, None)?;
+        let layout = self.layout_of_local(&self.stack()[frame], local)?;
         let place = Place::Local { frame, local, offset: None };
         Ok(PlaceTy { place, layout, align: layout.align.abi })
     }
@@ -639,7 +639,7 @@ where
                             // (*After* doing the update for borrow checker reasons.)
                             if cfg!(debug_assertions) {
                                 let local_layout =
-                                    self.layout_of_local(&self.stack()[frame], local, None)?;
+                                    self.layout_of_local(&self.stack()[frame], local)?;
                                 match (src, local_layout.abi) {
                                     (Immediate::Scalar(scalar), Abi::Scalar(s)) => {
                                         assert_eq!(scalar.size(), s.size(self))
@@ -894,8 +894,7 @@ where
                         // We need the layout of the local. We can NOT use the layout we got,
                         // that might e.g., be an inner field of a struct with `Scalar` layout,
                         // that has different alignment than the outer field.
-                        let local_layout =
-                            self.layout_of_local(&self.stack()[frame], local, None)?;
+                        let local_layout = self.layout_of_local(&self.stack()[frame], local)?;
                         if local_layout.is_unsized() {
                             throw_unsup_format!("unsized locals are not supported");
                         }

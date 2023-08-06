@@ -1,4 +1,3 @@
-use std::cell::Cell;
 use std::{fmt, mem};
 
 use either::{Either, Left, Right};
@@ -158,8 +157,8 @@ pub enum StackPopCleanup {
 #[derive(Clone, Debug)]
 pub struct LocalState<'tcx, Prov: Provenance = AllocId> {
     pub value: LocalValue<Prov>,
-    /// Don't modify if `Some`, this is only used to prevent computing the layout twice
-    pub layout: Cell<Option<TyAndLayout<'tcx>>>,
+    /// Layout is pre-computed since it is needed all the time.
+    pub layout: TyAndLayout<'tcx>,
 }
 
 /// Current value of a local variable
@@ -552,22 +551,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &self,
         frame: &Frame<'mir, 'tcx, M::Provenance, M::FrameExtra>,
         local: mir::Local,
-        layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, TyAndLayout<'tcx>> {
         let state = &frame.locals[local];
-        if let Some(layout) = state.layout.get() {
-            return Ok(layout);
-        }
-
-        let layout = from_known_layout(self.tcx, self.param_env, layout, || {
-            let local_ty = frame.body.local_decls[local].ty;
-            let local_ty = self.subst_from_frame_and_normalize_erasing_regions(frame, local_ty)?;
-            self.layout_of(local_ty)
-        })?;
-
-        // Layouts of locals are requested a lot, so we cache them.
-        state.layout.set(Some(layout));
-        Ok(layout)
+        Ok(state.layout)
     }
 
     /// Returns the actual dynamic size and alignment of the place at the given type.
@@ -708,8 +694,18 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
 
         // Most locals are initially dead.
-        let dummy = LocalState { value: LocalValue::Dead, layout: Cell::new(None) };
-        let mut locals = IndexVec::from_elem(dummy, &body.local_decls);
+        let mut locals = IndexVec::from_try_fn_n(
+            |local| {
+                let local_ty = body.local_decls[local].ty;
+                // We already pushed the frame, so `current` is apt.
+                let local_ty =
+                    self.subst_from_current_frame_and_normalize_erasing_regions(local_ty)?;
+                let layout = self.layout_of(local_ty)?;
+                Ok(LocalState { value: LocalValue::Dead, layout })
+                    as InterpResult<'tcx, LocalState<'tcx, _>>
+            },
+            body.local_decls.len(),
+        )?;
 
         // Now mark those locals as live that have no `Storage*` annotations.
         let always_live = always_storage_live_locals(self.body());
@@ -808,7 +804,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // Copy return value. Must of course happen *before* we deallocate the locals.
         let copy_ret_result = if !unwinding {
             let op = self
-                .local_to_op(self.frame(), mir::RETURN_PLACE, None)
+                .local_to_op(self.frame(), mir::RETURN_PLACE)
                 .expect("return place should always be live");
             let dest = self.frame().return_place.clone();
             let err = self.copy_op(&op, &dest, /*allow_transmute*/ true);

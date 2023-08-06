@@ -388,7 +388,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 .expect("callee fn arguments must be locals");
             // We are just initializing things, so there can't be anything here yet.
             assert!(matches!(
-                *self.local_to_op(&self.stack()[dest_frame], dest_local, None)?,
+                *self.local_to_op(&self.stack()[dest_frame], dest_local)?,
                 Operand::Immediate(Immediate::Uninit)
             ));
             assert_eq!(dest_offset, None);
@@ -546,7 +546,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         body.args_iter()
                             .map(|local| (
                                 local,
-                                self.layout_of_local(self.frame(), local, None).unwrap().ty
+                                self.layout_of_local(self.frame(), local).unwrap().ty
                             ))
                             .collect::<Vec<_>>()
                     );

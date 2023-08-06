@@ -583,9 +583,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &self,
         frame: &Frame<'mir, 'tcx, M::Provenance, M::FrameExtra>,
         local: mir::Local,
-        layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
-        let layout = self.layout_of_local(frame, local, layout)?;
+        let layout = self.layout_of_local(frame, local)?;
         let op = *frame.locals[local].access()?;
         Ok(OpTy { op, layout, align: Some(layout.align.abi) })
     }
@@ -600,7 +599,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         match place.as_mplace_or_local() {
             Left(mplace) => Ok(mplace.into()),
             Right((frame, local, offset)) => {
-                let base = self.local_to_op(&self.stack()[frame], local, None)?;
+                let base = self.local_to_op(&self.stack()[frame], local)?;
                 let mut field = if let Some(offset) = offset {
                     // This got offset. We can be sure that the field is sized.
                     base.offset(offset, place.layout, self)?
@@ -622,13 +621,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn eval_place_to_op(
         &self,
         mir_place: mir::Place<'tcx>,
-        layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
-        // Do not use the layout passed in as argument if the base we are looking at
-        // here is not the entire place.
-        let layout = if mir_place.projection.is_empty() { layout } else { None };
-
-        let mut op = self.local_to_op(self.frame(), mir_place.local, layout)?;
+        let mut op = self.local_to_op(self.frame(), mir_place.local)?;
         // Using `try_fold` turned out to be bad for performance, hence the loop.
         for elem in mir_place.projection.iter() {
             op = self.project(&op, elem)?
@@ -664,7 +658,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         use rustc_middle::mir::Operand::*;
         let op = match mir_op {
             // FIXME: do some more logic on `move` to invalidate the old location
-            &Copy(place) | &Move(place) => self.eval_place_to_op(place, layout)?,
+            &Copy(place) | &Move(place) => self.eval_place_to_op(place)?,
 
             Constant(constant) => {
                 let c =

@@ -376,7 +376,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     }
 
     fn get_const(&self, place: Place<'tcx>) -> Option<OpTy<'tcx>> {
-        let op = match self.ecx.eval_place_to_op(place, None) {
+        let op = match self.ecx.eval_place_to_op(place) {
             Ok(op) => {
                 if matches!(*op, interpret::Operand::Immediate(Immediate::Uninit)) {
                     // Make sure nobody accidentally uses this value.

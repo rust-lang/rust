@@ -154,7 +154,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             CopyForDeref(place) => {
-                let op = self.eval_place_to_op(place, Some(dest.layout))?;
+                let op = self.eval_place_to_op(place)?;
                 self.copy_op(&op, &dest, /* allow_transmute*/ false)?;
             }
 
@@ -300,7 +300,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             Discriminant(place) => {
-                let op = self.eval_place_to_op(place, None)?;
+                let op = self.eval_place_to_op(place)?;
                 let variant = self.read_discriminant(&op)?;
                 let discr = self.discriminant_for_variant(op.layout, variant)?;
                 self.write_scalar(discr, &dest)?;
