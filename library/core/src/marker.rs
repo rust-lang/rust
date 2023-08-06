@@ -872,7 +872,6 @@ pub(crate) unsafe auto trait Freeze {}
 impl<T: ?Sized> !Freeze for UnsafeCell<T> {}
 marker_impls! {
     unsafe Freeze for
-        {T: ?Sized} PhantomData<T>,
         {T: ?Sized} *const T,
         {T: ?Sized} *mut T,
         {T: ?Sized} &T,

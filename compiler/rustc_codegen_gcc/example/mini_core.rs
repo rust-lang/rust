@@ -91,7 +91,6 @@ unsafe impl Sync for [u8; 16] {}
 #[lang = "freeze"]
 unsafe auto trait Freeze {}
 
-unsafe impl<T: ?Sized> Freeze for PhantomData<T> {}
 unsafe impl<T: ?Sized> Freeze for *const T {}
 unsafe impl<T: ?Sized> Freeze for *mut T {}
 unsafe impl<T: ?Sized> Freeze for &T {}
