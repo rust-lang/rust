@@ -84,10 +84,12 @@ pub unsafe fn find_eh_action(lsda: *const u8, context: &EHContext<'_>) -> Result
     let ip = context.ip;
 
     if !USING_SJLJ_EXCEPTIONS {
+        // read the callsite table
         while reader.ptr < action_table {
-            let cs_start = read_encoded_pointer(&mut reader, context, call_site_encoding)?.addr();
-            let cs_len = read_encoded_pointer(&mut reader, context, call_site_encoding)?.addr();
-            let cs_lpad = read_encoded_pointer(&mut reader, context, call_site_encoding)?.addr();
+            // these are offsets rather than pointers;
+            let cs_start = read_encoded_offset(&mut reader, call_site_encoding)?;
+            let cs_len = read_encoded_offset(&mut reader, call_site_encoding)?;
+            let cs_lpad = read_encoded_offset(&mut reader, call_site_encoding)?;
             let cs_action_entry = reader.read_uleb128();
             // Callsite table is sorted by cs_start, so if we've passed the ip, we
             // may stop searching.
@@ -161,23 +163,24 @@ fn round_up(unrounded: usize, align: usize) -> Result<usize, ()> {
     if align.is_power_of_two() { Ok((unrounded + align - 1) & !(align - 1)) } else { Err(()) }
 }
 
-unsafe fn read_encoded_pointer(
-    reader: &mut DwarfReader,
-    context: &EHContext<'_>,
-    encoding: u8,
-) -> Result<*const u8, ()> {
-    if encoding == DW_EH_PE_omit {
+/// Read a offset (`usize`) from `reader` whose encoding is described by `encoding`.
+///
+/// `encoding` must be a [DWARF Exception Header Encoding as described by the LSB spec][LSB-dwarf-ext].
+/// In addition the upper ("application") part must be zero.
+///
+/// # Errors
+/// Returns `Err` if `encoding`
+/// * is not a valid DWARF Exception Header Encoding,
+/// * is `DW_EH_PE_omit`, or
+/// * has a non-zero application part.
+///
+/// [LSB-dwarf-ext]: https://refspecs.linuxfoundation.org/LSB_5.0.0/LSB-Core-generic/LSB-Core-generic/dwarfext.html
+unsafe fn read_encoded_offset(reader: &mut DwarfReader, encoding: u8) -> Result<usize, ()> {
+    if encoding == DW_EH_PE_omit || encoding & 0xF0 != 0 {
         return Err(());
     }
-
-    // DW_EH_PE_aligned implies it's an absolute pointer value
-    if encoding == DW_EH_PE_aligned {
-        reader.ptr =
-            reader.ptr.with_addr(round_up(reader.ptr.addr(), mem::size_of::<*const u8>())?);
-        return Ok(reader.read::<*const u8>());
-    }
-
-    let mut result = match encoding & 0x0F {
+    let result = match encoding & 0x0F {
+        // despite the name, LLVM also uses absptr for offsets instead of pointers
         DW_EH_PE_absptr => reader.read::<usize>(),
         DW_EH_PE_uleb128 => reader.read_uleb128() as usize,
         DW_EH_PE_udata2 => reader.read::<u16>() as usize,
@@ -189,28 +192,66 @@ unsafe fn read_encoded_pointer(
         DW_EH_PE_sdata8 => reader.read::<i64>() as usize,
         _ => return Err(()),
     };
+    Ok(result)
+}
 
-    result += match encoding & 0x70 {
-        DW_EH_PE_absptr => 0,
+/// Read a pointer from `reader` whose encoding is described by `encoding`.
+///
+/// `encoding` must be a [DWARF Exception Header Encoding as described by the LSB spec][LSB-dwarf-ext].
+///
+/// # Errors
+/// Returns `Err` if `encoding`
+/// * is not a valid DWARF Exception Header Encoding,
+/// * is `DW_EH_PE_omit`, or
+/// * combines `DW_EH_PE_absptr` or `DW_EH_PE_aligned` application part with an integer encoding
+///   (not `DW_EH_PE_absptr`) in the value format part.
+///
+/// [LSB-dwarf-ext]: https://refspecs.linuxfoundation.org/LSB_5.0.0/LSB-Core-generic/LSB-Core-generic/dwarfext.html
+unsafe fn read_encoded_pointer(
+    reader: &mut DwarfReader,
+    context: &EHContext<'_>,
+    encoding: u8,
+) -> Result<*const u8, ()> {
+    if encoding == DW_EH_PE_omit {
+        return Err(());
+    }
+
+    let base_ptr = match encoding & 0x70 {
+        DW_EH_PE_absptr => core::ptr::null(),
         // relative to address of the encoded value, despite the name
-        DW_EH_PE_pcrel => reader.ptr.expose_addr(),
+        DW_EH_PE_pcrel => reader.ptr,
         DW_EH_PE_funcrel => {
             if context.func_start.is_null() {
                 return Err(());
             }
-            context.func_start.expose_addr()
+            context.func_start
         }
-        DW_EH_PE_textrel => (*context.get_text_start)().expose_addr(),
-        DW_EH_PE_datarel => (*context.get_data_start)().expose_addr(),
+        DW_EH_PE_textrel => (*context.get_text_start)(),
+        DW_EH_PE_datarel => (*context.get_data_start)(),
+        // aligned means the value is aligned to the size of a pointer
+        DW_EH_PE_aligned => {
+            reader.ptr =
+                reader.ptr.with_addr(round_up(reader.ptr.addr(), mem::size_of::<*const u8>())?);
+            core::ptr::null()
+        }
         _ => return Err(()),
     };
 
-    // FIXME(strict provenance)
-    let mut result: *const u8 = ptr::from_exposed_addr::<u8>(result);
+    let mut ptr = if base_ptr.is_null() {
+        // any value encoding other than absptr would be nonsensical here;
+        // there would be no source of pointer provenance
+        if encoding & 0x0F != DW_EH_PE_absptr {
+            return Err(());
+        }
+        reader.read::<*const u8>()
+    } else {
+        let offset = read_encoded_offset(reader, encoding & 0x0F)?;
+        base_ptr.wrapping_add(offset)
+    };
 
     if encoding & DW_EH_PE_indirect != 0 {
-        result = *(result.cast::<*const u8>());
+        ptr = *(ptr.cast::<*const u8>());
     }
 
-    Ok(result)
+    Ok(ptr)
 }
