@@ -1,6 +1,6 @@
 use super::ResolverAstLoweringExt;
 use rustc_ast::visit::{self, BoundKind, LifetimeCtxt, Visitor};
-use rustc_ast::{FnRetTy, GenericBounds, Lifetime, NodeId, PathSegment, PolyTraitRef, Ty, TyKind};
+use rustc_ast::{GenericBounds, Lifetime, NodeId, PathSegment, PolyTraitRef, Ty, TyKind};
 use rustc_hir::def::LifetimeRes;
 use rustc_middle::span_bug;
 use rustc_middle::ty::ResolverAstLowering;
@@ -92,12 +92,6 @@ impl<'ast> Visitor<'ast> for LifetimeCollectVisitor<'ast> {
             }
         }
     }
-}
-
-pub fn lifetimes_in_ret_ty(resolver: &ResolverAstLowering, ret_ty: &FnRetTy) -> Vec<Lifetime> {
-    let mut visitor = LifetimeCollectVisitor::new(resolver);
-    visitor.visit_fn_ret_ty(ret_ty);
-    visitor.collected_lifetimes
 }
 
 pub fn lifetimes_in_bounds(
