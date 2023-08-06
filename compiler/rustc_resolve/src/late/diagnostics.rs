@@ -1008,7 +1008,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         span: Span,
     ) {
         if let Some((trait_ref, self_ty)) =
-                self.diagnostic_metadata.currently_processing_impl_trait.clone()
+            self.diagnostic_metadata.currently_processing_impl_trait.clone()
             && let TyKind::Path(_, self_ty_path) = &self_ty.kind
             && let PathResult::Module(ModuleOrUniformRoot::Module(module)) =
                 self.resolve_path(&Segment::from_path(self_ty_path), Some(TypeNS), None)
@@ -1217,15 +1217,15 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         // where a brace being opened means a block is being started. Look
         // ahead for the next text to see if `span` is followed by a `{`.
         let sm = self.r.tcx.sess.source_map();
-        let sp = sm.span_look_ahead(span, None, Some(50));
-        let followed_by_brace = matches!(sm.span_to_snippet(sp), Ok(ref snippet) if snippet == "{");
-        // In case this could be a struct literal that needs to be surrounded
-        // by parentheses, find the appropriate span.
-        let closing_span = sm.span_look_ahead(span, Some("}"), Some(50));
-        let closing_brace: Option<Span> = sm
-            .span_to_snippet(closing_span)
-            .map_or(None, |s| if s == "}" { Some(span.to(closing_span)) } else { None });
-        (followed_by_brace, closing_brace)
+        if let Some(followed_brace_span) = sm.span_look_ahead(span, "{", Some(50)) {
+            // In case this could be a struct literal that needs to be surrounded
+            // by parentheses, find the appropriate span.
+            let close_brace_span = sm.span_look_ahead(followed_brace_span, "}", Some(50));
+            let closing_brace = close_brace_span.map(|sp| span.to(sp));
+            (true, closing_brace)
+        } else {
+            (false, None)
+        }
     }
 
     /// Provides context-dependent help for errors reported by the `smart_resolve_path_fragment`
