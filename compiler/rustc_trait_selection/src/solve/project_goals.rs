@@ -58,7 +58,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             }
             DefKind::AnonConst => self.normalize_anon_const(goal),
             DefKind::OpaqueTy => self.normalize_opaque_type(goal),
-            DefKind::TyAlias => self.normalize_weak_type(goal),
+            DefKind::TyAlias { .. } => self.normalize_weak_type(goal),
             kind => bug!("unknown DefKind {} in projection goal: {goal:#?}", kind.descr(def_id)),
         }
     }

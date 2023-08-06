@@ -557,7 +557,10 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                 Ok(adt_def.variant_index_with_ctor_id(variant_ctor_id))
             }
             Res::Def(DefKind::Ctor(CtorOf::Struct, ..), _)
-            | Res::Def(DefKind::Struct | DefKind::Union | DefKind::TyAlias | DefKind::AssocTy, _)
+            | Res::Def(
+                DefKind::Struct | DefKind::Union | DefKind::TyAlias { .. } | DefKind::AssocTy,
+                _,
+            )
             | Res::SelfCtor(..)
             | Res::SelfTyParam { .. }
             | Res::SelfTyAlias { .. } => {

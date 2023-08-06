@@ -56,9 +56,8 @@ fn variances_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Variance] {
             let crate_map = tcx.crate_variances(());
             return crate_map.variances.get(&item_def_id.to_def_id()).copied().unwrap_or(&[]);
         }
-        DefKind::TyAlias
-            if tcx.features().lazy_type_alias
-                || tcx.type_of(item_def_id).instantiate_identity().has_opaque_types() =>
+        DefKind::TyAlias { lazy }
+            if lazy || tcx.type_of(item_def_id).instantiate_identity().has_opaque_types() =>
         {
             // These are inferred.
             let crate_map = tcx.crate_variances(());
