@@ -82,8 +82,8 @@ pub(super) fn check<'tcx>(
 
         then {
             if left_cmp_op.direction() == right_cmp_op.direction() {
-                let lhs_str = snippet(cx, left_cond.span, "");
-                let rhs_str = snippet(cx, right_cond.span, "");
+                let lhs_str = snippet(cx, left_cond.span, "<lhs>");
+                let rhs_str = snippet(cx, right_cond.span, "<rhs>");
                 // We already know that either side of `&&` has no effect,
                 // but emit a different error message depending on which side it is
                 if left_side_is_useless(left_cmp_op, ordering) {
@@ -109,9 +109,9 @@ pub(super) fn check<'tcx>(
                 // because code triggering this lint probably not behaving correctly in the first place
             }
             else if !comparison_is_possible(left_cmp_op.direction(), ordering) {
-                let expr_str = snippet(cx, left_expr.span, "");
-                let lhs_str = snippet(cx, left_const_expr.span, "");
-                let rhs_str = snippet(cx, right_const_expr.span, "");
+                let expr_str = snippet(cx, left_expr.span, "..");
+                let lhs_str = snippet(cx, left_const_expr.span, "<lhs>");
+                let rhs_str = snippet(cx, right_const_expr.span, "<rhs>");
                 let note = match ordering {
                     Ordering::Less => format!("since `{lhs_str}` < `{rhs_str}`, the expression evaluates to false for any value of `{expr_str}`"),
                     Ordering::Equal => format!("`{expr_str}` cannot simultaneously be greater than and less than `{lhs_str}`"),
