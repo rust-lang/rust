@@ -2746,9 +2746,9 @@ impl<'hir> GenericArgsCtor<'hir> {
                                 span,
                                 res,
                                 segments: arena_vec![lcx; hir::PathSegment::new(Ident {
-                                        name: sym::host,
-                                        span,
-                                    }, hir_id, res)],
+                                    name: sym::host,
+                                    span,
+                                }, hir_id, res)],
                             }),
                         ));
                         lcx.expr(span, expr_kind)
@@ -2762,6 +2762,16 @@ impl<'hir> GenericArgsCtor<'hir> {
                 },
             )
         });
+
+        let attr_id = lcx.tcx.sess.parse_sess.attr_id_generator.mk_attr_id();
+        let attr = lcx.arena.alloc(Attribute {
+            kind: AttrKind::Normal(P(NormalAttr::from_ident(Ident::new(sym::rustc_host, span)))),
+            span,
+            id: attr_id,
+            style: AttrStyle::Outer,
+        });
+        lcx.attrs.insert(hir_id.local_id, std::slice::from_ref(attr));
+
         let def_id =
             lcx.create_def(lcx.current_hir_id_owner.def_id, id, DefPathData::AnonConst, span);
         lcx.children.push((def_id, hir::MaybeOwner::NonOwner(hir_id)));

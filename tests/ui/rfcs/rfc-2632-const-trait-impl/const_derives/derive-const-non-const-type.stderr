@@ -8,14 +8,5 @@ LL | #[derive_const(Default)]
    = note: adding a non-const method body in the future would be a breaking change
    = note: this error originates in the derive macro `Default` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0107]: missing generics for trait `Default`
-  --> $DIR/derive-const-non-const-type.rs:10:16
-   |
-LL | #[derive_const(Default)]
-   |                ^^^^^^^ expected 18446744073709551615 generic arguments
-   |
-   = note: this error originates in the derive macro `Default` (in Nightly builds, run with -Z macro-backtrace for more info)
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-For more information about this error, try `rustc --explain E0107`.
