@@ -7,6 +7,7 @@ use std::fmt::Write;
 
 use crate::query::Providers;
 use rustc_data_structures::fx::FxIndexMap;
+use rustc_errors::{DiagnosticArgValue, IntoDiagnosticArg};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, LangItem};
 use rustc_span::def_id::LocalDefIdMap;
@@ -89,9 +90,17 @@ pub enum ClosureKind {
     FnOnce,
 }
 
-impl<'tcx> ClosureKind {
+impl ClosureKind {
     /// This is the initial value used when doing upvar inference.
     pub const LATTICE_BOTTOM: ClosureKind = ClosureKind::Fn;
+
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            ClosureKind::Fn => "Fn",
+            ClosureKind::FnMut => "FnMut",
+            ClosureKind::FnOnce => "FnOnce",
+        }
+    }
 
     /// Returns `true` if a type that impls this closure kind
     /// must also implement `other`.
@@ -115,12 +124,18 @@ impl<'tcx> ClosureKind {
 
     /// Returns the representative scalar type for this closure kind.
     /// See `Ty::to_opt_closure_kind` for more details.
-    pub fn to_ty(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
+    pub fn to_ty<'tcx>(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match self {
             ClosureKind::Fn => tcx.types.i8,
             ClosureKind::FnMut => tcx.types.i16,
             ClosureKind::FnOnce => tcx.types.i32,
         }
+    }
+}
+
+impl IntoDiagnosticArg for ClosureKind {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(self.as_str().into())
     }
 }
 

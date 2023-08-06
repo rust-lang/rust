@@ -8,6 +8,15 @@ trait_selection_adjust_signature_remove_borrow = consider adjusting the signatur
         *[other] arguments
     }
 
+trait_selection_closure_fn_mut_label = closure is `FnMut` because it mutates the variable `{$place}` here
+
+trait_selection_closure_fn_once_label = closure is `FnOnce` because it moves the variable `{$place}` out of its environment
+
+trait_selection_closure_kind_mismatch = expected a closure that implements the `{$expected}` trait, but this closure only implements `{$found}`
+    .label = this closure implements `{$found}`, not `{$expected}`
+
+trait_selection_closure_kind_requirement = the requirement to implement `{$expected}` derives from here
+
 trait_selection_dump_vtable_entries = vtable entries for `{$trait_ref}`: {$entries}
 
 trait_selection_empty_on_clause_in_rustc_on_unimplemented = empty `on`-clause in `#[rustc_on_unimplemented]`
