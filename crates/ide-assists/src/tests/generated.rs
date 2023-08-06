@@ -952,6 +952,7 @@ fn doctest_generate_default_from_new() {
     check_doc_test(
         "generate_default_from_new",
         r#####"
+//- minicore: default
 struct Example { _inner: () }
 
 impl Example {
