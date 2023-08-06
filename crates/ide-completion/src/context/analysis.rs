@@ -816,6 +816,9 @@ fn classify_name_ref(
                 // are often omitted, ignore them for the purposes of matching the argument with
                 // its parameter unless a lifetime argument is provided explicitly. That is, for
                 // `struct S<'a, 'b, T>`, match `S::<$0>` to `T` and `S::<'a, $0, _>` to `'b`.
+                // FIXME: This operates on the syntax tree and will produce incorrect results when
+                // generic parameters are disabled by `#[cfg]` directives. It should operate on the
+                // HIR, but the functionality necessary to do so is not exposed at the moment.
                 let mut explicit_lifetime_arg = false;
                 let arg_idx = arg
                     .syntax()
