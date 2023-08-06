@@ -151,6 +151,8 @@ fn main() {
     let _ = s3;
     let s4: Foo<'a'> = Foo;
     let _ = vec![s4, s4, s4].into_iter();
+
+    issue11300::bar();
 }
 
 #[allow(dead_code)]
@@ -194,6 +196,22 @@ fn explicit_into_iter_fn_arg() {
         };
     }
     b(macro_generated!());
+}
+
+mod issue11300 {
+    pub fn foo<I>(i: I)
+    where
+        I: IntoIterator<Item = i32> + ExactSizeIterator,
+    {
+        assert_eq!(i.len(), 3);
+    }
+
+    pub fn bar() {
+        // This should not trigger the lint:
+        // `[i32, 3]` does not satisfy the `ExactSizeIterator` bound, so the into_iter call cannot be
+        // removed and is not useless.
+        foo([1, 2, 3].into_iter());
+    }
 }
 
 #[derive(Copy, Clone)]
