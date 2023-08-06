@@ -578,6 +578,7 @@ fn lint_nan<'tcx>(
         r: &hir::Expr<'_>,
         f: impl FnOnce(Span, Span) -> InvalidNanComparisonsSuggestion,
     ) -> InvalidNanComparisons {
+        // FIXME(#72505): This suggestion can be restored if `f{32,64}::is_nan` is made const.
         let suggestion = (!cx.tcx.hir().is_inside_const_context(e.hir_id)).then(|| {
             if let Some(l_span) = l.span.find_ancestor_inside(e.span) &&
                 let Some(r_span) = r.span.find_ancestor_inside(e.span)
