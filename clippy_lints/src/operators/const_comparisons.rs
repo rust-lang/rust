@@ -2,8 +2,7 @@
 
 use std::cmp::Ordering;
 
-use clippy_utils::consts;
-use clippy_utils::consts::{ConstEvalLateContext, Constant};
+use clippy_utils::consts::{constant, Constant};
 use if_chain::if_chain;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::LateContext;
@@ -20,7 +19,7 @@ use super::{IMPOSSIBLE_COMPARISONS, REDUNDANT_COMPARISONS};
 // Extract a comparison between a const and non-const
 // Flip yoda conditionals, turnings expressions like `42 < x` into `x > 42`
 fn comparison_to_const<'tcx>(
-    ctx: &mut ConstEvalLateContext<'_, 'tcx>,
+    cx: &LateContext<'tcx>,
     typeck: &TypeckResults<'tcx>,
     expr: &'tcx Expr<'tcx>,
 ) -> Option<(CmpOp, &'tcx Expr<'tcx>, &'tcx Expr<'tcx>, Constant<'tcx>, Ty<'tcx>)> {
@@ -28,7 +27,7 @@ fn comparison_to_const<'tcx>(
         if let ExprKind::Binary(operator, left, right) = expr.kind;
         if let Ok(cmp_op) = CmpOp::try_from(operator.node);
         then {
-            match (ctx.expr(left), ctx.expr(right)) {
+            match (constant(cx, typeck, left), constant(cx, typeck, right)) {
                 (Some(_), Some(_)) => None,
                 (_, Some(con)) => Some((cmp_op, left, right, con, typeck.expr_ty(right))),
                 (Some(con), _) => Some((cmp_op.reverse(), right, left, con, typeck.expr_ty(left))),
@@ -57,13 +56,12 @@ pub(super) fn check<'tcx>(
         if let ExprKind::Binary(_, _, _) = right_cond.kind;
 
         let typeck = cx.typeck_results();
-        let mut const_context = consts::ConstEvalLateContext::new(cx, typeck);
 
         // Check that both operands to '&&' compare a non-literal to a literal
         if let Some((left_cmp_op, left_expr, left_const_expr, left_const, left_type)) =
-            comparison_to_const(&mut const_context, typeck, left_cond);
+            comparison_to_const(cx, typeck, left_cond);
         if let Some((right_cmp_op, right_expr, right_const_expr, right_const, right_type)) =
-            comparison_to_const(&mut const_context, typeck, right_cond);
+            comparison_to_const(cx, typeck, right_cond);
 
         if left_type == right_type;
 
