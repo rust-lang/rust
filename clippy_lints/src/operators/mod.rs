@@ -320,12 +320,12 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for ineffective double comparisons against constants
+    /// Checks for ineffective double comparisons against constants.
     ///
     /// ### Why is this bad?
-    /// Only one of the comparisons has any effect on the result
-    /// The programmer probably intended to flip one of the comparison operators,
-    /// or compare a different value entirely
+    /// Only one of the comparisons has any effect on the result, the programmer
+    /// probably intended to flip one of the comparison operators, or compare a
+    /// different value entirely.
     ///
     /// ### Example
     /// ```rust
