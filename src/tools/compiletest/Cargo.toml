@@ -29,7 +29,7 @@ anyhow = "1"
 libc = "0.2"
 
 [target.'cfg(windows)'.dependencies]
-miow = "0.5"
+miow = "0.6"
 
 [target.'cfg(windows)'.dependencies.windows]
 version = "0.48.0"
