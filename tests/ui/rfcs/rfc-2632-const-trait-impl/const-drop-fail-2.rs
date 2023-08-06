@@ -1,5 +1,5 @@
 // known-bug: #110395
-#![feature(const_trait_impl, effects)]
+#![feature(const_trait_impl)]
 #![feature(const_mut_refs)]
 #![cfg_attr(precise, feature(const_precise_live_drops))]
 
@@ -18,6 +18,10 @@ trait A { fn a() { } }
 
 impl A for NonTrivialDrop {}
 
+const fn check<T: ~const Destruct>(_: T) {}
+
+
+/* FIXME(effects)
 struct ConstDropImplWithBounds<T: ~const A>(PhantomData<T>);
 
 impl<T: ~const A> const Drop for ConstDropImplWithBounds<T> {
@@ -26,11 +30,10 @@ impl<T: ~const A> const Drop for ConstDropImplWithBounds<T> {
     }
 }
 
-const fn check<T: ~const Destruct>(_: T) {}
-
 const _: () = check::<ConstDropImplWithBounds<NonTrivialDrop>>(
     ConstDropImplWithBounds(PhantomData)
 );
+*/
 
 struct ConstDropImplWithNonConstBounds<T: A>(PhantomData<T>);
 

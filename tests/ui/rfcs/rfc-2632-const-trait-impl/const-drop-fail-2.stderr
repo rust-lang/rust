@@ -1,28 +1,11 @@
-error[E0015]: cannot call non-const fn `<T as A>::a` in constant functions
-  --> $DIR/const-drop-fail-2.rs:25:9
-   |
-LL |         T::a();
-   |         ^^^^^^
-   |
-   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-
 error[E0493]: destructor of `T` cannot be evaluated at compile-time
-  --> $DIR/const-drop-fail-2.rs:29:36
+  --> $DIR/const-drop-fail-2.rs:21:36
    |
 LL | const fn check<T: ~const Destruct>(_: T) {}
    |                                    ^      - value is dropped here
    |                                    |
    |                                    the destructor for this type cannot be evaluated in constant functions
 
-error[E0015]: cannot call non-const fn `<T as A>::a` in constant functions
-  --> $DIR/const-drop-fail-2.rs:39:9
-   |
-LL |         T::a();
-   |         ^^^^^^
-   |
-   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+error: aborting due to previous error
 
-error: aborting due to 3 previous errors
-
-Some errors have detailed explanations: E0015, E0493.
-For more information about an error, try `rustc --explain E0015`.
+For more information about this error, try `rustc --explain E0493`.
