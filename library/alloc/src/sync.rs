@@ -251,7 +251,7 @@ pub struct Arc<
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
 > {
     ptr: NonNull<ArcInner<T>>,
-    phantom: PhantomData<ArcInner<T>>,
+    phantom: PhantomData<Box<ArcInner<T>>>,
     alloc: A,
 }
 

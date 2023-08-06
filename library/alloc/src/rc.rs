@@ -318,7 +318,7 @@ pub struct Rc<
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
 > {
     ptr: NonNull<RcBox<T>>,
-    phantom: PhantomData<RcBox<T>>,
+    phantom: PhantomData<Box<RcBox<T>>>,
     alloc: A,
 }
 
@@ -3400,7 +3400,7 @@ fn data_offset_align(align: usize) -> usize {
 #[derive(Debug)]
 pub struct UniqueRc<T> {
     ptr: NonNull<RcBox<T>>,
-    phantom: PhantomData<RcBox<T>>,
+    phantom: PhantomData<Box<RcBox<T>>>,
 }
 
 impl<T> UniqueRc<T> {
