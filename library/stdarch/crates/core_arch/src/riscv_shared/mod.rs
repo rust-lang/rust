@@ -1,7 +1,7 @@
 //! Shared RISC-V intrinsics
 
-mod zk;
 mod p;
+mod zk;
 
 #[unstable(feature = "stdsimd", issue = "27731")]
 pub use p::*;
