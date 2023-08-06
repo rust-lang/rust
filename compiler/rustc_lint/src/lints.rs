@@ -1496,7 +1496,7 @@ pub enum InvalidNanComparisons {
     #[diag(lint_invalid_nan_comparisons_eq_ne)]
     EqNe {
         #[subdiagnostic]
-        suggestion: InvalidNanComparisonsSuggestion,
+        suggestion: Option<InvalidNanComparisonsSuggestion>,
     },
     #[diag(lint_invalid_nan_comparisons_lt_le_gt_ge)]
     LtLeGtGe,
