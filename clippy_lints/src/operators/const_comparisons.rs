@@ -7,15 +7,15 @@ use clippy_utils::consts::{ConstEvalLateContext, Constant};
 use if_chain::if_chain;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::LateContext;
-use rustc_middle::ty::{layout::HasTyCtxt, Ty, TypeckResults};
+use rustc_middle::ty::layout::HasTyCtxt;
+use rustc_middle::ty::{Ty, TypeckResults};
 use rustc_span::source_map::{Span, Spanned};
 
 use clippy_utils::diagnostics::span_lint_and_note;
 use clippy_utils::source::snippet;
 use clippy_utils::SpanlessEq;
 
-use super::IMPOSSIBLE_COMPARISONS;
-use super::REDUNDANT_COMPARISONS;
+use super::{IMPOSSIBLE_COMPARISONS, REDUNDANT_COMPARISONS};
 
 // Extract a comparison between a const and non-const
 // Flip yoda conditionals, turnings expressions like `42 < x` into `x > 42`
@@ -23,7 +23,7 @@ fn comparison_to_const<'tcx>(
     ctx: &mut ConstEvalLateContext<'_, 'tcx>,
     typeck: &TypeckResults<'tcx>,
     expr: &'tcx Expr<'tcx>,
-) -> Option<(CmpOp, &'tcx Expr<'tcx>, &'tcx Expr<'tcx>, Constant, Ty<'tcx>)> {
+) -> Option<(CmpOp, &'tcx Expr<'tcx>, &'tcx Expr<'tcx>, Constant<'tcx>, Ty<'tcx>)> {
     if_chain! {
         if let ExprKind::Binary(operator, left, right) = expr.kind;
         if let Ok(cmp_op) = CmpOp::try_from(operator.node);
