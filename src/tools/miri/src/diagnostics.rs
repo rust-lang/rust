@@ -283,7 +283,7 @@ pub fn report_error<'tcx, 'mir>(
                 "resource exhaustion",
             Unsupported(
                 // We list only the ones that can actually happen.
-                UnsupportedOpInfo::Unsupported(_)
+                UnsupportedOpInfo::Unsupported(_) | UnsupportedOpInfo::UnsizedLocal
             ) =>
                 "unsupported operation",
             InvalidProgram(

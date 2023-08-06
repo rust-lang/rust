@@ -415,6 +415,8 @@ pub enum UnsupportedOpInfo {
     /// Free-form case. Only for errors that are never caught!
     // FIXME still use translatable diagnostics
     Unsupported(String),
+    /// Unsized local variables.
+    UnsizedLocal,
     //
     // The variants below are only reachable from CTFE/const prop, miri will never emit them.
     //

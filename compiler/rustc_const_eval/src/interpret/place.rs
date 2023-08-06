@@ -41,6 +41,7 @@ impl<Prov: Provenance> MemPlaceMeta<Prov> {
         }
     }
 
+    #[inline(always)]
     pub fn has_meta(self) -> bool {
         match self {
             Self::Meta(_) => true,
@@ -255,15 +256,12 @@ impl<'tcx, Prov: Provenance + 'static> Projectable<'tcx, Prov> for PlaceTy<'tcx,
         self.layout
     }
 
+    #[inline]
     fn meta(&self) -> InterpResult<'tcx, MemPlaceMeta<Prov>> {
         Ok(match self.as_mplace_or_local() {
             Left(mplace) => mplace.meta,
             Right(_) => {
-                if self.layout.is_unsized() {
-                    // Unsized `Place::Local` cannot occur. We create a MemPlace for all unsized locals during argument passing.
-                    // However, ConstProp doesn't do that, so we can run into this nonsense situation.
-                    throw_inval!(ConstPropNonsense);
-                }
+                debug_assert!(self.layout.is_sized(), "unsized locals should live in memory");
                 MemPlaceMeta::None
             }
         })
@@ -331,7 +329,7 @@ impl<'tcx, Prov: Provenance> OpTy<'tcx, Prov> {
 
 impl<'tcx, Prov: Provenance + 'static> PlaceTy<'tcx, Prov> {
     /// A place is either an mplace or some local.
-    #[inline]
+    #[inline(always)]
     pub fn as_mplace_or_local(
         &self,
     ) -> Either<MPlaceTy<'tcx, Prov>, (usize, mir::Local, Option<Size>)> {
@@ -535,9 +533,19 @@ where
         // So we eagerly check here if this local has an MPlace, and if yes we use it.
         let frame_ref = &self.stack()[frame];
         let layout = self.layout_of_local(frame_ref, local, None)?;
-        let place = match frame_ref.locals[local].access()? {
-            Operand::Immediate(_) => Place::Local { frame, local, offset: None },
-            Operand::Indirect(mplace) => Place::Ptr(*mplace),
+        let place = if layout.is_sized() {
+            // We can just always use the `Local` for sized values.
+            Place::Local { frame, local, offset: None }
+        } else {
+            // Unsized `Local` isn't okay (we cannot store the metadata).
+            match frame_ref.locals[local].access()? {
+                Operand::Immediate(_) => {
+                    // ConstProp marks *all* locals as `Immediate::Uninit` since it cannot
+                    // efficiently check whether they are sized. We have to catch that case here.
+                    throw_inval!(ConstPropNonsense);
+                }
+                Operand::Indirect(mplace) => Place::Ptr(*mplace),
+            }
         };
         Ok(PlaceTy { place, layout, align: layout.align.abi })
     }
@@ -896,9 +904,7 @@ where
                         // that has different alignment than the outer field.
                         let local_layout =
                             self.layout_of_local(&self.stack()[frame], local, None)?;
-                        if local_layout.is_unsized() {
-                            throw_unsup_format!("unsized locals are not supported");
-                        }
+                        assert!(local_layout.is_sized(), "unsized locals cannot be immediate");
                         let mplace = self.allocate(local_layout, MemoryKind::Stack)?;
                         // Preserve old value. (As an optimization, we can skip this if it was uninit.)
                         if !matches!(local_val, Immediate::Uninit) {

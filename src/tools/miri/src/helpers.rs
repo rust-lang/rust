@@ -14,7 +14,7 @@ use rustc_middle::mir;
 use rustc_middle::ty::{
     self,
     layout::{IntegerExt as _, LayoutOf, TyAndLayout},
-    List, Ty, TyCtxt,
+    Ty, TyCtxt,
 };
 use rustc_span::{def_id::CrateNum, sym, Span, Symbol};
 use rustc_target::abi::{Align, FieldIdx, FieldsShape, Integer, Size, Variants};
@@ -282,13 +282,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         Ok(ptr.addr().bytes() == 0)
     }
 
-    /// Get the `Place` for a local
-    fn local_place(&self, local: mir::Local) -> InterpResult<'tcx, PlaceTy<'tcx, Provenance>> {
-        let this = self.eval_context_ref();
-        let place = mir::Place { local, projection: List::empty() };
-        this.eval_place(place)
-    }
-
     /// Generate some random bytes, and write them to `dest`.
     fn gen_random(&mut self, ptr: Pointer<Option<Provenance>>, len: u64) -> InterpResult<'tcx> {
         // Some programs pass in a null pointer and a length of 0
@@ -350,16 +343,20 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // Initialize arguments.
         let mut callee_args = this.frame().body.args_iter();
         for arg in args {
-            let callee_arg = this.local_place(
-                callee_args
-                    .next()
-                    .ok_or_else(|| err_ub_format!("callee has fewer arguments than expected"))?,
-            )?;
+            let local = callee_args
+                .next()
+                .ok_or_else(|| err_ub_format!("callee has fewer arguments than expected"))?;
+            // Make the local live, and insert the initial value.
+            this.storage_live(local)?;
+            let callee_arg = this.local_to_place(this.frame_idx(), local)?;
             this.write_immediate(*arg, &callee_arg)?;
         }
         if callee_args.next().is_some() {
             throw_ub_format!("callee has more arguments than expected");
         }
+
+        // Initialize remaining locals.
+        this.storage_live_for_always_live_locals()?;
 
         Ok(())
     }

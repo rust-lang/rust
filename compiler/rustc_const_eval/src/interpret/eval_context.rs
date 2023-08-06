@@ -158,7 +158,9 @@ pub enum StackPopCleanup {
 #[derive(Clone, Debug)]
 pub struct LocalState<'tcx, Prov: Provenance = AllocId> {
     pub value: LocalValue<Prov>,
-    /// Don't modify if `Some`, this is only used to prevent computing the layout twice
+    /// Don't modify if `Some`, this is only used to prevent computing the layout twice.
+    /// Layout needs to be computed lazily because ConstProp wants to run on frames where we can't
+    /// compute the layout of all locals.
     pub layout: Cell<Option<TyAndLayout<'tcx>>>,
 }
 
@@ -483,7 +485,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     #[inline(always)]
-    pub(super) fn body(&self) -> &'mir mir::Body<'tcx> {
+    pub fn body(&self) -> &'mir mir::Body<'tcx> {
         self.frame().body
     }
 
@@ -705,15 +707,15 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         return_to_block: StackPopCleanup,
     ) -> InterpResult<'tcx> {
         trace!("body: {:#?}", body);
+        let dead_local = LocalState { value: LocalValue::Dead, layout: Cell::new(None) };
+        let locals = IndexVec::from_elem(dead_local, &body.local_decls);
         // First push a stack frame so we have access to the local args
         let pre_frame = Frame {
             body,
             loc: Right(body.span), // Span used for errors caused during preamble.
             return_to_block,
             return_place: return_place.clone(),
-            // empty local array, we fill it in below, after we are inside the stack frame and
-            // all methods actually know about the frame
-            locals: IndexVec::new(),
+            locals,
             instance,
             tracing_span: SpanGuard::new(),
             extra: (),
@@ -728,19 +730,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             self.eval_mir_constant(&ct, Some(span), None)?;
         }
 
-        // Most locals are initially dead.
-        let dummy = LocalState { value: LocalValue::Dead, layout: Cell::new(None) };
-        let mut locals = IndexVec::from_elem(dummy, &body.local_decls);
-
-        // Now mark those locals as live that have no `Storage*` annotations.
-        let always_live = always_storage_live_locals(self.body());
-        for local in locals.indices() {
-            if always_live.contains(local) {
-                locals[local].value = LocalValue::Live(Operand::Immediate(Immediate::Uninit));
-            }
-        }
         // done
-        self.frame_mut().locals = locals;
         M::after_stack_push(self)?;
         self.frame_mut().loc = Left(mir::Location::START);
 
@@ -907,10 +897,28 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
     }
 
+    /// In the current stack frame, mark all locals as live that are not arguments and don't have
+    /// `Storage*` annotations (this includes the return place).
+    pub fn storage_live_for_always_live_locals(&mut self) -> InterpResult<'tcx> {
+        self.storage_live(mir::RETURN_PLACE)?;
+
+        let body = self.body();
+        let always_live = always_storage_live_locals(body);
+        for local in body.vars_and_temps_iter() {
+            if always_live.contains(local) {
+                self.storage_live(local)?;
+            }
+        }
+        Ok(())
+    }
+
     /// Mark a storage as live, killing the previous content.
     pub fn storage_live(&mut self, local: mir::Local) -> InterpResult<'tcx> {
-        assert!(local != mir::RETURN_PLACE, "Cannot make return place live");
         trace!("{:?} is now live", local);
+
+        if self.layout_of_local(self.frame(), local, None)?.is_unsized() {
+            throw_unsup!(UnsizedLocal);
+        }
 
         let local_val = LocalValue::Live(Operand::Immediate(Immediate::Uninit));
         // StorageLive expects the local to be dead, and marks it live.
