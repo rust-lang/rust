@@ -155,11 +155,52 @@ pub(crate) struct ExprCtx {
 pub(crate) enum TypeLocation {
     TupleField,
     TypeAscription(TypeAscriptionTarget),
-    GenericArgList(Option<(ast::GenericArgList, Option<ast::GenericParam>)>),
+    /// Generic argument position e.g. `Foo<$0>`
+    GenericArg(Option<(ast::GenericArgList, Option<hir::Trait>, Option<ast::GenericParam>)>),
+    /// Associated type equality constraint e.g. `Foo<Bar = $0>`
+    AssocTypeEq,
+    /// Associated constant equality constraint e.g. `Foo<X = $0>`
+    AssocConstEq,
     TypeBound,
     ImplTarget,
     ImplTrait,
     Other,
+}
+
+impl TypeLocation {
+    pub(crate) fn complete_lifetimes(&self) -> bool {
+        match self {
+            TypeLocation::GenericArg(Some((_, _, Some(param)))) => {
+                matches!(param, ast::GenericParam::LifetimeParam(_))
+            }
+            _ => false,
+        }
+    }
+
+    pub(crate) fn complete_consts(&self) -> bool {
+        match self {
+            TypeLocation::GenericArg(Some((_, _, Some(param)))) => {
+                matches!(param, ast::GenericParam::ConstParam(_))
+            }
+            TypeLocation::AssocConstEq => true,
+            _ => false,
+        }
+    }
+
+    pub(crate) fn complete_types(&self) -> bool {
+        match self {
+            TypeLocation::GenericArg(Some((_, _, Some(param)))) => {
+                matches!(param, ast::GenericParam::TypeParam(_))
+            }
+            TypeLocation::AssocConstEq => false,
+            TypeLocation::AssocTypeEq => true,
+            _ => true,
+        }
+    }
+
+    pub(crate) fn complete_self_type(&self) -> bool {
+        self.complete_types() && !matches!(self, TypeLocation::ImplTarget | TypeLocation::ImplTrait)
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

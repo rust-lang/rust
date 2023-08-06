@@ -703,7 +703,9 @@ pub(super) fn complete_name_ref(
                         TypeLocation::TypeAscription(ascription) => {
                             r#type::complete_ascribed_type(acc, ctx, path_ctx, ascription);
                         }
-                        TypeLocation::GenericArgList(_)
+                        TypeLocation::GenericArg(_)
+                        | TypeLocation::AssocConstEq
+                        | TypeLocation::AssocTypeEq
                         | TypeLocation::TypeBound
                         | TypeLocation::ImplTarget
                         | TypeLocation::ImplTrait

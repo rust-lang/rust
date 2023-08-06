@@ -402,14 +402,13 @@ fn foo<'lt, T: Trait2<$0>, const CONST_PARAM: usize>(_: T) {}
     );
     check(
         r#"
-trait Trait2 {
+trait Trait2<T> {
     type Foo;
 }
 
 fn foo<'lt, T: Trait2<self::$0>, const CONST_PARAM: usize>(_: T) {}
     "#,
         expect![[r#"
-            ct CONST
             en Enum
             ma makro!(…) macro_rules! makro
             md module
@@ -620,7 +619,6 @@ trait MyTrait {
 fn f(t: impl MyTrait<Item1 = $0
 "#,
         expect![[r#"
-            ct CONST
             en Enum
             ma makro!(…) macro_rules! makro
             md module
@@ -639,24 +637,14 @@ fn f(t: impl MyTrait<Item1 = $0
     check(
         r#"
 trait MyTrait {
-    type Item1;
-    type Item2;
+    const C: usize;
 };
 
-fn f(t: impl MyTrait<Item1 = u8, Item2 = $0
+fn f(t: impl MyTrait<C = $0
 "#,
         expect![[r#"
             ct CONST
-            en Enum
             ma makro!(…) macro_rules! makro
-            md module
-            st Record
-            st Tuple
-            st Unit
-            tt MyTrait
-            tt Trait
-            un Union
-            bt u32
             kw crate::
             kw self::
         "#]],

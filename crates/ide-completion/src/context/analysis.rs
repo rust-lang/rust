@@ -720,12 +720,14 @@ fn classify_name_ref(
     };
 
     let generic_arg_location = |arg: ast::GenericArg| {
+        let mut override_location = None;
         let location = find_opt_node_in_file_compensated(
             sema,
             original_file,
             arg.syntax().parent().and_then(ast::GenericArgList::cast),
         )
         .map(|args| {
+            let mut in_trait = None;
             let param = (|| {
                 let parent = args.syntax().parent()?;
                 let params = match_ast! {
@@ -743,7 +745,31 @@ fn classify_name_ref(
                                         variant.parent_enum(sema.db).source(sema.db)?.value.generic_param_list()
                                     }
                                     hir::ModuleDef::Trait(trait_) => {
-                                        trait_.source(sema.db)?.value.generic_param_list()
+                                        if let ast::GenericArg::AssocTypeArg(arg) = &arg {
+                                            let arg_name = arg.name_ref()?;
+                                            let arg_name = arg_name.text();
+                                            for item in trait_.items_with_supertraits(sema.db) {
+                                                match item {
+                                                    hir::AssocItem::TypeAlias(assoc_ty) => {
+                                                        if assoc_ty.name(sema.db).as_str()? == arg_name {
+                                                            override_location = Some(TypeLocation::AssocTypeEq);
+                                                            return None;
+                                                        }
+                                                    },
+                                                    hir::AssocItem::Const(const_) => {
+                                                        if const_.name(sema.db)?.as_str()? == arg_name {
+                                                            override_location =  Some(TypeLocation::AssocConstEq);
+                                                            return None;
+                                                        }
+                                                    },
+                                                    _ => (),
+                                                }
+                                            }
+                                            return None;
+                                        } else {
+                                            in_trait = Some(trait_);
+                                            trait_.source(sema.db)?.value.generic_param_list()
+                                        }
                                     }
                                     hir::ModuleDef::TraitAlias(trait_) => {
                                         trait_.source(sema.db)?.value.generic_param_list()
@@ -765,10 +791,12 @@ fn classify_name_ref(
                             match sema.resolve_path(&trait_.parent_path().top_path())? {
                                 hir::PathResolution::Def(def) => match def {
                                     hir::ModuleDef::Trait(trait_) => {
-                                        let trait_items = trait_.items(sema.db);
+                                        let arg_name = arg.name_ref()?;
+                                        let arg_name = arg_name.text();
+                                        let trait_items = trait_.items_with_supertraits(sema.db);
                                         let assoc_ty = trait_items.iter().find_map(|item| match item {
                                             hir::AssocItem::TypeAlias(assoc_ty) => {
-                                                (assoc_ty.name(sema.db).as_str()? == arg.name_ref()?.text())
+                                                (assoc_ty.name(sema.db).as_str()? == arg_name)
                                                     .then_some(assoc_ty)
                                             },
                                             _ => None,
@@ -784,11 +812,10 @@ fn classify_name_ref(
                     }
                 }?;
                 // Determine the index of the argument in the `GenericArgList` and match it with
-                // the corresponding parameter in the `GenericParamList`.
-                // Since lifetime parameters are often omitted, ignore them for the purposes of
-                // matching the argument with its parameter unless a lifetime argument is provided
-                // explicitly. That is, for `struct S<'a, 'b, T>`, match `S::<$0>` to to `T` and
-                // `S::<'a, $0, _>` to `'b`.
+                // the corresponding parameter in the `GenericParamList`. Since lifetime parameters
+                // are often omitted, ignore them for the purposes of matching the argument with
+                // its parameter unless a lifetime argument is provided explicitly. That is, for
+                // `struct S<'a, 'b, T>`, match `S::<$0>` to `T` and `S::<'a, $0, _>` to `'b`.
                 let mut explicit_lifetime_arg = false;
                 let arg_idx = arg
                     .syntax()
@@ -806,9 +833,9 @@ fn classify_name_ref(
                 };
                 params.generic_params().nth(param_idx)
             })();
-            (args, param)
+            (args, in_trait, param)
         });
-        TypeLocation::GenericArgList(location)
+        override_location.unwrap_or(TypeLocation::GenericArg(location))
     };
 
     let type_location = |node: &SyntaxNode| {
@@ -870,8 +897,8 @@ fn classify_name_ref(
                 // is this case needed?
                 ast::GenericArgList(it) => {
                     let location = find_opt_node_in_file_compensated(sema, original_file, Some(it))
-                        .map(|node| (node, None));
-                    TypeLocation::GenericArgList(location)
+                        .map(|node| (node, None, None));
+                    TypeLocation::GenericArg(location)
                 },
                 ast::TupleField(_) => TypeLocation::TupleField,
                 _ => return None,
