@@ -108,8 +108,6 @@ impl UnstableFeatures {
 
 fn find_lang_feature_issue(feature: Symbol) -> Option<NonZeroU32> {
     if let Some(info) = ACTIVE_FEATURES.iter().find(|t| t.name == feature) {
-        // FIXME (#28244): enforce that active features have issue numbers
-        // assert!(info.issue.is_some())
         info.issue
     } else {
         // search in Accepted, Removed, or Stable Removed features
