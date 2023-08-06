@@ -541,6 +541,8 @@ declare_features! (
     (active, return_position_impl_trait_in_trait, "1.65.0", Some(91611), None),
     /// Allows bounding the return type of AFIT/RPITIT.
     (incomplete, return_type_notation, "1.70.0", Some(109417), None),
+    /// Adds the intrinsics for all RISC-V Ratified Extensions.
+    (incomplete, riscv_ext_intrinsics, "1.71.0", Some(114544), None),
     /// Allows `extern "rust-cold"`.
     (active, rust_cold_cc, "1.63.0", Some(97544), None),
     /// Allows the use of SIMD types in functions declared in `extern` blocks.

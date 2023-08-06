@@ -1236,6 +1236,7 @@ symbols! {
         rhs,
         rintf32,
         rintf64,
+        riscv_ext_intrinsics,
         riscv_target_feature,
         rlib,
         rotate_left,
