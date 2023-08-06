@@ -1,8 +1,11 @@
 //! Shared RISC-V intrinsics
+
+mod zk;
 mod p;
 
 #[unstable(feature = "stdsimd", issue = "27731")]
 pub use p::*;
+pub use zk::*;
 
 use crate::arch::asm;
 
@@ -628,179 +631,9 @@ pub fn frflags() -> u32 {
 /// and then writing a new value obtained from the five least-significant bits of
 /// input variable `value` into `fflags`.
 #[inline]
+#[unstable(feature = "stdsimd", issue = "27731")]
 pub fn fsflags(value: u32) -> u32 {
     let original: u32;
     unsafe { asm!("fsflags {}, {}", out(reg) original, in(reg) value, options(nomem, nostack)) }
     original
-}
-
-/// `P0` transformation function as is used in the SM3 hash algorithm
-///
-/// This function is included in `Zksh` extension. It's defined as:
-///
-/// ```text
-/// P0(X) = X ⊕ (X ≪ 9) ⊕ (X ≪ 17)
-/// ```
-///
-/// where `⊕` represents 32-bit xor, and `≪ k` represents rotate left by `k` bits.
-///
-/// In the SM3 algorithm, the `P0` transformation is used as `E ← P0(TT2)` when the
-/// compression function `CF` uses the intermediate value `TT2` to calculate
-/// the variable `E` in one iteration for subsequent processes.
-///
-/// According to RISC-V Cryptography Extensions, Volume I, the execution latency of
-/// this instruction must always be independent from the data it operates on.
-#[inline]
-#[target_feature(enable = "zksh")]
-pub fn sm3p0(x: u32) -> u32 {
-    let ans: u32;
-    unsafe { asm!("sm3p0 {}, {}", lateout(reg) ans, in(reg) x, options(pure, nomem, nostack)) };
-    ans
-}
-
-/// `P1` transformation function as is used in the SM3 hash algorithm
-///
-/// This function is included in `Zksh` extension. It's defined as:
-///
-/// ```text
-/// P1(X) = X ⊕ (X ≪ 15) ⊕ (X ≪ 23)
-/// ```
-///
-/// where `⊕` represents 32-bit xor, and `≪ k` represents rotate left by `k` bits.
-///
-/// In the SM3 algorithm, the `P1` transformation is used to expand message,
-/// where expanded word `Wj` can be generated from the previous words.
-/// The whole process can be described as the following pseudocode:
-///
-/// ```text
-/// FOR j=16 TO 67
-///     Wj ← P1(Wj−16 ⊕ Wj−9 ⊕ (Wj−3 ≪ 15)) ⊕ (Wj−13 ≪ 7) ⊕ Wj−6
-/// ENDFOR
-/// ```
-///
-/// According to RISC-V Cryptography Extensions, Volume I, the execution latency of
-/// this instruction must always be independent from the data it operates on.
-#[inline]
-#[target_feature(enable = "zksh")]
-pub fn sm3p1(x: u32) -> u32 {
-    let ans: u32;
-    unsafe { asm!("sm3p1 {}, {}", lateout(reg) ans, in(reg) x, options(pure, nomem, nostack)) };
-    ans
-}
-
-/// Accelerates the round function `F` in the SM4 block cipher algorithm
-///
-/// This instruction is included in extension `Zksed`. It's defined as:
-///
-/// ```text
-/// SM4ED(x, a, BS) = x ⊕ T(ai)
-/// ... where
-/// ai = a.bytes[BS]
-/// T(ai) = L(τ(ai))
-/// bi = τ(ai) = SM4-S-Box(ai)
-/// ci = L(bi) = bi ⊕ (bi ≪ 2) ⊕ (bi ≪ 10) ⊕ (bi ≪ 18) ⊕ (bi ≪ 24)
-/// SM4ED = (ci ≪ (BS * 8)) ⊕ x
-/// ```
-///
-/// where `⊕` represents 32-bit xor, and `≪ k` represents rotate left by `k` bits.
-/// As is defined above, `T` is a combined transformation of non linear S-Box transform `τ`
-/// and linear layer transform `L`.
-///
-/// In the SM4 algorithm, the round function `F` is defined as:
-///
-/// ```text
-/// F(x0, x1, x2, x3, rk) = x0 ⊕ T(x1 ⊕ x2 ⊕ x3 ⊕ rk)
-/// ... where
-/// T(A) = L(τ(A))
-/// B = τ(A) = (SM4-S-Box(a0), SM4-S-Box(a1), SM4-S-Box(a2), SM4-S-Box(a3))
-/// C = L(B) = B ⊕ (B ≪ 2) ⊕ (B ≪ 10) ⊕ (B ≪ 18) ⊕ (B ≪ 24)
-/// ```
-///
-/// It can be implemented by `sm4ed` instruction like:
-///
-/// ```no_run
-/// # #[cfg(any(target_arch = "riscv32", target_arch = "riscv64"))]
-/// # fn round_function(x0: u32, x1: u32, x2: u32, x3: u32, rk: u32) -> u32 {
-/// # #[cfg(target_arch = "riscv32")] use core::arch::riscv32::sm4ed;
-/// # #[cfg(target_arch = "riscv64")] use core::arch::riscv64::sm4ed;
-/// let a = x1 ^ x2 ^ x3 ^ rk;
-/// let c0 = sm4ed::<0>(x0, a);
-/// let c1 = sm4ed::<1>(c0, a); // c1 represents c[0..=1], etc.
-/// let c2 = sm4ed::<2>(c1, a);
-/// let c3 = sm4ed::<3>(c2, a);
-/// return c3; // c3 represents c[0..=3]
-/// # }
-/// ```
-///
-/// According to RISC-V Cryptography Extensions, Volume I, the execution latency of
-/// this instruction must always be independent from the data it operates on.
-#[inline]
-#[target_feature(enable = "zksed")]
-pub fn sm4ed<const BS: u8>(x: u32, a: u32) -> u32 {
-    static_assert!(BS <= 3);
-    let ans: u32;
-    unsafe {
-        asm!("sm4ed {}, {}, {}, {}", lateout(reg) ans, in(reg) x, in(reg) a, const BS, options(pure, nomem, nostack))
-    };
-    ans
-}
-
-/// Accelerates the key schedule operation in the SM4 block cipher algorithm
-///
-/// This instruction is included in extension `Zksed`. It's defined as:
-///
-/// ```text
-/// SM4KS(x, k, BS) = x ⊕ T'(ki)
-/// ... where
-/// ki = k.bytes[BS]
-/// T'(ki) = L'(τ(ki))
-/// bi = τ(ki) = SM4-S-Box(ki)
-/// ci = L'(bi) = bi ⊕ (bi ≪ 13) ⊕ (bi ≪ 23)
-/// SM4KS = (ci ≪ (BS * 8)) ⊕ x
-/// ```
-///
-/// where `⊕` represents 32-bit xor, and `≪ k` represents rotate left by `k` bits.
-/// As is defined above, `T'` is a combined transformation of non linear S-Box transform `τ`
-/// and the replaced linear layer transform `L'`.
-///
-/// In the SM4 algorithm, the key schedule is defined as:
-///
-/// ```text
-/// rk[i] = K[i+4] = K[i] ⊕ T'(K[i+1] ⊕ K[i+2] ⊕ K[i+3] ⊕ CK[i])
-/// ... where
-/// K[0..=3] = MK[0..=3] ⊕ FK[0..=3]
-/// T'(K) = L'(τ(K))
-/// B = τ(K) = (SM4-S-Box(k0), SM4-S-Box(k1), SM4-S-Box(k2), SM4-S-Box(k3))
-/// C = L'(B) = B ⊕ (B ≪ 13) ⊕ (B ≪ 23)
-/// ```
-///
-/// where `MK` represents the input 128-bit encryption key,
-/// constants `FK` and `CK` are fixed system configuration constant values defined by the SM4 algorithm.
-/// Hence, the key schedule operation can be implemented by `sm4ks` instruction like:
-///
-/// ```no_run
-/// # #[cfg(any(target_arch = "riscv32", target_arch = "riscv64"))]
-/// # fn key_schedule(k0: u32, k1: u32, k2: u32, k3: u32, ck_i: u32) -> u32 {
-/// # #[cfg(target_arch = "riscv32")] use core::arch::riscv32::sm4ks;
-/// # #[cfg(target_arch = "riscv64")] use core::arch::riscv64::sm4ks;
-/// let k = k1 ^ k2 ^ k3 ^ ck_i;
-/// let c0 = sm4ks::<0>(k0, k);
-/// let c1 = sm4ks::<1>(c0, k); // c1 represents c[0..=1], etc.
-/// let c2 = sm4ks::<2>(c1, k);
-/// let c3 = sm4ks::<3>(c2, k);
-/// return c3; // c3 represents c[0..=3]
-/// # }
-/// ```
-///
-/// According to RISC-V Cryptography Extensions, Volume I, the execution latency of
-/// this instruction must always be independent from the data it operates on.
-#[inline]
-#[target_feature(enable = "zksed")]
-pub fn sm4ks<const BS: u8>(x: u32, k: u32) -> u32 {
-    static_assert!(BS <= 3);
-    let ans: u32;
-    unsafe {
-        asm!("sm4ks {}, {}, {}, {}", lateout(reg) ans, in(reg) x, in(reg) k, const BS, options(pure, nomem, nostack))
-    };
-    ans
 }

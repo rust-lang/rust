@@ -66,6 +66,7 @@ pub mod arch {
     #[doc(cfg(any(target_arch = "riscv32")))]
     #[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
     pub mod riscv32 {
+        pub use crate::core_arch::riscv32::*;
         pub use crate::core_arch::riscv_shared::*;
     }
 
@@ -278,6 +279,10 @@ mod aarch64;
 #[cfg(any(target_arch = "arm", doc))]
 #[doc(cfg(any(target_arch = "arm")))]
 mod arm;
+
+#[cfg(any(target_arch = "riscv32", doc))]
+#[doc(cfg(any(target_arch = "riscv32")))]
+mod riscv32;
 
 #[cfg(any(target_arch = "riscv64", doc))]
 #[doc(cfg(any(target_arch = "riscv64")))]

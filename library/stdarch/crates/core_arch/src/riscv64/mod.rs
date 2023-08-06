@@ -1,6 +1,10 @@
 //! RISC-V RV64 specific intrinsics
 use crate::arch::asm;
 
+mod zk;
+
+pub use zk::*;
+
 /// Loads virtual machine memory by unsigned word integer
 ///
 /// This instruction performs an explicit memory access as though `V=1`;
