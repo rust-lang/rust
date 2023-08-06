@@ -716,6 +716,7 @@ fn configure_cmake(
     for flag in extra_compiler_flags {
         cflags.push(&format!(" {flag}"));
     }
+    cflags.push(" -fno-semantic-interposition");
     cfg.define("CMAKE_C_FLAGS", cflags);
     let mut cxxflags: OsString = builder.cflags(target, GitRepo::Llvm, CLang::Cxx).join(" ").into();
     if let Some(ref s) = builder.config.llvm_cxxflags {
@@ -728,6 +729,7 @@ fn configure_cmake(
     for flag in extra_compiler_flags {
         cxxflags.push(&format!(" {flag}"));
     }
+    cxxflags.push(" -fno-semantic-interposition");
     cfg.define("CMAKE_CXX_FLAGS", cxxflags);
     if let Some(ar) = builder.ar(target) {
         if ar.is_absolute() {
@@ -760,7 +762,9 @@ fn configure_cmake(
             if target.contains("apple") || target.contains("windows") {
                 ldflags.push_all("-static-libstdc++");
             } else {
-                ldflags.push_all("-Wl,-Bsymbolic -static-libstdc++");
+                ldflags.push_all(
+                    "-Wl,-Bsymbolic-functions -fno-semantic-interposition -static-libstdc++",
+                );
             }
         }
     }
