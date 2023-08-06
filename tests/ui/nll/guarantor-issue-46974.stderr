@@ -10,11 +10,10 @@ LL |     *x
    |     -- borrow later used here
 
 error: lifetime may not live long enough
-  --> $DIR/guarantor-issue-46974.rs:13:5
+  --> $DIR/guarantor-issue-46974.rs:12:5
    |
 LL | fn bar(s: &Box<(i32,)>) -> &'static i32 {
    |           - let's call the lifetime of this reference `'1`
-LL |     // FIXME(#46983): error message should be better
 LL |     &s.0
    |     ^^^^ returning this value requires that `'1` must outlive `'static`
 
