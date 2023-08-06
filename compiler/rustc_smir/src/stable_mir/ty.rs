@@ -242,3 +242,25 @@ pub struct BoundTy {
     pub var: usize,
     pub kind: BoundTyKind,
 }
+
+pub type Bytes = Vec<Option<u8>>;
+pub type Size = usize;
+pub type Prov = Opaque;
+pub type Align = u64;
+pub type InitMaskMaterialized = Vec<u64>;
+
+/// Stores the provenance information of pointers stored in memory.
+#[derive(Clone, Debug)]
+pub struct ProvenanceMap {
+    /// Provenance in this map applies from the given offset for an entire pointer-size worth of
+    /// bytes. Two entries in this map are always at least a pointer size apart.
+    pub ptrs: Vec<(Size, Prov)>,
+}
+
+#[derive(Clone, Debug)]
+pub struct Allocation {
+    pub bytes: Bytes,
+    pub provenance: ProvenanceMap,
+    pub align: Align,
+    pub mutability: Mutability,
+}
