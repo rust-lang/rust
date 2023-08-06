@@ -78,11 +78,11 @@ impl AllocFnFactory<'_, '_> {
         };
         let args = method.inputs.iter().map(|ty| self.arg_ty(ty, &mut abi_args, &mut mk)).collect();
         let result = self.call_allocator(method.name, args);
-        let (output_ty, output_expr) = self.ret_ty(&method.output, result);
+        let output_ty = self.ret_ty(&method.output);
         let decl = self.cx.fn_decl(abi_args, ast::FnRetTy::Ty(output_ty));
         let header = FnHeader { unsafety: Unsafe::Yes(self.span), ..FnHeader::default() };
         let sig = FnSig { decl, header, span: self.span };
-        let body = Some(self.cx.block_expr(output_expr));
+        let body = Some(self.cx.block_expr(result));
         let kind = ItemKind::Fn(Box::new(Fn {
             defaultness: ast::Defaultness::Final,
             sig,
@@ -140,8 +140,7 @@ impl AllocFnFactory<'_, '_> {
             AllocatorTy::Ptr => {
                 let ident = ident();
                 args.push(self.cx.param(self.span, ident, self.ptr_u8()));
-                let arg = self.cx.expr_ident(self.span, ident);
-                self.cx.expr_cast(self.span, arg, self.ptr_u8())
+                self.cx.expr_ident(self.span, ident)
             }
 
             AllocatorTy::Usize => {
@@ -156,18 +155,11 @@ impl AllocFnFactory<'_, '_> {
         }
     }
 
-    fn ret_ty(&self, ty: &AllocatorTy, expr: P<Expr>) -> (P<Ty>, P<Expr>) {
+    fn ret_ty(&self, ty: &AllocatorTy) -> P<Ty> {
         match *ty {
-            AllocatorTy::ResultPtr => {
-                // We're creating:
-                //
-                //      #expr as *mut u8
+            AllocatorTy::ResultPtr => self.ptr_u8(),
 
-                let expr = self.cx.expr_cast(self.span, expr, self.ptr_u8());
-                (self.ptr_u8(), expr)
-            }
-
-            AllocatorTy::Unit => (self.cx.ty(self.span, TyKind::Tup(ThinVec::new())), expr),
+            AllocatorTy::Unit => self.cx.ty(self.span, TyKind::Tup(ThinVec::new())),
 
             AllocatorTy::Layout | AllocatorTy::Usize | AllocatorTy::Ptr => {
                 panic!("can't convert `AllocatorTy` to an output")
