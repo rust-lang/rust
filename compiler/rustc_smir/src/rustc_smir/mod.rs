@@ -1063,3 +1063,34 @@ impl<'tcx> Stable<'tcx> for rustc_middle::ty::BoundTy {
         BoundTy { var: self.var.as_usize(), kind: self.kind.stable(tables) }
     }
 }
+
+impl<'tcx> Stable<'tcx> for mir::interpret::Allocation {
+    type T = stable_mir::ty::Allocation;
+
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        let size = self.size();
+        let mut bytes: Vec<Option<u8>> = self
+            .inspect_with_uninit_and_ptr_outside_interpreter(0..size.bytes_usize())
+            .iter()
+            .copied()
+            .map(Some)
+            .collect();
+        for (i, b) in bytes.iter_mut().enumerate() {
+            if !self.init_mask().get(rustc_target::abi::Size::from_bytes(i)) {
+                *b = None;
+            }
+        }
+        stable_mir::ty::Allocation {
+            bytes: bytes,
+            provenance: {
+                let mut ptrs = Vec::new();
+                for (size, prov) in self.provenance().ptrs().iter() {
+                    ptrs.push((size.bytes_usize(), opaque(prov)));
+                }
+                stable_mir::ty::ProvenanceMap { ptrs }
+            },
+            align: self.align.bytes(),
+            mutability: self.mutability.stable(tables),
+        }
+    }
+}

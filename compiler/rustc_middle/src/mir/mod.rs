@@ -1592,14 +1592,13 @@ impl<'tcx> Place<'tcx> {
         self.projection.iter().any(|elem| elem.is_indirect())
     }
 
-    /// If MirPhase >= Derefered and if projection contains Deref,
-    /// It's guaranteed to be in the first place
-    pub fn has_deref(&self) -> bool {
-        // To make sure this is not accidentally used in wrong mir phase
-        debug_assert!(
-            self.projection.is_empty() || !self.projection[1..].contains(&PlaceElem::Deref)
-        );
-        self.projection.first() == Some(&PlaceElem::Deref)
+    /// Returns `true` if this `Place`'s first projection is `Deref`.
+    ///
+    /// This is useful because for MIR phases `AnalysisPhase::PostCleanup` and later,
+    /// `Deref` projections can only occur as the first projection. In that case this method
+    /// is equivalent to `is_indirect`, but faster.
+    pub fn is_indirect_first_projection(&self) -> bool {
+        self.as_ref().is_indirect_first_projection()
     }
 
     /// Finds the innermost `Local` from this `Place`, *if* it is either a local itself or
@@ -1672,9 +1671,16 @@ impl<'tcx> PlaceRef<'tcx> {
         self.projection.iter().any(|elem| elem.is_indirect())
     }
 
-    /// If MirPhase >= Derefered and if projection contains Deref,
-    /// It's guaranteed to be in the first place
-    pub fn has_deref(&self) -> bool {
+    /// Returns `true` if this `Place`'s first projection is `Deref`.
+    ///
+    /// This is useful because for MIR phases `AnalysisPhase::PostCleanup` and later,
+    /// `Deref` projections can only occur as the first projection. In that case this method
+    /// is equivalent to `is_indirect`, but faster.
+    pub fn is_indirect_first_projection(&self) -> bool {
+        // To make sure this is not accidentally used in wrong mir phase
+        debug_assert!(
+            self.projection.is_empty() || !self.projection[1..].contains(&PlaceElem::Deref)
+        );
         self.projection.first() == Some(&PlaceElem::Deref)
     }
 

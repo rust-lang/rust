@@ -247,7 +247,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             AddressOf(_, place) => {
                 // Figure out whether this is an addr_of of an already raw place.
-                let place_base_raw = if place.has_deref() {
+                let place_base_raw = if place.is_indirect_first_projection() {
                     let ty = self.frame().body.local_decls[place.local].ty;
                     ty.is_unsafe_ptr()
                 } else {
