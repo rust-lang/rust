@@ -1203,6 +1203,27 @@ fn destructing_assignment() {
         "#,
         5,
     );
+    check_number(
+        r#"
+    const GOAL: u8 = {
+        let (mut a, mut b) = (2, 5);
+        (a, b) = (b, a);
+        a * 10 + b
+    };
+        "#,
+        52,
+    );
+    check_number(
+        r#"
+    struct Point { x: i32, y: i32 }
+    const GOAL: i32 = {
+        let mut p = Point { x: 5, y: 6 };
+        (p.x, _) = (p.y, p.x);
+        p.x * 10 + p.y
+    };
+        "#,
+        66,
+    );
 }
 
 #[test]

@@ -1244,6 +1244,41 @@ impl<'ctx> MirLowerCtx<'ctx> {
         }
     }
 
+    fn lower_destructing_assignment(
+        &mut self,
+        mut current: BasicBlockId,
+        lhs: ExprId,
+        rhs: Place,
+        span: MirSpan,
+    ) -> Result<Option<BasicBlockId>> {
+        match &self.body.exprs[lhs] {
+            Expr::Tuple { exprs, is_assignee_expr: _ } => {
+                for (i, expr) in exprs.iter().enumerate() {
+                    let Some(c) = self.lower_destructing_assignment(
+                        current,
+                        *expr,
+                        rhs.project(ProjectionElem::TupleOrClosureField(i)),
+                        span,
+                    )? else {
+                        return Ok(None);
+                    };
+                    current = c;
+                }
+                Ok(Some(current))
+            }
+            Expr::Underscore => Ok(Some(current)),
+            _ => {
+                let Some((lhs_place, current)) =
+                    self.lower_expr_as_place(current, lhs, false)?
+                else {
+                    return Ok(None);
+                };
+                self.push_assignment(current, lhs_place, Operand::Copy(rhs).into(), span);
+                Ok(Some(current))
+            }
+        }
+    }
+
     fn lower_assignment(
         &mut self,
         current: BasicBlockId,
@@ -1258,6 +1293,15 @@ impl<'ctx> MirLowerCtx<'ctx> {
         };
         if matches!(&self.body.exprs[lhs], Expr::Underscore) {
             return Ok(Some(current));
+        }
+        if matches!(
+            &self.body.exprs[lhs],
+            Expr::Tuple { .. } | Expr::RecordLit { .. } | Expr::Call { .. }
+        ) {
+            let temp = self.temp(self.expr_ty_after_adjustments(rhs), current, rhs.into())?;
+            let temp = Place::from(temp);
+            self.push_assignment(current, temp.clone(), rhs_op.into(), span);
+            return self.lower_destructing_assignment(current, lhs, temp, span);
         }
         let Some((lhs_place, current)) =
             self.lower_expr_as_place(current, lhs, false)?
