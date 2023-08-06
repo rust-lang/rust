@@ -562,7 +562,7 @@ pub(crate) fn make_test(
                 .diagnostic_width(Some(80))
                 .supports_color();
 
-            let emitter = EmitterWriter::new(Box::new(io::empty()), fallback_bundle);
+            let emitter = EmitterWriter::new(Box::new(io::sink()), fallback_bundle);
 
             // FIXME(misdreavus): pass `-Z treat-err-as-bug` to the doctest parser
             let handler = Handler::with_emitter(Box::new(emitter)).disable_warnings();
@@ -738,7 +738,7 @@ fn check_if_attr_is_complete(source: &str, edition: Edition) -> bool {
                 false,
             );
 
-            let emitter = EmitterWriter::new(Box::new(io::empty()), fallback_bundle);
+            let emitter = EmitterWriter::new(Box::new(io::sink()), fallback_bundle);
 
             let handler = Handler::with_emitter(Box::new(emitter)).disable_warnings();
             let sess = ParseSess::with_span_handler(handler, sm);
