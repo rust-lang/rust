@@ -173,7 +173,7 @@ impl Command {
         // the merge has confused the heck out of josh in the past.
         // We pass `--no-verify` to avoid running git hooks like `./miri fmt` that could in turn
         // trigger auto-actions.
-        sh.write_file("rust-version", &commit)?;
+        sh.write_file("rust-version", format!("{commit}\n"))?;
         const PREPARING_COMMIT_MESSAGE: &str = "Preparing for merge from rustc";
         cmd!(sh, "git commit rust-version --no-verify -m {PREPARING_COMMIT_MESSAGE}")
             .run()
