@@ -34,8 +34,8 @@ pub(crate) unsafe fn codegen(
     if kind == AllocatorKind::Default {
         for method in ALLOCATOR_METHODS {
             let mut args = Vec::with_capacity(method.inputs.len());
-            for ty in method.inputs.iter() {
-                match *ty {
+            for input in method.inputs.iter() {
+                match input.ty {
                     AllocatorTy::Layout => {
                         args.push(usize); // size
                         args.push(usize); // align
