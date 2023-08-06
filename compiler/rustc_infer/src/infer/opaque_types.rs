@@ -64,7 +64,7 @@ impl<'tcx> InferCtxt<'tcx> {
             ct_op: |ct| ct,
             ty_op: |ty| match *ty.kind() {
                 ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. })
-                    if replace_opaque_type(def_id) =>
+                    if replace_opaque_type(def_id) && !ty.has_escaping_bound_vars() =>
                 {
                     let def_span = self.tcx.def_span(def_id);
                     let span = if span.contains(def_span) { def_span } else { span };
