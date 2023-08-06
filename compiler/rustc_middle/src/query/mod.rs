@@ -398,11 +398,6 @@ rustc_queries! {
         desc { "computing `#[expect]`ed lints in this crate" }
     }
 
-    query parent_module_from_def_id(key: LocalDefId) -> LocalDefId {
-        eval_always
-        desc { |tcx| "getting the parent module of `{}`", tcx.def_path_str(key) }
-    }
-
     query expn_that_defined(key: DefId) -> rustc_span::ExpnId {
         desc { |tcx| "getting the expansion that defined `{}`", tcx.def_path_str(key) }
         separate_provide_extern
