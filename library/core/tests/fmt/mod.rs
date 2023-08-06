@@ -12,6 +12,13 @@ fn test_format_flags() {
 }
 
 #[test]
+fn test_arguments_from_str() {
+    assert_eq!(core::fmt::Arguments::from(&"a string literal").to_string(), "a string literal");
+
+    assert_eq!(core::fmt::Arguments::from(&"a string literal").as_str(), Some("a string literal"));
+}
+
+#[test]
 fn test_pointer_formats_data_pointer() {
     let b: &[u8] = b"";
     let s: &str = "";
