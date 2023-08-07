@@ -14,6 +14,7 @@
 #![no_builtins]
 #![no_std]
 #![allow(unused_features)]
+#![allow(internal_features)]
 // We use `u128` in a whole bunch of places which we currently agree with the
 // compiler on ABIs and such, so we should be "good enough" for now and changes
 // to the `u128` ABI will be reflected here.
