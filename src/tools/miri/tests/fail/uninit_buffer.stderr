@@ -1,8 +1,8 @@
 error: Undefined Behavior: reading memory at ALLOC[0x0..0x10], but memory is uninitialized at [0x4..0x10], and this operation requires initialized memory
   --> RUSTLIB/core/src/slice/cmp.rs:LL:CC
    |
-LL |         let mut order = unsafe { memcmp(left.as_ptr(), right.as_ptr(), len) as isize };
-   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ reading memory at ALLOC[0x0..0x10], but memory is uninitialized at [0x4..0x10], and this operation requires initialized memory
+LL |         let mut order = unsafe { compare_bytes(left.as_ptr(), right.as_ptr(), len) as isize };
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ reading memory at ALLOC[0x0..0x10], but memory is uninitialized at [0x4..0x10], and this operation requires initialized memory
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

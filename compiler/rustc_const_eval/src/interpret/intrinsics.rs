@@ -261,6 +261,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             sym::write_bytes => {
                 self.write_bytes_intrinsic(&args[0], &args[1], &args[2])?;
             }
+            sym::compare_bytes => {
+                let result = self.compare_bytes_intrinsic(&args[0], &args[1], &args[2])?;
+                self.write_scalar(result, dest)?;
+            }
             sym::arith_offset => {
                 let ptr = self.read_pointer(&args[0])?;
                 let offset_count = self.read_target_isize(&args[1])?;
@@ -641,6 +645,24 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         let bytes = std::iter::repeat(byte).take(len.bytes_usize());
         self.write_bytes_ptr(dst, bytes)
+    }
+
+    pub(crate) fn compare_bytes_intrinsic(
+        &mut self,
+        left: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::Provenance>,
+        right: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::Provenance>,
+        byte_count: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::Provenance>,
+    ) -> InterpResult<'tcx, Scalar<M::Provenance>> {
+        let left = self.read_pointer(left)?;
+        let right = self.read_pointer(right)?;
+        let n = Size::from_bytes(self.read_target_usize(byte_count)?);
+
+        let left_bytes = self.read_bytes_ptr_strip_provenance(left, n)?;
+        let right_bytes = self.read_bytes_ptr_strip_provenance(right, n)?;
+
+        // `Ordering`'s discriminants are -1/0/+1, so casting does the right thing.
+        let result = Ord::cmp(left_bytes, right_bytes) as i32;
+        Ok(Scalar::from_i32(result))
     }
 
     pub(crate) fn raw_eq_intrinsic(
