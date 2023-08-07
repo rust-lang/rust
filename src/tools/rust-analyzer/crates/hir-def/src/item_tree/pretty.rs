@@ -198,8 +198,8 @@ impl Printer<'_> {
         self.print_attrs_of(item);
 
         match item {
-            ModItem::Import(it) => {
-                let Import { visibility, use_tree, ast_id: _ } = &self.tree[it];
+            ModItem::Use(it) => {
+                let Use { visibility, use_tree, ast_id: _ } = &self.tree[it];
                 self.print_visibility(*visibility);
                 w!(self, "use ");
                 self.print_use_tree(use_tree);

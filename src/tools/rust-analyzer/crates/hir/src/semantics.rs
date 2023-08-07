@@ -15,11 +15,7 @@ use hir_def::{
     type_ref::Mutability,
     AsMacroCall, DefWithBodyId, FieldId, FunctionId, MacroId, TraitId, VariantId,
 };
-use hir_expand::{
-    db::ExpandDatabase,
-    name::{known, AsName},
-    ExpansionInfo, MacroCallId,
-};
+use hir_expand::{db::ExpandDatabase, name::AsName, ExpansionInfo, MacroCallId};
 use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::{smallvec, SmallVec};
@@ -437,10 +433,6 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
 
     pub fn resolve_path(&self, path: &ast::Path) -> Option<PathResolution> {
         self.imp.resolve_path(path)
-    }
-
-    pub fn resolve_extern_crate(&self, extern_crate: &ast::ExternCrate) -> Option<Crate> {
-        self.imp.resolve_extern_crate(extern_crate)
     }
 
     pub fn resolve_variant(&self, record_lit: ast::RecordExpr) -> Option<VariantDef> {
@@ -1242,18 +1234,6 @@ impl<'db> SemanticsImpl<'db> {
         self.analyze(path.syntax())?.resolve_path(self.db, path)
     }
 
-    fn resolve_extern_crate(&self, extern_crate: &ast::ExternCrate) -> Option<Crate> {
-        let krate = self.scope(extern_crate.syntax())?.krate();
-        let name = extern_crate.name_ref()?.as_name();
-        if name == known::SELF_PARAM {
-            return Some(krate);
-        }
-        krate
-            .dependencies(self.db)
-            .into_iter()
-            .find_map(|dep| (dep.name == name).then_some(dep.krate))
-    }
-
     fn resolve_variant(&self, record_lit: ast::RecordExpr) -> Option<VariantId> {
         self.analyze(record_lit.syntax())?.resolve_variant(self.db, record_lit)
     }
@@ -1603,6 +1583,7 @@ to_def_impls![
     (crate::Local, ast::SelfParam, self_param_to_def),
     (crate::Label, ast::Label, label_to_def),
     (crate::Adt, ast::Adt, adt_to_def),
+    (crate::ExternCrateDecl, ast::ExternCrate, extern_crate_to_def),
 ];
 
 fn find_root(node: &SyntaxNode) -> SyntaxNode {

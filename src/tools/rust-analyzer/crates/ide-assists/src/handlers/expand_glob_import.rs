@@ -120,7 +120,7 @@ fn find_parent_and_path(
 
 fn def_is_referenced_in(def: Definition, ctx: &AssistContext<'_>) -> bool {
     let search_scope = SearchScope::single_file(ctx.file_id());
-    def.usages(&ctx.sema).in_scope(search_scope).at_least_one()
+    def.usages(&ctx.sema).in_scope(&search_scope).at_least_one()
 }
 
 #[derive(Debug, Clone)]

@@ -198,6 +198,20 @@ impl ast::HasModuleItem for MacroItems {}
 impl MacroItems {}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct MacroEagerInput {
+    pub(crate) syntax: SyntaxNode,
+}
+impl MacroEagerInput {
+    pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
+    pub fn exprs(&self) -> AstChildren<Expr> { support::children(&self.syntax) }
+    pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
+    pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['{']) }
+    pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
+    pub fn l_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['[']) }
+    pub fn r_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![']']) }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MacroStmts {
     pub(crate) syntax: SyntaxNode,
 }
@@ -1913,6 +1927,17 @@ impl AstNode for TokenTree {
 }
 impl AstNode for MacroItems {
     fn can_cast(kind: SyntaxKind) -> bool { kind == MACRO_ITEMS }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for MacroEagerInput {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == MACRO_EAGER_INPUT }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -4356,6 +4381,11 @@ impl std::fmt::Display for TokenTree {
     }
 }
 impl std::fmt::Display for MacroItems {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for MacroEagerInput {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

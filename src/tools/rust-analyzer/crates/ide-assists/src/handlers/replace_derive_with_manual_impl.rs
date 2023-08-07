@@ -10,7 +10,7 @@ use crate::{
     assist_context::{AssistContext, Assists, SourceChangeBuilder},
     utils::{
         add_trait_assoc_items_to_impl, filter_assoc_items, gen_trait_fn_body,
-        generate_trait_impl_text, render_snippet, Cursor, DefaultMethods,
+        generate_trait_impl_text, render_snippet, Cursor, DefaultMethods, IgnoreAssocItems,
     },
     AssistId, AssistKind,
 };
@@ -172,7 +172,17 @@ fn impl_def_from_trait(
 ) -> Option<(ast::Impl, ast::AssocItem)> {
     let trait_ = trait_?;
     let target_scope = sema.scope(annotated_name.syntax())?;
-    let trait_items = filter_assoc_items(sema, &trait_.items(sema.db), DefaultMethods::No);
+
+    // Keep assoc items of local crates even if they have #[doc(hidden)] attr.
+    let ignore_items = if trait_.module(sema.db).krate().origin(sema.db).is_local() {
+        IgnoreAssocItems::No
+    } else {
+        IgnoreAssocItems::DocHiddenAttrPresent
+    };
+
+    let trait_items =
+        filter_assoc_items(sema, &trait_.items(sema.db), DefaultMethods::No, ignore_items);
+
     if trait_items.is_empty() {
         return None;
     }

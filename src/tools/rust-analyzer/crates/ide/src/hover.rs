@@ -9,7 +9,7 @@ use either::Either;
 use hir::{db::DefDatabase, HasSource, LangItem, Semantics};
 use ide_db::{
     base_db::FileRange,
-    defs::{Definition, IdentClass, OperatorClass},
+    defs::{Definition, IdentClass, NameRefClass, OperatorClass},
     famous_defs::FamousDefs,
     helpers::pick_best_token,
     FxIndexSet, RootDatabase,
@@ -186,7 +186,20 @@ fn hover_simple(
                         // rendering poll is very confusing
                         return None;
                     }
-                    Some(class.definitions().into_iter().zip(iter::once(node).cycle()))
+                    if let IdentClass::NameRefClass(NameRefClass::ExternCrateShorthand {
+                        decl,
+                        ..
+                    }) = class
+                    {
+                        return Some(vec![(Definition::ExternCrateDecl(decl), node)]);
+                    }
+                    Some(
+                        class
+                            .definitions()
+                            .into_iter()
+                            .zip(iter::once(node).cycle())
+                            .collect::<Vec<_>>(),
+                    )
                 })
                 .flatten()
                 .unique_by(|&(def, _)| def)

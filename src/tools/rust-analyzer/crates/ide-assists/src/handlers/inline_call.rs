@@ -80,7 +80,7 @@ pub(crate) fn inline_into_callers(acc: &mut Assists, ctx: &AssistContext<'_>) ->
 
     let is_recursive_fn = usages
         .clone()
-        .in_scope(SearchScope::file_range(FileRange {
+        .in_scope(&SearchScope::file_range(FileRange {
             file_id: def_file,
             range: func_body.syntax().text_range(),
         }))

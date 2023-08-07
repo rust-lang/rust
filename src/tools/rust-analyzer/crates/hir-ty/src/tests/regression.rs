@@ -1267,6 +1267,8 @@ fn test() {
         "#,
         expect![[r#"
             10..59 '{     ...   } }': ()
+            16..57 'while ...     }': !
+            16..57 'while ...     }': ()
             16..57 'while ...     }': ()
             22..30 '{ true }': bool
             24..28 'true': bool
@@ -1976,5 +1978,25 @@ fn x(a: [i32; 4]) {
     let b = a.f();
 }
         "#,
+    );
+}
+
+#[test]
+fn dont_unify_on_casts() {
+    // #15246
+    check_types(
+        r#"
+fn unify(_: [bool; 1]) {}
+fn casted(_: *const bool) {}
+fn default<T>() -> T { loop {} }
+
+fn test() {
+    let foo = default();
+      //^^^ [bool; 1]
+
+    casted(&foo as *const _);
+    unify(foo);
+}
+"#,
     );
 }

@@ -232,7 +232,7 @@ fn find_related_tests(
     for def in defs {
         let defs = def
             .usages(sema)
-            .set_scope(search_scope.clone())
+            .set_scope(search_scope.as_ref())
             .all()
             .references
             .into_values()
@@ -309,7 +309,7 @@ pub(crate) fn runnable_fn(
 ) -> Option<Runnable> {
     let name = def.name(sema.db).to_smol_str();
 
-    let root = def.module(sema.db).krate().root_module(sema.db);
+    let root = def.module(sema.db).krate().root_module();
 
     let kind = if name == "main" && def.module(sema.db) == root {
         RunnableKind::Bin

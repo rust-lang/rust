@@ -48,14 +48,15 @@ use hir_def::{
     layout::{self, ReprOptions, TargetDataLayout},
     macro_id_to_def_id,
     nameres::{self, diagnostics::DefDiagnostic},
+    path::ImportAlias,
     per_ns::PerNs,
     resolver::{HasResolver, Resolver},
     src::HasSource as _,
-    AssocItemId, AssocItemLoc, AttrDefId, ConstId, ConstParamId, DefWithBodyId, EnumId,
-    EnumVariantId, FunctionId, GenericDefId, HasModule, ImplId, InTypeConstId, ItemContainerId,
-    LifetimeParamId, LocalEnumVariantId, LocalFieldId, Lookup, MacroExpander, MacroId, ModuleId,
-    StaticId, StructId, TraitAliasId, TraitId, TypeAliasId, TypeOrConstParamId, TypeParamId,
-    UnionId,
+    AssocItemId, AssocItemLoc, AttrDefId, ConstId, ConstParamId, CrateRootModuleId, DefWithBodyId,
+    EnumId, EnumVariantId, ExternCrateId, FunctionId, GenericDefId, HasModule, ImplId,
+    InTypeConstId, ItemContainerId, LifetimeParamId, LocalEnumVariantId, LocalFieldId, Lookup,
+    MacroExpander, MacroId, ModuleId, StaticId, StructId, TraitAliasId, TraitId, TypeAliasId,
+    TypeOrConstParamId, TypeParamId, UnionId,
 };
 use hir_expand::{name::name, MacroCallKind};
 use hir_ty::{
@@ -200,9 +201,8 @@ impl Crate {
         db.crate_graph().transitive_rev_deps(self.id).map(|id| Crate { id })
     }
 
-    pub fn root_module(self, db: &dyn HirDatabase) -> Module {
-        let def_map = db.crate_def_map(self.id);
-        Module { id: def_map.crate_root().into() }
+    pub fn root_module(self) -> Module {
+        Module { id: CrateRootModuleId::from(self.id).into() }
     }
 
     pub fn modules(self, db: &dyn HirDatabase) -> Vec<Module> {
@@ -247,7 +247,7 @@ impl Crate {
     /// Try to get the root URL of the documentation of a crate.
     pub fn get_html_root_url(self: &Crate, db: &dyn HirDatabase) -> Option<String> {
         // Look for #![doc(html_root_url = "...")]
-        let attrs = db.attrs(AttrDefId::ModuleId(self.root_module(db).into()));
+        let attrs = db.attrs(AttrDefId::ModuleId(self.root_module().into()));
         let doc_url = attrs.by_key("doc").find_string_value_in_tt("html_root_url");
         doc_url.map(|s| s.trim_matches('"').trim_end_matches('/').to_owned() + "/")
     }
@@ -2125,6 +2125,47 @@ impl SelfParam {
 impl HasVisibility for Function {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
         db.function_visibility(self.id)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct ExternCrateDecl {
+    pub(crate) id: ExternCrateId,
+}
+
+impl ExternCrateDecl {
+    pub fn module(self, db: &dyn HirDatabase) -> Module {
+        self.id.module(db.upcast()).into()
+    }
+
+    pub fn resolved_crate(self, db: &dyn HirDatabase) -> Option<Crate> {
+        db.extern_crate_decl_data(self.id).crate_id.map(Into::into)
+    }
+
+    pub fn name(self, db: &dyn HirDatabase) -> Name {
+        db.extern_crate_decl_data(self.id).name.clone()
+    }
+
+    pub fn alias(self, db: &dyn HirDatabase) -> Option<ImportAlias> {
+        db.extern_crate_decl_data(self.id).alias.clone()
+    }
+
+    /// Returns the name under which this crate is made accessible, taking `_` into account.
+    pub fn alias_or_name(self, db: &dyn HirDatabase) -> Option<Name> {
+        let extern_crate_decl_data = db.extern_crate_decl_data(self.id);
+        match &extern_crate_decl_data.alias {
+            Some(ImportAlias::Underscore) => None,
+            Some(ImportAlias::Alias(alias)) => Some(alias.clone()),
+            None => Some(extern_crate_decl_data.name.clone()),
+        }
+    }
+}
+
+impl HasVisibility for ExternCrateDecl {
+    fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
+        db.extern_crate_decl_data(self.id)
+            .visibility
+            .resolve(db.upcast(), &self.id.resolver(db.upcast()))
     }
 }
 
@@ -4713,6 +4754,12 @@ impl HasCrate for Module {
 
 pub trait HasContainer {
     fn container(&self, db: &dyn HirDatabase) -> ItemContainer;
+}
+
+impl HasContainer for ExternCrateDecl {
+    fn container(&self, db: &dyn HirDatabase) -> ItemContainer {
+        container_id_to_hir(self.id.lookup(db.upcast()).container.into())
+    }
 }
 
 impl HasContainer for Module {

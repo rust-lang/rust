@@ -82,17 +82,19 @@ pub(crate) fn move_const_to_impl(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
         return None;
     }
 
-    let usages =
-        Definition::Const(def).usages(&ctx.sema).in_scope(SearchScope::file_range(FileRange {
-            file_id: ctx.file_id(),
-            range: parent_fn.syntax().text_range(),
-        }));
-
     acc.add(
         AssistId("move_const_to_impl", crate::AssistKind::RefactorRewrite),
         "Move const to impl block",
         const_.syntax().text_range(),
         |builder| {
+            let usages = Definition::Const(def)
+                .usages(&ctx.sema)
+                .in_scope(&SearchScope::file_range(FileRange {
+                    file_id: ctx.file_id(),
+                    range: parent_fn.syntax().text_range(),
+                }))
+                .all();
+
             let range_to_delete = match const_.syntax().next_sibling_or_token() {
                 Some(s) if matches!(s.kind(), SyntaxKind::WHITESPACE) => {
                     // Remove following whitespaces too.
@@ -103,7 +105,7 @@ pub(crate) fn move_const_to_impl(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
             builder.delete(range_to_delete);
 
             let const_ref = format!("Self::{}", name.display(ctx.db()));
-            for range in usages.all().file_ranges().map(|it| it.range) {
+            for range in usages.file_ranges().map(|it| it.range) {
                 builder.replace(range, const_ref.clone());
             }
 

@@ -262,6 +262,7 @@ pub enum SyntaxKind {
     TYPE_BOUND_LIST,
     MACRO_ITEMS,
     MACRO_STMTS,
+    MACRO_EAGER_INPUT,
     #[doc(hidden)]
     __LAST,
 }

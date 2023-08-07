@@ -23,17 +23,17 @@ use crate::{
     visibility::{self, Visibility},
     AttrDefId, BlockId, BlockLoc, ConstBlockId, ConstBlockLoc, ConstId, ConstLoc, DefWithBodyId,
     EnumId, EnumLoc, ExternBlockId, ExternBlockLoc, ExternCrateId, ExternCrateLoc, FunctionId,
-    FunctionLoc, GenericDefId, ImplId, ImplLoc, ImportId, ImportLoc, InTypeConstId, InTypeConstLoc,
-    LocalEnumVariantId, LocalFieldId, Macro2Id, Macro2Loc, MacroRulesId, MacroRulesLoc,
-    ProcMacroId, ProcMacroLoc, StaticId, StaticLoc, StructId, StructLoc, TraitAliasId,
-    TraitAliasLoc, TraitId, TraitLoc, TypeAliasId, TypeAliasLoc, UnionId, UnionLoc, VariantId,
+    FunctionLoc, GenericDefId, ImplId, ImplLoc, InTypeConstId, InTypeConstLoc, LocalEnumVariantId,
+    LocalFieldId, Macro2Id, Macro2Loc, MacroRulesId, MacroRulesLoc, ProcMacroId, ProcMacroLoc,
+    StaticId, StaticLoc, StructId, StructLoc, TraitAliasId, TraitAliasLoc, TraitId, TraitLoc,
+    TypeAliasId, TypeAliasLoc, UnionId, UnionLoc, UseId, UseLoc, VariantId,
 };
 
 #[salsa::query_group(InternDatabaseStorage)]
 pub trait InternDatabase: SourceDatabase {
     // region: items
     #[salsa::interned]
-    fn intern_import(&self, loc: ImportLoc) -> ImportId;
+    fn intern_use(&self, loc: UseLoc) -> UseId;
     #[salsa::interned]
     fn intern_extern_crate(&self, loc: ExternCrateLoc) -> ExternCrateId;
     #[salsa::interned]

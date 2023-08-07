@@ -65,12 +65,12 @@ pub mod token_id {
     }
     impl TokenTree {
         pub const fn empty() -> Self {
-            Self::Subtree(Subtree { delimiter: Delimiter::unspecified(), token_trees: vec![] })
+            Self::Subtree(Subtree::empty())
         }
     }
 
     impl Subtree {
-        pub fn visit_ids(&mut self, f: &impl Fn(TokenId) -> TokenId) {
+        pub fn visit_ids(&mut self, f: &mut impl FnMut(TokenId) -> TokenId) {
             self.delimiter.open = f(self.delimiter.open);
             self.delimiter.close = f(self.delimiter.close);
             self.token_trees.iter_mut().for_each(|tt| match tt {
@@ -122,7 +122,6 @@ impl_from!(Literal<Span>, Punct<Span>, Ident<Span> for Leaf);
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Subtree<Span> {
-    // FIXME, this should not be Option
     pub delimiter: Delimiter<Span>,
     pub token_trees: Vec<TokenTree<Span>>,
 }

@@ -49,8 +49,11 @@ fn check_nth_fix(nth: usize, ra_fixture_before: &str, ra_fixture_after: &str) {
         let file_id = *source_change.source_file_edits.keys().next().unwrap();
         let mut actual = db.file_text(file_id).to_string();
 
-        for edit in source_change.source_file_edits.values() {
+        for (edit, snippet_edit) in source_change.source_file_edits.values() {
             edit.apply(&mut actual);
+            if let Some(snippet_edit) = snippet_edit {
+                snippet_edit.apply(&mut actual);
+            }
         }
         actual
     };
