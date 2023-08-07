@@ -762,9 +762,7 @@ fn configure_cmake(
             if target.contains("apple") || target.contains("windows") {
                 ldflags.push_all("-static-libstdc++");
             } else {
-                ldflags.push_all(
-                    "-Wl,-Bsymbolic-functions -fno-semantic-interposition -static-libstdc++",
-                );
+                ldflags.push_all("-Wl,-Bsymbolic -fno-semantic-interposition -static-libstdc++");
             }
         }
     }
