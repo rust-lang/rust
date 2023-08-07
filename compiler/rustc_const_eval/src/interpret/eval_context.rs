@@ -159,8 +159,7 @@ pub enum StackPopCleanup {
 pub struct LocalState<'tcx, Prov: Provenance = AllocId> {
     pub value: LocalValue<Prov>,
     /// Don't modify if `Some`, this is only used to prevent computing the layout twice.
-    /// Layout needs to be computed lazily because ConstProp wants to run on frames where we can't
-    /// compute the layout of all locals.
+    /// Avoids computing the layout of locals that are never actually initialized.
     pub layout: Cell<Option<TyAndLayout<'tcx>>>,
 }
 
@@ -919,15 +918,72 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx> {
         trace!("{:?} is now live", local);
 
-        let layout = self.layout_of_local(self.frame(), local, None)?;
-        let local_val = LocalValue::Live(if layout.is_sized() {
-            assert!(matches!(meta, MemPlaceMeta::None)); // we're dropping the metadata
-            // Just make this an efficient immediate.
-            Operand::Immediate(Immediate::Uninit)
+        // We avoid `ty.is_trivially_sized` since that (a) cannot assume WF, so it recurses through
+        // all fields of a tuple, and (b) does something expensive for ADTs.
+        fn is_very_trivially_sized(ty: Ty<'_>) -> bool {
+            match ty.kind() {
+                ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
+                | ty::Uint(_)
+                | ty::Int(_)
+                | ty::Bool
+                | ty::Float(_)
+                | ty::FnDef(..)
+                | ty::FnPtr(_)
+                | ty::RawPtr(..)
+                | ty::Char
+                | ty::Ref(..)
+                | ty::Generator(..)
+                | ty::GeneratorWitness(..)
+                | ty::GeneratorWitnessMIR(..)
+                | ty::Array(..)
+                | ty::Closure(..)
+                | ty::Never
+                | ty::Error(_) => true,
+
+                ty::Str | ty::Slice(_) | ty::Dynamic(..) | ty::Foreign(..) => false,
+
+                ty::Tuple(tys) => tys.last().iter().all(|ty| is_very_trivially_sized(**ty)),
+
+                // We don't want to do any queries, so there is not much we can do with ADTs.
+                ty::Adt(..) => false,
+
+                ty::Alias(..) | ty::Param(_) | ty::Placeholder(..) => false,
+
+                ty::Infer(ty::TyVar(_)) => false,
+
+                ty::Bound(..)
+                | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+                    bug!("`is_very_trivially_sized` applied to unexpected type: {:?}", ty)
+                }
+            }
+        }
+
+        // This is a hot function, we avoid computing the layout when possible.
+        // `unsized_` will be `None` for sized types and `Some(layout)` for unsized types.
+        let unsized_ = if is_very_trivially_sized(self.body().local_decls[local].ty) {
+            None
         } else {
-            // Need to allocate some memory.
+            // We need the layout.
+            let layout = self.layout_of_local(self.frame(), local, None)?;
+            if layout.is_sized() { None } else { Some(layout) }
+        };
+
+        let local_val = LocalValue::Live(if let Some(layout) = unsized_ {
+            if !meta.has_meta() {
+                throw_unsup!(UnsizedLocal);
+            }
+            // Need to allocate some memory, since `Immediate::Uninit` cannot be unsized.
             let dest_place = self.allocate_dyn(layout, MemoryKind::Stack, meta)?;
             Operand::Indirect(*dest_place)
+        } else {
+            assert!(!meta.has_meta()); // we're dropping the metadata
+            // Just make this an efficient immediate.
+            // Note that not calling `layout_of` here does have one real consequence:
+            // if the type is too big, we'll only notice this when the local is actually initialized,
+            // which is a bit too late -- we should ideally notice this alreayd here, when the memory
+            // is conceptually allocated. But given how rare that error is and that this is a hot function,
+            // we accept this downside for now.
+            Operand::Immediate(Immediate::Uninit)
         });
 
         // StorageLive expects the local to be dead, and marks it live.
@@ -939,13 +995,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     /// Mark a storage as live, killing the previous content.
+    #[inline(always)]
     pub fn storage_live(&mut self, local: mir::Local) -> InterpResult<'tcx> {
-        trace!("{:?} is now live", local);
-
-        if self.layout_of_local(self.frame(), local, None)?.is_unsized() {
-            throw_unsup!(UnsizedLocal);
-        }
-
         self.storage_live_dyn(local, MemPlaceMeta::None)
     }
 
