@@ -110,6 +110,12 @@ mod test_utils;
 // whether to run internal tests or not
 const RUN_INTERNAL_TESTS: bool = cfg!(feature = "internal");
 
+fn canonicalize(path: impl AsRef<Path>) -> PathBuf {
+    let path = path.as_ref();
+    fs::create_dir_all(path).unwrap();
+    fs::canonicalize(path).unwrap_or_else(|err| panic!("{} cannot be canonicalized: {err}", path.display()))
+}
+
 fn base_config(test_dir: &str) -> (compiletest::Config, Args) {
     let args = Args::test();
     let mut config = compiletest::Config {
@@ -124,10 +130,11 @@ fn base_config(test_dir: &str) -> (compiletest::Config, Args) {
             OutputConflictHandling::Error("cargo uibless".into())
         },
         target: None,
-        out_dir: PathBuf::from(std::env::var_os("CARGO_TARGET_DIR").unwrap_or("target".into()))
-            .join("ui_test")
-            .canonicalize()
-            .unwrap(),
+        out_dir: canonicalize(
+            std::env::var_os("CARGO_TARGET_DIR")
+                .map_or_else(|| std::env::current_dir().unwrap().join("target"), PathBuf::from),
+        )
+        .join("ui_test"),
         ..compiletest::Config::rustc(Path::new("tests").join(test_dir))
     };
     let current_exe_path = env::current_exe().unwrap();
@@ -178,7 +185,7 @@ fn run_ui() {
     let (config, args) = base_config("ui");
     //config.rustfix_coverage = true;
     // use tests/clippy.toml
-    let _g = VarGuard::set("CARGO_MANIFEST_DIR", fs::canonicalize("tests").unwrap());
+    let _g = VarGuard::set("CARGO_MANIFEST_DIR", canonicalize("tests"));
     let _threads = VarGuard::set(
         "RUST_TEST_THREADS",
         // if RUST_TEST_THREADS is set, adhere to it, otherwise override it
@@ -238,8 +245,7 @@ fn run_ui_toml() {
 
     config.stderr_filter(
         &regex::escape(
-            &fs::canonicalize("tests")
-                .unwrap()
+            &canonicalize("tests")
                 .parent()
                 .unwrap()
                 .display()
@@ -298,8 +304,7 @@ fn run_ui_cargo() {
 
     config.stderr_filter(
         &regex::escape(
-            &fs::canonicalize("tests")
-                .unwrap()
+            &canonicalize("tests")
                 .parent()
                 .unwrap()
                 .display()
@@ -318,7 +323,13 @@ fn run_ui_cargo() {
         |path, _args| test_filter(path) && path.ends_with("Cargo.toml"),
         |config, path| {
             let mut config = config.clone();
-            config.out_dir = PathBuf::from("target/ui_test_cargo/").join(path.parent().unwrap());
+            config.out_dir = canonicalize(
+                std::env::current_dir()
+                    .unwrap()
+                    .join("target")
+                    .join("ui_test_cargo/")
+                    .join(path.parent().unwrap()),
+            );
             Some(config)
         },
         if quiet {
