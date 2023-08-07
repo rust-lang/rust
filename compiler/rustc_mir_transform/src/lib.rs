@@ -424,6 +424,10 @@ fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &
 
     run_analysis_to_runtime_passes(tcx, &mut body);
 
+    // Now that drop elaboration has been performed, we can check for
+    // unconditional drop recursion.
+    rustc_mir_build::lints::check_drop_recursion(tcx, &body);
+
     tcx.alloc_steal_mir(body)
 }
 

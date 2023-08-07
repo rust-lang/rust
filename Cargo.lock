@@ -4046,6 +4046,7 @@ dependencies = [
  "rustc_index",
  "rustc_macros",
  "rustc_middle",
+ "rustc_mir_build",
  "rustc_mir_dataflow",
  "rustc_serialize",
  "rustc_session",
