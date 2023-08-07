@@ -1842,11 +1842,14 @@ fn rewrite_let(
 ) -> Option<String> {
     let mut result = "let ".to_owned();
 
+    // TODO(ytmimi) comments could appear between `let` and the `pat`
+
     // 4 = "let ".len()
     let pat_shape = shape.offset_left(4)?;
     let pat_str = pat.rewrite(context, pat_shape)?;
     result.push_str(&pat_str);
 
+    // TODO(ytmimi) comments could appear between `pat` and `=`
     result.push_str(" =");
 
     let comments_lo = context
