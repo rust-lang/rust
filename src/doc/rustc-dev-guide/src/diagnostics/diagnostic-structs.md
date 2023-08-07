@@ -70,7 +70,7 @@ Diagnostics are more than just their primary message, they often include
 labels, notes, help messages and suggestions, all of which can also be
 specified on a `Diagnostic`.
 
-`#[label]`, `#[help]` and `#[note]` can all be applied to fields which have the
+`#[label]`, `#[help]`, `#[warning]` and `#[note]` can all be applied to fields which have the
 type `Span`. Applying any of these attributes will create the corresponding
 subdiagnostic with that `Span`. These attributes will look for their
 diagnostic message in a Fluent attribute attached to the primary Fluent
@@ -87,11 +87,11 @@ Other types have special behavior when used in a `Diagnostic` derive:
 - Any attribute applied to a `Vec<T>` will be repeated for each element of the
   vector.
 
-`#[help]` and `#[note]` can also be applied to the struct itself, in which case
+`#[help]`, `#[warning]` and `#[note]` can also be applied to the struct itself, in which case
 they work exactly like when applied to fields except the subdiagnostic won't
 have a `Span`. These attributes can also be applied to fields of type `()` for
 the same effect, which when combined with the `Option` type can be used to
-represent optional `#[note]`/`#[help]` subdiagnostics.
+represent optional `#[note]`/`#[help]`/`#[warning]` subdiagnostics.
 
 Suggestions can be emitted using one of four field attributes:
 
@@ -180,8 +180,8 @@ following attributes:
   - Value is a path to an item in `rustc_errors::fluent` for the note's
     message.
     - Defaults to equivalent of `.label`.
-- `#[warn_]` or `#[warn_(slug)]` (_Optional_)
-  - _Applied to `Span` fields._
+- `#[warning]` or `#[warning(slug)]` (_Optional_)
+  - _Applied to struct or `Span`/`()` fields._
   - Adds a warning subdiagnostic.
   - Value is a path to an item in `rustc_errors::fluent` for the note's
     message.
@@ -253,6 +253,7 @@ attribute applied to the struct or each variant, one of:
 - `#[label(..)]` for defining a label
 - `#[note(..)]` for defining a note
 - `#[help(..)]` for defining a help
+- `#[warning(..)]` for defining a warning
 - `#[suggestion{,_hidden,_short,_verbose}(..)]` for defining a suggestion
 
 All of the above must provide a slug as the first positional argument (a path
@@ -333,7 +334,7 @@ diagnostic struct.
 ### Reference
 `#[derive(Subdiagnostic)]` supports the following attributes:
 
-- `#[label(slug)]`, `#[help(slug)]` or `#[note(slug)]`
+- `#[label(slug)]`, `#[help(slug)]`, `#[warning(slug)]` or `#[note(slug)]`
   - _Applied to struct or enum variant. Mutually exclusive with struct/enum variant attributes._
   - _Mandatory_
   - Defines the type to be representing a label, help or note.
