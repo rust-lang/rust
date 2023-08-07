@@ -184,6 +184,7 @@ mod handlers {
     mod raw_string;
     mod remove_dbg;
     mod remove_mut;
+    mod remove_unused_imports;
     mod remove_unused_param;
     mod remove_parentheses;
     mod reorder_fields;
@@ -294,6 +295,7 @@ mod handlers {
             raw_string::make_usual_string,
             raw_string::remove_hash,
             remove_mut::remove_mut,
+            remove_unused_imports::remove_unused_imports,
             remove_unused_param::remove_unused_param,
             remove_parentheses::remove_parentheses,
             reorder_fields::reorder_fields,

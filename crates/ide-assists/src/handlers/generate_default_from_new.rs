@@ -15,6 +15,7 @@ use crate::{
 // Generates default implementation from new method.
 //
 // ```
+// # //- minicore: default
 // struct Example { _inner: () }
 //
 // impl Example {
@@ -54,6 +55,7 @@ pub(crate) fn generate_default_from_new(acc: &mut Assists, ctx: &AssistContext<'
     }
 
     let impl_ = fn_node.syntax().ancestors().find_map(ast::Impl::cast)?;
+    let self_ty = impl_.self_ty()?;
     if is_default_implemented(ctx, &impl_) {
         cov_mark::hit!(default_block_is_already_present);
         cov_mark::hit!(struct_in_module_with_default);
@@ -70,15 +72,19 @@ pub(crate) fn generate_default_from_new(acc: &mut Assists, ctx: &AssistContext<'
             let default_code = "    fn default() -> Self {
         Self::new()
     }";
-            let code = generate_trait_impl_text_from_impl(&impl_, "Default", default_code);
+            let code = generate_trait_impl_text_from_impl(&impl_, self_ty, "Default", default_code);
             builder.insert(insert_location.end(), code);
         },
     )
 }
 
 // FIXME: based on from utils::generate_impl_text_inner
-fn generate_trait_impl_text_from_impl(impl_: &ast::Impl, trait_text: &str, code: &str) -> String {
-    let impl_ty = impl_.self_ty().unwrap();
+fn generate_trait_impl_text_from_impl(
+    impl_: &ast::Impl,
+    self_ty: ast::Type,
+    trait_text: &str,
+    code: &str,
+) -> String {
     let generic_params = impl_.generic_param_list().map(|generic_params| {
         let lifetime_params =
             generic_params.lifetime_params().map(ast::GenericParam::LifetimeParam);
@@ -109,7 +115,7 @@ fn generate_trait_impl_text_from_impl(impl_: &ast::Impl, trait_text: &str, code:
     if let Some(generic_params) = &generic_params {
         format_to!(buf, "{generic_params}")
     }
-    format_to!(buf, " {trait_text} for {impl_ty}");
+    format_to!(buf, " {trait_text} for {self_ty}");
 
     match impl_.where_clause() {
         Some(where_clause) => {
@@ -136,7 +142,9 @@ fn is_default_implemented(ctx: &AssistContext<'_>, impl_: &Impl) -> bool {
     let default = FamousDefs(&ctx.sema, krate).core_default_Default();
     let default_trait = match default {
         Some(value) => value,
-        None => return false,
+        // Return `true` to avoid providing the assist because it makes no sense
+        // to impl `Default` when it's missing.
+        None => return true,
     };
 
     ty.impls_trait(db, default_trait, &[])
@@ -480,6 +488,7 @@ impl Example {
         check_assist_not_applicable(
             generate_default_from_new,
             r#"
+//- minicore: default
 struct Example { _inner: () }
 
 impl Example {
@@ -654,5 +663,24 @@ mod test {
 }
 "#,
         );
+    }
+
+    #[test]
+    fn not_applicable_when_default_lang_item_is_missing() {
+        check_assist_not_applicable(
+            generate_default_from_new,
+            r#"
+struct S;
+impl S {
+    fn new$0() -> Self {}
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn not_applicable_for_missing_self_ty() {
+        // Regression test for #15398.
+        check_assist_not_applicable(generate_default_from_new, "impl { fn new$0() -> Self {} }");
     }
 }

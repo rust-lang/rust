@@ -414,7 +414,7 @@ export class Ctx {
                 statusBar.tooltip.appendText(status.message ?? "Ready");
                 statusBar.color = undefined;
                 statusBar.backgroundColor = undefined;
-                statusBar.command = "rust-analyzer.stopServer";
+                statusBar.command = "rust-analyzer.openLogs";
                 this.dependencies?.refresh();
                 break;
             case "warning":
@@ -442,14 +442,16 @@ export class Ctx {
                 statusBar.tooltip.appendMarkdown(
                     "\n\n[Start server](command:rust-analyzer.startServer)",
                 );
-                statusBar.color = undefined;
-                statusBar.backgroundColor = undefined;
+                statusBar.color = new vscode.ThemeColor("statusBarItem.warningForeground");
+                statusBar.backgroundColor = new vscode.ThemeColor(
+                    "statusBarItem.warningBackground",
+                );
                 statusBar.command = "rust-analyzer.startServer";
                 statusBar.text = `$(stop-circle) rust-analyzer`;
                 return;
         }
         if (statusBar.tooltip.value) {
-            statusBar.tooltip.appendText("\n\n");
+            statusBar.tooltip.appendMarkdown("\n\n---\n\n");
         }
         statusBar.tooltip.appendMarkdown("\n\n[Open logs](command:rust-analyzer.openLogs)");
         statusBar.tooltip.appendMarkdown(

@@ -3513,7 +3513,6 @@ fn func() {
     );
 }
 
-// FIXME
 #[test]
 fn castable_to() {
     check_infer(
@@ -3538,10 +3537,10 @@ fn func() {
             120..122 '{}': ()
             138..184 '{     ...0]>; }': ()
             148..149 'x': Box<[i32; 0]>
-            152..160 'Box::new': fn new<[{unknown}; 0]>([{unknown}; 0]) -> Box<[{unknown}; 0]>
-            152..164 'Box::new([])': Box<[{unknown}; 0]>
+            152..160 'Box::new': fn new<[i32; 0]>([i32; 0]) -> Box<[i32; 0]>
+            152..164 'Box::new([])': Box<[i32; 0]>
             152..181 'Box::n...2; 0]>': Box<[i32; 0]>
-            161..163 '[]': [{unknown}; 0]
+            161..163 '[]': [i32; 0]
         "#]],
     );
 }
@@ -3574,6 +3573,21 @@ fn f<T>(t: Ark<T>) {
             125..127 '&t': &Ark<T>
             126..127 't': Ark<T>
         "#]],
+    );
+}
+
+#[test]
+fn ref_to_array_to_ptr_cast() {
+    check_types(
+        r#"
+fn default<T>() -> T { loop {} }
+fn foo() {
+    let arr = [default()];
+      //^^^ [i32; 1]
+    let ref_to_arr = &arr;
+    let casted = ref_to_arr as *const i32;
+}
+"#,
     );
 }
 

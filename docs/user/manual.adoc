@@ -949,6 +949,29 @@ Or it is possible to specify vars more granularly:
 You can use any valid regular expression as a mask.
 Also note that a full runnable name is something like *run bin_or_example_name*, *test some::mod::test_name* or *test-mod some::mod*, so it is possible to distinguish binaries, single tests, and test modules with this masks: `"^run"`, `"^test "` (the trailing space matters!), and `"^test-mod"` respectively.
 
+If needed, you can set different values for different platforms:
+```jsonc
+"rust-analyzer.runnables.extraEnv": [
+    {
+        "platform": "win32", // windows only
+        env: {
+             "APP_DATA": "windows specific data"
+        }
+    },
+    {
+        "platform": ["linux"],
+        "env": {
+             "APP_DATA": "linux data",
+        }
+    },
+    { // for all platforms
+        "env": {
+             "APP_COMMON_DATA": "xxx",
+        }
+    }
+]
+```
+
 ==== Compiler feedback from external commands
 
 Instead of relying on the built-in `cargo check`, you can configure Code to run a command in the background and use the `$rustc-watch` problem matcher to generate inline error markers from its output.

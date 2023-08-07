@@ -128,7 +128,7 @@ impl flags::AnalysisStats {
         let mut visited_modules = FxHashSet::default();
         let mut visit_queue = Vec::new();
         for krate in krates {
-            let module = krate.root_module(db);
+            let module = krate.root_module();
             let file_id = module.definition_source_file_id(db);
             let file_id = file_id.original_file(db);
             let source_root = db.file_source_root(file_id);

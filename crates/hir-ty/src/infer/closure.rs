@@ -488,10 +488,6 @@ impl InferenceContext<'_> {
                     self.consume_expr(*tail);
                 }
             }
-            Expr::While { condition, body, label: _ } => {
-                self.consume_expr(*condition);
-                self.consume_expr(*body);
-            }
             Expr::Call { callee, args, is_assignee_expr: _ } => {
                 self.consume_expr(*callee);
                 self.consume_exprs(args.iter().copied());

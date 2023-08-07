@@ -257,7 +257,7 @@ pub(super) fn keyword(
     let KeywordHint { description, keyword_mod, actions } = keyword_hints(sema, token, parent);
 
     let doc_owner = find_std_module(&famous_defs, &keyword_mod)?;
-    let docs = doc_owner.attrs(sema.db).docs()?;
+    let docs = doc_owner.docs(sema.db)?;
     let markup = process_markup(
         sema.db,
         Definition::Module(doc_owner),
@@ -472,6 +472,7 @@ pub(super) fn definition(
         }
         Definition::GenericParam(it) => label_and_docs(db, it),
         Definition::Label(it) => return Some(Markup::fenced_block(&it.name(db).display(db))),
+        Definition::ExternCrateDecl(it) => label_and_docs(db, it),
         // FIXME: We should be able to show more info about these
         Definition::BuiltinAttr(it) => return render_builtin_attr(db, it),
         Definition::ToolModule(it) => return Some(Markup::fenced_block(&it.name(db))),
@@ -620,7 +621,7 @@ where
     D: HasAttrs + HirDisplay,
 {
     let label = def.display(db).to_string();
-    let docs = def.attrs(db).docs();
+    let docs = def.docs(db);
     (label, docs)
 }
 
@@ -645,7 +646,7 @@ where
     ) {
         format_to!(label, "{layout}");
     }
-    let docs = def.attrs(db).docs();
+    let docs = def.docs(db);
     (label, docs)
 }
 
@@ -677,7 +678,7 @@ where
     ) {
         format_to!(label, "{layout}");
     }
-    let docs = def.attrs(db).docs();
+    let docs = def.docs(db);
     (label, docs)
 }
 
@@ -696,7 +697,7 @@ where
     } else {
         def.display(db).to_string()
     };
-    let docs = def.attrs(db).docs();
+    let docs = def.docs(db);
     (label, docs)
 }
 
@@ -727,14 +728,14 @@ fn builtin(famous_defs: &FamousDefs<'_, '_>, builtin: hir::BuiltinType) -> Optio
     // std exposes prim_{} modules with docstrings on the root to document the builtins
     let primitive_mod = format!("prim_{}", builtin.name().display(famous_defs.0.db));
     let doc_owner = find_std_module(famous_defs, &primitive_mod)?;
-    let docs = doc_owner.attrs(famous_defs.0.db).docs()?;
+    let docs = doc_owner.docs(famous_defs.0.db)?;
     markup(Some(docs.into()), builtin.name().display(famous_defs.0.db).to_string(), None)
 }
 
 fn find_std_module(famous_defs: &FamousDefs<'_, '_>, name: &str) -> Option<hir::Module> {
     let db = famous_defs.0.db;
     let std_crate = famous_defs.std()?;
-    let std_root_module = std_crate.root_module(db);
+    let std_root_module = std_crate.root_module();
     std_root_module.children(db).find(|module| {
         module.name(db).map_or(false, |module| module.display(db).to_string() == name)
     })

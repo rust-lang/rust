@@ -28,7 +28,6 @@ use crate::{
     tt_iter::TtIter,
 };
 
-// FIXME: we probably should re-think  `token_tree_to_syntax_node` interfaces
 pub use self::tt::{Delimiter, DelimiterKind, Punct};
 pub use ::parser::TopEntryPoint;
 

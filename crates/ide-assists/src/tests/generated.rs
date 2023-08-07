@@ -952,6 +952,7 @@ fn doctest_generate_default_from_new() {
     check_doc_test(
         "generate_default_from_new",
         r#####"
+//- minicore: default
 struct Example { _inner: () }
 
 impl Example {
@@ -2228,6 +2229,24 @@ fn main() {
         r#####"
 fn main() {
     _ = 2 + 2;
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_remove_unused_imports() {
+    check_doc_test(
+        "remove_unused_imports",
+        r#####"
+struct X();
+mod foo {
+    use super::X$0;
+}
+"#####,
+        r#####"
+struct X();
+mod foo {
 }
 "#####,
     )
