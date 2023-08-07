@@ -3,6 +3,5 @@
 // edition:2018
 fn main() {
     await {}()
-    //~^ ERROR `await` is only allowed inside `async` functions and blocks
-    //~| ERROR incorrect use of `await`
+    //~^ ERROR incorrect use of `await`
 }
