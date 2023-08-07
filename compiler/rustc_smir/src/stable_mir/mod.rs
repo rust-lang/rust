@@ -32,7 +32,7 @@ pub type DefId = usize;
 /// A list of crate items.
 pub type CrateItems = Vec<CrateItem>;
 
-/// A list of crate items.
+/// A list of trait decls.
 pub type TraitDecls = Vec<TraitDef>;
 
 /// Holds information about a crate.
