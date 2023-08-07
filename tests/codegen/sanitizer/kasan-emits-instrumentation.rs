@@ -25,7 +25,7 @@ trait Copy {}
 
 impl Copy for u8 {}
 
-// CHECK-LABEL: ; sanitizer_kasan_emits_instrumentation::unsanitized
+// CHECK-LABEL: ; kasan_emits_instrumentation::unsanitized
 // CHECK-NEXT:  ; Function Attrs:
 // CHECK-NOT:   sanitize_address
 // CHECK:       start:
@@ -36,7 +36,7 @@ pub fn unsanitized(b: &mut u8) -> u8 {
     *b
 }
 
-// CHECK-LABEL: ; sanitizer_kasan_emits_instrumentation::sanitized
+// CHECK-LABEL: ; kasan_emits_instrumentation::sanitized
 // CHECK-NEXT:  ; Function Attrs:
 // CHECK:       sanitize_address
 // CHECK:       start:
