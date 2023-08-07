@@ -14,7 +14,7 @@ use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
 use crate::middle::debugger_visualizer::DebuggerVisualizerFile;
 use crate::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
 use crate::middle::lib_features::LibFeatures;
-use crate::middle::privacy::EffectiveVisibilities;
+use crate::middle::privacy::{self, EffectiveVisibilities};
 use crate::middle::resolve_bound_vars::{ObjectLifetimeDefault, ResolveBoundVars, ResolvedArg};
 use crate::middle::stability::{self, DeprecationEntry};
 use crate::mir;
@@ -1131,6 +1131,10 @@ rustc_queries! {
     query check_private_in_public(_: ()) -> () {
         eval_always
         desc { "checking for private elements in public interfaces" }
+    }
+    query reachability_graph(_: ()) -> &'tcx [privacy::UpdateStep] {
+        desc { "checking reachability for effective visibilities" }
+        cache_on_disk_if { true }
     }
 
     query reachable_set(_: ()) -> &'tcx LocalDefIdSet {

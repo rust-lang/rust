@@ -13,7 +13,7 @@ use std::hash::Hash;
 /// Represents the levels of effective visibility an item can have.
 ///
 /// The variants are sorted in ascending order of directness.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, HashStable)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, HashStable, Encodable, Decodable)]
 pub enum Level {
     /// Superset of `Reachable` including items leaked through return position `impl Trait`.
     ReachableThroughImplTrait,
@@ -278,4 +278,23 @@ impl<'a> HashStable<StableHashingContext<'a>> for EffectiveVisibilities {
         let EffectiveVisibilities { ref map } = *self;
         map.hash_stable(hcx, hasher);
     }
+}
+
+#[derive(Copy, Clone, Debug, HashStable, Encodable, Decodable)]
+pub enum EffectiveVisSource {
+    Public,
+    Def(LocalDefId),
+    Impl(LocalDefId),
+}
+
+#[derive(Debug, HashStable, Encodable, Decodable)]
+pub struct UpdateStep {
+    /// Definition to be updated.
+    pub target: LocalDefId,
+    /// Which level is to be updated.
+    pub level: Level,
+    /// Definition reaching it.
+    pub source: EffectiveVisSource,
+    /// Whether the nominal visibility of `target` bounds its visibility.
+    pub bounded_by_nominal_visibility: bool,
 }

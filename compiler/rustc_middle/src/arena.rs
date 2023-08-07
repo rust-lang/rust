@@ -92,6 +92,7 @@ macro_rules! arena_types {
                 >,
             [] all_traits: Vec<rustc_hir::def_id::DefId>,
             [] effective_visibilities: rustc_middle::middle::privacy::EffectiveVisibilities,
+            [decode] reachability_graph: rustc_middle::middle::privacy::UpdateStep,
             [] foreign_module: rustc_session::cstore::ForeignModule,
             [] foreign_modules: Vec<rustc_session::cstore::ForeignModule>,
             [] upvars_mentioned: rustc_data_structures::fx::FxIndexMap<rustc_hir::HirId, rustc_hir::Upvar>,

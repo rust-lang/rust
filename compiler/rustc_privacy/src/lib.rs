@@ -25,7 +25,9 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{AssocItemKind, ForeignItemKind, ItemId, Node, PatKind};
 use rustc_middle::bug;
 use rustc_middle::hir::nested_filter;
-use rustc_middle::middle::privacy::{EffectiveVisibilities, EffectiveVisibility, Level};
+use rustc_middle::middle::privacy::{
+    EffectiveVisSource, EffectiveVisibilities, EffectiveVisibility, Level, UpdateStep,
+};
 use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
 use rustc_middle::ty::GenericArgs;
@@ -396,24 +398,6 @@ impl VisibilityLike for EffectiveVisibility {
 /// The embargo visitor, used to determine the exports of the AST.
 ////////////////////////////////////////////////////////////////////////////////
 
-#[derive(Copy, Clone, Debug)]
-enum EffectiveVisSource {
-    Public,
-    Def(LocalDefId),
-    Impl(LocalDefId),
-}
-
-struct UpdateStep {
-    /// Definition to be updated.
-    target: LocalDefId,
-    /// Which level is to be updated.
-    level: Level,
-    /// Definition reaching it.
-    source: EffectiveVisSource,
-    /// Whether the nominal visibility of `target` bounds its visibility.
-    bounded_by_nominal_visibility: bool,
-}
-
 struct EmbargoVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
 
@@ -462,49 +446,6 @@ impl<'tcx> EmbargoVisitor<'tcx> {
         level: Level,
     ) {
         self.updates.push(UpdateStep { target, source, bounded_by_nominal_visibility, level });
-    }
-
-    fn update_eff_vis_to_fixpoint(&mut self, effective_visibilities: &mut EffectiveVisibilities) {
-        loop {
-            let mut changed = false;
-            for &UpdateStep { target, source, bounded_by_nominal_visibility, level } in
-                &self.updates
-            {
-                let inherited_effective_vis = match source {
-                    EffectiveVisSource::Public => {
-                        Some(EffectiveVisibility::from_vis(ty::Visibility::Public))
-                    }
-                    EffectiveVisSource::Def(def) => {
-                        effective_visibilities.effective_vis(def).copied()
-                    }
-                    EffectiveVisSource::Impl(def) => Some(EffectiveVisibility::of_impl::<true>(
-                        def,
-                        self.tcx,
-                        &effective_visibilities,
-                    )),
-                };
-                if let Some(inherited_effective_vis) = inherited_effective_vis {
-                    let private_vis = ty::Visibility::Restricted(
-                        self.tcx.parent_module_from_def_id(target).into(),
-                    );
-                    let max_vis =
-                        bounded_by_nominal_visibility.then(|| self.tcx.local_visibility(target));
-                    if max_vis != Some(private_vis) {
-                        changed |= effective_visibilities.update(
-                            target,
-                            max_vis,
-                            || private_vis,
-                            inherited_effective_vis,
-                            level,
-                            self.tcx,
-                        );
-                    }
-                }
-            }
-            if !changed {
-                return;
-            }
-        }
     }
 
     fn reach(
@@ -1822,6 +1763,7 @@ pub fn provide(providers: &mut Providers) {
     *providers = Providers {
         visibility,
         effective_visibilities,
+        reachability_graph,
         check_private_in_public,
         check_mod_privacy,
         ..*providers
@@ -1900,7 +1842,7 @@ fn check_mod_privacy(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
     intravisit::walk_mod(&mut visitor, module, hir_id);
 }
 
-fn effective_visibilities(tcx: TyCtxt<'_>, (): ()) -> &EffectiveVisibilities {
+fn reachability_graph(tcx: TyCtxt<'_>, (): ()) -> &[UpdateStep] {
     // Build up a set of all exported items in the AST. This is a set of all
     // items which are reachable from external crates based on visibility.
     let mut visitor = EmbargoVisitor {
@@ -1922,9 +1864,48 @@ fn effective_visibilities(tcx: TyCtxt<'_>, (): ()) -> &EffectiveVisibilities {
 
     tcx.hir().visit_all_item_likes_in_crate(&mut visitor);
 
+    tcx.arena.alloc_from_iter(visitor.updates)
+}
+
+fn effective_visibilities(tcx: TyCtxt<'_>, (): ()) -> &EffectiveVisibilities {
     let mut effective_visibilities = tcx.resolutions(()).effective_visibilities.clone();
     effective_visibilities.check_invariants(tcx);
-    visitor.update_eff_vis_to_fixpoint(&mut effective_visibilities);
+
+    let updates = tcx.reachability_graph(());
+
+    loop {
+        let mut changed = false;
+        for &UpdateStep { target, source, bounded_by_nominal_visibility, level } in updates {
+            let inherited_effective_vis = match source {
+                EffectiveVisSource::Public => {
+                    Some(EffectiveVisibility::from_vis(ty::Visibility::Public))
+                }
+                EffectiveVisSource::Def(def) => effective_visibilities.effective_vis(def).copied(),
+                EffectiveVisSource::Impl(def) => {
+                    Some(EffectiveVisibility::of_impl::<true>(def, tcx, &effective_visibilities))
+                }
+            };
+            if let Some(inherited_effective_vis) = inherited_effective_vis {
+                let private_vis =
+                    ty::Visibility::Restricted(tcx.parent_module_from_def_id(target).into());
+                let max_vis = bounded_by_nominal_visibility.then(|| tcx.local_visibility(target));
+                if max_vis != Some(private_vis) {
+                    changed |= effective_visibilities.update(
+                        target,
+                        max_vis,
+                        || private_vis,
+                        inherited_effective_vis,
+                        level,
+                        tcx,
+                    );
+                }
+            }
+        }
+        if !changed {
+            break;
+        }
+    }
+
     effective_visibilities.check_invariants(tcx);
 
     let mut check_visitor =
