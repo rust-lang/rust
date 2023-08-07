@@ -104,6 +104,7 @@ extern "C" void LLVMRustSetLastError(const char *Err) {
 extern "C" LLVMContextRef LLVMRustContextCreate(bool shouldDiscardNames) {
   auto ctx = new LLVMContext();
   ctx->setDiscardValueNames(shouldDiscardNames);
+  ctx->setDiagnosticsHotnessRequested(true);
   return wrap(ctx);
 }
 
