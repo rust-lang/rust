@@ -479,11 +479,10 @@ impl SystemTime {
     /// measurement lies, and using `UNIX_EPOCH + duration` can be used to create a
     /// `SystemTime` instance to represent another fixed point in time.
     ///
-    /// `duration_since(UNIX_EPOCH).unwrap().as_secs()`
-    /// returns a POSIX `time_t` (as a `u64`):
+    /// `duration_since(UNIX_EPOCH).unwrap().as_secs()` returns
     /// the number of non-leap seconds since the start of 1970 UTC.
-    /// This is the same time representation as used in many Internet protocols,
-    /// for example: JWT, CBOR, TOTP, certificate transparency and DNS TSIG/DNSSEC.
+    /// This is a POSIX `time_t` (as a `u64`),
+    /// and is the same time representation as used in many Internet protocols.
     ///
     /// # Examples
     ///
@@ -644,11 +643,10 @@ impl fmt::Debug for SystemTime {
 /// measurement lies, and using `UNIX_EPOCH + duration` can be used to create a
 /// [`SystemTime`] instance to represent another fixed point in time.
 ///
-/// `duration_since(UNIX_EPOCH).unwrap().as_secs()`
-/// returns a POSIX `time_t` (as a `u64`):
+/// `duration_since(UNIX_EPOCH).unwrap().as_secs()` returns
 /// the number of non-leap seconds since the start of 1970 UTC.
-/// This is the same time representation as used in many Internet protocols,
-/// for example: JWT, CBOR, TOTP, certificate transparency and DNS TSIG/DNSSEC.
+/// This is a POSIX `time_t` (as a `u64`),
+/// and is the same time representation as used in many Internet protocols.
 ///
 /// # Examples
 ///
