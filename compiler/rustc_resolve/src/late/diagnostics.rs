@@ -555,7 +555,6 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 }
             })
             .collect::<Vec<_>>();
-        let crate_def_id = CRATE_DEF_ID.to_def_id();
         // Try to filter out intrinsics candidates, as long as we have
         // some other candidates to suggest.
         let intrinsic_candidates: Vec<_> = candidates
@@ -566,8 +565,9 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             .collect();
         if candidates.is_empty() {
             // Put them back if we have no more candidates to suggest...
-            candidates.extend(intrinsic_candidates);
+            candidates = intrinsic_candidates;
         }
+        let crate_def_id = CRATE_DEF_ID.to_def_id();
         if candidates.is_empty() && is_expected(Res::Def(DefKind::Enum, crate_def_id)) {
             let mut enum_candidates: Vec<_> = self
                 .r
@@ -1180,37 +1180,34 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
     /// return the span of whole call and the span for all arguments expect the first one (`self`).
     fn call_has_self_arg(&self, source: PathSource<'_>) -> Option<(Span, Option<Span>)> {
         let mut has_self_arg = None;
-        if let PathSource::Expr(Some(parent)) = source {
-            match &parent.kind {
-                ExprKind::Call(_, args) if !args.is_empty() => {
-                    let mut expr_kind = &args[0].kind;
-                    loop {
-                        match expr_kind {
-                            ExprKind::Path(_, arg_name) if arg_name.segments.len() == 1 => {
-                                if arg_name.segments[0].ident.name == kw::SelfLower {
-                                    let call_span = parent.span;
-                                    let tail_args_span = if args.len() > 1 {
-                                        Some(Span::new(
-                                            args[1].span.lo(),
-                                            args.last().unwrap().span.hi(),
-                                            call_span.ctxt(),
-                                            None,
-                                        ))
-                                    } else {
-                                        None
-                                    };
-                                    has_self_arg = Some((call_span, tail_args_span));
-                                }
-                                break;
+        if let PathSource::Expr(Some(parent)) = source
+            && let ExprKind::Call(_, args) = &parent.kind
+            && !args.is_empty() {
+                let mut expr_kind = &args[0].kind;
+                loop {
+                    match expr_kind {
+                        ExprKind::Path(_, arg_name) if arg_name.segments.len() == 1 => {
+                            if arg_name.segments[0].ident.name == kw::SelfLower {
+                                let call_span = parent.span;
+                                let tail_args_span = if args.len() > 1 {
+                                    Some(Span::new(
+                                        args[1].span.lo(),
+                                        args.last().unwrap().span.hi(),
+                                        call_span.ctxt(),
+                                        None,
+                                    ))
+                                } else {
+                                    None
+                                };
+                                has_self_arg = Some((call_span, tail_args_span));
                             }
-                            ExprKind::AddrOf(_, _, expr) => expr_kind = &expr.kind,
-                            _ => break,
+                            break;
                         }
+                        ExprKind::AddrOf(_, _, expr) => expr_kind = &expr.kind,
+                        _ => break,
                     }
                 }
-                _ => (),
-            }
-        };
+        }
         has_self_arg
     }
 
@@ -1220,15 +1217,15 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         // where a brace being opened means a block is being started. Look
         // ahead for the next text to see if `span` is followed by a `{`.
         let sm = self.r.tcx.sess.source_map();
-        let sp = sm.span_look_ahead(span, None, Some(50));
-        let followed_by_brace = matches!(sm.span_to_snippet(sp), Ok(ref snippet) if snippet == "{");
-        // In case this could be a struct literal that needs to be surrounded
-        // by parentheses, find the appropriate span.
-        let closing_span = sm.span_look_ahead(span, Some("}"), Some(50));
-        let closing_brace: Option<Span> = sm
-            .span_to_snippet(closing_span)
-            .map_or(None, |s| if s == "}" { Some(span.to(closing_span)) } else { None });
-        (followed_by_brace, closing_brace)
+        if let Some(followed_brace_span) = sm.span_look_ahead(span, "{", Some(50)) {
+            // In case this could be a struct literal that needs to be surrounded
+            // by parentheses, find the appropriate span.
+            let close_brace_span = sm.span_look_ahead(followed_brace_span, "}", Some(50));
+            let closing_brace = close_brace_span.map(|sp| span.to(sp));
+            (true, closing_brace)
+        } else {
+            (false, None)
+        }
     }
 
     /// Provides context-dependent help for errors reported by the `smart_resolve_path_fragment`
