@@ -19,7 +19,7 @@
 #![feature(panic_unwind)]
 #![feature(staged_api)]
 #![feature(std_internals)]
-#![feature(abi_thiscall)]
+#![cfg_attr(bootstrap, feature(abi_thiscall))]
 #![feature(rustc_attrs)]
 #![panic_runtime]
 #![feature(panic_runtime)]
