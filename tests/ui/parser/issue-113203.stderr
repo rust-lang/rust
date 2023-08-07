@@ -1,0 +1,30 @@
+error: incorrect use of `await`
+  --> $DIR/issue-113203.rs:5:5
+   |
+LL |     await {}()
+   |     ^^^^^^^^ help: `await` is a postfix operation: `{}.await`
+
+error[E0728]: `await` is only allowed inside `async` functions and blocks
+  --> $DIR/issue-113203.rs:5:5
+   |
+LL | fn main() {
+   |    ---- this is not `async`
+LL |     await {}()
+   |     ^^^^^ only allowed inside `async` functions and blocks
+
+error[E0277]: `()` is not a future
+  --> $DIR/issue-113203.rs:5:5
+   |
+LL |     await {}()
+   |     ^^^^^   - help: remove the `.await`
+   |     |
+   |     `()` is not a future
+   |
+   = help: the trait `Future` is not implemented for `()`
+   = note: () must be a future or must implement `IntoFuture` to be awaited
+   = note: required for `()` to implement `IntoFuture`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0277, E0728.
+For more information about an error, try `rustc --explain E0277`.
