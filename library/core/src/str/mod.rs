@@ -709,6 +709,69 @@ impl str {
         }
     }
 
+    /// Copies the string from `src` into `self`, using a memcpy.
+    ///
+    /// The length of `src` must be the same as `self`.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if the two string slice do not have the same length.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(copy_from_str)]
+    /// let src = "Saludos";
+    /// let mut dst = String::from("Grüße, Jürgen");
+    ///
+    /// // Because the string slices have to be the same length,
+    /// // we slice the destination slice from sixteen bytes
+    /// // to seven. It will panic if we don't do this.
+    /// dst[..7].copy_from_str(src);
+    ///
+    /// assert_eq!(src, "Saludos");
+    /// assert_eq!(dst, "Saludos, Jürgen");
+    /// ```
+    ///
+    /// Rust enforces that there can only be one mutable reference with no
+    /// immutable references to a particular piece of data in a particular
+    /// scope. Because of this, attempting to use `copy_from_str` on a
+    /// single stringwill result in a compile failure:
+    ///
+    /// ```compile_fail
+    /// #![feature(copy_from_str)]
+    /// let mut string = String::from("Abcde");
+    ///
+    /// string[..2].copy_from_str(&string[3..]); // compile fail!
+    /// ```
+    ///
+    /// To work around this, we can use [`split_at_mut`] to create two distinct
+    /// sub-slices from a string slice:
+    ///
+    /// ```
+    /// #![feature(copy_from_str)]
+    /// let mut string = String::from("Abcde");
+    ///
+    /// {
+    ///     let (left, right) = string.split_at_mut(2);
+    ///     left.copy_from_str(&right[1..]);
+    /// }
+    ///
+    /// assert_eq!(string, "decde");
+    /// ```
+    ///
+    /// [`split_at_mut`]: str::split_at_mut
+    #[doc(alias = "memcpy")]
+    #[unstable(feature = "copy_from_str", issue = "none")]
+    #[track_caller]
+    pub fn copy_from_str(&mut self, src: &str) {
+        // SAFETY: overwriting UTF-8 data terminated at char boundaries with other UTF-8 data of the same length 
+        // that is also terminated at char boundaries cannot introduce invalid UTF-8.
+        // <[u8]>::copy_from_slice checks that the slice lengths are equal and will panic otherwise.
+        let me = unsafe { self.as_bytes_mut() };
+        me.copy_from_slice(src.as_bytes());
+    }
+
     /// Returns an iterator over the [`char`]s of a string slice.
     ///
     /// As a string slice consists of valid UTF-8, we can iterate through a
