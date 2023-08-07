@@ -32,7 +32,7 @@ use rustc_feature::find_gated_cfg;
 use rustc_fluent_macro::fluent_messages;
 use rustc_interface::util::{self, collect_crate_types, get_codegen_backend};
 use rustc_interface::{interface, Queries};
-use rustc_lint::LintStore;
+use rustc_lint::{unerased_lint_store, LintStore};
 use rustc_metadata::locator;
 use rustc_session::config::{nightly_options, CG_OPTIONS, Z_OPTIONS};
 use rustc_session::config::{ErrorOutputType, Input, OutFileName, OutputType, TrimmedDefPaths};
@@ -411,15 +411,11 @@ fn run_compiler(
                 return early_exit();
             }
 
-            {
-                let plugins = queries.register_plugins()?;
-                let (.., lint_store) = &*plugins.borrow();
-
-                // Lint plugins are registered; now we can process command line flags.
-                if sess.opts.describe_lints {
-                    describe_lints(sess, lint_store, true);
-                    return early_exit();
-                }
+            if sess.opts.describe_lints {
+                queries
+                    .global_ctxt()?
+                    .enter(|tcx| describe_lints(sess, unerased_lint_store(tcx), true));
+                return early_exit();
             }
 
             // Make sure name resolution and macro expansion is run.
