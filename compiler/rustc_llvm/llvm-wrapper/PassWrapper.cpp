@@ -322,8 +322,6 @@ extern "C" void LLVMRustPrintTargetCPUs(LLVMTargetMachineRef TM,
 
 #if LLVM_VERSION_GE(17, 0)
   const ArrayRef<SubtargetSubTypeKV> CPUTable = MCInfo->getAllProcessorDescriptions();
-#elif defined(LLVM_RUSTLLVM)
-  const ArrayRef<SubtargetSubTypeKV> CPUTable = MCInfo->getCPUTable();
 #else
   Buf << "Full target CPU help is not supported by this LLVM version.\n\n";
   SubtargetSubTypeKV TargetCPUKV = { TargetCPU, {{}}, {{}} };
@@ -1120,7 +1118,7 @@ struct LLVMRustThinLTOData {
 
   // Not 100% sure what these are, but they impact what's internalized and
   // what's inlined across modules, I believe.
-#if LLVM_VERSION_GE(17, 0)
+#if LLVM_VERSION_GE(18, 0)
   DenseMap<StringRef, FunctionImporter::ImportMapTy> ImportLists;
   DenseMap<StringRef, FunctionImporter::ExportSetTy> ExportLists;
   DenseMap<StringRef, GVSummaryMapTy> ModuleToDefinedGVSummaries;

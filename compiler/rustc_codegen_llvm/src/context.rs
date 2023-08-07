@@ -145,6 +145,17 @@ pub unsafe fn create_module<'ll>(
             target_data_layout = target_data_layout.replace("-n32:64-", "-n64-");
         }
     }
+    if llvm_version < (17, 0, 0) {
+        if sess.target.arch.starts_with("powerpc") {
+            // LLVM 17 specifies function pointer alignment for ppc:
+            // https://reviews.llvm.org/D147016
+            target_data_layout = target_data_layout
+                .replace("-Fn32", "")
+                .replace("-Fi32", "")
+                .replace("-Fn64", "")
+                .replace("-Fi64", "");
+        }
+    }
 
     // Ensure the data-layout values hardcoded remain the defaults.
     if sess.target.is_builtin {
