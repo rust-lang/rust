@@ -7,7 +7,6 @@ use crate::collections::BTreeMap;
 use crate::ffi::{CStr, CString, OsStr, OsString};
 use crate::fmt;
 use crate::io;
-use crate::mem::ManuallyDrop;
 use crate::path::Path;
 use crate::ptr;
 use crate::sys::fd::FileDesc;
@@ -466,13 +465,7 @@ impl Stdio {
             }
 
             Stdio::StaticFd(fd) => {
-                let fd = unsafe {
-                    // Unfortunately there is no public method to dup BorrwedFd into an OwnedFd !
-                    // https://github.com/rust-lang/rust/issues/88564#issuecomment-916460459
-                    let fd = fd.as_raw_fd();
-                    let fd = ManuallyDrop::new(FileDesc::from_inner(OwnedFd::from_raw_fd(fd)));
-                    fd.duplicate()?
-                };
+                let fd = FileDesc::from_inner(fd.try_clone_to_owned()?);
                 Ok((ChildStdio::Owned(fd), None))
             }
 
