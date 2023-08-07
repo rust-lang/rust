@@ -1522,7 +1522,7 @@ impl From<io::Stdout> for Stdio {
     }
 }
 
-#[stable(feature = "stdio_from_stdio", since = "1.58.0")]
+#[stable(feature = "stdio_from_stdio", since = "CURRENT_RUSTC_VERSION")]
 impl From<io::Stderr> for Stdio {
     /// Redirect command stdout/stderr to our stderr
     ///
