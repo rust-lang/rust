@@ -53,6 +53,8 @@ declare_features! (
     /// Allows the sysV64 ABI to be specified on all platforms
     /// instead of just the platforms on which it is the C ABI.
     (accepted, abi_sysv64, "1.24.0", Some(36167), None),
+    /// Allows using the `thiscall` ABI.
+    (accepted, abi_thiscall, "1.19.0", None, None),
     /// Allows using ADX intrinsics from `core::arch::{x86, x86_64}`.
     (accepted, adx_target_feature, "1.61.0", Some(44839), None),
     /// Allows explicit discriminants on non-unit enum variants.

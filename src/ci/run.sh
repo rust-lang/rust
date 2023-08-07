@@ -154,13 +154,25 @@ fi
 # check for clock drifts. An HTTP URL is used instead of HTTPS since on Azure
 # Pipelines it happened that the certificates were marked as expired.
 datecheck() {
-  echo "::group::Clock drift check"
+  # If an error has happened, we do not want to start a new group, because that will collapse
+  # a previous group that might have contained the error log.
+  exit_code=$?
+
+  if [ $exit_code -eq 0 ]
+  then
+    echo "::group::Clock drift check"
+  fi
+
   echo -n "  local time: "
   date
   echo -n "  network time: "
   curl -fs --head http://ci-caches.rust-lang.org | grep ^Date: \
       | sed 's/Date: //g' || true
-  echo "::endgroup::"
+
+  if [ $exit_code -eq 0 ]
+  then
+    echo "::endgroup::"
+  fi
 }
 datecheck
 trap datecheck EXIT

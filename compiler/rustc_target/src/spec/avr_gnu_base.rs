@@ -23,7 +23,7 @@ pub fn target(target_cpu: &'static str, mmcu: &'static str) -> Target {
                 LinkerFlavor::Gnu(Cc::Yes, Lld::No),
                 &["-lgcc"],
             ),
-            max_atomic_width: Some(0),
+            max_atomic_width: Some(16),
             atomic_cas: false,
             relocation_model: RelocModel::Static,
             ..TargetOptions::default()
