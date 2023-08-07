@@ -206,11 +206,43 @@ mod issue11300 {
         assert_eq!(i.len(), 3);
     }
 
+    trait Helper<T: ?Sized> {}
+    impl Helper<i32> for [i32; 3] {}
+    impl Helper<i32> for std::array::IntoIter<i32, 3> {}
+    impl Helper<()> for std::array::IntoIter<i32, 3> {}
+
+    fn foo2<X: ?Sized, I>(_: I)
+    where
+        I: IntoIterator<Item = i32> + Helper<X>,
+    {
+    }
+
+    trait Helper2<T> {}
+    impl Helper2<std::array::IntoIter<i32, 3>> for i32 {}
+    impl Helper2<[i32; 3]> for i32 {}
+    fn foo3<I>(_: I)
+    where
+        I: IntoIterator<Item = i32>,
+        i32: Helper2<I>,
+    {
+    }
+
     pub fn bar() {
         // This should not trigger the lint:
         // `[i32, 3]` does not satisfy the `ExactSizeIterator` bound, so the into_iter call cannot be
         // removed and is not useless.
         foo([1, 2, 3].into_iter());
+
+        // This should trigger the lint, receiver type [i32; 3] also implements `Helper`
+        foo2::<i32, _>([1, 2, 3].into_iter());
+
+        // This again should *not* lint, since X = () and I = std::array::IntoIter<i32, 3>,
+        // and `[i32; 3]: Helper<()>` is not true (only `std::array::IntoIter<i32, 3>: Helper<()>` is).
+        foo2::<(), _>([1, 2, 3].into_iter());
+
+        // This should lint. Removing the `.into_iter()` means that `I` gets substituted with `[i32; 3]`,
+        // and `i32: Helper2<[i32, 3]>` is true, so this call is indeed unncessary.
+        foo3([1, 2, 3].into_iter());
     }
 }
 

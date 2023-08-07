@@ -1,21 +1,21 @@
-use std::ops::ControlFlow;
-
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::{snippet, snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{is_copy, is_type_diagnostic_item, same_type_and_consts};
-use clippy_utils::{
-    get_parent_expr, is_diag_trait_item, is_trait_method, is_ty_alias, match_def_path, path_to_local, paths,
-};
+use clippy_utils::{get_parent_expr, is_trait_method, is_ty_alias, match_def_path, path_to_local, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{BindingAnnotation, Expr, ExprKind, HirId, MatchSource, Node, PatKind};
+use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::traits::Obligation;
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor};
+use rustc_middle::traits::ObligationCause;
+use rustc_middle::ty::{self, EarlyBinder, GenericArg, GenericArgsRef, Ty};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{sym, Span};
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -66,10 +66,7 @@ impl MethodOrFunction {
 }
 
 /// Returns the span of the `IntoIterator` trait bound in the function pointed to by `fn_did`,
-/// iff the `IntoIterator` bound is the only bound on the type parameter.
-///
-/// This last part is important because it might be that the type the user is calling `.into_iter()`
-/// on might not satisfy those other bounds and would result in compile errors:
+/// iff all of the bounds also hold for the type of the `.into_iter()` receiver.
 /// ```ignore
 /// pub fn foo<I>(i: I)
 /// where I: IntoIterator<Item=i32> + ExactSizeIterator
@@ -83,61 +80,42 @@ impl MethodOrFunction {
 ///                  ^^^^^^^^^^^^ ... here, because `[i32; 3]` is not `ExactSizeIterator`
 /// }
 /// ```
-fn exclusive_into_iter_bound(
-    cx: &LateContext<'_>,
+fn into_iter_bound<'tcx>(
+    cx: &LateContext<'tcx>,
     fn_did: DefId,
     into_iter_did: DefId,
+    into_iter_receiver: Ty<'tcx>,
     param_index: u32,
+    node_args: GenericArgsRef<'tcx>,
 ) -> Option<Span> {
-    #[derive(Clone)]
-    struct ExplicitlyUsedTyParam<'a, 'tcx> {
-        cx: &'a LateContext<'tcx>,
-        param_index: u32,
-    }
-
-    impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for ExplicitlyUsedTyParam<'a, 'tcx> {
-        type BreakTy = ();
-        fn visit_predicate(&mut self, p: ty::Predicate<'tcx>) -> ControlFlow<Self::BreakTy> {
-            // Ignore implicit `T: Sized` bound
-            if let ty::PredicateKind::Clause(ty::ClauseKind::Trait(tr)) = p.kind().skip_binder()
-                && let Some(sized_trait_did) = self.cx.tcx.lang_items().sized_trait()
-                && sized_trait_did == tr.def_id()
-            {
-                return ControlFlow::Continue(());
-            }
-
-            // Ignore `<T as IntoIterator>::Item` projection, this use of the ty param specifically is fine
-            // because it's what we're already looking for
-            if let ty::PredicateKind::Clause(ty::ClauseKind::Projection(proj)) = p.kind().skip_binder()
-                && is_diag_trait_item(self.cx,proj.projection_ty.def_id, sym::IntoIterator)
-            {
-                return ControlFlow::Continue(());
-            }
-
-            p.super_visit_with(self)
-        }
-
-        fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-            if t.is_param(self.param_index) {
-                ControlFlow::Break(())
-            } else {
-                ControlFlow::Continue(())
-            }
-        }
-    }
-
+    let param_env = cx.tcx.param_env(fn_did);
     let mut into_iter_span = None;
 
     for (pred, span) in cx.tcx.explicit_predicates_of(fn_did).predicates {
-        if let ty::ClauseKind::Trait(tr) = pred.kind().skip_binder()
-            && tr.def_id() == into_iter_did
-            && tr.self_ty().is_param(param_index)
-        {
-            into_iter_span = Some(*span);
-        } else if pred.visit_with(&mut ExplicitlyUsedTyParam { cx, param_index }).is_break() {
-            // Found another reference of the type parameter; conservatively assume
-            // that we can't remove the bound.
-            return None;
+        if let ty::ClauseKind::Trait(tr) = pred.kind().skip_binder() {
+            if tr.def_id() == into_iter_did && tr.self_ty().is_param(param_index) {
+                into_iter_span = Some(*span);
+            } else {
+                // Substitute generics in the predicate and replace the IntoIterator type parameter with the
+                // `.into_iter()` receiver to see if the bound also holds for that type.
+                let args = cx.tcx.mk_args_from_iter(node_args.iter().enumerate().map(|(i, arg)| {
+                    if i == param_index as usize {
+                        GenericArg::from(into_iter_receiver)
+                    } else {
+                        arg
+                    }
+                }));
+                let predicate = EarlyBinder::bind(tr).instantiate(cx.tcx, args);
+                let obligation = Obligation::new(cx.tcx, ObligationCause::dummy(), param_env, predicate);
+                if !cx
+                    .tcx
+                    .infer_ctxt()
+                    .build()
+                    .predicate_must_hold_modulo_regions(&obligation)
+                {
+                    return None;
+                }
+            }
         }
     }
 
@@ -225,22 +203,41 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                                     // `fn_sig` does not ICE. (see #11065)
                                     && cx.tcx.opt_def_kind(did).is_some_and(DefKind::is_fn_like) =>
                             {
-                                    Some((did, args, MethodOrFunction::Function))
+                                Some((
+                                    did,
+                                    args,
+                                    cx.typeck_results().node_args(recv.hir_id),
+                                    MethodOrFunction::Function
+                                ))
                             }
                             ExprKind::MethodCall(.., args, _) => {
                                 cx.typeck_results().type_dependent_def_id(parent.hir_id)
-                                    .map(|did| (did, args, MethodOrFunction::Method))
+                                    .map(|did| {
+                                        return (
+                                            did,
+                                            args,
+                                            cx.typeck_results().node_args(recv.hir_id),
+                                            MethodOrFunction::Method
+                                        );
+                                    })
                             }
                             _ => None,
                         };
 
-                        if let Some((parent_fn_did, args, kind)) = parent_fn
+                        if let Some((parent_fn_did, args, node_args, kind)) = parent_fn
                             && let Some(into_iter_did) = cx.tcx.get_diagnostic_item(sym::IntoIterator)
                             && let sig = cx.tcx.fn_sig(parent_fn_did).skip_binder().skip_binder()
                             && let Some(arg_pos) = args.iter().position(|x| x.hir_id == e.hir_id)
                             && let Some(&into_iter_param) = sig.inputs().get(kind.param_pos(arg_pos))
                             && let ty::Param(param) = into_iter_param.kind()
-                            && let Some(span) = exclusive_into_iter_bound(cx, parent_fn_did, into_iter_did, param.index)
+                            && let Some(span) = into_iter_bound(
+                                cx,
+                                parent_fn_did,
+                                into_iter_did,
+                                cx.typeck_results().expr_ty(into_iter_recv),
+                                param.index,
+                                node_args
+                            )
                             && self.expn_depth == 0
                         {
                             // Get the "innermost" `.into_iter()` call, e.g. given this expression:
