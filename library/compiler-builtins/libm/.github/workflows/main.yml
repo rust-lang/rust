@@ -13,9 +13,11 @@ jobs:
         - arm-unknown-linux-gnueabihf
         - armv7-unknown-linux-gnueabihf
         # - i686-unknown-linux-gnu
-        - mips-unknown-linux-gnu
-        - mips64-unknown-linux-gnuabi64
-        - mips64el-unknown-linux-gnuabi64
+        # MIPS targets disabled since they are dropped to tier 3.
+        # See https://github.com/rust-lang/compiler-team/issues/648
+        #- mips-unknown-linux-gnu
+        #- mips64-unknown-linux-gnuabi64
+        #- mips64el-unknown-linux-gnuabi64
         - powerpc-unknown-linux-gnu
         - powerpc64-unknown-linux-gnu
         - powerpc64le-unknown-linux-gnu
