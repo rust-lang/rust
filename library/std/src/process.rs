@@ -1504,7 +1504,7 @@ impl From<io::Stdout> for Stdio {
     ///
     /// # fn test() -> Result<(), Box<dyn std::error::Error>> {
     /// let output = Command::new("whoami")
-    // "whoami" is a command which exists on both Unix and Winodows,
+    // "whoami" is a command which exists on both Unix and Windows,
     // and which succeeds, producing some stdout output but no stderr.
     ///     .stdout(io::stdout())
     ///     .output()?;
