@@ -180,7 +180,7 @@ def p(msg):
 
 
 def err(msg):
-    print("configure: error: " + msg)
+    print("\nconfigure: ERROR: " + msg + "\n")
     sys.exit(1)
 
 def is_value_list(key):
@@ -544,7 +544,14 @@ def write_config_toml(writer, section_order, targets, sections):
 
 def quit_if_file_exists(file):
     if os.path.isfile(file):
-        err("Existing '" + file + "' detected.")
+        msg = "Existing '{}' detected. Exiting".format(file)
+
+        # If the output object directory isn't empty, we can get these errors
+        host_objdir = os.environ.get("OBJDIR_ON_HOST")
+        if host_objdir is not None:
+            msg += "\nIs objdir '{}' clean?".format(host_objdir)
+
+        err(msg)
 
 if __name__ == "__main__":
     # If 'config.toml' already exists, exit the script at this point
