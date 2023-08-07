@@ -1995,7 +1995,16 @@ impl<'tcx> TyCtxt<'tcx> {
                         ),
                     );
                 }
-                _ => bug!(),
+                Some(resolve_bound_vars::ResolvedArg::Error(guar)) => {
+                    return ty::Region::new_error(self, guar);
+                }
+                _ => {
+                    return ty::Region::new_error_with_message(
+                        self,
+                        lifetime.ident.span,
+                        "cannot resolve lifetime",
+                    );
+                }
             }
         }
     }

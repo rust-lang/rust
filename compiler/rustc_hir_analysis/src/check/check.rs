@@ -13,7 +13,7 @@ use rustc_hir::intravisit::Visitor;
 use rustc_hir::{ItemKind, Node, PathSegment};
 use rustc_infer::infer::opaque_types::ConstrainOpaqueTypeRegionVisitor;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
-use rustc_infer::infer::{LateBoundRegionConversionTime, RegionVariableOrigin, TyCtxtInferExt};
+use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
 use rustc_infer::traits::{Obligation, TraitEngineExt as _};
 use rustc_lint_defs::builtin::REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS;
 use rustc_middle::hir::nested_filter;
@@ -407,38 +407,17 @@ fn check_opaque_meets_bounds<'tcx>(
         .build();
     let ocx = ObligationCtxt::new(&infcx);
 
-    let mut args = GenericArgs::identity_for_item(tcx, def_id.to_def_id());
-    assert!(!args.has_escaping_bound_vars(), "{args:#?}");
-    if let hir::OpaqueTyOrigin::FnReturn(..) | hir::OpaqueTyOrigin::AsyncFn(..) = origin {
-        // Find use of the RPIT in the function signature and thus find the right args to
-        // convert it into the parameter space of the function signature. This is needed,
-        // because that's what `type_of` returns, against which we compare later.
-        let ret = tcx.fn_sig(defining_use_anchor).instantiate_identity().output();
-
-        let a = ret
-            .skip_binder()
-            .visit_with(&mut FindOpaqueTypeArgs {
+    let args = match *origin {
+        hir::OpaqueTyOrigin::FnReturn(parent) | hir::OpaqueTyOrigin::AsyncFn(parent) => {
+            GenericArgs::identity_for_item(tcx, parent).extend_to(
                 tcx,
-                opaque: def_id.to_def_id(),
-                fn_def_id: defining_use_anchor.to_def_id(),
-                seen: Default::default(),
-                depth: ty::INNERMOST,
-            })
-            .break_value()
-            .ok_or_else(|| {
-                tcx.sess.delay_span_bug(
-                    tcx.def_span(defining_use_anchor),
-                    format!("return type of {defining_use_anchor:?} does not contain {def_id:?}"),
-                )
-            })?;
-        let a = infcx.instantiate_binder_with_fresh_vars(
-            span,
-            LateBoundRegionConversionTime::HigherRankedType,
-            ret.rebind(a),
-        );
-        assert!(!a.has_escaping_bound_vars(), "{a:#?}");
-        args = ty::EarlyBinder::bind(args).instantiate(tcx, a);
-    }
+                def_id.to_def_id(),
+                |param, _| tcx.map_rpit_lifetime_to_fn_lifetime(param.def_id.expect_local()).into(),
+            )
+        }
+        hir::OpaqueTyOrigin::TyAlias { .. } => GenericArgs::identity_for_item(tcx, def_id),
+    };
+
     let opaque_ty = Ty::new_opaque(tcx, def_id.to_def_id(), args);
 
     // `ReErased` regions appear in the "parent_args" of closures/generators.
@@ -548,118 +527,6 @@ fn sanity_check_found_hidden_type<'tcx>(
         let span = tcx.def_span(key.def_id);
         let other = ty::OpaqueHiddenType { ty: hidden_ty, span };
         Err(ty.report_mismatch(&other, key.def_id, tcx).emit())
-    }
-}
-
-/// In case it is in a nested opaque type, find that opaque type's
-/// usage in the function signature and use the generic arguments from the usage site.
-/// We need to do because RPITs ignore the lifetimes of the function,
-/// as they have their own copies of all the lifetimes they capture.
-/// So the only way to get the lifetimes represented in terms of the function,
-/// is to look how they are used in the function signature (or do some other fancy
-/// recording of this mapping at ast -> hir lowering time).
-///
-/// As an example:
-/// ```text
-/// trait Id {
-///     type Assoc;
-/// }
-/// impl<'a> Id for &'a () {
-///     type Assoc = &'a ();
-/// }
-/// fn func<'a>(x: &'a ()) -> impl Id<Assoc = impl Sized + 'a> { x }
-/// // desugared to
-/// fn func<'a>(x: &'a () -> Outer<'a> where <Outer<'a> as Id>::Assoc = Inner<'a> {
-///     // Note that in contrast to other nested items, RPIT type aliases can
-///     // access their parents' generics.
-///
-///     // hidden type is `&'aDupOuter ()`
-///     // During wfcheck the hidden type of `Inner<'aDupOuter>` is `&'a ()`, but
-///     // `typeof(Inner<'aDupOuter>) = &'aDupOuter ()`.
-///     // So we walk the signature of `func` to find the use of `Inner<'a>`
-///     // and then use that to replace the lifetimes in the hidden type, obtaining
-///     // `&'a ()`.
-///     type Outer<'aDupOuter> = impl Id<Assoc = Inner<'aDupOuter>>;
-///
-///     // hidden type is `&'aDupInner ()`
-///     type Inner<'aDupInner> = impl Sized + 'aDupInner;
-///
-///     x
-/// }
-/// ```
-struct FindOpaqueTypeArgs<'tcx> {
-    tcx: TyCtxt<'tcx>,
-    opaque: DefId,
-    seen: FxHashSet<DefId>,
-    fn_def_id: DefId,
-    depth: ty::DebruijnIndex,
-}
-impl<'tcx> ty::TypeVisitor<TyCtxt<'tcx>> for FindOpaqueTypeArgs<'tcx> {
-    type BreakTy = GenericArgsRef<'tcx>;
-
-    #[instrument(level = "trace", skip(self), ret)]
-    fn visit_binder<T: TypeVisitable<TyCtxt<'tcx>>>(
-        &mut self,
-        t: &ty::Binder<'tcx, T>,
-    ) -> ControlFlow<Self::BreakTy> {
-        self.depth.shift_in(1);
-        let binder = t.super_visit_with(self);
-        self.depth.shift_out(1);
-        binder
-    }
-
-    #[instrument(level = "trace", skip(self), ret)]
-    fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-        trace!("{:#?}", t.kind());
-        match t.kind() {
-            ty::Alias(ty::Opaque, alias) => {
-                trace!(?alias.def_id);
-                if alias.def_id == self.opaque {
-                    let args = self.tcx.fold_regions(alias.args, |re, depth| {
-                        if let ty::ReLateBound(index, bv) = re.kind() {
-                            if depth != ty::INNERMOST {
-                                return ty::Region::new_error_with_message(
-                                    self.tcx,
-                                    self.tcx.def_span(self.opaque),
-                                    "opaque type behind meaningful binders are not supported yet",
-                                );
-                            }
-                            ty::Region::new_late_bound(
-                                self.tcx,
-                                index.shifted_out_to_binder(self.depth),
-                                bv,
-                            )
-                        } else {
-                            re
-                        }
-                    });
-                    return ControlFlow::Break(args);
-                } else if self.seen.insert(alias.def_id) {
-                    for clause in self
-                        .tcx
-                        .explicit_item_bounds(alias.def_id)
-                        .iter_instantiated_copied(self.tcx, alias.args)
-                    {
-                        trace!(?clause);
-                        clause.visit_with(self)?;
-                    }
-                }
-            }
-            ty::Alias(ty::Projection, alias) => {
-                if let Some(ty::ImplTraitInTraitData::Trait { fn_def_id, .. }) = self.tcx.opt_rpitit_info(alias.def_id) && fn_def_id == self.fn_def_id {
-                    self.tcx.type_of(alias.def_id).instantiate(self.tcx, alias.args).visit_with(self)?;
-                }
-            }
-            ty::Alias(ty::Weak, alias) => {
-                self.tcx
-                    .type_of(alias.def_id)
-                    .instantiate(self.tcx, alias.args)
-                    .visit_with(self)?;
-            }
-            _ => (),
-        }
-
-        t.super_visit_with(self)
     }
 }
 
