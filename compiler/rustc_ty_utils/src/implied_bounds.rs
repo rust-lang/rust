@@ -2,7 +2,6 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
-use rustc_middle::middle::resolve_bound_vars as rbv;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
@@ -52,9 +51,7 @@ fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'
             tcx.arena.alloc_from_iter(tys.into_iter().map(|ty| (ty, impl_spans.next().unwrap())))
         }
         DefKind::AssocTy if let Some(data) = tcx.opt_rpitit_info(def_id.to_def_id()) => match data {
-            ty::ImplTraitInTraitData::Trait { fn_def_id, opaque_def_id } => {
-                let hir::OpaqueTy { lifetime_mapping, .. } =
-                    *tcx.hir().expect_item(opaque_def_id.expect_local()).expect_opaque_ty();
+            ty::ImplTraitInTraitData::Trait { fn_def_id, .. } => {
                 // We need to remap all of the late-bound lifetimes in theassumed wf types
                 // of the fn (which are represented as ReFree) to the early-bound lifetimes
                 // of the RPITIT (which are represented by ReEarlyBound owned by the opaque).
@@ -66,28 +63,22 @@ fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'
                 // predicates we insert in the `explicit_predicates_of` query for RPITITs.
                 let mut mapping = FxHashMap::default();
                 let generics = tcx.generics_of(def_id);
-                for &(lifetime, new_early_bound_def_id) in
-                    lifetime_mapping
-                {
-                    if let Some(rbv::ResolvedArg::LateBound(_, _, def_id)) =
-                        tcx.named_bound_var(lifetime.hir_id)
-                    {
-                        let name = tcx.hir().name(lifetime.hir_id);
-                        let index = generics
-                            .param_def_id_to_index(tcx, new_early_bound_def_id.to_def_id())
-                            .unwrap();
+
+                // For each captured opaque lifetime, if it's late-bound (`ReFree` in this case,
+                // since it has been liberated), map it back to the early-bound lifetime of
+                // the GAT. Since RPITITs also have all of the fn's generics, we slice only
+                // the end of the list corresponding to the opaque's generics.
+                for param in &generics.params[tcx.generics_of(fn_def_id).params.len()..] {
+                    let orig_lt = tcx.map_rpit_lifetime_to_fn_lifetime(param.def_id.expect_local());
+                    if matches!(*orig_lt, ty::ReFree(..)) {
                         mapping.insert(
-                            ty::Region::new_free(
-                                tcx,
-                                fn_def_id,
-                                ty::BoundRegionKind::BrNamed(def_id, name),
-                            ),
+                            orig_lt,
                             ty::Region::new_early_bound(
                                 tcx,
                                 ty::EarlyBoundRegion {
-                                    def_id: new_early_bound_def_id.to_def_id(),
-                                    index,
-                                    name,
+                                    def_id: param.def_id,
+                                    index: param.index,
+                                    name: param.name,
                                 },
                             ),
                         );
