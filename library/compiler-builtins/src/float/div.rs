@@ -2,8 +2,8 @@
 // `return`s makes it clear where function exit points are
 #![allow(clippy::needless_return)]
 
-use float::Float;
-use int::{CastInto, DInt, HInt, Int};
+use crate::float::Float;
+use crate::int::{CastInto, DInt, HInt, Int};
 
 fn div32<F: Float>(a: F, b: F) -> F
 where

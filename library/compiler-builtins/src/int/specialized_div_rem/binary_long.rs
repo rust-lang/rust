@@ -13,9 +13,13 @@ macro_rules! impl_binary_long {
         $n:tt, // the number of bits in a $iX or $uX
         $uX:ident, // unsigned integer type for the inputs and outputs of `$fn`
         $iX:ident // signed integer type with same bitwidth as `$uX`
+        $(, $fun_attr:meta)* // attributes for the function
     ) => {
         /// Computes the quotient and remainder of `duo` divided by `div` and returns them as a
         /// tuple.
+        $(
+            #[$fun_attr]
+        )*
         pub fn $fn(duo: $uX, div: $uX) -> ($uX, $uX) {
             let mut duo = duo;
             // handle edge cases before calling `$normalization_shift`

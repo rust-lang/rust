@@ -1,5 +1,5 @@
-use float::Float;
-use int::{CastInto, Int};
+use crate::float::Float;
+use crate::int::{CastInto, Int};
 
 /// Generic conversion from a narrower to a wider IEEE-754 floating-point type
 fn extend<F: Float, R: Float>(a: F) -> R

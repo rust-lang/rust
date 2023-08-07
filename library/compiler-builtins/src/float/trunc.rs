@@ -1,5 +1,5 @@
-use float::Float;
-use int::{CastInto, Int};
+use crate::float::Float;
+use crate::int::{CastInto, Int};
 
 fn trunc<F: Float, R: Float>(a: F) -> R
 where

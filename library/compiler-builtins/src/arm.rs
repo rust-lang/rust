@@ -91,7 +91,7 @@ intrinsics! {
     #[weak]
     #[cfg(not(target_os = "ios"))]
     pub unsafe extern "aapcs" fn __aeabi_memcpy(dest: *mut u8, src: *const u8, n: usize) {
-        ::mem::memcpy(dest, src, n);
+        crate::mem::memcpy(dest, src, n);
     }
 
     #[weak]
@@ -121,7 +121,7 @@ intrinsics! {
     #[weak]
     #[cfg(not(target_os = "ios"))]
     pub unsafe extern "aapcs" fn __aeabi_memmove(dest: *mut u8, src: *const u8, n: usize) {
-        ::mem::memmove(dest, src, n);
+        crate::mem::memmove(dest, src, n);
     }
 
     #[weak]
@@ -140,7 +140,7 @@ intrinsics! {
     #[cfg(not(target_os = "ios"))]
     pub unsafe extern "aapcs" fn __aeabi_memset(dest: *mut u8, n: usize, c: i32) {
         // Note the different argument order
-        ::mem::memset(dest, c, n);
+        crate::mem::memset(dest, c, n);
     }
 
     #[weak]

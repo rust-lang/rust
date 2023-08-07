@@ -1,4 +1,4 @@
-use int::{DInt, Int};
+use crate::int::{DInt, Int};
 
 trait UAddSub: DInt {
     fn uadd(self, other: Self) -> Self {

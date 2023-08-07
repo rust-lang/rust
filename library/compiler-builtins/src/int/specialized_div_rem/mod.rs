@@ -306,5 +306,6 @@ impl_binary_long!(
     u32_normalization_shift,
     32,
     u32,
-    i32
+    i32,
+    allow(dead_code)
 );

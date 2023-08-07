@@ -7,6 +7,7 @@ readme = "README.md"
 repository = "https://github.com/rust-lang/compiler-builtins"
 homepage = "https://github.com/rust-lang/compiler-builtins"
 documentation = "https://docs.rs/compiler_builtins"
+edition = "2018"
 description = """
 Compiler intrinsics used by the Rust compiler. Also available for other targets
 if necessary!
