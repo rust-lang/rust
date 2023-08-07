@@ -7,7 +7,7 @@ end-to-end process of compilation _and_ readers interested in learning about a
 specific system they wish to contribute to. If anything is unclear, feel free
 to file an issue on the [rustc-dev-guide
 repo](https://github.com/rust-lang/rustc-dev-guide/issues) or contact the compiler
-team, as detailed in [this chapter from Part 1](./compiler-team.md).
+team, as detailed in [this chapter](./compiler-team.md).
 
 In this part, we will look at the high-level architecture of the compiler. In
 particular, we will look at three overarching design choices that impact the
