@@ -67,7 +67,7 @@ fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'
                 let mut mapping = FxHashMap::default();
                 let generics = tcx.generics_of(def_id);
                 for &(lifetime, new_early_bound_def_id) in
-                    lifetime_mapping.expect("expected lifetime mapping for RPITIT")
+                    lifetime_mapping
                 {
                     if let Some(rbv::ResolvedArg::LateBound(_, _, def_id)) =
                         tcx.named_bound_var(lifetime.hir_id)
