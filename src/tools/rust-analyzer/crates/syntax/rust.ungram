@@ -72,6 +72,12 @@ TokenTree =
 MacroItems =
   Item*
 
+MacroEagerInput =
+  '(' (Expr (',' Expr)* ','?)? ')'
+| '{' (Expr (',' Expr)* ','?)? '}'
+| '[' (Expr (',' Expr)* ','?)? ']'
+
+
 MacroStmts =
   statements:Stmt*
   Expr?

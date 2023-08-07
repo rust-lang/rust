@@ -353,7 +353,8 @@ pub(crate) fn handle_on_type_formatting(
     };
 
     // This should be a single-file edit
-    let (_, text_edit) = edit.source_file_edits.into_iter().next().unwrap();
+    let (_, (text_edit, snippet_edit)) = edit.source_file_edits.into_iter().next().unwrap();
+    stdx::never!(snippet_edit.is_none(), "on type formatting shouldn't use structured snippets");
 
     let change = to_proto::snippet_text_edit_vec(&line_index, edit.is_snippet, text_edit);
     Ok(Some(change))

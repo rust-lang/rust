@@ -153,6 +153,9 @@ pub(crate) fn external_docs(
                 NameRefClass::FieldShorthand { local_ref: _, field_ref } => {
                     Definition::Field(field_ref)
                 }
+                NameRefClass::ExternCrateShorthand { decl, .. } => {
+                    Definition::ExternCrateDecl(decl)
+                }
             },
             ast::Name(name) => match NameClass::classify(sema, &name)? {
                 NameClass::Definition(it) | NameClass::ConstReference(it) => it,
@@ -209,6 +212,7 @@ pub(crate) fn resolve_doc_path_for_def(
         Definition::Macro(it) => it.resolve_doc_path(db, link, ns),
         Definition::Field(it) => it.resolve_doc_path(db, link, ns),
         Definition::SelfType(it) => it.resolve_doc_path(db, link, ns),
+        Definition::ExternCrateDecl(it) => it.resolve_doc_path(db, link, ns),
         Definition::BuiltinAttr(_)
         | Definition::ToolModule(_)
         | Definition::BuiltinType(_)
@@ -616,6 +620,9 @@ fn filename_and_frag_for_def(
             let (_, file, _) = filename_and_frag_for_def(db, adt)?;
             // FIXME fragment numbering
             return Some((adt, file, Some(String::from("impl"))));
+        }
+        Definition::ExternCrateDecl(it) => {
+            format!("{}/index.html", it.name(db).display(db.upcast()))
         }
         Definition::Local(_)
         | Definition::GenericParam(_)

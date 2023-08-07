@@ -188,7 +188,7 @@ impl ItemTree {
     fn shrink_to_fit(&mut self) {
         if let Some(data) = &mut self.data {
             let ItemTreeData {
-                imports,
+                uses,
                 extern_crates,
                 extern_blocks,
                 functions,
@@ -211,7 +211,7 @@ impl ItemTree {
                 vis,
             } = &mut **data;
 
-            imports.shrink_to_fit();
+            uses.shrink_to_fit();
             extern_crates.shrink_to_fit();
             extern_blocks.shrink_to_fit();
             functions.shrink_to_fit();
@@ -262,7 +262,7 @@ static VIS_PUB_CRATE: RawVisibility = RawVisibility::Module(ModPath::from_kind(P
 
 #[derive(Default, Debug, Eq, PartialEq)]
 struct ItemTreeData {
-    imports: Arena<Import>,
+    uses: Arena<Use>,
     extern_crates: Arena<ExternCrate>,
     extern_blocks: Arena<ExternBlock>,
     functions: Arena<Function>,
@@ -486,7 +486,7 @@ macro_rules! mod_items {
 }
 
 mod_items! {
-    Import in imports -> ast::Use,
+    Use in uses -> ast::Use,
     ExternCrate in extern_crates -> ast::ExternCrate,
     ExternBlock in extern_blocks -> ast::ExternBlock,
     Function in functions -> ast::Fn,
@@ -541,7 +541,7 @@ impl<N: ItemTreeNode> Index<FileItemTreeId<N>> for ItemTree {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct Import {
+pub struct Use {
     pub visibility: RawVisibilityId,
     pub ast_id: FileAstId<ast::Use>,
     pub use_tree: UseTree,
@@ -744,7 +744,7 @@ pub struct MacroDef {
     pub ast_id: FileAstId<ast::MacroDef>,
 }
 
-impl Import {
+impl Use {
     /// Maps a `UseTree` contained in this import back to its AST node.
     pub fn use_tree_to_ast(
         &self,
@@ -870,7 +870,7 @@ macro_rules! impl_froms {
 impl ModItem {
     pub fn as_assoc_item(&self) -> Option<AssocItem> {
         match self {
-            ModItem::Import(_)
+            ModItem::Use(_)
             | ModItem::ExternCrate(_)
             | ModItem::ExternBlock(_)
             | ModItem::Struct(_)
@@ -892,7 +892,7 @@ impl ModItem {
 
     pub fn ast_id(&self, tree: &ItemTree) -> FileAstId<ast::Item> {
         match self {
-            ModItem::Import(it) => tree[it.index].ast_id().upcast(),
+            ModItem::Use(it) => tree[it.index].ast_id().upcast(),
             ModItem::ExternCrate(it) => tree[it.index].ast_id().upcast(),
             ModItem::ExternBlock(it) => tree[it.index].ast_id().upcast(),
             ModItem::Function(it) => tree[it.index].ast_id().upcast(),

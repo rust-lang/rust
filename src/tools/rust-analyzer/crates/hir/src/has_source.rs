@@ -11,9 +11,9 @@ use hir_expand::{HirFileId, InFile};
 use syntax::ast;
 
 use crate::{
-    db::HirDatabase, Adt, Const, Enum, Field, FieldSource, Function, Impl, LifetimeParam,
-    LocalSource, Macro, Module, Static, Struct, Trait, TraitAlias, TypeAlias, TypeOrConstParam,
-    Union, Variant,
+    db::HirDatabase, Adt, Const, Enum, ExternCrateDecl, Field, FieldSource, Function, Impl,
+    LifetimeParam, LocalSource, Macro, Module, Static, Struct, Trait, TraitAlias, TypeAlias,
+    TypeOrConstParam, Union, Variant,
 };
 
 pub trait HasSource {
@@ -205,5 +205,13 @@ impl HasSource for LocalSource {
 
     fn source(self, _: &dyn HirDatabase) -> Option<InFile<Self::Ast>> {
         Some(self.source)
+    }
+}
+
+impl HasSource for ExternCrateDecl {
+    type Ast = ast::ExternCrate;
+
+    fn source(self, db: &dyn HirDatabase) -> Option<InFile<Self::Ast>> {
+        Some(self.id.lookup(db.upcast()).source(db.upcast()))
     }
 }

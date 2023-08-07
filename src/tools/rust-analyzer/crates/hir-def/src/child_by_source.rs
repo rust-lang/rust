@@ -14,8 +14,8 @@ use crate::{
     item_scope::ItemScope,
     nameres::DefMap,
     src::{HasChildSource, HasSource},
-    AdtId, AssocItemId, DefWithBodyId, EnumId, EnumVariantId, FieldId, ImplId, Lookup, MacroId,
-    ModuleDefId, ModuleId, TraitId, VariantId,
+    AdtId, AssocItemId, DefWithBodyId, EnumId, EnumVariantId, ExternCrateId, FieldId, ImplId,
+    Lookup, MacroId, ModuleDefId, ModuleId, TraitId, UseId, VariantId,
 };
 
 pub trait ChildBySource {
@@ -91,6 +91,8 @@ impl ChildBySource for ItemScope {
     fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap, file_id: HirFileId) {
         self.declarations().for_each(|item| add_module_def(db, res, file_id, item));
         self.impls().for_each(|imp| add_impl(db, res, file_id, imp));
+        self.extern_crate_decls().for_each(|ext| add_extern_crate(db, res, file_id, ext));
+        self.use_decls().for_each(|ext| add_use(db, res, file_id, ext));
         self.unnamed_consts().for_each(|konst| {
             let loc = konst.lookup(db);
             if loc.id.file_id() == file_id {
@@ -165,6 +167,23 @@ impl ChildBySource for ItemScope {
             let loc = imp.lookup(db);
             if loc.id.file_id() == file_id {
                 map[keys::IMPL].insert(loc.source(db).value, imp)
+            }
+        }
+        fn add_extern_crate(
+            db: &dyn DefDatabase,
+            map: &mut DynMap,
+            file_id: HirFileId,
+            ext: ExternCrateId,
+        ) {
+            let loc = ext.lookup(db);
+            if loc.id.file_id() == file_id {
+                map[keys::EXTERN_CRATE].insert(loc.source(db).value, ext)
+            }
+        }
+        fn add_use(db: &dyn DefDatabase, map: &mut DynMap, file_id: HirFileId, ext: UseId) {
+            let loc = ext.lookup(db);
+            if loc.id.file_id() == file_id {
+                map[keys::USE].insert(loc.source(db).value, ext)
             }
         }
     }

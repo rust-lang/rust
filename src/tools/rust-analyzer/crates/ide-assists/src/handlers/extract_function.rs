@@ -384,7 +384,7 @@ impl LocalUsages {
         Self(
             Definition::Local(var)
                 .usages(&ctx.sema)
-                .in_scope(SearchScope::single_file(ctx.file_id()))
+                .in_scope(&SearchScope::single_file(ctx.file_id()))
                 .all(),
         )
     }

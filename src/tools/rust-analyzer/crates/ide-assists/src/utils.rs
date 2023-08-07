@@ -3,7 +3,7 @@
 use std::ops;
 
 pub(crate) use gen_trait_fn_body::gen_trait_fn_body;
-use hir::{db::HirDatabase, HirDisplay, InFile, Semantics};
+use hir::{db::HirDatabase, HasAttrs as HirHasAttrs, HirDisplay, InFile, Semantics};
 use ide_db::{
     famous_defs::FamousDefs, path_transform::PathTransform,
     syntax_helpers::insert_whitespace_into_node::insert_ws_into, RootDatabase, SnippetCap,
@@ -84,6 +84,12 @@ pub fn test_related_attribute(fn_def: &ast::Fn) -> Option<ast::Attr> {
     })
 }
 
+#[derive(Clone, Copy, PartialEq)]
+pub enum IgnoreAssocItems {
+    DocHiddenAttrPresent,
+    No,
+}
+
 #[derive(Copy, Clone, PartialEq)]
 pub enum DefaultMethods {
     Only,
@@ -94,11 +100,16 @@ pub fn filter_assoc_items(
     sema: &Semantics<'_, RootDatabase>,
     items: &[hir::AssocItem],
     default_methods: DefaultMethods,
+    ignore_items: IgnoreAssocItems,
 ) -> Vec<InFile<ast::AssocItem>> {
     return items
         .iter()
-        // Note: This throws away items with no source.
         .copied()
+        .filter(|assoc_item| {
+            !(ignore_items == IgnoreAssocItems::DocHiddenAttrPresent
+                && assoc_item.attrs(sema.db).has_doc_hidden())
+        })
+        // Note: This throws away items with no source.
         .filter_map(|assoc_item| {
             let item = match assoc_item {
                 hir::AssocItem::Function(it) => sema.source(it)?.map(ast::AssocItem::Fn),

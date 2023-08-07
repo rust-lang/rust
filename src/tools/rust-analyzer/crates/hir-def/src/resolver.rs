@@ -25,7 +25,7 @@ use crate::{
     EnumVariantId, ExternBlockId, ExternCrateId, FunctionId, GenericDefId, GenericParamId,
     HasModule, ImplId, ItemContainerId, LifetimeParamId, LocalModuleId, Lookup, Macro2Id, MacroId,
     MacroRulesId, ModuleDefId, ModuleId, ProcMacroId, StaticId, StructId, TraitAliasId, TraitId,
-    TypeAliasId, TypeOrConstParamId, TypeOwnerId, TypeParamId, VariantId,
+    TypeAliasId, TypeOrConstParamId, TypeOwnerId, TypeParamId, UseId, VariantId,
 };
 
 #[derive(Debug, Clone)]
@@ -1019,6 +1019,12 @@ impl HasResolver for ExternBlockId {
 }
 
 impl HasResolver for ExternCrateId {
+    fn resolver(self, db: &dyn DefDatabase) -> Resolver {
+        self.lookup(db).container.resolver(db)
+    }
+}
+
+impl HasResolver for UseId {
     fn resolver(self, db: &dyn DefDatabase) -> Resolver {
         self.lookup(db).container.resolver(db)
     }

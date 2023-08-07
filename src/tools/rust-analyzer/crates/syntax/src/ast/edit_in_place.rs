@@ -380,6 +380,26 @@ impl Removable for ast::UseTree {
 }
 
 impl ast::UseTree {
+    /// Deletes the usetree node represented by the input. Recursively removes parents, including use nodes that become empty.
+    pub fn remove_recursive(self) {
+        let parent = self.syntax().parent();
+
+        self.remove();
+
+        if let Some(u) = parent.clone().and_then(ast::Use::cast) {
+            if u.use_tree().is_none() {
+                u.remove();
+            }
+        } else if let Some(u) = parent.and_then(ast::UseTreeList::cast) {
+            if u.use_trees().next().is_none() {
+                let parent = u.syntax().parent().and_then(ast::UseTree::cast);
+                if let Some(u) = parent {
+                    u.remove_recursive();
+                }
+            }
+        }
+    }
+
     pub fn get_or_create_use_tree_list(&self) -> ast::UseTreeList {
         match self.use_tree_list() {
             Some(it) => it,
@@ -487,6 +507,22 @@ impl Removable for ast::Use {
                 }
             }
         }
+        let prev_ws = self
+            .syntax()
+            .prev_sibling_or_token()
+            .and_then(|it| it.into_token())
+            .and_then(ast::Whitespace::cast);
+        if let Some(prev_ws) = prev_ws {
+            let ws_text = prev_ws.syntax().text();
+            let prev_newline = ws_text.rfind('\n').map(|x| x + 1).unwrap_or(0);
+            let rest = &ws_text[0..prev_newline];
+            if rest.is_empty() {
+                ted::remove(prev_ws.syntax());
+            } else {
+                ted::replace(prev_ws.syntax(), make::tokens::whitespace(rest));
+            }
+        }
+
         ted::remove(self.syntax());
     }
 }

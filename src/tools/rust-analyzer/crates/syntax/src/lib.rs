@@ -172,7 +172,7 @@ impl SourceFile {
 }
 
 impl ast::TokenTree {
-    pub fn reparse_as_expr(self) -> Parse<ast::Expr> {
+    pub fn reparse_as_comma_separated_expr(self) -> Parse<ast::MacroEagerInput> {
         let tokens = self.syntax().descendants_with_tokens().filter_map(NodeOrToken::into_token);
 
         let mut parser_input = parser::Input::default();
@@ -203,7 +203,7 @@ impl ast::TokenTree {
             }
         }
 
-        let parser_output = parser::TopEntryPoint::Expr.parse(&parser_input);
+        let parser_output = parser::TopEntryPoint::MacroEagerInput.parse(&parser_input);
 
         let mut tokens =
             self.syntax().descendants_with_tokens().filter_map(NodeOrToken::into_token);

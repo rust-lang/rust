@@ -400,7 +400,8 @@ fn push_fragment(buf: &mut Vec<tt::TokenTree>, fragment: Fragment) {
             }
             buf.push(tt.into())
         }
-        Fragment::Tokens(tt) | Fragment::Expr(tt) => buf.push(tt),
+        Fragment::Path(tt::TokenTree::Subtree(tt)) => fix_up_and_push_path_tt(buf, tt),
+        Fragment::Tokens(tt) | Fragment::Expr(tt) | Fragment::Path(tt) => buf.push(tt),
     }
 }
 
@@ -408,6 +409,45 @@ fn push_subtree(buf: &mut Vec<tt::TokenTree>, tt: tt::Subtree) {
     match tt.delimiter.kind {
         tt::DelimiterKind::Invisible => buf.extend(tt.token_trees),
         _ => buf.push(tt.into()),
+    }
+}
+
+/// Inserts the path separator `::` between an identifier and its following generic
+/// argument list, and then pushes into the buffer. See [`Fragment::Path`] for why
+/// we need this fixup.
+fn fix_up_and_push_path_tt(buf: &mut Vec<tt::TokenTree>, subtree: tt::Subtree) {
+    stdx::always!(matches!(subtree.delimiter.kind, tt::DelimiterKind::Invisible));
+    let mut prev_was_ident = false;
+    // Note that we only need to fix up the top-level `TokenTree`s because the
+    // context of the paths in the descendant `Subtree`s won't be changed by the
+    // mbe transcription.
+    for tt in subtree.token_trees {
+        if prev_was_ident {
+            // Pedantically, `(T) -> U` in `FnOnce(T) -> U` is treated as a generic
+            // argument list and thus needs `::` between it and `FnOnce`. However in
+            // today's Rust this type of path *semantically* cannot appear as a
+            // top-level expression-context path, so we can safely ignore it.
+            if let tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct { char: '<', .. })) = tt {
+                buf.push(
+                    tt::Leaf::Punct(tt::Punct {
+                        char: ':',
+                        spacing: tt::Spacing::Joint,
+                        span: tt::Span::unspecified(),
+                    })
+                    .into(),
+                );
+                buf.push(
+                    tt::Leaf::Punct(tt::Punct {
+                        char: ':',
+                        spacing: tt::Spacing::Alone,
+                        span: tt::Span::unspecified(),
+                    })
+                    .into(),
+                );
+            }
+        }
+        prev_was_ident = matches!(tt, tt::TokenTree::Leaf(tt::Leaf::Ident(_)));
+        buf.push(tt);
     }
 }
 
