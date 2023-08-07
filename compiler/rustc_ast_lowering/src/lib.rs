@@ -902,8 +902,20 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             })),
             AttrKind::DocComment(comment_kind, data) => AttrKind::DocComment(comment_kind, data),
         };
+        let mut attr = Attribute { kind, id: attr.id, style: attr.style, span: attr.span };
 
-        Attribute { kind, id: attr.id, style: attr.style, span: self.lower_span(attr.span) }
+        use rustc_ast::mut_visit::MutVisitor;
+        struct SpanMarker<'ctx, 'res, 'hir> {
+            lctx: &'ctx LoweringContext<'res, 'hir>,
+        }
+        impl MutVisitor for SpanMarker<'_, '_, '_> {
+            fn visit_span(&mut self, span: &mut Span) {
+                *span = self.lctx.lower_span(*span);
+            }
+        }
+        SpanMarker { lctx: self }.visit_attribute(&mut attr);
+
+        attr
     }
 
     fn alias_attrs(&mut self, id: hir::HirId, target_id: hir::HirId) {

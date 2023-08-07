@@ -111,9 +111,9 @@ impl<'ast> Visitor<'ast> for NodeCounter {
         self.count += 1;
         walk_path(self, path)
     }
-    fn visit_use_tree(&mut self, use_tree: &UseTree, id: NodeId, _nested: bool) {
+    fn visit_use_tree(&mut self, use_tree: &UseTree, id: NodeId, _nested: bool, item_span: Span) {
         self.count += 1;
-        walk_use_tree(self, use_tree, id)
+        walk_use_tree(self, use_tree, id, item_span)
     }
     fn visit_generic_args(&mut self, generic_args: &GenericArgs) {
         self.count += 1;

@@ -206,8 +206,14 @@ pub trait Visitor<'ast>: Sized {
     fn visit_path(&mut self, path: &'ast Path, _id: NodeId) {
         walk_path(self, path)
     }
-    fn visit_use_tree(&mut self, use_tree: &'ast UseTree, id: NodeId, _nested: bool) {
-        walk_use_tree(self, use_tree, id)
+    fn visit_use_tree(
+        &mut self,
+        use_tree: &'ast UseTree,
+        id: NodeId,
+        _nested: bool,
+        item_span: Span,
+    ) {
+        walk_use_tree(self, use_tree, id, item_span)
     }
     fn visit_path_segment(&mut self, path_segment: &'ast PathSegment) {
         walk_path_segment(self, path_segment)
@@ -307,7 +313,7 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
     visitor.visit_ident(item.ident);
     match &item.kind {
         ItemKind::ExternCrate(_) => {}
-        ItemKind::Use(use_tree) => visitor.visit_use_tree(use_tree, item.id, false),
+        ItemKind::Use(use_tree) => visitor.visit_use_tree(use_tree, item.id, false, item.span),
         ItemKind::Static(box StaticItem { ty, mutability: _, expr }) => {
             visitor.visit_ty(ty);
             walk_list!(visitor, visit_expr, expr);
@@ -450,7 +456,12 @@ pub fn walk_path<'a, V: Visitor<'a>>(visitor: &mut V, path: &'a Path) {
     }
 }
 
-pub fn walk_use_tree<'a, V: Visitor<'a>>(visitor: &mut V, use_tree: &'a UseTree, id: NodeId) {
+pub fn walk_use_tree<'a, V: Visitor<'a>>(
+    visitor: &mut V,
+    use_tree: &'a UseTree,
+    id: NodeId,
+    item_span: Span,
+) {
     visitor.visit_path(&use_tree.prefix, id);
     match &use_tree.kind {
         UseTreeKind::Simple(rename) => {
@@ -462,7 +473,7 @@ pub fn walk_use_tree<'a, V: Visitor<'a>>(visitor: &mut V, use_tree: &'a UseTree,
         UseTreeKind::Glob => {}
         UseTreeKind::Nested(use_trees) => {
             for &(ref nested_tree, nested_id) in use_trees {
-                visitor.visit_use_tree(nested_tree, nested_id, true);
+                visitor.visit_use_tree(nested_tree, nested_id, true, item_span);
             }
         }
     }

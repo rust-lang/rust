@@ -165,7 +165,13 @@ impl<'a, 'b, 'tcx> Visitor<'a> for UnusedImportCheckVisitor<'a, 'b, 'tcx> {
         visit::walk_item(self, item);
     }
 
-    fn visit_use_tree(&mut self, use_tree: &'a ast::UseTree, id: ast::NodeId, nested: bool) {
+    fn visit_use_tree(
+        &mut self,
+        use_tree: &'a ast::UseTree,
+        id: ast::NodeId,
+        nested: bool,
+        item_span: Span,
+    ) {
         // Use the base UseTree's NodeId as the item id
         // This allows the grouping of all the lints in the same item
         if !nested {
@@ -186,7 +192,7 @@ impl<'a, 'b, 'tcx> Visitor<'a> for UnusedImportCheckVisitor<'a, 'b, 'tcx> {
             self.check_import(id);
         }
 
-        visit::walk_use_tree(self, use_tree, id);
+        visit::walk_use_tree(self, use_tree, id, item_span);
     }
 }
 

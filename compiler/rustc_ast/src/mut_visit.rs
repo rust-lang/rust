@@ -396,8 +396,10 @@ pub fn visit_attr_args<T: MutVisitor>(args: &mut AttrArgs, vis: &mut T) {
             vis.visit_span(eq_span);
             vis.visit_expr(expr);
         }
-        AttrArgs::Eq(_, AttrArgsEq::Hir(lit)) => {
-            unreachable!("in literal form when visiting mac args eq: {:?}", lit)
+        AttrArgs::Eq(eq_span, AttrArgsEq::Hir(lit)) => {
+            vis.visit_span(eq_span);
+            let MetaItemLit { symbol: _, suffix: _, kind: _, span } = lit;
+            vis.visit_span(span);
         }
     }
 }

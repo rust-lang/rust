@@ -156,9 +156,15 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
         visit::walk_fn(self, fn_kind);
     }
 
-    fn visit_use_tree(&mut self, use_tree: &'a UseTree, id: NodeId, _nested: bool) {
-        self.create_def(id, DefPathData::Use, use_tree.span);
-        visit::walk_use_tree(self, use_tree, id);
+    fn visit_use_tree(
+        &mut self,
+        use_tree: &'a UseTree,
+        id: NodeId,
+        _nested: bool,
+        item_span: Span,
+    ) {
+        self.create_def(id, DefPathData::Use, item_span);
+        visit::walk_use_tree(self, use_tree, id, item_span);
     }
 
     fn visit_foreign_item(&mut self, foreign_item: &'a ForeignItem) {
