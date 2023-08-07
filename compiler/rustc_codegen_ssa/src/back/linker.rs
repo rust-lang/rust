@@ -1698,23 +1698,16 @@ fn exported_symbols_for_non_proc_macro(tcx: TyCtxt<'_>, crate_type: CrateType) -
 }
 
 fn exported_symbols_for_proc_macro_crate(tcx: TyCtxt<'_>) -> Vec<String> {
-    let mut symbols = Vec::new();
+    // `exported_symbols` will be empty when !should_codegen.
+    if !tcx.sess.opts.output_types.should_codegen() {
+        return Vec::new();
+    }
 
     let stable_crate_id = tcx.sess.local_stable_crate_id();
     let proc_macro_decls_name = tcx.sess.generate_proc_macro_decls_symbol(stable_crate_id);
     let metadata_symbol_name = exported_symbols::metadata_symbol_name(tcx);
 
-    // You would think that both the two names would always be there, but in
-    // pnkfelix's local experiments that was not case. So instead we walk the
-    // list and only add them if they *are* there.
-    for_each_exported_symbols_include_dep(tcx, CrateType::ProcMacro, |symbol, _info, cnum| {
-        let name = symbol_export::symbol_name_for_instance_in_crate(tcx, symbol, cnum);
-        if name == proc_macro_decls_name || name == metadata_symbol_name {
-            symbols.push(name);
-        }
-    });
-
-    return symbols;
+    vec![proc_macro_decls_name, metadata_symbol_name]
 }
 
 pub(crate) fn linked_symbols(
