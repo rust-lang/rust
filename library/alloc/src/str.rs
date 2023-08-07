@@ -223,8 +223,6 @@ impl str {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// let s = "this is a string";
     /// let boxed_str = s.to_owned().into_boxed_str();
@@ -487,8 +485,6 @@ impl str {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// let string = String::from("birthday gift");
     /// let boxed_str = string.clone().into_boxed_str();
@@ -601,8 +597,6 @@ impl str {
 /// that the string contains valid UTF-8.
 ///
 /// # Examples
-///
-/// Basic usage:
 ///
 /// ```
 /// let smile_utf8 = Box::new([226, 152, 186]);

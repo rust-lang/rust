@@ -1155,6 +1155,20 @@ fn codegen_regular_intrinsic_call<'tcx>(
             ret.write_cvalue(fx, CValue::by_val(is_eq_value, ret.layout()));
         }
 
+        sym::compare_bytes => {
+            intrinsic_args!(fx, args => (lhs_ptr, rhs_ptr, bytes_val); intrinsic);
+            let lhs_ptr = lhs_ptr.load_scalar(fx);
+            let rhs_ptr = rhs_ptr.load_scalar(fx);
+            let bytes_val = bytes_val.load_scalar(fx);
+
+            let params = vec![AbiParam::new(fx.pointer_type); 3];
+            let returns = vec![AbiParam::new(types::I32)];
+            let args = &[lhs_ptr, rhs_ptr, bytes_val];
+            // Here we assume that the `memcmp` provided by the target is a NOP for size 0.
+            let cmp = fx.lib_call("memcmp", params, returns, args)[0];
+            ret.write_cvalue(fx, CValue::by_val(cmp, ret.layout()));
+        }
+
         sym::const_allocate => {
             intrinsic_args!(fx, args => (_size, _align); intrinsic);
 
