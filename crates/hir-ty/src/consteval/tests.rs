@@ -1454,6 +1454,30 @@ fn from_trait() {
 }
 
 #[test]
+fn closure_clone() {
+    check_number(
+        r#"
+//- minicore: clone, fn
+struct S(u8);
+
+impl Clone for S(u8) {
+    fn clone(&self) -> S {
+        S(self.0 + 5)
+    }
+}
+
+const GOAL: u8 = {
+    let s = S(3);
+    let cl = move || s;
+    let cl = cl.clone();
+    cl().0
+}
+    "#,
+        8,
+    );
+}
+
+#[test]
 fn builtin_derive_macro() {
     check_number(
         r#"
