@@ -1,8 +1,8 @@
 //@compile-flags: -Zmiri-tree-borrows -Zmiri-tag-gc=0
 
 #[path = "../../../utils/mod.rs"]
+#[macro_use]
 mod utils;
-use utils::macros::*;
 
 // Check how a Reserved without interior mutability responds to a Foreign
 // Write when under a protector

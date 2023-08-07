@@ -5,8 +5,8 @@
 #![feature(vec_into_raw_parts)]
 
 #[path = "../../utils/mod.rs"]
+#[macro_use]
 mod utils;
-use utils::macros::*;
 
 // Check general handling of `Unique`:
 // there is no *explicit* `Unique` being used here, but there is one

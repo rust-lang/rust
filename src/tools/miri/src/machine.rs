@@ -427,7 +427,7 @@ pub struct MiriMachine<'mir, 'tcx> {
     /// the emulated program.
     profiler: Option<measureme::Profiler>,
     /// Used with `profiler` to cache the `StringId`s for event names
-    /// uesd with `measureme`.
+    /// used with `measureme`.
     string_cache: FxHashMap<String, measureme::StringId>,
 
     /// Cache of `Instance` exported under the given `Symbol` name.
@@ -516,7 +516,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
             let pid = process::id();
             // We adopt the same naming scheme for the profiler output that rustc uses. In rustc,
             // the PID is padded so that the nondeterministic value of the PID does not spread
-            // nondeterminisim to the allocator. In Miri we are not aiming for such performance
+            // nondeterminism to the allocator. In Miri we are not aiming for such performance
             // control, we just pad for consistency with rustc.
             let filename = format!("{crate_name}-{pid:07}");
             let path = Path::new(out).join(filename);
@@ -1219,7 +1219,8 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         // If we have a borrow tracker, we also have it set up protection so that all reads *and
         // writes* during this call are insta-UB.
         if ecx.machine.borrow_tracker.is_some() {
-            if let Either::Left(place) = place.as_mplace_or_local() {
+            // Have to do `to_op` first because a `Place::Local` doesn't imply the local doesn't have an address.
+            if let Either::Left(place) = ecx.place_to_op(place)?.as_mplace_or_imm() {
                 ecx.protect_place(&place)?;
             } else {
                 // Locals that don't have their address taken are as protected as they can ever be.

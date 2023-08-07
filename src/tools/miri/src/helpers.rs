@@ -337,7 +337,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     /// Call a function: Push the stack frame and pass the arguments.
     /// For now, arguments must be scalars (so that the caller does not have to know the layout).
     ///
-    /// If you do not provie a return place, a dangling zero-sized place will be created
+    /// If you do not provide a return place, a dangling zero-sized place will be created
     /// for your convenience.
     fn call_function(
         &mut self,

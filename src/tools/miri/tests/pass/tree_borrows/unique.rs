@@ -5,8 +5,8 @@
 #![feature(ptr_internals)]
 
 #[path = "../../utils/mod.rs"]
+#[macro_use]
 mod utils;
-use utils::macros::*;
 
 use core::ptr::Unique;
 

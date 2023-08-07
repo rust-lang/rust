@@ -1,8 +1,8 @@
 //@compile-flags: -Zmiri-tree-borrows -Zmiri-tag-gc=0
 
 #[path = "../../utils/mod.rs"]
+#[macro_use]
 mod utils;
-use utils::macros::*;
 
 // To check that a reborrow is counted as a Read access, we use a reborrow
 // with no additional Read to Freeze an Active pointer.

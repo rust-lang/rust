@@ -73,11 +73,11 @@ fn test_config(target: &str, path: &str, mode: Mode, with_dependencies: bool) ->
         program.args.push(flag);
     }
 
-    let bless = env::var_os("RUSTC_BLESS").is_some_and(|v| v !="0");
+    let bless = env::var_os("RUSTC_BLESS").is_some_and(|v| v != "0");
     let skip_ui_checks = env::var_os("MIRI_SKIP_UI_CHECKS").is_some();
 
     let output_conflict_handling = match (bless, skip_ui_checks) {
-        (false, false) => OutputConflictHandling::Error("./miri bless".into()),
+        (false, false) => OutputConflictHandling::Error("./miri test --bless".into()),
         (true, false) => OutputConflictHandling::Bless,
         (false, true) => OutputConflictHandling::Ignore,
         (true, true) => panic!("cannot use RUSTC_BLESS and MIRI_SKIP_UI_CHECKS at the same time"),

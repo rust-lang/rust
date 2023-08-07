@@ -110,7 +110,7 @@ impl LocationState {
 
     // Helper to optimize the tree traversal.
     // The optimization here consists of observing thanks to the tests
-    // `foreign_read_is_noop_after_write` and `all_transitions_idempotent`,
+    // `foreign_read_is_noop_after_foreign_write` and `all_transitions_idempotent`,
     // that there are actually just three possible sequences of events that can occur
     // in between two child accesses that produce different results.
     //
@@ -139,7 +139,7 @@ impl LocationState {
             let new_access_noop = match (self.latest_foreign_access, access_kind) {
                 // Previously applied transition makes the new one a guaranteed
                 // noop in the two following cases:
-                // (1) justified by `foreign_read_is_noop_after_write`
+                // (1) justified by `foreign_read_is_noop_after_foreign_write`
                 (Some(AccessKind::Write), AccessKind::Read) => true,
                 // (2) justified by `all_transitions_idempotent`
                 (Some(old), new) if old == new => true,
@@ -376,7 +376,7 @@ where {
 impl Tree {
     /// Create a new tree, with only a root pointer.
     pub fn new(root_tag: BorTag, size: Size, span: Span) -> Self {
-        let root_perm = Permission::new_root();
+        let root_perm = Permission::new_active();
         let mut tag_mapping = UniKeyMap::default();
         let root_idx = tag_mapping.insert(root_tag);
         let nodes = {
@@ -670,7 +670,8 @@ impl AccessRelatedness {
 mod commutation_tests {
     use super::*;
     impl LocationState {
-        pub fn all_without_access() -> impl Iterator<Item = Self> {
+        pub fn all() -> impl Iterator<Item = Self> {
+            // We keep `latest_foreign_access` at `None` as that's just a cache.
             Permission::all().flat_map(|permission| {
                 [false, true].into_iter().map(move |initialized| {
                     Self { permission, initialized, latest_foreign_access: None }
@@ -695,12 +696,12 @@ mod commutation_tests {
                 // Any protector state works, but we can't move reads across function boundaries
                 // so the two read accesses occur under the same protector.
                 for &protected in &[true, false] {
-                    for loc in LocationState::all_without_access() {
+                    for loc in LocationState::all() {
                         // Apply 1 then 2. Failure here means that there is UB in the source
                         // and we skip the check in the target.
                         let mut loc12 = loc;
-                        let Ok(_) = loc12.perform_access(kind, rel1, protected) else { continue; };
-                        let Ok(_) = loc12.perform_access(kind, rel2, protected) else { continue; };
+                        let Ok(_) = loc12.perform_access(kind, rel1, protected) else { continue };
+                        let Ok(_) = loc12.perform_access(kind, rel2, protected) else { continue };
 
                         // If 1 followed by 2 succeeded, then 2 followed by 1 must also succeed...
                         let mut loc21 = loc;
@@ -713,6 +714,35 @@ mod commutation_tests {
                             "Read accesses {:?} followed by {:?} do not commute !",
                             rel1, rel2
                         );
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    #[rustfmt::skip]
+    // Ensure that of 2 accesses happen, one foreign and one a child, and we are protected, that we
+    // get UB unless they are both reads.
+    fn protected_enforces_noalias() {
+        for rel1 in AccessRelatedness::all() {
+            for rel2 in AccessRelatedness::all() {
+                if rel1.is_foreign() == rel2.is_foreign() {
+                    // We want to check pairs of accesses where one is foreign and one is not.
+                    continue;
+                }
+                for kind1 in AccessKind::all() {
+                    for kind2 in AccessKind::all() {
+                        for mut state in LocationState::all() {
+                            let protected = true;
+                            let Ok(_) = state.perform_access(kind1, rel1, protected) else { continue };
+                            let Ok(_) = state.perform_access(kind2, rel2, protected) else { continue };
+                            // If these were both allowed, it must have been two reads.
+                            assert!(
+                                kind1 == AccessKind::Read && kind2 == AccessKind::Read,
+                                "failed to enforce noalias between two accesses that are not both reads"
+                            );
+                        }
                     }
                 }
             }

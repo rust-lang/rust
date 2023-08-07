@@ -13,11 +13,7 @@ use log::trace;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::mir::{Mutability, RetagKind};
-use rustc_middle::ty::{
-    self,
-    layout::HasParamEnv,
-    Ty,
-};
+use rustc_middle::ty::{self, layout::HasParamEnv, Ty};
 use rustc_target::abi::{Abi, Align, Size};
 
 use crate::borrow_tracker::{
@@ -608,8 +604,7 @@ impl<'mir: 'ecx, 'tcx: 'mir, 'ecx> EvalContextPrivExt<'mir, 'tcx, 'ecx>
 {
 }
 trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'mir, 'tcx> {
-    /// Returns the `AllocId` the reborrow was done in, if some actual borrow stack manipulation
-    /// happened.
+    /// Returns the provenance that should be used henceforth.
     fn sb_reborrow(
         &mut self,
         place: &MPlaceTy<'tcx, Provenance>,
@@ -617,7 +612,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
         new_perm: NewPermission,
         new_tag: BorTag,
         retag_info: RetagInfo, // diagnostics info about this retag
-    ) -> InterpResult<'tcx, Option<AllocId>> {
+    ) -> InterpResult<'tcx, Option<Provenance>> {
         let this = self.eval_context_mut();
         // Ensure we bail out if the pointer goes out-of-bounds (see miri#1050).
         this.check_ptr_access_align(place.ptr, size, Align::ONE, CheckInAllocMsg::InboundsTest)?;
@@ -699,11 +694,14 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
             // pointer tagging for example all calls to get_unchecked on them are invalid.
             if let Ok((alloc_id, base_offset, orig_tag)) = this.ptr_try_get_alloc_id(place.ptr) {
                 log_creation(this, Some((alloc_id, base_offset, orig_tag)))?;
-                return Ok(Some(alloc_id));
+                // Still give it the new provenance, it got retagged after all.
+                return Ok(Some(Provenance::Concrete { alloc_id, tag: new_tag }));
+            } else {
+                // This pointer doesn't come with an AllocId. :shrug:
+                log_creation(this, None)?;
+                // Provenance unchanged.
+                return Ok(place.ptr.provenance);
             }
-            // This pointer doesn't come with an AllocId. :shrug:
-            log_creation(this, None)?;
-            return Ok(None);
         }
 
         let (alloc_id, base_offset, orig_tag) = this.ptr_get_alloc_id(place.ptr)?;
@@ -808,7 +806,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
             }
         }
 
-        Ok(Some(alloc_id))
+        Ok(Some(Provenance::Concrete { alloc_id, tag: new_tag }))
     }
 
     /// Retags an individual pointer, returning the retagged version.
@@ -835,25 +833,10 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
         let new_tag = this.machine.borrow_tracker.as_mut().unwrap().get_mut().new_ptr();
 
         // Reborrow.
-        let alloc_id = this.sb_reborrow(&place, size, new_perm, new_tag, info)?;
+        let new_prov = this.sb_reborrow(&place, size, new_perm, new_tag, info)?;
 
         // Adjust pointer.
-        let new_place = place.map_provenance(|p| {
-            p.map(|prov| {
-                match alloc_id {
-                    Some(alloc_id) => {
-                        // If `reborrow` could figure out the AllocId of this ptr, hard-code it into the new one.
-                        // Even if we started out with a wildcard, this newly retagged pointer is tied to that allocation.
-                        Provenance::Concrete { alloc_id, tag: new_tag }
-                    }
-                    None => {
-                        // Looks like this has to stay a wildcard pointer.
-                        assert!(matches!(prov, Provenance::Wildcard));
-                        Provenance::Wildcard
-                    }
-                }
-            })
-        });
+        let new_place = place.map_provenance(|_| new_prov);
 
         // Return new pointer.
         Ok(ImmTy::from_immediate(new_place.to_ref(this), val.layout))

@@ -6,29 +6,8 @@ use std::fs::{remove_file, File};
 use std::os::unix::io::AsRawFd;
 use std::path::PathBuf;
 
-fn tmp() -> PathBuf {
-    use std::ffi::{c_char, CStr, CString};
-
-    let path = std::env::var("MIRI_TEMP")
-        .unwrap_or_else(|_| std::env::temp_dir().into_os_string().into_string().unwrap());
-    // These are host paths. We need to convert them to the target.
-    let path = CString::new(path).unwrap();
-    let mut out = Vec::with_capacity(1024);
-
-    unsafe {
-        extern "Rust" {
-            fn miri_host_to_target_path(
-                path: *const c_char,
-                out: *mut c_char,
-                out_size: usize,
-            ) -> usize;
-        }
-        let ret = miri_host_to_target_path(path.as_ptr(), out.as_mut_ptr(), out.capacity());
-        assert_eq!(ret, 0);
-        let out = CStr::from_ptr(out.as_ptr()).to_str().unwrap();
-        PathBuf::from(out)
-    }
-}
+#[path = "../../utils/mod.rs"]
+mod utils;
 
 /// Test allocating variant of `realpath`.
 fn test_posix_realpath_alloc() {
@@ -38,7 +17,7 @@ fn test_posix_realpath_alloc() {
     use std::os::unix::ffi::OsStringExt;
 
     let buf;
-    let path = tmp().join("miri_test_libc_posix_realpath_alloc");
+    let path = utils::tmp().join("miri_test_libc_posix_realpath_alloc");
     let c_path = CString::new(path.as_os_str().as_bytes()).expect("CString::new failed");
 
     // Cleanup before test.
@@ -63,7 +42,7 @@ fn test_posix_realpath_noalloc() {
     use std::ffi::{CStr, CString};
     use std::os::unix::ffi::OsStrExt;
 
-    let path = tmp().join("miri_test_libc_posix_realpath_noalloc");
+    let path = utils::tmp().join("miri_test_libc_posix_realpath_noalloc");
     let c_path = CString::new(path.as_os_str().as_bytes()).expect("CString::new failed");
 
     let mut v = vec![0; libc::PATH_MAX as usize];
@@ -103,7 +82,7 @@ fn test_posix_realpath_errors() {
 fn test_posix_fadvise() {
     use std::io::Write;
 
-    let path = tmp().join("miri_test_libc_posix_fadvise.txt");
+    let path = utils::tmp().join("miri_test_libc_posix_fadvise.txt");
     // Cleanup before test
     remove_file(&path).ok();
 
@@ -130,7 +109,7 @@ fn test_posix_fadvise() {
 fn test_sync_file_range() {
     use std::io::Write;
 
-    let path = tmp().join("miri_test_libc_sync_file_range.txt");
+    let path = utils::tmp().join("miri_test_libc_sync_file_range.txt");
     // Cleanup before test.
     remove_file(&path).ok();
 
@@ -243,7 +222,7 @@ fn test_isatty() {
         libc::isatty(libc::STDERR_FILENO);
 
         // But when we open a file, it is definitely not a TTY.
-        let path = tmp().join("notatty.txt");
+        let path = utils::tmp().join("notatty.txt");
         // Cleanup before test.
         remove_file(&path).ok();
         let file = File::create(&path).unwrap();
