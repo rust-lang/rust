@@ -1229,7 +1229,7 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
                 Normalized { value: projected_term, obligations: projected_obligations }
             };
 
-            let mut deduped: SsoHashSet<_> = Default::default();
+            let mut deduped = SsoHashSet::with_capacity(projected_obligations.len());
             result.obligations.retain(|obligation| deduped.insert(obligation.clone()));
 
             if use_cache {
